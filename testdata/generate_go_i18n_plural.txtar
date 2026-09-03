@@ -1,15 +1,10 @@
-Go codegen for i18n.plural/selectordinal/exactly: runtime wiring.
+Go codegen for `i18n.plural`, `i18n.selectordinal` and `i18n.exactly` -- the
+runtime wiring rather than the message text. The generated model imports
+pkg/go/i18n and calls i18n.Plural and i18n.Selectordinal with the locale
+threaded from the active context (m.__ctx_locale) and the forms as a
+map[i18n.PluralKey]string. `i18n.exactly(0)` becomes i18n.Exactly(0), and the
+CLDR keywords become the i18n.PluralOne / PluralFew / PluralOther constants.
 
-i18n runtime package is imported.
-
-i18n.plural emits i18n.Plural(locale, count, forms) with the locale
-threaded from the active context. forms is map[i18n.PluralKey]string.
-
-i18n.exactly(0) emits i18n.Exactly(0).
-
-CLDR keyword constants emit i18n.PluralOne, i18n.PluralOther, etc.
-
-i18n.selectordinal emits i18n.Selectordinal(locale, count, forms).
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"

@@ -1,13 +1,11 @@
-Regression test for #35: sub-component widget fields must be declared on
-the Model struct. After NoInlineComponents, detailPanel is inlined into main
-rather than emitted as a separate renderDetailPanel method.
+Regression test for #35: the widget fields of a sub-component have to be
+declared on the Model struct. NoInlineComponents inlines detailPanel into
+main rather than emitting a render method for it, so its four text() nodes
+are main's own labels (__n0..__n3, under the inlined vbox __n6) and its prop
+references are substituted with the callsite argument, m.current.
 
-The inlined detailPanel's four text() nodes become Model fields.
-__n6 is the inlined vbox; __n0..__n3 are the four labels.
+deny out/go/fyne/model.go `renderDetailPanel` -- detailPanel is inlined, so no method of its own survives to be called
 
-Prop references are substituted with m.current (the callsite arg).
-
-deny out/go/fyne/model.go `renderDetailPanel` -- detailPanel gets inlined — no renderDetailPanel method survives.
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:app"

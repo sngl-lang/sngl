@@ -1,24 +1,19 @@
-Regression test for the if-multi-child variable collision.
+Regression test for the if-multi-child variable collision. When an `if` body
+holds more than one statement under a single parent slot, every child rendered
+into the same `<innerVar>` and clobbered its predecessors; worse, any child
+that emitted an `<innerVar>Children` of its own -- every container does --
+collided with its sibling, and the generated Go failed to compile with
+"redeclared in this block".
 
-When an `if` body contains more than one statement under a single parent
-slot, every child rendered into the *same* `<innerVar>` and prior children
-would be clobbered. Worse, any child that itself emitted
-`<innerVar>Children` (every container does) collided with its sibling and
-the generated Go failed to compile with "redeclared in this block".
+The window body now flows through WalkLowered, and the declarative lowering
+pass emits an AppendChild for every NodeInst declared inside a conditional or
+loop body, threaded back to the surrounding parent: each of the three
+`text(...)` widgets is constructed *and* added to the vbox. The vbox is __n3
+and the labels are __n0..__n2, allocated in pass one. None of the labels
+escapes __renderSlot0 -- created, added and tracked in m.__slot0 all within
+that scope -- so the node-escape lowering pass emits them as distinct
+function-local variables, which is what rules out the original collision.
 
-Post-Plan-C the window body flows through WalkLowered and the
-declarative lowering pass emits AppendChild for every NodeInst
-declared inside conditional/loop bodies, threaded back to the
-surrounding parent. Verify each `text(...)` widget inside the `if`
-is constructed AND added to the surrounding vbox.
-
-The vbox is __n3; the three text children are __n0..__n2 (allocated in pass-1).
-The labels do not escape __renderSlot0 (created, added, and tracked in
-m.__slot0 all within that scope), so the node-escape lower pass emits them
-as distinct function-local variables — which also rules out the original
-variable collision this test guards against.
-
-Each label inside the if-body is appended to the parent via __renderSlot0.
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:app"

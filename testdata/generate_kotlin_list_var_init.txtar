@@ -1,14 +1,10 @@
-Kotlin codegen for a list-typed var whose initializer is an expression
-rather than a literal: the expression must survive into the state
-declaration instead of being replaced by an empty list.
-
-A list literal still becomes mutableStateListOf varargs.
-
-A non-literal list init keeps its expression, converted to snapshot state.
-
-An empty list is still typed explicitly, since Kotlin can't infer it.
-
-Scalars are unaffected.
+A list-typed var whose initializer is an expression rather than a literal must
+keep that expression in the state declaration instead of being replaced by an
+empty list. A literal is still `mutableStateListOf` varargs; a computed one
+keeps its expression with `.toMutableStateList()` appended to convert the
+result to snapshot state. An empty list is typed explicitly, since Kotlin
+cannot infer an element type from nothing. Scalars are untouched -- `idx` is an
+ordinary `mutableStateOf` over the same expression.
 -- app.sngl --
 import . "sngl:ui"
 

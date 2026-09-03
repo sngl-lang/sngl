@@ -1,12 +1,14 @@
+
 Under --lang go the user's functions are emitted into the gomobile module,
 exported and capitalised, and emitIR does not emit them as Kotlin. So a Kotlin
 call site has to name them there. It did not: the module held `func Fib` and
 the Kotlin called a bare `fib(k)`, defined in neither file.
 
-fib recurses, so the inliner cannot fold it away 
+fib recurses, so the inliner cannot fold it away -- which is what made this
+reachable at all, and why a non-recursive fixture would prove nothing.
 
-deny out/go/android/MainScreen.kt `= fib\(` -- Not as a bare local function, which is what used to be emitted.
-deny out/go/android/MainScreen.kt `fun fib` -- TODO state the claim
+deny out/go/android/MainScreen.kt `= fib\(` -- the call goes through golib.Golib.Fib; a bare one would name a function neither file defines
+deny out/go/android/MainScreen.kt `fun fib` -- under --lang go the function lives in the module, so Kotlin declares no copy of it
 -- which is what made this
 reachable at all, and why a non-recursive fixture would prove nothing.
 

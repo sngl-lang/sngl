@@ -1,3 +1,7 @@
+One window names another by id: `home.href` in the about page folds to the `/`
+the home window declares, and `/` is the path the static site writes as
+index.html. The reference is resolved at build time -- the golden's
+`<a href="/">` is a literal.
 
 -- site.sngl --
 import . "sngl:ui"

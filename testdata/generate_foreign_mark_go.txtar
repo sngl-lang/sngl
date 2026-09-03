@@ -1,13 +1,12 @@
 A mark names a declaration the program still declares itself, so a backend
 that emits that declaration keeps spelling it its own way. Go emits the
-struct type, so honouring the mark's name here would leave two names for one
-type — `api.Item` used, `Entry` declared — and no import of the package the
-mark named, which nothing resolved.
+struct type under its SNGL name, declared and used: honouring the mark's name
+here would leave two names for one type — `api.Item` used, `Entry` declared —
+and no import of the package the mark named, which nothing resolved.
 
-One name, declared and used.
+deny out/go/bubbletea/model.go `api\.Item` -- the mark's name never reaches the output; the emitted type is spelled Entry everywhere
+deny out/go/bubbletea/model.go `example.com/api` -- the mark resolves no import, because the declaration it marks is the program's own
 
-deny out/go/bubbletea/model.go `api\.Item` -- TODO state the claim
-deny out/go/bubbletea/model.go `example.com/api` -- And nothing imported the package the mark named.
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"

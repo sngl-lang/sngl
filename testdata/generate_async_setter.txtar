@@ -1,9 +1,8 @@
-A state var with a @change handler that calls an async native produces
-an async $set_X setter in the generated JS.
+Async colouring reaches a state var's setter. `count` has a `@change` handler
+that calls an async native, and the handler runs inside the generated
+`$set_count`, so the setter itself is emitted async with the native call
+awaited in its body.
 
-The setter for the state var with an async @change handler is async.
-
-The async native is awaited inside the setter body.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

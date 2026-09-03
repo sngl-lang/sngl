@@ -1,13 +1,14 @@
 Inlining copies the argument to wherever the parameter is read, so a parameter
 read twice evaluates its argument twice. That is the argument's problem and
-not the function's — `double(x) => x + x` is as pure as they come, and
+not the function's -- `double(x) => x + x` is as pure as they come, and
 `double(bump())` counted by two.
 
 Purity of the *callee* was the only condition, which is the wrong side of the
 call: it permitted this, and forbade inlining a readonly function whose
 argument was a literal.
 
-deny out/go/bubbletea/model.go `bump\(\).*bump\(\)` -- The effect happens once. Either the call is kept or the argument is bound — what may not happen is two bumps where the program wrote one.
+deny out/go/bubbletea/model.go `bump\(\).*bump\(\)` -- the effect happens once, whether the call is kept or the argument bound; two bumps is one more than the program wrote
+
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:app"

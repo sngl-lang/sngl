@@ -1,6 +1,7 @@
-maps: true in the output options compiles cleanly.
-No source-map sidecar is emitted yet (no platform consumes Request.Maps
-until Plan B), but the option must not cause a compile error.
+`maps=true` on a target compiles cleanly. No source-map sidecar is emitted
+yet -- no platform reads Request.Maps until Plan B -- but the option must not
+cause a compile error, which is what the golden being the ordinary page says.
+
 -- main.sngl --
 import . "sngl:ui"
 

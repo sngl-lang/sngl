@@ -1,14 +1,9 @@
-An async call inside a visual-node prop expression (inline reactive context)
-is hoisted into a synthetic __hoist_N computed and then lowered by
-NoAsyncReactive into a settled-state field + async kicker pattern.
 
-Synthetic settled-state field produced by hoist + lower.
-
-Async kicker function that populates the settled-state field.
-
-The kicker fires at startup.
-
-The original async call is awaited inside the kicker.
+An async call inside a visual-node prop expression is an inline reactive
+context, so it is hoisted into a synthetic __hoist_N computed and then lowered
+by NoAsyncReactive into the settled-state field plus async kicker pattern: the
+field __async___hoist_0, and $compute___hoist_0 awaiting the original
+fetchHello call, fired at startup to populate it.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

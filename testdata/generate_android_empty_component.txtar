@@ -1,15 +1,15 @@
+
 A user component with an empty body is dead code, so the optimizer drops the
 declaration while the call site's node survives pointing at it. android used
 to fall through to the same generic emitter the stdlib components used, which
 picked a prop off the node and drew it as text: `blank(value="hello")`
 rendered `Text("hello")` for a component whose body says to draw nothing.
 There is no generic emitter any more, and an eliminated user component draws
-what its body said: nothing — not a placeholder either.
+what its body said: nothing, and not a placeholder either. A component that
+does have a body still renders it.
 
-A component that does have a body still renders it.
-
-deny out/kotlin/android/MainScreen.kt `hello` -- TODO state the claim
-deny out/kotlin/android/MainScreen.kt `unknown` -- TODO state the claim
+deny out/kotlin/android/MainScreen.kt `hello` -- the eliminated component's prop reaches nothing; no emitter is left to draw it as text
+deny out/kotlin/android/MainScreen.kt `unknown` -- an empty body emits nothing at all, not a placeholder naming the dropped component
 -- app.sngl --
 import . "sngl:ui"
 

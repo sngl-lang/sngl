@@ -1,9 +1,7 @@
-An @click handler that calls an async native must be wrapped in an async function.
-The generated JS addEventListener call must use "async function".
 
-Event handler wrapper is async because its body awaits fetchHello.
-
-The state assignment uses await.
+An @click handler that calls an async native must be wrapped in an async
+function, so the generated addEventListener takes an `async function` and the
+state assignment inside it awaits fetchHello.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

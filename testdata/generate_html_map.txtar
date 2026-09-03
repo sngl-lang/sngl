@@ -1,10 +1,7 @@
-JS codegen for map<K,V>: literal, index, and method dispatch via HTML platform.
-
-Map literal is emitted as new Map([[k, v], ...]).
-
-map.length() dispatches to JS Map .size property.
-
-map.get() dispatches to .has()/.get() ternary.
+JS codegen for map<K, V> under the html platform. A map literal is emitted as
+`new Map([[k, v], ...])`; `length()` dispatches to the `.size` property rather
+than a call; and `get()` with a default becomes a `.has()`/`.get()` ternary,
+since JS has no two-argument lookup.
 -- app.sngl --
 import . "sngl:ui"
 

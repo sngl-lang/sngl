@@ -1,13 +1,10 @@
-Regression: a single output{} with two targets must compile each target from
-the original checked IR, not the state left after lowering the previous target.
-Before ir.ClonePackage per target, the second target consumed already-lowered
-IR and produced corrupt/broken output.
+Regression: a single output block with two targets must compile each target
+from the original checked IR, not from the state left after lowering the
+previous one. Before ir.ClonePackage per target, the second target consumed
+already-lowered IR and produced corrupt output -- so the point of the fixture
+is that each golden is its platform's own: a real DOM with client JS for html,
+a real bubbletea Model for Go, neither carrying the other's leftovers.
 
-Both targets produced their platform-appropriate output.
-
-html target: real DOM + client JS, not corrupted.
-
-bubbletea target: real Go TUI code, not html-lowered leftovers.
 -- app.sngl --
 import . "sngl:ui"
 

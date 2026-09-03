@@ -1,10 +1,10 @@
-A timer whose @tick body calls an async native produces an async
-$timer_N_tick function in the generated JS.
-The $timer_N_sync wrapper (which just calls tick + setTimeout) stays sync.
+Async colouring reaches a timer's tick. The `@tick` body calls an async native,
+so `$timer_0_tick` is emitted async and awaits it.
 
-Timer tick function is async because the body awaits fetchHello.
+The `$timer_0_sync` wrapper stays sync. It only compares `enabled` against the
+live handle and calls setInterval or clearInterval; it never runs the tick body
+itself, so nothing colours it.
 
-The async native is awaited inside the tick body.
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:time"

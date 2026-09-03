@@ -1,10 +1,7 @@
 A top-level var of funcvar type initialized with an async native function.
-When the var is called from a click handler, the handler wrapper must be
-async and the call site must be awaited.
+Its slot colour is Async, so a click handler that calls the var is emitted as
+an async wrapper and the call site is awaited.
 
-The click handler wrapper is async because handler's slot color is Async.
-
-The funcvar call site is awaited.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

@@ -1,15 +1,8 @@
-js: imports get bundled by esbuild into the inline <script>.
-The button click handler calls lib.add(2,3); after compilation the
-imported function body must be inlined and the handler must reference
-the bundled symbol.
-
-Bundled function body from lib/index.ts is present in the output.
-
-esbuild rewrites the call to use a local binding (the IIFE's hoisted
-alias). The original SNGL alias name `__sngl_n_lib` may be inlined or
-renamed; either way, the addition operation surfaces.
-
-IIFE wrapper from esbuild (`(() => { ... })()`).
+A `js:` import is bundled by esbuild into the inline `<script>`: the function
+body from lib/index.ts is emitted next to the entry code, and the call site
+resolves to that local binding rather than to the SNGL alias `__sngl_n_lib`,
+which esbuild is free to inline or rename. The whole bundle sits inside
+esbuild's IIFE wrapper.
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"

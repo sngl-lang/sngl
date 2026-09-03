@@ -1,13 +1,11 @@
-Go codegen for map<K,V>: literal, index, and method dispatch.
+Go codegen for `map<K, V>`: literal, index and method dispatch. The field is
+declared on the Model as map[string]int, New() initialises it from the map
+literal, and `scores.length()` dispatches to len(m.scores).
 
-Map field declared with correct Go type on Model struct.
+`scores.get(key, default)` dispatches to an inline if-ok idiom wrapped in a
+func typed by the map's value type -- a `func() any` there would not assign to
+an int.
 
-New() initialises the map literal: map[string]int{"alice": 10, "bob": 20}.
-
-map.length() dispatches to len(m.scores) in the handler.
-
-map.get() dispatches to an inline if-ok-idiom, typed by the map's value
-type — `any` here would not assign to an int.
 -- app.sngl --
 import . "sngl:ui"
 

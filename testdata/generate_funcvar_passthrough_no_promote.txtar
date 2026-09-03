@@ -1,11 +1,8 @@
-A higher-order function run(f) calls its funcvar parameter f().
-One call site passes a sync func; another passes an async native.
-g3 conservative rule: any async candidate in pts(f-param) → await f().
-The run function becomes async and each call site awaits it.
+A higher-order function run(f) calls its funcvar parameter. One call site
+passes a sync func, another an async native. The g3 conservative rule is that
+any async candidate in pts(f-param) makes `f()` awaited, so run itself is
+emitted async and each of its call sites awaits it.
 
-run is async because its param slot may receive an async candidate.
-
-The funcvar param call inside run's body is awaited (g3 fallback).
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

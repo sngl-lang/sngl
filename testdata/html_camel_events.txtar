@@ -1,15 +1,15 @@
 Wrapping a DOM element in SNGL is what maps the names. The standard library
 calls the event `@scrollEnd`; the DOM calls it `scrollend`; the override that
 wraps the element maps one to the other. The element's wildcard event stays
-lowercase, because that is the set of DOM event types 
-
-deny out/none/html/index.html `addEventListener\("scrollEnd"` -- No SNGL spelling reaches the DOM: neither is an event type.
-deny out/none/html/index.html `addEventListener\("longPress"` -- TODO state the claim
--- accepting the SNGL
+lowercase, because that is the set of DOM event types -- accepting the SNGL
 spelling there would emit a listener for an event nothing fires.
 
-@longPress has no DOM event of its own; contextmenu is what a sustained touch
-press fires, and stands in until html synthesizes the gesture.
+`@longPress` has no DOM event of its own. `contextmenu` is what a sustained
+touch press fires, and stands in until html synthesizes the gesture.
+
+deny out/none/html/index.html `addEventListener\("scrollEnd"` -- the DOM event type is scrollend, so a listener under the SNGL spelling never fires
+deny out/none/html/index.html `addEventListener\("longPress"` -- no DOM event is named longPress; contextmenu is what the gesture registers as
+
 -- app.sngl --
 import . "sngl:ui"
 

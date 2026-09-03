@@ -2,24 +2,19 @@ A statement that makes one pure call twice makes it once, in a local the
 statement then reads. The duplicates are mostly the compiler's own: a pass
 that substitutes an argument into a body leaves a copy at every use.
 
-Two calls with different arguments are two values and stay two calls; an
-impure call is not touched at all, since moving one changes when it runs.
+Two calls with different arguments are two values and stay two calls, and a
+repeat of the first argument gets its own temp. An impure call is not touched
+at all, since moving one changes when it runs: hoisting one `noisy()` across
+the other would move a read across a write.
 
-Bound once, read twice.
-
-Different arguments: nothing merged, and the repeat of the first argument is
-its own temp.
-
-A statement holding an impure call keeps both of its calls: hoisting one
-across the other would move a read across a write.
-
-android reaches the handler body by a different route: its primitives
+android reaches the handler body by a different route -- its primitives
 declare the callback as a prop, so the body is a lambda in the node's props
 and NodeInst.Handlers is empty. Walking the view for handlers found nothing
 here, and this handler made the call twice while every other target bound a
 temp.
 
-deny out/go/bubbletea/model.go `__cse2` -- TODO state the claim
+deny out/go/bubbletea/model.go `__cse2` -- the statement over the impure call binds no temp; both calls to noisy() stay where they were written
+
 -- app.sngl --
 import . "sngl:ui"
 

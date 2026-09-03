@@ -1,8 +1,8 @@
 clamp is max(lo, min(x, hi)) in every backend, matching the declaration's own
-body. Go and JS emitted the opposite composition and Kotlin used coerceIn,
-which throws when lo > hi rather than answering lo.
+body. Go and JS emitted the opposite composition, and Kotlin used `coerceIn`.
 
-deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `coerceIn` -- TODO state the claim
+deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `coerceIn` -- coerceIn throws when lo > hi, where clamp answers lo
+
 -- app.sngl --
 import . "sngl:ui"
 

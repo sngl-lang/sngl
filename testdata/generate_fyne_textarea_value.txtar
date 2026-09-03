@@ -1,26 +1,17 @@
-Regression test for the textarea value-update path.
+Regression test for the textarea value-update path. `textarea(value=expr)` and
+`input(value=expr)` must SetText the value at BuildUI time -- not only for
+bindTarget binds -- and re-sync the entry whenever a var the value depends on
+changes.
 
-textarea(value=expr) and input(value=expr) must:
-1. SetText with the value at BuildUI time (not just for bindTarget binds).
-2. Re-sync the entry text whenever any var the value depends on changes.
+Reactivity flows through the shared NoReactivity lowering pass, which splices
+an explicit `m.__n0.SetText(...)` after every Assign that mutates a tracked
+var, rather than emitting a per-widget updateEntry0 method. That spliced
+re-sync is spelled identically to the BuildUI-time call, so only the pair --
+the assignment in the @click handler followed by the SetText -- tells the two
+claims apart. SetText takes the value unwrapped: the Entry intrinsic declares
+`text string`, so the caller converts and no fmt.Sprint appears around it.
+Widget ids are the lowered __nN scheme: textarea __n0, vbox __n1, button __n2.
 
-Reactivity flows through the shared NoReactivity lowering pass: every
-Assign that mutates a tracked Var has explicit `m.entry0.SetText(...)`
-updates spliced after it, so we look for that inline form rather than
-the older per-widget updateEntry0 method.
-
-SetText takes the value unwrapped: the Entry intrinsic declares `text
-string`, so a caller converts and no fmt.Sprint is emitted around it.
-
-Init: SetText is emitted at BuildUI time for the textarea's value.
-Post-Plan-C widget ids use the lowered __nN scheme rather than per-tag
-counters; textarea is __n0 (vbox is __n1, button is __n2).
-
-Reactive update spliced into the button's @click handler by the
-NoReactivity lowering pass (button is __n2). Asserted as the assignment
-followed by the re-sync, because the re-sync is spelled identically to the
-BuildUI-time SetText above -- a grep for it alone would pass on that one and
-claim 2 would go untested.
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:app"

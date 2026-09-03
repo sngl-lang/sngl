@@ -1,11 +1,11 @@
 The two loop forms that walk nothing, and the two escapes, in each host
-language. Go has a bare `for`, so both forms are one; Kotlin's `for` takes an
-iterable, so both are a `while`. `break` and `continue` are spelled the same
-in all three, which is why no language carries a hook for them.
+language. Go has a bare `for`, so both forms are one -- the condition goes in
+the head, and no head at all is `for {`. Kotlin's `for` takes an iterable, so
+both are a `while`, as they are in JS. `break` and `continue` are spelled the
+same in all three, which is why no language carries a hook for them.
 
-Go: the condition goes in the head, and no head at all is `for {`.
+deny out/go/bubbletea/model.go `range` -- there is no iterable in this program, so a range clause could only be a sequence the codegen invented
 
-deny out/go/bubbletea/model.go `range` -- Nothing materialises a sequence to walk: there is no iterable here at all.
 -- app.sngl --
 import . "sngl:ui"
 

@@ -1,9 +1,8 @@
-A function whose body contains a lambda that calls an async native is
-itself colored async.  The generated JS must emit "async function outer".
+Async colouring reaches through a lambda. The async native is called from a
+lambda body, not from `outer` directly, and `outer` is still emitted as
+`async function` -- the colour propagates out of the lambda into the function
+that holds it, and the call inside the lambda is awaited.
 
-The enclosing function is async because its lambda body calls async.
-
-The async call inside the lambda is awaited.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

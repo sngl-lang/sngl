@@ -1,15 +1,15 @@
 Regression: a translatable string passed a reactive prop, under an explicit
-i18n.locale() block, must render on initial load. The init write used to go
+`i18n.locale()` block, must render on initial load. The init write used to go
 through the standalone TranslateIRExpr path, which left i18n intrinsics as a
 raw, undefined `intl.Translate(...)` and read the synthesized locale context
-var off `state.` — so __sngl_init() threw and the text was blank until a
-button handler (translated via the correct path) re-rendered it.
+var off `state.` -- so `__sngl_init()` threw and the text was blank until a
+button handler, translated via the correct path, re-rendered it. Both writes
+now call the bundled runtime, and the locale var is a plain local beside the
+state object.
 
-The init must call the real i18n runtime, never a raw undefined intrinsic...
-
-deny out/none/html/index.html `intl\.Translate` -- TODO state the claim
-deny out/none/html/index.html `intl\.NumberInt` -- TODO state the claim
-deny out/none/html/index.html `state\.__ctx_locale` -- ...and must not state-prefix the synthesized locale context var (undefined at runtime).
+deny out/none/html/index.html `intl\.Translate` -- a translation is a call into the bundled i18n runtime, never a raw intrinsic name nothing defines
+deny out/none/html/index.html `intl\.NumberInt` -- the untranslated path would leave this one raw too, so its absence says the whole expression went through the real translator
+deny out/none/html/index.html `state\.__ctx_locale` -- the synthesized locale context var is a local, and reading it off `state` finds undefined
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"

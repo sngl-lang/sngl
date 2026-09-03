@@ -1,18 +1,14 @@
-Verifies initial-sync of declarative bindings: text(value=name) where
-name="World" produces a span whose textContent is seeded by the script
-without user interaction.
+Initial sync of a declarative binding: `text(value=name)` with name = "World"
+must produce a span whose textContent the script seeds on load, without any
+user interaction.
 
-Phase 2 pipeline (g.updates rip) emits:
-- state object: let state = {name: "World"};
-- single __sngl_init() with the inlined DOM write
-- immediate invocation of __sngl_init() at script bottom
-Init-only updaters no longer get per-prop $u_* function emissions.
+The generated script holds one state object carrying the var's initial value,
+a single __sngl_init() containing the inlined DOM write, and a call to it at
+the bottom of the script. A binding that is only ever initialised no longer
+gets a per-prop updater function of its own:
 
-State initialization with the var's initial value.
+deny out/none/html/index.html `\$u__n0_text` -- an init-only binding has no per-prop updater; its write is inlined into __sngl_init
 
-Single init function defined and called at bootstrap.
-
-deny out/none/html/index.html `\$u__n0_text` -- No per-node init-only updater function — write inlined into __sngl_init.
 -- app.sngl --
 import . "sngl:ui"
 

@@ -1,25 +1,21 @@
-The Compose intrinsics android declares are ordinary components, so a
-program can call one directly to reach a composable no stdlib wrapper
-covers. The generic emitter reads the declaration: the #[intrinsic] id is
-the composable's name, each declared prop is the Compose argument of that
-name in declaration order, and children are a trailing lambda.
 
-`chain` appends Modifier calls the Style has no field for, and the window's
-own content is kept out from under the status bar and the display cutout --
-last in the chain, so it insets the content rather than the background.
+The Compose intrinsics android declares are ordinary components, so a program
+can call one directly to reach a composable no stdlib wrapper covers. The
+generic emitter reads the declaration: the #[intrinsic] id is the composable's
+name, each declared prop is the Compose argument of that name in declaration
+order, and children are a trailing lambda. A childless intrinsic takes no
+lambda, and a #id carried onto one becomes a testTag.
 
-Row's declared props, and a #id carried onto the intrinsic as a testTag.
+`chain` appends Modifier calls the Style has no field for. The window's own
+content is kept out from under the status bar and the display cutout, last in
+the chain, so it insets the content rather than the background. Text declares
+`modifier` and `style` separately, so the Style behind the Modifier and the one
+behind the TextStyle are distinct props.
 
-A childless intrinsic takes no lambda.
-
-Text declares `modifier` and `style` separately, so the Style behind the
-Modifier and the one behind the TextStyle are distinct props.
-
-The stdlib wrappers reach the same emitter: hbox's android override is
-written in terms of Row, and scroll's adds a chain entry. Both inline to
-the intrinsic, so neither name survives into codegen.
-
-stack layers its children, so it is a Box and not a Column.
+The stdlib wrappers reach the same emitter: hbox's android override is written
+in terms of Row and scroll's adds a chain entry, and both inline to the
+intrinsic, so neither name survives into codegen. stack layers its children, so
+it is a Box and not a Column.
 -- app.sngl --
 import . "sngl:ui"
 import android "sngl:platform/android"

@@ -1,33 +1,13 @@
-Verifies reactive for-loop emission: items mutates → DOM list rebuilds
-via __renderSlot. Tests Plan A's structural reactivity under the
-htmlTranslator path that Task 9 wired.
+A for-loop in a visual tree becomes a slot the html platform re-renders whole.
+The emission is an accumulator `__slot0` holding the nodes the loop created, a
+`__renderSlot0(parent)` that removes those, clears the accumulator and rebuilds
+from `state.items`, and a `data-sngl-slot` anchor marking where they go. The
+initial render calls it at bootstrap; a handler that mutates `items` calls it
+again, and that second call is what makes the loop reactive.
 
-Legacy pipeline emits:
-- let __slot0 = [] accumulator;
-- function __renderSlot0(parent) {
-for (const __entry of __slot0) parent.removeChild(__entry);
-state.__slot0 = [];
-for (const item of state.items) {
-let __n0 = document.createElement("span");
-__n0.textContent = item;
-parent.appendChild(__n0);
-__slot0.push(__n0);
-}
-}
-- initial render: __renderSlot0(__root);
-- click handler re-invokes __renderSlot0 after state.items mutates.
-
-NOTE: legacy currently emits <__renderSlot0> as a literal HTML tag
-instead of a placeholder div — that may be a Task 9 wiring artifact,
-but lock it down as-is to detect regressions either way.
-
-Slot accumulator + render fn.
-
-Render fn body shape: clear old entries, then iterate state.items.
-
-Initial render call at script bootstrap.
-
-Click handler re-renders slot after mutating state.items.
+The render function and its anchor lookup are each emitted twice as things
+stand. The golden pins that, so a change to it shows up rather than passing
+unnoticed.
 -- app.sngl --
 import . "sngl:ui"
 

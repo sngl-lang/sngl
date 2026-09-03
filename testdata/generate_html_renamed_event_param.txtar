@@ -1,22 +1,10 @@
-Verifies @input(myEvent) with renamed event param: the lowered handler
-body references myEvent.value but JS emission canonicalizes to the
-event arg "e" and rewrites .value access as e.target.value.
+`@input(myEvent)` names the event parameter, but JS emission canonicalizes it:
+the handler comes out as `function(e)` and `myEvent.value` as `e.target.value`,
+so the user-chosen name does not survive into the output at all. The assignment
+is followed by inlined DOM patches for both nodes bound to `name` -- the input
+it came from and the text beside it.
 
-Legacy pipeline emits:
-__n0.addEventListener("input", function(e) {
-state.name = e.target.value;
-__n0.value = state.name;
-__n1.textContent = state.name;
-});
-The user-chosen name "myEvent" disappears from the output entirely —
-JsIRContext.EventVar swap canonicalizes to "e". Plan D Task 10+ must
-preserve this canonicalization through the new htmlTranslator path.
-
-Handler emitted with canonical "e" param, not the user's "myEvent".
-
-Inlined DOM patches for both bound nodes after the assignment.
-
-deny out/none/html/index.html `myEvent` -- User-chosen name should NOT appear in the script body.
+deny out/none/html/index.html `myEvent` -- the event parameter is renamed to `e` on the way out, so the source's spelling reaches nothing
 -- app.sngl --
 import . "sngl:ui"
 

@@ -1,10 +1,9 @@
-Kotlin codegen for map<K,V>: literal, index, and method dispatch via Android platform.
+Kotlin codegen for map<K, V>: a literal, and the two methods whose Kotlin
+spelling is not a method call of the same name. A map literal is `mapOf(k to
+v, ...)`; `length()` is the `size` property; `get(key, default)` is
+`getOrDefault(key, default)`, whose fallback argument is why SNGL's `get`
+takes one.
 
-Map literal is emitted as mapOf(k to v, ...).
-
-map.length() dispatches to Kotlin Map .size property.
-
-map.get() dispatches to .getOrDefault().
 -- app.sngl --
 import . "sngl:ui"
 

@@ -1,11 +1,17 @@
 `progress` is measured against `max`, and each platform's widget wants that
 expressed in its own units.
 
-GTK's fraction and Compose's progress are both 0..1, so a platform that
-passes `value` straight through renders 2-of-10 as a full bar. HTML's
-<progress> takes both numbers, so it does not divide 
+GTK's fraction and Compose's progress are both 0..1, so a platform that passes
+`value` straight through renders 2-of-10 as a full bar -- in the golden it is
+a fifth of one. HTML's <progress> takes both numbers, so it does not divide,
+but max="0" is not valid there either.
 
-deny out/none/html/index.html `max="0"` -- TODO state the claim
+The shared cause was `max` having no default and rendering as its zero value.
+It defaults to 1, which is the value HTML's element already assumes and the
+only one that leaves value/max meaning what it says.
+
+deny out/none/html/index.html `max="0"` -- an omitted `max` defaults to 1, and a zero maximum is neither valid HTML nor a divisor the other platforms could use
+
 -- but max="0" is not
 valid there either.
 

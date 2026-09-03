@@ -1,9 +1,10 @@
-A zero-argument function named where its result is expected is called. It was
-only called when the return type already matched the prop, so an int-returning
-computed on a string prop was wrapped in a func-to-string conversion and html
-emitted an empty span.
+A zero-argument function named where its result is expected is called.
+`doubled` returns an int and is written on a string prop, and the call used to
+be emitted only when the return type already matched the prop -- so this case
+went through a func-to-string conversion instead and html rendered an empty
+span. The definition is emitted either way; what this pins is that it is
+called.
 
-The definition is emitted either way; what changed is that it is called.
 -- app.sngl --
 import . "sngl:ui"
 

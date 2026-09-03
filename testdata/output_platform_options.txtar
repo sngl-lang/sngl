@@ -3,14 +3,15 @@ forms buildPlatformOutput has always accepted. The scan that decides which
 target packages to load read only the node form, so an optioned platform was
 dropped from the target set and its `component sngl.X` overrides never
 merged: the build emitted the abstract stdlib body instead of the widget.
-
-It only showed with a mixed output block. A block whose platforms all carry
-options resolves to no targets at all, and that falls back to loading every
-registered target -- which is why the one-target case looked fine.
-
 fyne's `component sngl.text` override is what turns a text node into a Label
-the model holds a handle on. Without it the model has no field and the tree
-is an anonymous empty label.
+the model holds a handle on, so without it the model has no field and the
+tree is an anonymous empty label.
+
+It only showed with a mixed output block, which is why both targets are
+declared here. A block whose platforms all carry options resolves to no
+targets at all, and that falls back to loading every registered target --
+which is why the one-target case looked fine.
+
 -- app.sngl --
 import . "sngl:app"
 import . "sngl:ui"

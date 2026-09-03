@@ -12,7 +12,8 @@ a literal written in place is not re-derived from one. It is read into a
 component var so it survives as an initializer rather than being measured and
 discarded.
 
-deny out/go/bubbletea/model.go `__type` -- TODO state the claim
+deny out/go/bubbletea/model.go `__type` -- the interpreter's type tag is not a field of Point, and Go will not compile a literal carrying it
+
 -- app.sngl --
 import . "sngl:ui"
 

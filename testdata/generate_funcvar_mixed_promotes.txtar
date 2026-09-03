@@ -1,10 +1,8 @@
-A component var of funcvar type that receives both a sync and an async
-candidate at different call sites. The slot is auto-promoted to Async (g3)
-so the invocation handler awaits unconditionally.
+A component var of funcvar type receives both a sync and an async candidate,
+at two different call sites. The slot is auto-promoted to Async (g3), so the
+"Run" handler wrapper is emitted async and the call through the var is awaited
+unconditionally rather than decided at runtime.
 
-The "Run" handler wrapper is async because the handler slot may hold async.
-
-The funcvar call site on the promoted-async slot is awaited.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

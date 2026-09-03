@@ -1,3 +1,11 @@
+A `for` over a const list declares one window per item: title and href come
+from the item, so a two-element `items` is one.html and two.html. The loop's
+window id is itself what the index window iterates -- `for var p = page` walks
+the windows the first loop declared, and each `html.a` takes that page's
+folded href and title.
+
+Both loops run at build time. The golden is three static pages whose links are
+literal, with no client JS behind them.
 
 -- site.sngl --
 import . "sngl:ui"

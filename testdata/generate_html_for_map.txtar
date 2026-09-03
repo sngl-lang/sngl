@@ -1,6 +1,6 @@
-JS codegen for map<K,V> for-loop: emits for (const [k, v] of m.entries()) { ... }
+JS codegen for a `for` over `map<K, V>`: a map is a JS Map, so the handler's
+two-variable loop becomes a destructuring for-of over its entries().
 
-Handler contains a Map.entries() for-of loop.
 -- app.sngl --
 import . "sngl:ui"
 

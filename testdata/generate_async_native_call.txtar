@@ -1,9 +1,8 @@
-A SNGL function that calls an async native becomes async itself.
-The generated JS must use the async keyword and await at the call site.
+Async colouring crosses the boundary from a native import into SNGL. `loadAll`
+declares nothing about async, but it calls a `js:` function that is declared
+async, so it is emitted as `async function loadAll` with the native call
+awaited at the site.
 
-The SNGL wrapper function is emitted as an async function.
-
-The async native call is awaited inside loadAll.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

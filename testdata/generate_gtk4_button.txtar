@@ -1,41 +1,29 @@
-End-to-end gtk4 platform compile test.
+End-to-end gtk4 platform compile test, run against the bundled GIR
+(gir="builtin") so it does not need system GTK4 development files. The
+fixture's widgets descend from a Widget base class because that is where real
+GIR declares visible/sensitive/hexpand/tooltip-text and where the stdlib
+override bodies in lib/platforms/gtk4/gtk4.sngl are written against them -- so
+this also checks that the parent-chain merge reaches them.
 
-Uses the bundled GIR (--opt gir=builtin) so the test runs
-deterministically without requiring system GTK4 dev files. The fixture
-declares a Widget base class the widgets descend from, because that is where
-real GIR declares visible/sensitive/hexpand/tooltip-text and the stdlib
-override bodies in lib/platforms/gtk4/gtk4.sngl are written against them —
-so this archive also checks that the parent-chain merge reaches them.
+model.go is cgo: a `#include <gtk/gtk.h>` preamble and `import "C"`. Each
+prop's setter is the C function the GIR names and each enum value is the
+member's own C identifier (gtk_orientable_set_orientation with
+C.GTK_ORIENTATION_VERTICAL, gtk_button_set_label), and constructors --
+gtk_box_new, gtk_application_window_new, gtk_button_new -- come from the GIR
+rather than from the class name. GtkImage.file is a property real GIR names no
+setter for, so the platform carries a table of its own, and that table wins
+where both name one.
 
-cgo preamble: GTK header include
+tooltip-text and sensitive are declared only on Widget and reach GtkBox and
+GtkButton down the parent chain. Their setters take a GtkWidget*, so the cast
+is to the ancestor that declares the property and not to the widget's own
+class -- cgo rejects a GtkBox* where a GtkWidget* is wanted. The GTK
+entrypoint lands in callbacks.go as snglActivate, the //export'd activate
+handler hooked to the GApplication.
 
-cgo enabled
+deny out/go/gtk4/model.go `gtk_label_set_label` -- the platform's own setter table wins over the GIR name, so a label's text goes through gtk_label_set_text
+deny out/go/gtk4/model.go `gtk_button_new_with_label` -- the GIR names gtk_button_new as the constructor; with_label is a separate one the emitter must not reach for
 
-The setter for each prop is the C function the fixture GIR names, and the
-enum value is the member's own C identifier.
-
-GtkImage.file is a property real GIR names no setter for, so the platform's
-own table answers for it — and it wins over the GIR name where both exist,
-which is why a label is set with set_text and not the set_label GIR names.
-
-The constructor comes from the GIR rather than from the class name, and the
-bundled subset names the same one the system GIR does 
-
-deny out/go/gtk4/model.go `gtk_label_set_label` -- TODO state the claim
-deny out/go/gtk4/model.go `gtk_button_new_with_label` -- TODO state the claim
--- gtk_button_new takes
-no arguments, while gtk_button_new_with_label is a separate constructor the
-emitter must not reach for.
-
-tooltip-text and sensitive are declared only on Widget, and reach GtkBox and
-GtkButton down the parent chain. Their setters take a GtkWidget*, so the
-emitted cast is to the ancestor that declares the property and not to the
-widget's own class -- cgo rejects a GtkBox* where a GtkWidget* is wanted.
-
-Box and ApplicationWindow constructors should also flow through.
-
-GTK app entrypoint emitted in callbacks.go (snglActivate is the //export'd
-activate handler hooked to the GApplication).
 -- main.sngl --
 import . "sngl:test"
 import "sngl:platform/gtk4"

@@ -1,26 +1,25 @@
-A `Style` field reaches CSS, and an enum member reaches it spelled the way
-CSS spells it.
+A `Style` field reaches CSS, and an enum member reaches it spelled the way CSS
+spells it: a multi-word member is the CSS keyword, not the identifier.
 
 Two bugs met here. The IR-enum arm that restored `display:flex` wrote the
-member verbatim, so every multi-word member came out camelCase —
-`display:inlineBlock`, `justify-content:spaceBetween` — turning a dropped
-declaration into a wrong one. And seven declared fields had no prop→CSS
+member verbatim, so every multi-word member came out camelCase --
+`display:inlineBlock`, `justify-content:spaceBetween` -- turning a dropped
+declaration into a wrong one. And seven declared fields had no prop-to-CSS
 mapping at all and rendered as nothing, two of them added by the change that
 needed them (docs/learn/tour.md styles with fontFamily, cursor and
 borderLeft). internal/htmlutil's TestStyleFieldsAllReachCSS now enumerates
 `Style`'s declared fields against the mapping so a new field cannot repeat it.
 
-A multi-word enum member is the CSS keyword, not the identifier.
+The looped span covers the lowered path, where the element is built by JS: a
+style struct is not a value any DOM sink accepts, and passed through it
+stringified to "[object Object]", so it has to be serialised to a declaration
+list before it is written.
 
-The seven fields that had no mapping.
+deny out/none/html/index.html `inlineBlock` -- the identifier spelling never reaches the stylesheet; only `display:inline-block` does
+deny out/none/html/index.html `rowReverse` -- likewise for flex-direction, which CSS spells `row-reverse`
+deny out/none/html/index.html `spaceBetween` -- likewise for justify-content, which CSS spells `space-between`
+deny out/none/html/index.html `setAttribute\("style", \{` -- the style attribute is written as text, never as the struct itself
 
-The lowered path builds the element in JS, and a style struct is not a value
-any DOM sink accepts: passed through it stringified to "[object Object]".
-
-deny out/none/html/index.html `inlineBlock` -- TODO state the claim
-deny out/none/html/index.html `rowReverse` -- TODO state the claim
-deny out/none/html/index.html `spaceBetween` -- TODO state the claim
-deny out/none/html/index.html `setAttribute\("style", \{` -- TODO state the claim
 -- style.sngl --
 import . "sngl:ui"
 import . "sngl:app"

@@ -1,6 +1,7 @@
-Go codegen for map<K,V> for-loop: emits for k, v := range m { ... }
+Go codegen for a `for` over `map<K, V>`: the two-variable loop in the handler
+becomes Go's own `for k, v := range`, with nothing between it and the map
+field.
 
-Handler contains a range-over-map loop.
 -- app.sngl --
 import . "sngl:ui"
 

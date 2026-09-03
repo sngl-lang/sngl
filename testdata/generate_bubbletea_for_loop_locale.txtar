@@ -1,13 +1,11 @@
-Multiple context providers inside a for-loop body: each iteration's
-nested locale provider must thread its loop-variable locale into i18n
-calls inside that iteration's subtree.
+A locale provider nested in a for-loop body threads the loop variable, not a
+constant. Each iteration's subtree gets that iteration's locale, so the
+generated `i18n.NumberInt` call inside the loop takes `l` as its locale
+argument.
 
-The for-loop iterates locales; each iteration's i18n.numberInt call
-receives `l` (the loop variable, not the parent component's locale)
-as its locale arg.
+deny out/go/bubbletea/model.go `i18n\.NumberInt\(i18n\.DefaultLocale` -- the loop variable reaches the call; falling back to the default locale would mean the provider was ignored
+deny out/go/bubbletea/model.go `i18n\.GetTranslator` -- a threaded locale is passed as an argument, and the process-wide translator is what the Go backend emits only when none was
 
-deny out/go/bubbletea/model.go `i18n\.NumberInt\(i18n\.DefaultLocale` -- Verify the threading isn't accidentally using the parent's default.
-deny out/go/bubbletea/model.go `i18n\.GetTranslator` -- TODO state the claim
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"

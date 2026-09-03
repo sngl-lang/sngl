@@ -1,36 +1,28 @@
-button, badge, link, image and the components that render generically all
-have declared android bodies now — nothing in compose_ir.go is keyed on any
-of their names. What each assertion below pins is the override body, so a
+
+button, badge, link, image and the components that render generically all have
+declared android bodies, and nothing in compose_ir.go is keyed on any of their
+names -- so what this fixture pins is the override bodies themselves, and a
 body deleted or rewritten in lib/platforms/android/android.sngl fails here.
 
-button is a Button whose onClick is the @click handler's body and whose
-child is a Text of `text`. The label goes through the declared Text
-intrinsic, so it is a named `text =` argument, not a positional one.
+button is a Button whose onClick is the @click handler's body and whose child
+is a Text of `text`. The label goes through the declared Text intrinsic, so it
+is a named `text =` argument and not a positional one, and an unwired button
+still gets a lambda because Compose's onClick is not optional. badge wraps its
+`value` in Badge, and the style reaches Badge's modifier. link is a Text
+carrying the theme's primary colour, which Style has no field for and the
+override therefore spells in Kotlin via `args`.
 
-An unwired button still gets a lambda, because Compose's onClick is not
-optional.
+The rest state what android does today rather than what it might: image is an
+unsized Spacer, chip renders its label as bare text,
+toolbar/popover/drawer/tooltip/splitview are a Column over their children, and
+menubar and avatar have neither children nor a text prop the override could
+show, so both are an empty Text.
 
-badge wraps its `value` in Badge, and the style reaches Badge's modifier.
-
-link is a Text carrying the theme's primary colour, which Style has no
-field for and the override therefore spells in Kotlin via `args`.
-
-android draws no image: the override is an unsized Spacer, and no Image
-composable and no TODO comment is emitted.
-
-chip renders its label as bare text — the honest statement of what android
-does with a chip today, and no AssistChip is emitted.
-
-toolbar/popover/drawer/tooltip/splitview are a Column over their children.
-
-menubar has no children and no text prop the override could show, so it is
-an empty Text. avatar is the same.
-
-deny out/kotlin/android/MainScreen.kt `TODO: Image` -- TODO state the claim
-deny out/kotlin/android/MainScreen.kt `Image\(` -- TODO state the claim
-deny out/kotlin/android/MainScreen.kt `unknown` -- TODO state the claim
-deny out/kotlin/android/MainScreen.kt `AssistChip` -- TODO state the claim
-deny out/kotlin/android/MainScreen.kt `DropdownMenu` -- TODO state the claim
+deny out/kotlin/android/MainScreen.kt `TODO: Image` -- an unimplemented widget draws a Spacer, it does not leave a marker in the output
+deny out/kotlin/android/MainScreen.kt `Image\(` -- image's android body is a Spacer; no Compose Image composable is reached
+deny out/kotlin/android/MainScreen.kt `unknown` -- every component here has a declared android body, so nothing falls through to a placeholder
+deny out/kotlin/android/MainScreen.kt `AssistChip` -- chip is bare text; the override names no Material chip
+deny out/kotlin/android/MainScreen.kt `DropdownMenu` -- the menu-like components are a plain Column, not a Compose menu surface
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:dialog"

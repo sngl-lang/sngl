@@ -1,5 +1,9 @@
-Multi-window html static output: filenames derive from each window's
-folded href, not the window's id or source-line fallback.
+Multi-window html static output: each filename derives from that window's
+folded href, not from its id and not from the source-line fallback a window
+with no href would get. The golden's file set is the assertion -- an
+`out/none/html/window_L1.html` would be an extra file, and the harness
+compares the set both ways.
+
 -- site.sngl --
 import . "sngl:ui"
 import . "sngl:app"

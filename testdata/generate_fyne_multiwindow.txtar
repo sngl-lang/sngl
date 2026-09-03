@@ -1,23 +1,15 @@
-Regression test for #36: multiple window blocks + link navigation.
-All windows must be emitted; navigate() must exist; link with internal
-href must call navigate instead of opening the OS browser.
+Regression test for #36: several `window` blocks in one component, plus link
+navigation. Every window is emitted as its own buildWindow<Name> method with a
+container field on the Model, BuildUI hides the inactive one at startup, and
+navigate() shows and hides those containers.
 
-Per-window build methods
+What is not wired yet is the link's own tap interception. `link` declares no
+event binding in fyne.sngl, so the AttachHandler intrinsic finds no target and
+nothing rewrites an internal href into `m.navigate("settings")` -- the link
+still opens the OS browser. The scaffold around it, above, is correct. The fix
+is either a declarative-lowering href-to-navigate rewrite or an event binding
+on link.
 
-Navigation method
-
-Window container fields on Model (use \s+ for alignment spaces)
-
-BuildUI hides inactive window on startup; navigate shows/hides containers
-
-Link-tap interception: the link's OnTapped override that calls
-navigate("settings") is not yet wired through the lowered IR path —
-link has no Event-binding declaration in fyne.sngl, so the
-AttachHandler intrinsic finds no target. The remaining scaffold
-(above) is correct.
-Tracked: declarative-lowering href-to-navigate rewrite, or add an
-Event binding to link in fyne.sngl.
-grep 'm\.navigate\("settings"\)' out/model.go
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:app"

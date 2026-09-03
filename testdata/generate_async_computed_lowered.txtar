@@ -1,20 +1,14 @@
-A zero-arg computed function whose body calls an async native is lowered
-by the NoAsyncReactive pass.  The reactive read site is rewritten to a
-synchronous state-field access and an async kicker fires at startup.
+
+A zero-arg computed function whose body calls an async native is lowered by the
+NoAsyncReactive pass: the reactive read site becomes a synchronous state-field
+access, and an async kicker fires at startup to fill that field.
 
 Calling greeting() from a visual prop triggers the hoist path, which
-synthesises __hoist_N (renamed from greeting) then lowers it:
-- synthetic state field __async___hoist_0 (zero value "")
-- async kicker $compute___hoist_0 that resolves the value
-- synchronous wrapper __hoist_0 that reads the state field
-
-Synthetic settled-state field for the lowered computed.
-
-Async kicker function that populates the settled-state field.
-
-The kicker is called at startup so the initial value is fetched.
-
-The original async call is awaited inside the kicker.
+synthesises __hoist_N (renamed from greeting) and then lowers it into three
+pieces -- the settled-state field __async___hoist_0 holding the zero value "",
+the kicker $compute___hoist_0 that awaits the original fetchHello call and
+resolves it, and the synchronous wrapper __hoist_0 that reads the field. The
+kicker is called at startup, so the initial value is fetched.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"

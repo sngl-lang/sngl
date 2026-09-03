@@ -1,6 +1,5 @@
-Kotlin codegen for map<K,V> for-loop: emits for ((k, v) in m) { ... }
-
-Handler contains a destructuring for-in loop over a map.
+Kotlin codegen for a for-loop over map<K, V>: the loop's two variables become
+Kotlin's own destructuring form, `for ((k, v) in scores)`.
 -- app.sngl --
 import . "sngl:ui"
 

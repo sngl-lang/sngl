@@ -1,24 +1,21 @@
-A handler that reads the loop variable of the loop its node is in.
+A handler that reads the loop variable of the loop its node is in. A promoted
+top-level handler cannot see one -- it is written outside the loop -- so the
+handler is attached as a closure instead, which captures it.
 
-A promoted top-level handler cannot see one 
+Unrolling used to hide this: a view loop over a constant list was unrolled for
+every target and each handler got the element substituted in as a literal,
+capturing nothing. Once a target with a host language emitted the loop, the
+promoted handler referenced a variable that was not in scope and
+examples/calculator stopped building on fyne. Both targets here show the same
+shape: the host's own loop over m.items, a closure attached inside it --
+OnTapped on fyne, gtk4rt.Connect on gtk4 -- and a body that reads `it`
+directly.
 
-deny out/go/fyne/model.go `__n1_click_handler` -- TODO state the claim
-deny out/go/fyne/model.go `func\(\) any` -- The closure returns nothing, so it can be assigned to a func() field. It used to be emitted as `func() any`, which Go rejected twice over.
-deny out/go/fyne/model.go `\t*__n0.Text =` -- TODO state the claim
-deny out/go/gtk4/model.go `_clicked_handler` -- TODO state the claim
--- it is written outside the
-loop -- so the handler is attached as a closure instead, which captures it.
-Unrolling used to hide this: a view loop over a constant list was unrolled
-for every target and each handler got the element substituted in as a
-literal, capturing nothing. Once a target with a host language emitted the
-loop, the promoted handler referenced a variable that was not in scope and
-examples/calculator stopped building on fyne.
+deny out/go/fyne/model.go `__n1_click_handler` -- the handler is a closure in the loop, not a promoted top-level method that could not see `it`
+deny out/go/fyne/model.go `func\(\) any` -- the closure returns nothing, so it assigns to a func() field; `func() any` was rejected by Go twice over
+deny out/go/fyne/model.go `\t*__n0.Text =` -- the closure body goes through the platform translator, so the label write is fyne's setter and not a raw IR assignment to a bare name
+deny out/go/gtk4/model.go `_clicked_handler` -- gtk4 attaches the same closure through gtk4rt.Connect rather than promoting a named handler
 
-Attached as a closure, in the loop, reading the loop's own variable.
-
-The closure's body goes through the platform translator like any other
-statement block: the write to the label is fyne's own setter on the Model
-field, not the raw IR assignment to a bare name it used to be.
 -- app.sngl --
 import . "sngl:ui"
 

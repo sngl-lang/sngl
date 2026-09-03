@@ -1,13 +1,11 @@
 A lambda parameter that happens to share the handler's parameter name is its
-own binding. The handler's event was substituted by name, so every identifier
+own binding. The handler's event is substituted by name, so every identifier
 spelled the same was replaced: `e > 1` inside the lambda emitted
-`e2.target > 1`, comparing a DOM node property against an int.
+`e2.target > 1`, comparing a DOM node property against an int. The lambda's
+parameter now stands for itself, while the handler's own `e` still resolves to
+the DOM event and reads its value through `e.target`.
 
-The lambda's parameter stands for itself.
-
-The handler's own event still resolves to the DOM event.
-
-deny out/none/html/index.html `e2.target` -- TODO state the claim
+deny out/none/html/index.html `e2.target` -- the lambda's parameter is an int, so nothing may read a DOM property off it
 -- app.sngl --
 import . "sngl:ui"
 

@@ -1,26 +1,13 @@
-Verifies a user-defined func that mutates state from outside a direct
-event handler still triggers DOM updates.
+A user-defined func that mutates state is called from a click handler rather
+than being one, and its mutations still have to reach the DOM. NoReactivity
+lowering inlines a patch after each assignment inside the func itself, so
+`main_update` writes `state.name` and then the node bound to it, and the
+handler only calls it. The initial writes are inlined into `__sngl_init` for
+the same reason: there is no per-prop updater to route them through, and no
+`$set_name(v)` setter either.
 
-Phase 2 pipeline (g.updates rip) emits:
-- user func body inlines per-assignment DOM patches (NoReactivity lowering):
-function update(newName, newCount) {
-state.name = newName;
-__n0.textContent = state.name;
-state.count = newCount;
-__n1.textContent = String(state.count);
-}
-- click handler calls update("Hello", 5).
-- __sngl_init() inlines the initial DOM writes (no per-prop $u_* funcs).
-
-legacy does NOT emit a separate $set_name(v) function — mutations are
-inlined at each assignment site within the user func.
-
-User func is emitted with both state mutations and inlined DOM patches.
-
-Button click handler calls user func.
-
-deny out/none/html/index.html `\$u__n0_text` -- Per-prop init-only updaters collapsed into __sngl_init — no $u_* funcs.
-deny out/none/html/index.html `\$u__n1_text` -- TODO state the claim
+deny out/none/html/index.html `\$u__n0_text` -- a bound prop has no updater function of its own; the write is inlined where the assignment is
+deny out/none/html/index.html `\$u__n1_text` -- the same for the second bound node, whose only writes are in `main_update` and `__sngl_init`
 -- app.sngl --
 import . "sngl:ui"
 
