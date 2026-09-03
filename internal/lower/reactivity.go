@@ -1350,7 +1350,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 			if n.ID == "" {
 				n.ID = declSt.freshID()
 			}
-			si := st.newSlotInstance()
+			si := st.newSlotInstance(n.Key)
 			instances = append(instances, si)
 			sub := st.reuseOrCreate(si, n, declSt)
 			sub = append(sub, declSt.componentRootBinding(n)...)

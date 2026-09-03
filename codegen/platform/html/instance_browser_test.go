@@ -198,3 +198,108 @@ component main { window(title="H", href="/index.html") { App() } }
 		}
 	}
 }
+
+// With `key=`, identity is the declared key rather than the position, so
+// inserting at the front creates one instance and moves nobody's state.
+//
+// This is the case positional identity gets wrong, and gets wrong quietly:
+// every instance after the insertion point shifts by one and keeps the
+// previous element's state, so the page looks plausible and the counts sit on
+// the wrong rows. The counters are the only way to see it.
+func TestInstance_KeyedInsertAtFront(t *testing.T) {
+	src := `
+import . "sngl:ui"
+import . "sngl:app"
+component badge(label string) {
+    var hits = 0
+    text(value="[" + label + ":" + string(hits) + "]")
+    button(text="hit " + label, @click { hits = hits + 1 })
+}
+component App() {
+    var names list<string> = ["a", "b"]
+    for n = names {
+        badge(label=n, key=n)
+    }
+    button(text="prepend", @click { names = ["z", "a", "b"] })
+}
+component main { window(title="H", href="/index.html") { App() } }
+`
+	b := startComponent(t, src)
+	defer b.Close()
+	page := b.Page()
+
+	page.MustElements("button")[1].MustClick()
+	page.MustWaitStable()
+	page.MustElements("button")[1].MustClick()
+	page.MustWaitStable()
+	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[a:0]") || !strings.Contains(got, "[b:2]") {
+		t.Fatalf("counts before the insert; got %q", got)
+	}
+
+	all := page.MustElements("button")
+	all[len(all)-1].MustClick()
+	page.MustWaitStable()
+
+	// b keeps its own count. Under positional identity it would have taken
+	// a's, because every row shifted by one.
+	got := page.MustElement("body").MustText()
+	for _, want := range []string{"[z:0]", "[a:0]", "[b:2]"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s after the insert; got %q", want, got)
+		}
+	}
+}
+
+// Two iterations claiming one key are two instances, not one.
+//
+// A duplicate key is the author's bug, but collapsing the rows is not the way
+// to report it: the second iteration would reuse the first's instance, so one
+// instance would render at two positions and clicking either would move both.
+// The claim is suffixed instead, which is what the interpreter's iterationID
+// does and for the same reason -- a keyed list has to mean the same thing on
+// every target.
+func TestInstance_DuplicateKeysAreDistinctInstances(t *testing.T) {
+	src := `
+import . "sngl:ui"
+import . "sngl:app"
+component badge(label string) {
+    var hits = 0
+    text(value="[" + label + ":" + string(hits) + "]")
+    button(text="hit", @click { hits = hits + 1 })
+}
+component App() {
+    var names list<string> = ["a", "a"]
+    for n = names {
+        badge(label=n, key=n)
+    }
+    button(text="churn", @click { names = ["a", "a"] })
+}
+component main { window(title="H", href="/index.html") { App() } }
+`
+	b := startComponent(t, src)
+	defer b.Close()
+	page := b.Page()
+
+	buttons := page.MustElements("button")
+	if len(buttons) != 3 {
+		t.Fatalf("want a row per iteration plus the churn button, got %d", len(buttons))
+	}
+	buttons[0].MustClick()
+	page.MustWaitStable()
+	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[a:1]") {
+		t.Fatalf("the clicked row should count; got %q", got)
+	}
+
+	// The re-render is what exposes it. On the first render the registry is
+	// empty, so both iterations create and the second merely overwrites the
+	// entry; only once the registry holds the key do both iterations find it
+	// and reuse one instance for two rows.
+	all := page.MustElements("button")
+	all[len(all)-1].MustClick()
+	page.MustWaitStable()
+
+	got := page.MustElement("body").MustText()
+	if !strings.Contains(got, "[a:1]") || !strings.Contains(got, "[a:0]") {
+		t.Errorf("the two rows should still hold their own counts; got %q", got)
+	}
+}

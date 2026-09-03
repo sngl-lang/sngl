@@ -36,35 +36,142 @@ type slotInstance struct {
 	// described so far, and how many. Locals of the slot function.
 	next *ir.Var
 	idx  *ir.Var
+	// key is the `key=` the instantiation declared, or nil for positional
+	// identity. With one, live and next are maps and idx is unused; seen
+	// counts how many times each key has been claimed this render.
+	key  ir.Expr
+	seen *ir.Var
 }
 
-// newSlotInstance allocates the state one instantiation site needs.
-func (st *reactivityState) newSlotInstance() *slotInstance {
+// keyed reports whether identity comes from a declared key rather than the
+// position.
+func (si *slotInstance) keyed() bool { return si.key != nil }
+
+// newSlotInstance allocates the state one instantiation site needs. key is the
+// `key=` the node declared, or nil for positional identity.
+func (st *reactivityState) newSlotInstance(key ir.Expr) *slotInstance {
 	n := st.instCounter
 	st.instCounter++
 	name := func(suffix string) string { return "__inst" + strconv.Itoa(n) + suffix }
-	listOfDyn := ir.ListOf(ir.TypDyn)
 
+	held := ir.ListOf(ir.TypDyn)
+	if key != nil {
+		held = ir.MapOf(ir.TypString, ir.TypDyn)
+	}
 	inst := &slotInstance{
-		live: &ir.Var{Name: name("_live"), Type: listOfDyn, Init: &ir.ListLit{Type: listOfDyn}, Synthesized: true},
-		next: &ir.Var{Name: name("_next"), Type: listOfDyn, Synthesized: true},
+		key:  key,
+		live: &ir.Var{Name: name("_live"), Type: held, Init: emptyOf(held), Synthesized: true},
+		next: &ir.Var{Name: name("_next"), Type: held, Synthesized: true},
 		idx:  &ir.Var{Name: name("_i"), Type: ir.TypInt, Synthesized: true},
+	}
+	if key != nil {
+		counts := ir.MapOf(ir.TypString, ir.TypInt)
+		inst.seen = &ir.Var{Name: name("_seen"), Type: counts, Synthesized: true}
 	}
 	st.owner.addVar(inst.live)
 	return inst
+}
+
+// emptyOf is the empty value a registry starts each render from.
+func emptyOf(t *ir.Type) ir.Expr {
+	if t.Kind == ir.TypeMap {
+		return &ir.MapLitIR{Type: t}
+	}
+	return &ir.ListLit{Type: t}
 }
 
 func varRef(v *ir.Var) *ir.Ident {
 	return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true}
 }
 
-// open is the bookkeeping a render starts with: an empty list to describe into
-// and a cursor at zero.
+// open is the bookkeeping a render starts with: somewhere to describe into,
+// and the cursor or the claim counts that go with it.
 func (si *slotInstance) open() []ir.Stmt {
-	listOfDyn := ir.ListOf(ir.TypDyn)
-	return []ir.Stmt{
-		&ir.LocalVar{Name: si.next.Name, Type: listOfDyn, Sym: si.next, Init: &ir.ListLit{Type: listOfDyn}},
-		&ir.LocalVar{Name: si.idx.Name, Type: ir.TypInt, Sym: si.idx, Init: intLiteralLit(0)},
+	out := []ir.Stmt{
+		&ir.LocalVar{Name: si.next.Name, Type: si.next.Type, Sym: si.next, Init: emptyOf(si.next.Type)},
+	}
+	if !si.keyed() {
+		return append(out, &ir.LocalVar{Name: si.idx.Name, Type: ir.TypInt, Sym: si.idx, Init: intLiteralLit(0)})
+	}
+	return append(out, &ir.LocalVar{Name: si.seen.Name, Type: si.seen.Type, Sym: si.seen, Init: emptyOf(si.seen.Type)})
+}
+
+// claimKey is the identity one iteration claims: the declared key as a string,
+// and a suffix when this render has already claimed it.
+//
+//	var <k> string = string(<key>)
+//	var <n> int = <seen>.get(<k>, 0)
+//	<seen>[<k>] = <n> + 1
+//	if <n> > 0 { <k> = <k> + "#" + string(<n>) }
+//
+// Two iterations claiming one identity is the author's bug, but collapsing
+// them is not the way to report it: the second would reuse the first's
+// instance, so one instance would render at two positions in the tree. The
+// interpreter suffixes for the same reason -- see iterationID -- and the two
+// agreeing is what keeps a keyed list meaning the same thing on every target.
+func (st *reactivityState) claimKey(si *slotInstance) (*ir.Var, []ir.Stmt) {
+	n := st.instCounter
+	k := &ir.Var{Name: "__key" + strconv.Itoa(n), Type: ir.TypString, Synthesized: true}
+	count := &ir.Var{Name: "__key" + strconv.Itoa(n) + "_n", Type: ir.TypInt, Synthesized: true}
+
+	return k, []ir.Stmt{
+		&ir.LocalVar{Name: k.Name, Type: ir.TypString, Sym: k, Init: &ir.Conversion{
+			Type:    ir.TypString,
+			Operand: deepCloneExpr(si.key),
+		}},
+		&ir.LocalVar{Name: count.Name, Type: ir.TypInt, Sym: count, Init: callMapGet(varRef(si.seen), varRef(k), intLiteralLit(0), ir.TypInt)},
+		&ir.Assign{
+			Target: &ir.Index{Type: ir.TypInt, Operand: varRef(si.seen), Idx: varRef(k)},
+			Op:     ast.AssignSet,
+			Value:  &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: varRef(count), Right: intLiteralLit(1)},
+		},
+		&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGt, Left: varRef(count), Right: intLiteralLit(0)},
+			Body: []ir.Stmt{&ir.Assign{
+				Target: varRef(k),
+				Op:     ast.AssignSet,
+				Value: &ir.Binary{
+					Type: ir.TypString, Op: ast.BinAdd,
+					Left: &ir.Binary{
+						Type: ir.TypString, Op: ast.BinAdd,
+						Left:  varRef(k),
+						Right: &ir.Literal{Type: ir.TypString, Value: "#"},
+					},
+					Right: &ir.Conversion{Type: ir.TypString, Operand: varRef(count)},
+				},
+			}},
+		},
+	}
+}
+
+// callMapGet builds `m.get(key, default)`.
+func callMapGet(m, key, def ir.Expr, valueType *ir.Type) *ir.Call {
+	var params []*ir.Param
+	var ret *ir.Type
+	if d := ir.LookupIntrinsic("map.get"); d != nil {
+		params, ret = d.Instantiate(ir.TypString, valueType)
+	}
+	if ret == nil {
+		ret = valueType
+	}
+	return &ir.Call{
+		Type:      valueType,
+		Func:      &ir.Func{Name: "get", Receiver: "map", Intrinsic: "map.get", Params: params, Return: ret},
+		Args:      []ir.CallArg{{Value: m}, {Value: key}, {Value: def}},
+		ErrorMode: ir.ErrorNone,
+	}
+}
+
+// callMapContains builds `m.contains(key)`.
+func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
+	var params []*ir.Param
+	if d := ir.LookupIntrinsic("map.contains"); d != nil {
+		params, _ = d.Instantiate(ir.TypString, valueType)
+	}
+	return &ir.Call{
+		Type: ir.TypBool,
+		Func: &ir.Func{Name: "contains", Receiver: "map", Intrinsic: "map.contains", Params: params, Return: ir.TypBool},
+		Args: []ir.CallArg{{Value: m}, {Value: key}},
 	}
 }
 
@@ -125,6 +232,30 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		&ir.Assign{Target: curRef(), Op: ast.AssignSet, Value: varRef(fresh)},
 	}
 
+	if si.keyed() {
+		k, claim := st.claimKey(si)
+		reuse = append([]ir.Stmt{&ir.Assign{
+			Target: curRef(),
+			Op:     ast.AssignSet,
+			Value:  callMapGet(varRef(si.live), varRef(k), &ir.Literal{Type: ir.TypNull}, ir.TypDyn),
+		}}, reuse[1:]...)
+		out := append([]ir.Stmt{
+			&ir.LocalVar{Name: cur.Name, Type: ir.TypDyn, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
+		}, claim...)
+		return append(out,
+			&ir.If{
+				Cond: callMapContains(varRef(si.live), varRef(k), ir.TypDyn),
+				Body: reuse,
+				Else: create,
+			},
+			&ir.Assign{
+				Target: &ir.Index{Type: ir.TypDyn, Operand: varRef(si.next), Idx: varRef(k)},
+				Op:     ast.AssignSet,
+				Value:  curRef(),
+			},
+		)
+	}
+
 	return []ir.Stmt{
 		&ir.LocalVar{Name: cur.Name, Type: ir.TypDyn, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
 		&ir.If{
@@ -162,6 +293,9 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 // Backwards for the reason the effect teardown is: an instance built later may
 // hold something an earlier one handed it.
 func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
+	if si.keyed() {
+		return st.closeKeyedSlotInstance(si)
+	}
 	loop := &ir.LoopVar{Name: si.idx.Name + "_d", Type: ir.TypInt}
 	jSym := &ir.Var{Name: si.idx.Name + "_j", Type: ir.TypInt, Synthesized: true}
 
@@ -196,6 +330,47 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 					}}},
 				},
 			},
+		},
+		&ir.Assign{Target: varRef(si.live), Op: ast.AssignSet, Value: varRef(si.next)},
+	}
+}
+
+// closeKeyedSlotInstance is close for a keyed registry: an identity the render
+// did not claim is one whose instance is going away.
+//
+//	for <k>, <v> = <live> {
+//	    if !<next>.contains(<k>) { lower.DestroyComponent(<v>) }
+//	}
+//	<live> = <next>
+//
+// No order to reverse here. A list has one -- the order the positions were
+// described in -- and a map does not, so nothing about a keyed registry says
+// which of two departing instances was built first. Where that matters, it is
+// the list the program should be using.
+func (st *reactivityState) closeKeyedSlotInstance(si *slotInstance) []ir.Stmt {
+	k := &ir.LoopVar{Name: si.live.Name + "_k", Type: ir.TypString}
+	v := &ir.LoopVar{Name: si.live.Name + "_v", Type: ir.TypDyn}
+	return []ir.Stmt{
+		&ir.For{
+			Key:      k.Name,
+			KeySym:   k,
+			Value:    v.Name,
+			ValueSym: v,
+			Iter:     varRef(si.live),
+			ElemType: ir.TypDyn,
+			Body: []ir.Stmt{&ir.If{
+				Cond: &ir.Unary{
+					Type:    ir.TypBool,
+					Op:      ast.UnaryNot,
+					Operand: callMapContains(varRef(si.next), &ir.Ident{Name: k.Name, Type: ir.TypString, Sym: k, Synthesized: true}, ir.TypDyn),
+				},
+				Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+					Type:     ir.TypVoid,
+					Receiver: lowerNSIdent(),
+					Func:     st.intrinsics[ir.NodeOpDestroyComponent],
+					Args:     []ir.CallArg{{Value: &ir.Ident{Name: v.Name, Type: ir.TypDyn, Sym: v, Synthesized: true}}},
+				}}},
+			}},
 		},
 		&ir.Assign{Target: varRef(si.live), Op: ast.AssignSet, Value: varRef(si.next)},
 	}
