@@ -35,8 +35,13 @@ func (g *Generator) PlatformIdentifier() string { return "html" }
 func (g *Generator) Description() string {
 	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
 }
+
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
+	// Both modes write the tree as markup: static mode writes a file, route
+	// mode writes the same markup into a handler, and the only loop either can
+	// emit is a hole over an expression that varies with the request.
+	f.ViewStatements = false
 	// A platform has the last word, and html's output is HTML and JS: the
 	// language emits the server half of route mode, not the markup or the
 	// script. So a restriction that exists because the *language* lacks a

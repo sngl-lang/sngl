@@ -38,12 +38,12 @@ func expandForWindows(pkg *ir.Package, ctx *evalCtx) {
 // one. A static artifact holds the iterations themselves -- a node per
 // element, written into the output -- so a loop with a large constant count
 // is a page nobody wanted: `for seq.count(200000)` produced 3.4 MB of markup
-// and 200000 spans, in a language where the same program is a `for` and a
+// and 200000 spans, where a target that runs the loop writes a `for` and a
 // kilobyte.
 //
 // It is a diagnostic rather than a silent truncation, and rather than a
 // runtime loop, because there is nowhere to run one: the author's options are
-// a smaller count or a target with a host language, and only they can pick.
+// a smaller count or a target that runs it, and only they can pick.
 // The bound is per loop, so nested loops multiply and each is reported where
 // it stands.
 const maxStaticUnroll = 10000
@@ -89,7 +89,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		if fs.AST != nil {
 			pos = fs.AST.Pos.String() + ": "
 		}
-		ctx.err = fmt.Errorf("%sthis loop repeats %d times, and a target with no host language writes every iteration into its output (limit %d): give it a smaller count, or build for a language that can run the loop",
+		ctx.err = fmt.Errorf("%sthis loop repeats %d times, and this target writes every iteration into its output (limit %d): give it a smaller count, or build for a target that can run the loop",
 			pos, len(items), maxStaticUnroll)
 		return nil
 	}
@@ -110,7 +110,15 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	// else outright, so a const-empty loop rendered neither its body nor its
 	// empty case.
 	if len(items) == 0 {
-		return foldStmts(cloneStmts(fs.Else), ctx)
+		// Non-nil even when there is no else, since nil is how this function
+		// says it could not evaluate the iterable. Returning the folded else
+		// alone left an else-less empty loop looking unevaluable, so it stayed
+		// in the tree and rendered its body once with its variable bound to
+		// nothing -- an empty row per list that happened to be empty.
+		if expanded := foldStmts(cloneStmts(fs.Else), ctx); expanded != nil {
+			return expanded
+		}
+		return []ir.Stmt{}
 	}
 
 	result := make([]ir.Stmt, 0, len(items))
