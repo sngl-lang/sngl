@@ -155,8 +155,6 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.checkExpr(x.Inner)
 	case *ast.ConstExpr:
 		return c.inferConstExpr(x)
-	case *ast.EventRefExpr:
-		return c.inferEventRef(x)
 	default:
 		// Every ast.Expr the parser builds in a value position has a rule
 		// above; a new node type without one is a compiler bug.
@@ -2184,20 +2182,6 @@ func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 			bindTypeParams(param.Elems[i], arg.Elems[i], bindings)
 		}
 	}
-}
-
-func (c *checker) inferEventRef(x *ast.EventRefExpr) ir.Expr {
-	if c.currentComponent != nil {
-		for _, evt := range c.currentComponent.Events {
-			if evt.Name == x.Name {
-				if evt.Type != nil {
-					return &ir.Ident{Type: evt.Type}
-				}
-				return &ir.Ident{Type: dynFallback("event %q on component %s carries no payload type", x.Name, c.currentComponent.Name)}
-			}
-		}
-	}
-	return &ir.Ident{Type: dynFallback("event reference @%s names no event in scope", x.Name)}
 }
 
 // paramNameOK reports whether a param can be targeted by name at a call site.
