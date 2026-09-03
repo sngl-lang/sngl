@@ -84,30 +84,6 @@ body { font-family: system-ui, sans-serif; }
       __slot0.push(__n0);
     }
   }
-  function __renderSlot0(parent) {
-    for (const __entry of __slot0) {
-      parent.removeChild(__entry);
-    }
-    __slot0 = [];
-    for (const it of state.items) {
-      let __n0 = document.createElement("label");
-      __n0.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
-      let __n1 = document.createElement("input");
-      __n1.checked = state.on;
-      __n1.disabled = false;
-      __n1.setAttribute("type", "checkbox");
-      __n1.addEventListener("change", () => {
-      });
-      __n0.appendChild(__n1);
-      let __n2 = document.createElement("span");
-      __n2.textContent = it;
-      __n0.appendChild(__n2);
-      parent.appendChild(__n0);
-      __slot0.push(__n0);
-    }
-  }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
 })();

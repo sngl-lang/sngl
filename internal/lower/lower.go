@@ -106,6 +106,7 @@ var passes = []pass{
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passCanvas,
+	passHoistMutations,
 	passReactivity,
 	passTernary,
 	passCanvasReactivity,

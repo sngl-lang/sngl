@@ -1382,11 +1382,24 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 // component and current window.
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
+	// The three sources overlap: a page whose root is a component and not an
+	// explicit `window` is served here as a window whose Funcs are that
+	// component's, so every synthesized func of the root arrived twice. Both
+	// loops below consume this list -- one writes the definition, the other
+	// the anchor lookup and the bootstrap call -- so a duplicate was a
+	// __renderSlotN defined twice and run twice at startup, the second run
+	// removing the nodes the first had just built.
+	seen := map[*ir.Func]bool{}
+	add := func(f *ir.Func) {
+		if f == nil || !f.Synthesized || seen[f] {
+			return
+		}
+		seen[f] = true
+		out = append(out, f)
+	}
 	if g.pkg != nil {
 		for _, f := range g.pkg.Funcs {
-			if f.Synthesized {
-				out = append(out, f)
-			}
+			add(f)
 		}
 		// Every component the build renders, not only the root: one that
 		// survived inlining is emitted from its own declaration, and its
@@ -1394,16 +1407,12 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		// come with it.
 		for _, comp := range g.pkg.Components {
 			for _, f := range comp.Funcs {
-				if f.Synthesized {
-					out = append(out, f)
-				}
+				add(f)
 			}
 		}
 	}
 	for _, f := range g.irWindowFuncs {
-		if f.Synthesized {
-			out = append(out, f)
-		}
+		add(f)
 	}
 	return out
 }
