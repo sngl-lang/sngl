@@ -79,7 +79,7 @@ component App() {
         log list<string> = []
     )
     button(text="drop", @click { items = ["a"] })
-    for it = items {
+    for var it = items {
         effect(on=it, @mount(v) { log.push("+" + v) }, @unmount(v) { log.push("-" + v) })
     }
     text(value="[" + log.join(",") + "]")
@@ -115,7 +115,7 @@ component App() {
         log list<string> = []
     )
     button(text="drop", @click { items = ["a"] })
-    for it = items {
+    for var it = items {
         effect(on=it, @mount(v) { log.push("+" + v) }, @unmount(v) { log.push("-" + v) })
     }
     text(value="[" + log.join(",") + "]")

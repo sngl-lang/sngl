@@ -54,6 +54,8 @@ var irNodeTypes = map[string]reflect.Type{
 	"Emit":             reflect.TypeFor[Emit](),
 	"LocalVar":         reflect.TypeFor[LocalVar](),
 	"Return":           reflect.TypeFor[Return](),
+	"Break":            reflect.TypeFor[Break](),
+	"Continue":         reflect.TypeFor[Continue](),
 	"If":               reflect.TypeFor[If](),
 	"For":              reflect.TypeFor[For](),
 	"ContextProvider":  reflect.TypeFor[ContextProvider](),

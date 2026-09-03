@@ -12,7 +12,7 @@ struct Row {
 
 component table(rows list<Row>, slot cell(Row)) {
     vbox {
-        for r = rows {
+        for var r = rows {
             cell(r)
         }
         // An insertion passes values positionally: the declaration carries

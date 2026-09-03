@@ -19,7 +19,7 @@ component main {
         log list<string> = []
     )
 
-    for it = items {
+    for var it = items {
         effect(
             on=it,
             @mount(v) {

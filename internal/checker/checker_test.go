@@ -773,7 +773,7 @@ func TestForIteratorMustBeList(t *testing.T) {
 	expectError(t, `
 func foo() {
 	var x int
-	for item = x {
+	for var item = x {
 	}
 }`, "for iterator must be list")
 }
@@ -782,7 +782,7 @@ func TestForIteratorListOk(t *testing.T) {
 	expectNoErrors(t, `
 func foo() {
 	var items list<int>
-	for item = items {
+	for var item = items {
 	}
 }`)
 }
@@ -1144,7 +1144,7 @@ func TestBodyForLoop(t *testing.T) {
 	pkg := parse(t, `
 component main {
 	var items = [1, 2, 3]
-	for item = items {
+	for var item = items {
 		text(value="hi")
 	}
 }

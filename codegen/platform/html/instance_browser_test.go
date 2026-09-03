@@ -29,7 +29,7 @@ component badge(label string) {
 }
 component App() {
     var names list<string> = ["a", "b"]
-    for n = names {
+    for var n = names {
         badge(label=n)
     }
 }
@@ -83,7 +83,7 @@ component App() {
         names list<string> = ["a"]
         tag = "x"
     )
-    for n = names {
+    for var n = names {
         badge(label=n + tag)
     }
     button(text="rename", @click { tag = "y" })
@@ -162,7 +162,7 @@ component badge(label string) {
 }
 component App() {
     var names list<string> = ["a", "b"]
-    for n = names {
+    for var n = names {
         badge(label=n)
     }
     button(text="grow", @click { names = ["a", "b", "c"] })
@@ -217,7 +217,7 @@ component badge(label string) {
 }
 component App() {
     var names list<string> = ["a", "b"]
-    for n = names {
+    for var n = names {
         badge(label=n, key=n)
     }
     button(text="prepend", @click { names = ["z", "a", "b"] })
@@ -269,7 +269,7 @@ component badge(label string) {
 }
 component App() {
     var names list<string> = ["a", "a"]
-    for n = names {
+    for var n = names {
         badge(label=n, key=n)
     }
     button(text="churn", @click { names = ["a", "a"] })

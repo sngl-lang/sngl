@@ -256,17 +256,48 @@ func (jc *JsIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (jc *JsIRContext) ForHead(n *ir.For, iter string) string {
+	// A loop that declared no variable still binds one here: JS has no
+	// discard in a binding position, and an unused const is not an error.
+	key, valueVar := n.Key, n.Value
+	if key == "" {
+		key, valueVar = "__x", "__v"
+	}
 	switch n.IterKind {
+	case ir.IterForever:
+		// `while` rather than `for (;;)`: the two are the same loop, and this
+		// one reads as the condition loop below with the condition left out.
+		return "while (true) {"
+	case ir.IterCondition:
+		return "while (" + iter + ") {"
+	case ir.IterCounted:
+		c := n.Counted
+		start, end := jc.EvalExpr(c.Start), jc.EvalExpr(c.End)
+		cmp, step := "<", fmt.Sprintf(" += %d", c.Step)
+		switch {
+		case c.Step == 1:
+			step = "++"
+		case c.Step < 0:
+			cmp, step = ">", fmt.Sprintf(" -= %d", -c.Step)
+		}
+		if n.Value != "" {
+			// Two variables: Key is the ordinal, Value the number, and both
+			// are counters.
+			return fmt.Sprintf("for (let %s = 0, %s = %s, __end = %s; %s %s __end; %s++, %s%s) {",
+				n.Key, n.Value, start, end, n.Value, cmp, n.Key, n.Value, step)
+		}
+		// __end is bound in the init clause: the condition reads it every
+		// iteration, and SNGL evaluates the iterable once.
+		return fmt.Sprintf("for (let %s = %s, __end = %s; %s %s __end; %s%s) {",
+			key, start, end, key, cmp, key, step)
 	case ir.IterMapEntries:
-		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
-		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, valueVar, iter)
+		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", key, valueVar, iter)
 	case ir.IterIndexed:
-		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", n.Key, n.Value, iter)
+		return fmt.Sprintf("for (const [%s, %s] of %s.entries()) {", key, valueVar, iter)
 	default:
-		return fmt.Sprintf("for (const %s of %s) {", n.Key, iter)
+		return fmt.Sprintf("for (const %s of %s) {", key, iter)
 	}
 }
 func (jc *JsIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }

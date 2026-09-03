@@ -114,11 +114,19 @@
         "named": true
       },
       {
+        "type": "break_statement",
+        "named": true
+      },
+      {
         "type": "component_declaration",
         "named": true
       },
       {
         "type": "const_declaration",
+        "named": true
+      },
+      {
+        "type": "continue_statement",
         "named": true
       },
       {
@@ -1502,6 +1510,10 @@
     "named": false
   },
   {
+    "type": "&",
+    "named": false
+  },
+  {
     "type": "&&",
     "named": false
   },
@@ -1623,6 +1635,10 @@
     "extra": true
   },
   {
+    "type": "break_statement",
+    "named": true
+  },
+  {
     "type": "color_literal",
     "named": true
   },
@@ -1633,6 +1649,10 @@
   {
     "type": "const",
     "named": false
+  },
+  {
+    "type": "continue_statement",
+    "named": true
   },
   {
     "type": "element_ref",

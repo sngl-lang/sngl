@@ -79,6 +79,7 @@ func scanKeywordTokens(content string) []rawToken {
 		"var": true, "const": true, "func": true, "component": true,
 		"struct": true, "enum": true, "unit": true, "window": true,
 		"if": true, "else": true, "for": true, "return": true,
+		"break": true, "continue": true,
 		"import": true, "slot": true,
 	}
 	var out []rawToken

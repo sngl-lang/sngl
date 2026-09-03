@@ -56,7 +56,7 @@ component main {
             borderStyle = BorderStyle.dashed,
             cursor = "pointer",
         })
-        for r = rows {
+        for var r = rows {
             html.span(textContent = r, style = { display = Display.inlineBlock, cursor = "pointer" })
         }
     }

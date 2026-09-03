@@ -105,6 +105,19 @@ func IsReturn(err error) bool {
 	return ok
 }
 
+// breakSignal and continueSignal travel the same channel a return does, and
+// for the same reason: the statement that has to act on them is the loop, and
+// what is between the two is an arbitrary nest of ifs. execFor catches both;
+// nothing else looks at them, so one reaching a function body is a loop
+// escape the checker should have refused.
+type breakSignal struct{}
+
+func (*breakSignal) Error() string { return "break outside a loop" }
+
+type continueSignal struct{}
+
+func (*continueSignal) Error() string { return "continue outside a loop" }
+
 // ExecBlock runs a statement stream that is not a function body — a test body,
 // an event handler — stopping at a `return` rather than reporting one.
 func (env *Env) ExecBlock(block []ir.Stmt) error {
@@ -153,6 +166,10 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return env.execIf(n)
 	case *ir.For:
 		return env.execFor(n)
+	case *ir.Break:
+		return &breakSignal{}
+	case *ir.Continue:
+		return &continueSignal{}
 	case *ir.Return:
 		if n.Value == nil {
 			return &returnSignal{}
@@ -253,7 +270,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		return fmt.Errorf("cannot index-assign to %T", obj)
 	case *ir.Unary:
 		// `*n = val` — whole-element write through an &-bound loop element
-		// (`for &n = list { n = … }`). The operand is a listRef; write back.
+		// (`for var &n = list { n = … }`). The operand is a listRef; write back.
 		if target.Op == ast.UnaryDeref {
 			obj, err := env.Eval(target.Operand)
 			if err != nil {
@@ -317,7 +334,24 @@ func (env *Env) execIf(s *ir.If) error {
 	return nil
 }
 
+// maxLoopIterations bounds a condition or forever loop the interpreter runs.
+//
+// A compiled target has an operating system to stop it; a fixture does not.
+// `sngl test` runs its fixtures in-process, so one loop that never terminates
+// hangs the whole suite with no output saying which fixture did it -- which is
+// why the bound is an error naming the loop rather than a silent stop. It is
+// far above any loop a fixture has reason to run.
+const maxLoopIterations = 10_000_000
+
 func (env *Env) execFor(s *ir.For) error {
+	// No iterable is the forever loop, and a bool one is a condition: both
+	// walk nothing, so neither reaches the iteration below.
+	if s.Iter == nil {
+		return env.execLoop(s, nil)
+	}
+	if t := s.Iter.ExprType(); t != nil && t.Kind == ir.TypeBool {
+		return env.execLoop(s, s.Iter)
+	}
 	iter, err := env.Eval(s.Iter)
 	if err != nil {
 		return err
@@ -325,53 +359,143 @@ func (env *Env) execFor(s *ir.For) error {
 	switch v := iter.(type) {
 	case map[string]any:
 		if len(v) == 0 {
-			for _, st := range s.Else {
-				if err := env.Exec(st); err != nil {
-					return err
-				}
-			}
-			return nil
+			return env.ExecStmts(s.Else)
 		}
 		for k, val := range v {
 			env.Set(s.KeySym, k)
 			env.Set(s.ValueSym, val)
-			for _, st := range s.Body {
-				if err := env.Exec(st); err != nil {
-					return err
-				}
+			done, err := env.runLoopBody(s)
+			if err != nil {
+				return err
 			}
-		}
-		env.unbindLoopVars(s)
-	case []any:
-		// iter<T> at runtime is also []any (list passed as iter has no runtime wrapper).
-		if len(v) == 0 {
-			for _, st := range s.Else {
-				if err := env.Exec(st); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		for i, item := range v {
-			if s.RefElem {
-				// &-bound element: bind a listRef so field/whole-element writes
-				// (through the checker's Unary{Deref}) update the list in place.
-				env.Set(s.KeySym, &listRef{list: v, idx: i})
-			} else {
-				env.Set(s.KeySym, item)
-			}
-			env.Set(s.ValueSym, i)
-			for _, st := range s.Body {
-				if err := env.Exec(st); err != nil {
-					return err
-				}
+			if done {
+				break
 			}
 		}
 		env.unbindLoopVars(s)
 	default:
-		return fmt.Errorf("for iterator must be list or map, got %T", iter)
+		// A list, or the sequence sngl:seq computes -- an iter<T> is whichever
+		// of the two produced it, and neither is walked by building the other.
+		n, at, isIterable := asIterable(iter)
+		if !isIterable {
+			return fmt.Errorf("for iterator must be list or map, got %T", iter)
+		}
+		if n == 0 {
+			return env.ExecStmts(s.Else)
+		}
+		list, _ := iter.([]any)
+		for i := range n {
+			bindLoopElem(env, s, i, at(i), list)
+			done, err := env.runLoopBody(s)
+			if err != nil {
+				return err
+			}
+			if done {
+				break
+			}
+		}
+		env.unbindLoopVars(s)
 	}
 	return nil
+}
+
+// execLoop runs the two loops that iterate nothing: cond is the head to test
+// before each iteration, or nil for a loop with no head, which runs until its
+// body breaks or returns.
+func (env *Env) execLoop(s *ir.For, cond ir.Expr) error {
+	limit := env.maxIterations
+	if limit == 0 {
+		limit = maxLoopIterations
+	}
+	for i := 0; ; i++ {
+		if i >= limit {
+			pos := ""
+			if s.AST != nil {
+				pos = s.AST.Pos.String() + ": "
+			}
+			return fmt.Errorf("%sloop ran %d iterations without terminating", pos, i)
+		}
+		if cond != nil {
+			v, err := env.Eval(cond)
+			if err != nil {
+				return err
+			}
+			ok, isBool := v.(bool)
+			if !isBool {
+				return fmt.Errorf("for condition must be bool, got %T", v)
+			}
+			if !ok {
+				// The body never ran: that is what the else case is.
+				if i == 0 {
+					return env.ExecStmts(s.Else)
+				}
+				return nil
+			}
+		}
+		done, err := env.runLoopBody(s)
+		if err != nil {
+			return err
+		}
+		if done {
+			return nil
+		}
+	}
+}
+
+// runLoopBody runs one iteration, reporting whether the loop should stop.
+// A `continue` ends the iteration and a `break` ends the loop; anything else
+// -- a failure, or a `return` looking for its function body -- travels on.
+func (env *Env) runLoopBody(s *ir.For) (done bool, err error) {
+	for _, st := range s.Body {
+		switch err := env.Exec(st); err.(type) {
+		case nil:
+		case *continueSignal:
+			return false, nil
+		case *breakSignal:
+			return true, nil
+		default:
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+// ExecStmts runs a statement list, passing every signal up: it is the
+// interpreter's plain block, used where a block is not a loop body.
+func (env *Env) ExecStmts(stmts []ir.Stmt) error {
+	for _, st := range stmts {
+		if err := env.Exec(st); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// bindLoopElem binds one iteration's variables: the element, and the index
+// beside it in the two-variable form.
+//
+// Which is which is the checker's answer -- Key is the index and Value the
+// element once a second variable is written (`for var i, x = xs`), and Key is
+// the element on its own. Both loop sites had it the other way round, so a
+// two-variable loop bound the element to the index name and every compiled
+// backend disagreed with the interpreter about the same program.
+//
+// list is the backing slice when the iterable is one, and nil otherwise; only
+// a list can carry a &-bound element, since only a list has an element to
+// write back to.
+func bindLoopElem(env *Env, s *ir.For, i int, item any, list []any) {
+	elemSym, idxSym := s.KeySym, s.ValueSym
+	if s.Value != "" {
+		elemSym, idxSym = s.ValueSym, s.KeySym
+	}
+	if s.RefElem && list != nil {
+		// &-bound element: bind a listRef so field/whole-element writes
+		// (through the checker's Unary{Deref}) update the list in place.
+		env.Set(elemSym, &listRef{list: list, idx: i})
+	} else {
+		env.Set(elemSym, item)
+	}
+	env.Set(idxSym, i)
 }
 
 // unbindLoopVars drops the loop's bindings once the loop is done, so a read

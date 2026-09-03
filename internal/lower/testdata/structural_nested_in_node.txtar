@@ -18,7 +18,7 @@ component main {
     var __root dyn
     var __slot0 list<dyn> = []
     func __renderSlot0(parent dyn) void {
-        for __entry = __slot0 {
+        for var __entry = __slot0 {
             lower.RemoveChild(parent, __entry)
         }
         __slot0 = []

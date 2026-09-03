@@ -163,6 +163,8 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 	case *ir.ContextProvider:
 		pre, n.Value = st.transformExpr(n.Value)
 		n.Children = st.transformBlock(n.Children)
+	case *ir.Break, *ir.Continue:
+		// A loop escape holds no list lambda.
 	default:
 		panic(fmt.Sprintf("listLambdaState.transformStmt: unhandled %T", n))
 	}

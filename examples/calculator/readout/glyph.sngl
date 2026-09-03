@@ -4,6 +4,7 @@
 // Glyph into rectangles and `ascii.sngl` turns the same Glyph into three rows
 // of characters; neither of them knows what a digit looks like.
 
+import "sngl:seq"
 import "../calc"
 
 // One cell of the readout. The segments carry their traditional letters:
@@ -29,13 +30,14 @@ struct Glyph {
     point bool = false
 }
 
-// `s` repeated `n` times. SNGL has no numeric range and no while loop, so
-// anything counted rather than iterated is written this way.
+// `s` repeated `n` times. A loop that binds nothing, over the sequence
+// `sngl:seq` counts out: the body needs how many times, not which time.
 func repeat(s string, n int) string {
-    if n <= 0 {
-        return ""
+    var out = ""
+    for seq.count(n) {
+        out = out + s
     }
-    return s + repeat(s, n - 1)
+    return out
 }
 
 // The character a cell shows. An unknown character lights nothing, which is
@@ -90,7 +92,7 @@ func cellsWide(entry string) int {
 // readout is, with each point folded onto the cell to its left.
 func cells(entry string) list<Glyph> {
     var out list<Glyph> = []
-    for ch = string.split(repeat(" ", calc.WIDTH - cellsWide(entry)) + entry, "") {
+    for var ch = string.split(repeat(" ", calc.WIDTH - cellsWide(entry)) + entry, "") {
         if ch == "." && out.length() > 0 {
             out[out.length() - 1].point = true
         } else {

@@ -262,6 +262,20 @@ var intrinsics = map[string]nativeFunc{
 		copy(result, list[start:end])
 		return result, nil
 	},
+
+	// --- seq (sngl:seq) ---
+	// A sequence value is three ints, not the run of numbers: see
+	// sequence.go. The bounds are read the same way opeval.Sequence reads
+	// them, which is what the constant folder walks.
+	"seq.count": func(args []any) (any, error) {
+		return sequence{0, ToInt(args[0]), 1}, nil
+	},
+	"seq.range": func(args []any) (any, error) {
+		return sequence{ToInt(args[0]), ToInt(args[1]), 1}, nil
+	},
+	"seq.step": func(args []any) (any, error) {
+		return sequence{ToInt(args[0]), ToInt(args[1]), ToInt(args[2])}, nil
+	},
 }
 
 func clampByte(v int) int {

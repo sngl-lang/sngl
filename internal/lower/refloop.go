@@ -8,7 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passRefLoop lowers `for &t = list` / `for i, &t = list` element references.
+// passRefLoop lowers `for var &t = list` / `for var i, &t = list` element references.
 // The checker types the &-bound element var as ref<T> and wraps its reads in
 // Unary{Deref}. This pass replaces every reference to that element var with
 // indexed list access (`list[idx]`), so reads index the live element and
@@ -114,7 +114,8 @@ func (st *refLoopState) stmt(s ir.Stmt) {
 		st.stmts(n.Children)
 	case *ir.Window:
 		st.stmts(n.Body)
-	case *ir.Assign, *ir.Toggle, *ir.CallStmt, *ir.Return, *ir.LocalVar, *ir.Emit, *ir.CanvasRedrawStmt:
+	case *ir.Assign, *ir.Toggle, *ir.CallStmt, *ir.Return, *ir.LocalVar, *ir.Emit, *ir.CanvasRedrawStmt,
+		*ir.Break, *ir.Continue:
 		// Leaf statements: no nested loops to descend into. The element
 		// rewrite for an enclosing &-loop already visited these via lowerFor.
 	default:
@@ -130,7 +131,7 @@ func (st *refLoopState) lowerFor(n *ir.For) {
 	indexName := ""
 	var idxSym *ir.LoopVar
 	if n.Value != "" {
-		// two-var `for i, &t`: Key is the index, Value the element. The
+		// two-var `for var i, &t`: Key is the index, Value the element. The
 		// index is the user's own binding, so it keeps the symbol the
 		// checker gave it — the body's references to `i` point at that one,
 		// and a fresh symbol here would leave them referring to nothing.
@@ -138,7 +139,7 @@ func (st *refLoopState) lowerFor(n *ir.For) {
 		indexName = n.Key
 		idxSym = n.KeySym
 	} else {
-		// single-var `for &t`: synthesize an index, and the symbol for it.
+		// single-var `for var &t`: synthesize an index, and the symbol for it.
 		indexName = "__forIdx" + strconv.Itoa(st.idxCounter)
 		st.idxCounter++
 	}
@@ -325,7 +326,7 @@ func (r *refLoopRewriter) stmt(s ir.Stmt) ir.Stmt {
 		n.Title = r.expr(n.Title)
 		n.Favicon = r.expr(n.Favicon)
 		r.stmtSlice(n.Body)
-	case *ir.CanvasRedrawStmt:
+	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No expressions to rewrite.
 	default:
 		panic(fmt.Sprintf("refloop.refLoopRewriter.stmt: unhandled stmt %T", n))

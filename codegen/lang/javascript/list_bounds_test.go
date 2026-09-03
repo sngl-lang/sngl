@@ -29,6 +29,14 @@ func runJS(t *testing.T, body string) string {
 	}
 	cmd := exec.Command("node", "main.mjs")
 	cmd.Dir = dir
+	// These tests read what the program printed, so node must not colour it.
+	// It colours a number whenever FORCE_COLOR is set -- to any value, empty
+	// included, and it ignores NO_COLOR while it is -- so the only way to say
+	// no is to say 0. Some terminals and CLI harnesses export FORCE_COLOR for
+	// everything they run, and under one of those `console.log(1)` arrives as
+	// "\x1b[33m1\x1b[39m" and every assertion here fails on a value that is
+	// otherwise right.
+	cmd.Env = append(os.Environ(), "FORCE_COLOR=0")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("node: %v\n--- program ---\n%s\n--- output ---\n%s", err, body, out)

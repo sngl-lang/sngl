@@ -5,7 +5,7 @@ component emptylist {
     var items list<string> = []
 
     vbox {
-        for item = items {
+        for var item = items {
             text #item(value=item)
         } else {
             text #empty(value="No items yet")

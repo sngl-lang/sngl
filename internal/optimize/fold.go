@@ -164,7 +164,9 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 				continue
 			}
 		}
-		if fs, ok := s.(*ir.For); ok {
+		// A loop is unrolled only where the target cannot emit one; see
+		// evalCtx.unrollsLoops.
+		if fs, ok := s.(*ir.For); ok && ctx.unrollsLoops() {
 			if expanded := expandForStmt(fs, ctx); expanded != nil {
 				out = append(out, expanded...)
 				continue
@@ -249,6 +251,8 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		n.Children = foldStmts(n.Children, ctx)
 	case *ir.CanvasRedrawStmt:
 		// Canvas redraw stmts carry only NodeInst/Func pointers; no expressions to fold.
+	case *ir.Break, *ir.Continue:
+		// A loop escape carries no expression.
 	default:
 		panic(fmt.Sprintf("foldStmt: unhandled stmt %T", n))
 	}

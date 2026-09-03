@@ -460,13 +460,17 @@ type IfStmt struct {
 	Else StmtBlock // zero value if no else
 }
 
-// ForStmt: for key [, value] = iter { body } [else { alt }].
+// ForStmt: for [var key [, value] =] [iter] { body } [else { alt }].
+//
+// Iter is nil for `for { }`, the loop with no head at all. Everything else
+// carries one, and what it evaluates to is what the loop does: an iterable is
+// walked, a bool is a condition tested before each iteration.
 type ForStmt struct {
 	Pos      Pos
 	Key      string // iterator variable
-	KeyRef   bool   // Key was &-prefixed: `for &t = ...` (ref<T> element binding)
+	KeyRef   bool   // Key was &-prefixed: `for var &t = ...` (ref<T> element binding)
 	Value    string // optional second variable (empty if single-var form)
-	ValueRef bool   // Value was &-prefixed: `for i, &t = ...`
+	ValueRef bool   // Value was &-prefixed: `for var i, &t = ...`
 	Iter     Expr
 	Body     StmtBlock
 	Else     StmtBlock // zero value if no else

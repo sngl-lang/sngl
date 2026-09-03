@@ -22,7 +22,7 @@ component main {
                 text #deep(value="nested")
             }
         }
-        for it = items {
+        for var it = items {
             text(value=it, key=it)
         }
         timer(interval=100ms, enabled=true, @tick { count += 10 })

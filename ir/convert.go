@@ -519,6 +519,10 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 			fs.Else = c.convertStmtBlock(s.Else)
 		}
 		return fs
+	case *Break:
+		return &ast.BreakStmt{Pos: posOfBreak(s)}
+	case *Continue:
+		return &ast.ContinueStmt{Pos: posOfContinue(s)}
 	case *Window:
 		return c.convertWindow(s)
 	case *ContextProvider:
@@ -1143,4 +1147,20 @@ func parenIfLowerPrec(child ast.Expr, parentOp ast.BinaryOp, isRight bool) ast.E
 		return &ast.ParenExpr{Inner: child}
 	}
 	return child
+}
+
+// posOfBreak and posOfContinue recover the escape's source position, which is
+// the only thing either node carries.
+func posOfBreak(s *Break) ast.Pos {
+	if s == nil || s.AST == nil {
+		return ast.Pos{}
+	}
+	return s.AST.Pos
+}
+
+func posOfContinue(s *Continue) ast.Pos {
+	if s == nil || s.AST == nil {
+		return ast.Pos{}
+	}
+	return s.AST.Pos
 }

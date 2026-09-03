@@ -63,7 +63,7 @@ func TestMissingReturnForElseOK(t *testing.T) {
 	checkNoErrors(t, `
 component main {
     func first(xs list<int>) int {
-        for x = xs {
+        for var x = xs {
             return x
         } else {
             return 0

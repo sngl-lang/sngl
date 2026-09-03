@@ -73,6 +73,31 @@ func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
 	return st
 }
 
+// capturesPerIteration reports whether a handler body reads a binding that
+// exists only for one turn of an enclosing loop.
+//
+// Everything else a handler captures outlives the handler: a component's state
+// is a field on the model, and a promoted top-level method reaches it by name.
+// A loop variable has no such home -- the promoted method is written outside
+// the loop -- so the reference dangles, and on a target with a compiler that
+// is a build failure rather than a wrong answer.
+//
+// This used to be hidden by unrolling: a view loop over a constant list was
+// unrolled for every target, so each handler was promoted with the element
+// substituted into it as a literal and captured nothing. Once a target with a
+// host language emitted the loop instead, the loop variable was live and the
+// promotion broke -- examples/calculator stopped building on fyne, whose
+// KeyCap reads its `entry` prop, bound at the call site to the enclosing
+// loop's variable.
+func capturesPerIteration(captures []capture) bool {
+	for _, c := range captures {
+		if _, ok := c.Sym.(*ir.LoopVar); ok {
+			return true
+		}
+	}
+	return false
+}
+
 // nodeOpFunc is the callee a lowering pass hangs a node operation on. Only the
 // id travels: codegen.WalkLowered matches on it and reads the operands off the
 // call, so a signature here would be describing nobody's contract.
@@ -130,7 +155,8 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 			st.scanStmts(n.Children)
 		case *ir.Window:
 			st.scanStmts(n.Body)
-		case *ir.Assign, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		case *ir.Assign, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+			*ir.Break, *ir.Continue:
 			// Leaf/non-visual stmts — no NodeInst IDs to observe.
 		default:
 			panic(fmt.Sprintf("declarativeState.scanStmts: unhandled %T", n))
@@ -205,7 +231,8 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 		case *ir.Window:
 			n.Body = st.processStmts(n.Body, &n.Funcs)
 			out = append(out, n)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+			*ir.Break, *ir.Continue:
 			// Leaf stmts — no NodeInsts to lower or nested blocks to recurse.
 			out = append(out, s)
 		default:
@@ -333,22 +360,24 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		}
 
 		var handlerArg ir.Expr
-		if st.liftHandlers && len(analyzeCaptures(h.Func.Block, h.Func.Params)) > 0 {
+		captures := analyzeCaptures(h.Func.Block, h.Func.Params)
+		switch {
+		case st.liftHandlers && len(captures) > 0:
 			// NoLambda is on and the body has free vars → lift the handler
 			// into a top-level Func + state struct. lifter.Lift appends the
 			// synthesized struct + Func to pkg, so we don't push h.Func into
 			// *funcs ourselves.
 			handlerArg = st.lifter.Lift(h.Func.Block, h.Func.Params, h.Func.Return, nil)
-		} else if st.inlineHandlers {
-			// Closure-supporting target inside a re-rendering slot: emit the
-			// handler as an inline closure attached at the node, so it captures
-			// any enclosing loop vars (index, element refs) rather than
-			// referencing them from an out-of-scope top-level func.
+		case st.inlineHandlers || capturesPerIteration(captures):
+			// Closure-supporting target whose handler body reads a
+			// per-iteration binding: emit the handler as an inline closure
+			// attached at the node, so it captures the loop's variable rather
+			// than referencing it from an out-of-scope top-level func.
 			handlerArg = &ir.Lambda{Type: h.Func.SymType(), Func: h.Func}
-		} else {
-			// Either NoLambda is off (closure-supporting target — keep free
-			// vars free) or the body has no captures (no lift needed).
-			// Simple promote to a named top-level Func.
+		default:
+			// Nothing the body captures needs a closure to reach: a
+			// component's own state is a field on the model, which a method
+			// on it reads by name. Promote to a named top-level Func.
 			handlerName := id + "_" + h.Name + "_handler"
 			h.Func.Name = handlerName
 			h.Func.LoweredFromTag = n.Name

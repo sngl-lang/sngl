@@ -122,7 +122,7 @@ func TestSynthesizeRenderSlotFunc_ForVariant(t *testing.T) {
 	src := `
 component main {
     var items list<int> = [1, 2, 3]
-    for item = items {
+    for var item = items {
         text(value=string(item))
     }
 }
@@ -263,7 +263,7 @@ func TestReactiveForReplacedByCallStmt(t *testing.T) {
 	src := `
 component main {
     var items list<int> = [1, 2, 3]
-    for item = items {
+    for var item = items {
         text(value=string(item))
     }
 }
@@ -550,7 +550,7 @@ component main {
     var visible bool = true
     var items list<int> = [1, 2, 3]
     if visible {
-        for x = items {
+        for var x = items {
             text(value=x)
         }
     }

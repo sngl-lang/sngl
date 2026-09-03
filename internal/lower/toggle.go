@@ -75,7 +75,8 @@ func rewriteToggleStmts(stmts []ir.Stmt) []ir.Stmt {
 			}
 		case *ir.ContextProvider:
 			n.Children = rewriteToggleStmts(n.Children)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit,
+			*ir.Break, *ir.Continue:
 			// Leaf stmts — no nested Toggle to rewrite.
 		default:
 			panic(fmt.Sprintf("rewriteToggleStmts: unhandled %T", n))

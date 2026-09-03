@@ -872,19 +872,111 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items = ["a", "b", "c"]
-for item = items {
+for var item = items {
     text(value=item)
 }
-for item, idx = items {
+for var idx, item = items {
     text(value="{idx}: {item}", key=idx)
 }
 ```
 
+The index comes first and the element second, as the two-variable form does
+everywhere: `for var idx, item = items`.
+
 Use `key` for stable identity across re-renders when the list changes.
+
+`var` is what makes the head a declaration. Without it the loop binds nothing
+and what follows `for` is the iterable itself, which is the form to reach for
+when the body never names the element:
+
+<!-- SNGL-component -->
+
+```sngl
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:dialog"
+import . "sngl:test"
+import "sngl:seq"
+for seq.count(3) {
+    text(value="•")
+}
+```
+
+### Counting loops
+
+There is nothing to iterate when the numbers are the point, so `sngl:seq`
+produces them: `count(n)` runs a loop n times, `range(start, end)` counts
+between two bounds, and `step(start, end, by)` counts by something other than
+one — negative to count down. The end bound is exclusive in all three.
+
+<!-- SNGL-component -->
+
+```sngl
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:dialog"
+import . "sngl:test"
+import "sngl:seq"
+var n = 4
+for var i = seq.range(1, n) {
+    text(value="row {i}")
+}
+for var d = seq.step(10, 0, -2) {
+    text(value="{d}")
+}
+```
+
+A sequence written directly in a loop head becomes the host's own counting
+loop. Assigned to a variable or passed to a function it is an ordinary
+`iter<int>` — a sequence the loop pulls from, not a list of numbers — so
+neither spelling allocates one.
+
+### Loops that walk nothing
+
+The two loops above are in a view body, where a loop says how many copies of
+its body the tree holds. In a function, a handler or a timer there is no tree,
+and two more forms are available: a condition to test before each iteration,
+and no head at all.
+
+<!-- SNGL-component -->
+
+```sngl
+import . "sngl:ui"
+func firstMultiple(of int, atLeast int) int {
+    var i = of
+    for {
+        if i >= atLeast {
+            break
+        }
+        i = i + of
+    }
+    return i
+}
+
+func countDigits(n int) int {
+    var left = n
+    var digits = 0
+    for left > 0 {
+        left = left / 10
+        digits = digits + 1
+    }
+    return digits
+}
+text(value="{firstMultiple(3, 10)} in {countDigits(120)} digits")
+```
+
+`break` ends the innermost loop and `continue` ends the current iteration of
+it. `for { }` has no other way out, which is why the statement after it is
+unreachable and `firstMultiple` needs no trailing return inside the loop.
+
+Neither form declares a variable — there is no element to bind — and neither
+may be written in a view body, where a condition would say how many times to
+repeat nothing. Nor may `break` or `continue`: a view body's loop is a template
+stamped once per element, not a statement stream.
 
 ### for...else
 
-The `else` block renders when the list is empty. It works with both `for item = list` and `for item, index = list`:
+The `else` block renders when the list is empty. It works with both `for var item = list` and `for var index, item = list`:
 
 <!-- SNGL-component -->
 
@@ -894,12 +986,19 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items list<string> = []
-for item = items {
+for var item = items {
     text(value=item)
 } else {
     text(value="No items yet")
 }
 ```
+
+Generally the `else` runs when **the body never ran**, which is what "the list
+was empty" is a case of. A condition loop reads the same way — its `else` runs
+when the condition was false the first time it was asked — and a `break` never
+triggers it, since a loop cannot break out of a body that never ran.
+`for { } else { }` is an error: the body always runs, so the block would be
+unreachable.
 
 ### Element refs
 
@@ -1232,7 +1331,7 @@ component main {
                 newTodo = ""
             })
         }
-        for idx, todo = todos {
+        for var idx, todo = todos {
             hbox(key=idx, style={gap=8}) {
                 checkbox(checked=todo.done, @change { todos[idx].done!! })
                 text(value=todo.text)
@@ -1330,7 +1429,7 @@ component main {
     func activeCount() => active().length()
     vbox(style={padding=16, gap=8}) {
         text(value="{activeCount} remaining")
-        for idx, todo = todos {
+        for var idx, todo = todos {
             checkbox(key=idx, checked=todo.done, label=todo.text, @change { todos[idx].done!! })
         }
     }

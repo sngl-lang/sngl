@@ -32,7 +32,7 @@ stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExten
 # calls the pass would lower it to.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
 stdout 'caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → IterKind'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → Context → InlinePure → NoInlineComponents → NoStructSpread → Canvas → IndexedIter → ForElse → CSE → IterKind'
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl

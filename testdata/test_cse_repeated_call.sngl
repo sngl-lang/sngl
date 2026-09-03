@@ -1,0 +1,38 @@
+// A statement that makes the same pure call twice makes it once. The duplicate
+// is usually not the author's -- a pass that substitutes an argument into a
+// body leaves a copy at every use -- and unrolling used to hide it by folding
+// each copy against its own iteration.
+//
+// What runs here is the answer, which must not change. The generated shape is
+// asserted in cmd/sngl/testdata/generate_cse.txt, since how many times a
+// program called something is not something the program can observe.
+
+import . "sngl:test"
+
+// A block body, so the call survives inlining: an expression-bodied pure func
+// is substituted into its call sites and leaves no call to eliminate.
+func weight(n int) int {
+    if n > 2 {
+        return n * 3 + 1
+    }
+    return 0
+}
+
+func combined(seed int) int {
+    return weight(seed) + weight(seed) * 2
+}
+
+// Two calls with different arguments are two values, not one.
+func mixed(a int, b int) int {
+    return weight(a) * 100 + weight(b) + weight(a)
+}
+
+func testRepeatedCallKeepsItsValue(t Test) {
+    t.assert(combined(4) == 39)
+    t.assert(combined(1) == 0)
+}
+
+func testDifferentArgumentsStayDifferent(t Test) {
+    t.assert(mixed(4, 3) == 1300 + 10 + 13)
+    t.assert(mixed(1, 4) == 13)
+}

@@ -116,7 +116,8 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				return t.OnRemoveChild(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value)
 			case isLowerIntrinsic(n.Call, "AttachHandler"):
 				evt, _ := extractStringLit(n.Call.Args[1].Value)
-				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt, n.Call.Args[2].Value)
+				return t.OnAttachHandler(ctx, n.Call.Args[0].Value, evt,
+					walkHandlerBody(ctx, n.Call.Args[2].Value, t))
 			case isLowerIntrinsic(n.Call, ir.NodeOpUpdateComponent) && len(n.Call.Args) == 3:
 				prop, _ := extractStringLit(n.Call.Args[1].Value)
 				return t.OnUpdateComponent(ctx, n.Call.Args[0].Value, prop, n.Call.Args[2].Value)
@@ -134,9 +135,10 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				}
 				return ins.OnInsertBefore(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
 			}
-			// A slot append. push mutates its receiver and returns nothing, so
-			// the lowering emits the call rather than an assignment to the
-			// slot -- see renderSlotBody.
+			// A slot append as a bare call. push mutates its receiver and
+			// returns nothing, so the lowering emits the call rather than an
+			// assignment back to the slot; the Assign arm below still answers
+			// the older shape.
 			if n.Call.Func != nil && n.Call.Func.Intrinsic == "list.push" && len(n.Call.Args) == 2 {
 				if id, ok := n.Call.Args[0].Value.(*ir.Ident); ok && id.Synthesized {
 					if v := resolveSlotVar(id); v != nil {
@@ -150,6 +152,14 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			if ll, ok := n.Value.(*ir.ListLit); ok && len(ll.Elems) == 0 {
 				if v := resolveSlotVar(id); v != nil {
 					return t.OnSlotReset(ctx, v)
+				}
+			}
+			// The older append shape, `__slotN = list.push(__slotN, x)`. Both
+			// reach OnSlotAppend: which one a build emits depends on whether
+			// its `push` returns the list or nothing.
+			if call, ok := n.Value.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == "list.push" && len(call.Args) == 2 {
+				if v := resolveSlotVar(id); v != nil {
+					return t.OnSlotAppend(ctx, v, call.Args[1].Value)
 				}
 			}
 		}
@@ -175,6 +185,30 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		return []ir.Stmt{&cp}
 	}
 	return t.OnDefault(ctx, s)
+}
+
+// walkHandlerBody rewrites an inline handler's body through the same
+// translator as any other statement block, and returns the handler unchanged
+// when it is not one.
+//
+// A handler attached as a named func is walked where that func is emitted. One
+// attached as a closure -- which is how a handler that reads a loop variable
+// has to be attached, since a top-level func cannot see it -- sits inside an
+// expression, and the walk had no reason to look inside an expression. So its
+// body reached the language backend raw: a canvas redraw emitted nothing at
+// all (the generic statement path has no rendering for one), and a prop
+// assignment on a node kept its IR shape instead of the platform's. The button
+// worked and the display it was supposed to repaint did not.
+func walkHandlerBody(ctx context.Context, handler ir.Expr, t IntrinsicTranslator) ir.Expr {
+	lam, ok := handler.(*ir.Lambda)
+	if !ok || lam.Func == nil {
+		return handler
+	}
+	cp := *lam
+	fn := *lam.Func
+	fn.Block = WalkLowered(ctx, lam.Func.Block, t)
+	cp.Func = &fn
+	return &cp
 }
 
 // resolveSlotVar returns the *ir.Var pointed to by a Synthesized slot

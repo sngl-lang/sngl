@@ -339,7 +339,7 @@ func TestOptimize_PropPropagatesAsConst(t *testing.T) {
 	src := `
 const items = ["a", "b"]
 component Row(entries list<string> = []) {
-	for x = entries {
+	for var x = entries {
 		text(value=x)
 	}
 }
@@ -525,6 +525,11 @@ func checkAndOptimizeFS(t *testing.T, fsys fs.FS, entry, platform, lang string) 
 // inside an imported component, iterating over a const declared in that
 // imported package, must unroll at compile time. Today the optimizer
 // never visits imports' Components, so the for-loop survives.
+//
+// The target is `--lang none`, because unrolling is now that target's answer
+// alone: a language target emits the loop and lets its own compiler decide
+// (evalCtx.unrollsLoops). What is under test here is that the imported
+// component is *visited*, which the surviving loop is the evidence of.
 func TestOptimize_ImportedComponentForUnrolls(t *testing.T) {
 	fsys := fstest.MapFS{
 		"main.sngl": &fstest.MapFile{Data: []byte(`
@@ -538,13 +543,13 @@ import . "sngl:ui"
 
 const tags = ["x", "y"]
 component List() {
-	for t = tags {
+	for var t = tags {
 		text(value=t)
 	}
 }
 `)},
 	}
-	pkg := checkAndOptimizeFS(t, fsys, "main.sngl", "html", "js")
+	pkg := checkAndOptimizeFS(t, fsys, "main.sngl", "html", "none")
 
 	// Find the imported lib package and assert its List component body has
 	// no surviving *ir.For.

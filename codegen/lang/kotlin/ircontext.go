@@ -268,21 +268,53 @@ func (kc *KtIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (kc *KtIRContext) ForHead(n *ir.For, iter string) string {
+	// A loop that declared no variable still binds one: Kotlin's `_` is for
+	// destructuring, and an unused loop variable is only a warning.
+	key, valueVar := n.Key, n.Value
+	if key == "" {
+		key, valueVar = "__x", "__v"
+	}
 	switch n.IterKind {
+	case ir.IterForever:
+		// Kotlin has no bare `for`: its `for` takes an iterable, so a loop
+		// over nothing is a `while`.
+		return "while (true) {"
+	case ir.IterCondition:
+		return "while (" + iter + ") {"
+	case ir.IterCounted:
+		// A Kotlin range evaluates its bounds once, so there is no temp to
+		// bind. `downTo end + 1` is how a descending range keeps the end
+		// bound exclusive, which is what sngl:seq documents.
+		c := n.Counted
+		start, end := kc.EvalExpr(c.Start), kc.EvalExpr(c.End)
+		var progression string
+		switch {
+		case c.Step == 1:
+			progression = fmt.Sprintf("%s until %s", start, end)
+		case c.Step > 0:
+			progression = fmt.Sprintf("(%s until %s) step %d", start, end, c.Step)
+		default:
+			progression = fmt.Sprintf("(%s downTo %s + 1) step %d", start, end, -c.Step)
+		}
+		if n.Value != "" {
+			// Two variables: Key is the ordinal, Value the number. withIndex
+			// over a progression counts alongside it and builds nothing.
+			return fmt.Sprintf("for ((%s, %s) in (%s).withIndex()) {", n.Key, n.Value, progression)
+		}
+		return fmt.Sprintf("for (%s in %s) {", key, progression)
 	case ir.IterMapEntries:
 		// Map iteration: for ((k, v) in m) { ... }
-		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
 		}
-		return fmt.Sprintf("for ((%s, %s) in %s) {", n.Key, valueVar, iter)
+		return fmt.Sprintf("for ((%s, %s) in %s) {", key, valueVar, iter)
 	case ir.IterIndexed:
 		// Two-var list/iter: Key is the index, Value the element.
 		// withIndex() yields (index, element), matching that order.
-		return fmt.Sprintf("for ((%s, %s) in %s.withIndex()) {", n.Key, n.Value, iter)
+		return fmt.Sprintf("for ((%s, %s) in %s.withIndex()) {", key, valueVar, iter)
 	default:
 		// Single-var list / iter<T>: for (x in list) { ... }
-		return fmt.Sprintf("for (%s in %s) {", n.Key, iter)
+		return fmt.Sprintf("for (%s in %s) {", key, iter)
 	}
 }
 func (kc *KtIRContext) IfHead(_ *ir.If, cond string) string { return "if (" + cond + ") {" }
@@ -847,7 +879,16 @@ func IRTypeToKt(t *ir.Type) string {
 		// dyn holds anything including null (recursive structs like TreeNode
 		// use `dyn = null` for absent children).
 		return "Any?"
-	case ir.TypeVoid, ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam,
+	case ir.TypeIter:
+		// Iterable<T>, not List<T>: an iter<T> is a sequence something pulls
+		// from, and Iterable is the widest spelling of that -- a List is one,
+		// and so is the IntProgression sngl:seq produces. It is also why a
+		// list reaching an iter<T> position needs no conversion emitted.
+		if len(t.Elems) == 1 {
+			return "Iterable<" + IRTypeToKt(t.Elems[0]) + ">"
+		}
+		return "Iterable<Any>"
+	case ir.TypeVoid, ir.TypeComponent, ir.TypeTypeParam,
 		ir.TypeRef, ir.TypeNative, ir.TypeInvalid:
 		// No first-class Kotlin spelling in emitted code. "Any" is what the
 		// former default arm produced for each of these, so listing them

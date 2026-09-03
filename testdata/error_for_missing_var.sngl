@@ -1,0 +1,12 @@
+// A loop variable is a declaration, so it is written with `var`. Without it
+// the head is the iterable alone, and the `=` is where that reading fails --
+// so the message names the missing keyword rather than the token the grammar
+// wanted next.
+
+import . "sngl:ui"
+
+func f() {
+    var xs list<int> = [1]
+    for x = xs { // ERROR(parse) "a loop variable is declared with var"
+    }
+}

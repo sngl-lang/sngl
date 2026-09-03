@@ -27,7 +27,7 @@ struct Row {
 
 component table(rows list<Row>, slot _) {
     vbox {
-        for r = rows {
+        for var r = rows {
             text(value=r.title)
         }
         slot

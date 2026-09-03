@@ -126,7 +126,8 @@ func (w *keyWalk) stmts(stmts []ir.Stmt, prefix string) {
 		case *ir.ContextProvider:
 			w.stmts(n.Children, join(fmt.Sprintf("context@%d", next("context"))))
 
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 			// Imperative statements render nothing, so they carry no key --
 			// and inserting one does not shift the keys around it.
 

@@ -31,7 +31,7 @@ component main {
         log list<string> = []
     )
 
-    for it = items {
+    for var it = items {
         effect(on=it, @mount { log.push(it) })
     }
 
@@ -46,7 +46,7 @@ component main {
         log list<string> = []
     )
 
-    for it = items {
+    for var it = items {
         effect(on=it, @mount(v) { log.push(v) })
     }
 

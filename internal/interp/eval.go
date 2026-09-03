@@ -131,7 +131,11 @@ type Env struct {
 	BodyStmts   []ir.Stmt
 	depth       int
 	RenderDepth int
-	Log         []string
+	// maxIterations bounds a condition or forever loop; zero means
+	// maxLoopIterations. A test sets it to something small, since asserting
+	// the bound by reaching the real one would run ten million iterations.
+	maxIterations int
+	Log           []string
 	// Locale is the active BCP-47 locale for i18n calls (default "en").
 	Locale string
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
@@ -1288,7 +1292,7 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 		// correctly (e.g. -(int8 -128) is -128) and floats stay floats.
 		return opeval.Arith(ast.BinSub, 0, v, numKindOf(e.Type))
 	case ast.UnaryDeref:
-		// `*t` for an &-bound loop element (`for &t = list`). The operand is a
+		// `*t` for an &-bound loop element (`for var &t = list`). The operand is a
 		// listRef into the live list; reading derefs to the current element.
 		if ref, ok := v.(*listRef); ok {
 			return ref.get(), nil
@@ -1301,7 +1305,7 @@ func (env *Env) evalUnary(e *ir.Unary) (any, error) {
 }
 
 // listRef is an interpreter lvalue into a list element, produced when a loop
-// binds its element variable with `&` (`for &t = list`). Dereferencing reads
+// binds its element variable with `&` (`for var &t = list`). Dereferencing reads
 // the live element; assigning through the deref writes it back by index.
 type listRef struct {
 	list []any

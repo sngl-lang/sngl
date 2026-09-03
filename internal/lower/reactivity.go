@@ -325,7 +325,8 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			n.Children = st.rewriteReactiveStructures(n.Children, parentRef)
 		case *ir.Window:
 			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+			*ir.Break, *ir.Continue:
 			// Leaf/non-structural stmts — no nested reactive If/For to rewrite.
 			// (ContextProvider is gone by reactivity time if NoContext cap is
 			// set; if not, codegen never sees a reactive lowering — kept here
@@ -535,7 +536,8 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 		// instead, and pass 2 already recurses into them — so pass 1 must too,
 		// or reactive If/For inside such a window never get a slot collected.
 		st.collectFromStmts(n.Body)
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+		*ir.Break, *ir.Continue:
 		// Non-visual stmts — no reactive props/slots to collect from.
 		// Imperative-handler dataflow is tracked at injection time.
 	default:
@@ -899,7 +901,8 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 					}
 				}
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+			*ir.Break, *ir.Continue:
 			// Leaf stmts — no nested blocks to recurse into. updatersFor
 			// below handles Assign-driven updater injection.
 		default:
@@ -1243,7 +1246,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Synthesized: true,
 	}
 
-	// 1. Teardown: for __entry = __slotN { lower.RemoveChild(parent, __entry) }
+	// 1. Teardown: for var __entry = __slotN { lower.RemoveChild(parent, __entry) }
 	entryVar := "__entry"
 	entrySym := &ir.LoopVar{Name: entryVar, Type: ir.TypDyn}
 	teardown := &ir.For{
@@ -1488,7 +1491,8 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Children)
 			case *ir.Window:
 				walk(n.Body)
-			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider:
+			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+				*ir.Break, *ir.Continue:
 				// Leaf/non-structural stmts cannot host an If/For with a
 				// LoweredSlotID.
 			default:

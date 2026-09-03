@@ -1,0 +1,10 @@
+// A condition loop walks nothing, so there is no element for `var` to bind.
+
+import . "sngl:ui"
+
+func f(n int) int {
+    for var i = n < 3 { // ERROR(check) "declares no variable"
+        return 1
+    }
+    return 0
+}

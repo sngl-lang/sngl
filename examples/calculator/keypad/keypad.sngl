@@ -65,9 +65,9 @@ component KeyCap(entry Key, @press Key) {
 
 component Keypad(@press Key) {
     vbox(style={flex=1, gap=0, padding=6}) {
-        for row = rows() {
+        for var row = rows() {
             hbox(style={flex=1, gap=0}) {
-                for entry = row {
+                for var entry = row {
                     KeyCap(entry=entry, @press(k) { press(k) })
                 }
             }

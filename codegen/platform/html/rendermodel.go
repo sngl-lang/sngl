@@ -163,7 +163,8 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 		for _, c := range n.Children {
 			rb.walkStmt(c, path)
 		}
-	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle:
+	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle,
+		*ir.Break, *ir.Continue:
 		// No visual output.
 	}
 }

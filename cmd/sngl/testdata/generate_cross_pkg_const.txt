@@ -27,7 +27,7 @@ component main {
 import . "sngl:ui"
 
 component Row(entries list<string> = []) {
-    for x = entries {
+    for var x = entries {
         text(value=x)
     }
 }

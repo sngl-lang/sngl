@@ -1,5 +1,5 @@
 // A zero-arg computed is auto-called wherever its result is what the position
-// wants. The for iterator was the exception: `for c = chars` reported the
+// wants. The for iterator was the exception: `for var c = chars` reported the
 // func type itself as a bad iterator, so every loop over derived data had to
 // spell the call out.
 
@@ -12,10 +12,10 @@ component main {
     func letters() => string.split(word, "")
 
     vbox {
-        for c = letters {
+        for var c = letters {
             text(value=c)
         }
-        for i, c = letters {
+        for var i, c = letters {
             text(value="{i}{c}")
         }
     }

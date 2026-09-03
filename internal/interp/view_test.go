@@ -118,7 +118,7 @@ component main {
     vbox {
         row(label="one")
         row(label="two")
-        for it = items {
+        for var it = items {
             text #each(value=it)
         }
     }

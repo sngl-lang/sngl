@@ -56,7 +56,8 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		}
 	case *ir.Window:
 		panic(fmt.Sprintf("android: unexpected nested Window in compose tree: %#v", s))
-	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+		*ir.Break, *ir.Continue:
 		// Imperative stmts have no Compose rendering.
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("android: ContextProvider should be lowered before compose emission: %#v", s))
@@ -562,8 +563,12 @@ func composeColorExpr(val string) string {
 	if r, g, b, ok := parseHexColorLiteral(val); ok {
 		return fmt.Sprintf("ComposeColor(red = %d, green = %d, blue = %d, alpha = 255)", r, g, b)
 	}
-	// Runtime Color-struct expression: build from its fields.
-	return fmt.Sprintf("ComposeColor((%s).r, (%s).g, (%s).b, (%s).a)", val, val, val, val)
+	// Runtime Color-struct expression: build from its fields, reading the
+	// expression once. Interpolating it four times meant four calls per
+	// iteration of whatever loop the widget sits in -- `bgOf(entry.tone())`
+	// in the calculator's keypad -- and no compiler can undo that, because
+	// nothing here promises the call is pure. `let` binds it instead.
+	return fmt.Sprintf("(%s).let { ComposeColor(it.r, it.g, it.b, it.a) }", val)
 }
 
 // parseHexColorLiteral parses a Kotlin string literal holding a hex color

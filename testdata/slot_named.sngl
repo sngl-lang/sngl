@@ -27,7 +27,7 @@ component table(
         header {
             text(value="(untitled)")
         }
-        for r = rows {
+        for var r = rows {
             cell(r)
         }
         slot

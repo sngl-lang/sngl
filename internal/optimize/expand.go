@@ -34,12 +34,38 @@ func expandForWindows(pkg *ir.Package, ctx *evalCtx) {
 	mainComp.Body = expanded
 }
 
+// maxStaticUnroll bounds an unroll on a target that has no alternative to
+// one. A static artifact holds the iterations themselves -- a node per
+// element, written into the output -- so a loop with a large constant count
+// is a page nobody wanted: `for seq.count(200000)` produced 3.4 MB of markup
+// and 200000 spans, in a language where the same program is a `for` and a
+// kilobyte.
+//
+// It is a diagnostic rather than a silent truncation, and rather than a
+// runtime loop, because there is nowhere to run one: the author's options are
+// a smaller count or a target with a host language, and only they can pick.
+// The bound is per loop, so nested loops multiply and each is reported where
+// it stands.
+const maxStaticUnroll = 10000
+
 // expandForStmt tries to expand a for-loop over a const iterable.
 // Returns nil if the iterable can't be evaluated. A successful expansion to
 // zero items returns a non-nil empty slice — distinct from "couldn't
 // evaluate" — so the caller can drop the for-loop instead of leaving it for
 // codegen to choke on.
 func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
+	// A loop that walks nothing has no iterable to evaluate, so there are no
+	// iterations to write out: a condition is tested at run time, and a
+	// headless loop has no head at all. Both are refused in a view body, so
+	// the target this unrolls for never sees one -- but a nil Iter reaching
+	// evalExpr would be read as an unevaluable iterable rather than as a
+	// different kind of loop.
+	if fs.Iter == nil {
+		return nil
+	}
+	if t := fs.Iter.ExprType(); t != nil && t.Kind == ir.TypeBool {
+		return nil
+	}
 	val, ok := evalExpr(fs.Iter, ctx)
 	if !ok {
 		return nil
@@ -57,6 +83,16 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		}
 	}
 
+	if len(items) > maxStaticUnroll && ctx.err == nil {
+		pos := ""
+		if fs.AST != nil {
+			pos = fs.AST.Pos.String() + ": "
+		}
+		ctx.err = fmt.Errorf("%sthis loop repeats %d times, and a target with no host language writes every iteration into its output (limit %d): give it a smaller count, or build for a language that can run the loop",
+			pos, len(items), maxStaticUnroll)
+		return nil
+	}
+
 	// Find the LoopVar symbols for the for statement's key and value.
 	keyVar := findLoopVar(fs, fs.Key)
 	valueVar := findLoopVar(fs, fs.Value)
@@ -70,8 +106,8 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		// Create a child context with loop variables bound.
 		childCtx := ctx.child()
 		// Match the checker's loop-var typing (expr.go): for the two-var form
-		// `for key, value = list` the key is the index (int) and the value is
-		// the element; for the single-var form `for item = list` the sole var
+		// `for var key, value = list` the key is the index (int) and the value is
+		// the element; for the single-var form `for var item = list` the sole var
 		// is the element. Decide on the SYNTACTIC form (fs.Value != "") not on
 		// whether the var is referenced — findLoopVar returns nil for an unused
 		// var, so keying off valueVar would treat `for i, x` with an unused x as
@@ -138,7 +174,8 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 			collectWindowStructValues(n.Children, result)
 		case *ir.NodeInst:
 			collectWindowStructValues(n.Children, result)
-		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+			*ir.Break, *ir.Continue:
 			// No nested window declarations.
 		default:
 			panic(fmt.Sprintf("collectWindowStructValues: unhandled stmt %T", n))
@@ -237,7 +274,7 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		}
 	case *ir.Toggle:
 		walkAllExprs(n.Target, visit)
-	case *ir.CanvasRedrawStmt:
+	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No expressions.
 	default:
 		panic(fmt.Sprintf("walkStmtExprs: unhandled stmt %T", n))

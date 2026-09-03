@@ -23,6 +23,62 @@ Two valid forms — no third:
 
 `func name(params) -> Type` is **not valid syntax** (despite occasional appearances in old docs/specs). The arrow `->` is reserved for func *type* expressions only, and even that usage is being phased out.
 
+## Loop forms
+
+`for` has one head, and its *type* says what the loop does — the grammar does
+not distinguish the forms:
+
+- `for var x = xs` / `for var i, x = xs` / `for var k, v = m` — walk a list,
+  iterator or map. `var` is what makes the head a declaration; without it
+  (`for xs`, `for seq.count(3)`) the head is the iterable alone and the loop
+  binds nothing.
+- `for cond { }` — a condition, tested before each iteration.
+- `for { }` — no head at all; ends by `break` or `return`.
+
+`ir.For.IterKind` is that classification, stamped late by `passIterKind` from
+`ir.DeriveIterKind`; each language's `ForHead` emits a per-kind template. A
+condition or headless loop carries no iterable, so `ir.For.Iter` is the
+condition or nil.
+
+The last two are **imperative-only** — function, handler, timer — and so are
+`break` and `continue`. A view body's loop says how many copies of its body
+the rendered tree holds: a list gives that a length and a counted sequence a
+number, and a condition gives neither, so there is nothing for a mutation
+model to diff and nothing for a static renderer to write down. The checker
+refuses all four in a view body with a positioned error (`checkHeadlessFor`,
+`requireLoop`), which keeps codegen to the imperative paths that route through
+`ForHead`. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
+what an escape requires one of, and it resets at every imperative-body
+boundary (`enterFuncBody`) so a lambda cannot break a loop it was written
+inside.
+
+A head expression may not begin with `{`: that brace is the body's. `CondPrimary`
+in `internal/parser/sngl.ebnf` is `StatementPrimary` minus `AnonStructLit` for
+exactly that reason — with the head optional, `lbrace` in `FIRST(CondExpr)` is
+a predict conflict against the `StmtBlock` that follows. So a map or
+anonymous-struct literal in an `if`/`for` head is written parenthesized. The
+tree-sitter grammar says the same thing by preferring the headless `for`
+alternative at a higher dynamic precedence.
+
+**`else` means the body never ran.** For an iterable that is "it was empty";
+for a condition, "it was false the first time it was asked". A `break` does
+not trigger it, since a loop cannot break out of a body that never ran, and
+`for { } else { }` is an error because the body always runs.
+
+In an imperative body `passForElse` states that as a flag: `__ranN := false`
+before the loop, set as the body's first statement, tested by an `if` after
+it. Every backend already emits those three statements, so no language grows a
+case — before the pass, `codegen/irwalk` read a loop's head and body and
+nothing else, and an imperative for-else compiled with the else silently
+dropped. View bodies keep theirs, where the platform emitters render it
+structurally. The pass walks the declared imperative roots *and every lambda
+body in the package* (`ir.Walk`), because on android a handler body is a
+lambda in `NodeInst.Props` by then rather than an `ir.EventHandler` — a
+hand-written descent through the view finds nothing there. `passCSE` walks
+only `NodeInst.Handlers`, so it still has that blind spot: a pure call made
+twice in an android click handler is not bound to a temp, where the same
+handler on every other target is.
+
 ## Build & Test Commands
 
 ```bash
@@ -103,8 +159,8 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   rewrite `"a\nb"` with a raw newline in it.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
-- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Three run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -125,6 +181,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/tree/` → `sngl:tree`** — the tree vocabulary: the `kind` mark, the `default` tree an ordinary component belongs to, and `one<T>` for a slot that takes exactly one.
 - **`lib/app/` → `sngl:app`** — the application shell: `window`, `errorBoundary`, the `error` those boundaries catch, and the top-level `Options` schema. The checker loads it at startup without binding it, because its declarations carry node kinds a visual tree dispatches on; a program still imports it to write a `window`.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup like `sngl:app`, for the same reason: its declarations carry kinds the compiler dispatches on.
+- **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
@@ -317,7 +374,7 @@ When adding a new stdlib package that needs runtime support:
 ### Built-in Generic Types
 
 - **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
-- **`iter<T>`** — opaque generic iterator type. `list<T>` and `map<K, V>` implicitly convert to `iter<T>` (list elements; map yields key-value pairs). For-loops bind elements via `for x = iter`; map iteration uses two variables `for k, v = m`. No methods, no fields.
+- **`iter<T>`** — opaque generic iterator type. `list<T>` and `map<K, V>` implicitly convert to `iter<T>` (list elements; map yields key-value pairs). For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
 
 Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 

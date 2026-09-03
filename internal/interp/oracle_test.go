@@ -29,7 +29,7 @@ const oracleSrc = `import . "sngl:ui"
 component main {
     var items = ["a", "b", "c"]
     vbox {
-        for it = items {
+        for var it = items {
             text(value=it, key=it)
         }
     }

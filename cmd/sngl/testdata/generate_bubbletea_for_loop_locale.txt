@@ -24,7 +24,7 @@ output { go { bubbletea } }
 component main {
     var locales = ["en-US", "fr-FR", "es-MX"]
     var n = 1234
-    for l = locales {
+    for var l = locales {
         i18n.locale(l) {
             text(value=i18n.numberInt(n, "decimal"))
         }

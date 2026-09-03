@@ -5,7 +5,7 @@ import . "sngl:ui"
 component main {
     var items list<int> = [1, 2, 3]
     button(text="add", @click { items.push(4) })
-    for item = items {
+    for var item = items {
         text(value=string(item))
     }
 }
@@ -16,11 +16,11 @@ component main {
     var __root dyn
     var __slot0 list<dyn> = []
     func __renderSlot0(parent dyn) void {
-        for __entry = __slot0 {
+        for var __entry = __slot0 {
             lower.RemoveChild(parent, __entry)
         }
         __slot0 = []
-        for item = items {
+        for var item = items {
             var __n0 text = lower.CreateNode("text")
             __n0.value = string(item)
             lower.AppendChild(parent, __n0)

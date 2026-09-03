@@ -26,7 +26,7 @@ component main {
     }
 
     vbox {
-        for l = labels() {
+        for var l = labels() {
             button(text=l, @click { pick(l) })
         }
         text(value=chosen)

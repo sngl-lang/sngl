@@ -13,7 +13,7 @@ sngl generate --platform html --lang none -o out guards.sngl
 grep 'return "zero"' out/index.html
 
 # A zero-arg computed is called where its result is what the position wants.
-# The for iterator was the one place that did not, so `for c = letters` failed
+# The for iterator was the one place that did not, so `for var c = letters` failed
 # to check at all.
 sngl test iterate.sngl
 stdout '1 tests, 0 failures'
@@ -42,7 +42,7 @@ func repeat(s string, n int) string {
 }
 
 func firstNegative(xs list<int>) int {
-    for x = xs {
+    for var x = xs {
         if x < 0 {
             return x
         }
@@ -88,7 +88,7 @@ component main {
     func letters() => string.split(word, "")
 
     vbox {
-        for c = letters {
+        for var c = letters {
             text(value=c)
         }
     }

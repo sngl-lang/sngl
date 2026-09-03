@@ -189,7 +189,7 @@ For node
 
 component App {
     var items = [1, 2, 3]
-    for item = items {
+    for var item = items {
         text(value=item)
     }
 }
@@ -219,12 +219,40 @@ component App {
               value: (identifier))))))))
 
 ================
+For node binding nothing
+================
+
+component App {
+    for seq.count(3) {
+        text(value="tick")
+    }
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (statement_block
+      (for_node
+        (method_expression
+          receiver: (identifier)
+          method: (identifier)
+          (integer_literal))
+        (statement_block
+          (visual_node
+            component: (identifier)
+            (named_arg
+              name: (identifier)
+              value: (string_literal))))))))
+
+================
 For node with index
 ================
 
 component App {
     var items = [1, 2, 3]
-    for item, idx = items {
+    for var idx, item = items {
         text(value=item)
     }
 }

@@ -57,7 +57,7 @@ component table(rows list<Row>, slot header, slot cell(Row), slot _) {
         header {
             text(value="(untitled)")
         }
-        for r = rows {
+        for var r = rows {
             cell(r)
         }
         slot

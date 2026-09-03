@@ -15,7 +15,7 @@ component main {
         {name="a"},
         {name="b"},
     ]
-    for item = items {
+    for var item = items {
         card(name=item.name)
     }
     button #add(text="add", @click { items.push({name="x"}) })

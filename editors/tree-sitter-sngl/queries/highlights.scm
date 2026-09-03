@@ -14,6 +14,11 @@
   "return"
 ] @keyword
 
+; break and continue: the rule is the bare token, so tree-sitter hides the
+; anonymous "break"/"continue" and only the named statement node is queryable.
+(break_statement) @keyword
+(continue_statement) @keyword
+
 ; Literal keywords
 (true) @constant.builtin
 (false) @constant.builtin

@@ -7,7 +7,7 @@ import . "sngl:internal/marks"
 // almost every screen wants:
 //
 //     if users.loading() { spinner() }
-//     for u = users.or([]) { row(user = u) }
+//     for var u = users.or([]) { row(user = u) }
 //
 // A fetched box comes from `query` and nothing else; the three constructors
 // below make the settled, failed and pending states directly, for an adapter

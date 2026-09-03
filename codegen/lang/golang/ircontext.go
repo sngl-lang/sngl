@@ -388,8 +388,63 @@ func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 }
 
 func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
+	// A loop that declared no variable still needs a counter where Go has no
+	// discard for one: `for range xs` covers the element and map forms, but a
+	// counted loop counts, so it names a variable the condition reads -- which
+	// is also what keeps Go from calling it unused.
+	key := n.Key
+	if key == "" {
+		key = "__i"
+	}
 	switch n.IterKind {
+	case ir.IterForever:
+		// Go's own spelling for it, and the head the two kinds below are the
+		// condition-carrying form of.
+		return "for {"
+	case ir.IterCondition:
+		return "for " + iter + " {"
+	case ir.IterCounted:
+		c := n.Counted
+		start, end := gc.EvalExpr(c.Start), gc.EvalExpr(c.End)
+		// `seq.count(n)` -- from zero, by one -- is Go's range over an int
+		// (1.22), which counts the same way including the empty case for a
+		// bound of zero or less. No temp: range evaluates its operand once.
+		if n.Value == "" && c.Step == 1 && start == "0" {
+			if key == "__i" {
+				return fmt.Sprintf("for range %s {", end)
+			}
+			return fmt.Sprintf("for %s := range %s {", key, end)
+		}
+		cmp, step := "<", fmt.Sprintf(" += %d", c.Step)
+		switch {
+		case c.Step == 1:
+			step = "++"
+		case c.Step < 0:
+			cmp, step = ">", fmt.Sprintf(" -= %d", -c.Step)
+		}
+		if n.Value != "" {
+			// Two variables: Key is the ordinal, Value the number. Both are
+			// counters, so the ordinal costs an increment rather than the
+			// sequence it would otherwise be indexing into. Go has no
+			// compound assignment in a two-name post statement, so the step
+			// is spelled as the sum it is.
+			next := fmt.Sprintf("%s + %d", n.Value, c.Step)
+			if c.Step < 0 {
+				next = fmt.Sprintf("%s - %d", n.Value, -c.Step)
+			}
+			return fmt.Sprintf("for %s, %s, __end := 0, %s, %s; %s %s __end; %s, %s = %s+1, %s {",
+				n.Key, n.Value, start, end, n.Value, cmp, n.Key, n.Value, n.Key, next)
+		}
+		// The end bound is bound to a temp in the init clause: it is an
+		// arbitrary expression and the condition reads it once per iteration,
+		// where SNGL evaluates the iterable once. A nested counted loop
+		// declares its own __end in its own scope.
+		return fmt.Sprintf("for %s, __end := %s, %s; %s %s __end; %s%s {",
+			key, start, end, key, cmp, key, step)
 	case ir.IterMapEntries:
+		if n.Key == "" {
+			return fmt.Sprintf("for range %s {", iter)
+		}
 		valueVar := n.Value
 		if valueVar == "" {
 			valueVar = "_"
@@ -398,8 +453,34 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	case ir.IterIndexed:
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
 	default:
+		// An iter<T> is a func, and `range` over one yields the element
+		// alone; a slice yields (index, element). Which of the two the
+		// iterable is, is a Go representation question rather than a shape
+		// question, so IterKind does not classify it -- IRTypeToGo makes the
+		// same choice from the same type.
+		if lazyIter(n.Iter) {
+			if n.Key == "" {
+				return fmt.Sprintf("for range %s {", iter)
+			}
+			return fmt.Sprintf("for %s := range %s {", n.Key, iter)
+		}
+		if n.Key == "" {
+			return fmt.Sprintf("for range %s {", iter)
+		}
 		return fmt.Sprintf("for _, %s := range %s {", n.Key, iter)
 	}
+}
+
+// lazyIter reports whether e is spelled as a pull sequence in Go -- an
+// iter<T>, which IRTypeToGo renders as func(func(T) bool). A list or map
+// reaching an iter<T> position carries an ir.Conversion, so this reads the
+// expression's own type and not the loop's element type.
+func lazyIter(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeIter
 }
 
 func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
@@ -443,7 +524,7 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 		return "", false
 	}
 	// And it has to *be* the receiver. A binding that merely shares its name
-	// shadows it -- `for m = entry().typeDoc.methods` in a Model whose receiver
+	// shadows it -- `for var m = entry().typeDoc.methods` in a Model whose receiver
 	// is `m` -- and its fields are its own type's, exported like any other Go
 	// struct's, rather than the Model's unexported state.
 	switch sym := id.Sym.(type) {
@@ -1079,6 +1160,15 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			}
 		}
 	}
+	// A list flowing into an iter<T> position becomes the pull sequence that
+	// type is. slices.Values is that, in the standard library: it yields the
+	// slice's elements one at a time and copies nothing.
+	if n.Type != nil && n.Type.Kind == ir.TypeIter && len(n.Type.Elems) == 1 {
+		if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeList {
+			gc.RequireImport("slices")
+			return "slices.Values(" + gc.EvalExpr(n.Operand) + ")"
+		}
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string.
@@ -1184,6 +1274,26 @@ func structLitTypeName(n *ir.StructLit) string {
 	return fb.String()
 }
 
+// goReturnType is the result clause of a Go signature, leading space
+// included, or "" for a function that returns nothing.
+//
+// Nothing is the answer for a nil or void return, and also for a bare TypeDyn:
+// that has no first-class Go representation, so the signature reads
+// `func foo()` rather than `func foo() any`. TypeDyn *with* a Meta hint is a
+// raw Go type ref (e.g. "fyne.CanvasObject") and must round-trip.
+func goReturnType(ret *ir.Type) string {
+	if ret == nil || ret.Kind == ir.TypeVoid {
+		return ""
+	}
+	if ret.Kind == ir.TypeDyn {
+		if meta, ok := ret.Meta.(string); ok && meta != "" {
+			return " " + meta
+		}
+		return ""
+	}
+	return " " + IRTypeToGo(ret)
+}
+
 func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
 		return "func() any { return nil }"
@@ -1196,20 +1306,21 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		}
 		params[i] = p.Name + " " + goType
 	}
-	retType := "any"
-	if n.Func.Return != nil {
-		retType = IRTypeToGo(n.Func.Return)
-	}
+	// Same rule as a named func's signature: a lambda that returns nothing
+	// says nothing, so an event handler reads `func()` and can be assigned to
+	// a host callback field of that type. It used to read `func() any`, which
+	// Go rejected at the assignment and again for the missing return.
+	retType := goReturnType(n.Func.Return)
 
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
 			body := gc.EvalExpr(ret.Value)
-			return "func(" + strings.Join(params, ", ") + ") " + retType + " { return " + body + " }"
+			return "func(" + strings.Join(params, ", ") + ")" + retType + " { return " + body + " }"
 		}
 	}
 
 	var b strings.Builder
-	b.WriteString("func(" + strings.Join(params, ", ") + ") " + retType + " {\n")
+	b.WriteString("func(" + strings.Join(params, ", ") + ")" + retType + " {\n")
 	for _, stmt := range n.Func.Block {
 		for _, line := range gc.EvalStmt(stmt) {
 			b.WriteString("\t\t" + line + "\n")
@@ -1373,7 +1484,17 @@ func IRTypeToGo(t *ir.Type) string {
 		// Rendered empty so a caller building `func name(params) <T>` gets
 		// `func name(params)`.
 		return ""
-	case ir.TypeIter, ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
+	case ir.TypeIter:
+		// An iter<T> is a pull sequence, never a materialised one: the shape
+		// `range` accepts over a function (Go 1.23), spelled structurally so
+		// nothing has to import "iter" to name it. A list reaching an iter<T>
+		// position is wrapped by evalConversion, and the wrapper yields the
+		// elements one at a time -- so no list is ever built to be iterated.
+		if len(t.Elems) == 1 {
+			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
+		}
+		return "func(func(any) bool)"
+	case ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
 		// These have no first-class Go representation, and fall back to `any`.
 		// Listed explicitly so the default arm catches a new TypeKind.
 		return "any"
@@ -1549,20 +1670,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 	for i, p := range fn.Params {
 		params[i] = p.Name + " " + IRTypeToGo(p.Type)
 	}
-	retType := ""
-	if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
-		// TypeDyn without a raw-type hint (Meta) has no first-class Go
-		// representation — skip emission so the signature reads "func foo()"
-		// rather than "func foo() any". TypeDyn WITH Meta is a raw Go
-		// type ref (e.g. "fyne.CanvasObject") and must round-trip.
-		if fn.Return.Kind == ir.TypeDyn {
-			if meta, ok := fn.Return.Meta.(string); ok && meta != "" {
-				retType = " " + meta
-			}
-		} else {
-			retType = " " + IRTypeToGo(fn.Return)
-		}
-	}
+	retType := goReturnType(fn.Return)
 
 	sig := "func "
 	switch {

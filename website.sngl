@@ -38,15 +38,15 @@ component NavSidebar(currentHref = "") {
 	docui.Sidebar(homeHref="/index.html", logo=logo) {
 		docui.SearchBox(entries=searchEntries)
 		html.ul {
-			for group = navTree {
+			for var group = navTree {
 				if group.title == "" {
-					for item = group.items {
+					for var item = group.items {
 						docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
 					}
 				}
 				if group.title != "" {
 					docui.NavGroup(title=group.title, href=group.href) {
-						for item = group.items {
+						for var item = group.items {
 							docui.NavItem(text=item.title, href=item.href, active=currentHref == item.href)
 						}
 					}
@@ -195,11 +195,11 @@ component TutorialContent() {
 		html.link(rel="stylesheet", href=pgAssets.path("tutorial.css"))
 		html.div(class="tutorial-layout") {
 			html.aside(id="lesson-nav", class="tutorial-nav") {
-				for section = lessonSections {
+				for var section = lessonSections {
 					html.div(class="tutorial-section") {
 						html.h3(innerText=section.title)
 						html.ul {
-							for lesson = section.lessons {
+							for var lesson = section.lessons {
 								html.li {
 									html.a(innerText=lesson.title, href="#lesson=" + lesson.slug)
 								}
@@ -237,7 +237,7 @@ component main {
 		PageLayout(title="Components", currentHref="/components/index.html") {
 			html.p(innerText="The components a first application reaches for. Each links to its API reference and a live preview.")
 			html.div(class="component-list") {
-				for comp = curated {
+				for var comp = curated {
 					html.a(class="component-card", href=comp.href) {
 						html.h3(innerText=comp.name)
 						html.p(innerText=comp.blurb)
@@ -255,7 +255,7 @@ component main {
 		PageLayout(title="The SNGL library", currentHref="/docs/sngl/index.html") {
 			html.p(innerText="Every package of the embedded library. Only sngl:builtin is in scope without an import.")
 			html.ul(class="decl-list") {
-				for pkg = libraryTree {
+				for var pkg = libraryTree {
 					html.li {
 						html.a(href=pkg.href, innerText=pkg.title)
 						html.span(innerText=pkg.blurb, class="decl-doc")
@@ -266,7 +266,7 @@ component main {
 	}
 
 	// Rich per-component pages (preview + highlighted code + props/events tables)
-	for comp = components {
+	for var comp = components {
 		window #componentPage(title=comp.name, href=comp.href, favicon=logo) {
 			PageLayout(title=comp.name, currentHref=componentPage.href) {
 				html.p(innerText=comp.doc, class="component-blurb")
@@ -281,7 +281,7 @@ component main {
 						docui.HeaderCell(value="Type")
 						docui.HeaderCell(value="Description")
 					}
-					for prop = comp.props {
+					for var prop = comp.props {
 						docui.Row {
 							docui.CodeCell(value=prop.name)
 							docui.Cell(value=prop.type)
@@ -295,7 +295,7 @@ component main {
 						docui.HeaderCell(value="Name")
 						docui.HeaderCell(value="Payload Type")
 					}
-					for evt = comp.events {
+					for var evt = comp.events {
 						docui.Row {
 							docui.CodeCell(value=evt.name)
 							docui.Cell(value=evt.payloadType)
@@ -308,7 +308,7 @@ component main {
 	}
 
 	// One index page per package: the library's, then each target's.
-	for pkg = allPackages {
+	for var pkg = allPackages {
 		window #packagePage(title=pkg.title, href=pkg.href, favicon=logo) {
 			PageLayout(title=pkg.title, currentHref=packagePage.href) {
 				docui.PackagePage(path=pkg.path, baseHref=pkg.baseHref)
@@ -319,7 +319,7 @@ component main {
 	// Per-decl detail pages across every package (top-level decls + type
 	// methods + enum members). A library component is skipped by AllDeclPages
 	// itself — it is rendered above as a rich page.
-	for d = allDeclPages {
+	for var d = allDeclPages {
 		window #declPage(title=d.title, href=d.href, favicon=logo) {
 			PageLayout(title=d.title, currentHref=d.href) {
 				docui.Markdown(src=d.body)
@@ -340,7 +340,7 @@ component main {
 					docui.HeaderCell(value="Type")
 					docui.HeaderCell(value="Description")
 				}
-				for opt = targets.globalOptions {
+				for var opt = targets.globalOptions {
 					docui.Row {
 						docui.CodeCell(value=opt.name)
 						docui.Cell(value=opt.type)
@@ -353,25 +353,25 @@ component main {
 			docui.Table {
 				docui.HeaderRow {
 					docui.HeaderCell(value="Platform")
-					for col = targets.platformCapabilities {
+					for var col = targets.platformCapabilities {
 						docui.HeaderCell(value=col)
 					}
 				}
-				for p = targets.platforms {
+				for var p = targets.platforms {
 					docui.Row {
 						docui.CodeCell(value=p.name)
-						for c = p.capabilities {
+						for var c = p.capabilities {
 							docui.Cell(value=c.value == "" ? "—" : c.value)
 						}
 					}
 				}
 			}
 
-			for p = targets.platforms {
+			for var p = targets.platforms {
 				text(value=p.name, style={fontSize=20, fontWeight="bold"})
 				text(value=p.doc)
 				text(value="Supported languages:")
-				for lname = p.languages {
+				for var lname = p.languages {
 					text(value="• " + lname, style={fontFamily="monospace"})
 				}
 				text(value="Options", style={fontSize=16, fontWeight="bold"})
@@ -381,7 +381,7 @@ component main {
 						docui.HeaderCell(value="Type")
 						docui.HeaderCell(value="Description")
 					}
-					for opt = p.options {
+					for var opt = p.options {
 						docui.Row {
 							docui.CodeCell(value=opt.name)
 							docui.Cell(value=opt.type)
@@ -402,21 +402,21 @@ component main {
 			docui.Table {
 				docui.HeaderRow {
 					docui.HeaderCell(value="Language")
-					for col = targets.languageCapabilities {
+					for var col = targets.languageCapabilities {
 						docui.HeaderCell(value=col)
 					}
 				}
-				for l = targets.languages {
+				for var l = targets.languages {
 					docui.Row {
 						docui.CodeCell(value=l.name)
-						for c = l.capabilities {
+						for var c = l.capabilities {
 							docui.Cell(value=c.value == "" ? "—" : c.value)
 						}
 					}
 				}
 			}
 
-			for l = targets.languages {
+			for var l = targets.languages {
 				text(value=l.name, style={fontSize=20, fontWeight="bold"})
 				text(value=l.doc)
 				text(value="Options", style={fontSize=16, fontWeight="bold"})
@@ -426,7 +426,7 @@ component main {
 						docui.HeaderCell(value="Type")
 						docui.HeaderCell(value="Description")
 					}
-					for opt = l.options {
+					for var opt = l.options {
 						docui.Row {
 							docui.CodeCell(value=opt.name)
 							docui.Cell(value=opt.type)
@@ -439,7 +439,7 @@ component main {
 	}
 
 	// Documentation pages
-	for page = pages {
+	for var page = pages {
 		window #docPage(title=page.title, href=page.href, favicon=logo) {
 			PageLayout(title=page.title, currentHref=page.href) {
 				if page.href == "/index.html" {

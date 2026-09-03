@@ -54,15 +54,23 @@ func oracleByStmts(env *Env, stmts []ir.Stmt, id string, out *[]map[string]any) 
 			if err != nil {
 				continue
 			}
-			list, ok := iterVal.([]any)
-			if !ok || len(list) == 0 {
+			// asIterable rather than a []any assertion: a sequence value
+			// (sngl:seq) is not a list, and the walk this pins predates the
+			// type rather than having an answer about it.
+			count, at, ok := asIterable(iterVal)
+			if !ok || count == 0 {
 				oracleByStmts(env, n.Else, id, out)
 				continue
 			}
-			for i, item := range list {
+			list, _ := iterVal.([]any)
+			for i := range count {
+				item := at(i)
 				child := env.Snapshot()
-				child.Set(n.KeySym, item)
-				child.Set(n.ValueSym, i)
+				// Frozen walk, one exception: it bound a two-variable loop's
+				// element to the index name, which every compiled backend
+				// contradicted. The oracle exists to pin what the walk
+				// answered, not to preserve a disagreement with codegen.
+				bindLoopElem(child, n, i, item, list)
 				oracleByStmts(child, n.Body, id, out)
 			}
 		case *ir.SlotInst:

@@ -5,7 +5,7 @@ import . "sngl:ui"
 component main {
     var sum int = 0
     func run() {
-        for x = [1, 2, 3] {
+        for var x = [1, 2, 3] {
             var f func() = func() { sum = sum + x }
             f()
         }
@@ -23,7 +23,7 @@ func __lambda0(state __lambda0_caps) {
 component main {
     var sum int = 0
     func run(this main) {
-        for x = [1, 2, 3] {
+        for var x = [1, 2, 3] {
             var f func() = __closure(__lambda0, __lambda0_caps{
                 sum = &sum,
                 x = x,

@@ -1,0 +1,58 @@
+# Who unrolls a loop over a constant iterable.
+#
+# A language target does not: it emits the loop, and its own compiler decides
+# whether to unroll one whose bounds it can see. Writing the copies out
+# ourselves makes the generated source bigger and no faster.
+#
+# A target with no host language has no such choice -- a static artifact holds
+# the iterations themselves -- so it unrolls at any size up to a bound, past
+# which it says so rather than writing a page nobody wanted.
+
+# Kotlin: the loop stands, and the loop variable is what the body names.
+sngl generate --lang kotlin --platform android --out droid app.sngl
+grep 'for \(row in listOf\("a", "b", "c"\)\) \{' droid/MainScreen.kt
+grep 'Text\(text = row' droid/MainScreen.kt
+! grep 'Text\(text = "a"'
+
+# Go, same program, same answer.
+sngl generate --lang go --platform bubbletea --out tui app.sngl
+grep 'for _, row := range \[\]string\{"a", "b", "c"\}' tui/model.go
+
+# Static html unrolls: three spans in the markup, no loop to run.
+sngl generate --lang none --platform html --out web app.sngl
+grep '<span>a</span>' web/index.html
+grep '<span>c</span>' web/index.html
+! grep 'for (' web/index.html
+
+# Past the bound it is a diagnostic, not 200000 spans.
+! sngl generate --lang none --platform html --out big big.sngl
+stderr 'repeats 200000 times'
+stderr 'build for a language that can run the loop'
+
+# The same program is fine on a target that can run the loop -- and a count
+# from zero is Go's range over an int.
+sngl generate --lang go --platform bubbletea --out bigtui big.sngl
+grep 'for range 200000 \{' bigtui/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+
+component main {
+    vbox {
+        for var row = ["a", "b", "c"] {
+            text(value=row)
+        }
+    }
+}
+
+-- big.sngl --
+import "sngl:seq"
+import . "sngl:ui"
+
+component main {
+    vbox {
+        for seq.count(200000) {
+            text(value="x")
+        }
+    }
+}

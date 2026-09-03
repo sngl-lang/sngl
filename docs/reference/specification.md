@@ -175,7 +175,8 @@ The following names are **predeclared identifiers**, not keywords: `true`, `fals
 
 <!-- END GENERATED: keywords -->
 
-`break` and `continue` are reserved for use in loop bodies. Predeclared
+`break` and `continue` act on the innermost enclosing loop; see
+[The for statement](#the-for-statement). Predeclared
 identifiers occupy the outermost scope and may be shadowed by a user
 declaration of the same name (see [Declarations and scope](#declarations-and-scope)).
 
@@ -488,7 +489,7 @@ explicitly.
 
 `ref<T>` is a mutable reference to a value of type `T`. References are not
 written directly by user programs; they arise from the address-of operator `&`
-and, most importantly, from reference loop variables (`for &x = xs`), which
+and, most importantly, from reference loop variables (`for var &x = xs`), which
 make writes to the loop variable flow back to the underlying list element. See
 [The for statement](#the-for-statement).
 
@@ -1101,6 +1102,8 @@ Stmt =
     | ComponentDecl
     | SlotNode
     | "return" [ Expr ]
+    | "break"
+    | "continue"
     | IfNode
     | ForNode
     | VisualOrStmt
@@ -1109,7 +1112,7 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
-ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
 SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
 
@@ -1143,6 +1146,22 @@ assigned.
 `return` with no operand returns from a function that yields no value; `return expr` returns a value, which must be assignable to the function's declared or
 inferred result type.
 
+### The break and continue statements
+
+`break` ends the innermost enclosing loop; `continue` ends the current
+iteration of it and begins the next. Neither takes a label, and neither may be
+written where no loop encloses it.
+
+A loop encloses these statements only if it is one they can still be running
+inside. A lambda body starts over: a `break` written in a lambda that sits in a
+loop body acts on a loop in the lambda, not on the loop the lambda was written
+inside, because the lambda's body runs later — or not at all — and by then that
+loop may be over.
+
+Both are restricted to imperative bodies, for the reason the loop forms below
+are: a view body's loop is a template stamped once per element, not a statement
+stream, so there is no iteration for an escape to cut short.
+
 ### The if statement
 
 ```
@@ -1156,20 +1175,72 @@ each their own scope.
 ### The for statement
 
 ```
-ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 ```
 
-`for` iterates over a list, an iterator, or a map:
+`for` has one head, and what that head *is* says what the loop does. An
+iterable is walked, a `bool` is a condition tested before each iteration, and
+no head at all is a loop that runs until its body leaves it.
 
-- `for x = xs` binds `x` to each element of a list or iterator;
-- `for i, x = xs` binds `i` to the index (an `int`) and `x` to the element;
-- `for k, v = m` binds `k` and `v` to each key and value of a map; map
-  iteration requires the two-variable form.
+Iterating a list, an iterator, or a map:
+
+- `for var x = xs` binds `x` to each element of a list or iterator;
+- `for var i, x = xs` binds `i` to the index (an `int`) and `x` to the element;
+- `for var k, v = m` binds `k` and `v` to each key and value of a map; map
+  iteration requires the two-variable form;
+- `for xs` binds nothing, for a loop whose body never names the element.
+
+A loop that names its element declares a variable, and `var` says so, as it
+does everywhere else a name is introduced. It is also what tells the two forms
+apart: without it, the head is the iterable alone.
 
 The loop variables are scoped to the loop body. Prefixing the element variable
-with `&` (`for &x = xs`, `for i, &x = xs`) binds it as a `ref<T>`, so that
+with `&` (`for var &x = xs`, `for var i, &x = xs`) binds it as a `ref<T>`, so that
 assigning to `x` — or to a field of `x` — writes through to the underlying list
 element by index. The index variable may not be taken by reference.
+
+Iterating on a condition, or on nothing:
+
+- `for x < n` runs its body while the head is `true`, testing it before each
+  iteration;
+- `for` runs its body until a `break` or a `return` leaves the loop.
+
+Neither walks anything, so neither declares a variable: writing `var` in
+either head is an error, since there is no element for it to bind.
+
+Both are restricted to **imperative bodies** — a function, a handler, a timer.
+A view body repeats its body once per element of something, which is what
+gives the rendered tree a shape: a list gives that a length and a counted
+sequence gives it a number, while a condition gives it neither. Writing either
+form in a view body is an error.
+
+A head expression may not begin with `{`: that brace is the body's. A map or
+anonymous-struct literal in the head of a `for` — or of an `if` — is written
+parenthesized.
+
+#### The else block
+
+A loop's `else` block runs when **the body never ran**:
+
+<!-- SNGL-component -->
+
+```sngl
+import . "sngl:ui"
+var items list<string> = []
+for var item = items {
+    text(value=item)
+} else {
+    text(value="Nothing yet")
+}
+```
+
+For a loop over an iterable that is "the iterable was empty"; for a condition
+loop it is "the condition was false the first time it was asked". A `break`
+does not trigger the `else`, because a loop cannot break out of a body that
+never ran.
+
+`for { } else { }` is an error: a loop with no condition always runs its body,
+so the block would be unreachable rather than an empty case.
 
 ### The platform statement
 
@@ -1319,7 +1390,7 @@ variables.
 
 ### References in loops
 
-A reference loop variable (`for &x = xs`) makes assignments to the element — and
+A reference loop variable (`for var &x = xs`) makes assignments to the element — and
 to its fields — write back to the list by index, as described under
 [The for statement](#the-for-statement). This is the supported way to mutate a
 list's elements in place; structs are otherwise value types and copying them
@@ -1451,6 +1522,8 @@ Stmt =
     | ComponentDecl
     | SlotNode
     | "return" [ Expr ]
+    | "break"
+    | "continue"
     | IfNode
     | ForNode
     | VisualOrStmt
@@ -1459,7 +1532,7 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
-ForNode = "for" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr StmtBlock [ "else" StmtBlock ]
+ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
 SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
 

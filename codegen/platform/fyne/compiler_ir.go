@@ -1060,7 +1060,8 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 				if parent, child, ok := appendChildEdge(n); ok {
 					kids[parent] = append(kids[parent], child)
 				}
-			case *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:
+			case *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+				*ir.Break, *ir.Continue:
 				// No CreateNode call to harvest.
 			case *ir.ContextProvider:
 				panic(fmt.Sprintf("fyne.collectNodes: ContextProvider should be lowered: %#v", n))
