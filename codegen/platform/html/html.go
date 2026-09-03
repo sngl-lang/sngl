@@ -58,6 +58,10 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
+	// The DOM puts a child at a position, so a keyed reconciliation may move
+	// one node instead of rebuilding the run. htmlTranslator answers the op;
+	// the two are checked against each other in codegen's tests.
+	f.InsertBefore = true
 	f.Canvas = true
 	f.ReactiveCanvas = true
 	return f

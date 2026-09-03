@@ -57,6 +57,29 @@ type IntrinsicTranslator interface {
 	OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt
 }
 
+// ChildInserter is implemented by a platform whose container can put a child
+// at a position rather than only at the end.
+//
+// Optional, and the only optional operation in the protocol: a keyed
+// reconciliation inserting in the middle needs it, and a toolkit whose
+// container appends is not wrong for lacking one. Declared as its own
+// interface rather than a method on IntrinsicTranslator so a platform that
+// cannot do it says so by not writing the method, instead of writing one that
+// quietly does nothing -- which is the shape every silent-drop bug in this
+// package has had.
+//
+// A platform implementing this must also declare the matching capability, or
+// lowering will never emit the op it answers; a platform declaring the
+// capability without implementing this emits an op nothing dispatches. The two
+// are checked against each other in codegen's tests.
+type ChildInserter interface {
+	// OnInsertBefore puts child into parent immediately before ref. A ref the
+	// parent does not hold, or a null ref, means the end -- the same rule the
+	// DOM's insertBefore follows, so a reconciliation walking a desired order
+	// can pass the next surviving node without checking whether there is one.
+	OnInsertBefore(ctx context.Context, parent, child, ref ir.Expr) []ir.Stmt
+}
+
 // WalkLowered iterates the lowered IR statement sequence and dispatches
 // each known shape to t. Returns the concatenated emissions in source
 // order. ctx is passed through to every translator method; if the
@@ -99,6 +122,17 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				return t.OnUpdateComponent(ctx, n.Call.Args[0].Value, prop, n.Call.Args[2].Value)
 			case isLowerIntrinsic(n.Call, ir.NodeOpDestroyComponent) && len(n.Call.Args) == 1:
 				return t.OnDestroyComponent(ctx, n.Call.Args[0].Value)
+			case isLowerIntrinsic(n.Call, ir.NodeOpInsertBefore) && len(n.Call.Args) == 3:
+				// Only a platform that declared the capability can be reached
+				// by this op, so a translator without the interface here is a
+				// capability declared and not implemented rather than an
+				// ordinary absence.
+				ins, ok := t.(ChildInserter)
+				if !ok {
+					panic("codegen: a platform emitted " + ir.NodeOpInsertBefore +
+						" without implementing ChildInserter; the capability and the interface must agree")
+				}
+				return ins.OnInsertBefore(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
 			}
 			// A slot append. push mutates its receiver and returns nothing, so
 			// the lowering emits the call rather than an assignment to the

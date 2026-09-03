@@ -57,6 +57,10 @@ func (t *trace) OnDestroyComponent(_ context.Context, inst ir.Expr) []ir.Stmt {
 	t.add("destroy-component %s", identName(inst))
 	return nil
 }
+func (t *trace) OnInsertBefore(_ context.Context, p, c, ref ir.Expr) []ir.Stmt {
+	t.add("insert %s %s before %s", identName(p), identName(c), identName(ref))
+	return nil
+}
 func (t *trace) OnIter(_ context.Context, e ir.Expr) ir.Expr { return e }
 func (t *trace) OnCond(_ context.Context, e ir.Expr) ir.Expr { return e }
 func (t *trace) OnDefault(_ context.Context, s ir.Stmt) []ir.Stmt {
@@ -242,6 +246,7 @@ func nodeOpShapes() map[string]struct {
 		ir.NodeOpAppendChild:      {call(lower(ir.NodeOpAppendChild, &ir.Ident{Name: "p"}, &ir.Ident{Name: "c"})), "append p c"},
 		ir.NodeOpRemoveChild:      {call(lower(ir.NodeOpRemoveChild, &ir.Ident{Name: "p"}, &ir.Ident{Name: "c"})), "remove p c"},
 		ir.NodeOpAttachHandler:    {call(lower(ir.NodeOpAttachHandler, &ir.Ident{Name: "n"}, str("click"), &ir.Ident{Name: "h"})), "attach n click h"},
+		ir.NodeOpInsertBefore:     {call(lower(ir.NodeOpInsertBefore, &ir.Ident{Name: "p"}, &ir.Ident{Name: "c"}, &ir.Ident{Name: "r"})), "insert p c before r"},
 	}
 }
 
@@ -262,4 +267,32 @@ func TestEveryNodeOpIsDispatched(t *testing.T) {
 			t.Errorf("%s dispatched to %q, want %q", op, got, shape.want)
 		}
 	}
+}
+
+// noInserter is a translator without ChildInserter: a platform that never
+// declared Features.InsertBefore, and so should never meet the op.
+//
+// The embedded interface is what makes it one — it promotes the whole base
+// contract and nothing else, so the optional method is genuinely absent.
+// Embedding trace instead would have inherited OnInsertBefore and quietly
+// tested nothing.
+type noInserter struct{ IntrinsicTranslator }
+
+// TestInsertBeforeWithoutInserterIsReported pins the other half of the
+// pairing. A platform declaring the capability without implementing the
+// interface would otherwise have the op fall through to OnDefault and render
+// as a call to a function nothing declares -- silently, which is the failure
+// mode this protocol keeps having. It is a panic naming both halves instead.
+func TestInsertBeforeWithoutInserterIsReported(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("want a panic naming the missing ChildInserter")
+		}
+		if msg, _ := r.(string); !strings.Contains(msg, "ChildInserter") {
+			t.Errorf("panic = %v; want it to name ChildInserter", r)
+		}
+	}()
+	stmt := nodeOpShapes()[ir.NodeOpInsertBefore].stmt
+	WalkLowered(context.Background(), []ir.Stmt{stmt}, &noInserter{})
 }

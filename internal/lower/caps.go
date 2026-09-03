@@ -58,6 +58,13 @@ type Features struct {
 	// ReactiveCanvas requests passCanvasReactivity: injects CanvasRedrawStmt
 	// into handler/timer bodies that mutate vars read by a canvas draw func.
 	ReactiveCanvas bool
+	// InsertBefore says the platform's container can put a child at a
+	// position, not only at the end -- so a keyed reconciliation may move one
+	// child instead of rebuilding the run. Opt-in: a toolkit whose container
+	// appends is not wrong for lacking it, and the rebuild it keeps is
+	// correct, just less direct. A platform declaring this must implement
+	// codegen.ChildInserter.
+	InsertBefore bool
 	// Effects says the platform emits an `effect` node itself and wants it left
 	// standing. A framework whose own model already brackets a lifetime keyed
 	// on a value -- Compose's DisposableEffect is one -- expresses the
@@ -112,6 +119,7 @@ func (f Features) ToLowerCaps() Caps {
 		Canvas:             f.Canvas,
 		ReactiveCanvas:     f.ReactiveCanvas,
 		NoEffects:          !f.Effects,
+		InsertBefore:       f.InsertBefore,
 	}
 }
 
@@ -166,6 +174,10 @@ type Caps struct {
 	// run its bracket. False leaves the node for the platform to emit. See
 	// Features.Effects.
 	NoEffects bool
+	// InsertBefore permits the InsertBefore node operation: the platform can
+	// put a child at a position rather than only at the end. See
+	// Features.InsertBefore; the platform must implement codegen.ChildInserter.
+	InsertBefore bool
 }
 
 // Merge returns the field-wise OR of c and other. Either side disabling a
@@ -187,6 +199,11 @@ func (c Caps) Merge(other Caps) Caps {
 		Canvas:             c.Canvas || other.Canvas,
 		ReactiveCanvas:     c.ReactiveCanvas || other.ReactiveCanvas,
 		NoEffects:          c.NoEffects || other.NoEffects,
+		// Either, like every other capability here: a merge puts a language's
+		// limits beside a platform's, and this is a statement about the
+		// platform's container that no language has an opinion on. Requiring
+		// both would have the language's silence veto it.
+		InsertBefore:       c.InsertBefore || other.InsertBefore,
 		NoReactivity:       c.NoReactivity || other.NoReactivity,
 		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
 		NoListLambdas:      c.NoListLambdas || other.NoListLambdas,
@@ -262,6 +279,9 @@ func (c Caps) String() string {
 	}
 	if c.NoEffects {
 		parts = append(parts, "NoEffects")
+	}
+	if c.InsertBefore {
+		parts = append(parts, "InsertBefore")
 	}
 	return strings.Join(parts, ",")
 }

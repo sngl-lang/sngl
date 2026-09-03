@@ -72,6 +72,13 @@ const (
 	NodeOpAppendChild      = "AppendChild"
 	NodeOpRemoveChild      = "RemoveChild"
 	NodeOpAttachHandler    = "AttachHandler"
+	// NodeOpInsertBefore puts a child at a position rather than at the end.
+	// The one optional operation: a keyed reconciliation that inserts in the
+	// middle needs it, and a toolkit whose container only appends cannot
+	// answer it. A platform says it can by declaring the capability, and
+	// lowering emits the op only where one does -- so a target without it
+	// keeps the rebuild it has always done, correct and less direct.
+	NodeOpInsertBefore = "InsertBefore"
 )
 
 // ComponentSetter is the function an instance carries for one prop it can
@@ -92,6 +99,7 @@ var NodeOps = []string{
 	NodeOpAppendChild,
 	NodeOpRemoveChild,
 	NodeOpAttachHandler,
+	NodeOpInsertBefore,
 }
 
 // IsI18nCall reports whether c targets an i18n stdlib entry point. The mark on

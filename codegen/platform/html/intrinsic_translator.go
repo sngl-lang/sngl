@@ -72,7 +72,14 @@ func (g *htmlGen) newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNod
 	return t
 }
 
-var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
+var (
+	_ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
+	// The DOM can put a child at a position, so html declares the capability
+	// in Capabilities() and answers the op here. The two must agree:
+	// TestInsertBeforeCapabilityMatchesTranslator checks every registered
+	// platform.
+	_ codegen.ChildInserter = (*htmlTranslator)(nil)
+)
 
 // The shape of a component instance in the emitted JS. An instance is a plain
 // object: the root node it renders as, one updater per prop the instance can
@@ -195,6 +202,20 @@ func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		Receiver: parent,
 		Func:     &ir.Func{Name: "appendChild"},
 		Args:     []ir.CallArg{{Value: child}},
+	}}}
+}
+
+// OnInsertBefore puts a child at a position. The DOM's own insertBefore takes
+// a null ref to mean the end, which is the rule the protocol borrowed, so a
+// reconciliation can pass the next surviving node without first asking whether
+// there is one.
+func (t *htmlTranslator) OnInsertBefore(ctx context.Context, parent, child, ref ir.Expr) []ir.Stmt {
+	parent, child, ref = t.nodeRef(parent), t.nodeRef(child), t.nodeRef(ref)
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: parent,
+		Func:     &ir.Func{Name: "insertBefore"},
+		Args:     []ir.CallArg{{Value: child}, {Value: ref}},
 	}}}
 }
 
