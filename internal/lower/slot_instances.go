@@ -36,6 +36,9 @@ type slotInstance struct {
 	// described so far, and how many. Locals of the slot function.
 	next *ir.Var
 	idx  *ir.Var
+	// elem is the type of the handle this site holds: an instance of the one
+	// component it instantiates.
+	elem *ir.Type
 	// key is the `key=` the instantiation declared, or nil for positional
 	// identity. With one, live and next are maps and idx is unused; seen
 	// counts how many times each key has been claimed this render.
@@ -48,17 +51,23 @@ type slotInstance struct {
 func (si *slotInstance) keyed() bool { return si.key != nil }
 
 // newSlotInstance allocates the state one instantiation site needs. key is the
-// `key=` the node declared, or nil for positional identity.
-func (st *reactivityState) newSlotInstance(key ir.Expr) *slotInstance {
+// `key=` the node declared, or nil for positional identity, and comp is the
+// component being instantiated.
+//
+// One site instantiates one component, so the registry is typed: a host with
+// no runtime types does not care, and Go cannot call a setter through `any`.
+func (st *reactivityState) newSlotInstance(key ir.Expr, comp *ir.Component) *slotInstance {
 	n := st.instCounter
 	st.instCounter++
 	name := func(suffix string) string { return "__inst" + strconv.Itoa(n) + suffix }
 
-	held := ir.ListOf(ir.TypDyn)
+	elem := instanceTypeOf(comp)
+	held := ir.ListOf(elem)
 	if key != nil {
-		held = ir.MapOf(ir.TypString, ir.TypDyn)
+		held = ir.MapOf(ir.TypString, elem)
 	}
 	inst := &slotInstance{
+		elem: elem,
 		key:  key,
 		live: &ir.Var{Name: name("_live"), Type: held, Init: emptyOf(held), Synthesized: true},
 		next: &ir.Var{Name: name("_next"), Type: held, Synthesized: true},
@@ -70,6 +79,14 @@ func (st *reactivityState) newSlotInstance(key ir.Expr) *slotInstance {
 	}
 	st.owner.addVar(inst.live)
 	return inst
+}
+
+// instanceTypeOf is the handle type an instantiation of comp is held as.
+func instanceTypeOf(comp *ir.Component) *ir.Type {
+	if comp == nil {
+		return ir.TypDyn
+	}
+	return &ir.Type{Kind: ir.TypeInstance, Decl: comp}
 }
 
 // emptyOf is the empty value a registry starts each render from.
@@ -178,12 +195,12 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 // reuseOrCreate binds id to the instance for the position the cursor is at:
 // the one already held, or a new one.
 //
-//	var <id> dyn = null
+//	var <id> <Comp> = null
 //	if list.length(<live>) > <idx> {
 //	    <id> = <live>[<idx>]
 //	    lower.UpdateComponent(<id>, "<prop>", <expr>)   // one per settable prop
 //	} else {
-//	    var <id>__new dyn = lower.CreateComponent(...)
+//	    var <id>__new <Comp> = lower.CreateComponent(...)
 //	    <id> = <id>__new
 //	}
 //	list.push(<next>, <id>)
@@ -194,13 +211,13 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 // reaches no arm and is emitted as a call to a function nothing declares.
 func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declSt *declarativeState) []ir.Stmt {
 	id := n.ID
-	cur := &ir.Var{Name: id, Type: ir.TypDyn, Synthesized: true}
+	cur := &ir.Var{Name: id, Type: si.elem, Synthesized: true}
 	curRef := func() *ir.Ident { return varRef(cur) }
 
 	reuse := []ir.Stmt{&ir.Assign{
 		Target: curRef(),
 		Op:     ast.AssignSet,
-		Value:  &ir.Index{Type: ir.TypDyn, Operand: varRef(si.live), Idx: varRef(si.idx)},
+		Value:  &ir.Index{Type: si.elem, Operand: varRef(si.live), Idx: varRef(si.idx)},
 	}}
 	// Every prop the instance can absorb is pushed on reuse: the render has no
 	// way to know which of them changed, and a setter that writes the value it
@@ -221,11 +238,11 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		}})
 	}
 
-	fresh := &ir.Var{Name: id + "__new", Type: ir.TypDyn, Synthesized: true}
+	fresh := &ir.Var{Name: id + "__new", Type: si.elem, Synthesized: true}
 	create := []ir.Stmt{
 		&ir.LocalVar{
 			Name: fresh.Name,
-			Type: &ir.Type{Kind: ir.TypeComponent, Decl: n.Component},
+			Type: si.elem,
 			Sym:  fresh,
 			Init: declSt.componentCreateCall(n),
 		},
@@ -237,19 +254,19 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		reuse = append([]ir.Stmt{&ir.Assign{
 			Target: curRef(),
 			Op:     ast.AssignSet,
-			Value:  callMapGet(varRef(si.live), varRef(k), &ir.Literal{Type: ir.TypNull}, ir.TypDyn),
+			Value:  callMapGet(varRef(si.live), varRef(k), &ir.Literal{Type: ir.TypNull}, si.elem),
 		}}, reuse[1:]...)
 		out := append([]ir.Stmt{
-			&ir.LocalVar{Name: cur.Name, Type: ir.TypDyn, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
+			&ir.LocalVar{Name: cur.Name, Type: si.elem, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
 		}, claim...)
 		return append(out,
 			&ir.If{
-				Cond: callMapContains(varRef(si.live), varRef(k), ir.TypDyn),
+				Cond: callMapContains(varRef(si.live), varRef(k), si.elem),
 				Body: reuse,
 				Else: create,
 			},
 			&ir.Assign{
-				Target: &ir.Index{Type: ir.TypDyn, Operand: varRef(si.next), Idx: varRef(k)},
+				Target: &ir.Index{Type: si.elem, Operand: varRef(si.next), Idx: varRef(k)},
 				Op:     ast.AssignSet,
 				Value:  curRef(),
 			},
@@ -257,7 +274,7 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 	}
 
 	return []ir.Stmt{
-		&ir.LocalVar{Name: cur.Name, Type: ir.TypDyn, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
+		&ir.LocalVar{Name: cur.Name, Type: si.elem, Sym: cur, Init: &ir.Literal{Type: ir.TypNull}},
 		&ir.If{
 			Cond: &ir.Binary{
 				Type:  ir.TypBool,
@@ -268,7 +285,7 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 			Body: reuse,
 			Else: create,
 		},
-		callListPush(varRef(si.next), curRef(), ir.TypDyn),
+		callListPush(varRef(si.next), curRef(), si.elem),
 		&ir.Assign{
 			Target: varRef(si.idx),
 			Op:     ast.AssignSet,
@@ -305,7 +322,7 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 			KeySym:   loop,
 			Value:    "_",
 			Iter:     varRef(si.live),
-			ElemType: ir.TypDyn,
+			ElemType: si.elem,
 			Body: []ir.Stmt{
 				&ir.LocalVar{Name: jSym.Name, Type: ir.TypInt, Sym: jSym, Init: &ir.Binary{
 					Type: ir.TypInt, Op: ast.BinSub,
@@ -323,7 +340,7 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 						Receiver: lowerNSIdent(),
 						Func:     st.intrinsics[ir.NodeOpDestroyComponent],
 						Args: []ir.CallArg{{Value: &ir.Index{
-							Type:    ir.TypDyn,
+							Type:    si.elem,
 							Operand: varRef(si.live),
 							Idx:     varRef(jSym),
 						}}},
@@ -349,7 +366,7 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 // the list the program should be using.
 func (st *reactivityState) closeKeyedSlotInstance(si *slotInstance) []ir.Stmt {
 	k := &ir.LoopVar{Name: si.live.Name + "_k", Type: ir.TypString}
-	v := &ir.LoopVar{Name: si.live.Name + "_v", Type: ir.TypDyn}
+	v := &ir.LoopVar{Name: si.live.Name + "_v", Type: si.elem}
 	return []ir.Stmt{
 		&ir.For{
 			Key:      k.Name,
@@ -357,18 +374,18 @@ func (st *reactivityState) closeKeyedSlotInstance(si *slotInstance) []ir.Stmt {
 			Value:    v.Name,
 			ValueSym: v,
 			Iter:     varRef(si.live),
-			ElemType: ir.TypDyn,
+			ElemType: si.elem,
 			Body: []ir.Stmt{&ir.If{
 				Cond: &ir.Unary{
 					Type:    ir.TypBool,
 					Op:      ast.UnaryNot,
-					Operand: callMapContains(varRef(si.next), &ir.Ident{Name: k.Name, Type: ir.TypString, Sym: k, Synthesized: true}, ir.TypDyn),
+					Operand: callMapContains(varRef(si.next), &ir.Ident{Name: k.Name, Type: ir.TypString, Sym: k, Synthesized: true}, si.elem),
 				},
 				Body: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 					Type:     ir.TypVoid,
 					Receiver: lowerNSIdent(),
 					Func:     st.intrinsics[ir.NodeOpDestroyComponent],
-					Args:     []ir.CallArg{{Value: &ir.Ident{Name: v.Name, Type: ir.TypDyn, Sym: v, Synthesized: true}}},
+					Args:     []ir.CallArg{{Value: &ir.Ident{Name: v.Name, Type: si.elem, Sym: v, Synthesized: true}}},
 				}}},
 			}},
 		},

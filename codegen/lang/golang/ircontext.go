@@ -1494,6 +1494,14 @@ func IRTypeToGo(t *ir.Type) string {
 			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
 		}
 		return "func(func(any) bool)"
+	case ir.TypeInstance:
+		// A live instance of a component is the generated record every Go
+		// platform allocates for it. Decl carries which component; without one
+		// the handle is a platform node, which has no shared Go spelling.
+		if c, ok := t.Decl.(*ir.Component); ok && c != nil {
+			return "*" + ComponentInstanceType(c.Name)
+		}
+		return "any"
 	case ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
 		// These have no first-class Go representation, and fall back to `any`.
 		// Listed explicitly so the default arm catches a new TypeKind.

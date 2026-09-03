@@ -460,7 +460,7 @@ func propagatesWrite(t *ir.Type) bool {
 		return false
 	}
 	switch t.Kind {
-	case ir.TypeComponent, ir.TypeRef, ir.TypeList, ir.TypeMap:
+	case ir.TypeComponent, ir.TypeInstance, ir.TypeRef, ir.TypeList, ir.TypeMap:
 		return true
 	}
 	return false

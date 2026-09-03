@@ -34,6 +34,7 @@ const (
 	TypeIter      // Elems = [T] for iter<T>
 	TypeNative    // platform-provided foreign type; Meta carries the platform-specific descriptor
 	TypeRemote    // Elems = [T] for remote<T> — a fetched value, its failure and its in-flight flag
+	TypeInstance  // Decl set — a live instance in the rendered tree
 )
 
 // Type is the unified representation of all SNGL types.
@@ -245,6 +246,11 @@ func (t *Type) String() string {
 			return t.Decl.SymName()
 		}
 		return "component"
+	case TypeInstance:
+		if t.Decl != nil {
+			return "instance<" + t.Decl.SymName() + ">"
+		}
+		return "instance"
 	case TypeNull:
 		return "null"
 	case TypeTypeParam:
@@ -525,7 +531,7 @@ func (t *Type) Equal(other *Type) bool {
 			}
 		}
 		return true
-	case TypeEnum, TypeUnit, TypeComponent:
+	case TypeEnum, TypeUnit, TypeComponent, TypeInstance:
 		return sameDecl(t, other)
 	case TypeFunc:
 		return t.Sig.Equal(other.Sig)
