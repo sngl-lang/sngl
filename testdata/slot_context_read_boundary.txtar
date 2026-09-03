@@ -11,7 +11,9 @@ and the *ir.ContextRead survived lowering to reach codegen, where
 irwalk.EvalExpr has no case for one and every platform panicked.
 
 Each target below is the context's value arriving in the handler. fyne and
-gtk4 are absent because they panic on an errorBoundary for an unrelated reason
+gtk4 are absent because neither implements errorBoundary at all -- both refuse
+the build with `component "errorBoundary" has no <platform> implementation`,
+which cmd/sngl/testdata/errorboundary_unimplemented.txt is the assertion on
 (issue #112).
 -- boundary.sngl --
 import . "sngl:ui"
