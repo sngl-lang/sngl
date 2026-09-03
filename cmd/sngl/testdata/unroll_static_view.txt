@@ -1,0 +1,38 @@
+# Who unrolls a constant loop, part two: the platform has a say as well as the
+# language.
+#
+# html writes its view as markup -- a file in static mode, a string in a
+# handler in route mode -- and the only iteration it can emit is over an
+# expression that varies with the request. A `for` over a compile-time constant
+# is not one, so nothing iterates it and the loop renders its body once with
+# its variable bound to nothing. `sngl doc --http` lost its whole package list
+# that way under --lang go: seven links became a single empty <a>.
+
+sngl generate --lang go --platform html -o routed app.sngl
+grep '/p/alpha[^>]*>alpha</a>' routed/server.go
+grep '/p/beta[^>]*>beta</a>' routed/server.go
+grep '/p/gamma[^>]*>gamma</a>' routed/server.go
+
+# The iterations are the markup, so no loop is left for Go to run.
+! grep 'range' routed/server.go
+
+# Static mode is the same platform answering the same way.
+sngl generate --lang none --platform html -o static app.sngl
+grep '/p/alpha[^>]*>alpha</a>' static/index.html
+grep '/p/gamma[^>]*>gamma</a>' static/index.html
+
+-- app.sngl --
+import . "sngl:app"
+import "sngl:platform/html"
+
+const packages list<string> = ["alpha", "beta", "gamma"]
+
+component main {
+    window #home(title="Docs", href="/") {
+        html.nav {
+            for var p = packages {
+                html.a(href="/p/" + p, innerText=p)
+            }
+        }
+    }
+}

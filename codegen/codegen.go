@@ -219,6 +219,32 @@ func PlatformUnavailable(name string) error {
 	return nil
 }
 
+// StaticViewRenderer is optionally implemented by a PlatformGenerator that
+// writes its view tree into the output rather than emitting host-language
+// statements for it. html is the one today: a page is markup written once, and
+// the only iteration it can express is the route emitter's, over an expression
+// that varies with the request.
+//
+// The optimizer asks, because a `for` over a compile-time-constant iterable
+// there has nowhere to run: nothing varies with the request, so no iteration is
+// emitted, and the loop renders its body a single time with its variable bound
+// to nothing. Unrolling is how those nodes exist at all -- whatever the target
+// language, whose own loop the platform never reaches.
+type StaticViewRenderer interface {
+	// RendersViewStatically reports whether a view body reaches the output as
+	// written rather than as statements a host runs.
+	RendersViewStatically() bool
+}
+
+// PlatformRendersViewStatically reports whether the named platform's view
+// bodies are written into the output rather than run. A platform that does not
+// implement StaticViewRenderer, and an unregistered name, answer false: a
+// caller with no platform to ask has none of this problem.
+func PlatformRendersViewStatically(name string) bool {
+	s, ok := LookupPlatform(name).(StaticViewRenderer)
+	return ok && s.RendersViewStatically()
+}
+
 // PlatformDocs returns the SNGL declarations p contributes — the source of its
 // `sngl:platform/<id>` package, both what lib/ embeds and what p
 // synthesizes — or nil when it declares none or cannot be used here. gtk4

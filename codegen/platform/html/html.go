@@ -35,6 +35,13 @@ func (g *Generator) PlatformIdentifier() string { return "html" }
 func (g *Generator) Description() string {
 	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
 }
+
+// RendersViewStatically: both modes write the tree as markup. Static mode
+// writes a file; route mode writes the same markup into a handler, and the
+// only loop it can emit is a hole over an expression that varies with the
+// request. Neither has anywhere to run a loop the optimizer left standing.
+func (g *Generator) RendersViewStatically() bool { return true }
+
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
 	// A platform has the last word, and html's output is HTML and JS: the
