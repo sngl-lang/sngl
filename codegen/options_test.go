@@ -3,6 +3,7 @@ package codegen
 import (
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -174,5 +175,56 @@ func TestSetOptionField(t *testing.T) {
 	v, _ := OptionField(lit, "a")
 	if v.(*ir.Literal).Value != "y" {
 		t.Errorf("a should be y, got %v", v)
+	}
+}
+
+// A bool option written in source arrives as the comparison `true` is declared
+// as, not as a literal: lib/builtin/bool.sngl says `true = 0 == 0`, because the
+// language has no bool literal to declare it with, and a library const's
+// initializer is never folded — the optimizer walks a program's body and that
+// declaration is not in one. Before this was handled, `html(minify=true)` in an
+// output block failed every build with "option \"minify\": unsupported
+// expression *ir.Binary", while the same value via `--opt minify=true` worked,
+// because the CLI path parses the string itself.
+func TestApplyOptions_BoolConstFromComparison(t *testing.T) {
+	type cfg struct{ Minify, Quiet bool }
+	yes := &ir.Var{
+		Name: "true", IsConst: true,
+		Init: &ir.Binary{Op: ast.BinEq,
+			Left:  &ir.Literal{Type: ir.TypInt, Value: "0"},
+			Right: &ir.Literal{Type: ir.TypInt, Value: "0"}},
+	}
+	no := &ir.Var{
+		Name: "false", IsConst: true,
+		Init: &ir.Binary{Op: ast.BinNeq,
+			Left:  &ir.Literal{Type: ir.TypInt, Value: "0"},
+			Right: &ir.Literal{Type: ir.TypInt, Value: "0"}},
+	}
+	opts := &ir.StructLit{Fields: []ir.FieldInit{
+		{Name: "minify", Value: &ir.Ident{Name: "true", Sym: yes}},
+		{Name: "quiet", Value: &ir.Ident{Name: "false", Sym: no}},
+	}}
+	var c cfg
+	if err := ApplyOptions(&c, opts); err != nil {
+		t.Fatal(err)
+	}
+	if want := (cfg{Minify: true, Quiet: false}); c != want {
+		t.Errorf("got %+v want %+v", c, want)
+	}
+}
+
+// Only the comparison a builtin bool is declared as folds. Anything else stays
+// an unhandled expression, so an option that quietly wants a constant folder
+// says so rather than being assigned some default.
+func TestApplyOptions_NonComparisonBinaryStillErrors(t *testing.T) {
+	type cfg struct{ Count int }
+	opts := &ir.StructLit{Fields: []ir.FieldInit{
+		{Name: "count", Value: &ir.Binary{Op: ast.BinAdd,
+			Left:  &ir.Literal{Type: ir.TypInt, Value: "1"},
+			Right: &ir.Literal{Type: ir.TypInt, Value: "2"}}},
+	}}
+	var c cfg
+	if err := ApplyOptions(&c, opts); err == nil {
+		t.Fatalf("want an error, got %+v", c)
 	}
 }
