@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
@@ -45,11 +46,11 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	return runPipeline(cmd, args, pipelineOpts{
 		cliLang: cliLang,
 		cliPlat: cliPlat,
-		cliOpts: parseCLIOpts(optSlice),
+		cliOpts: build.ParseCLIOpts(optSlice),
 		outDir:  tmpDir,
 		main:    true,
 		quiet:   true, // suppress per-file print; only print artifact path
-		onTarget: func(target outputTarget, _ *ir.Package, _, srcDir string) error {
+		onTarget: func(target build.Target, _ *ir.Package, _, srcDir string) error {
 			plat := codegen.LookupPlatform(target.Platform)
 			lang := codegen.LookupLang(target.Lang)
 			var builder codegen.Builder
@@ -146,7 +147,7 @@ func isMultiTarget(args []string, cliLang, cliPlat string, optSlice []string) bo
 	if err != nil {
 		return false
 	}
-	targets, err := resolveTargets(pkg, cliLang, cliPlat, parseCLIOpts(optSlice))
+	targets, err := build.ResolveTargets(pkg, cliLang, cliPlat, build.ParseCLIOpts(optSlice))
 	if err != nil {
 		return false
 	}
@@ -154,7 +155,7 @@ func isMultiTarget(args []string, cliLang, cliPlat string, optSlice []string) bo
 }
 
 // No platform sets a goos option yet, so this is false until one does.
-func isWindowsTarget(target outputTarget) bool {
+func isWindowsTarget(target build.Target) bool {
 	return optionString(target.Options, "goos") == "windows"
 }
 

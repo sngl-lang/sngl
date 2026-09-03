@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"github.com/spf13/cobra"
 	"golang.org/x/tools/txtar"
@@ -105,7 +106,7 @@ func dumpParseTxtar(path string) (*ast.Document, string, error) {
 		if doc == nil {
 			doc = d
 		} else {
-			mergeInto(doc, d)
+			build.MergeInto(doc, d)
 		}
 	}
 	if doc == nil {

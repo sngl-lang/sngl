@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"os"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -46,12 +47,12 @@ func runRun(cmd *cobra.Command, args []string) error {
 	return runPipeline(cmd, []string{file}, pipelineOpts{
 		cliLang: cliLang,
 		cliPlat: cliPlat,
-		cliOpts: parseCLIOpts(optSlice),
+		cliOpts: build.ParseCLIOpts(optSlice),
 		outDir:  tmpDir,
 		main:    true,
 		quiet:   true,
-		onTarget: func(target outputTarget, pkg *ir.Package, _, outDir string) error {
-			if isInterpreted(target) {
+		onTarget: func(target build.Target, pkg *ir.Package, _, outDir string) error {
+			if build.IsInterpreted(target) {
 				dir, err := os.Getwd()
 				if err != nil {
 					return err

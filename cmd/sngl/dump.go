@@ -11,6 +11,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/highlight"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
@@ -294,8 +295,8 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	}
 
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
-	cliOpts := parseCLIOpts(optSlice)
-	if err := applyCLIOpts(target.Options, cliOpts); err != nil {
+	cliOpts := build.ParseCLIOpts(optSlice)
+	if err := build.ApplyCLIOpts(target.Options, cliOpts); err != nil {
 		return err
 	}
 	if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
@@ -366,28 +367,28 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 func dumpCLITargets(cmd *cobra.Command) ([]ir.StaticTarget, error) {
 	lang, _ := cmd.Flags().GetString("lang")
 	plat, _ := cmd.Flags().GetString("platform")
-	lang, plat, err := resolveLangPlat(lang, plat)
+	lang, plat, err := build.ResolveLangPlat(lang, plat)
 	if err != nil {
 		// Returning no targets instead checks against every registered one and
 		// dumps a tree for a target the caller never named.
 		return nil, err
 	}
-	return cliSelectedTargets(lang, plat), nil
+	return build.SelectedTargets(lang, plat), nil
 }
 
-func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (outputTarget, error) {
+func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (build.Target, error) {
 	lang, _ := cmd.Flags().GetString("lang")
 	plat, _ := cmd.Flags().GetString("platform")
-	lang, plat, err := resolveLangPlat(lang, plat)
+	lang, plat, err := build.ResolveLangPlat(lang, plat)
 	if err != nil {
-		return outputTarget{}, err
+		return build.Target{}, err
 	}
-	targets, err := resolveTargets(pkg, lang, plat, nil)
+	targets, err := build.ResolveTargets(pkg, lang, plat, nil)
 	if err != nil {
-		return outputTarget{}, err
+		return build.Target{}, err
 	}
 	if len(targets) == 0 {
-		return outputTarget{}, fmt.Errorf("no output target specified (use --lang/--platform flags or add an output node)")
+		return build.Target{}, fmt.Errorf("no output target specified (use --lang/--platform flags or add an output node)")
 	}
 	return targets[0], nil
 }
