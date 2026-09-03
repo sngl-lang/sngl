@@ -71,13 +71,14 @@ it. Every backend already emits those three statements, so no language grows a
 case — before the pass, `codegen/irwalk` read a loop's head and body and
 nothing else, and an imperative for-else compiled with the else silently
 dropped. View bodies keep theirs, where the platform emitters render it
-structurally. The pass walks the declared imperative roots *and every lambda
-body in the package* (`ir.Walk`), because on android a handler body is a
-lambda in `NodeInst.Props` by then rather than an `ir.EventHandler` — a
-hand-written descent through the view finds nothing there. `passCSE` walks
-only `NodeInst.Handlers`, so it still has that blind spot: a pure call made
-twice in an android click handler is not bound to a temp, where the same
-handler on every other target is.
+structurally. Which blocks those are is `imperativeBlocks`
+(`internal/lower/blocks.go`), shared with `passCSE`: the declared imperative
+roots *and every lambda body in the package*, the latter from `ir.Walk`. The
+lambdas are what reach a handler on android, where a handler body is a lambda
+in `NodeInst.Props` by then rather than an `ir.EventHandler` — a hand-written
+descent through the view finds nothing there, which is why a pure call made
+twice in an android click handler went unshared until both passes were put on
+the one walk.
 
 ## Build & Test Commands
 
