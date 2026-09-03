@@ -277,8 +277,17 @@ component Check(text string, checked bool, style ui.Style, @change ui.ChangeEven
 
 // The choices are a constructor argument, which is why `options` is an `Arg`
 // rather than a `Setter`: `widget.Select` has no method that replaces them, so
-// a later change to the bound list does not reach the widget.
-component Select(selected string, options list<string>, style ui.Style, @change ui.ChangeEvent) {
+// a later change to the bound list does not reach the widget. `#[construct]`
+// is that fact written where the compiler reads it -- the mark belongs here
+// rather than on the `options` prop of the primitives, because which props a
+// widget can be handed after construction is its Spec's answer and not the
+// vocabulary's.
+component Select(
+    selected string,
+    #[construct] options list<string>,
+    style ui.Style,
+    @change ui.ChangeEvent,
+) {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
