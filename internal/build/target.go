@@ -100,6 +100,8 @@ func ParseCLIOpts(optSlice []string) map[string]string {
 	return out
 }
 
+// ResolveTargets is the targets to build: the one the caller selected, or
+// every one the package's own output blocks declare.
 func ResolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string]string) ([]Target, error) {
 	if cliLang != "" && cliPlat != "" {
 		// Seed from a matching output declaration so flags select the target
@@ -189,13 +191,13 @@ func cloneStructLit(src *ir.StructLit) *ir.StructLit {
 	return out
 }
 
+// ApplyCLIOpts overlays --opt values onto one target's options.
+func ApplyCLIOpts(opts *ir.StructLit, kv map[string]string) error { return applyCLIOpts(opts, kv) }
+
 // A non-string field's value is parsed as a SNGL const expression and checked
 // against the declared type. An unknown type (no Def, or the field absent from
 // it) is wrapped as a raw string literal, so simple cases work with no checker
 // pass.
-// ApplyCLIOpts overlays --opt values onto one target's options.
-func ApplyCLIOpts(opts *ir.StructLit, kv map[string]string) error { return applyCLIOpts(opts, kv) }
-
 func applyCLIOpts(opts *ir.StructLit, kv map[string]string) error {
 	if len(kv) == 0 {
 		return nil
@@ -222,10 +224,8 @@ func applyCLIOpts(opts *ir.StructLit, kv map[string]string) error {
 	return nil
 }
 
-// OptionBool mirrors codegen.ApplyOptions, because the optimizer needs the
-// flag before any platform Config struct is populated.
-func OptionBool(opts *ir.StructLit, name string) bool { return optionBool(opts, name) }
-
+// Mirrors codegen.ApplyOptions, because the optimizer needs the flag before
+// any platform Config struct is populated.
 func optionBool(opts *ir.StructLit, name string) bool {
 	v, ok := codegen.OptionField(opts, name)
 	if !ok {

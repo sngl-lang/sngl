@@ -418,9 +418,21 @@ not reformat it. `testdata/*.txtar` is the language's: given this program,
 this is the code every target generates. A claim about the CLI goes in the
 first; a claim about codegen goes in the second.
 
-A claim of *absence* is the one thing a golden cannot state — it makes absence
-visible, but no reader notices that something is not there. Those are written
-as `deny <golden path|*> \`pattern\` -- reason`lines in the archive comment. Deliberately not`! grep`: rsc.io/script's `grep`wants a pattern and a file, one argument is a usage error, and a usage error under`!` is a *pass* — six such lines had accumulated, three asserting the absence of the very thing their change was about (`TestScriptGrepsNameAFile`is the lint against the class). A`deny` that names no reason, no file, a file no target generates, or
+A claim of *absence* is the one thing a golden cannot state — it makes
+absence visible, but no reader notices that something is not there. Those are
+written as `deny` lines in the archive comment, naming a golden file (or `*`
+for all of them), a backquoted regex, and a reason:
+
+```
+deny out/go/bubbletea/model.go `held := \[\]int` -- the held sequence is a range func, not a slice
+deny * `\.toList\(\)` -- no target copies a progression into a list
+```
+
+Deliberately not `! grep`: rsc.io/script's `grep` wants a pattern and a file,
+one argument is a usage error, and a usage error under `!` is a *pass* — six
+such lines had accumulated, three asserting the absence of the very thing
+their change was about (`TestScriptGrepsNameAFile` is the lint against the
+class). A `deny` that names no reason, no file, a file no target generates, or
 a pattern that does not compile is a failure.
 
 Neither harness fixes a fixture whose input never reaches the branch it means

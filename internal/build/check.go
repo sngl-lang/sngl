@@ -24,7 +24,9 @@ type CheckConfig struct {
 	Dir string
 	// FS is what imports are read through. Nil reads Dir off disk.
 	FS fs.FS
-	// Resolver resolves directory and scheme imports. Nil builds one over FS.
+	// Resolver resolves directory and scheme imports. Nil builds one over FS
+	// with no RootDir, so a relative import escaping the FS root is an error
+	// rather than a read off disk -- pass NewResolver(dir) to allow it.
 	Resolver checker.ImportResolver
 	IsMain   bool
 	// Targets are the compile targets a caller selected itself, from
@@ -171,7 +173,7 @@ func (r *Resolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, erro
 	// served by io/fs, so fall back to direct filesystem reads.
 	if strings.Contains(importPath, "..") && r.RootDir != "" {
 		abs := filepath.Clean(filepath.Join(r.RootDir, importPath))
-		return ResolveImportFromDir(abs)
+		return resolveImportFromDir(abs)
 	}
 	// A sibling package is ordinarily written "./geom", which io/fs rejects:
 	// fs.ValidPath has no "./" prefix. Clean gives the form ReadDir accepts.
@@ -199,7 +201,7 @@ func (r *Resolver) Resolve(fsys fs.FS, importPath string) ([]*ast.Document, erro
 	return docs, nil
 }
 
-func ResolveImportFromDir(dir string) ([]*ast.Document, error) {
+func resolveImportFromDir(dir string) ([]*ast.Document, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("reading import dir %q: %w", dir, err)

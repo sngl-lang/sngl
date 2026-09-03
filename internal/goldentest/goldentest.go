@@ -66,8 +66,11 @@ const goldenPrefix = "out/"
 func Run(t *testing.T, glob string, update bool) {
 	t.Helper()
 	// The build logs a phase timing per target at Info, which is three lines
-	// per fixture of noise between a failure and its diff.
+	// per fixture of noise between a failure and its diff. Restored after,
+	// because this is one test in a binary it does not own.
+	prev := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
 	files, err := filepath.Glob(glob)
 	if err != nil {
 		t.Fatal(err)
@@ -83,9 +86,9 @@ func Run(t *testing.T, glob string, update bool) {
 	}
 }
 
+// No t.Helper: with one, every failure from any of the four checks below
+// reports this function's caller, and which check fired is the useful part.
 func runFixture(t *testing.T, path string, update bool) {
-	t.Helper()
-
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -121,9 +124,7 @@ func runFixture(t *testing.T, path string, update bool) {
 	checkDenies(t, denies, got)
 }
 
-// split separates the package's source from the golden. Empty files are
-// dropped from the source set: txtar has no way to say "directory", and an
-// empty section is how a fixture that generates nothing writes its golden.
+// split separates the package's source from the golden.
 func split(arc *txtar.Archive) (src, golden map[string][]byte, err error) {
 	src, golden = map[string][]byte{}, map[string][]byte{}
 	for _, f := range arc.Files {
@@ -172,7 +173,11 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 		source := string(src[name])
 		doc, err := parser.Parse(name, src[name])
 		if err != nil {
-			// Left to the check below, which reports the position.
+			// Reported here rather than left to the compile: only root-level
+			// files reach ParsePackageFS, and a subdirectory package is
+			// parsed lazily by the resolver -- so one nothing imports is
+			// never read, and its parse error would go nowhere.
+			t.Errorf("%s: %v", name, err)
 			continue
 		}
 		nofmt, _, nerr := testutil.ParseNoFmtSource(source)
@@ -227,8 +232,13 @@ func generate(src map[string][]byte) (map[string][]byte, error) {
 	}
 
 	out := map[string][]byte{}
+	seen := map[string]bool{}
 	for _, res := range results {
 		dir := goldenPrefix + res.Target.Lang + "/" + res.Target.Platform
+		if seen[dir] {
+			return nil, fmt.Errorf("output declares %s/%s twice; its two builds would overwrite each other's golden", res.Target.Lang, res.Target.Platform)
+		}
+		seen[dir] = true
 		if len(res.Files) == 0 {
 			return nil, fmt.Errorf("target %s/%s generated no files", res.Target.Lang, res.Target.Platform)
 		}
@@ -312,7 +322,7 @@ func firstDiff(want, got string) string {
 			continue
 		}
 		var b strings.Builder
-		for j := max(0, i-3); j < i; j++ {
+		for j := max(0, i-3); j < i && j < len(wl); j++ {
 			fmt.Fprintf(&b, "  %d: %s\n", j+1, wl[j])
 		}
 		fmt.Fprintf(&b, "- %d: %s\n", i+1, w)

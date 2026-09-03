@@ -63,9 +63,10 @@ type Result struct {
 
 // Emit builds pkg for every resolved target.
 //
-// pkg is not modified: optimize and lower work in place, so each target past
-// the first starts from a clone of the pristine checked IR. The first target
-// works on pkg itself only when it is the only one.
+// optimize and lower work in place, so each target past the first starts from
+// a clone of the pristine checked IR -- which means a single-target build
+// works on pkg itself and leaves it optimized and lowered. A caller that
+// needs the checked IR afterwards has to clone before calling.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	if err := ValidateOutputs(pkg); err != nil {
 		return nil, err
