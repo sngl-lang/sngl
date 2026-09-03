@@ -30,6 +30,26 @@
 // What a golden does not fix: a fixture whose input never reaches the branch
 // it means to exercise generates identical output either way. That is a
 // property of the input program, and no assertion format catches it.
+//
+// # What stays a script fixture
+//
+// The 67 fixtures that were only `sngl generate` plus greps are archives here
+// now. What was left behind, and why, so the line is not redrawn by accident:
+//
+//   - Anything whose subject is the command line: flags, exit codes, the text
+//     of an error, `dump` stages, what is printed on stdout.
+//   - A fixture that compiles and runs what it generated (`sngl test`,
+//     `sngl build`). A golden runs nothing, and running the output is the
+//     stronger test — those are worth more where they are.
+//   - A fixture whose imports reach outside the archive. A `go:` or `c:`
+//     import is resolved by shelling out to the host toolchain against the
+//     working directory, and this harness has an fstest.MapFS and no
+//     directory. The script harness gives it a real one.
+//   - A fixture that builds one target twice to compare two option sets
+//     (minify against not, cache-busting against not). Two builds of one
+//     lang/platform have one golden path between them, so the comparison has
+//     nowhere to live; generate() rejects it rather than letting one silently
+//     overwrite the other.
 package goldentest
 
 import (
@@ -53,7 +73,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 
 	// Register every language and platform, so a fixture's output block can
-	// name any of them.
+	// name any of them, and every import scheme, so a fixture may import a
+	// `go:` or `c:` package the way a program built by the CLI can -- main.go
+	// blank-imports the same package.
+	_ "git.duckfam.us/jonathan/sngl/codegen/scheme"
 	_ "git.duckfam.us/jonathan/sngl/internal/testtargets"
 )
 
