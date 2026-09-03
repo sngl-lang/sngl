@@ -68,6 +68,20 @@ func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, field
 	}
 }
 
+// fieldRef is a `<recv>.<name>` selector against the struct this emission's
+// scope dispatches through -- the Model in a Model method, the instance record
+// inside a component's ctor. Every node field a translator writes goes through
+// here rather than codegen.ModelFieldRef, which names the Model and only the
+// Model.
+func (t *fyneTranslator) fieldRef(name string) ir.Expr {
+	return codegen.RecvFieldRef(t.gc.RecvName(), name)
+}
+
+// recvIdent is that receiver as a call target.
+func (t *fyneTranslator) recvIdent() ir.Expr {
+	return &ir.Ident{Name: t.gc.RecvName()}
+}
+
 var _ codegen.IntrinsicTranslator = (*fyneTranslator)(nil)
 
 // withLocalRefs sets the non-escaping ref-id set for the scope this
@@ -219,7 +233,7 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		return []ir.Stmt{&ir.LocalVar{Name: id, Init: ctor}}
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(id),
+		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  ctor,
 	}}
@@ -239,7 +253,7 @@ func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call 
 	}
 	t.fieldSink(id, "fyne.CanvasObject")
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(id),
+		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
@@ -322,7 +336,7 @@ func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 		// window/component bodies need an `m.` qualifier; slot Funcs use
 		// the typed `container` param instead.
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return codegen.ModelFieldRef(id.Name)
+			return t.fieldRef(id.Name)
 		}
 	}
 	return e
@@ -337,7 +351,7 @@ func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 			return localElementRef(id.Name)
 		}
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
-			return codegen.ModelFieldRef(id.Name)
+			return t.fieldRef(id.Name)
 		}
 	}
 	return e
@@ -399,7 +413,7 @@ func (t *fyneTranslator) nodeRefFor(bareID string) ir.Expr {
 	if t.isLocalRef(bareID) {
 		return localElementRef(bareID)
 	}
-	return codegen.ModelFieldRef(bareID)
+	return t.fieldRef(bareID)
 }
 
 // qualifyHandlerNode produces a ref for a node id (local or Model-field).
@@ -419,7 +433,7 @@ func (t *fyneTranslator) qualifyHandlerFunc(e ir.Expr) ir.Expr {
 			return e
 		}
 		if strings.HasPrefix(name, "__") {
-			return codegen.ModelFieldRef(name)
+			return t.fieldRef(name)
 		}
 	}
 	return e
@@ -441,18 +455,18 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(slot.Name),
+		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}}
 }
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := codegen.ModelFieldRef(slot.Name)
+	slotRef := t.fieldRef(slot.Name)
 	child = t.qualifyChildExpr(child)
 	appendExpr := nativeCall("append", []ir.Expr{slotRef, child}, slot.Type)
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(slot.Name),
+		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  appendExpr,
 	}}
@@ -460,7 +474,7 @@ func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *fyneTranslator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return codegen.ModelFieldRef(id.Name)
+		return t.fieldRef(id.Name)
 	}
 	return iter
 }

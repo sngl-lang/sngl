@@ -304,7 +304,7 @@ func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if m == nil {
 		return nil
 	}
-	widget := cgoCast("GtkWidget", codegen.ModelFieldRef(m.ID))
+	widget := cgoCast("GtkWidget", t.fieldRef(m.ID))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", widget)}}
 }
 
@@ -336,7 +336,7 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	if h <= 0 {
 		h = 150
 	}
-	daField := codegen.ModelFieldRef(id)
+	daField := t.fieldRef(id)
 
 	// m.<id> = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	ctor := cgoCast("GtkDrawingArea", nativeCall("gtk_drawing_area_new"))

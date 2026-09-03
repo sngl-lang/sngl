@@ -248,6 +248,20 @@ func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 	return t.registry.ByCType[cType]
 }
 
+// fieldRef is a `<recv>.<name>` selector against the struct this emission's
+// scope dispatches through -- the Model in a Model method, the instance record
+// inside a component's ctor. Every node field a translator writes goes through
+// here rather than codegen.ModelFieldRef, which names the Model and only the
+// Model.
+func (t *gtk4Translator) fieldRef(name string) ir.Expr {
+	return codegen.RecvFieldRef(t.gc.RecvName(), name)
+}
+
+// recvIdent is that receiver as a call target.
+func (t *gtk4Translator) recvIdent() ir.Expr {
+	return &ir.Ident{Name: t.gc.RecvName()}
+}
+
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
 
 // nativeFunc constructs an *ir.Func that renders as `C.<identifier>`. Callers
@@ -415,7 +429,7 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 	}
 	t.fieldSink(id, "GtkWidget")
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(id),
+		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
@@ -489,7 +503,7 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	}
 	t.fieldSink(id, cType)
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(id),
+		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  initVal,
 	}}
@@ -621,7 +635,7 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 		// covers -- a tagged widget then reached the setter as a bare `inc`,
 		// which is not a binding this file has.
 		if id.IsElementRef || strings.HasPrefix(id.Name, "__n") {
-			return codegen.ModelFieldRef(id.Name)
+			return t.fieldRef(id.Name)
 		}
 	}
 	return e
@@ -945,14 +959,14 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(slot.Name),
+		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}}
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := codegen.ModelFieldRef(slot.Name)
+	slotRef := t.fieldRef(slot.Name)
 	childArg := ir.Expr(cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
 	if t.wrapped {
 		childArg = t.qualifyNodeExpr(child)
@@ -966,7 +980,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 		},
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(slot.Name),
+		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  appendCall,
 	}}
@@ -974,7 +988,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return codegen.ModelFieldRef(id.Name)
+		return t.fieldRef(id.Name)
 	}
 	return iter
 }

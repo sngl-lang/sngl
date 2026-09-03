@@ -118,14 +118,14 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	// A Raster redraws by asking: Refresh re-runs the generator, at whatever
 	// size the widget is now.
 	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {
-		return []ir.Stmt{methodStmt(codegen.ModelFieldRef(m.ID), "Refresh")}
+		return []ir.Stmt{methodStmt(t.fieldRef(m.ID), "Refresh")}
 	}
-	dcField := codegen.ModelFieldRef(canvasCtxField(m.ID))
-	imgField := codegen.ModelFieldRef(m.ID)
+	dcField := t.fieldRef(canvasCtxField(m.ID))
+	imgField := t.fieldRef(m.ID)
 	w, h := canvasDims(m)
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
-		Receiver: &ir.Ident{Name: "m"},
+		Receiver: t.recvIdent(),
 		Func:     &ir.Func{Name: m.Draw.Name},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
@@ -198,7 +198,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	}
 
 	w, h := canvasDims(m)
-	imgField := codegen.ModelFieldRef(id)
+	imgField := t.fieldRef(id)
 
 	// A scaled canvas is a Raster, because Fyne hands a Raster's generator the
 	// pixel size it is about to be drawn at -- which is the one thing an Image
@@ -222,11 +222,11 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 
 	t.fieldSink(id, "*canvas.Image")
 	t.fieldSink(canvasCtxField(id), "*"+snglCanvasAlias+".Context")
-	dcField := codegen.ModelFieldRef(canvasCtxField(id))
+	dcField := t.fieldRef(canvasCtxField(id))
 
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
-		Receiver: &ir.Ident{Name: "m"},
+		Receiver: t.recvIdent(),
 		Func:     &ir.Func{Name: m.Draw.Name},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
