@@ -58,7 +58,7 @@ func generateFyneModel(t *testing.T, src string) string {
 
 func renderTreeViewBodyFyne(t *testing.T, src string) string {
 	t.Helper()
-	const marker = "func (m *Model) renderTreeView("
+	const marker = "func newTreeViewInstance("
 	i := strings.Index(src, marker)
 	if i < 0 {
 		t.Fatalf("renderTreeView method not found in generated model.go:\n%s", src)
@@ -71,19 +71,33 @@ func renderTreeViewBodyFyne(t *testing.T, src string) string {
 	return rest[:end]
 }
 
-// TestNodeEscape_RecursiveRenderUsesLocals asserts the recursive component's
-// fyne render method declares its internal widget temps as function-LOCAL
-// variables (not shared m.__nX Model fields). Before the escape-analysis fix
-// the method used m.__nX fields; recursion clobbered the parent frame's temp,
-// so the tree mis-rendered (a child container added to itself).
+// TestNodeEscape_RecursiveRenderUsesLocals asserts a recursive component's
+// widget temps are per-frame, never fields of the one Model. Before the
+// escape-analysis fix the render method used m.__nX fields; recursion
+// clobbered the parent frame's temp, so the tree mis-rendered (a child
+// container added to itself).
+//
+// A recursive component is now built as an instance record, so "per-frame"
+// is `c.__nX` on a record the frame allocated for itself, or a bare local --
+// either is the frame's own. `m.__nX` is the one spelling that is not.
 func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
 	model := generateFyneModel(t, recursiveTreeSrc)
 	body := renderTreeViewBodyFyne(t, model)
 
 	if mfield := regexp.MustCompile(`m\.__n\d`).FindString(body); mfield != "" {
-		t.Errorf("renderTreeView still references shared Model field %q; internal refs must be function-local.\n--- renderTreeView ---\n%s", mfield, body)
+		t.Errorf("newTreeViewInstance still references shared Model field %q; a widget temp must belong to the frame.\n--- newTreeViewInstance ---\n%s", mfield, body)
 	}
-	if !regexp.MustCompile(`__n\d :?=`).MatchString(body) {
-		t.Errorf("renderTreeView declares no local widget temps; expected `__nN :=`.\n--- renderTreeView ---\n%s", body)
+	if !regexp.MustCompile(`(c\.__n\d =|__n\d :?=)`).MatchString(body) {
+		t.Errorf("newTreeViewInstance declares no per-frame widget temps.\n--- newTreeViewInstance ---\n%s", body)
+	}
+	// Each frame allocates its own record; without that the fields above are
+	// per-frame in spelling only.
+	if !strings.Contains(body, "c := &TreeViewInstance{}") {
+		t.Errorf("newTreeViewInstance allocates no record of its own.\n--- newTreeViewInstance ---\n%s", body)
+	}
+	// And the recursion goes through the ctor, so a nested TreeView is a
+	// different instance rather than a re-entry into this one.
+	if !strings.Contains(model, "newTreeViewInstance(") {
+		t.Errorf("nothing instantiates TreeView through its ctor:\n%s", model)
 	}
 }

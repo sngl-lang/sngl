@@ -142,6 +142,22 @@ func ComponentRenderMethod(componentName string) string {
 	return "render" + ExportName(componentName)
 }
 
+// CreateComponentTarget returns the component a lower.CreateComponent call
+// instantiates, or nil when call is not one. The declaration is the argument,
+// so a platform emitting the handle can name the record's type without
+// re-deriving which component it belongs to.
+func CreateComponentTarget(call *ir.Call) *ir.Component {
+	if call == nil || call.Func == nil || call.Func.Name != "CreateComponent" || len(call.Args) == 0 {
+		return nil
+	}
+	id, ok := call.Args[0].Value.(*ir.Ident)
+	if !ok {
+		return nil
+	}
+	comp, _ := id.Sym.(*ir.Component)
+	return comp
+}
+
 // The shape of a component instance in emitted Go. An instance is a struct
 // pointer carrying the state a component's own `var`s need when it cannot be
 // inlined, the node it renders as, one setter per prop it can absorb, and a

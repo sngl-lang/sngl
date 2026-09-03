@@ -21,23 +21,28 @@ var passInstanceBodies = pass{
 // hasInstanceRuntime reports whether the target builds a component instance as
 // a record with its own state, rather than as a method on the one model.
 //
-// NoReactivity says the target's reactive slots are already node operations, so
-// it has a translator that reads them; !NoDeclarative says nothing has
-// flattened a component body yet. Together that is the target whose instances
-// are allocated at run time and reached through a handle.
+// NoReactivity is the whole of the question: the target's reactive slots are
+// already node operations, so it has an intrinsic translator that reads them,
+// and an instance is a handle that translator can hold, re-point and destroy.
+// That is html, fyne and gtk4 -- the three that emit a record of some kind, a
+// closure on the one and a struct on the other two.
 //
-// Neither half alone. A target that keeps both -- bubbletea, android -- walks
-// the tree itself and has no translator, so a flattened body reaches its
-// renderer as a call to `lower.CreateNode` and it has nothing to make of one. A
-// target that sets both -- fyne, gtk4 -- emits an instance as a method on the
-// shared model, where per-instance state has nowhere to live: promoting a prop
-// there moves a per-call parameter onto a field every recursion frame shares,
-// which is worse than the parameter it replaced. Those two want the record, and
-// do not have it yet.
+// A target that keeps its reactivity -- bubbletea, android -- walks the tree
+// itself and has no translator, so a flattened body would reach its renderer
+// as a call to `lower.CreateNode` and it would have nothing to make of one.
+// Compose answers the question in its own vocabulary instead: a composable
+// remembers its own state per call site, which is what a record is for.
+//
+// NoDeclarative used to be the other half, excluding fyne and gtk4 -- not
+// because they keep the tree, but because neither had anywhere to put a
+// per-instance cell: an instance was a method on the one Model, so promoting a
+// prop moved a per-call parameter onto a field every row and every recursion
+// frame shared. They have the record now (see each platform's
+// emitComponentInstance), so the exclusion went with it.
 //
 // With no target at all there is nothing to render, which is the state an LSP
 // or a format pass lowers in.
-func hasInstanceRuntime(c Caps) bool { return c.NoReactivity && !c.NoDeclarative }
+func hasInstanceRuntime(c Caps) bool { return c.NoReactivity }
 
 func lowerInstanceBodies(pkg *ir.Package, caps Caps, opts Options) error {
 	if pkg == nil {

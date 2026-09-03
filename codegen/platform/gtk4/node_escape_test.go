@@ -72,11 +72,11 @@ func generateGTK4Model(t *testing.T, src string) string {
 	return string(modelSrc)
 }
 
-// renderTreeViewBody extracts the body of the func (m *Model) renderTreeView
-// method from the generated model.go source.
+// renderTreeViewBody extracts the body of TreeView's instance ctor from the
+// generated model.go source.
 func renderTreeViewBody(t *testing.T, src string) string {
 	t.Helper()
-	const marker = "func (m *Model) renderTreeView("
+	const marker = "func newTreeViewInstance("
 	i := strings.Index(src, marker)
 	if i < 0 {
 		t.Fatalf("renderTreeView method not found in generated model.go:\n%s", src)
@@ -90,11 +90,14 @@ func renderTreeViewBody(t *testing.T, src string) string {
 	return rest[:end]
 }
 
-// TestNodeEscape_RecursiveRenderUsesLocals asserts the recursive component's
-// render method declares its internal widget temps as function-LOCAL
-// variables (not shared m.__nX Model fields), and never appends a widget to
-// itself. Before the escape-analysis fix this method used m.__nX fields,
-// causing the recursion self-append GTK hang.
+// TestNodeEscape_RecursiveRenderUsesLocals asserts a recursive component's
+// widget temps are per-frame -- never fields of the one Model -- and that no
+// widget is appended to itself. Before the escape-analysis fix the render
+// method used m.__nX fields, causing the recursion self-append GTK hang.
+//
+// A recursive component is now built as an instance record, so "per-frame"
+// is `c.__nX` on a record the frame allocated for itself, or a bare local.
+// `m.__nX` is the one spelling that is not.
 func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
 	skipWithoutGIR(t)
 	model := generateGTK4Model(t, recursiveTreeSrc)
@@ -104,12 +107,21 @@ func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
 	// recursive method — that is the bug. Each recursion frame needs its
 	// own locals.
 	if mfield := regexp.MustCompile(`m\.__n\d`).FindString(body); mfield != "" {
-		t.Errorf("renderTreeView still references shared Model field %q; internal refs must be function-local.\n--- renderTreeView ---\n%s", mfield, body)
+		t.Errorf("newTreeViewInstance still references shared Model field %q; a widget temp must belong to the frame.\n--- newTreeViewInstance ---\n%s", mfield, body)
 	}
 
-	// It must declare at least one local widget temp (var __nN or __nN :=).
-	if !regexp.MustCompile(`(var __n\d|__n\d :?=)`).MatchString(body) {
-		t.Errorf("renderTreeView declares no local widget temps; expected `var __nN`/`__nN :=`.\n--- renderTreeView ---\n%s", body)
+	// It must declare at least one per-frame widget temp.
+	if !regexp.MustCompile(`(c\.__n\d =|var __n\d|__n\d :?=)`).MatchString(body) {
+		t.Errorf("newTreeViewInstance declares no per-frame widget temps.\n--- newTreeViewInstance ---\n%s", body)
+	}
+
+	// Each frame allocates its own record, and the recursion goes through the
+	// ctor -- without both, the fields above are per-frame in spelling only.
+	if !strings.Contains(body, "c := &TreeViewInstance{}") {
+		t.Errorf("newTreeViewInstance allocates no record of its own.\n--- newTreeViewInstance ---\n%s", body)
+	}
+	if !strings.Contains(model, "newTreeViewInstance(") {
+		t.Errorf("nothing instantiates TreeView through its ctor:\n%s", model)
 	}
 
 	// No widget may be appended to itself: gtk_box_append(x, x).
@@ -117,7 +129,7 @@ func TestNodeEscape_RecursiveRenderUsesLocals(t *testing.T) {
 		lhs := stripCast(m[1])
 		rhs := stripCast(m[2])
 		if lhs == rhs {
-			t.Errorf("renderTreeView appends a widget to itself: %s == %s", m[1], m[2])
+			t.Errorf("newTreeViewInstance appends a widget to itself: %s == %s", m[1], m[2])
 		}
 	}
 }

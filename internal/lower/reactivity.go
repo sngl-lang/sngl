@@ -654,7 +654,7 @@ func (st *reactivityState) addSlotDep(v *ir.Var, slotID string) {
 }
 
 func (st *reactivityState) freshSlotID() string {
-	id := "__slot" + strconv.Itoa(st.slotCounter)
+	id := ir.SlotVarPrefix + strconv.Itoa(st.slotCounter)
 	st.slotCounter++
 	return id
 }
@@ -1234,7 +1234,7 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 
 // renderFuncName: "__slot<N>" → "__renderSlot<N>".
 func renderFuncName(slotID string) string {
-	n := strings.TrimPrefix(slotID, "__slot")
+	n := strings.TrimPrefix(slotID, ir.SlotVarPrefix)
 	return "__renderSlot" + n
 }
 

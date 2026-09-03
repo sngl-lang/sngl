@@ -223,7 +223,18 @@ func walkHandlerBody(ctx context.Context, handler ir.Expr, t IntrinsicTranslator
 // ident. The lower pass historically left Sym unset on synthesized
 // slot idents; when that's the case we synthesize a Var carrying the
 // ident's Name/Type so the translator still has the data it needs.
+// resolveSlotVar returns the slot accumulator id names, or nil when it names
+// something else.
+//
+// The name is what decides, not the Sym: a `list.push` onto a synthesized var
+// is not necessarily a slot append. An instance registry is a synthesized list
+// of the same shape pushed to in the same loop, and taking it for a slot
+// emitted its reconcile as `m.__inst0_next = append(...)` -- a field of the
+// Model, against a local the same function had just declared.
 func resolveSlotVar(id *ir.Ident) *ir.Var {
+	if !ir.IsSlotVarName(id.Name) {
+		return nil
+	}
 	if v, ok := id.Sym.(*ir.Var); ok {
 		return v
 	}

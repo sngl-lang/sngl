@@ -413,26 +413,49 @@ func ctorScalarCast(p gir.ConstructorParam) string {
 	return p.GIRType
 }
 
-// OnCreateComponent promotes a non-inlinable user component instance to a
-// Model field, so `m.<id>` references stay resolvable as in OnCreateNode.
+// OnCreateComponent binds a name to a live instance of a non-inlinable user
+// component.
+//
+// The id names the INSTANCE, so it is not a top-level widget candidate --
+// ComponentRoot is what yields something a container can hold.
 func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
-	t.idCTypes[id] = "GtkWidget"
-	t.topLevel = append(t.topLevel, id)
-	if t.isLocalRef(id) {
-		// A function-local, so each recursion frame keeps its own widget
-		// rather than clobbering a shared Model field.
-		return []ir.Stmt{&ir.LocalVar{
-			Name: id,
-			Type: ir.NativePointerOf("GtkWidget"),
-			Init: call,
-		}}
+	instType := t.instanceGoType(call)
+	if instType == "" {
+		t.idCTypes[id] = "GtkWidget"
 	}
-	t.fieldSink(id, "GtkWidget")
+	if t.isLocalRef(id) {
+		// A function-local, so each recursion frame and each row of a list
+		// keeps its own instance rather than clobbering a shared Model field.
+		lv := &ir.LocalVar{Name: id, Init: call}
+		if instType == "" {
+			lv.Type = ir.NativePointerOf("GtkWidget")
+		}
+		return []ir.Stmt{lv}
+	}
+	if instType != "" {
+		t.fieldSink(id, instType)
+	} else {
+		t.fieldSink(id, "GtkWidget")
+	}
 	return []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
+}
+
+// instanceGoType is the Go type a held instance handle has when this host
+// builds a component as a record, and "" when the render still yields a plain
+// widget.
+func (t *gtk4Translator) instanceGoType(call *ir.Call) string {
+	if !t.gc.InstanceRecords {
+		return ""
+	}
+	comp := golang.CreateComponentTarget(call)
+	if comp == nil || !comp.RuntimeInstance {
+		return ""
+	}
+	return "*" + golang.ComponentInstanceType(comp.Name)
 }
 
 // OnDetachHandler reports that gtk4 cannot yet take a signal back off.
@@ -453,11 +476,17 @@ func (t *gtk4Translator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 // field -- the same reason OnCreateComponent takes the local-ref path.
 func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
 	t.idCTypes[id] = "GtkWidget"
-	return []ir.Stmt{&ir.LocalVar{
-		Name: id,
-		Type: ir.NativePointerOf("GtkWidget"),
-		Init: &ir.Select{Type: ir.TypDyn, Operand: inst, Field: golang.ComponentRootField},
-	}}
+	t.topLevel = append(t.topLevel, id)
+	root := &ir.Select{Type: ir.TypDyn, Operand: t.qualifyNodeExpr(inst), Field: golang.ComponentRootField}
+	if t.isLocalRef(id) {
+		return []ir.Stmt{&ir.LocalVar{
+			Name: id,
+			Type: ir.NativePointerOf("GtkWidget"),
+			Init: root,
+		}}
+	}
+	t.fieldSink(id, "GtkWidget")
+	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
 }
 
 // OnUpdateComponent patches a prop on a live instance through the setter the
@@ -465,7 +494,7 @@ func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir
 func (t *gtk4Translator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 		Type:     ir.TypVoid,
-		Receiver: inst,
+		Receiver: t.qualifyNodeExpr(inst),
 		Func:     &ir.Func{Name: golang.ComponentSetterMethod(prop)},
 		Args:     []ir.CallArg{{Value: value}},
 	}}}
@@ -478,7 +507,7 @@ func (t *gtk4Translator) OnUpdateComponent(ctx context.Context, inst ir.Expr, pr
 func (t *gtk4Translator) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 		Type:     ir.TypVoid,
-		Receiver: inst,
+		Receiver: t.qualifyNodeExpr(inst),
 		Func:     &ir.Func{Name: golang.ComponentDestroyMethod},
 	}}}
 }

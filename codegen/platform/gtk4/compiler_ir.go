@@ -143,6 +143,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
+	// gtk4 builds a non-inlinable component as a record, so a CreateComponent
+	// renders as a call to that record's ctor.
+	gc.InstanceRecords = true
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
@@ -196,13 +199,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				continue
 			}
 			// __slot<N> vars hold widget refs for reactive if/for teardown.
-			info.binds = append(info.binds, irBind{
-				name:        v.Name,
-				goType:      "[]*C.GtkWidget",
-				init:        "nil",
-				noAccessors: true,
-			})
-			continue
+			//
+			// Named rather than taken as the shape of every synthesized var:
+			// an instance registry (`__instN_live`) is a synthesized list too,
+			// and calling it a list of widgets typed the field as
+			// []*C.GtkWidget while the render assigned []*CardInstance to it.
+			if ir.IsSlotVarName(v.Name) {
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      "[]*C.GtkWidget",
+					init:        "nil",
+					noAccessors: true,
+				})
+				continue
+			}
 		}
 		varGC := gc
 		if tv.Comp != nil {
@@ -218,13 +228,19 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			goType: goType,
 			init:   initVal,
 			// Consts skip getter/setter: the field name would collide with
-			// the accessor (APP_NAME field + APP_NAME() method).
-			noAccessors: v.IsConst,
+			// the accessor (APP_NAME field + APP_NAME() method). So does any
+			// name Go cannot export -- every `__`-prefixed one, which is
+			// every name a lowering pass synthesized, and nothing outside the
+			// program reads one.
+			noAccessors: v.IsConst || golang.ExportName(v.Name) == v.Name,
 		})
 	}
 
 	allFuncs := ctx.AllFuncs()
 	for _, f := range allFuncs {
+		if instanceOwnsFunc(ctx.Pkg, f) {
+			continue
+		}
 		if codegen.IsComputed(f) {
 			info.computeds = append(info.computeds, irComputed{
 				name:   f.Name,
@@ -267,6 +283,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
+	gc.InstanceRecords = true
 
 	// vc carries the accumulators the phases after the walk read back: the
 	// test invokers the main body's translator records as it connects signals.
@@ -333,6 +350,13 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonMainComponents() {
+		// A component the build renders as a live instance gets a record of
+		// its own; its widget fields and its state stay off the Model, which
+		// is the whole point. See emitComponentInstance.
+		if isInstanceComponent(cc.Component) {
+			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
+			continue
+		}
 		if createTargets[cc.Component] {
 			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 		}

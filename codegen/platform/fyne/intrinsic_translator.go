@@ -239,19 +239,21 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	}}
 }
 
-// OnCreateComponent promotes a recursive/non-inlinable user component
-// instance (`__nX = lower.CreateComponent(...)`) to a Model field, so the
-// `m.__nX` references emitted for it elsewhere (parent Add, etc.) resolve.
-// The translated CreateComponent call becomes `m.render<Comp>(props...)`
-// via the Go IR context when the returned Assign is later evaluated.
+// OnCreateComponent binds a name to a live instance of a non-inlinable user
+// component: `__nX = newCardInstance(props...)`, which is what the Go IR
+// context renders the CreateComponent call as.
+//
+// The id names the INSTANCE, so it is not a top-level widget candidate --
+// ComponentRoot is what yields something a container can hold. Listing it here
+// left an instance record in the window's root set, which used to compile
+// because the field was typed as a widget and no longer does.
 func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
-	t.topLevel = append(t.topLevel, id)
 	if t.isLocalRef(id) {
-		// Non-escaping: function-local `__nN := m.render<Comp>(...)` so each
-		// recursion frame keeps its own child widget.
+		// Non-escaping: function-local, so each recursion frame and each row
+		// of a list keeps its own instance.
 		return []ir.Stmt{&ir.LocalVar{Name: id, Init: call}}
 	}
-	t.fieldSink(id, "fyne.CanvasObject")
+	t.fieldSink(id, t.instanceGoType(call))
 	return []ir.Stmt{&ir.Assign{
 		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
@@ -259,26 +261,50 @@ func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call 
 	}}
 }
 
-// OnComponentRoot binds a name to the widget an instance renders as, so
-// AppendChild has something to attach. A local, not a Model field: an instance
-// is reached through the record that owns it, and the record is what a
-// recursion frame keeps its own copy of.
-func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
-	return []ir.Stmt{&ir.LocalVar{
-		Name: id,
-		Init: &ir.Select{Type: ir.TypDyn, Operand: inst, Field: golang.ComponentRootField},
-	}}
+// instanceGoType is the Go type a held instance handle has: the record when
+// this host builds one, and the widget the render returned when it does not.
+func (t *fyneTranslator) instanceGoType(call *ir.Call) string {
+	if t.gc.InstanceRecords {
+		if comp := golang.CreateComponentTarget(call); comp != nil && comp.RuntimeInstance {
+			return "*" + golang.ComponentInstanceType(comp.Name)
+		}
+	}
+	return "fyne.CanvasObject"
 }
+
+// OnComponentRoot binds a name to the widget an instance renders as, so
+// AppendChild has something to attach -- and that widget, not the instance, is
+// what a top-level position holds.
+//
+// Local or field by the same escape analysis every other node id answers to. A
+// local unconditionally is what left `__nN__el := …` declared in the body and
+// `m.__nN__el` read two lines later.
+func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+	t.topLevel = append(t.topLevel, id)
+	root := &ir.Select{Type: ir.TypDyn, Operand: t.instanceRef(inst), Field: golang.ComponentRootField}
+	if t.isLocalRef(id) {
+		return []ir.Stmt{&ir.LocalVar{Name: id, Init: root}}
+	}
+	t.fieldSink(id, "fyne.CanvasObject")
+	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
+}
+
+// instanceRef qualifies the handle an instance op names. The reconcile a
+// reactive slot performs declares that handle as a local of the render func,
+// so a bare synthesized ident renders as `m.__nN` -- a field of the Model,
+// against a local the same function just declared -- unless it is asked here
+// whether the id escapes.
+func (t *fyneTranslator) instanceRef(inst ir.Expr) ir.Expr { return t.qualifyChildExpr(inst) }
 
 // OnUpdateComponent patches a prop on a live instance through the setter the
 // instance carries for it.
 func (t *fyneTranslator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	return []ir.Stmt{&ir.CallStmt{Call: methodCall(inst, golang.ComponentSetterMethod(prop), []ir.Expr{value}, ir.TypVoid)}}
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(t.instanceRef(inst), golang.ComponentSetterMethod(prop), []ir.Expr{value}, ir.TypVoid)}}
 }
 
 // OnDestroyComponent ends the instance's lifetime.
 func (t *fyneTranslator) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
-	return []ir.Stmt{&ir.CallStmt{Call: methodCall(inst, golang.ComponentDestroyMethod, nil, ir.TypVoid)}}
+	return []ir.Stmt{&ir.CallStmt{Call: methodCall(t.instanceRef(inst), golang.ComponentDestroyMethod, nil, ir.TypVoid)}}
 }
 
 func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {

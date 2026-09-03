@@ -35,6 +35,7 @@ func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext) *GoIRContext {
 	ctx := codegen.NewExprCtx(req.Pkg)
 	ctx.ContextVar = "r.Context()"
 	ctx.StateReceiver = routeStateReceiver
+	ctx.StateFieldsExported = true
 	// Scope to the main component so its state vars resolve (StateReceiver
 	// then projects them onto `s.<Field>`). State surfaced to the route lives
 	// on the main component (and/or package-level), matching routeStateVars.

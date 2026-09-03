@@ -1,5 +1,7 @@
 package ir
 
+import "strings"
+
 // IntrinsicDef describes a function that must be natively implemented by
 // codegen backends. The IR only tracks signatures — implementations are
 // registered by each language/platform via the codegen registry.
@@ -94,6 +96,17 @@ const (
 // lowering that synthesizes the function and the platforms that emit a call to
 // it are four places that must agree on one string.
 func ComponentSetter(prop string) string { return "__set_" + prop }
+
+// SlotVarPrefix names the accumulator a reactive slot keeps: the nodes it
+// attached last render, so the next one can take those back. Minted by
+// passReactivity, matched by every platform's slot machinery, and by the
+// intrinsic walker to tell a `list.push` onto one from a push onto anything
+// else -- an instance registry's, notably, which is a different list with the
+// same shape and must not be emitted as a slot append.
+const SlotVarPrefix = "__slot"
+
+// IsSlotVarName reports whether name is a slot accumulator's.
+func IsSlotVarName(name string) bool { return strings.HasPrefix(name, SlotVarPrefix) }
 
 // NodeOps is every node operation, for the passes that build a call per op.
 var NodeOps = []string{

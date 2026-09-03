@@ -104,13 +104,21 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// __slot<N> vars hold widget refs for the renderSlot teardown loop.
 			// noAccessors because ExportName("__slot0") is unchanged, so an
 			// accessor would collide with the field.
-			info.binds = append(info.binds, irBind{
-				name:        v.Name,
-				goType:      "[]fyne.CanvasObject",
-				init:        &ir.Literal{Type: ir.TypNull},
-				noAccessors: true,
-			})
-			continue
+			//
+			// Named rather than taken as the shape of every synthesized var:
+			// an instance registry (`__instN_live`) is a synthesized list too,
+			// and calling it a list of widgets typed the field as
+			// []fyne.CanvasObject while the render assigned []*CardInstance to
+			// it.
+			if ir.IsSlotVarName(v.Name) {
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      "[]fyne.CanvasObject",
+					init:        &ir.Literal{Type: ir.TypNull},
+					noAccessors: true,
+				})
+				continue
+			}
 		}
 		goType := golang.VarGoType(v)
 		if strings.HasPrefix(goType, "time.") {
@@ -165,6 +173,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
+	// fyne builds a non-inlinable component as a record, so a CreateComponent
+	// renders as a call to that record's ctor.
+	gc.InstanceRecords = true
 
 	gc.RequireImport("fyne.io/fyne/v2")
 
@@ -298,6 +309,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// built, so the Model struct declares every field they reference.
 	var componentCodes []string
 	for _, cc := range ctx.NonMainComponents() {
+		// A component the build renders as a live instance gets a record of
+		// its own; its widget fields and its state stay off the Model, which
+		// is the whole point. See emitComponentInstance.
+		if isInstanceComponent(cc.Component) {
+			var ib strings.Builder
+			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByFunc)
+			componentCodes = append(componentCodes, ib.String())
+			continue
+		}
 		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
 			cc, ctx, gc, info, windowNames, endLabel, endContainer, nodeSpecs, addWidgetImport,
 		)
@@ -309,6 +329,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	var computedDatas []computedData
 	for _, comp := range info.computeds {
+		if instanceOwnsFunc(ctx.Pkg, comp.fn) {
+			continue
+		}
 		var body string
 		if comp.fn != nil && len(comp.fn.Block) == 1 {
 			if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -340,6 +363,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || codegen.IsComputed(fn) {
+			continue
+		}
+		if instanceOwnsFunc(ctx.Pkg, fn) {
 			continue
 		}
 		// A method on a user struct or enum is a free `ReceiverMethod(recv, …)`
