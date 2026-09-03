@@ -219,30 +219,23 @@ func PlatformUnavailable(name string) error {
 	return nil
 }
 
-// StaticViewRenderer is optionally implemented by a PlatformGenerator that
-// writes its view tree into the output rather than emitting host-language
-// statements for it. html is the one today: a page is markup written once, and
-// the only iteration it can express is the route emitter's, over an expression
-// that varies with the request.
+// PlatformRendersViewStatically reports whether the named platform writes a
+// view body into the output as markup rather than as statements a host runs.
 //
-// The optimizer asks, because a `for` over a compile-time-constant iterable
-// there has nowhere to run: nothing varies with the request, so no iteration is
-// emitted, and the loop renders its body a single time with its variable bound
-// to nothing. Unrolling is how those nodes exist at all -- whatever the target
-// language, whose own loop the platform never reaches.
-type StaticViewRenderer interface {
-	// RendersViewStatically reports whether a view body reaches the output as
-	// written rather than as statements a host runs.
-	RendersViewStatically() bool
-}
-
-// PlatformRendersViewStatically reports whether the named platform's view
-// bodies are written into the output rather than run. A platform that does not
-// implement StaticViewRenderer, and an unregistered name, answer false: a
-// caller with no platform to ask has none of this problem.
-func PlatformRendersViewStatically(name string) bool {
-	s, ok := LookupPlatform(name).(StaticViewRenderer)
-	return ok && s.RendersViewStatically()
+// It reads lower.Features rather than type-asserting an optional interface on
+// the platform, because a type assertion is capability *detection* and cannot
+// cross a process boundary: an out-of-process generator plugin can answer a
+// method, but nothing here can assert its type. Features is data the platform
+// already declares, so one call answers this over RPC as well as in process.
+//
+// An unregistered platform, or one with no language to ask about, answers
+// false -- a caller with neither has none of this problem.
+func PlatformRendersViewStatically(platform, language string) bool {
+	p, l := LookupPlatform(platform), LookupLang(language)
+	if p == nil || l == nil {
+		return false
+	}
+	return !p.Capabilities(l).ViewStatements
 }
 
 // PlatformDocs returns the SNGL declarations p contributes — the source of its

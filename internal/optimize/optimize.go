@@ -97,7 +97,8 @@ type FileAsset struct {
 //
 // The language is not the whole question, though. A language emits a loop only
 // where the platform hands it statements to emit, and a static-view platform
-// (codegen.StaticViewRenderer -- html, in both its modes) hands it none: the
+// (one declaring lower.Features.ViewStatements false -- html, in both its
+// modes) hands it none: the
 // tree is markup written once, so a loop still standing renders its body a
 // single time with its variable bound to nothing. `sngl doc --http` lost its
 // package list that way, seven links becoming one empty `<a>`, under --lang go.
@@ -115,7 +116,7 @@ func (ctx *evalCtx) unrollsLoops() bool {
 type evalCtx struct {
 	platform string
 	language string
-	// staticView is the platform's answer to codegen.StaticViewRenderer,
+	// staticView is the platform's lower.Features.ViewStatements, inverted and
 	// asked once per package fold rather than per loop.
 	staticView    bool
 	dir           string
@@ -385,7 +386,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		nativeErr:     r.cfg.nativeErr,
 		platform:      r.cfg.Platform,
 		language:      r.cfg.Language,
-		staticView:    codegen.PlatformRendersViewStatically(r.cfg.Platform),
+		staticView:    codegen.PlatformRendersViewStatically(r.cfg.Platform, r.cfg.Language),
 		dir:           r.cfg.Dir,
 		noCacheBust:   r.cfg.NoCacheBust,
 		pkg:           pkg,
