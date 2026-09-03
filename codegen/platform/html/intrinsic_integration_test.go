@@ -36,9 +36,11 @@ component main {
 	for _, snippet := range []string{
 		"function __renderSlot0",
 		"__slot0 = []",
-		"for (const __entry of __slot0)",
-		".removeChild(__entry)",
-		"__slot0 = []",
+		// html can place a child, so the render keeps what is already there
+		// and removes only what the new order does not ask for -- rather than
+		// detaching every child up front.
+		"for (const __place0_prev_e of __place0_prev)",
+		".removeChild(__place0_prev_e)",
 		"if (state.visible)",
 		"__slot0.push(",
 		"__renderSlot0(",
@@ -84,7 +86,7 @@ component main {
 	for _, snippet := range []string{
 		"function __renderSlot0",
 		"__slot0 = []",
-		"for (const __entry of __slot0)",
+		"for (const __place0_prev_e of __place0_prev)",
 		"for (const item of state.items)",
 		"__slot0.push(",
 		"__renderSlot0(",

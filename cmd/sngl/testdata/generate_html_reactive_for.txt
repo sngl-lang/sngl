@@ -5,7 +5,7 @@
 # Legacy pipeline emits:
 #   - let __slot0 = [] accumulator;
 #   - function __renderSlot0(parent) {
-#       for (const __entry of __slot0) parent.removeChild(__entry);
+#       for (const e of __place0_prev) if (__slot0.indexOf(e) < 0) parent.removeChild(e);
 #       state.__slot0 = [];
 #       for (const item of state.items) {
 #         let __n0 = document.createElement("span");
@@ -29,7 +29,7 @@ grep '__slot0 = \[\]' out/index.html
 grep 'function __renderSlot0' out/index.html
 
 # Render fn body shape: clear old entries, then iterate state.items.
-grep 'for \(const __entry of __slot0\)' out/index.html
+grep 'for \(const __place0_prev_e of __place0_prev\)' out/index.html
 grep 'for \(const item of state.items\)' out/index.html
 grep '__n0.textContent = item' out/index.html
 grep '__slot0.push\(__n0\)' out/index.html

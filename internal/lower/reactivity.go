@@ -45,6 +45,10 @@ type reactivityState struct {
 	// instCounter names the state each component instantiation inside a slot
 	// keeps, so two occurrences in one package never share a list.
 	instCounter int
+	// placement is the slot render currently being built, when the target can
+	// place a child. Held on the state because the body's nodes place
+	// themselves as they are emitted, and the func is assembled around them.
+	placement *slotPlacement
 	// slotDeclSt is the shared declarative state used to lower every
 	// reactive-slot body. Sharing keeps the __nN counter monotonic
 	// across slots so two slot Funcs in the same package don't
@@ -1285,7 +1289,12 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	if st.idCounter > st.slotDeclSt.nextID {
 		st.slotDeclSt.nextID = st.idCounter
 	}
+	// Created before the body, because each node it emits places itself.
+	placement := st.newSlotPlacement(slotID, st.synthesizeSlotVar(slotID),
+		&ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true})
+	st.placement = placement
 	body := st.renderSlotBody(st.slotDeclSt, parentParam, slotID, cond, iter, key, value, origBody, origElse)
+	st.placement = nil
 	// Propagate the slot's advanced counter back so subsequent
 	// reactivity freshNodeID calls (line 253, line 446) don't reuse
 	// __nN values the slot just claimed.
@@ -1293,6 +1302,13 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		st.idCounter = st.slotDeclSt.nextID
 	}
 
+	// A target that can place a child keeps what it already has and moves only
+	// what moved; the teardown-and-rebuild above is what the rest still do.
+	if sp := placement; sp != nil {
+		fn.Block = append(sp.open(), body...)
+		fn.Block = append(fn.Block, st.closeSlotPlacement(sp)...)
+		return fn
+	}
 	fn.Block = append([]ir.Stmt{teardown, reset}, body...)
 	return fn
 }
@@ -1348,24 +1364,35 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	// were reached: each keeps a list of the instances it holds, opened before
 	// the body and closed after it.
 	var instances []*slotInstance
+	// attach is how a node reaches the parent: placed where the desired order
+	// says, on a target that can place one, and appended on every other.
+	attach := func(name string) []ir.Stmt {
+		if st.placement != nil {
+			return st.place(st.placement, name)
+		}
+		return []ir.Stmt{declSt.appendChildStmt(parentRef, name)}
+	}
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
+		var sub []ir.Stmt
 		if declSt.instanceRecords && isInstanceNode(n) {
 			if n.ID == "" {
 				n.ID = declSt.freshID()
 			}
 			si := st.newSlotInstance(n.Key)
 			instances = append(instances, si)
-			sub := st.reuseOrCreate(si, n, declSt)
+			sub = st.reuseOrCreate(si, n, declSt)
 			sub = append(sub, declSt.componentRootBinding(n)...)
-			sub = append(sub, declSt.appendChildStmt(parentRef, declSt.attachName(n)))
-			return append(sub, pushToSlot(declSt.attachName(n)))
+		} else {
+			// nil parent: the attachment is this function's business now, so
+			// the node lowering must not append one of its own.
+			_, sub = lowerNodeForSlot(declSt, n, nil, ownerFuncs)
 		}
-		_, sub := lowerNodeForSlot(declSt, n, parentRef, ownerFuncs)
+		name := declSt.attachName(n)
+		sub = append(sub, attach(name)...)
 		// What the slot retains is what it later removes from the parent, and
 		// RemoveChild takes a node -- so for an instance that is its root, not
 		// the instance itself.
-		sub = append(sub, pushToSlot(declSt.attachName(n)))
-		return sub
+		return append(sub, pushToSlot(name))
 	}
 	// Recursively process a body: NodeInsts are realized + pushed onto the
 	// slot list. Nested If/For without their own slot (i.e. depending only
