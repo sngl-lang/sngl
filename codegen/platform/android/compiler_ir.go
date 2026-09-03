@@ -254,6 +254,50 @@ type irAndroidComputed struct {
 	fn     *ir.Func
 }
 
+// bindForVar describes one reactive var as Compose state. Shared by the main
+// component's binds and by a surviving component's own vars, which are the
+// same declaration reached through a different scope.
+func bindForVar(v *ir.Var) irAndroidBind {
+	ktType := kotlin.IRTypeToKt(v.Type)
+	initVal := irVarInitKt(v)
+	isList := v.Type != nil && v.Type.Kind == ir.TypeList
+	// When the init is a non-literal expression (e.g. an i18n.tr call),
+	// IRLiteralToKt returns "" — store the raw expr so the emitter can
+	// re-evaluate it via kc.EvalExpr. This has to happen before the
+	// list blanking below, which erases the `""` this keys off.
+	var initEx ir.Expr
+	if initVal == `""` && v.Init != nil {
+		if _, isLit := v.Init.(*ir.Literal); !isLit {
+			initEx = v.Init
+		}
+	}
+	if isList && (initVal == `""` || initVal == "emptyList()") {
+		initVal = ""
+	}
+	return irAndroidBind{
+		name:   v.Name,
+		ktType: ktType,
+		init:   initVal,
+		initEx: initEx,
+		isList: isList,
+	}
+}
+
+// componentOwnedFuncs is the set of funcs declared by a component that
+// survived inlining. Each is emitted as a local fun of that component's
+// composable rather than beside it: it reads the component's state, and on
+// Compose that state is a `remember`ed local, so a top-level fun would name
+// what nothing declared.
+func componentOwnedFuncs(ctx *codegen.CodegenCtx) map[*ir.Func]bool {
+	owned := map[*ir.Func]bool{}
+	for _, cc := range ctx.NonMainComponents() {
+		for _, fn := range cc.Funcs {
+			owned[fn] = true
+		}
+	}
+	return owned
+}
+
 func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 	info := &irAndroidAnalysis{
 		CommonAnalysis: ctx.Analysis,
@@ -264,34 +308,16 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		if v.IsConst {
 			continue
 		}
-		ktType := kotlin.IRTypeToKt(v.Type)
-		initVal := irVarInitKt(v)
-		isList := v.Type != nil && v.Type.Kind == ir.TypeList
-		// When the init is a non-literal expression (e.g. an i18n.tr call),
-		// IRLiteralToKt returns "" — store the raw expr so emitIR can
-		// re-evaluate it via kc.EvalExpr. This has to happen before the
-		// list blanking below, which erases the `""` this keys off.
-		var initEx ir.Expr
-		if initVal == `""` && v.Init != nil {
-			if _, isLit := v.Init.(*ir.Literal); !isLit {
-				initEx = v.Init
-			}
-		}
-		if isList && (initVal == `""` || initVal == "emptyList()") {
-			initVal = ""
-		}
-		info.binds = append(info.binds, irAndroidBind{
-			name:   v.Name,
-			ktType: ktType,
-			init:   initVal,
-			initEx: initEx,
-			isList: isList,
-		})
+		info.binds = append(info.binds, bindForVar(v))
 	}
+
+	// A surviving component's own funcs are declared inside its composable,
+	// where its state is, so they are not the main composable's to hoist.
+	owned := componentOwnedFuncs(ctx)
 
 	allFuncs := ctx.AllFuncs()
 	for _, f := range allFuncs {
-		if codegen.IsComputed(f) {
+		if codegen.IsComputed(f) && !owned[f] {
 			info.computeds = append(info.computeds, irAndroidComputed{
 				name:   f.Name,
 				ktType: irFuncReturnKt(f),
@@ -314,11 +340,18 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// actually emit them inside the class body below.
 	// A component's own funcs, which belong inside the composable rather than
 	// beside it -- see the emission below.
-	componentOwnFuncs := map[*ir.Func]bool{}
+	mainOwnFuncs := map[*ir.Func]bool{}
 	if main := ctx.MainComponent(); main != nil {
 		for _, fn := range main.Funcs {
-			componentOwnFuncs[fn] = true
+			mainOwnFuncs[fn] = true
 		}
+	}
+	// Two sets, not one: a func belongs inside exactly one composable, and the
+	// main one emits only its own. Merging them put every component's func in
+	// MainScreen as well as in the composable that owns its state.
+	componentOwnFuncs := componentOwnedFuncs(ctx)
+	for fn := range mainOwnFuncs {
+		componentOwnFuncs[fn] = true
 	}
 
 	var stateFuncs []*ir.Func
@@ -601,7 +634,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// instead, and the call sites are rewritten to reach them there.
 	if !testMode && !cfg.GoLib {
 		for _, fn := range ctx.AllFuncs() {
-			if !componentOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) || isCanvasDrawFunc(fn) {
+			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) || isCanvasDrawFunc(fn) {
 				continue
 			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
@@ -675,7 +708,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// User component composables
 	for _, comp := range ctx.NonMainComponents() {
-		emitIRComponentComposable(&body, comp, ctx, kc, cfg.combo())
+		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo())
 	}
 
 	// User functions (non-GoLib). In test mode these were emitted
@@ -726,7 +759,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	return []byte(out.String())
 }
 
-func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, combo androidtc.Combo) {
+func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo) {
 	b.WriteString("\n@Composable\n")
 	var params []string
 	for _, p := range cc.Props {
@@ -748,6 +781,56 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	compKC := kc.ForComponent(cc.Component)
 	for _, p := range cc.Props {
 		compKC = compKC.WithLocal(p.Name)
+	}
+
+	// The component's own state, computeds and funcs, declared inside the
+	// composable. An instance of a component is a place in the composition,
+	// and `remember` is what gives that place a cell of its own -- so two
+	// rows of a list, or two frames of a recursion, hold two counters. Emitted
+	// beside the composable instead, every one of these named a binding
+	// nothing had declared.
+	decls := 0
+	for _, v := range cc.Vars {
+		if v.IsConst {
+			continue
+		}
+		bind := bindForVar(v)
+		initVal := bind.init
+		if bind.initEx != nil {
+			initVal = compKC.EvalExpr(bind.initEx)
+		}
+		if bind.isList {
+			fmt.Fprintf(b, "    val %s = remember { %s }\n", bind.name, listStateInitKt(bind, initVal))
+		} else {
+			fmt.Fprintf(b, "    var %s by remember { mutableStateOf%s(%s) }\n", bind.name, stateTypeArg(bind, initVal), initVal)
+		}
+		decls++
+	}
+	for _, fn := range cc.Computeds {
+		comp := irAndroidComputed{name: fn.Name, ktType: irFuncReturnKt(fn), fn: fn}
+		fmt.Fprintf(b, "    val %s by remember { %s }\n", comp.name, computedCalcKt(comp, cfg, compKC, "    "))
+		decls++
+	}
+	for _, fn := range cc.Funcs {
+		if fn.IsTest || codegen.IsComputed(fn) || isCanvasDrawFunc(fn) {
+			continue
+		}
+		if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
+			continue
+		}
+		var local strings.Builder
+		emitIRKtFunc(&local, fn, compKC)
+		for line := range strings.SplitSeq(strings.TrimRight(local.String(), "\n"), "\n") {
+			if line == "" {
+				b.WriteString("\n")
+				continue
+			}
+			fmt.Fprintf(b, "    %s\n", line)
+		}
+		decls++
+	}
+	if decls > 0 {
+		b.WriteString("\n")
 	}
 
 	vc := &irComposeContext{
