@@ -1,0 +1,16 @@
+// As with `break`, but the way out is subtler: a `continue` ends the
+// iteration rather than the loop, so the loop runs out afterwards -- and the
+// else does not run then either, because the body did.
+
+import . "sngl:ui"
+
+func g(xs list<int>) int { // ERROR(check) "missing return"
+    for var x = xs {
+        if x > 5 {
+            continue
+        }
+        return 1
+    } else {
+        return 2
+    }
+}

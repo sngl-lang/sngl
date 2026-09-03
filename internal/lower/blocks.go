@@ -106,6 +106,12 @@ func (c *blockCollector) handlersIn(stmts []ir.Stmt) {
 		case *ir.SlotInst:
 			c.handlersIn(n.Children)
 		case *ir.ErrorBoundary:
+			// The boundary's own @error handler, which is a handler body like
+			// any other -- ir.Walk reaches it and analyzeCaptures walks it, so
+			// leaving it out here was an inconsistency rather than a rule.
+			if n.Handler != nil && n.Handler.Func != nil {
+				c.add(&n.Handler.Func.Block)
+			}
 			c.handlersIn(n.Children)
 		case *ir.ContextProvider:
 			c.handlersIn(n.Children)

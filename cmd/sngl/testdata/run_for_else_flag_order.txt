@@ -1,0 +1,58 @@
+# passForElse states "the body never ran" as a flag, and sets it as the body's
+# FIRST statement. That position is the whole of what makes a loop escape
+# behave: `break` and `continue` both leave the rest of the body unrun, so a
+# flag set anywhere after them is not set on the iteration that escaped, and
+# the else fires for a loop whose body did run.
+#
+# This runs the generated Go rather than reading it, because the invariant is
+# about order and a grep over the output is position-blind. The interpreter
+# cannot see it either -- it honours For.Else natively and never runs the pass
+# -- so the assertion has to come from a compiled target.
+#
+# The state has to be a component var. A plain function over a literal list
+# const-folds before lowering, and then proves nothing about the pass.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component box {
+    var xs list<int> = [1, 2]
+    var note = ""
+
+    button #stop(text="stop", @click {
+        for var x = xs {
+            note = "saw {x}"
+            break
+        } else {
+            note = "empty"
+        }
+    })
+    button #skip(text="skip", @click {
+        for var x = xs {
+            note = "{x}"
+            continue
+        } else {
+            note = "empty"
+        }
+        note = note + "!"
+    })
+    text(value=note)
+}
+
+// A break leaves a loop whose body ran, so the else does not run.
+func testBreakMeansTheBodyRan(t Test, c box) {
+    c.stop.click()
+    t.assert(c.note == "saw 1")
+}
+
+// Nor does a continue on every iteration: the body ran each time, and the
+// loop ended by running out rather than by never starting.
+func testContinueMeansTheBodyRan(t Test, c box) {
+    c.skip.click()
+    t.assert(c.note == "2!")
+}

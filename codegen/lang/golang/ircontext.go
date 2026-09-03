@@ -398,8 +398,8 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	}
 	switch n.IterKind {
 	case ir.IterForever:
-		// Go's own spelling for it, and the head the two kinds below are the
-		// condition-carrying form of.
+		// Go's own spelling: `for {` is the condition form below with the
+		// condition left out.
 		return "for {"
 	case ir.IterCondition:
 		return "for " + iter + " {"

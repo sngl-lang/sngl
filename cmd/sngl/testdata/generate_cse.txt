@@ -20,7 +20,7 @@ grep 'Weight\(m.b\)' go/model.go
 # A statement holding an impure call keeps both of its calls: hoisting one
 # across the other would move a read across a write.
 grep 'm.log = \(m.noisy\(\) \+ m.noisy\(\)\)' go/model.go
-! grep '__cse2'
+! grep '__cse2' go/model.go
 
 sngl generate --platform=html --lang=none --out=web app.sngl
 grep 'let __cse0 = weight\(state.seed\);' web/index.html

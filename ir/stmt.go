@@ -274,11 +274,12 @@ const (
 	IterForever
 )
 
-// DeriveIterKind classifies n's iteration shape from its resolved Iter type
-// and variable arity — the single decision every language's ForHead used to
-// make independently. A map iterable yields key/value pairs; otherwise a
-// second variable means indexed iteration, and a lone variable binds the
-// element.
+// DeriveIterKind classifies n's iteration shape from whether it has a head at
+// all, that head's resolved type, and the loop's variable arity — the single
+// decision every language's ForHead used to make independently. No head is
+// the forever loop and a bool head is a condition; past those, a map iterable
+// yields key/value pairs, otherwise a second variable means indexed iteration
+// and a lone variable binds the element.
 func DeriveIterKind(n *For) IterKind {
 	if n == nil {
 		return IterElement

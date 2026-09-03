@@ -11,7 +11,7 @@ sngl generate --platform=android --lang=kotlin --out=out app.sngl
 grep 'for \(opt in listOf\("small", "medium", "large"\)\) \{' out/MainScreen.kt
 grep 'RadioButton\(selected = \(pick == opt\), onClick = \{' out/MainScreen.kt
 grep 'Text\(text = opt, modifier = Modifier\)' out/MainScreen.kt
-! grep 'RadioButton\(selected = \(pick == "small"\)'
+! grep 'RadioButton\(selected = \(pick == "small"\)' out/MainScreen.kt
 
 # Compose passes onClick nothing, so the override names the option itself:
 # the @change handler's `e.value` is the option that was clicked, which is the

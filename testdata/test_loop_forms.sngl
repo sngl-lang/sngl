@@ -12,8 +12,9 @@ func countTo(n int) int {
     return i
 }
 
-// The forever loop's only way out. Without the break the statement after the
-// loop is unreachable, which is what makes this a complete function body.
+// The forever loop's only way out. The break is also what makes the trailing
+// return reachable, and so required: a `for { }` with none of them never
+// falls out of the bottom, and a function can end inside it.
 func firstMultiple(of int, atLeast int) int {
     var i int = of
     for {
