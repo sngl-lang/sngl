@@ -1,4 +1,4 @@
-package main
+package build
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ func TestResolveTargets_CLIFlagsPreserveDeclaredOptions(t *testing.T) {
 	}
 	codegen.SetOptionField(pkg.Outputs[0].Options, "stylesheet", "public/style.css")
 
-	targets, err := resolveTargets(pkg, "none", "html", nil)
+	targets, err := ResolveTargets(pkg, "none", "html", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestResolveTargets_CLIFlagsPreserveDeclaredOptions(t *testing.T) {
 
 func TestResolveTargets_CLIFlagsUndeclaredTarget(t *testing.T) {
 	pkg := &ir.Package{} // no output decls
-	targets, err := resolveTargets(pkg, "go", "bubbletea", nil)
+	targets, err := ResolveTargets(pkg, "go", "bubbletea", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

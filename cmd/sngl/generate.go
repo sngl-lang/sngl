@@ -1,6 +1,7 @@
 package main
 
 import (
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +28,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	return runPipeline(cmd, args, pipelineOpts{
 		cliLang: cliLang,
 		cliPlat: cliPlat,
-		cliOpts: parseCLIOpts(optSlice),
+		cliOpts: build.ParseCLIOpts(optSlice),
 		outDir:  outDir,
 		quiet:   quiet(cmd),
 	})

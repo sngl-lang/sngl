@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -73,7 +74,7 @@ func (in *snglInput) Document() *ast.Document {
 			doc.Stmts = append(doc.Stmts, d.Stmts...)
 			continue
 		}
-		mergeInto(doc, d)
+		build.MergeInto(doc, d)
 	}
 	return doc
 }

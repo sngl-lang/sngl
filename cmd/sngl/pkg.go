@@ -13,6 +13,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -60,7 +61,7 @@ func init() {
 // Records every FS-scheme URI resolved, de-duplicated and in discovery order,
 // so `pkg update` can iterate them afterwards.
 type capturingResolver struct {
-	*cliResolver
+	*build.Resolver
 	mu     sync.Mutex
 	seen   map[string]bool
 	schema []schemeRef
@@ -73,8 +74,8 @@ type schemeRef struct {
 
 func newCapturingResolver(dir string) *capturingResolver {
 	return &capturingResolver{
-		cliResolver: &cliResolver{rootDir: dir, fsys: os.DirFS(dir)},
-		seen:        map[string]bool{},
+		Resolver: build.NewResolver(dir),
+		seen:     map[string]bool{},
 	}
 }
 
@@ -86,14 +87,14 @@ func (r *capturingResolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Doc
 		r.schema = append(r.schema, schemeRef{scheme: scheme, uri: uri})
 	}
 	r.mu.Unlock()
-	return r.cliResolver.ResolveSchemeFS(scheme, uri, dir)
+	return r.Resolver.ResolveSchemeFS(scheme, uri, dir)
 }
 
 // The caches are populated as a side effect of the checker's transitive import
 // resolution. A checker error is logged rather than fatal: a bad hash on one
 // dep must not prevent downloading the others.
 func walkMains(units []unit, resolver checker.ImportResolver, dir string) {
-	langs, plats := collectTargets()
+	langs, plats := build.RegisteredTargets()
 	for _, u := range units {
 		doc, err := u.doc()
 		if err != nil {

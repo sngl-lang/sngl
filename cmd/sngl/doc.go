@@ -13,6 +13,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/docs/lookup"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/docbrowser"
 	"git.duckfam.us/jonathan/sngl/internal/docsite"
@@ -64,7 +65,7 @@ func init() {
 
 	// Let docs/lookup resolve scheme imports via the CLI's codegen-aware resolver.
 	lookup.RegisterResolver(func(cwd string) checker.ImportResolver {
-		return &cliResolver{rootDir: cwd}
+		return &build.Resolver{RootDir: cwd}
 	})
 }
 

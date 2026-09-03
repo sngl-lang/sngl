@@ -393,7 +393,53 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 
 **Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
 
-**Know which harness sees platforms.** `internal/checker`'s two testdata-driven tests (`TestCheckTestdata`, `TestCheckProjectTestdata`) check against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. The other `TestdataSamples` consumers — `internal/optimize`, `internal/parser`, `internal/lspcore` — still check with none registered, and no fixture gets the real import resolver (directory imports resolve through a test stub). For those, and for anything driven by CLI flags or generated output, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI.
+**Golden codegen fixtures** (`testdata/*.txtar`, run by `internal/goldentest`
+from the root `TestGolden`): the archive's root-level files are one SNGL
+package, `out/<lang>/<platform>/` is the generated code, and which targets run
+is the source's own `output` block rather than a harness header. Seed or
+refresh with `go test . -run TestGolden -update`. The compile is
+`internal/build`'s — the same code `sngl generate` runs, which is why that
+package exists.
+
+**Assert on generated code with a golden, not a grep.** A substring assertion
+cannot see the shape of what it matched or the order two statements came out
+in. `passForElse` sets its flag as the loop body's first statement; moving it
+to the last broke `break` and `continue` on every compiled target and passed
+the whole suite, because the only assertion was `grep -count=1 '__ran0 = true'`. `testdata/for_else_imperative.txtar` is that fixture converted, and it
+fails on all three targets under the same change.
+
+**The two harnesses are split by what they assert, and must stay split.**
+`cmd/sngl/testdata/*.txt` is the CLI's: flags, exit codes, `dump` stages,
+error text, `--out` layout, and anything that compiles or *executes* generated
+code (`sngl test --language go`, a browser run, a gradle build). Those keep
+their `[!node]`/`[gtk4]`/`[chromium]` skip conditions and their real
+subprocesses; a golden runs nothing, so moving them would lose the assertion,
+not reformat it. `testdata/*.txtar` is the language's: given this program,
+this is the code every target generates. A claim about the CLI goes in the
+first; a claim about codegen goes in the second.
+
+A claim of *absence* is the one thing a golden cannot state — it makes
+absence visible, but no reader notices that something is not there. Those are
+written as `deny` lines in the archive comment, naming a golden file (or `*`
+for all of them), a backquoted regex, and a reason:
+
+```
+deny out/go/bubbletea/model.go `held := \[\]int` -- the held sequence is a range func, not a slice
+deny * `\.toList\(\)` -- no target copies a progression into a list
+```
+
+Deliberately not `! grep`: rsc.io/script's `grep` wants a pattern and a file,
+one argument is a usage error, and a usage error under `!` is a *pass* — six
+such lines had accumulated, three asserting the absence of the very thing
+their change was about (`TestScriptGrepsNameAFile` is the lint against the
+class). A `deny` that names no reason, no file, a file no target generates, or
+a pattern that does not compile is a failure.
+
+Neither harness fixes a fixture whose input never reaches the branch it means
+to exercise: generated output is identical either way. Confirm a new fixture
+*fails* when the behaviour is reverted.
+
+**Know which harness sees platforms.** `internal/checker`'s two testdata-driven tests (`TestCheckTestdata`, `TestCheckProjectTestdata`) check against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. The other `TestdataSamples` consumers — `internal/optimize`, `internal/parser`, `internal/lspcore` — still check with none registered, and no fixture gets the real import resolver (directory imports resolve through a test stub). For those, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
