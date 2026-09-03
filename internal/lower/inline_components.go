@@ -540,7 +540,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		}
 		return spliced, true, nil
 	case *ir.If:
-		bodyReactive := inReactive
+		bodyReactive := inReactive || dependsOnReactiveVar(n.Cond, st.reactive)
 		body, ch1, err := st.inlineStmtsCtx(n.Body, bodyReactive)
 		if err != nil {
 			return nil, false, err

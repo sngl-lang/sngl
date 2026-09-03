@@ -303,3 +303,64 @@ component main { window(title="H", href="/index.html") { App() } }
 		t.Errorf("the two rows should still hold their own counts; got %q", got)
 	}
 }
+
+// A component in a reactive `if` is an instance too, and re-entering the
+// branch is a new one rather than the old one resumed. The counter is what
+// says which: a persisted instance comes back showing the hit it was clicked
+// before the branch went away.
+//
+// This is the semantics the inliner's reactive-context gate buys. Without the
+// `if` head feeding that gate, the component inlines into the branch and its
+// state cell lives on the one model, so the branch leaving and coming back
+// changes nothing about it -- and an `if`-nested component would then persist
+// where a `for`-nested one resets, making an observable difference depend on
+// whether the inliner ran.
+func TestInstance_BranchReentryResetsState(t *testing.T) {
+	src := `
+import . "sngl:ui"
+import . "sngl:app"
+component badge() {
+    var hits = 0
+    text(value="[" + string(hits) + "]")
+    button(text="hit", @click { hits = hits + 1 })
+}
+component App() {
+    var shown = true
+    button(text="toggle", @click { shown = !shown })
+    if shown {
+        badge()
+    }
+}
+component main { window(title="H", href="/index.html") { App() } }
+`
+	b := startComponent(t, src)
+	defer b.Close()
+	page := b.Page()
+
+	toggle := page.MustElement("button")
+	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[0]") {
+		t.Fatalf("initial render; got %q", got)
+	}
+
+	page.MustElements("button")[1].MustClick()
+	page.MustWaitStable()
+	if got := page.MustElement("body").MustText(); !strings.Contains(got, "[1]") {
+		t.Fatalf("after hit; got %q", got)
+	}
+
+	toggle.MustClick()
+	page.MustWaitStable()
+	if got := page.MustElement("body").MustText(); strings.Contains(got, "[1]") || strings.Contains(got, "[0]") {
+		t.Fatalf("the branch is off, so the child should be gone; got %q", got)
+	}
+
+	toggle.MustClick()
+	page.MustWaitStable()
+	got := page.MustElement("body").MustText()
+	if strings.Contains(got, "[1]") {
+		t.Errorf("re-entering the branch should reset the child's state; got %q", got)
+	}
+	if !strings.Contains(got, "[0]") {
+		t.Errorf("the child should be back; got %q", got)
+	}
+}
