@@ -187,7 +187,7 @@ var sections = []section{
 		"UnaryExpr", "PostfixExpr", "PrimaryExpr",
 		"ExprPostfixOp", "StmtPostfixOp",
 	}},
-	{"argument-lists", []string{"ArgList", "Arg", "IdentArgCont", "ArgExprCont"}},
+	{"argument-lists", []string{"ArgList", "Arg", "EventArg", "IdentArgCont", "ArgExprCont"}},
 	{"literals", []string{
 		"ListBody", "ListElem", "StructLitBody", "AnonStructLit", "AnonField", "FuncLit",
 	}},

@@ -1,0 +1,10 @@
+// A supplied handler carries its body. `EventArg` requires the `StmtBlock`
+// -- the same shape as `VarHandler` -- so `@click` alone is not an argument.
+// Before that, a blockless `@name` in an argument list parsed as an ordinary
+// value and checked clean even when the event was declared nowhere at all.
+
+import . "sngl:ui"
+
+component card() {
+    button(@nosuchevent) // ERROR(parse) "unexpected \")\""
+}

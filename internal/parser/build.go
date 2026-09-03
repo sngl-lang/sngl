@@ -817,7 +817,7 @@ func (b *builder) buildVarSpec(it nodeIter) ast.VarSpec {
 		if !it.isNonTerminal() && it.tokenType() == ASSIGN {
 			it.skip()
 		} else if it.isNonTerminal() && it.symbol() == VarHandler {
-			spec.Handlers = append(spec.Handlers, b.buildVarHandler(it.enter()))
+			spec.Handlers = append(spec.Handlers, b.buildAtHandler(it.enter()))
 		} else if it.isNonTerminal() {
 			spec.Default = b.buildExprNonTerminal(&it)
 		} else {
@@ -827,8 +827,14 @@ func (b *builder) buildVarSpec(it nodeIter) ast.VarSpec {
 	return spec
 }
 
-func (b *builder) buildVarHandler(it nodeIter) ast.EventHandler {
-	// VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+// buildAtHandler builds either of the two identical productions
+//
+//	VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+//	EventArg   = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+//
+// -- a handler declared on a var and one supplied as an argument are the same
+// construct in two positions, so they share a builder.
+func (b *builder) buildAtHandler(it nodeIter) ast.EventHandler {
 	it.skip() // at
 	nameTok := it.shift()
 	h := ast.EventHandler{
@@ -838,9 +844,9 @@ func (b *builder) buildVarHandler(it nodeIter) ast.EventHandler {
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		it.skip() // lparen
 		if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
-			names := b.buildIdentList(it.enter())
-			for _, name := range names {
-				h.Params.Params = append(h.Params.Params, ast.Param{Name: name})
+			names, positions := b.buildIdentListWithPos(it.enter())
+			for i, name := range names {
+				h.Params.Params = append(h.Params.Params, ast.Param{Pos: positions[i], Name: name})
 			}
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
@@ -1497,10 +1503,6 @@ func (b *builder) applyStmtPostfixOp(it nodeIter, base ast.Expr, lastBlock *ast.
 		}
 		if !it.done() && it.isNonTerminal() && it.symbol() == StmtBlock {
 			block := b.buildStmtBlock(it.enter())
-			// Preserve EventRefExpr so caller can convert to EventHandler.
-			if _, ok := base.(*ast.EventRefExpr); ok {
-				return base, &block, &call.Args, ""
-			}
 			return call, &block, nil, ""
 		}
 		return call, nil, nil, ""
@@ -1853,8 +1855,6 @@ func (b *builder) tokenToExpr(tok Token) ast.Expr {
 		// the parser knows. Recognising them here made them unshadowable and
 		// put three names in the grammar that the language does not reserve.
 		return &ast.IdentExpr{Pos: ast.Pos(pos), Name: tok.Literal}
-	case AT:
-		return &ast.EventRefExpr{Pos: ast.Pos(pos)}
 	}
 	return &ast.IdentExpr{Pos: ast.Pos(pos), Name: tok.Literal}
 }
@@ -2231,13 +2231,6 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			it.skip() // rbracket
 		}
 		return le
-	case AT:
-		it.skip() // at
-		if !it.done() && !it.isNonTerminal() && it.tokenType() == IDENT {
-			nameTok := it.shift()
-			return &ast.EventRefExpr{Pos: b.posFromToken(tok), Name: nameTok.Literal}
-		}
-		return &ast.EventRefExpr{Pos: b.posFromToken(tok)}
 	case IDENT:
 		identTok := it.shift()
 		// In expression context, ident may be followed by StructLitBody
@@ -2827,12 +2820,17 @@ func argPos(a ast.ArgOrEventHandler) ast.Pos {
 func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 	// Arg = colon ident [Type] [assign Expr]
 	//     | ellipsis Expr
+	//     | EventArg
 	//     | ident IdentArgCont
 	//     | bang UnaryExpr ArgExprCont
 	//     | minus UnaryExpr ArgExprCont
 	//     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 	if it.done() {
 		return nil
+	}
+
+	if it.isNonTerminal() && it.symbol() == EventArg {
+		return b.buildAtHandler(it.enter())
 	}
 
 	if !it.isNonTerminal() {
@@ -2937,28 +2935,6 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 		var lastArgs *ast.ArgList
 		for !it.done() && it.isNonTerminal() && it.symbol() == StmtPostfixOp {
 			base, lastBlock, lastArgs, _ = b.applyStmtPostfixOp(it.enter(), base, lastBlock, lastArgs)
-		}
-		// Convert EventRefExpr with trailing block to EventHandler.
-		if ref, ok := base.(*ast.EventRefExpr); ok && lastBlock != nil {
-			h := ast.EventHandler{
-				Pos:  ref.Pos,
-				Name: ref.Name,
-				Body: *lastBlock,
-			}
-			if lastArgs != nil {
-				// @click(e) { ... } — params from the call args
-				for _, a := range lastArgs.Args {
-					if arg, ok := a.(ast.Arg); ok {
-						if ident, ok := arg.Value.(*ast.IdentExpr); ok && arg.Name == "" {
-							h.Params.Params = append(h.Params.Params, ast.Param{
-								Pos:  ident.Pos,
-								Name: ident.Name,
-							})
-						}
-					}
-				}
-			}
-			return h
 		}
 		expr := b.applyArgExprCont(&it, base)
 		return ast.Arg{Value: expr}

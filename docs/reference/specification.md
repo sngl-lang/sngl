@@ -1011,6 +1011,7 @@ ArgList = Arg { ("," | ";") Arg } [ "," | ";" ]
 Arg = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "..." Expr
+    | EventArg
     | IDENT IdentArgCont
     | "!" UnaryExpr ArgExprCont
     | "-" UnaryExpr ArgExprCont
@@ -1018,6 +1019,8 @@ Arg =
     | "*" UnaryExpr ArgExprCont
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
+
+EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr
@@ -1700,6 +1703,7 @@ ArgList = Arg { ("," | ";") Arg } [ "," | ";" ]
 Arg = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "..." Expr
+    | EventArg
     | IDENT IdentArgCont
     | "!" UnaryExpr ArgExprCont
     | "-" UnaryExpr ArgExprCont
@@ -1707,6 +1711,8 @@ Arg =
     | "*" UnaryExpr ArgExprCont
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
+
+EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr

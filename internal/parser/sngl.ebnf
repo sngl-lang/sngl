@@ -609,7 +609,7 @@ FuncLit = kw_func [ lparen [ ParamList ] rparen ] FuncBodyTail .
 #
 # Named args (foo=value) → struct literal syntax: Foo(x=1, y=2)
 # Binding args (:field)  → visual node prop binding
-# Event args (@event { }) → event handlers; StmtBlock attaches via PostfixOp
+# Event args (@event { }) → event handlers, via EventArg below
 #
 # Left-factored on 'ident' to resolve the predict conflict between:
 #   named arg:       ident assign Expr
@@ -620,6 +620,7 @@ ArgList = Arg { (comma | semi) Arg } [ comma | semi ] .
 Arg =
       colon ident [ Type ] [ assign Expr ]
     | ellipsis Expr
+    | EventArg
     | ident IdentArgCont
     | bang UnaryExpr ArgExprCont
     | minus UnaryExpr ArgExprCont
@@ -628,6 +629,12 @@ Arg =
     | kw_const UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
     .
+
+# A supplied handler, and the same construct as VarHandler: left-factored on
+# 'at ident', with lparen vs lbrace disambiguating the params. The block is
+# part of the production, so `@click` alone is not an argument -- there is no
+# value form of an event reference.
+EventArg = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
 
 # After consuming 'ident':
 #   assign → named arg
@@ -651,10 +658,7 @@ ArgExprCont =
       [ question Expr colon Expr ]
       .
 
-# All PrimaryExpr alternatives except 'ident' (handled separately above), plus
-# 'at ident' -- which PrimaryExpr does *not* have, so that a handler arg
-# (@click { }) parses as NonIdentPrimary + PostfixOps while '@name' in an
-# ordinary expression position does not parse at all.
+# All PrimaryExpr alternatives except 'ident' (handled separately above).
 NonIdentPrimary =
       int_lit
     | float_lit
@@ -673,7 +677,6 @@ NonIdentPrimary =
     | lbracket ListBody rbracket
     | AnonStructLit
     | FuncLit
-    | at ident
     .
 
 # ── Types ─────────────────────────────────────────────────────────────────────
