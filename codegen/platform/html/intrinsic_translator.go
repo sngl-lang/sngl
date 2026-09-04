@@ -163,9 +163,16 @@ func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst ir
 }
 
 // OnUpdateComponent patches a prop on a live instance by calling the updater
-// the instance carries for it. A prop with no updater is not routed here --
-// lowering recreates the instance instead -- so an unknown one is a lowering
-// bug rather than something to drop quietly.
+// the instance carries for it.
+//
+// A prop with no updater does not reach here, and this cannot be the place
+// that says so: the op names the instance by an id, not the declaration whose
+// setters would answer. Both sites that emit the op ask instead --
+// reuseOrCreate for a prop inside a reactive slot, collectFromNode for one at
+// a static position -- and each either rebuilds the instance or reports. This
+// used to claim the check without there being one at either end, which is how
+// `__n1.__set_start(...)` reached a page whose instance exported only
+// `__set_tail`.
 func (t *htmlTranslator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 		Type:     ir.TypVoid,

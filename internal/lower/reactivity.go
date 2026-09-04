@@ -20,7 +20,11 @@ var passReactivity = pass{
 type reactiveProp struct {
 	NodeID string
 	Key    string
+	KeyPos ast.Pos
 	Expr   ir.Expr
+	// Comp is the declaration the node targets, kept so updaterStmts can ask
+	// whether the instance carries a setter for Key. Nil for a widget.
+	Comp *ir.Component
 	// Instance says the node is a component instance rather than a widget, so
 	// the prop is written through the instance's setter instead of assigned to
 	// the node. Assigning it was the old behaviour and it reached nothing: on
@@ -568,8 +572,10 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 			st.reverseDeps[v] = append(st.reverseDeps[v], reactiveProp{
 				NodeID:   n.ID,
 				Key:      prop.Name,
+				KeyPos:   prop.NamePos,
 				Expr:     prop.Value,
 				Instance: instance,
+				Comp:     n.Component,
 			})
 		}
 	}
@@ -1013,6 +1019,27 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 			return &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 		}
 		if p.Instance {
+			// The same question reuseOrCreate asks of a prop inside a reactive
+			// slot, and for the same reason: a prop with no setter has nothing
+			// for UpdateComponent to call, and the emitted call names a method
+			// no backend declared -- `m.__n1.SetStart(m.k)` against a record
+			// declaring only SetTail, `__n1.__set_start(...)` on an object
+			// exporting only __set_tail.
+			//
+			// What differs is the answer available. A slot rebuilds the
+			// instance, which is what #[construct] opts into; this position is
+			// a plain statement of a body nothing re-renders, so there is
+			// nothing to rebuild and the write is reported. Asked here rather
+			// than where the prop was collected, because a prop reading a var
+			// nothing ever writes needs no update and is not a problem.
+			if !componentAbsorbs(p.Comp, p.Key) {
+				if propIsConstruct(p.Comp, p.Key) {
+					st.failf(p.KeyPos, "#[construct] prop %q of component %s is written from state, but the instance sits where no render rebuilds it; put the instantiation inside an `if` or a `for` so a render owns it", p.Key, p.Comp.Name)
+				} else {
+					st.failf(p.KeyPos, "prop %q of component %s can neither be written after construction nor rebuild the instance; mark it #[construct] if it is read only while the instance is built", p.Key, p.Comp.Name)
+				}
+				continue
+			}
 			out = append(out, &ir.CallStmt{Call: &ir.Call{
 				Type:     ir.TypVoid,
 				Receiver: lowerNSIdent(),
