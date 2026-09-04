@@ -930,16 +930,30 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return result
 	}
 
+	// Which owner's Funcs hold the method decides the spelling below, so it is
+	// resolved once here rather than by each branch's own name search.
+	var pkg *ir.Package
+	if gc.Ctx != nil {
+		pkg = gc.Ctx.Pkg
+	}
+	_, owner, resolved := codegen.OwnerMethod(pkg, receiverName, method)
+
 	// Go allows no methods on int/float/string/bool, so a user-attached method
 	// on one lifts to a free `TypeNameMethodName` function.
-	if isPrimitiveTypeName(receiverName) && gc.userMethodKnown(receiverName, method) {
+	if isPrimitiveTypeName(receiverName) && resolved {
 		goName := ExportName(receiverName) + ExportName(method)
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
 
-	// Bubbletea/Fyne emit component methods as Model methods, so a call on the
-	// current instance must dispatch through `m`.
-	if gc.Ctx != nil && gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName {
+	// Bubbletea/Fyne emit an owner's funcs as methods on their Model, so a
+	// call on one has to dispatch through `m`. The receiver naming the
+	// component being emitted is the plain case; the other is a clone the
+	// inliner hoisted onto main or onto a window, whose receiver still names
+	// the component it was written in -- a declaration pkg.Components no
+	// longer lists -- while the definition is a member of the emitting scope.
+	// Which owner holds it is what says so.
+	if gc.Ctx != nil && (gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName ||
+		resolved && !owner.IsPackage()) {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.
@@ -960,7 +974,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// Lifted to a free `ReceiverName + MethodName(args...)`: otherwise a
 	// static-form call like `S.helper(5)` falls through to `args[0].method()`,
 	// where args[0] is the first explicit arg rather than a receiver.
-	if gc.userMethodKnown(receiverName, method) {
+	if resolved {
 		goName := ExportName(receiverName) + ExportName(method)
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
@@ -1011,27 +1025,6 @@ func (gc *GoIRContext) uniqueStructWithField(field string) string {
 		return ""
 	}
 	return ExportName(match.Name)
-}
-
-// userMethodKnown decides whether a primitive-receiver call is emitted as a
-// free function.
-func (gc *GoIRContext) userMethodKnown(receiver, method string) bool {
-	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
-		return false
-	}
-	for _, f := range gc.Ctx.Pkg.Funcs {
-		if f.Receiver == receiver && f.Name == method {
-			return true
-		}
-	}
-	for _, comp := range gc.Ctx.Pkg.Components {
-		for _, f := range comp.Funcs {
-			if f.Receiver == receiver && f.Name == method {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // isPrimitiveTypeName reports whether a SNGL receiver type name refers to a
