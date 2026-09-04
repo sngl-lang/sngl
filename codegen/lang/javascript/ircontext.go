@@ -752,10 +752,17 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// User-defined method on a user type: emitted as a free function
 	// `<Receiver>_<Method>(args...)`. After passNoImplicitRecv, Args[0]
 	// is the receiver expression (component-self ident → "state").
+	// Every owner's funcs, not just the package's: the inliner hoists a
+	// component's methods onto whatever it inlined that component into, so an
+	// instance's copy is a func of main or of the window. Searching package
+	// scope alone missed it and fell through to the receiver-method form
+	// below, which named a method on `state` that nothing declares.
 	if jc.Ctx != nil && jc.Ctx.Pkg != nil {
-		for _, f := range jc.Ctx.Pkg.Funcs {
-			if f.Receiver == receiverName && f.Name == method {
-				return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
+		for _, o := range ir.Owners(jc.Ctx.Pkg) {
+			for _, f := range o.Funcs {
+				if f.Receiver == receiverName && f.Name == method {
+					return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
+				}
 			}
 		}
 	}

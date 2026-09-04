@@ -322,6 +322,21 @@ func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string, symRenames map[
 		return stmts
 	}
 	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		// A call names its callee on Call.Func, not through an Ident, so
+		// repointing idents alone left `bump()` inside an inlined body calling
+		// the original declaration -- whose body still reads the component's
+		// own vars, which after inlining exist only under the instance's
+		// names. The clone that was correct went uncalled and the caller got
+		// the one that was not. Returned unchanged so the walk still descends
+		// into the arguments.
+		if call, ok := e.(*ir.Call); ok && call.Func != nil {
+			if newSym, ok2 := symRenames[call.Func]; ok2 {
+				if fn, ok3 := newSym.(*ir.Func); ok3 {
+					call.Func = fn
+				}
+			}
+			return e
+		}
 		id, ok := e.(*ir.Ident)
 		if !ok || id.Sym == nil {
 			return e
