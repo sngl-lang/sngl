@@ -1,0 +1,53 @@
+// A struct `on` is compared field by field, so writing the same values back is
+// the same lifetime and changing one field is a new one.
+//
+// This is the form a compound key takes: a struct of the values, which is why
+// `on` accepts one and rejects a list of them. What it used to compile to was
+// no comparison at all — a key whose type the three languages did not agree on
+// was rebuilt on every settle — so the interpreter, which compares with
+// reflect.DeepEqual, said `+` where html, fyne, gtk4 and bubbletea all said
+// `+,-,+`. The compiled half is asserted in the browser, where the divergence
+// was widest: JS compares two freshly built objects by identity.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+struct pair {
+    a int
+    b string
+}
+
+component main {
+    var (
+        key pair = pair{a=1, b="x"}
+        log list<string> = []
+    )
+
+    effect(
+        on=key,
+        @mount {
+            log.push("m")
+        },
+        @unmount {
+            log.push("u")
+        },
+    )
+
+    text #out(value=log.join(","))
+}
+
+func testTheBracketMountsOnce(t Test, c main) {
+    t.assert(c.out.value == "m")
+}
+
+// The same values in a new value of the struct are the same key, so nothing
+// moves. A comparison by identity reads "m,u,m" here.
+func testWritingTheSameValuesBackKeepsTheLifetime(t Test, c main) {
+    c.key = pair{a=1, b="x"}
+    t.assert(c.out.value == "m")
+}
+
+func testChangingOneFieldIsANewLifetime(t Test, c main) {
+    c.key = pair{a=1, b="y"}
+    t.assert(c.out.value == "m,u,m")
+}

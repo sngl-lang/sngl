@@ -1,0 +1,53 @@
+// `on` is the identity of a lifetime: while it holds the same value this is the
+// same effect. Every target therefore has to agree on when two of them are the
+// same value, and not every type gets that agreement — Go refuses to compare
+// two lists at all, JS compares two objects by identity. The settle's only
+// answer for such a key was to end and begin the bracket on every pass, which
+// is `+` under `sngl test` and `+,-,+` compiled, so it is refused where the key
+// is written instead.
+//
+// A struct is comparable exactly when its fields are, which is what makes a
+// compound key a struct of the values rather than a list of them — and the
+// diagnostic for a list says so, because that is the mistake being made.
+
+import . "sngl:ui"
+
+struct pair {
+    a int
+    b string
+}
+
+struct hasList {
+    tags list<string>
+}
+
+component main {
+    var (
+        x = 0
+        y = "s"
+        xs list<int> = [1]
+        m map<string, int> = {"a"=1}
+        o option<int> = 1
+    )
+
+    // The forms that do work, here so the rule is not read as "no key at all".
+    // A bracket with no `on` lives as long as its node; a compound key is a
+    // declared struct of the values.
+    effect(@mount {})
+
+    effect(on=x, @mount {})
+
+    effect(on=pair{a=x, b=y}, @mount {})
+
+    effect(on=xs, @mount {}) // ERROR(check) "a key over several values is a struct of them, not a list"
+
+    effect(on=m, @mount {}) // ERROR(check) "a key over several values is a struct of them, not a map"
+
+    // An anonymous struct literal binds T to nothing the compiler can compare:
+    // it has no declaration, so the type is dyn. Naming the struct is the fix.
+    effect(on={a=x, b=y}, @mount {}) // ERROR(check) "the struct has to be declared"
+
+    effect(on=o, @mount {}) // ERROR(check) "option<int> does not"
+
+    effect(on=hasList{tags=["a"]}, @mount {}) // ERROR(check) "list<string> (field tags of struct hasList)"
+}

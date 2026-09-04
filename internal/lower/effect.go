@@ -354,8 +354,9 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 // is the mounted path the interpreter keys on, written as a list because a
 // position under a `for` has as many as the iteration has elements.
 //
-// A key whose type `==` does not mean the same thing on every target is not
-// compared at all -- see rebuildsUnconditionally.
+// The comparison is rebuildDiffers', not a bare `!=`: a struct key compares
+// field by field so that it means the same thing on every target. The checker
+// has already refused an `on` no walk can compare.
 func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, frames []effectFrame) *ir.Func {
 	listT := ir.ListOf(fx.elem)
 	desired := func() *ir.Ident { return st.varIdent(fx.desired) }
@@ -388,23 +389,18 @@ func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, f
 		if fx.keyVar == nil {
 			run = run[1:]
 		}
-		var decide []ir.Stmt
-		if rebuildsUnconditionally(fx.elem) {
-			decide = run
-		} else {
-			decide = []ir.Stmt{&ir.If{
-				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: j(), Right: callListLength(desired())},
-				Body: run,
-				Else: []ir.Stmt{&ir.If{
-					Cond: &ir.Binary{
-						Type: ir.TypBool, Op: ast.BinNeq,
-						Left:  &ir.Index{Type: fx.elem, Operand: desired(), Idx: j()},
-						Right: &ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: j()},
-					},
-					Body: cloneStmts(run),
-				}},
-			}}
-		}
+		decide := []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: j(), Right: callListLength(desired())},
+			Body: run,
+			Else: []ir.Stmt{&ir.If{
+				Cond: rebuildDiffers(
+					&ir.Index{Type: fx.elem, Operand: desired(), Idx: j()},
+					&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: j()},
+					fx.elem,
+				),
+				Body: cloneStmts(run),
+			}},
+		}}
 		block = append(block, &ir.For{
 			Key:      idx.Name,
 			KeySym:   idx,
@@ -465,28 +461,21 @@ func (st *effectState) upFunc(prefix string, fx *loweredEffect) *ir.Func {
 		idxRef := func() *ir.Ident {
 			return &ir.Ident{Name: idx.Name, Type: ir.TypInt, Sym: idx, Synthesized: true}
 		}
-		decide := run
-		// Nothing compares the index when every bracket is rebuilt, and Go
-		// refuses a loop variable that is declared and not used.
-		key, keySym := "_", (*ir.LoopVar)(nil)
-		if !rebuildsUnconditionally(fx.elem) {
-			key, keySym = idx.Name, idx
-			decide = []ir.Stmt{&ir.If{
-				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: idxRef(), Right: callListLength(st.varIdent(fx.live))},
-				Body: run,
-				Else: []ir.Stmt{&ir.If{
-					Cond: &ir.Binary{
-						Type: ir.TypBool, Op: ast.BinNeq,
-						Left:  &ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: idxRef()},
-						Right: elemRef(),
-					},
-					Body: cloneStmts(run),
-				}},
-			}}
-		}
+		decide := []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: idxRef(), Right: callListLength(st.varIdent(fx.live))},
+			Body: run,
+			Else: []ir.Stmt{&ir.If{
+				Cond: rebuildDiffers(
+					&ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: idxRef()},
+					elemRef(),
+					fx.elem,
+				),
+				Body: cloneStmts(run),
+			}},
+		}}
 		block = append(block, &ir.For{
-			Key:      key,
-			KeySym:   keySym,
+			Key:      idx.Name,
+			KeySym:   idx,
 			Value:    elem.Name,
 			ValueSym: elem,
 			Iter:     st.varIdent(fx.desired),
@@ -503,20 +492,6 @@ func (st *effectState) upFunc(prefix string, fx *loweredEffect) *ir.Func {
 		Block:       block,
 	}
 }
-
-// rebuildsUnconditionally reports whether a key of type t has to end and begin
-// its lifetime on every settle rather than being compared to the one running.
-//
-// `on` is declared `T` with `effect<T = struct {}>`, so it constrains T to
-// nothing and a key may be a struct, a list or a map. comparableForRebuild is
-// the same question passSlotInstances asks of a prop and for the same reason:
-// Go compares two structs field by field, JS compares two objects by identity,
-// so a struct key would hold one lifetime on the Go build and tear down and
-// remount on every settle of the JS one. Rebuilding everywhere is wrong in the
-// same way on every target, which is the property that matters -- an `on` whose
-// identity a program depends on is written as a value all three languages
-// compare alike.
-func rebuildsUnconditionally(t *ir.Type) bool { return !comparableForRebuild(t) }
 
 // tearFunc ends every lifetime this position still holds, newest first. Only
 // built when there is an `@unmount` to run.
@@ -1099,8 +1074,9 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 }
 
 // callListPush builds a `list.push(dst, v)` call statement. push mutates its
-// receiver and returns nothing, so the append is the call and not an
-// assignment back to the list -- see renderSlotBody.
+// receiver and returns nothing, so the append is the call and not an assignment
+// back to the list. Shared with passSlotInstances, which describes what a
+// render holds the same way.
 func callListPush(dst ir.Expr, v ir.Expr, elem *ir.Type) ir.Stmt {
 	var params []*ir.Param
 	var ret *ir.Type

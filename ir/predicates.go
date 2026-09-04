@@ -1,6 +1,12 @@
 package ir
 
-import "git.duckfam.us/jonathan/sngl/ast"
+import (
+	"fmt"
+	"slices"
+	"strings"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+)
 
 // IR-level predicates and accessors shared by the checker and every codegen
 // backend. These are properties of the IR, not of any target language, so they
@@ -85,4 +91,86 @@ func StmtPos(s Stmt) ast.Pos {
 		}
 	}
 	return ast.Pos{}
+}
+
+// RebuildComparable reports whether two values of t can be asked "is this the
+// same one" and get the same answer on every target.
+//
+// That is the question a keyed lifetime asks of its `on`, and a built instance
+// of a #[construct] prop. It is not isComparable, which asks what may be a map
+// key and admits any named struct: a name is no promise that two values compare
+// alike everywhere, and the defect this answers was a struct key that held one
+// lifetime on the Go build and tore down and remounted on every settle of the
+// JS one.
+//
+// Structural and recursive rather than a list of primitive kinds, because the
+// comparison is emitted from this same walk: a struct compares field by field,
+// so a struct whose fields all compare alike does too, and one with no fields
+// is always equal to another -- which is exactly what a bracket with no `on`
+// wants of `effect<T = struct {}>`.
+func RebuildComparable(t *Type) bool { return RebuildIncomparable(t) == "" }
+
+// RebuildIncomparable is "" when t is RebuildComparable, and otherwise the type
+// that is not, with the field path that reaches it in parentheses.
+//
+// A phrase rather than a bool because a struct's answer is about something the
+// type's name does not show. "struct changed is not comparable" sends a reader
+// to the wrong declaration; "list<string> (field tags of struct changed)" names
+// the line to change.
+func RebuildIncomparable(t *Type) string {
+	bad, path := rebuildIncomparable(t, nil)
+	switch {
+	case bad == "":
+		return ""
+	case len(path) == 0:
+		return bad
+	}
+	return bad + " (" + strings.Join(path, ", ") + ")"
+}
+
+// rebuildIncomparable answers the offending type and the field path down to it,
+// outermost last. seen is the structs already on the walk, so a type that
+// contains itself answers rather than recursing: a cycle has no finite
+// field-wise comparison to emit.
+func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
+	if t == nil {
+		return "an unknown type", nil
+	}
+	switch t.Kind {
+	case TypeBool, TypeInt, TypeFloat, TypeString, TypeEnum, TypeUnit:
+		return "", nil
+	case TypeTypeParam:
+		// Judged where the parameter is bound to a concrete type. Answering
+		// here would make a generic declaration undeclarable.
+		return "", nil
+	case TypeStruct:
+		sd, _ := t.Decl.(*StructDef)
+		if sd == nil {
+			// An anonymous struct literal. It has no declaration, so it has no
+			// fields to walk and no name a second value could be built under.
+			return t.String(), nil
+		}
+		// A #[builtin] struct that declares no fields is opaque: a target holds
+		// its own date for a `date`, so walking the zero fields would answer
+		// "always equal" for two different days. `color` is not one of these --
+		// it declares four numbers and every target holds it as four numbers,
+		// so the field walk is the right answer for it.
+		if sd.Builtin != BuiltinNone && len(sd.Fields) == 0 {
+			return t.String(), nil
+		}
+		if slices.Contains(seen, sd) {
+			return "struct " + sd.Name, []string{"which contains itself"}
+		}
+		seen = append(seen, sd)
+		for _, f := range sd.Fields {
+			if f == nil {
+				continue
+			}
+			if bad, path := rebuildIncomparable(f.Type, seen); bad != "" {
+				return bad, append(path, fmt.Sprintf("field %s of struct %s", f.Name, sd.Name))
+			}
+		}
+		return "", nil
+	}
+	return t.String(), nil
 }

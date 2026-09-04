@@ -218,6 +218,65 @@ func (c *checker) checkEffectHandlers(vn *ast.VisualNode) {
 	c.error(vn.Pos, "effect declares neither @mount nor @unmount, so it brackets nothing")
 }
 
+// checkEffectKey refuses an `on` whose type does not compare alike everywhere.
+//
+// `on` is the identity of the lifetime: while it holds the same value this is
+// the same effect, so every target has to agree on when two of them are the
+// same value. Not every type does -- Go compares two lists by refusing to, JS
+// compares two objects by identity -- and the settle's only answer for one that
+// does not was to rebuild the bracket on every pass, which is `+` under
+// `sngl test` and `+,-,+` compiled. Reported where the key is written rather
+// than lowered into a program whose brackets mean something different on each
+// build.
+//
+// Nothing is said about an effect with no `on`: the parameter's default binds T
+// to a struct with no fields, which ir.RebuildComparable admits and the
+// comparison reduces to "never differs" -- exactly what a bracket that lives as
+// long as its node means.
+func (c *checker) checkEffectKey(node ast.Pos, props []ir.Arg) {
+	for _, p := range props {
+		if p.Name != "on" || p.Value == nil {
+			continue
+		}
+		t := p.Value.ExprType()
+		why := ir.RebuildIncomparable(t)
+		if why == "" {
+			continue
+		}
+		pos := p.NamePos
+		if !pos.IsValid() {
+			pos = node
+		}
+		c.error(pos, "an effect's `on` is the identity of its lifetime, so it must compare alike on every target, and %s does not%s", why, effectKeyHint(t))
+	}
+}
+
+// effectKeyHint names the form that does work, for the two mistakes that have
+// one. A key over several values is what a struct is for; the list and the
+// anonymous struct literal are both people reaching for that and finding the
+// nearest brace.
+func effectKeyHint(t *ir.Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ir.TypeList:
+		return "; a key over several values is a struct of them, not a list"
+	case ir.TypeMap:
+		return "; a key over several values is a struct of them, not a map"
+	case ir.TypeDyn:
+		return "; a key over several values is a struct of them, and the struct has to be declared"
+	case ir.TypeStruct:
+		// An anonymous struct literal. It reaches here as a struct with no
+		// declaration, which is the whole reason it cannot be compared: there
+		// are no fields to walk.
+		if t.Decl == nil {
+			return "; a key over several values is a struct of them, and the struct has to be declared"
+		}
+	}
+	return ""
+}
+
 // declTypeBindings is what a component's type parameters stand for where the
 // declaration itself is checked: their own defaults, and nothing else. A call
 // site knows more -- it has props to bind from -- but a declaration is checked

@@ -106,7 +106,7 @@ func (st *reactivityState) newSlotInstance(node *ir.NodeInst) *slotInstance {
 	st.owner.addVar(inst.live)
 	for _, p := range constructProps(node) {
 		cp := &ctorProp{name: p.Name, value: p.Value}
-		if t := propValueType(comp, p.Name); comparableForRebuild(t) {
+		if t := propValueType(comp, p.Name); ir.RebuildComparable(t) {
 			held := ir.ListOf(t)
 			if key != nil {
 				held = ir.MapOf(ir.TypString, t)
@@ -168,27 +168,6 @@ func propValueType(comp *ir.Component, prop string) *ir.Type {
 		}
 	}
 	return nil
-}
-
-// comparableForRebuild reports whether `==` on two values of t means the same
-// thing on every target that builds instances.
-//
-// Deliberately narrower than the checker's isComparable, which admits any
-// named struct: Go compares two structs field by field and JS compares two
-// objects by identity, so a struct-valued prop would be "changed" on every
-// render of the JS build and only on a real change of the Go one. The answer
-// has to be the same everywhere, so the types whose equality is a primitive on
-// all three languages are the whole list -- and a prop of any other type is
-// rebuilt unconditionally rather than compared wrongly.
-func comparableForRebuild(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeEnum:
-		return true
-	}
-	return false
 }
 
 // instanceTypeOf is the handle type an instantiation of comp is held as.
@@ -339,7 +318,8 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 // else: an instance that cannot be handed the new value is destroyed and built
 // again. A construct prop whose type has no portable equality has no such
 // question to fail, so its site rebuilds unconditionally -- see
-// comparableForRebuild.
+// ir.RebuildComparable, which is the same question the effect settle asks of
+// its `on`, answered by the same walk that emits the comparison.
 func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declSt *declarativeState) []ir.Stmt {
 	id := n.ID
 	cur := &ir.Var{Name: id, Type: si.elem, Synthesized: true}
@@ -497,15 +477,10 @@ func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr
 			return nil, false
 		}
 		cond = &ir.Binary{
-			Type: ir.TypBool,
-			Op:   ast.BinAnd,
-			Left: cond,
-			Right: &ir.Binary{
-				Type:  ir.TypBool,
-				Op:    ast.BinEq,
-				Left:  entry(cp.live),
-				Right: deepCloneExpr(cp.value),
-			},
+			Type:  ir.TypBool,
+			Op:    ast.BinAnd,
+			Left:  cond,
+			Right: rebuildSame(entry(cp.live), cp.value, cp.next.Type.Elems[len(cp.next.Type.Elems)-1]),
 		}
 	}
 	return cond, true
