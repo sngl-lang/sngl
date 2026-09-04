@@ -17,7 +17,7 @@ import (
 // on the list; a hoisted clone is in neither, and the component it names has
 // been inlined away.
 func TestInlinedInstanceMethodDispatchesThroughTheModel(t *testing.T) {
-	model := generateFyneModel(t, fixtureSource(t, "test_named_component_props.sngl"))
+	model := generateFyneModelBuilt(t, fixtureSource(t, "test_named_component_props.sngl"))
 
 	for _, want := range []string{
 		"func (m *Model) both__inst0() string {",

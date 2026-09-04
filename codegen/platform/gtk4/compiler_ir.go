@@ -269,11 +269,12 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 // wrapped mode, the per-widget cgo pointer type otherwise.
 func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType string) {
 	return func(name, cType string) {
-		goType := "*C." + cType
-		if c.wrapped {
-			goType = gtk4rtHandleType
-		}
-		*fields = append(*fields, widgetField{name: name, goType: goType})
+		// Through widgetFieldGoType like the other three sinks: it is what
+		// knows that a component instance's handle arrives already spelled as
+		// Go and is not a widget in either mode. Deciding the type here
+		// instead declared `m.__n0 gtk4rt.Handle` for a field the build
+		// assigns a *TreeViewInstance to.
+		*fields = append(*fields, widgetField{name: name, goType: widgetFieldGoType(cType, c.wrapped)})
 	}
 }
 

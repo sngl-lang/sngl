@@ -61,6 +61,12 @@ type fyneTranslator struct {
 	// surface -- a slot func, a canvas draw.
 	invokerSink func(fyneEventInvoker)
 
+	// plainHandle names the instance ids whose handle is the widget the render
+	// returned rather than a record carrying it, as OnCreateComponent decided
+	// from the component's own RuntimeInstance mark. Only a record has a Root
+	// field, so OnComponentRoot reads this before selecting one.
+	plainHandle map[string]bool
+
 	canvasByID   map[string]*canvasMeta
 	canvasByFunc map[*ir.Func]*canvasMeta
 	// canvasState threads per-draw-func style-local naming for
@@ -276,6 +282,12 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 // left an instance record in the window's root set, which used to compile
 // because the field was typed as a widget and no longer does.
 func (t *fyneTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
+	if t.instanceGoType(call) == fyneWidgetHandleType {
+		if t.plainHandle == nil {
+			t.plainHandle = map[string]bool{}
+		}
+		t.plainHandle[id] = true
+	}
 	if t.isLocalRef(id) {
 		// Non-escaping: function-local, so each recursion frame and each row
 		// of a list keeps its own instance.
@@ -297,8 +309,12 @@ func (t *fyneTranslator) instanceGoType(call *ir.Call) string {
 			return "*" + golang.ComponentInstanceType(comp.Name)
 		}
 	}
-	return "fyne.CanvasObject"
+	return fyneWidgetHandleType
 }
+
+// fyneWidgetHandleType is what a component's render returns where the build
+// emits it as a method rather than a record: the widget itself.
+const fyneWidgetHandleType = "fyne.CanvasObject"
 
 // OnComponentRoot binds a name to the widget an instance renders as, so
 // AppendChild has something to attach -- and that widget, not the instance, is
@@ -309,11 +325,18 @@ func (t *fyneTranslator) instanceGoType(call *ir.Call) string {
 // `m.__nN__el` read two lines later.
 func (t *fyneTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
 	t.topLevel = append(t.topLevel, id)
-	root := &ir.Select{Type: ir.TypDyn, Operand: t.instanceRef(inst), Field: golang.ComponentRootField}
+	var root ir.Expr = t.instanceRef(inst)
+	if !t.plainHandle[codegen.IdentBareName(inst)] {
+		// Only a record has a Root field. Where the build renders the
+		// component as a method of the enclosing scope instead, the handle IS
+		// the widget it returned -- `__n0.Root` on a fyne.CanvasObject names
+		// no field the emitted file has.
+		root = &ir.Select{Type: ir.TypDyn, Operand: root, Field: golang.ComponentRootField}
+	}
 	if t.isLocalRef(id) {
 		return []ir.Stmt{&ir.LocalVar{Name: id, Init: root}}
 	}
-	t.fieldSink(id, "fyne.CanvasObject")
+	t.fieldSink(id, fyneWidgetHandleType)
 	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
 }
 

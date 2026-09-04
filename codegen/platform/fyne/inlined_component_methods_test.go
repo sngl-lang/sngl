@@ -18,7 +18,7 @@ import (
 // exist nowhere any more, read as bare identifiers, on a Model that declares
 // neither.
 func TestAnInlinedComponentLeavesNoMethodBehind(t *testing.T) {
-	model := generateFyneModel(t, fixtureSource(t, "test_named_component_props.sngl"))
+	model := generateFyneModelBuilt(t, fixtureSource(t, "test_named_component_props.sngl"))
 
 	// The clones are the whole of what Pair contributes.
 	for _, want := range []string{

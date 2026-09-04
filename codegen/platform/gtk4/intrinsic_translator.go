@@ -81,6 +81,11 @@ type gtk4Translator struct {
 	// emitIR's whole-program fallback. See wrapped.go.
 	wrapped      bool
 	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	// plainHandle names the instance ids whose handle is the widget the render
+	// returned rather than a record carrying it, as OnCreateComponent decided
+	// from the component's own RuntimeInstance mark. Only a record has a Root
+	// field, so OnComponentRoot reads this before selecting one.
+	plainHandle map[string]bool
 	// registry is the GIR data the widget declarations were generated from.
 	// A declaration says which props and events a widget has; the C setter
 	// behind each one is read back out of here, keyed by the C type the
@@ -450,6 +455,10 @@ func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call 
 	instType := t.instanceGoType(call)
 	if instType == "" {
 		t.idCTypes[id] = "GtkWidget"
+		if t.plainHandle == nil {
+			t.plainHandle = map[string]bool{}
+		}
+		t.plainHandle[id] = true
 	}
 	if t.isLocalRef(id) {
 		// A function-local, so each recursion frame and each row of a list
@@ -505,7 +514,14 @@ func (t *gtk4Translator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
 	t.idCTypes[id] = "GtkWidget"
 	t.topLevel = append(t.topLevel, id)
-	root := &ir.Select{Type: ir.TypDyn, Operand: t.qualifyNodeExpr(inst), Field: golang.ComponentRootField}
+	var root ir.Expr = t.qualifyNodeExpr(inst)
+	if !t.plainHandle[codegen.IdentBareName(inst)] {
+		// Only a record has a Root field. Where the build renders the
+		// component as a method of the enclosing scope instead, the handle IS
+		// the widget it returned -- `__n0.Root` on a gtk4rt.Handle names no
+		// field the emitted file has.
+		root = &ir.Select{Type: ir.TypDyn, Operand: root, Field: golang.ComponentRootField}
+	}
 	if t.isLocalRef(id) {
 		return []ir.Stmt{&ir.LocalVar{
 			Name: id,
