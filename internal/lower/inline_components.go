@@ -70,57 +70,24 @@ func uniqueNodeIDs(pkg *ir.Package) {
 	}
 	for _, o := range ir.Owners(pkg) {
 		seen := map[string]int{}
-		eachNodeInst(o.Stmts, func(n *ir.NodeInst) {
-			if n.ID == "" {
-				return
+		// ir.Walk rather than a descent of its own: an id is ambiguous within
+		// an owner wherever the two nodes are written, and the hand-written
+		// copy reached neither a context provider's children nor a body
+		// hosted by a lambda -- so two nodes named `#inc` in those places
+		// kept the one name and a backend resolved it to whichever it met
+		// first.
+		_ = ir.Walk(o.Stmts, func(node ir.Node) error {
+			n, ok := node.(*ir.NodeInst)
+			if !ok || n.ID == "" {
+				return nil
 			}
 			k := seen[n.ID]
 			seen[n.ID] = k + 1
 			if k > 0 {
 				n.ID = n.ID + "__" + strconv.Itoa(k)
 			}
+			return nil
 		})
-	}
-}
-
-// eachNodeInst visits every NodeInst reachable from stmts, in source order.
-func eachNodeInst(stmts []ir.Stmt, visit func(*ir.NodeInst)) {
-	for _, s := range stmts {
-		switch x := s.(type) {
-		case *ir.NodeInst:
-			visit(x)
-			eachNodeInst(x.Children, visit)
-			for _, sc := range x.Slots {
-				if sc != nil {
-					eachNodeInst(sc.Body, visit)
-				}
-			}
-			for _, h := range x.Handlers {
-				if h.Func != nil {
-					eachNodeInst(h.Func.Block, visit)
-				}
-			}
-		case *ir.If:
-			eachNodeInst(x.Body, visit)
-			eachNodeInst(x.Else, visit)
-		case *ir.For:
-			eachNodeInst(x.Body, visit)
-			eachNodeInst(x.Else, visit)
-		case *ir.SlotInst:
-			eachNodeInst(x.Children, visit)
-		case *ir.ErrorBoundary:
-			eachNodeInst(x.Children, visit)
-			if x.Handler != nil && x.Handler.Func != nil {
-				eachNodeInst(x.Handler.Func.Block, visit)
-			}
-		case *ir.Window:
-			eachNodeInst(x.Body, visit)
-			for _, f := range x.Funcs {
-				if f != nil {
-					eachNodeInst(f.Block, visit)
-				}
-			}
-		}
 	}
 }
 

@@ -76,6 +76,33 @@ func TestFindRecursiveCyclesThroughNamedSlot(t *testing.T) {
 	}
 }
 
+// TestUniqueNodeIDsReachesEveryBody names the bodies the hand-written descent
+// this rename used to run did not reach. An id it cannot see keeps its name,
+// and two nodes answering to one `#inc` is the ambiguity the rename exists to
+// remove.
+func TestUniqueNodeIDsReachesEveryBody(t *testing.T) {
+	inst := func() *ir.NodeInst { return &ir.NodeInst{Name: "text", ID: "inc"} }
+	first, inProvider, inLambda := inst(), inst(), inst()
+	main := &ir.Component{Name: "main", Body: []ir.Stmt{
+		first,
+		&ir.ContextProvider{Children: []ir.Stmt{inProvider}},
+		&ir.LocalVar{Init: &ir.Lambda{Func: &ir.Func{Block: []ir.Stmt{inLambda}}}},
+	}}
+	uniqueNodeIDs(&ir.Package{Components: []*ir.Component{main}})
+
+	if first.ID != "inc" {
+		t.Errorf("the first occurrence keeps the name, got %q", first.ID)
+	}
+	for _, n := range []*ir.NodeInst{inProvider, inLambda} {
+		if n.ID == "inc" {
+			t.Error("a later occurrence of #inc kept the name")
+		}
+	}
+	if inProvider.ID == inLambda.ID {
+		t.Errorf("both later occurrences got the same id %q", inProvider.ID)
+	}
+}
+
 func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 	items := &ir.Var{
 		Name: "items",
