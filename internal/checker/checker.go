@@ -2532,8 +2532,8 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.bindWindow(vn.Pos, w)
 		return
 	}
-	if c.builtinNodeKind(name) == ir.BuiltinTimer {
-		t := c.buildTimer(vn)
+	if kind, comp := c.builtinNode(name); kind == ir.BuiltinTimer {
+		t := c.buildTimer(vn, comp)
 		c.pkg.Timers = append(c.pkg.Timers, t)
 		return
 	}
@@ -2590,15 +2590,24 @@ func (c *checker) checkPackageBody() {
 // Qualified targets (`sngl.timer`) are never built-in nodes, matching the
 // bare-name-only behaviour this replaces.
 func (c *checker) builtinNodeKind(name string) ir.BuiltinKind {
+	kind, _ := c.builtinNode(name)
+	return kind
+}
+
+// builtinNode is builtinNodeKind plus the declaration the kind was read off.
+//
+// A built-in node's props are that declaration's, so the builder that
+// hand-picks the ones it cares about needs it to say which names exist at all.
+func (c *checker) builtinNode(name string) (ir.BuiltinKind, *ir.Component) {
 	sym, ok := c.resolveComponentSymbol(name)
 	if !ok {
-		return ir.BuiltinNone
+		return ir.BuiltinNone, nil
 	}
 	comp, ok := sym.(*ir.Component)
 	if !ok || !comp.Builtin.IsNode() {
-		return ir.BuiltinNone
+		return ir.BuiltinNone, nil
 	}
-	return comp.Builtin
+	return comp.Builtin, comp
 }
 
 // resolveComponentSymbol resolves a visual-node target — bare "Foo" or
@@ -3133,8 +3142,9 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 // buildErrorBoundary builds an ir.ErrorBoundary from an errorBoundary visual
 // node. The @error handler is required and is type-checked with ErrorEvent
 // defaulted on its parameter. Children are type-checked as a sub-block.
-func (c *checker) buildErrorBoundary(vn *ast.VisualNode) *ir.ErrorBoundary {
+func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir.ErrorBoundary {
 	eb := &ir.ErrorBoundary{AST: vn}
+	c.validateVisualNodeProps(vn, comp)
 	for _, a := range vn.Args.Args {
 		eh, ok := a.(ast.EventHandler)
 		if !ok || eh.Name != "error" {
@@ -3149,11 +3159,16 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode) *ir.ErrorBoundary {
 	return eb
 }
 
-func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
+func (c *checker) buildTimer(vn *ast.VisualNode, comp *ir.Component) *ir.Timer {
 	t := &ir.Timer{
 		AST:     vn,
 		Handler: &ir.Func{},
 	}
+	// Checked against the declaration, as a window's node is and for the same
+	// reason: the builder reads the two props it knows by name, so anything
+	// else was neither stored nor reported -- `timer(every=1s)` set no
+	// interval and compiled clean.
+	c.validateVisualNodeProps(vn, comp)
 	named := resolvePositionalArgs(vn.Args, []string{"interval", "enabled"})
 	if e, ok := named["interval"]; ok {
 		t.Interval = c.checkExpr(e)

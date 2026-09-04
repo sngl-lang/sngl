@@ -3304,7 +3304,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// Built-in nodes — the compiler's own constructs, dispatched on the
 	// #[builtin] mark of whatever the target resolves to rather than on the
 	// literal name, so a user component of the same name shadows them (D3).
-	switch c.builtinNodeKind(name) {
+	kind, builtinComp := c.builtinNode(name)
+	switch kind {
 	case ir.BuiltinWindow:
 		w := c.buildWindow(vn)
 		c.bindWindow(vn.Pos, w)
@@ -3312,7 +3313,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		w.Checked = true
 		return w
 	case ir.BuiltinTimer:
-		t := c.buildTimer(vn)
+		t := c.buildTimer(vn, builtinComp)
 		if c.currentComponent != nil {
 			c.currentComponent.Timers = append(c.currentComponent.Timers, t)
 		} else {
@@ -3320,7 +3321,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 		return nil
 	case ir.BuiltinErrorBoundary:
-		return c.buildErrorBoundary(vn)
+		return c.buildErrorBoundary(vn, builtinComp)
 	case ir.BuiltinEffect:
 		// Validated here and then left to the ordinary component path: an
 		// effect is resolved, checked and lowered as the declaration it is,
