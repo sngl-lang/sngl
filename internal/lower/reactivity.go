@@ -845,6 +845,34 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 	}
 }
 
+// injectIntoCallLambdas recurses into every handler this call carries: a bare
+// argument, and a field of a props struct one argument holds.
+//
+// The struct is how a component instantiation hands its props over, so a
+// func-typed prop's lambda is only ever reachable through it.
+func (st *reactivityState) injectIntoCallLambdas(c *ir.Call) {
+	inject := func(e ir.Expr) {
+		switch lam := e.(type) {
+		case *ir.Lambda:
+			if lam.Func != nil {
+				lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+			}
+		case *ir.Closure:
+			if lam.Func != nil {
+				lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+			}
+		}
+	}
+	for i := range c.Args {
+		inject(c.Args[i].Value)
+		if lit, ok := c.Args[i].Value.(*ir.StructLit); ok {
+			for j := range lit.Fields {
+				inject(lit.Fields[j].Value)
+			}
+		}
+	}
+}
+
 // injectIntoStmts walks stmts, splicing updater Assigns after every Assign
 // that mutates a tracked Var. Recurses into nested blocks.
 func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
@@ -892,20 +920,20 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			// prop/slot updaters spliced — otherwise a list-item handler that
 			// mutates the list would never re-fire the slot.
 			if n.Call != nil {
-				for i := range n.Call.Args {
-					switch lam := n.Call.Args[i].Value.(type) {
-					case *ir.Lambda:
-						if lam.Func != nil {
-							lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
-						}
-					case *ir.Closure:
-						if lam.Func != nil {
-							lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
-						}
-					}
-				}
+				st.injectIntoCallLambdas(n.Call)
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+		case *ir.LocalVar:
+			// The binding a reconcile builds a fresh instance into. Its props
+			// arrive inside the create call's struct, so a handler passed as
+			// one is two levels down rather than a bare argument -- and the
+			// same handler reached through UpdateComponent, one branch away,
+			// is a bare argument and did get its updaters. A row whose
+			// callback the render had not yet re-pointed wrote the state and
+			// updated nothing.
+			if c, ok := n.Init.(*ir.Call); ok {
+				st.injectIntoCallLambdas(c)
+			}
+		case *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
 			// Leaf stmts — no nested blocks to recurse into. updatersFor
 			// below handles Assign-driven updater injection.
