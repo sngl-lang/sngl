@@ -4,6 +4,11 @@
 //
 // The log is what pins it. A count of unmounts reads the same either way,
 // which is how a teardown that ran forwards would have gone unnoticed.
+//
+// Newest first is global rather than per position, which is what the second
+// pair says: one write rekeys both, and both lifetimes end before either
+// begins. Settling one position and then the next gives -A,+A,-B,+B, and a
+// program holding two of whatever B was for the length of A's mount.
 
 import . "sngl:test"
 import . "sngl:ui"
@@ -12,6 +17,8 @@ component main {
     var (
         items list<string> = ["a", "b", "c"]
         log list<string> = []
+        k = 0
+        pairLog list<string> = []
     )
 
     for var it = items {
@@ -26,10 +33,36 @@ component main {
         )
     }
 
+    effect(
+        on=k,
+        @mount {
+            pairLog.push("+A")
+        },
+        @unmount {
+            pairLog.push("-A")
+        },
+    )
+    effect(
+        on=k,
+        @mount {
+            pairLog.push("+B")
+        },
+        @unmount {
+            pairLog.push("-B")
+        },
+    )
+
     text #out(value=log.join(","))
+    text #pair(value=pairLog.join(","))
 }
 
 func testTwoEndingsRunNewestFirst(t Test, c main) {
     c.items = ["a"]
     t.assert(c.out.value == "+a,+b,+c,-c,-b")
+}
+
+func testTwoPositionsEndBothBeforeEitherBegins(t Test, c main) {
+    t.assert(c.pair.value == "+A,+B")
+    c.k = 1
+    t.assert(c.pair.value == "+A,+B,-B,-A,+A,+B")
 }
