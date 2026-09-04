@@ -1021,10 +1021,10 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 
 // mutatingCallReceiver returns the receiver expression of a statement-level
 // call that mutates its receiver in place, or nil otherwise. A method like
-// list.push is declared returning a new list but backed by an intrinsic that
-// mutates the receiver (see ir.IntrinsicDef.MutatesReceiver); a bare
-// `tasks.push(x)` statement therefore mutates `tasks` and must fire its
-// reactive updaters, exactly as `tasks = ...` would. The mutation semantics
+// list.push returns nothing and is backed by an intrinsic that mutates the
+// receiver (see ir.IntrinsicDef.MutatesReceiver), so `tasks.push(x)` -- the
+// only form it has -- mutates `tasks` and must fire its reactive updaters,
+// exactly as `tasks = ...` would. The mutation semantics
 // come from the intrinsic metadata — keyed by the func's intrinsic ID, not by
 // method name. For a type-method call the receiver value is Args[0].
 func mutatingCallReceiver(c *ir.Call) ir.Expr {
