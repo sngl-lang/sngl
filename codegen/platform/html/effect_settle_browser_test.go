@@ -193,9 +193,12 @@ component main { window(title="H", href="/index.html") { App() } }
 }
 
 // An effect that rekeys itself unconditionally stops at the bound rather than
-// running out of stack. interp reports "effects did not settle in 512 steps";
-// the compiled form has nowhere to report it, so what is asserted is that the
-// page is alive and the log is that bound and not a crash.
+// running out of stack, and says so: the settle raises when it leaves its loop
+// with a pass still owed. What is asserted here is the other half -- that the
+// page is alive and the log is the bound and not a crash -- because the raise
+// happens after the last mount has already patched the text. The raise itself
+// is pinned in testdata/effect_settle_sites.txtar, where its exact form on each
+// target is visible.
 func TestEffect_ASelfRekeyingBracketStopsAtTheBound(t *testing.T) {
 	src := `
 import . "sngl:ui"

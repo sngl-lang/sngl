@@ -93,6 +93,11 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 type timerTickMsg0 struct{}
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -286,6 +291,9 @@ func (m *Model) __effects0_settle() {
 			m.__effect2_up()
 		}
 		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
 	}
 }
 

@@ -105,11 +105,19 @@ type effectGroup struct {
 	settle   *ir.Func
 }
 
-// maxEffectSettleSteps bounds the settle loop the way interp's maxEffectSteps
-// bounds Settle, and for the same case: an effect that rekeys itself describes
-// a different tree every pass and never settles. The compiled form has nowhere
-// to report that, so it stops; a program that reaches this bound was going to
-// spin either way.
+// maxEffectSettleSteps bounds the settle loop: an effect that rekeys itself
+// describes a different tree every pass and never settles.
+//
+// A pass here is the whole group -- every bracket's down and up -- so the
+// number bounds how many times the handlers may make more work for themselves,
+// and not how many brackets a scope may hold. That distinction is the one this
+// used to get wrong on the other side: interp counted handlers run, so a scope
+// with more brackets than the bound was told an effect was rekeying itself.
+// interp's maxEffectRestarts is the same question asked per bracket.
+//
+// Reaching the bound raises, in buildGroups. It used to stop silently, which
+// left a program running with brackets that did not describe its tree while the
+// interpreter refused that same program.
 const maxEffectSettleSteps = 512
 
 // loweredEffect is one `effect` node after lowering: the state that says which
@@ -899,6 +907,28 @@ func (st *effectState) buildGroups() {
 						Body: pass,
 					},
 					st.setFlag(g.settling, false),
+					// The loop's condition is `pending && steps < bound`, so
+					// leaving it with `pending` still set is the bound
+					// stopping it rather than the settle finishing. Reported,
+					// because the alternative -- what this used to do -- is a
+					// program that quietly runs on with brackets that do not
+					// describe its tree, while the interpreter refuses the
+					// same program outright.
+					//
+					// No handler scope: a settle is called from the body, from
+					// every event handler that writes a key it reads, and from
+					// the platform's mount, so there is no one errorBoundary it
+					// sits inside the way a recursive instantiation sits inside
+					// the body that wrote it. Native is the honest answer, and
+					// reporting nowhere is louder than settling nowhere.
+					&ir.If{
+						Cond: st.varIdent(g.pending),
+						Body: []ir.Stmt{raiseStmt(
+							fmt.Sprintf("effects did not settle in %d passes; an effect is rekeying itself", maxEffectSettleSteps),
+							"effect",
+							nil,
+						)},
+					},
 				},
 			}},
 		}

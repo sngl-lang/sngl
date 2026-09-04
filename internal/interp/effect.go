@@ -67,14 +67,53 @@ func NewEffects() *Effects {
 	return &Effects{live: map[Key]MountedEffect{}}
 }
 
-// maxEffectSteps bounds the settle loop, counting handlers run rather than
-// passes: one settle legitimately runs as many handlers as it has brackets to
-// move, and each gets a pass of its own (see Reconcile). An effect that rekeys
-// itself never settles, and the bound reports that instead of hanging.
-const maxEffectSteps = 512
+// maxEffectRestarts is how many times ONE bracket may begin a lifetime inside a
+// single settle before it is called a rekey loop.
+//
+// Per bracket, because that is what the error actually accuses: an effect that
+// rekeys itself. A bound on handlers run said the same words about a different
+// thing -- one settle legitimately runs a handler per bracket it has to move,
+// so 512 brackets in one scope tripped it, and a program was told an effect was
+// rekeying itself for the offence of existing 512 times. Two effects rekeying
+// each other are still caught, since each of their keys restarts every round.
+const maxEffectRestarts = 512
+
+// maxEffectSteps is the absolute backstop, and bounds nothing a program is
+// likely to write: a rekey loop is caught by maxEffectRestarts long before it,
+// and the only thing left for it to catch is a settle whose handlers keep
+// describing brackets that never existed before -- a tree growing without
+// bound, which exhausts memory whatever this number is.
+const maxEffectSteps = 100_000
+
+// settleBudget is what a settle spends as it runs handlers, and the two bounds
+// above are what it is spending against. Held across the whole settle rather
+// than per Reconcile, because a rekey is only visible over several of them.
+type settleBudget struct {
+	starts map[Key]int
+	steps  int
+}
+
+// spend records one handler run for the bracket at k and reports the bound it
+// broke, or nil.
+func (b *settleBudget) spend(k Key) error {
+	b.steps++
+	if b.steps >= maxEffectSteps {
+		return fmt.Errorf("effects did not settle in %d steps", maxEffectSteps)
+	}
+	if b.starts == nil {
+		b.starts = map[Key]int{}
+	}
+	b.starts[k]++
+	if b.starts[k] > maxEffectRestarts {
+		return fmt.Errorf("effects did not settle; the effect at %s has begun %d lifetimes in one settle, so it is rekeying itself", k, maxEffectRestarts)
+	}
+	return nil
+}
 
 // Reconcile moves the running set one step towards what v describes, running at
-// most one handler, and reports whether it ran one.
+// most one handler, and reports which bracket it moved and whether it moved
+// one. The key is what lets the caller bound a rekey per bracket rather than
+// per settle -- see settleBudget.
 //
 // One per call, because a handler's scope goes stale the moment another writes
 // state. Every scope in v was built by a single Mount, so two handlers from one
@@ -92,9 +131,9 @@ const maxEffectSteps = 512
 // for `@unmount`, the beginning one for `@mount`. By teardown time the cell has
 // already been written, so a handler reading it would see what it is not
 // tearing down.
-func (fx *Effects) Reconcile(v *View, root *Env) (bool, error) {
+func (fx *Effects) Reconcile(v *View, root *Env) (Key, bool, error) {
 	if fx == nil {
-		return false, nil
+		return Key{}, false, nil
 	}
 	next := map[Key]MountedEffect{}
 	var nextOrder []Key
@@ -113,7 +152,7 @@ func (fx *Effects) Reconcile(v *View, root *Env) (bool, error) {
 	for _, prev := range fx.endingLifetimes(next) {
 		delete(fx.live, prev.Key)
 		if prev.Unmount != nil {
-			return true, fx.run(prev, prev.Unmount, root)
+			return prev.Key, true, fx.run(prev, prev.Unmount, root)
 		}
 	}
 
@@ -127,10 +166,10 @@ func (fx *Effects) Reconcile(v *View, root *Env) (bool, error) {
 		fx.next++
 		fx.live[k] = cur
 		if cur.Mount != nil {
-			return true, fx.run(cur, cur.Mount, root)
+			return cur.Key, true, fx.run(cur, cur.Mount, root)
 		}
 	}
-	return false, nil
+	return Key{}, false, nil
 }
 
 // endingLifetimes is every running bracket v no longer describes, newest first.
@@ -183,21 +222,24 @@ func (fx *Effects) run(e MountedEffect, fn *ir.Func, root *Env) error {
 // Mount. Returns the final view.
 func Settle(fx *Effects, env *Env) (*View, error) {
 	var v *View
-	for range maxEffectSteps {
+	var budget settleBudget
+	for {
 		next, err := Mount(env)
 		if err != nil {
 			return nil, err
 		}
 		v = next
-		ran, err := fx.Reconcile(v, env)
+		key, ran, err := fx.Reconcile(v, env)
 		if err != nil {
 			return nil, err
 		}
 		if !ran {
 			return v, nil
 		}
+		if err := budget.spend(key); err != nil {
+			return v, err
+		}
 	}
-	return v, fmt.Errorf("effects did not settle in %d steps; an effect is rekeying itself", maxEffectSteps)
 }
 
 // effectOf reads an effect declaration off a node instantiation, or reports

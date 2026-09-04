@@ -199,6 +199,7 @@ func (st *recursionState) bound(n *ir.NodeInst, scope []*ir.EventHandler) ir.Stm
 		},
 		Body: []ir.Stmt{raiseStmt(
 			fmt.Sprintf("%s: recursion exceeded %d nested instances", n.Name, MaxRecursionDepth),
+			"recursion",
 			scope,
 		)},
 		Else: []ir.Stmt{n},
@@ -212,13 +213,17 @@ func (st *recursionState) here() ir.Expr {
 	return &ir.Ident{Name: recursionDepthProp, Type: ir.TypInt, Sym: st.self, Synthesized: true}
 }
 
-// raiseStmt is `error.raise(msg, "recursion")`, resolved against scope.
+// raiseStmt is `error.raise(msg, kind)`, resolved against scope.
 //
 // The func is synthesized rather than looked up: `error.raise` is declared in
 // sngl:app, which a program bounded by this pass need not have imported, and
 // ir.IsErrorRaiseFunc identifies it by the receiver+name pair for exactly that
 // reason.
-func raiseStmt(msg string, scope []*ir.EventHandler) ir.Stmt {
+//
+// kind is a parameter because two passes report a bound they enforce, and an
+// @error handler that means to catch one of them should not have to catch the
+// other: a recursion bound and a settle bound come from different mistakes.
+func raiseStmt(msg, kind string, scope []*ir.EventHandler) ir.Stmt {
 	call := &ir.Call{
 		Type: ir.TypVoid,
 		Func: &ir.Func{
@@ -235,7 +240,7 @@ func raiseStmt(msg string, scope []*ir.EventHandler) ir.Stmt {
 		},
 		Args: []ir.CallArg{
 			{Name: "message", Value: &ir.Literal{Type: ir.TypString, Value: msg}},
-			{Name: "kind", Value: &ir.Literal{Type: ir.TypString, Value: "recursion"}},
+			{Name: "kind", Value: &ir.Literal{Type: ir.TypString, Value: kind}},
 		},
 		ErrorMode: ir.ErrorPropagateNative,
 	}

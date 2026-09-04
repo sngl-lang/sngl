@@ -84,22 +84,25 @@ func (s *Session) Sync() ([]Patch, error) {
 	// it holds and each tree that followed -- collapsing them would drop the
 	// intermediate creations the later rounds' keys are relative to.
 	var patches []Patch
-	for range maxEffectSteps {
+	var budget settleBudget
+	for {
 		next, err := Mount(s.Env)
 		if err != nil {
 			return nil, err
 		}
 		patches = append(patches, Diff(s.view, next)...)
 		s.view = next
-		ran, err := s.fx.Reconcile(next, s.Env)
+		key, ran, err := s.fx.Reconcile(next, s.Env)
 		if err != nil {
 			return patches, err
 		}
 		if !ran {
 			return patches, nil
 		}
+		if err := budget.spend(key); err != nil {
+			return patches, err
+		}
 	}
-	return patches, fmt.Errorf("effects did not settle in %d steps; an effect is rekeying itself", maxEffectSteps)
 }
 
 // Tick advances the clock to the next timer deadline and fires what is due.
