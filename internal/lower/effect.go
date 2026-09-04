@@ -531,16 +531,23 @@ func (st *effectState) tearFunc(prefix string, fx *loweredEffect) *ir.Func {
 		}},
 		callOf(fx.unmount),
 	}
+	loop := &ir.For{Key: idx.Name, KeySym: idx, Value: "_", Iter: st.varIdent(fx.live), ElemType: fx.elem}
 	if fx.keyVar == nil {
+		// The ordinal exists only to index the key out of the live list, so a
+		// position with no key has nothing to read it. The loop has to stop
+		// binding it too, not just stop using it: a host that declares an
+		// index no statement mentions is a compile error in Go.
 		run = run[1:]
+		loop.Key, loop.KeySym, loop.Value = "", nil, ""
 	}
+	loop.Body = run
 	return &ir.Func{
 		Name:        prefix + "_teardown",
 		Return:      ir.TypVoid,
 		Purity:      ir.PurityMutates,
 		Synthesized: true,
 		Block: []ir.Stmt{
-			&ir.For{Key: idx.Name, KeySym: idx, Value: "_", Iter: st.varIdent(fx.live), ElemType: fx.elem, Body: run},
+			loop,
 			&ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: &ir.ListLit{Type: ir.ListOf(fx.elem)}},
 		},
 	}
