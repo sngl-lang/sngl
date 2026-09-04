@@ -1293,6 +1293,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Params:      []*ir.Param{parentParam},
 		Return:      ir.TypVoid,
 		Synthesized: true,
+		SlotRender:  true,
 	}
 
 	// 1. Teardown: for var __entry = __slotN { lower.RemoveChild(parent, __entry) }

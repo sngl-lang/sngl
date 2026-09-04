@@ -1245,12 +1245,16 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	b.WriteByte('\n')
 }
 
-// emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
-// Func as a Model method. The body is a mix of plain Go statements
-// (For teardown, Assign reset, If gate) and lower.* intrinsic calls.
-// codegen.WalkLowered routes intrinsic shapes through fyneTranslator
-// into ir.Stmt fragments; we then feed them through gc.EvalStmt at
-// the source-emission boundary.
+// emitIRSlotFunc emits a lowering-synthesized Func as a Model method. The
+// body is a mix of plain Go statements (For teardown, Assign reset, If gate)
+// and lower.* intrinsic calls. codegen.WalkLowered routes intrinsic shapes
+// through fyneTranslator into ir.Stmt fragments; we then feed them through
+// gc.EvalStmt at the source-emission boundary.
+//
+// Only a __renderSlot<N> takes the host container: its body was written
+// against passReactivity's `parent`, which the translator rewrites to
+// `container`. Every other synthesized func -- an effect's settle halves, the
+// focus-order navigation -- takes the parameters it declares, which is none.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
 	tr := newFyneTranslator(gc, specs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
@@ -1259,10 +1263,14 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	tr.canvasByID = canvasByIDFor(canvasByFunc)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
+	params := fn.Params
+	if fn.SlotRender {
+		params = []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}}
+	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}},
+		Params:   params,
 		Return:   ir.TypVoid,
 		Block:    bodyStmts,
 	}

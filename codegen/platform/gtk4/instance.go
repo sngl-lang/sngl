@@ -93,7 +93,7 @@ func emitComponentInstance(
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if fn.Synthesized {
+		if fn.SlotRender {
 			// A reactive slot's render func, whose body was written against
 			// the reactivity pass's `parent` name and is typed the way the
 			// Model's own slot funcs type it (see emitIRSlotFunc).

@@ -555,8 +555,10 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	return td, nil
 }
 
-// emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N> Func as a
-// Model method.
+// emitIRSlotFunc emits a lowering-synthesized Func as a Model method. Only a
+// __renderSlot<N> takes the host container; every other synthesized func -- an
+// effect's settle halves, the focus-order navigation -- takes the parameters it
+// declares, which is none.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
@@ -566,14 +568,18 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	tr.collectTagComponents(fn.Block)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
+	params := fn.Params
+	if fn.SlotRender {
+		// The slot body references the reactivity pass's param name, so
+		// renaming it here would leave those refs dangling.
+		params = []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}}
+	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		// The slot body references the reactivity pass's param name, so
-		// renaming it here would leave those refs dangling.
-		Params: []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}},
-		Return: ir.TypVoid,
-		Block:  bodyStmts,
+		Params:   params,
+		Return:   ir.TypVoid,
+		Block:    bodyStmts,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)

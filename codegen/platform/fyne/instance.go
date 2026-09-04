@@ -84,7 +84,7 @@ func emitComponentInstance(
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if fn.Synthesized {
+		if fn.SlotRender {
 			// A reactive slot's render func. Its body was written against the
 			// reactivity pass's `parent` name, which the translator rewrites
 			// to `container` -- so the parameter has to be spelled the way
