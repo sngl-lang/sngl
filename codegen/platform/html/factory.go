@@ -130,7 +130,10 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	for _, p := range comp.Props {
 		read := fmt.Sprintf("props.%s", p.Name)
 		if p.Default != nil {
-			read = fmt.Sprintf("%s ?? %s", read, jc.EvalExpr(p.Default))
+			// Parenthesized: an arrow function binds looser than `??`, so a
+			// func-typed prop's default closed the expression at the `=>` and
+			// esbuild rejected the whole page.
+			read = fmt.Sprintf("%s ?? (%s)", read, jc.EvalExpr(p.Default))
 		}
 		fmt.Fprintf(b, "\tlet %s = %s;\n", p.Name, read)
 	}
