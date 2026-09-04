@@ -70,7 +70,38 @@ func lowerRecursionDepth(pkg *ir.Package, _ Caps, opts Options) error {
 		st := &recursionState{cycles: cycles, depth: depth, self: depth[c], bounded: map[*ir.NodeInst]bool{}}
 		st.guard(c, nil)
 	}
+	seedEntryDepth(pkg, depth)
 	return nil
+}
+
+// seedEntryDepth states where the counting starts at every instantiation of a
+// cycle member that guard did not reach.
+//
+// Those are the entries into the cycle: a site written outside it, or the
+// residual instantiation the optimizer leaves behind when it stops unrolling.
+// Nothing above such a site has a depth to hand down, so the prop went
+// unstated -- and a prop the site does not state is not a prop the caller's
+// scope declares. Every target then read a name nothing bound: bubbletea
+// emitted nine references to a bare `__depth` inside a zero-parameter render
+// func, while the recursive callee it hands off to does take one, so the bound
+// did not apply to the entry tree at all.
+//
+// A literal 0 and no guard: the entry is the first level, which is never over
+// the bound, and the constant is what lets the caller's own guards fold.
+func seedEntryDepth(pkg *ir.Package, depth map[*ir.Component]*ir.Param) {
+	_ = ir.Rewrite(pkg, func(node ir.Node) (ir.Node, error) {
+		n, ok := node.(*ir.NodeInst)
+		if !ok || n.Component == nil || depth[n.Component] == nil {
+			return node, nil
+		}
+		for _, p := range n.Props {
+			if p.Name == recursionDepthProp {
+				return node, nil
+			}
+		}
+		n.Props = append(n.Props, ir.Arg{Name: recursionDepthProp, Value: intLiteralLit(0)})
+		return node, nil
+	})
 }
 
 // addDepthProp gives c the prop its own nesting depth arrives in.

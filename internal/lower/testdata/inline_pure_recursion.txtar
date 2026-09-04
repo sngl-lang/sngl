@@ -19,5 +19,5 @@ component foo(__depth int = 0) {
     }
 }
 component main {
-    foo
+    foo(__depth=0)
 }

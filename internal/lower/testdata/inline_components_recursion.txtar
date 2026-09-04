@@ -20,5 +20,5 @@ component Tree(name string = "leaf", __depth int = 0) {
     }
 }
 component main {
-    Tree(name="root")
+    Tree(name="root", __depth=0)
 }

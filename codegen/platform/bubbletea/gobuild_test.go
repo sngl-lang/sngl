@@ -5,7 +5,65 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// generateBubbleteaModel is the pipeline internal/build runs, which is what
+// `sngl generate` is: optimize, lower, and optimize AGAIN. The second pass is
+// the one that matters here -- it inlines a recursive component's residual
+// instantiation another eight levels, after the passes that gave that
+// component its props -- so a claim about the emitted program cannot be made
+// against a single optimize.
+func generateBubbleteaModel(t *testing.T, src string) string {
+	t.Helper()
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var plats []ir.Platform
+	if p := codegen.LookupPlatform("bubbletea"); p != nil {
+		plats = append(plats, p)
+	}
+	lang := codegen.LookupLang("go")
+	if lang == nil {
+		t.Fatal("go lang not registered")
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: plats,
+		Languages: []ir.Language{lang},
+		Targets:   []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}},
+	})
+	if hasErrors(diags) {
+		t.Fatalf("check: %s", firstError(diags))
+	}
+	optCfg := &optimize.Config{Platform: "bubbletea", Language: "go"}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+	g := &Generator{}
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize2: %v", err)
+	}
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	modelSrc, ok := mem.Files()["model.go"]
+	if !ok {
+		t.Fatalf("model.go not among generated files %v", mem.Files())
+	}
+	return string(modelSrc)
+}
 
 // fixtureSource reads a root testdata fixture. A defect that only stock
 // fixtures show is one a hand-written program in this file would not have.
