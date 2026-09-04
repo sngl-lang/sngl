@@ -106,7 +106,7 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				return t.OnCreateNode(ctx, n.Name, tag)
 			}
 			if isLowerIntrinsic(call, "CreateComponent") {
-				return t.OnCreateComponent(ctx, n.Name, call)
+				return t.OnCreateComponent(ctx, n.Name, walkComponentProps(ctx, call, t))
 			}
 			if isLowerIntrinsic(call, ir.NodeOpComponentRoot) && len(call.Args) == 1 {
 				return t.OnComponentRoot(ctx, n.Name, call.Args[0].Value)
@@ -128,7 +128,8 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				return t.OnDetachHandler(ctx, n.Call.Args[0].Value, evt, n.Call.Args[2].Value)
 			case isLowerIntrinsic(n.Call, ir.NodeOpUpdateComponent) && len(n.Call.Args) == 3:
 				prop, _ := extractStringLit(n.Call.Args[1].Value)
-				return t.OnUpdateComponent(ctx, n.Call.Args[0].Value, prop, n.Call.Args[2].Value)
+				return t.OnUpdateComponent(ctx, n.Call.Args[0].Value, prop,
+					walkHandlerBody(ctx, n.Call.Args[2].Value, t))
 			case isLowerIntrinsic(n.Call, ir.NodeOpDestroyComponent) && len(n.Call.Args) == 1:
 				return t.OnDestroyComponent(ctx, n.Call.Args[0].Value)
 			case isLowerIntrinsic(n.Call, ir.NodeOpInsertBefore) && len(n.Call.Args) == 3:
@@ -217,6 +218,50 @@ func walkHandlerBody(ctx context.Context, handler ir.Expr, t IntrinsicTranslator
 	fn.Block = WalkLowered(ctx, lam.Func.Block, t)
 	cp.Func = &fn
 	return &cp
+}
+
+// walkComponentProps rewrites every handler an instantiation hands over in its
+// props struct, and answers with the call to emit.
+//
+// A prop is where a handler crosses into an instance -- an event the call site
+// subscribed to is a func-typed prop, and its lambda is a field of the struct
+// the create call carries. That is two levels below an argument, so the walk
+// reached it neither as a statement nor as a bare arg, and the body went to the
+// language backend raw: a write to a widget the enclosing Model owns kept its
+// IR shape, naming the field as a bare local the render function does not
+// declare. On the Go platforms that is a file which does not compile.
+//
+// The call is copied rather than rewritten in place: it is the same node the
+// reuse branch's UpdateComponent aliases, and walking one body twice would
+// nest the translation inside itself.
+func walkComponentProps(ctx context.Context, call *ir.Call, t IntrinsicTranslator) *ir.Call {
+	if call == nil || len(call.Args) < 2 {
+		return call
+	}
+	lit, ok := call.Args[1].Value.(*ir.StructLit)
+	if !ok {
+		return call
+	}
+	fields := make([]ir.FieldInit, len(lit.Fields))
+	copy(fields, lit.Fields)
+	changed := false
+	for i := range fields {
+		if w := walkHandlerBody(ctx, fields[i].Value, t); w != fields[i].Value {
+			fields[i].Value = w
+			changed = true
+		}
+	}
+	if !changed {
+		return call
+	}
+	litCopy := *lit
+	litCopy.Fields = fields
+	args := make([]ir.CallArg, len(call.Args))
+	copy(args, call.Args)
+	args[1].Value = &litCopy
+	callCopy := *call
+	callCopy.Args = args
+	return &callCopy
 }
 
 // resolveSlotVar returns the *ir.Var pointed to by a Synthesized slot

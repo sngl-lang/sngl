@@ -111,10 +111,46 @@ func propNamed(c *ir.Component, name string) *ir.Prop {
 // eventParams is the signature an event's handler is called with: its payload,
 // or nothing when it carries none.
 func eventParams(e *ir.EventDecl) []*ir.Param {
-	if e.Type == nil {
+	if e == nil || e.Type == nil {
 		return nil
 	}
 	return []*ir.Param{{Name: "__e", Type: e.Type}}
+}
+
+// eventNamed is comp's declaration of that event, or nil.
+func eventNamed(comp *ir.Component, name string) *ir.EventDecl {
+	if comp == nil {
+		return nil
+	}
+	for _, e := range comp.Events {
+		if e != nil && e.Name == name {
+			return e
+		}
+	}
+	return nil
+}
+
+// padParams and padArgs make both ends of an event agree with the declaration.
+//
+// An event's arity is loose in source and the substitution that used to
+// implement one hid that: a bare `@pick` is declared carrying a `dyn` payload,
+// `pick()` may fire it with no argument, and `@pick { … }` may subscribe
+// without naming one. bindEventParams simply bound what it was given. A
+// func-typed prop is a real signature that a host language type-checks, so the
+// declaration is made the one both sides are written to -- the subscription
+// gains the parameters it ignored, and the emit passes null for the payload it
+// did not send.
+func padParams(fn *ir.Func, want []*ir.Param) {
+	for i := len(fn.Params); i < len(want); i++ {
+		fn.Params = append(fn.Params, &ir.Param{Name: "_", Type: want[i].Type})
+	}
+}
+
+func padArgs(args []ir.CallArg, want []*ir.Param) []ir.CallArg {
+	for i := len(args); i < len(want); i++ {
+		args = append(args, ir.CallArg{Value: &ir.Literal{Type: ir.TypNull}})
+	}
+	return args
 }
 
 // rewriteEmits turns every `emit(<event>, args)` in c into a call of the prop
@@ -156,7 +192,7 @@ func rewriteEmitsIn(stmts []ir.Stmt, byName map[string]*ir.Param) []ir.Stmt {
 				out = append(out, &ir.CallStmt{Call: &ir.Call{
 					Type:   ir.TypVoid,
 					Callee: &ir.Ident{Name: sym.Name, Type: sym.Type, Sym: sym},
-					Args:   emit.Args,
+					Args:   padArgs(emit.Args, sym.Type.Sig.Params),
 				}})
 				continue
 			}
@@ -211,10 +247,11 @@ func handlersToProps(n *ir.NodeInst) {
 			kept = append(kept, h)
 			continue
 		}
-		typ := ir.FuncOf(h.Func.Params, nil)
+		want := eventParams(eventNamed(n.Component, h.Name))
+		padParams(h.Func, want)
 		n.Props = append(n.Props, ir.Arg{
 			Name:  h.Name,
-			Value: &ir.Lambda{Type: typ, Func: h.Func},
+			Value: &ir.Lambda{Type: ir.FuncOf(want, nil), Func: h.Func},
 		})
 	}
 	n.Handlers = kept
