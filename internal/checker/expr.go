@@ -943,6 +943,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	receiverExpr := c.checkExpr(sel.Operand)
 	receiver := exprType(receiverExpr)
 
+	if c.rejectVoidReceiver(receiver, sel.Operand) {
+		return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+	}
+
 	// Namespace function or component call: ns.func() or ns.Component().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
 		if sym, ok := c.scope.Lookup(ident.Name); ok {
@@ -1472,9 +1476,30 @@ func callRetType(sig *ir.FuncSig) *ir.Type {
 	return sig.Return
 }
 
+// rejectVoidReceiver reports a field or method named on an expression that
+// produces no value. Nothing can be selected through one, so leaving it
+// unreported typed the whole select dyn -- which accepted any field and any
+// method name at all, `nothing().nosuchmethod()` included. The position is the
+// receiver's rather than the select's: what is wrong is the thing on the left.
+func (c *checker) rejectVoidReceiver(t *ir.Type, operand ast.Expr) bool {
+	if t == nil || t.Kind != ir.TypeVoid {
+		return false
+	}
+	pos := ast.Pos{}
+	if p := operand.ExprPos(); p != nil {
+		pos = *p
+	}
+	c.error(pos, "expression yields no value")
+	return true
+}
+
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
+
+	if c.rejectVoidReceiver(operand, x.Operand) {
+		return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+	}
 
 	// Auto-deref through Select: if the operand is `ref<T>`, treat the field
 	// access as if the operand were dereferenced first. The IR carries an

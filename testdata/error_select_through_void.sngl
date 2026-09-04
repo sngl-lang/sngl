@@ -1,0 +1,25 @@
+// A call that yields no value has nothing to select through, so naming a field
+// or a method on one is an error -- and what is wrong is the receiver, not the
+// name on the right of the dot.
+//
+// Unreported, the select typed dyn and then accepted anything at all: not just
+// a wrong type but a wrong *name*, so `nosuchmethod` below checked clean and
+// reached a backend as a call to a function nobody declared.
+
+import . "sngl:ui"
+
+func nothing() {
+}
+
+component main {
+    var n int = 0
+
+    button(text="a", @click {
+        n = nothing().nosuchmethod() // ERROR(check) "expression yields no value"
+    })
+    button(text="b", @click {
+        n = nothing().nosuchfield // ERROR(check) "expression yields no value"
+    })
+
+    text(value=string(n))
+}

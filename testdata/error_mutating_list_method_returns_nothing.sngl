@@ -13,6 +13,7 @@ import . "sngl:ui"
 component main {
     var xs list<string> = ["a"]
     var ys list<string> = []
+    var n int = 0
 
     button(text="a", @click {
         xs = xs.push("v") // ERROR(check) "expression yields no value"
@@ -30,6 +31,12 @@ component main {
         ys = xs.remove(0) // ERROR(check) "expression yields no value"
     })
 
+    // And reading through the result is the same error one step earlier: there
+    // is no list on the left of `.length()` to have a length.
+    button(text="f", @click {
+        n = xs.push("nested").length() // ERROR(check) "expression yields no value"
+    })
+
     // The statement form is the whole API, and it mutates in place.
     button(text="c", @click {
         xs.push("v")
@@ -38,4 +45,5 @@ component main {
 
     text(value=string(xs.length()))
     text(value=string(ys.length()))
+    text(value=string(n))
 }
