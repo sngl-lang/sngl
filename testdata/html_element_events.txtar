@@ -8,8 +8,12 @@ control's own state, read back off the target. A handler that declares no
 parameter gets no argument in the signature -- the body has nothing that could
 resolve to the event. An event the element declares no payload for reaches its
 own DOM event through the wildcard event and not click's listener, on the
-static path and equally on the lowered one, where the element is built by JS
-and the listener is attached inside the slot renderer.
+static path and equally on the lowered one, where the element is built by JS.
+
+A row under a reactive `for` is a component the compiler wrote, so the listener
+is attached once inside that factory and what the slot renderer hands over each
+render is the body -- `__set___on0`. The declaration still decides the listener
+and its argument; only where the two are joined moved.
 
 Before, three name lists disagreed. An event outside click/input/change was
 routed to a registration that binds no event parameter, and the emitted
@@ -72,28 +76,82 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { msg: "", txt: "", hits: 0, rows: ["a"] };
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __on0 = props.__on0 ?? (() => {
+    });
+    let __prop___p0 = __p0;
+    let __prop___on0 = __on0;
+    let __slot02 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.textContent = __prop___p0;
+    }
+    function __set___on0(__v) {
+      __prop___on0 = __v;
+    }
+    let __n0 = document.createElement("li");
+    __n0.textContent = __prop___p0;
+    __n0.addEventListener("mouseover", () => {
+      __prop___on0();
+    });
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0,
+      __set___on0
+    };
+  }
   var __slot0 = [];
+  var __inst1_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
     for (const r of state.rows) {
-      let __n0 = document.createElement("li");
-      __n0.textContent = r;
-      __n0.addEventListener("mouseover", () => {
-        state.hits = state.hits + 1;
-      });
+      let __n1 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n1 = __inst1_live[__inst1_i];
+        __n1.__set___p0(r);
+        __n1.__set___on0(() => {
+          state.hits = state.hits + 1;
+        });
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n1__new = __cf___child0({ __p0: r, __on0: () => {
+          state.hits = state.hits + 1;
+        } });
+        __n1 = __n1__new;
+      }
+      __inst1_next.push(__n1);
+      __inst1_i = __inst1_i + 1;
+      let __n1__el = __n1.__root;
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n0) {
+      if (__place0_i_ref0 === __n1__el) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
+        parent.insertBefore(__n1__el, __place0_i_ref0);
       }
-      __slot0.push(__n0);
+      __slot0.push(__n1__el);
     }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
     for (const __place0_prev_e of __place0_prev) {
       if (__slot0.indexOf(__place0_prev_e) < 0) {
         parent.removeChild(__place0_prev_e);

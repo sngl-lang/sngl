@@ -32,6 +32,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoImplicitRecv",
 		"Canvas",
 		"Effect",
+		"SlotChildInstances",
 		"InstanceEvents",
 		"ComponentProps",
 		"NoReactivity",

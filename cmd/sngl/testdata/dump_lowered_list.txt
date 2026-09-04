@@ -10,6 +10,12 @@ stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExten
 # html does: a component the build cannot inline is built as a record with its
 # own state. Their capabilities are identical, so the gate cannot tell them
 # apart and neither can this list.
+#
+# SlotChildInstances is the one that does tell them apart, and html is the only
+# target with it. It gates on InsertBefore as well, because retaining a slot
+# child buys the placement match and nothing else -- a container that only
+# appends tears its children down every render, so there is no identity for
+# anything to ask about.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
 stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → RecursionDepth → NoStructSpread → Canvas → Effect → InstanceEvents → ComponentProps → NoReactivity → NoTernary → CanvasReactivity → InstanceBodies → NoDeclarative'
@@ -21,11 +27,11 @@ stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExten
 # html+none now lower identically.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → InstanceEvents → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → SlotChildInstances → InstanceEvents → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
 stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → InstanceEvents → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → SlotChildInstances → InstanceEvents → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
 stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
