@@ -32,11 +32,14 @@ import (
 // the flag as the body's first statement also settles `break`, which leaves a
 // loop whose body did run.
 //
-// View bodies are left alone. There, a for-else is a structural conditional
-// the platform emitters render themselves (one subtree when the loop produced
-// nodes, the other when it did not), and a statement declared beside a node is
+// View bodies are left alone, because a statement declared beside a node is
 // not something a static renderer can write down -- the same bound passCSE
-// documents at greater length.
+// documents at greater length. There a for-else is the platform emitter's to
+// render as a structural conditional: one subtree when the loop produced
+// nodes, the other when it did not. Worth knowing that only bubbletea
+// actually does today -- fyne, gtk4, android and html/none emit nothing at
+// all for the else -- so leaving it alone here leaves it unrendered there,
+// rather than handing it to something that handles it.
 //
 // Which blocks those are is imperativeBlocks' answer, shared with passCSE --
 // including a lambda body wherever it appears, view prop included, which is
@@ -57,34 +60,6 @@ func lowerForElse(pkg *ir.Package, _ Caps, _ Options) error {
 
 type forElseState struct {
 	counter int
-}
-
-func (st *forElseState) handlersIn(stmts []ir.Stmt) {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			for _, h := range n.Handlers {
-				if h.Func != nil {
-					st.imperative(&h.Func.Block)
-				}
-			}
-			st.handlersIn(n.Children)
-		case *ir.If:
-			st.handlersIn(n.Body)
-			st.handlersIn(n.Else)
-		case *ir.For:
-			st.handlersIn(n.Body)
-			st.handlersIn(n.Else)
-		case *ir.SlotInst:
-			st.handlersIn(n.Children)
-		case *ir.ErrorBoundary:
-			st.handlersIn(n.Children)
-		case *ir.ContextProvider:
-			st.handlersIn(n.Children)
-		case *ir.Window:
-			st.handlersIn(n.Body)
-		}
-	}
 }
 
 // imperative rewrites one block in place, recursing into the blocks it holds.

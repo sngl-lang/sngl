@@ -12,7 +12,7 @@
 sngl generate --lang kotlin --platform android --out droid app.sngl
 grep 'for \(row in listOf\("a", "b", "c"\)\) \{' droid/MainScreen.kt
 grep 'Text\(text = row' droid/MainScreen.kt
-! grep 'Text\(text = "a"'
+! grep 'Text\(text = "a"' droid/MainScreen.kt
 
 # Go, same program, same answer.
 sngl generate --lang go --platform bubbletea --out tui app.sngl
@@ -27,7 +27,7 @@ grep '<span>c</span>' web/index.html
 # Past the bound it is a diagnostic, not 200000 spans.
 ! sngl generate --lang none --platform html --out big big.sngl
 stderr 'repeats 200000 times'
-stderr 'build for a language that can run the loop'
+stderr 'build for a target that can run the loop'
 
 # The same program is fine on a target that can run the loop -- and a count
 # from zero is Go's range over an int.

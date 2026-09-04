@@ -35,8 +35,13 @@ func (g *Generator) PlatformIdentifier() string { return "html" }
 func (g *Generator) Description() string {
 	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
 }
+
 func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f := lang.Capabilities()
+	// Both modes write the tree as markup: static mode writes a file, route
+	// mode writes the same markup into a handler, and the only loop either can
+	// emit is a hole over an expression that varies with the request.
+	f.ViewStatements = false
 	// A platform has the last word, and html's output is HTML and JS: the
 	// language emits the server half of route mode, not the markup or the
 	// script. So a restriction that exists because the *language* lacks a
@@ -1429,6 +1434,13 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 // otherwise be declared twice in the page.
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
+	// The three sources overlap: a page whose root is a component and not an
+	// explicit `window` is served here as a window whose Funcs are that
+	// component's, so every synthesized func of the root arrived twice. Both
+	// loops below consume this list -- one writes the definition, the other
+	// the anchor lookup and the bootstrap call -- so a duplicate was a
+	// __renderSlotN defined twice and run twice at startup, the second run
+	// removing the nodes the first had just built.
 	seen := map[*ir.Func]bool{}
 	add := func(f *ir.Func) {
 		if f == nil || !f.Synthesized || seen[f] {

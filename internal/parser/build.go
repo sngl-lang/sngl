@@ -1629,7 +1629,7 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 	// that declares nothing (`for seq.count(3) { }`), so its absence is the
 	// whole of the second form: the CondExpr, when there is one, is the head.
 	// Absent, Iter stays nil and the loop is `for { }` -- what the head
-	// expression *is* (iterable, condition, or nothing) is the checker's.
+	// expression *is* (iterable, condition, or nothing) is the checker's call.
 	pos := b.posFromToken(it.shift()) // kw_for
 	stmt := &ast.ForStmt{Pos: pos}
 	declares := !it.done() && !it.isNonTerminal() && it.tokenType() == KW_VAR

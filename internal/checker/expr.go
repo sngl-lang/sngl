@@ -2997,8 +2997,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		c.loopDepth--
 		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
-			// The else runs when the body never did, so it is outside the
-			// loop: a `break` written there has no loop to act on.
+			// The else runs when the body never did, so it is outside this
+			// loop: an escape written there acts on whichever loop encloses
+			// it, which is why loopEscapes reads a nested loop's else and not
+			// its body.
 			elseBody = c.checkBlockIR(&x.Else)
 		}
 		c.popScope()
@@ -4352,9 +4354,11 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	if c.funcDepth == 0 {
 		c.error(x.Pos, "%s cannot be written in a view body: a view repeats its body once per element, and there is no element here", kind)
 	}
-	// The head declares no variable, so there is nothing for `var` to bind.
+	// Only the condition form can reach this: the grammar takes `var` solely
+	// in the branch that goes on to require an `=` and an expression, so a
+	// headless loop carrying a variable does not parse in the first place.
 	if x.Key != "" {
-		c.error(x.Pos, "%s declares no variable: drop the `var`", kind)
+		c.error(x.Pos, "a loop over a condition declares no variable: drop the `var`")
 	}
 	if cond == nil && x.Else.IsDefined() {
 		// else means the body never ran, and a loop with no condition always

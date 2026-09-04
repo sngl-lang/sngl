@@ -132,13 +132,22 @@ var nofmtRE = regexp.MustCompile(`//\s*NOFMT\b\s*(".*")`)
 // rewrite — an odd layout a test is about, or output the formatter cannot
 // reproduce yet — opts out here rather than by weakening the check.
 func ParseNoFmt(path string) (bool, string, error) {
-	f, err := os.Open(path)
+	src, err := os.ReadFile(path)
 	if err != nil {
 		return false, "", err
 	}
-	defer f.Close()
+	nofmt, reason, err := ParseNoFmtSource(string(src))
+	if err != nil {
+		return false, "", fmt.Errorf("%s: %w", path, err)
+	}
+	return nofmt, reason, nil
+}
 
-	s := bufio.NewScanner(f)
+// ParseNoFmtSource is ParseNoFmt over source with no file behind it — a
+// fixture inside a txtar archive, which is still held to the formatting rule
+// and still needs a way to opt out of it.
+func ParseNoFmtSource(src string) (bool, string, error) {
+	s := bufio.NewScanner(strings.NewReader(src))
 	for s.Scan() {
 		m := nofmtRE.FindStringSubmatch(s.Text())
 		if m == nil {
@@ -149,7 +158,7 @@ func ParseNoFmt(path string) (bool, string, error) {
 		}
 		reason, err := strconv.Unquote(m[1])
 		if err != nil {
-			return false, "", fmt.Errorf("%s: NOFMT directive: %w", path, err)
+			return false, "", fmt.Errorf("NOFMT directive: %w", err)
 		}
 		return true, reason, nil
 	}

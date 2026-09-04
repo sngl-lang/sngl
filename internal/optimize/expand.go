@@ -38,21 +38,22 @@ func expandForWindows(pkg *ir.Package, ctx *evalCtx) {
 // one. A static artifact holds the iterations themselves -- a node per
 // element, written into the output -- so a loop with a large constant count
 // is a page nobody wanted: `for seq.count(200000)` produced 3.4 MB of markup
-// and 200000 spans, in a language where the same program is a `for` and a
+// and 200000 spans, where a target that runs the loop writes a `for` and a
 // kilobyte.
 //
 // It is a diagnostic rather than a silent truncation, and rather than a
 // runtime loop, because there is nowhere to run one: the author's options are
-// a smaller count or a target with a host language, and only they can pick.
+// a smaller count or a target that runs it, and only they can pick.
 // The bound is per loop, so nested loops multiply and each is reported where
 // it stands.
 const maxStaticUnroll = 10000
 
 // expandForStmt tries to expand a for-loop over a const iterable.
 // Returns nil if the iterable can't be evaluated. A successful expansion to
-// zero items returns a non-nil empty slice — distinct from "couldn't
-// evaluate" — so the caller can drop the for-loop instead of leaving it for
-// codegen to choke on.
+// zero items returns the loop's else body — which is what a loop that ran no
+// iterations leaves behind, and is empty for the loops that have no else, so
+// it is still distinct from "couldn't evaluate" and the caller still drops
+// the for-loop rather than leaving it for codegen to choke on.
 func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	// A loop that walks nothing has no iterable to evaluate, so there are no
 	// iterations to write out: a condition is tested at run time, and a
@@ -88,7 +89,7 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 		if fs.AST != nil {
 			pos = fs.AST.Pos.String() + ": "
 		}
-		ctx.err = fmt.Errorf("%sthis loop repeats %d times, and a target with no host language writes every iteration into its output (limit %d): give it a smaller count, or build for a language that can run the loop",
+		ctx.err = fmt.Errorf("%sthis loop repeats %d times, and this target writes every iteration into its output (limit %d): give it a smaller count, or build for a target that can run the loop",
 			pos, len(items), maxStaticUnroll)
 		return nil
 	}
@@ -100,6 +101,25 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 	// Collect window struct values per #id across iterations so hoisted
 	// list<Window> symbols can be bound after expansion.
 	windowsByID := map[string][]any{}
+
+	// Nothing to iterate is the else case, and unrolling is the only thing
+	// that will ever run it here: the loop is about to be replaced by its
+	// expansion, and passForElse -- which is what states the else for a
+	// target that keeps the loop -- runs after the optimizer and would find
+	// nothing left to state it about. Dropping the whole statement lost the
+	// else outright, so a const-empty loop rendered neither its body nor its
+	// empty case.
+	if len(items) == 0 {
+		// Non-nil even when there is no else, since nil is how this function
+		// says it could not evaluate the iterable. Returning the folded else
+		// alone left an else-less empty loop looking unevaluable, so it stayed
+		// in the tree and rendered its body once with its variable bound to
+		// nothing -- an empty row per list that happened to be empty.
+		if expanded := foldStmts(cloneStmts(fs.Else), ctx); expanded != nil {
+			return expanded
+		}
+		return []ir.Stmt{}
+	}
 
 	result := make([]ir.Stmt, 0, len(items))
 	for i, item := range items {

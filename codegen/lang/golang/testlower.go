@@ -133,10 +133,16 @@ func lowerTestIf(s *ir.If, gc *GoIRContext) []string {
 	return out
 }
 
-// lowerTestFor mirrors GoIRContext's component-method for-loop lowering
-// but recurses on body statements through lowerTestStmt so test intrinsics
-// inside the loop body still get their dedicated lowering. Loop vars bind
-// as locals on a forked context.
+// lowerTestFor emits a for-loop in a test body, recursing on body statements
+// through lowerTestStmt so test intrinsics inside the loop still get their
+// dedicated lowering. Loop vars bind as locals on a forked context.
+//
+// The head itself is ForHead's, not a copy of it. It used to be a copy, and a
+// copy of only the two shapes that existed when it was written: a counted loop
+// in a test emitted `range slices.Values(...)` with two variables, a condition
+// loop emitted the condition as a range operand, and `for { }` dereferenced a
+// nil Iter and took the test launcher down with it. There is one right answer
+// per IterKind and it is already written down once.
 func lowerTestFor(s *ir.For, gc *GoIRContext) []string {
 	iterExpr := gc.EvalExpr(s.Iter)
 	loopGC := gc.WithLocal(s.Key)
@@ -144,21 +150,7 @@ func lowerTestFor(s *ir.For, gc *GoIRContext) []string {
 		loopGC = loopGC.WithLocal(s.Value)
 	}
 
-	var lines []string
-	iterType := s.Iter.ExprType()
-	if iterType != nil && iterType.Kind == ir.TypeMap {
-		valueVar := s.Value
-		if valueVar == "" {
-			valueVar = "_"
-		}
-		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", s.Key, valueVar, iterExpr))
-	} else {
-		indexVar := "_"
-		if s.Value != "" {
-			indexVar = s.Value
-		}
-		lines = append(lines, fmt.Sprintf("for %s, %s := range %s {", indexVar, s.Key, iterExpr))
-	}
+	lines := []string{gc.ForHead(s, iterExpr)}
 	for _, stmt := range s.Body {
 		for _, l := range lowerTestStmt(stmt, loopGC) {
 			lines = append(lines, "\t"+l)

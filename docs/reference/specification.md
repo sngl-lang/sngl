@@ -1209,8 +1209,10 @@ Iterating on a condition, or on nothing:
   iteration;
 - `for` runs its body until a `break` or a `return` leaves the loop.
 
-Neither walks anything, so neither declares a variable: writing `var` in
-either head is an error, since there is no element for it to bind.
+Neither walks anything, so neither declares a variable. `for var x = cond` is
+an error — there is no element for it to bind — and the headless form has no
+way to write `var` at all, since the grammar takes it only in the branch that
+goes on to require an `=` and an expression.
 
 Both are restricted to **imperative bodies** — a function, a handler, a timer.
 A view body repeats its body once per element of something, which is what

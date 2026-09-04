@@ -109,6 +109,9 @@ var passes = []pass{
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passCanvas,
+	// Normalizes what the user wrote, so it precedes the two passes that
+	// synthesize already-normal code.
+	passHoistMutations,
 	// Before passReactivity: a mount handler that writes state has to reach it
 	// as an ordinary assignment, or nothing patches what reads that state.
 	passEffect,

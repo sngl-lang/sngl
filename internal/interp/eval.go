@@ -279,6 +279,7 @@ func (env *Env) Snapshot() *Env {
 		BodyStmts:     env.BodyStmts,
 		depth:         env.depth,
 		RenderDepth:   env.RenderDepth,
+		maxIterations: env.maxIterations,
 		Locale:        env.Locale,
 		ContextVals:   env.ContextVals, // shared reference — overrides visible in child envs
 		childEnvs:     childEnvs,       // shared reference — cached child envs persist through scope changes
@@ -2215,6 +2216,15 @@ func (env *Env) execBlockForResult(block []ir.Stmt) (any, error) {
 		err := env.Exec(stmt)
 		if ret, ok := err.(*returnSignal); ok {
 			return ret.value, nil
+		}
+		// A loop escape may not cross a call. The checker refuses one that
+		// would (loopDepth resets at every imperative body), so reaching here
+		// means that refusal has a hole -- and passing the signal on would
+		// hand it to the *caller's* loop, which would break or continue for
+		// reasons its own body never asked for. Fail loudly instead.
+		switch err.(type) {
+		case *breakSignal, *continueSignal:
+			return nil, fmt.Errorf("%w: it left the body it was written in", err)
 		}
 		if err != nil {
 			return nil, err

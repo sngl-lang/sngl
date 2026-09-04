@@ -1,0 +1,69 @@
+# Every loop shape, written inside a test function rather than in the code
+# under test, and run on a Go-backed target.
+#
+# A test body is lowered by its own emitter (codegen/lang/golang/testlower.go)
+# so that test intrinsics inside a loop still get their own lowering. That
+# emitter used to write the loop head itself, and it knew only the two shapes
+# that existed when it was written: a counted loop came out as a range over a
+# pull sequence with two variables (which Go refuses), a condition loop put the
+# condition where the range operand goes, and `for { }` dereferenced an
+# iterable that is not there and took the launcher down with it. The head is
+# ForHead's now -- there is one right answer per IterKind, already written
+# down once -- and this pins all five shapes through that path.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import "sngl:seq"
+
+component main {
+    text(value="hi")
+}
+
+func testForever(t Test) {
+    var i = 0
+    for {
+        i = i + 1
+        if i > 3 {
+            break
+        }
+    }
+    t.assert(i == 4)
+}
+
+func testCondition(t Test) {
+    var j = 0
+    for j < 4 {
+        j = j + 1
+    }
+    t.assert(j == 4)
+}
+
+func testCounted(t Test) {
+    var n = 0
+    for var i = seq.count(4) {
+        n = n + i
+    }
+    t.assert(n == 6)
+}
+
+func testIndexed(t Test) {
+    var n = 0
+    for var i, x = [5, 6] {
+        n = n + i * x
+    }
+    t.assert(n == 6)
+}
+
+func testMapEntries(t Test) {
+    var m map<string, int> = {"a" = 1, "b" = 5}
+    var n = 0
+    for var k, v = m {
+        n = n + v + k.length() - 1
+    }
+    t.assert(n == 6)
+}

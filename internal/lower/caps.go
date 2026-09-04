@@ -39,6 +39,19 @@ type Features struct {
 	ImplicitRecv     bool // can handle implicit receiver (false → explicit Args[0])
 	StructSpread     bool // can handle struct-literal spreads (false → flatten)
 
+	// ViewStatements declares that a view body reaches the output as
+	// host-language statements the target runs. False says it is written out
+	// as markup -- html, in both its modes -- and then a `for` over a
+	// compile-time-constant iterable has nowhere to run: nothing iterates it,
+	// and it renders its body once with its variable bound to nothing.
+	// The optimizer reads it to decide whether to unroll such a loop.
+	//
+	// Unlike every other field here it requests no lowering pass, so
+	// ToLowerCaps does not carry it into Caps: what a target declares about
+	// itself is a wider question than which passes run for it, and Caps
+	// answers only the second.
+	ViewStatements bool
+
 	// StructComponents requests that components compile to structs with methods
 	// rather than functions/closures. Set by platforms that use this model.
 	StructComponents bool
@@ -92,6 +105,7 @@ func AllFeatures() Features {
 		InlineComponents: true,
 		ImplicitRecv:     true,
 		StructSpread:     true,
+		ViewStatements:   true,
 	}
 }
 

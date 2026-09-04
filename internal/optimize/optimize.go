@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -93,13 +94,31 @@ type FileAsset struct {
 // A window loop is not this. expandForWindows unrolls those on every target,
 // because each iteration is a separate window -- a file, a top-level surface
 // -- and not a repeated body.
+//
+// The language is not the whole question, though. A language emits a loop only
+// where the platform hands it statements to emit, and a static-view platform
+// (one declaring lower.Features.ViewStatements false -- html, in both its
+// modes) hands it none: the
+// tree is markup written once, so a loop still standing renders its body a
+// single time with its variable bound to nothing. `sngl doc --http` lost its
+// package list that way, seven links becoming one empty `<a>`, under --lang go.
+//
+// The question is asked of the platform rather than of the block being folded,
+// because by the second Optimize call the distinction is gone: lowering moves
+// a view subtree into a synthesized render function, so "markup" and "a
+// function body" are the same shape by then. Unrolling a constant loop in a
+// handler on such a platform costs a longer handler and nothing else, which is
+// the price of asking a question that has an answer.
 func (ctx *evalCtx) unrollsLoops() bool {
-	return ctx == nil || ctx.language == "" || ctx.language == "none"
+	return ctx == nil || ctx.language == "" || ctx.language == "none" || ctx.staticView
 }
 
 type evalCtx struct {
-	platform      string
-	language      string
+	platform string
+	language string
+	// staticView is the platform's lower.Features.ViewStatements, inverted and
+	// asked once per package fold rather than per loop.
+	staticView    bool
 	dir           string
 	noCacheBust   bool
 	pkg           *ir.Package
@@ -367,6 +386,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		nativeErr:     r.cfg.nativeErr,
 		platform:      r.cfg.Platform,
 		language:      r.cfg.Language,
+		staticView:    codegen.PlatformRendersViewStatically(r.cfg.Platform, r.cfg.Language),
 		dir:           r.cfg.Dir,
 		noCacheBust:   r.cfg.NoCacheBust,
 		pkg:           pkg,

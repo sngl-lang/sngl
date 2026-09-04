@@ -966,13 +966,16 @@ text(value="{firstMultiple(3, 10)} in {countDigits(120)} digits")
 ```
 
 `break` ends the innermost loop and `continue` ends the current iteration of
-it. `for { }` has no other way out, which is why the statement after it is
-unreachable and `firstMultiple` needs no trailing return inside the loop.
+it. A `for { }` with *no* break never falls out of the bottom, so a function
+can end inside one — `for { … return … }` is a complete body on its own.
+`firstMultiple` breaks, so the `return i` after its loop is reached, and
+required.
 
 Neither form declares a variable — there is no element to bind — and neither
-may be written in a view body, where a condition would say how many times to
-repeat nothing. Nor may `break` or `continue`: a view body's loop is a template
-stamped once per element, not a statement stream.
+may be written in a view body, where a loop says how many copies of its body
+the tree holds and a condition cannot say that. Nor may `break` or `continue`:
+a view body's loop is a template stamped once per element, not a statement
+stream.
 
 ### for...else
 

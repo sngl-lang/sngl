@@ -107,9 +107,9 @@ func IsReturn(err error) bool {
 
 // breakSignal and continueSignal travel the same channel a return does, and
 // for the same reason: the statement that has to act on them is the loop, and
-// what is between the two is an arbitrary nest of ifs. execFor catches both;
-// nothing else looks at them, so one reaching a function body is a loop
-// escape the checker should have refused.
+// what is between the two is an arbitrary nest of ifs. runLoopBody catches
+// both, for every loop shape; nothing else looks at them, so one reaching a
+// function body is a loop escape the checker should have refused.
 type breakSignal struct{}
 
 func (*breakSignal) Error() string { return "break outside a loop" }
@@ -359,7 +359,7 @@ func (env *Env) execFor(s *ir.For) error {
 	switch v := iter.(type) {
 	case map[string]any:
 		if len(v) == 0 {
-			return env.ExecStmts(s.Else)
+			return env.execStmts(s.Else)
 		}
 		for k, val := range v {
 			env.Set(s.KeySym, k)
@@ -381,7 +381,7 @@ func (env *Env) execFor(s *ir.For) error {
 			return fmt.Errorf("for iterator must be list or map, got %T", iter)
 		}
 		if n == 0 {
-			return env.ExecStmts(s.Else)
+			return env.execStmts(s.Else)
 		}
 		list, _ := iter.([]any)
 		for i := range n {
@@ -427,7 +427,7 @@ func (env *Env) execLoop(s *ir.For, cond ir.Expr) error {
 			if !ok {
 				// The body never ran: that is what the else case is.
 				if i == 0 {
-					return env.ExecStmts(s.Else)
+					return env.execStmts(s.Else)
 				}
 				return nil
 			}
@@ -460,9 +460,9 @@ func (env *Env) runLoopBody(s *ir.For) (done bool, err error) {
 	return false, nil
 }
 
-// ExecStmts runs a statement list, passing every signal up: it is the
+// execStmts runs a statement list, passing every signal up: it is the
 // interpreter's plain block, used where a block is not a loop body.
-func (env *Env) ExecStmts(stmts []ir.Stmt) error {
+func (env *Env) execStmts(stmts []ir.Stmt) error {
 	for _, st := range stmts {
 		if err := env.Exec(st); err != nil {
 			return err

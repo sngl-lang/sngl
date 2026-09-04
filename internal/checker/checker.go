@@ -3491,40 +3491,55 @@ func stmtAlwaysReturns(s ir.Stmt) bool {
 		// is unreachable and the function returns from inside the loop. This
 		// is what makes `for { … return … }` a complete function body, which
 		// is the whole of how such a loop ends.
+		breaks, continues := loopEscapes(n.Body)
 		if n.Iter == nil {
-			return !blockBreaks(n.Body)
+			return !breaks
 		}
 		// Any other for terminates only when it has an else and both the body
 		// (which returns before the first iteration completes) and the else
-		// (empty case) terminate.
-		return len(n.Else) > 0 && blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
+		// (empty case) terminate -- and only when no escape can carry control
+		// past the pair of them. A `break` leaves the loop outright. A
+		// `continue` is subtler: it ends the iteration rather than the loop,
+		// so the loop can simply run out afterwards, and the else does not
+		// run then either, because the body did.
+		return len(n.Else) > 0 && !breaks && !continues &&
+			blockAlwaysReturns(n.Body) && blockAlwaysReturns(n.Else)
 	default:
 		return false
 	}
 }
 
-// blockBreaks reports whether stmts holds a `break` that leaves the loop this
-// block is the body of.
+// loopEscapes reports which escapes in stmts act on the loop this block is the
+// body of: whether it can `break` out, and whether it can `continue` to the
+// next iteration.
 //
-// A nested loop's body is not searched: a break written there ends that loop.
-// Its else is, because the else runs when the inner body never did, which is
-// after the inner loop is over and still inside this one.
-func blockBreaks(stmts []ir.Stmt) bool {
+// The two are separated because they end different things, and a caller
+// reasoning about whether control can get *past* the loop cares about that. A
+// break does that on its own. A continue does it only in a loop that can run
+// out -- which is every loop except the one with no condition, where a
+// continue is another turn of a loop that never ends by itself.
+//
+// A nested loop's body is not searched: an escape written there acts on that
+// loop. Its else is, because the else runs when the inner body never did,
+// which is after the inner loop is over and still inside this one.
+func loopEscapes(stmts []ir.Stmt) (breaks, continues bool) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.Break:
-			return true
+			breaks = true
+		case *ir.Continue:
+			continues = true
 		case *ir.If:
-			if blockBreaks(n.Body) || blockBreaks(n.Else) {
-				return true
+			for _, block := range [][]ir.Stmt{n.Body, n.Else} {
+				b, c := loopEscapes(block)
+				breaks, continues = breaks || b, continues || c
 			}
 		case *ir.For:
-			if blockBreaks(n.Else) {
-				return true
-			}
+			b, c := loopEscapes(n.Else)
+			breaks, continues = breaks || b, continues || c
 		}
 	}
-	return false
+	return breaks, continues
 }
 
 // lastStmtMayDiverge reports whether a block's final statement has control flow

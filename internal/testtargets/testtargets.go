@@ -17,7 +17,7 @@ import (
 )
 
 // Targets returns every registered language and platform, mirroring the set
-// the real CLI checks against (cmd/sngl.collectTargets). A checker.Config
+// the real CLI checks against (internal/build.RegisteredTargets). A checker.Config
 // built without these silently skips platform element resolution and never
 // checks `component sngl.X` platform-extension bodies.
 func Targets() ([]ir.Language, []ir.Platform) {

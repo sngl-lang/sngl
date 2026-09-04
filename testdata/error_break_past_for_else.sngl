@@ -1,0 +1,17 @@
+// A for-else whose arms both return is a complete function body -- unless the
+// body can escape. A `break` leaves the loop, past the body's return and past
+// the else, and lands on the statement after it: there is none, so the
+// function falls off the end.
+
+import . "sngl:ui"
+
+func f(n int) int { // ERROR(check) "missing return"
+    for n > 0 {
+        if n > 5 {
+            break
+        }
+        return 1
+    } else {
+        return 2
+    }
+}

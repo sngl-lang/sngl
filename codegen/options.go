@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"unicode"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -56,13 +57,22 @@ func OptionsFromMap(m map[string]any) *ir.StructLit {
 // OptionField returns the value expression for the named field, or (nil, false)
 // if absent. Useful for callers that want to inspect a single option without
 // populating a Go struct.
+//
+// The value is resolved through resolveConst, because an option written in an
+// output block is whatever expression the source named -- `test=true` is an
+// Ident for a library const, not a literal -- while the same option set from
+// the CLI or by SetOptionField is a literal already. Every reader below wants
+// the value, so the two spellings are made one here rather than in each of
+// them: OptionBool was one of the readers that did not, and
+// `bubbletea(test=true)` silently generated no test file while
+// `--opt test=true` did.
 func OptionField(opts *ir.StructLit, name string) (ir.Expr, bool) {
 	if opts == nil {
 		return nil, false
 	}
 	for _, f := range opts.Fields {
 		if f.Name == name {
-			return f.Value, true
+			return resolveConst(f.Value), true
 		}
 	}
 	return nil, false
@@ -241,16 +251,49 @@ func assignList(dst reflect.Value, list *ir.ListLit) error {
 
 // resolveConst follows an Ident to its referenced const initializer if the
 // symbol is a constant Var. Other Idents pass through unchanged.
+//
+// The initializer it reaches is unfolded: the optimizer walks a program's
+// body, and a const declared in a library is not in one. `true` is
+// `lib/builtin/bool.sngl`'s `0 == 0` -- the language has no bool literal to
+// declare it with -- so an option written `minify=true` arrives here as a
+// comparison and has to be evaluated, not just followed.
 func resolveConst(e ir.Expr) ir.Expr {
-	id, ok := e.(*ir.Ident)
+	switch v := e.(type) {
+	case *ir.Ident:
+		c, ok := v.Sym.(*ir.Var)
+		if !ok || !c.IsConst || c.Init == nil {
+			return e
+		}
+		return resolveConst(c.Init)
+	case *ir.Binary:
+		if folded := foldComparison(v); folded != nil {
+			return folded
+		}
+	}
+	return e
+}
+
+// foldComparison evaluates a comparison of two literals, and reports nil for
+// anything else. It is deliberately not a general constant folder: the only
+// expression that has to reach an option is the one a builtin bool const is
+// declared as.
+func foldComparison(b *ir.Binary) ir.Expr {
+	if b.Op != ast.BinEq && b.Op != ast.BinNeq {
+		return nil
+	}
+	l, ok := resolveConst(b.Left).(*ir.Literal)
 	if !ok {
-		return e
+		return nil
 	}
-	v, ok := id.Sym.(*ir.Var)
-	if !ok || !v.IsConst || v.Init == nil {
-		return e
+	r, ok := resolveConst(b.Right).(*ir.Literal)
+	if !ok || l.Type != r.Type {
+		return nil
 	}
-	return resolveConst(v.Init)
+	eq := l.Value == r.Value
+	if b.Op == ast.BinNeq {
+		eq = !eq
+	}
+	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(eq)}
 }
 
 // literalFromGo wraps a Go value as an ir.Literal so synthetic StructLits
