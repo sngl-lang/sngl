@@ -28,7 +28,7 @@ component main {
         }
     }
     button(text="add", @click {
-        items = list.push(items, item=4)
+        list.push(items, item=4)
         __renderSlot0(__root)
     })
     __renderSlot0(__root)

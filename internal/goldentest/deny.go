@@ -35,8 +35,9 @@ type deny struct {
 //	deny * `\.toList\(\)` -- no target copies a progression into a list
 //
 // The pattern is backquoted so a generated-code regex needs no escaping past
-// what the regex itself wants. `*` as the file means every generated file of
-// every target.
+// what the regex itself wants, and it matches against the whole file rather
+// than line by line -- a line-anchored claim writes its own `(?m)`. `*` as the
+// file means every generated file of every target.
 func parseDenies(comment string) ([]deny, error) {
 	var out []deny
 	for i, raw := range strings.Split(comment, "\n") {
