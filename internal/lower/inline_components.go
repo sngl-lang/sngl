@@ -41,9 +41,45 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	if err := st.run(); err != nil {
 		return err
 	}
+	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
 	uniqueNodeIDs(pkg)
 	return nil
+}
+
+// dropNestedMethods removes from pkg.Funcs the methods of every component the
+// inliner is about to drop.
+//
+// The checker registers a nested method in both pkg.Funcs and its component's
+// Funcs -- the same *ir.Func in each, which is why this matches by pointer.
+// Dropping the declaration and leaving the members behind left every Go
+// target emitting the original method of a component whose props no longer
+// exist anywhere: each instance got its own clone with the arguments folded
+// in, hoisted onto the owner it was inlined into, while the original still
+// read the bare prop names and named nothing the Model declares.
+//
+// A component something instantiates at run time is kept, so its methods stay
+// and the instance record emits them.
+func dropNestedMethods(pkg *ir.Package, keep map[*ir.Component]bool) {
+	dropped := make(map[*ir.Func]bool)
+	for _, c := range pkg.Components {
+		if keep[c] {
+			continue
+		}
+		for _, f := range c.Funcs {
+			dropped[f] = true
+		}
+	}
+	if len(dropped) == 0 {
+		return
+	}
+	out := pkg.Funcs[:0]
+	for _, f := range pkg.Funcs {
+		if !dropped[f] {
+			out = append(out, f)
+		}
+	}
+	pkg.Funcs = out
 }
 
 // uniqueNodeIDs makes each id name one node again.
