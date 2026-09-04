@@ -31,11 +31,7 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		if p.Type == nil || !mentionsTypeParam(p.Type) {
 			continue
 		}
-		val := propArgValue(args, comp, p)
-		if val == nil {
-			continue
-		}
-		argType := exprType(c.checkExpr(val))
+		argType := c.propArgType(args, comp, p)
 		// A dyn argument states nothing: binding T to it would make every
 		// other prop typed T accept anything, which is the opposite of what
 		// the annotation asked for. Same rule as inferTypeParams.
@@ -60,6 +56,50 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 		return comp
 	}
 	return specializeComponent(comp, bindings)
+}
+
+// propArgType is the type of the value a call site supplied for prop p, or nil
+// when it supplied none. The three forms checkAndSplitArgs accepts are the
+// three answered here: a named arg, a positional one, and a field of a struct
+// spread.
+func (c *checker) propArgType(args ast.ArgList, comp *ir.Component, p *ir.Prop) *ir.Type {
+	if val := propArgValue(args, comp, p); val != nil {
+		return exprType(c.checkExpr(val))
+	}
+	return c.spreadPropType(args, comp, p)
+}
+
+// spreadPropType is the type a `...expr` argument gives prop p: the type of the
+// field of that name on the struct being spread.
+//
+// A spread is where a call site's props come from without any of them being
+// written, so a type parameter has to be bound from one -- and the field type
+// is the whole of what the parameter can learn.
+func (c *checker) spreadPropType(args ast.ArgList, comp *ir.Component, p *ir.Prop) *ir.Type {
+	for _, a := range args.Args {
+		arg, isArg := a.(ast.Arg)
+		if !isArg || arg.Value == nil {
+			continue
+		}
+		spread, isSpr := arg.Value.(*ast.SpreadExpr)
+		if !isSpr {
+			continue
+		}
+		t := exprType(c.checkExpr(spread.Operand))
+		if t == nil || t.Kind != ir.TypeStruct {
+			continue
+		}
+		sd, _ := t.Decl.(*ir.StructDef)
+		if sd == nil {
+			continue
+		}
+		for _, f := range sd.Fields {
+			if f.Name == p.Name {
+				return f.Type
+			}
+		}
+	}
+	return nil
 }
 
 // propArgValue is the expression a call site supplied for prop p, or nil.
@@ -87,6 +127,13 @@ func propArgValue(args ast.ArgList, comp *ir.Component, p *ir.Prop) ast.Expr {
 			if arg.Name == p.Name {
 				return arg.Value
 			}
+			continue
+		}
+		// A spread carries no name and takes no position: it expands to named
+		// props. Read as a positional it bound the first prop's type parameter
+		// to the struct being spread -- `effect(...a)` made T the struct, and
+		// the `@mount(v)` payload with it.
+		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 			continue
 		}
 		if pos < len(ordered) && ordered[pos] == p {
