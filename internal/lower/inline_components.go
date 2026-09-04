@@ -70,12 +70,8 @@ func uniqueNodeIDs(pkg *ir.Package) {
 	}
 	for _, o := range ir.Owners(pkg) {
 		seen := map[string]int{}
-		// ir.Walk rather than a descent of its own: an id is ambiguous within
-		// an owner wherever the two nodes are written, and the hand-written
-		// copy reached neither a context provider's children nor a body
-		// hosted by a lambda -- so two nodes named `#inc` in those places
-		// kept the one name and a backend resolved it to whichever it met
-		// first.
+		// Every body the owner has, because an id is ambiguous wherever the
+		// two nodes that share it are written.
 		_ = ir.Walk(o.Stmts, func(node ir.Node) error {
 			n, ok := node.(*ir.NodeInst)
 			if !ok || n.ID == "" {
@@ -226,12 +222,8 @@ func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 // collectCalleeEdges records every component root instantiates, wherever in
 // what root owns the instantiation is written.
 //
-// ir.Walk and not a descent of its own: it already stops at
-// NodeInst.Component, which is the edge being collected rather than a body to
-// follow, and it reaches the slot content the hand-written copy did not. A
-// recursive component reached only through a named slot was in no cycle at
-// all, so the inliner judged it inlinable and unrolled it until the process
-// was killed.
+// ir.Walk suits this exactly: it stops at NodeInst.Component, which is the
+// edge being collected rather than a body to follow.
 func collectCalleeEdges(root any, out map[*ir.Component]bool) {
 	_ = ir.Walk(root, func(n ir.Node) error {
 		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil {

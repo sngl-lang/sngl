@@ -121,15 +121,11 @@ type recursionState struct {
 // no boundary above it taking the window down: the bound reports, and reporting
 // nowhere is louder than rendering a truncated tree nobody asked for.
 //
-// A boundary is the one thing this needs a nesting stack for, and ir.Rewrite
-// is pre-order with no exit hook to pop one -- so a boundary's children are a
+// A boundary is the one thing that needs a nesting stack, and ir.Rewrite is
+// pre-order with no exit hook to pop one -- so a boundary's children are a
 // walk of their own with the extended scope and the outer walk stops there.
-// That is the only reason the recursion here is not ir.Rewrite's own; every
-// other body is reached by it, which is what fixes a recursive instantiation
-// written inside slot content the call site supplies. The hand-written descent
-// this replaces stopped at NodeInst.Slots, so such a site got no bound at all
-// while findRecursiveCycles -- also blind to slots at the time -- reported no
-// cycle to bound.
+// That is the only reason this recursion exists; every other body ir.Rewrite
+// reaches for itself.
 func (st *recursionState) guard(root any, scope []*ir.EventHandler) {
 	_ = ir.Rewrite(root, func(node ir.Node) (ir.Node, error) {
 		switch n := node.(type) {

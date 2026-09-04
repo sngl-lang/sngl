@@ -60,11 +60,9 @@ func lowerSlotChildInstances(pkg *ir.Package, _ Caps, _ Options) error {
 		return nil
 	}
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
-	// Rooted at the bodies a visual tree is written in, and reaching an
+	// Rooted at the bodies a visual tree is written in. Reaching an
 	// imperative body under one costs nothing: only a view body holds a
 	// NodeInst, so a `for` in a handler has no top-level node to convert.
-	// pkg.Body is not among them because passRootWindow already moved it into
-	// a window.
 	for _, c := range pkg.Components {
 		if c != nil {
 			st.walk(c.Body)
@@ -87,11 +85,6 @@ func lowerSlotChildInstances(pkg *ir.Package, _ Caps, _ Options) error {
 // most the one node that was going to be re-inserted anyway -- and it would
 // cost a synthesized component, a record and a factory for what is very often a
 // constant label. `if` bodies keep the rebuild.
-//
-// ir.Walk and not a descent of its own: the copy this replaces reached neither
-// slot content nor a context provider's children, so a list written inside
-// `slot header { }` tore its rows down and appended them all back -- which is
-// the degradation the pass exists to prevent, in a body it could not see.
 func (st *slotChildSynth) walk(stmts []ir.Stmt) {
 	_ = ir.Walk(stmts, func(n ir.Node) error {
 		f, ok := n.(*ir.For)

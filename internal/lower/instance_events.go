@@ -157,12 +157,10 @@ func padArgs(args []ir.CallArg, want []*ir.Param) []ir.CallArg {
 // that event became. An emit naming no declared event is left alone: it is
 // already dropped further down, and this pass is not the place to change that.
 //
-// Every emit c owns, wherever it is written. A node's handler is the one that
-// matters -- `@click { pick(label) }` is where a component re-emits -- and the
-// walk this replaced found that one but not a handler on a node inside slot
-// content the body supplies, nor one inside a context provider, nor a lifted
-// lambda's. ir.Rewrite reaches all of them and stops at NodeInst.Component,
-// so an emit in the component being instantiated stays that component's.
+// Every emit c owns, wherever it is written -- a node's handler is where a
+// component re-emits, `@click { pick(label) }`. ir.Rewrite stops at
+// NodeInst.Component, which is what keeps an emit inside the component being
+// instantiated that component's own.
 func rewriteEmits(c *ir.Component, byName map[string]*ir.Param) {
 	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
 		emit, ok := n.(*ir.Emit)

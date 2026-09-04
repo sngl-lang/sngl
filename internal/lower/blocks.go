@@ -22,6 +22,10 @@ import (
 // and for nothing else. A pass that may put a statement in a view body asks
 // allBlocks instead.
 //
+// That view descent is hand-written where the rest of lowering uses ir.Walk,
+// because a caller needs the *address* of a statement list, which no node
+// visit hands back, and because the split above is no filter over that walk.
+//
 // Lambda bodies come last, and come from ir.Walk rather than from a second
 // hand-written descent: a lambda can sit in any expression, and the base
 // traversal already knows where every expression is. They overlap the blocks
@@ -138,13 +142,9 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 			}
 			c.viewIn(&n.Children)
 			// Slot content is a view body the caller wrote, so the handlers
-			// hanging off it are the caller's imperative blocks like any
-			// other. By name because Slots is a map, and this order is what
-			// numbers a temp passCSE binds. This descent stays hand-written
-			// where the other five did not: what it collects is the *address*
-			// of a statement list, which is not something a node visit can
-			// hand back, and the imperative/view split it draws is not a
-			// filter ir.Walk can express.
+			// on it are the caller's imperative blocks like any other. By
+			// name because Slots is a map, and this order is what numbers a
+			// temp passCSE binds.
 			for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
 				if sc := n.Slots[name]; sc != nil {
 					c.viewIn(&sc.Body)
