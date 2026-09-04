@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -56,6 +55,7 @@ func lowerEffects(pkg *ir.Package, _ Caps, _ Options) error {
 			return err
 		}
 	}
+	st.buildGroups()
 	st.injectSettles()
 	return st.finishTeardown()
 }
@@ -70,7 +70,45 @@ type effectState struct {
 	// byVar is the settle each state var triggers: writing it may change the
 	// list of keys some position describes.
 	byVar map[*ir.Var][]*loweredEffect
+	// groups is one settle entry point per scope holding effects, in the
+	// order the scopes were walked.
+	groups []*effectGroup
+	// helper is every func this pass synthesized, by pointer. A settle must
+	// not be injected into one, and a name prefix is not how a compiler
+	// recognises its own declarations.
+	helper map[*ir.Func]bool
 }
+
+// effectGroup is every bracket one scope holds, and the single function that
+// settles all of them.
+//
+// One function rather than one per bracket because the order across brackets
+// is part of the contract: the interpreter ends every dying lifetime before it
+// begins any new one, so calling two per-bracket settles in a row -- which is
+// what this pass used to emit -- gives -A,+A,-B,+B where the language says
+// -B,-A,+A,+B. A program that hands a resource from one bracket to the next
+// held two of it for the length of that window.
+type effectGroup struct {
+	comp *ir.Component
+	win  *ir.Window
+	fxs  []*loweredEffect
+	// settling, pending and steps are the re-entrancy guard: a settle reached
+	// from inside a running one records that another pass is owed instead of
+	// starting one, and the running pass takes it. The test this replaces was
+	// on the callee's *name*, so it saw only the immediate call and one hop
+	// through an ordinary helper recursed until the stack gave out.
+	settling *ir.Var
+	pending  *ir.Var
+	steps    *ir.Var
+	settle   *ir.Func
+}
+
+// maxEffectSettleSteps bounds the settle loop the way interp's maxEffectSteps
+// bounds Settle, and for the same case: an effect that rekeys itself describes
+// a different tree every pass and never settles. The compiled form has nowhere
+// to report that, so it stops; a program that reaches this bound was going to
+// spin either way.
+const maxEffectSettleSteps = 512
 
 // loweredEffect is one `effect` node after lowering: the state that says which
 // lifetimes are running, the two handler bodies, and the functions that move
@@ -92,10 +130,19 @@ type loweredEffect struct {
 	keyVar *ir.Var
 	// elem is live's element type -- the `on` expression's type, or bool where
 	// there is no `on` and only presence distinguishes two states.
-	elem    *ir.Type
+	elem *ir.Type
+	// desired is the key list the position describes right now. A scope var
+	// rather than a local, because the two halves of a settle are two
+	// functions: down computes it and ends every lifetime it no longer names,
+	// up begins every one it newly names.
+	desired *ir.Var
 	mount   *ir.Func
 	unmount *ir.Func
-	settle  *ir.Func
+	down    *ir.Func
+	up      *ir.Func
+	// group is the scope's settle entry point, which calls this bracket's two
+	// halves in their place among the others.
+	group *effectGroup
 	// tear unmounts everything still running, for the program's way out. Nil
 	// when the bracket has no `@unmount` to run.
 	tear *ir.Func
@@ -117,16 +164,6 @@ func (st *effectState) owner(o ir.Owner) error {
 	body, err := st.stmts(o.Stmts, &o, nil)
 	if err != nil {
 		return err
-	}
-	// The first settle runs after the body, not where the node was written.
-	// A mount handler writes state, passReactivity turns that into a patch of
-	// whatever reads it, and the node that patch names has to have been
-	// created -- which at the effect's own position it need not have been.
-	for _, fx := range st.effects {
-		if fx.comp == o.Comp && fx.win == o.Win {
-			body = append(body, callOf(fx.settle))
-			st.pkg.Mounts = append(st.pkg.Mounts, fx.settle)
-		}
 	}
 	switch {
 	case o.Comp != nil:
@@ -264,9 +301,18 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 		Synthesized: true,
 	}
 	st.addVar(o, fx.live)
+	fx.desired = &ir.Var{
+		Name:        prefix + "_desired",
+		Type:        ir.ListOf(fx.elem),
+		Init:        &ir.ListLit{Type: ir.ListOf(fx.elem)},
+		Synthesized: true,
+	}
+	st.addVar(o, fx.desired)
 
-	fx.settle = st.settleFunc(prefix, fx, key, frames)
-	st.addFunc(o, fx.settle)
+	fx.down = st.downFunc(prefix, fx, key, frames)
+	st.addFunc(o, fx.down)
+	fx.up = st.upFunc(prefix, fx)
+	st.addFunc(o, fx.up)
 	if fx.unmount != nil {
 		fx.tear = st.tearFunc(prefix, fx)
 		st.addFunc(o, fx.tear)
@@ -283,22 +329,17 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 	return nil
 }
 
-// settleFunc builds the function that moves the running brackets to the ones
-// the position now describes.
+// downFunc builds the first half of a settle: what the position describes now,
+// and the end of every lifetime that description no longer names.
 //
-//	func __effectN_settle() {
-//	    __desired list<T> = []
-//	    <the if/for chain> { __desired.push(<on>) }
+//	func __effectN_down() {
+//	    __effectN_desired = []
+//	    <the if/for chain> { __effectN_desired.push(<on>) }
 //	    for __i, _ = __effectN_live {                    // teardown, newest first
 //	        __j = __effectN_live.length() - 1 - __i
-//	        if __j >= __desired.length()          { __effectN_key = __effectN_live[__j]; __effectN_unmount() }
-//	        else if __desired[__j] != __effectN_live[__j] { ... same ... }
+//	        if __j >= __effectN_desired.length()               { __effectN_key = __effectN_live[__j]; __effectN_unmount() }
+//	        else if __effectN_desired[__j] != __effectN_live[__j] { ... same ... }
 //	    }
-//	    for __i, __k = __desired {                       // setup, in written order
-//	        if __i >= __effectN_live.length()     { __effectN_key = __k; __effectN_mount() }
-//	        else if __effectN_live[__i] != __k    { ... same ... }
-//	    }
-//	    __effectN_live = __desired
 //	}
 //
 // The index is the identity: two renders describe the same bracket at the same
@@ -306,16 +347,11 @@ func (st *effectState) lowerOne(n *ir.NodeInst, o *ir.Owner, frames []effectFram
 // is the mounted path the interpreter keys on, written as a list because a
 // position under a `for` has as many as the iteration has elements.
 //
-// Teardown comes first, and newest first within it. An effect going away holds
-// something the program has to give back, and setting up the next lifetime
-// before ending the previous is how a program ends up holding two of whatever
-// it was.
-func (st *effectState) settleFunc(prefix string, fx *loweredEffect, key ir.Expr, frames []effectFrame) *ir.Func {
+// A key whose type `==` does not mean the same thing on every target is not
+// compared at all -- see rebuildsUnconditionally.
+func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, frames []effectFrame) *ir.Func {
 	listT := ir.ListOf(fx.elem)
-	desiredSym := &ir.Var{Name: prefix + "_desired", Type: listT, Synthesized: true}
-	desired := func() *ir.Ident {
-		return &ir.Ident{Name: desiredSym.Name, Type: listT, Sym: desiredSym, Synthesized: true}
-	}
+	desired := func() *ir.Ident { return st.varIdent(fx.desired) }
 
 	// The key this position describes. Without an `on` every bracket carries
 	// the same value, so only how many there are can differ -- which is
@@ -326,7 +362,7 @@ func (st *effectState) settleFunc(prefix string, fx *loweredEffect, key ir.Expr,
 	}
 
 	block := []ir.Stmt{
-		&ir.LocalVar{Name: desiredSym.Name, Type: listT, Init: &ir.ListLit{Type: listT}, Sym: desiredSym},
+		&ir.Assign{Target: desired(), Op: ast.AssignSet, Value: &ir.ListLit{Type: listT}},
 	}
 	block = append(block, st.positionBlock(frames, []ir.Stmt{
 		callListPush(desired(), push, fx.elem),
@@ -345,13 +381,30 @@ func (st *effectState) settleFunc(prefix string, fx *loweredEffect, key ir.Expr,
 		if fx.keyVar == nil {
 			run = run[1:]
 		}
+		var decide []ir.Stmt
+		if rebuildsUnconditionally(fx.elem) {
+			decide = run
+		} else {
+			decide = []ir.Stmt{&ir.If{
+				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: j(), Right: callListLength(desired())},
+				Body: run,
+				Else: []ir.Stmt{&ir.If{
+					Cond: &ir.Binary{
+						Type: ir.TypBool, Op: ast.BinNeq,
+						Left:  &ir.Index{Type: fx.elem, Operand: desired(), Idx: j()},
+						Right: &ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: j()},
+					},
+					Body: cloneStmts(run),
+				}},
+			}}
+		}
 		block = append(block, &ir.For{
 			Key:      idx.Name,
 			KeySym:   idx,
 			Value:    "_",
 			Iter:     st.varIdent(fx.live),
 			ElemType: fx.elem,
-			Body: []ir.Stmt{
+			Body: append([]ir.Stmt{
 				// Mirrored, because the iteration goes forwards and teardown
 				// has to go backwards.
 				&ir.LocalVar{Name: jSym.Name, Type: ir.TypInt, Sym: jSym, Init: &ir.Binary{
@@ -363,22 +416,32 @@ func (st *effectState) settleFunc(prefix string, fx *loweredEffect, key ir.Expr,
 					},
 					Right: &ir.Ident{Name: idx.Name, Type: ir.TypInt, Sym: idx, Synthesized: true},
 				}},
-				&ir.If{
-					Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: j(), Right: callListLength(desired())},
-					Body: run,
-					Else: []ir.Stmt{&ir.If{
-						Cond: &ir.Binary{
-							Type: ir.TypBool, Op: ast.BinNeq,
-							Left:  &ir.Index{Type: fx.elem, Operand: desired(), Idx: j()},
-							Right: &ir.Index{Type: fx.elem, Operand: st.varIdent(fx.live), Idx: j()},
-						},
-						Body: cloneStmts(run),
-					}},
-				},
-			},
+			}, decide...),
 		})
 	}
 
+	return &ir.Func{
+		Name:        prefix + "_down",
+		Return:      ir.TypVoid,
+		Purity:      ir.PurityMutates,
+		Synthesized: true,
+		Block:       block,
+	}
+}
+
+// upFunc builds the second half: the beginning of every lifetime the position
+// newly names, in the order the tree wrote them, and the record of what is now
+// running.
+//
+//	func __effectN_up() {
+//	    for __i, __k = __effectN_desired {
+//	        if __i >= __effectN_live.length()  { __effectN_key = __k; __effectN_mount() }
+//	        else if __effectN_live[__i] != __k { ... same ... }
+//	    }
+//	    __effectN_live = __effectN_desired
+//	}
+func (st *effectState) upFunc(prefix string, fx *loweredEffect) *ir.Func {
+	var block []ir.Stmt
 	if fx.mount != nil {
 		idx := &ir.LoopVar{Name: prefix + "_i", Type: ir.TypInt}
 		elem := &ir.LoopVar{Name: prefix + "_k", Type: fx.elem}
@@ -395,14 +458,13 @@ func (st *effectState) settleFunc(prefix string, fx *loweredEffect, key ir.Expr,
 		idxRef := func() *ir.Ident {
 			return &ir.Ident{Name: idx.Name, Type: ir.TypInt, Sym: idx, Synthesized: true}
 		}
-		block = append(block, &ir.For{
-			Key:      idx.Name,
-			KeySym:   idx,
-			Value:    elem.Name,
-			ValueSym: elem,
-			Iter:     desired(),
-			ElemType: fx.elem,
-			Body: []ir.Stmt{&ir.If{
+		decide := run
+		// Nothing compares the index when every bracket is rebuilt, and Go
+		// refuses a loop variable that is declared and not used.
+		key, keySym := "_", (*ir.LoopVar)(nil)
+		if !rebuildsUnconditionally(fx.elem) {
+			key, keySym = idx.Name, idx
+			decide = []ir.Stmt{&ir.If{
 				Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinGte, Left: idxRef(), Right: callListLength(st.varIdent(fx.live))},
 				Body: run,
 				Else: []ir.Stmt{&ir.If{
@@ -413,19 +475,41 @@ func (st *effectState) settleFunc(prefix string, fx *loweredEffect, key ir.Expr,
 					},
 					Body: cloneStmts(run),
 				}},
-			}},
+			}}
+		}
+		block = append(block, &ir.For{
+			Key:      key,
+			KeySym:   keySym,
+			Value:    elem.Name,
+			ValueSym: elem,
+			Iter:     st.varIdent(fx.desired),
+			ElemType: fx.elem,
+			Body:     decide,
 		})
 	}
-
-	block = append(block, &ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: desired()})
+	block = append(block, &ir.Assign{Target: st.varIdent(fx.live), Op: ast.AssignSet, Value: st.varIdent(fx.desired)})
 	return &ir.Func{
-		Name:        prefix + "_settle",
+		Name:        prefix + "_up",
 		Return:      ir.TypVoid,
 		Purity:      ir.PurityMutates,
 		Synthesized: true,
 		Block:       block,
 	}
 }
+
+// rebuildsUnconditionally reports whether a key of type t has to end and begin
+// its lifetime on every settle rather than being compared to the one running.
+//
+// `on` is declared `T` with `effect<T = struct {}>`, so it constrains T to
+// nothing and a key may be a struct, a list or a map. comparableForRebuild is
+// the same question passSlotInstances asks of a prop and for the same reason:
+// Go compares two structs field by field, JS compares two objects by identity,
+// so a struct key would hold one lifetime on the Go build and tear down and
+// remount on every settle of the JS one. Rebuilding everywhere is wrong in the
+// same way on every target, which is the property that matters -- an `on` whose
+// identity a program depends on is written as a value all three languages
+// compare alike.
+func rebuildsUnconditionally(t *ir.Type) bool { return !comparableForRebuild(t) }
 
 // tearFunc ends every lifetime this position still holds, newest first. Only
 // built when there is an `@unmount` to run.
@@ -584,6 +668,10 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 }
 
 func (st *effectState) addFunc(o *ir.Owner, fn *ir.Func) {
+	if st.helper == nil {
+		st.helper = map[*ir.Func]bool{}
+	}
+	st.helper[fn] = true
 	switch {
 	case o.Comp != nil:
 		o.Comp.Funcs = append(o.Comp.Funcs, fn)
@@ -641,24 +729,35 @@ func (st *effectState) positionVars(key ir.Expr, frames []effectFrame) []*ir.Var
 	return out
 }
 
-// reactiveVarsIn is the state an expression reads.
+// reactiveVarsIn is the state an expression reads, directly or through what it
+// calls. The base walk does not follow Call.Func -- the callee is owned by
+// pkg.Funcs -- so the call graph is followed by gatherFuncReads, the same
+// answer passReactivity gives a slot whose condition is a derived func.
 func (st *effectState) reactiveVarsIn(e ir.Expr) []*ir.Var {
 	if e == nil {
 		return nil
 	}
 	var out []*ir.Var
 	seen := map[*ir.Var]bool{}
+	take := func(v *ir.Var) {
+		if !seen[v] && st.reactive[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
 	_ = ir.WalkExprs(e, func(x ir.Expr) error {
-		id, isIdent := x.(*ir.Ident)
-		if !isIdent {
-			return nil
+		switch n := x.(type) {
+		case *ir.Ident:
+			if v, isVar := n.Sym.(*ir.Var); isVar {
+				take(v)
+			}
+		case *ir.Call:
+			reads := map[*ir.Var]bool{}
+			gatherFuncReads(n.Func, st.reactive, reads, nil)
+			for v := range reads {
+				take(v)
+			}
 		}
-		v, isVar := id.Sym.(*ir.Var)
-		if !isVar || seen[v] || !st.reactive[v] {
-			return nil
-		}
-		seen[v] = true
-		out = append(out, v)
 		return nil
 	})
 	return out
@@ -705,68 +804,207 @@ func (st *effectState) finishTeardown() error {
 	return nil
 }
 
+// buildGroups gives every scope holding brackets its one settle entry point,
+// calls it once at the end of that scope's body, and hands it to the platform
+// as a mount.
+func (st *effectState) buildGroups() {
+	for _, fx := range st.effects {
+		g := st.groupFor(fx.comp, fx.win)
+		g.fxs = append(g.fxs, fx)
+		fx.group = g
+	}
+	for i, g := range st.groups {
+		prefix := "__effects" + strconv.Itoa(i)
+		o := &ir.Owner{Comp: g.comp, Win: g.win}
+		g.settling = st.flagVar(o, prefix+"_settling")
+		g.pending = st.flagVar(o, prefix+"_pending")
+		g.steps = &ir.Var{
+			Name:        prefix + "_steps",
+			Type:        ir.TypInt,
+			Init:        intLiteralLit(0),
+			Synthesized: true,
+		}
+		st.addVar(o, g.steps)
+
+		// Every ending lifetime before any beginning one, and the endings
+		// newest first: the brackets a scope holds were begun in the order it
+		// wrote them, so reverse of that is reverse of when they began. This is
+		// what interp's Reconcile does across the whole running set, and what a
+		// settle per bracket could not express.
+		var pass []ir.Stmt
+		pass = append(pass, st.setFlag(g.pending, false))
+		pass = append(pass, &ir.Assign{
+			Target: st.varIdent(g.steps), Op: ast.AssignSet,
+			Value: &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: st.varIdent(g.steps), Right: intLiteralLit(1)},
+		})
+		for _, fx := range slices.Backward(g.fxs) {
+			pass = append(pass, callOf(fx.down))
+		}
+		for _, fx := range g.fxs {
+			pass = append(pass, callOf(fx.up))
+		}
+		g.settle = &ir.Func{
+			Name:        prefix + "_settle",
+			Return:      ir.TypVoid,
+			Purity:      ir.PurityMutates,
+			Synthesized: true,
+			Block: []ir.Stmt{&ir.If{
+				Cond: st.varIdent(g.settling),
+				Body: []ir.Stmt{st.setFlag(g.pending, true)},
+				Else: []ir.Stmt{
+					st.setFlag(g.settling, true),
+					st.setFlag(g.pending, true),
+					&ir.Assign{Target: st.varIdent(g.steps), Op: ast.AssignSet, Value: intLiteralLit(0)},
+					&ir.For{
+						Iter: &ir.Binary{
+							Type: ir.TypBool, Op: ast.BinAnd,
+							Left: st.varIdent(g.pending),
+							Right: &ir.Binary{
+								Type: ir.TypBool, Op: ast.BinLt,
+								Left:  st.varIdent(g.steps),
+								Right: intLiteralLit(maxEffectSettleSteps),
+							},
+						},
+						Body: pass,
+					},
+					st.setFlag(g.settling, false),
+				},
+			}},
+		}
+		st.addFunc(o, g.settle)
+
+		// The first settle runs after the body, not where the node was written.
+		// A mount handler writes state, passReactivity turns that into a patch
+		// of whatever reads it, and the node that patch names has to have been
+		// created -- which at the effect's own position it need not have been.
+		switch {
+		case g.comp != nil:
+			g.comp.Body = append(g.comp.Body, callOf(g.settle))
+		case g.win != nil:
+			g.win.Body = append(g.win.Body, callOf(g.settle))
+		default:
+			st.pkg.Body = append(st.pkg.Body, callOf(g.settle))
+		}
+		st.pkg.Mounts = append(st.pkg.Mounts, g.settle)
+	}
+}
+
+func (st *effectState) flagVar(o *ir.Owner, name string) *ir.Var {
+	v := &ir.Var{
+		Name:        name,
+		Type:        ir.TypBool,
+		Init:        &ir.Literal{Type: ir.TypBool, Value: "false"},
+		Synthesized: true,
+	}
+	st.addVar(o, v)
+	return v
+}
+
+func (st *effectState) setFlag(v *ir.Var, to bool) ir.Stmt {
+	return &ir.Assign{
+		Target: st.varIdent(v), Op: ast.AssignSet,
+		Value: &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(to)},
+	}
+}
+
+func (st *effectState) groupFor(comp *ir.Component, win *ir.Window) *effectGroup {
+	for _, g := range st.groups {
+		if g.comp == comp && g.win == win {
+			return g
+		}
+	}
+	g := &effectGroup{comp: comp, win: win}
+	st.groups = append(st.groups, g)
+	return g
+}
+
 // injectSettles puts a settle call after every write to a cell some position
 // reads.
+//
+// allBlocks rather than a descent of its own: the walk this used to do reached
+// an owner's funcs and its view body and nothing else, so a write in a timer
+// handler, a var handler, a lifted lambda or a window declared inside a
+// component settled nothing at all.
 func (st *effectState) injectSettles() {
 	if len(st.byVar) == 0 {
 		return
 	}
-	var rewrite func([]ir.Stmt) []ir.Stmt
-	rewrite = func(stmts []ir.Stmt) []ir.Stmt {
-		out := make([]ir.Stmt, 0, len(stmts))
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ir.NodeInst:
-				n.Children = rewrite(n.Children)
-				for i := range n.Handlers {
-					if n.Handlers[i].Func != nil {
-						n.Handlers[i].Func.Block = rewrite(n.Handlers[i].Func.Block)
-					}
-				}
-			case *ir.If:
-				n.Body, n.Else = rewrite(n.Body), rewrite(n.Else)
-			case *ir.For:
-				n.Body, n.Else = rewrite(n.Body), rewrite(n.Else)
-			case *ir.SlotInst:
-				n.Children = rewrite(n.Children)
-			case *ir.ErrorBoundary:
-				n.Children = rewrite(n.Children)
-			case *ir.Window:
-				n.Body = rewrite(n.Body)
-			}
-			out = append(out, s)
-			v := writtenVar(s)
-			if v == nil {
-				continue
-			}
-			for _, fx := range st.byVar[v] {
-				out = append(out, callOf(fx.settle))
-			}
-		}
-		return out
+	// Not into a function this pass synthesized: a mount body that writes the
+	// cell its own key reads would re-enter itself. By pointer, because a
+	// compiler recognises its own declarations by having made them.
+	skip := map[*[]ir.Stmt]bool{}
+	for fn := range st.helper {
+		skip[&fn.Block] = true
 	}
-	for _, o := range ir.Owners(st.pkg) {
-		switch {
-		case o.Comp != nil:
-			o.Comp.Body = rewrite(o.Comp.Body)
-		case o.Win != nil:
-			o.Win.Body = rewrite(o.Win.Body)
-		default:
-			st.pkg.Body = rewrite(st.pkg.Body)
+	for _, block := range allBlocks(st.pkg) {
+		if skip[block] {
+			continue
 		}
-		for _, f := range o.Funcs {
-			// Not into a function this pass synthesized: a mount body that
-			// writes the cell its own key reads would re-enter itself.
-			if f != nil && !isEffectHelper(f) {
-				f.Block = rewrite(f.Block)
-			}
-		}
+		*block = st.injectInto(*block)
 	}
 }
 
-// isEffectHelper reports whether fn is one this pass synthesized.
-func isEffectHelper(fn *ir.Func) bool {
-	return fn != nil && (strings.HasPrefix(fn.Name, "__effect") || fn.Name == TeardownFunc)
+func (st *effectState) injectInto(stmts []ir.Stmt) []ir.Stmt {
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		out = append(out, s)
+		for _, g := range st.settledBy(s) {
+			out = append(out, callOf(g.settle))
+		}
+	}
+	return out
+}
+
+// settledBy is the scopes whose brackets a statement may have moved, in a
+// stable order.
+func (st *effectState) settledBy(s ir.Stmt) []*effectGroup {
+	var hit map[*effectGroup]bool
+	for _, v := range st.writtenVars(s) {
+		for _, fx := range st.byVar[v] {
+			if hit == nil {
+				hit = map[*effectGroup]bool{}
+			}
+			hit[fx.group] = true
+		}
+	}
+	if len(hit) == 0 {
+		return nil
+	}
+	var out []*effectGroup
+	for _, g := range st.groups {
+		if hit[g] {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// writtenVars is the state a statement mutates.
+//
+// mutatedVar and mutatingCallReceiver are passReactivity's, which is the point:
+// the two passes have to agree on what a write is, and this one used to insist
+// on a bare `*ir.Ident` -- so `items.push(x)`, the only form push has, and
+// `obj.f = x` and `xs[i] = x` produced brackets that never ran again.
+//
+// A call to an ordinary function needs nothing here. Its body is a block of its
+// own, so the settle is injected at the write inside it and has already run by
+// the time the call returns.
+func (st *effectState) writtenVars(s ir.Stmt) []*ir.Var {
+	var out []*ir.Var
+	add := func(e ir.Expr) {
+		if v, _ := mutatedVar(st.pkg, st.reactive, e); v != nil {
+			out = append(out, v)
+		}
+	}
+	switch n := s.(type) {
+	case *ir.Assign:
+		add(n.Target)
+	case *ir.Toggle:
+		add(n.Target)
+	case *ir.CallStmt:
+		add(mutatingCallReceiver(n.Call))
+	}
+	return out
 }
 
 // cloneStmts is a fresh copy of a statement list, so two branches of one `if`
@@ -782,6 +1020,20 @@ func cloneStmts(stmts []ir.Stmt) []ir.Stmt {
 			out = append(out, &clone)
 		case *ir.CallStmt:
 			clone := *n
+			if n.Call != nil {
+				// The *ir.Call too. A shallow copy shared it, which was latent
+				// only because the calls this pass clones take no arguments --
+				// the promise the copy exists to keep is that no later pass
+				// rewriting one branch in place reaches the other.
+				call := *n.Call
+				call.Receiver = deepCloneExpr(n.Call.Receiver)
+				call.Args = make([]ir.CallArg, len(n.Call.Args))
+				for i, a := range n.Call.Args {
+					a.Value = deepCloneExpr(a.Value)
+					call.Args[i] = a
+				}
+				clone.Call = &call
+			}
 			out = append(out, &clone)
 		default:
 			out = append(out, s)
@@ -810,28 +1062,6 @@ func callListPush(dst ir.Expr, v ir.Expr, elem *ir.Type) ir.Stmt {
 		},
 		Args: []ir.CallArg{{Value: dst}, {Value: v}},
 	}}
-}
-
-// writtenVar names the state a statement assigns to, or nil.
-func writtenVar(s ir.Stmt) *ir.Var {
-	var target ir.Expr
-	switch n := s.(type) {
-	case *ir.Assign:
-		target = n.Target
-	case *ir.Toggle:
-		target = n.Target
-	default:
-		return nil
-	}
-	id, isIdent := target.(*ir.Ident)
-	if !isIdent {
-		return nil
-	}
-	v, isVar := id.Sym.(*ir.Var)
-	if !isVar {
-		return nil
-	}
-	return v
 }
 
 func callOf(fn *ir.Func) ir.Stmt {

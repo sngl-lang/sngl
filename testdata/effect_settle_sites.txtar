@@ -97,16 +97,22 @@ type timerTickMsg0 struct{}
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	items          []string
-	k              int
-	log            []string
-	__effect0_key  int
-	__effect0_live []int
-	__effect1_key  int
-	__effect1_live []int
-	__effect2_key  string
-	__effect2_live []string
-	__focusID      int
+	items               []string
+	k                   int
+	log                 []string
+	__effect0_key       int
+	__effect0_live      []int
+	__effect0_desired   []int
+	__effect1_key       int
+	__effect1_live      []int
+	__effect1_desired   []int
+	__effect2_key       string
+	__effect2_live      []string
+	__effect2_desired   []string
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
+	__focusID           int
 
 	width, height int
 }
@@ -119,14 +125,18 @@ func New() Model {
 	m.log = []string{}
 	m.__effect0_key = 0
 	m.__effect0_live = []int{}
+	m.__effect0_desired = []int{}
 	m.__effect1_key = 0
 	m.__effect1_live = []int{}
+	m.__effect1_desired = []int{}
 	m.__effect2_key = ""
 	m.__effect2_live = []string{}
+	m.__effect2_desired = []string{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	m.__focusID = 0
-	m.__effect0_settle()
-	m.__effect1_settle()
-	m.__effect2_settle()
+	m.__effects0_settle()
 	return m
 }
 
@@ -144,22 +154,25 @@ func (m *Model) __effect0_unmount() {
 	m.log = append(m.log, "-A")
 }
 
-func (m *Model) __effect0_settle() {
-	__effect0_desired := []int{}
-	__effect0_desired = append(__effect0_desired, m.k)
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []int{}
+	m.__effect0_desired = append(m.__effect0_desired, m.k)
 	for __effect0_i, _ := range m.__effect0_live {
 		__effect0_j := ((len(m.__effect0_live) - 1) - __effect0_i)
-		if __effect0_j >= len(__effect0_desired) {
+		if __effect0_j >= len(m.__effect0_desired) {
 			m.__effect0_key = m.__effect0_live[__effect0_j]
 			m.__effect0_unmount()
 		} else {
-			if __effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
+			if m.__effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
 				m.__effect0_key = m.__effect0_live[__effect0_j]
 				m.__effect0_unmount()
 			}
 		}
 	}
-	for __effect0_i, __effect0_k := range __effect0_desired {
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
 		if __effect0_i >= len(m.__effect0_live) {
 			m.__effect0_key = __effect0_k
 			m.__effect0_mount()
@@ -170,7 +183,7 @@ func (m *Model) __effect0_settle() {
 			}
 		}
 	}
-	m.__effect0_live = __effect0_desired
+	m.__effect0_live = m.__effect0_desired
 }
 
 func (m *Model) __effect0_teardown() {
@@ -189,22 +202,25 @@ func (m *Model) __effect1_unmount() {
 	m.log = append(m.log, "-B")
 }
 
-func (m *Model) __effect1_settle() {
-	__effect1_desired := []int{}
-	__effect1_desired = append(__effect1_desired, m.k)
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []int{}
+	m.__effect1_desired = append(m.__effect1_desired, m.k)
 	for __effect1_i, _ := range m.__effect1_live {
 		__effect1_j := ((len(m.__effect1_live) - 1) - __effect1_i)
-		if __effect1_j >= len(__effect1_desired) {
+		if __effect1_j >= len(m.__effect1_desired) {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()
 		} else {
-			if __effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
 				m.__effect1_key = m.__effect1_live[__effect1_j]
 				m.__effect1_unmount()
 			}
 		}
 	}
-	for __effect1_i, __effect1_k := range __effect1_desired {
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
 		if __effect1_i >= len(m.__effect1_live) {
 			m.__effect1_key = __effect1_k
 			m.__effect1_mount()
@@ -215,7 +231,7 @@ func (m *Model) __effect1_settle() {
 			}
 		}
 	}
-	m.__effect1_live = __effect1_desired
+	m.__effect1_live = m.__effect1_desired
 }
 
 func (m *Model) __effect1_teardown() {
@@ -230,12 +246,15 @@ func (m *Model) __effect2_mount() {
 	m.log = append(m.log, ("+" + m.__effect2_key))
 }
 
-func (m *Model) __effect2_settle() {
-	__effect2_desired := []string{}
+func (m *Model) __effect2_down() {
+	m.__effect2_desired = []string{}
 	for _, it := range m.items {
-		__effect2_desired = append(__effect2_desired, it)
+		m.__effect2_desired = append(m.__effect2_desired, it)
 	}
-	for __effect2_i, __effect2_k := range __effect2_desired {
+}
+
+func (m *Model) __effect2_up() {
+	for __effect2_i, __effect2_k := range m.__effect2_desired {
 		if __effect2_i >= len(m.__effect2_live) {
 			m.__effect2_key = __effect2_k
 			m.__effect2_mount()
@@ -246,7 +265,28 @@ func (m *Model) __effect2_settle() {
 			}
 		}
 	}
-	m.__effect2_live = __effect2_desired
+	m.__effect2_live = m.__effect2_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect2_down()
+			m.__effect1_down()
+			m.__effect0_down()
+			m.__effect0_up()
+			m.__effect1_up()
+			m.__effect2_up()
+		}
+		m.__effects0_settling = false
+	}
 }
 
 func (m *Model) __snglTeardown() {
@@ -330,6 +370,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetLog(msg.value)
 	case timerTickMsg0:
 		m.k = (m.k + 1)
+		m.__effects0_settle()
 		cmds = append(cmds, tea.Tick(1000*time.Millisecond, func(time.Time) tea.Msg { return timerTickMsg0{} }))
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -344,6 +385,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.items = append(m.items, "b")
+			m.__effects0_settle()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -364,10 +406,6 @@ func (m Model) View() tea.View {
 	parts = append(parts, part1)
 	var part2 string
 	parts = append(parts, part2)
-	var part3 string
-	parts = append(parts, part3)
-	var part4 string
-	parts = append(parts, part4)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true

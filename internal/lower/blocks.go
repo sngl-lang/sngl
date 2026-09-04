@@ -14,7 +14,8 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // no view body among them.
 //
 // A view body is still walked, for the handlers hanging off the nodes in it
-// and for nothing else.
+// and for nothing else. A pass that may put a statement in a view body asks
+// allBlocks instead.
 //
 // Lambda bodies come last, and come from ir.Walk rather than from a second
 // hand-written descent: a lambda can sit in any expression, and the base
@@ -30,18 +31,32 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // the callback as a prop, so the body is a lambda in the node's props and the
 // node's Handlers slice is empty.
 func imperativeBlocks(pkg *ir.Package) []*[]ir.Stmt {
+	return collectBlocks(pkg, false)
+}
+
+// allBlocks is imperativeBlocks plus the view-body statement lists themselves.
+// passEffect wants those: a settle call goes after the write that moved a
+// bracket's key list, and a write can sit in a view body -- one there is a
+// statement every backend already emits, since that is where the pass puts the
+// program's first settle.
+func allBlocks(pkg *ir.Package) []*[]ir.Stmt {
+	return collectBlocks(pkg, true)
+}
+
+func collectBlocks(pkg *ir.Package, views bool) []*[]ir.Stmt {
 	if pkg == nil {
 		return nil
 	}
-	c := &blockCollector{}
+	c := &blockCollector{views: views, seen: map[*[]ir.Stmt]bool{}}
 	for _, f := range pkg.Funcs {
 		c.add(&f.Block)
 	}
+	c.viewIn(&pkg.Body)
 	for _, comp := range pkg.Components {
-		c.owner(comp.Funcs, comp.Vars, comp.Timers, comp.Body)
+		c.owner(comp.Funcs, comp.Vars, comp.Timers, &comp.Body)
 	}
 	for _, w := range pkg.Windows {
-		c.owner(w.Funcs, w.Vars, nil, w.Body)
+		c.owner(w.Funcs, w.Vars, nil, &w.Body)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			c.add(&w.ErrorHandler.Func.Block)
 		}
@@ -60,14 +75,27 @@ func imperativeBlocks(pkg *ir.Package) []*[]ir.Stmt {
 	return c.out
 }
 
-type blockCollector struct{ out []*[]ir.Stmt }
+// blockCollector gathers block pointers once each. The dedupe is what lets a
+// caller that is not idempotent use these: a handler body reached both through
+// its node and as a lambda in that node's props is one block, not two.
+type blockCollector struct {
+	out   []*[]ir.Stmt
+	seen  map[*[]ir.Stmt]bool
+	views bool
+}
 
-func (c *blockCollector) add(b *[]ir.Stmt) { c.out = append(c.out, b) }
+func (c *blockCollector) add(b *[]ir.Stmt) {
+	if b == nil || c.seen[b] {
+		return
+	}
+	c.seen[b] = true
+	c.out = append(c.out, b)
+}
 
 // owner covers one component's or window's imperative blocks: its own
 // functions, the handlers on its vars and timers, and the handlers hanging off
 // the nodes in its view.
-func (c *blockCollector) owner(funcs []*ir.Func, vars []*ir.Var, timers []*ir.Timer, body []ir.Stmt) {
+func (c *blockCollector) owner(funcs []*ir.Func, vars []*ir.Var, timers []*ir.Timer, body *[]ir.Stmt) {
 	for _, f := range funcs {
 		c.add(&f.Block)
 	}
@@ -83,12 +111,19 @@ func (c *blockCollector) owner(funcs []*ir.Func, vars []*ir.Var, timers []*ir.Ti
 			c.add(&t.Handler.Block)
 		}
 	}
-	c.handlersIn(body)
+	c.viewIn(body)
 }
 
-// handlersIn walks a view body for the handler bodies it hosts.
-func (c *blockCollector) handlersIn(stmts []ir.Stmt) {
-	for _, s := range stmts {
+// viewIn walks a view body for the handler bodies it hosts, and for the body's
+// own statement lists when the caller asked for those too.
+func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
+	if stmts == nil {
+		return
+	}
+	if c.views {
+		c.add(stmts)
+	}
+	for _, s := range *stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			for _, h := range n.Handlers {
@@ -96,15 +131,15 @@ func (c *blockCollector) handlersIn(stmts []ir.Stmt) {
 					c.add(&h.Func.Block)
 				}
 			}
-			c.handlersIn(n.Children)
+			c.viewIn(&n.Children)
 		case *ir.If:
-			c.handlersIn(n.Body)
-			c.handlersIn(n.Else)
+			c.viewIn(&n.Body)
+			c.viewIn(&n.Else)
 		case *ir.For:
-			c.handlersIn(n.Body)
-			c.handlersIn(n.Else)
+			c.viewIn(&n.Body)
+			c.viewIn(&n.Else)
 		case *ir.SlotInst:
-			c.handlersIn(n.Children)
+			c.viewIn(&n.Children)
 		case *ir.ErrorBoundary:
 			// The boundary's own @error handler, which is a handler body like
 			// any other -- ir.Walk reaches it and analyzeCaptures walks it, so
@@ -112,11 +147,11 @@ func (c *blockCollector) handlersIn(stmts []ir.Stmt) {
 			if n.Handler != nil && n.Handler.Func != nil {
 				c.add(&n.Handler.Func.Block)
 			}
-			c.handlersIn(n.Children)
+			c.viewIn(&n.Children)
 		case *ir.ContextProvider:
-			c.handlersIn(n.Children)
+			c.viewIn(&n.Children)
 		case *ir.Window:
-			c.handlersIn(n.Body)
+			c.owner(n.Funcs, n.Vars, nil, &n.Body)
 		}
 	}
 }

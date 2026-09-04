@@ -673,6 +673,14 @@ func (st *reactivityState) exprDeps(e ir.Expr) map[*ir.Var]bool {
 // visited guards recursive call graphs. nil fn (dynamic/native call) is a
 // no-op.
 func (st *reactivityState) gatherFuncReads(fn *ir.Func, out map[*ir.Var]bool, visited map[*ir.Func]bool) {
+	gatherFuncReads(fn, st.reactiveVars, out, visited)
+}
+
+// gatherFuncReads is that without a reactivityState, so passEffect can ask it
+// too: an `on` written as a call reads whatever the callee reads, and a bracket
+// keyed on one settled on nothing while the pass looked only at the identifiers
+// the expression itself spelled.
+func gatherFuncReads(fn *ir.Func, reactive map[*ir.Var]bool, out map[*ir.Var]bool, visited map[*ir.Func]bool) {
 	if fn == nil {
 		return
 	}
@@ -684,13 +692,13 @@ func (st *reactivityState) gatherFuncReads(fn *ir.Func, out map[*ir.Var]bool, vi
 	}
 	visited[fn] = true
 	for _, v := range fn.Reads {
-		if st.reactiveVars[v] {
+		if reactive[v] {
 			out[v] = true
 		}
 	}
 	for _, s := range fn.Block {
-		st.eachCallInStmt(s, func(c *ir.Call) {
-			st.gatherFuncReads(c.Func, out, visited)
+		eachCallInStmt(s, func(c *ir.Call) {
+			gatherFuncReads(c.Func, reactive, out, visited)
 		})
 	}
 }
@@ -699,81 +707,81 @@ func (st *reactivityState) gatherFuncReads(fn *ir.Func, out map[*ir.Var]bool, vi
 // statements). Used to follow the call graph for transitive reactive-dep
 // gathering; only the call nodes matter, so non-call exprs are descended
 // without other side effects.
-func (st *reactivityState) eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
+func eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
 	switch n := s.(type) {
 	case *ir.Return:
-		st.eachCallInExpr(n.Value, fn)
+		eachCallInExpr(n.Value, fn)
 	case *ir.LocalVar:
-		st.eachCallInExpr(n.Init, fn)
+		eachCallInExpr(n.Init, fn)
 	case *ir.Assign:
-		st.eachCallInExpr(n.Value, fn)
+		eachCallInExpr(n.Value, fn)
 	case *ir.CallStmt:
-		st.eachCallInExpr(n.Call, fn)
+		eachCallInExpr(n.Call, fn)
 	case *ir.Emit:
 		for _, a := range n.Args {
-			st.eachCallInExpr(a.Value, fn)
+			eachCallInExpr(a.Value, fn)
 		}
 	case *ir.If:
-		st.eachCallInExpr(n.Cond, fn)
+		eachCallInExpr(n.Cond, fn)
 		for _, c := range n.Body {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 		for _, c := range n.Else {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 	case *ir.For:
-		st.eachCallInExpr(n.Iter, fn)
+		eachCallInExpr(n.Iter, fn)
 		for _, c := range n.Body {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 		for _, c := range n.Else {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 	}
 }
 
 // eachCallInExpr invokes fn for every *ir.Call reachable from e.
-func (st *reactivityState) eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
+func eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
 	switch x := e.(type) {
 	case nil:
 		return
 	case *ir.Call:
 		fn(x)
-		st.eachCallInExpr(x.Receiver, fn)
+		eachCallInExpr(x.Receiver, fn)
 		for _, a := range x.Args {
-			st.eachCallInExpr(a.Value, fn)
+			eachCallInExpr(a.Value, fn)
 		}
 	case *ir.Binary:
-		st.eachCallInExpr(x.Left, fn)
-		st.eachCallInExpr(x.Right, fn)
+		eachCallInExpr(x.Left, fn)
+		eachCallInExpr(x.Right, fn)
 	case *ir.Unary:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	case *ir.Ternary:
-		st.eachCallInExpr(x.Cond, fn)
-		st.eachCallInExpr(x.Then, fn)
-		st.eachCallInExpr(x.Else, fn)
+		eachCallInExpr(x.Cond, fn)
+		eachCallInExpr(x.Then, fn)
+		eachCallInExpr(x.Else, fn)
 	case *ir.Conversion:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	case *ir.Select:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	case *ir.Index:
-		st.eachCallInExpr(x.Operand, fn)
-		st.eachCallInExpr(x.Idx, fn)
+		eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Idx, fn)
 	case *ir.ListLit:
 		for _, el := range x.Elems {
-			st.eachCallInExpr(el, fn)
+			eachCallInExpr(el, fn)
 		}
 	case *ir.MapLitIR:
 		for _, en := range x.Entries {
-			st.eachCallInExpr(en.Key, fn)
-			st.eachCallInExpr(en.Value, fn)
+			eachCallInExpr(en.Key, fn)
+			eachCallInExpr(en.Value, fn)
 		}
 	case *ir.StructLit:
 		for _, f := range x.Fields {
-			st.eachCallInExpr(f.Value, fn)
+			eachCallInExpr(f.Value, fn)
 		}
 	case *ir.Spread:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	}
 }
 
@@ -1081,6 +1089,15 @@ func mutatingCallReceiver(c *ir.Call) ir.Expr {
 // body. Callers use this map to rewrite injected updater expressions —
 // reads of captured Vars must route through state.
 func (st *reactivityState) assignTargetVar(target ir.Expr) (*ir.Var, map[ir.Symbol]ir.Expr) {
+	return mutatedVar(st.pkg, st.reactiveVars, target)
+}
+
+// mutatedVar is assignTargetVar without a reactivityState, so a pass running
+// before passReactivity can ask the same question of the same shapes. passEffect
+// is the other caller: which cell a statement wrote is what says whether a
+// bracket's key list may have moved, and answering it its own way is how
+// `obj.f = x` and `xs[i] = x` ended no lifetimes.
+func mutatedVar(pkg *ir.Package, reactive map[*ir.Var]bool, target ir.Expr) (*ir.Var, map[ir.Symbol]ir.Expr) {
 	// A write to a struct field or collection element (`u.score += 10`,
 	// `items[i] = x`) mutates the root reactive var; peel the Select/Index
 	// chain to that root so the whole-var dep fires its updaters. Reactivity
@@ -1100,7 +1117,7 @@ peel:
 		}
 	}
 	if id, ok := target.(*ir.Ident); ok {
-		if v, ok := id.Sym.(*ir.Var); ok && st.reactiveVars[v] {
+		if v, ok := id.Sym.(*ir.Var); ok && reactive[v] {
 			return v, nil
 		}
 		return nil, nil
@@ -1121,17 +1138,17 @@ peel:
 	if !ok {
 		return nil, nil
 	}
-	if st.pkg == nil {
+	if pkg == nil {
 		return nil, nil
 	}
-	for liftedFunc, capMap := range st.pkg.LiftedCaptures {
+	for liftedFunc, capMap := range pkg.LiftedCaptures {
 		if len(liftedFunc.Params) == 0 || liftedFunc.Params[0] != stateParam {
 			continue
 		}
 		var resolved *ir.Var
 		for sym, name := range capMap {
 			if name == sel.Field {
-				if v, ok := sym.(*ir.Var); ok && st.reactiveVars[v] {
+				if v, ok := sym.(*ir.Var); ok && reactive[v] {
 					resolved = v
 				}
 				break
