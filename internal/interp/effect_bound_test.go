@@ -49,27 +49,37 @@ func TestManyBracketsSettle(t *testing.T) {
 	}
 }
 
-// selfRekeySrc is the program the bound actually exists for: one bracket whose
-// mount handler changes the key it is mounted on, so the settle describes a
-// different tree every pass.
-const selfRekeySrc = `import . "sngl:ui"
+// mutualRekeySrc is the program the bound is left for: two brackets rekeying
+// each other. A's mount writes what B is keyed on and B's mount writes what A
+// is keyed on, so the settle describes a different tree every pass and neither
+// effect writes its OWN key -- which is what the checker refuses, and why that
+// rule does not replace this bound.
+//
+// It is also the only shape left that reaches the bound at all: one bracket
+// rekeying itself no longer compiles.
+const mutualRekeySrc = `import . "sngl:ui"
 
 component main {
-    var n = 0
+    var (
+        x = 0
+        y = 0
+    )
 
-    effect(on=n, @mount { n += 1 })
+    effect(on=x, @mount { y += 1 })
 
-    text #out(value="{n}")
+    effect(on=y, @mount { x += 1 })
+
+    text #out(value="{x}")
 }
 `
 
-// TestASelfRekeyingBracketIsStillReported: the bound moved from "handlers run"
-// to "lifetimes one bracket began", and the case it was written for still
-// trips it -- naming the bracket, which counting handlers could not.
-func TestASelfRekeyingBracketIsStillReported(t *testing.T) {
-	_, err := NewSession(check(t, selfRekeySrc), "main", NewVirtual())
+// TestMutualRekeyingBracketsAreReported: the bound moved from "handlers run" to
+// "lifetimes one bracket began", and the case it is written for still trips it
+// -- naming the bracket, which counting handlers could not.
+func TestMutualRekeyingBracketsAreReported(t *testing.T) {
+	_, err := NewSession(check(t, mutualRekeySrc), "main", NewVirtual())
 	if err == nil {
-		t.Fatal("a bracket rekeying itself settled")
+		t.Fatal("two brackets rekeying each other settled")
 	}
 	if !strings.Contains(err.Error(), "rekeying itself") {
 		t.Fatalf("error = %v, want it to say the effect is rekeying itself", err)

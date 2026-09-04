@@ -150,70 +150,40 @@ component main { window(title="H", href="/index.html") { App() } }
 	}
 }
 
-// A mount handler that rekeys the bracket through an ordinary function settles
-// to a fixpoint, the way interp's Settle does.
+// Two brackets rekeying EACH OTHER stop at the bound rather than running out of
+// stack, and say so.
 //
-// The guard used to be a test of the callee's *name*, so one hop through a
-// helper defeated it: settle -> mount -> bump -> settle, with the running list
-// written only at the very end, so every nested call saw the stale one and
-// recursed. The page renders nothing at all under that build -- the script
-// throws before the first paint -- which is what the initial log below reports.
+// This file used to hold two tests of one bracket rekeying ITSELF: one that it
+// settled to a fixpoint through a helper, one that it stopped at the bound.
+// Neither program compiles now -- an effect's own handler may not write what its
+// own `on` reads -- so the fixpoint test is gone and this is what is left of the
+// bound: A's mount writes what B is keyed on, B's mount writes what A is keyed
+// on, and neither writes its own key, so no per-effect rule catches it. It is
+// the better evidence anyway, since it is exactly the case the bound has to
+// survive the checker's rule for.
 //
-// n rekeys once and then stops, so the settled answer is the interpreter's
-// m,u,m: the mount at key 0, its ending, and the mount at key 1.
-func TestEffect_AHelperRekeyingFromMountSettles(t *testing.T) {
+// The count is 1024 rather than 512: a pass of the group runs both brackets, so
+// the two handlers between them run twice per pass. The text is the count as it
+// stood when the last mount patched it, which is before the settle raises -- the
+// raise itself is pinned in testdata/effect_settle_sites.txtar, where its exact
+// form on each target is visible.
+func TestEffect_MutuallyRekeyingBracketsStopAtTheBound(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
 var (
-    n = 0
-    log list<string> = []
-)
-func bump() {
-    n = n + 1
-}
-component App() {
-    effect(on=n, @mount {
-        log.push("m")
-        if n < 1 {
-            bump()
-        }
-    }, @unmount { log.push("u") })
-    text(value="[" + log.join(",") + "]")
-}
-component main { window(title="H", href="/index.html") { App() } }
-`
-	b := startComponent(t, src)
-	defer b.Close()
-	page := b.Page()
-
-	if got := effectLog(page.MustElement("body").MustText()); got != "[m,u,m]" {
-		t.Fatalf("settled log = %s, want [m,u,m]", got)
-	}
-}
-
-// An effect that rekeys itself unconditionally stops at the bound rather than
-// running out of stack, and says so: the settle raises when it leaves its loop
-// with a pass still owed. What is asserted here is the other half -- that the
-// page is alive and the log is the bound and not a crash -- because the raise
-// happens after the last mount has already patched the text. The raise itself
-// is pinned in testdata/effect_settle_sites.txtar, where its exact form on each
-// target is visible.
-func TestEffect_ASelfRekeyingBracketStopsAtTheBound(t *testing.T) {
-	src := `
-import . "sngl:ui"
-import . "sngl:app"
-var (
-    n = 0
+    x = 0
+    y = 0
     runs = 0
 )
-func bump() {
-    n = n + 1
-}
 component App() {
-    effect(on=n, @mount {
+    effect(on=x, @mount {
         runs += 1
-        bump()
+        y = y + 1
+    })
+    effect(on=y, @mount {
+        runs += 1
+        x = x + 1
     })
     text(value="[" + "{runs}" + "]")
 }
@@ -223,7 +193,7 @@ component main { window(title="H", href="/index.html") { App() } }
 	defer b.Close()
 	page := b.Page()
 
-	if got := effectLog(page.MustElement("body").MustText()); got != "[512]" {
-		t.Fatalf("runs after the bound = %s, want [512]", got)
+	if got := effectLog(page.MustElement("body").MustText()); got != "[1024]" {
+		t.Fatalf("runs after the bound = %s, want [1024]", got)
 	}
 }

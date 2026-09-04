@@ -3346,6 +3346,10 @@ func (c *checker) pass2() {
 		}
 	}
 
+	// After the fixpoint, because the rule reads what a handler writes through
+	// the functions it calls and those sets are only complete now.
+	c.checkEffectSelfRekey()
+
 	// Validate deferred const(expr) assertions now that function purities
 	// are known.
 	for _, a := range c.constAsserts {

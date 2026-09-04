@@ -75,10 +75,6 @@ type effectState struct {
 	// groups is one settle entry point per scope holding effects, in the
 	// order the scopes were walked.
 	groups []*effectGroup
-	// helper is every func this pass synthesized, by pointer. A settle must
-	// not be injected into one, and a name prefix is not how a compiler
-	// recognises its own declarations.
-	helper map[*ir.Func]bool
 }
 
 // effectGroup is every bracket one scope holds, and the single function that
@@ -707,10 +703,6 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 }
 
 func (st *effectState) addFunc(o *ir.Owner, fn *ir.Func) {
-	if st.helper == nil {
-		st.helper = map[*ir.Func]bool{}
-	}
-	st.helper[fn] = true
 	switch {
 	case o.Comp != nil:
 		o.Comp.Funcs = append(o.Comp.Funcs, fn)
@@ -986,21 +978,21 @@ func (st *effectState) groupFor(comp *ir.Component, win *ir.Window) *effectGroup
 // an owner's funcs and its view body and nothing else, so a write in a timer
 // handler, a var handler, a lifted lambda or a window declared inside a
 // component settled nothing at all.
+//
+// Every block, this pass's own synthesized funcs included. Those used to be
+// skipped, on the argument that a mount writing the cell its own key reads
+// would re-enter itself -- but the settling/pending flags are what stop
+// re-entrancy, and the skip stopped something else: a mount writing ANOTHER
+// bracket's key, which is legal and which the interpreter settles to a
+// fixpoint. Two effects rekeying each other ran one pass compiled and looped to
+// the bound interpreted. The self-rekey the comment described is now a check
+// error, so the skip guarded nothing it claimed to and broke what it did not
+// mention.
 func (st *effectState) injectSettles() {
 	if len(st.byVar) == 0 {
 		return
 	}
-	// Not into a function this pass synthesized: a mount body that writes the
-	// cell its own key reads would re-enter itself. By pointer, because a
-	// compiler recognises its own declarations by having made them.
-	skip := map[*[]ir.Stmt]bool{}
-	for fn := range st.helper {
-		skip[&fn.Block] = true
-	}
 	for _, block := range allBlocks(st.pkg) {
-		if skip[block] {
-			continue
-		}
 		*block = st.injectInto(*block)
 	}
 }

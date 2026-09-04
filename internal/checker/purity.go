@@ -87,6 +87,19 @@ func (w *effectWalker) visit(n ir.Node) error {
 		// Emitting an event fires parent handlers — an observable side
 		// effect. Args are read; the walker descends into them.
 		w.mutates = true
+	case *ir.Call:
+		// `l.push(x)` is a call, and push is the only form push has. The
+		// receiver is named by the intrinsic's own MutatesReceiver, which is
+		// what passReactivity reads for the same question -- so the two agree
+		// on what a write is without either of them listing method names.
+		if x.Func != nil && x.Func.Intrinsic != "" && len(x.Args) > 0 {
+			if def, ok := ir.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
+				if v := w.rootVar(x.Args[0].Value); v != nil {
+					w.mutates = true
+					w.writes[v] = struct{}{}
+				}
+			}
+		}
 	case ir.Expr:
 		if v := w.externalVar(x); v != nil {
 			w.reads[v] = struct{}{}
@@ -110,8 +123,31 @@ func (w *effectWalker) recordWrite(target ir.Expr) {
 		// Local/param/loop-var write — no external effect.
 		return
 	}
-	// Field/index/deref target: conservatively a side effect. The target is
-	// still walked for the reads it performs (e.g. `m[k] = v` reads m and k).
+	// Field/index target: conservatively a side effect, and a write of the var
+	// at the root of the chain. `u.score += 10` and `items[i] = x` are writes
+	// of `u` and `items`, which is how passReactivity has always read them --
+	// recording only `mutates` here left Writes naming a strictly narrower set
+	// than the one the lowering acts on. The target is still walked for the
+	// reads it performs (`m[k] = v` reads m and k).
 	w.mutates = true
+	if v := w.rootVar(target); v != nil {
+		w.writes[v] = struct{}{}
+	}
 	ir.Walk(target, w.visit)
+}
+
+// rootVar peels a Select/Index chain to the reactive var it is rooted at, or
+// nil when it is rooted at anything else. Reactivity tracks a whole var, so a
+// write to any part of one is a write to it.
+func (w *effectWalker) rootVar(e ir.Expr) *ir.Var {
+	for {
+		switch n := e.(type) {
+		case *ir.Select:
+			e = n.Operand
+		case *ir.Index:
+			e = n.Operand
+		default:
+			return w.externalVar(e)
+		}
+	}
 }
