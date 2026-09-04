@@ -46,6 +46,14 @@ func checkForLower(t *testing.T, src string) *ir.Package {
 	return pkg
 }
 
+// lowerDump is the lowered package read back as source, which is how a
+// statement sequence is asserted here: the shape is the claim, and a walk of
+// the IR asserting node by node says less about it than the text does.
+func lowerDump(t *testing.T, pkg *ir.Package) string {
+	t.Helper()
+	return parser.Format(ir.Convert(pkg))
+}
+
 // constructInstancePkg checks constructInstanceSrc and stamps the mark the
 // inliner would have left on `card` in a real build: these tests drive
 // lowerComponentProps directly, and that pass only gives cells to a
@@ -134,25 +142,63 @@ component main {
 }
 `
 
-// A prop a static instance cannot absorb is reported, not emitted.
+// staticConstructCaps are the caps every platform that builds instances
+// declares: the mark that makes a component an instance is the inliner's, and
+// passComponentProps gives cells only to what carries it.
+var staticConstructCaps = Caps{NoReactivity: true, NoInlineComponents: true}
+
+// A #[construct] prop written from state rebuilds the instance where it
+// stands, on a platform that can put a child back at a position.
 //
-// The reactive-slot path has asked this since #[construct] existed: a prop
-// with no setter either rebuilds the instance or is a routing nothing answers.
-// A static position never asked, so every prop of a static instance became an
-// UpdateComponent -- and a #[construct] prop has no setter to call. fyne
-// emitted `m.__n1.SetStart(m.k)` against a record declaring only SetTail and
-// did not compile; html emitted `__n1.__set_start(...)` on an object exporting
-// only __set_tail and threw on the click.
-func TestConstructPropAtAStaticPositionIsReported(t *testing.T) {
+// The reactive-slot path has answered this since #[construct] existed: an
+// instance that cannot be handed the new value is destroyed and one built from
+// it takes its place. A static position has no render to rebuild from, so the
+// rebuild is the update's own business -- and putting the new root back among
+// the old one's siblings is InsertBefore, which is why the answer is available
+// only where that is.
+func TestConstructPropAtAStaticPositionRebuildsTheInstance(t *testing.T) {
 	pkg := checkForLower(t, constructStaticSrc)
-	// Both, as every instance-runtime platform declares them: the mark that
-	// makes a component an instance is the inliner's, and passComponentProps
-	// gives cells only to what carries it.
-	err := Lower(pkg, Caps{NoReactivity: true, NoInlineComponents: true}, Options{})
-	if err == nil {
-		t.Fatal("want a diagnostic for a construct prop nothing at this position can rebuild")
+	caps := staticConstructCaps
+	caps.InsertBefore = true
+	if err := Lower(pkg, caps, Options{Platform: "html"}); err != nil {
+		t.Fatalf("lower: %v", err)
 	}
-	for _, want := range []string{`prop "start" of component seeded`, "rebuilds"} {
+	// The click handler is what the rebuild was spliced into.
+	body := lowerDump(t, pkg)
+	for _, want := range []string{
+		"lower.CreateComponent(seeded",
+		"lower.InsertBefore(__n1__pos",
+		"lower.RemoveChild(__n1__pos",
+		"lower.DestroyComponent(__n1)",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the rebuild should emit %q; got:\n%s", want, body)
+		}
+	}
+	// The one thing that must NOT be there: a setter call on this instance,
+	// whose absence is the whole reason the prop is marked. The recursive
+	// child inside the component's own slot still gets its ordinary props
+	// written, which is a different instance and a different question.
+	if strings.Contains(body, "UpdateComponent(__n1") {
+		t.Errorf("a construct prop has no setter to call; got:\n%s", body)
+	}
+}
+
+// The same prop is a positioned refusal where the platform cannot place a
+// child, because the operation the rebuild is made of does not exist there.
+//
+// Reported rather than compiled into a program that drops the write: before
+// there was any check, fyne emitted `m.__n1.SetStart(m.k)` against a record
+// declaring only SetTail and did not compile, and html emitted
+// `__n1.__set_start(...)` on an object exporting only __set_tail and threw on
+// the click.
+func TestConstructPropAtAStaticPositionNeedsInsertBefore(t *testing.T) {
+	pkg := checkForLower(t, constructStaticSrc)
+	err := Lower(pkg, staticConstructCaps, Options{Platform: "fyne"})
+	if err == nil {
+		t.Fatal("want a diagnostic for a rebuild the platform cannot place")
+	}
+	for _, want := range []string{`prop "start" of component seeded`, "fyne", "position"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the report should mention %q; got %v", want, err)
 		}

@@ -100,6 +100,22 @@ const (
 // it are four places that must agree on one string.
 func ComponentSetter(prop string) string { return "__set_" + prop }
 
+// InstancePlaceName is the handle a component instance written at a fixed
+// position is placed through: whatever its root node is a child of.
+//
+// A reactive slot needs no such name -- it renders into the parent its
+// renderer is handed -- but a fixed position is not rendered, so nothing
+// carries the parent to the one thing that comes back to it: an instance
+// destroyed and rebuilt because a #[construct] prop of it changed. The name is
+// part of the op protocol for the same reason ComponentSetter is: the lowering
+// that emits InsertBefore against it and the platform that binds it must agree
+// on one string.
+//
+// What it resolves to is the platform's answer. On html it is the
+// `display:contents` anchor the instance's root was appended into, which is
+// the position whether or not the surrounding flow has a container.
+func InstancePlaceName(id string) string { return id + "__pos" }
+
 // SlotVarPrefix names the accumulator a reactive slot keeps: the nodes it
 // attached last render, so the next one can take those back. Minted by
 // passReactivity, matched by every platform's slot machinery, and by the

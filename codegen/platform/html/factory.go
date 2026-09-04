@@ -287,22 +287,32 @@ func (g *htmlGen) emitStaticInstances(b *strings.Builder) {
 			}
 			fields = append(fields, fmt.Sprintf("%s: %s", p.Name, g.exprToJS(p.Value)))
 		}
-		fmt.Fprintf(b, "const %s = %s({%s});\n",
+		// The anchor is bound rather than used inline because the position
+		// outlives the instance: a #[construct] prop written from state
+		// destroys this instance and puts a fresh one back here, and
+		// ir.InstancePlaceName is the name that lowering's InsertBefore
+		// against it uses. `let` for the instance itself, for the same
+		// reason -- the rebuild assigns it.
+		fmt.Fprintf(b, "const %s = document.querySelector('[data-sngl-inst=%q]');\n",
+			ir.InstancePlaceName(si.id), si.id)
+		fmt.Fprintf(b, "let %s = %s({%s});\n",
 			si.id, javascript.FactoryName(si.node.Component), strings.Join(fields, ", "))
-		fmt.Fprintf(b, "document.querySelector('[data-sngl-inst=%q]').appendChild(%s.%s);\n",
-			si.id, si.id, instanceRootField)
+		fmt.Fprintf(b, "%s.appendChild(%s.%s);\n",
+			ir.InstancePlaceName(si.id), si.id, instanceRootField)
 	}
 	if len(g.staticInsts) > 0 {
 		b.WriteString("\n")
 	}
 }
 
-// isStaticInstanceID reports whether id names a static instance, whose binding
-// emitStaticInstances writes. The loweredRefs emitter must not also declare it:
-// the instance is a record the factory returned, not an element to look up.
+// isStaticInstanceID reports whether id names a static instance or the
+// position it is placed at, both of which emitStaticInstances binds. The
+// loweredRefs emitter must not also declare either: the instance is a record
+// the factory returned rather than an element to look up, and the position is
+// the anchor the markup carries rather than a node the program named.
 func (g *htmlGen) isStaticInstanceID(id string) bool {
 	for _, si := range g.staticInsts {
-		if si.id == id {
+		if si.id == id || id == ir.InstancePlaceName(si.id) {
 			return true
 		}
 	}

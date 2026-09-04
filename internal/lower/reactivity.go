@@ -25,6 +25,10 @@ type reactiveProp struct {
 	// Comp is the declaration the node targets, kept so updaterStmts can ask
 	// whether the instance carries a setter for Key. Nil for a widget.
 	Comp *ir.Component
+	// Node is the instantiation itself, kept for the prop that cannot be
+	// written: rebuilding the instance means building it from every prop the
+	// site declared, not only the one that changed.
+	Node *ir.NodeInst
 	// Instance says the node is a component instance rather than a widget, so
 	// the prop is written through the instance's setter instead of assigned to
 	// the node. Assigning it was the old behaviour and it reached nothing: on
@@ -53,6 +57,10 @@ type reactivityState struct {
 	// place a child. Held on the state because the body's nodes place
 	// themselves as they are emitted, and the func is assembled around them.
 	placement *slotPlacement
+	// platform is the target's identifier, for a diagnostic that has to name
+	// it: whether an instance can be rebuilt where it stands is the platform's
+	// answer, so the refusal says whose.
+	platform string
 	// slotDeclSt is the shared declarative state used to lower every
 	// reactive-slot body. Sharing keeps the __nN counter monotonic
 	// across slots so two slot Funcs in the same package don't
@@ -132,13 +140,14 @@ func (st *reactivityState) freshNodeID() string {
 // lowerReactivity runs two passes over the package: first collects reverse
 // deps and assigns synthetic IDs, then walks every Stmt slice splicing
 // updater Assigns after every mutation that touches a tracked Var.
-func lowerReactivity(pkg *ir.Package, caps Caps, _ Options) error {
+func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := &reactivityState{
 		pkg:          pkg,
 		caps:         caps,
+		platform:     opts.Platform,
 		reactiveVars: collectReactiveVars(pkg),
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
@@ -576,6 +585,7 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 				Expr:     prop.Value,
 				Instance: instance,
 				Comp:     n.Component,
+				Node:     n,
 			})
 		}
 	}
@@ -997,6 +1007,20 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 	if len(props) == 0 && len(slots) == 0 {
 		return nil
 	}
+	// Which instances this update rebuilds rather than patches, decided before
+	// anything is emitted: a prop update on an instance about to be destroyed
+	// writes into a setter whose repaint nobody will see, and one of the two
+	// answers has to win per node rather than per prop.
+	rebuild, rebuilt := st.rebuildsFor(props)
+
+	// fieldRewrite (non-nil only inside a lifted body) rewrites reads of
+	// captured Syms to go through `*state.fieldName`. Loop-invariant: it is
+	// the whole updater's context, not one prop's.
+	rewrite := fieldRewrite
+	if rewrite == nil {
+		rewrite = map[ir.Symbol]ir.Expr{}
+	}
+
 	var out []ir.Stmt
 	for _, p := range props {
 		// Deep-copy the prop expression into the updater so the updater never
@@ -1008,36 +1032,21 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		// passing leaf Idents/Literals through unchanged, which is safe since
 		// NoTernary only ever replaces Ternary nodes, never leaves.
 		//
-		// fieldRewrite (non-nil only inside a lifted body) additionally rewrites
-		// reads of captured Syms to go through `*state.fieldName`.
-		rewrite := fieldRewrite
-		if rewrite == nil {
-			rewrite = map[ir.Symbol]ir.Expr{}
-		}
 		value := rewriteIdentsToCaptures(p.Expr, rewrite)
 		nodeRef := func() ir.Expr {
 			return &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
 		}
 		if p.Instance {
-			// The same question reuseOrCreate asks of a prop inside a reactive
-			// slot, and for the same reason: a prop with no setter has nothing
-			// for UpdateComponent to call, and the emitted call names a method
-			// no backend declared -- `m.__n1.SetStart(m.k)` against a record
-			// declaring only SetTail, `__n1.__set_start(...)` on an object
-			// exporting only __set_tail.
-			//
-			// What differs is the answer available. A slot rebuilds the
-			// instance, which is what #[construct] opts into; this position is
-			// a plain statement of a body nothing re-renders, so there is
-			// nothing to rebuild and the write is reported. Asked here rather
-			// than where the prop was collected, because a prop reading a var
-			// nothing ever writes needs no update and is not a problem.
+			// A prop the instance cannot absorb is not written through a
+			// setter: rebuildsFor has already decided whether this position
+			// rebuilds for it or the write is reported.
 			if !componentAbsorbs(p.Comp, p.Key) {
-				if propIsConstruct(p.Comp, p.Key) {
-					st.failf(p.KeyPos, "#[construct] prop %q of component %s is written from state, but the instance sits where no render rebuilds it; put the instantiation inside an `if` or a `for` so a render owns it", p.Key, p.Comp.Name)
-				} else {
-					st.failf(p.KeyPos, "prop %q of component %s can neither be written after construction nor rebuild the instance; mark it #[construct] if it is read only while the instance is built", p.Key, p.Comp.Name)
-				}
+				continue
+			}
+			// An instance this update replaces is handed nothing first. The
+			// setter would repaint a node that is about to be removed, and the
+			// fresh instance is built from every prop of the site anyway.
+			if rebuilt[p.NodeID] {
 				continue
 			}
 			out = append(out, &ir.CallStmt{Call: &ir.Call{
@@ -1062,6 +1071,11 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 			Value: value,
 		})
 	}
+	// After every prop the live instances could absorb, so a rebuild that
+	// reads a sibling node's state reads the state this update settled on.
+	for _, n := range rebuild {
+		out = append(out, st.recreateStatic(n, st.declState(), rewrite)...)
+	}
 	// Structural updaters: re-fire __renderSlotN for every reactive If/For
 	// dependent on this Var.
 	for _, slot := range slots {
@@ -1080,6 +1094,74 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		}})
 	}
 	return out
+}
+
+// rebuildsFor decides, for one update, which instances at a fixed position it
+// rebuilds instead of patching, and reports every prop it can do neither for.
+// The order is the order the props were collected in, so the emission is
+// deterministic; the set is the same answer keyed by node, because two
+// #[construct] props of one site are one rebuild.
+//
+// This is the question reuseOrCreate asks of a prop inside a reactive slot,
+// and for the same reason: a prop with no setter has nothing for
+// UpdateComponent to call, and the emitted call names a method no backend
+// declared -- `m.__n1.SetStart(m.k)` against a record declaring only SetTail,
+// `__n1.__set_start(...)` on an object exporting only __set_tail.
+//
+// #[construct] is how a declaration says the prop is read once while the
+// instance is built, and the answer is the same at either position: destroy
+// what the position holds and build a fresh one. What differs is that a slot
+// re-renders and a fixed position does not, so the rebuild has to put the new
+// root back among the old one's siblings itself -- InsertBefore, which is
+// optional. A platform without it cannot express the operation at all, and the
+// prop is refused there rather than compiled into a program that drops the
+// write.
+//
+// A prop that is unwritable for any other reason is a routing nothing in the
+// compiler answers, and is reported. Asked here rather than where the prop was
+// collected, because a prop reading a var nothing ever writes needs no update
+// and is not a problem -- testdata/test_components.sngl is that shape.
+func (st *reactivityState) rebuildsFor(props []reactiveProp) ([]*ir.NodeInst, map[string]bool) {
+	var rebuild []*ir.NodeInst
+	rebuilt := map[string]bool{}
+	for _, p := range props {
+		if !p.Instance || componentAbsorbs(p.Comp, p.Key) {
+			continue
+		}
+		if !propIsConstruct(p.Comp, p.Key) {
+			st.failf(p.KeyPos, "prop %q of component %s can neither be written after construction nor rebuild the instance; mark it #[construct] if it is read only while the instance is built", p.Key, p.Comp.Name)
+			continue
+		}
+		if !st.caps.InsertBefore {
+			st.failf(p.KeyPos, "#[construct] prop %q of component %s is written from state, which rebuilds the instance where it stands -- and %s cannot put a child back at a position, so there is nowhere to put the new one; move the instantiation inside an `if` or a `for`, which rebuilds by re-rendering", p.Key, p.Comp.Name, st.platformName())
+			continue
+		}
+		if p.Node == nil || rebuilt[p.NodeID] {
+			continue
+		}
+		rebuilt[p.NodeID] = true
+		rebuild = append(rebuild, p.Node)
+	}
+	return rebuild, rebuilt
+}
+
+// platformName is the target the refusal names, or a description of the
+// capability when the pass was run without one (a unit test, the LSP).
+func (st *reactivityState) platformName() string {
+	if st.platform == "" {
+		return "this platform"
+	}
+	return st.platform
+}
+
+// declState is the declarative state an updater borrows to build a
+// CreateComponent call, shared with the reactive-slot lowering so the two
+// cannot disagree about the shape of one.
+func (st *reactivityState) declState() *declarativeState {
+	if st.slotDeclSt == nil {
+		st.slotDeclSt = newDeclarativeStateForSlot(st.pkg, st.caps)
+	}
+	return st.slotDeclSt
 }
 
 // mutatingCallReceiver returns the receiver expression of a statement-level
@@ -1353,9 +1435,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	// 3. Re-evaluate and re-render. Reuse one declarative state across
 	// every reactive slot in the package so `__nN` widget ids stay
 	// monotonic and don't collide between sibling slot Funcs.
-	if st.slotDeclSt == nil {
-		st.slotDeclSt = newDeclarativeStateForSlot(st.pkg, st.caps)
-	}
+	st.declState()
 	// Seed slot's counter past any IDs reactivity has assigned so far
 	// (collectFromNode in pass-1 may have set NodeInst.IDs that the
 	// initial seedCounter didn't see if they came from later passes).

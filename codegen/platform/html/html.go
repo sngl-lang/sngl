@@ -599,6 +599,13 @@ type htmlGen struct {
 	// one top-level `const __nN = document.querySelector(...)` in emitScript,
 	// so handlers emit a bare identifier rather than a querySelector per write.
 	loweredRefs map[string]bool
+	// loweredLocals are the names a lowered statement *declares* on its way
+	// past -- a `let __n1__re0__el = __n1__re0.__root` a rebuild binds, say.
+	// They look exactly like a page ref where they are used, so without this
+	// the prelude also emitted a querySelector for one and the local was
+	// renamed by the collision, leaving the rebuild inserting a node the page
+	// had never found.
+	loweredLocals map[string]bool
 
 	canvasSetups []canvasSetup
 
@@ -669,6 +676,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		idToNode:       make(map[string]*ir.NodeInst),
 		refToVar:       make(map[string]string),
 		loweredRefs:    make(map[string]bool),
+		loweredLocals:  make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
 		shared:         shared,
 	}
@@ -2225,7 +2233,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 	loweredRefs := make([]string, 0, len(g.loweredRefs))
 	for id := range g.loweredRefs {
-		if g.isStaticInstanceID(id) {
+		if g.isStaticInstanceID(id) || g.loweredLocals[id] {
 			continue
 		}
 		loweredRefs = append(loweredRefs, id)
@@ -3076,6 +3084,7 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			g.collectLoweredRefs(b)
 		}
 	case *ir.LocalVar:
+		g.loweredLocals[n.Name] = true
 		walkExpr(n.Init)
 	case *ir.Emit:
 		for _, a := range n.Args {

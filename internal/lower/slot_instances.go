@@ -511,6 +511,103 @@ func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr
 	return cond, true
 }
 
+// recreateStatic destroys the instance a fixed position holds and builds a
+// fresh one from what the render now describes, putting it back where the old
+// one was.
+//
+//	var <id>__reN <C> = lower.CreateComponent(<C>, {props...})
+//	var <id>__reN__el dyn = lower.ComponentRoot(<id>__reN)
+//	var <id>__prevN__el dyn = lower.ComponentRoot(<id>)
+//	lower.InsertBefore(<id>__pos, <id>__reN__el, <id>__prevN__el)
+//	lower.RemoveChild(<id>__pos, <id>__prevN__el)
+//	lower.DestroyComponent(<id>)
+//	<id> = <id>__reN
+//
+// This is what #[construct] means at a position no render owns: the prop is
+// read while the instance is built and has no setter, so the only way to
+// describe a new value is to build a new instance.
+//
+// The new root goes in before the old one comes out, which is what keeps the
+// instance's siblings in order -- InsertBefore is the whole reason this is
+// gated on a capability. Destroy runs after the removal because it is the
+// instance's teardown and not a detach; every platform's DestroyComponent
+// says so.
+//
+// Both roots are asked for here rather than read off the `<id>__el` binding
+// the build path made, because a fixed position need not have emitted one --
+// html appends `<id>.__root` inline. Each is its own LocalVar because that is
+// the shape ComponentRoot is matched in, and the old one is bound before the
+// reassignment that loses the instance it belongs to.
+//
+// The create stays a LocalVar initialised by the call for the reason
+// reuseOrCreate's does: that is the shape codegen.WalkLowered matches on. Its
+// name carries a counter because two mutations of one var in one handler body
+// splice two updaters into the same scope, and one name for both is a
+// redeclaration.
+func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeState, rewrite map[ir.Symbol]ir.Expr) []ir.Stmt {
+	n1 := strconv.Itoa(st.instCounter)
+	st.instCounter++
+	elem := instanceTypeOf(n.Component)
+	cur := &ir.Var{Name: n.ID, Type: elem, Synthesized: true}
+	fresh := &ir.Var{Name: n.ID + "__re" + n1, Type: elem, Synthesized: true}
+	freshEl := &ir.Var{Name: fresh.Name + instanceRootSuffix, Type: ir.TypDyn, Synthesized: true}
+	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + instanceRootSuffix, Type: ir.TypDyn, Synthesized: true}
+
+	place := &ir.Ident{
+		Name:         ir.InstancePlaceName(n.ID),
+		Type:         ir.TypDyn,
+		IsElementRef: true,
+		Synthesized:  true,
+	}
+	elRef := func(v *ir.Var) ir.Expr {
+		return &ir.Ident{Name: v.Name, Type: ir.TypDyn, IsElementRef: true, Sym: v, Synthesized: true}
+	}
+	bindRoot := func(el *ir.Var, inst *ir.Var) ir.Stmt {
+		return &ir.LocalVar{Name: el.Name, Type: ir.TypDyn, Sym: el, Init: &ir.Call{
+			Type:     ir.TypDyn,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[ir.NodeOpComponentRoot],
+			Args:     []ir.CallArg{{Value: varRef(inst)}},
+		}}
+	}
+	op := func(name string, args ...ir.Expr) ir.Stmt {
+		call := &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[name],
+		}
+		for _, a := range args {
+			call.Args = append(call.Args, ir.CallArg{Value: a})
+		}
+		return &ir.CallStmt{Call: call}
+	}
+
+	// The props the new instance is built from are this render's, rewritten
+	// the way every other updater expression is: inside a lifted body a read
+	// of a captured cell goes through the state struct.
+	built := &ir.NodeInst{ID: n.ID, Component: n.Component}
+	for _, p := range n.Props {
+		if p.Name == "" {
+			continue
+		}
+		built.Props = append(built.Props, ir.Arg{
+			Name:    p.Name,
+			NamePos: p.NamePos,
+			Value:   rewriteIdentsToCaptures(p.Value, rewrite),
+		})
+	}
+
+	return []ir.Stmt{
+		&ir.LocalVar{Name: fresh.Name, Type: elem, Sym: fresh, Init: declSt.componentCreateCall(built)},
+		bindRoot(freshEl, fresh),
+		bindRoot(prevEl, cur),
+		op(ir.NodeOpInsertBefore, place, elRef(freshEl), elRef(prevEl)),
+		op(ir.NodeOpRemoveChild, cloneIdent(place), elRef(prevEl)),
+		op(ir.NodeOpDestroyComponent, varRef(cur)),
+		&ir.Assign{Target: varRef(cur), Op: ast.AssignSet, Value: varRef(fresh)},
+	}
+}
+
 // close ends the render: everything the position no longer describes is
 // destroyed, newest first, and what it does describe becomes what is held.
 //
