@@ -115,6 +115,9 @@ var passes = []pass{
 	// Also before passReactivity, and for the same reason: a prop promoted to
 	// a var is a reactive cell, and the pass that injects updaters has to see
 	// it as one.
+	// Before passComponentProps, which is what turns the prop an event becomes
+	// into the cell the render re-points.
+	passInstanceEvents,
 	passComponentProps,
 	passReactivity,
 	passTernary,
