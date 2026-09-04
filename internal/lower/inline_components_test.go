@@ -48,6 +48,34 @@ func TestFindRecursiveCyclesThroughIfBranch(t *testing.T) {
 	}
 }
 
+// TestFindRecursiveCyclesThroughNamedSlot pins the cycle set rather than the
+// build, because the failure it guards is not a wrong answer: an undetected
+// cycle is judged inlinable and passNoInlineComponents unrolls it until the
+// process is killed, so a test that generated the program would wedge the run
+// instead of failing it.
+func TestFindRecursiveCyclesThroughNamedSlot(t *testing.T) {
+	panel := &ir.Component{Name: "panel"}
+	endless := &ir.Component{Name: "endless"}
+	// panel() { slot header { endless() } } -- the recursion is in the slot
+	// content the call site supplies, which is `endless`'s own body.
+	endless.Body = []ir.Stmt{&ir.NodeInst{
+		Component: panel,
+		Slots: map[string]*ir.SlotContent{
+			"header": {Body: []ir.Stmt{&ir.NodeInst{Component: endless}}},
+		},
+	}}
+	panel.Body = []ir.Stmt{&ir.SlotInst{Name: "header"}}
+
+	pkg := &ir.Package{Components: []*ir.Component{panel, endless}}
+	got := findRecursiveCycles(pkg, Options{})
+	if !got[endless] {
+		t.Error("endless recurses through its own named slot content and is not in the cycle set")
+	}
+	if got[panel] {
+		t.Error("panel hosts the recursion but does not take part in it")
+	}
+}
+
 func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 	items := &ir.Var{
 		Name: "items",

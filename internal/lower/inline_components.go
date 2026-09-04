@@ -238,71 +238,40 @@ func rootComponent(pkg *ir.Package, opts Options) *ir.Component {
 }
 
 // findRecursiveCycles returns the set of components participating in any
-// call cycle (including self-recursion). Edges follow NodeInst.Component
-// from each component's body, funcs, and nested control-flow.
+// call cycle (including self-recursion). Edges follow NodeInst.Component.
 func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 	edges := map[*ir.Component]map[*ir.Component]bool{}
 	for _, c := range pkg.Components {
 		edges[c] = map[*ir.Component]bool{}
-		collectCalleeEdges(c.Body, edges[c])
-		for _, f := range c.Funcs {
-			collectCalleeEdges(f.Block, edges[c])
-		}
+		collectCalleeEdges(c, edges[c])
 	}
 	// Also scan pkg.Windows so components instantiated inside window bodies
 	// participate in cycle detection. Use a synthetic "main" edge set since
 	// windows are not independent cycle roots — they live in main's scope.
 	if main := rootComponent(pkg, opts); main != nil {
 		for _, w := range pkg.Windows {
-			collectCalleeEdges(w.Body, edges[main])
-			for _, f := range w.Funcs {
-				collectCalleeEdges(f.Block, edges[main])
-			}
+			collectCalleeEdges(w, edges[main])
 		}
 	}
 	return tarjanCycles(edges)
 }
 
-func collectCalleeEdges(stmts []ir.Stmt, out map[*ir.Component]bool) {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			if n.Component != nil {
-				out[n.Component] = true
-			}
-			collectCalleeEdges(n.Children, out)
-			for _, h := range n.Handlers {
-				if h.Func != nil {
-					collectCalleeEdges(h.Func.Block, out)
-				}
-			}
-		case *ir.If:
-			collectCalleeEdges(n.Body, out)
-			collectCalleeEdges(n.Else, out)
-		case *ir.For:
-			collectCalleeEdges(n.Body, out)
-			collectCalleeEdges(n.Else, out)
-		case *ir.SlotInst:
-			collectCalleeEdges(n.Children, out)
-		case *ir.ErrorBoundary:
-			collectCalleeEdges(n.Children, out)
-			if n.Handler != nil && n.Handler.Func != nil {
-				collectCalleeEdges(n.Handler.Func.Block, out)
-			}
-		case *ir.Window:
-			collectCalleeEdges(n.Body, out)
-			for _, f := range n.Funcs {
-				if f != nil {
-					collectCalleeEdges(f.Block, out)
-				}
-			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
-			*ir.Break, *ir.Continue:
-			// Leaf/imperative stmts — no component-call edges to collect.
-		default:
-			panic(fmt.Sprintf("collectCalleeEdges: unhandled %T", n))
+// collectCalleeEdges records every component root instantiates, wherever in
+// what root owns the instantiation is written.
+//
+// ir.Walk and not a descent of its own: it already stops at
+// NodeInst.Component, which is the edge being collected rather than a body to
+// follow, and it reaches the slot content the hand-written copy did not. A
+// recursive component reached only through a named slot was in no cycle at
+// all, so the inliner judged it inlinable and unrolled it until the process
+// was killed.
+func collectCalleeEdges(root any, out map[*ir.Component]bool) {
+	_ = ir.Walk(root, func(n ir.Node) error {
+		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil {
+			out[inst.Component] = true
 		}
-	}
+		return nil
+	})
 }
 
 // tarjanCycles runs Tarjan's SCC algorithm and returns the set of nodes
