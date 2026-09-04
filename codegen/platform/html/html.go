@@ -2040,7 +2040,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			if fn.Receiver != "" {
 				fmt.Fprintf(b, "state.%s = () => %s_%s(state);\n", fn.Name, fn.Receiver, fn.Name)
 			} else {
-				fmt.Fprintf(b, "state.%s = () => $%s();\n", fn.Name, fn.Name)
+				fmt.Fprintf(b, "state.%s = () => %s();\n", fn.Name, fn.Name)
 			}
 		}
 		g.emitEventInvokers(b)
@@ -2079,7 +2079,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if fn.Receiver != "" {
 			fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.Receiver, fn.Name, body)
 		} else {
-			fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
+			// Its own name, not a `$`-prefixed one: `$` is this platform's
+			// namespace for a helper it synthesized ($set_, $timer_, $compute_)
+			// and a computed is the program's own func. A block-bodied computed
+			// has always come out under its plain name from emitJSFunc, and
+			// every call site spells that -- so the prefix here was a
+			// declaration nothing called beside a call to nothing declared.
+			fmt.Fprintf(b, "function %s() { return %s; }\n", fn.Name, body)
 		}
 		hasComputed = true
 	}

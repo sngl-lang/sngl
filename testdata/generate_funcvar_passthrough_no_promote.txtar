@@ -58,7 +58,7 @@ body { font-family: system-ui, sans-serif; }
 
   // sngl-entry.js
   var state = {};
-  function $syncHello() {
+  function syncHello() {
     return "sync";
   }
   async function run(f) {
@@ -67,7 +67,7 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   $0.addEventListener("click", async function() {
-    await run($syncHello());
+    await run(syncHello());
   });
   $1.addEventListener("click", async function() {
     await run(fetchHello);

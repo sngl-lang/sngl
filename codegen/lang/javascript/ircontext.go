@@ -433,7 +433,7 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameLocal:
 		return jc.Ctx.RenamedName(name)
 	case codegen.NameComputed:
-		return "$" + name + "()"
+		return name + "()"
 	case codegen.NameStateVar:
 		return "state." + name
 	case codegen.NameConst:

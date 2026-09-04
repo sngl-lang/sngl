@@ -60,14 +60,14 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { handler: null };
   state.handler = fetchHello;
-  function $syncFetch() {
+  function syncFetch() {
     return "sync";
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
   $0.addEventListener("click", function() {
-    state.handler = $syncFetch();
+    state.handler = syncFetch();
   });
   $1.addEventListener("click", function() {
     state.handler = fetchHello;
