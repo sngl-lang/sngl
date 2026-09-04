@@ -46,6 +46,17 @@ func checkForLower(t *testing.T, src string) *ir.Package {
 	return pkg
 }
 
+// constructInstancePkg checks constructInstanceSrc and stamps the mark the
+// inliner would have left on `card` in a real build: these tests drive
+// lowerComponentProps directly, and that pass only gives cells to a
+// declaration something instantiates at run time.
+func constructInstancePkg(t *testing.T) *ir.Package {
+	t.Helper()
+	pkg := checkForLower(t, constructInstanceSrc)
+	cardComponent(t, pkg).RuntimeInstance = true
+	return pkg
+}
+
 func cardComponent(t *testing.T, pkg *ir.Package) *ir.Component {
 	t.Helper()
 	for _, c := range pkg.Components {
@@ -61,7 +72,7 @@ func cardComponent(t *testing.T, pkg *ir.Package) *ir.Component {
 // report it as unwritable. An ordinary prop beside it still gets one, so the
 // mark is what decides and not the pass giving up on the component.
 func TestConstructPropGetsNoSetter(t *testing.T) {
-	pkg := checkForLower(t, constructInstanceSrc)
+	pkg := constructInstancePkg(t)
 	if err := lowerComponentProps(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
 		t.Fatalf("lower props: %v", err)
 	}
@@ -84,7 +95,7 @@ func TestConstructPropGetsNoSetter(t *testing.T) {
 // generated cleanly and ignored the write, which is how the class stayed
 // invisible.
 func TestUnwritableUnmarkedPropIsReported(t *testing.T) {
-	pkg := checkForLower(t, constructInstanceSrc)
+	pkg := constructInstancePkg(t)
 	if err := lowerComponentProps(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
 		t.Fatalf("lower props: %v", err)
 	}

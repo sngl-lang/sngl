@@ -40,7 +40,17 @@ func lowerComponentProps(pkg *ir.Package, _ Caps, opts Options) error {
 	// point, and what it declares as props is bound once by the host.
 	root := rootComponent(pkg, opts)
 	for _, c := range pkg.Components {
-		if c == root {
+		// RuntimeInstance is the mark the inliner leaves on a declaration it
+		// met an instantiation of that it could not flatten, and a cell is
+		// only ever reached through such an instance's setter. A declaration
+		// without the mark is still on the list -- a recursive component is
+		// its own caller, so it survives even when every call site of it
+		// unrolled at build time -- and promoting its props there is not
+		// merely wasted: the cells make passReactivity treat the component's
+		// own control flow as a render slot, and the page ends up carrying a
+		// slot renderer that reads cells only a factory declares, for a
+		// factory no backend emits.
+		if c == root || !c.RuntimeInstance {
 			continue
 		}
 		promoteProps(c)

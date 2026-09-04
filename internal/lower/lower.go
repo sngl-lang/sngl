@@ -115,15 +115,18 @@ var passes = []pass{
 	// Before passReactivity: a mount handler that writes state has to reach it
 	// as an ordinary assignment, or nothing patches what reads that state.
 	passEffect,
-	// Also before passReactivity, and for the same reason: a prop promoted to
-	// a var is a reactive cell, and the pass that injects updaters has to see
-	// it as one.
 	// Before passInstanceEvents, which is what turns the events it declares
 	// into the props the render re-points.
 	passSlotChildInstances,
 	// Before passComponentProps, which is what turns the prop an event becomes
 	// into the cell the render re-points.
 	passInstanceEvents,
+	// After the inliner, whose RuntimeInstance mark says which declarations
+	// get cells at all, and after the two passes above, which are what add
+	// the props a slot child and an instance event arrive as. Before
+	// passReactivity, because a prop promoted to a var *is* a reactive cell
+	// and the pass that injects updaters has to see it as one -- that is how a
+	// setter comes to re-fire the slots reading the prop.
 	passComponentProps,
 	passReactivity,
 	passTernary,
