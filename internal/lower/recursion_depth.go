@@ -67,13 +67,8 @@ func lowerRecursionDepth(pkg *ir.Package, _ Caps, opts Options) error {
 		if !cycles[c] {
 			continue
 		}
-		st := &recursionState{cycles: cycles, depth: depth, self: depth[c]}
-		c.Body = st.guard(c.Body, nil)
-		for _, f := range c.Funcs {
-			if f != nil {
-				f.Block = st.guard(f.Block, nil)
-			}
-		}
+		st := &recursionState{cycles: cycles, depth: depth, self: depth[c], bounded: map[*ir.NodeInst]bool{}}
+		st.guard(c, nil)
 	}
 	return nil
 }
@@ -104,10 +99,14 @@ type recursionState struct {
 	// self is the depth parameter of the component whose body is being walked:
 	// what this level is, and so what the next one would be.
 	self *ir.Param
+	// bounded is the sites already wrapped. The walk meets each one twice,
+	// because the `if` that replaces a node keeps that node in its else and
+	// the walk descends into the replacement it was handed.
+	bounded map[*ir.NodeInst]bool
 }
 
-// guard rewrites every instantiation of a cycle member found in stmts into the
-// bounded form:
+// guard rewrites every instantiation of a cycle member found under root into
+// the bounded form:
 //
 //	if __depth >= MaxRecursionDepth {
 //	    error.raise("…", "recursion")
@@ -121,41 +120,39 @@ type recursionState struct {
 // With none in scope the raise is native, which is a recursive component with
 // no boundary above it taking the window down: the bound reports, and reporting
 // nowhere is louder than rendering a truncated tree nobody asked for.
-func (st *recursionState) guard(stmts []ir.Stmt, scope []*ir.EventHandler) []ir.Stmt {
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			n.Children = st.guard(n.Children, scope)
-			for i := range n.Handlers {
-				if n.Handlers[i].Func != nil {
-					n.Handlers[i].Func.Block = st.guard(n.Handlers[i].Func.Block, scope)
-				}
-			}
-			if st.depth[n.Component] != nil {
-				out = append(out, st.bound(n, scope))
-				continue
-			}
-		case *ir.If:
-			n.Body = st.guard(n.Body, scope)
-			n.Else = st.guard(n.Else, scope)
-		case *ir.For:
-			n.Body = st.guard(n.Body, scope)
-			n.Else = st.guard(n.Else, scope)
-		case *ir.SlotInst:
-			n.Children = st.guard(n.Children, scope)
-		case *ir.ContextProvider:
-			n.Children = st.guard(n.Children, scope)
+//
+// A boundary is the one thing this needs a nesting stack for, and ir.Rewrite
+// is pre-order with no exit hook to pop one -- so a boundary's children are a
+// walk of their own with the extended scope and the outer walk stops there.
+// That is the only reason the recursion here is not ir.Rewrite's own; every
+// other body is reached by it, which is what fixes a recursive instantiation
+// written inside slot content the call site supplies. The hand-written descent
+// this replaces stopped at NodeInst.Slots, so such a site got no bound at all
+// while findRecursiveCycles -- also blind to slots at the time -- reported no
+// cycle to bound.
+func (st *recursionState) guard(root any, scope []*ir.EventHandler) {
+	_ = ir.Rewrite(root, func(node ir.Node) (ir.Node, error) {
+		switch n := node.(type) {
 		case *ir.ErrorBoundary:
 			inner := scope
 			if n.Handler != nil {
+				// The boundary's own @error handler keeps the outer scope: a
+				// raise inside it is not something the boundary it belongs to
+				// catches.
+				st.guard(n.Handler.Func, scope)
 				inner = append([]*ir.EventHandler{n.Handler}, scope...)
 			}
-			n.Children = st.guard(n.Children, inner)
+			st.guard(n.Children, inner)
+			return node, ir.SkipDir
+		case *ir.NodeInst:
+			if st.bounded[n] || st.depth[n.Component] == nil {
+				return node, nil
+			}
+			st.bounded[n] = true
+			return st.bound(n, scope), nil
 		}
-		out = append(out, s)
-	}
-	return out
+		return node, nil
+	})
 }
 
 // bound is the if/else one instantiation becomes. The node keeps its place in
