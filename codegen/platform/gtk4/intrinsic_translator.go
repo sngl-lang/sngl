@@ -943,28 +943,41 @@ func gtk4SignalFor(cType, event string) string {
 	return ""
 }
 
+// signalFor is the GTK signal an event written on this node connects to, or ""
+// when no signal answers to it.
+//
+// Both callers need the same answer for different reasons: OnAttachHandler
+// wires the trampoline, and emitIRPromotedHandler decides the handler's
+// signature from it. A "" means nothing here connects the handler, so whatever
+// calls it is not a GTK trampoline and its declared parameters stand.
+func (t *gtk4Translator) signalFor(nodeID, event string) string {
+	cType := t.idCTypes[nodeID]
+	if s := gtk4SignalFor(cType, event); s != "" {
+		return s
+	}
+	if sig, ok := girSignal(t.classFor(cType), event); ok && sig.Connectable() {
+		return sig.Name
+	}
+	return ""
+}
+
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
 	if t.isSkipped(node) {
 		return nil
 	}
 	bare := codegen.IdentBareName(node)
 	cType := t.idCTypes[bare]
-	signal := gtk4SignalFor(cType, event)
+	signal := t.signalFor(bare, event)
 	if signal == "" {
-		sig, ok := girSignal(t.classFor(cType), event)
-		if !ok {
-			return nil
-		}
 		// The trampoline is (instance, user_data) returning void; a signal of
 		// any other shape hands its first argument to the dispatcher in place
 		// of the callback index. declgen withholds these, so reaching here
 		// means the event arrived some other way.
-		if !sig.Connectable() {
+		if sig, ok := girSignal(t.classFor(cType), event); ok && !sig.Connectable() {
 			t.shared.fail(fmt.Errorf("gtk4: %s.%s: the %q signal passes %d argument(s) and returns %s; only a void signal with none can be connected",
 				cType, event, sig.Name, sig.Params, girSignalReturnLabel(sig)))
-			return nil
 		}
-		signal = sig.Name
+		return nil
 	}
 	// Everything a test invoker needs is known here and nowhere later: the id a
 	// program wrote, the SNGL event written on it, and the GTK signal that event

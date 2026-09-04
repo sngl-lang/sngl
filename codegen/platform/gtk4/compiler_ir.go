@@ -845,10 +845,20 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// "changed" handler re-fires the signal and recurses.
 	selfNode := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
 	body = dropSelfSetterCalls(body, selfNode)
+	// A handler the GTK trampoline calls takes no args, and OnAttachHandler
+	// only connects a signal that answers to the event. An event no signal
+	// answers to is a component's own -- a func-typed prop its instance calls
+	// with the payload -- so its declared parameters stand. Dropping those
+	// unconditionally left the payload ident undefined in the body that reads
+	// it: `func (m *Model) __n0_done_handler() { m.got = v }`.
+	params := fn.Params
+	if tr.signalFor(selfNode, fn.LoweredFromEvent) != "" {
+		params = nil
+	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		Params:   nil, // GTK trampoline calls handlers with no args.
+		Params:   params,
 		Return:   ir.TypVoid,
 		Block:    append(prelude, body...),
 	}
