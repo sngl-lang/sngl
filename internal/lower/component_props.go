@@ -110,7 +110,11 @@ func promoteProps(c *ir.Component) {
 		}
 	}
 
-	c.Vars = append(c.Vars, vars...)
+	// Ahead of the component's own vars, because a var initializer may read a
+	// prop and every backend initialises a record's cells in this order. A
+	// promoted prop reads only its parameter, so nothing of the component's
+	// can precede it.
+	c.Vars = append(vars, c.Vars...)
 	c.Funcs = append(c.Funcs, setters...)
 }
 
