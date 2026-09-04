@@ -60,8 +60,11 @@ func lowerSlotChildInstances(pkg *ir.Package, _ Caps, _ Options) error {
 		return nil
 	}
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
-	// Only the bodies a visual tree is written in. A function body holds no
-	// NodeInst, and a handler's is imperative.
+	// Rooted at the bodies a visual tree is written in, and reaching an
+	// imperative body under one costs nothing: only a view body holds a
+	// NodeInst, so a `for` in a handler has no top-level node to convert.
+	// pkg.Body is not among them because passRootWindow already moved it into
+	// a window.
 	for _, c := range pkg.Components {
 		if c != nil {
 			st.walk(c.Body)
@@ -84,29 +87,21 @@ func lowerSlotChildInstances(pkg *ir.Package, _ Caps, _ Options) error {
 // most the one node that was going to be re-inserted anyway -- and it would
 // cost a synthesized component, a record and a factory for what is very often a
 // constant label. `if` bodies keep the rebuild.
+//
+// ir.Walk and not a descent of its own: the copy this replaces reached neither
+// slot content nor a context provider's children, so a list written inside
+// `slot header { }` tore its rows down and appended them all back -- which is
+// the degradation the pass exists to prevent, in a body it could not see.
 func (st *slotChildSynth) walk(stmts []ir.Stmt) {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.If:
-			st.walk(n.Body)
-			st.walk(n.Else)
-		case *ir.For:
-			if dependsOnReactiveVar(n.Iter, st.reactive) {
-				st.convertChildren(n.Body)
-				st.convertChildren(n.Else)
-			}
-			st.walk(n.Body)
-			st.walk(n.Else)
-		case *ir.NodeInst:
-			st.walk(n.Children)
-		case *ir.SlotInst:
-			st.walk(n.Children)
-		case *ir.ErrorBoundary:
-			st.walk(n.Children)
-		case *ir.Window:
-			st.walk(n.Body)
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		f, ok := n.(*ir.For)
+		if !ok || !dependsOnReactiveVar(f.Iter, st.reactive) {
+			return nil
 		}
-	}
+		st.convertChildren(f.Body)
+		st.convertChildren(f.Else)
+		return nil
+	})
 }
 
 // convertChildren replaces each plain top-level node of a slot body with an
