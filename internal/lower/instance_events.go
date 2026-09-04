@@ -156,74 +156,29 @@ func padArgs(args []ir.CallArg, want []*ir.Param) []ir.CallArg {
 // rewriteEmits turns every `emit(<event>, args)` in c into a call of the prop
 // that event became. An emit naming no declared event is left alone: it is
 // already dropped further down, and this pass is not the place to change that.
+//
+// Every emit c owns, wherever it is written. A node's handler is the one that
+// matters -- `@click { pick(label) }` is where a component re-emits -- and the
+// walk this replaced found that one but not a handler on a node inside slot
+// content the body supplies, nor one inside a context provider, nor a lifted
+// lambda's. ir.Rewrite reaches all of them and stops at NodeInst.Component,
+// so an emit in the component being instantiated stays that component's.
 func rewriteEmits(c *ir.Component, byName map[string]*ir.Param) {
-	replace := func(stmts []ir.Stmt) []ir.Stmt {
-		return rewriteEmitsIn(stmts, byName)
-	}
-	c.Body = replace(c.Body)
-	for _, f := range c.Funcs {
-		if f != nil {
-			f.Block = replace(f.Block)
+	_ = ir.Rewrite(c, func(n ir.Node) (ir.Node, error) {
+		emit, ok := n.(*ir.Emit)
+		if !ok {
+			return n, nil
 		}
-	}
-	for _, v := range c.Vars {
-		for _, h := range v.Handlers {
-			if h != nil && h.Func != nil {
-				h.Func.Block = replace(h.Func.Block)
-			}
+		sym := byName[emit.Name]
+		if sym == nil {
+			return n, nil
 		}
-	}
-	for _, t := range c.Timers {
-		if t != nil && t.Handler != nil {
-			t.Handler.Block = replace(t.Handler.Block)
-		}
-	}
-}
-
-// rewriteEmitsIn walks the nested bodies an emit may sit in. A node's handler
-// is the one that matters -- `@click { pick(label) }` is where a component
-// re-emits -- so this descends into every body a statement owns rather than
-// only the block it was handed.
-func rewriteEmitsIn(stmts []ir.Stmt, byName map[string]*ir.Param) []ir.Stmt {
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		if emit, ok := s.(*ir.Emit); ok {
-			if sym := byName[emit.Name]; sym != nil {
-				out = append(out, &ir.CallStmt{Call: &ir.Call{
-					Type:   ir.TypVoid,
-					Callee: &ir.Ident{Name: sym.Name, Type: sym.Type, Sym: sym},
-					Args:   padArgs(emit.Args, sym.Type.Sig.Params),
-				}})
-				continue
-			}
-			out = append(out, s)
-			continue
-		}
-		switch n := s.(type) {
-		case *ir.If:
-			n.Body = rewriteEmitsIn(n.Body, byName)
-			n.Else = rewriteEmitsIn(n.Else, byName)
-		case *ir.For:
-			n.Body = rewriteEmitsIn(n.Body, byName)
-			n.Else = rewriteEmitsIn(n.Else, byName)
-		case *ir.NodeInst:
-			n.Children = rewriteEmitsIn(n.Children, byName)
-			for i := range n.Handlers {
-				if n.Handlers[i].Func != nil {
-					n.Handlers[i].Func.Block = rewriteEmitsIn(n.Handlers[i].Func.Block, byName)
-				}
-			}
-		case *ir.SlotInst:
-			n.Children = rewriteEmitsIn(n.Children, byName)
-		case *ir.ErrorBoundary:
-			n.Children = rewriteEmitsIn(n.Children, byName)
-			if n.Handler != nil && n.Handler.Func != nil {
-				n.Handler.Func.Block = rewriteEmitsIn(n.Handler.Func.Block, byName)
-			}
-		}
-		out = append(out, s)
-	}
-	return out
+		return &ir.CallStmt{Call: &ir.Call{
+			Type:   ir.TypVoid,
+			Callee: &ir.Ident{Name: sym.Name, Type: sym.Type, Sym: sym},
+			Args:   padArgs(emit.Args, sym.Type.Sig.Params),
+		}}, nil
+	})
 }
 
 // handlersToProps moves the handlers an instantiation wrote for the
