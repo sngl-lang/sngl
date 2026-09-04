@@ -601,6 +601,10 @@ type htmlGen struct {
 	loweredRefs map[string]bool
 
 	canvasSetups []canvasSetup
+
+	// staticInsts are the factory instances the page builds once, in the order
+	// the static renderer met them.
+	staticInsts []staticInstance
 }
 
 type componentParam struct {
@@ -951,13 +955,10 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 			}
 		}
 	}
-	for _, c := range g.pkg.Components {
-		// Not into a factory: a slot there renders into the instance's own
-		// root, which the lowering already named, and a page anchor would
-		// point every instance at one node.
-		if c == nil || g.isInstanceComponent(c) {
-			continue
-		}
+	// Not into a factory: a slot there renders into the instance's own root,
+	// which the lowering already named, and a page anchor would point every
+	// instance at one node.
+	for _, c := range g.pageComponents() {
 		visitStmts(c.Body)
 		for _, fn := range c.Funcs {
 			if fn != nil {
@@ -1327,6 +1328,13 @@ func irCallName(call *ir.Call) string {
 // AST-backed helper, and a raw element is rendered IR-native.
 func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	if isUserIRComponent(n) {
+		// A factory component is never inlined here, at a static position any
+		// more than inside a slot: its body has been flattened for the
+		// factory and is no longer a tree to render.
+		if g.isInstanceComponent(n.Component) {
+			g.renderStaticInstance(b, n, depth)
+			return
+		}
 		g.renderIRUserComponent(b, n, depth)
 		return
 	}
@@ -1462,10 +1470,7 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		// survived inlining is emitted from its own declaration, and its
 		// synthesized funcs -- a canvas draw function among them -- have to
 		// come with it.
-		for _, comp := range g.pkg.Components {
-			if g.isInstanceComponent(comp) {
-				continue
-			}
+		for _, comp := range g.pageComponents() {
 			for _, f := range comp.Funcs {
 				add(f)
 			}
@@ -2201,6 +2206,10 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Before the refs below, which is where a handler's binding for the
+	// instance would otherwise be written as an element lookup.
+	g.emitStaticInstances(b)
+
 	// An id can appear in both refs and loweredRefs; prefer the querySelector
 	// form, since emitting both is a duplicate `const __nN` that throws at
 	// parse time.
@@ -2209,10 +2218,16 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if _, lowered := g.loweredRefs[id]; lowered {
 			continue
 		}
+		if g.isStaticInstanceID(id) {
+			continue
+		}
 		fmt.Fprintf(b, "const %s = document.getElementById(\"%s\");\n", id, id)
 	}
 	loweredRefs := make([]string, 0, len(g.loweredRefs))
 	for id := range g.loweredRefs {
+		if g.isStaticInstanceID(id) {
+			continue
+		}
 		loweredRefs = append(loweredRefs, id)
 	}
 	sort.Strings(loweredRefs)
@@ -2242,7 +2257,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	// After the DOM updaters are wired, for the same reason a kicker is: a
 	// mount body writes state, and the write patches whatever reads it.
-	for _, fn := range bodyCalls(g.pkg) {
+	for _, fn := range g.bodyCalls() {
 		fmt.Fprintf(b, "%s();\n", fn)
 	}
 
@@ -2254,7 +2269,10 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		}
 	}
 
-	if g.pkg != nil && g.pkg.Teardown != nil {
+	// Only the page's own teardown. An instance's brackets are released by the
+	// __destroy the factory returns, called wherever that instance is torn
+	// down; naming that function here would name a factory local.
+	if g.pkg != nil && g.pkg.Teardown != nil && g.pageOwnsFunc(g.pkg.Teardown) {
 		// pagehide, not beforeunload or unload: it is the one the browsers
 		// still fire for a page entering the back/forward cache, and the two
 		// older events are precisely the ones that do not run on a mobile tab
@@ -3499,17 +3517,22 @@ func capitalizeFirst(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-// bodyCalls names the functions a component body calls at the position they
-// were written, in order.
+// bodyCalls names the functions a page body calls at the position they were
+// written, in order.
 //
 // html renders a body as markup, so an imperative statement in one has no
 // place there and is emitted into the startup script instead. Today these are
 // an effect's setup calls; anything else a lowering leaves in a body arrives
 // the same way.
-func bodyCalls(pkg *ir.Package) []string {
-	if pkg == nil {
+//
+// A factory's body is not a page body: its calls are written inside the
+// factory, where the names they reach are in scope and where there is an
+// instance for them to act on.
+func (g *htmlGen) bodyCalls() []string {
+	if g.pkg == nil {
 		return nil
 	}
+	pkg := g.pkg
 	var out []string
 	collect := func(stmts []ir.Stmt) {
 		for _, s := range stmts {
@@ -3524,7 +3547,7 @@ func bodyCalls(pkg *ir.Package) []string {
 			out = append(out, fn.Name)
 		}
 	}
-	for _, c := range pkg.Components {
+	for _, c := range g.pageComponents() {
 		collect(c.Body)
 	}
 	for _, w := range pkg.Windows {

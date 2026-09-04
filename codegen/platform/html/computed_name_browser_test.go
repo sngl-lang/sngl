@@ -30,7 +30,7 @@ component main {
     }
 }
 `
-	b := startBounded(t, src)
+	b := startTrapped(t, src)
 	defer b.Close()
 
 	page := b.Page()

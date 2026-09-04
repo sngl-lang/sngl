@@ -32,7 +32,7 @@ component App {
 }
 component main { window(title="H", href="/index.html") { App() } }
 `
-	b := startBounded(t, src)
+	b := startTrapped(t, src)
 	defer b.Close()
 
 	page := b.Page()

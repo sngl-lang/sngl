@@ -3,6 +3,7 @@ package html
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -48,6 +49,43 @@ func (g *htmlGen) instanceComponents() []*ir.Component {
 		}
 	}
 	return out
+}
+
+// pageComponents is the complement: every component whose declarations belong
+// to the page's own module scope, which is the root plus whatever the build
+// inlined into it.
+//
+// Every emitter that writes into that one scope reads this list. Each of them
+// used to filter g.pkg.Components itself, which made the question five
+// separate answers -- and three of them answered it wrong, each producing a
+// page that named something only a factory declares.
+func (g *htmlGen) pageComponents() []*ir.Component {
+	if g.pkg == nil {
+		return nil
+	}
+	var out []*ir.Component
+	for _, c := range g.pkg.Components {
+		if c == nil || g.isInstanceComponent(c) {
+			continue
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// pageOwnsFunc reports whether fn is declared in the page's scope. Asked of
+// pkg.Teardown, which arrives as a bare *ir.Func with no owner attached, so
+// the only way to place it is to look for it.
+func (g *htmlGen) pageOwnsFunc(fn *ir.Func) bool {
+	if fn == nil {
+		return false
+	}
+	for _, c := range g.instanceComponents() {
+		if slices.Contains(c.Funcs, fn) {
+			return false
+		}
+	}
+	return true
 }
 
 // isInstanceComponent reports whether a component's declarations belong to its
@@ -204,6 +242,67 @@ func instanceTeardownCall(comp *ir.Component) string {
 func componentHasFunc(comp *ir.Component, name string) bool {
 	for _, f := range comp.Funcs {
 		if f != nil && f.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// staticInstance is one instance of a factory component written at a position
+// no reactive slot governs: built once at startup, placed once, and never
+// rebuilt or destroyed while the page lives.
+type staticInstance struct {
+	id   string
+	node *ir.NodeInst
+}
+
+// renderStaticInstance writes the anchor a static instance's root is appended
+// into and records the instance for emitStaticInstances.
+//
+// The alternative -- what the static renderer used to do on meeting one -- was
+// to inline the component's body as markup. That body has been flattened into
+// imperative statements for the factory by then, so the markup came out empty
+// and the props and vars the renderer mirrored into `state` on the way past
+// were dead. An instance is built by its factory or not at all.
+func (g *htmlGen) renderStaticInstance(b *strings.Builder, n *ir.NodeInst, depth int) {
+	if n.ID == "" {
+		// The lowering stamps an id on every instance a handler can update;
+		// one it never names still needs a binding to be placed through.
+		n.ID = g.allocID()
+	}
+	fmt.Fprintf(b, "%s<span data-sngl-inst=%q style=\"display:contents\"></span>\n",
+		strings.Repeat("  ", depth), n.ID)
+	g.staticInsts = append(g.staticInsts, staticInstance{id: n.ID, node: n})
+}
+
+// emitStaticInstances builds each recorded instance and puts its root where
+// the node was written. The binding is the instance itself, which is what an
+// UpdateComponent in a handler goes on to call a setter on.
+func (g *htmlGen) emitStaticInstances(b *strings.Builder) {
+	for _, si := range g.staticInsts {
+		fields := make([]string, 0, len(si.node.Props))
+		for _, p := range si.node.Props {
+			if p.Name == "" {
+				continue
+			}
+			fields = append(fields, fmt.Sprintf("%s: %s", p.Name, g.exprToJS(p.Value)))
+		}
+		fmt.Fprintf(b, "const %s = %s({%s});\n",
+			si.id, javascript.FactoryName(si.node.Component), strings.Join(fields, ", "))
+		fmt.Fprintf(b, "document.querySelector('[data-sngl-inst=%q]').appendChild(%s.%s);\n",
+			si.id, si.id, instanceRootField)
+	}
+	if len(g.staticInsts) > 0 {
+		b.WriteString("\n")
+	}
+}
+
+// isStaticInstanceID reports whether id names a static instance, whose binding
+// emitStaticInstances writes. The loweredRefs emitter must not also declare it:
+// the instance is a record the factory returned, not an element to look up.
+func (g *htmlGen) isStaticInstanceID(id string) bool {
+	for _, si := range g.staticInsts {
+		if si.id == id {
 			return true
 		}
 	}

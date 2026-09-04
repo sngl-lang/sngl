@@ -4,11 +4,9 @@ package html
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 )
 
@@ -16,45 +14,6 @@ import (
 // so a base case that never arrives is not a wrong picture but a dead page.
 // passRecursionDepth bounds it. These run the result: a compile-only check
 // would not notice a bound that never fires.
-
-// startBounded is startComponent with an error trap installed before the
-// generated script runs. The bound's raise reaches an unbounded recursion's
-// page as an uncaught throw -- which is the point, and which a test can only
-// read by being listening when it happens.
-func startBounded(t *testing.T, src string) *webtest.Browser {
-	t.Helper()
-
-	page := renderComponentHTML(t, src)
-	const trap = `<script>window.__snglErr = "";` +
-		`window.addEventListener("error", function (e) { window.__snglErr = String(e.message); });</script>`
-	i := strings.Index(page, "<script")
-	if i < 0 {
-		t.Fatalf("generated page carries no script to trap: %q", page)
-	}
-	body := []byte(page[:i] + trap + page[i:])
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(body)
-	})
-	engine := webtest.New(mux)
-	t.Cleanup(engine.Close)
-
-	if testing.Short() {
-		t.Skip("skipping browser test in -short mode")
-	}
-	browser, err := engine.StartHeadless(1280, 720)
-	if err != nil {
-		t.Skipf("browser unavailable: %v", err)
-	}
-	if err := browser.NavigateRaw(engine.BaseURL() + "/"); err != nil {
-		browser.Close()
-		t.Fatalf("navigate: %v", err)
-	}
-	_ = browser.WaitStable(stableWait)
-	return browser
-}
 
 // A component that instantiates itself with no base case reaches the bound and
 // says so. Without the bound the same page dies of "Maximum call stack size
@@ -77,7 +36,7 @@ component App() {
 }
 component main { window(title="H", href="/index.html") { App() } }
 `
-	b := startBounded(t, src)
+	b := startTrapped(t, src)
 	defer b.Close()
 
 	got := b.Page().MustEval("() => window.__snglErr").String()
@@ -115,7 +74,7 @@ component App() {
 }
 component main { window(title="H", href="/index.html") { App() } }
 `
-	b := startBounded(t, src)
+	b := startTrapped(t, src)
 	defer b.Close()
 
 	page := b.Page()
@@ -156,7 +115,7 @@ component App() {
 }
 component main { window(title="H", href="/index.html") { App() } }
 `
-	b := startBounded(t, src)
+	b := startTrapped(t, src)
 	defer b.Close()
 
 	page := b.Page()
