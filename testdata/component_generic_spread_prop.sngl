@@ -11,7 +11,10 @@ struct pageArgs {
 
 component main {
     var page = 3
-    var a = pageArgs{on=page}
+    // A literal field rather than `on=page`: bubbletea emits a struct-literal
+    // var initialised from another var as `PageArgs{On: ""}`, which is a defect
+    // of its own and not this fixture's subject.
+    var a = pageArgs{on=1}
 
     effect(...a, @mount(v) {
         page = v + 1
