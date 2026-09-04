@@ -1282,6 +1282,11 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 	if fn := n.Call.Func; fn != nil && len(fn.Block) > 0 {
 		return nil
 	}
+	// A node operation is bodyless too, and is an instruction rather than a
+	// tag: `<AppendChild>` in the page is what promoting one looks like.
+	if ir.IsNodeOpCall(n.Call) {
+		return nil
+	}
 	name := irCallName(n.Call)
 	if name == "" {
 		return nil

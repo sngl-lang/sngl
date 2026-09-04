@@ -1,6 +1,9 @@
 package ir
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // IntrinsicDef describes a function that must be natively implemented by
 // codegen backends. The IR only tracks signatures — implementations are
@@ -120,6 +123,18 @@ var NodeOps = []string{
 	NodeOpAttachHandler,
 	NodeOpDetachHandler,
 	NodeOpInsertBefore,
+}
+
+// IsNodeOpCall reports whether c is one of the node operations.
+//
+// A node op is a synthesized Func with an empty body, so every test for "a
+// bodyless call" answers yes to one -- which is how a flattened instance body
+// reached html's static renderer as a tag named `AppendChild`.
+func IsNodeOpCall(c *Call) bool {
+	if c == nil || c.Func == nil {
+		return false
+	}
+	return slices.Contains(NodeOps, c.Func.Intrinsic)
 }
 
 // IsI18nCall reports whether c targets an i18n stdlib entry point. The mark on
