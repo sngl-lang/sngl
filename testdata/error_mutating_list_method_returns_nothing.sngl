@@ -12,12 +12,22 @@ import . "sngl:ui"
 
 component main {
     var xs list<string> = ["a"]
+    var ys list<string> = []
 
     button(text="a", @click {
         xs = xs.push("v") // ERROR(check) "expression yields no value"
     })
     button(text="b", @click {
         xs = xs.remove(0) // ERROR(check) "expression yields no value"
+    })
+
+    // Assigning the result elsewhere is the same error: the mutation lands on
+    // the receiver either way, and there is no second value for ys to take.
+    button(text="d", @click {
+        ys = xs.push("other") // ERROR(check) "expression yields no value"
+    })
+    button(text="e", @click {
+        ys = xs.remove(0) // ERROR(check) "expression yields no value"
     })
 
     // The statement form is the whole API, and it mutates in place.
@@ -27,4 +37,5 @@ component main {
     })
 
     text(value=string(xs.length()))
+    text(value=string(ys.length()))
 }
