@@ -39,9 +39,11 @@ const TeardownFunc = "__snglTeardown"
 // thing its position gave it was a lifetime -- and a lifetime is expressible as
 // data: the list of keys the position describes right now. One `effect` written
 // at component top level describes one key always; one inside an `if` describes
-// one key or none; one inside a `for` describes a key per element. Reconciling
-// that list against the list the running brackets hold is mount and unmount,
-// and it is the same three statements for all three positions. That is why
+// one key or none; one inside a `for` describes a key per element; one in that
+// `for`'s `else` describes one key when the iterable is empty and none
+// otherwise, since that is what `else` means. Reconciling that list against the
+// list the running brackets hold is mount and unmount, and it is the same three
+// statements for all four positions. That is why
 // there is no case here for "an effect inside reactive control flow": the
 // position is read off the enclosing `if`/`for` when the settle function is
 // built, and never asked about again.
@@ -158,6 +160,12 @@ type effectFrame struct {
 	neg  bool
 	// loop is the enclosing `for`, or nil when this frame is an `if`.
 	loop *ir.For
+	// loopElse marks the frame as that `for`'s `else` rather than its body.
+	// The two are opposite positions over the same iterable -- the body
+	// describes a key per element, the else exactly one when there are none --
+	// so a frame that recorded only the loop rebuilt the else as the loop and
+	// mounted the bracket once per element.
+	loopElse bool
 }
 
 func (st *effectState) owner(o ir.Owner) error {
@@ -215,12 +223,11 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 			}
 			out = append(out, n)
 		case *ir.For:
-			inner := pushFrame(frames, effectFrame{loop: n})
-			b, err := st.stmts(n.Body, o, inner)
+			b, err := st.stmts(n.Body, o, pushFrame(frames, effectFrame{loop: n}))
 			if err != nil {
 				return nil, err
 			}
-			e, err := st.stmts(n.Else, o, inner)
+			e, err := st.stmts(n.Else, o, pushFrame(frames, effectFrame{loop: n, loopElse: true}))
 			if err != nil {
 				return nil, err
 			}
@@ -364,7 +371,7 @@ func (st *effectState) downFunc(prefix string, fx *loweredEffect, key ir.Expr, f
 	block := []ir.Stmt{
 		&ir.Assign{Target: desired(), Op: ast.AssignSet, Value: &ir.ListLit{Type: listT}},
 	}
-	block = append(block, st.positionBlock(frames, []ir.Stmt{
+	block = append(block, st.positionBlock(prefix, frames, []ir.Stmt{
 		callListPush(desired(), push, fx.elem),
 	})...)
 
@@ -560,9 +567,12 @@ func (st *effectState) tearFunc(prefix string, fx *loweredEffect) *ir.Func {
 // The loops reuse the original loop's variable symbols rather than fresh ones,
 // so the `on` expression cloned into the leaf resolves to the element this
 // iteration binds.
-func (st *effectState) positionBlock(frames []effectFrame, leaf []ir.Stmt) []ir.Stmt {
-	for _, f := range slices.Backward(frames) {
-
+func (st *effectState) positionBlock(prefix string, frames []effectFrame, leaf []ir.Stmt) []ir.Stmt {
+	for i, f := range slices.Backward(frames) {
+		if f.loop != nil && f.loopElse {
+			leaf = st.emptyLoopBlock(prefix+"_ran"+strconv.Itoa(i), f.loop, leaf)
+			continue
+		}
 		if f.loop != nil {
 			leaf = []ir.Stmt{&ir.For{
 				Key:      f.loop.Key,
@@ -585,6 +595,42 @@ func (st *effectState) positionBlock(frames []effectFrame, leaf []ir.Stmt) []ir.
 	return leaf
 }
 
+// emptyLoopBlock runs leaf exactly when loop's iterable yields nothing, which
+// is what an effect in a `for … else` is placed under.
+//
+//	__effectN_ranK := false
+//	for <the loop's iterable> { __effectN_ranK = true }
+//	if !__effectN_ranK { <leaf> }
+//
+// The same three statements passForElse writes, and deliberately spelled the
+// same way, because they answer the same question about the same loop.
+//
+// A walk rather than a length: the iterable may be a map or a pull sequence,
+// neither of which has one, and `iter<T>` hands out no count at all. The walk
+// binds nothing, so the element does not have to be nameable here either --
+// which matters, since an `else` body is the one place a loop's variables are
+// out of scope. It carries no `break`, because passForElse has not run yet and
+// the escape would be the only one in a block this pass builds.
+func (st *effectState) emptyLoopBlock(name string, loop *ir.For, leaf []ir.Stmt) []ir.Stmt {
+	sym := &ir.Var{Name: name, Type: ir.TypBool, Synthesized: true}
+	ref := func() *ir.Ident {
+		return &ir.Ident{Name: name, Type: ir.TypBool, Sym: sym, Synthesized: true}
+	}
+	return []ir.Stmt{
+		&ir.LocalVar{Name: name, Type: ir.TypBool, Sym: sym, Init: &ir.Literal{Type: ir.TypBool, Value: "false"}},
+		&ir.For{
+			Iter:     deepCloneExpr(loop.Iter),
+			ElemType: loop.ElemType,
+			AST:      loop.AST,
+			Body: []ir.Stmt{&ir.Assign{
+				Target: ref(), Op: ast.AssignSet,
+				Value: &ir.Literal{Type: ir.TypBool, Value: "true"},
+			}},
+		},
+		&ir.If{Cond: &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: ref()}, Body: leaf},
+	}
+}
+
 // checkHandlerScope refuses a handler body that reads a loop variable of an
 // enclosing `for`.
 //
@@ -595,7 +641,10 @@ func (st *effectState) positionBlock(frames []effectFrame, leaf []ir.Stmt) []ir.
 func (st *effectState) checkHandlerScope(n *ir.NodeInst, frames []effectFrame) error {
 	loopVars := map[*ir.LoopVar]string{}
 	for _, f := range frames {
-		if f.loop == nil {
+		// An `else` body is outside its own loop's bindings already, so a
+		// frame for one contributes none: naming the element there is an
+		// unresolved name in the checker, not this diagnostic.
+		if f.loop == nil || f.loopElse {
 			continue
 		}
 		if f.loop.KeySym != nil {

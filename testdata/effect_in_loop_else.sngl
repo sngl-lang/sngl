@@ -1,0 +1,54 @@
+// An effect in a `for … else` brackets the emptiness of the iterable, not its
+// elements. `else` means the body never ran, so the position describes one key
+// when the list is empty and none at all otherwise — the same shape as an `if`,
+// and the exact opposite of the loop it is written on.
+//
+// The lowering had no frame flavour for "the else of a loop", so the else
+// inherited the loop's frame and the settle rebuilt the position AS the loop:
+// the bracket mounted once per element of a list it was placed to react to the
+// absence of. The interpreter reached the else through the mounter and got it
+// right, so `sngl test` vouched for output that was wrong on every compiled
+// target.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        items list<string> = ["a", "b"]
+        log list<string> = []
+    )
+
+    for var it = items {
+        text(value=it)
+    } else {
+        effect(
+            on="none",
+            @mount(v) {
+                log.push("+{v}")
+            },
+            @unmount(v) {
+                log.push("-{v}")
+            },
+        )
+    }
+
+    text #out(value=log.join(","))
+}
+
+// Two elements: the body ran, so the else describes no bracket at all. A
+// position that inherited the loop would read "+none,+none" here.
+func testAFullListMountsNothing(t Test, c main) {
+    t.assert(c.out.value == "")
+}
+
+func testEmptyingTheListMountsOnce(t Test, c main) {
+    c.items = []
+    t.assert(c.out.value == "+none")
+}
+
+func testRefillingTheListUnmountsIt(t Test, c main) {
+    c.items = []
+    c.items = ["a"]
+    t.assert(c.out.value == "+none,-none")
+}
