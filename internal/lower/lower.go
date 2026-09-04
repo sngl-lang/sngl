@@ -103,6 +103,9 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	// Right after inlining: that is what can splice a component's window into
+	// another window's body, and every pass below reads the tree's shape.
+	passWindowNesting,
 	// After the inliner, which is what leaves a recursive component standing,
 	// and before the passes that read a prop: the depth arrives as one.
 	passRecursionDepth,

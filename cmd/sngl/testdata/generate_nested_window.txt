@@ -1,0 +1,78 @@
+# A window inside a window is what every backend already refuses -- html,
+# bubbletea and android each panic with "unexpected nested Window" and fyne and
+# gtk4 fall into irwalk's generic one. It is reported instead, with the position
+# of the inner window, whichever route put it there.
+
+! sngl generate --lang=go --platform=fyne --out=out1 direct.sngl
+stderr 'direct.sngl:12:9: a window cannot be nested inside another window'
+
+# Inlining is the other route: a component declaring a window, placed in one.
+! sngl generate --lang=go --platform=fyne --out=out2 viacomponent.sngl
+stderr 'viacomponent.sngl:11:8: a window cannot be nested inside another window'
+
+! sngl generate --lang=none --platform=html --out=out3 direct.sngl
+stderr 'a window cannot be nested inside another window'
+
+# A component that declares a window is fine where the window itself would be.
+sngl generate --lang=go --platform=fyne --out=out4 toplevel.sngl
+exists out4/model.go
+
+-- direct.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+output {
+	go {
+		fyne
+	}
+}
+
+component main {
+	window(title = "w") {
+		window(title = "b") {
+			text(value = "x")
+		}
+	}
+}
+
+-- viacomponent.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+output {
+	go {
+		fyne
+	}
+}
+
+component inner {
+	window(title = "b") {
+		text(value = "x")
+	}
+}
+
+component main {
+	window(title = "w") {
+		inner()
+	}
+}
+
+-- toplevel.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+output {
+	go {
+		fyne
+	}
+}
+
+component inner {
+	window(title = "b") {
+		text(value = "x")
+	}
+}
+
+component main {
+	inner()
+}

@@ -71,6 +71,10 @@ func StmtPos(s Stmt) ast.Pos {
 				return *p
 			}
 		}
+	case *Window:
+		if n.AST != nil {
+			return n.AST.Pos
+		}
 	case *If:
 		if n.AST != nil {
 			return n.AST.Pos
