@@ -54,7 +54,8 @@ func emitComponentInstance(
 		fields = append(fields, irWidgetField{name: name, goType: goType})
 	}
 
-	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink).withLocalRefs(comp.LocalRefs)
+	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink).
+		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar)
 	tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
@@ -195,9 +196,14 @@ func instanceVarInit(v *ir.Var, igc *golang.GoIRContext) string {
 }
 
 // instanceRootExpr is the widget the instance renders as: whatever the body
-// left unattached. Wrapped when it left several, because a parent holds one
-// child per instance and an instance with two top-level nodes has no single
-// widget to be.
+// left unattached, the container a reactive slot in it renders into included.
+// Wrapped when the body left several, because a parent holds one child per
+// instance and an instance with two top-level nodes has no single widget to be.
+//
+// That container reaches tr.topLevel through withSlotRoot, at the position the
+// slot was written. Reading tr.topLevel without it left the container parented
+// nowhere and its whole subtree invisible, and appending it after the fact put
+// it in the wrong place among the body's own widgets.
 func instanceRootExpr(tr *fyneTranslator, igc *golang.GoIRContext) string {
 	tops := tr.topLevel
 	switch len(tops) {

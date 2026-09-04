@@ -3,6 +3,7 @@ package fyne
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -41,6 +42,14 @@ type fyneTranslator struct {
 	// emission uses this to discover the topmost widget(s) to return as
 	// the fyne.CanvasObject result. Slot-Func emission ignores it.
 	topLevel []string
+	// slotRoot is the container a reactive slot in this scope's body renders
+	// into, when this scope owns one. A call to that slot's renderer holds a
+	// place in the tree exactly as a created widget does -- the subtree is
+	// built into the container rather than named by a ref -- so OnDefault
+	// records the container in topLevel at that position. Empty in a scope
+	// whose root is decided some other way, which is every Model scope: the
+	// Model's own __root is the wrapper its BuildUI already returns.
+	slotRoot string
 
 	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
 	// (LocalVar.CanvasDraw) to their Model widget field + draw func, shared
@@ -106,6 +115,25 @@ func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTrans
 func (t *fyneTranslator) withLocalRefs(local map[string]bool) *fyneTranslator {
 	t.localRefs = local
 	return t
+}
+
+func (t *fyneTranslator) withSlotRoot(name string) *fyneTranslator {
+	t.slotRoot = name
+	return t
+}
+
+// recordsSlotRoot reports whether stmt is the call that renders this scope's
+// own slot container, which is what puts that container in the tree.
+func (t *fyneTranslator) recordsSlotRoot(stmt ir.Stmt) bool {
+	if t.slotRoot == "" {
+		return false
+	}
+	cs, ok := stmt.(*ir.CallStmt)
+	if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return false
+	}
+	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+	return ok && id.Name == t.slotRoot
 }
 
 // isLocalRef reports whether id is a non-escaping ref that should be emitted
@@ -510,6 +538,9 @@ func (t *fyneTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
+		t.topLevel = append(t.topLevel, t.slotRoot)
+	}
 	switch n := stmt.(type) {
 	case *ir.CallStmt:
 		if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {

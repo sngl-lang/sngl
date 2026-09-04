@@ -61,11 +61,21 @@ func emitComponentInstance(
 		tr := newGtk4Translator(igc, sink).withPkg(pkg).withRegistry(reg).
 			withShared(shared).withLocalRefs(localRefs).withWrapped(wrapped)
 		maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
+		// The whole component, not just its body: a reactive slot's renderer
+		// is a func of this component and creates nodes of its own, and a tag
+		// this map does not carry resolves to no widget and stops the build.
+		// collectNodeCTypes answers over every component's funcs already, for
+		// the same reason.
+		tr.collectTagComponents(comp.Body)
+		for _, fn := range comp.Funcs {
+			if fn != nil {
+				tr.collectTagComponents(fn.Block)
+			}
+		}
 		return tr
 	}
 
-	tr := newTr(comp.LocalRefs)
-	tr.collectTagComponents(comp.Body)
+	tr := newTr(comp.LocalRefs).withSlotRoot(instanceRootVar)
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
 	var ctorBody strings.Builder
@@ -144,6 +154,12 @@ func emitComponentInstance(
 // instanceRootBinding assigns the widget the instance renders as: whatever the
 // body left unattached, boxed when it left several, because a parent holds one
 // child per instance.
+//
+// The container a reactive slot in the body renders into counts as one of
+// those: the subtree is built into it rather than named by a ref, so it
+// reaches tr.topLevel through withSlotRoot, at the position the slot was
+// written. Reading tr.topLevel without it left that box parented nowhere and
+// its whole subtree invisible.
 func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bool) string {
 	root := instanceReceiver + "." + golang.ComponentRootField
 	nodeRef := func(id string) ir.Expr {
@@ -182,18 +198,7 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 	fmt.Fprintf(&b, "\t__box := %s\n", igc.EvalExpr(boxInit))
 	boxRef := &ir.Ident{Name: "__box"}
 	for _, id := range tops {
-		appendCall := &ir.Call{
-			Type:     ir.TypVoid,
-			Receiver: &ir.Ident{Name: "C"},
-			Func:     nativeFunc("gtk_box_append"),
-			Args: []ir.CallArg{
-				{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: boxRef}},
-				{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: nodeRef(id)}},
-			},
-		}
-		for _, line := range igc.EvalStmt(&ir.CallStmt{Call: appendCall}) {
-			fmt.Fprintf(&b, "\t%s\n", line)
-		}
+		b.WriteString(boxAppendLine(igc, boxRef, nodeRef(id)))
 	}
 	fmt.Fprintf(&b, "\t%s = %s\n", root, igc.EvalExpr(&ir.Conversion{
 		Type: ir.NativePointerOf("GtkWidget"), Operand: boxRef,
@@ -217,6 +222,25 @@ func instanceMethodName(fn *ir.Func) string {
 
 // setterPrefix is ir.ComponentSetter's, read back rather than spelled again.
 var setterPrefix = ir.ComponentSetter("")
+
+// boxAppendLine is one `gtk_box_append(box, child)` in cgo mode, cast on both
+// sides the way the Model's own root wrapper casts them.
+func boxAppendLine(igc *golang.GoIRContext, box, child ir.Expr) string {
+	call := &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     nativeFunc("gtk_box_append"),
+		Args: []ir.CallArg{
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkBox"), Operand: box}},
+			{Value: &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: child}},
+		},
+	}
+	var b strings.Builder
+	for _, line := range igc.EvalStmt(&ir.CallStmt{Call: call}) {
+		fmt.Fprintf(&b, "\t%s\n", line)
+	}
+	return b.String()
+}
 
 func componentDeclaresFunc(comp *ir.Component, name string) bool {
 	for _, f := range comp.Funcs {
@@ -245,13 +269,32 @@ func instanceVarGoType(v *ir.Var, wrapped bool) string {
 	return golang.VarGoType(v)
 }
 
-func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, _ bool) string {
-	// A widget handle and a list of them are both nil to start with, in either
-	// mode: the ctor body is what fills them, and a cgo call is not valid in a
-	// struct initializer anyway -- the same reason the Model's own __root is
-	// bound inside buildWidgetTree.
-	if v.Synthesized && (ir.IsSlotVarName(v.Name) || v.Name == instanceRootVar) {
+func instanceVarInit(v *ir.Var, igc *golang.GoIRContext, wrapped bool) string {
+	// A slot accumulator starts empty: the render is what fills it.
+	if v.Synthesized && ir.IsSlotVarName(v.Name) {
 		return "nil"
+	}
+	// __root is not one of those. It is the box a reactive slot in the body
+	// renders into, and the body runs in this same ctor -- so nil here meant
+	// the first render appended into nothing. These assignments are statements
+	// of the ctor rather than fields of a struct literal, which is what made
+	// the Model's reason for binding its own __root later not apply.
+	if v.Synthesized && v.Name == instanceRootVar {
+		if wrapped {
+			return "gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)"
+		}
+		return igc.EvalExpr(&ir.Conversion{
+			Type: ir.NativePointerOf("GtkBox"),
+			Operand: &ir.Call{
+				Type:     ir.TypDyn,
+				Receiver: &ir.Ident{Name: "C"},
+				Func:     nativeFunc("gtk_box_new"),
+				Args: []ir.CallArg{
+					{Value: &ir.Ident{Name: "C.GTK_ORIENTATION_VERTICAL", Type: ir.TypDyn}},
+					{Value: &ir.Literal{Type: ir.TypInt, Value: "6"}},
+				},
+			},
+		})
 	}
 	return irVarInit(v, igc)
 }

@@ -1108,6 +1108,16 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 	if pkg != nil {
 		for _, comp := range pkg.Components {
 			walk(comp.Body)
+			// And its funcs. `funcs` above is what the Model emits, which is
+			// not the same set: a component the build could not inline keeps
+			// its slot renderer on itself, and the widgets that renderer
+			// creates had no spec, so OnCreateNode emitted nothing and the
+			// renderer referenced a variable no statement declared.
+			for _, fn := range comp.Funcs {
+				if fn != nil {
+					walk(fn.Block)
+				}
+			}
 		}
 		for _, w := range pkg.Windows {
 			walk(w.Body)

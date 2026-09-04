@@ -3,6 +3,7 @@ package gtk4
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -67,6 +68,14 @@ type gtk4Translator struct {
 	idCTypes  map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
 	skipped   map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
 	topLevel  []string
+	// slotRoot is the box a reactive slot in this scope's body renders into,
+	// when this scope owns one. A call to that slot's renderer holds a place in
+	// the tree exactly as a created widget does -- the subtree is built into
+	// the box rather than named by a ref -- so OnDefault records the box in
+	// topLevel at that position. Empty in a scope whose root is decided some
+	// other way, which is every Model scope: the Model's own __root is the
+	// wrapper buildWidgetTree already parents into.
+	slotRoot string
 	// wrapped emits widget ops as pkg/go/gtk4rt calls instead of inline cgo.
 	// An unmapped op falls through to cgo, leaving a `C.` that triggers
 	// emitIR's whole-program fallback. See wrapped.go.
@@ -109,6 +118,25 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 	t.localRefs = local
 	return t
+}
+
+func (t *gtk4Translator) withSlotRoot(name string) *gtk4Translator {
+	t.slotRoot = name
+	return t
+}
+
+// recordsSlotRoot reports whether stmt is the call that renders this scope's
+// own slot box, which is what puts that box in the tree.
+func (t *gtk4Translator) recordsSlotRoot(stmt ir.Stmt) bool {
+	if t.slotRoot == "" {
+		return false
+	}
+	cs, ok := stmt.(*ir.CallStmt)
+	if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return false
+	}
+	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+	return ok && id.Name == t.slotRoot
 }
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
@@ -1027,6 +1055,9 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
+		t.topLevel = append(t.topLevel, t.slotRoot)
+	}
 	switch n := stmt.(type) {
 	case *ir.CallStmt:
 		if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
