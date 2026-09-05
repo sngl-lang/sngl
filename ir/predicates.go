@@ -142,6 +142,15 @@ func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
 	case TypeTypeParam:
 		// Judged where the parameter is bound to a concrete type. Answering
 		// here would make a generic declaration undeclarable.
+		//
+		// That claim is owed a place where the answer is actually given, and
+		// for a while there was none for an effect's `on`: the guard ran on
+		// the effect node, where the type is still the parameter, and the
+		// declaration's own call site was never asked. The checker's
+		// checkRebuildKeys is that place for both rules -- it walks the
+		// package's instances with the bindings in hand, so the site that
+		// pinned the parameter is the site that answers, however many generics
+		// the value passed through on the way down.
 		return "", nil
 	case TypeStruct:
 		sd, _ := t.Decl.(*StructDef)

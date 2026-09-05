@@ -56,47 +56,7 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 	if len(bindings) == 0 {
 		return comp
 	}
-	spec := specializeComponent(comp, bindings)
-	c.checkConstructBindings(args, comp, spec)
-	return spec
-}
-
-// checkConstructBindings refuses a #[construct] prop whose *bound* type does not
-// compare alike on every target.
-//
-// The declaration cannot answer this one. `#[construct] seed T` is admitted
-// where it is written because RebuildIncomparable passes a type parameter
-// through -- judging it there would make a generic component undeclarable --
-// and the call site is the only place T becomes a type. So the rule the mark
-// carries is stated in two halves, and this is the half nobody was checking:
-// bound to a list, the prop reached fyne's rebuild comparison as
-// `m.__inst0_was_seed[i] == m.xs` over a []any holding a []int, which is a Go
-// runtime panic rather than any kind of diagnostic.
-//
-// The diagnostic names the bound type as well as the prop, because the
-// declaration the reader is sent to says `T` and nothing about a list.
-func (c *checker) checkConstructBindings(args ast.ArgList, comp, spec *ir.Component) {
-	for i, p := range comp.Props {
-		if !p.Construct || !mentionsTypeParam(p.Type) {
-			continue
-		}
-		bound := spec.Props[i].Type
-		// Still a parameter: this call bound something else, and a prop nobody
-		// pinned takes the same latitude an unpinned parameter takes anywhere.
-		if mentionsTypeParam(bound) {
-			continue
-		}
-		why := ir.RebuildIncomparable(bound)
-		if why == "" {
-			continue
-		}
-		pos := args.Pos
-		if v := propArgValue(args, comp, p); v != nil {
-			pos = *v.ExprPos()
-		}
-		c.error(pos, "#[construct] prop %q on component %s is bound to %s here: the instance is rebuilt when this value changes, so it must compare alike on every target, and %s does not",
-			p.Name, comp.Name, bound, why)
-	}
+	return specializeComponent(comp, bindings)
 }
 
 // propArgType is the type of the value a call site supplied for prop p, or nil
@@ -264,65 +224,6 @@ func (c *checker) checkEffectHandlers(vn *ast.VisualNode) {
 		}
 	}
 	c.error(vn.Pos, "effect declares neither @mount nor @unmount, so it brackets nothing")
-}
-
-// checkEffectKey refuses an `on` whose type does not compare alike everywhere.
-//
-// `on` is the identity of the lifetime: while it holds the same value this is
-// the same effect, so every target has to agree on when two of them are the
-// same value. Not every type does -- Go compares two lists by refusing to, JS
-// compares two objects by identity -- and the settle's only answer for one that
-// does not was to rebuild the bracket on every pass, which is `+` under
-// `sngl test` and `+,-,+` compiled. Reported where the key is written rather
-// than lowered into a program whose brackets mean something different on each
-// build.
-//
-// Nothing is said about an effect with no `on`: the parameter's default binds T
-// to a struct with no fields, which ir.RebuildComparable admits and the
-// comparison reduces to "never differs" -- exactly what a bracket that lives as
-// long as its node means.
-func (c *checker) checkEffectKey(node ast.Pos, props []ir.Arg) {
-	for _, p := range props {
-		if p.Name != "on" || p.Value == nil {
-			continue
-		}
-		t := p.Value.ExprType()
-		why := ir.RebuildIncomparable(t)
-		if why == "" {
-			continue
-		}
-		pos := p.NamePos
-		if !pos.IsValid() {
-			pos = node
-		}
-		c.error(pos, "an effect's `on` is the identity of its lifetime, so it must compare alike on every target, and %s does not%s", why, effectKeyHint(t))
-	}
-}
-
-// effectKeyHint names the form that does work, for the two mistakes that have
-// one. A key over several values is what a struct is for; the list and the
-// anonymous struct literal are both people reaching for that and finding the
-// nearest brace.
-func effectKeyHint(t *ir.Type) string {
-	if t == nil {
-		return ""
-	}
-	switch t.Kind {
-	case ir.TypeList:
-		return "; a key over several values is a struct of them, not a list"
-	case ir.TypeMap:
-		return "; a key over several values is a struct of them, not a map"
-	case ir.TypeDyn:
-		return "; a key over several values is a struct of them, and the struct has to be declared"
-	case ir.TypeStruct:
-		// An anonymous struct literal. It reaches here as a struct with no
-		// declaration, which is the whole reason it cannot be compared: there
-		// are no fields to walk.
-		if t.Decl == nil {
-			return "; a key over several values is a struct of them, and the struct has to be declared"
-		}
-	}
-	return ""
 }
 
 // declTypeBindings is what a component's type parameters stand for where the

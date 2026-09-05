@@ -3504,12 +3504,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		emitName = qualifiedLocal
 	}
 	props = bindWildcardName(comp, emitName, props)
-	// After the args are checked, because the rule is about the type the `on`
-	// expression HAS: an effect's kind is on its declaration, and what a call
-	// site keys on is known only once the argument has one.
-	if comp != nil && comp.Builtin == ir.BuiltinEffect {
-		c.checkEffectKey(vn.Pos, props)
-	}
 	return &ir.NodeInst{
 		AST:       vn,
 		Name:      emitName,

@@ -3364,6 +3364,10 @@ func (c *checker) pass2() {
 	// the functions it calls and those sets are only complete now.
 	c.checkEffectSelfRekey()
 
+	// Every body is checked, so every instance is built and every type
+	// parameter a call site pinned can be followed to what it pinned it to.
+	c.checkRebuildKeys()
+
 	// Validate deferred const(expr) assertions now that function purities
 	// are known.
 	for _, a := range c.constAsserts {

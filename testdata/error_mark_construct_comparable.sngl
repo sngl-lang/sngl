@@ -94,3 +94,22 @@ component holder {
 
     seeded(seed=xs) // ERROR(check) "bound to list<int> here"
 }
+
+// The call that binds T need not be the one that places the marked prop. Here
+// `pass` hands its own parameter down, so `seeded`'s T is still a parameter at
+// the inner call and only `pass(x=xs)` makes it a list -- which is why the rule
+// is a walk down the instances rather than a check on the call that writes the
+// prop. Unchecked, the marked prop reached html as
+// `__inst1_was_seed[__inst1_i] === seed` over an array, which is identity.
+component pass<T>(x T) {
+    seeded(seed=x)
+}
+
+component passer {
+    var n = 1
+    var xs list<int> = [1]
+
+    pass(x=n)
+
+    pass(x=xs) // ERROR(check) "bound to list<int> here"
+}
