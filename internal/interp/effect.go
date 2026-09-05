@@ -172,6 +172,58 @@ func (fx *Effects) Reconcile(v *View, root *Env) (Key, bool, error) {
 	return Key{}, false, nil
 }
 
+// Retarget moves the running set onto a new program: what the new source no
+// longer describes ends, and what survives changes program without restarting.
+//
+// It is Reconcile's teardown half plus a repointing, and it is separate because
+// the two halves answer to different packages. A lifetime ending here belongs
+// to the program being replaced: its handler and its scope are that program's,
+// so root is the env it ran in and the teardown runs before the session swaps.
+// A lifetime that survives belongs to the new one from here -- same key, same
+// value keyed on, so no bracket restarts on a save -- and holding the old entry
+// is what left a survivor with an *ir.Func the running program does not spell
+// and a scope whose symbols the session no longer binds, so its eventual
+// teardown ran the discarded source in a scope that reached nothing.
+//
+// The setup half is deliberately not here: it is the new program's, and the
+// caller runs it as an ordinary settle once the swap has happened.
+//
+// Every ending teardown runs, without a re-mount between them, because there is
+// no tree left to re-mount -- run refreshes each scope from root, which is what
+// makes each read what the last one wrote.
+func (fx *Effects) Retarget(v *View, root *Env) error {
+	if fx == nil {
+		return nil
+	}
+	next := map[Key]MountedEffect{}
+	if v != nil {
+		for _, e := range v.Effects {
+			if _, dup := next[e.Key]; !dup {
+				next[e.Key] = e
+			}
+		}
+	}
+	for _, prev := range fx.endingLifetimes(next) {
+		delete(fx.live, prev.Key)
+		if prev.Unmount == nil {
+			continue
+		}
+		if err := fx.run(prev, prev.Unmount, root); err != nil {
+			return err
+		}
+	}
+	// What is left is exactly the keys next describes with the same lifetime,
+	// so each takes the new source's handlers and scope and keeps its seq --
+	// the order teardown runs in is about when a lifetime began, not about
+	// which package declared it.
+	for k, prev := range fx.live {
+		cur := next[k]
+		cur.seq = prev.seq
+		fx.live[k] = cur
+	}
+	return nil
+}
+
 // endingLifetimes is every running bracket v no longer describes, newest first.
 func (fx *Effects) endingLifetimes(next map[Key]MountedEffect) []MountedEffect {
 	var out []MountedEffect

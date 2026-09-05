@@ -170,22 +170,33 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 //
 // Timer phase is rebased rather than reset, so saving a file does not restart
 // every timer in the program.
+//
+// The running effects settle against the new package for the same reason the
+// state is carried and the timers rebased: what the new source describes is
+// what should be running. A bracket the edit removed ends -- in the program
+// that declared it, before the swap, since that is where its teardown and its
+// scope live. A bracket it added begins, in the final settle below. One that
+// survives keeps its lifetime and takes the new source's handlers, because
+// holding the old entry left it running a func of the package the reload threw
+// away, in a scope whose symbols the session no longer binds.
 func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
-	carried := s.bindings()
-
 	env, err := BuildEnv(pkg, s.Comp)
 	if err != nil {
 		return nil, err
 	}
-	for owner, syms := range varsOf(pkg, s.Comp) {
-		for _, sym := range syms {
-			prev, held := carried[VarKeyOf(owner, sym)]
-			if !held || !sameType(prev.typ, sym.SymType()) {
-				continue
+	carry := func() {
+		carried := s.bindings()
+		for owner, syms := range varsOf(pkg, s.Comp) {
+			for _, sym := range syms {
+				prev, held := carried[VarKeyOf(owner, sym)]
+				if !held || !sameType(prev.typ, sym.SymType()) {
+					continue
+				}
+				env.Set(sym, prev.val)
 			}
-			env.Set(sym, prev.val)
 		}
 	}
+	carry()
 
 	timers, err := NewTimers(s.Clock, env)
 	if err != nil {
@@ -193,13 +204,31 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	}
 	timers.Rebase(s.Timers)
 
+	// Mounted first only for the key set Retarget needs: which brackets the new
+	// source describes decides which of the running ones are ending.
 	next, err := Mount(env)
 	if err != nil {
 		return nil, err
 	}
+	// Before the swap: an ending lifetime's handler and scope belong to the
+	// program still installed, and s.Env is the root it exchanges state with.
+	if err := s.fx.Retarget(next, s.Env); err != nil {
+		return nil, err
+	}
+	// A teardown releases what its lifetime held, and it wrote that into the
+	// old env. Carrying again is how it reaches the reloaded one -- the first
+	// carry is a snapshot from before those handlers ran.
+	carry()
+	if next, err = Mount(env); err != nil {
+		return nil, err
+	}
 	patches := Diff(s.view, next)
 	s.Pkg, s.Env, s.Timers, s.view = pkg, env, timers, next
-	return patches, nil
+	// And the setup half, which is the new program's: a bracket the edit added
+	// mounts here, and whatever its handler writes is patched like any other
+	// settle.
+	settled, err := s.Sync()
+	return append(patches, settled...), err
 }
 
 type binding struct {
