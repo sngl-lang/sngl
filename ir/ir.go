@@ -726,6 +726,12 @@ type StructDef struct {
 	// schema. Every lookup of an option schema keys on the mark, so the
 	// declaration's name carries no meaning.
 	Options bool `json:",omitempty"`
+	// Anon says the declaration was synthesized for an anonymous struct, one
+	// per canonical field signature. It is an ordinary declaration in every
+	// other respect — a backend emits it and a value names it — and this only
+	// says the program never wrote the Name: a diagnostic and `sngl dump`
+	// spell the type structurally rather than leaking the synthesized name.
+	Anon bool `json:",omitempty"`
 	// A declaration's members are looked up on the declaration, so this is
 	// where every type's methods live — struct, enum, unit and component
 	// alike.

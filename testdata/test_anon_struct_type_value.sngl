@@ -1,0 +1,48 @@
+// `struct { … }{ … }` is the value of an inline anonymous type. `Type` already
+// accepted `struct { … }`, so the type was spellable and its value was not,
+// which is what made a component's type-parameter default unwritable:
+// `component bracket<T = struct {}>(on T = struct {}{})` had no way to say what
+// the default value of the default type was.
+//
+// The written type wins over whatever was expected, and it reaches the same
+// interned declaration an inferred literal does.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+func sumPair(p struct {
+    a int
+    b int
+}) => p.a + p.b
+
+component bracket<T = struct {}>(on T = struct {}{}) {
+    text(value="held")
+}
+
+component main {
+    var (
+        empty = struct {}{}
+        written = struct {
+            a int
+            b int
+        }{a=1, b=2}
+        inferred = {a=1, b=2}
+        total = sumPair(written) + sumPair(inferred)
+    )
+
+    bracket()
+    text(value=string(total))
+}
+
+func testTheWrittenTypeIsTheInferredOne(t Test, c main) {
+    c.written = c.inferred
+    t.assert(c.written.a == 1)
+    t.assert(c.total == 6)
+}
+
+// An empty anonymous struct holds nothing, so every value of it is the same
+// value. There is still one declaration of it, and every backend emits it.
+func testTheEmptyStructIsAValue(t Test, c main) {
+    c.empty = struct {}{}
+    t.assert(c.total == 6)
+}

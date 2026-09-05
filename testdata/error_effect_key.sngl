@@ -43,10 +43,6 @@ component main {
 
     effect(on=m, @mount {}) // ERROR(check) "a key over several values is a struct of them, not a map"
 
-    // An anonymous struct literal binds T to nothing the compiler can compare:
-    // it has no declaration, so the type is dyn. Naming the struct is the fix.
-    effect(on={a=x, b=y}, @mount {}) // ERROR(check) "the struct has to be declared"
-
     effect(on=o, @mount {}) // ERROR(check) "option<int> does not"
 
     effect(on=hasList{tags=["a"]}, @mount {}) // ERROR(check) "list<string> (field tags of struct hasList)"

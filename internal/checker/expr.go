@@ -1783,6 +1783,14 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			c.error(x.Pos, "encoded value is a %s, but a %s was expected", x.Name, sd.Name)
 			return &ir.Literal{Type: TypDyn}
 		}
+	} else if x.Anon != nil {
+		// `struct { a int }{a = 1}`: the literal spells its own type, so it
+		// takes precedence over whatever was expected. The declaration is the
+		// interned one, which is what makes it the same type as a parameter
+		// written `struct { a int }`.
+		if t := c.resolveAnonStruct(x.Anon); t.Kind == ir.TypeStruct {
+			sd, _ = t.Decl.(*ir.StructDef)
+		}
 	} else if x.Package != "" {
 		// Qualified: pkg.Struct{...}
 		if sym, ok := c.scope.Lookup(x.Package); ok {
@@ -1865,7 +1873,17 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		fields = withFieldDefaults(sd, fields)
 		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
-	return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
+	// Nothing named a type, so the literal's own values do: one interned
+	// declaration per canonical field signature. Two spellings of the same set
+	// of (name, type) are the same declaration and so the same type — and a
+	// declared struct with those fields is still a different one, because
+	// identity is per declaration and this is a declaration of its own.
+	anonFields, ok := c.anonFieldsFromInits(fields)
+	if !ok {
+		return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
+	}
+	anon := c.internAnonStruct(x.Pos, anonFields)
+	return &ir.StructLit{AST: x, Type: anon.SymType(), Def: anon, Fields: fields}
 }
 
 // reinterpretStructAsMap converts an all-ident-key StructExpr into a MapLitIR

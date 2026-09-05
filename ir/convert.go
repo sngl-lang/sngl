@@ -61,6 +61,14 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertImport(imp))
 	}
 	for _, s := range pkg.Structs {
+		// An interned anonymous struct is registered so a backend emits it,
+		// but the program never declared it: printing it back would put a
+		// synthesized name in user-facing output, and that name is one no
+		// program may declare (see claimTopLevel). Every use of it prints
+		// structurally instead.
+		if s.Anon {
+			continue
+		}
 		stmts = append(stmts, c.convertStructDef(s))
 	}
 	for _, e := range pkg.Enums {
@@ -148,6 +156,15 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 		}
 		def.Body = append(def.Body, sf)
 	}
+	return def
+}
+
+// convertAnonStructType prints an anonymous struct back as the inline
+// declaration it was written as. The name is dropped: it is synthesized, and
+// nothing binds it where the printed source is read.
+func (c *converter) convertAnonStructType(sd *StructDef) ast.TypeExpr {
+	def := c.convertStructDef(sd)
+	def.Name = ""
 	return def
 }
 
@@ -900,7 +917,11 @@ func (c *converter) convertStructLit(sl *StructLit) *ast.StructExpr {
 	se := &ast.StructExpr{
 		Multiline: len(sl.Fields) > 1,
 	}
-	if sl.Def != nil {
+	if sl.Def != nil && sl.Def.Anon {
+		// Printed back as the anonymous literal it was written as. The
+		// synthesized name is not in scope where the printed source is read,
+		// and the fields re-intern to the same declaration anyway.
+	} else if sl.Def != nil {
 		se.Name = sl.Def.Name
 		if sl.Type != nil && sl.Type.Package != "" {
 			se.Package = sl.Type.Package
@@ -990,6 +1011,12 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		return nt
 	case TypeStruct, TypeEnum, TypeUnit, TypeComponent, TypeInstance:
+		// An anonymous struct's spelling is its fields. The synthesized name
+		// resolves to nothing where the printed source is read back, and
+		// naming it would put the compiler's bookkeeping in a `dump`.
+		if sd, ok := t.Decl.(*StructDef); ok && sd.Anon {
+			return c.convertAnonStructType(sd)
+		}
 		// Bare `component` carries no declaration — it is the widest component
 		// type, not an unresolved one, so it has a spelling of its own.
 		name := "dyn" // anonymous/unresolved declaration

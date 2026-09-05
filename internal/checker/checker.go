@@ -364,6 +364,12 @@ type checker struct {
 	// because type identity is per-declaration.
 	macroStruct *ir.StructDef
 
+	// anonStructs interns one synthesized declaration per canonical anonymous
+	// struct signature; see internAnonStruct. Per checker, because the
+	// declaration it hands back is registered in this checker's package and a
+	// backend emits it from there.
+	anonStructs map[string]*ir.StructDef
+
 	// builtinPkg is sngl:builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
 
@@ -868,6 +874,14 @@ func isExportedMemberName(name string) bool {
 func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, path string) bool {
 	if name == "" || name == "_" {
 		return true
+	}
+	// The namespace the interned anonymous structs are named in. Reserving it
+	// is what makes a synthesized name unable to collide with a declared one:
+	// nothing else keeps the two apart, since the synthesized declaration is
+	// registered in the package without being bound in any scope.
+	if strings.HasPrefix(name, anonStructPrefix) {
+		c.error(pos, "%q is reserved: names beginning with %q are the compiler's own", name, anonStructPrefix)
+		return false
 	}
 	if c.topLevel == nil {
 		c.topLevel = map[string]topLevelBinding{}
