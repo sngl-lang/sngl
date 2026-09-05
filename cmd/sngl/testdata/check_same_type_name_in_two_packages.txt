@@ -1,0 +1,66 @@
+# Two packages of one program each declaring `Style`. They are two types, and
+# the program may not pass one where the other is expected -- directly, or
+# wrapped in an anonymous struct.
+#
+# The wrapped form is the one that went wrong. An anonymous struct is interned
+# by a signature built from its fields' names and types, and a field's type was
+# spelled by its declaration's package and name. A program's declarations
+# recorded no package, so both `Style`s spelled alike, the two literals interned
+# to one declaration, and whichever `Style` was seen first became the field's
+# type for both. The program compiled, and `v.s.x` read a field the value from
+# `sub` does not have.
+#
+# The signature now tells a package-less declaration apart by its address. That
+# is the same answer ir.sameDecl gives -- and it has to be an address rather
+# than a name, because scope is per file, so two files of one package may each
+# declare `Style` and be two types.
+#
+# The address never reaches the generated name, which is hashed from a spelling
+# that carries no pointer. Two such signatures can therefore spell one name;
+# the second gets a counter.
+
+! sngl check .
+stderr 'cannot pass struct \{ s Style \} as struct \{ s Style \}'
+
+# The direct form was never wrong: two declarations that record no package are
+# told apart by their pointers, which is what the wrapped form now does too.
+stderr 'cannot pass Style as Style'
+
+-- app.sngl --
+import . "sngl:ui"
+import sub "./sub"
+
+struct Style {
+    x int = 0
+}
+
+func take(v struct {
+    s Style
+}) => v.s.x
+
+component main {
+    var theirs = {s=sub.make()}
+
+    text(value=string(take(theirs)))
+}
+-- sub/lib.sngl --
+struct Style {
+    y int = 0
+}
+
+func make() Style {
+    return Style{y = 5}
+}
+-- direct/main.sngl --
+import . "sngl:ui"
+import sub "../sub"
+
+struct Style {
+    x int = 0
+}
+
+func take(v Style) => v.x
+
+component main {
+    text(value=string(take(sub.make())))
+}

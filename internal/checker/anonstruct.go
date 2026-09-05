@@ -3,7 +3,9 @@ package checker
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -24,65 +26,79 @@ func (c *checker) rejectReservedName(pos ast.Pos, name string) bool {
 	return true
 }
 
-// anonSignature is the canonical spelling of a field set, in name order, so
-// field order is not part of a type's identity.
-func anonSignature(canon []*ir.StructField) string {
-	parts := make([]string, len(canon))
+// anonSignature spells a field set in name order, so field order is not part
+// of a type's identity. The two spellings answer different questions: key
+// tells every declaration apart and is the intern map's, sig is stable across
+// runs and is all the generated name is allowed to see.
+func anonSignature(canon []*ir.StructField) (sig, key string) {
+	sigs := make([]string, len(canon))
+	keys := make([]string, len(canon))
 	for i, f := range canon {
-		parts[i] = f.Name + " " + anonTypeKey(f.Type)
+		sigs[i] = f.Name + " " + anonTypeKey(f.Type, false)
+		keys[i] = f.Name + " " + anonTypeKey(f.Type, true)
 	}
-	return strings.Join(parts, "; ")
+	return strings.Join(sigs, "; "), strings.Join(keys, "; ")
 }
 
 // anonTypeKey spells a type for the signature. Type.String() alone would not:
 // it prints a named type unqualified, so a program's own `Style` and
 // `sngl:ui`'s read alike.
-func anonTypeKey(t *ir.Type) string {
+func anonTypeKey(t *ir.Type, exact bool) string {
 	var b strings.Builder
 	b.WriteString(t.String())
-	writeDeclPkgs(&b, t)
+	writeDeclIDs(&b, t, exact)
 	return b.String()
 }
 
-func writeDeclPkgs(b *strings.Builder, t *ir.Type) {
+func writeDeclIDs(b *strings.Builder, t *ir.Type, exact bool) {
 	if t == nil {
 		return
 	}
-	if pkg, ok := declPkgURI(t.Decl); ok {
+	if id, ok := declID(t.Decl, exact); ok {
 		b.WriteString("@")
-		b.WriteString(pkg)
+		b.WriteString(id)
 	}
 	for _, e := range t.Elems {
-		writeDeclPkgs(b, e)
+		writeDeclIDs(b, e, exact)
 	}
 	if t.Sig != nil {
 		for _, p := range t.Sig.Params {
-			writeDeclPkgs(b, p.Type)
+			writeDeclIDs(b, p.Type, exact)
 		}
-		writeDeclPkgs(b, t.Sig.Return)
+		writeDeclIDs(b, t.Sig.Return, exact)
 	}
 }
 
-// declPkgURI is the package a named declaration records, empty for a program's
-// own -- the same blind spot ir.sameDecl's name fallback has.
-func declPkgURI(sym ir.Symbol) (string, bool) {
+// declID is the declaring package of a named declaration. With exact set, one
+// that records no package answers with its address instead: a name is not
+// enough, since scope is per file and two files of one package may each
+// declare `Style`. Never stable across runs, so only the intern map may see it.
+func declID(sym ir.Symbol, exact bool) (string, bool) {
+	var pkg string
 	switch d := sym.(type) {
 	case *ir.StructDef:
-		return d.Pkg, true
+		pkg = d.Pkg
 	case *ir.EnumDef:
-		return d.Pkg, true
+		pkg = d.Pkg
 	case *ir.UnitDef:
-		return d.Pkg, true
+		pkg = d.Pkg
 	case *ir.Component:
-		return d.Pkg, true
+		pkg = d.Pkg
+	default:
+		return "", false
 	}
-	return "", false
+	if pkg == "" && exact {
+		return fmt.Sprintf("%p", sym), true
+	}
+	return pkg, true
 }
 
 // anonStructName names the declaration in generated code. It must be one
 // identifier in Go, Kotlin and JS at once, which leaves only letters, digits
-// and underscore to build it from.
-func anonStructName(canon []*ir.StructField, sig string) string {
+// and underscore to build it from. Two declarations can share a base name --
+// a local `Style` and an imported one spell one signature -- so a taken name
+// gets a counter rather than a second `type` of that name in the output.
+func (c *checker) anonStructName(pkg *ir.Package, canon []*ir.StructField, sig string) string {
 	var b strings.Builder
 	b.WriteString(anonStructPrefix)
 	for _, f := range canon {
@@ -91,7 +107,16 @@ func anonStructName(canon []*ir.StructField, sig string) string {
 	}
 	sum := sha256.Sum256([]byte(sig))
 	b.WriteString(hex.EncodeToString(sum[:])[:6])
-	return b.String()
+	base := b.String()
+	if c.anonNames[pkg] == nil {
+		c.anonNames[pkg] = map[string]bool{}
+	}
+	name := base
+	for n := 2; c.anonNames[pkg][name]; n++ {
+		name = base + "_" + strconv.Itoa(n)
+	}
+	c.anonNames[pkg][name] = true
+	return name
 }
 
 // internAnonStruct returns the one *ir.StructDef this package uses for an
@@ -103,24 +128,25 @@ func (c *checker) internAnonStruct(fields []*ir.StructField) *ir.StructDef {
 	canon := slices.SortedStableFunc(slices.Values(fields), func(a, b *ir.StructField) int {
 		return strings.Compare(a.Name, b.Name)
 	})
-	sig := anonSignature(canon)
+	sig, key := anonSignature(canon)
 	pkg := c.declPkg()
 	if c.anonStructs == nil {
 		c.anonStructs = map[*ir.Package]map[string]*ir.StructDef{}
+		c.anonNames = map[*ir.Package]map[string]bool{}
 	}
 	if c.anonStructs[pkg] == nil {
 		c.anonStructs[pkg] = map[string]*ir.StructDef{}
 	}
-	if sd, ok := c.anonStructs[pkg][sig]; ok {
+	if sd, ok := c.anonStructs[pkg][key]; ok {
 		return sd
 	}
 	sd := &ir.StructDef{
-		Name:   anonStructName(canon, sig),
+		Name:   c.anonStructName(pkg, canon, sig),
 		Pkg:    c.libPkgName,
 		Fields: canon,
 		Anon:   true,
 	}
-	c.anonStructs[pkg][sig] = sd
+	c.anonStructs[pkg][key] = sd
 	pkg.Structs = append(pkg.Structs, sd)
 	return sd
 }
@@ -128,16 +154,13 @@ func (c *checker) internAnonStruct(fields []*ir.StructField) *ir.StructDef {
 // anonFieldsFromInits types an anonymous struct literal by its own values.
 // Giving up leaves it the decl-less struct it was. A spread names no field
 // set; an unbound type parameter has no one type, and interning it would give
-// every instantiation one declaration whose field is `T`.
+// every instantiation one declaration whose field is `T`. A duplicate name is
+// reported by the caller, which sees the declared literals too.
 func (c *checker) anonFieldsFromInits(inits []ir.FieldInit) ([]*ir.StructField, bool) {
 	fields := make([]*ir.StructField, 0, len(inits))
 	seen := map[string]bool{}
 	for _, fi := range inits {
-		if fi.Spread || fi.Name == "" {
-			return nil, false
-		}
-		if seen[fi.Name] {
-			c.error(fi.NamePos, "duplicate field %q in struct literal", fi.Name)
+		if fi.Spread || fi.Name == "" || seen[fi.Name] {
 			return nil, false
 		}
 		seen[fi.Name] = true
