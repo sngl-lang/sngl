@@ -116,6 +116,19 @@ test:
   needs:
     - job: build-image
       optional: true
+  variables:
+    # How many generated programs may be compiled at once. Each fixture the
+    # platform harnesses run shells out to a `go` that forks its own compiler
+    # and linker -- a cold fyne build peaks around 0.66GB, a gtk4 one adds cgo
+    # -- and several platform test binaries run their fixtures concurrently.
+    # Left unbounded, that OOM-killed the compiler here ("compile: signal:
+    # killed") and is the same pressure behind the host lockups noted above.
+    #
+    # codegen.AcquireBuildToken sizes itself from the cgroup memory limit when
+    # there is one. This runner's container does not appear to carry one, so
+    # the fallback is the *host's* free memory -- which on a shared host is not
+    # ours to spend. Pinned here instead, where the budget is actually known.
+    SNGL_BUILD_SLOTS: "4"
   script: go tool verify -dry
   coverage: '/total coverage: (\d+\.\d+)% of statements/'
 

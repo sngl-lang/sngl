@@ -174,18 +174,18 @@ func girRegistry(opt string) (reg *gir.TypeRegistry, minimal bool, err error) {
 		return reg, err == nil, err
 	}
 	if opt != "" {
-		// Through resolveGIRPath rather than straight to ParseGIR: a path the
+		// Through resolveGIRPath rather than straight to the loader: a path the
 		// caller named and that is not there gets the message that says which
 		// option carried it and how to fix it.
 		p, perr := resolveGIRPath(opt)
 		if perr != nil {
 			return nil, false, perr
 		}
-		reg, err = gir.ParseGIR(p)
+		reg, err = gir.LoadGIR(p)
 		return reg, false, err
 	}
 	if p, perr := resolveGIRPath(""); perr == nil {
-		if reg, err = gir.ParseGIR(p); err == nil {
+		if reg, err = gir.LoadGIR(p); err == nil {
 			return reg, false, nil
 		}
 		return nil, false, err

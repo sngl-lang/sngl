@@ -1,12 +1,11 @@
 package golang
 
 import (
+	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -22,37 +21,21 @@ func (t *Translator) Build(dir string, opts *ir.StructLit) (string, error) {
 		return "", fmt.Errorf("go not found in PATH")
 	}
 
-	goVersion, goModExtra := codegen.DetectHostGoMod()
-	if goVersion == "" {
-		goVersion = "1.23"
-	}
-	goMod := fmt.Sprintf("module tmp\n\ngo %s\n", goVersion)
-	if goModExtra != "" {
-		goMod += "\n" + goModExtra
-		if !strings.HasSuffix(goMod, "\n") {
-			goMod += "\n"
-		}
-	}
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(goMod), 0o644); err != nil {
+	needTidy, err := codegen.WriteGoMod(dir, "", "")
+	if err != nil {
 		return "", fmt.Errorf("writing go.mod: %w", err)
 	}
-
-	slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
-	tidy := exec.Command(goPath, "mod", "tidy")
-	tidy.Dir = dir
-	tidy.Stdout = os.Stderr
-	tidy.Stderr = os.Stderr
-	if err := tidy.Run(); err != nil {
-		return "", fmt.Errorf("go mod tidy: %w", err)
+	if needTidy {
+		if out, err := codegen.TidyModule(context.Background(), dir); err != nil {
+			fmt.Fprint(os.Stderr, out)
+			return "", fmt.Errorf("go mod tidy: %w", err)
+		}
 	}
 
 	artifact := filepath.Join(dir, "app")
-	slog.Info("exec", "cmd", "go build -o app .", "dir", dir)
-	bld := exec.Command(goPath, "build", "-trimpath", "-o", artifact, ".")
-	bld.Dir = dir
-	bld.Stdout = os.Stderr
-	bld.Stderr = os.Stderr
-	if err := bld.Run(); err != nil {
+	out, err := goBuild(context.Background(), goPath, dir, artifact)
+	if err != nil {
+		fmt.Fprint(os.Stderr, out)
 		return "", fmt.Errorf("go build: %w", err)
 	}
 	return artifact, nil
