@@ -120,6 +120,9 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// a draw func reads.
 	f.Canvas = true
 	f.ReactiveCanvas = true
+	// A GLib idle source runs on the thread holding the main loop, which is
+	// the thread GTK requires for every widget call. See async.go.
+	f.AsyncPost = true
 	return f
 }
 

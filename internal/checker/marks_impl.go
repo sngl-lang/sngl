@@ -23,6 +23,24 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
+	{"language/go", "async"}:        markGoAsync,
+}
+
+// markGoAsync implements #[go.async]: a call to this function blocks.
+//
+// It lands on the same field #[foreign(..., async)] sets, because the two say
+// the same thing about a *caller* — a function that calls one does not complete
+// now either — and the fixpoint that propagates it is already written against
+// that field. What they say about the declaration differs, which is why this is
+// its own mark: the foreign flag reports a promise the call site awaits, and a
+// blocking Go function returns its value directly.
+func markGoAsync(m *mark) error {
+	d, ok := m.sym.(*ir.Func)
+	if !ok {
+		return fmt.Errorf("#[go.async] cannot mark %s; only a function has a call that blocks", ast.DeclFormName(m.decl))
+	}
+	d.IsAsync = true
+	return nil
 }
 
 // markGoNative implements #[go.native("path", "Name")]: the declaration *is*

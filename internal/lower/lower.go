@@ -143,6 +143,11 @@ var passes = []pass{
 	passDeclarative,
 	passNodeEscape,
 	passNoRef,
+	// After passReactivity, and after everything that rewrites an imperative
+	// body: what it splits off onto a goroutine is a finished body, updaters
+	// and all. Before the three always-on passes below, which reach a lambda
+	// body and so still see inside the two closures it leaves.
+	passAsyncOffload,
 	passIndexedIter,
 	passForElse,
 	passCSE,

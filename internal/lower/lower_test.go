@@ -46,6 +46,7 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoDeclarative",
 		"NodeEscape",
 		"NoRef",
+		"NoAsyncCalls",
 		"IndexedIter",
 		"ForElse",
 		"CSE",
