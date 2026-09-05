@@ -224,6 +224,13 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			for _, s := range x.Body {
 				walkStmt(s)
 			}
+			// The else is the empty case, and it is a body like any other: the
+			// `if` arm two cases up reads both of its arms for the same
+			// reason. Reading one arm of a two-armed statement is what let a
+			// native call sit where the guard could not see it.
+			for _, s := range x.Else {
+				walkStmt(s)
+			}
 		case *ir.LocalVar:
 			if x.Init != nil {
 				walkExpr(x.Init)
