@@ -87,6 +87,16 @@ type ExprCtx struct {
 	// instead of the default Model-receiver `m.count`. Used by renderRoute /
 	// POST-action emission where the per-session State struct is the receiver.
 	StateReceiver string
+	// StateFieldsExported says that projection uses Go-exported names --
+	// `<recv>.Count` for `count`, `<recv>.Inc()` for `inc`. html's route mode
+	// declares its per-session State that way.
+	//
+	// A component instance record does not. Half the names on one were
+	// synthesized by a lowering pass and begin with `__`, which ExportName
+	// leaves alone, so exporting would spell some fields one way and the rest
+	// another -- and the two the lowering dispatches to by name (Root,
+	// Destroy) are neither. Verbatim is one spelling for the whole struct.
+	StateFieldsExported bool
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -254,6 +264,8 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		IdentRewrites:  maps.Clone(ctx.IdentRewrites),
 		FreeFuncs:      ctx.FreeFuncs, // shared — one decision for the whole build
 		StateReceiver:  ctx.StateReceiver,
+		// The naming policy travels with the receiver it applies to.
+		StateFieldsExported: ctx.StateFieldsExported,
 	}
 }
 

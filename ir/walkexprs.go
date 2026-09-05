@@ -3,6 +3,8 @@ package ir
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 )
 
 // SkipDir and SkipAll are sentinel errors a visit callback returns to steer the
@@ -26,10 +28,12 @@ var (
 // expression slot, a Stmt for a statement slot — or the walk panics writing it
 // back.
 //
-// root may be a *Package, *Func, []Stmt, Stmt, or Expr (panics otherwise). For a
-// container root (*Package/*Func/[]Stmt) replacements land in the container; for
-// a bare Stmt/Expr root, replacing the root node itself is not observable (the
-// root is passed by value) — rewrite its children, or use a container root.
+// root may be a *Package, *Component, *Func, []Stmt, Stmt, or Expr (panics
+// otherwise); a *Window arrives as a Stmt and needs no case of its own. For a
+// container root (*Package/*Component/*Func/[]Stmt) replacements land in the
+// container; for a bare Stmt/Expr root, replacing the root node itself is not
+// observable (the root is passed by value) — rewrite its children, or use a
+// container root.
 //
 // Panics on an unknown node kind, so every new IR shape extends this one
 // scaffold and all consumers stay in lockstep. Kind coverage is enforced by
@@ -244,8 +248,15 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
 		n.Children = w.stmts(n.Children)
-		for _, sc := range n.Slots {
-			sc.Body = w.stmts(sc.Body)
+		// By name, because Slots is a map and a pass that numbers what it
+		// finds -- a synthesized component, a temp, an event -- would name it
+		// differently on each run. Source order is not recoverable here, so
+		// the order is at least the same one twice.
+		for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+			sc := n.Slots[name]
+			if sc != nil {
+				sc.Body = w.stmts(sc.Body)
+			}
 		}
 	case *CallStmt:
 		if n.Call != nil {
@@ -323,6 +334,28 @@ func (w *rewriter) fn(f *Func) {
 		}
 	}
 	f.Block = w.stmts(f.Block)
+}
+
+// component walks everything a Component owns. Split out so a caller with one
+// component in hand -- a pass asking what this declaration alone instantiates
+// -- reaches the same set the package walk does.
+func (w *rewriter) component(c *Component) {
+	if w.done || c == nil {
+		return
+	}
+	for _, p := range c.Props {
+		p.Default = w.expr(p.Default)
+	}
+	for _, v := range c.Vars {
+		w.varDecl(v)
+	}
+	for _, f := range c.Funcs {
+		w.fn(f)
+	}
+	for _, t := range c.Timers {
+		w.timer(t)
+	}
+	c.Body = w.stmts(c.Body)
 }
 
 // window walks everything a Window owns. A window is reachable two ways — as a
@@ -411,19 +444,7 @@ func (w *rewriter) pkg(pkg *Package) {
 		}
 	}
 	for _, c := range pkg.Components {
-		for _, p := range c.Props {
-			p.Default = w.expr(p.Default)
-		}
-		for _, v := range c.Vars {
-			w.varDecl(v)
-		}
-		for _, f := range c.Funcs {
-			w.fn(f)
-		}
-		for _, t := range c.Timers {
-			w.timer(t)
-		}
-		c.Body = w.stmts(c.Body)
+		w.component(c)
 	}
 	for _, t := range pkg.Timers {
 		w.timer(t)
@@ -442,6 +463,8 @@ func (w *rewriter) root(root any) {
 		// no-op
 	case *Package:
 		w.pkg(r)
+	case *Component:
+		w.component(r)
 	case *Func:
 		w.fn(r)
 	case []Stmt:

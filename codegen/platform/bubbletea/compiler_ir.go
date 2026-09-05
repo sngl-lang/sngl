@@ -374,10 +374,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString(canvasStdlibDecls(info.Structs))
 	}
 
-	// The stdlib defines ErrorEvent, but codegen does not flow stdlib types
-	// into user output, so it materialises here.
 	if ctx.Pkg.UsesErrorHandling {
-		b.WriteString("type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n")
+		b.WriteString(golang.ErrorEventDecl)
 	}
 
 	// A top-level const gets a file-scope Go `var` so the free functions, which
@@ -460,6 +458,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// defaults; emitting it primes any widget whose default size is 0.
 	if widgetsHaveResize(info.widgets) {
 		b.WriteString("\tm.resizeWidgets()\n")
+	}
+	// Last, so every cell an `on` expression or a mount handler touches already
+	// holds its initial value. Init() cannot do this -- it takes the model by
+	// value and returns only a tea.Cmd, so a mutation there is discarded -- and
+	// the constructor is the one place every driver goes through.
+	for _, fn := range modelMountFuncs(ctx) {
+		fmt.Fprintf(&b, "\tm.%s()\n", fn.Name)
 	}
 	b.WriteString("\treturn m\n")
 	b.WriteString("}\n\n")
@@ -645,10 +650,24 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			b.WriteString("\tremote.Default.OnSettle(func() { p.Send(remoteSettledMsg{}) })\n")
 			gc.RequireImport("git.duckfam.us/jonathan/sngl/pkg/go/remote")
 		}
-		b.WriteString("\tif _, err := p.Run(); err != nil {\n")
+		teardown := ctx.Pkg != nil && ctx.Pkg.Teardown != nil
+		if teardown {
+			// The final model, not the one handed to NewProgram: bubbletea
+			// passes the model by value through every Update, so the state an
+			// effect has to release is the one Run gives back.
+			b.WriteString("\tfinal, err := p.Run()\n")
+		} else {
+			b.WriteString("\t_, err := p.Run()\n")
+		}
+		b.WriteString("\tif err != nil {\n")
 		b.WriteString("\t\tfmt.Fprintf(os.Stderr, \"error: %v\\n\", err)\n")
 		b.WriteString("\t\tos.Exit(1)\n")
 		b.WriteString("\t}\n")
+		if teardown {
+			b.WriteString("\tif m, ok := final.(Model); ok {\n")
+			fmt.Fprintf(&b, "\t\tm.%s()\n", ctx.Pkg.Teardown.Name)
+			b.WriteString("\t}\n")
+		}
 		b.WriteString("}\n")
 	}
 
@@ -721,6 +740,40 @@ func emitIRFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 // A window owns funcs the way a component does -- passFocusOrder's
 // __focusNext/__focusPrev among them -- and they read the Model, so leaving
 // them out emitted them free and the focus helpers lost their receiver.
+// modelMountFuncs is the effect settles New() has to run: the ones owned by
+// whoever the Model is.
+//
+// The lowering appends each as a statement to its owner's body, which every
+// mutation-model target executes. A RenderModel's body became View(), which is
+// a pure function of the state and skips imperative statements outright, so the
+// call reached nothing and no effect on this platform ever mounted. An owner
+// other than the root is a component that survived inlining and is not part of
+// this Model, so its settle is not a method here to call -- the same filter
+// ModelState draws state through.
+func modelMountFuncs(ctx *codegen.CodegenCtx) []*ir.Func {
+	if ctx == nil || ctx.Pkg == nil {
+		return nil
+	}
+	owned := map[*ir.Func]bool{}
+	if root := ctx.MainComponent(); root != nil {
+		for _, fn := range root.Funcs {
+			owned[fn] = true
+		}
+	}
+	for _, w := range ctx.Pkg.Windows {
+		for _, fn := range w.Funcs {
+			owned[fn] = true
+		}
+	}
+	var out []*ir.Func
+	for _, fn := range ctx.Pkg.Mounts {
+		if owned[fn] {
+			out = append(out, fn)
+		}
+	}
+	return out
+}
+
 func componentFuncSet(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for _, comp := range pkg.Components {

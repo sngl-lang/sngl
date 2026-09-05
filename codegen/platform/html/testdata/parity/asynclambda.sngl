@@ -13,6 +13,6 @@ component main {
         text(value="count: " + string(total))
         text(value="evens: " + string(evens.length()))
         text(value="first doubled: " + string(doubled[0]))
-        button(text="Add", @click { xs = xs.push(xs.length() + 1) })
+        button(text="Add", @click { xs.push(xs.length() + 1) })
     }
 }

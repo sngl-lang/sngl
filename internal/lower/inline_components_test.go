@@ -48,6 +48,61 @@ func TestFindRecursiveCyclesThroughIfBranch(t *testing.T) {
 	}
 }
 
+// TestFindRecursiveCyclesThroughNamedSlot pins the cycle set rather than the
+// build, because the failure it guards is not a wrong answer: an undetected
+// cycle is judged inlinable and passNoInlineComponents unrolls it until the
+// process is killed, so a test that generated the program would wedge the run
+// instead of failing it.
+func TestFindRecursiveCyclesThroughNamedSlot(t *testing.T) {
+	panel := &ir.Component{Name: "panel"}
+	endless := &ir.Component{Name: "endless"}
+	// panel() { slot header { endless() } } -- the recursion is in the slot
+	// content the call site supplies, which is `endless`'s own body.
+	endless.Body = []ir.Stmt{&ir.NodeInst{
+		Component: panel,
+		Slots: map[string]*ir.SlotContent{
+			"header": {Body: []ir.Stmt{&ir.NodeInst{Component: endless}}},
+		},
+	}}
+	panel.Body = []ir.Stmt{&ir.SlotInst{Name: "header"}}
+
+	pkg := &ir.Package{Components: []*ir.Component{panel, endless}}
+	got := findRecursiveCycles(pkg, Options{})
+	if !got[endless] {
+		t.Error("endless recurses through its own named slot content and is not in the cycle set")
+	}
+	if got[panel] {
+		t.Error("panel hosts the recursion but does not take part in it")
+	}
+}
+
+// TestUniqueNodeIDsReachesEveryBody names the bodies the hand-written descent
+// this rename used to run did not reach. An id it cannot see keeps its name,
+// and two nodes answering to one `#inc` is the ambiguity the rename exists to
+// remove.
+func TestUniqueNodeIDsReachesEveryBody(t *testing.T) {
+	inst := func() *ir.NodeInst { return &ir.NodeInst{Name: "text", ID: "inc"} }
+	first, inProvider, inLambda := inst(), inst(), inst()
+	main := &ir.Component{Name: "main", Body: []ir.Stmt{
+		first,
+		&ir.ContextProvider{Children: []ir.Stmt{inProvider}},
+		&ir.LocalVar{Init: &ir.Lambda{Func: &ir.Func{Block: []ir.Stmt{inLambda}}}},
+	}}
+	uniqueNodeIDs(&ir.Package{Components: []*ir.Component{main}})
+
+	if first.ID != "inc" {
+		t.Errorf("the first occurrence keeps the name, got %q", first.ID)
+	}
+	for _, n := range []*ir.NodeInst{inProvider, inLambda} {
+		if n.ID == "inc" {
+			t.Error("a later occurrence of #inc kept the name")
+		}
+	}
+	if inProvider.ID == inLambda.ID {
+		t.Errorf("both later occurrences got the same id %q", inProvider.ID)
+	}
+}
+
 func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 	items := &ir.Var{
 		Name: "items",

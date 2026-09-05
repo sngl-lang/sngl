@@ -1,0 +1,30 @@
+// One parameter is one type across the whole call. Two props typed `T` bound
+// to different types is the error the annotation exists to report — without it
+// `T` would be `dyn` spelled at greater length, which is what a parameter that
+// is never checked amounts to.
+
+import . "sngl:ui"
+
+component pair<T>(a T, b T) {
+    text(value="pair")
+}
+
+// A binding is the same prop under a different spelling. The leading `:` says
+// the value is written back, not that some other name was supplied, and the
+// checker strips it before it matches a prop -- so a parameter has to be bound
+// from a binding exactly as it is from a plain arg. Matched raw, `:a=1` pinned
+// nothing, and `b` then accepted anything.
+component bound<T>(:a T, b T) {
+    text(value="bound")
+}
+
+component main {
+    var n = 1
+
+    pair(a=1, b=2)
+    pair(a="x", b="y")
+    pair(a=1, b="two") // ERROR(check) "cannot use string as int for prop \"b\" on component pair"
+
+    bound(:a=n, b=2)
+    bound(:a=n, b="two") // ERROR(check) "cannot use string as int for prop \"b\" on component bound"
+}

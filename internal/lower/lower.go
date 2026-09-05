@@ -103,15 +103,37 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
+	// Right after inlining: that is what can splice a component's window into
+	// another window's body, and every pass below reads the tree's shape.
+	passWindowNesting,
+	// After the inliner, which is what leaves a recursive component standing,
+	// and before the passes that read a prop: the depth arrives as one.
+	passRecursionDepth,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passCanvas,
-	passHoistMutations,
+	// Before passReactivity: a mount handler that writes state has to reach it
+	// as an ordinary assignment, or nothing patches what reads that state.
+	passEffect,
+	// Before passInstanceEvents, which is what turns the events it declares
+	// into the props the render re-points.
+	passSlotChildInstances,
+	// Before passComponentProps, which is what turns the prop an event becomes
+	// into the cell the render re-points.
+	passInstanceEvents,
+	// After the inliner, whose RuntimeInstance mark says which declarations
+	// get cells at all, and after the two passes above, which are what add
+	// the props a slot child and an instance event arrive as. Before
+	// passReactivity, because a prop promoted to a var *is* a reactive cell
+	// and the pass that injects updaters has to see it as one -- that is how a
+	// setter comes to re-fire the slots reading the prop.
+	passComponentProps,
 	passReactivity,
 	passTernary,
 	passCanvasReactivity,
 	passTimer,
 	passFocusOrder,
+	passInstanceBodies,
 	passDeclarative,
 	passNodeEscape,
 	passNoRef,
@@ -248,7 +270,12 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 			break
 		}
 	}
-	return nil
+	if opts.StopAfter != "" {
+		// A dump stopped mid-pipeline is deliberately half-lowered; the
+		// invariant is about the IR a backend receives.
+		return nil
+	}
+	return verifyMutationsAreStatements(pkg)
 }
 
 // addForeignTypes appends the structs and enums declared by the program's own

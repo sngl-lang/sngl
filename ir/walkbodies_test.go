@@ -106,6 +106,15 @@ var referenceSlots = map[string]bool{
 	// updates and walked there. The package stores the pointer so an entry
 	// point can subscribe it without looking a name up.
 	"Package.RemoteSettle": true,
+	// The exit handler, owned by the component, window or package whose
+	// effects it releases and walked there. Stored on the package for the same
+	// reason the settle handler is: an entry point calls it without having to
+	// look a name up.
+	"Package.Teardown": true,
+	// The settle handlers, each owned by the component or window whose
+	// brackets it moves and walked there. Same reason as Teardown, at the
+	// other end of the lifetime.
+	"Package.Mounts": true,
 }
 
 // bodySlots returns "Type.Field" for every field holding IR a node owns and

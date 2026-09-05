@@ -19,6 +19,7 @@ type Session struct {
 	Timers *Timers
 
 	view *View
+	fx   *Effects
 }
 
 // NewSession checks nothing and lowers nothing: it takes a package the caller
@@ -35,11 +36,17 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	view, err := Mount(env)
+	// Settling here rather than after: a mount handler runs before anything has
+	// seen the tree, so what a host is first handed already reflects it. An
+	// effect that fetches has its request in flight before the first frame,
+	// which is the only reading of "when the node enters the tree" that does
+	// not show a frame the program never described.
+	fx := NewEffects()
+	view, err := Settle(fx, env)
 	if err != nil {
 		return nil, err
 	}
-	return &Session{Pkg: pkg, Comp: comp, Env: env, Clock: clock, Timers: timers, view: view}, nil
+	return &Session{Pkg: pkg, Comp: comp, Env: env, Clock: clock, Timers: timers, view: view, fx: fx}, nil
 }
 
 // View is the tree as the session currently holds it -- what a host has
@@ -72,13 +79,30 @@ func (s *Session) Attach(h Host) error {
 // operation below ends in one, and a caller that mutates state directly (a
 // REPL assigning a var) calls it itself.
 func (s *Session) Sync() ([]Patch, error) {
-	next, err := Mount(s.Env)
-	if err != nil {
-		return nil, err
+	// Diffed per round rather than once at the end: a mount handler may write
+	// state, and the patches a host has to apply are the ones between the tree
+	// it holds and each tree that followed -- collapsing them would drop the
+	// intermediate creations the later rounds' keys are relative to.
+	var patches []Patch
+	var budget settleBudget
+	for {
+		next, err := Mount(s.Env)
+		if err != nil {
+			return nil, err
+		}
+		patches = append(patches, Diff(s.view, next)...)
+		s.view = next
+		key, ran, err := s.fx.Reconcile(next, s.Env)
+		if err != nil {
+			return patches, err
+		}
+		if !ran {
+			return patches, nil
+		}
+		if err := budget.spend(key); err != nil {
+			return patches, err
+		}
 	}
-	patches := Diff(s.view, next)
-	s.view = next
-	return patches, nil
 }
 
 // Tick advances the clock to the next timer deadline and fires what is due.
@@ -146,22 +170,33 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 //
 // Timer phase is rebased rather than reset, so saving a file does not restart
 // every timer in the program.
+//
+// The running effects settle against the new package for the same reason the
+// state is carried and the timers rebased: what the new source describes is
+// what should be running. A bracket the edit removed ends -- in the program
+// that declared it, before the swap, since that is where its teardown and its
+// scope live. A bracket it added begins, in the final settle below. One that
+// survives keeps its lifetime and takes the new source's handlers, because
+// holding the old entry left it running a func of the package the reload threw
+// away, in a scope whose symbols the session no longer binds.
 func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
-	carried := s.bindings()
-
 	env, err := BuildEnv(pkg, s.Comp)
 	if err != nil {
 		return nil, err
 	}
-	for owner, syms := range varsOf(pkg, s.Comp) {
-		for _, sym := range syms {
-			prev, held := carried[VarKeyOf(owner, sym)]
-			if !held || !sameType(prev.typ, sym.SymType()) {
-				continue
+	carry := func() {
+		carried := s.bindings()
+		for owner, syms := range varsOf(pkg, s.Comp) {
+			for _, sym := range syms {
+				prev, held := carried[VarKeyOf(owner, sym)]
+				if !held || !sameType(prev.typ, sym.SymType()) {
+					continue
+				}
+				env.Set(sym, prev.val)
 			}
-			env.Set(sym, prev.val)
 		}
 	}
+	carry()
 
 	timers, err := NewTimers(s.Clock, env)
 	if err != nil {
@@ -169,13 +204,31 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	}
 	timers.Rebase(s.Timers)
 
+	// Mounted first only for the key set Retarget needs: which brackets the new
+	// source describes decides which of the running ones are ending.
 	next, err := Mount(env)
 	if err != nil {
 		return nil, err
 	}
+	// Before the swap: an ending lifetime's handler and scope belong to the
+	// program still installed, and s.Env is the root it exchanges state with.
+	if err := s.fx.Retarget(next, s.Env); err != nil {
+		return nil, err
+	}
+	// A teardown releases what its lifetime held, and it wrote that into the
+	// old env. Carrying again is how it reaches the reloaded one -- the first
+	// carry is a snapshot from before those handlers ran.
+	carry()
+	if next, err = Mount(env); err != nil {
+		return nil, err
+	}
 	patches := Diff(s.view, next)
 	s.Pkg, s.Env, s.Timers, s.view = pkg, env, timers, next
-	return patches, nil
+	// And the setup half, which is the new program's: a bracket the edit added
+	// mounts here, and whatever its handler writes is patched like any other
+	// settle.
+	settled, err := s.Sync()
+	return append(patches, settled...), err
 }
 
 type binding struct {

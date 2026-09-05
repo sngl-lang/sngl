@@ -3,6 +3,7 @@ package gtk4
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -21,6 +22,15 @@ type emitShared struct {
 	gObjectSet bool
 	errs       []error
 	seen       map[string]bool
+
+	// The canvas metadata passCanvas flattened out of the program, which every
+	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
+	// translator without these maps reports it as a component gtk4 does not
+	// implement and stops the build. It rides on the shared struct rather than
+	// on a builder call of its own because a per-site `with` is what three
+	// separate scopes have now been found to have forgotten.
+	canvasByID   map[string]*canvasMeta
+	canvasByFunc map[*ir.Func]*canvasMeta
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -64,14 +74,33 @@ type gtk4Translator struct {
 	// they are emitted as function-locals rather than Model fields. nil means
 	// every id is a field.
 	localRefs map[string]bool
-	idCTypes  map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
-	skipped   map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
-	topLevel  []string
+	// fieldIDs are the ids this scope registered as fields regardless of what
+	// passNodeEscape concluded. A canvas is the case: its redraw reaches the
+	// drawing area from whatever scope mutates the state, and a
+	// CanvasRedrawStmt names the draw func rather than the node, so the escape
+	// analysis cannot see that use and calls the node local.
+	fieldIDs map[string]bool
+	idCTypes map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
+	skipped  map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
+	topLevel []string
+	// slotRoot is the box a reactive slot in this scope's body renders into,
+	// when this scope owns one. A call to that slot's renderer holds a place in
+	// the tree exactly as a created widget does -- the subtree is built into
+	// the box rather than named by a ref -- so OnDefault records the box in
+	// topLevel at that position. Empty in a scope whose root is decided some
+	// other way, which is every Model scope: the Model's own __root is the
+	// wrapper buildWidgetTree already parents into.
+	slotRoot string
 	// wrapped emits widget ops as pkg/go/gtk4rt calls instead of inline cgo.
 	// An unmapped op falls through to cgo, leaving a `C.` that triggers
 	// emitIR's whole-program fallback. See wrapped.go.
 	wrapped      bool
 	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	// plainHandle names the instance ids whose handle is the widget the render
+	// returned rather than a record carrying it, as OnCreateComponent decided
+	// from the component's own RuntimeInstance mark. Only a record has a Root
+	// field, so OnComponentRoot reads this before selecting one.
+	plainHandle map[string]bool
 	// registry is the GIR data the widget declarations were generated from.
 	// A declaration says which props and events a widget has; the C setter
 	// behind each one is read back out of here, keyed by the C type the
@@ -89,9 +118,8 @@ type gtk4Translator struct {
 	invokerSink func(gtkEventInvoker)
 
 	// pendingCanvasStyle holds the CanvasStyle local a CanvasApplyStyle bound,
-	// while the following draw primitive is translated.
-	canvasByID         map[string]*canvasMeta
-	canvasByFunc       map[*ir.Func]*canvasMeta
+	// while the following draw primitive is translated. The canvas maps
+	// themselves are on emitShared -- see canvasMetaForID.
 	pendingCanvasStyle ir.Expr
 	canvasStyleCounter int
 }
@@ -101,6 +129,7 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 		gc:           gc,
 		fieldSink:    fieldSink,
 		idCTypes:     map[string]string{},
+		fieldIDs:     map[string]bool{},
 		skipped:      map[string]struct{}{},
 		tagComponent: map[string]*ir.Component{},
 	}
@@ -111,7 +140,29 @@ func (t *gtk4Translator) withLocalRefs(local map[string]bool) *gtk4Translator {
 	return t
 }
 
+func (t *gtk4Translator) withSlotRoot(name string) *gtk4Translator {
+	t.slotRoot = name
+	return t
+}
+
+// recordsSlotRoot reports whether stmt is the call that renders this scope's
+// own slot box, which is what puts that box in the tree.
+func (t *gtk4Translator) recordsSlotRoot(stmt ir.Stmt) bool {
+	if t.slotRoot == "" {
+		return false
+	}
+	cs, ok := stmt.(*ir.CallStmt)
+	if !ok || cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return false
+	}
+	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+	return ok && id.Name == t.slotRoot
+}
+
 func (t *gtk4Translator) isLocalRef(id string) bool {
+	if t.fieldIDs[id] {
+		return false
+	}
 	return t.localRefs != nil && t.localRefs[id]
 }
 
@@ -248,6 +299,20 @@ func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 	return t.registry.ByCType[cType]
 }
 
+// fieldRef is a `<recv>.<name>` selector against the struct this emission's
+// scope dispatches through -- the Model in a Model method, the instance record
+// inside a component's ctor. Every node field a translator writes goes through
+// here rather than codegen.ModelFieldRef, which names the Model and only the
+// Model.
+func (t *gtk4Translator) fieldRef(name string) ir.Expr {
+	return codegen.RecvFieldRef(t.gc.RecvName(), name)
+}
+
+// recvIdent is that receiver as a call target.
+func (t *gtk4Translator) recvIdent() ir.Expr {
+	return &ir.Ident{Name: t.gc.RecvName()}
+}
+
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
 
 // nativeFunc constructs an *ir.Func that renders as `C.<identifier>`. Callers
@@ -295,7 +360,7 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// A `canvas` has no GIR-native widget, so it is intercepted before the
 	// native-tag lookup and built as a GtkDrawingArea with a cairo callback.
 	if tag == "canvas" {
-		if _, ok := t.canvasByID[id]; ok {
+		if t.canvasMetaForID(id) != nil {
 			return t.emitCanvasCreate(id)
 		}
 	}
@@ -399,26 +464,114 @@ func ctorScalarCast(p gir.ConstructorParam) string {
 	return p.GIRType
 }
 
-// OnCreateComponent promotes a non-inlinable user component instance to a
-// Model field, so `m.<id>` references stay resolvable as in OnCreateNode.
+// OnCreateComponent binds a name to a live instance of a non-inlinable user
+// component.
+//
+// The id names the INSTANCE, so it is not a top-level widget candidate --
+// ComponentRoot is what yields something a container can hold.
 func (t *gtk4Translator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
-	t.idCTypes[id] = "GtkWidget"
-	t.topLevel = append(t.topLevel, id)
-	if t.isLocalRef(id) {
-		// A function-local, so each recursion frame keeps its own widget
-		// rather than clobbering a shared Model field.
-		return []ir.Stmt{&ir.LocalVar{
-			Name: id,
-			Type: ir.NativePointerOf("GtkWidget"),
-			Init: call,
-		}}
+	instType := t.instanceGoType(call)
+	if instType == "" {
+		t.idCTypes[id] = "GtkWidget"
+		if t.plainHandle == nil {
+			t.plainHandle = map[string]bool{}
+		}
+		t.plainHandle[id] = true
 	}
-	t.fieldSink(id, "GtkWidget")
+	if t.isLocalRef(id) {
+		// A function-local, so each recursion frame and each row of a list
+		// keeps its own instance rather than clobbering a shared Model field.
+		lv := &ir.LocalVar{Name: id, Init: call}
+		if instType == "" {
+			lv.Type = ir.NativePointerOf("GtkWidget")
+		}
+		return []ir.Stmt{lv}
+	}
+	if instType != "" {
+		t.fieldSink(id, instType)
+	} else {
+		t.fieldSink(id, "GtkWidget")
+	}
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(id),
+		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  call,
 	}}
+}
+
+// instanceGoType is the Go type a held instance handle has when this host
+// builds a component as a record, and "" when the render still yields a plain
+// widget.
+func (t *gtk4Translator) instanceGoType(call *ir.Call) string {
+	if !t.gc.InstanceRecords {
+		return ""
+	}
+	comp := golang.CreateComponentTarget(call)
+	if comp == nil || !comp.RuntimeInstance {
+		return ""
+	}
+	return "*" + golang.ComponentInstanceType(comp.Name)
+}
+
+// OnDetachHandler reports that gtk4 cannot yet take a signal back off.
+//
+// GLib can -- g_signal_handler_disconnect -- but it wants the handler id that
+// g_signal_connect returned, and OnAttachHandler does not keep one. Nothing
+// emits this op for gtk4 today, because the op only appears where a node is
+// retained across a render and gtk4 does not retain one. Reporting rather than
+// returning nothing, so the day it does the build says what is missing instead
+// of stacking a second handler on every row.
+func (t *gtk4Translator) OnDetachHandler(ctx context.Context, node ir.Expr, event string, _ ir.Expr) []ir.Stmt {
+	t.shared.fail(fmt.Errorf("gtk4: cannot detach the %q signal: the connect does not keep the handler id g_signal_handler_disconnect needs", event))
+	return nil
+}
+
+// OnComponentRoot binds a name to the widget an instance renders as. A local,
+// so a recursion frame keeps its own rather than clobbering a shared Model
+// field -- the same reason OnCreateComponent takes the local-ref path.
+func (t *gtk4Translator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+	t.idCTypes[id] = "GtkWidget"
+	t.topLevel = append(t.topLevel, id)
+	var root ir.Expr = t.qualifyNodeExpr(inst)
+	if !t.plainHandle[codegen.IdentBareName(inst)] {
+		// Only a record has a Root field. Where the build renders the
+		// component as a method of the enclosing scope instead, the handle IS
+		// the widget it returned -- `__n0.Root` on a gtk4rt.Handle names no
+		// field the emitted file has.
+		root = &ir.Select{Type: ir.TypDyn, Operand: root, Field: golang.ComponentRootField}
+	}
+	if t.isLocalRef(id) {
+		return []ir.Stmt{&ir.LocalVar{
+			Name: id,
+			Type: ir.NativePointerOf("GtkWidget"),
+			Init: root,
+		}}
+	}
+	t.fieldSink(id, "GtkWidget")
+	return []ir.Stmt{&ir.Assign{Target: t.fieldRef(id), Op: ast.AssignSet, Value: root}}
+}
+
+// OnUpdateComponent patches a prop on a live instance through the setter the
+// instance carries for it.
+func (t *gtk4Translator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: t.qualifyNodeExpr(inst),
+		Func:     &ir.Func{Name: golang.ComponentSetterMethod(prop)},
+		Args:     []ir.CallArg{{Value: value}},
+	}}}
+}
+
+// OnDestroyComponent ends the instance's lifetime. On a refcounted toolkit
+// this is also where the reference the record holds is dropped, which is why
+// detaching a node is not the same event: an unparented widget is routinely
+// attached again.
+func (t *gtk4Translator) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: t.qualifyNodeExpr(inst),
+		Func:     &ir.Func{Name: golang.ComponentDestroyMethod},
+	}}}
 }
 
 func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) []ir.Stmt {
@@ -441,7 +594,7 @@ func (t *gtk4Translator) emitConstructorAssign(id, cType string, ctor ir.Expr) [
 	}
 	t.fieldSink(id, cType)
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(id),
+		Target: t.fieldRef(id),
 		Op:     ast.AssignSet,
 		Value:  initVal,
 	}}
@@ -573,7 +726,7 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 		// covers -- a tagged widget then reached the setter as a bare `inc`,
 		// which is not a binding this file has.
 		if id.IsElementRef || strings.HasPrefix(id.Name, "__n") {
-			return codegen.ModelFieldRef(id.Name)
+			return t.fieldRef(id.Name)
 		}
 	}
 	return e
@@ -824,28 +977,41 @@ func gtk4SignalFor(cType, event string) string {
 	return ""
 }
 
+// signalFor is the GTK signal an event written on this node connects to, or ""
+// when no signal answers to it.
+//
+// Both callers need the same answer for different reasons: OnAttachHandler
+// wires the trampoline, and emitIRPromotedHandler decides the handler's
+// signature from it. A "" means nothing here connects the handler, so whatever
+// calls it is not a GTK trampoline and its declared parameters stand.
+func (t *gtk4Translator) signalFor(nodeID, event string) string {
+	cType := t.idCTypes[nodeID]
+	if s := gtk4SignalFor(cType, event); s != "" {
+		return s
+	}
+	if sig, ok := girSignal(t.classFor(cType), event); ok && sig.Connectable() {
+		return sig.Name
+	}
+	return ""
+}
+
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
 	if t.isSkipped(node) {
 		return nil
 	}
 	bare := codegen.IdentBareName(node)
 	cType := t.idCTypes[bare]
-	signal := gtk4SignalFor(cType, event)
+	signal := t.signalFor(bare, event)
 	if signal == "" {
-		sig, ok := girSignal(t.classFor(cType), event)
-		if !ok {
-			return nil
-		}
 		// The trampoline is (instance, user_data) returning void; a signal of
 		// any other shape hands its first argument to the dispatcher in place
 		// of the callback index. declgen withholds these, so reaching here
 		// means the event arrived some other way.
-		if !sig.Connectable() {
+		if sig, ok := girSignal(t.classFor(cType), event); ok && !sig.Connectable() {
 			t.shared.fail(fmt.Errorf("gtk4: %s.%s: the %q signal passes %d argument(s) and returns %s; only a void signal with none can be connected",
 				cType, event, sig.Name, sig.Params, girSignalReturnLabel(sig)))
-			return nil
 		}
-		signal = sig.Name
+		return nil
 	}
 	// Everything a test invoker needs is known here and nowhere later: the id a
 	// program wrote, the SNGL event written on it, and the GTK signal that event
@@ -897,14 +1063,14 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(slot.Name),
+		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}}
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {
-	slotRef := codegen.ModelFieldRef(slot.Name)
+	slotRef := t.fieldRef(slot.Name)
 	childArg := ir.Expr(cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
 	if t.wrapped {
 		childArg = t.qualifyNodeExpr(child)
@@ -918,7 +1084,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 		},
 	}
 	return []ir.Stmt{&ir.Assign{
-		Target: codegen.ModelFieldRef(slot.Name),
+		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  appendCall,
 	}}
@@ -926,7 +1092,7 @@ func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child i
 
 func (t *gtk4Translator) OnIter(ctx context.Context, iter ir.Expr) ir.Expr {
 	if id, ok := iter.(*ir.Ident); ok && id.Synthesized {
-		return codegen.ModelFieldRef(id.Name)
+		return t.fieldRef(id.Name)
 	}
 	return iter
 }
@@ -936,6 +1102,9 @@ func (t *gtk4Translator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	if t.recordsSlotRoot(stmt) && !slices.Contains(t.topLevel, t.slotRoot) {
+		t.topLevel = append(t.topLevel, t.slotRoot)
+	}
 	switch n := stmt.(type) {
 	case *ir.CallStmt:
 		if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {

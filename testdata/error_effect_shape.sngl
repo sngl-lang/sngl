@@ -1,0 +1,19 @@
+// An effect brackets a lifetime; it does not host one. It declares no slot, so
+// children are an error rather than content nothing would ever render — and an
+// effect with neither handler brackets nothing, which is a program that meant
+// to say something else.
+
+import . "sngl:ui"
+
+component main {
+    effect(@mount {}) { // ERROR(check) "component effect does not accept children"
+        text(value="nowhere to put this")
+    }
+
+    effect(on=1) // ERROR(check) "effect declares neither @mount nor @unmount"
+
+    // Either one alone is a whole bracket: a subscription with nothing to give
+    // back, or a teardown for something the tree itself set up.
+    effect(@mount {})
+    effect(@unmount {})
+}

@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -133,6 +135,59 @@ func canvasIntProp(n *ir.NodeInst, name string) int {
 // which decides the backing store from the box and scales the shapes into it.
 func (cs canvasSetup) drawCall() string {
 	return fmt.Sprintf("_snglCanvasDraw(%s,%d,%d,%q,%s)", cs.id, cs.w, cs.h, cs.scaling, cs.drawFunc.Name)
+}
+
+// canvasDrawStmt is that same call as IR, for a canvas the lowering flattened
+// into a scope that is emitted as code rather than as markup -- a component
+// factory, or a slot renderer. The element and the draw func are locals of
+// that scope there, so both are named rather than looked up.
+func canvasDrawStmt(m *canvasutil.Meta) ir.Stmt {
+	num := func(v int) ir.Expr { return &ir.Literal{Type: ir.TypInt, Value: strconv.Itoa(v)} }
+	return &ir.CallStmt{Call: &ir.Call{
+		Type: ir.TypVoid,
+		Func: &ir.Func{Name: "_snglCanvasDraw"},
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: m.ID, Type: ir.TypDyn}},
+			{Value: num(m.Width)},
+			{Value: num(m.Height)},
+			{Value: &ir.Literal{Type: ir.TypString, Value: m.Scaling}},
+			{Value: &ir.Ident{Name: m.Draw.Name, Type: ir.TypDyn}},
+		},
+	}}
+}
+
+// canvasInitLines is the first draw of every canvas a translator's scope
+// created, and the box watch a scaled one also needs. Recording that the scope
+// drew at all is what makes the page carry the helpers: emitCanvasSetups gates
+// on the page's own markup canvases, and a factory has none.
+func (g *htmlGen) canvasInitLines(tr *htmlTranslator, jc *javascript.JsIRContext) []string {
+	var out []string
+	for _, m := range tr.canvasDraws {
+		g.usesLoweredCanvas = true
+		stmts := []ir.Stmt{canvasDrawStmt(m)}
+		if m.Scaling != "" {
+			stmts = append(stmts, canvasWatchStmt(m))
+		}
+		for _, s := range stmts {
+			for _, ln := range jc.EvalStmt(s) {
+				out = append(out, ln+";")
+			}
+		}
+	}
+	return out
+}
+
+// canvasWatchStmt re-runs the draw when the element's box changes, which is
+// what a scaled canvas needs: its backing store is sized from the box.
+func canvasWatchStmt(m *canvasutil.Meta) ir.Stmt {
+	return &ir.CallStmt{Call: &ir.Call{
+		Type: ir.TypVoid,
+		Func: &ir.Func{Name: "_snglCanvasWatch"},
+		Args: []ir.CallArg{
+			{Value: &ir.Ident{Name: m.ID, Type: ir.TypDyn}},
+			{Value: &ir.Lambda{Type: ir.TypDyn, Func: &ir.Func{Block: []ir.Stmt{canvasDrawStmt(m)}}}},
+		},
+	}}
 }
 
 // snglColorHelper converts a SNGL color struct {r,g,b,a} to CSS rgba().

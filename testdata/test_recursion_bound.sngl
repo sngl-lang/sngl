@@ -1,0 +1,50 @@
+// A recursive component whose base case never arrives stops at the depth
+// bound and reports, rather than recursing until the host's stack gives out.
+// The compiled targets get the bound from passRecursionDepth; the interpreter
+// these tests drive states the same bound as maxRenderDepth, which is why one
+// fixture can assert it at all.
+
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:test"
+
+// `more` defaults to false so this terminates when it is mounted on its own --
+// which the interpreter's oracle sweep does to every component of every
+// fixture, and which with no boundary above it is a raise by design.
+component endless(more = false, n = 0) {
+    text(value=string(n))
+    if more {
+        endless(more=more, n=n + 1)
+    }
+}
+
+component boundReachesTheBoundary {
+    var caught = ""
+    errorBoundary(@error(e) { caught = e.kind }) {
+        endless(more=true)
+    }
+}
+
+func testUnboundedRecursionReachesTheBoundary(t Test, c boundReachesTheBoundary) {
+    t.assert(c.caught == "recursion")
+}
+
+component terminatingRecursion {
+    var caught = ""
+    errorBoundary(@error(e) { caught = e.kind }) {
+        countdown(n=3)
+    }
+}
+
+component countdown(n = 0) {
+    text #step(value=string(n))
+    if n > 0 {
+        countdown(n=n - 1)
+    }
+}
+
+func testRecursionInsideTheBoundIsUntouched(t Test, c terminatingRecursion) {
+    t.assert(c.caught == "")
+    t.assert(c.step[0].value == "3")
+    t.assert(c.step[3].value == "0")
+}

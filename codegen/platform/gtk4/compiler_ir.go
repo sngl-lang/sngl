@@ -143,6 +143,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
+	// gtk4 builds a non-inlinable component as a record, so a CreateComponent
+	// renders as a call to that record's ctor.
+	gc.InstanceRecords = true
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
@@ -196,13 +199,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				continue
 			}
 			// __slot<N> vars hold widget refs for reactive if/for teardown.
-			info.binds = append(info.binds, irBind{
-				name:        v.Name,
-				goType:      "[]*C.GtkWidget",
-				init:        "nil",
-				noAccessors: true,
-			})
-			continue
+			//
+			// Named rather than taken as the shape of every synthesized var:
+			// an instance registry (`__instN_live`) is a synthesized list too,
+			// and calling it a list of widgets typed the field as
+			// []*C.GtkWidget while the render assigned []*CardInstance to it.
+			if ir.IsSlotVarName(v.Name) {
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      "[]*C.GtkWidget",
+					init:        "nil",
+					noAccessors: true,
+				})
+				continue
+			}
 		}
 		varGC := gc
 		if tv.Comp != nil {
@@ -218,13 +228,19 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			goType: goType,
 			init:   initVal,
 			// Consts skip getter/setter: the field name would collide with
-			// the accessor (APP_NAME field + APP_NAME() method).
-			noAccessors: v.IsConst,
+			// the accessor (APP_NAME field + APP_NAME() method). So does any
+			// name Go cannot export -- every `__`-prefixed one, which is
+			// every name a lowering pass synthesized, and nothing outside the
+			// program reads one.
+			noAccessors: v.IsConst || golang.ExportName(v.Name) == v.Name,
 		})
 	}
 
 	allFuncs := ctx.AllFuncs()
 	for _, f := range allFuncs {
+		if instanceOwnsFunc(ctx.Pkg, f) {
+			continue
+		}
 		if codegen.IsComputed(f) {
 			info.computeds = append(info.computeds, irComputed{
 				name:   f.Name,
@@ -253,11 +269,12 @@ func (c *compilation) emitIR() (modelSrc []byte, callbacksSrc []byte, err error)
 // wrapped mode, the per-widget cgo pointer type otherwise.
 func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType string) {
 	return func(name, cType string) {
-		goType := "*C." + cType
-		if c.wrapped {
-			goType = gtk4rtHandleType
-		}
-		*fields = append(*fields, widgetField{name: name, goType: goType})
+		// Through widgetFieldGoType like the other three sinks: it is what
+		// knows that a component instance's handle arrives already spelled as
+		// Go and is not a widget in either mode. Deciding the type here
+		// instead declared `m.__n0 gtk4rt.Handle` for a field the build
+		// assigns a *TreeViewInstance to.
+		*fields = append(*fields, widgetField{name: name, goType: widgetFieldGoType(cType, c.wrapped)})
 	}
 }
 
@@ -267,6 +284,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
+	gc.InstanceRecords = true
 
 	// vc carries the accumulators the phases after the walk read back: the
 	// test invokers the main body's translator records as it connects signals.
@@ -282,8 +300,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	// Shared into every translator so OnCreateNode builds the GtkDrawingArea +
 	// cairo trampoline and OnDefault wires reactive redraws.
-	canvasByID, canvasByFunc := canvasutil.Collect(c.ctx.Pkg, c.ctx.AllFuncs())
-	hasCanvas := len(canvasByID) > 0
+	c.shared.canvasByID, c.shared.canvasByFunc = canvasutil.Collect(c.ctx.Pkg, c.ctx.AllFuncs())
+	hasCanvas := len(c.shared.canvasByID) > 0
 
 	var widgetFields []widgetField
 	// lower.passPlatformExtensionBody is always on, so every platform override
@@ -298,7 +316,6 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			withInvokerSink(func(inv gtkEventInvoker) {
 				vc.eventInvokers = append(vc.eventInvokers, inv)
 			})
-		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
@@ -316,23 +333,30 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
 		}
-		if canvasByFunc[fn] != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared, canvasByFunc)
+		if c.shared.canvasByFunc[fn] != nil {
+			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 			continue
 		}
-		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
+		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 	}
 
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonMainComponents() {
+		// A component the build renders as a live instance gets a record of
+		// its own; its widget fields and its state stay off the Model, which
+		// is the whole point. See emitComponentInstance.
+		if isInstanceComponent(cc.Component) {
+			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
+			continue
+		}
 		if createTargets[cc.Component] {
 			emitIRComponentMethod(&funcBuf, cc, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 		}
@@ -384,6 +408,9 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
 		td.HasCanvas = true
 	}
+	if c.ctx != nil && c.ctx.Pkg != nil && c.ctx.Pkg.UsesErrorHandling {
+		td.LangHelpers += golang.ErrorEventDecl
+	}
 
 	tmplFiles := codegen.RenderTemplates(templateFS, "templates", td)
 	var modelBuf, callbacksBuf strings.Builder
@@ -401,7 +428,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// main() goes in callbacks.go, not model.go: cgo //export directives can't
 	// coexist with the model.go preamble's static defs.
 	if c.cfg.Main {
-		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped)
+		emitGTK4Main(&callbacksBuf, c.cfg, c.wrapped, c.ctx.Pkg)
 	}
 
 	if len(c.shared.errs) > 0 {
@@ -528,25 +555,29 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	return td, nil
 }
 
-// emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N> Func as a
-// Model method.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+// emitIRSlotFunc emits a lowering-synthesized Func as a Model method. Only a
+// __renderSlot<N> takes the host container; every other synthesized func -- an
+// effect's settle halves, the focus-order navigation -- takes the parameters it
+// declares, which is none.
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
-	tr.canvasByFunc = canvasByFunc
-	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
+	params := fn.Params
+	if fn.SlotRender {
+		// The slot body references the reactivity pass's param name, so
+		// renaming it here would leave those refs dangling.
+		params = []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}}
+	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		// The slot body references the reactivity pass's param name, so
-		// renaming it here would leave those refs dangling.
-		Params: []*ir.Param{{Name: "parent", Type: slotParentType(wrapped)}},
-		Return: ir.TypVoid,
-		Block:  bodyStmts,
+		Params:   params,
+		Return:   ir.TypVoid,
+		Block:    bodyStmts,
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
 		b.WriteString(line)
@@ -761,14 +792,12 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 // emitIRPromotedHandler emits a node-attached event handler the lower pass
 // promoted to a top-level Func. The trampoline calls it with no args, so the
 // SNGL event param is dropped and `e.<field>` becomes a widget getter.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
 
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
-	tr.canvasByFunc = canvasByFunc
-	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	// Pre-populated because OnPropAssign needs the C type for nodes created
 	// in sibling slot Funcs, whose CreateNode sites are not in this Block.
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
@@ -812,10 +841,20 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// "changed" handler re-fires the signal and recurses.
 	selfNode := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
 	body = dropSelfSetterCalls(body, selfNode)
+	// A handler the GTK trampoline calls takes no args, and OnAttachHandler
+	// only connects a signal that answers to the event. An event no signal
+	// answers to is a component's own -- a func-typed prop its instance calls
+	// with the payload -- so its declared parameters stand. Dropping those
+	// unconditionally left the payload ident undefined in the body that reads
+	// it: `func (m *Model) __n0_done_handler() { m.got = v }`.
+	params := fn.Params
+	if tr.signalFor(selfNode, fn.LoweredFromEvent) != "" {
+		params = nil
+	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		Params:   nil, // GTK trampoline calls handlers with no args.
+		Params:   params,
 		Return:   ir.TypVoid,
 		Block:    append(prelude, body...),
 	}
@@ -869,13 +908,11 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 
 // emitGTK4Func emits a top-level user function as a method on *Model, routing
 // the body through WalkLowered so a CanvasRedrawStmt becomes queue_draw.
-func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	if len(fn.Block) == 0 {
 		return
 	}
 	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withRegistry(reg).withShared(shared).withWrapped(wrapped)
-	tr.canvasByFunc = canvasByFunc
-	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
 	// Without the node C types OnPropAssign has no widget to write through and
 	// a prop assignment would emit the model write but drop the setter. No
@@ -1135,7 +1172,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, gc *gol
 }
 
 // emitEventInvokers emits one Model method per (#id, @event) pair. Each fires
-// the real GTK signal, so the test runner drives `c.<id>.@<event>()` through
+// the real GTK signal, so the test runner drives `c.<id>.<event>()` through
 // the trampoline and Go-callback bridge rather than re-running the handler.
 func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped bool) {
 	seen := map[string]bool{}
@@ -1171,14 +1208,24 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose
 // preamble is declarations only, so the //export snglActivate can coexist.
-func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool) {
+func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package) {
 	if wrapped {
 		emitGTK4MainWrapped(b)
 		return
 	}
+	teardown := pkg != nil && pkg.Teardown != nil
+	if teardown {
+		// The model is local to activate, and the exit this has to run at is
+		// g_application_run returning in main. A package var is the only place
+		// both can reach.
+		b.WriteString("\nvar snglModel *Model\n")
+	}
 	b.WriteString("\n//export snglActivate\n")
 	b.WriteString("func snglActivate(app *C.GtkApplication, _ C.gpointer) {\n")
 	b.WriteString("\tm := New()\n")
+	if teardown {
+		b.WriteString("\tsnglModel = &m\n")
+	}
 	b.WriteString("\twin := m.BuildUI(app)\n")
 	b.WriteString("\tC.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))\n")
 	b.WriteString("}\n\n")
@@ -1191,6 +1238,11 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool) {
 	b.WriteString("\t\tC.CString(\"activate\"),\n")
 	b.WriteString("\t\tC.GCallback(C.snglActivate), nil, nil, 0)\n")
 	b.WriteString("\tstatus := C.g_application_run((*C.GApplication)(unsafe.Pointer(app)), 0, nil)\n")
+	if teardown {
+		b.WriteString("\tif snglModel != nil {\n")
+		fmt.Fprintf(b, "\t\tsnglModel.%s()\n", pkg.Teardown.Name)
+		b.WriteString("\t}\n")
+	}
 	b.WriteString("\tif status != 0 {\n")
 	b.WriteString("\t\tfmt.Fprintf(os.Stderr, \"gtk: application exited with status %d\\n\", status)\n")
 	b.WriteString("\t\tos.Exit(int(status))\n")

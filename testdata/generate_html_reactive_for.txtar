@@ -1,9 +1,17 @@
-A for-loop in a visual tree becomes a slot the html platform re-renders whole.
-The emission is an accumulator `__slot0` holding the nodes the loop created, a
-`__renderSlot0(parent)` that removes those, clears the accumulator and rebuilds
-from `state.items`, and a `data-sngl-slot` anchor marking where they go. The
-initial render calls it at bootstrap; a handler that mutates `items` calls it
-again, and that second call is what makes the loop reactive.
+A for-loop in a visual tree becomes a slot the html platform re-renders. The
+emission is an accumulator `__slot0` holding the nodes the loop placed, a
+`__renderSlot0(parent)` that walks `state.items` against what is already there,
+and a `data-sngl-slot` anchor marking where they go. The initial render calls it
+at bootstrap; a handler that mutates `items` calls it again, and that second
+call is what makes the loop reactive.
+
+The row is a component the compiler wrote, which is what makes the render a
+placement rather than a rebuild. `__place0_i_ref0 === __n1__el` is the cursor
+test, and it can only match a node the render hands back the same object for --
+so while the row was a `document.createElement` two lines above the comparison,
+that branch was dead and every row was re-inserted on every render. The
+instance registry is what gives the row an identity across renders; `__set___p0`
+is what lets it be told the new value instead of being built again.
 
 Each is emitted once, which it was not until this golden showed it. A page
 whose root is a component and not an explicit `window` is served as a window
@@ -24,7 +32,7 @@ output { none { html } }
 
 component main {
     var items list<string> = ["a", "b", "c"]
-    button(text="add", @click { items = items.push("new") })
+    button(text="add", @click { items.push("new") })
     for var item = items {
         text(value=item)
     }
@@ -51,17 +59,71 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { items: ["a", "b", "c"] };
-  var __slot0 = [];
-  function __renderSlot0(parent) {
-    for (const __entry of __slot0) {
-      parent.removeChild(__entry);
+  function __cf___child0(props) {
+    const __root = document.createElement("div");
+    __root.style.display = "contents";
+    let __p0 = props.__p0;
+    let __prop___p0 = __p0;
+    let __slot02 = [];
+    function __set___p0(__v) {
+      __prop___p0 = __v;
+      __n0.textContent = __prop___p0;
     }
+    let __n0 = document.createElement("span");
+    __n0.textContent = __prop___p0;
+    __root.appendChild(__n0);
+    return {
+      __root,
+      __destroy() {
+      },
+      __set___p0
+    };
+  }
+  var __slot0 = [];
+  var __inst1_live = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
     __slot0 = [];
+    let __inst1_next = [];
+    let __inst1_i = 0;
     for (const item of state.items) {
-      let __n0 = document.createElement("span");
-      __n0.textContent = item;
-      parent.appendChild(__n0);
-      __slot0.push(__n0);
+      let __n1 = null;
+      if (__inst1_live.length > __inst1_i) {
+        __n1 = __inst1_live[__inst1_i];
+        __n1.__set___p0(item);
+      } else {
+        if (__inst1_live.length > __inst1_i) {
+          __inst1_live[__inst1_i].__destroy();
+        }
+        let __n1__new = __cf___child0({ __p0: item });
+        __n1 = __n1__new;
+      }
+      __inst1_next.push(__n1);
+      __inst1_i = __inst1_i + 1;
+      let __n1__el = __n1.__root;
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n1__el) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n1__el, __place0_i_ref0);
+      }
+      __slot0.push(__n1__el);
+    }
+    for (const [__inst1_i_d, _] of __inst1_live.entries()) {
+      let __inst1_i_j = __inst1_live.length - 1 - __inst1_i_d;
+      if (__inst1_i_j >= __inst1_i) {
+        __inst1_live[__inst1_i_j].__destroy();
+      }
+    }
+    __inst1_live = __inst1_next;
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
     }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');

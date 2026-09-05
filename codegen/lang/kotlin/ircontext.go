@@ -888,7 +888,7 @@ func IRTypeToKt(t *ir.Type) string {
 			return "Iterable<" + IRTypeToKt(t.Elems[0]) + ">"
 		}
 		return "Iterable<Any>"
-	case ir.TypeVoid, ir.TypeComponent, ir.TypeTypeParam,
+	case ir.TypeVoid, ir.TypeComponent, ir.TypeInstance, ir.TypeTypeParam,
 		ir.TypeRef, ir.TypeNative, ir.TypeInvalid:
 		// No first-class Kotlin spelling in emitted code. "Any" is what the
 		// former default arm produced for each of these, so listing them

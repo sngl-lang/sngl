@@ -1,6 +1,11 @@
 import . "sngl:ui"
 import . "sngl:test"
 
+// The three places the `@` sigil is written, all in this one fixture: an event
+// declaration in a parameter list (`@save` on Counter), a handler supplied at a
+// call site (`@click { }`, `@save(e) { }`) and a `var` handler (`@change` on
+// `touched`). An event *reference* carries no sigil -- `save(count)` below is
+// the emit.
 // Test event declarations and bidirectional bindings
 // Component with an event in ()
 component Counter(label = "", @save) {
@@ -23,6 +28,13 @@ component main {
         score = 0
         steps = 0
     )
+
+    // The body is deliberately inert: the fixture asserts that a `var`
+    // handler still parses, and this component has no test function to
+    // observe a state change with.
+    var touched = 0 @change {
+        score += 0
+    }
 
     // Use event handler
     Counter(label="Score", @save(e) { score = e })

@@ -1,0 +1,28 @@
+// The view-body side of the boundary error_node_in_func_body.sngl states from
+// the imperative side. A node is refused in a function body because nothing
+// there places it; the rule reads the view/imperative distinction the checker
+// keeps (funcDepth), not the shape a node eventually lowers to. A slot's
+// content and a canvas's shapes are written in view bodies -- one is inlined
+// into the caller, the other rewritten into draw calls by passCanvas -- and
+// both stay legal here.
+
+import . "sngl:ui"
+import . "sngl:ui/draw"
+
+component framed(slot header) {
+    vbox {
+        header()
+    }
+}
+
+component gallery {
+    framed {
+        slot header {
+            text(value="titled")
+        }
+    }
+
+    canvas(width=10px, height=10px) {
+        circle(cx=5.0, cy=5.0, r=4.0)
+    }
+}

@@ -27,8 +27,8 @@ component table(rows list<Row>, slot cell(Row)) {
 // the same name is a collision the parameter list on its own cannot see. Left
 // unreported, the call in a handler became a slot insertion nothing renders and
 // codegen panicked on it.
-component collidesWithFunc(slot ping, slot _) { // ERROR(check) "already declared as a slot"
-    func ping() {}
+component collidesWithFunc(slot ping, slot _) {
+    func ping() {} // ERROR(check) "already declared as a slot"
     vbox {
         ping {
             text(value="fb")

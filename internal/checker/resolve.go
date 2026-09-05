@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -110,8 +111,8 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 		}
 		return ir.RemoteOf(c.resolveType(t.TypeArgs[0]), sd)
 	}
-	// Unknown kind would be a compiler bug (macro validates the id set).
-	return dynFallback("builtin generic kind %v has no constructor", id)
+	// The macro validates the id set, so an unhandled kind is a compiler bug.
+	panic(fmt.Sprintf("sngl: builtin generic kind %v has no constructor", id))
 }
 
 // userShadowsBuiltin reports whether name resolves in scope to a user struct

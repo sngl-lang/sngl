@@ -1,0 +1,99 @@
+// An effect's own handler may not write what that same effect's `on` reads.
+//
+// A handler runs because the lifetime began or ended. One that writes the key
+// the lifetime is identified by describes a different tree than the one that ran
+// it, so the settle owes itself another pass — and what the program then means
+// is a question the language has not answered. It got three answers: the
+// interpreter ran handlers to a fixpoint, the compiled settle ran a fixpoint
+// only when the write went through an ordinary function, and a write inlined in
+// the handler body ran exactly one pass, because that body is a function
+// passEffect synthesized and no settle was injected there.
+//
+// Only the effect's OWN handlers and only its OWN key. Rekeying from a click, a
+// timer, or any other code is the ordinary way to do it and stays legal: that
+// write is not inside the lifetime it ends.
+
+import . "sngl:time"
+import . "sngl:ui"
+
+struct box {
+    n int
+}
+
+var shared = 0
+
+// bump is what makes the second case below transitive: a test of the handler's
+// own statements sees no write at all there.
+func bump() {
+    shared += 1
+}
+
+component main {
+    var (
+        n = 0
+        other = 0
+        b box = box{n=0}
+        items list<string> = []
+        x = 0
+        y = 0
+        log list<string> = []
+    )
+
+    // Legal: the write is from a click, outside the lifetime it ends.
+    button #bump(text="+", @click {
+        n += 1
+    })
+
+    effect(on=n, @mount {
+        log.push("m")
+    })
+
+    // Legal: a timer, for the same reason.
+    timer(interval=100ms, enabled=false, @tick {
+        n += 1
+    })
+
+    // Legal: a handler writing state that is not its own key. This is what a
+    // mount handler is for.
+    effect(on=n, @mount {
+        other += 1
+    })
+
+    // Legal: two effects rekeying each other. Neither writes its own key, so
+    // this rule says nothing about it — the settle's step bound is what stops
+    // it, which is why that bound survives this error.
+    effect(on=x, @mount {
+        y += 1
+    })
+
+    effect(on=y, @mount {
+        x += 1
+    })
+
+    // Written inline.
+    effect(on=n, @mount { // ERROR(check) "an effect's @mount writes \"n\", which the same effect's `on` reads"
+        n += 1
+    })
+
+    // Written through a function the handler calls.
+    effect(on=shared, @mount { // ERROR(check) "an effect's @mount writes \"shared\""
+        bump()
+    })
+
+    // A field write is a write of the var the key is rooted at.
+    effect(on=b.n, @mount { // ERROR(check) "an effect's @mount writes \"b\""
+        b.n = b.n + 1
+    })
+
+    // `push` is a call, and the only form push has.
+    effect(on=items.length(), @mount { // ERROR(check) "an effect's @mount writes \"items\""
+        items.push("x")
+    })
+
+    // @unmount is a handler of the same bracket and answers the same way.
+    effect(on=other, @unmount { // ERROR(check) "an effect's @unmount writes \"other\""
+        other += 1
+    })
+
+    text #out(value=log.join(","))
+}

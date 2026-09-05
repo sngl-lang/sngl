@@ -104,13 +104,21 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// __slot<N> vars hold widget refs for the renderSlot teardown loop.
 			// noAccessors because ExportName("__slot0") is unchanged, so an
 			// accessor would collide with the field.
-			info.binds = append(info.binds, irBind{
-				name:        v.Name,
-				goType:      "[]fyne.CanvasObject",
-				init:        &ir.Literal{Type: ir.TypNull},
-				noAccessors: true,
-			})
-			continue
+			//
+			// Named rather than taken as the shape of every synthesized var:
+			// an instance registry (`__instN_live`) is a synthesized list too,
+			// and calling it a list of widgets typed the field as
+			// []fyne.CanvasObject while the render assigned []*CardInstance to
+			// it.
+			if ir.IsSlotVarName(v.Name) {
+				info.binds = append(info.binds, irBind{
+					name:        v.Name,
+					goType:      "[]fyne.CanvasObject",
+					init:        &ir.Literal{Type: ir.TypNull},
+					noAccessors: true,
+				})
+				continue
+			}
 		}
 		goType := golang.VarGoType(v)
 		if strings.HasPrefix(goType, "time.") {
@@ -121,6 +129,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			goType: goType,
 			init:   v.Init,
 			varRef: v,
+			// A name Go cannot export gets no accessor, because the accessor
+			// would be spelled the same as the field and not compile. That is
+			// every `__`-prefixed name, which is every name a lowering pass
+			// synthesized -- and nothing outside the program reads one, so
+			// there is no accessor to want. The `__slot<N>` case above is this
+			// rule, written before there was a second var it applied to.
+			noAccessors: golang.ExportName(v.Name) == v.Name,
 		})
 		if len(v.Handlers) > 0 {
 			info.dataEvents[v.Name] = v.Handlers
@@ -158,6 +173,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = fyneIRAlertFunc
+	// fyne builds a non-inlinable component as a record, so a CreateComponent
+	// renders as a call to that record's ctor.
+	gc.InstanceRecords = true
 
 	gc.RequireImport("fyne.io/fyne/v2")
 
@@ -291,6 +309,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// built, so the Model struct declares every field they reference.
 	var componentCodes []string
 	for _, cc := range ctx.NonMainComponents() {
+		// A component the build renders as a live instance gets a record of
+		// its own; its widget fields and its state stay off the Model, which
+		// is the whole point. See emitComponentInstance.
+		if isInstanceComponent(cc.Component) {
+			var ib strings.Builder
+			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByFunc)
+			componentCodes = append(componentCodes, ib.String())
+			continue
+		}
 		code, compFields, nextLabel, nextContainer := renderIRComponentMethod(
 			cc, ctx, gc, info, windowNames, endLabel, endContainer, nodeSpecs, addWidgetImport,
 		)
@@ -302,6 +329,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	var computedDatas []computedData
 	for _, comp := range info.computeds {
+		if instanceOwnsFunc(ctx.Pkg, comp.fn) {
+			continue
+		}
 		var body string
 		if comp.fn != nil && len(comp.fn.Block) == 1 {
 			if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
@@ -333,6 +363,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || codegen.IsComputed(fn) {
+			continue
+		}
+		if instanceOwnsFunc(ctx.Pkg, fn) {
 			continue
 		}
 		// A method on a user struct or enum is a free `ReceiverMethod(recv, …)`
@@ -399,6 +432,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// Skip any struct the user already declared, to avoid a duplicate
 		// type decl.
 		td.LangHelpers += canvasStdlibDeclsExcluding(td.Structs)
+	}
+	if ctx.Pkg.UsesErrorHandling {
+		td.LangHelpers += golang.ErrorEventDecl
 	}
 	if decls := emitThemeDecls(themes); decls != "" {
 		td.LangHelpers += decls
@@ -758,7 +794,7 @@ func renderIRComponentMethod(
 	if hasSlot {
 		params = append(params, &ir.Param{
 			Name: "slotContent",
-			Type: &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"},
+			Type: ir.NativeGoNamed("fyne.CanvasObject"),
 		})
 	}
 
@@ -798,7 +834,7 @@ func renderIRComponentMethod(
 		Name:     methodName,
 		Receiver: "Model",
 		Params:   params,
-		Return:   &ir.Type{Kind: ir.TypeDyn, Meta: "fyne.CanvasObject"},
+		Return:   ir.NativeGoNamed("fyne.CanvasObject"),
 		Block:    bodyStmts,
 	}
 	lines := compGC.EmitFuncDef(synthesized)
@@ -840,6 +876,12 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 	b.WriteString("\tw.ShowAndRun()\n")
 	if len(info.Timers) > 0 {
 		b.WriteString("\tm.StopTimers()\n")
+	}
+	if pkg != nil && pkg.Teardown != nil {
+		// ShowAndRun returns when the window closes, which is the one exit
+		// this can be reached from: a killed process runs nothing here, and an
+		// effect's teardown is written knowing that.
+		fmt.Fprintf(b, "\tm.%s()\n", pkg.Teardown.Name)
 	}
 	b.WriteString("\t_ = os.Stderr\n")
 	b.WriteString("}\n")
@@ -1066,6 +1108,16 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 	if pkg != nil {
 		for _, comp := range pkg.Components {
 			walk(comp.Body)
+			// And its funcs. `funcs` above is what the Model emits, which is
+			// not the same set: a component the build could not inline keeps
+			// its slot renderer on itself, and the widgets that renderer
+			// creates had no spec, so OnCreateNode emitted nothing and the
+			// renderer referenced a variable no statement declared.
+			for _, fn := range comp.Funcs {
+				if fn != nil {
+					walk(fn.Block)
+				}
+			}
 		}
 		for _, w := range pkg.Windows {
 			walk(w.Body)
@@ -1203,12 +1255,16 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	b.WriteByte('\n')
 }
 
-// emitIRSlotFunc emits a passReactivity-synthesized __renderSlot<N>
-// Func as a Model method. The body is a mix of plain Go statements
-// (For teardown, Assign reset, If gate) and lower.* intrinsic calls.
-// codegen.WalkLowered routes intrinsic shapes through fyneTranslator
-// into ir.Stmt fragments; we then feed them through gc.EvalStmt at
-// the source-emission boundary.
+// emitIRSlotFunc emits a lowering-synthesized Func as a Model method. The
+// body is a mix of plain Go statements (For teardown, Assign reset, If gate)
+// and lower.* intrinsic calls. codegen.WalkLowered routes intrinsic shapes
+// through fyneTranslator into ir.Stmt fragments; we then feed them through
+// gc.EvalStmt at the source-emission boundary.
+//
+// Only a __renderSlot<N> takes the host container: its body was written
+// against passReactivity's `parent`, which the translator rewrites to
+// `container`. Every other synthesized func -- an effect's settle halves, the
+// focus-order navigation -- takes the parameters it declares, which is none.
 func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
 	tr := newFyneTranslator(gc, specs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
@@ -1217,10 +1273,14 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 	tr.canvasByID = canvasByIDFor(canvasByFunc)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
+	params := fn.Params
+	if fn.SlotRender {
+		params = []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}}
+	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",
-		Params:   []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}},
+		Params:   params,
 		Return:   ir.TypVoid,
 		Block:    bodyStmts,
 	}

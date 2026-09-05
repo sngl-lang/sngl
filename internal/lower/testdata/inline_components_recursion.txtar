@@ -11,10 +11,14 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component Tree(name string = "leaf") {
+component Tree(name string = "leaf", __depth int = 0) {
     text(value=name)
-    Tree(name="child")
+    if __depth >= 512 {
+        error.raise(message="Tree: recursion exceeded 512 nested instances", kind="recursion")
+    } else {
+        Tree(name="child", __depth=__depth + 1)
+    }
 }
 component main {
-    Tree(name="root")
+    Tree(name="root", __depth=0)
 }

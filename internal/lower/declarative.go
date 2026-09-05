@@ -54,10 +54,16 @@ type declarativeState struct {
 	// captures them. Only meaningful for closure-supporting targets
 	// (liftHandlers=false); when NoLambda is on, the lifter handles captures.
 	inlineHandlers bool
+	// instanceRecords says CreateComponent yields a record carrying the node,
+	// so the tree attaches ComponentRoot rather than the instance itself.
+	// Where it is false the target still emits an instance as a method
+	// returning a widget, and asking that widget for a root reads a field it
+	// has not got.
+	instanceRecords bool
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
-	st := &declarativeState{liftHandlers: caps.NoLambda, intrinsics: map[string]*ir.Func{}}
+	st := &declarativeState{liftHandlers: caps.NoLambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -203,7 +209,7 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 						Func:     st.intrinsics["AppendChild"],
 						Args: []ir.CallArg{
 							{Value: &ir.Ident{Name: parentID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-							{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+							{Value: &ir.Ident{Name: st.attachName(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 						},
 					},
 				})
@@ -408,7 +414,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 					Func:     st.intrinsics["AppendChild"],
 					Args: []ir.CallArg{
 						{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
-						{Value: &ir.Ident{Name: cn.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+						{Value: &ir.Ident{Name: st.attachName(cn), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 					},
 				},
 			})
@@ -445,13 +451,12 @@ func hasRealComponentBody(comp *ir.Component) bool {
 // NodeInst are not lowered here — by design, a component call expresses
 // itself entirely through its prop set; children are encoded as a
 // `children` prop earlier in the pipeline.
-func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
+func (st *declarativeState) componentCreateCall(n *ir.NodeInst) *ir.Call {
 	compIdent := &ir.Ident{
 		Name: n.Component.Name,
 		Sym:  n.Component,
 		Type: &ir.Type{Kind: ir.TypeComponent, Decl: n.Component},
 	}
-
 	fields := make([]ir.FieldInit, 0, len(n.Props))
 	for _, p := range n.Props {
 		if p.Name == "" {
@@ -463,29 +468,97 @@ func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id strin
 			Value:   p.Value,
 		})
 	}
-	propsLit := &ir.StructLit{
-		Type:   ir.TypDyn,
-		Fields: fields,
-	}
-
-	createCall := &ir.Call{
+	return &ir.Call{
 		Type:     ir.TypDyn,
 		Receiver: lowerNSIdent(),
-		Func:     st.intrinsics["CreateComponent"],
+		Func:     st.intrinsics[ir.NodeOpCreateComponent],
 		Args: []ir.CallArg{
 			{Value: compIdent},
-			{Value: propsLit},
-		},
-	}
-
-	return []ir.Stmt{
-		&ir.LocalVar{
-			Name: id,
-			Type: &ir.Type{Kind: ir.TypeComponent, Decl: n.Component},
-			Init: createCall,
+			{Value: &ir.StructLit{Type: ir.TypDyn, Fields: fields}},
 		},
 	}
 }
+
+// componentRootBinding binds the node an instance renders as, beside the
+// instance itself. Empty on a target where the two are one thing.
+func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
+	if !st.instanceRecords {
+		return nil
+	}
+	return []ir.Stmt{&ir.LocalVar{
+		Name: st.attachName(n),
+		Type: ir.TypDyn,
+		Init: &ir.Call{
+			Type:     ir.TypDyn,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[ir.NodeOpComponentRoot],
+			Args: []ir.CallArg{
+				{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+			},
+		},
+	}}
+}
+
+// appendChildStmt attaches a node, named, to a parent expression.
+func (st *declarativeState) appendChildStmt(parent ir.Expr, child string) ir.Stmt {
+	return &ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: lowerNSIdent(),
+		Func:     st.intrinsics[ir.NodeOpAppendChild],
+		Args: []ir.CallArg{
+			{Value: parent},
+			{Value: &ir.Ident{Name: child, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+		},
+	}}
+}
+
+func (st *declarativeState) lowerComponentNodeIntoStmts(n *ir.NodeInst, id string) []ir.Stmt {
+	createCall := st.componentCreateCall(n)
+
+	instance := &ir.LocalVar{
+		Name: id,
+		Type: &ir.Type{Kind: ir.TypeComponent, Decl: n.Component},
+		Init: createCall,
+	}
+	// On a target whose instance is still a method returning a widget, the one
+	// binding is both things and there is no root to ask for.
+	if !st.instanceRecords {
+		return []ir.Stmt{instance}
+	}
+	// Otherwise two bindings, because an instance and the node it renders as
+	// are two things. The id keeps the instance -- it is what a prop update is
+	// addressed to, and what the reactivity injection already named -- while
+	// the tree attaches the root beside it.
+	return []ir.Stmt{
+		instance,
+		&ir.LocalVar{
+			Name: st.attachName(n),
+			Type: ir.TypDyn,
+			Init: &ir.Call{
+				Type:     ir.TypDyn,
+				Receiver: lowerNSIdent(),
+				Func:     st.intrinsics[ir.NodeOpComponentRoot],
+				Args: []ir.CallArg{
+					{Value: &ir.Ident{Name: id, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+				},
+			},
+		},
+	}
+}
+
+// attachName is what the tree attaches for a node: the node itself, or the
+// root an instance renders as. Appending the instance is what the lowering
+// used to do, and every platform then handed its container an object that is
+// not a node.
+func (st *declarativeState) attachName(n *ir.NodeInst) string {
+	if st.instanceRecords && n != nil && n.Component != nil && hasRealComponentBody(n.Component) {
+		return n.ID + instanceRootSuffix
+	}
+	return n.ID
+}
+
+// instanceRootSuffix names the root binding beside an instance's own.
+const instanceRootSuffix = "__el"
 
 // lowerNodeForSlot emits the same create/setProp/attachHandler/appendChild
 // sequence passDeclarative produces for one NodeInst's subtree, then
@@ -502,20 +575,23 @@ func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentRef ir.Expr, f
 				Func:     st.intrinsics["AppendChild"],
 				Args: []ir.CallArg{
 					{Value: parentRef},
-					{Value: &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
+					{Value: &ir.Ident{Name: st.attachName(n), Type: ir.TypDyn, IsElementRef: true, Synthesized: true}},
 				},
 			},
 		})
 	}
-	return n.ID, stmts
+	return st.attachName(n), stmts
 }
 
 // newDeclarativeStateForSlot constructs a declarativeState for use by
 // passReactivity slot generators. liftHandlers=false because the slot
 // re-render attaches handlers fresh each call; no separate closure
 // capture state is needed.
-func newDeclarativeStateForSlot(pkg *ir.Package) *declarativeState {
-	st := newDeclarativeState(pkg, Caps{NoLambda: false})
+func newDeclarativeStateForSlot(pkg *ir.Package, caps Caps) *declarativeState {
+	// Only the caps that decide shape travel: the slot path always keeps
+	// handlers as closures, and whether an instance is a record is the
+	// target's answer rather than the slot's.
+	st := newDeclarativeState(pkg, Caps{NoLambda: false, NoReactivity: caps.NoReactivity, NoDeclarative: caps.NoDeclarative})
 	st.inlineHandlers = true
 	// Seed the counter past every __nN already allocated package-wide
 	// — including those inside sibling slot Funcs created by earlier

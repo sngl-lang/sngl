@@ -179,21 +179,20 @@ func addVarHandlerScopes(v *ir.Var, scopes *[]*scopeRefInfo) {
 // isSynthNodeID reports whether id is a synthesized widget ref name (__nN).
 func isSynthNodeID(id string) bool { return strings.HasPrefix(id, "__n") }
 
-// createdNodeID returns the widget ref id a LocalVar declares when its
-// initializer is a lower.CreateNode / lower.CreateComponent call, else "".
+// createdNodeID returns the widget ref id a LocalVar declares, else "".
+//
+// The declaration is what decides, not what initialises it. A CreateNode or a
+// CreateComponent is the usual initializer, but a reactive slot's instance
+// reconcile opens each position with `var __nN <Comp> = null` and then binds
+// the node in `var __nN__el dyn = lower.ComponentRoot(__nN)` -- both locals of
+// the render func, and matching only the two call names left them unknown to
+// the pass, so every platform emitted them as shared Model fields that each
+// iteration of the loop overwrote.
 func createdNodeID(lv *ir.LocalVar) string {
 	if lv == nil || !isSynthNodeID(lv.Name) {
 		return ""
 	}
-	call, ok := lv.Init.(*ir.Call)
-	if !ok || call.Func == nil {
-		return ""
-	}
-	switch call.Func.Name {
-	case "CreateNode", "CreateComponent":
-		return lv.Name
-	}
-	return ""
+	return lv.Name
 }
 
 // scopeFromFuncBody builds a scope for a nested inline closure/lambda's Func
@@ -276,7 +275,10 @@ func collectScopeRefsExpr(e ir.Expr, info *scopeRefInfo) {
 	}
 	switch x := e.(type) {
 	case *ir.Ident:
-		if x.IsElementRef && isSynthNodeID(x.Name) {
+		// Any read of the name counts, element ref or not: an instance handle
+		// is reached through a plain ident, and a use that crosses an emitted
+		// function is an escape whichever flag the ident happens to carry.
+		if isSynthNodeID(x.Name) {
 			info.used[x.Name] = true
 		}
 	case *ir.Binary:

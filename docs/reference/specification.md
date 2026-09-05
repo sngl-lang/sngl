@@ -896,7 +896,6 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | "@" IDENT
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
@@ -945,9 +944,11 @@ on `bool`), `-` (numeric or unit negation), `&` (reference), `*`
 
 Operands are literals, identifiers, parenthesized expressions, list literals,
 struct and map literals, function literals, interpolated and translatable
-strings, color and unit literals, and event names (`@name`). An element
-reference (`#id`) is not an operand; it appears only as a postfix declaration
-tag (see [Element references](#element-references-1)).
+strings, and color and unit literals. An event name is not an operand: the
+`@` sigil belongs to an event's declaration, its handler and a `var`
+handler, and an event is referred to in an expression by its bare name. An
+element reference (`#id`) is not an operand either; it appears only as a
+postfix declaration tag (see [Element references](#element-references-1)).
 
 <!-- BEGIN GENERATED: grammar-literals -->
 
@@ -1010,6 +1011,7 @@ ArgList = Arg { ("," | ";") Arg } [ "," | ";" ]
 Arg = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "..." Expr
+    | EventArg
     | IDENT IdentArgCont
     | "!" UnaryExpr ArgExprCont
     | "-" UnaryExpr ArgExprCont
@@ -1017,6 +1019,8 @@ Arg =
     | "*" UnaryExpr ArgExprCont
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
+
+EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr
@@ -1269,7 +1273,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
@@ -1605,7 +1609,7 @@ Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
 
 CompParamList = CompParam { "," CompParam } [ "," ]
 
@@ -1678,7 +1682,6 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
-    | "@" IDENT
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
@@ -1702,6 +1705,7 @@ ArgList = Arg { ("," | ";") Arg } [ "," | ";" ]
 Arg = 
     ":" IDENT [ Type ] [ "=" Expr ]
     | "..." Expr
+    | EventArg
     | IDENT IdentArgCont
     | "!" UnaryExpr ArgExprCont
     | "-" UnaryExpr ArgExprCont
@@ -1709,6 +1713,8 @@ Arg =
     | "*" UnaryExpr ArgExprCont
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
+
+EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr

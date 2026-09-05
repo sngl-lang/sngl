@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,11 @@ import (
 )
 
 // exprType extracts the resolved type from an ir.Expr, returning TypDyn for nil.
+//
+// Neither arm may become a panic. lspcore.Analyze type-checks a document that
+// failed to parse, and a partial parse really does hand the checker an
+// expression with a nil operand -- `[...]`, `[...()]`, `true ? : 2` and
+// `const(())` all reach the nil arm today.
 func exprType(e ir.Expr) *ir.Type {
 	if e == nil {
 		return dynFallback("no expression to take the type of")
@@ -149,10 +155,10 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 		return c.checkExpr(x.Inner)
 	case *ast.ConstExpr:
 		return c.inferConstExpr(x)
-	case *ast.EventRefExpr:
-		return c.inferEventRef(x)
 	default:
-		return &ir.Ident{Type: dynFallback("no rule for expression %T", x)}
+		// Every ast.Expr the parser builds in a value position has a rule
+		// above; a new node type without one is a compiler bug.
+		panic(fmt.Sprintf("sngl: no type rule for expression %T", x))
 	}
 }
 
@@ -191,7 +197,9 @@ func (c *checker) inferLiteral(x *ast.LiteralExpr) ir.Expr {
 	case ast.LiteralColor:
 		return c.lowerHexLiteral(x)
 	default:
-		typ = dynFallback("no type for literal kind %v", x.Kind)
+		// LiteralUnit is the ninth kind and never reaches here: the parser
+		// wraps it in an *ast.UnitLiteral, which inferExpr dispatches away.
+		panic(fmt.Sprintf("sngl: no type for literal kind %v", x.Kind))
 	}
 	return &ir.Literal{AST: x, Type: typ, Value: x.Raw}
 }
@@ -370,13 +378,15 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	if ctx, ok := sym.(*ir.Context); ok {
 		typ := ctx.Typ
 		if typ == nil {
-			typ = dynFallback("context %q is untyped", ctx.Name)
+			// registerRootContextDecl leaves Typ nil only on its three
+			// bad-default paths, each of which reported first.
+			typ = ir.TypDyn
 		}
 		return &ir.ContextRead{AST: x, Ref: ctx, Typ: typ}
 	}
 	t := c.symType(sym)
 	if t == nil {
-		t = dynFallback("symbol %q (%T) has no type", x.Name, sym)
+		t = dynNoSymType(sym, "symbol %q (%T) has no type", x.Name, sym)
 	}
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
@@ -620,7 +630,7 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	default:
-		typ = dynFallback("no type rule for binary operator %v", x.Op)
+		panic(fmt.Sprintf("sngl: no type rule for binary operator %v", x.Op))
 	}
 	return &ir.Binary{AST: x, Type: typ, Op: x.Op, Left: leftExpr, Right: rightExpr}
 }
@@ -706,7 +716,7 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 			typ = operand.Elems[0]
 		}
 	default:
-		typ = dynFallback("no type rule for unary operator %v", x.Op)
+		panic(fmt.Sprintf("sngl: no type rule for unary operator %v", x.Op))
 	}
 	return &ir.Unary{AST: x, Type: typ, Op: x.Op, Operand: operandExpr}
 }
@@ -770,7 +780,7 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 			// cast form is just convert-to-struct. Look up the StructDef type
 			// from scope; if absent (pre-stdlib), fall back to dyn so the
 			// diagnostic comes from the regular path.
-			structTyp := dynFallback("cast target %q is not in scope", ident.Name)
+			structTyp := ir.TypDyn
 			if sym, ok := c.scope.Lookup(ident.Name); ok {
 				if t := c.symType(sym); t != nil {
 					structTyp = t
@@ -932,6 +942,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 
 	receiverExpr := c.checkExpr(sel.Operand)
 	receiver := exprType(receiverExpr)
+
+	if c.rejectVoidReceiver(receiver, sel.Operand) {
+		return &ir.Call{AST: call, Type: TypDyn, Args: c.checkCallArgs(call.Args, nil)}
+	}
 
 	// Namespace function or component call: ns.func() or ns.Component().
 	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
@@ -1454,7 +1468,7 @@ func hasNoLegitimateFields(t *ir.Type) bool {
 // surrounding lookup error isn't doubled up.
 func callRetType(sig *ir.FuncSig) *ir.Type {
 	if sig == nil {
-		return dynFallback("call has no signature to take a return type from")
+		return ir.TypDyn
 	}
 	if sig.Return == nil {
 		return TypVoid
@@ -1462,9 +1476,30 @@ func callRetType(sig *ir.FuncSig) *ir.Type {
 	return sig.Return
 }
 
+// rejectVoidReceiver reports a field or method named on an expression that
+// produces no value. Nothing can be selected through one, so leaving it
+// unreported typed the whole select dyn -- which accepted any field and any
+// method name at all, `nothing().nosuchmethod()` included. The position is the
+// receiver's rather than the select's: what is wrong is the thing on the left.
+func (c *checker) rejectVoidReceiver(t *ir.Type, operand ast.Expr) bool {
+	if t == nil || t.Kind != ir.TypeVoid {
+		return false
+	}
+	pos := ast.Pos{}
+	if p := operand.ExprPos(); p != nil {
+		pos = *p
+	}
+	c.error(pos, "expression yields no value")
+	return true
+}
+
 func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
+
+	if c.rejectVoidReceiver(operand, x.Operand) {
+		return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+	}
 
 	// Auto-deref through Select: if the operand is `ref<T>`, treat the field
 	// access as if the operand were dereferenced first. The IR carries an
@@ -1514,7 +1549,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 							if ctx, isCtx := fsym.(*ir.Context); isCtx {
 								typ := ctx.Typ
 								if typ == nil {
-									typ = dynFallback("context %s.%s is untyped", ident.Name, x.Field)
+									typ = ir.TypDyn // already reported, as above
 								}
 								return &ir.ContextRead{Ref: ctx, Typ: typ}
 							}
@@ -1627,11 +1662,12 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 						params = params[1:]
 					}
 					if len(params) == 0 {
-						ret := fn.Return
-						if ret == nil {
-							ret = dynFallback("method %q has no return type", fn.Name)
-						}
-						return &ir.Select{AST: x, Type: ret, Operand: operandExpr, Field: x.Field}
+						// A void method referenced bare types void, the same as
+						// calling it -- callRetType's rule applied here too.
+						// ensureReturnType runs first so an expression body whose
+						// return is not inferred yet does not read as void.
+						c.ensureReturnType(fn)
+						return &ir.Select{AST: x, Type: callRetType(fn.FuncSig()), Operand: operandExpr, Field: x.Field}
 					}
 					funcType := &ir.Type{Kind: ir.TypeFunc, Sig: &ir.FuncSig{
 						Params:     params,
@@ -1642,7 +1678,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 					return &ir.Select{AST: x, Type: funcType, Operand: operandExpr, Field: x.Field}
 				}
 				// Element-ref id declared in the component body (e.g. `c.btn`
-				// for a `c.btn.@click()` event trigger, or `c.m.it` chained):
+				// for a `c.btn.click()` event trigger, or `c.m.it` chained):
 				// its value type is the host element's component type. Resolve
 				// against the operand's already-known component type so inline
 				// chains work, not just bare-ident operands.
@@ -1700,9 +1736,18 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	operand := exprType(operandExpr)
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
+	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
+	// and the fallback below would hand it back as dyn, which assigns to
+	// anything. Reported here so the message names the line it was written on.
+	if c.requireValueType(operand, x.Pos) {
+		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+	}
+
 	if operand.Kind == ir.TypeMap {
 		if len(operand.Elems) != 2 {
-			return &ir.Index{AST: x, Type: dynFallback("map type %s carries %d element types, want 2", operand, len(operand.Elems)), Operand: operandExpr, Idx: indexExpr}
+			// ir.MapOf is the only constructor and substitution preserves the
+			// length, so a map type with any other arity is a compiler bug.
+			panic(fmt.Sprintf("sngl: map type %s carries %d element types, want 2", operand, len(operand.Elems)))
 		}
 		keyT, valT := operand.Elems[0], operand.Elems[1]
 		if !keyT.Equal(exprType(indexExpr)) {
@@ -1886,6 +1931,12 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	elems[0] = c.checkExprExpecting(x.Elements[0], elemExpected)
 	for i, e := range x.Elements[1:] {
 		elems[i+1] = c.checkExprExpecting(e, elemExpected)
+	}
+	// A void element makes the literal a `list<void>`, which an annotated
+	// target rejects but an inferred one accepts: `var m = [xs.push(v)]`
+	// checked clean and reached codegen.
+	for i, el := range elems {
+		c.requireValueType(exprType(el), *x.Elements[i].ExprPos())
 	}
 	return &ir.ListLit{AST: x, Type: ListOf(exprType(elems[0])), Elems: elems}
 }
@@ -2075,7 +2126,10 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
 		if fn.Return == nil {
 			// Expression-body lambda with no annotation and no contextual
-			// return type: take the body's type as the return type.
+			// return type: take the body's type as the return type. A body
+			// that yields nothing gives it nothing to return, and the lowered
+			// `return xs.push(v)` is not something any target can spell.
+			c.requireValueType(exprType(bodyExpr), *x.Body.ExprPos())
 			fn.Return = exprType(bodyExpr)
 			c.returnType = fn.Return
 		}
@@ -2169,20 +2223,6 @@ func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 			bindTypeParams(param.Elems[i], arg.Elems[i], bindings)
 		}
 	}
-}
-
-func (c *checker) inferEventRef(x *ast.EventRefExpr) ir.Expr {
-	if c.currentComponent != nil {
-		for _, evt := range c.currentComponent.Events {
-			if evt.Name == x.Name {
-				if evt.Type != nil {
-					return &ir.Ident{Type: evt.Type}
-				}
-				return &ir.Ident{Type: dynFallback("event %q on component %s carries no payload type", x.Name, c.currentComponent.Name)}
-			}
-		}
-	}
-	return &ir.Ident{Type: dynFallback("event reference @%s names no event in scope", x.Name)}
 }
 
 // paramNameOK reports whether a param can be targeted by name at a call site.
@@ -2778,12 +2818,18 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// the elementRefCallInfo path below, which preserves the #id and applies
 		// the same stdlib-lenient / user-component-strict arg checking.
 		if comp != nil && x.Call.ID == "" {
+			// A bodyless node parses as a call, so the boundary has to be read
+			// on this path too -- `text(value=v)` in a function body is the
+			// same dropped node `vbox { }` is.
+			if c.rejectNodeInFuncBody(x.Pos, compName) {
+				return nil
+			}
 			c.validateCallStmtComponentArgs(x.Call, comp)
 			c.checkRequiredSlots(x.Pos, comp, nil)
 			if slot := findSlot(comp, ir.DefaultSlot); slot != nil {
 				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
 			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, comp)
+			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(comp, x.Call.Args))
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      compName,
@@ -2798,6 +2844,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// parse as CallStmt but semantically behave like visual nodes — emit
 		// NodeInst so event handlers and the #id are preserved in IR.
 		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
+			if c.rejectNodeInFuncBody(x.Pos, name) {
+				return nil
+			}
 			// Resolve the addressed component (stdlib `input`, user
 			// component, …) so later passes — including the test-side
 			// event-arg typer — can see what payload `@<event>` takes.
@@ -2816,7 +2865,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if argsComp != nil && argsComp.Stdlib {
 				argsComp = nil
 			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, argsComp)
+			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(argsComp, x.Call.Args))
 
 			// A stdlib element passes nil above so event args stay leniently
 			// typed, and nil is also what makes checkAndSplitArgs leave a
@@ -3280,7 +3329,11 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// Built-in nodes — the compiler's own constructs, dispatched on the
 	// #[builtin] mark of whatever the target resolves to rather than on the
 	// literal name, so a user component of the same name shadows them (D3).
-	switch c.builtinNodeKind(name) {
+	kind, builtinComp := c.builtinNode(name)
+	if kind != ir.BuiltinNone && c.rejectNodeInFuncBody(vn.Pos, name) {
+		return nil
+	}
+	switch kind {
 	case ir.BuiltinWindow:
 		w := c.buildWindow(vn)
 		c.bindWindow(vn.Pos, w)
@@ -3288,7 +3341,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		w.Checked = true
 		return w
 	case ir.BuiltinTimer:
-		t := c.buildTimer(vn)
+		t := c.buildTimer(vn, builtinComp)
 		if c.currentComponent != nil {
 			c.currentComponent.Timers = append(c.currentComponent.Timers, t)
 		} else {
@@ -3296,7 +3349,12 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		}
 		return nil
 	case ir.BuiltinErrorBoundary:
-		return c.buildErrorBoundary(vn)
+		return c.buildErrorBoundary(vn, builtinComp)
+	case ir.BuiltinEffect:
+		// Validated here and then left to the ordinary component path: an
+		// effect is resolved, checked and lowered as the declaration it is,
+		// and the kind says only that this node brackets a lifetime.
+		c.checkEffectHandlers(vn)
 	}
 	// A named slot renders as an ordinary node: the tag is the slot's name and
 	// the arguments are the values passed to it. Resolved before components so
@@ -3387,7 +3445,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				for _, p := range props {
 					args = append(args, ir.CallArg{Name: p.Name, Value: p.Value})
 				}
-				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: dynFallback("call to %q written as a visual node has no return type", fn.Name), Func: fn, Args: args}}
+				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: callRetType(fn.FuncSig()), Func: fn, Args: args}}
 			}
 		}
 	}
@@ -3404,29 +3462,42 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 
 	if comp != nil {
+		// Past the function-call fallthrough above, so the name is a
+		// component rather than something that parsed like one.
+		if c.rejectNodeInFuncBody(vn.Pos, name) {
+			return nil
+		}
 		c.validateVisualNodeProps(vn, comp)
 	}
+
+	// The specialization is what the whole call site is checked against, so it
+	// is minted before any of it -- a slot's content is checked here, above the
+	// props, and against the unspecialized declaration `slot cell(T)` handed
+	// the population a parameter named T. Once, not once per user: binding
+	// walks the argument expressions, and a second walk reports each of their
+	// diagnostics twice.
+	spec := c.bindComponentTypeParams(comp, vn.Args)
 
 	// A named slot's content is written in the callsite's block beside the
 	// ordinary children, marked with `slot` so it reads as supplied rather
 	// than rendered. Peel those off before the children are checked, so the
 	// arity and tree-kind rules below see only what the anonymous slot gets.
-	slotContent, childBlock := c.checkSlotPopulations(vn, comp)
+	slotContent, childBlock := c.checkSlotPopulations(vn, spec)
 	children := c.checkBlockIR(&childBlock)
-	if comp != nil && comp.AST != nil {
-		ct := comp.ChildrenType
+	if spec != nil && spec.AST != nil {
+		ct := spec.ChildrenType
 		n := len(children)
 		switch {
 		case ct == nil && n > 0:
-			c.error(vn.Pos, "component %s does not accept children", comp.Name)
+			c.error(vn.Pos, "component %s does not accept children", spec.Name)
 		case ct != nil && ct.Kind != ir.TypeList && ct.Kind != ir.TypeOption && n != 1:
-			c.error(vn.Pos, "component %s requires exactly one child", comp.Name)
+			c.error(vn.Pos, "component %s requires exactly one child", spec.Name)
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
-			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
+			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
 		}
-		c.checkTreeMembership(vn.Pos, children, slotTree(comp, findSlot(comp, ir.DefaultSlot)), "in "+comp.Name)
+		c.checkTreeMembership(vn.Pos, children, slotTree(spec, findSlot(spec, ir.DefaultSlot)), "in "+spec.Name)
 	}
-	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, comp)
+	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
 
 	emitName := name
 	if qualifiedLocal != "" {
@@ -4316,6 +4387,36 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 	}
 }
 
+// rejectNodeInFuncBody reports a visual node written in an imperative body --
+// a function, an event handler, a timer, a var handler or a lambda -- and says
+// whether it did.
+//
+// A node is a piece of a rendered tree: it is placed once, where it is
+// written, and every backend builds that tree by walking a view body. An
+// imperative body is a statement stream, walked by a different emitter that
+// has nowhere to put a node -- so one written there was checked, lowered and
+// then dropped, and `func setup() { effect(@mount { ... }) }` compiled to an
+// empty function on all three targets. The boundary is funcDepth, the same one
+// checkHeadlessFor and requireLoop read from the other side: a slot's content
+// and a canvas's shapes are written in view bodies and so are unaffected,
+// whatever they later lower to.
+func (c *checker) rejectNodeInFuncBody(pos ast.Pos, name string) bool {
+	if c.funcDepth == 0 {
+		return false
+	}
+	c.error(pos, "%s cannot be written in a function body: a node is placed in a rendered tree, and a function body renders nothing", nodeDescription(name))
+	return true
+}
+
+// nodeDescription names the node a diagnostic is about, falling back to the
+// generic wording when the node has no name to quote (a bare `slot`).
+func nodeDescription(name string) string {
+	if name == "" {
+		return "a visual node"
+	}
+	return "visual node " + strconv.Quote(name)
+}
+
 // requireLoop reports a `break` or `continue` written where no loop encloses
 // it. What counts as enclosing is loopDepth, which resets at every imperative
 // body: the loop has to be one this statement can still be running inside.
@@ -4438,6 +4539,9 @@ func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 	}
 	if len(x.Args) > 0 {
 		c.error(x.Pos, "the anonymous slot takes no arguments")
+	}
+	if c.rejectNodeInFuncBody(x.Pos, "") {
+		return nil
 	}
 	return &ir.SlotInst{Name: ir.DefaultSlot, Children: c.checkBlockIR(&x.Block)}
 }
@@ -4577,7 +4681,8 @@ func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl, owner *i
 		if i < len(decl.Params) {
 			typ = decl.Params[i]
 		} else {
-			typ = dynFallback("argument %d is past the %d declared parameters", i, len(decl.Params))
+			// checkSlotContent reported the arity mismatch before the loop.
+			typ = ir.TypDyn
 		}
 		p := &ir.Param{Name: id.Name, Type: typ}
 		c.declare(id.Pos, p)

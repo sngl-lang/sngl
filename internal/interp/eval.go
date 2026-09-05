@@ -111,6 +111,13 @@ type Env struct {
 	// share a name are two bindings and a library constant needs no copy into
 	// a name table.
 	vals map[ir.Symbol]any
+	// assigned is what a statement in this scope wrote, as opposed to what was
+	// bound into it. RebindFrom carries only these back. A loop iteration
+	// renders in a snapshot of the enclosing scope, so carrying every binding
+	// back writes that scope's state as it stood when the snapshot was taken:
+	// an effect's teardown, running in the scope of the iteration that is going
+	// away, wrote the old list back and the removed element reappeared.
+	assigned map[ir.Symbol]bool
 	// recv is the implicit component receiver (`this`). Not a binding in vals
 	// because no symbol can key it: every method declares its own `this`
 	// param, but the caller supplies the value, so the site that binds it and
@@ -184,11 +191,61 @@ func (env *Env) RebindFrom(src *Env) {
 	}
 	for e := env; e != nil; e = e.parent {
 		for sym := range e.vals {
+			if !src.wasAssigned(sym) {
+				continue
+			}
 			if v, ok := src.Value(sym); ok {
 				e.vals[sym] = v
 			}
 		}
 	}
+}
+
+// wasAssigned reports whether src or an enclosing scope wrote sym. A write that
+// landed in a shared parent is already visible and is reported here anyway,
+// because copying a value onto itself needs no second rule.
+func (env *Env) wasAssigned(sym ir.Symbol) bool {
+	for e := env; e != nil; e = e.parent {
+		if e.assigned[sym] {
+			return true
+		}
+	}
+	return false
+}
+
+// refreshFrom brings every binding this scope and its parents hold up to the
+// value src knows, and leaves alone the ones src does not -- which is the loop
+// variable an iteration bound, and the reason the scope is worth keeping at
+// all.
+//
+// The counterpart to RebindFrom, for a scope that outlives the render that
+// built it. An effect's bracket holds the scope of the iteration that placed
+// it, and its state was copied in when that mount ran; a handler running later
+// reads what the program said then, and RebindFrom carries the whole of it
+// back. Two brackets ending in one settle is where that shows: the second
+// teardown wrote its own mount's state back over the first teardown's.
+func (env *Env) refreshFrom(src *Env) {
+	if src == nil {
+		return
+	}
+	for e := env; e != nil; e = e.parent {
+		if e == src {
+			return
+		}
+		for sym := range e.vals {
+			if v, ok := src.Value(sym); ok {
+				e.vals[sym] = v
+			}
+		}
+	}
+}
+
+// noteAssigned records that a statement wrote sym in this scope.
+func (env *Env) noteAssigned(sym ir.Symbol) {
+	if env.assigned == nil {
+		env.assigned = map[ir.Symbol]bool{}
+	}
+	env.assigned[sym] = true
 }
 
 // Values ranges over the values bound in this env, stopping when f returns
@@ -209,7 +266,11 @@ func (env *Env) Snapshot() *Env {
 		childEnvs = map[*ir.NodeInst]*Env{}
 	}
 	cp := &Env{
-		vals:          make(map[ir.Symbol]any, len(env.vals)),
+		vals: make(map[ir.Symbol]any, len(env.vals)),
+		// Its own set, not the original's: what this scope wrote is what
+		// RebindFrom carries back, and two snapshots of one scope must not be
+		// credited with each other's writes.
+		assigned:      map[ir.Symbol]bool{},
 		recv:          env.recv,
 		hasRecv:       env.hasRecv,
 		Units:         env.Units,
@@ -1604,7 +1665,7 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 // runEventHandler invokes an event handler function's body using the current
 // env. Args are evaluated and bound positionally to params; the caller is
 // expected to pass the event payload as a literal struct (e.g.
-// `c.entry.@input(InputEvent{value="hello"})`) so the body's `e.value`
+// `c.entry.input(InputEvent{value="hello"})`) so the body's `e.value`
 // resolves through the regular struct-field path.
 // runEventHandlerValues runs a handler against values rather than expressions,
 // which is the shape an event arrives in from a host: the widget already
@@ -1751,7 +1812,8 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 
 // methodNameFromCall recovers the method name for a Receiver-bearing call from
 // the AST back-reference (set by the checker when Func couldn't be resolved).
-// For @event access ("c.btn.@click"), the name is prefixed with "@".
+// For an element-ref event trigger (`c.btn.click()`) the name is prefixed
+// with "@", which is the interpreter's own key and not source syntax.
 func methodNameFromCall(call *ir.Call) string {
 	// Element-ref event triggers (`c.btn.click()`) are tagged by the
 	// checker; the interpreter keys handlers under "@<event>" internally.
@@ -1843,8 +1905,16 @@ func (env *Env) writeBackList(target ir.Expr, newList []any) (any, error) {
 	case *ir.Ident:
 		if owner := env.findVarOwner(t.Sym); owner != nil {
 			owner.vals[t.Sym] = newList
+			// Noted like an assignment, because that is what it is: a mutating
+			// method writes its receiver, and RebindFrom carries back only what
+			// a scope wrote. Without this a bare `xs.push(v)` inside a loop
+			// iteration mutated that iteration's snapshot and nothing else --
+			// which the effect fixtures caught the moment they stopped spelling
+			// it `xs = xs.push(v)`, an ir.Assign that noted itself.
+			owner.noteAssigned(t.Sym)
 		} else {
 			env.Set(t.Sym, newList)
+			env.noteAssigned(t.Sym)
 		}
 	case *ir.Select:
 		obj, err := env.Eval(t.Operand)

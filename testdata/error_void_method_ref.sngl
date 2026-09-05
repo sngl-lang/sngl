@@ -1,0 +1,17 @@
+import . "sngl:ui"
+
+// A void method referenced bare types void, not dyn -- the same as calling it.
+component main {
+    var n = 0
+
+    func bump() {
+        n += 1
+    }
+
+    func oops() {
+        var x = this.bump // ERROR(check) "expression yields no value"
+        n += x
+    }
+
+    text(value=string(n))
+}

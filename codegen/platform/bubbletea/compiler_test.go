@@ -66,7 +66,7 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 }
 
 func TestFixtures(t *testing.T) {
-	for s := range testutil.TestdataSamples(t) {
+	for s := range testutil.CodegenSamples(t) {
 		if len(s.Errors) > 0 {
 			continue
 		}

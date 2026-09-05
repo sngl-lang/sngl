@@ -40,7 +40,7 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <span id="__n0" data-sngl-id="__n0">
   </span>
-  <button id="$1">
+  <button id="$0">
     <span>+</span>
   </button>
 </div>
@@ -52,9 +52,9 @@ body { font-family: system-ui, sans-serif; }
   function String(v) {
     return "" + v;
   }
-  var $1 = document.getElementById("$1");
+  var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  $1.addEventListener("click", function() {
+  $0.addEventListener("click", function() {
     state.n = state.n + 1;
     __n0.textContent = String(state.n);
   });

@@ -1,0 +1,39 @@
+// An effect with no `on` lives as long as the node does: `@mount` runs once,
+// when the node enters the tree, and not again for anything the program does
+// afterwards.
+//
+// The counter is what distinguishes "ran once" from "ran on every settle" — a
+// flag would read the same either way, which is how a mount that fired per
+// render would have gone unnoticed.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        runs = 0
+        other = 0
+    )
+
+    effect(@mount {
+        runs += 1
+    })
+
+    button #bump(text="+", @click {
+        other += 1
+    })
+    text #out(value=string(runs))
+}
+
+func testMountRunsOnce(t Test, c main) {
+    t.assert(c.runs == 1)
+    t.assert(c.out.value == "1")
+}
+
+func testMountDoesNotRerunOnUnrelatedState(t Test, c main) {
+    t.assert(c.runs == 1)
+    c.bump.click()
+    c.bump.click()
+    t.assert(c.other == 2)
+    t.assert(c.runs == 1)
+}

@@ -989,7 +989,7 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 			nt.TypeArgs = []ast.TypeExpr{c.convertType(t.Elems[0])}
 		}
 		return nt
-	case TypeStruct, TypeEnum, TypeUnit, TypeComponent:
+	case TypeStruct, TypeEnum, TypeUnit, TypeComponent, TypeInstance:
 		// Bare `component` carries no declaration — it is the widest component
 		// type, not an unresolved one, so it has a spelling of its own.
 		name := "dyn" // anonymous/unresolved declaration

@@ -118,14 +118,14 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	// A Raster redraws by asking: Refresh re-runs the generator, at whatever
 	// size the widget is now.
 	if m.Scaling != "" && m.Scaling != canvasutil.ScaleCenter {
-		return []ir.Stmt{methodStmt(codegen.ModelFieldRef(m.ID), "Refresh")}
+		return []ir.Stmt{methodStmt(t.fieldRef(m.ID), "Refresh")}
 	}
-	dcField := codegen.ModelFieldRef(canvasCtxField(m.ID))
-	imgField := codegen.ModelFieldRef(m.ID)
+	dcField := t.fieldRef(canvasCtxField(m.ID))
+	imgField := t.fieldRef(m.ID)
 	w, h := canvasDims(m)
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
-		Receiver: &ir.Ident{Name: "m"},
+		Receiver: t.recvIdent(),
 		Func:     &ir.Func{Name: m.Draw.Name},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
@@ -190,6 +190,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 		return nil
 	}
 	t.topLevel = append(t.topLevel, id)
+	t.fieldIDs[id] = true
 	if t.importSink != nil {
 		t.importSink(snglCanvasImportPath)
 		t.importSink("fyne.io/fyne/v2/canvas")
@@ -198,7 +199,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	}
 
 	w, h := canvasDims(m)
-	imgField := codegen.ModelFieldRef(id)
+	imgField := t.fieldRef(id)
 
 	// A scaled canvas is a Raster, because Fyne hands a Raster's generator the
 	// pixel size it is about to be drawn at -- which is the one thing an Image
@@ -222,11 +223,11 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 
 	t.fieldSink(id, "*canvas.Image")
 	t.fieldSink(canvasCtxField(id), "*"+snglCanvasAlias+".Context")
-	dcField := codegen.ModelFieldRef(canvasCtxField(id))
+	dcField := t.fieldRef(canvasCtxField(id))
 
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
-		Receiver: &ir.Ident{Name: "m"},
+		Receiver: t.recvIdent(),
 		Func:     &ir.Func{Name: m.Draw.Name},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
@@ -260,13 +261,17 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 // Written as Go source rather than built as IR because it is a closure over
 // the Model, and the point of it is the two parameters Fyne passes in.
 func (t *fyneTranslator) rasterExpr(m *canvasMeta, w, h int) string {
+	// The surface and the draw func belong to whatever scope owns the canvas --
+	// the Model, or a component instance's record -- so the receiver is read
+	// off the context rather than spelled `m`.
+	recv := t.gc.RecvName()
 	return fmt.Sprintf(
 		"canvas.NewRaster(func(pw, ph int) image.Image {\n"+
-			"\t\tctx := m.%s.Begin(pw, ph, %d, %d, %q)\n"+
-			"\t\tm.%s(ctx)\n"+
+			"\t\tctx := %s.%s.Begin(pw, ph, %d, %d, %q)\n"+
+			"\t\t%s.%s(ctx)\n"+
 			"\t\treturn ctx.Result()\n"+
 			"\t})",
-		canvasSurfaceField(m.ID), w, h, m.Scaling, m.Draw.Name)
+		recv, canvasSurfaceField(m.ID), w, h, m.Scaling, recv, m.Draw.Name)
 }
 
 // canvasSurfaceField names the reusable drawing target behind a scaled canvas.

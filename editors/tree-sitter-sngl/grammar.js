@@ -396,13 +396,15 @@ module.exports = grammar({
         optional(seq("=", field("default", $._expression))),
       ),
 
+    // Same production as var_handler: the block is not optional, and `@click`
+    // with nothing after it is a handler supplied without a body rather than
+    // an event named in a value position.
     event_arg: ($) =>
       seq(
         "@",
         field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-        optional(seq("(", optional($.identifier), ")")),
-        optional($.statement_block),
+        optional(seq("(", optional($.identifier_list), ")")),
+        $.statement_block,
       ),
 
     named_arg: ($) =>

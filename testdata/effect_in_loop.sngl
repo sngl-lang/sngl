@@ -1,0 +1,50 @@
+// An effect in a loop is one bracket per element, keyed by the element. The
+// iteration is what distinguishes them: two effects written once are two
+// lifetimes, and adding or removing an element moves only its own.
+//
+// This pins two things that were each silently wrong, and each of which hid
+// the other. Both handlers ran on the first mount and one increment was lost,
+// because every iteration renders in a snapshot of the enclosing scope taken
+// by a single mount — so the second read the counter as it stood before the
+// first ran. And the teardown of a removed element wrote its snapshot's copy
+// of the list back over the shorter one, so the element reappeared and mounted
+// again.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        items list<string> = ["a", "b"]
+        log list<string> = []
+    )
+
+    for var it = items {
+        effect(
+            on=it,
+            @mount(v) {
+                log.push("+{v}")
+            },
+            @unmount(v) {
+                log.push("-{v}")
+            },
+        )
+    }
+
+    text #out(value=log.join(","))
+}
+
+func testOnePerIteration(t Test, c main) {
+    t.assert(c.out.value == "+a,+b")
+}
+
+func testAddingAnItemMountsOnlyIt(t Test, c main) {
+    c.items = ["a", "b", "c"]
+    t.assert(c.out.value == "+a,+b,+c")
+}
+
+// The removed element's bracket ends, and nothing else does.
+func testRemovingAnItemUnmountsOnlyIt(t Test, c main) {
+    c.items = ["a"]
+    t.assert(c.out.value == "+a,+b,-b")
+}

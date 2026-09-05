@@ -502,10 +502,9 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	return body, nil
 }
 
-// emittedHandlerNames returns the set of event names the component body
-// invokes via an `@name()` emit (either *ir.Emit or a *ir.CallStmt over an
-// *ast.EventRefExpr). Handlers with these names are wired through
-// substituteEvents and must not also be transferred onto the root node.
+// emittedHandlerNames returns the set of event names the component body emits.
+// Handlers with these names are wired through substituteEvents and must not
+// also be transferred onto the root node.
 func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 	out := map[string]struct{}{}
 	var visit func(stmts []ir.Stmt)
@@ -514,12 +513,6 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 			switch n := s.(type) {
 			case *ir.Emit:
 				out[n.Name] = struct{}{}
-			case *ir.CallStmt:
-				if n.Call != nil && n.Call.AST != nil {
-					if ev, ok := n.Call.AST.Func.(*ast.EventRefExpr); ok {
-						out[ev.Name] = struct{}{}
-					}
-				}
 			case *ir.NodeInst:
 				visit(n.Children)
 				for _, h := range n.Handlers {
@@ -627,30 +620,9 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 				continue
 			}
 			// No matching handler — the caller never subscribed to this
-			// event, so the emit goes nowhere. Drop it (same as the
-			// EventRefExpr CallStmt shape below) rather than leaving a
+			// event, so the emit goes nowhere. Drop it rather than leaving a
 			// dangling `emit(...)` for codegen to choke on.
 			continue
-		}
-		// CallStmt whose callee is an EventRefExpr is the parser's
-		// other shape for `@name(...)` invocations inside event
-		// handler blocks.
-		if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil && cs.Call.AST != nil {
-			if evRef, ok := cs.Call.AST.Func.(*ast.EventRefExpr); ok {
-				if h, ok := byName[evRef.Name]; ok && h != nil && h.Func != nil {
-					if under != nil && under.ComponentEvent == "" {
-						under.ComponentEvent = evRef.Name
-					}
-					out = append(out, bindEventParams(deepCloneStmts(h.Func.Block), h.Func.Params, cs.Call.Args, enclosing)...)
-					continue
-				}
-				// No matching user handler — the caller never bound @<name>.
-				// Drop the @<name>() invocation entirely so codegen doesn't
-				// emit a callee-less `()` expression. The wrapping platform
-				// handler may end up with an empty body; that's fine — the
-				// caller never wanted an event handler installed.
-				continue
-			}
 		}
 		switch n := s.(type) {
 		case *ir.If:
@@ -685,8 +657,8 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
-			// Leaf/imperative — no nested Emit/EventRefExpr that this pass
-			// would substitute. (CallStmt with EventRefExpr handled above.)
+			// Leaf/imperative — no nested Emit that this pass would
+			// substitute.
 		case *ir.Emit:
 			// Emit already handled at top of loop; reaching here means
 			// no matching handler — pass-through.

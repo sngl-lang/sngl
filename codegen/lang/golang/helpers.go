@@ -142,6 +142,57 @@ func ComponentRenderMethod(componentName string) string {
 	return "render" + ExportName(componentName)
 }
 
+// CreateComponentTarget returns the component a lower.CreateComponent call
+// instantiates, or nil when call is not one. The declaration is the argument,
+// so a platform emitting the handle can name the record's type without
+// re-deriving which component it belongs to.
+func CreateComponentTarget(call *ir.Call) *ir.Component {
+	if call == nil || call.Func == nil || call.Func.Name != "CreateComponent" || len(call.Args) == 0 {
+		return nil
+	}
+	id, ok := call.Args[0].Value.(*ir.Ident)
+	if !ok {
+		return nil
+	}
+	comp, _ := id.Sym.(*ir.Component)
+	return comp
+}
+
+// The shape of a component instance in emitted Go. An instance is a struct
+// pointer carrying the state a component's own `var`s need when it cannot be
+// inlined, the node it renders as, one setter per prop it can absorb, and a
+// teardown.
+//
+// Named here for the same reason ComponentRenderMethod is: every Go platform
+// emits these and the lowering dispatches to them, so a name spelled twice is
+// a name that drifts.
+
+// ComponentInstanceType is the struct a non-inlinable component's instances
+// are allocated as.
+func ComponentInstanceType(componentName string) string {
+	return ExportName(componentName) + "Instance"
+}
+
+// ComponentInstanceCtor is the function that allocates one.
+func ComponentInstanceCtor(componentName string) string {
+	return "new" + ExportName(componentName) + "Instance"
+}
+
+// ComponentRootField is the field holding the node an instance renders as.
+const ComponentRootField = "Root"
+
+// ComponentDestroyMethod ends an instance's lifetime: effect teardowns, timer
+// cancels, whatever the host has to be given back. Not detachment, which
+// RemoveChild already says and which happens far more often.
+const ComponentDestroyMethod = "Destroy"
+
+// ComponentSetterMethod is the setter an instance carries for one prop it can
+// absorb. A prop it cannot is never routed here: lowering recreates the
+// instance instead, which is what #[construct] selects.
+func ComponentSetterMethod(prop string) string {
+	return "Set" + ExportName(prop)
+}
+
 // ZeroValueGo returns the Go zero-value expression for a SNGL type hint or
 // a Go type string (func(...), []T, pkg.T, etc.).
 func ZeroValueGo(hint string) string {
@@ -183,3 +234,13 @@ func ZeroValueGo(hint string) string {
 		return goType + "{}"
 	}
 }
+
+// ErrorEventDecl is the Go declaration of `ErrorEvent`, the payload
+// evalErrorAwareCall names at every raise site.
+//
+// The stdlib declares the struct, but codegen does not flow stdlib types into
+// user output, so each Model-receiver platform materialises it. Shared here
+// because it was materialised by exactly one of the three: `error.raise` on
+// fyne or gtk4 emitted a panic naming a type nothing declared, and the program
+// did not build. Emit it when Package.UsesErrorHandling.
+const ErrorEventDecl = "type ErrorEvent struct {\n\tMessage string\n\tKind    string\n}\n\n"

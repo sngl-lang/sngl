@@ -30,14 +30,11 @@ import (
 func TestEveryStdlibComponentHasAFyneBody(t *testing.T) {
 	pkg := checkAllComponents(t)
 
-	// `context` is a builtin node kind rather than a widget: it provides a
-	// value to a subtree and renders nothing, so there is nothing to build.
-	allowed := map[string]bool{"context": true}
-
+	// No name is exempt. A built-in node kind renders through a compiler
+	// construct rather than a widget and BareStdlibComponents leaves it out,
+	// so anything still here is a widget with no body.
 	for _, name := range BareStdlibComponents(pkg) {
-		if !allowed[name] {
-			t.Errorf("stdlib component %q has no fyne body, and is not one of the kinds exempt from having one", name)
-		}
+		t.Errorf("stdlib component %q has no fyne body", name)
 	}
 	if n := len(OverriddenComponents(pkg)); n < 30 {
 		t.Errorf("only %d components carry a fyne override; the walk is not finding them", n)

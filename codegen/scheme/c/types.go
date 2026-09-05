@@ -56,23 +56,23 @@ func mapCType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Type
 func mapPointerType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *ir.Type {
 	pt, ok := t.(*cc.PointerType)
 	if !ok {
-		return &ir.Type{Kind: ir.TypeDyn, Meta: "unsafe.Pointer"}
+		return ir.NativeGoNamed("unsafe.Pointer")
 	}
 	elem := pt.Elem()
 	if elem == nil {
-		return &ir.Type{Kind: ir.TypeDyn, Meta: "unsafe.Pointer"}
+		return ir.NativeGoNamed("unsafe.Pointer")
 	}
 	switch elem.Kind() {
 	case cc.Void:
 		// void* → unsafe.Pointer
-		return &ir.Type{Kind: ir.TypeDyn, Meta: "unsafe.Pointer"}
+		return ir.NativeGoNamed("unsafe.Pointer")
 	case cc.Char, cc.SChar:
 		// char* → string (cgo handles the C.GoString / C.CString conversion)
 		return &ir.Type{Kind: ir.TypeString}
 	case cc.Struct:
 		inner := mapStructType(elem, ast, structs)
 		if inner == nil {
-			return &ir.Type{Kind: ir.TypeDyn, Meta: "unsafe.Pointer"}
+			return ir.NativeGoNamed("unsafe.Pointer")
 		}
 		// T* → optional<ref<T>>
 		return &ir.Type{Kind: ir.TypeOption, Elems: []*ir.Type{
@@ -80,11 +80,11 @@ func mapPointerType(t cc.Type, ast *cc.AST, structs map[string]*ir.StructDef) *i
 		}}
 	case cc.Union:
 		// union* → unsafe.Pointer (unusable in SNGL)
-		return &ir.Type{Kind: ir.TypeDyn, Meta: "unsafe.Pointer"}
+		return ir.NativeGoNamed("unsafe.Pointer")
 	default:
 		inner := mapCType(elem, ast, structs)
 		if inner == nil {
-			return &ir.Type{Kind: ir.TypeDyn, Meta: "unsafe.Pointer"}
+			return ir.NativeGoNamed("unsafe.Pointer")
 		}
 		return &ir.Type{Kind: ir.TypeOption, Elems: []*ir.Type{
 			{Kind: ir.TypeRef, Elems: []*ir.Type{inner}},

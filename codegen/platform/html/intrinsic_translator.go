@@ -5,6 +5,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -31,10 +32,51 @@ type htmlTranslator struct {
 	// elem answers for an op whose node predates no prewalk entry — see
 	// htmlGen.elemDecl.
 	elem *ir.Component
+	// refToVar maps the name a lowered node op uses for its node to the JS
+	// variable the element was actually emitted as. The two differ whenever a
+	// program wrote an `#id`: the lowering leaves that id on the node and
+	// names it in every updater it builds, while the page allocates `$N` for
+	// the element itself. Without the mapping such an updater assigns to an
+	// identifier nothing declares, and the page throws on the first
+	// interaction that fires it.
+	refToVar map[string]string
+	// canvasByID and canvasByFunc are the canvas metadata passCanvas flattened
+	// into the lowered body this translator walks. The page's own markup path
+	// never gets here -- it meets the canvas as an ir.NodeInst and registers a
+	// canvasSetup -- so these answer for the scopes that are emitted as code:
+	// a component factory, and a slot renderer. Without them a `canvas` came
+	// out as a bare element nothing ever drew into.
+	canvasByID   map[string]*canvasutil.Meta
+	canvasByFunc map[*ir.Func]*canvasutil.Meta
+	// canvasDraws are the canvases this scope created, in order. The draw call
+	// cannot be emitted where the element is: it reads the box the element was
+	// laid out in, and the props that size it are assigned after OnCreateNode.
+	// The scope's emitter flushes them once the body is written.
+	canvasDraws []*canvasutil.Meta
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-	return &htmlTranslator{jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, elem: g.elemDecl}
+	return &htmlTranslator{
+		jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
+		canvasByID: g.canvasByID, canvasByFunc: g.canvasByFunc,
+	}
+}
+
+// nodeRef is node with an element-ref name resolved to the variable the
+// element was emitted as. Identity for a ref the page emitted under its own
+// name, which is every synthesized `__nN`.
+func (t *htmlTranslator) nodeRef(node ir.Expr) ir.Expr {
+	id, isIdent := node.(*ir.Ident)
+	if !isIdent || !id.IsElementRef || t.refToVar == nil {
+		return node
+	}
+	v, mapped := t.refToVar[id.Name]
+	if !mapped || v == id.Name {
+		return node
+	}
+	clone := *id
+	clone.Name = v
+	return &clone
 }
 
 // newHTMLTranslatorWithNodes is like newHTMLTranslator but also threads an
@@ -47,7 +89,44 @@ func (g *htmlGen) newHTMLTranslatorWithNodes(jc *javascript.JsIRContext, idToNod
 	return t
 }
 
-var _ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
+var (
+	_ codegen.IntrinsicTranslator = (*htmlTranslator)(nil)
+	// The DOM can put a child at a position, so html declares the capability
+	// in Capabilities() and answers the op here. The two must agree:
+	// TestInsertBeforeCapabilityMatchesTranslator checks every registered
+	// platform.
+	_ codegen.ChildInserter = (*htmlTranslator)(nil)
+)
+
+// The shape of a component instance in the emitted JS. An instance is a plain
+// object: the root node it renders as, one updater per prop the instance can
+// absorb, and a teardown. Named here rather than spelled at each use so the
+// factory and the translator cannot drift -- which is how `__cf_<name>` was
+// called for years without anything defining it.
+const (
+	instanceRootField     = "__root"
+	instanceDestroyMethod = "__destroy"
+)
+
+// instanceUpdateMethod is the updater an instance carries for one prop.
+func instanceUpdateMethod(prop string) string {
+	return "__set_" + sanitizeInstanceProp(prop)
+}
+
+// sanitizeInstanceProp makes a prop name safe as a JS identifier fragment. A
+// wildcard prop's name comes from a call site and need not be one.
+func sanitizeInstanceProp(prop string) string {
+	out := make([]rune, 0, len(prop))
+	for _, r := range prop {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
+			out = append(out, r)
+		default:
+			out = append(out, '_')
+		}
+	}
+	return string(out)
+}
 
 // declOf is the declaration of the element an op targets.
 func (t *htmlTranslator) declOf(node ir.Expr) *ir.Component {
@@ -66,6 +145,9 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// element name (span, button, input, div, ...).
 	t.idTags[id] = tag
 	t.topLevel = append(t.topLevel, id)
+	if m := t.canvasByID[id]; m != nil {
+		t.canvasDraws = append(t.canvasDraws, m)
+	}
 
 	// const <id> = document.createElement("<tag>")
 	createCall := &ir.Call{
@@ -89,7 +171,50 @@ func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call 
 	return []ir.Stmt{&ir.LocalVar{Name: id, Type: ir.TypDyn, Init: call}}
 }
 
+// OnComponentRoot binds a name to the node an instance renders as. The record
+// carries it under a fixed field, which is html's own choice of shape: nothing
+// outside this platform names it.
+func (t *htmlTranslator) OnComponentRoot(ctx context.Context, id string, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.LocalVar{
+		Name: id,
+		Type: ir.TypDyn,
+		Init: &ir.Select{Type: ir.TypDyn, Operand: inst, Field: instanceRootField},
+	}}
+}
+
+// OnUpdateComponent patches a prop on a live instance by calling the updater
+// the instance carries for it.
+//
+// A prop with no updater does not reach here, and this cannot be the place
+// that says so: the op names the instance by an id, not the declaration whose
+// setters would answer. Both sites that emit the op ask instead --
+// reuseOrCreate for a prop inside a reactive slot, collectFromNode for one at
+// a static position -- and each either rebuilds the instance or reports. This
+// used to claim the check without there being one at either end, which is how
+// `__n1.__set_start(...)` reached a page whose instance exported only
+// `__set_tail`.
+func (t *htmlTranslator) OnUpdateComponent(ctx context.Context, inst ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: inst,
+		Func:     &ir.Func{Name: instanceUpdateMethod(prop)},
+		Args:     []ir.CallArg{{Value: value}},
+	}}}
+}
+
+// OnDestroyComponent runs the instance's teardown. Detaching the node is the
+// caller's business: RemoveChild already says that, and an instance is
+// detached and reattached more often than it is destroyed.
+func (t *htmlTranslator) OnDestroyComponent(ctx context.Context, inst ir.Expr) []ir.Stmt {
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: inst,
+		Func:     &ir.Func{Name: instanceDestroyMethod},
+	}}}
+}
+
 func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	parent, child = t.nodeRef(parent), t.nodeRef(child)
 	// Child appended somewhere → no longer top-level.
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
@@ -107,7 +232,22 @@ func (t *htmlTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	}}}
 }
 
+// OnInsertBefore puts a child at a position. The DOM's own insertBefore takes
+// a null ref to mean the end, which is the rule the protocol borrowed, so a
+// reconciliation can pass the next surviving node without first asking whether
+// there is one.
+func (t *htmlTranslator) OnInsertBefore(ctx context.Context, parent, child, ref ir.Expr) []ir.Stmt {
+	parent, child, ref = t.nodeRef(parent), t.nodeRef(child), t.nodeRef(ref)
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: parent,
+		Func:     &ir.Func{Name: "insertBefore"},
+		Args:     []ir.CallArg{{Value: child}, {Value: ref}},
+	}}}
+}
+
 func (t *htmlTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Expr) []ir.Stmt {
+	parent, child = t.nodeRef(parent), t.nodeRef(child)
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: parent,
@@ -121,10 +261,31 @@ func (t *htmlTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	if domEvent == "" {
 		return nil
 	}
+	node = t.nodeRef(node)
 	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: node,
 		Func:     &ir.Func{Name: "addEventListener"},
+		Args: []ir.CallArg{
+			{Value: &ir.Literal{Type: ir.TypString, Value: domEvent}},
+			{Value: handler},
+		},
+	}}}
+}
+
+// OnDetachHandler is addEventListener's inverse, and takes the same handler
+// expression because the DOM matches listeners by reference: passing anything
+// else removes nothing, and says so in no way at all.
+func (t *htmlTranslator) OnDetachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
+	domEvent := domEventName(t.declOf(node), event)
+	if domEvent == "" {
+		return nil
+	}
+	node = t.nodeRef(node)
+	return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+		Type:     ir.TypVoid,
+		Receiver: node,
+		Func:     &ir.Func{Name: "removeEventListener"},
 		Args: []ir.CallArg{
 			{Value: &ir.Literal{Type: ir.TypString, Value: domEvent}},
 			{Value: handler},
@@ -137,15 +298,19 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// handler/timer/setter bodies arrive here with the original SNGL
 	// prop name (e.g. text.value), so consult idToNode when set to
 	// produce the correct DOM-side write.
+	// The declaration is looked up under the name the op used, and the write
+	// is emitted against the variable the element was emitted as. For a
+	// program-written `#id` those are two different strings.
 	if t.idToNode != nil {
 		if id, ok := node.(*ir.Ident); ok && id.IsElementRef {
 			if n := t.idToNode[id.Name]; n != nil {
-				if stmts, ok := domWriteForIR(n.Name, prop, node, value); ok {
+				if stmts, ok := domWriteForIR(n.Name, prop, t.nodeRef(node), value); ok {
 					return stmts
 				}
 			}
 		}
 	}
+	node = t.nodeRef(node)
 	// The prop the tag name binds to names the element; the tag already
 	// reached OnCreateNode, and there is no attribute to write it as.
 	if prop == tagProp {
@@ -286,5 +451,14 @@ func (t *htmlTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	// A redraw inside an emitted scope is a call to the same helper the
+	// initial draw goes through, in place. The page's own handlers do not
+	// reach here: translateBlockJC lifts their redraws out first, because a
+	// canvas the page rendered as markup is not in canvasByFunc at all.
+	if rs, ok := stmt.(*ir.CanvasRedrawStmt); ok {
+		if m := t.canvasByFunc[rs.DrawFunc]; m != nil {
+			return []ir.Stmt{canvasDrawStmt(m)}
+		}
+	}
 	return []ir.Stmt{stmt}
 }

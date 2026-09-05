@@ -202,3 +202,42 @@ func bodyOuterHTMLInBrowser(t *testing.T, html string) string {
 	}`).String()
 	return result
 }
+
+// startTrapped is startComponent with an error trap installed ahead of the
+// generated script. A page that throws on load throws before any test can ask
+// it anything, so the only way to read the failure is to be listening when it
+// happens -- which is equally what a recursion bound's deliberate raise needs.
+func startTrapped(t *testing.T, src string) *webtest.Browser {
+	t.Helper()
+
+	page := renderComponentHTML(t, src)
+	const trap = `<script>window.__snglErr = "";` +
+		`window.addEventListener("error", function (e) { window.__snglErr = String(e.message); });</script>`
+	i := strings.Index(page, "<script")
+	if i < 0 {
+		t.Fatalf("generated page carries no script to trap: %q", page)
+	}
+	body := []byte(page[:i] + trap + page[i:])
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(body)
+	})
+	engine := webtest.New(mux)
+	t.Cleanup(engine.Close)
+
+	if testing.Short() {
+		t.Skip("skipping browser test in -short mode")
+	}
+	browser, err := engine.StartHeadless(1280, 720)
+	if err != nil {
+		t.Skipf("browser unavailable: %v", err)
+	}
+	if err := browser.NavigateRaw(engine.BaseURL() + "/"); err != nil {
+		browser.Close()
+		t.Fatalf("navigate: %v", err)
+	}
+	_ = browser.WaitStable(stableWait)
+	return browser
+}

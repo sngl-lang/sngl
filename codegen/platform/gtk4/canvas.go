@@ -304,28 +304,37 @@ func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	if m == nil {
 		return nil
 	}
-	widget := cgoCast("GtkWidget", codegen.ModelFieldRef(m.ID))
+	widget := cgoCast("GtkWidget", t.fieldRef(m.ID))
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", widget)}}
 }
 
 // canvasMetaForDraw resolves the canvasMeta for a draw func via the
 // translator's shared map.
 func (t *gtk4Translator) canvasMetaForDraw(draw *ir.Func) *canvasMeta {
-	if t.canvasByFunc == nil {
+	if t.shared == nil {
 		return nil
 	}
-	return t.canvasByFunc[draw]
+	return t.shared.canvasByFunc[draw]
+}
+
+// canvasMetaForID resolves the canvasMeta for a flattened canvas node id.
+func (t *gtk4Translator) canvasMetaForID(id string) *canvasMeta {
+	if t.shared == nil {
+		return nil
+	}
+	return t.shared.canvasByID[id]
 }
 
 // emitCanvasCreate emits the OnCreateNode result for a `canvas` tag: register
 // the *C.GtkDrawingArea Model field, construct it sized to the canvas, and
 // register the cairo draw callback via the registry-indexed trampoline.
 func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
-	m := t.canvasByID[id]
+	m := t.canvasMetaForID(id)
 	if m == nil {
 		return nil
 	}
 	t.fieldSink(id, "GtkDrawingArea")
+	t.fieldIDs[id] = true
 	t.idCTypes[id] = "GtkDrawingArea"
 	t.topLevel = append(t.topLevel, id)
 
@@ -336,7 +345,7 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	if h <= 0 {
 		h = 150
 	}
-	daField := codegen.ModelFieldRef(id)
+	daField := t.fieldRef(id)
 
 	// m.<id> = (*C.GtkDrawingArea)(unsafe.Pointer(C.gtk_drawing_area_new()))
 	ctor := cgoCast("GtkDrawingArea", nativeCall("gtk_drawing_area_new"))
@@ -364,9 +373,12 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	// drawing at, so the shapes are rasterised where they land rather than
 	// drawn at one size and stretched from it. cairo is a vector context, so
 	// this costs a transform and nothing else.
+	// The draw func is a method of whatever scope owns the canvas -- the Model,
+	// or a component instance's record -- so the receiver is read off the
+	// context rather than spelled `m`.
 	closure := &ir.Ident{
-		Name: fmt.Sprintf("func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, %d, %d, %q); m.%s(cr) }",
-			w, h, m.Scaling, m.Draw.Name),
+		Name: fmt.Sprintf("func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, %d, %d, %q); %s.%s(cr) }",
+			w, h, m.Scaling, t.gc.RecvName(), m.Draw.Name),
 		Type: ir.TypDyn,
 	}
 	appendCall := &ir.Call{
@@ -391,14 +403,13 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 // emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
 // method `func (m *Model) _canvasDrawN(cr *C.cairo_t)`, translating each
 // canvas-intrinsic CallStmt body statement into native cairo calls.
-func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, reg *gir.TypeRegistry, shared *emitShared, byFunc map[*ir.Func]*canvasMeta) {
+func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, reg *gir.TypeRegistry, shared *emitShared) {
 	// The registry and the shared sink are not optional even though a draw
 	// body reaches mostly cairo intrinsics: *emitShared is nil-safe, so
 	// without the sink a fail() here would be discarded and the build would
 	// emit the broken call anyway, and a needBoolToInt() would silently omit
 	// the helper the emitted code then references.
 	tr := newGtk4Translator(gc, func(string, string) {}).withRegistry(reg).withShared(shared)
-	tr.canvasByFunc = byFunc
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	synthesized := &ir.Func{
 		Name:     fn.Name,

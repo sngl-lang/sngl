@@ -63,6 +63,10 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	f.StructSpread = false
 	f.StructComponents = true
 	f.StdlibContextParam = true
+	// The DOM puts a child at a position, so a keyed reconciliation may move
+	// one node instead of rebuilding the run. htmlTranslator answers the op;
+	// the two are checked against each other in codegen's tests.
+	f.InsertBefore = true
 	f.Canvas = true
 	f.ReactiveCanvas = true
 	return f
@@ -576,6 +580,12 @@ type htmlGen struct {
 	// on that node (#inc). Only ids a test could name are in it.
 	snglIDByElem map[string]string
 
+	// refToVar maps the name a lowered node op uses for its node to the JS
+	// variable the element was emitted as. They coincide for a synthesized
+	// `__nN` and differ for every `#id` a program wrote: the lowering leaves
+	// that id on the node and names it in the updaters it builds, while the
+	// element itself is emitted as `$N`. See htmlGen.nodeID.
+	refToVar map[string]string
 	// idToNode maps each emitted element id back to its NodeInst, which is
 	// all a reactive-update Assign inside a handler body has to go on.
 	idToNode map[string]*ir.NodeInst
@@ -589,8 +599,26 @@ type htmlGen struct {
 	// one top-level `const __nN = document.querySelector(...)` in emitScript,
 	// so handlers emit a bare identifier rather than a querySelector per write.
 	loweredRefs map[string]bool
+	// loweredLocals are the names a lowered statement *declares* on its way
+	// past -- a `let __n1__re0__el = __n1__re0.__root` a rebuild binds, say.
+	// They look exactly like a page ref where they are used, so without this
+	// the prelude also emitted a querySelector for one and the local was
+	// renamed by the collision, leaving the rebuild inserting a node the page
+	// had never found.
+	loweredLocals map[string]bool
 
 	canvasSetups []canvasSetup
+	// usesLoweredCanvas records that some emitted scope drew a canvas, so the
+	// page carries the draw helpers even when its own markup holds none.
+	usesLoweredCanvas bool
+	// canvasByID/canvasByFunc are the flattened canvases of every lowered
+	// body, threaded into every translator by newHTMLTranslator.
+	canvasByID   map[string]*canvasutil.Meta
+	canvasByFunc map[*ir.Func]*canvasutil.Meta
+
+	// staticInsts are the factory instances the page builds once, in the order
+	// the static renderer met them.
+	staticInsts []staticInstance
 }
 
 type componentParam struct {
@@ -653,12 +681,19 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		testMode:       opts.Test,
 		minify:         opts.Minify,
 		idToNode:       make(map[string]*ir.NodeInst),
+		refToVar:       make(map[string]string),
 		loweredRefs:    make(map[string]bool),
+		loweredLocals:  make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
 		shared:         shared,
 	}
 
 	g.dt = codegen.NewDepTrackerFromPkg(pkg)
+	// The canvases passCanvas flattened into a lowered body. A canvas the page
+	// renders as markup is an ir.NodeInst and is not among these; what is, is
+	// every canvas in a scope emitted as code -- a component factory, a slot
+	// renderer -- which is what the translator needs to draw one at all.
+	g.canvasByID, g.canvasByFunc = canvasutil.Collect(pkg, nil)
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
@@ -766,6 +801,13 @@ func (g *htmlGen) prewalkNodes() {
 			}
 			if strings.HasPrefix(n.ID, "__n") {
 				g.idToNode[n.ID] = n
+			} else if n.ID != "" {
+				// Allocated here rather than when the element is emitted:
+				// a handler is translated as its own node is reached, which
+				// may be before the node its updater writes to. The element
+				// var has to be known by then or the updater renders against
+				// the name the op used, which nothing declares.
+				g.nodeID(n)
 			}
 			// A node the lowering creates later — a `for` body's — gets its
 			// id then, so it never reaches idToNode. Every raw element of a
@@ -933,10 +975,10 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 			}
 		}
 	}
-	for _, c := range g.pkg.Components {
-		if c == nil {
-			continue
-		}
+	// Not into a factory: a slot there renders into the instance's own root,
+	// which the lowering already named, and a page anchor would point every
+	// instance at one node.
+	for _, c := range g.pageComponents() {
 		visitStmts(c.Body)
 		for _, fn := range c.Funcs {
 			if fn != nil {
@@ -972,15 +1014,33 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 // nodeID returns n.ID when NoReactivity pre-assigned one, otherwise allocates
 // a fresh `$N`, recording it in g.idToNode. A nil n allocates without
 // recording, so that id falls through to the JS-default write.
+//
+// A program-written `#id` is not reused as the variable name: it would have to
+// survive JS scoping and could name a reserved word or a global the page
+// already emits. It is recorded in refToVar instead, because the lowering left
+// that id on the node and every updater it built names it -- an op arriving
+// here under that name has to reach the element emitted under this one.
 func (g *htmlGen) nodeID(n *ir.NodeInst) string {
 	var id string
-	if n != nil && strings.HasPrefix(n.ID, "__n") {
+	switch {
+	case n != nil && strings.HasPrefix(n.ID, "__n"):
 		id = n.ID
-	} else {
+	case n != nil && n.ID != "" && g.refToVar[n.ID] != "":
+		// The prewalk already allocated for this ref so that a handler
+		// translated before the element is emitted can still resolve it.
+		id = g.refToVar[n.ID]
+	default:
 		id = g.allocID()
 	}
 	if n != nil {
 		g.idToNode[id] = n
+		if n.ID != "" && n.ID != id {
+			g.refToVar[n.ID] = id
+			// Under the op's own name too: OnPropAssign recovers the
+			// declaration by the name the op used, before resolving the
+			// variable.
+			g.idToNode[n.ID] = n
+		}
 		g.noteSnglID(id, n)
 	}
 	return id
@@ -1235,6 +1295,19 @@ func nodeFromIRCallStmt(n *ir.CallStmt) *ir.NodeInst {
 	if n == nil || n.Call == nil {
 		return nil
 	}
+	// A call to something with a body is a call, not an element. An element
+	// resolves to a declaration carrying none, so without this test a lowering
+	// that puts a call in a body -- an effect's setup does -- was rendered as
+	// markup: `<__effect0_mount></__effect0_mount>` in the page, and the call
+	// itself nowhere.
+	if fn := n.Call.Func; fn != nil && len(fn.Block) > 0 {
+		return nil
+	}
+	// A node operation is bodyless too, and is an instruction rather than a
+	// tag: `<AppendChild>` in the page is what promoting one looks like.
+	if ir.IsNodeOpCall(n.Call) {
+		return nil
+	}
 	name := irCallName(n.Call)
 	if name == "" {
 		return nil
@@ -1275,6 +1348,13 @@ func irCallName(call *ir.Call) string {
 // AST-backed helper, and a raw element is rendered IR-native.
 func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	if isUserIRComponent(n) {
+		// A factory component is never inlined here, at a static position any
+		// more than inside a slot: its body has been flattened for the
+		// factory and is no longer a tree to render.
+		if g.isInstanceComponent(n.Component) {
+			g.renderStaticInstance(b, n, depth)
+			return
+		}
 		g.renderIRUserComponent(b, n, depth)
 		return
 	}
@@ -1380,6 +1460,11 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 
 // synthesizedFuncs returns the Synthesized funcs of the package, main
 // component and current window.
+//
+// Deduped by pointer, as pkgFuncs is and for the same reason: one func reaches
+// this from more than one list. A root window synthesized around main carries
+// main's funcs, and main is still on pkg.Components -- so a func on it would
+// otherwise be declared twice in the page.
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
 	// The three sources overlap: a page whose root is a component and not an
@@ -1405,7 +1490,7 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		// survived inlining is emitted from its own declaration, and its
 		// synthesized funcs -- a canvas draw function among them -- have to
 		// come with it.
-		for _, comp := range g.pkg.Components {
+		for _, comp := range g.pageComponents() {
 			for _, f := range comp.Funcs {
 				add(f)
 			}
@@ -1985,7 +2070,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			if fn.Receiver != "" {
 				fmt.Fprintf(b, "state.%s = () => %s_%s(state);\n", fn.Name, fn.Receiver, fn.Name)
 			} else {
-				fmt.Fprintf(b, "state.%s = () => $%s();\n", fn.Name, fn.Name)
+				fmt.Fprintf(b, "state.%s = () => %s();\n", fn.Name, fn.Name)
 			}
 		}
 		g.emitEventInvokers(b)
@@ -2024,7 +2109,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if fn.Receiver != "" {
 			fmt.Fprintf(b, "function %s_%s(state) { return %s; }\n", fn.Receiver, fn.Name, body)
 		} else {
-			fmt.Fprintf(b, "function $%s() { return %s; }\n", fn.Name, body)
+			// Its own name, not a `$`-prefixed one: `$` is this platform's
+			// namespace for a helper it synthesized ($set_, $timer_, $compute_)
+			// and a computed is the program's own func. A block-bodied computed
+			// has always come out under its plain name from emitJSFunc, and
+			// every call site spells that -- so the prefix here was a
+			// declaration nothing called beside a call to nothing declared.
+			fmt.Fprintf(b, "function %s() { return %s; }\n", fn.Name, body)
 		}
 		hasComputed = true
 	}
@@ -2069,6 +2160,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Before the slots: a slot body is where a component instance is created,
+	// so the factory it calls has to be in scope by then.
+	g.emitComponentFactories(b)
 	g.emitSynthesizedSlots(b)
 	g.emitCanvasSetups(b)
 
@@ -2132,6 +2226,10 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Before the refs below, which is where a handler's binding for the
+	// instance would otherwise be written as an element lookup.
+	g.emitStaticInstances(b)
+
 	// An id can appear in both refs and loweredRefs; prefer the querySelector
 	// form, since emitting both is a duplicate `const __nN` that throws at
 	// parse time.
@@ -2140,10 +2238,16 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if _, lowered := g.loweredRefs[id]; lowered {
 			continue
 		}
+		if g.isStaticInstanceID(id) {
+			continue
+		}
 		fmt.Fprintf(b, "const %s = document.getElementById(\"%s\");\n", id, id)
 	}
 	loweredRefs := make([]string, 0, len(g.loweredRefs))
 	for id := range g.loweredRefs {
+		if g.isStaticInstanceID(id) || g.loweredLocals[id] {
+			continue
+		}
 		loweredRefs = append(loweredRefs, id)
 	}
 	sort.Strings(loweredRefs)
@@ -2171,12 +2275,30 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("}\n__sngl_init();\n")
 	}
 
+	// After the DOM updaters are wired, for the same reason a kicker is: a
+	// mount body writes state, and the write patches whatever reads it.
+	for _, fn := range g.bodyCalls() {
+		fmt.Fprintf(b, "%s();\n", fn)
+	}
+
 	// After the DOM updaters are wired, so a kicker body can call setters.
 	if g.pkg != nil && len(g.pkg.AsyncKickers) > 0 {
 		b.WriteString("\n// Async kicker startup\n")
 		for _, k := range g.pkg.AsyncKickers {
 			fmt.Fprintf(b, "%s();\n", k.Func.Name)
 		}
+	}
+
+	// Only the page's own teardown. An instance's brackets are released by the
+	// __destroy the factory returns, called wherever that instance is torn
+	// down; naming that function here would name a factory local.
+	if g.pkg != nil && g.pkg.Teardown != nil && g.pageOwnsFunc(g.pkg.Teardown) {
+		// pagehide, not beforeunload or unload: it is the one the browsers
+		// still fire for a page entering the back/forward cache, and the two
+		// older events are precisely the ones that do not run on a mobile tab
+		// discard. Even so this is best effort -- a crashed tab runs nothing --
+		// which is what an effect's teardown is written knowing.
+		fmt.Fprintf(b, "\nwindow.addEventListener(\"pagehide\", %s);\n", g.pkg.Teardown.Name)
 	}
 
 	if g.preview {
@@ -2296,7 +2418,7 @@ func canvasScalingMode(n *ir.NodeInst) string {
 // present. The per-canvas draw call comes from the updaters registered in
 // initWrites, so no per-canvas IIFE is emitted here.
 func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
-	if len(g.canvasSetups) == 0 {
+	if len(g.canvasSetups) == 0 && !g.usesLoweredCanvas {
 		return
 	}
 	b.WriteString(snglColorHelper)
@@ -2974,6 +3096,7 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			g.collectLoweredRefs(b)
 		}
 	case *ir.LocalVar:
+		g.loweredLocals[n.Name] = true
 		walkExpr(n.Init)
 	case *ir.Emit:
 		for _, a := range n.Args {
@@ -3413,4 +3536,44 @@ func capitalizeFirst(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// bodyCalls names the functions a page body calls at the position they were
+// written, in order.
+//
+// html renders a body as markup, so an imperative statement in one has no
+// place there and is emitted into the startup script instead. Today these are
+// an effect's setup calls; anything else a lowering leaves in a body arrives
+// the same way.
+//
+// A factory's body is not a page body: its calls are written inside the
+// factory, where the names they reach are in scope and where there is an
+// instance for them to act on.
+func (g *htmlGen) bodyCalls() []string {
+	if g.pkg == nil {
+		return nil
+	}
+	pkg := g.pkg
+	var out []string
+	collect := func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			call, isCall := s.(*ir.CallStmt)
+			if !isCall || call.Call == nil || call.Call.Func == nil {
+				continue
+			}
+			fn := call.Call.Func
+			if len(fn.Block) == 0 || slotIndexFromRenderFunc(fn.Name) != "" {
+				continue
+			}
+			out = append(out, fn.Name)
+		}
+	}
+	for _, c := range g.pageComponents() {
+		collect(c.Body)
+	}
+	for _, w := range pkg.Windows {
+		collect(w.Body)
+	}
+	collect(pkg.Body)
+	return out
 }

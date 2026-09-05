@@ -1,0 +1,20 @@
+// What the spread bound the parameter to, named in a diagnostic. Accepting the
+// valid program says only that nothing was rejected -- a parameter left as dyn
+// would do that too -- so the claim worth pinning is that the payload is the
+// field's own type.
+import . "sngl:ui"
+
+struct pageArgs {
+    on int
+}
+
+component main {
+    var page = 3
+    var a = pageArgs{on=page}
+
+    effect(...a, @mount(v) {
+        page = v + "x" // ERROR(check) "operator + not defined for int and string"
+    })
+
+    text(value="page=" + string(page))
+}

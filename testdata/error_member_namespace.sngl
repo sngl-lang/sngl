@@ -1,0 +1,33 @@
+// A component's members are one namespace. Props, events, slots, vars, methods
+// and the element ids the body declares all answer to `c.<name>` or to the
+// body's own scope, so a name in it is claimed once -- the file-scope rule
+// claimTopLevel enforces, applied to a component.
+//
+// A slot claims a name without being a member: `c.<slot>` resolves to nothing,
+// but the slot is a tag anywhere in the body, so nothing else may take its name.
+
+import . "sngl:ui"
+
+component idVsMethod {
+    var n = 0
+
+    func bump() { n += 1 }
+
+    button #bump(text="+", @click { bump() }) // ERROR(check) "element id \"bump\" on component idVsMethod: name is already declared as a func"
+    text(value=string(n))
+}
+
+component eventVsFunc(@save) {
+    func save() {} // ERROR(check) "func \"save\" on component eventVsFunc: name is already declared as an event"
+    text(value="x")
+}
+
+component slotVsVar(slot body) {
+    var body = 0 // ERROR(check) "var \"body\" on component slotVsVar: name is already declared as a slot"
+    text(value=string(body))
+}
+
+component propVsVar(label string = "hi") {
+    var label = "bye" // ERROR(check) "var \"label\" on component propVsVar: name is already declared as a prop"
+    text(value=label)
+}

@@ -41,8 +41,86 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	if err := st.run(); err != nil {
 		return err
 	}
+	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	uniqueNodeIDs(pkg)
 	return nil
+}
+
+// dropNestedMethods removes from pkg.Funcs the methods of every component the
+// inliner is about to drop.
+//
+// The checker registers a nested method in both pkg.Funcs and its component's
+// Funcs -- the same *ir.Func in each, which is why this matches by pointer.
+// Dropping the declaration and leaving the members behind left every Go
+// target emitting the original method of a component whose props no longer
+// exist anywhere: each instance got its own clone with the arguments folded
+// in, hoisted onto the owner it was inlined into, while the original still
+// read the bare prop names and named nothing the Model declares.
+//
+// A component something instantiates at run time is kept, so its methods stay
+// and the instance record emits them.
+func dropNestedMethods(pkg *ir.Package, keep map[*ir.Component]bool) {
+	dropped := make(map[*ir.Func]bool)
+	for _, c := range pkg.Components {
+		if keep[c] {
+			continue
+		}
+		for _, f := range c.Funcs {
+			dropped[f] = true
+		}
+	}
+	if len(dropped) == 0 {
+		return
+	}
+	out := pkg.Funcs[:0]
+	for _, f := range pkg.Funcs {
+		if !dropped[f] {
+			out = append(out, f)
+		}
+	}
+	pkg.Funcs = out
+}
+
+// uniqueNodeIDs makes each id name one node again.
+//
+// An id is the program's name for a node, and splicing a body puts a copy of
+// every id in it into the caller -- so two instances of one component named one
+// node twice. The callee's state is renamed per instance for exactly this
+// reason; its ids were not, and a backend resolving the name answered for
+// whichever node it reached first: two instances of a counter shared one
+// element, and bumping either updated the same one.
+//
+// The first occurrence keeps the name. A program addresses a node by the name
+// it wrote, and with a single instance -- overwhelmingly the common case --
+// that name is unambiguous and must survive; a test naming `#inc` means the
+// `#inc` there is. With several instances the program has no way to say which
+// it meant, so the later ones are the ones that give up the name.
+//
+// Renaming here rather than while splicing, because "is this id ambiguous" is a
+// question about the finished owner and not about any one instance: the splice
+// that introduces a duplicate cannot tell it is doing so.
+func uniqueNodeIDs(pkg *ir.Package) {
+	if pkg == nil {
+		return
+	}
+	for _, o := range ir.Owners(pkg) {
+		seen := map[string]int{}
+		// Every body the owner has, because an id is ambiguous wherever the
+		// two nodes that share it are written.
+		_ = ir.Walk(o.Stmts, func(node ir.Node) error {
+			n, ok := node.(*ir.NodeInst)
+			if !ok || n.ID == "" {
+				return nil
+			}
+			k := seen[n.ID]
+			seen[n.ID] = k + 1
+			if k > 0 {
+				n.ID = n.ID + "__" + strconv.Itoa(k)
+			}
+			return nil
+		})
+	}
 }
 
 type inlineCompState struct {
@@ -159,71 +237,36 @@ func rootComponent(pkg *ir.Package, opts Options) *ir.Component {
 }
 
 // findRecursiveCycles returns the set of components participating in any
-// call cycle (including self-recursion). Edges follow NodeInst.Component
-// from each component's body, funcs, and nested control-flow.
+// call cycle (including self-recursion). Edges follow NodeInst.Component.
 func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 	edges := map[*ir.Component]map[*ir.Component]bool{}
 	for _, c := range pkg.Components {
 		edges[c] = map[*ir.Component]bool{}
-		collectCalleeEdges(c.Body, edges[c])
-		for _, f := range c.Funcs {
-			collectCalleeEdges(f.Block, edges[c])
-		}
+		collectCalleeEdges(c, edges[c])
 	}
 	// Also scan pkg.Windows so components instantiated inside window bodies
 	// participate in cycle detection. Use a synthetic "main" edge set since
 	// windows are not independent cycle roots — they live in main's scope.
 	if main := rootComponent(pkg, opts); main != nil {
 		for _, w := range pkg.Windows {
-			collectCalleeEdges(w.Body, edges[main])
-			for _, f := range w.Funcs {
-				collectCalleeEdges(f.Block, edges[main])
-			}
+			collectCalleeEdges(w, edges[main])
 		}
 	}
 	return tarjanCycles(edges)
 }
 
-func collectCalleeEdges(stmts []ir.Stmt, out map[*ir.Component]bool) {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.NodeInst:
-			if n.Component != nil {
-				out[n.Component] = true
-			}
-			collectCalleeEdges(n.Children, out)
-			for _, h := range n.Handlers {
-				if h.Func != nil {
-					collectCalleeEdges(h.Func.Block, out)
-				}
-			}
-		case *ir.If:
-			collectCalleeEdges(n.Body, out)
-			collectCalleeEdges(n.Else, out)
-		case *ir.For:
-			collectCalleeEdges(n.Body, out)
-			collectCalleeEdges(n.Else, out)
-		case *ir.SlotInst:
-			collectCalleeEdges(n.Children, out)
-		case *ir.ErrorBoundary:
-			collectCalleeEdges(n.Children, out)
-			if n.Handler != nil && n.Handler.Func != nil {
-				collectCalleeEdges(n.Handler.Func.Block, out)
-			}
-		case *ir.Window:
-			collectCalleeEdges(n.Body, out)
-			for _, f := range n.Funcs {
-				if f != nil {
-					collectCalleeEdges(f.Block, out)
-				}
-			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
-			*ir.Break, *ir.Continue:
-			// Leaf/imperative stmts — no component-call edges to collect.
-		default:
-			panic(fmt.Sprintf("collectCalleeEdges: unhandled %T", n))
+// collectCalleeEdges records every component root instantiates, wherever in
+// what root owns the instantiation is written.
+//
+// ir.Walk suits this exactly: it stops at NodeInst.Component, which is the
+// edge being collected rather than a body to follow.
+func collectCalleeEdges(root any, out map[*ir.Component]bool) {
+	_ = ir.Walk(root, func(n ir.Node) error {
+		if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil {
+			out[inst.Component] = true
 		}
-	}
+		return nil
+	})
 }
 
 // tarjanCycles runs Tarjan's SCC algorithm and returns the set of nodes
@@ -315,6 +358,21 @@ func renameIdents(stmts []ir.Stmt, renames map[ir.Symbol]string, symRenames map[
 		return stmts
 	}
 	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		// A call names its callee on Call.Func, not through an Ident, so
+		// repointing idents alone left `bump()` inside an inlined body calling
+		// the original declaration -- whose body still reads the component's
+		// own vars, which after inlining exist only under the instance's
+		// names. The clone that was correct went uncalled and the caller got
+		// the one that was not. Returned unchanged so the walk still descends
+		// into the arguments.
+		if call, ok := e.(*ir.Call); ok && call.Func != nil {
+			if newSym, ok2 := symRenames[call.Func]; ok2 {
+				if fn, ok3 := newSym.(*ir.Func); ok3 {
+					call.Func = fn
+				}
+			}
+			return e
+		}
 		id, ok := e.(*ir.Ident)
 		if !ok || id.Sym == nil {
 			return e
@@ -438,6 +496,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		// passes (passReactivity / passDeclarative).
 		if n.Component != nil && (inReactive || st.cycles[n.Component]) {
 			st.keep[n.Component] = true
+			// The one place that knows: this instantiation is built while the
+			// program runs, so the declaration needs a runtime of its own.
+			n.Component.RuntimeInstance = true
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
 		}
 		if !st.inlinable(n.Component) {
@@ -625,6 +686,14 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 		renames[v] = clone.Name
 		symRenames[v] = clone
+		// The clone is as reactive as the original. st.reactive was computed
+		// once, before this pass created any of these, so a `for` iterating an
+		// inlined component's own state read as non-reactive -- and the
+		// instantiation inside it was inlined too, giving every element of the
+		// loop one shared cell for what the component declared per instance.
+		if st.reactive[v] {
+			st.reactive[clone] = true
+		}
 		*hoist.vars = append(*hoist.vars, clone)
 	}
 	funcStart := len(*hoist.funcs)
@@ -705,14 +774,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	body = substituteSlots(body, n)
 	body = substituteEvents(body, n.Handlers)
 
-	if n.ID != "" {
-		for _, s := range body {
-			if ni, ok := s.(*ir.NodeInst); ok {
-				ni.ID = n.ID
-				break
-			}
-		}
-	}
 	return body, nil
 }
 

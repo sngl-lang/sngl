@@ -6,8 +6,36 @@ import (
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
+
+// maxRenderDepth bounds how deeply one mount may nest component
+// instantiations: a recursive component whose base case never arrives would
+// otherwise recurse here until the Go stack gives out.
+//
+// It is lower.MaxRecursionDepth rather than a number of its own so the two
+// cannot drift. The interpreter does not lower, so the `if __depth >= N` that
+// pass writes into every compiled target never reaches it -- this is the same
+// bound, stated the only way an interpreter can state one. It counts every
+// nested component and not only the members of a cycle, which is stricter than
+// the pass by however many wrappers stand between two levels of the recursion;
+// on a program that is not recursing at all, nothing comes near either.
+//
+// It replaced a silent truncation at a depth of 100, which returned the tree
+// the bound had cut short and told nobody: below that point the program simply
+// was not there.
+const maxRenderDepth = lower.MaxRecursionDepth
+
+// recursionExhausted is the error a mount that hit the bound returns. A
+// RaisedError, so the nearest enclosing errorBoundary catches it the way it
+// catches error.raise, and the kind matches the one the lowering pass writes.
+func recursionExhausted(name string) *RaisedError {
+	return &RaisedError{Event: map[string]any{
+		"message": fmt.Sprintf("%s: recursion exceeded %d nested instances", name, maxRenderDepth),
+		"kind":    "recursion",
+	}}
+}
 
 // View is the interpreter's retained render tree, mounted once and patched.
 type View struct {
@@ -18,6 +46,10 @@ type View struct {
 	// byID indexes by #id. A `for` renders one node per iteration, so an id
 	// inside a loop names several.
 	byID map[string][]*Node
+	// Effects are the lifetime brackets this tree holds, in mount order. Not
+	// among the nodes: an effect draws nothing, and what it wants from the
+	// tree is only the lifetime that reaching it at all confers.
+	Effects []MountedEffect
 }
 
 // Node is one retained instance in a View.
@@ -293,6 +325,18 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 
 		case *ir.ErrorBoundary:
 			nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("boundary@%d", next("boundary"))))
+			if raised, ok := err.(*RaisedError); ok && n.Handler != nil {
+				// A raise from *mounting* a child, which is the recursion
+				// bound and nothing else today: an ordinary error.raise is
+				// routed by the ErrorMode the checker resolved, and reaches
+				// this boundary as an invoked handler rather than as an error
+				// coming back out of the mount. Caught here because a mount
+				// has no ir.Call to carry a resolution on, and because the
+				// boundary that should catch a nested instance is the dynamic
+				// one -- which the mounter is standing in.
+				err = env.invokeHandler(n.Handler, raised.Event)
+				nodes = nil
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -328,9 +372,13 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 // do -- so a component instantiation is never addressable by #id, even when it
 // carries one.
 func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, error) {
+	if e, isEffect := effectOf(inst, env, m.key(path)); isEffect {
+		m.view.Effects = append(m.view.Effects, e)
+		return nil, nil
+	}
 	if inst.Component != nil {
-		if env.RenderDepth >= maxCallDepth {
-			return nil, nil
+		if env.RenderDepth >= maxRenderDepth {
+			return nil, recursionExhausted(inst.Name)
 		}
 		// The instantiation's own props are the arguments, evaluated in the
 		// caller's scope -- the same values componentEnv binds to the
@@ -398,8 +446,8 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]*Node, error) {
 	if env.Pkg != nil {
 		if comp := FindComponent(env.Pkg, name); comp != nil {
-			if env.RenderDepth >= maxCallDepth {
-				return nil, nil
+			if env.RenderDepth >= maxRenderDepth {
+				return nil, recursionExhausted(name)
 			}
 			node := &Node{
 				Key:       m.key(path),

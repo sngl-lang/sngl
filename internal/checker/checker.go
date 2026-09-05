@@ -392,6 +392,9 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
+	// pendingConstruct is the #[construct] marks written in this package,
+	// waiting for a type complete enough to judge. See checkConstructProps.
+	pendingConstruct []constructMark
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -1057,6 +1060,9 @@ func (c *checker) pass1() {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
 	}
+	// Every shell is filled, so a struct a #[construct] prop names can now be
+	// walked field by field.
+	c.checkConstructProps()
 
 	for _, d := range c.docs {
 		c.resumeFile(d)
@@ -2217,43 +2223,115 @@ func (c *checker) isLibraryNamespace(name string) bool {
 	return false
 }
 
-// claimComponentAPI holds a component's parameter list to one name per entry:
-// props, events and slots share the one list a reader has to go on.
+// claimComponentAPI holds a component's members to one name each: props,
+// events, slots, vars, methods and the element ids its body declares are one
+// namespace, because `c.<name>` and the body's own scope read from it together.
+//
+// A slot is in the namespace but is not a member: it is placed in the body
+// rather than read off the component, so nothing resolves `c.<slot>`. It still
+// claims its name, since a slot is resolved as a tag from anywhere in the body.
+//
+// An id declared inside a *descendant* component is deliberately absent. It is
+// reachable from here as list<host>, but the parent did not declare it -- were
+// it a claim, renaming a var in a child would break its parent, and a library
+// component's internal ids would land in every caller's namespace.
 func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component) {
-	seen := make(map[string]string, len(comp.Props)+len(comp.Events)+len(comp.Slots))
+	type claimed struct {
+		kind string
+		pos  ast.Pos
+	}
+	seen := make(map[string]claimed, len(comp.Props)+len(comp.Events)+len(comp.Slots))
 	claim := func(name, kind string, pos ast.Pos) {
 		if name == "" {
 			return
 		}
 		if prev, dup := seen[name]; dup {
-			c.error(pos, "%s %q on component %s: name is already declared as a %s", kind, name, comp.Name, prev)
+			article := "a"
+			if strings.ContainsRune("aeiou", rune(prev.kind[0])) {
+				article = "an"
+			}
+			c.error(pos, "%s %q on component %s: name is already declared as %s %s (at %s)",
+				kind, name, comp.Name, article, prev.kind, prev.pos)
 			return
 		}
-		seen[name] = kind
+		seen[name] = claimed{kind, pos}
 	}
 	for _, p := range decl.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
 			claim(pd.Name, "prop", pd.Pos)
 		case ast.EventDecl:
+			// The `@` is declaration syntax, not part of the name, so an event
+			// competes with everything else on the bare identifier.
 			claim(pd.Name, "event", pd.Pos)
 		case ast.SlotDecl:
 			claim(pd.Name, "slot", pd.Pos)
 		}
 	}
-	// A slot is resolved as a tag from anywhere in the body, so a var or func of
-	// the same name collides with it. Only that pairing is reported here: the
-	// scope machinery already answers for the rest, and with a better message.
 	for _, v := range comp.Vars {
-		if seen[v.Name] == "slot" {
-			c.error(decl.Pos, "var %q on component %s: name is already declared as a slot", v.Name, comp.Name)
+		pos := decl.Pos
+		if v.AST != nil {
+			if p := v.AST.StmtPos(); p != nil {
+				pos = *p
+			}
 		}
+		kind := "var"
+		if v.IsConst {
+			kind = "const"
+		}
+		claim(v.Name, kind, pos)
 	}
 	for _, fn := range comp.Funcs {
-		if seen[fn.Name] == "slot" {
-			c.error(decl.Pos, "func %q on component %s: name is already declared as a slot", fn.Name, comp.Name)
+		pos := decl.Pos
+		if fn.AST != nil {
+			pos = fn.AST.Pos
+		}
+		claim(fn.Name, "func", pos)
+	}
+	for _, ref := range collectElementRefIDs(decl.Body.Stmts) {
+		claim(ref.name, "element id", ref.pos)
+	}
+}
+
+type elementRef struct {
+	name string
+	pos  ast.Pos
+}
+
+// collectElementRefIDs returns every element id declared in a component body,
+// in source order. It is findHostComponentAST's walk widened from one name to
+// all of them -- ids hide inside if/for branches and inside a slot's block, and
+// the `Comp() #id` call form declares one as much as `Comp #id { }` does. It
+// does not descend into the components the body instantiates: those ids are
+// their own declarations'.
+func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
+	var out []elementRef
+	var walk func(stmts []ast.Stmt)
+	walk = func(stmts []ast.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ast.VisualNode:
+				if n.ID != "" {
+					out = append(out, elementRef{n.ID, n.Pos})
+				}
+				walk(n.Block.Stmts)
+			case *ast.CallStmt:
+				if _, id, isElem := elementRefCallInfo(n.Call); isElem && id != "" {
+					out = append(out, elementRef{id, n.Pos})
+				}
+			case *ast.SlotNode:
+				walk(n.Block.Stmts)
+			case *ast.IfStmt:
+				walk(n.Body.Stmts)
+				walk(n.Else.Stmts)
+			case *ast.ForStmt:
+				walk(n.Body.Stmts)
+				walk(n.Else.Stmts)
+			}
 		}
 	}
+	walk(stmts)
+	return out
 }
 
 // buildSlotDecl resolves one slot declaration, for either registration path.
@@ -2307,11 +2385,19 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 		return
 	}
 
+	// The parameters are in scope for what the declaration writes after its
+	// name: a prop's type, an event's payload, a slot's content. The scope is
+	// closed again before the component is bound and its body collected --
+	// those declare into the package, and a name declared while this scope is
+	// open would go away with it.
+	popTypeParams := pushTypeParams(c, comp.TypeParams)
+
 	irComp := &ir.Component{
-		AST:    comp,
-		Name:   comp.Name,
-		Stdlib: c.inLibSource(),
-		Pkg:    c.libPkgName,
+		AST:        comp,
+		Name:       comp.Name,
+		Stdlib:     c.inLibSource(),
+		Pkg:        c.libPkgName,
+		TypeParams: c.resolveTypeParams(comp.TypeParams),
 	}
 	c.applyMarks(comp, irComp)
 
@@ -2357,13 +2443,21 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	}
 	c.finishTreeMarks(comp, irComp, c.declPkg())
 	c.finishDefaultSlot(irComp)
+	popTypeParams()
 
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
 
-	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
+	// The component's type parameters travel with its methods, which is what
+	// puts them in scope for a signature and a body resolved from here: this
+	// is past popTypeParams, and the pop cannot move -- the loop above
+	// registers structs, enums and units into the package, and a name
+	// declared while a type-parameter scope is open goes away with it.
+	// buildFunc pushes what it is handed, so handing it the parameters is the
+	// same fix collectComponentDecls makes for a body `var`.
+	irComp.Funcs = c.registerNestedMethods(irComp.Name, comp.TypeParams, nestedFuncs)
 	c.claimComponentAPI(comp, irComp)
 }
 
@@ -2386,7 +2480,15 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 		case *ast.UnitDef:
 			c.registerUnit(s)
 		case *ast.ConstDecl, *ast.VarDecl:
+			// A state declaration's annotation may name the component's type
+			// parameters -- `var last T` is most of what a generic component
+			// is for -- so they are in scope for the resolve. Pushed here
+			// rather than around the whole loop because the other three cases
+			// register into the package, and a name declared while a
+			// type-parameter scope is open goes away with it.
+			popTypeParams := pushTypeParams(c, comp.TypeParams)
 			irComp.Vars = append(irComp.Vars, c.collectComponentVarDecl(stmt)...)
+			popTypeParams()
 		case *ast.FuncDef:
 			nestedFuncs = append(nestedFuncs, s)
 		}
@@ -2451,8 +2553,8 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.bindWindow(vn.Pos, w)
 		return
 	}
-	if c.builtinNodeKind(name) == ir.BuiltinTimer {
-		t := c.buildTimer(vn)
+	if kind, comp := c.builtinNode(name); kind == ir.BuiltinTimer {
+		t := c.buildTimer(vn, comp)
 		c.pkg.Timers = append(c.pkg.Timers, t)
 		return
 	}
@@ -2509,15 +2611,24 @@ func (c *checker) checkPackageBody() {
 // Qualified targets (`sngl.timer`) are never built-in nodes, matching the
 // bare-name-only behaviour this replaces.
 func (c *checker) builtinNodeKind(name string) ir.BuiltinKind {
+	kind, _ := c.builtinNode(name)
+	return kind
+}
+
+// builtinNode is builtinNodeKind plus the declaration the kind was read off.
+//
+// A built-in node's props are that declaration's, so the builder that
+// hand-picks the ones it cares about needs it to say which names exist at all.
+func (c *checker) builtinNode(name string) (ir.BuiltinKind, *ir.Component) {
 	sym, ok := c.resolveComponentSymbol(name)
 	if !ok {
-		return ir.BuiltinNone
+		return ir.BuiltinNone, nil
 	}
 	comp, ok := sym.(*ir.Component)
 	if !ok || !comp.Builtin.IsNode() {
-		return ir.BuiltinNone
+		return ir.BuiltinNone, nil
 	}
-	return comp.Builtin
+	return comp.Builtin, comp
 }
 
 // resolveComponentSymbol resolves a visual-node target — bare "Foo" or
@@ -3052,8 +3163,9 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 // buildErrorBoundary builds an ir.ErrorBoundary from an errorBoundary visual
 // node. The @error handler is required and is type-checked with ErrorEvent
 // defaulted on its parameter. Children are type-checked as a sub-block.
-func (c *checker) buildErrorBoundary(vn *ast.VisualNode) *ir.ErrorBoundary {
+func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir.ErrorBoundary {
 	eb := &ir.ErrorBoundary{AST: vn}
+	c.validateVisualNodeProps(vn, comp)
 	for _, a := range vn.Args.Args {
 		eh, ok := a.(ast.EventHandler)
 		if !ok || eh.Name != "error" {
@@ -3068,11 +3180,16 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode) *ir.ErrorBoundary {
 	return eb
 }
 
-func (c *checker) buildTimer(vn *ast.VisualNode) *ir.Timer {
+func (c *checker) buildTimer(vn *ast.VisualNode, comp *ir.Component) *ir.Timer {
 	t := &ir.Timer{
 		AST:     vn,
 		Handler: &ir.Func{},
 	}
+	// Checked against the declaration, as a window's node is and for the same
+	// reason: the builder reads the two props it knows by name, so anything
+	// else was neither stored nor reported -- `timer(every=1s)` set no
+	// interval and compiled clean.
+	c.validateVisualNodeProps(vn, comp)
 	named := resolvePositionalArgs(vn.Args, []string{"interval", "enabled"})
 	if e, ok := named["interval"]; ok {
 		t.Interval = c.checkExpr(e)
@@ -3249,6 +3366,14 @@ func (c *checker) pass2() {
 			}
 		}
 	}
+
+	// After the fixpoint, because the rule reads what a handler writes through
+	// the functions it calls and those sets are only complete now.
+	c.checkEffectSelfRekey()
+
+	// Every body is checked, so every instance is built and every type
+	// parameter a call site pinned can be followed to what it pinned it to.
+	c.checkRebuildKeys()
 
 	// Validate deferred const(expr) assertions now that function purities
 	// are known.
@@ -3549,6 +3674,21 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
 
+	// The body may name the component's type parameters, and a prop default is
+	// checked against what they stand for here. A call site binds them from the
+	// props it supplies; a declaration has only the parameters' own defaults,
+	// which is what declTypeBindings collects.
+	//
+	// The claim holds for what this pass reads. It did not hold for a state
+	// declaration, whose annotation is resolved back in pass1 by
+	// collectComponentDecls -- outside this scope, and until that pass pushed
+	// one of its own, `var last T` was "unknown type" in the body of the
+	// declaration that introduces T.
+	if len(comp.TypeParams) > 0 {
+		defer pushTypeParams(c, comp.TypeParams)()
+	}
+	declBindings := declTypeBindings(comp)
+
 	// Check prop defaults first (before declaring props as params in scope) so
 	// that an unannotated prop's type can be inferred from its default and the
 	// param entry we declare below picks up the inferred type.
@@ -3558,10 +3698,17 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 			if pd, ok := p.(ast.Param); ok {
 				if propIdx < len(comp.Props) && pd.Default != nil {
 					prop := comp.Props[propIdx]
-					prop.Default = c.checkExprExpecting(pd.Default, prop.Type)
+					// A default states a value of what the prop takes here,
+					// which for `on T = 0` under `<T = int>` is an int. A
+					// parameter with no default of its own leaves the prop type
+					// standing, and then the declaration says nothing the
+					// default could disagree with.
+					want := prop.Type.Substitute(declBindings)
+					prop.Default = c.checkExprExpecting(pd.Default, want)
 					initType := exprType(prop.Default)
-					if prop.Type.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn && !initType.IsAssignableTo(prop.Type) {
-						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, prop.Type)
+					if want.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn &&
+						!mentionsTypeParam(want) && !initType.IsAssignableTo(want) {
+						c.error(comp.AST.Pos, "default value type %s does not match param type %s", initType, want)
 					}
 					if pd.Type == nil && initType.Kind != ir.TypeDyn && initType.Kind != ir.TypeVoid {
 						prop.Type = initType

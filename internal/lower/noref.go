@@ -702,6 +702,13 @@ func canonicalTypeName(t *ir.Type) string {
 			}
 		}
 		return "component"
+	case ir.TypeInstance:
+		if t.Decl != nil {
+			if c, ok := t.Decl.(interface{ SymName() string }); ok {
+				return "instance_" + c.SymName()
+			}
+		}
+		return "instance"
 	case ir.TypeList:
 		var elem *ir.Type
 		if len(t.Elems) > 0 {

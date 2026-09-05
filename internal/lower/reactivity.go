@@ -20,7 +20,21 @@ var passReactivity = pass{
 type reactiveProp struct {
 	NodeID string
 	Key    string
+	KeyPos ast.Pos
 	Expr   ir.Expr
+	// Comp is the declaration the node targets, kept so updaterStmts can ask
+	// whether the instance carries a setter for Key. Nil for a widget.
+	Comp *ir.Component
+	// Node is the instantiation itself, kept for the prop that cannot be
+	// written: rebuilding the instance means building it from every prop the
+	// site declared, not only the one that changed.
+	Node *ir.NodeInst
+	// Instance says the node is a component instance rather than a widget, so
+	// the prop is written through the instance's setter instead of assigned to
+	// the node. Assigning it was the old behaviour and it reached nothing: on
+	// html it emitted `__n1.setAttribute("label", ...)` against a node that is
+	// not the instance, and the page did not change.
+	Instance bool
 }
 
 // reactivityState carries the analysis built up before mutation injection.
@@ -29,9 +43,24 @@ type reactivityState struct {
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
 	reverseSlots map[*ir.Var][]reactiveSlot
-	intrinsics   map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
-	idCounter    int
-	slotCounter  int
+	// caps is the target's shape, which the slot lowering needs: whether a
+	// component instance is a record decides what the slot attaches and
+	// retains.
+	caps        Caps
+	intrinsics  map[string]*ir.Func // CreateNode, AppendChild, RemoveChild, AttachHandler
+	idCounter   int
+	slotCounter int
+	// instCounter names the state each component instantiation inside a slot
+	// keeps, so two occurrences in one package never share a list.
+	instCounter int
+	// placement is the slot render currently being built, when the target can
+	// place a child. Held on the state because the body's nodes place
+	// themselves as they are emitted, and the func is assembled around them.
+	placement *slotPlacement
+	// platform is the target's identifier, for a diagnostic that has to name
+	// it: whether an instance can be rebuilt where it stands is the platform's
+	// answer, so the refusal says whose.
+	platform string
 	// slotDeclSt is the shared declarative state used to lower every
 	// reactive-slot body. Sharing keeps the __nN counter monotonic
 	// across slots so two slot Funcs in the same package don't
@@ -41,6 +70,10 @@ type reactivityState struct {
 	// we're currently walking, so synthesized slot Vars/Funcs get attached
 	// to the right scope.
 	owner reactivityOwner
+	// held records the instance registries each component owns, in the order
+	// they were opened, so its teardown can destroy what it holds. Keyed by
+	// component because a window's registries live as long as the page does.
+	held map[*ir.Component][]*slotInstance
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR
@@ -111,16 +144,19 @@ func (st *reactivityState) freshNodeID() string {
 // lowerReactivity runs two passes over the package: first collects reverse
 // deps and assigns synthetic IDs, then walks every Stmt slice splicing
 // updater Assigns after every mutation that touches a tracked Var.
-func lowerReactivity(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
 	st := &reactivityState{
 		pkg:          pkg,
+		caps:         caps,
+		platform:     opts.Platform,
 		reactiveVars: collectReactiveVars(pkg),
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
 		intrinsics:   make(map[string]*ir.Func),
+		held:         make(map[*ir.Component][]*slotInstance),
 	}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
@@ -198,6 +234,9 @@ func lowerReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
 	}
+	// After the walks, because a registry only exists once the slot render
+	// that opened it has been built.
+	st.destroyHeld()
 	return st.err
 }
 
@@ -532,6 +571,12 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 }
 
 func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
+	// The same question passDeclarative asks to choose CreateComponent over
+	// CreateNode, asked here because the answer decides how the prop is
+	// written. By this pass a node still targeting a component with a body is
+	// one the inliner could not flatten -- a recursive cycle, or an
+	// instantiation under a dynamic `for`.
+	instance := n.Component != nil && hasRealComponentBody(n.Component)
 	for _, prop := range n.Props {
 		deps := st.exprDeps(prop.Value)
 		if len(deps) == 0 {
@@ -542,9 +587,13 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 		}
 		for v := range deps {
 			st.reverseDeps[v] = append(st.reverseDeps[v], reactiveProp{
-				NodeID: n.ID,
-				Key:    prop.Name,
-				Expr:   prop.Value,
+				NodeID:   n.ID,
+				Key:      prop.Name,
+				KeyPos:   prop.NamePos,
+				Expr:     prop.Value,
+				Instance: instance,
+				Comp:     n.Component,
+				Node:     n,
 			})
 		}
 	}
@@ -629,7 +678,7 @@ func (st *reactivityState) addSlotDep(v *ir.Var, slotID string) {
 }
 
 func (st *reactivityState) freshSlotID() string {
-	id := "__slot" + strconv.Itoa(st.slotCounter)
+	id := ir.SlotVarPrefix + strconv.Itoa(st.slotCounter)
 	st.slotCounter++
 	return id
 }
@@ -648,6 +697,14 @@ func (st *reactivityState) exprDeps(e ir.Expr) map[*ir.Var]bool {
 // visited guards recursive call graphs. nil fn (dynamic/native call) is a
 // no-op.
 func (st *reactivityState) gatherFuncReads(fn *ir.Func, out map[*ir.Var]bool, visited map[*ir.Func]bool) {
+	gatherFuncReads(fn, st.reactiveVars, out, visited)
+}
+
+// gatherFuncReads is that without a reactivityState, so passEffect can ask it
+// too: an `on` written as a call reads whatever the callee reads, and a bracket
+// keyed on one settled on nothing while the pass looked only at the identifiers
+// the expression itself spelled.
+func gatherFuncReads(fn *ir.Func, reactive map[*ir.Var]bool, out map[*ir.Var]bool, visited map[*ir.Func]bool) {
 	if fn == nil {
 		return
 	}
@@ -659,13 +716,13 @@ func (st *reactivityState) gatherFuncReads(fn *ir.Func, out map[*ir.Var]bool, vi
 	}
 	visited[fn] = true
 	for _, v := range fn.Reads {
-		if st.reactiveVars[v] {
+		if reactive[v] {
 			out[v] = true
 		}
 	}
 	for _, s := range fn.Block {
-		st.eachCallInStmt(s, func(c *ir.Call) {
-			st.gatherFuncReads(c.Func, out, visited)
+		eachCallInStmt(s, func(c *ir.Call) {
+			gatherFuncReads(c.Func, reactive, out, visited)
 		})
 	}
 }
@@ -674,81 +731,81 @@ func (st *reactivityState) gatherFuncReads(fn *ir.Func, out map[*ir.Var]bool, vi
 // statements). Used to follow the call graph for transitive reactive-dep
 // gathering; only the call nodes matter, so non-call exprs are descended
 // without other side effects.
-func (st *reactivityState) eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
+func eachCallInStmt(s ir.Stmt, fn func(*ir.Call)) {
 	switch n := s.(type) {
 	case *ir.Return:
-		st.eachCallInExpr(n.Value, fn)
+		eachCallInExpr(n.Value, fn)
 	case *ir.LocalVar:
-		st.eachCallInExpr(n.Init, fn)
+		eachCallInExpr(n.Init, fn)
 	case *ir.Assign:
-		st.eachCallInExpr(n.Value, fn)
+		eachCallInExpr(n.Value, fn)
 	case *ir.CallStmt:
-		st.eachCallInExpr(n.Call, fn)
+		eachCallInExpr(n.Call, fn)
 	case *ir.Emit:
 		for _, a := range n.Args {
-			st.eachCallInExpr(a.Value, fn)
+			eachCallInExpr(a.Value, fn)
 		}
 	case *ir.If:
-		st.eachCallInExpr(n.Cond, fn)
+		eachCallInExpr(n.Cond, fn)
 		for _, c := range n.Body {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 		for _, c := range n.Else {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 	case *ir.For:
-		st.eachCallInExpr(n.Iter, fn)
+		eachCallInExpr(n.Iter, fn)
 		for _, c := range n.Body {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 		for _, c := range n.Else {
-			st.eachCallInStmt(c, fn)
+			eachCallInStmt(c, fn)
 		}
 	}
 }
 
 // eachCallInExpr invokes fn for every *ir.Call reachable from e.
-func (st *reactivityState) eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
+func eachCallInExpr(e ir.Expr, fn func(*ir.Call)) {
 	switch x := e.(type) {
 	case nil:
 		return
 	case *ir.Call:
 		fn(x)
-		st.eachCallInExpr(x.Receiver, fn)
+		eachCallInExpr(x.Receiver, fn)
 		for _, a := range x.Args {
-			st.eachCallInExpr(a.Value, fn)
+			eachCallInExpr(a.Value, fn)
 		}
 	case *ir.Binary:
-		st.eachCallInExpr(x.Left, fn)
-		st.eachCallInExpr(x.Right, fn)
+		eachCallInExpr(x.Left, fn)
+		eachCallInExpr(x.Right, fn)
 	case *ir.Unary:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	case *ir.Ternary:
-		st.eachCallInExpr(x.Cond, fn)
-		st.eachCallInExpr(x.Then, fn)
-		st.eachCallInExpr(x.Else, fn)
+		eachCallInExpr(x.Cond, fn)
+		eachCallInExpr(x.Then, fn)
+		eachCallInExpr(x.Else, fn)
 	case *ir.Conversion:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	case *ir.Select:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	case *ir.Index:
-		st.eachCallInExpr(x.Operand, fn)
-		st.eachCallInExpr(x.Idx, fn)
+		eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Idx, fn)
 	case *ir.ListLit:
 		for _, el := range x.Elems {
-			st.eachCallInExpr(el, fn)
+			eachCallInExpr(el, fn)
 		}
 	case *ir.MapLitIR:
 		for _, en := range x.Entries {
-			st.eachCallInExpr(en.Key, fn)
-			st.eachCallInExpr(en.Value, fn)
+			eachCallInExpr(en.Key, fn)
+			eachCallInExpr(en.Value, fn)
 		}
 	case *ir.StructLit:
 		for _, f := range x.Fields {
-			st.eachCallInExpr(f.Value, fn)
+			eachCallInExpr(f.Value, fn)
 		}
 	case *ir.Spread:
-		st.eachCallInExpr(x.Operand, fn)
+		eachCallInExpr(x.Operand, fn)
 	}
 }
 
@@ -820,6 +877,34 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 	}
 }
 
+// injectIntoCallLambdas recurses into every handler this call carries: a bare
+// argument, and a field of a props struct one argument holds.
+//
+// The struct is how a component instantiation hands its props over, so a
+// func-typed prop's lambda is only ever reachable through it.
+func (st *reactivityState) injectIntoCallLambdas(c *ir.Call) {
+	inject := func(e ir.Expr) {
+		switch lam := e.(type) {
+		case *ir.Lambda:
+			if lam.Func != nil {
+				lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+			}
+		case *ir.Closure:
+			if lam.Func != nil {
+				lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+			}
+		}
+	}
+	for i := range c.Args {
+		inject(c.Args[i].Value)
+		if lit, ok := c.Args[i].Value.(*ir.StructLit); ok {
+			for j := range lit.Fields {
+				inject(lit.Fields[j].Value)
+			}
+		}
+	}
+}
+
 // injectIntoStmts walks stmts, splicing updater Assigns after every Assign
 // that mutates a tracked Var. Recurses into nested blocks.
 func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
@@ -867,20 +952,20 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			// prop/slot updaters spliced — otherwise a list-item handler that
 			// mutates the list would never re-fire the slot.
 			if n.Call != nil {
-				for i := range n.Call.Args {
-					switch lam := n.Call.Args[i].Value.(type) {
-					case *ir.Lambda:
-						if lam.Func != nil {
-							lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
-						}
-					case *ir.Closure:
-						if lam.Func != nil {
-							lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
-						}
-					}
-				}
+				st.injectIntoCallLambdas(n.Call)
 			}
-		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
+		case *ir.LocalVar:
+			// The binding a reconcile builds a fresh instance into. Its props
+			// arrive inside the create call's struct, so a handler passed as
+			// one is two levels down rather than a bare argument -- and the
+			// same handler reached through UpdateComponent, one branch away,
+			// is a bare argument and did get its updaters. A row whose
+			// callback the render had not yet re-pointed wrote the state and
+			// updated nothing.
+			if c, ok := n.Init.(*ir.Call); ok {
+				st.injectIntoCallLambdas(c)
+			}
+		case *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
 			// Leaf stmts — no nested blocks to recurse into. updatersFor
 			// below handles Assign-driven updater injection.
@@ -930,6 +1015,20 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 	if len(props) == 0 && len(slots) == 0 {
 		return nil
 	}
+	// Which instances this update rebuilds rather than patches, decided before
+	// anything is emitted: a prop update on an instance about to be destroyed
+	// writes into a setter whose repaint nobody will see, and one of the two
+	// answers has to win per node rather than per prop.
+	rebuild, rebuilt := st.rebuildsFor(props)
+
+	// fieldRewrite (non-nil only inside a lifted body) rewrites reads of
+	// captured Syms to go through `*state.fieldName`. Loop-invariant: it is
+	// the whole updater's context, not one prop's.
+	rewrite := fieldRewrite
+	if rewrite == nil {
+		rewrite = map[ir.Symbol]ir.Expr{}
+	}
+
 	var out []ir.Stmt
 	for _, p := range props {
 		// Deep-copy the prop expression into the updater so the updater never
@@ -941,22 +1040,49 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 		// passing leaf Idents/Literals through unchanged, which is safe since
 		// NoTernary only ever replaces Ternary nodes, never leaves.
 		//
-		// fieldRewrite (non-nil only inside a lifted body) additionally rewrites
-		// reads of captured Syms to go through `*state.fieldName`.
-		rewrite := fieldRewrite
-		if rewrite == nil {
-			rewrite = map[ir.Symbol]ir.Expr{}
-		}
 		value := rewriteIdentsToCaptures(p.Expr, rewrite)
+		nodeRef := func() ir.Expr {
+			return &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
+		}
+		if p.Instance {
+			// A prop the instance cannot absorb is not written through a
+			// setter: rebuildsFor has already decided whether this position
+			// rebuilds for it or the write is reported.
+			if !componentAbsorbs(p.Comp, p.Key) {
+				continue
+			}
+			// An instance this update replaces is handed nothing first. The
+			// setter would repaint a node that is about to be removed, and the
+			// fresh instance is built from every prop of the site anyway.
+			if rebuilt[p.NodeID] {
+				continue
+			}
+			out = append(out, &ir.CallStmt{Call: &ir.Call{
+				Type:     ir.TypVoid,
+				Receiver: lowerNSIdent(),
+				Func:     st.intrinsics[ir.NodeOpUpdateComponent],
+				Args: []ir.CallArg{
+					{Value: nodeRef()},
+					{Value: &ir.Literal{Type: ir.TypString, Value: p.Key}},
+					{Value: value},
+				},
+			}})
+			continue
+		}
 		out = append(out, &ir.Assign{
 			Target: &ir.Select{
 				Type:    ir.TypDyn,
-				Operand: &ir.Ident{Name: p.NodeID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true},
+				Operand: nodeRef(),
 				Field:   p.Key,
 			},
 			Op:    ast.AssignSet,
 			Value: value,
 		})
+	}
+	// After every prop the live instances could absorb, so a rebuild that
+	// reads a sibling node's state reads the state this update settled on.
+	for _, n := range rebuild {
+		out = append(out, st.recreateStatic(n, st.declState(), rewrite)...)
 	}
 	// Structural updaters: re-fire __renderSlotN for every reactive If/For
 	// dependent on this Var.
@@ -978,12 +1104,80 @@ func (st *reactivityState) updaterStmts(props []reactiveProp, slots []reactiveSl
 	return out
 }
 
+// rebuildsFor decides, for one update, which instances at a fixed position it
+// rebuilds instead of patching, and reports every prop it can do neither for.
+// The order is the order the props were collected in, so the emission is
+// deterministic; the set is the same answer keyed by node, because two
+// #[construct] props of one site are one rebuild.
+//
+// This is the question reuseOrCreate asks of a prop inside a reactive slot,
+// and for the same reason: a prop with no setter has nothing for
+// UpdateComponent to call, and the emitted call names a method no backend
+// declared -- `m.__n1.SetStart(m.k)` against a record declaring only SetTail,
+// `__n1.__set_start(...)` on an object exporting only __set_tail.
+//
+// #[construct] is how a declaration says the prop is read once while the
+// instance is built, and the answer is the same at either position: destroy
+// what the position holds and build a fresh one. What differs is that a slot
+// re-renders and a fixed position does not, so the rebuild has to put the new
+// root back among the old one's siblings itself -- InsertBefore, which is
+// optional. A platform without it cannot express the operation at all, and the
+// prop is refused there rather than compiled into a program that drops the
+// write.
+//
+// A prop that is unwritable for any other reason is a routing nothing in the
+// compiler answers, and is reported. Asked here rather than where the prop was
+// collected, because a prop reading a var nothing ever writes needs no update
+// and is not a problem -- testdata/test_components.sngl is that shape.
+func (st *reactivityState) rebuildsFor(props []reactiveProp) ([]*ir.NodeInst, map[string]bool) {
+	var rebuild []*ir.NodeInst
+	rebuilt := map[string]bool{}
+	for _, p := range props {
+		if !p.Instance || componentAbsorbs(p.Comp, p.Key) {
+			continue
+		}
+		if !propIsConstruct(p.Comp, p.Key) {
+			st.failf(p.KeyPos, "prop %q of component %s can neither be written after construction nor rebuild the instance; mark it #[construct] if it is read only while the instance is built", p.Key, p.Comp.Name)
+			continue
+		}
+		if !st.caps.InsertBefore {
+			st.failf(p.KeyPos, "#[construct] prop %q of component %s is written from state, which rebuilds the instance where it stands -- and %s cannot put a child back at a position, so there is nowhere to put the new one; move the instantiation inside an `if` or a `for`, which rebuilds by re-rendering", p.Key, p.Comp.Name, st.platformName())
+			continue
+		}
+		if p.Node == nil || rebuilt[p.NodeID] {
+			continue
+		}
+		rebuilt[p.NodeID] = true
+		rebuild = append(rebuild, p.Node)
+	}
+	return rebuild, rebuilt
+}
+
+// platformName is the target the refusal names, or a description of the
+// capability when the pass was run without one (a unit test, the LSP).
+func (st *reactivityState) platformName() string {
+	if st.platform == "" {
+		return "this platform"
+	}
+	return st.platform
+}
+
+// declState is the declarative state an updater borrows to build a
+// CreateComponent call, shared with the reactive-slot lowering so the two
+// cannot disagree about the shape of one.
+func (st *reactivityState) declState() *declarativeState {
+	if st.slotDeclSt == nil {
+		st.slotDeclSt = newDeclarativeStateForSlot(st.pkg, st.caps)
+	}
+	return st.slotDeclSt
+}
+
 // mutatingCallReceiver returns the receiver expression of a statement-level
 // call that mutates its receiver in place, or nil otherwise. A method like
-// list.push is declared returning a new list but backed by an intrinsic that
-// mutates the receiver (see ir.IntrinsicDef.MutatesReceiver); a bare
-// `tasks.push(x)` statement therefore mutates `tasks` and must fire its
-// reactive updaters, exactly as `tasks = ...` would. The mutation semantics
+// list.push returns nothing and is backed by an intrinsic that mutates the
+// receiver (see ir.IntrinsicDef.MutatesReceiver), so `tasks.push(x)` -- the
+// only form it has -- mutates `tasks` and must fire its reactive updaters,
+// exactly as `tasks = ...` would. The mutation semantics
 // come from the intrinsic metadata — keyed by the func's intrinsic ID, not by
 // method name. For a type-method call the receiver value is Args[0].
 func mutatingCallReceiver(c *ir.Call) ir.Expr {
@@ -1012,6 +1206,15 @@ func mutatingCallReceiver(c *ir.Call) ir.Expr {
 // body. Callers use this map to rewrite injected updater expressions —
 // reads of captured Vars must route through state.
 func (st *reactivityState) assignTargetVar(target ir.Expr) (*ir.Var, map[ir.Symbol]ir.Expr) {
+	return mutatedVar(st.pkg, st.reactiveVars, target)
+}
+
+// mutatedVar is assignTargetVar without a reactivityState, so a pass running
+// before passReactivity can ask the same question of the same shapes. passEffect
+// is the other caller: which cell a statement wrote is what says whether a
+// bracket's key list may have moved, and answering it its own way is how
+// `obj.f = x` and `xs[i] = x` ended no lifetimes.
+func mutatedVar(pkg *ir.Package, reactive map[*ir.Var]bool, target ir.Expr) (*ir.Var, map[ir.Symbol]ir.Expr) {
 	// A write to a struct field or collection element (`u.score += 10`,
 	// `items[i] = x`) mutates the root reactive var; peel the Select/Index
 	// chain to that root so the whole-var dep fires its updaters. Reactivity
@@ -1031,7 +1234,7 @@ peel:
 		}
 	}
 	if id, ok := target.(*ir.Ident); ok {
-		if v, ok := id.Sym.(*ir.Var); ok && st.reactiveVars[v] {
+		if v, ok := id.Sym.(*ir.Var); ok && reactive[v] {
 			return v, nil
 		}
 		return nil, nil
@@ -1052,17 +1255,17 @@ peel:
 	if !ok {
 		return nil, nil
 	}
-	if st.pkg == nil {
+	if pkg == nil {
 		return nil, nil
 	}
-	for liftedFunc, capMap := range st.pkg.LiftedCaptures {
+	for liftedFunc, capMap := range pkg.LiftedCaptures {
 		if len(liftedFunc.Params) == 0 || liftedFunc.Params[0] != stateParam {
 			continue
 		}
 		var resolved *ir.Var
 		for sym, name := range capMap {
 			if name == sel.Field {
-				if v, ok := sym.(*ir.Var); ok && st.reactiveVars[v] {
+				if v, ok := sym.(*ir.Var); ok && reactive[v] {
 					resolved = v
 				}
 				break
@@ -1193,7 +1396,7 @@ func rewriteIdentsToCaptures(e ir.Expr, rewrite map[ir.Symbol]ir.Expr) ir.Expr {
 
 // renderFuncName: "__slot<N>" → "__renderSlot<N>".
 func renderFuncName(slotID string) string {
-	n := strings.TrimPrefix(slotID, "__slot")
+	n := strings.TrimPrefix(slotID, ir.SlotVarPrefix)
 	return "__renderSlot" + n
 }
 
@@ -1207,6 +1410,7 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		Params:      []*ir.Param{parentParam},
 		Return:      ir.TypVoid,
 		Synthesized: true,
+		SlotRender:  true,
 	}
 
 	// 1. Teardown: for var __entry = __slotN { lower.RemoveChild(parent, __entry) }
@@ -1239,16 +1443,19 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 	// 3. Re-evaluate and re-render. Reuse one declarative state across
 	// every reactive slot in the package so `__nN` widget ids stay
 	// monotonic and don't collide between sibling slot Funcs.
-	if st.slotDeclSt == nil {
-		st.slotDeclSt = newDeclarativeStateForSlot(st.pkg)
-	}
+	st.declState()
 	// Seed slot's counter past any IDs reactivity has assigned so far
 	// (collectFromNode in pass-1 may have set NodeInst.IDs that the
 	// initial seedCounter didn't see if they came from later passes).
 	if st.idCounter > st.slotDeclSt.nextID {
 		st.slotDeclSt.nextID = st.idCounter
 	}
+	// Created before the body, because each node it emits places itself.
+	placement := st.newSlotPlacement(slotID, st.synthesizeSlotVar(slotID),
+		&ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true})
+	st.placement = placement
 	body := st.renderSlotBody(st.slotDeclSt, parentParam, slotID, cond, iter, key, value, origBody, origElse)
+	st.placement = nil
 	// Propagate the slot's advanced counter back so subsequent
 	// reactivity freshNodeID calls (line 253, line 446) don't reuse
 	// __nN values the slot just claimed.
@@ -1256,6 +1463,13 @@ func (st *reactivityState) synthesizeRenderSlotFunc(slotID string, cond ir.Expr,
 		st.idCounter = st.slotDeclSt.nextID
 	}
 
+	// A target that can place a child keeps what it already has and moves only
+	// what moved; the teardown-and-rebuild above is what the rest still do.
+	if sp := placement; sp != nil {
+		fn.Block = append(sp.open(), body...)
+		fn.Block = append(fn.Block, st.closeSlotPlacement(sp)...)
+		return fn
+	}
 	fn.Block = append([]ir.Stmt{teardown, reset}, body...)
 	return fn
 }
@@ -1279,12 +1493,16 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		Params:    pushParams,
 		Return:    pushReturn,
 	}
+	// A call, not an assignment to the slot. push mutates its receiver and
+	// returns nothing, so `__slotN = list.push(__slotN, n)` says the append
+	// twice -- and every Go backend renders the intrinsic as the assignment
+	// itself, so the wrapper emitted `x = x = append(...)`. passListLambdas
+	// has always built the bare form for exactly that reason; this one had
+	// not, and only html's OnSlotAppend hook hid it.
 	pushToSlot := func(nodeID string) ir.Stmt {
-		return &ir.Assign{
-			Target: st.slotIdent(slotID),
-			Op:     ast.AssignSet,
-			Value: &ir.Call{
-				Type: ir.ListOf(ir.TypDyn),
+		return &ir.CallStmt{
+			Call: &ir.Call{
+				Type: ir.TypVoid,
 				Func: listPushFn,
 				Args: []ir.CallArg{
 					{Value: st.slotIdent(slotID)},
@@ -1303,10 +1521,39 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	// The append target is the slot func's `parent` param; carry its Sym so
 	// codegen resolves it as the local parameter rather than a Model field.
 	parentRef := &ir.Ident{Name: parentParam.Name, Type: ir.TypDyn, Sym: parentParam, IsElementRef: true}
+	// The instantiation sites met while emitting this body, in the order they
+	// were reached: each keeps a list of the instances it holds, opened before
+	// the body and closed after it.
+	var instances []*slotInstance
+	// attach is how a node reaches the parent: placed where the desired order
+	// says, on a target that can place one, and appended on every other.
+	attach := func(name string) []ir.Stmt {
+		if st.placement != nil {
+			return st.place(st.placement, name)
+		}
+		return []ir.Stmt{declSt.appendChildStmt(parentRef, name)}
+	}
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
-		_, sub := lowerNodeForSlot(declSt, n, parentRef, ownerFuncs)
-		sub = append(sub, pushToSlot(n.ID))
-		return sub
+		var sub []ir.Stmt
+		if declSt.instanceRecords && isInstanceNode(n) {
+			if n.ID == "" {
+				n.ID = declSt.freshID()
+			}
+			si := st.newSlotInstance(n)
+			instances = append(instances, si)
+			sub = st.reuseOrCreate(si, n, declSt)
+			sub = append(sub, declSt.componentRootBinding(n)...)
+		} else {
+			// nil parent: the attachment is this function's business now, so
+			// the node lowering must not append one of its own.
+			_, sub = lowerNodeForSlot(declSt, n, nil, ownerFuncs)
+		}
+		name := declSt.attachName(n)
+		sub = append(sub, attach(name)...)
+		// What the slot retains is what it later removes from the parent, and
+		// RemoveChild takes a node -- so for an instance that is its root, not
+		// the instance itself.
+		return append(sub, pushToSlot(name))
 	}
 	// Recursively process a body: NodeInsts are realized + pushed onto the
 	// slot list. Nested If/For without their own slot (i.e. depending only
@@ -1365,19 +1612,32 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		}
 		return out
 	}
+	var structure []ir.Stmt
 	if iter != nil {
-		return []ir.Stmt{&ir.For{
+		structure = []ir.Stmt{&ir.For{
 			Key:   key,
 			Value: value,
 			Iter:  iter,
 			Body:  emitStmts(origBody),
 		}}
+	} else {
+		ifStmt := &ir.If{Cond: cond, Body: emitStmts(origBody)}
+		if len(origElse) > 0 {
+			ifStmt.Else = emitStmts(origElse)
+		}
+		structure = []ir.Stmt{ifStmt}
 	}
-	ifStmt := &ir.If{Cond: cond, Body: emitStmts(origBody)}
-	if len(origElse) > 0 {
-		ifStmt.Else = emitStmts(origElse)
+	// Wrapped after the walk, because which instantiation sites the body holds
+	// is only known once it has been walked.
+	var out []ir.Stmt
+	for _, si := range instances {
+		out = append(out, si.open()...)
 	}
-	return []ir.Stmt{ifStmt}
+	out = append(out, structure...)
+	for _, si := range instances {
+		out = append(out, st.closeSlotInstance(si)...)
+	}
+	return out
 }
 
 // buildRenderSlotFor walks stmts to find the If/For carrying slotID, then

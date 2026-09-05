@@ -70,6 +70,14 @@ func RunComponentFixtures(t *testing.T, platform string) {
 
 	for _, fixture := range matches {
 		base := strings.TrimSuffix(filepath.Base(fixture), ".sngl")
+		skip, reason, err := ParseSkipCodegen(fixture)
+		if err != nil {
+			t.Fatalf("skip directive %s: %v", fixture, err)
+		}
+		if skip {
+			t.Logf("%s: SKIP(codegen): %s", base, reason)
+			continue
+		}
 		t.Run(base, func(t *testing.T) {
 			fpath := fixture
 			t.Run("native", func(t *testing.T) {

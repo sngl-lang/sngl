@@ -43,6 +43,14 @@ type GoIRContext struct {
 	// Go type rather than as a free function or a Model method.
 	MethodRecvType string
 
+	// InstanceRecords says the host emits a component the build could not
+	// inline as a record with a ctor of its own, rather than as a render
+	// method on its Model. Set by the platform, because nothing in the IR
+	// distinguishes the two: ir.Component.RuntimeInstance is stamped by the
+	// inliner for every target, and whether that becomes a record is the
+	// target's answer (see lower.hasInstanceRuntime).
+	InstanceRecords bool
+
 	// EmitLineDirectives prepends `//line file:line` at statement boundaries,
 	// so the Go compiler attributes errors back to the SNGL source.
 	EmitLineDirectives bool
@@ -371,12 +379,17 @@ func (gc *GoIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
 }
 func (gc *GoIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
-	if n.Init != nil {
-		return n.Name + " := " + initStr
-	}
 	goType := "any"
 	if n.Type != nil {
 		goType = IRTypeToGo(n.Type)
+	}
+	// `x := nil` is not Go -- an untyped nil has no type to infer one from --
+	// and the declared form says the same thing, since nil is the zero of
+	// every type that can hold it. The reconcile a reactive slot performs
+	// opens each position that way: `var <id> <Comp> = null`, then one branch
+	// or the other binds it.
+	if n.Init != nil && initStr != "nil" {
+		return n.Name + " := " + initStr
 	}
 	return "var " + n.Name + " " + goType
 }
@@ -491,10 +504,7 @@ func (gc *GoIRContext) Indent() string                      { return "\t" }
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	_, kind := gc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
-		if gc.Ctx.StateReceiver != "" {
-			return gc.Ctx.StateReceiver + "." + ExportName(n.Name)
-		}
-		return "m." + n.Name
+		return gc.RecvName() + "." + gc.StateFieldName(n.Name)
 	}
 	return n.Name
 }
@@ -520,7 +530,7 @@ func (gc *GoIRContext) MutTargetField(n *ir.Select) string {
 // One function for both paths, because two was the bug.
 func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	id, ok := n.Operand.(*ir.Ident)
-	if !ok || id.Name != gc.recvName() {
+	if !ok || id.Name != gc.RecvName() {
 		return "", false
 	}
 	// And it has to *be* the receiver. A binding that merely shares its name
@@ -612,31 +622,29 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 
 	// passNoImplicitRecv's synthesized receiver renders as the Model's `m`.
 	if _, ok := n.Sym.(*ir.Component); ok {
-		return gc.recvName()
+		return gc.RecvName()
 	}
 
 	name := n.Name
-	// A synthesized element ref is stored as a Model struct field, so it must
-	// be qualified: a bare ident would not resolve in the method scope.
+	// A synthesized element ref is stored as a struct field of whatever the
+	// scope dispatches through, so it must be qualified: a bare ident would
+	// not resolve in the method scope.
 	if n.IsElementRef && n.Synthesized {
-		return "m." + name
+		return gc.RecvName() + "." + name
 	}
 	_, kind := gc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
 		return gc.Ctx.RenamedName(name)
 	case codegen.NameComputed:
-		return gc.recvName() + "." + name + "()"
+		return gc.RecvName() + "." + name + "()"
 	case codegen.NameStateVar:
-		if gc.Ctx.StateReceiver != "" {
-			return gc.Ctx.StateReceiver + "." + ExportName(name)
-		}
-		return "m." + name
+		return gc.RecvName() + "." + gc.StateFieldName(name)
 	case codegen.NameConst:
-		// A const is a file-scope name in a free function and a Model field
-		// inside a component method.
+		// A const is a file-scope name in a free function and a field of the
+		// receiver inside a component method.
 		if gc.Ctx.Component != nil {
-			return "m." + name
+			return gc.RecvName() + "." + name
 		}
 		return name
 	case codegen.NameFunc:
@@ -649,16 +657,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// against `func (m *Model) inc_click_handler()`, which is every
 		// promoted handler on a tagged widget.
 		//
-		// Route mode is the exception, and says so by setting StateReceiver:
-		// writeRouteFuncs renames each func to its exported name before
-		// emitting, because there they are methods on a per-request State
-		// struct. Same split as MutTargetIdent makes for a state var.
-		if gc.Ctx.StateReceiver != "" {
-			return gc.Ctx.StateReceiver + "." + ExportName(name)
-		}
-		return gc.recvName() + "." + name
+		// Route mode is the exception, and says so by asking for exported
+		// names: writeRouteFuncs renames each func before emitting, because
+		// there they are methods on a per-request State struct. Same split as
+		// MutTargetIdent makes for a state var.
+		return gc.RecvName() + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
-		return "m." + ExportName(name)
+		return gc.RecvName() + "." + ExportName(name)
 	default:
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
 			return fmt.Sprintf("%q", name)
@@ -730,11 +735,9 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			}
 			// Route mode emits these as State methods under their exported
 			// name, which is also what a reference to one as a value renders
-			// (NameFunc below); the Model path keeps the name as written.
-			if gc.Ctx != nil && gc.Ctx.StateReceiver != "" {
-				return gc.recvName() + "." + ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
-			}
-			return gc.recvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
+			// (NameFunc below); the Model and instance-record paths keep the
+			// name as written.
+			return gc.RecvName() + "." + gc.StateFieldName(fname) + "(" + strings.Join(args, ", ") + ")"
 		}
 
 		codegen.RequireIntrinsicFallback(langGo, n.Func)
@@ -817,10 +820,6 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 		if fname == "CreateComponent" && len(n.Args) == 2 {
 			if compIdent, ok := n.Args[0].Value.(*ir.Ident); ok {
 				if comp, ok := compIdent.Sym.(*ir.Component); ok {
-					recv := gc.Ctx.StateReceiver
-					if recv == "" {
-						recv = "m"
-					}
 					var pargs []string
 					lit, _ := n.Args[1].Value.(*ir.StructLit)
 					for _, p := range comp.Props {
@@ -842,7 +841,14 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 							pargs = append(pargs, "nil")
 						}
 					}
-					return recv + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
+					// A host that builds the component as a record calls
+					// the record's ctor, which is a free function: there is
+					// no receiver to reach it through, and the instance it
+					// returns is what the caller holds.
+					if gc.InstanceRecords && comp.RuntimeInstance {
+						return ComponentInstanceCtor(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
+					}
+					return gc.RecvName() + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
 				}
 			}
 		}
@@ -855,7 +861,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			if gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] {
 				return ExportName(fname) + "(" + strings.Join(args, ", ") + ")"
 			}
-			return gc.recvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
+			return gc.RecvName() + "." + fname + "(" + strings.Join(args, ", ") + ")"
 		}
 
 		// An i18n.* namespace receiver is the module object, not a value
@@ -924,27 +930,38 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return result
 	}
 
+	// Which owner's Funcs hold the method decides the spelling below, so it is
+	// resolved once here rather than by each branch's own name search.
+	var pkg *ir.Package
+	if gc.Ctx != nil {
+		pkg = gc.Ctx.Pkg
+	}
+	_, owner, resolved := codegen.OwnerMethod(pkg, receiverName, method)
+
 	// Go allows no methods on int/float/string/bool, so a user-attached method
 	// on one lifts to a free `TypeNameMethodName` function.
-	if isPrimitiveTypeName(receiverName) && gc.userMethodKnown(receiverName, method) {
+	if isPrimitiveTypeName(receiverName) && resolved {
 		goName := ExportName(receiverName) + ExportName(method)
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
 
-	// Bubbletea/Fyne emit component methods as Model methods, so a call on the
-	// current instance must dispatch through `m`.
-	if gc.Ctx != nil && gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName {
+	// Bubbletea/Fyne emit an owner's funcs as methods on their Model, so a
+	// call on one has to dispatch through `m`. The receiver naming the
+	// component being emitted is the plain case; the other is a clone the
+	// inliner hoisted onto main or onto a window, whose receiver still names
+	// the component it was written in -- a declaration pkg.Components no
+	// longer lists -- while the definition is a member of the emitting scope.
+	// Which owner holds it is what says so.
+	if gc.Ctx != nil && (gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName ||
+		resolved && !owner.IsPackage()) {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.
-		name := method
-		if gc.Ctx != nil && gc.Ctx.StateReceiver != "" {
-			name = ExportName(method)
-		}
-		if len(args) >= 1 && args[0] == gc.recvName() {
+		name := gc.StateFieldName(method)
+		if len(args) >= 1 && args[0] == gc.RecvName() {
 			return args[0] + "." + name + "(" + strings.Join(args[1:], ", ") + ")"
 		}
-		return gc.recvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
+		return gc.RecvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
 	}
 
 	// In a test body the component instance is a local — `c := newTestComponent()`
@@ -957,7 +974,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// Lifted to a free `ReceiverName + MethodName(args...)`: otherwise a
 	// static-form call like `S.helper(5)` falls through to `args[0].method()`,
 	// where args[0] is the first explicit arg rather than a receiver.
-	if gc.userMethodKnown(receiverName, method) {
+	if resolved {
 		goName := ExportName(receiverName) + ExportName(method)
 		return goName + "(" + strings.Join(args, ", ") + ")"
 	}
@@ -1008,27 +1025,6 @@ func (gc *GoIRContext) uniqueStructWithField(field string) string {
 		return ""
 	}
 	return ExportName(match.Name)
-}
-
-// userMethodKnown decides whether a primitive-receiver call is emitted as a
-// free function.
-func (gc *GoIRContext) userMethodKnown(receiver, method string) bool {
-	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
-		return false
-	}
-	for _, f := range gc.Ctx.Pkg.Funcs {
-		if f.Receiver == receiver && f.Name == method {
-			return true
-		}
-	}
-	for _, comp := range gc.Ctx.Pkg.Components {
-		for _, f := range comp.Funcs {
-			if f.Receiver == receiver && f.Name == method {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // isPrimitiveTypeName reports whether a SNGL receiver type name refers to a
@@ -1277,18 +1273,14 @@ func structLitTypeName(n *ir.StructLit) string {
 // goReturnType is the result clause of a Go signature, leading space
 // included, or "" for a function that returns nothing.
 //
-// Nothing is the answer for a nil or void return, and also for a bare TypeDyn:
-// that has no first-class Go representation, so the signature reads
-// `func foo()` rather than `func foo() any`. TypeDyn *with* a Meta hint is a
-// raw Go type ref (e.g. "fyne.CanvasObject") and must round-trip.
+// Nothing is the answer for a nil or void return, and also for a TypeDyn: that
+// has no first-class Go representation, so the signature reads `func foo()`
+// rather than `func foo() any`.
 func goReturnType(ret *ir.Type) string {
 	if ret == nil || ret.Kind == ir.TypeVoid {
 		return ""
 	}
 	if ret.Kind == ir.TypeDyn {
-		if meta, ok := ret.Meta.(string); ok && meta != "" {
-			return " " + meta
-		}
 		return ""
 	}
 	return " " + IRTypeToGo(ret)
@@ -1345,6 +1337,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		FreeFuncScope:      gc.FreeFuncScope,
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
+		InstanceRecords:    gc.InstanceRecords,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -1356,6 +1349,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		FreeFuncScope:      gc.FreeFuncScope,
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
+		InstanceRecords:    gc.InstanceRecords,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -1458,9 +1452,6 @@ func IRTypeToGo(t *ir.Type) string {
 		}
 		return "any"
 	case ir.TypeDyn:
-		if meta, ok := t.Meta.(string); ok && meta != "" {
-			return meta
-		}
 		return "any"
 	case ir.TypeEnum:
 		return "string"
@@ -1494,6 +1485,14 @@ func IRTypeToGo(t *ir.Type) string {
 			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
 		}
 		return "func(func(any) bool)"
+	case ir.TypeInstance:
+		// A live instance of a component is the generated record every Go
+		// platform allocates for it. Decl carries which component; without one
+		// the handle is a platform node, which has no shared Go spelling.
+		if c, ok := t.Decl.(*ir.Component); ok && c != nil {
+			return "*" + ComponentInstanceType(c.Name)
+		}
+		return "any"
 	case ir.TypeComponent, ir.TypeTypeParam, ir.TypeInvalid:
 		// These have no first-class Go representation, and fall back to `any`.
 		// Listed explicitly so the default arm catches a new TypeKind.
@@ -1651,16 +1650,30 @@ func irAssignOp(op ast.AssignOp) string {
 // Returns the source as a slice of lines (each line WITHOUT trailing
 // newline). The caller joins with "\n" or writes each line followed by
 // its own newline.
-// recvName is the identifier a component's own members dispatch through. It
-// is the Model receiver `m` in every host that emits a Model, and the
-// per-request State value in html's route mode, which has none: there the
-// component's funcs are methods on State and its vars are State fields, so
-// one name answers for both.
-func (gc *GoIRContext) recvName() string {
+// RecvName is the identifier a component's own members dispatch through. It is
+// the Model receiver `m` in every host that emits a Model, the per-request
+// State value in html's route mode, and the record itself inside a component
+// instance's ctor and setters: in each, the component's funcs are methods on
+// that struct and its vars are its fields, so one name answers for both.
+//
+// Exported because a platform's intrinsic translator writes node fields
+// against the same struct -- see codegen.RecvFieldRef -- and hardcoding `m`
+// there put a model reference inside an instance method.
+// StateFieldName is the name a component's own member carries on the receiver
+// this scope dispatches through. Verbatim, unless the projection asked for
+// exported names -- see codegen.ExprCtx.StateFieldsExported.
+func (gc *GoIRContext) StateFieldName(name string) string {
+	if gc.Ctx != nil && gc.Ctx.StateFieldsExported {
+		return ExportName(name)
+	}
+	return name
+}
+
+func (gc *GoIRContext) RecvName() string {
 	if gc.Ctx != nil && gc.Ctx.StateReceiver != "" {
 		return gc.Ctx.StateReceiver
 	}
-	return "m"
+	return codegen.ModelReceiver
 }
 
 func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
@@ -1679,7 +1692,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		// rest of this context dispatches through. html's route mode uses it
 		// to put a component's funcs on the per-request State, which is the
 		// only receiver that file has.
-		sig += "(" + gc.recvName() + " *" + gc.MethodRecvType + ") "
+		sig += "(" + gc.RecvName() + " *" + gc.MethodRecvType + ") "
 		if len(params) > 0 && fn.Receiver != "" {
 			// The component receiver arrives as an ordinary first parameter
 			// (passNoImplicitRecv). As a Go method it is the receiver, so it

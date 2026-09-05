@@ -19,6 +19,7 @@ var markImpls = map[markKey]markImpl{
 	{"tree", "kind"}:                markTreeKind,
 	{"macro", "options"}:            markOptions,
 	{"macro", "wildcard"}:           markWildcard,
+	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
@@ -388,6 +389,68 @@ func (c *checker) finishWildcardMarks(pos ast.Pos, comp *ir.Component) {
 		return
 	}
 	c.error(pos, "#[wildcard(..., %q)] on component %s: no prop %q to bind the matched name to", comp.WildcardInto, comp.Name, comp.WildcardInto)
+}
+
+// markConstruct implements #[macro.construct], which says a prop is read while
+// its instance is being built and never again.
+//
+// Only a prop, because the mark is about a value arriving from outside: a `var`
+// is written by definition, and a declaration with no instance behind it has
+// nothing to rebuild.
+//
+// The type is the mark's one requirement, and it is the same one an effect's
+// `on` carries (checkEffectKey): the value the instance was built from is kept
+// and compared against what the next render describes, so every target has to
+// agree on when two of them are the same value. A type that does not compare
+// alike -- a list, a map, an option, an opaque `date` -- leaves the site
+// rebuilding its instance on every render, which throws away exactly the state
+// the mark exists to preserve. Refused where the mark is written rather than
+// lowered into a program whose instances live different lengths on each target.
+//
+// The judgement itself waits: a struct is comparable exactly when its fields
+// are, and pass1 registers components before it resolves struct bodies, so a
+// struct named here still has no fields to walk. The mark records where it was
+// written and checkConstructProps answers once every shell is filled.
+func markConstruct(m *mark) error {
+	p, ok := m.sym.(*ir.Prop)
+	if !ok {
+		return fmt.Errorf("#[construct] cannot mark %s; only a component prop is read once while its instance is built", ast.DeclFormName(m.decl))
+	}
+	if p.Construct {
+		return fmt.Errorf("#[construct]: prop %q is already construct-only", p.Name)
+	}
+	p.Construct = true
+	m.c.pendingConstruct = append(m.c.pendingConstruct, constructMark{pos: m.attr.Pos, prop: p})
+	return nil
+}
+
+// constructMark is one #[construct] whose prop type is not yet complete enough
+// to judge: the position the mark was written at, and the prop it marked.
+type constructMark struct {
+	pos  ast.Pos
+	prop *ir.Prop
+}
+
+// checkConstructProps refuses a #[construct] prop whose type does not compare
+// alike everywhere. See markConstruct for why, and for why it is not answered
+// there; the diagnostic mirrors checkEffectKey's, which is the same rule for
+// the same reason, down to naming the offending field of a struct rather than
+// the struct.
+func (c *checker) checkConstructProps() {
+	pending := c.pendingConstruct
+	c.pendingConstruct = nil
+	for _, m := range pending {
+		why := ir.RebuildIncomparable(m.prop.Type)
+		if why == "" {
+			continue
+		}
+		// The mark is refused, so the prop is an ordinary one: leaving
+		// Construct set would have lowering build the memory and the
+		// comparison for a value it has just been told it cannot compare.
+		m.prop.Construct = false
+		c.error(m.pos, "#[construct] on prop %q: the instance is rebuilt when this value changes, "+
+			"so it must compare alike on every target, and %s does not", m.prop.Name, why)
+	}
 }
 
 // markIdentity implements #[identity], which names the const carrying a

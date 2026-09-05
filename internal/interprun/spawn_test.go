@@ -49,7 +49,7 @@ func TestRunSpawnsAWorkerAndDrivesIt(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(check(t, src), Options{Component: "main", Worker: self, Dir: t.TempDir()})
+		done <- Run(check(t, clickSrc), Options{Component: "main", Worker: self, Dir: t.TempDir()})
 	}()
 
 	select {

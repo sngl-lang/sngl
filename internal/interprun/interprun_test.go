@@ -36,14 +36,30 @@ type clickable struct {
 
 func (h *clickable) SetOnEvent(fn func(snglhost.Key, string, []any)) { h.emit = fn }
 
-const src = `import . "sngl:ui"
-import . "sngl:time"
+// clickSrc carries no timer. A test asserting on an exact count must not share
+// a program with something else that writes it: the click test used to, and
+// lost to a tick often enough to matter -- once the timer had added 10 the
+// count could never read 1 again, so the test did not slow down, it became
+// unsatisfiable and burned its whole deadline.
+const clickSrc = `import . "sngl:ui"
 
 component main {
     var count = 0
     vbox {
         text #out(value="count {count}")
         button #inc(text="+", @click { count += 1 })
+    }
+}
+`
+
+// tickSrc is the timer's own program, with nothing else writing count.
+const tickSrc = `import . "sngl:ui"
+import . "sngl:time"
+
+component main {
+    var count = 0
+    vbox {
+        text #out(value="count {count}")
         timer(interval=20ms, enabled=true, @tick { count += 10 })
     }
 }
@@ -69,7 +85,7 @@ func TestAClickReachesTheProgramAndTheAnswerComesBack(t *testing.T) {
 	far := &clickable{MemHost: snglhost.NewMemHost()}
 	go func() { _ = snglhost.ServeHost(far, server) }()
 
-	s, err := interp.NewSession(check(t, src), "main", interp.Real{})
+	s, err := interp.NewSession(check(t, clickSrc), "main", interp.Real{})
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
@@ -98,7 +114,7 @@ func TestATimerFiresOnTheWallClock(t *testing.T) {
 	far := &clickable{MemHost: snglhost.NewMemHost()}
 	go func() { _ = snglhost.ServeHost(far, server) }()
 
-	s, err := interp.NewSession(check(t, src), "main", interp.Real{})
+	s, err := interp.NewSession(check(t, tickSrc), "main", interp.Real{})
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
@@ -109,9 +125,12 @@ func TestATimerFiresOnTheWallClock(t *testing.T) {
 		<-done
 	}()
 
+	// That it fired, not how many times: the assertion is that the loop woke
+	// for a deadline nobody sent, and pinning the exact count fails on a
+	// machine slow enough to land two ticks between polls.
 	waitFor(t, "the timer to fire without anyone asking", func() bool {
 		out := far.Find("out")
-		return len(out) == 1 && out[0].Props["value"] == "count 10"
+		return len(out) == 1 && out[0].Props["value"] != "count 0"
 	})
 }
 
@@ -121,7 +140,7 @@ func TestDriveReturnsWhenTheWindowCloses(t *testing.T) {
 	client, server := net.Pipe()
 	go func() { _ = snglhost.ServeHost(snglhost.NewMemHost(), server) }()
 
-	s, err := interp.NewSession(check(t, src), "main", interp.Real{})
+	s, err := interp.NewSession(check(t, clickSrc), "main", interp.Real{})
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}

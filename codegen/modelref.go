@@ -13,9 +13,23 @@ import (
 
 // ModelFieldRef builds an `m.<name>` selector against the generated model
 // struct.
-func ModelFieldRef(name string) ir.Expr {
+func ModelFieldRef(name string) ir.Expr { return RecvFieldRef(ModelReceiver, name) }
+
+// ModelReceiver is the receiver a model platform's methods carry. It is the
+// default, not the only one: a component instance is a record of its own, and
+// its ctor and setters reach the same fields through the record.
+const ModelReceiver = "m"
+
+// RecvFieldRef builds a `<recv>.<name>` selector. recv is the receiver the
+// scope being emitted dispatches through -- the model in a model method, the
+// instance record inside a component's ctor -- so a node field written by a
+// translator lands on whichever struct actually holds it.
+func RecvFieldRef(recv, name string) ir.Expr {
+	if recv == "" {
+		recv = ModelReceiver
+	}
 	return &ir.Select{
-		Operand: &ir.Ident{Name: "m"},
+		Operand: &ir.Ident{Name: recv},
 		Field:   name,
 		Type:    ir.TypDyn,
 	}

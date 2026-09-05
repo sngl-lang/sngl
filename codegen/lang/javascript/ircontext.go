@@ -172,7 +172,35 @@ func (jc *JsIRContext) Conversion(n *ir.Conversion) string { return jc.evalConve
 func (jc *JsIRContext) Lambda(n *ir.Lambda) string         { return jc.evalLambda(n) }
 
 func (jc *JsIRContext) AssignText(n *ir.Assign, target, value string) string {
+	// A map entry is written through the Map API, not by index. JS is the one
+	// target where the two differ: Go and Kotlin both spell an entry write
+	// `m[k] = v`, and rendering that here set a *property* on the Map object
+	// while the entry -- and `.size` -- stayed exactly as they were. Reads
+	// were already right, which is what made it quiet: `m["a"] = 1` followed
+	// by `m.get("a")` returned the default.
+	if idx, ok := n.Target.(*ir.Index); ok && isMapExpr(idx.Operand) {
+		recv := irwalk.EvalMutTarget(jc, idx.Operand)
+		key := jc.EvalExpr(idx.Idx)
+		if n.Op == ast.AssignSet {
+			return recv + ".set(" + key + ", " + value + ")"
+		}
+		// A compound write reads the entry, applies the operator, and sets it
+		// back. The read needs a default, which for a map SNGL types as the
+		// value type's zero.
+		op := strings.TrimSuffix(n.Op.String(), "=")
+		cur := recv + ".get(" + key + ")"
+		return recv + ".set(" + key + ", " + cur + " " + op + " " + value + ")"
+	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+// isMapExpr reports whether e is typed as a map.
+func isMapExpr(e ir.Expr) bool {
+	if e == nil {
+		return false
+	}
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeMap
 }
 func (jc *JsIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
@@ -405,7 +433,7 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameLocal:
 		return jc.Ctx.RenamedName(name)
 	case codegen.NameComputed:
-		return "$" + name + "()"
+		return name + "()"
 	case codegen.NameStateVar:
 		return "state." + name
 	case codegen.NameConst:
@@ -619,7 +647,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 			if !ok {
 				return "/* CreateComponent: arg[0].Sym not a Component */"
 			}
-			return factoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")"
+			return FactoryName(comp) + "(" + jc.EvalExpr(n.Args[1].Value) + ")"
 		}
 
 		// Intrinsic dispatch: stdlib intrinsics that map to per-locale
@@ -724,11 +752,16 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// User-defined method on a user type: emitted as a free function
 	// `<Receiver>_<Method>(args...)`. After passNoImplicitRecv, Args[0]
 	// is the receiver expression (component-self ident → "state").
-	if jc.Ctx != nil && jc.Ctx.Pkg != nil {
-		for _, f := range jc.Ctx.Pkg.Funcs {
-			if f.Receiver == receiverName && f.Name == method {
-				return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
-			}
+	// codegen.OwnerMethod searches every owner's funcs, not just the
+	// package's: the inliner hoists a component's methods onto whatever it
+	// inlined that component into, so an instance's copy is a func of main or
+	// of the window. Searching package scope alone missed it and fell through
+	// to the receiver-method form below, which named a method on `state` that
+	// nothing declares. Go's translator asks the same question, and spells the
+	// answer as a method on its Model rather than as a free function.
+	if jc.Ctx != nil {
+		if _, _, ok := codegen.OwnerMethod(jc.Ctx.Pkg, receiverName, method); ok {
+			return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
 		}
 	}
 

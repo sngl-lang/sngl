@@ -35,6 +35,10 @@ type Sample struct {
 	// from the check that it is written the way `sngl fmt` writes it.
 	NoFmt       bool
 	NoFmtReason string
+	// SkipCodegen is set by a `// SKIP(codegen) "reason"` directive: the
+	// fixture checks and formats, but no platform can emit it yet.
+	SkipCodegen       bool
+	SkipCodegenReason string
 
 	writeback func(*ast.Document) // set by iterator; nil if read-only
 }
@@ -90,6 +94,10 @@ func TestdataSamples(t testing.TB) iter.Seq[Sample] {
 			if err != nil {
 				t.Fatalf("nofmt directive %s: %v", path, err)
 			}
+			skipCodegen, skipReason, err := ParseSkipCodegen(path)
+			if err != nil {
+				t.Fatalf("skip directive %s: %v", path, err)
+			}
 			wbPath := path
 			if !yield(Sample{
 				Name:        base,
@@ -102,11 +110,32 @@ func TestdataSamples(t testing.TB) iter.Seq[Sample] {
 				Folds:       folds,
 				NoFmt:       nofmt,
 				NoFmtReason: nofmtReason,
+
+				SkipCodegen:       skipCodegen,
+				SkipCodegenReason: skipReason,
 				writeback: func(doc *ast.Document) {
 					formatted := parser.Format(doc)
 					os.WriteFile(wbPath, []byte(formatted), 0o644)
 				},
 			}) {
+				return
+			}
+		}
+	}
+}
+
+// CodegenSamples is TestdataSamples minus the fixtures that carry a
+// `// SKIP(codegen)` directive. Every platform harness walks the whole of
+// testdata/ for its own target, so one un-emittable fixture crashes all of
+// them; the decision lives here so a platform does not repeat it.
+func CodegenSamples(t testing.TB) iter.Seq[Sample] {
+	return func(yield func(Sample) bool) {
+		for s := range TestdataSamples(t) {
+			if s.SkipCodegen {
+				t.Logf("%s: SKIP(codegen): %s", s.Name, s.SkipCodegenReason)
+				continue
+			}
+			if !yield(s) {
 				return
 			}
 		}

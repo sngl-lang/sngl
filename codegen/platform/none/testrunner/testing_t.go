@@ -304,6 +304,12 @@ func wrapChildComponent(childEnv *interp.Env, comp *ir.Component) *componentValu
 
 // GetField resolves c.field on a componentValue.
 func (cv *componentValue) GetField(field string) (any, error) {
+	cv.settle()
+	if cv.settleErr != nil {
+		err := cv.settleErr
+		cv.settleErr = nil
+		return nil, err
+	}
 	if sym := cv.fieldSym(field); sym != nil {
 		if v, ok := cv.Env.Value(sym); ok {
 			return v, nil
@@ -363,6 +369,15 @@ func (cv *componentValue) SetField(op ast.AssignOp, field string, val any) error
 		return err
 	}
 	cv.Env.Set(sym, nv)
+	// After the write, not before: the assignment is what the new lifetimes are
+	// keyed on, so settling first would reconcile against the old value and
+	// leave the change to whatever read came next.
+	cv.settle()
+	if cv.settleErr != nil {
+		err := cv.settleErr
+		cv.settleErr = nil
+		return err
+	}
 	return nil
 }
 

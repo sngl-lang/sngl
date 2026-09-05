@@ -1,0 +1,65 @@
+// `push` and `remove` mutate the receiver and return nothing, so the only way
+// to write either is as a statement.
+//
+// Returning the receiver invited `l = l.push(x)`, which performs the append
+// once and reads as though it performed it twice — and the two backends had
+// quietly settled on different spellings because of it: the interpreter
+// mutated only through the assigned form, Go codegen only through the bare
+// one, and each looked correct on its own. A method that mutates and returns
+// is what made two right answers possible.
+
+import . "sngl:ui"
+
+component main {
+    var xs list<string> = ["a"]
+    var ys list<string> = []
+    var n int = 0
+
+    button(text="a", @click {
+        xs = xs.push("v") // ERROR(check) "expression yields no value"
+    })
+    button(text="b", @click {
+        xs = xs.remove(0) // ERROR(check) "expression yields no value"
+    })
+
+    // Assigning the result elsewhere is the same error: the mutation lands on
+    // the receiver either way, and there is no second value for ys to take.
+    button(text="d", @click {
+        ys = xs.push("other") // ERROR(check) "expression yields no value"
+    })
+    button(text="e", @click {
+        ys = xs.remove(0) // ERROR(check) "expression yields no value"
+    })
+
+    // And reading through the result is the same error one step earlier: there
+    // is no list on the left of `.length()` to have a length.
+    button(text="f", @click {
+        n = xs.push("nested").length() // ERROR(check) "expression yields no value"
+    })
+
+    // Assignment is not the only expression position, and void rejection is a
+    // hand-written list of the ones somebody remembered. Indexing the result,
+    // holding it as a list element and returning it from an expression-bodied
+    // lambda each used to check clean and reach codegen, where Go wrote
+    // `m.n = m.l = append(m.l, 2)[0]` -- which does not parse -- and Kotlin and
+    // JavaScript wrote something that compiled and did the wrong thing.
+    button(text="g", @click {
+        n = xs.push("indexed")[0] // ERROR(check) "expression yields no value"
+    })
+    button(text="h", @click {
+        var held = [xs.push("held")] // ERROR(check) "expression yields no value"
+    })
+    button(text="i", @click {
+        var fn = func() => xs.push("lambda") // ERROR(check) "expression yields no value"
+    })
+
+    // The statement form is the whole API, and it mutates in place.
+    button(text="c", @click {
+        xs.push("v")
+        xs.remove(0)
+    })
+
+    text(value=string(xs.length()))
+    text(value=string(ys.length()))
+    text(value=string(n))
+}

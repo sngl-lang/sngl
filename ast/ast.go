@@ -361,7 +361,12 @@ type ComponentDecl struct {
 	// expression must fold to a target identity, which only a target's own
 	// package supplies, so the target cannot be misspelled into an override
 	// nothing ever selects.
-	Target       Expr
+	Target Expr
+	// TypeParams are the generic parameters written after the name --
+	// ["T"] for `component effect<T>(on T)`. Bound at the call site from the
+	// props supplied there, the same way a func's are bound from its
+	// arguments.
+	TypeParams   []TypeParam `json:",omitempty"`
 	Props        PropList
 	HasParens    bool // true if declaration was written with `()` (even empty)
 	ChildrenType TypeExpr

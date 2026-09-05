@@ -219,3 +219,49 @@ func ParseFile(path string) (*ast.Document, error) {
 	name := filepath.Base(path)
 	return parser.Parse(name, src)
 }
+
+// A `// SKIP(codegen) "reason"` directive. The loose form is matched only to
+// report a directive written without the mandatory reason, which would
+// otherwise read as an ordinary comment and skip nothing.
+var (
+	skipRE      = regexp.MustCompile(`//\s*SKIP\((\w+)\)\s*(".*")`)
+	skipLooseRE = regexp.MustCompile(`//\s*SKIP\b`)
+)
+
+// ParseSkipCodegen reports whether a fixture carries a SKIP(codegen)
+// directive, and the reason written with it. A fixture that names a construct
+// no platform can lower yet does not fail one assertion — it takes the
+// platform's whole-directory walk down with it — so it opts out of codegen
+// here while the checker, parser and optimizer harnesses keep running it.
+func ParseSkipCodegen(path string) (bool, string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, "", err
+	}
+	defer f.Close()
+
+	s := bufio.NewScanner(f)
+	lineNum := 0
+	for s.Scan() {
+		lineNum++
+		m := skipRE.FindStringSubmatch(s.Text())
+		if m == nil {
+			if skipLooseRE.MatchString(s.Text()) {
+				return false, "", fmt.Errorf(`%s:%d: SKIP directive: want SKIP(phase) "reason"`, path, lineNum)
+			}
+			continue
+		}
+		if m[1] != "codegen" {
+			return false, "", fmt.Errorf("%s:%d: SKIP directive: unknown phase %q, want codegen", path, lineNum, m[1])
+		}
+		reason, err := strconv.Unquote(m[2])
+		if err != nil {
+			return false, "", fmt.Errorf("%s:%d: SKIP directive: %w", path, lineNum, err)
+		}
+		if reason == "" {
+			return false, "", fmt.Errorf("%s:%d: SKIP directive: empty reason", path, lineNum)
+		}
+		return true, reason, nil
+	}
+	return false, "", s.Err()
+}

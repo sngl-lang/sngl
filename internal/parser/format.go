@@ -737,6 +737,7 @@ func (f *formatter) writeTargetIndex(target ast.Expr) {
 func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
 	f.write("component ")
 	f.write(c.Name)
+	f.writeTypeParams(c.TypeParams)
 	f.writeTargetIndex(c.Target)
 	// An empty prop list is written when the source wrote one: `component X()`
 	// and `component X` are the same declaration, and the parens are the

@@ -4,7 +4,7 @@ import . "sngl:ui"
 
 component main {
     var items list<int> = [1, 2, 3]
-    button(text="add", @click { items = items.push(4) })
+    button(text="add", @click { items.push(4) })
     for var item = items {
         text(value=string(item))
     }
@@ -24,7 +24,7 @@ component main {
             var __n0 text = lower.CreateNode("text")
             __n0.value = string(item)
             lower.AppendChild(parent, __n0)
-            __slot0 = list.push(__slot0, __n0)
+            list.push(__slot0, __n0)
         }
     }
     button(text="add", @click {
