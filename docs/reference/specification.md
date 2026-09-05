@@ -549,9 +549,13 @@ A comparison against `null` says what a value is in the branch where the
 comparison holds. Within that branch an `option<T>` reads as a `T`:
 
 ```sngl
-var maybe option<int> = 3
-if maybe != null {
-    takesInt(maybe)     // maybe is an int here
+import . "sngl:ui"
+
+func doubled(maybe option<int>) int {
+    if maybe != null {
+        return maybe * 2 // maybe is an int here
+    }
+    return 0
 }
 ```
 
