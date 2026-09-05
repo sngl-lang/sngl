@@ -205,30 +205,74 @@ func (st *slotChildSynth) liftHandlers(n *ir.NodeInst, comp *ir.Component, inst 
 // owner's state the body names. Both are safe to read through a cell, because
 // a slot re-renders whenever anything its body reads changes -- not only when
 // the iterable does -- so the render is always the one pushing the new value.
+//
+// A call is a free value too, and the reason is not obvious: `decorate()`
+// names none of the owner's state and still reads it, through the body of the
+// func it calls. Leaving such a call inside the synthesized component leaves
+// the read with it, and passReactivity then credits the owner's var with a
+// node that now lives behind a component boundary -- the owner's updater
+// patches `__nN` through the child's prop cell, and neither name exists in the
+// owner's scope. Lifting the call restores the property the whole synthesis
+// rests on: the child's subtree reads nothing but its own props. That is also
+// what makes registerSlotBodyDeps enough on its own -- the call is a prop
+// expression in the slot body now, so the slot re-fires when the func's reads
+// change, and no second guard is needed for this boundary.
 func (st *slotChildSynth) liftValues(n *ir.NodeInst, comp *ir.Component, inst *ir.NodeInst) {
-	seen := map[ir.Symbol]*ir.Param{}
-	var order []ir.Symbol
+	seen := map[string]*ir.Param{}
+	add := func(key string, typ *ir.Type, value ir.Expr) *ir.Param {
+		if p, known := seen[key]; known {
+			return p
+		}
+		p := &ir.Param{Name: "__p" + strconv.Itoa(len(seen)), Type: typ}
+		seen[key] = p
+		comp.Props = append(comp.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
+		inst.Props = append(inst.Props, ir.Arg{Name: p.Name, Value: value})
+		return p
+	}
+	uniq := 0
 	_ = ir.Rewrite(n, func(node ir.Node) (ir.Node, error) {
-		id, ok := node.(*ir.Ident)
-		if !ok || id.Sym == nil || !liftableSym(id.Sym) {
+		switch x := node.(type) {
+		case *ir.Call:
+			typ := x.ExprType()
+			if typ == nil || typ.Kind == ir.TypeVoid || !st.readsReactiveState(x) {
+				return node, nil
+			}
+			key, ok := exprKey(x)
+			if !ok {
+				// Undecidable equality: give it a key of its own rather than
+				// merge it with a call that may compute something else.
+				key = "call#" + strconv.Itoa(uniq)
+				uniq++
+			}
+			p := add(key, typ, x)
+			// SkipDir: the call travels to the instantiation site whole, so
+			// its arguments stay written against the scope they were read in.
+			return &ir.Ident{Name: p.Name, Type: typ, Sym: p}, ir.SkipDir
+		case *ir.Ident:
+			if x.Sym == nil || !liftableSym(x.Sym) {
+				return node, nil
+			}
+			p := add("id("+identityOf(x.Sym)+")", x.Type, &ir.Ident{
+				// The read as the site wrote it, before this walk repoints it.
+				Name: x.Name, Type: x.Type, Sym: x.Sym,
+			})
+			x.Name = p.Name
+			x.Sym = p
 			return node, nil
 		}
-		p, known := seen[id.Sym]
-		if !known {
-			p = &ir.Param{Name: "__p" + strconv.Itoa(len(order)), Type: id.Type}
-			seen[id.Sym] = p
-			order = append(order, id.Sym)
-			comp.Props = append(comp.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
-			inst.Props = append(inst.Props, ir.Arg{
-				Name: p.Name,
-				// The read as the site wrote it, before this walk repoints it.
-				Value: &ir.Ident{Name: id.Name, Type: id.Type, Sym: id.Sym},
-			})
-		}
-		id.Name = p.Name
-		id.Sym = p
 		return node, nil
 	})
+}
+
+// readsReactiveState reports whether calling c reads state the owner holds --
+// through the callee's body, and through everything that body calls in turn.
+func (st *slotChildSynth) readsReactiveState(c *ir.Call) bool {
+	if c.Func == nil {
+		return false
+	}
+	reads := map[*ir.Var]bool{}
+	gatherFuncReads(c.Func, st.reactive, reads, map[*ir.Func]bool{})
+	return len(reads) > 0
 }
 
 // liftableSym reports whether a symbol read inside a node is one declared
