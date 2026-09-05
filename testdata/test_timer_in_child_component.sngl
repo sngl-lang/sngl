@@ -1,0 +1,35 @@
+import . "sngl:ui"
+import . "sngl:time"
+import . "sngl:app"
+import . "sngl:test"
+
+output {
+    none { html }
+}
+
+var childTicks = 0
+
+func testChildTimerFires(t Test, c main) {
+    t.tick()
+    t.assert(c.outer == 1)
+    t.assert(childTicks == 1)
+}
+
+component ticker(n int) {
+    timer(interval=100ms, enabled=true, @tick {
+        childTicks += 1
+    })
+
+    text(value=string(n))
+}
+
+component main {
+    var outer = 0
+
+    timer(interval=100ms, enabled=true, @tick {
+        outer += 1
+    })
+
+    ticker(n=1)
+    text(value=string(outer))
+}

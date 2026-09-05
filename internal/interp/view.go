@@ -50,6 +50,10 @@ type View struct {
 	// among the nodes: an effect draws nothing, and what it wants from the
 	// tree is only the lifetime that reaching it at all confers.
 	Effects []MountedEffect
+	// Timers are the recurring deadlines this tree describes, in mount order.
+	// Held here for the reason Effects are: a schedule renders nothing, and
+	// what it takes from the tree is only the position it was reached at.
+	Timers []MountedTimer
 }
 
 // Node is one retained instance in a View.
@@ -374,6 +378,10 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, error) {
 	if e, isEffect := effectOf(inst, env, m.key(path)); isEffect {
 		m.view.Effects = append(m.view.Effects, e)
+		return nil, nil
+	}
+	if t, isTimer := timerOf(inst, env, m.key(path)); isTimer {
+		m.view.Timers = append(m.view.Timers, t)
 		return nil, nil
 	}
 	if inst.Component != nil {

@@ -158,30 +158,11 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		}
 	}
 
-	// MutationModel platforms emit their timer runtime from these; html reads
-	// ir.Timer off the components instead.
-	allTimers := append([]*ir.Timer{}, pkg.Timers...)
-	for _, comp := range pkg.Components {
-		if comp != nil && comp.Name == "main" {
-			allTimers = append(allTimers, comp.Timers...)
-		}
-	}
-	for i, t := range allTimers {
-		if t == nil || t.Handler == nil {
-			continue
-		}
-		activeVar := ""
-		if id, ok := t.Enabled.(*ir.Ident); ok {
-			activeVar = id.Name
-		}
-		a.Timers = append(a.Timers, TimerInfo{
-			Index:      i,
-			IntervalMs: IntervalToMs(t.Interval),
-			ActiveVar:  activeVar,
-			Body:       t.Handler.Block,
-			LocalRefs:  t.Handler.LocalRefs,
-		})
-	}
+	// Every placed timer primitive, wherever it is written. `timer` is an
+	// ordinary component now, and each platform overrides it with the node it
+	// schedules with, so this is a walk of the tree rather than a read of the
+	// list the checker used to hoist every timer onto.
+	a.Timers = collectTimerPrimitives(pkg)
 
 	a.NeedsToast = pkg.UsesAlert
 

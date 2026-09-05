@@ -44,11 +44,11 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 
 	case "tick":
 		if cv := tv.comp; cv != nil {
-			ts, err := tv.sched(cv)
+			compEnv := cv.compEnv()
+			ts, err := tv.sched(compEnv)
 			if err != nil {
 				return nil, err
 			}
-			compEnv := cv.compEnv()
 			if _, err := ts.Tick(compEnv); err != nil {
 				return nil, err
 			}
@@ -86,9 +86,11 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 		// over package state, and it ran once before this loop had a schedule.
 		cv := tv.comp
 		var ts *interp.Timers
+		var compEnv *interp.Env
 		if cv != nil {
+			compEnv = cv.compEnv()
 			var serr error
-			if ts, serr = tv.sched(cv); serr != nil {
+			if ts, serr = tv.sched(compEnv); serr != nil {
 				return nil, serr
 			}
 		}
@@ -114,11 +116,16 @@ func (tv *testingT) CallMethod(env *interp.Env, method string, args []ir.Expr) (
 			if !tv.clock.Now().Before(deadline) {
 				return nil, nil
 			}
-			compEnv := cv.compEnv()
 			if _, err := ts.Tick(compEnv); err != nil {
 				return nil, err
 			}
 			cv.Env.RebindFrom(compEnv)
+			// Re-derived each round: a handler may have moved state the next
+			// deadline's position depends on, and a schedule is a fact about
+			// the tree that state renders.
+			if _, err := tv.sched(compEnv); err != nil {
+				return nil, err
+			}
 		}
 
 	case "setContext":

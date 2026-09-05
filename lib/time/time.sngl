@@ -24,9 +24,18 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 // is true. Toggling `enabled` is the idiomatic way to start and stop
 // the timer; the timer is automatically cleaned up when the component
 // unmounts. Intervals below the platform's frame budget may coalesce.
-#[builtin("timer")]
+// `enabled` defaults to true because omitting it has always meant an always-on
+// timer. It carries the default rather than each backend reading a missing
+// value as "no gate", since every implementation writes the gate as the
+// position it places its primitive at -- and a position needs a value to test.
+//
+// The body is each target's. There is no compiler construct behind this
+// declaration: `sngl:platform/<name>` overrides it with the primitive that
+// platform schedules with, which is why a timer's branch, its component
+// boundary and its interval are answered by the tree it renders into rather
+// than by a list the checker hoisted it onto.
 component timer(
     interval duration,
-    enabled bool,
+    enabled bool = true,
     @tick,
 ) {}
