@@ -14,7 +14,11 @@ import (
 // `if enabled { Tick(interval=interval, @tick { tick() }) }`. So the branch,
 // the component boundary and the loop a timer was written inside are answered
 // by the tree the override renders into, and nothing here has to ask.
-const TickIntrinsic = "none:Tick"
+const TickIntrinsic = "none:Timer"
+
+// InterpreterPlatform is the platform identifier the interpreter answers to,
+// and the key sngl:platform/none's overrides are recorded at.
+const InterpreterPlatform = "none"
 
 // tickIntervalProp and tickEvent are the primitive's two members, named here
 // so a change to the declaration fails in one place.

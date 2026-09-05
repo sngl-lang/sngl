@@ -90,7 +90,6 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		indent:      1,
 	}
 
-	bodyStmts = dropTimerPrimitives(bodyStmts)
 	if len(bodyStmts) == 1 {
 		vc.line("var content string")
 		vc.renderStmt(bodyStmts[0], "content")
@@ -199,7 +198,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		slotVar:     slotVar,
 	}
 
-	ccBody := dropTimerPrimitives(cc.Body)
+	ccBody := cc.Body
 	if len(ccBody) == 1 {
 		vc.line("var result string")
 		vc.renderStmt(ccBody[0], "result")
@@ -360,12 +359,6 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 	// stdlib wrapper inlines to one of these at lower time, and the #[intrinsic]
 	// id on the declaration is what identifies one; see bubbletea.sngl +
 	// blueprint.go.
-	// A timer draws nothing. It is a node so that it can be placed, and its
-	// arming lives in Init and Update; reaching the view it would render as an
-	// empty styled part and take a line of the terminal.
-	if codegen.IsTimerPrimitive(n.Component) {
-		return
-	}
 	if btIntrinsic(n) != "" {
 		vc.renderBlueprint(n, resultVar)
 		return
@@ -761,19 +754,4 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 		return "Faint(true)"
 	}
 	return ""
-}
-
-// dropTimerPrimitives removes the timer nodes from a body before it is rendered
-// as terminal parts. A timer draws nothing, and a view that allocated a part
-// for one joined an empty line into the output where the program had asked for
-// nothing at all.
-func dropTimerPrimitives(stmts []ir.Stmt) []ir.Stmt {
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		if n, ok := s.(*ir.NodeInst); ok && codegen.IsTimerPrimitive(n.Component) {
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
 }

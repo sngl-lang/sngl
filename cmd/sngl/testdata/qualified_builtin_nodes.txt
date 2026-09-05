@@ -79,9 +79,9 @@ import t "sngl:time"
 
 component main {
     var n int = 0
-    t.timer(interval=1s) {
+    t.timer(interval=1s, @tick {
         n = n + 1
-    }
+    })
     s.text(value="tick")
 }
 -- boundary.sngl --

@@ -277,7 +277,14 @@ func LibraryPackages() []PackageEntry {
 	plats := codegen.Platforms()
 	sort.Strings(plats)
 	for _, name := range plats {
-		if len(codegen.PlatformDocs(codegen.LookupPlatform(name))) == 0 {
+		plat := codegen.LookupPlatform(name)
+		// A platform that supports no language emits nothing, so it has no
+		// output to document. `none` is that: a marker for headless test
+		// execution whose package holds only the primitive the interpreter
+		// schedules with. It also shares its name with the `none` language,
+		// and a package page is addressed by bare name -- so listing both put
+		// two packages at /docs/none/.
+		if len(plat.SupportedLangs()) == 0 || len(codegen.PlatformDocs(plat)) == 0 {
 			continue
 		}
 		out = append(out, PackageEntry{

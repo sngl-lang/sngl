@@ -28,6 +28,13 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	if clock == nil {
 		clock = NewVirtual()
 	}
+	// The interpreter is a target, and a target gets the bodies its own
+	// platform package declares. Nothing here lowers -- the interpreter is
+	// written against checked IR -- so this is the one thing it still takes
+	// from the pipeline: without it `sngl:time`'s `timer` is the empty stub
+	// every stdlib component is before a platform implements it, and schedules
+	// nothing.
+	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
 	env, err := BuildEnv(pkg, comp)
 	if err != nil {
 		return nil, err
@@ -181,6 +188,10 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 // holding the old entry left it running a func of the package the reload threw
 // away, in a scope whose symbols the session no longer binds.
 func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
+	// The reloaded program is a program this target runs, so it takes this
+	// platform's bodies exactly as the first one did. Without it a reload
+	// silently dropped every timer: `timer` reverted to the empty stub.
+	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
 	env, err := BuildEnv(pkg, s.Comp)
 	if err != nil {
 		return nil, err

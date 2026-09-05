@@ -254,6 +254,24 @@ func (m *mounter) top() (slotFrame, bool) {
 	return m.slots[len(m.slots)-1], true
 }
 
+// drop undoes an add for a node the mount decided renders nothing after all.
+func (m *mounter) drop(n *Node) {
+	delete(m.view.byKey, n.Key)
+	if n.ID == "" {
+		return
+	}
+	ids := m.view.byID[n.ID]
+	for i, c := range ids {
+		if c == n {
+			m.view.byID[n.ID] = append(ids[:i], ids[i+1:]...)
+			break
+		}
+	}
+	if len(m.view.byID[n.ID]) == 0 {
+		delete(m.view.byID, n.ID)
+	}
+}
+
 func (m *mounter) add(n *Node) {
 	m.view.byKey[n.Key] = n
 	if n.ID != "" {
@@ -420,9 +438,20 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		}
 		m.push(slotFrame{callsite: inst, env: env})
 		defer m.pop()
+		before := len(m.view.Timers)
 		kids, err := m.stmts(child, child.BodyStmts, path)
 		if err != nil {
 			return nil, err
+		}
+		// A component whose whole expansion was schedules draws nothing, so it
+		// leaves the tree the way its schedules did. `timer` is that: its
+		// override places one primitive and no widget, and a host handed the
+		// wrapper got a node with no content whose `interval` prop is a unit
+		// value -- which is not a thing a host tree can carry, and the RPC
+		// round trip turned it into the unit's whole conversion table.
+		if len(kids) == 0 && len(m.view.Timers) > before {
+			m.drop(node)
+			return nil, nil
 		}
 		node.Children = kids
 		return []*Node{node}, nil

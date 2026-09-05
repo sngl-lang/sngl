@@ -8,6 +8,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglhost"
 )
@@ -18,7 +19,16 @@ func check(t *testing.T, src string) *ir.Package {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	// The platforms are registered because a timer needs one: `sngl:time`'s
+	// `timer` has no body, and the schedule is sngl:platform/none's override of
+	// it. Checked without them, a program with a timer runs and never ticks.
+	langs, plats := testtargets.Targets()
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Languages: langs,
+		Platforms: plats,
+		Targets:   []ir.StaticTarget{{Platform: "none"}},
+	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %s: %s", d.Pos, d.Msg)

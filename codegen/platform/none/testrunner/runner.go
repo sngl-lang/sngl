@@ -9,23 +9,14 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// platformName is the identifier `sngl:platform/none` is served under, and the
-// key its overrides are recorded at. Spelled here rather than imported from the
-// generator, which imports this package.
-const platformName = "none"
-
 // Run executes all test functions in a package and returns results.
 func Run(pkg *ir.Package) ([]*codegen.TestResult, error) {
 	if pkg == nil {
 		return nil, nil
 	}
-	// The interpreter is a target, and a target gets the bodies its own platform
-	// package declares. `sngl test` runs no lowering passes on purpose -- the
-	// interpreter is written against checked IR -- so this is the one thing it
-	// still has to take from the pipeline: without it `sngl:time`'s `timer`
-	// expands to the empty stub every stdlib component is before a platform
-	// implements it.
-	ir.SpecializeForTarget(pkg, platformName, "")
+	// See interp.NewSession: the interpreter takes its platform's bodies, and
+	// the test runner builds envs without going through a Session.
+	ir.SpecializeForTarget(pkg, interp.InterpreterPlatform, "")
 	var results []*codegen.TestResult
 	for _, fn := range pkg.Funcs {
 		if !fn.IsTest {

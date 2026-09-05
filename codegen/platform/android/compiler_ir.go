@@ -655,17 +655,21 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// Timers
 	for _, t := range info.Timers {
-		// ActiveVar is a bare reactive-var name; in test mode it lives on the
-		// hoisted state object, so route it through the same rewrite map the
-		// body uses (e.g. `animating` → `state.animating`).
-		activeVar := t.ActiveVar
-		if kc.IdentRewrites != nil {
-			if rw, ok := kc.IdentRewrites[activeVar]; ok {
-				activeVar = rw
-			}
+		// The gate as an expression, not the bare variable name it used to be
+		// reduced to. `enabled=true` names no variable, and neither does a gate
+		// folded from an enclosing branch -- both produced an empty ActiveVar,
+		// which came out as `LaunchedEffect() { while () {`. That is not Kotlin,
+		// and no golden covered an android timer to say so.
+		//
+		// EvalExpr routes idents through the same rewrite map the body uses, so
+		// a var that lives on the hoisted state object in test mode is spelled
+		// the way the body spells it.
+		gate := "true"
+		if t.Enabled != nil {
+			gate = kc.EvalExpr(t.Enabled)
 		}
-		fmt.Fprintf(&body, "    LaunchedEffect(%s) {\n", activeVar)
-		fmt.Fprintf(&body, "        while (%s) {\n", activeVar)
+		fmt.Fprintf(&body, "    LaunchedEffect(%s) {\n", gate)
+		fmt.Fprintf(&body, "        while (%s) {\n", gate)
 		fmt.Fprintf(&body, "            delay(%dL)\n", t.IntervalMs)
 		for _, stmt := range t.Body {
 			for _, line := range kc.EvalStmt(stmt) {

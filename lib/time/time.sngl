@@ -24,6 +24,7 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 // is true. Toggling `enabled` is the idiomatic way to start and stop
 // the timer; the timer is automatically cleaned up when the component
 // unmounts. Intervals below the platform's frame budget may coalesce.
+//
 // `enabled` defaults to true because omitting it has always meant an always-on
 // timer. It carries the default rather than each backend reading a missing
 // value as "no gate", since every implementation writes the gate as the

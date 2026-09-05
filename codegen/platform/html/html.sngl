@@ -13,6 +13,7 @@
 // a body of its own.
 
 import ui "sngl:ui"
+import time "sngl:time"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -400,3 +401,21 @@ func frontend<T>(v T) T
 // route; a constant expression is generated as a lazy-loaded static file.
 #[intrinsic("html.backend")]
 func backend<T>(v T) T
+
+// --- The timer ---
+//
+// A recurring deadline, which is not an element: it has no tag, renders no
+// node, and is the one primitive in this package that is a declaration rather
+// than a wildcard over the web's own vocabulary. passTimerPrimitive takes it
+// out of the tree, so nothing here renders it; the emitted script arms it with
+// setInterval.
+#[intrinsic("html:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+) {}
+
+component time.timer[platform] {
+    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+}

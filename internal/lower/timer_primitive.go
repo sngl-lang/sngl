@@ -1,0 +1,165 @@
+package lower
+
+import (
+	"strings"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/ir"
+)
+
+// passTimerPrimitive takes each platform's timer primitive out of the tree and
+// records the schedule it describes.
+//
+// Always on, and not capability-gated, because it answers for every target:
+// `timer` is an ordinary component now, each platform overrides it with the
+// node it schedules with, and a schedule is not a widget. Left standing, a
+// declarative target turns it into one -- fyne asked what Fyne constructor to
+// call for it and stopped the build, which is the honest version of the same
+// failure gtk4 had silently for as long as it had timers at all.
+//
+// Placed beside passEffect and for the same reasons: after the inliner, so a
+// timer written in a child component has arrived in the tree that gets walked;
+// before passReactivity, so a tick body that writes state is still an ordinary
+// assignment when the updater injection looks for one; and before
+// passDeclarative, which is what would flatten the node into a widget.
+var passTimerPrimitive = pass{
+	name:    "TimerPrimitive",
+	enabled: func(Caps) bool { return true },
+	apply:   lowerTimerPrimitives,
+}
+
+// timerRole is the second half of a platform's timer primitive id. The id is
+// namespaced by the platform that emits it -- `fyne:Timer`, `bubbletea:Timer`
+// -- so only the target being built for can have contributed one to this tree,
+// and the role is what they have in common.
+const timerRole = "Timer"
+
+// IsTimerPrimitive reports whether a component is some platform's timer
+// primitive. Read off the declaration's own mark: a registry would be a second
+// place to say it and a second place to forget.
+func IsTimerPrimitive(c *ir.Component) bool {
+	if c == nil || c.Intrinsic == "" {
+		return false
+	}
+	ns, name, ok := strings.Cut(c.Intrinsic, ":")
+	return ok && ns != "" && name == timerRole
+}
+
+func lowerTimerPrimitives(pkg *ir.Package, _ Caps, _ Options) error {
+	if pkg == nil {
+		return nil
+	}
+	st := &timerPrimState{pkg: pkg}
+	for _, o := range ir.Owners(pkg) {
+		st.owner = o.Comp
+		body := st.stmts(o.Stmts, nil)
+		switch {
+		case o.Comp != nil:
+			o.Comp.Body = body
+		case o.Win != nil:
+			o.Win.Body = body
+		default:
+			pkg.Body = body
+		}
+	}
+	return nil
+}
+
+type timerPrimState struct {
+	pkg *ir.Package
+	// owner is the component the statements being walked belong to, or nil for
+	// the package body. A schedule is recorded on its owner rather than all on
+	// the package, because the passes that walk a component's imperative
+	// bodies -- reactivity's updater injection above all -- descend per owner:
+	// recorded on the package, a tick body that wrote state got no updater and
+	// the widget reading that state never changed.
+	owner *ir.Component
+}
+
+// stmts rewrites one statement list, dropping every timer primitive in it.
+//
+// gates is the chain of enclosing `if` conditions, which is how a timer keeps
+// the meaning of where it was written on a target that has no tree to read at
+// run time: a schedule under a branch is armed only while that branch would
+// have rendered, so the conditions are ANDed onto the primitive's own gate. A
+// loop is not in the chain -- a timer per iteration is a schedule per
+// iteration, which no backend's timer runtime expresses, and one written there
+// is left where it is for the tree walk to find nothing to do with.
+func (st *timerPrimState) stmts(stmts []ir.Stmt, gates []ir.Expr) []ir.Stmt {
+	out := make([]ir.Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if IsTimerPrimitive(n.Component) {
+				st.record(n, gates)
+				continue
+			}
+			n.Children = st.stmts(n.Children, gates)
+		case *ir.If:
+			n.Body = st.stmts(n.Body, append(gates[:len(gates):len(gates)], n.Cond))
+			n.Else = st.stmts(n.Else, append(gates[:len(gates):len(gates)], negate(n.Cond)))
+			if len(n.Body) == 0 && len(n.Else) == 0 {
+				continue
+			}
+		case *ir.SlotInst:
+			n.Children = st.stmts(n.Children, gates)
+		case *ir.ErrorBoundary:
+			n.Children = st.stmts(n.Children, gates)
+		case *ir.Window:
+			n.Body = st.stmts(n.Body, gates)
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+func (st *timerPrimState) record(n *ir.NodeInst, gates []ir.Expr) {
+	var tick *ir.Func
+	for i := range n.Handlers {
+		if n.Handlers[i].Name == "tick" {
+			tick = n.Handlers[i].Func
+		}
+	}
+	if tick == nil {
+		return
+	}
+	t := &ir.Timer{
+		Interval: propOf(n, "interval"),
+		Enabled:  propOf(n, "enabled"),
+		Handler:  tick,
+	}
+	for _, g := range gates {
+		t.Enabled = andExpr(t.Enabled, g)
+	}
+	if st.owner != nil {
+		st.owner.Timers = append(st.owner.Timers, t)
+		return
+	}
+	st.pkg.Timers = append(st.pkg.Timers, t)
+}
+
+func propOf(n *ir.NodeInst, name string) ir.Expr {
+	for _, p := range n.Props {
+		if p.Name == name {
+			return p.Value
+		}
+	}
+	return nil
+}
+
+func andExpr(a, b ir.Expr) ir.Expr {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	return &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: a, Right: b}
+}
+
+func negate(e ir.Expr) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	return &ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: e}
+}

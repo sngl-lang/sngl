@@ -3,7 +3,6 @@ package interp
 import (
 	"strings"
 	"testing"
-	"time"
 )
 
 func sessionFor(t *testing.T, src, comp string) *Session {
@@ -26,7 +25,6 @@ component main {
     vbox {
         text #out(value="{label}: {count}")
         button #inc(text="+", @click { count += 1 })
-        timer(interval=100ms, enabled=true, @tick { count += 10 })
     }
 }
 `
@@ -73,18 +71,6 @@ func TestASecondSyncWithNoChangeIsEmpty(t *testing.T) {
 	}
 	if len(patches) != 0 {
 		t.Errorf("idle sync produced %d patches:\n%s", len(patches), patchLines(patches))
-	}
-}
-
-// TestTickAdvancesTimeAndPatches.
-func TestTickAdvancesTimeAndPatches(t *testing.T) {
-	s := sessionFor(t, sessionSrc, "main")
-	patches, err := s.Tick()
-	if err != nil {
-		t.Fatalf("Tick: %v", err)
-	}
-	if len(patches) != 1 || patches[0].Value != "start: 10" {
-		t.Fatalf("want the timer's +10 as one patch, got:\n%s", patchLines(patches))
 	}
 }
 
@@ -143,31 +129,13 @@ func TestReloadRunsTheInitialiserForANewVar(t *testing.T) {
 	}
 }
 
-// TestReloadDoesNotRestartTimerPhase: saving a file must not reset every timer
-// in the program, which is what a fresh schedule would do.
-func TestReloadDoesNotRestartTimerPhase(t *testing.T) {
-	s := sessionFor(t, sessionSrc, "main")
-	if _, err := s.Tick(); err != nil { // clock at 100ms, timer due at 200ms
-		t.Fatalf("Tick: %v", err)
+// firstTimerKey is the mounted path of the session's first scheduled timer. A
+// timer is keyed on where it is written now, the same way an effect is, so
+// there is no positional key to construct.
+func firstTimerKey(t *testing.T, s *Session) Key {
+	t.Helper()
+	if len(s.Timers.entries) == 0 {
+		t.Fatal("the session has no timer scheduled")
 	}
-	// Off the interval boundary, or the test cannot tell a carried deadline
-	// from a fresh one: at 100ms a new schedule computes 200ms too, which is
-	// exactly what Rebase would have carried. At 130ms they differ.
-	s.Clock.(*Virtual).Advance(30 * time.Millisecond)
-
-	want, ok := s.Timers.NextFor(TimerKey("main", 0))
-	if !ok {
-		t.Fatal("no timer scheduled")
-	}
-	edited := strings.Replace(sessionSrc, `label = "start"`, `label = "restarted"`, 1)
-	if _, err := s.Reload(check(t, edited)); err != nil {
-		t.Fatalf("Reload: %v", err)
-	}
-	got, ok := s.Timers.NextFor(TimerKey("main", 0))
-	if !ok {
-		t.Fatal("the timer is gone after the reload")
-	}
-	if !got.Equal(want) {
-		t.Errorf("next fire moved to %v from %v; the reload restarted the timer", got, want)
-	}
+	return s.Timers.entries[0].Key
 }

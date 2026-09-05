@@ -20,6 +20,7 @@
 // corresponding GTK4 Go code.
 
 import ui "sngl:ui"
+import time "sngl:time"
 import . "sngl:macro"
 
 #[options]
@@ -160,4 +161,25 @@ component ui.popover[platform] {
     gtk4.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
         slot
     }
+}
+
+// --- The timer ---
+//
+// A recurring deadline, which is not a GTK widget and so is not generated from
+// the GIR: it has no C type to read an API back out of. GLib's g_timeout_add is
+// what the emitter builds from it.
+//
+// gtk4 emitted no timer at all before this declaration existed. A program with
+// one compiled clean and simply never ticked, because the analysis read a list
+// the checker had hoisted every timer onto and this platform never looked at
+// it.
+#[intrinsic("gtk4:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+) {}
+
+component time.timer[platform] {
+    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }

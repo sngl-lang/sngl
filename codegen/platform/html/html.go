@@ -653,6 +653,13 @@ type timerDef struct {
 	index      int
 	intervalMs int
 	activeVar  string
+	// activeVars is every reactive name the gate reads, and activeExpr the
+	// gate rendered as JS. A gate used to be one bare identifier or nothing:
+	// `enabled=true` reduced to nothing, which read as "always on", and a gate
+	// folded from an enclosing branch reduced to nothing too -- so a timer
+	// under a false `if` armed and ran.
+	activeVars map[string]bool
+	activeExpr string
 	body       string
 	mutated    map[string]bool
 	bodyAsync  bool
@@ -2176,7 +2183,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		}
 		if !needsSetter {
 			for _, t := range g.timers {
-				if t.activeVar == dv.Name {
+				if t.activeVars[dv.Name] {
 					needsSetter = true
 					break
 				}
@@ -2435,7 +2442,7 @@ func (g *htmlGen) timerSyncCalls(mutated map[string]bool) []string {
 	}
 	var out []string
 	for _, t := range g.timers {
-		if t.activeVar != "" && mutated[t.activeVar] {
+		if anyMutated(t.activeVars, mutated) {
 			out = append(out, fmt.Sprintf("$timer_%d_sync();", t.index))
 		}
 	}
@@ -2504,9 +2511,9 @@ func (g *htmlGen) emitTimers(b *strings.Builder) {
 		fmt.Fprintf(b, "%s $timer_%d_tick() {\n  %s\n}\n", tickKw, t.index, tickBody)
 		fmt.Fprintf(b, "function $timer_%d_sync() {\n", t.index)
 		// No controlling Active var means always-on.
-		activeExpr := "true"
-		if t.activeVar != "" {
-			activeExpr = "state." + t.activeVar
+		activeExpr := t.activeExpr
+		if activeExpr == "" {
+			activeExpr = "true"
 		}
 		fmt.Fprintf(b, "  if (%s && !$timer_%d) {\n", activeExpr, t.index)
 		fmt.Fprintf(b, "    $timer_%d = setInterval($timer_%d_tick, %d);\n", t.index, t.index, t.intervalMs)
@@ -2539,7 +2546,7 @@ func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
 		}
 	}
 	for _, t := range g.timers {
-		if t.activeVar == dv.Name {
+		if t.activeVars[dv.Name] {
 			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
 		}
 	}
@@ -3208,9 +3215,24 @@ func (g *htmlGen) addIRTimer(t *ir.Timer) {
 			activeVar = id.Name
 		}
 	}
+	// The gate as an expression, plus every reactive name it reads. The bare
+	// identifier above is still what the TestRunner data reports, because that
+	// is the only shape it can name.
+	activeExpr := ""
+	activeVars := map[string]bool{}
+	if t.Enabled != nil {
+		activeExpr = g.exprToJS(t.Enabled)
+		reads := map[string]bool{}
+		gateReads(t.Enabled, reads)
+		for name := range g.remapMutated(reads, g.dataRenames) {
+			activeVars[name] = true
+		}
+	}
 	g.timers = append(g.timers, timerDef{
 		intervalMs: codegen.IntervalToMs(t.Interval),
 		activeVar:  activeVar,
+		activeVars: activeVars,
+		activeExpr: activeExpr,
 		body:       strings.Join(lines, "\n  "),
 		mutated:    mutated,
 		bodyAsync:  ir.BlockHasFuncvarAsyncCall(t.Handler.Block, g.pts()),
@@ -3576,4 +3598,44 @@ func (g *htmlGen) bodyCalls() []string {
 	}
 	collect(pkg.Body)
 	return out
+}
+
+// anyMutated reports whether any of the names a timer's gate reads was written
+// by the statement whose updaters are being emitted.
+func anyMutated(gate, mutated map[string]bool) bool {
+	for name := range gate {
+		if mutated[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// gateReads collects the reactive names a gate expression reads, which is what
+// says when the schedule has to be re-tested. One name was enough while a gate
+// was one identifier; `a && b`, which is what an enclosing branch folds into
+// one, reads two.
+func gateReads(e ir.Expr, out map[string]bool) {
+	switch n := e.(type) {
+	case nil:
+		return
+	case *ir.Ident:
+		if n.Name != "" {
+			out[n.Name] = true
+		}
+	case *ir.Binary:
+		gateReads(n.Left, out)
+		gateReads(n.Right, out)
+	case *ir.Unary:
+		gateReads(n.Operand, out)
+	case *ir.Select:
+		gateReads(n.Operand, out)
+	case *ir.Conversion:
+		gateReads(n.Operand, out)
+	case *ir.Call:
+		gateReads(n.Receiver, out)
+		for _, a := range n.Args {
+			gateReads(a.Value, out)
+		}
+	}
 }

@@ -170,6 +170,17 @@ func (ts *Timers) Tick(env *Env) (int, error) {
 	return ts.FireDue(env)
 }
 
+// Keys is the mounted path of every scheduled timer, in mount order. A timer is
+// keyed on where it is written, the same way an effect is, so a caller that
+// wants one has to ask which are there rather than construct a positional key.
+func (ts *Timers) Keys() []Key {
+	out := make([]Key, 0, len(ts.entries))
+	for _, e := range ts.entries {
+		out = append(out, e.Key)
+	}
+	return out
+}
+
 // NextFor reports when the timer with the given key fires. The reconciler needs
 // per-timer access to decide what a reload carried, and so does a test that
 // checks it.

@@ -47,6 +47,21 @@ type templateData struct {
 	NeedsGObjectSet bool
 	HasCanvas       bool // emit the cairo draw-func trampoline glue in callbacks.go
 	Wrapped         bool // wrapped mode: import pkg/go/gtk4rt, omit the cgo preamble
+	// Timers is one entry per schedule the program describes. gtk4 emitted
+	// none at all before: the analysis read a list the checker hoisted every
+	// timer onto and this platform never looked at it, so a program with a
+	// timer compiled clean and never ticked.
+	Timers []timerData
+}
+
+type timerData struct {
+	Index      int
+	IntervalMs int
+	// Gate is the enabled expression rendered as Go, tested inside the
+	// callback rather than around the arming: the source runs for the
+	// program's life and each tick asks whether it should do anything, which
+	// is what makes flipping the gate take effect with no re-arming wiring.
+	Gate string
 }
 
 type structData struct {
