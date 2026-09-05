@@ -293,7 +293,29 @@ func (c *checker) providedDocs(name string) []*ast.Document {
 	// it was configured with, so a target absent from them contributes
 	// nothing here even when it is registered process-wide -- PackageSource is
 	// where the registry answers, for readers that have no config to carry.
-	return ProvidedDocs(c.lookupTargetIn(target, kind))
+	//
+	// Memoized for the life of this checker and no longer. ProvidedDocs
+	// re-reads and re-parses on every call, and one check asks about the same
+	// package around 26 times -- hasLibPkg on each lookup, targetPkgScope,
+	// libDocs, libPkg, mergeTargetExtensions. Parsing gtk4's synthesized
+	// widget package that many times was the single largest cost in the
+	// checker's own test package.
+	//
+	// Per-checker is the scope the freshness constraint asks for: what must
+	// not be shared is documents across *checks*, since a check splices
+	// platform bodies into them and a target may be reconfigured between
+	// checks. Within one check the callers are meant to see the same ASTs --
+	// they previously got a different *ast.Document for the same package
+	// depending on which of them asked.
+	if docs, ok := c.providedCache[name]; ok {
+		return slices.Clone(docs)
+	}
+	docs := ProvidedDocs(c.lookupTargetIn(target, kind))
+	if c.providedCache == nil {
+		c.providedCache = map[string][]*ast.Document{}
+	}
+	c.providedCache[name] = docs
+	return slices.Clone(docs)
 }
 
 // Targets that serve a library package, keyed by its `sngl:<uri>`. A
@@ -335,8 +357,9 @@ func ProvidedDocs(t any) []*ast.Document {
 	// Parsed fresh every call. A check splices platform bodies into the
 	// documents it is given, and a target may be reconfigured to serve a
 	// different package (gtk4 against another GIR), so neither the ASTs nor
-	// the fs.FS behind them can be shared between checks. The package-level
-	// readers memoize their own copy -- see packageSourceOnce.
+	// the fs.FS behind them can be shared between checks. Callers that want
+	// one parse memoize at their own scope: PackageSource for the readers
+	// outside a check, checker.providedDocs for the length of one.
 	fsys := p.PackageFS()
 	if fsys == nil {
 		return nil
