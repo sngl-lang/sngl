@@ -1,0 +1,54 @@
+// A visual node is a piece of a rendered tree: it is placed once, where it is
+// written, and every backend builds that tree by walking a view body. An
+// imperative body is a statement stream, walked by an emitter that has nowhere
+// to put a node — so a node written there was checked, lowered, and then
+// dropped without a word. `func setup() { effect(@mount { n = 1 }) }` compiled
+// to an empty function on html, bubbletea and android alike, which is the worst
+// possible outcome for a lifetime bracket.
+//
+// The boundary is the one checkHeadlessFor and requireLoop already read from
+// the other side: a function, an event handler, a timer, a var handler and a
+// lambda are imperative; a component body, a slot's content and a canvas's
+// shapes are view bodies, whatever they later lower to.
+
+import . "sngl:ui"
+import . "sngl:time"
+
+var n = 0
+
+func setup() {
+    effect(@mount { // ERROR(check) "cannot be written in a function body"
+        n = 1
+    })
+}
+
+func placeWidget() {
+    text(value="dropped") // ERROR(check) "visual node \"text\" cannot be written in a function body"
+}
+
+component main {
+    var touched = 0 @change {
+        text(value="dropped") // ERROR(check) "cannot be written in a function body"
+    }
+
+    func nested() {
+        vbox { // ERROR(check) "cannot be written in a function body"
+            text(value="dropped")
+        }
+    }
+
+    timer(interval=1s, @tick {
+        text(value="dropped") // ERROR(check) "cannot be written in a function body"
+    })
+
+    button(text="go", @click {
+        var f = func() {
+            effect(@mount {}) // ERROR(check) "cannot be written in a function body"
+        }
+        f()
+        setup()
+        placeWidget()
+        nested()
+        touched = touched + 1
+    })
+}

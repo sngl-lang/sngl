@@ -2818,6 +2818,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// the elementRefCallInfo path below, which preserves the #id and applies
 		// the same stdlib-lenient / user-component-strict arg checking.
 		if comp != nil && x.Call.ID == "" {
+			// A bodyless node parses as a call, so the boundary has to be read
+			// on this path too -- `text(value=v)` in a function body is the
+			// same dropped node `vbox { }` is.
+			if c.rejectNodeInFuncBody(x.Pos, compName) {
+				return nil
+			}
 			c.validateCallStmtComponentArgs(x.Call, comp)
 			c.checkRequiredSlots(x.Pos, comp, nil)
 			if slot := findSlot(comp, ir.DefaultSlot); slot != nil {
@@ -2838,6 +2844,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// parse as CallStmt but semantically behave like visual nodes — emit
 		// NodeInst so event handlers and the #id are preserved in IR.
 		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
+			if c.rejectNodeInFuncBody(x.Pos, name) {
+				return nil
+			}
 			// Resolve the addressed component (stdlib `input`, user
 			// component, …) so later passes — including the test-side
 			// event-arg typer — can see what payload `@<event>` takes.
@@ -3321,6 +3330,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// #[builtin] mark of whatever the target resolves to rather than on the
 	// literal name, so a user component of the same name shadows them (D3).
 	kind, builtinComp := c.builtinNode(name)
+	if kind != ir.BuiltinNone && c.rejectNodeInFuncBody(vn.Pos, name) {
+		return nil
+	}
 	switch kind {
 	case ir.BuiltinWindow:
 		w := c.buildWindow(vn)
@@ -3450,6 +3462,11 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 
 	if comp != nil {
+		// Past the function-call fallthrough above, so the name is a
+		// component rather than something that parsed like one.
+		if c.rejectNodeInFuncBody(vn.Pos, name) {
+			return nil
+		}
 		c.validateVisualNodeProps(vn, comp)
 	}
 
@@ -4368,6 +4385,36 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 	}
 }
 
+// rejectNodeInFuncBody reports a visual node written in an imperative body --
+// a function, an event handler, a timer, a var handler or a lambda -- and says
+// whether it did.
+//
+// A node is a piece of a rendered tree: it is placed once, where it is
+// written, and every backend builds that tree by walking a view body. An
+// imperative body is a statement stream, walked by a different emitter that
+// has nowhere to put a node -- so one written there was checked, lowered and
+// then dropped, and `func setup() { effect(@mount { ... }) }` compiled to an
+// empty function on all three targets. The boundary is funcDepth, the same one
+// checkHeadlessFor and requireLoop read from the other side: a slot's content
+// and a canvas's shapes are written in view bodies and so are unaffected,
+// whatever they later lower to.
+func (c *checker) rejectNodeInFuncBody(pos ast.Pos, name string) bool {
+	if c.funcDepth == 0 {
+		return false
+	}
+	c.error(pos, "%s cannot be written in a function body: a node is placed in a rendered tree, and a function body renders nothing", nodeDescription(name))
+	return true
+}
+
+// nodeDescription names the node a diagnostic is about, falling back to the
+// generic wording when the node has no name to quote (a bare `slot`).
+func nodeDescription(name string) string {
+	if name == "" {
+		return "a visual node"
+	}
+	return "visual node " + strconv.Quote(name)
+}
+
 // requireLoop reports a `break` or `continue` written where no loop encloses
 // it. What counts as enclosing is loopDepth, which resets at every imperative
 // body: the loop has to be one this statement can still be running inside.
@@ -4490,6 +4537,9 @@ func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 	}
 	if len(x.Args) > 0 {
 		c.error(x.Pos, "the anonymous slot takes no arguments")
+	}
+	if c.rejectNodeInFuncBody(x.Pos, "") {
+		return nil
 	}
 	return &ir.SlotInst{Name: ir.DefaultSlot, Children: c.checkBlockIR(&x.Block)}
 }
