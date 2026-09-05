@@ -3470,26 +3470,34 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		c.validateVisualNodeProps(vn, comp)
 	}
 
+	// The specialization is what the whole call site is checked against, so it
+	// is minted before any of it -- a slot's content is checked here, above the
+	// props, and against the unspecialized declaration `slot cell(T)` handed
+	// the population a parameter named T. Once, not once per user: binding
+	// walks the argument expressions, and a second walk reports each of their
+	// diagnostics twice.
+	spec := c.bindComponentTypeParams(comp, vn.Args)
+
 	// A named slot's content is written in the callsite's block beside the
 	// ordinary children, marked with `slot` so it reads as supplied rather
 	// than rendered. Peel those off before the children are checked, so the
 	// arity and tree-kind rules below see only what the anonymous slot gets.
-	slotContent, childBlock := c.checkSlotPopulations(vn, comp)
+	slotContent, childBlock := c.checkSlotPopulations(vn, spec)
 	children := c.checkBlockIR(&childBlock)
-	if comp != nil && comp.AST != nil {
-		ct := comp.ChildrenType
+	if spec != nil && spec.AST != nil {
+		ct := spec.ChildrenType
 		n := len(children)
 		switch {
 		case ct == nil && n > 0:
-			c.error(vn.Pos, "component %s does not accept children", comp.Name)
+			c.error(vn.Pos, "component %s does not accept children", spec.Name)
 		case ct != nil && ct.Kind != ir.TypeList && ct.Kind != ir.TypeOption && n != 1:
-			c.error(vn.Pos, "component %s requires exactly one child", comp.Name)
+			c.error(vn.Pos, "component %s requires exactly one child", spec.Name)
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
-			c.error(vn.Pos, "component %s accepts at most one child", comp.Name)
+			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
 		}
-		c.checkTreeMembership(vn.Pos, children, slotTree(comp, findSlot(comp, ir.DefaultSlot)), "in "+comp.Name)
+		c.checkTreeMembership(vn.Pos, children, slotTree(spec, findSlot(spec, ir.DefaultSlot)), "in "+spec.Name)
 	}
-	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, c.bindComponentTypeParams(comp, vn.Args))
+	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
 
 	emitName := name
 	if qualifiedLocal != "" {

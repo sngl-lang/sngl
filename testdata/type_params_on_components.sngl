@@ -32,6 +32,16 @@ component bracket<T = int>(on T = 0) {
     text #b(value="bracket")
 }
 
+// A slot's content is part of the call site, so it is checked against the
+// specialization like the props are. `slot cell(T)` hands the population what
+// the call bound T to; against the declaration it handed out a parameter still
+// named T, and `v + 1` was "operator + not defined for T and int".
+component grid<T>(seed T, slot cell(T)) {
+    vbox {
+        cell(seed)
+    }
+}
+
 component main {
     box #i(item=1, label="int")
     box #s(item="x", label="str")
@@ -43,6 +53,12 @@ component main {
 
     bracket #plain()
     bracket #keyed(on=7)
+
+    grid(seed=2) {
+        slot cell(v) {
+            text #cell(value=string(v + 1))
+        }
+    }
 }
 
 func testOneDeclarationServesBothBindings(t Test, c main) {
@@ -53,4 +69,8 @@ func testOneDeclarationServesBothBindings(t Test, c main) {
 func testAnUnpinnedParameterTakesItsDefault(t Test, c main) {
     t.assert(c.plain.b.value == "bracket")
     t.assert(c.keyed.b.value == "bracket")
+}
+
+func testASlotIsCheckedAgainstTheSpecialization(t Test, c main) {
+    t.assert(c.cell.value == "3")
 }
