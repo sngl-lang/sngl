@@ -50,8 +50,20 @@ component grid<T>(seed T, slot cell(T)) {
 component holder<T>(on T, slot shown(T)) {
     var last T = on
 
+    // A method names them too, in its signature and in its own body, which is
+    // the first thing a generic component wants of them. The scope that holds
+    // the parameters used to close before the body's nested funcs were
+    // registered, so `func remember(v T)` was `unknown type "T"` -- on the
+    // name the declaration four lines above introduces.
+    func remember(v T) {
+        var kept T = v
+        last = kept
+    }
+
+    func firstOf(a T, b T) => a
+
     vbox {
-        shown(last)
+        shown(firstOf(last, on))
     }
 }
 

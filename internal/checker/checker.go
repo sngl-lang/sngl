@@ -2450,7 +2450,14 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
 
-	irComp.Funcs = c.registerNestedMethods(irComp.Name, nil, nestedFuncs)
+	// The component's type parameters travel with its methods, which is what
+	// puts them in scope for a signature and a body resolved from here: this
+	// is past popTypeParams, and the pop cannot move -- the loop above
+	// registers structs, enums and units into the package, and a name
+	// declared while a type-parameter scope is open goes away with it.
+	// buildFunc pushes what it is handed, so handing it the parameters is the
+	// same fix collectComponentDecls makes for a body `var`.
+	irComp.Funcs = c.registerNestedMethods(irComp.Name, comp.TypeParams, nestedFuncs)
 	c.claimComponentAPI(comp, irComp)
 }
 
