@@ -2,6 +2,7 @@ package checker
 
 import (
 	"slices"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -55,7 +56,47 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 	if len(bindings) == 0 {
 		return comp
 	}
-	return specializeComponent(comp, bindings)
+	spec := specializeComponent(comp, bindings)
+	c.checkConstructBindings(args, comp, spec)
+	return spec
+}
+
+// checkConstructBindings refuses a #[construct] prop whose *bound* type does not
+// compare alike on every target.
+//
+// The declaration cannot answer this one. `#[construct] seed T` is admitted
+// where it is written because RebuildIncomparable passes a type parameter
+// through -- judging it there would make a generic component undeclarable --
+// and the call site is the only place T becomes a type. So the rule the mark
+// carries is stated in two halves, and this is the half nobody was checking:
+// bound to a list, the prop reached fyne's rebuild comparison as
+// `m.__inst0_was_seed[i] == m.xs` over a []any holding a []int, which is a Go
+// runtime panic rather than any kind of diagnostic.
+//
+// The diagnostic names the bound type as well as the prop, because the
+// declaration the reader is sent to says `T` and nothing about a list.
+func (c *checker) checkConstructBindings(args ast.ArgList, comp, spec *ir.Component) {
+	for i, p := range comp.Props {
+		if !p.Construct || !mentionsTypeParam(p.Type) {
+			continue
+		}
+		bound := spec.Props[i].Type
+		// Still a parameter: this call bound something else, and a prop nobody
+		// pinned takes the same latitude an unpinned parameter takes anywhere.
+		if mentionsTypeParam(bound) {
+			continue
+		}
+		why := ir.RebuildIncomparable(bound)
+		if why == "" {
+			continue
+		}
+		pos := args.Pos
+		if v := propArgValue(args, comp, p); v != nil {
+			pos = *v.ExprPos()
+		}
+		c.error(pos, "#[construct] prop %q on component %s is bound to %s here: the instance is rebuilt when this value changes, so it must compare alike on every target, and %s does not",
+			p.Name, comp.Name, bound, why)
+	}
 }
 
 // propArgType is the type of the value a call site supplied for prop p, or nil
@@ -124,7 +165,14 @@ func propArgValue(args ast.ArgList, comp *ir.Component, p *ir.Prop) ast.Expr {
 			continue
 		}
 		if arg.Name != "" {
-			if arg.Name == p.Name {
+			// A binding is the same prop under a different spelling: the
+			// leading `:` says the value is written back, not that a different
+			// name was supplied, and checkAndSplitArgs strips it before it
+			// matches. Compared raw, `:on=n` bound no parameter at all, so
+			// every other prop typed T accepted anything -- `T` spelled at
+			// greater length, which is exactly what the annotation exists to
+			// prevent.
+			if strings.TrimPrefix(arg.Name, ":") == p.Name {
 				return arg.Value
 			}
 			continue

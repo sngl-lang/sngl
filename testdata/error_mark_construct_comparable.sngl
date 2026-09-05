@@ -75,3 +75,22 @@ component seededStruct(
 ) {
     text(value="h")
 }
+
+// The rule has a second half, at the call site. A #[construct] prop typed by a
+// type parameter is admitted where it is written -- judging a parameter there
+// would make a generic component undeclarable -- so the only place T becomes a
+// type is the call. Unchecked, a list bound to one reached fyne's rebuild
+// comparison as `m.__inst0_was_seed[i] == m.xs` over a []any holding a []int,
+// which panics at runtime rather than reporting anything.
+component seeded<T>(#[construct] seed T) {
+    text(value="seeded")
+}
+
+component holder {
+    var n = 1
+    var xs list<int> = [1]
+
+    seeded(seed=n)
+
+    seeded(seed=xs) // ERROR(check) "bound to list<int> here"
+}
