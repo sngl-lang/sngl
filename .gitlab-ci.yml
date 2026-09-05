@@ -65,6 +65,13 @@ default:
   - go.mod
   - go.sum
 
+# What decides the warmed build cache: the dependency closure, plus the job
+# that builds it.
+.cache-inputs: &cache-inputs
+  - go.mod
+  - go.sum
+  - .gitlab-ci.yml
+
 build-image:
   stage: dependencies
   image:
@@ -110,13 +117,92 @@ build-image:
       --destination $IMAGE:latest
       --cache=true
 
+# Compile the third-party dependency closure into a Go build cache the test
+# job restores.
+#
+# `go mod download` in the image fetches module *source* and compiles nothing,
+# and CI clones fresh every run, so every pipeline rebuilt every dependency
+# from scratch. That lands on whichever step type-checks first: `go fix -diff
+# ./...` was 272s of a 630s job, with `go vet` right behind it at 14s only
+# because `go fix` had already paid for it. Of 418s of action time in a cold
+# `go build ./...`, 53s is this repo's own code. Measured locally, against a
+# warmed closure: go fix 272s -> 26s, go vet 14s -> 8s.
+#
+# Not baked into the CI image, which is where this was tried first: kaniko
+# holds a filesystem snapshot while the RUN executes, and one package
+# (typescript-go/internal/ast) compiles in a single 2.2GB process. Both
+# attempts were OOM-killed, exit 137 -- the same pressure the note above
+# records behind past host lockups. A plain job has the whole container to
+# itself and already survives that compile in the test step.
+#
+# Keyed on go.sum, since that is what decides the closure. `policy: push` here
+# and `pull` on the test job, so only this job pays to archive it.
+#
+# Runs on every default-branch pipeline rather than only when go.sum moves.
+# Keying alone would leave a cleared runner cache cold until someone next
+# bumped a dependency -- there is no "if the cache is missing" rule to write,
+# so main refreshing it each time is what makes it self-healing. That is cheap
+# because the job pulls first: with the cache present it restores, finds
+# nothing to build, and puts it back. Branch pipelines only pull, and pick up
+# whatever main last pushed; go.sum rarely moves, so that is almost always
+# current. A branch that changes go.sum, or this file, builds its own.
+warm-cache:
+  stage: dependencies
+  image: $IMAGE:latest
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        paths: *cache-inputs
+      when: always
+    - if: $CI_COMMIT_BEFORE_SHA == "0000000000000000000000000000000000000000"
+      changes:
+        paths: *cache-inputs
+        compare_to: refs/heads/$CI_DEFAULT_BRANCH
+      when: always
+    - changes:
+        paths: *cache-inputs
+      when: always
+    - when: never
+  variables:
+    GOCACHE: $CI_PROJECT_DIR/.gocache
+  cache:
+    key:
+      files:
+        - go.sum
+    paths:
+      - .gocache
+    # pull-push, not push: on the default branch this job runs every pipeline,
+    # and without the pull it would rebuild the whole closure each time
+    # (5m23s) instead of restoring it (6s), confirming it, and putting it back.
+    policy: pull-push
+  script:
+    - >-
+      go list -deps -test ./...
+      | grep -v '^git.duckfam.us/jonathan/sngl'
+      | grep '\.'
+      | xargs go build -p 2
+    - du -sh .gocache
+
 test:
   stage: test
   image: $IMAGE:latest
   needs:
     - job: build-image
       optional: true
+    - job: warm-cache
+      optional: true
+  cache:
+    key:
+      files:
+        - go.sum
+    paths:
+      - .gocache
+    policy: pull
   variables:
+    GOCACHE: $CI_PROJECT_DIR/.gocache
     # How many generated programs may be compiled at once. Each fixture the
     # platform harnesses run shells out to a `go` that forks its own compiler
     # and linker -- a cold fyne build peaks around 0.66GB, a gtk4 one adds cgo
