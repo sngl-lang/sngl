@@ -626,7 +626,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     val rows = remember { mutableStateListOf<String>() }
     var n by remember { mutableStateOf(0) }
-    var tags by remember { mutableStateOf(emptyMap()) }
+    var tags by remember { mutableStateOf(mapOf()) }
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {

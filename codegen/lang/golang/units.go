@@ -269,12 +269,11 @@ func LowerVarInit(v *ir.Var, gc *GoIRContext) string {
 	// i18n.tr, binary ops, ternaries, etc.) need context-aware eval so
 	// model-field reads route through `m.<field>` and enum members
 	// emit as quoted strings.
+	// A composite literal is only as context-free as its elements: a field or
+	// element reading a model var is an ir.Ident, which IRLiteralToGo has no
+	// case for and answers `""` for regardless of the field's type.
 	if gc != nil {
-		switch v.Init.(type) {
-		case *ir.Literal, *ir.ListLit, *ir.MapLitIR, *ir.StructLit, *ir.Lambda:
-			// Fall through to IRLiteralToGo for these literal-shaped
-			// inits — they don't need context.
-		default:
+		if _, isLit := v.Init.(*ir.Literal); !isLit {
 			return gc.EvalExpr(v.Init)
 		}
 	}

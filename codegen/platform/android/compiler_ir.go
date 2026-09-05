@@ -184,12 +184,11 @@ func stateTypeArg(bind irAndroidBind, initVal string) string {
 // listStateInitKt renders the right-hand side of a list-typed state
 // declaration: a SnapshotStateList built from the var's initializer.
 func listStateInitKt(bind irAndroidBind, initVal string) string {
-	if bind.initEx != nil && strings.TrimSpace(initVal) != "" {
-		return initVal + ".toMutableStateList()"
-	}
 	elems := initVal
 	if strings.HasPrefix(elems, "listOf(") && strings.HasSuffix(elems, ")") {
 		elems = elems[len("listOf(") : len(elems)-1]
+	} else if bind.initEx != nil && strings.TrimSpace(initVal) != "" {
+		return initVal + ".toMutableStateList()"
 	}
 	if elems == "" {
 		return "mutableStateListOf<" + listElementTypeKt(bind.ktType) + ">()"
@@ -261,15 +260,13 @@ func bindForVar(v *ir.Var) irAndroidBind {
 	ktType := kotlin.IRTypeToKt(v.Type)
 	initVal := irVarInitKt(v)
 	isList := v.Type != nil && v.Type.Kind == ir.TypeList
-	// When the init is a non-literal expression (e.g. an i18n.tr call),
-	// IRLiteralToKt returns "" — store the raw expr so the emitter can
-	// re-evaluate it via kc.EvalExpr. This has to happen before the
-	// list blanking below, which erases the `""` this keys off.
+	// Anything but a scalar literal is stored raw so the emitter re-evaluates
+	// it through kc.EvalExpr. A composite literal cannot be judged by the text
+	// IRLiteralToKt returned: `P(a = "", b = "")` looks emitted, but each `""`
+	// is a field the context-free walk had no case for.
 	var initEx ir.Expr
-	if initVal == `""` && v.Init != nil {
-		if _, isLit := v.Init.(*ir.Literal); !isLit {
-			initEx = v.Init
-		}
+	if _, isLit := v.Init.(*ir.Literal); v.Init != nil && !isLit {
+		initEx = v.Init
 	}
 	if isList && (initVal == `""` || initVal == "emptyList()") {
 		initVal = ""
