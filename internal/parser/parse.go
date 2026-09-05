@@ -12,8 +12,8 @@ import (
 // AST builder are converted into errors so callers don't crash on malformed
 // input.
 func Parse(filename string, src []byte) (*ast.Document, error) {
-	tokens, lexErrs := Tokenize(string(src))
-	doc, _, err := parseTokens(filename, tokens, lexErrs)
+	stream, filtered, comments, lexErrs := scanEncoded(newLexer(string(src)), nil)
+	doc, _, err := parseTokens(filename, stream, filtered, comments, lexErrs)
 	return doc, err
 }
 
@@ -24,8 +24,9 @@ func Parse(filename string, src []byte) (*ast.Document, error) {
 // That spelling exists only here. Parse rejects it — so a hand-written program
 // cannot claim a declaration the compiler would then trust.
 func ParseNativeValue(filename string, src []byte) (ast.Expr, error) {
-	tokens, lexErrs := TokenizeNativeValue(string(src))
-	_, native, err := parseTokens(filename, tokens, lexErrs)
+	seed := []Token{{Type: NATIVE_VALUE, Line: 1, Column: 1}}
+	stream, filtered, comments, lexErrs := scanEncoded(newLexer(string(src)), seed)
+	_, native, err := parseTokens(filename, stream, filtered, comments, lexErrs)
 	if err != nil {
 		return nil, err
 	}
@@ -35,13 +36,11 @@ func ParseNativeValue(filename string, src []byte) (ast.Expr, error) {
 	return native, nil
 }
 
-func parseTokens(filename string, tokens []Token, lexErrs []string) (doc *ast.Document, native ast.Expr, err error) {
+func parseTokens(filename string, stream []byte, filtered, comments []Token, lexErrs []string) (doc *ast.Document, native ast.Expr, err error) {
 	var errs []error
 	for _, e := range lexErrs {
 		errs = append(errs, fmt.Errorf("%s:%s", filename, e))
 	}
-
-	stream, filtered, comments := encode(tokens)
 
 	p := &Parser{}
 	tree, parseErr := p.Parse(filename, stream)

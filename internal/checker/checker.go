@@ -419,6 +419,10 @@ type checker struct {
 	// stdComp.PlatformOverrides[platformName] = checkedIRBody mapping.
 	pendingExtensions []pendingExtension
 
+	// providedCache memoizes providedDocs for the life of this checker; see
+	// the comment there for why the scope is exactly one check.
+	providedCache map[string][]*ast.Document
+
 	// Deferred const(expr) assertions. Const-ness can depend on function
 	// purity, which is only assigned after all bodies are checked, so the
 	// assertions are run in a final pass.

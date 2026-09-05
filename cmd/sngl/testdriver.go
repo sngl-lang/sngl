@@ -121,13 +121,18 @@ func launchOneGroup(ctx context.Context, plat codegen.PlatformGenerator, lang co
 			err = fmt.Errorf("panic in test launcher: %v", r)
 		}
 	}()
-	tmpDir, mkErr := os.MkdirTemp("", "sngl-test-")
+	// Stable, key-derived build directory: the Go build cache keys its
+	// compile and link actions on the source directory, so generating
+	// into a fresh mktemp dir relinks the whole agent binary every run.
+	// The directory is kept after the run (what SNGL_KEEP_TEST_DIR used
+	// to ask for) and emptied on the next use of the same key; `sngl -v`
+	// logs the path. See codegen.BuildDir.
+	tmpDir, release, mkErr := codegen.BuildDir("test",
+		plat.PlatformIdentifier(), langIdent(lang), fixtureFile, group.Component)
 	if mkErr != nil {
-		return nil, fmt.Errorf("mktemp: %w", mkErr)
+		return nil, fmt.Errorf("build dir: %w", mkErr)
 	}
-	if os.Getenv("SNGL_KEEP_TEST_DIR") == "" {
-		defer os.RemoveAll(tmpDir)
-	}
+	defer release()
 	keep := map[string]bool{}
 	for _, tf := range group.Funcs {
 		keep[tf.Name] = true
