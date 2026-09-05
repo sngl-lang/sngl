@@ -72,6 +72,12 @@ func computeBuildTokenSlots() int {
 // availableMemory reports the memory this process may use, preferring the
 // cgroup limit the container was given over the host's total — a CI runner
 // sees the host's /proc/meminfo whatever its own limit is.
+//
+// The cgroup branch is the one that matters in CI and is not a fallback:
+// GitLab's docker executor sets a hard `memory` on every job container, so
+// this reads the runner's real budget rather than the shared host's free
+// memory. SNGL_BUILD_SLOTS exists for the case where neither number is the
+// truth; it should not be needed to paper over this one.
 func availableMemory() uint64 {
 	if v, ok := readCgroupLimit(); ok {
 		return v
