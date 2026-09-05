@@ -412,8 +412,6 @@ func (m Model) View() tea.View {
 	var part1 string
 	part1 = lipgloss.NewStyle().Render(fmt.Sprint(strings.Join(m.log, ",")))
 	parts = append(parts, part1)
-	var part2 string
-	parts = append(parts, part2)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
