@@ -57,19 +57,15 @@ type slotInstance struct {
 //
 // live and next mirror the instance registry exactly -- same shape, same
 // identity, filled in step -- because the question is per instance and not per
-// site. They are nil when the prop's type has no equality the targets agree
-// on, and then there is no question to ask: the instance is rebuilt whenever
-// the render runs.
+// site. Every construct prop has them: the checker refuses the mark on a type
+// the targets do not compare alike (markConstruct), so there is no prop here
+// whose value this pass cannot ask its question about.
 type ctorProp struct {
 	name  string
 	value ir.Expr
 	live  *ir.Var
 	next  *ir.Var
 }
-
-// remembers reports whether this prop's value can be compared against what the
-// instance was built from.
-func (cp *ctorProp) remembers() bool { return cp != nil && cp.live != nil }
 
 // keyed reports whether identity comes from a declared key rather than the
 // position.
@@ -105,16 +101,18 @@ func (st *reactivityState) newSlotInstance(node *ir.NodeInst) *slotInstance {
 	}
 	st.owner.addVar(inst.live)
 	for _, p := range constructProps(node) {
-		cp := &ctorProp{name: p.Name, value: p.Value}
-		if t := propValueType(comp, p.Name); ir.RebuildComparable(t) {
-			held := ir.ListOf(t)
-			if key != nil {
-				held = ir.MapOf(ir.TypString, t)
-			}
-			cp.live = &ir.Var{Name: name("_was_" + p.Name), Type: held, Init: emptyOf(held), Synthesized: true}
-			cp.next = &ir.Var{Name: name("_now_" + p.Name), Type: held, Synthesized: true}
-			st.owner.addVar(cp.live)
+		t := propValueType(comp, p.Name)
+		held := ir.ListOf(t)
+		if key != nil {
+			held = ir.MapOf(ir.TypString, t)
 		}
+		cp := &ctorProp{
+			name:  p.Name,
+			value: p.Value,
+			live:  &ir.Var{Name: name("_was_" + p.Name), Type: held, Init: emptyOf(held), Synthesized: true},
+			next:  &ir.Var{Name: name("_now_" + p.Name), Type: held, Synthesized: true},
+		}
+		st.owner.addVar(cp.live)
 		inst.ctor = append(inst.ctor, cp)
 	}
 	return inst
@@ -202,9 +200,7 @@ func (si *slotInstance) open() []ir.Stmt {
 		out = append(out, &ir.LocalVar{Name: si.seen.Name, Type: si.seen.Type, Sym: si.seen, Init: emptyOf(si.seen.Type)})
 	}
 	for _, cp := range si.ctor {
-		if cp.remembers() {
-			out = append(out, &ir.LocalVar{Name: cp.next.Name, Type: cp.next.Type, Sym: cp.next, Init: emptyOf(cp.next.Type)})
-		}
+		out = append(out, &ir.LocalVar{Name: cp.next.Name, Type: cp.next.Type, Sym: cp.next, Init: emptyOf(cp.next.Type)})
 	}
 	return out
 }
@@ -316,10 +312,9 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 // something other than a literal. Then it also asks whether what the instance
 // was built from is what this render describes, and a difference takes the
 // else: an instance that cannot be handed the new value is destroyed and built
-// again. A construct prop whose type has no portable equality has no such
-// question to fail, so its site rebuilds unconditionally -- see
-// ir.RebuildComparable, which is the same question the effect settle asks of
-// its `on`, answered by the same walk that emits the comparison.
+// again. Every construct prop has that question, because the checker refuses
+// the mark on a type with no portable equality -- the same question the effect
+// settle asks of its `on`, answered by the same walk that emits the comparison.
 func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declSt *declarativeState) []ir.Stmt {
 	id := n.ID
 	cur := &ir.Var{Name: id, Type: si.elem, Synthesized: true}
@@ -419,16 +414,11 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		}}},
 	}
 
-	if reusable, ok := si.reusable(has, entry); ok {
-		out = append(out, &ir.If{
-			Cond: reusable,
-			Body: reuse,
-			Else: append([]ir.Stmt{discard}, create...),
-		})
-	} else {
-		out = append(out, discard)
-		out = append(out, create...)
-	}
+	out = append(out, &ir.If{
+		Cond: si.reusable(has, entry),
+		Body: reuse,
+		Else: append([]ir.Stmt{discard}, create...),
+	})
 
 	// What this render leaves for the next one: the instance at this identity,
 	// and what each construct prop built it from.
@@ -439,21 +429,17 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 			Value:  curRef(),
 		})
 		for _, cp := range si.ctor {
-			if cp.remembers() {
-				out = append(out, &ir.Assign{
-					Target: entry(cp.next),
-					Op:     ast.AssignSet,
-					Value:  deepCloneExpr(cp.value),
-				})
-			}
+			out = append(out, &ir.Assign{
+				Target: entry(cp.next),
+				Op:     ast.AssignSet,
+				Value:  deepCloneExpr(cp.value),
+			})
 		}
 		return out
 	}
 	out = append(out, callListPush(varRef(si.next), curRef(), si.elem))
 	for _, cp := range si.ctor {
-		if cp.remembers() {
-			out = append(out, callListPush(varRef(cp.next), deepCloneExpr(cp.value), cp.next.Type.Elems[0]))
-		}
+		out = append(out, callListPush(varRef(cp.next), deepCloneExpr(cp.value), cp.next.Type.Elems[0]))
 	}
 	return append(out, &ir.Assign{
 		Target: varRef(si.idx),
@@ -468,14 +454,10 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 
 // reusable is the condition under which the instance a position holds may be
 // kept: one is held, and every construct prop it was built from is what this
-// render describes. ok is false when a construct prop has no comparison to
-// make, and then no instance is reusable at all.
-func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr) (ir.Expr, bool) {
+// render describes.
+func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr) ir.Expr {
 	cond := has()
 	for _, cp := range si.ctor {
-		if !cp.remembers() {
-			return nil, false
-		}
 		cond = &ir.Binary{
 			Type:  ir.TypBool,
 			Op:    ast.BinAnd,
@@ -483,7 +465,7 @@ func (si *slotInstance) reusable(has func() ir.Expr, entry func(*ir.Var) ir.Expr
 			Right: rebuildSame(entry(cp.live), cp.value, cp.next.Type.Elems[len(cp.next.Type.Elems)-1]),
 		}
 	}
-	return cond, true
+	return cond
 }
 
 // recreateStatic destroys the instance a fixed position holds and builds a
@@ -645,9 +627,7 @@ func (st *reactivityState) closeSlotInstance(si *slotInstance) []ir.Stmt {
 func (si *slotInstance) retainCtor() []ir.Stmt {
 	var out []ir.Stmt
 	for _, cp := range si.ctor {
-		if cp.remembers() {
-			out = append(out, &ir.Assign{Target: varRef(cp.live), Op: ast.AssignSet, Value: varRef(cp.next)})
-		}
+		out = append(out, &ir.Assign{Target: varRef(cp.live), Op: ast.AssignSet, Value: varRef(cp.next)})
 	}
 	return out
 }

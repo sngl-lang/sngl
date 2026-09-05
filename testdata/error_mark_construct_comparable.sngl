@@ -1,0 +1,77 @@
+// A #[construct] prop is kept: the value the live instance was built from is
+// held and compared against what the next render describes, and a difference is
+// what rebuilds the instance. So every target has to agree on when two of them
+// are the same value — the same requirement an effect's `on` carries, for the
+// same reason. Go refuses to compare two lists at all and JS compares two
+// objects by identity, so a mark on one of those would have the site rebuild on
+// every render: the instance state the mark exists to preserve, thrown away by
+// the mark.
+//
+// A struct is comparable exactly when its fields are, so the diagnostic names
+// the offending field rather than the struct the author thought was fine.
+
+import . "sngl:ui"
+import . "sngl:macro"
+import . "sngl:time"
+
+struct pair {
+    a int
+    b string
+}
+
+struct hasMap {
+    counts map<string, int>
+}
+
+enum mode {
+    on
+    off
+}
+
+unit length { px, em }
+
+// The forms that do work: the scalars, an enum, a unit, and a struct of them.
+component fine(
+    #[construct] n int,
+    #[construct] s string,
+    #[construct] f float,
+    #[construct] b bool,
+    #[construct] m mode,
+    #[construct] w length,
+    #[construct] p pair,
+) {
+    text(value=s)
+}
+
+component seededList(
+    #[construct] xs list<int>, // ERROR(check) "list<int> does not"
+) {
+    text(value=string(xs.length()))
+}
+
+component seededMap(
+    #[construct] m map<string, int>, // ERROR(check) "map<string, int> does not"
+) {
+    text(value=string(m.length()))
+}
+
+component seededOption(
+    #[construct] o option<int>, // ERROR(check) "option<int> does not"
+) {
+    text(value="o")
+}
+
+// `date` is a #[builtin] struct with no fields: each target holds its own, so
+// walking the zero fields would answer "always equal" for two different days.
+component seededDate(
+    #[construct] d date, // ERROR(check) "date does not"
+) {
+    text(value="d")
+}
+
+// The struct is comparable only if every field is, and this one names which.
+component seededStruct(
+    #[construct] h hasMap, // ERROR(check) "map<string, int> (field counts of struct hasMap)"
+) {
+    text(value="h")
+}

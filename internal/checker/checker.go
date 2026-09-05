@@ -392,6 +392,9 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
+	// pendingConstruct is the #[construct] marks written in this package,
+	// waiting for a type complete enough to judge. See checkConstructProps.
+	pendingConstruct []constructMark
 
 	// The predeclared constants, bound by collectBuiltins. Held so a second
 	// declaration of the same kind is an error rather than a silent
@@ -1057,6 +1060,9 @@ func (c *checker) pass1() {
 		c.resumeFile(p.doc)
 		c.resolveStructBody(p.sd)
 	}
+	// Every shell is filled, so a struct a #[construct] prop names can now be
+	// walked field by field.
+	c.checkConstructProps()
 
 	for _, d := range c.docs {
 		c.resumeFile(d)

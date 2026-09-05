@@ -22,9 +22,10 @@ import (
 // is the comparison the compiler writes for itself, and it is written where
 // every backend already agrees.
 //
-// The walk terminates because ir.RebuildComparable gates every call site, and a
-// struct that contains itself is not comparable there. Reaching one here would
-// be a caller that skipped the gate.
+// The walk terminates because the checker gates both call sites -- an effect's
+// `on` at checkEffectKey, a #[construct] prop at checkConstructProps -- and a
+// struct that contains itself is not RebuildComparable there. Reaching one here
+// would be a caller that skipped the gate.
 func rebuildDiffers(a, b ir.Expr, t *ir.Type) ir.Expr {
 	return rebuildCompare(a, b, t, false)
 }

@@ -12,10 +12,14 @@ import ir "sngl:internal/ir"
 // describes is no longer what it holds.
 //
 // The cost is the instance's own state, which is why this is opt-in per prop
-// rather than the default. A prop whose type the language compares reliably is
-// rebuilt only when the value actually differs; any other type is rebuilt
-// whenever the render runs, because "unchanged" is not a question the target
-// can be asked about it.
+// rather than the default. The instance is rebuilt only when the value actually
+// differs, so the prop's type has to be one every target compares alike -- the
+// same requirement an effect's `on` carries. A list, a map, an option or an
+// opaque `date` is not: "unchanged" is not a question the target can be asked
+// about one, so the site would rebuild on every render and throw away exactly
+// the state the mark exists to preserve. The mark is refused on such a type
+// rather than lowered into a program whose instances live different lengths on
+// each target.
 //
 // Only a component prop carries it -- a `var` is written by definition, and a
 // declaration outside a component has no instance to rebuild.
