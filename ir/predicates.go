@@ -155,15 +155,9 @@ func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
 	case TypeStruct:
 		sd, _ := t.Decl.(*StructDef)
 		if sd == nil {
-			// A struct type that named no declaration at all — the shape a
-			// literal took before the checker interned one, and still what an
-			// unresolved type falls back to. Nothing to walk.
+			// An unresolved struct type: no fields to walk.
 			return t.String(), nil
 		}
-		// An interned anonymous struct is an ordinary declaration: it has
-		// fields, every target holds it as a struct of them, and two values of
-		// it compare field by field like any other. Nothing below this line
-		// asks whether the program wrote the name.
 		// A #[builtin] struct that declares no fields is opaque: a target holds
 		// its own date for a `date`, so walking the zero fields would answer
 		// "always equal" for two different days. `color` is not one of these --

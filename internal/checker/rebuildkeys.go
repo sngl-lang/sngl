@@ -346,10 +346,8 @@ func effectKeyHint(t *ir.Type) string {
 	case ir.TypeDyn:
 		return "; a key over several values is a struct of them, and the struct has to be declared"
 	case ir.TypeStruct:
-		// A struct type naming no declaration at all: nothing to walk, and no
-		// spelling that would fix it either. An anonymous struct literal is
-		// not this — the checker interns a declaration for one, so
-		// `effect(on = {a = x, b = y})` is an ordinary compound key.
+		// An unresolved struct type. An anonymous literal is not one: the
+		// checker interns a declaration for it, fields and all.
 		if t.Decl == nil {
 			return "; a key over several values is a struct of them, and the struct has to be declared"
 		}

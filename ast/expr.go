@@ -211,16 +211,9 @@ type StructFieldLit struct {
 }
 
 // IsShorthand reports whether the field was written `{a}` rather than
-// `{a = a}`. The two mean the same thing, so only the formatter asks: it
-// prints the source spelling back rather than expanding one into the other,
-// which would rewrite the source of everyone who chose the short form.
-//
-// It is derived rather than recorded, because the parser already leaves the
-// evidence behind. The shorthand's value is an ident the parser synthesizes at
-// the *name's* position, since `{a}` is one token; `{a = a}` is two tokens at
-// two offsets. A field with no position at all is one the compiler
-// synthesized (ir.Convert builds every field that way), and those are written
-// out in full.
+// `{a = a}`. The parser puts the shorthand's ident at the *name's* position,
+// since `{a}` is one token and `{a = a}` is two. A field with no position is
+// one the compiler synthesized, and those are written out in full.
 func (f StructFieldLit) IsShorthand() bool {
 	if f.Spread || !f.NamePos.IsSet() {
 		return false

@@ -2425,9 +2425,7 @@ func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
 			b.errorf(pos, "expected `name = value`; only a bare name is shorthand for `name = name`")
 			return anonFieldResult{}
 		}
-		// The synthesized ident sits at the name's own position, which is
-		// what ast.StructFieldLit.IsShorthand reads the spelling back off:
-		// `{a}` is one token, `{a = a}` is two at two offsets.
+		// The position is what ast.StructFieldLit.IsShorthand reads back.
 		return anonFieldResult{StructField: ast.StructFieldLit{
 			Name:    ident.Name,
 			NamePos: ident.Pos,

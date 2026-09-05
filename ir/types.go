@@ -140,11 +140,8 @@ func RemoteOf(inner *Type, decl ...Symbol) *Type {
 	return t
 }
 
-// anonStructString spells an interned anonymous struct the way the program
-// wrote it: `struct { a int, b int }`, fields in the canonical order the
-// declaration stores them in. A recursive one is impossible, since an
-// anonymous struct has no name for a field of its own type to refer to, so
-// this needs no cycle guard.
+// anonStructString spells an interned anonymous struct structurally. No cycle
+// guard: a field cannot name a type that has no name.
 func anonStructString(sd *StructDef) string {
 	if len(sd.Fields) == 0 {
 		return "struct {}"
@@ -220,10 +217,8 @@ func (t *Type) String() string {
 		return "iter<?>"
 	case TypeStruct:
 		name := "struct"
+		// A diagnostic says what the program wrote, never the synthesized name.
 		if sd, ok := t.Decl.(*StructDef); ok && sd.Anon {
-			// The synthesized name is the compiler's bookkeeping. A diagnostic
-			// says what the program wrote, which for an anonymous struct is
-			// its fields.
 			return anonStructString(sd)
 		}
 		if t.Decl != nil {
