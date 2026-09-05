@@ -608,6 +608,13 @@ type htmlGen struct {
 	loweredLocals map[string]bool
 
 	canvasSetups []canvasSetup
+	// usesLoweredCanvas records that some emitted scope drew a canvas, so the
+	// page carries the draw helpers even when its own markup holds none.
+	usesLoweredCanvas bool
+	// canvasByID/canvasByFunc are the flattened canvases of every lowered
+	// body, threaded into every translator by newHTMLTranslator.
+	canvasByID   map[string]*canvasutil.Meta
+	canvasByFunc map[*ir.Func]*canvasutil.Meta
 
 	// staticInsts are the factory instances the page builds once, in the order
 	// the static renderer met them.
@@ -682,6 +689,11 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	}
 
 	g.dt = codegen.NewDepTrackerFromPkg(pkg)
+	// The canvases passCanvas flattened into a lowered body. A canvas the page
+	// renders as markup is an ir.NodeInst and is not among these; what is, is
+	// every canvas in a scope emitted as code -- a component factory, a slot
+	// renderer -- which is what the translator needs to draw one at all.
+	g.canvasByID, g.canvasByFunc = canvasutil.Collect(pkg, nil)
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
@@ -2406,7 +2418,7 @@ func canvasScalingMode(n *ir.NodeInst) string {
 // present. The per-canvas draw call comes from the updaters registered in
 // initWrites, so no per-canvas IIFE is emitted here.
 func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
-	if len(g.canvasSetups) == 0 {
+	if len(g.canvasSetups) == 0 && !g.usesLoweredCanvas {
 		return
 	}
 	b.WriteString(snglColorHelper)

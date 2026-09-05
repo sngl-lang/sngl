@@ -37,6 +37,12 @@ type fyneTranslator struct {
 	// bare local name. Escaping ids keep the Model-field behavior. nil →
 	// every id is a field.
 	localRefs map[string]bool
+	// fieldIDs are the ids this scope registered as fields regardless of what
+	// passNodeEscape concluded. A canvas is the case: its redraw reaches the
+	// image and its drawing context from whatever scope mutates the state, and
+	// a CanvasRedrawStmt names the draw func rather than the node, so the
+	// escape analysis cannot see that use and calls the node local.
+	fieldIDs map[string]bool
 	// topLevel tracks widget ids created via OnCreateNode that have not
 	// (yet) been consumed by an AppendChild. Window-body/component-method
 	// emission uses this to discover the topmost widget(s) to return as
@@ -80,6 +86,7 @@ func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, field
 		specs:      specs,
 		fieldSink:  fieldSink,
 		importSink: importSink,
+		fieldIDs:   map[string]bool{},
 	}
 }
 
@@ -145,6 +152,9 @@ func (t *fyneTranslator) recordsSlotRoot(stmt ir.Stmt) bool {
 // isLocalRef reports whether id is a non-escaping ref that should be emitted
 // as a function-local variable rather than a Model field.
 func (t *fyneTranslator) isLocalRef(id string) bool {
+	if t.fieldIDs[id] {
+		return false
+	}
 	return t.localRefs != nil && t.localRefs[id]
 }
 

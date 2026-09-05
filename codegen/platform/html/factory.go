@@ -215,6 +215,11 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	for _, id := range tr.topLevel {
 		fmt.Fprintf(b, "\t%s.appendChild(%s);\n", instanceRootLocal, id)
 	}
+	// After the attach, because the helper sizes the backing store from the
+	// box the element was laid out in.
+	for _, line := range g.canvasInitLines(tr, jc) {
+		b.WriteString("\t" + line + "\n")
+	}
 
 	b.WriteString("\treturn {\n")
 	fmt.Fprintf(b, "\t\t%s: %s,\n", instanceRootField, instanceRootLocal)

@@ -62,6 +62,83 @@ func generateGTK4ModelBuilt(t *testing.T, src string) string {
 	return string(modelSrc)
 }
 
+// generateGTK4FilesBuilt is generateGTK4ModelBuilt keeping every emitted file.
+// model.go alone compiles for most programs, but not for one holding a canvas:
+// the cairo trampoline registry it appends to is declared in callbacks.go.
+func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
+	t.Helper()
+	doc, err := parser.Parse("t.sngl", []byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	lang := codegen.LookupLang("go")
+	if lang == nil {
+		t.Fatal("go lang not registered")
+	}
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: codegen.CollectPlatforms(),
+		Languages: []ir.Language{lang},
+		Targets:   []ir.StaticTarget{{Platform: "gtk4", Language: "go"}},
+	})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("check diag: %s: %s", d.Pos, d.Msg)
+		}
+	}
+	optCfg := &optimize.Config{Platform: "gtk4", Language: "go"}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize: %v", err)
+	}
+	g := &Generator{}
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
+		t.Fatalf("lower: %v", err)
+	}
+	if err := optimize.Optimize(pkg, optCfg); err != nil {
+		t.Fatalf("optimize2: %v", err)
+	}
+	mem := codegen.NewMemSink()
+	if err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, mem); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	out := map[string]string{}
+	for name, b := range mem.Files() {
+		out[name] = string(b)
+	}
+	if _, ok := out["model.go"]; !ok {
+		t.Fatalf("model.go not among generated files %v", mem.Files())
+	}
+	return out
+}
+
+// buildGeneratedFiles compiles a whole emitted package, the way
+// buildGeneratedGo compiles model.go alone.
+func buildGeneratedFiles(t *testing.T, prefix string, files map[string]string) {
+	t.Helper()
+	tmp, err := os.MkdirTemp(".", prefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+	for name, src := range files {
+		if filepath.Ext(name) != ".go" {
+			continue
+		}
+		if err := os.WriteFile(filepath.Join(tmp, name), []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "entry.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "build", "-gcflags=-e", ".")
+	cmd.Dir = tmp
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Errorf("generated Go does not compile\n--- go build ---\n%s\n--- model.go ---\n%s", out, files["model.go"])
+	}
+}
+
 // fixtureSource reads a root testdata fixture. A defect that only stock
 // fixtures show is one a hand-written program in this file would not have.
 func fixtureSource(t *testing.T, name string) string {

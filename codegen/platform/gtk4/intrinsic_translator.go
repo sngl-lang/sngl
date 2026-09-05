@@ -22,6 +22,15 @@ type emitShared struct {
 	gObjectSet bool
 	errs       []error
 	seen       map[string]bool
+
+	// The canvas metadata passCanvas flattened out of the program, which every
+	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
+	// translator without these maps reports it as a component gtk4 does not
+	// implement and stops the build. It rides on the shared struct rather than
+	// on a builder call of its own because a per-site `with` is what three
+	// separate scopes have now been found to have forgotten.
+	canvasByID   map[string]*canvasMeta
+	canvasByFunc map[*ir.Func]*canvasMeta
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -65,9 +74,15 @@ type gtk4Translator struct {
 	// they are emitted as function-locals rather than Model fields. nil means
 	// every id is a field.
 	localRefs map[string]bool
-	idCTypes  map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
-	skipped   map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
-	topLevel  []string
+	// fieldIDs are the ids this scope registered as fields regardless of what
+	// passNodeEscape concluded. A canvas is the case: its redraw reaches the
+	// drawing area from whatever scope mutates the state, and a
+	// CanvasRedrawStmt names the draw func rather than the node, so the escape
+	// analysis cannot see that use and calls the node local.
+	fieldIDs map[string]bool
+	idCTypes map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
+	skipped  map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
+	topLevel []string
 	// slotRoot is the box a reactive slot in this scope's body renders into,
 	// when this scope owns one. A call to that slot's renderer holds a place in
 	// the tree exactly as a created widget does -- the subtree is built into
@@ -103,9 +118,8 @@ type gtk4Translator struct {
 	invokerSink func(gtkEventInvoker)
 
 	// pendingCanvasStyle holds the CanvasStyle local a CanvasApplyStyle bound,
-	// while the following draw primitive is translated.
-	canvasByID         map[string]*canvasMeta
-	canvasByFunc       map[*ir.Func]*canvasMeta
+	// while the following draw primitive is translated. The canvas maps
+	// themselves are on emitShared -- see canvasMetaForID.
 	pendingCanvasStyle ir.Expr
 	canvasStyleCounter int
 }
@@ -115,6 +129,7 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 		gc:           gc,
 		fieldSink:    fieldSink,
 		idCTypes:     map[string]string{},
+		fieldIDs:     map[string]bool{},
 		skipped:      map[string]struct{}{},
 		tagComponent: map[string]*ir.Component{},
 	}
@@ -145,6 +160,9 @@ func (t *gtk4Translator) recordsSlotRoot(stmt ir.Stmt) bool {
 }
 
 func (t *gtk4Translator) isLocalRef(id string) bool {
+	if t.fieldIDs[id] {
+		return false
+	}
 	return t.localRefs != nil && t.localRefs[id]
 }
 
@@ -342,7 +360,7 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// A `canvas` has no GIR-native widget, so it is intercepted before the
 	// native-tag lookup and built as a GtkDrawingArea with a cairo callback.
 	if tag == "canvas" {
-		if _, ok := t.canvasByID[id]; ok {
+		if t.canvasMetaForID(id) != nil {
 			return t.emitCanvasCreate(id)
 		}
 	}

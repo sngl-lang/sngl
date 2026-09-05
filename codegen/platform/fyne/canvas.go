@@ -190,6 +190,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 		return nil
 	}
 	t.topLevel = append(t.topLevel, id)
+	t.fieldIDs[id] = true
 	if t.importSink != nil {
 		t.importSink(snglCanvasImportPath)
 		t.importSink("fyne.io/fyne/v2/canvas")
@@ -260,13 +261,17 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 // Written as Go source rather than built as IR because it is a closure over
 // the Model, and the point of it is the two parameters Fyne passes in.
 func (t *fyneTranslator) rasterExpr(m *canvasMeta, w, h int) string {
+	// The surface and the draw func belong to whatever scope owns the canvas --
+	// the Model, or a component instance's record -- so the receiver is read
+	// off the context rather than spelled `m`.
+	recv := t.gc.RecvName()
 	return fmt.Sprintf(
 		"canvas.NewRaster(func(pw, ph int) image.Image {\n"+
-			"\t\tctx := m.%s.Begin(pw, ph, %d, %d, %q)\n"+
-			"\t\tm.%s(ctx)\n"+
+			"\t\tctx := %s.%s.Begin(pw, ph, %d, %d, %q)\n"+
+			"\t\t%s.%s(ctx)\n"+
 			"\t\treturn ctx.Result()\n"+
 			"\t})",
-		canvasSurfaceField(m.ID), w, h, m.Scaling, m.Draw.Name)
+		recv, canvasSurfaceField(m.ID), w, h, m.Scaling, recv, m.Draw.Name)
 }
 
 // canvasSurfaceField names the reusable drawing target behind a scaled canvas.

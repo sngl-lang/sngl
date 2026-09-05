@@ -85,7 +85,13 @@ func emitComponentInstance(
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if fn.SlotRender {
+		if canvasByFunc[fn] != nil {
+			// A canvas draw func draws into a snglcanvas.Context, not into
+			// nothing: the body was written against the name "ctx", and left
+			// as a plain method it came out `_canvasDraw0(ctx any)`, which its
+			// own body's Context method calls do not compile against.
+			params = []*ir.Param{{Name: "ctx", Type: canvasCtxType()}}
+		} else if fn.SlotRender {
 			// A reactive slot's render func. Its body was written against the
 			// reactivity pass's `parent` name, which the translator rewrites
 			// to `container` -- so the parameter has to be spelled the way

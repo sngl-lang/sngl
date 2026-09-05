@@ -300,8 +300,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	// Shared into every translator so OnCreateNode builds the GtkDrawingArea +
 	// cairo trampoline and OnDefault wires reactive redraws.
-	canvasByID, canvasByFunc := canvasutil.Collect(c.ctx.Pkg, c.ctx.AllFuncs())
-	hasCanvas := len(canvasByID) > 0
+	c.shared.canvasByID, c.shared.canvasByFunc = canvasutil.Collect(c.ctx.Pkg, c.ctx.AllFuncs())
+	hasCanvas := len(c.shared.canvasByID) > 0
 
 	var widgetFields []widgetField
 	// lower.passPlatformExtensionBody is always on, so every platform override
@@ -316,7 +316,6 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			withInvokerSink(func(inv gtkEventInvoker) {
 				vc.eventInvokers = append(vc.eventInvokers, inv)
 			})
-		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
 		tr.collectTagComponents(bodyStmts)
 		body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 		for _, stmt := range body {
@@ -334,19 +333,19 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
 			continue
 		}
-		if canvasByFunc[fn] != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared, canvasByFunc)
+		if c.shared.canvasByFunc[fn] != nil {
+			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 			continue
 		}
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 			continue
 		}
-		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, canvasByFunc, c.wrapped)
+		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 	}
 
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
@@ -560,12 +559,10 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 // __renderSlot<N> takes the host container; every other synthesized func -- an
 // effect's settle halves, the focus-order navigation -- takes the parameters it
 // declares, which is none.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
-	tr.canvasByFunc = canvasByFunc
-	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
@@ -795,14 +792,12 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 // emitIRPromotedHandler emits a node-attached event handler the lower pass
 // promoted to a top-level Func. The trampoline calls it with no args, so the
 // SNGL event param is dropped and `e.<field>` becomes a widget getter.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	sig := gtk4HandlerSig(fn.LoweredFromTag, fn.LoweredFromEvent)
 
 	tr := newGtk4Translator(gc, func(name, cType string) {
 		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
 	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(fn.LocalRefs).withWrapped(wrapped)
-	tr.canvasByFunc = canvasByFunc
-	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	// Pre-populated because OnPropAssign needs the C type for nodes created
 	// in sibling slot Funcs, whose CreateNode sites are not in this Block.
 	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
@@ -913,13 +908,11 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 
 // emitGTK4Func emits a top-level user function as a method on *Model, routing
 // the body through WalkLowered so a CanvasRedrawStmt becomes queue_draw.
-func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, canvasByFunc map[*ir.Func]*canvasMeta, wrapped bool) {
+func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
 	if len(fn.Block) == 0 {
 		return
 	}
 	tr := newGtk4Translator(gc, func(string, string) {}).withPkg(pkg).withRegistry(reg).withShared(shared).withWrapped(wrapped)
-	tr.canvasByFunc = canvasByFunc
-	tr.canvasByID = canvasutil.ByIDFor(canvasByFunc)
 	tr.collectTagComponents(fn.Block)
 	// Without the node C types OnPropAssign has no widget to write through and
 	// a prop assignment would emit the model write but drop the setter. No

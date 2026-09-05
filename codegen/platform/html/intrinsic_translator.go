@@ -5,6 +5,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -39,10 +40,26 @@ type htmlTranslator struct {
 	// identifier nothing declares, and the page throws on the first
 	// interaction that fires it.
 	refToVar map[string]string
+	// canvasByID and canvasByFunc are the canvas metadata passCanvas flattened
+	// into the lowered body this translator walks. The page's own markup path
+	// never gets here -- it meets the canvas as an ir.NodeInst and registers a
+	// canvasSetup -- so these answer for the scopes that are emitted as code:
+	// a component factory, and a slot renderer. Without them a `canvas` came
+	// out as a bare element nothing ever drew into.
+	canvasByID   map[string]*canvasutil.Meta
+	canvasByFunc map[*ir.Func]*canvasutil.Meta
+	// canvasDraws are the canvases this scope created, in order. The draw call
+	// cannot be emitted where the element is: it reads the box the element was
+	// laid out in, and the props that size it are assigned after OnCreateNode.
+	// The scope's emitter flushes them once the body is written.
+	canvasDraws []*canvasutil.Meta
 }
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
-	return &htmlTranslator{jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl}
+	return &htmlTranslator{
+		jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
+		canvasByID: g.canvasByID, canvasByFunc: g.canvasByFunc,
+	}
 }
 
 // nodeRef is node with an element-ref name resolved to the variable the
@@ -128,6 +145,9 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	// element name (span, button, input, div, ...).
 	t.idTags[id] = tag
 	t.topLevel = append(t.topLevel, id)
+	if m := t.canvasByID[id]; m != nil {
+		t.canvasDraws = append(t.canvasDraws, m)
+	}
 
 	// const <id> = document.createElement("<tag>")
 	createCall := &ir.Call{
@@ -431,5 +451,14 @@ func (t *htmlTranslator) OnCond(ctx context.Context, cond ir.Expr) ir.Expr {
 }
 
 func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt {
+	// A redraw inside an emitted scope is a call to the same helper the
+	// initial draw goes through, in place. The page's own handlers do not
+	// reach here: translateBlockJC lifts their redraws out first, because a
+	// canvas the page rendered as markup is not in canvasByFunc at all.
+	if rs, ok := stmt.(*ir.CanvasRedrawStmt); ok {
+		if m := t.canvasByFunc[rs.DrawFunc]; m != nil {
+			return []ir.Stmt{canvasDrawStmt(m)}
+		}
+	}
 	return []ir.Stmt{stmt}
 }
