@@ -76,8 +76,6 @@ type pass struct {
 //     handle; canvas draw funcs (built by NoCanvas, earlier) are still walked
 //     by NoTernary via pkg/component/window Funcs, so their ternaries lower.
 //
-//  8. NoTimer — depends on reactivity decisions (timer handlers may have been wrapped).
-//
 //  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
 //     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
 //     handlers promoted from inline blocks.
@@ -131,7 +129,6 @@ var passes = []pass{
 	passReactivity,
 	passTernary,
 	passCanvasReactivity,
-	passTimer,
 	passFocusOrder,
 	passInstanceBodies,
 	passDeclarative,

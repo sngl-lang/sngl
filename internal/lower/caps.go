@@ -31,7 +31,6 @@ type Features struct {
 	Enum             bool // can emit enum types natively
 	AsyncReactive    bool // can handle async in reactive contexts natively
 	Computed         bool // can handle computed vars natively
-	Timer            bool // can handle timer decls natively
 	ListLambdas      bool // can emit xs.filter(f) / xs.map(f) natively
 	Reactivity       bool // can handle reactive deps natively (false → explicit updater stmts)
 	Declarative      bool // can handle declarative visual tree (false → flat create/update/delete calls)
@@ -98,7 +97,6 @@ func AllFeatures() Features {
 		Enum:             true,
 		AsyncReactive:    true,
 		Computed:         true,
-		Timer:            true,
 		ListLambdas:      true,
 		Reactivity:       true,
 		Declarative:      true,
@@ -120,7 +118,6 @@ func (f Features) ToLowerCaps() Caps {
 		NoEnum:             !f.Enum,
 		NoAsyncReactive:    !f.AsyncReactive,
 		NoComputed:         !f.Computed,
-		NoTimer:            !f.Timer,
 		NoListLambdas:      !f.ListLambdas,
 		NoReactivity:       !f.Reactivity,
 		NoDeclarative:      !f.Declarative,
@@ -149,7 +146,6 @@ type Caps struct {
 	NoEnum          bool // enum members → int constants
 	NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
 	NoComputed      bool // computed vars → inlined exprs or memoized funcs
-	NoTimer         bool // timer decls → explicit scheduler.At()/cancel() calls
 	// StructComponents declares that components compile to structs with
 	// methods rather than functions/closures. User-declared `context #foo`
 	// blocks must be lowered into hidden Vars on each component in
@@ -206,7 +202,6 @@ func (c Caps) Merge(other Caps) Caps {
 		NoEnum:             c.NoEnum || other.NoEnum,
 		NoAsyncReactive:    c.NoAsyncReactive || other.NoAsyncReactive,
 		NoComputed:         c.NoComputed || other.NoComputed,
-		NoTimer:            c.NoTimer || other.NoTimer,
 		StructComponents:   c.StructComponents || other.StructComponents,
 		StdlibContextParam: c.StdlibContextParam || other.StdlibContextParam,
 		FocusOrder:         c.FocusOrder || other.FocusOrder,
@@ -275,9 +270,6 @@ func (c Caps) String() string {
 	}
 	if c.NoImplicitRecv {
 		parts = append(parts, "NoImplicitRecv")
-	}
-	if c.NoTimer {
-		parts = append(parts, "NoTimer")
 	}
 	if c.NoDeclarative {
 		parts = append(parts, "NoDeclarative")

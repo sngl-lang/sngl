@@ -39,7 +39,6 @@ func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
 		"NoReactivity",
 		"NoTernary",
 		"CanvasReactivity",
-		"NoTimer",
 		"FocusOrder",
 		"InstanceBodies",
 		"NoDeclarative",

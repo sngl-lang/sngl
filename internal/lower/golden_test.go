@@ -164,8 +164,6 @@ func setCapByName(c *Caps, name string) error {
 		c.NoEnum = true
 	case "NoComputed":
 		c.NoComputed = true
-	case "NoTimer":
-		c.NoTimer = true
 	case "NoContext", "StructComponents":
 		c.StructComponents = true
 	case "StdlibContextParam":
