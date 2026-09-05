@@ -59,8 +59,7 @@ func TestEveryLoweringCapIsRequestedBySomeTarget(t *testing.T) {
 
 	var got []string
 	all := reflect.TypeFor[lower.Caps]()
-	for i := range all.NumField() {
-		f := all.Field(i)
+	for f := range all.Fields() {
 		if f.Type.Kind() == reflect.Bool && !requested[f.Name] {
 			got = append(got, f.Name)
 		}
