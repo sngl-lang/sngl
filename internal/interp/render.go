@@ -49,6 +49,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env
+	child.inst = inst
 
 	// Override with instance prop values. A call site names the prop, so the
 	// declaration it means is the component's, found by that name.
