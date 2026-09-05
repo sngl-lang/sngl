@@ -20,7 +20,7 @@ import (
 func goBuild(ctx context.Context, goPath, dir, out string) (string, error) {
 	run := func() (string, error) {
 		var buf bytes.Buffer
-		cmd := exec.CommandContext(ctx, goPath, "build", "-trimpath", "-o", out, ".")
+		cmd := exec.CommandContext(ctx, goPath, "build", "-o", out, ".")
 		cmd.Dir = dir
 		cmd.Stdout = &buf
 		cmd.Stderr = &buf
