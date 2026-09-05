@@ -70,6 +70,10 @@ type reactivityState struct {
 	// we're currently walking, so synthesized slot Vars/Funcs get attached
 	// to the right scope.
 	owner reactivityOwner
+	// held records the instance registries each component owns, in the order
+	// they were opened, so its teardown can destroy what it holds. Keyed by
+	// component because a window's registries live as long as the page does.
+	held map[*ir.Component][]*slotInstance
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR
@@ -152,6 +156,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
 		intrinsics:   make(map[string]*ir.Func),
+		held:         make(map[*ir.Component][]*slotInstance),
 	}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
@@ -229,6 +234,9 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
 	}
+	// After the walks, because a registry only exists once the slot render
+	// that opened it has been built.
+	st.destroyHeld()
 	return st.err
 }
 

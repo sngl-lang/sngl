@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -115,7 +116,113 @@ func (st *reactivityState) newSlotInstance(node *ir.NodeInst) *slotInstance {
 		st.owner.addVar(cp.live)
 		inst.ctor = append(inst.ctor, cp)
 	}
+	if o, ok := st.owner.(compOwner); ok {
+		st.held[o.c] = append(st.held[o.c], inst)
+	}
 	return inst
+}
+
+// destroyHeld gives every component that holds a registry a teardown that
+// empties it.
+//
+// DestroyComponent was emitted only where a render stops describing a
+// position, which answers for the instances a render owns and for nothing an
+// instance owns in turn. So destroying a component that holds a registry of
+// its own dropped the registry and left every instance in it mounted -- and
+// the registry is a local of that component's own scope, so nothing outside
+// could reach them afterwards. The teardown is the only place that can: it
+// runs inside the instance, which is where the registry is.
+//
+// It is prepended to the brackets' teardown, and created where a component has
+// none, for the reason that teardown reverses its own order: what an instance
+// holds was built after the instance mounted, and may be holding something the
+// instance handed it. Recursion falls out -- destroying a held instance runs
+// its teardown, which empties its registries in turn.
+func (st *reactivityState) destroyHeld() {
+	for _, comp := range st.pkg.Components {
+		// Only an instance has a teardown to hang this on. A component the
+		// build inlined holds nothing: its registries were hoisted into
+		// whatever it was inlined into, and live as long as that does.
+		if comp == nil || !comp.RuntimeInstance || len(st.held[comp]) == 0 {
+			continue
+		}
+		var body []ir.Stmt
+		for _, si := range slices.Backward(st.held[comp]) {
+			body = append(body, st.emptyRegistry(si)...)
+		}
+		if fn := funcNamed(comp.Funcs, TeardownFunc); fn != nil {
+			fn.Block = append(body, fn.Block...)
+			continue
+		}
+		comp.Funcs = append(comp.Funcs, &ir.Func{
+			Name:   TeardownFunc,
+			Return: ir.TypVoid,
+			Purity: ir.PurityMutates,
+			Block:  body,
+		})
+	}
+}
+
+// emptyRegistry destroys everything one registry holds and leaves it empty, so
+// a teardown that runs twice unmounts nothing twice.
+//
+//	for <k>, <v> = <live> { lower.DestroyComponent(<v>) }
+//	<live> = []
+//
+// A list is walked backwards for the reason closeSlotInstance walks backwards;
+// a keyed registry is a map and has no order to reverse.
+func (st *reactivityState) emptyRegistry(si *slotInstance) []ir.Stmt {
+	destroy := func(inst ir.Expr) ir.Stmt {
+		return &ir.CallStmt{Call: &ir.Call{
+			Type:     ir.TypVoid,
+			Receiver: lowerNSIdent(),
+			Func:     st.intrinsics[ir.NodeOpDestroyComponent],
+			Args:     []ir.CallArg{{Value: inst}},
+		}}
+	}
+	var loop *ir.For
+	if si.keyed() {
+		k := &ir.LoopVar{Name: si.live.Name + "_dk", Type: ir.TypString}
+		v := &ir.LoopVar{Name: si.live.Name + "_dv", Type: si.elem}
+		loop = &ir.For{
+			Key: k.Name, KeySym: k, Value: v.Name, ValueSym: v,
+			Iter: varRef(si.live), ElemType: si.elem,
+			Body: []ir.Stmt{destroy(&ir.Ident{Name: v.Name, Type: si.elem, Sym: v, Synthesized: true})},
+		}
+	} else {
+		i := &ir.LoopVar{Name: si.live.Name + "_di", Type: ir.TypInt}
+		j := &ir.Var{Name: si.live.Name + "_dj", Type: ir.TypInt, Synthesized: true}
+		loop = &ir.For{
+			Key: i.Name, KeySym: i, Value: "_",
+			Iter: varRef(si.live), ElemType: si.elem,
+			Body: []ir.Stmt{
+				&ir.LocalVar{Name: j.Name, Type: ir.TypInt, Sym: j, Init: &ir.Binary{
+					Type: ir.TypInt, Op: ast.BinSub,
+					Left: &ir.Binary{
+						Type: ir.TypInt, Op: ast.BinSub,
+						Left:  callListLength(varRef(si.live)),
+						Right: intLiteralLit(1),
+					},
+					Right: &ir.Ident{Name: i.Name, Type: ir.TypInt, Sym: i, Synthesized: true},
+				}},
+				destroy(&ir.Index{Type: si.elem, Operand: varRef(si.live), Idx: varRef(j)}),
+			},
+		}
+	}
+	return []ir.Stmt{
+		loop,
+		&ir.Assign{Target: varRef(si.live), Op: ast.AssignSet, Value: emptyOf(si.live.Type)},
+	}
+}
+
+// funcNamed answers with the func of that name, or nil.
+func funcNamed(funcs []*ir.Func, name string) *ir.Func {
+	for _, f := range funcs {
+		if f != nil && f.Name == name {
+			return f
+		}
+	}
+	return nil
 }
 
 // constructProps is the #[construct]-marked props this site binds to something

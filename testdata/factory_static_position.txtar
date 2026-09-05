@@ -148,6 +148,13 @@ body { font-family: system-ui, sans-serif; }
         }
       }
     }
+    function __snglTeardown() {
+      for (const [__inst1_live_di, _] of __inst1_live.entries()) {
+        let __inst1_live_dj = __inst1_live.length - 1 - __inst1_live_di;
+        __inst1_live[__inst1_live_dj].__destroy();
+      }
+      __inst1_live = [];
+    }
     let __n0 = document.createElement("span");
     __n0.textContent = "[" + String(__prop_n) + "]";
     __renderSlot0(__root);
@@ -155,6 +162,7 @@ body { font-family: system-ui, sans-serif; }
     return {
       __root,
       __destroy() {
+        __snglTeardown();
       },
       __set_n,
       __set___depth
