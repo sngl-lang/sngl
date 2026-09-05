@@ -47,31 +47,21 @@ func TestNoWidgetPropIsConstructOnly(t *testing.T) {
 	}
 }
 
-// The choices reach the widget twice, and both are load-bearing: SetOptions is
-// what a later change to the bound list travels through, and the Arg is what
-// puts the choices in place before SetSelected runs -- Fyne ignores a selection
-// that is not already among Options. TestSelectOptionsUpdateInPlace is the
-// runtime half of this; here so a Spec edit says which half it broke.
-func TestSelectPassesOptionsAsBothArgAndSetter(t *testing.T) {
-	src, err := snglsrc.ReadFile("fyne.sngl")
-	if err != nil {
-		t.Fatal(err)
+// SetSelected ignores a value that is not already among Options, so the choices
+// have to be assigned first. Nothing in the Spec enforces that -- the order is
+// the order Select's body writes the two props in, and tidying those lines the
+// other way round silently drops the initial selection.
+// TestSelectOptionsUpdateInPlace is the runtime half of this; here so a reorder
+// says which half it broke.
+func TestSelectAssignsOptionsBeforeSelected(t *testing.T) {
+	model := generateFyneModelBuilt(t, selectOptionsSrc)
+	opts := strings.Index(model, ".SetOptions(")
+	sel := strings.Index(model, ".SetSelected(")
+	if opts < 0 || sel < 0 {
+		t.Fatalf("generated model names SetOptions at %d and SetSelected at %d; want both", opts, sel)
 	}
-	body := string(src)
-	start := strings.Index(body, "component Select(")
-	if start < 0 {
-		t.Fatal("no Select declaration text")
-	}
-	end := strings.Index(body[start:], "\n}\n")
-	if end < 0 {
-		t.Fatal("no end of Select declaration")
-	}
-	decl := body[start : start+end]
-	if !strings.Contains(decl, `Arg{prop="options"`) {
-		t.Error("Select's Spec should pass options as a constructor argument, " +
-			"or the initial selection lands on an empty Options list and is dropped")
-	}
-	if !strings.Contains(decl, `Setter{prop="options"`) {
-		t.Error("Select's Spec should name SetOptions, or a change to the bound list never reaches the widget")
+	if opts > sel {
+		t.Error("SetSelected is emitted before SetOptions; the initial selection is not " +
+			"among the widget's choices yet and Fyne drops it")
 	}
 }

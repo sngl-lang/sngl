@@ -275,12 +275,10 @@ component Check(text string, checked bool, style ui.Style, @change ui.ChangeEven
     ) {}
 }
 
-// `options` is both an `Arg` and a `Setter`, and needs to be. `SetOptions`
-// replaces the choices on a live widget, so a change to the bound list reaches
-// it in place; but `SetSelected` ignores a value that is not already among
-// `Options`, and the props are assigned in the order written -- so the
-// constructor has to be handed the choices too, or the initial selection would
-// be dropped.
+// `options` must be assigned before `selected`: `SetSelected` ignores a value
+// that is not already among `Options`, and the props are assigned in the order
+// this call writes them. Reordering them is why the constructor can take `nil`
+// choices.
 component Select(
     selected string,
     options list<string>,
@@ -290,7 +288,7 @@ component Select(
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
-            args = [Arg{prop="options", raw="nil"}, Arg{raw="nil"}],
+            args = [Arg{raw="nil"}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Select"},
             setters = [
                 Setter{prop="text", call="SetSelected"},
@@ -298,8 +296,8 @@ component Select(
             ],
             handlers = [Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
         },
-        text=selected,
         options=options,
+        text=selected,
         style={...style},
         @change { change() },
     ) {}
