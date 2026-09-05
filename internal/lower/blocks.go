@@ -40,7 +40,7 @@ import (
 // the callback as a prop, so the body is a lambda in the node's props and the
 // node's Handlers slice is empty.
 func imperativeBlocks(pkg *ir.Package) []*[]ir.Stmt {
-	return collectBlocks(pkg, false)
+	return collectBlocks(pkg, true, false)
 }
 
 // allBlocks is imperativeBlocks plus the view-body statement lists themselves.
@@ -49,16 +49,22 @@ func imperativeBlocks(pkg *ir.Package) []*[]ir.Stmt {
 // statement every backend already emits, since that is where the pass puts the
 // program's first settle.
 func allBlocks(pkg *ir.Package) []*[]ir.Stmt {
-	return collectBlocks(pkg, true)
+	return collectBlocks(pkg, true, true)
 }
 
-func collectBlocks(pkg *ir.Package, views bool) []*[]ir.Stmt {
+// viewBlocks is the complement of imperativeBlocks: view-body statement lists
+// alone. A pass reaching both would desugar one for-else twice.
+func viewBlocks(pkg *ir.Package) []*[]ir.Stmt {
+	return collectBlocks(pkg, false, true)
+}
+
+func collectBlocks(pkg *ir.Package, imperative, views bool) []*[]ir.Stmt {
 	if pkg == nil {
 		return nil
 	}
-	c := &blockCollector{views: views, seen: map[*[]ir.Stmt]bool{}}
+	c := &blockCollector{imperative: imperative, views: views, seen: map[*[]ir.Stmt]bool{}}
 	for _, f := range pkg.Funcs {
-		c.add(&f.Block)
+		c.addImperative(&f.Block)
 	}
 	c.viewIn(&pkg.Body)
 	for _, comp := range pkg.Components {
@@ -67,20 +73,22 @@ func collectBlocks(pkg *ir.Package, views bool) []*[]ir.Stmt {
 	for _, w := range pkg.Windows {
 		c.owner(w.Funcs, w.Vars, nil, &w.Body)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			c.add(&w.ErrorHandler.Func.Block)
+			c.addImperative(&w.ErrorHandler.Func.Block)
 		}
 	}
 	for _, t := range pkg.Timers {
 		if t.Handler != nil {
-			c.add(&t.Handler.Block)
+			c.addImperative(&t.Handler.Block)
 		}
 	}
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
-			c.add(&l.Func.Block)
-		}
-		return nil
-	})
+	if imperative {
+		_ = ir.Walk(pkg, func(n ir.Node) error {
+			if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
+				c.add(&l.Func.Block)
+			}
+			return nil
+		})
+	}
 	return c.out
 }
 
@@ -88,9 +96,17 @@ func collectBlocks(pkg *ir.Package, views bool) []*[]ir.Stmt {
 // caller that is not idempotent use these: a handler body reached both through
 // its node and as a lambda in that node's props is one block, not two.
 type blockCollector struct {
-	out   []*[]ir.Stmt
-	seen  map[*[]ir.Stmt]bool
-	views bool
+	out        []*[]ir.Stmt
+	seen       map[*[]ir.Stmt]bool
+	imperative bool
+	views      bool
+}
+
+func (c *blockCollector) addImperative(b *[]ir.Stmt) {
+	if !c.imperative {
+		return
+	}
+	c.add(b)
 }
 
 func (c *blockCollector) add(b *[]ir.Stmt) {
@@ -106,18 +122,18 @@ func (c *blockCollector) add(b *[]ir.Stmt) {
 // the nodes in its view.
 func (c *blockCollector) owner(funcs []*ir.Func, vars []*ir.Var, timers []*ir.Timer, body *[]ir.Stmt) {
 	for _, f := range funcs {
-		c.add(&f.Block)
+		c.addImperative(&f.Block)
 	}
 	for _, v := range vars {
 		for _, h := range v.Handlers {
 			if h.Func != nil {
-				c.add(&h.Func.Block)
+				c.addImperative(&h.Func.Block)
 			}
 		}
 	}
 	for _, t := range timers {
 		if t.Handler != nil {
-			c.add(&t.Handler.Block)
+			c.addImperative(&t.Handler.Block)
 		}
 	}
 	c.viewIn(body)
@@ -137,7 +153,7 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 		case *ir.NodeInst:
 			for _, h := range n.Handlers {
 				if h.Func != nil {
-					c.add(&h.Func.Block)
+					c.addImperative(&h.Func.Block)
 				}
 			}
 			c.viewIn(&n.Children)
@@ -163,7 +179,7 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 			// any other -- ir.Walk reaches it and analyzeCaptures walks it, so
 			// leaving it out here was an inconsistency rather than a rule.
 			if n.Handler != nil && n.Handler.Func != nil {
-				c.add(&n.Handler.Func.Block)
+				c.addImperative(&n.Handler.Func.Block)
 			}
 			c.viewIn(&n.Children)
 		case *ir.ContextProvider:

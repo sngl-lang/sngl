@@ -1,0 +1,46 @@
+// Two anonymous structs with the same set of (field name, field type) are the
+// same type. The checker interns one declaration per canonical signature, so
+// structural identity is pointer identity by the time anything asks — and the
+// declaration is an ordinary one, which is why every backend emits it without
+// knowing an anonymous struct exists.
+//
+// Field order is not part of the signature: `{a, b}` and `{b, a}` sort to the
+// same canonical spelling and reach the same declaration.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+func sumPair(p struct {
+    a int
+    b int
+}) => p.a + p.b
+
+component main {
+    var (
+        one = {a=1, b=2}
+        two = {b=4, a=3}
+        total = sumPair(one) + sumPair(two)
+    )
+
+    text(value=string(total))
+}
+
+func testTwoSpellingsAreOneType(t Test, c main) {
+    t.assert(c.total == 10)
+}
+
+// A written `struct { … }` in a parameter and an inferred literal reach the
+// same declaration, which is what lets the value cross into the function at
+// all.
+func testTheWrittenTypeIsTheInferredOne(t Test, c main) {
+    c.one = c.two
+    t.assert(c.one.a == 3)
+    t.assert(c.one.b == 4)
+}
+
+// `.a` is an ordinary field select on a declaration. It used to fall through
+// to dyn, because an anonymous struct carried no declaration to look a field
+// up on.
+func testFieldsHaveTheirRealTypes(t Test, c main) {
+    t.assert(c.one.a + 1 == 2)
+}

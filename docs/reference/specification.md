@@ -896,6 +896,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
+    | StructDecl StructLitBody
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
@@ -963,7 +964,7 @@ AnonStructLit = "{" [ AnonField { ( "," | ";" ) AnonField } [ "," | ";" ] ] "}"
 
 AnonField = 
     "..." Expr
-    | Expr "=" Expr
+    | Expr [ "=" Expr ]
 
 FuncLit = "func" [ "(" [ ParamList ] ")" ] FuncBodyTail
 
@@ -1682,6 +1683,7 @@ PrimaryExpr =
     | "[" ListBody "]"
     | AnonStructLit
     | FuncLit
+    | StructDecl StructLitBody
     | ImportExpr StructLitBody
     | IDENT [ StructLitBody ]
 
@@ -1743,7 +1745,7 @@ AnonStructLit = "{" [ AnonField { ( "," | ";" ) AnonField } [ "," | ";" ] ] "}"
 
 AnonField = 
     "..." Expr
-    | Expr "=" Expr
+    | Expr [ "=" Expr ]
 
 FuncLit = "func" [ "(" [ ParamList ] ")" ] FuncBodyTail
 

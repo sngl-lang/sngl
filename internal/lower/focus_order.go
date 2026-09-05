@@ -91,24 +91,36 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 }
 
 // ensureLoopKey makes sure the for-loop has an integer key (index) variable
-// that can be compared against the cursor. If Key is empty we inject a
-// synthetic one so both the for-header and the __focused expression share it.
+// that can be compared against the cursor.
+//
+// Only the two-variable list head arrives with an integer Key. The others are
+// rewritten into that form -- index in Key, whatever they bound in Value -- so
+// every consumer downstream keeps reading Key as the index. A two-variable map
+// head is the exception and is still wrong (#174): both its positions are
+// taken, so its ordinal has to be a synthesized counter, the passIndexedIter
+// shape, rather than a rewrite.
 func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
-	if ls.forStmt.Key == "" {
-		synthetic := fmt.Sprintf("__focusIdx%d", slotIdx)
-		ls.forStmt.Key = synthetic
-		ls.keyVar = &ir.LoopVar{Name: synthetic, Type: ir.TypInt}
-		ls.forStmt.KeySym = ls.keyVar
-	} else if ls.forStmt.KeySym != nil {
-		ls.keyVar = ls.forStmt.KeySym
-	} else {
-		// The checker sets KeySym whenever Key is named, so this is a loop
-		// some other pass built. Store the symbol as well as holding it: an
-		// identifier the pass emits below refers to this one, and a symbol
-		// the statement does not carry is a symbol nothing else can reach.
-		ls.keyVar = &ir.LoopVar{Name: ls.forStmt.Key, Type: ir.TypInt}
-		ls.forStmt.KeySym = ls.keyVar
+	f := ls.forStmt
+	if f.Value == "" {
+		// Value "_" when the head bound nothing: from here on the loop is
+		// two-variable and the element position must name something.
+		f.Value, f.ValueSym = f.Key, f.KeySym
+		if f.Value == "" {
+			f.Value = "_"
+		}
+		f.Key, f.KeySym = fmt.Sprintf("__focusIdx%d", slotIdx), nil
 	}
+	if f.KeySym != nil {
+		ls.keyVar = f.KeySym
+		return
+	}
+	// The checker sets KeySym whenever Key is named, so this is a loop some
+	// other pass built, or the index just synthesized above. Store the symbol
+	// as well as holding it: an identifier the pass emits below refers to this
+	// one, and a symbol the statement does not carry is a symbol nothing else
+	// can reach.
+	ls.keyVar = &ir.LoopVar{Name: f.Key, Type: ir.TypInt}
+	f.KeySym = ls.keyVar
 }
 
 // ---- slot gathering ----

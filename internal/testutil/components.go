@@ -472,7 +472,7 @@ func runGoTest(dir string) error {
 	}
 
 	run := func() (string, error) {
-		test := exec.Command("go", "test", "-trimpath", "-p", strconv.Itoa(childProcs()), "./...")
+		test := exec.Command("go", "test", "-p", strconv.Itoa(childProcs()), "./...")
 		test.Dir = dir
 		out, err := test.CombinedOutput()
 		return string(out), err

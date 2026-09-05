@@ -42,6 +42,7 @@ import (
 	"strconv"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/headless"
 )
 
@@ -254,6 +255,24 @@ func runTests(verbose, fmtDocs, full bool) {
 	// android fixtures + Robolectric, so on a loaded runner the default 10m
 	// would flake into a timeout.
 	args = append(args, "-timeout=20m")
+	// Bound how many test binaries compile and run at once by memory rather
+	// than by core count. Go's default is GOMAXPROCS, and building this
+	// repo's own test binaries -- 87 packages, each instrumented by
+	// -coverpkg=./... -- is the heaviest thing the suite does, well ahead of
+	// anything it compiles from generated code. Measured on an 8-core, 15GB
+	// box, peak resident across go/compile/link:
+	//
+	//     -p 2   1.62GB   2m57s, 4m42s
+	//     -p 4   2.91GB   3m20s
+	//     -p 8   4.15GB   2m42s, 3m28s
+	//
+	// This is a trade, not a free win: the wider setting is faster, and the
+	// narrow one uses about a third of the memory. Sizing from what is
+	// actually available makes it the right trade either way -- a machine
+	// with headroom still gets the wide setting (this box picks 8), and a
+	// constrained container gives up some wall time rather than being
+	// OOM-killed, which is how CI failed before SNGL_BUILD_SLOTS existed.
+	args = append(args, "-p="+strconv.Itoa(codegen.BuildTokenSlots()))
 	if verbose {
 		args = append(args, "-v")
 	}

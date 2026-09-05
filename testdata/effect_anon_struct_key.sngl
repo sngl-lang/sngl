@@ -1,0 +1,49 @@
+// A compound `on` key written as an anonymous struct literal. It used to be an
+// error naming the fix — "the struct has to be declared" — because a literal
+// carried no declaration, so there were no fields to compare two values by and
+// no name a target could hold one under.
+//
+// Interning gives it both, and the rule that decides is unchanged:
+// ir.RebuildKeyReason walks a struct's fields, and the fields are there now.
+// So this behaves exactly like effect_struct_key.sngl with the declaration
+// left out.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var (
+        a int = 1
+        b string = "x"
+        log list<string> = []
+    )
+
+    effect(
+        on={a, b},
+        @mount {
+            log.push("m")
+        },
+        @unmount {
+            log.push("u")
+        },
+    )
+
+    text #out(value=log.join(","))
+}
+
+func testTheAnonymousKeyMountsOnce(t Test, c main) {
+    t.assert(c.out.value == "m")
+}
+
+// The same values built into a second literal are the same key. A comparison
+// by identity reads "m,u,m" here.
+func testWritingTheSameValuesBackKeepsTheLifetime(t Test, c main) {
+    c.a = 1
+    c.b = "x"
+    t.assert(c.out.value == "m")
+}
+
+func testChangingOneFieldIsANewLifetime(t Test, c main) {
+    c.b = "y"
+    t.assert(c.out.value == "m,u,m")
+}

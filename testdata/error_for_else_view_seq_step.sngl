@@ -1,0 +1,22 @@
+// Which comparison says "empty" for a counted sequence depends on the sign of
+// its step, so ir.CountedSeq reads that step as an integer literal. A const
+// reaches the checker as a name -- the folder runs later -- so this sequence
+// is not measurable. Saying so beats the pull-sequence message, which told the
+// user to iterate the sngl:seq range they had already written.
+
+import . "sngl:ui"
+import "sngl:seq"
+
+const by = 2
+
+component main {
+    var n = 0
+
+    vbox {
+        for var i = seq.step(0, n, by) { // ERROR(check) "needs a literal non-zero step"
+            text(value="x")
+        } else {
+            text(value="nothing yet")
+        }
+    }
+}

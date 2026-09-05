@@ -1,0 +1,29 @@
+// An anonymous struct is interned, not structural: the declaration the checker
+// synthesizes for it is a declaration of its own, and type identity in SNGL is
+// per declaration. So a value of `struct { x int, y int }` is not a `Point`,
+// however alike the two are written.
+//
+// This is the same rule two `struct shape {}` declarations in two packages
+// obey. Interning gives the *anonymous* ones one declaration to share; it does
+// not merge them with a named one. The other direction is
+// error_anon_struct_from_declared.sngl, in a file of its own because the
+// checker reports the first mismatched argument in a document and stops.
+//
+// The diagnostic spells the type structurally. The synthesized name is the
+// compiler's bookkeeping and no program can write it.
+
+import . "sngl:ui"
+
+struct Point {
+    x int = 0
+    y int = 0
+}
+
+func takePoint(p Point) => p.x + p.y
+
+component main {
+    var inline = {x=1, y=2}
+    var a = takePoint(inline) // ERROR(check) "cannot pass struct { x int, y int } as Point"
+
+    text(value=string(a))
+}

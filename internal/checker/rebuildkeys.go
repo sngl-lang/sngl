@@ -346,9 +346,8 @@ func effectKeyHint(t *ir.Type) string {
 	case ir.TypeDyn:
 		return "; a key over several values is a struct of them, and the struct has to be declared"
 	case ir.TypeStruct:
-		// An anonymous struct literal. It reaches here as a struct with no
-		// declaration, which is the whole reason it cannot be compared: there
-		// are no fields to walk.
+		// An unresolved struct type. An anonymous literal is not one: the
+		// checker interns a declaration for it, fields and all.
 		if t.Decl == nil {
 			return "; a key over several values is a struct of them, and the struct has to be declared"
 		}

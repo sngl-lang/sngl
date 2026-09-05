@@ -364,6 +364,10 @@ type checker struct {
 	// because type identity is per-declaration.
 	macroStruct *ir.StructDef
 
+	// anonStructs interns one synthesized declaration per package and
+	// canonical anonymous struct signature; see internAnonStruct.
+	anonStructs map[*ir.Package]map[string]*ir.StructDef
+
 	// builtinPkg is sngl:builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
 
@@ -682,8 +686,11 @@ func (c *checker) fileOf(pos ast.Pos) func() {
 }
 
 // declare binds sym in the current scope, reporting a name already bound there
-// instead of letting the later binding silently win.
+// instead of letting the later binding silently win. A reserved name is
+// reported and then bound anyway, so one error does not become a
+// name-not-found at every use.
 func (c *checker) declare(pos ast.Pos, sym ir.Symbol) {
+	c.rejectReservedName(pos, sym.SymName())
 	if err := c.scope.Declare(sym); err != nil {
 		c.error(pos, "%s is already declared in this scope", sym.SymName())
 	}
@@ -872,6 +879,9 @@ func isExportedMemberName(name string) bool {
 func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, path string) bool {
 	if name == "" || name == "_" {
 		return true
+	}
+	if c.rejectReservedName(pos, name) {
+		return false
 	}
 	if c.topLevel == nil {
 		c.topLevel = map[string]topLevelBinding{}
@@ -1439,6 +1449,10 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	for _, sd := range src.Structs {
+		// Nobody named it, so it is not part of what the package exports.
+		if sd.Anon {
+			continue
+		}
 		c.mergeInto(declPos(sd), dst.Symbols.Root, sd)
 	}
 	for _, ed := range src.Enums {

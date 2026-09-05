@@ -90,6 +90,12 @@ var passes = []pass{
 	passPlatformExtensionBody,
 	passPropBindings,
 	passRefLoop,
+	// Early, and well before passReactivity: the `if` it leaves behind has to
+	// reach that pass as an ordinary view conditional so a reactive iterable
+	// makes it a render slot, and the emptiness expression it synthesizes
+	// names whatever the loop head names -- so every pass that rewrites a
+	// name has to see it.
+	passViewForElse,
 	passUnit,
 	passEnum,
 	passQuery,

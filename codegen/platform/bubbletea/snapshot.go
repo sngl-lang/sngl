@@ -76,12 +76,7 @@ func (g *Generator) runSnapshot(pkg *ir.Package, lang codegen.LangTranslator, wi
 		return "", fmt.Errorf("go not found in PATH")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sngl-bubbletea-snapshot-*")
-	if err != nil {
-		return "", fmt.Errorf("creating temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	sink := codegen.NewMemSink()
 	if err := g.Generate(&codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
@@ -89,9 +84,10 @@ func (g *Generator) runSnapshot(pkg *ir.Package, lang codegen.LangTranslator, wi
 			"package": "main",
 			"main":    false,
 		}),
-	}, codegen.NewDirSink(tmpDir)); err != nil {
+	}, sink); err != nil {
 		return "", fmt.Errorf("generating bubbletea code: %w", err)
 	}
+	files := sink.Files()
 
 	cols := width / 10
 	rows := height / 20
@@ -106,13 +102,16 @@ func main() {
 }
 `, cols, rows)
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "snapshot_main.go"), []byte(harness), 0o644); err != nil {
-		return "", fmt.Errorf("writing harness: %w", err)
-	}
+	files["snapshot_main.go"] = []byte(harness)
+	files["go.mod"] = []byte(snapshotGoMod())
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(snapshotGoMod()), 0o644); err != nil {
-		return "", fmt.Errorf("writing go.mod: %w", err)
+	// Keyed by the generated content, so an unchanged snapshot reuses the
+	// directory and with it the Go build cache.
+	tmpDir, release, err := codegen.BuildDirForContent("snapshot-bubbletea", files)
+	if err != nil {
+		return "", fmt.Errorf("creating build dir: %w", err)
 	}
+	defer release()
 
 	tidy := exec.Command(goPath, "mod", "tidy")
 	tidy.Dir = tmpDir
@@ -121,7 +120,7 @@ func main() {
 		return "", fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	run := exec.Command(goPath, "run", "-trimpath", ".")
+	run := exec.Command(goPath, "run", ".")
 	run.Dir = tmpDir
 	run.Env = append(os.Environ(), "COLORTERM=truecolor", "TERM=xterm-256color")
 	var stdout bytes.Buffer
@@ -197,11 +196,11 @@ func (g *Generator) runBatchSnapshot(docs []codegen.BatchDoc, width, height int)
 		return nil, fmt.Errorf("go not found in PATH")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sngl-bubbletea-batch-*")
+	tmpDir, release, err := codegen.BuildDir("snapshot-bubbletea-batch", codegen.BatchKey(docs)...)
 	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
+		return nil, fmt.Errorf("creating build dir: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer release()
 
 	type docPkg struct {
 		id      string
@@ -275,8 +274,10 @@ func main() {
 		return nil, fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	binPath := filepath.Join(tmpDir, "snapshot")
-	build := exec.Command(goPath, "build", "-trimpath", "-o", binPath, ".")
+	// Beside the directory, not in it: the directory is emptied before each
+	// generation, and `go build -o` relinks whenever its output is missing.
+	binPath := tmpDir + ".snapshot"
+	build := exec.Command(goPath, "build", "-o", binPath, ".")
 	build.Dir = tmpDir
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {

@@ -155,8 +155,7 @@ func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
 	case TypeStruct:
 		sd, _ := t.Decl.(*StructDef)
 		if sd == nil {
-			// An anonymous struct literal. It has no declaration, so it has no
-			// fields to walk and no name a second value could be built under.
+			// An unresolved struct type: no fields to walk.
 			return t.String(), nil
 		}
 		// A #[builtin] struct that declares no fields is opaque: a target holds
