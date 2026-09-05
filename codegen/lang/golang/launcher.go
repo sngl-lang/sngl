@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -26,26 +25,34 @@ func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangT
 		return nil, nil, fmt.Errorf("go not found in PATH")
 	}
 
-	if err := writeTestGoMod(dir); err != nil {
+	needTidy, err := codegen.WriteGoMod(dir, "", "")
+	if err != nil {
 		return nil, nil, err
 	}
-
-	slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
-	var tidyOut bytes.Buffer
-	tidy := exec.CommandContext(ctx, goPath, "mod", "tidy")
-	tidy.Dir = dir
-	tidy.Stdout = &tidyOut
-	tidy.Stderr = &tidyOut
-	if err := tidy.Run(); err != nil {
-		out := tidyOut.String()
-		if reason, ok := detectMissingPlatformLib(out); ok {
-			return nil, nil, &codegen.SkipError{Reason: reason}
+	if needTidy {
+		slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
+		var tidyOut bytes.Buffer
+		tidy := exec.CommandContext(ctx, goPath, "mod", "tidy")
+		tidy.Dir = dir
+		tidy.Stdout = &tidyOut
+		tidy.Stderr = &tidyOut
+		if err := tidy.Run(); err != nil {
+			out := tidyOut.String()
+			if reason, ok := detectMissingPlatformLib(out); ok {
+				return nil, nil, &codegen.SkipError{Reason: reason}
+			}
+			fmt.Fprint(os.Stderr, out)
+			return nil, nil, fmt.Errorf("go mod tidy: %w", err)
 		}
-		fmt.Fprint(os.Stderr, out)
-		return nil, nil, fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	binPath := filepath.Join(dir, "testagent_bin")
+	// Build the agent alongside dir rather than inside it. `go build -o`
+	// re-links from scratch whenever its output file is missing, and dir
+	// is emptied before each generation (see codegen.BuildDir), so an
+	// in-dir binary would be relinked on every run. A sibling path
+	// survives the wipe, letting go see an up-to-date binary and skip
+	// the link — about 0.4s per `sngl test` invocation.
+	binPath := dir + ".testagent"
 	slog.Info("exec", "cmd", "go build", "dir", dir, "out", binPath)
 	var buildOut bytes.Buffer
 	bld := exec.CommandContext(ctx, goPath, "build", "-trimpath", "-o", binPath, ".")
@@ -84,23 +91,6 @@ func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangT
 		_, _ = cmd.Process.Wait()
 	}
 	return ch, cleanup, nil
-}
-
-// writeTestGoMod synthesises go.mod for the temp test build dir. Mirrors
-// the existing build.go path so behaviour is consistent.
-func writeTestGoMod(dir string) error {
-	goVersion, goModExtra := codegen.DetectHostGoMod()
-	if goVersion == "" {
-		goVersion = "1.23"
-	}
-	mod := fmt.Sprintf("module tmp\n\ngo %s\n", goVersion)
-	if goModExtra != "" {
-		mod += "\n" + goModExtra
-		if !strings.HasSuffix(mod, "\n") {
-			mod += "\n"
-		}
-	}
-	return os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644)
 }
 
 // pipeChannel adapts an exec.Cmd's stdout/stdin to RPCChannel.

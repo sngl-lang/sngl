@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -22,28 +21,19 @@ func (t *Translator) Build(dir string, opts *ir.StructLit) (string, error) {
 		return "", fmt.Errorf("go not found in PATH")
 	}
 
-	goVersion, goModExtra := codegen.DetectHostGoMod()
-	if goVersion == "" {
-		goVersion = "1.23"
-	}
-	goMod := fmt.Sprintf("module tmp\n\ngo %s\n", goVersion)
-	if goModExtra != "" {
-		goMod += "\n" + goModExtra
-		if !strings.HasSuffix(goMod, "\n") {
-			goMod += "\n"
-		}
-	}
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(goMod), 0o644); err != nil {
+	needTidy, err := codegen.WriteGoMod(dir, "", "")
+	if err != nil {
 		return "", fmt.Errorf("writing go.mod: %w", err)
 	}
-
-	slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
-	tidy := exec.Command(goPath, "mod", "tidy")
-	tidy.Dir = dir
-	tidy.Stdout = os.Stderr
-	tidy.Stderr = os.Stderr
-	if err := tidy.Run(); err != nil {
-		return "", fmt.Errorf("go mod tidy: %w", err)
+	if needTidy {
+		slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
+		tidy := exec.Command(goPath, "mod", "tidy")
+		tidy.Dir = dir
+		tidy.Stdout = os.Stderr
+		tidy.Stderr = os.Stderr
+		if err := tidy.Run(); err != nil {
+			return "", fmt.Errorf("go mod tidy: %w", err)
+		}
 	}
 
 	artifact := filepath.Join(dir, "app")

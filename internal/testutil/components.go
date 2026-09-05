@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -16,23 +17,50 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
 )
 
-// snglBinary builds `sngl` into a directory the test framework removes, and
-// returns its path. Callers shell out to it rather than to whatever `sngl` is
-// on PATH, so the tests exercise the working tree and not the last
-// `go install`.
+var snglBinaries sync.Map // owner -> func() (string, error)
+
+// snglBinary builds `sngl` and returns its path, once per process. Callers
+// shell out to it rather than to whatever `sngl` is on PATH, so the tests
+// exercise the working tree and not the last `go install`.
 //
-// t.TempDir rather than os.MkdirTemp: the binary is ~84MB and this used to
-// leak one per test process.
-func snglBinary(t *testing.T) (string, error) {
-	t.Helper()
-	bin := filepath.Join(t.TempDir(), "sngl")
-	cmd := exec.Command("go", "build", "-o", bin, "./cmd/sngl")
-	cmd.Dir = projectRoot()
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("build sngl: %v\n%s", err, out)
-	}
-	return bin, nil
+// The output path is stable — a directory keyed by owner, the platform under
+// test — rather than a fresh temp dir. `go build -o` relinks the ~84MB binary
+// into every new location, so a per-run directory means one relink per test
+// package per run; reusing the path lets Go skip the link entirely. Keying by
+// owner keeps the platform test binaries out of each other's directories, so
+// each deterministically reuses its own. codegen.BuildDir bounds and sweeps
+// the directories, so this does not leak a binary per process the way an
+// os.MkdirTemp did.
+//
+// The directory lock is deliberately never released: the binary is used for
+// the lifetime of the test process, and releasing it would let another test
+// binary claim the slot and wipe it mid-run. The OS drops the flock on exit.
+func snglBinary(owner string) (string, error) {
+	build := sync.OnceValues(func() (string, error) {
+		root := projectRoot()
+		dir, _, err := codegen.BuildDir("sngl-bin", root, owner)
+		if err != nil {
+			return "", err
+		}
+		bin := filepath.Join(dir, "sngl")
+		cmd := exec.Command("go", "build", "-o", bin, "./cmd/sngl")
+		cmd.Dir = root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("build sngl: %v\n%s", err, out)
+		}
+		return bin, nil
+	})
+	actual, _ := snglBinaries.LoadOrStore(owner, build)
+	return actual.(func() (string, error))()
+}
+
+// snglEnv returns the environment for invoking the harness-built sngl binary.
+// SNGL_NO_PROXY keeps main.proxyToGoTool from re-execing into `go tool sngl`:
+// the harness deliberately built this binary from the working tree, and the
+// proxy would both discard that and add two `go` invocations — about 160ms and
+// 0.7s of CPU — to every call.
+func snglEnv() []string {
+	return append(os.Environ(), "SNGL_NO_PROXY=1")
 }
 
 // RunComponentFixtures executes every testdata/component_*.sngl fixture
@@ -53,7 +81,7 @@ func snglBinary(t *testing.T) (string, error) {
 func RunComponentFixtures(t *testing.T, platform string) {
 	t.Helper()
 
-	bin, err := snglBinary(t)
+	bin, err := snglBinary(platform)
 	if err != nil {
 		t.Fatalf("build sngl: %v", err)
 	}
@@ -79,6 +107,10 @@ func RunComponentFixtures(t *testing.T, platform string) {
 			continue
 		}
 		t.Run(base, func(t *testing.T) {
+			// Fixtures are independent: each gets its own build
+			// directory and its own subprocesses, so the only shared
+			// state is the read-only sngl binary.
+			t.Parallel()
 			fpath := fixture
 			t.Run("native", func(t *testing.T) {
 				runComponentNative(t, bin, platform, fpath)
@@ -144,8 +176,17 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 		t.Skipf("fixture has ERROR directives — native target toolchain can't compile")
 	}
 
-	tmp := t.TempDir()
 	lang := langForPlatform(platform)
+
+	// A stable, key-derived directory rather than t.TempDir(): the Go build
+	// cache keys compile and link actions on the source directory, so a fresh
+	// temp dir recompiles and relinks byte-identical generated code on every
+	// run. See codegen.BuildDir.
+	tmp, release, err := codegen.BuildDir("fixture-native", platform, lang, fixture)
+	if err != nil {
+		t.Fatalf("build dir: %v", err)
+	}
+	t.Cleanup(release)
 
 	args := []string{"generate",
 		"--lang=" + lang,
@@ -156,15 +197,16 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 		fixture,
 	}
 	cmd := exec.Command(snglBin, args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
+	cmd.Env = snglEnv()
+	out, genErr := cmd.CombinedOutput()
+	if genErr != nil {
 		if reason, ok := unsupportedComponentReason(string(out)); ok {
 			t.Skip(reason)
 		}
 		if reason, ok := skipReasonFromOutput(string(out)); ok {
 			t.Skip(reason)
 		}
-		t.Fatalf("sngl generate: %v\n%s", err, out)
+		t.Fatalf("sngl generate: %v\n%s", genErr, out)
 	}
 
 	if err := runNativeTarget(t, platform, tmp); err != nil {
@@ -194,6 +236,7 @@ func runComponentAgent(t *testing.T, snglBin, platform, fixture string) {
 
 	args := []string{"test", "--platform=" + platform, fixture}
 	cmd := exec.Command(snglBin, args...)
+	cmd.Env = snglEnv()
 	out, err := cmd.CombinedOutput()
 	outStr := string(out)
 	if err != nil {
@@ -379,16 +422,19 @@ func runNativeTarget(t *testing.T, platform, dir string) error {
 // Returns *skipErr when the output reveals a missing native dep (e.g. gtk4
 // pkg-config).
 func runGoTest(dir string) error {
-	if err := writeTempGoMod(dir); err != nil {
+	needTidy, err := codegen.WriteGoMod(dir, "", "")
+	if err != nil {
 		return err
 	}
-	tidy := exec.Command("go", "mod", "tidy")
-	tidy.Dir = dir
-	if out, err := tidy.CombinedOutput(); err != nil {
-		if reason, ok := skipReasonFromOutput(string(out)); ok {
-			return &skipErr{reason: reason}
+	if needTidy {
+		tidy := exec.Command("go", "mod", "tidy")
+		tidy.Dir = dir
+		if out, err := tidy.CombinedOutput(); err != nil {
+			if reason, ok := skipReasonFromOutput(string(out)); ok {
+				return &skipErr{reason: reason}
+			}
+			return fmt.Errorf("go mod tidy: %v\n%s", err, out)
 		}
-		return fmt.Errorf("go mod tidy: %v\n%s", err, out)
 	}
 	test := exec.Command("go", "test", "-trimpath", "./...")
 	test.Dir = dir
@@ -399,23 +445,6 @@ func runGoTest(dir string) error {
 		return fmt.Errorf("go test: %v\n%s", err, out)
 	}
 	return nil
-}
-
-// Mirrors codegen/lang/golang/launcher.go:writeTestGoMod, host-discovered
-// replace directives included, so the helper builds what the launcher would.
-func writeTempGoMod(dir string) error {
-	goVersion, extra := codegen.DetectHostGoMod()
-	if goVersion == "" {
-		goVersion = "1.23"
-	}
-	mod := fmt.Sprintf("module tmp\n\ngo %s\n", goVersion)
-	if extra != "" {
-		mod += "\n" + extra
-		if !strings.HasSuffix(mod, "\n") {
-			mod += "\n"
-		}
-	}
-	return os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644)
 }
 
 // runGradleTest runs `./gradlew :app:testDebugUnitTest` in dir, pinned to a

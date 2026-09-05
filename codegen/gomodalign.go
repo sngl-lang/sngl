@@ -1,8 +1,12 @@
 package codegen
 
 import (
+	"fmt"
+	goparser "go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"golang.org/x/mod/modfile"
@@ -118,4 +122,261 @@ func findGoMod(start string) string {
 		}
 		dir = parent
 	}
+}
+
+// WriteGoMod synthesises go.mod (and go.sum) for a temporary module in dir
+// that builds SNGL-generated Go code.
+//
+// It seeds the module with the host module's full require list and go.sum
+// rather than leaving resolution to `go mod tidy`. Two reasons:
+//
+//   - Correctness: tidy resolves each dependency at its latest version, so
+//     generated code was compiled against a different fyne/bubbletea than
+//     the repo itself pins. Copying the host requires makes the generated
+//     program see exactly the versions the compiler was built against.
+//   - Speed: aligned versions share compiled artifacts with the host build
+//     cache instead of duplicating the whole dependency tree, and the tidy
+//     round-trip (~0.3s per invocation) disappears from every generate,
+//     run, build and test.
+//
+// needTidy reports whether the generated sources import a module the host
+// go.mod does not provide; callers must run `go mod tidy` in that case.
+// It is also true when no host go.mod could be found, in which case the
+// go.mod written is the bare minimum tidy needs to start from.
+func WriteGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err error) {
+	mf := hostModFile()
+	if mf == nil {
+		detVer, detExtra := DetectHostGoMod()
+		if goVersion == "" {
+			goVersion = detVer
+		}
+		if goVersion == "" {
+			goVersion = "1.23"
+		}
+		if extraDirectives == "" {
+			extraDirectives = detExtra
+		}
+		mod := fmt.Sprintf("module tmp\n\ngo %s\n", goVersion)
+		if extraDirectives != "" {
+			mod += "\n" + strings.TrimRight(extraDirectives, "\n") + "\n"
+		}
+		return true, os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644)
+	}
+
+	if goVersion == "" && mf.Go != nil {
+		goVersion = mf.Go.Version
+	}
+	if goVersion == "" {
+		goVersion = "1.23"
+	}
+
+	modRoot := filepath.Dir(mf.Syntax.Name)
+	// Caller-supplied directives win over the host-derived ones for the
+	// same replaced module, so `--opt goModExtra=...` stays authoritative.
+	extraLines, overridden := splitDirectives(extraDirectives)
+	var replaces []string
+	for _, line := range hostReplaceLines(mf, modRoot) {
+		if overridden[replaceOldPath(line)] {
+			continue
+		}
+		replaces = append(replaces, line)
+	}
+	replaces = append(replaces, extraLines...)
+
+	required := map[string]bool{}
+	type req struct{ path, version string }
+	requires := make([]req, 0, len(mf.Require)+1)
+	for _, r := range mf.Require {
+		required[r.Mod.Path] = true
+		requires = append(requires, req{r.Mod.Path, r.Mod.Version})
+	}
+	// A replace only takes effect for a module the main module also
+	// requires; the host go.mod may replace modules it reaches only
+	// indirectly, so add a placeholder require for those.
+	for _, line := range replaces {
+		p := replaceOldPath(line)
+		if p == "" || required[p] {
+			continue
+		}
+		required[p] = true
+		requires = append(requires, req{p, "v0.0.0"})
+	}
+
+	var b strings.Builder
+	b.WriteString("module tmp\n\n")
+	fmt.Fprintf(&b, "go %s\n", goVersion)
+	if len(requires) > 0 {
+		b.WriteString("\nrequire (\n")
+		for _, r := range requires {
+			fmt.Fprintf(&b, "\t%s %s\n", r.path, r.version)
+		}
+		b.WriteString(")\n")
+	}
+	for _, line := range replaces {
+		b.WriteString("\n" + line + "\n")
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(b.String()), 0o644); err != nil {
+		return true, err
+	}
+	// go.sum must cover the copied requires, otherwise every build fails
+	// with "missing go.sum entry".
+	sum, err := os.ReadFile(filepath.Join(modRoot, "go.sum"))
+	if err == nil {
+		if err := os.WriteFile(filepath.Join(dir, "go.sum"), sum, 0o644); err != nil {
+			return true, err
+		}
+	}
+
+	return !hostCoversImports(dir, mf), nil
+}
+
+// hostModFile locates and parses the host go.mod, or returns nil.
+func hostModFile() *modfile.File {
+	var modPath string
+	if env := os.Getenv("SNGL_HOST_GO_MOD"); env != "" {
+		if info, err := os.Stat(env); err == nil && !info.IsDir() {
+			modPath = env
+		}
+	}
+	if modPath == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil
+		}
+		modPath = findGoMod(cwd)
+	}
+	if modPath == "" {
+		return nil
+	}
+	data, err := os.ReadFile(modPath)
+	if err != nil {
+		return nil
+	}
+	mf, err := modfile.Parse(modPath, data, nil)
+	if err != nil {
+		return nil
+	}
+	return mf
+}
+
+// hostReplaceLines renders the replace directives a temp module needs: the
+// host's own replaces (filesystem targets made absolute) plus a replace
+// pointing the sngl module at the host root when the host *is* sngl.
+func hostReplaceLines(mf *modfile.File, modRoot string) []string {
+	var lines []string
+	if mf.Module != nil && mf.Module.Mod.Path == snglModulePath {
+		lines = append(lines, "replace "+snglModulePath+" => "+modRoot)
+	}
+	for _, r := range mf.Replace {
+		newPath := r.New.Path
+		if r.New.Version == "" && !filepath.IsAbs(newPath) {
+			newPath = filepath.Join(modRoot, newPath)
+		}
+		line := "replace " + r.Old.Path
+		if r.Old.Version != "" {
+			line += " " + r.Old.Version
+		}
+		line += " => " + newPath
+		if r.New.Version != "" {
+			line += " " + r.New.Version
+		}
+		lines = append(lines, line)
+	}
+	return lines
+}
+
+// hostCoversImports reports whether every non-stdlib import in dir's Go
+// files is provided by a module the host go.mod requires or replaces.
+func hostCoversImports(dir string, mf *modfile.File) bool {
+	imports, err := scanGoImports(dir)
+	if err != nil {
+		return false
+	}
+	provided := make([]string, 0, len(mf.Require)+len(mf.Replace)+1)
+	provided = append(provided, snglModulePath)
+	for _, r := range mf.Require {
+		provided = append(provided, r.Mod.Path)
+	}
+	for _, r := range mf.Replace {
+		provided = append(provided, r.Old.Path)
+	}
+	for imp := range imports {
+		if isStdlibImport(imp) {
+			continue
+		}
+		covered := false
+		for _, p := range provided {
+			if imp == p || strings.HasPrefix(imp, p+"/") {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			return false
+		}
+	}
+	return true
+}
+
+// isStdlibImport reports whether path names a standard-library package.
+// Anything whose first path element carries a dot is a module path.
+func isStdlibImport(path string) bool {
+	first, _, _ := strings.Cut(path, "/")
+	return !strings.Contains(first, ".")
+}
+
+// scanGoImports parses the import blocks of every .go file under dir.
+func scanGoImports(dir string) (map[string]bool, error) {
+	out := map[string]bool{}
+	fset := token.NewFileSet()
+	err := filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(p, ".go") {
+			return nil
+		}
+		f, perr := goparser.ParseFile(fset, p, nil, goparser.ImportsOnly)
+		if perr != nil {
+			return perr
+		}
+		for _, spec := range f.Imports {
+			v, uerr := strconv.Unquote(spec.Path.Value)
+			if uerr != nil {
+				return uerr
+			}
+			out[v] = true
+		}
+		return nil
+	})
+	return out, err
+}
+
+// splitDirectives breaks caller-supplied go.mod text into individual
+// non-empty lines and reports which module paths its replace directives
+// target.
+func splitDirectives(extra string) (lines []string, replaced map[string]bool) {
+	replaced = map[string]bool{}
+	for line := range strings.SplitSeq(extra, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		lines = append(lines, line)
+		if p := replaceOldPath(line); p != "" {
+			replaced[p] = true
+		}
+	}
+	return lines, replaced
+}
+
+// replaceOldPath returns the replaced module path of a `replace X => Y`
+// directive line, or "" when the line is not a replace.
+func replaceOldPath(line string) string {
+	fields := strings.Fields(line)
+	if len(fields) < 2 || fields[0] != "replace" {
+		return ""
+	}
+	return fields[1]
 }
