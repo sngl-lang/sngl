@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/internal/build"
 	"os"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/interprun"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
@@ -38,11 +39,15 @@ func runRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sngl-run-*")
+	// Stable, key-derived build directory so repeated invocations reuse
+	// the Go build cache instead of relinking from scratch every time.
+	// See codegen.BuildDir.
+	key := []string{cliLang, cliPlat, strings.Join(optSlice, ","), file}
+	tmpDir, release, err := codegen.BuildDir("run", key...)
 	if err != nil {
-		return fmt.Errorf("creating temp directory: %w", err)
+		return fmt.Errorf("creating build directory: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer release()
 
 	return runPipeline(cmd, []string{file}, pipelineOpts{
 		cliLang: cliLang,

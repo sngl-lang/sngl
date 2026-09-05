@@ -2,7 +2,9 @@ package parser
 
 import (
 	"fmt"
+	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // interpFrame tracks one level of string interpolation nesting.
@@ -18,6 +20,12 @@ type interpFrame struct {
 //   - Non-base-10 integer literals (0x…, 0o…, 0b…) are rejected (ILLEGAL).
 //   - true, false, null are keyword tokens (KW_TRUE/KW_FALSE/KW_NULL).
 type lexer struct {
+	// src is the original source; input is it decoded to runes, which the
+	// scanning below indexes directly. wideAt/wideCum record where the two
+	// indexings diverge, so text can slice src directly — see text.
+	src              string
+	wideAt           []int32
+	wideCum          []int32
 	input            []rune
 	pos              int
 	line             int
@@ -31,7 +39,49 @@ type lexer struct {
 }
 
 func newLexer(src string) *lexer {
-	return &lexer{input: []rune(src), line: 1, col: 1}
+	runes := []rune(src)
+	l := &lexer{src: src, input: runes, line: 1, col: 1}
+	if len(runes) != len(src) {
+		// Record only the runes that are wider than a byte, and the running
+		// total of the extra bytes they contribute. Ranging a string yields
+		// each rune's byte index, so this costs one pass and no decoding of
+		// its own. A dense rune-to-byte table would be four bytes per rune of
+		// source; this is four per *multi-byte* rune, and real documents have
+		// a handful.
+		extra, n := int32(0), int32(0)
+		for _, r := range src {
+			if w := int32(utf8.RuneLen(r)); w > 1 {
+				extra += w - 1
+				l.wideAt = append(l.wideAt, n)
+				l.wideCum = append(l.wideCum, extra)
+			}
+			n++
+		}
+	}
+	return l
+}
+
+// byteOff maps a rune offset in input to its byte offset in src.
+func (l *lexer) byteOff(runeIdx int) int {
+	if len(l.wideAt) == 0 {
+		return runeIdx
+	}
+	// Number of multi-byte runes strictly before runeIdx, and with them the
+	// extra bytes they occupy.
+	k := sort.Search(len(l.wideAt), func(i int) bool { return int(l.wideAt[i]) >= runeIdx })
+	if k == 0 {
+		return runeIdx
+	}
+	return runeIdx + int(l.wideCum[k-1])
+}
+
+// text returns the source between two rune offsets, as a substring of the
+// original — no allocation, no UTF-8 re-encoding.
+//
+// Every identifier, keyword and comment in a document goes through here, and
+// string(l.input[a:b]) copied and re-encoded each one.
+func (l *lexer) text(start, end int) string {
+	return l.src[l.byteOff(start):l.byteOff(end)]
 }
 
 func (l *lexer) peek() rune {
@@ -66,7 +116,7 @@ func (l *lexer) advance() rune {
 
 func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
 	if typ == ILLEGAL {
-		// encode() drops ILLEGAL from the stream the parser sees, so an
+		// scanEncoded drops ILLEGAL from the stream the parser sees, so an
 		// ILLEGAL token with no lex error beside it is a failure nobody
 		// reports: the parse continues past the bad input and fails somewhere
 		// else, or succeeds. illegal() is the only way to build one.
@@ -81,7 +131,7 @@ func (l *lexer) tok(typ TokenType, lit string, line, col int) Token {
 
 // illegal records a positioned lex error and returns the ILLEGAL token for it.
 //
-// Both halves matter: encode() drops ILLEGAL tokens from the stream the parser
+// Both halves matter: scanEncoded drops ILLEGAL tokens from the stream the parser
 // sees, so a token returned without the error is a failure nobody reports at
 // the place it happened -- an unterminated string was blamed on the first
 // string in the file, because the parse then ran to EOF.
@@ -139,7 +189,7 @@ func (l *lexer) NextToken() Token {
 			for l.pos < len(l.input) && l.input[l.pos] != '\n' {
 				l.advance()
 			}
-			return l.tok(LINE_COMMENT, string(l.input[start:l.pos]), startLine, startCol)
+			return l.tok(LINE_COMMENT, l.text(start, l.pos), startLine, startCol)
 		}
 
 		// Block comment (nested)
@@ -167,7 +217,7 @@ func (l *lexer) NextToken() Token {
 			if depth > 0 {
 				return l.illegal("unterminated block comment", startLine, startCol)
 			}
-			return l.tok(BLOCK_COMMENT, string(l.input[start:l.pos]), startLine, startCol)
+			return l.tok(BLOCK_COMMENT, l.text(start, l.pos), startLine, startCol)
 		}
 
 		// #[ — macro attribute open; #hex — color; #id — element reference
@@ -392,7 +442,7 @@ func (l *lexer) scanIdent(startLine, startCol int) Token {
 		l.pos++
 		l.col++
 	}
-	lit := string(l.input[start:l.pos])
+	lit := l.text(start, l.pos)
 	return l.tok(LookupIdent(lit), lit, startLine, startCol)
 }
 
@@ -696,7 +746,7 @@ func (l *lexer) scanHashToken(startLine, startCol int) Token {
 		l.pos++
 		l.col++
 	}
-	name := string(l.input[start:l.pos])
+	name := l.text(start, l.pos)
 	if len(name) == 0 {
 		return l.illegal(`"#" names nothing: a color literal or an element reference follows it`, startLine, startCol)
 	}
@@ -721,7 +771,50 @@ func TokenizeNativeValue(src string) (tokens []Token, errs []string) {
 	return scanAll(newLexer(src), []Token{{Type: NATIVE_VALUE, Line: 1, Column: 1}})
 }
 
+// scanEncoded lexes src straight into the three things the parser needs: the
+// byte stream the generated parser reads, the tokens that stream indexes, and
+// the comments the AST builder reattaches.
+//
+// Producing them in the scan rather than walking a complete []Token afterwards
+// removes a pass and a second full copy of the token slice — for a large
+// document that copy alone was most of a megabyte of garbage, allocated only
+// to drop the comments out of it.
+func scanEncoded(l *lexer, seed []Token) (stream []byte, filtered, comments []Token, errs []string) {
+	est := len(l.input)/5 + 16
+	stream = make([]byte, 0, 2*est)
+	filtered = make([]Token, 0, est)
+
+	for _, tok := range seed {
+		stream = append(stream, byte(tok.Type), streamSep)
+		filtered = append(filtered, tok)
+	}
+	for {
+		tok := l.NextToken()
+		switch tok.Type {
+		case EOF:
+			// Not emitted: egg detects the end from stream exhaustion.
+			return stream, filtered, comments, l.errors
+		case ILLEGAL:
+			// Skipped; the caller reports l.errors separately.
+		case LINE_COMMENT, BLOCK_COMMENT:
+			comments = append(comments, tok)
+		default:
+			stream = append(stream, byte(tok.Type), streamSep)
+			filtered = append(filtered, tok)
+		}
+	}
+}
+
 func scanAll(l *lexer, tokens []Token) ([]Token, []string) {
+	// Size the slice up front. SNGL averages a token every five or six
+	// bytes, so growing from nil re-allocates and copies a dozen times for
+	// a large document; that churn was the single largest source of garbage
+	// in a parse — more than the AST it produces.
+	if want := len(tokens) + len(l.input)/5 + 16; cap(tokens) < want {
+		grown := make([]Token, len(tokens), want)
+		copy(grown, tokens)
+		tokens = grown
+	}
 	for {
 		tok := l.NextToken()
 		tokens = append(tokens, tok)
