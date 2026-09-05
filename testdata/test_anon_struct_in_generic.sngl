@@ -1,0 +1,23 @@
+// An anonymous literal inside a generic function. Its field type is the
+// unbound parameter, and instantiation never rewrites a declaration, so
+// interning one here would give `wrap(1)` and `wrap("x")` a single type whose
+// field is `T`. The literal stays the decl-less struct it was instead.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+func wrap<T>(v T) => {item=v}
+
+component main {
+    var (
+        n = wrap(1)
+        s = wrap("x")
+    )
+
+    text(value=string(n.item))
+}
+
+func testTheGenericLiteralCarriesItsValue(t Test, c main) {
+    t.assert(c.n.item == 1)
+    t.assert(c.s.item == "x")
+}

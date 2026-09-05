@@ -275,20 +275,15 @@ func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
 	}
 }
 
-// resolveAnonStruct types a written `struct { … }`. It routes through the same
-// interning a literal does, so the type position and the value position name
-// one declaration and `f(struct { a int }{a = 1})` type-checks against a
-// parameter spelled `struct { a int }`.
-//
-// A generic one is left alone: a type parameter has no canonical spelling to
-// key on until it is bound, and nothing declares an anonymous generic struct
-// today because there is no syntax to instantiate one.
+// resolveAnonStruct types a written `struct { … }` through the same interning
+// a literal uses, so the two positions name one declaration. A generic one is
+// left alone: a type parameter has no canonical spelling until it is bound.
 func (c *checker) resolveAnonStruct(s *ast.StructDef) *ir.Type {
 	sd := c.buildStructDef(s)
 	if len(sd.TypeParams) > 0 {
 		return sd.SymType()
 	}
-	return c.internAnonStruct(s.Pos, sd.Fields).SymType()
+	return c.internAnonStruct(sd.Fields).SymType()
 }
 
 func (c *checker) resolveAnonEnum(e *ast.EnumDef) *ir.Type {

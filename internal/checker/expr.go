@@ -1784,10 +1784,8 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			return &ir.Literal{Type: TypDyn}
 		}
 	} else if x.Anon != nil {
-		// `struct { a int }{a = 1}`: the literal spells its own type, so it
-		// takes precedence over whatever was expected. The declaration is the
-		// interned one, which is what makes it the same type as a parameter
-		// written `struct { a int }`.
+		// `struct { a int }{a = 1}` spells its own type, which wins over
+		// whatever was expected.
 		if t := c.resolveAnonStruct(x.Anon); t.Kind == ir.TypeStruct {
 			sd, _ = t.Decl.(*ir.StructDef)
 		}
@@ -1873,16 +1871,12 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		fields = withFieldDefaults(sd, fields)
 		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
 	}
-	// Nothing named a type, so the literal's own values do: one interned
-	// declaration per canonical field signature. Two spellings of the same set
-	// of (name, type) are the same declaration and so the same type — and a
-	// declared struct with those fields is still a different one, because
-	// identity is per declaration and this is a declaration of its own.
+	// Nothing named a type, so the literal's own values do.
 	anonFields, ok := c.anonFieldsFromInits(fields)
 	if !ok {
 		return &ir.StructLit{AST: x, Type: &ir.Type{Kind: ir.TypeStruct}, Fields: fields}
 	}
-	anon := c.internAnonStruct(x.Pos, anonFields)
+	anon := c.internAnonStruct(anonFields)
 	return &ir.StructLit{AST: x, Type: anon.SymType(), Def: anon, Fields: fields}
 }
 

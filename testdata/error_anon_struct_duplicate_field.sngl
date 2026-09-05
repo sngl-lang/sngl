@@ -1,0 +1,11 @@
+// A field written twice has no one type for the declaration to carry, and the
+// literal has one initializer more than the struct has fields. Reported rather
+// than typed `dyn`, which is what giving up here would mean.
+
+import . "sngl:ui"
+
+component main {
+    var s = {a=1, a=2} // ERROR(check) "duplicate field \"a\" in struct literal"
+
+    text(value=string(s.a))
+}

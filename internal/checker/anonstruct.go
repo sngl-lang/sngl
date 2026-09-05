@@ -10,25 +10,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// anonStructPrefix is the namespace the interned declarations are named in.
-// The compiler's other synthesized names (`__cse0`, `__merge_`, `__ran0`)
-// share the double underscore.
 const anonStructPrefix = "__anon_"
 
-// rejectReservedName reports a name that trespasses on the namespace the
-// interned anonymous structs are named in, and says whether it did.
-//
-// Reserving it is what makes a synthesized name unable to collide with a
-// declared one: the synthesized declaration is registered in pkg.Structs
-// without being bound in any scope, so nothing looks it up and a redeclaration
-// is never reported -- the two names simply meet in the generated code, where
-// a local `__anon_a_b_8dc8a4 := 5` shadows the type of the same name and the
-// literal beside it stops compiling.
-//
-// Every binding goes through one of two funnels and both ask here: file scope
-// through claimTopLevel, and everything a body binds -- a local, a parameter,
-// a loop variable -- through checker.declare. The rule is the prefix and
-// nothing else, so it is written once.
+// rejectReservedName keeps a program out of the namespace the interned
+// declarations are named in. Nothing else can: they are registered in
+// pkg.Structs without being bound in any scope, so no lookup ever meets one.
+// Both binding funnels ask -- claimTopLevel and checker.declare.
 func (c *checker) rejectReservedName(pos ast.Pos, name string) bool {
 	if !strings.HasPrefix(name, anonStructPrefix) {
 		return false
@@ -37,38 +24,69 @@ func (c *checker) rejectReservedName(pos ast.Pos, name string) bool {
 	return true
 }
 
-// anonSignature is the canonical spelling of a set of fields: name and type,
-// sorted by name. Two anonymous structs are the same type when they agree on
-// it, so field order is not part of a type's identity.
-func anonSignature(fields []*ir.StructField) string {
-	parts := make([]string, 0, len(fields))
-	for _, f := range fields {
-		if f == nil {
-			continue
-		}
-		parts = append(parts, f.Name+" "+f.Type.String())
+// anonSignature is the canonical spelling of a field set, in name order, so
+// field order is not part of a type's identity.
+func anonSignature(canon []*ir.StructField) string {
+	parts := make([]string, len(canon))
+	for i, f := range canon {
+		parts[i] = f.Name + " " + anonTypeKey(f.Type)
 	}
-	slices.Sort(parts)
 	return strings.Join(parts, "; ")
 }
 
-// anonStructName is the declaration's name in generated code: the field names
-// for a reader, and six hex digits of the signature so that two structs whose
-// fields are named alike but typed differently stay apart. It has to be one
-// identifier in Go, Kotlin and JS at once, which leaves nothing but letters,
-// digits and underscore to build it from.
-func anonStructName(fields []*ir.StructField, sig string) string {
+// anonTypeKey spells a type for the signature. Type.String() alone would not:
+// it prints a named type unqualified, so a program's own `Style` and
+// `sngl:ui`'s read alike.
+func anonTypeKey(t *ir.Type) string {
+	var b strings.Builder
+	b.WriteString(t.String())
+	writeDeclPkgs(&b, t)
+	return b.String()
+}
+
+func writeDeclPkgs(b *strings.Builder, t *ir.Type) {
+	if t == nil {
+		return
+	}
+	if pkg, ok := declPkgURI(t.Decl); ok {
+		b.WriteString("@")
+		b.WriteString(pkg)
+	}
+	for _, e := range t.Elems {
+		writeDeclPkgs(b, e)
+	}
+	if t.Sig != nil {
+		for _, p := range t.Sig.Params {
+			writeDeclPkgs(b, p.Type)
+		}
+		writeDeclPkgs(b, t.Sig.Return)
+	}
+}
+
+// declPkgURI is the package a named declaration records, empty for a program's
+// own -- the same blind spot ir.sameDecl's name fallback has.
+func declPkgURI(sym ir.Symbol) (string, bool) {
+	switch d := sym.(type) {
+	case *ir.StructDef:
+		return d.Pkg, true
+	case *ir.EnumDef:
+		return d.Pkg, true
+	case *ir.UnitDef:
+		return d.Pkg, true
+	case *ir.Component:
+		return d.Pkg, true
+	}
+	return "", false
+}
+
+// anonStructName names the declaration in generated code. It must be one
+// identifier in Go, Kotlin and JS at once, which leaves only letters, digits
+// and underscore to build it from.
+func anonStructName(canon []*ir.StructField, sig string) string {
 	var b strings.Builder
 	b.WriteString(anonStructPrefix)
-	names := make([]string, 0, len(fields))
-	for _, f := range fields {
-		if f != nil {
-			names = append(names, f.Name)
-		}
-	}
-	slices.Sort(names)
-	for _, n := range names {
-		b.WriteString(n)
+	for _, f := range canon {
+		b.WriteString(f.Name)
 		b.WriteString("_")
 	}
 	sum := sha256.Sum256([]byte(sig))
@@ -77,29 +95,23 @@ func anonStructName(fields []*ir.StructField, sig string) string {
 }
 
 // internAnonStruct returns the one *ir.StructDef this package uses for an
-// anonymous struct with these fields, synthesizing and registering it the
-// first time the signature is seen.
-//
-// Interning is what keeps `ir.TypeStruct` meaning "a struct type names a
-// declaration": an anonymous struct used to carry a nil Decl, so it had no
-// fields to select from, nothing to compare two values by, and no name a
-// backend could declare. Registering the result in pkg.Structs is the other
-// half — after the checker there is no such thing as an anonymous struct, only
-// an ordinary named one, so no backend grows a case for it.
-//
-// Identity is per package, like every other declaration's: the decl is
-// registered in the package being checked, and a second package interning the
-// same signature gets its own so that its own codegen emits it.
-func (c *checker) internAnonStruct(pos ast.Pos, fields []*ir.StructField) *ir.StructDef {
-	canon := slices.Clone(fields)
-	slices.SortStableFunc(canon, func(a, b *ir.StructField) int {
+// anonymous struct with these fields, registering it in pkg.Structs the first
+// time. Keyed by package as well as signature: `sngl:builtin` interns
+// `struct {}` for `effect<T = struct {}>` before a program is parsed, and
+// sharing that would hand the program a decl its own codegen never emits.
+func (c *checker) internAnonStruct(fields []*ir.StructField) *ir.StructDef {
+	canon := slices.SortedStableFunc(slices.Values(fields), func(a, b *ir.StructField) int {
 		return strings.Compare(a.Name, b.Name)
 	})
 	sig := anonSignature(canon)
+	pkg := c.declPkg()
 	if c.anonStructs == nil {
-		c.anonStructs = map[string]*ir.StructDef{}
+		c.anonStructs = map[*ir.Package]map[string]*ir.StructDef{}
 	}
-	if sd, ok := c.anonStructs[sig]; ok {
+	if c.anonStructs[pkg] == nil {
+		c.anonStructs[pkg] = map[string]*ir.StructDef{}
+	}
+	if sd, ok := c.anonStructs[pkg][sig]; ok {
 		return sd
 	}
 	sd := &ir.StructDef{
@@ -108,26 +120,24 @@ func (c *checker) internAnonStruct(pos ast.Pos, fields []*ir.StructField) *ir.St
 		Fields: canon,
 		Anon:   true,
 	}
-	c.anonStructs[sig] = sd
-	c.declPkg().Structs = append(c.declPkg().Structs, sd)
+	c.anonStructs[pkg][sig] = sd
+	pkg.Structs = append(pkg.Structs, sd)
 	return sd
 }
 
-// anonFieldsFromInits types an anonymous struct literal by its own values: one
-// field per initializer, in written order, which internAnonStruct then sorts.
-//
-// It reports nothing and gives up instead, leaving the literal the decl-less
-// struct it was before interning existed. A spread is the case that matters:
-// `style={...style}` in a platform override is written where the prop's own
-// declaration supplies the field set, and the field set is exactly what a
-// spread does not name. Whatever the value the checker has for a name or a
-// type there, none of it is this function's to complain about — a bad one is
-// already reported where it was checked.
+// anonFieldsFromInits types an anonymous struct literal by its own values.
+// Giving up leaves it the decl-less struct it was. A spread names no field
+// set; an unbound type parameter has no one type, and interning it would give
+// every instantiation one declaration whose field is `T`.
 func (c *checker) anonFieldsFromInits(inits []ir.FieldInit) ([]*ir.StructField, bool) {
 	fields := make([]*ir.StructField, 0, len(inits))
 	seen := map[string]bool{}
 	for _, fi := range inits {
-		if fi.Spread || fi.Name == "" || seen[fi.Name] {
+		if fi.Spread || fi.Name == "" {
+			return nil, false
+		}
+		if seen[fi.Name] {
+			c.error(fi.NamePos, "duplicate field %q in struct literal", fi.Name)
 			return nil, false
 		}
 		seen[fi.Name] = true
@@ -135,7 +145,29 @@ func (c *checker) anonFieldsFromInits(inits []ir.FieldInit) ([]*ir.StructField, 
 		if t == nil || t.Kind == ir.TypeInvalid || t.Kind == ir.TypeVoid || t.Kind == ir.TypeDyn {
 			return nil, false
 		}
+		if hasTypeParam(t) {
+			return nil, false
+		}
 		fields = append(fields, &ir.StructField{Name: fi.Name, Type: t})
 	}
 	return fields, true
+}
+
+func hasTypeParam(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Kind == ir.TypeTypeParam {
+		return true
+	}
+	if slices.ContainsFunc(t.Elems, hasTypeParam) {
+		return true
+	}
+	if t.Sig != nil {
+		if slices.ContainsFunc(t.Sig.Params, func(p *ir.Param) bool { return hasTypeParam(p.Type) }) {
+			return true
+		}
+		return hasTypeParam(t.Sig.Return)
+	}
+	return false
 }

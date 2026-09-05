@@ -364,11 +364,9 @@ type checker struct {
 	// because type identity is per-declaration.
 	macroStruct *ir.StructDef
 
-	// anonStructs interns one synthesized declaration per canonical anonymous
-	// struct signature; see internAnonStruct. Per checker, because the
-	// declaration it hands back is registered in this checker's package and a
-	// backend emits it from there.
-	anonStructs map[string]*ir.StructDef
+	// anonStructs interns one synthesized declaration per package and
+	// canonical anonymous struct signature; see internAnonStruct.
+	anonStructs map[*ir.Package]map[string]*ir.StructDef
 
 	// builtinPkg is sngl:builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
@@ -688,12 +686,9 @@ func (c *checker) fileOf(pos ast.Pos) func() {
 }
 
 // declare binds sym in the current scope, reporting a name already bound there
-// instead of letting the later binding silently win.
-// declare binds a symbol in the current scope: everything a body introduces --
-// a local, a parameter, a loop variable, a component's own vars and funcs. The
-// reserved name is reported and then bound anyway, because the binding is what
-// keeps the rest of the body checkable; refusing it would answer one error
-// with a name-not-found at every use.
+// instead of letting the later binding silently win. A reserved name is
+// reported and then bound anyway, so one error does not become a
+// name-not-found at every use.
 func (c *checker) declare(pos ast.Pos, sym ir.Symbol) {
 	c.rejectReservedName(pos, sym.SymName())
 	if err := c.scope.Declare(sym); err != nil {
@@ -1454,11 +1449,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	for _, sd := range src.Structs {
-		// An interned anonymous struct is a declaration nobody named, so it is
-		// not part of what a package exports. Binding it would put a name no
-		// program may declare (see claimTopLevel) where a dot import could
-		// resolve it, and two packages interning one signature would collide
-		// over a name neither of them wrote.
+		// Nobody named it, so it is not part of what the package exports.
 		if sd.Anon {
 			continue
 		}
