@@ -33,11 +33,15 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	outDir, _ := cmd.Flags().GetString("out")
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
 
-	tmpDir, err := os.MkdirTemp("", "sngl-build-*")
+	// Stable, key-derived build directory so repeated invocations reuse
+	// the Go build cache instead of relinking from scratch every time.
+	// See codegen.BuildDir.
+	key := append([]string{cliLang, cliPlat, strings.Join(optSlice, ",")}, args...)
+	tmpDir, release, err := codegen.BuildDir("build", key...)
 	if err != nil {
-		return fmt.Errorf("creating temp directory: %w", err)
+		return fmt.Errorf("creating build directory: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer release()
 
 	// Duplicates a parse+check, but keeps onTarget local; the alternative is a
 	// post-resolve callback out of runPipeline, for one consumer.

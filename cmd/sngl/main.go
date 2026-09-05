@@ -136,9 +136,13 @@ func proxyToGoTool() {
 
 	fmt.Fprintf(os.Stderr, "sngl: proxying %s -> %s\n", selfPath, toolBin)
 
-	args := append([]string{goPath, "tool", "sngl"}, os.Args[1:]...)
+	// Exec the resolved tool binary directly rather than going back
+	// through `go tool sngl`. `go tool -n` already built it and printed
+	// an up-to-date path, so a second `go` invocation would redo that
+	// work for nothing — about 90ms and 0.28s of CPU per call.
+	args := append([]string{toolBin}, os.Args[1:]...)
 	env := append(os.Environ(), "SNGL_NO_PROXY=1")
-	if err := syscall.Exec(goPath, args, env); err != nil {
+	if err := syscall.Exec(toolBin, args, env); err != nil {
 		fmt.Fprintf(os.Stderr, "sngl: proxy exec failed: %v\n", err)
 	}
 }
