@@ -1,0 +1,46 @@
+# A handler inside a view loop reads the loop's own variable, on bubbletea.
+#
+# The keyboard path emits a second loop over the same list to find the focused
+# iteration, and it took For.Key for the index -- which it is only in the
+# two-variable head. In `for var it = items` Key is the element, so the
+# activation loop bound `it` to an int while the render loop bound it to the
+# string, and the generated Go did not compile. passFocusOrder now gives every
+# focus loop an ordinal of its own, so Key is the index in all three heads.
+#
+# This has to be a compiled run: the interpreter never emits either loop, so
+# `--platform none` passes under the bug.
+
+[!exec:go] skip 'go toolchain required'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { go { bubbletea } }
+
+component main {
+    var items list<string> = ["a", "b"]
+    var picked = ""
+    var hits = 0
+
+    vbox {
+        for var it = items {
+            button(text=it, @click { picked = it })
+        }
+        for items {
+            button(text="any", @click { hits += 1 })
+        }
+        for var i, it = items {
+            button(text=it, @click { picked = "{i}:{it}" })
+        }
+    }
+    text(value=picked)
+}
+
+func testStartsEmpty(t Test, c main) {
+    t.assert(c.picked == "")
+    t.assert(c.hits == 0)
+}

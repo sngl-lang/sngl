@@ -91,24 +91,39 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 }
 
 // ensureLoopKey makes sure the for-loop has an integer key (index) variable
-// that can be compared against the cursor. If Key is empty we inject a
-// synthetic one so both the for-header and the __focused expression share it.
+// that can be compared against the cursor.
+//
+// Only the two-variable head already has one: For.Key is the index there, as
+// everywhere else in the compiler. In `for var x = xs` and in the head that
+// binds nothing, Key is the element or is empty, so the pass gives the loop an
+// ordinal by rewriting it into the two-variable form -- index in Key, whatever
+// it used to bind in Value. That keeps every consumer downstream reading Key
+// as the index it always is; taking the element's name for the cursor instead
+// is what emitted `m.__focusLoop0_cursor == it` against a string.
 func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
-	if ls.forStmt.Key == "" {
-		synthetic := fmt.Sprintf("__focusIdx%d", slotIdx)
-		ls.forStmt.Key = synthetic
-		ls.keyVar = &ir.LoopVar{Name: synthetic, Type: ir.TypInt}
-		ls.forStmt.KeySym = ls.keyVar
-	} else if ls.forStmt.KeySym != nil {
-		ls.keyVar = ls.forStmt.KeySym
-	} else {
-		// The checker sets KeySym whenever Key is named, so this is a loop
-		// some other pass built. Store the symbol as well as holding it: an
-		// identifier the pass emits below refers to this one, and a symbol
-		// the statement does not carry is a symbol nothing else can reach.
-		ls.keyVar = &ir.LoopVar{Name: ls.forStmt.Key, Type: ir.TypInt}
-		ls.forStmt.KeySym = ls.keyVar
+	f := ls.forStmt
+	if f.Value == "" {
+		// Whatever the head bound moves to the element position, keeping its
+		// symbol so the body's references still resolve. Value is "_" when it
+		// bound nothing, since the loop is a two-variable one from here on and
+		// the element position has to name something.
+		f.Value, f.ValueSym = f.Key, f.KeySym
+		if f.Value == "" {
+			f.Value = "_"
+		}
+		f.Key, f.KeySym = fmt.Sprintf("__focusIdx%d", slotIdx), nil
 	}
+	if f.KeySym != nil {
+		ls.keyVar = f.KeySym
+		return
+	}
+	// The checker sets KeySym whenever Key is named, so this is a loop some
+	// other pass built, or the index just synthesized above. Store the symbol
+	// as well as holding it: an identifier the pass emits below refers to this
+	// one, and a symbol the statement does not carry is a symbol nothing else
+	// can reach.
+	ls.keyVar = &ir.LoopVar{Name: f.Key, Type: ir.TypInt}
+	f.KeySym = ls.keyVar
 }
 
 // ---- slot gathering ----
