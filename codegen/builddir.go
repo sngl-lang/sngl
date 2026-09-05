@@ -36,17 +36,7 @@ var buildDirLocks sync.Map // dir -> *sync.Mutex
 // identifies the logical build within that kind (fixture path, platform,
 // lang, test group, …). The directory is emptied before it is returned, so
 // callers always start from a clean tree; only the path is reused.
-//
-// Set SNGL_BUILD_CACHE=0 to opt out and get a throwaway temp dir instead.
 func BuildDir(kind string, key ...string) (dir string, release func(), err error) {
-	if os.Getenv("SNGL_BUILD_CACHE") == "0" {
-		d, err := os.MkdirTemp("", "sngl-"+kind+"-*")
-		if err != nil {
-			return "", nil, err
-		}
-		return d, func() { os.RemoveAll(d) }, nil
-	}
-
 	root := filepath.Join(SnglCacheDir(), "build", kind)
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return "", nil, err

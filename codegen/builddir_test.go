@@ -3,7 +3,6 @@ package codegen
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -90,23 +89,5 @@ func TestBuildDir_EmptiesContents(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(again, "stale.go")); !os.IsNotExist(err) {
 		t.Errorf("stale.go survived into the reused dir (err = %v)", err)
-	}
-}
-
-func TestBuildDir_OptOutUsesTempDir(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("SNGL_BUILD_CACHE", "0")
-
-	dir, release, err := BuildDir("unit", "alpha")
-	if err != nil {
-		t.Fatalf("BuildDir: %v", err)
-	}
-	if strings.HasPrefix(dir, cache) {
-		t.Errorf("SNGL_BUILD_CACHE=0 still used the cache dir: %s", dir)
-	}
-	release()
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
-		t.Errorf("opt-out dir survived release (err = %v)", err)
 	}
 }
