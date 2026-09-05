@@ -3,7 +3,6 @@ package parser
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -231,18 +230,25 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 // triple-quoted string is not a gap, which is why the scan measures the token
 // it just passed rather than counting line numbers.
 func (b *builder) blankLines() map[int]bool {
-	toks := make([]Token, 0, len(b.filtered)+len(b.comments))
-	toks = append(toks, b.filtered...)
-	toks = append(toks, b.comments...)
-	sort.SliceStable(toks, func(i, j int) bool {
-		if toks[i].Line != toks[j].Line {
-			return toks[i].Line < toks[j].Line
-		}
-		return toks[i].Column < toks[j].Column
-	})
+	// filtered and comments are each already in source order, so this walks
+	// them together rather than concatenating and sorting: the copy was most
+	// of a megabyte on a large document, and the sort was O(n log n)
+	// reflective swaps over a sequence that was two sorted runs to begin with.
 	blank := map[int]bool{}
 	prevEnd := 0
-	for _, tok := range toks {
+	i, j := 0, 0
+	for i < len(b.filtered) || j < len(b.comments) {
+		var tok Token
+		switch {
+		case j == len(b.comments):
+			tok, i = b.filtered[i], i+1
+		case i == len(b.filtered):
+			tok, j = b.comments[j], j+1
+		case earlierInSource(b.filtered[i], b.comments[j]):
+			tok, i = b.filtered[i], i+1
+		default:
+			tok, j = b.comments[j], j+1
+		}
 		if prevEnd > 0 && tok.Line-prevEnd >= 2 {
 			blank[tok.Line-1] = true
 		}
@@ -251,6 +257,14 @@ func (b *builder) blankLines() map[int]bool {
 		}
 	}
 	return blank
+}
+
+// earlierInSource orders two tokens by where they were written.
+func earlierInSource(a, b Token) bool {
+	if a.Line != b.Line {
+		return a.Line < b.Line
+	}
+	return a.Column < b.Column
 }
 
 // injectComments inserts comment tokens into the statement lists they were
