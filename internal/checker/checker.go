@@ -260,9 +260,16 @@ type checker struct {
 
 	// topLevel records every name bound at file scope and how it got there,
 	// so two bindings of one name are reported instead of silently resolving
-	// by declaration order. Reset per file: an alias is one file's, and two
-	// files declaring one name is caught by the package scope instead.
+	// by declaration order. Reset per file: an alias is one file's.
 	topLevel map[string]topLevelBinding
+
+	// pkgDecls is where each name this package declares was declared. A
+	// declaration is package-wide while topLevel is per file, so this is what
+	// a redeclaration is measured against; without it the second registration
+	// replaced the first in the package scope and the error surfaced in the
+	// file that did nothing wrong. Per declaration set: enterPackage clears
+	// it for a library loading mid-pass1 and puts the program's back.
+	pkgDecls map[string]ast.Pos
 
 	// Effective replace map for this package: outer overrides layered over
 	// this package's own `import "p" => "url"` declarations. Populated at the
@@ -787,8 +794,12 @@ type topLevelBinding struct {
 	pos  ast.Pos
 }
 
-// claimTopLevel records name as bound at file scope and reports a conflict
-// with an existing binding. Returns false when the caller should skip binding.
+// claimTopLevel records name as bound and reports a conflict with an existing
+// binding. Returns false when the caller should skip binding.
+//
+// The scope a claim is held to is the scope the binding has: an import binds
+// into one file, a declaration into the whole package. So two claims are
+// compared in `topLevel` (per file) or in `pkgDecls` (per package) accordingly.
 //
 // A declaration written in the file wins over a dot-imported name — that is the
 // documented override story, and it is unambiguous because only one of the two
@@ -876,11 +887,34 @@ func isExportedMemberName(name string) bool {
 	return name != "" && name[0] != '_'
 }
 
+// claimPackage records name as declared in this package and reports a second
+// declaration of it, whichever file that one is in. Returns false when the
+// caller should bind nothing: the first declaration keeps the name, so the
+// diagnostic and the surviving symbol agree on which one that is.
+func (c *checker) claimPackage(name string, pos ast.Pos) bool {
+	if prev, dup := c.pkgDecls[name]; dup {
+		where := "package"
+		if prev.File == pos.File {
+			where = "file"
+		}
+		c.error(pos, "%q redeclared in this %s (previous declaration at %s)", name, where, prev)
+		return false
+	}
+	if c.pkgDecls == nil {
+		c.pkgDecls = map[string]ast.Pos{}
+	}
+	c.pkgDecls[name] = pos
+	return true
+}
+
 func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, path string) bool {
 	if name == "" || name == "_" {
 		return true
 	}
 	if c.rejectReservedName(pos, name) {
+		return false
+	}
+	if kind == bindDecl && !c.claimPackage(name, pos) {
 		return false
 	}
 	if c.topLevel == nil {
@@ -907,15 +941,6 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 	case kind == bindDot && prev.kind == bindDot:
 		c.error(pos, "dot import of %q lifts %q, already lifted by dot import of %q; qualify one of them with an alias",
 			path, name, prev.path)
-	case kind == bindDecl && prev.kind == bindDecl:
-		// The set this tracks is a document for a program and a package for a
-		// library, whose files are loaded as one, so the previous declaration
-		// may be in a sibling file. The position says which either way.
-		where := "file"
-		if c.inLibSource() {
-			where = "package"
-		}
-		c.error(pos, "%q redeclared in this %s (previous declaration at %s)", name, where, prev.pos)
 	case kind == bindAlias:
 		// An import whose alias is already taken. The alias is the caller's to
 		// choose, so naming the way out is more useful than naming the clash.
@@ -981,8 +1006,12 @@ func (c *checker) stmts() []ast.Stmt {
 func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedDocs, savedTopLevel := c.docs, c.topLevel
 	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
+	savedPkgDecls := c.pkgDecls
 	restoreFile := c.saveFile()
 	c.docs = docs
+	// A library package is its own declaration set: a name the program already
+	// declared must not read as a redeclaration inside lib/, or the reverse.
+	c.pkgDecls = nil
 	// Cleared rather than merely saved: pass1 accumulates into this one, so
 	// left in place the loaded package would append its own top-level body to
 	// the program's. No lib package writes one today, which is the only reason
@@ -992,6 +1021,7 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		restoreFile()
 		c.docs, c.topLevel = savedDocs, savedTopLevel
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
+		c.pkgDecls = savedPkgDecls
 	}
 }
 
@@ -1002,8 +1032,7 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 // before any const, var or func signature names one.
 //
 // `topLevel` is reset per file rather than per package: an alias is one file's
-// business, and two files declaring one name is reported by the package scope
-// (`declare`), not here.
+// business. Two files declaring one name is `pkgDecls`, which is not.
 func (c *checker) pass1() {
 	// Collect replace map for the whole package before any import is
 	// resolved, so declaration order of `import "p" => "url"` relative to bare

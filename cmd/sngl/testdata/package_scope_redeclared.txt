@@ -1,0 +1,108 @@
+# A declaration is package-wide, so two files of one package declaring one name
+# is a redeclaration -- not a silent last-wins whose consequences surface in
+# whichever file lost. This is the CLI's harness rather than a testdata fixture
+# because a `testdata/*.sngl` sample is one file, and the bug needs two in one
+# package.
+
+# The name goes to whichever file declared it first, and the error names both
+# positions. It is reported where the second declaration is written.
+! sngl check dup
+stderr 'dup/b\.sngl:3:1: "Style" redeclared in this package \(previous declaration at .*dup/a\.sngl:1:1\)'
+
+# The declaration that lost used to overwrite the one that won, so the only
+# diagnostic was a field error against the file that was self-consistent.
+! stderr 'no field "x"'
+
+# The same two declarations under filenames that load in the other order. The
+# winner used to be filename order, which flipped which file the error blamed;
+# now the redeclaration is reported either way.
+! sngl check flip
+stderr '"Style" redeclared in this package'
+! stderr 'unknown field "y"'
+
+# Visibility is unchanged: a sibling file's declaration resolves, which is what
+# makes the package one declaration set in the first place.
+sngl check cross
+stdout 'cross/b\.sngl: ok'
+
+# An override says which target it implements and declares nothing of its own,
+# so one in a sibling file of the declaration it overrides is not a second
+# declaration of that name.
+sngl check override
+stdout 'override/b\.sngl: ok'
+
+-- dup/a.sngl --
+struct Style {
+    x int
+}
+
+func widthOf(s Style) int {
+    return s.x
+}
+-- dup/b.sngl --
+import . "sngl:ui"
+
+struct Style {
+    y int
+}
+
+component main {
+    text(value=string(widthOf(Style{y = 7})))
+}
+-- flip/a_main.sngl --
+import . "sngl:ui"
+
+struct Style {
+    y int
+}
+
+component main {
+    text(value=string(widthOf(Style{y = 7})))
+}
+-- flip/z_lib.sngl --
+struct Style {
+    x int
+}
+
+func widthOf(s Style) int {
+    return s.x
+}
+-- cross/a.sngl --
+struct Style {
+    x int
+}
+-- cross/b.sngl --
+import . "sngl:ui"
+
+func widthOf(s Style) int {
+    return s.x
+}
+
+component main {
+    text(value=string(widthOf(Style{x = 7})))
+}
+-- override/a.sngl --
+import . "sngl:ui"
+
+component mybox(label string) {
+    text(value=label)
+}
+
+func caption(n int) string {
+    return "n=" + string(n)
+}
+-- override/b.sngl --
+import . "sngl:ui"
+import html "sngl:platform/html"
+
+component mybox[html.platform] {
+    button(text=label)
+}
+
+func caption[html.platform] {
+    return "html n=" + string(n)
+}
+
+component main {
+    mybox(label=caption(1))
+}
