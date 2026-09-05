@@ -1186,6 +1186,9 @@ func (f *formatter) writeStructExpr(x *ast.StructExpr) {
 	if x.Name != "" {
 		f.write(x.Name)
 	}
+	if x.Anon != nil {
+		f.writeStructDef(x.Anon)
+	}
 	f.write("{")
 	if x.Multiline {
 		f.newline()
@@ -1226,6 +1229,9 @@ func (f *formatter) writeStructFieldLit(field ast.StructFieldLit, multiline bool
 		return
 	}
 	f.write(field.Name)
+	if field.Shorthand {
+		return
+	}
 	f.write(fieldAssign(multiline))
 	f.writeExpr(field.Value)
 }

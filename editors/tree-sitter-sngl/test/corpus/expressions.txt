@@ -340,6 +340,67 @@ component App {
               value: (integer_literal))))))))
 
 ================
+Anon struct property shorthand
+================
+
+component App {
+    var s = {a, b}
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (anon_struct_literal
+            (anon_struct_field
+              name: (identifier))
+            (anon_struct_field
+              name: (identifier))))))))
+
+================
+Anon struct type literal
+================
+
+component App {
+    var e = struct {}{}
+    var t = struct {
+        a int
+    }{a=1}
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (anon_struct_type_literal
+            (struct_declaration))))
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (anon_struct_type_literal
+            (struct_declaration
+              (struct_field
+                name: (identifier)
+                type: (type_identifier
+                  (identifier))))
+            (anon_struct_field
+              name: (identifier)
+              value: (integer_literal))))))))
+
+================
 List literal
 ================
 

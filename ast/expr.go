@@ -208,6 +208,11 @@ type StructFieldLit struct {
 	NamePos Pos
 	Value   Expr
 	Spread  bool // if true, Value is the spread operand
+	// Shorthand records that the field was written `{a}` rather than
+	// `{a = a}`. The two mean the same thing, so only the formatter reads it —
+	// it prints the source spelling back, since expanding it would rewrite
+	// every fixture the shorthand appears in.
+	Shorthand bool `json:",omitempty"`
 }
 
 // NativeRef names a foreign declaration the way an encoded value writes it:
@@ -224,7 +229,11 @@ type StructExpr struct {
 	// Native is the foreign declaration the value names. Only
 	// parser.ParseNativeValue can produce one; it names the declaration
 	// outright where Name would leave the reader matching on a bare name.
-	Native    *NativeRef `json:",omitempty"`
+	Native *NativeRef `json:",omitempty"`
+	// Anon is the inline type of a `struct { … }{ … }` value: the literal
+	// spells its own type rather than naming one, so the declaration travels
+	// with the expression instead of sitting at the top of the file.
+	Anon      *StructDef `json:",omitempty"`
 	Fields    []StructFieldLit
 	Multiline bool
 }

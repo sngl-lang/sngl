@@ -12,6 +12,10 @@
         "named": true
       },
       {
+        "type": "anon_struct_type_literal",
+        "named": true
+      },
+      {
         "type": "binary_expression",
         "named": true
       },
@@ -248,6 +252,29 @@
       "types": [
         {
           "type": "anon_struct_field",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "anon_struct_type_literal",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "anon_struct_field",
+          "named": true
+        },
+        {
+          "type": "spread_expression",
+          "named": true
+        },
+        {
+          "type": "struct_declaration",
           "named": true
         }
       ]

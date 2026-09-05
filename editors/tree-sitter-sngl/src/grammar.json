@@ -1596,8 +1596,100 @@
               }
             }
           ]
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
         }
       ]
+    },
+    "anon_struct_type_literal": {
+      "type": "PREC_DYNAMIC",
+      "value": -1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "struct_declaration"
+          },
+          {
+            "type": "STRING",
+            "value": "{"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "anon_struct_field"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "spread_expression"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "STRING",
+                          "value": ","
+                        },
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "anon_struct_field"
+                            },
+                            {
+                              "type": "SYMBOL",
+                              "name": "spread_expression"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": ","
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "STRING",
+            "value": "}"
+          }
+        ]
+      }
     },
     "anon_func_expression": {
       "type": "SEQ",
@@ -2317,6 +2409,10 @@
         {
           "type": "SYMBOL",
           "name": "anon_struct_literal"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "anon_struct_type_literal"
         },
         {
           "type": "SYMBOL",
@@ -3480,6 +3576,15 @@
     [
       "anon_struct_field",
       "_expression"
+    ],
+    [
+      "anon_struct_field",
+      "visual_node",
+      "_expression"
+    ],
+    [
+      "_stmt",
+      "anon_struct_type_literal"
     ]
   ],
   "precedences": [],
