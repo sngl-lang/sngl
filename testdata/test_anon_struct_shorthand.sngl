@@ -1,0 +1,43 @@
+// `{a, b}` is the property shorthand for `{a = a, b = b}`. The formatter
+// prints it back as written rather than expanding it: the two are the same
+// literal, and expanding one would rewrite the source of everyone who chose
+// the short form.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+func sumPair(p struct {
+    a int
+    b int
+}) => p.a + p.b
+
+component main {
+    var (
+        a = 3
+        b = 4
+        short = {a, b}
+        long = {a=a, b=b}
+        mixed = {a, b=9}
+        total = sumPair(short) + sumPair(long) + sumPair(mixed)
+    )
+
+    text(value=string(total))
+}
+
+func testShorthandTakesTheNamesValue(t Test, c main) {
+    t.assert(c.short.a == 3)
+    t.assert(c.short.b == 4)
+}
+
+// The short and the long spelling are one type, because they are one set of
+// (field name, field type).
+func testShorthandIsTheSameTypeAsTheLongForm(t Test, c main) {
+    c.short = c.long
+    t.assert(c.short.b == 4)
+}
+
+func testShorthandMixesWithWrittenFields(t Test, c main) {
+    t.assert(c.mixed.a == 3)
+    t.assert(c.mixed.b == 9)
+    t.assert(c.total == 7 + 7 + 12)
+}

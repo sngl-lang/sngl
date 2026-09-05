@@ -61,6 +61,11 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertImport(imp))
 	}
 	for _, s := range pkg.Structs {
+		// See convertType: an anonymous struct prints structurally, and the
+		// synthesized name is one no program may declare.
+		if s.Anon {
+			continue
+		}
 		stmts = append(stmts, c.convertStructDef(s))
 	}
 	for _, e := range pkg.Enums {
@@ -148,6 +153,12 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 		}
 		def.Body = append(def.Body, sf)
 	}
+	return def
+}
+
+func (c *converter) convertAnonStructType(sd *StructDef) ast.TypeExpr {
+	def := c.convertStructDef(sd)
+	def.Name = ""
 	return def
 }
 
@@ -900,7 +911,9 @@ func (c *converter) convertStructLit(sl *StructLit) *ast.StructExpr {
 	se := &ast.StructExpr{
 		Multiline: len(sl.Fields) > 1,
 	}
-	if sl.Def != nil {
+	if sl.Def != nil && sl.Def.Anon {
+		// See convertType. The fields re-intern to the same declaration.
+	} else if sl.Def != nil {
 		se.Name = sl.Def.Name
 		if sl.Type != nil && sl.Type.Package != "" {
 			se.Package = sl.Type.Package
@@ -990,6 +1003,11 @@ func (c *converter) convertType(t *Type) ast.TypeExpr {
 		}
 		return nt
 	case TypeStruct, TypeEnum, TypeUnit, TypeComponent, TypeInstance:
+		// An anonymous struct's spelling is its fields: the synthesized name
+		// resolves to nothing where the printed source is read back.
+		if sd, ok := t.Decl.(*StructDef); ok && sd.Anon {
+			return c.convertAnonStructType(sd)
+		}
 		// Bare `component` carries no declaration — it is the widest component
 		// type, not an unresolved one, so it has a spelling of its own.
 		name := "dyn" // anonymous/unresolved declaration

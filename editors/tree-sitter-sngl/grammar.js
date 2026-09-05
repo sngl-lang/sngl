@@ -40,6 +40,14 @@ module.exports = grammar({
     [$.method_expression, $.field_expression],
     [$.anon_struct_field, $.spread_expression],
     [$.anon_struct_field, $._expression],
+    // The property shorthand `{a}` against the statement block `{ a }`; the
+    // headless-for alternative's dynamic precedence still picks the block.
+    [$.anon_struct_field, $.visual_node, $._expression],
+    // `struct X {}` opening a statement, versus the same tokens starting a
+    // `struct { … }{ … }` value. The Go parser settles it by having no
+    // StructDecl in StatementPrimary at all; here the statement wins on
+    // dynamic precedence.
+    [$._stmt, $.anon_struct_type_literal],
   ],
 
   supertypes: ($) => [$._stmt, $._expression],
@@ -278,11 +286,23 @@ module.exports = grammar({
       "}"
     ),
 
+    // A bare name is the property shorthand `{a, b}`, which means `{a = a}`.
     anon_struct_field: ($) =>
       choice(
       seq("...", $._expression),
-      seq(field("name", $.identifier), "=", field("value", $._expression))
+      seq(field("name", $.identifier), "=", field("value", $._expression)),
+      field("name", $.identifier)
     ),
+
+    // `struct { … }{ … }`: the value of an inline anonymous type.
+    anon_struct_type_literal: ($) =>
+      prec.dynamic(-1, seq(
+        $.struct_declaration,
+        "{",
+        commaSep(choice($.anon_struct_field, $.spread_expression)),
+        optional(","),
+        "}",
+      )),
 
     anon_func_expression: ($) =>
       seq("func", optional(seq("(", optional($._param_list), ")")), $._func_body_tail),
@@ -428,6 +448,7 @@ module.exports = grammar({
         $.parenthesized_expression,
         $.struct_literal,
         $.anon_struct_literal,
+        $.anon_struct_type_literal,
         $.list_literal,
         $.anon_func_expression,
         $.identifier,

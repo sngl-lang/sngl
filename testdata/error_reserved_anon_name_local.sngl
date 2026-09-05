@@ -1,0 +1,31 @@
+// The compiler names an interned anonymous struct `__anon_` plus its fields
+// plus a hash of the signature, and reserves that prefix so the two can never
+// meet. The reservation has to cover every binding, not just the file-scope
+// ones: the synthesized declaration is registered in `pkg.Structs` without
+// being bound in any scope, so nothing looks it up and no redeclaration is
+// ever reported -- the names simply collide in the generated code.
+//
+// A local was the hole. `var __anon_a_b_8dc8a4 = 5` beside a `{a = …, b = …}`
+// literal checked clean and emitted Go where an int shadows the struct type of
+// that name, so `__anon_a_b_8dc8a4{A: __anon_a_b_8dc8a4, B: 9}` is a call on a
+// variable. The rule now sits in one predicate that both funnels ask:
+// claimTopLevel for file scope, checker.declare for everything a body binds --
+// a local, a parameter, a loop variable.
+//
+// The name is reported and then bound anyway, so the rest of the body still
+// checks and the error is one line rather than one per use.
+
+import . "sngl:ui"
+
+component main {
+    var pair = {a=1, b=2}
+    var out = 0
+
+    button(text="go", @click {
+        var __anon_a_b_8dc8a4 = 5 // ERROR(check) "is reserved: names beginning with \"__anon_\" are the compiler's own"
+
+        pair = {a=__anon_a_b_8dc8a4, b=9}
+        out = pair.a
+    })
+    text(value=string(out))
+}

@@ -577,6 +577,7 @@ PrimaryExpr =
     | lbracket ListBody rbracket
     | AnonStructLit
     | FuncLit
+    | StructDecl StructLitBody
     | ImportExpr StructLitBody
     | ident [ StructLitBody ]
     .
@@ -597,9 +598,12 @@ StructLitBody = lbrace [ AnonField { ( comma | semi ) AnonField } [ comma | semi
 # Anonymous struct literal: {field = expr, …}  — starts with lbrace, unambiguous.
 AnonStructLit = lbrace [ AnonField { ( comma | semi ) AnonField } [ comma | semi ] ] rbrace .
 
+# The bare-Expr alternative is the property shorthand `{a, b}`, which only an
+# identifier can spell: the builder rejects anything else, since a bare
+# non-identifier is neither a field name nor a map entry.
 AnonField =
       ellipsis Expr
-    | Expr assign Expr
+    | Expr [ assign Expr ]
     .
 
 # Inline function literal: func(params) => Expr  or  func(params) [ReturnType] { … }

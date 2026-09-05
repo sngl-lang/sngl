@@ -2202,6 +2202,19 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 			le := &ast.ListExpr{}
 			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
 			return le
+		case StructDecl:
+			// `struct { … }{ … }`: the value of an inline anonymous type. The
+			// literal body is mandatory in the grammar, so a bare type
+			// expression never reaches expression position.
+			anon := b.buildStructDecl(it.enter())
+			x := &ast.StructExpr{Anon: anon}
+			if anon != nil {
+				x.Pos = anon.Pos
+			}
+			if !it.done() && it.isNonTerminal() && it.symbol() == StructLitBody {
+				x.Fields = b.buildStructLitFields(it.enter(), &x.Multiline)
+			}
+			return x
 		case ImportExpr:
 			x := b.buildImportExpr(it.enter())
 			if x == nil {
@@ -2384,18 +2397,40 @@ func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
 		}
 		return anonFieldResult{StructField: ast.StructFieldLit{Spread: true, Value: val}}
 	}
-	// Expr assign Expr
+	// Expr [ assign Expr ]
 	var key ast.Expr
 	if !it.done() && it.isNonTerminal() {
 		key = b.buildExpr(it.enter())
 	}
 	// Consume the assign token.
+	shorthand := true
 	if !it.done() && !it.isNonTerminal() {
 		it.shift() // ASSIGN
+		shorthand = false
 	}
 	var val ast.Expr
 	if !it.done() && it.isNonTerminal() {
 		val = b.buildExpr(it.enter())
+	}
+	if shorthand {
+		// Property shorthand `{a, b}`. Only a name has one: a bare expression
+		// is neither a field name nor a map entry, and letting it through
+		// would re-cast the whole literal to a MapLit with a key and no value.
+		ident, ok := key.(*ast.IdentExpr)
+		if !ok {
+			pos := ast.Pos{}
+			if key != nil {
+				pos = *key.ExprPos()
+			}
+			b.errorf(pos, "expected `name = value`; only a bare name is shorthand for `name = name`")
+			return anonFieldResult{}
+		}
+		// The position is what ast.StructFieldLit.IsShorthand reads back.
+		return anonFieldResult{StructField: ast.StructFieldLit{
+			Name:    ident.Name,
+			NamePos: ident.Pos,
+			Value:   &ast.IdentExpr{Pos: ident.Pos, Name: ident.Name},
+		}}
 	}
 	// If key is a bare ident → struct field; otherwise → map entry (MapLit).
 	if ident, ok := key.(*ast.IdentExpr); ok {

@@ -210,6 +210,18 @@ type StructFieldLit struct {
 	Spread  bool // if true, Value is the spread operand
 }
 
+// IsShorthand reports whether the field was written `{a}` rather than
+// `{a = a}`. The parser puts the shorthand's ident at the *name's* position,
+// since `{a}` is one token and `{a = a}` is two. A field with no position is
+// one the compiler synthesized, and those are written out in full.
+func (f StructFieldLit) IsShorthand() bool {
+	if f.Spread || !f.NamePos.IsSet() {
+		return false
+	}
+	ident, ok := f.Value.(*IdentExpr)
+	return ok && ident.Name == f.Name && ident.Pos == f.NamePos
+}
+
 // NativeRef names a foreign declaration the way an encoded value writes it:
 // the import path it was read through, scheme and all, and its name there.
 // Path is the whole path a program's own import line would carry, so nothing
@@ -224,7 +236,11 @@ type StructExpr struct {
 	// Native is the foreign declaration the value names. Only
 	// parser.ParseNativeValue can produce one; it names the declaration
 	// outright where Name would leave the reader matching on a bare name.
-	Native    *NativeRef `json:",omitempty"`
+	Native *NativeRef `json:",omitempty"`
+	// Anon is the inline type of a `struct { … }{ … }` value: the literal
+	// spells its own type rather than naming one, so the declaration travels
+	// with the expression instead of sitting at the top of the file.
+	Anon      *StructDef `json:",omitempty"`
 	Fields    []StructFieldLit
 	Multiline bool
 }
