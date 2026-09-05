@@ -1165,6 +1165,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 			return "slices.Values(" + gc.EvalExpr(n.Operand) + ")"
 		}
 	}
+	// A narrowed option: Go's option<T> is *T, so reading it as the T a null
+	// test proved it to be is the star.
+	if ir.IsOptionUnwrap(n) {
+		return "*(" + gc.EvalExpr(n.Operand) + ")"
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string.
