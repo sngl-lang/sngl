@@ -208,11 +208,25 @@ type StructFieldLit struct {
 	NamePos Pos
 	Value   Expr
 	Spread  bool // if true, Value is the spread operand
-	// Shorthand records that the field was written `{a}` rather than
-	// `{a = a}`. The two mean the same thing, so only the formatter reads it —
-	// it prints the source spelling back, since expanding it would rewrite
-	// every fixture the shorthand appears in.
-	Shorthand bool `json:",omitempty"`
+}
+
+// IsShorthand reports whether the field was written `{a}` rather than
+// `{a = a}`. The two mean the same thing, so only the formatter asks: it
+// prints the source spelling back rather than expanding one into the other,
+// which would rewrite the source of everyone who chose the short form.
+//
+// It is derived rather than recorded, because the parser already leaves the
+// evidence behind. The shorthand's value is an ident the parser synthesizes at
+// the *name's* position, since `{a}` is one token; `{a = a}` is two tokens at
+// two offsets. A field with no position at all is one the compiler
+// synthesized (ir.Convert builds every field that way), and those are written
+// out in full.
+func (f StructFieldLit) IsShorthand() bool {
+	if f.Spread || !f.NamePos.IsSet() {
+		return false
+	}
+	ident, ok := f.Value.(*IdentExpr)
+	return ok && ident.Name == f.Name && ident.Pos == f.NamePos
 }
 
 // NativeRef names a foreign declaration the way an encoded value writes it:

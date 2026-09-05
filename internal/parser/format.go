@@ -1229,7 +1229,7 @@ func (f *formatter) writeStructFieldLit(field ast.StructFieldLit, multiline bool
 		return
 	}
 	f.write(field.Name)
-	if field.Shorthand {
+	if field.IsShorthand() {
 		return
 	}
 	f.write(fieldAssign(multiline))
