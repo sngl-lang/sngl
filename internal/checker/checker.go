@@ -2473,7 +2473,15 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 		case *ast.UnitDef:
 			c.registerUnit(s)
 		case *ast.ConstDecl, *ast.VarDecl:
+			// A state declaration's annotation may name the component's type
+			// parameters -- `var last T` is most of what a generic component
+			// is for -- so they are in scope for the resolve. Pushed here
+			// rather than around the whole loop because the other three cases
+			// register into the package, and a name declared while a
+			// type-parameter scope is open goes away with it.
+			popTypeParams := pushTypeParams(c, comp.TypeParams)
 			irComp.Vars = append(irComp.Vars, c.collectComponentVarDecl(stmt)...)
+			popTypeParams()
 		case *ast.FuncDef:
 			nestedFuncs = append(nestedFuncs, s)
 		}
@@ -3659,6 +3667,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// checked against what they stand for here. A call site binds them from the
 	// props it supplies; a declaration has only the parameters' own defaults,
 	// which is what declTypeBindings collects.
+	//
+	// The claim holds for what this pass reads. It did not hold for a state
+	// declaration, whose annotation is resolved back in pass1 by
+	// collectComponentDecls -- outside this scope, and until that pass pushed
+	// one of its own, `var last T` was "unknown type" in the body of the
+	// declaration that introduces T.
 	if len(comp.TypeParams) > 0 {
 		defer pushTypeParams(c, comp.TypeParams)()
 	}

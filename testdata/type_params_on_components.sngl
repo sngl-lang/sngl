@@ -42,6 +42,19 @@ component grid<T>(seed T, slot cell(T)) {
     }
 }
 
+// A generic component holds state of its own parameter's type, which is most of
+// what one is for. The parameters are registered in a scope that used to close
+// before the body's declarations were collected, so `var last T` resolved
+// against a scope that no longer had T in it: `unknown type "T"`, on a name the
+// declaration two lines above introduces.
+component holder<T>(on T, slot shown(T)) {
+    var last T = on
+
+    vbox {
+        shown(last)
+    }
+}
+
 component main {
     box #i(item=1, label="int")
     box #s(item="x", label="str")
@@ -61,6 +74,18 @@ component main {
     }
 }
 
+// In a component of its own: `holder` carries state, and a stateful instance
+// takes the first node index in whatever component hosts it -- which
+// codegen/platform/gtk4/component_event_param_test.go names for `job`'s
+// handler in `main`.
+component stateful {
+    holder(on=7) {
+        slot shown(v) {
+            text #held(value=string(v))
+        }
+    }
+}
+
 func testOneDeclarationServesBothBindings(t Test, c main) {
     t.assert(c.i.out.value == "int")
     t.assert(c.s.out.value == "str")
@@ -73,4 +98,8 @@ func testAnUnpinnedParameterTakesItsDefault(t Test, c main) {
 
 func testASlotIsCheckedAgainstTheSpecialization(t Test, c main) {
     t.assert(c.cell.value == "3")
+}
+
+func testAGenericComponentHoldsStateOfItsOwnParameter(t Test, c stateful) {
+    t.assert(c.held.value == "7")
 }
