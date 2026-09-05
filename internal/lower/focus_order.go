@@ -93,20 +93,17 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 // ensureLoopKey makes sure the for-loop has an integer key (index) variable
 // that can be compared against the cursor.
 //
-// Only the two-variable head already has one: For.Key is the index there, as
-// everywhere else in the compiler. In `for var x = xs` and in the head that
-// binds nothing, Key is the element or is empty, so the pass gives the loop an
-// ordinal by rewriting it into the two-variable form -- index in Key, whatever
-// it used to bind in Value. That keeps every consumer downstream reading Key
-// as the index it always is; taking the element's name for the cursor instead
-// is what emitted `m.__focusLoop0_cursor == it` against a string.
+// Only the two-variable list head arrives with an integer Key. The others are
+// rewritten into that form -- index in Key, whatever they bound in Value -- so
+// every consumer downstream keeps reading Key as the index. A two-variable map
+// head is the exception and is still wrong (#174): both its positions are
+// taken, so its ordinal has to be a synthesized counter, the passIndexedIter
+// shape, rather than a rewrite.
 func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
 	f := ls.forStmt
 	if f.Value == "" {
-		// Whatever the head bound moves to the element position, keeping its
-		// symbol so the body's references still resolve. Value is "_" when it
-		// bound nothing, since the loop is a two-variable one from here on and
-		// the element position has to name something.
+		// Value "_" when the head bound nothing: from here on the loop is
+		// two-variable and the element position must name something.
 		f.Value, f.ValueSym = f.Key, f.KeySym
 		if f.Value == "" {
 			f.Value = "_"
