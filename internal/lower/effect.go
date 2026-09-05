@@ -59,6 +59,7 @@ func lowerEffects(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	st.buildGroups()
 	st.injectSettles()
+	st.colorAsync()
 	return st.finishTeardown()
 }
 
@@ -700,6 +701,43 @@ func (st *effectState) handlerFunc(n *ir.NodeInst, event, name string, o *ir.Own
 		return fn
 	}
 	return nil
+}
+
+// colorAsync re-runs the async fixpoint over the functions this pass built.
+//
+// The checker coloured the program it was given; the settle chain did not exist
+// then. A handler that awaits is lifted into __effectN_mount, which
+// __effectN_up calls, which the group settle calls, which the body and every
+// injected settle call -- and one link left uncoloured is an `await` in a
+// function nothing marked async, which is text no bundler accepts.
+func (st *effectState) colorAsync() {
+	funcs := st.allOwnerFuncs()
+	for {
+		changed := false
+		for _, fn := range funcs {
+			if fn.IsAsync {
+				continue
+			}
+			if ir.BlockHasFuncvarAsyncCall(fn.Block, st.pkg.PointsTo) {
+				fn.IsAsync = true
+				changed = true
+			}
+		}
+		if !changed {
+			return
+		}
+	}
+}
+
+func (st *effectState) allOwnerFuncs() []*ir.Func {
+	funcs := append([]*ir.Func(nil), st.pkg.Funcs...)
+	for _, c := range st.pkg.Components {
+		funcs = append(funcs, c.Funcs...)
+	}
+	for _, w := range st.pkg.Windows {
+		funcs = append(funcs, w.Funcs...)
+	}
+	return funcs
 }
 
 func (st *effectState) addFunc(o *ir.Owner, fn *ir.Func) {
