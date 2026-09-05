@@ -689,7 +689,13 @@ func (c *checker) fileOf(pos ast.Pos) func() {
 
 // declare binds sym in the current scope, reporting a name already bound there
 // instead of letting the later binding silently win.
+// declare binds a symbol in the current scope: everything a body introduces --
+// a local, a parameter, a loop variable, a component's own vars and funcs. The
+// reserved name is reported and then bound anyway, because the binding is what
+// keeps the rest of the body checkable; refusing it would answer one error
+// with a name-not-found at every use.
 func (c *checker) declare(pos ast.Pos, sym ir.Symbol) {
+	c.rejectReservedName(pos, sym.SymName())
 	if err := c.scope.Declare(sym); err != nil {
 		c.error(pos, "%s is already declared in this scope", sym.SymName())
 	}
@@ -879,12 +885,7 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 	if name == "" || name == "_" {
 		return true
 	}
-	// The namespace the interned anonymous structs are named in. Reserving it
-	// is what makes a synthesized name unable to collide with a declared one:
-	// nothing else keeps the two apart, since the synthesized declaration is
-	// registered in the package without being bound in any scope.
-	if strings.HasPrefix(name, anonStructPrefix) {
-		c.error(pos, "%q is reserved: names beginning with %q are the compiler's own", name, anonStructPrefix)
+	if c.rejectReservedName(pos, name) {
 		return false
 	}
 	if c.topLevel == nil {

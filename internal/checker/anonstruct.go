@@ -11,10 +11,31 @@ import (
 )
 
 // anonStructPrefix is the namespace the interned declarations are named in.
-// claimTopLevel refuses it to a program, which is what makes a synthesized
-// name unable to collide with a declared one; the compiler's other synthesized
-// names (`__cse0`, `__merge_`, `__ran0`) share the double underscore.
+// The compiler's other synthesized names (`__cse0`, `__merge_`, `__ran0`)
+// share the double underscore.
 const anonStructPrefix = "__anon_"
+
+// rejectReservedName reports a name that trespasses on the namespace the
+// interned anonymous structs are named in, and says whether it did.
+//
+// Reserving it is what makes a synthesized name unable to collide with a
+// declared one: the synthesized declaration is registered in pkg.Structs
+// without being bound in any scope, so nothing looks it up and a redeclaration
+// is never reported -- the two names simply meet in the generated code, where
+// a local `__anon_a_b_8dc8a4 := 5` shadows the type of the same name and the
+// literal beside it stops compiling.
+//
+// Every binding goes through one of two funnels and both ask here: file scope
+// through claimTopLevel, and everything a body binds -- a local, a parameter,
+// a loop variable -- through checker.declare. The rule is the prefix and
+// nothing else, so it is written once.
+func (c *checker) rejectReservedName(pos ast.Pos, name string) bool {
+	if !strings.HasPrefix(name, anonStructPrefix) {
+		return false
+	}
+	c.error(pos, "%q is reserved: names beginning with %q are the compiler's own", name, anonStructPrefix)
+	return true
+}
 
 // anonSignature is the canonical spelling of a set of fields: name and type,
 // sorted by name. Two anonymous structs are the same type when they agree on
