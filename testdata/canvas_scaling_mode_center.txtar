@@ -338,6 +338,14 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
+	C.cairo_save(ctx)
+	_style1 := CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"}
+	C.cairo_rectangle(ctx, C.double(0), C.double(0), C.double(200), C.double(100))
+	_snglCairoPaint(ctx, _style1)
+	C.cairo_restore(ctx)
+}
+
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return

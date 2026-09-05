@@ -56,6 +56,11 @@ func New() *Model {
 	return m
 }
 
+func (m *Model) __n2_clicked_handler() {
+	m.count = (m.count + 1)
+	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.count))
+}
+
 func (m *Model) Count() int {
 	return m.count
 }
