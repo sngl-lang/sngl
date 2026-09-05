@@ -15,19 +15,27 @@ import (
 
 func TestRunFixtures(t *testing.T) {
 	for s := range testutil.CodegenSamples(t) {
-		// The fixture families whose assertions this harness evaluates. Named
-		// by prefix rather than by "carries a test func", because that would
-		// also pick up the deliberately-broken error_* fixtures, whose
-		// ERROR(check) directives the checker's harness is what matches.
-		if !hasRunnablePrefix(s.Name) {
-			continue
-		}
 		t.Run(s.Name, func(t *testing.T) {
 			doc, err := parser.Parse(s.Filename, []byte(s.Source))
 			if err != nil {
+				// A fixture that does not parse declares nothing to run, and
+				// its ERROR(parse) directive is the parser harness's to match.
+				if len(s.PhaseErrors("parse")) > 0 {
+					t.Skip("parse-phase fixture")
+				}
 				t.Fatalf("parse: %v", err)
 			}
 			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			// What makes a fixture runnable is that it declares a test
+			// function, which is readable from the fixture itself. A prefix
+			// list stood here instead, and a fixture left off it had its
+			// assertions read by nobody -- the platform harnesses only compile
+			// one, and `sngl test` is a thing a person runs by hand. Six
+			// effect_* fixtures went that way once, and
+			// type_params_on_components another.
+			if why := notRunnable(s, pkg); why != "" {
+				t.Skip(why)
+			}
 			// Fixtures with `ERROR(check)` directives intentionally contain
 			// type errors; run the interpreter anyway so test-phase error
 			// directives can be matched against the runtime diagnostics.
@@ -182,17 +190,26 @@ func checkResult(t *testing.T, r *codegen.TestResult, dirs []testutil.ErrorDirec
 	}
 }
 
-// runnablePrefixes names the fixture families whose `t.assert` bodies this
-// harness evaluates. A family left off it has its assertions read by nobody:
-// the platform harnesses only compile a fixture, and `sngl test` is a thing a
-// person runs by hand.
-var runnablePrefixes = []string{"test_", "component_", "effect_"}
-
-func hasRunnablePrefix(name string) bool {
-	for _, p := range runnablePrefixes {
-		if strings.HasPrefix(name, p) {
-			return true
-		}
+// notRunnable says why a fixture's assertions are not this harness's to
+// evaluate, or "" when they are. Both halves are read off the fixture itself,
+// which is the point: the prefix list this replaces was the one classifier in
+// the repo that could not be read from the file it classified, and a family
+// left off it went unevaluated in silence.
+//
+// A fixture is runnable when it declares a test function -- there is nothing
+// to evaluate otherwise -- and its program is one that reaches the run at all.
+// A deliberately-broken fixture is not: its ERROR directives name a phase
+// before the run, and the harness for that phase is what matches them. The
+// exception is a fixture that asserts a *runtime* failure, which is a fixture
+// written to be run; it may carry check errors alongside, and those are
+// tolerated below so the ERROR(test) directives can be matched at all.
+func notRunnable(s testutil.Sample, pkg *ir.Package) string {
+	fns, _, _ := codegen.CollectTestFuncs(pkg)
+	if len(fns) == 0 {
+		return "declares no test function"
 	}
-	return false
+	if len(s.Errors) > 0 && !s.ExpectsError("test") {
+		return "asserts a failure before the run"
+	}
+	return ""
 }

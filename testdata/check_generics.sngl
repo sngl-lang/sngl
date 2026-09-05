@@ -9,6 +9,6 @@ func first<T>(items list<T>) T {
 func test() {
     var a = identity(42)
     var b = identity("hello")
-    var items list<int>
+    var items list<int> = [1, 2]
     var c = first(items)
 }
