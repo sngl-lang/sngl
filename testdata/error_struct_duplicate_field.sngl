@@ -1,0 +1,22 @@
+// A field written twice in a *declared* struct's literal. The anonymous form
+// is error_anon_struct_duplicate_field.sngl; the two read alike because they
+// are one check.
+//
+// A spread is an override rather than a duplicate -- `{...base, x = 2}` is how
+// the platform packages write their style props -- so only two written names
+// count.
+
+import . "sngl:ui"
+
+struct Point {
+    x int = 0
+    y int = 0
+}
+
+component main {
+    var base Point = {x=1, y=2}
+    var over Point = {...base, x=9}
+    var bad Point = {x=1, x=2, y=3} // ERROR(check) "duplicate field \"x\" in struct literal"
+
+    text(value=string(over.x + bad.y))
+}
