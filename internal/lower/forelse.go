@@ -32,13 +32,9 @@ import (
 // the flag as the body's first statement also settles `break`, which leaves a
 // loop whose body did run.
 //
-// View bodies are left alone, because a statement declared beside a node is
-// not something a static renderer can write down -- the same bound passCSE
-// documents at greater length. That is what makes passViewForElse a second
-// pass rather than a wider set of blocks for this one: it asks the iterable
-// whether it is empty and asks again on every render, which needs no storage
-// anywhere. It runs long before this pass and leaves no Else behind, so a view
-// loop reaching this walk through a lambda has nothing left to desugar.
+// View bodies are passViewForElse's, which runs earlier and leaves no Else
+// behind: a statement declared beside a node is not something a static
+// renderer can write down.
 //
 // Which blocks those are is imperativeBlocks' answer, shared with passCSE --
 // including a lambda body wherever it appears, view prop included, which is

@@ -4476,35 +4476,32 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}
 }
 
-// checkViewForElse reports a `for … else` written in a view body whose else
-// case cannot be rendered.
+// checkViewForElse reports a `for … else` in a view body whose else cannot be
+// rendered. passViewForElse asks the iterable whether it is empty rather than
+// storing a flag, which puts two requirements on the head that the loop itself
+// does not have:
 //
-// An imperative for-else states "the body never ran" as a flag, which is a
-// statement; a view body on a target with no host language has nowhere to put
-// one, so passViewForElse asks the iterable whether it is empty instead and
-// asks again on every render (ir.EmptyTest). That turns two properties of the
-// loop head into requirements, and neither is one the loop itself needs:
-//
-//   - It must be measurable. A list and a map report a length, and a sngl:seq
-//     range has bounds to compare; a pull sequence answers only by consuming
-//     the element that would have been the answer.
-//   - It must survive a second evaluation. The head is written once and read
-//     twice, so a mutating call in it would run twice -- refused here rather
-//     than silently doubled.
-//
-// Both are refused with a position, at the loop, rather than left for lowering
-// to discover: a pass that dropped such a loop's else would put back exactly
-// the silence this whole construct was fixed to remove.
+//   - It must be measurable. A list and a map report a length and a sngl:seq
+//     range has bounds; a pull sequence answers only by consuming the element
+//     that would have been the answer.
+//   - It must survive a second evaluation, being written once and read twice.
 func (c *checker) checkViewForElse(pos ast.Pos, loop *ir.For, iter *ir.Type) {
-	if c.funcDepth > 0 || len(loop.Else) == 0 || iter == nil || iter.Kind == ir.TypeDyn {
+	if c.funcDepth > 0 || len(loop.Else) == 0 || iter == nil {
 		return
 	}
-	if ir.EmptyTest(loop, nil) == nil {
+	if ir.EmptyTest(loop, nil) != nil {
+		if !ir.Reevaluable(loop.Iter) {
+			c.error(pos, "`for … else` in a view body evaluates its iterable a second time to decide whether the else renders, so the head must be free of side effects: bind it to a var and iterate that")
+		}
+		return
+	}
+	switch {
+	case ir.SeqIntrinsic(loop) != "":
+		c.error(pos, "`for … else` over %s needs a literal non-zero step: which comparison says \"empty\" depends on the step's sign, and the else is decided when this compiles", ir.SeqIntrinsic(loop))
+	case iter.Kind == ir.TypeDyn:
+		c.error(pos, "`for … else` over dyn cannot be written in a view body: the else renders when the iterable yields nothing, and dyn says nothing about how to ask -- give the iterable a list, map or sngl:seq type")
+	default:
 		c.error(pos, "`for … else` over %s cannot be written in a view body: the else renders when the iterable yields nothing, and a pull sequence reports that only by consuming an element -- iterate a list, a map, or a sngl:seq range", iter)
-		return
-	}
-	if !ir.Reevaluable(loop.Iter) {
-		c.error(pos, "`for … else` in a view body evaluates its iterable a second time to decide whether the else renders, so the head must be free of side effects: bind it to a var and iterate that")
 	}
 }
 

@@ -52,10 +52,8 @@ func allBlocks(pkg *ir.Package) []*[]ir.Stmt {
 	return collectBlocks(pkg, true, true)
 }
 
-// viewBlocks is the complement of imperativeBlocks: the view-body statement
-// lists alone, with no function, handler or timer body among them.
-// passViewForElse asks for those and only those -- a for-else in an imperative
-// body is passForElse's, and a pass reaching both would desugar one loop twice.
+// viewBlocks is the complement of imperativeBlocks: view-body statement lists
+// alone. A pass reaching both would desugar one for-else twice.
 func viewBlocks(pkg *ir.Package) []*[]ir.Stmt {
 	return collectBlocks(pkg, false, true)
 }
@@ -104,9 +102,6 @@ type blockCollector struct {
 	views      bool
 }
 
-// addImperative is add for a body that runs as a statement stream, gated on
-// the caller having asked for those. A view body's own list goes through add
-// directly, already gated by c.views at the one place it is reached.
 func (c *blockCollector) addImperative(b *[]ir.Stmt) {
 	if !c.imperative {
 		return

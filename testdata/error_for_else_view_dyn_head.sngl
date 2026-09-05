@@ -1,0 +1,23 @@
+// A view for-else decides its else by asking the iterable whether it is empty,
+// and `dyn` cannot be asked: it says nothing about whether a length or a pair
+// of bounds is the question. Refused here, because the prop is still `dyn`
+// where passViewForElse looks at it -- the loop reached codegen carrying an
+// else no emitter reads, which is the silence the pass exists to remove.
+
+import . "sngl:ui"
+
+component row(items dyn) {
+    for var it = items { // ERROR(check) "dyn says nothing about how to ask"
+        text(value="x")
+    } else {
+        text(value="nothing yet")
+    }
+}
+
+component main {
+    var rows list<string> = []
+
+    vbox {
+        row(items=rows)
+    }
+}
