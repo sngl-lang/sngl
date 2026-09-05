@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -426,23 +427,42 @@ func runGoTest(dir string) error {
 	if err != nil {
 		return err
 	}
-	if needTidy {
-		tidy := exec.Command("go", "mod", "tidy")
-		tidy.Dir = dir
-		if out, err := tidy.CombinedOutput(); err != nil {
-			if reason, ok := skipReasonFromOutput(string(out)); ok {
+	tidy := func() error {
+		out, err := codegen.TidyModule(context.Background(), dir)
+		if err != nil {
+			if reason, ok := skipReasonFromOutput(out); ok {
 				return &skipErr{reason: reason}
 			}
 			return fmt.Errorf("go mod tidy: %v\n%s", err, out)
 		}
+		return nil
 	}
-	test := exec.Command("go", "test", "-trimpath", "./...")
-	test.Dir = dir
-	if out, err := test.CombinedOutput(); err != nil {
-		if reason, ok := skipReasonFromOutput(string(out)); ok {
+	if needTidy {
+		if err := tidy(); err != nil {
+			return err
+		}
+	}
+
+	run := func() (string, error) {
+		test := exec.Command("go", "test", "-trimpath", "./...")
+		test.Dir = dir
+		out, err := test.CombinedOutput()
+		return string(out), err
+	}
+	out, testErr := run()
+	if testErr != nil && codegen.NeedsModuleTidy(out) {
+		// The module graph seeded from the host did not cover this
+		// program; let tidy resolve the rest and run once more.
+		if err := tidy(); err != nil {
+			return err
+		}
+		out, testErr = run()
+	}
+	if testErr != nil {
+		if reason, ok := skipReasonFromOutput(out); ok {
 			return &skipErr{reason: reason}
 		}
-		return fmt.Errorf("go test: %v\n%s", err, out)
+		return fmt.Errorf("go test: %v\n%s", testErr, out)
 	}
 	return nil
 }

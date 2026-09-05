@@ -1,8 +1,8 @@
 package golang
 
 import (
+	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,23 +26,16 @@ func (t *Translator) Build(dir string, opts *ir.StructLit) (string, error) {
 		return "", fmt.Errorf("writing go.mod: %w", err)
 	}
 	if needTidy {
-		slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
-		tidy := exec.Command(goPath, "mod", "tidy")
-		tidy.Dir = dir
-		tidy.Stdout = os.Stderr
-		tidy.Stderr = os.Stderr
-		if err := tidy.Run(); err != nil {
+		if out, err := codegen.TidyModule(context.Background(), dir); err != nil {
+			fmt.Fprint(os.Stderr, out)
 			return "", fmt.Errorf("go mod tidy: %w", err)
 		}
 	}
 
 	artifact := filepath.Join(dir, "app")
-	slog.Info("exec", "cmd", "go build -o app .", "dir", dir)
-	bld := exec.Command(goPath, "build", "-trimpath", "-o", artifact, ".")
-	bld.Dir = dir
-	bld.Stdout = os.Stderr
-	bld.Stderr = os.Stderr
-	if err := bld.Run(); err != nil {
+	out, err := goBuild(context.Background(), goPath, dir, artifact)
+	if err != nil {
+		fmt.Fprint(os.Stderr, out)
 		return "", fmt.Errorf("go build: %w", err)
 	}
 	return artifact, nil

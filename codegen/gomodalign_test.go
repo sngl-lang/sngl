@@ -47,7 +47,7 @@ import _ "fyne.io/fyne/v2"
 		t.Fatalf("WriteGoMod: %v", err)
 	}
 	if needTidy {
-		t.Error("needTidy = true, want false: every import is covered by the host go.mod")
+		t.Error("needTidy = true, want false: a host go.mod was found to align with")
 	}
 
 	got := readFile(t, filepath.Join(dir, "go.mod"))
@@ -62,48 +62,6 @@ import _ "fyne.io/fyne/v2"
 	}
 	if sum := readFile(t, filepath.Join(dir, "go.sum")); !strings.Contains(sum, "fyne.io/fyne/v2 v2.7.4") {
 		t.Errorf("go.sum was not copied:\n%s", sum)
-	}
-}
-
-func TestWriteGoMod_NeedsTidyForUnknownImport(t *testing.T) {
-	writeHostModule(t, "module example.com/host\n\ngo 1.26.1\n", "")
-
-	dir := t.TempDir()
-	writeGoFile(t, dir, "model.go", `package main
-
-import _ "example.com/somewhere/else"
-`)
-
-	needTidy, err := WriteGoMod(dir, "", "")
-	if err != nil {
-		t.Fatalf("WriteGoMod: %v", err)
-	}
-	if !needTidy {
-		t.Error("needTidy = false, want true: the import is not in the host go.mod")
-	}
-}
-
-func TestWriteGoMod_StdlibImportsNeedNoTidy(t *testing.T) {
-	writeHostModule(t, "module example.com/host\n\ngo 1.26.1\n", "")
-
-	dir := t.TempDir()
-	writeGoFile(t, dir, "model.go", `package main
-
-import (
-	"fmt"
-	"os"
-)
-
-var _ = fmt.Sprint
-var _ = os.Stdout
-`)
-
-	needTidy, err := WriteGoMod(dir, "", "")
-	if err != nil {
-		t.Fatalf("WriteGoMod: %v", err)
-	}
-	if needTidy {
-		t.Error("needTidy = true, want false: stdlib imports need no module")
 	}
 }
 
@@ -182,4 +140,58 @@ func readFile(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// A host go.mod covers the generated code's imports in the ordinary case, but
+// it cannot cover a package whose own dependencies the host module never
+// pulls in: the repo requires charm.land/bubbles/v2 and imports nothing that
+// reaches harmonica, so a generated program importing bubbles/progress builds
+// against a go.sum with no entry for it. The build says so, and that is the
+// signal callers retry on.
+func TestNeedsModuleTidy(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		want   bool
+	}{
+		{
+			name: "missing go.sum entry",
+			output: "progress.go:14:2: missing go.sum entry for module providing " +
+				"package github.com/charmbracelet/harmonica (imported by " +
+				"charm.land/bubbles/v2/progress); to add:\n\tgo get charm.land/bubbles/v2/progress@v2.1.0",
+			want: true,
+		},
+		{
+			name:   "module provides no package",
+			output: `model.go:7:2: no required module provides package example.com/x; to add it:`,
+			want:   true,
+		},
+		{
+			name:   "go.mod needs updating",
+			output: "updates to go.mod needed; to update it:\n\tgo mod tidy",
+			want:   true,
+		},
+		{
+			name:   "a compile error is not a module problem",
+			output: "./model.go:12:5: undefined: notAThing",
+			want:   false,
+		},
+		{
+			name:   "a missing native library is not a module problem",
+			output: "# pkg-config --cflags gtk4\nPackage gtk4 was not found in the pkg-config search path.",
+			want:   false,
+		},
+		{
+			name:   "success",
+			output: "",
+			want:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NeedsModuleTidy(tt.output); got != tt.want {
+				t.Errorf("NeedsModuleTidy(%q) = %v, want %v", tt.output, got, tt.want)
+			}
+		})
+	}
 }

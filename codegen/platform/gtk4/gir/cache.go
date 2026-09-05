@@ -84,8 +84,7 @@ func writeTypeShape(h interface{ Write([]byte) (int, error) }, t reflect.Type, s
 	fmt.Fprintf(h, "%s:%s(", t.String(), t.Kind())
 	switch t.Kind() {
 	case reflect.Struct:
-		for i := range t.NumField() {
-			f := t.Field(i)
+		for f := range t.Fields() {
 			fmt.Fprintf(h, "%s ", f.Name)
 			writeTypeShape(h, f.Type, seen)
 			h.Write([]byte(";"))

@@ -1,11 +1,9 @@
 package golang
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -30,14 +28,7 @@ func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangT
 		return nil, nil, err
 	}
 	if needTidy {
-		slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
-		var tidyOut bytes.Buffer
-		tidy := exec.CommandContext(ctx, goPath, "mod", "tidy")
-		tidy.Dir = dir
-		tidy.Stdout = &tidyOut
-		tidy.Stderr = &tidyOut
-		if err := tidy.Run(); err != nil {
-			out := tidyOut.String()
+		if out, err := codegen.TidyModule(ctx, dir); err != nil {
 			if reason, ok := detectMissingPlatformLib(out); ok {
 				return nil, nil, &codegen.SkipError{Reason: reason}
 			}
@@ -53,19 +44,13 @@ func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangT
 	// survives the wipe, letting go see an up-to-date binary and skip
 	// the link — about 0.4s per `sngl test` invocation.
 	binPath := dir + ".testagent"
-	slog.Info("exec", "cmd", "go build", "dir", dir, "out", binPath)
-	var buildOut bytes.Buffer
-	bld := exec.CommandContext(ctx, goPath, "build", "-trimpath", "-o", binPath, ".")
-	bld.Dir = dir
-	bld.Stdout = &buildOut
-	bld.Stderr = &buildOut
-	if err := bld.Run(); err != nil {
-		out := buildOut.String()
+	out, buildErr := goBuild(ctx, goPath, dir, binPath)
+	if buildErr != nil {
 		if reason, ok := detectMissingPlatformLib(out); ok {
 			return nil, nil, &codegen.SkipError{Reason: reason}
 		}
 		fmt.Fprint(os.Stderr, out)
-		return nil, nil, fmt.Errorf("go build: %w", err)
+		return nil, nil, fmt.Errorf("go build: %w", buildErr)
 	}
 
 	cmd := exec.CommandContext(ctx, binPath)

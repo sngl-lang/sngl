@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -22,19 +23,26 @@ func (t *Translator) RunDir(dir, goVersion, goModExtra string, args []string) er
 		return fmt.Errorf("writing go.mod: %w", err)
 	}
 	if needTidy {
-		slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
-		tidy := exec.Command(goPath, "mod", "tidy")
-		tidy.Dir = dir
-		tidy.Stdout = os.Stderr
-		tidy.Stderr = os.Stderr
-		if err := tidy.Run(); err != nil {
+		if out, err := codegen.TidyModule(context.Background(), dir); err != nil {
+			fmt.Fprint(os.Stderr, out)
 			return fmt.Errorf("go mod tidy: %w", err)
 		}
 	}
 
-	runArgs := append([]string{"run", "-trimpath", "."}, args...)
-	slog.Info("exec", "cmd", "go run .", "dir", dir)
-	run := exec.Command(goPath, runArgs...)
+	// Build, then exec — rather than `go run`, which interleaves the go
+	// tool's own diagnostics with the program's output. goBuild has to read
+	// its output to tell a module-graph failure from a compile error, and it
+	// can only do that while nothing else is writing to the same stream.
+	// The binary also lands beside dir, which survives the wipe before each
+	// generation, so a re-run of an unchanged program skips the link.
+	binPath := dir + ".app"
+	if out, err := goBuild(context.Background(), goPath, dir, binPath); err != nil {
+		fmt.Fprint(os.Stderr, out)
+		return fmt.Errorf("go build: %w", err)
+	}
+
+	slog.Info("exec", "cmd", binPath, "dir", dir)
+	run := exec.Command(binPath, args...)
 	run.Dir = dir
 	run.Stdin = os.Stdin
 	run.Stdout = os.Stdout

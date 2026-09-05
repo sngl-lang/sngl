@@ -1,12 +1,13 @@
 package codegen
 
 import (
+	"bytes"
+	"context"
 	"fmt"
-	goparser "go/parser"
-	"go/token"
+	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"golang.org/x/mod/modfile"
@@ -139,10 +140,10 @@ func findGoMod(start string) string {
 //     round-trip (~0.3s per invocation) disappears from every generate,
 //     run, build and test.
 //
-// needTidy reports whether the generated sources import a module the host
-// go.mod does not provide; callers must run `go mod tidy` in that case.
-// It is also true when no host go.mod could be found, in which case the
-// go.mod written is the bare minimum tidy needs to start from.
+// needTidy reports that the go.mod written is the bare minimum `go mod tidy`
+// needs to start from, because no host go.mod was found to align with. When a
+// host go.mod *was* found the module graph is usually complete, but not
+// always — see NeedsModuleTidy, which is how a caller finds out for certain.
 func WriteGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err error) {
 	mf := hostModFile()
 	if mf == nil {
@@ -228,7 +229,36 @@ func WriteGoMod(dir, goVersion, extraDirectives string) (needTidy bool, err erro
 		}
 	}
 
-	return !hostCoversImports(dir, mf), nil
+	return false, nil
+}
+
+// NeedsModuleTidy reports whether a failed `go` command failed because of the
+// module graph rather than the code, and so is worth retrying after
+// `go mod tidy`.
+//
+// WriteGoMod seeds a temp module from the host's requires and go.sum, which
+// covers the generated code's imports in the ordinary case and saves a tidy
+// per invocation. It cannot cover every case: the host may require a module
+// without importing the particular package the generated code reaches for,
+// and that package's own dependencies are then absent from both files. A
+// program importing charm.land/bubbles/v2/progress hit exactly that — the
+// repo requires bubbles but imports no package that pulls in harmonica.
+//
+// These are load-phase failures: the go tool reports them before it compiles
+// or runs anything, so retrying is safe.
+func NeedsModuleTidy(output string) bool {
+	for _, sig := range []string{
+		"missing go.sum entry",
+		"no required module provides package",
+		"updates to go.mod needed",
+		"to add it:",
+		"is not in std",
+	} {
+		if strings.Contains(output, sig) {
+			return true
+		}
+	}
+	return false
 }
 
 // hostModFile locates and parses the host go.mod, or returns nil.
@@ -286,73 +316,6 @@ func hostReplaceLines(mf *modfile.File, modRoot string) []string {
 	return lines
 }
 
-// hostCoversImports reports whether every non-stdlib import in dir's Go
-// files is provided by a module the host go.mod requires or replaces.
-func hostCoversImports(dir string, mf *modfile.File) bool {
-	imports, err := scanGoImports(dir)
-	if err != nil {
-		return false
-	}
-	provided := make([]string, 0, len(mf.Require)+len(mf.Replace)+1)
-	provided = append(provided, snglModulePath)
-	for _, r := range mf.Require {
-		provided = append(provided, r.Mod.Path)
-	}
-	for _, r := range mf.Replace {
-		provided = append(provided, r.Old.Path)
-	}
-	for imp := range imports {
-		if isStdlibImport(imp) {
-			continue
-		}
-		covered := false
-		for _, p := range provided {
-			if imp == p || strings.HasPrefix(imp, p+"/") {
-				covered = true
-				break
-			}
-		}
-		if !covered {
-			return false
-		}
-	}
-	return true
-}
-
-// isStdlibImport reports whether path names a standard-library package.
-// Anything whose first path element carries a dot is a module path.
-func isStdlibImport(path string) bool {
-	first, _, _ := strings.Cut(path, "/")
-	return !strings.Contains(first, ".")
-}
-
-// scanGoImports parses the import blocks of every .go file under dir.
-func scanGoImports(dir string) (map[string]bool, error) {
-	out := map[string]bool{}
-	fset := token.NewFileSet()
-	err := filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(p, ".go") {
-			return nil
-		}
-		f, perr := goparser.ParseFile(fset, p, nil, goparser.ImportsOnly)
-		if perr != nil {
-			return perr
-		}
-		for _, spec := range f.Imports {
-			v, uerr := strconv.Unquote(spec.Path.Value)
-			if uerr != nil {
-				return uerr
-			}
-			out[v] = true
-		}
-		return nil
-	})
-	return out, err
-}
-
 // splitDirectives breaks caller-supplied go.mod text into individual
 // non-empty lines and reports which module paths its replace directives
 // target.
@@ -379,4 +342,20 @@ func replaceOldPath(line string) string {
 		return ""
 	}
 	return fields[1]
+}
+
+// TidyModule runs `go mod tidy` in dir and returns its combined output.
+func TidyModule(ctx context.Context, dir string) (string, error) {
+	goPath, err := exec.LookPath("go")
+	if err != nil {
+		return "", fmt.Errorf("go not found in PATH")
+	}
+	slog.Info("exec", "cmd", "go mod tidy", "dir", dir)
+	var out bytes.Buffer
+	cmd := exec.CommandContext(ctx, goPath, "mod", "tidy")
+	cmd.Dir = dir
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err = cmd.Run()
+	return out.String(), err
 }
