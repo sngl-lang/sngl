@@ -1,0 +1,25 @@
+// The emptiness test a view for-else lowers to re-evaluates the loop head, so
+// the head is written once and read twice. A call that mutates would run
+// twice, which is refused here rather than silently doubled -- the alternative
+// shape, binding the head to a temp, is a statement a view body on a target
+// with no host language cannot hold.
+
+import . "sngl:ui"
+
+component main {
+    var rows list<string> = []
+    var seen = 0
+
+    func drain() list<string> {
+        seen = seen + 1
+        return rows
+    }
+
+    vbox {
+        for var row = drain() { // ERROR(check) "the head must be free of side effects"
+            text(value=row)
+        } else {
+            text(value="nothing yet")
+        }
+    }
+}
