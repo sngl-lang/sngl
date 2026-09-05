@@ -10,10 +10,9 @@
 # type for both. The program compiled, and `v.s.x` read a field the value from
 # `sub` does not have.
 #
-# The signature now tells a package-less declaration apart by its address. That
-# is the same answer ir.sameDecl gives -- and it has to be an address rather
-# than a name, because scope is per file, so two files of one package may each
-# declare `Style` and be two types.
+# The signature now tells a declaration that records no package apart by its
+# address, which is what ir.sameDecl identifies those by. A name would not do:
+# two packages of one program may each declare `Style`, which is the case here.
 #
 # The address never reaches the generated name, which is hashed from a spelling
 # that carries no pointer. Two such signatures can therefore spell one name;

@@ -7,15 +7,11 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// Two declarations that record no package and share a name are two types --
-// `sub.Style` against a program's own, and the two `struct Style` that two
-// files of one package may each declare, since scope is per file. The intern
-// signature has to say so, or the two anonymous structs holding them collapse
-// into one declaration and whichever field type was seen first wins.
-//
-// There is no .sngl fixture for the two-files case: only one of the two is
-// reachable by name from inside the package, so the collapse cannot be
-// observed from source. The key is still what stops it.
+// A program's own declarations record no package, so two packages of one
+// program may each declare `Style` -- the shape a directory import takes, and
+// what the txtar covers end to end. The intern signature has to tell them
+// apart, or the two anonymous structs holding them collapse into one
+// declaration and whichever field type was seen first wins.
 func TestAnonSignatureSeparatesSameNamedPackagelessDecls(t *testing.T) {
 	a := &ir.StructDef{Name: "Style", Fields: []*ir.StructField{{Name: "x", Type: TypInt}}}
 	b := &ir.StructDef{Name: "Style", Fields: []*ir.StructField{{Name: "y", Type: TypInt}}}

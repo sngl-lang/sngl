@@ -70,9 +70,10 @@ func writeDeclIDs(b *strings.Builder, t *ir.Type, exact bool) {
 }
 
 // declID is the declaring package of a named declaration. With exact set, one
-// that records no package answers with its address instead: a name is not
-// enough, since scope is per file and two files of one package may each
-// declare `Style`. Never stable across runs, so only the intern map may see it.
+// that records no package answers with its address instead -- the same thing
+// ir.sameDecl identifies those by, and not their name, which two packages of
+// one program may both use. Never stable across runs, so only the intern map
+// may see it; see #175 before making a name enough.
 func declID(sym ir.Symbol, exact bool) (string, bool) {
 	var pkg string
 	switch d := sym.(type) {
