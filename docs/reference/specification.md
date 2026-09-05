@@ -543,6 +543,44 @@ narrowed). Conversions whose operand is a struct, component, function, list,
 option, or `null` are rejected. Unit conversions are governed by the unit type's
 factors, with the literal `0` convertible to any unit.
 
+### Narrowing an option
+
+A comparison against `null` says what a value is in the branch where the
+comparison holds. Within that branch an `option<T>` reads as a `T`:
+
+```sngl
+var maybe option<int> = 3
+if maybe != null {
+    takesInt(maybe)     // maybe is an int here
+}
+```
+
+The narrowed thing is a *path*: a variable, parameter or loop variable,
+extended by any number of struct field reads (`node.left`, `a.b.c`). An index
+never extends one, since two spellings may name a single element.
+
+The forms that narrow are:
+
+- `if x != null { … }` — the then branch.
+- `if x == null { … } else { … }` — the else branch.
+- `x != null ? … : …` and `x == null ? … : …` — the matching arm.
+- `a && b` — a null test in `a` narrows `b` and everything the whole condition
+  guards. `a || b` is the same fact negated: a `== null` test in `a` narrows
+  `b`.
+
+Every other form leaves the value an `option<T>`, so reading it as a `T` is
+the ordinary type error rather than a silent wrong type.
+
+A narrowing does not survive anything that could make the value absent again.
+Within the branch, assigning to the tested path or to a prefix of it, taking
+its address, calling a method that mutates it, or — when the path is rooted at
+package or component state a callee could reach — calling anything that
+mutates state, is an error naming the write. A branch that narrows nothing
+anybody read is unaffected, so `if x != null { x = null }` is legal.
+
+A narrowing does not cross into a lambda. The body runs when the lambda is
+called, which may be after the test has stopped holding.
+
 ### Generic type parameters
 
 Type parameters are introduced by a type-parameter list (`<T>`, `<K, V>`) on a

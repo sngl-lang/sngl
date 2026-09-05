@@ -12,7 +12,7 @@ component main {
 func writesTheNarrowedValue(t Test) {
     var maybe option<int> = 3
     if maybe != null {
-        maybe = null // ERROR(check) "maybe is assigned here, so the null test on it no longer holds"
+        maybe = null // ERROR(check) "maybe is assigned in this branch, so the null test on it no longer holds"
         var d = double(maybe)
         t.assert(d == 0)
     }

@@ -699,6 +699,11 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 			}
 		}
 	}
+	// `&x` names storage, not a value, so the unwrap a narrowing would wrap
+	// the read in has nothing to be the address of.
+	if x.Op == ast.UnaryAddr {
+		defer c.suspendNarrowing()()
+	}
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
 	skip := operand.Kind == ir.TypeDyn

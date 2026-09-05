@@ -61,6 +61,13 @@ func (c *checker) applyNarrowing(e ir.Expr) ir.Expr {
 	if t == nil || t.Kind != ir.TypeOption {
 		return e
 	}
+	// An option is what was asked for here, so the value already fits. Without
+	// this, passing a narrowed value to a parameter that takes an option<T>
+	// would unwrap it and let the assignability rule wrap it straight back:
+	// two conversions where the value needed none.
+	if c.expected != nil && c.expected.Kind == ir.TypeOption {
+		return e
+	}
 	key, ok := narrowKeyOf(e)
 	if !ok {
 		return e
@@ -290,7 +297,7 @@ func (v *narrowValidator) report(pos ast.Pos, what string) {
 		return
 	}
 	v.done = true
-	v.c.error(pos, "%s is %s here, so the null test on it no longer holds; read it into a local first", v.chk.fact.name, what)
+	v.c.error(pos, "%s is %s, so the null test on it no longer holds; read it into a local first", v.chk.fact.name, what)
 }
 
 // invalidatedBy reports whether a write to target reaches the narrowed path.
@@ -330,15 +337,19 @@ func (v *narrowValidator) visit(n ir.Node) error {
 	switch x := n.(type) {
 	case *ir.Assign:
 		if v.invalidatedBy(x.Target) {
-			v.report(narrowStmtPos(x.AST), "assigned")
+			v.report(narrowStmtPos(x.AST), "assigned in this branch")
 		}
 	case *ir.Toggle:
 		if v.invalidatedBy(x.Target) {
-			v.report(narrowStmtPos(x.AST), "assigned")
+			v.report(narrowStmtPos(x.AST), "assigned in this branch")
 		}
 	case *ir.Unary:
 		if x.Op == ast.UnaryAddr && v.invalidatedBy(x.Operand) {
-			v.report(v.chk.fact.pos, "taken by reference")
+			pos := v.chk.fact.pos
+			if x.AST != nil {
+				pos = x.AST.Pos
+			}
+			v.report(pos, "taken by reference in this branch")
 		}
 	case *ir.Call:
 		v.visitCall(x)
@@ -355,7 +366,7 @@ func (v *narrowValidator) visitCall(x *ir.Call) {
 	if x.Func.Intrinsic != "" && len(x.Args) > 0 {
 		if def, ok := ir.IntrinsicByName(x.Func.Intrinsic); ok && def.MutatesReceiver {
 			if v.invalidatedBy(x.Args[0].Value) {
-				v.report(v.chk.fact.pos, "mutated through a method call")
+				v.report(callPos(x, v.chk.fact.pos), "mutated by a method call in this branch")
 				return
 			}
 		}
@@ -377,8 +388,15 @@ func (v *narrowValidator) visitCall(x *ir.Call) {
 		return
 	}
 	if x.Func.Purity >= ir.PurityMutates {
-		v.report(v.chk.fact.pos, "reachable by a mutating call in this branch")
+		v.report(callPos(x, v.chk.fact.pos), "reachable by a mutating call in this branch")
 	}
+}
+
+func callPos(x *ir.Call, fallback ast.Pos) ast.Pos {
+	if x.AST != nil {
+		return x.AST.Pos
+	}
+	return fallback
 }
 
 func narrowStmtPos(s ast.Stmt) ast.Pos {
