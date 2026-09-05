@@ -275,16 +275,15 @@ component Check(text string, checked bool, style ui.Style, @change ui.ChangeEven
     ) {}
 }
 
-// The choices are a constructor argument, which is why `options` is an `Arg`
-// rather than a `Setter`: `widget.Select` has no method that replaces them, so
-// a later change to the bound list does not reach the widget. `#[construct]`
-// is that fact written where the compiler reads it -- the mark belongs here
-// rather than on the `options` prop of the primitives, because which props a
-// widget can be handed after construction is its Spec's answer and not the
-// vocabulary's.
+// `options` is both an `Arg` and a `Setter`, and needs to be. `SetOptions`
+// replaces the choices on a live widget, so a change to the bound list reaches
+// it in place; but `SetSelected` ignores a value that is not already among
+// `Options`, and the props are assigned in the order written -- so the
+// constructor has to be handed the choices too, or the initial selection would
+// be dropped.
 component Select(
     selected string,
-    #[construct] options list<string>,
+    options list<string>,
     style ui.Style,
     @change ui.ChangeEvent,
 ) {
@@ -293,7 +292,10 @@ component Select(
             new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
             args = [Arg{prop="options", raw="nil"}, Arg{raw="nil"}],
             goType = Native{path="fyne.io/fyne/v2/widget", name="*Select"},
-            setters = [Setter{prop="text", call="SetSelected"}],
+            setters = [
+                Setter{prop="text", call="SetSelected"},
+                Setter{prop="options", call="SetOptions"},
+            ],
             handlers = [Handler{on="change", field="OnChanged", signature="func(s string)", param="s"}],
         },
         text=selected,

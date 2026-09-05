@@ -10,15 +10,15 @@ import (
 
 // This platform's answer to "can this prop be written after construction" is
 // the Spec: a prop the constructor takes as an Arg and no Setter names has no
-// method behind it, so an assignment to it is dropped. #[construct] is the
-// same fact said in the declaration, and the two must not drift apart --
-// adding a Setter for a marked prop, or marking one that has a Setter, would
-// have the declaration claim one thing and the emitter do another.
+// method behind it, so an assignment to it is dropped. #[construct] is the same
+// fact said in the declaration, and the two must not drift apart.
 //
-// The check is per widget rather than over the primitives' `options` prop,
-// because a Spec is what decides: another widget could name a setter for the
-// same vocabulary prop.
-func TestSelectOptionsIsConstructOnlyInBothAnswers(t *testing.T) {
+// No widget here needs the mark any more: every prop the vocabulary offers has
+// a Fyne method behind it. That matters beyond this file -- #[construct] now
+// demands a type every target compares alike, and a `list` is not one, so a
+// mark reappearing on a list-valued prop would not be a drift to notice later
+// but a package that stops checking.
+func TestNoWidgetPropIsConstructOnly(t *testing.T) {
 	src, err := snglsrc.ReadFile("fyne.sngl")
 	if err != nil {
 		t.Fatal(err)
@@ -27,34 +27,36 @@ func TestSelectOptionsIsConstructOnlyInBothAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	var sel *ast.ComponentDecl
 	for _, st := range doc.Stmts {
-		if d, ok := st.(*ast.ComponentDecl); ok && d.Name == "Select" {
-			sel = d
-		}
-	}
-	if sel == nil {
-		t.Fatal("no Select component in fyne.sngl")
-	}
-
-	marked := false
-	for _, m := range sel.Props.Props {
-		p, ok := m.(ast.Param)
-		if !ok || p.Name != "options" {
+		d, ok := st.(*ast.ComponentDecl)
+		if !ok {
 			continue
 		}
-		for _, a := range p.Attrs {
-			if a.Name == "construct" {
-				marked = true
+		for _, m := range d.Props.Props {
+			p, ok := m.(ast.Param)
+			if !ok {
+				continue
+			}
+			for _, a := range p.Attrs {
+				if a.Name == "construct" {
+					t.Errorf("%s.%s carries #[construct]; give it a Setter instead, "+
+						"and check its type is one every target compares alike", d.Name, p.Name)
+				}
 			}
 		}
 	}
-	if !marked {
-		t.Error("Select.options is a constructor argument with no setter; it should carry #[construct]")
-	}
+}
 
-	// The Spec's half of the same fact, read off the source the emitter
-	// decodes: options is an Arg, and no Setter names it.
+// The choices reach the widget twice, and both are load-bearing: SetOptions is
+// what a later change to the bound list travels through, and the Arg is what
+// puts the choices in place before SetSelected runs -- Fyne ignores a selection
+// that is not already among Options. TestSelectOptionsUpdateInPlace is the
+// runtime half of this; here so a Spec edit says which half it broke.
+func TestSelectPassesOptionsAsBothArgAndSetter(t *testing.T) {
+	src, err := snglsrc.ReadFile("fyne.sngl")
+	if err != nil {
+		t.Fatal(err)
+	}
 	body := string(src)
 	start := strings.Index(body, "component Select(")
 	if start < 0 {
@@ -66,9 +68,10 @@ func TestSelectOptionsIsConstructOnlyInBothAnswers(t *testing.T) {
 	}
 	decl := body[start : start+end]
 	if !strings.Contains(decl, `Arg{prop="options"`) {
-		t.Error("Select's Spec should pass options as a constructor argument")
+		t.Error("Select's Spec should pass options as a constructor argument, " +
+			"or the initial selection lands on an empty Options list and is dropped")
 	}
-	if strings.Contains(decl, `Setter{prop="options"`) {
-		t.Error("Select's Spec names a setter for options, so the prop is not construct-only and the mark is wrong")
+	if !strings.Contains(decl, `Setter{prop="options"`) {
+		t.Error("Select's Spec should name SetOptions, or a change to the bound list never reaches the widget")
 	}
 }
