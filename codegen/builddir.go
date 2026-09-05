@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -166,4 +167,59 @@ func pruneBuildDirs(root string) {
 			os.Remove(filepath.Join(root, e.Name()))
 		}
 	})
+}
+
+// BuildDirForContent returns a stable build directory holding exactly files,
+// keyed by their content, plus the release func BuildDir's contract requires.
+//
+// For callers that generate into memory and only then know what they are
+// building — the snapshot harnesses — content is the only stable identity
+// available. Byte-identical output lands in the same directory every run, so
+// the Go build cache hits; different output gets its own.
+func BuildDirForContent(kind string, files map[string][]byte, extraKey ...string) (dir string, release func(), err error) {
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	h := sha256.New()
+	for _, k := range extraKey {
+		fmt.Fprintf(h, "%s\x00", k)
+	}
+	for _, name := range names {
+		fmt.Fprintf(h, "%s\x00%d\x00", name, len(files[name]))
+		h.Write(files[name])
+	}
+	key := hex.EncodeToString(h.Sum(nil)[:12])
+
+	dir, release, err = BuildDir(kind, key)
+	if err != nil {
+		return "", nil, err
+	}
+	for _, name := range names {
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			release()
+			return "", nil, err
+		}
+		if err := os.WriteFile(path, files[name], 0o644); err != nil {
+			release()
+			return "", nil, err
+		}
+	}
+	return dir, release, nil
+}
+
+// BatchKey identifies a batch of documents by which documents it holds, for
+// use as a BuildDir key. Identity rather than content on purpose: the
+// directory then stays put as the documents are edited, so the sub-packages
+// that did not change keep hitting the Go build cache.
+func BatchKey(docs []BatchDoc) []string {
+	ids := make([]string, 0, len(docs))
+	for _, d := range docs {
+		ids = append(ids, d.ID)
+	}
+	sort.Strings(ids)
+	return ids
 }

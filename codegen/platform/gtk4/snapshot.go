@@ -25,21 +25,24 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		return nil, fmt.Errorf("go not found in PATH")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sngl-gtk4-snapshot-*")
-	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	sink := codegen.NewMemSink()
 	if err := g.Generate(&codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{
 			"package": "main",
 		}),
-	}, codegen.NewDirSink(tmpDir)); err != nil {
+	}, sink); err != nil {
 		return nil, fmt.Errorf("generating gtk4 code: %w", err)
 	}
+
+	// Keyed by the generated content, which the harness and go.mod written
+	// below are a function of. See codegen.BuildDirForContent.
+	tmpDir, release, err := codegen.BuildDirForContent("snapshot-gtk4", sink.Files())
+	if err != nil {
+		return nil, fmt.Errorf("creating build dir: %w", err)
+	}
+	defer release()
 
 	if err := writeGtk4SnapshotHarness(tmpDir, dirIsWrapped(tmpDir)); err != nil {
 		return nil, err
@@ -56,7 +59,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 	}
 
 	outPath := filepath.Join(tmpDir, "out.png")
-	run := exec.Command(goPath, "run", "-trimpath", ".", outPath,
+	run := exec.Command(goPath, "run", ".", outPath,
 		fmt.Sprintf("%d", width), fmt.Sprintf("%d", height))
 	run.Dir = tmpDir
 	run.Stderr = os.Stderr
@@ -88,11 +91,11 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		return nil, fmt.Errorf("go not found in PATH")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sngl-gtk4-batch-*")
+	tmpDir, release, err := codegen.BuildDir("snapshot-gtk4-batch", codegen.BatchKey(docs)...)
 	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
+		return nil, fmt.Errorf("creating build dir: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer release()
 
 	genDoc := func(i int, d codegen.BatchDoc, noWrap bool) (gtk4DocPkg, error) {
 		pkgName := fmt.Sprintf("doc%d", i)
@@ -156,8 +159,10 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		return nil, fmt.Errorf("go mod tidy: %w\n%s", err, tidyOut.String())
 	}
 
-	binPath := filepath.Join(tmpDir, "snapshot")
-	build := exec.Command(goPath, "build", "-trimpath", "-o", binPath, ".")
+	// Beside the directory, not in it: the directory is emptied before each
+	// generation, and `go build -o` relinks whenever its output is missing.
+	binPath := tmpDir + ".snapshot"
+	build := exec.Command(goPath, "build", "-o", binPath, ".")
 	build.Dir = tmpDir
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
