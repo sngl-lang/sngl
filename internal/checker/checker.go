@@ -1449,6 +1449,14 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 	dst.Consts = append(dst.Consts, src.Consts...)
 	dst.Imports = append(dst.Imports, src.Imports...)
 	for _, sd := range src.Structs {
+		// An interned anonymous struct is a declaration nobody named, so it is
+		// not part of what a package exports. Binding it would put a name no
+		// program may declare (see claimTopLevel) where a dot import could
+		// resolve it, and two packages interning one signature would collide
+		// over a name neither of them wrote.
+		if sd.Anon {
+			continue
+		}
 		c.mergeInto(declPos(sd), dst.Symbols.Root, sd)
 	}
 	for _, ed := range src.Enums {
