@@ -8,7 +8,7 @@ component indexed {
 
     vbox {
         for var idx, item = items {
-            text #row(value="{idx}:{item}")
+            text #row(value="{item}:{idx * 10}")
         }
     }
 }
@@ -18,10 +18,16 @@ component indexed {
 // way round and assert "0:a" anyway -- the interpreter bound them backwards,
 // so two mistakes cancelled and the html this program generates disagreed
 // with the interpreter running it.
+//
+// `idx * 10` is what keeps the two from cancelling again: interpolating both
+// names type-checks under either binding, so the assertion was the only thing
+// pinning the order and a checker that swapped them would still compile this.
+// Multiplication takes the int alone, so the swap is a check error here rather
+// than a different string.
 func testForWithIndexVariable(t Test, c indexed) {
-    t.assert(c.row[0].value == "0:a")
-    t.assert(c.row[1].value == "1:b")
-    t.assert(c.row[2].value == "2:c")
+    t.assert(c.row[0].value == "a:0")
+    t.assert(c.row[1].value == "b:10")
+    t.assert(c.row[2].value == "c:20")
 }
 
 func testFloatComparisons(t Test, c indexed) {
