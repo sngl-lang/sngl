@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -56,12 +58,26 @@ func snglBinary(owner string) (string, error) {
 }
 
 // snglEnv returns the environment for invoking the harness-built sngl binary.
+//
 // SNGL_NO_PROXY keeps main.proxyToGoTool from re-execing into `go tool sngl`:
 // the harness deliberately built this binary from the working tree, and the
 // proxy would both discard that and add two `go` invocations — about 160ms and
 // 0.7s of CPU — to every call.
+//
+// GOMAXPROCS caps the `go build` this invocation will run: `go` takes its -p
+// from GOMAXPROCS, so without this each of the fixtures holding a build token
+// forks a further GOMAXPROCS compilers. The product is what exhausts memory,
+// so the two factors are set together — see childProcs.
 func snglEnv() []string {
-	return append(os.Environ(), "SNGL_NO_PROXY=1")
+	return append(os.Environ(), "SNGL_NO_PROXY=1",
+		"GOMAXPROCS="+strconv.Itoa(childProcs()))
+}
+
+// childProcs divides the machine between the fixtures allowed to build at
+// once, so their compilers together come to about one per core rather than
+// one per core *each*.
+func childProcs() int {
+	return max(runtime.GOMAXPROCS(0)/codegen.BuildTokenSlots(), 1)
 }
 
 // RunComponentFixtures executes every testdata/component_*.sngl fixture
@@ -210,6 +226,12 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 		t.Fatalf("sngl generate: %v\n%s", genErr, out)
 	}
 
+	release, tokErr := codegen.AcquireBuildToken(t.Context())
+	if tokErr != nil {
+		t.Fatalf("build token: %v", tokErr)
+	}
+	defer release()
+
 	if err := runNativeTarget(t, platform, tmp); err != nil {
 		if se, ok := errors.AsType[*skipErr](err); ok {
 			t.Skip(se.reason)
@@ -234,6 +256,12 @@ func runComponentAgent(t *testing.T, snglBin, platform, fixture string) {
 		// agent path treats any non-zero exit as a fail, so skip these.
 		t.Skipf("fixture has ERROR directives — skip exec-based agent path")
 	}
+
+	release, err := codegen.AcquireBuildToken(t.Context())
+	if err != nil {
+		t.Fatalf("build token: %v", err)
+	}
+	defer release()
 
 	args := []string{"test", "--platform=" + platform, fixture}
 	cmd := exec.Command(snglBin, args...)
@@ -444,7 +472,7 @@ func runGoTest(dir string) error {
 	}
 
 	run := func() (string, error) {
-		test := exec.Command("go", "test", "-trimpath", "./...")
+		test := exec.Command("go", "test", "-trimpath", "-p", strconv.Itoa(childProcs()), "./...")
 		test.Dir = dir
 		out, err := test.CombinedOutput()
 		return string(out), err
