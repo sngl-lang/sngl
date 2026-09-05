@@ -27,7 +27,7 @@ decided at compile time. None of the three needs anywhere to put a statement,
 and a view body on --lang none has nowhere.
 
 deny * `__ran\d` -- a view for-else is a re-evaluated test, never passForElse's flag: a view body on a target with no host language cannot hold the statement that declares one
-deny out/none/html/index.html `data-sngl-id="__n1"` -- neither branch is written into the static markup: the slot anchor is, and the branch is chosen inside __renderSlot0
+deny out/none/html/index.html `<span>NOTHING YET</span>` -- the empty state is not baked into the static markup; each of the three slots is an anchor, and which branch fills it is decided in its render function on every change
 
 -- app.sngl --
 import . "sngl:ui"
