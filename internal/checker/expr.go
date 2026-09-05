@@ -1736,6 +1736,13 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	operand := exprType(operandExpr)
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
 
+	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
+	// and the fallback below would hand it back as dyn, which assigns to
+	// anything. Reported here so the message names the line it was written on.
+	if c.requireValueType(operand, x.Pos) {
+		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+	}
+
 	if operand.Kind == ir.TypeMap {
 		if len(operand.Elems) != 2 {
 			// ir.MapOf is the only constructor and substitution preserves the
@@ -1925,6 +1932,12 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	for i, e := range x.Elements[1:] {
 		elems[i+1] = c.checkExprExpecting(e, elemExpected)
 	}
+	// A void element makes the literal a `list<void>`, which an annotated
+	// target rejects but an inferred one accepts: `var m = [xs.push(v)]`
+	// checked clean and reached codegen.
+	for i, el := range elems {
+		c.requireValueType(exprType(el), *x.Elements[i].ExprPos())
+	}
 	return &ir.ListLit{AST: x, Type: ListOf(exprType(elems[0])), Elems: elems}
 }
 
@@ -2113,7 +2126,10 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
 		if fn.Return == nil {
 			// Expression-body lambda with no annotation and no contextual
-			// return type: take the body's type as the return type.
+			// return type: take the body's type as the return type. A body
+			// that yields nothing gives it nothing to return, and the lowered
+			// `return xs.push(v)` is not something any target can spell.
+			c.requireValueType(exprType(bodyExpr), *x.Body.ExprPos())
 			fn.Return = exprType(bodyExpr)
 			c.returnType = fn.Return
 		}

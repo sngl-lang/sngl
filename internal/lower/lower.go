@@ -270,7 +270,12 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 			break
 		}
 	}
-	return nil
+	if opts.StopAfter != "" {
+		// A dump stopped mid-pipeline is deliberately half-lowered; the
+		// invariant is about the IR a backend receives.
+		return nil
+	}
+	return verifyMutationsAreStatements(pkg)
 }
 
 // addForeignTypes appends the structs and enums declared by the program's own

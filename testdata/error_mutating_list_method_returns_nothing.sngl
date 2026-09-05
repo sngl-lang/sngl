@@ -37,6 +37,22 @@ component main {
         n = xs.push("nested").length() // ERROR(check) "expression yields no value"
     })
 
+    // Assignment is not the only expression position, and void rejection is a
+    // hand-written list of the ones somebody remembered. Indexing the result,
+    // holding it as a list element and returning it from an expression-bodied
+    // lambda each used to check clean and reach codegen, where Go wrote
+    // `m.n = m.l = append(m.l, 2)[0]` -- which does not parse -- and Kotlin and
+    // JavaScript wrote something that compiled and did the wrong thing.
+    button(text="g", @click {
+        n = xs.push("indexed")[0] // ERROR(check) "expression yields no value"
+    })
+    button(text="h", @click {
+        var held = [xs.push("held")] // ERROR(check) "expression yields no value"
+    })
+    button(text="i", @click {
+        var fn = func() => xs.push("lambda") // ERROR(check) "expression yields no value"
+    })
+
     // The statement form is the whole API, and it mutates in place.
     button(text="c", @click {
         xs.push("v")
