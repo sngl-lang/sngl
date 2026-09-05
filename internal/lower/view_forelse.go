@@ -32,8 +32,10 @@ import (
 // positioned error (checkHeadlessFor), and `for { } else { }` is an error
 // everywhere, so a view body's loop always has an iterable to measure. An
 // iterable this cannot measure or cannot evaluate twice is likewise refused by
-// the checker (checkViewForElse), which is why a nil EmptyTest here is a bug
-// rather than a case to fall through.
+// the checker (checkViewForElse), so a nil EmptyTest here means a head the
+// checker could not classify either -- a `dyn`, which it skips because
+// something else has already gone wrong there. Such a loop is left as it was
+// rather than rewritten from a measurement nothing established.
 //
 // Always-on, like the other three: the else means the same thing on every
 // target and no target expresses it, which is the same reason ForElse,

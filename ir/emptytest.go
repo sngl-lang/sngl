@@ -22,26 +22,26 @@ import "git.duckfam.us/jonathan/sngl/ast"
 // since it has none until a host loop counts them. The step is a constant, so
 // which comparison says "empty" is decided here rather than at run time.
 //
-// copy is the caller's structural copier, applied to each piece of the loop
+// clone is the caller's structural copier, applied to each piece of the loop
 // head that ends up in a second position. It is a parameter because the one
 // that is correct here shares symbols with the original -- an Ident.Sym is the
 // binding a later pass matches on, and a copy that duplicated it would be a
 // read of a variable nothing else mentions. ir.CloneExpr is the other kind and
 // is wrong for this. Nil asks only whether a test exists at all: the result
 // then aliases the loop's own head and must not be spliced into the tree.
-func EmptyTest(n *For, copy func(Expr) Expr) Expr {
+func EmptyTest(n *For, clone func(Expr) Expr) Expr {
 	if n == nil || n.Iter == nil {
 		return nil
 	}
-	if copy == nil {
-		copy = func(e Expr) Expr { return e }
+	if clone == nil {
+		clone = func(e Expr) Expr { return e }
 	}
 	if c := CountedSeq(n); c != nil {
 		op := ast.BinGte
 		if c.Step < 0 {
 			op = ast.BinLte
 		}
-		return &Binary{Type: TypBool, Op: op, Left: copy(c.Start), Right: copy(c.End)}
+		return &Binary{Type: TypBool, Op: op, Left: clone(c.Start), Right: clone(c.End)}
 	}
 	t := n.Iter.ExprType()
 	if t == nil {
@@ -72,7 +72,7 @@ func EmptyTest(n *For, copy func(Expr) Expr) Expr {
 			Params:    params,
 			Purity:    PurityPure,
 		},
-		Args: []CallArg{{Value: copy(n.Iter)}},
+		Args: []CallArg{{Value: clone(n.Iter)}},
 	}
 	return &Binary{
 		Type:  TypBool,
