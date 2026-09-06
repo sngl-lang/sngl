@@ -2359,6 +2359,10 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			Name:   fn.Name,
 			Params: fn.Params,
 			Block:  body,
+			// The rebuilt func stands in for fn at emission, so it has to carry
+			// fn's colour: a call site writes `await` off the callee's flag,
+			// and a definition that lost it is an await in a sync function.
+			IsAsync: fn.IsAsync,
 		}
 		for _, line := range jc.EmitFuncDef(synthesized) {
 			b.WriteString(line)
