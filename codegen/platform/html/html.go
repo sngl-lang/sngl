@@ -1550,6 +1550,14 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 		if f.Synthesized {
 			return
 		}
+		// A native declaration is not emitted: the identifier already exists,
+		// and a call becomes a call to it. Emitted anyway, the bodyless
+		// signature came out as `function setInterval(f, ms) { return 0; }`,
+		// which shadows the global it names -- a stub that compiles, runs, and
+		// schedules nothing.
+		if f.Foreign.Name != "" && !f.Foreign.Marked {
+			return
+		}
 		if _, dup := seen[f]; dup {
 			return
 		}

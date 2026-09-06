@@ -24,6 +24,7 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
 	{"language/go", "async"}:        markGoAsync,
+	{"language/js", "native"}:       markJSNative,
 }
 
 // markGoAsync implements #[go.async]: a call to this function blocks.
@@ -71,9 +72,6 @@ func markGoNative(m *mark) error {
 	fm := ir.Foreign{Scheme: "go", Path: path, Name: name}
 	switch d := m.sym.(type) {
 	case *ir.Func:
-		if len(d.Block) > 0 {
-			return fmt.Errorf("#[go.native] on %q: %s.%s already exists, so a body here would be emitted by nobody and read by nobody", d.Name, path, name)
-		}
 		d.Foreign = fm
 		// The same fact the Go importer reads off a signature it sees. A
 		// declaration here has no signature to read, so the mark is where it
@@ -86,6 +84,46 @@ func markGoNative(m *mark) error {
 		d.Foreign = fm
 	default:
 		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
+	}
+	return nil
+}
+
+// markJSNative implements #[js.native("name")] and #[js.native("name",
+// "module")]: the declaration *is* that JavaScript identifier.
+//
+// The same shape as #[go.native], with the one difference JavaScript forces.
+// A Go identifier is always package-qualified, so that mark can require a
+// path; `setInterval` is a property of globalThis and has no path to name, so
+// the module is optional here and the name comes first. An empty module is a
+// global, and the emitter renders it as a bare call.
+//
+// Foreign.Marked stays unset for the reason it does there: the identifier
+// already exists, and a call becomes a call to it rather than to a declaration
+// this build emits.
+func markJSNative(m *mark) error {
+	name, module := m.args.String("name"), m.args.String("module")
+	if name == "" {
+		return fmt.Errorf("#[js.native]: an identifier is required")
+	}
+	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[native(%q)]", name))
+	if err != nil {
+		return err
+	}
+	fm := ir.Foreign{Scheme: "js", Path: module, Name: name}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		d.Foreign = fm
+		// The same fact the TypeScript importer reads off a `Promise<T>`
+		// return. A declaration here has no signature to read, so the mark is
+		// where it is said, and the emitter awaits the call.
+		d.IsAsync = slices.Contains(flags, flagAsync)
+	case *ir.StructDef:
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
+		}
+		d.Foreign = fm
+	default:
+		return fmt.Errorf("#[js.native] cannot mark %s; only a function or a struct names a JavaScript identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
