@@ -365,8 +365,10 @@ type checker struct {
 	macroStruct *ir.StructDef
 
 	// anonStructs interns one synthesized declaration per package and
-	// canonical anonymous struct signature; see internAnonStruct.
+	// canonical anonymous struct signature; see internAnonStruct. anonNames
+	// is the names already taken in each, since two signatures can spell one.
 	anonStructs map[*ir.Package]map[string]*ir.StructDef
+	anonNames   map[*ir.Package]map[string]bool
 
 	// builtinPkg is sngl:builtin, registered ambiently into every file.
 	builtinPkg *ir.Package

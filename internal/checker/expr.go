@@ -1822,6 +1822,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	}
 
 	var fields []ir.FieldInit
+	named := map[string]bool{}
 	for _, f := range x.Fields {
 		if f.Spread {
 			val := c.checkExpr(f.Value)
@@ -1856,6 +1857,12 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if sd != nil && field == nil && isExportedMemberName(f.Name) {
 			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
 		}
+		// A spread carries no name, so `{...base, x = 2}` is an override
+		// rather than a duplicate; only two written fields are one.
+		if named[name] {
+			c.error(f.NamePos, "duplicate field %q in struct literal", f.Name)
+		}
+		named[name] = true
 		fields = append(fields, ir.FieldInit{Name: name, NamePos: f.NamePos, Value: val})
 	}
 
