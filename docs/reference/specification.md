@@ -1221,6 +1221,12 @@ gives the rendered tree a shape: a list gives that a length and a counted
 sequence gives it a number, while a condition gives it neither. Writing either
 form in a view body is an error.
 
+A loop over a **map** is restricted the same way, for the same reason applied
+to order rather than to count. A map says how many copies of the body the tree
+holds and in no defined order, so two renders of one map may lay it out
+differently. Walk the map in a function or a handler and render the list that
+comes back.
+
 A head expression may not begin with `{`: that brace is the body's. A map or
 anonymous-struct literal in the head of a `for` — or of an `if` — is written
 parenthesized.
