@@ -3571,6 +3571,16 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 			!blockAlwaysReturns(fn.Block) && !lastStmtMayDiverge(fn.Block) {
 			c.error(fn.AST.Pos, "missing return: %q must return %s on all paths", fn.Name, fn.Return)
 		}
+		// A native names an identifier that already exists, so a body written
+		// beside it is emitted by nobody and read by nobody: every call is
+		// routed to the foreign name instead. Both native marks tried to say
+		// this themselves and could not -- a mark runs while the declaration is
+		// registered, which is before any body is checked, so the block they
+		// tested was always empty. Here it is not.
+		if fn.Foreign.Name != "" && !fn.Foreign.Marked {
+			c.error(fn.AST.Pos, "%q has a body and names %s, which already exists: the body would be emitted by nobody and read by nobody",
+				fn.Name, fn.Foreign.Name)
+		}
 	} else if fn.AST != nil {
 		// No body at all: a signature. Something else has to supply the answer,
 		// and this is where that is required rather than assumed.
@@ -3595,7 +3605,10 @@ func (c *checker) bodySuppliedElsewhere(fn *ir.Func) bool {
 	// A macro is the fourth: the declaration is where a mark's arguments and
 	// documentation are written, and the compiler's implementation of that mark
 	// is what runs. There has never been a body worth writing.
-	return fn.Intrinsic != "" || fn.Foreign.Path != "" || c.isMacroSig(fn.Return) ||
+	// A name is what says the answer comes from outside, not a path: a
+	// JavaScript global has no module to name, and #[js.native("setInterval")]
+	// is the whole of what there is to say about it.
+	return fn.Intrinsic != "" || fn.Foreign.Path != "" || fn.Foreign.Name != "" || c.isMacroSig(fn.Return) ||
 		len(fn.PlatformOverrides) > 0 || len(fn.LanguageOverrides) > 0
 }
 
