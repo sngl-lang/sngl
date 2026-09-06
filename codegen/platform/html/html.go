@@ -56,6 +56,11 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// either way -- and lowering it built the same kind of temporary.
 	f.Ternary = true
 	f.ListLambdas = true
+	// And AsyncCalls for a third time. Go withdraws it because a blocking call
+	// runs on the goroutine that made it, which on a UI toolkit is the one
+	// drawing; html has no such goroutine -- a route handler already runs on
+	// its own, and blocking there is what a handler is for.
+	f.AsyncCalls = true
 	f.AsyncReactive = false
 	f.ImplicitRecv = false
 	f.InlineComponents = false

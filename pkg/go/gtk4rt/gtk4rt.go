@@ -45,6 +45,13 @@ static void sngl_gtk_idle_add(int idx) {
     g_idle_add(sngl_idle_tramp, GINT_TO_POINTER(idx));
 }
 
+// A bare GLib main loop, for exercising the idle source above without a
+// display. See mainLoopNew below.
+static GMainLoop *sngl_loop;
+static void sngl_main_loop_new(void)  { sngl_loop = g_main_loop_new(NULL, FALSE); }
+static void sngl_main_loop_run(void)  { g_main_loop_run(sngl_loop); }
+static void sngl_main_loop_quit(void) { g_main_loop_quit(sngl_loop); }
+
 // Variadic wrapper — cgo cannot call g_signal_emit_by_name directly (the `...`
 // trips the cgo type checker). Used by test invokers to fire a signal.
 static void sngl_emit(gpointer instance, const char *signal) {
@@ -332,6 +339,15 @@ func Emit(w Handle, signal string) {
 	defer free()
 	C.sngl_emit(C.gpointer(p(w)), c)
 }
+
+// A bare GLib main loop, which is what Post's idle source is scheduled
+// against. It exists so Post can be tested at all: an idle source only fires
+// while something pumps the loop, and generated programs get theirs from
+// gtk_application_run, which needs a display. cgo is not allowed in a _test.go
+// file, so the three calls live here.
+func mainLoopNew()  { C.sngl_main_loop_new() }
+func mainLoopRun()  { C.sngl_main_loop_run() }
+func mainLoopQuit() { C.sngl_main_loop_quit() }
 
 // Post schedules fn to run once on the next GLib main-loop idle tick.
 func Post(fn func()) {

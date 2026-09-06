@@ -106,6 +106,7 @@ var soleGate = map[string][]string{
 	"NoComputed":      {"NoComputed"},
 	"NoTimer":         {"NoTimer"},
 	"NoListLambdas":   {"NoListLambdas"},
+	"NoAsyncCalls":    {"NoAsyncCalls"},
 
 	// Both context flags request the one pass: a target asking for either a
 	// component receiver or a threaded stdlib param needs the context rewrite,
@@ -137,6 +138,11 @@ var soleGate = map[string][]string{
 	// match and nothing else, so it is only ever asked alongside an instance
 	// runtime. See TestASlotChildNeedsBothCapabilities.
 	"InsertBefore": nil,
+
+	// Also gates nothing: the offload pass is asked for by NoAsyncCalls and
+	// reads this itself to choose between the rewrite and refusing the
+	// program, so a target that can post back still needs the first flag.
+	"AsyncPost": nil,
 }
 
 func gatedPasses(c Caps) []string {
