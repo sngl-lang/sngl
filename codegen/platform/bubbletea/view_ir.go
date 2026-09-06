@@ -278,15 +278,7 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		// before the widget consuming it (its FromTernary If assigns it). Emit
 		// so the temp is declared in the view scope.
 		vc.emitIRStmt(s)
-	case *ir.Assign:
-		// A user assignment in a view body has no visual rendering. A
-		// synthesized one is lowering's bookkeeping — passFocusOrder's
-		// per-iteration counter — and dropping it leaves the ident it feeds
-		// undefined.
-		if id, ok := s.Target.(*ir.Ident); ok && id.Synthesized {
-			vc.emitIRStmt(s)
-		}
-	case *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		// Imperative stmts have no visual rendering — skipped.
 	case *ir.ContextProvider:
@@ -333,19 +325,8 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 
 	loopVar := resultVar + "Items"
 	vc.line("var %s []string", loopVar)
-	if mr, ok := vc.mapRangeFor(s, iterExpr, resultVar+"Map"); ok {
-		for _, l := range mr.Pre {
-			vc.line("%s", l)
-		}
-		vc.line("%s", mr.Head)
-		vc.indent++
-		for _, l := range mr.Inner {
-			vc.line("%s", l)
-		}
-	} else {
-		vc.line("%s", vc.gc.ForHead(s, iterExpr))
-		vc.indent++
-	}
+	vc.line("%s", vc.gc.ForHead(s, iterExpr))
+	vc.indent++
 	// The view body may not reference the loop vars; suppress unused errors.
 	if s.Key != "" && s.Key != "_" {
 		vc.line("_ = %s", s.Key)
@@ -381,27 +362,6 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	}
 
 	vc.gc = savedGC
-}
-
-// mapRangeFor is the ordered head a view loop over a map takes, in place of the
-// language driver's bare range -- a rendered row is identified by ordinal, so
-// the order has to hold across frames and match Update()'s (see sortedMapRange).
-func (vc *irViewContext) mapRangeFor(s *ir.For, iterExpr, tmp string) (mapRange, bool) {
-	if ir.DeriveIterKind(s) != ir.IterMapEntries {
-		return mapRange{}, false
-	}
-	key, val := s.Key, s.Value
-	if key == "_" {
-		key = ""
-	}
-	if val == "_" {
-		val = ""
-	}
-	mr := sortedMapRange(iterExpr, tmp, key, val, mapKeyType(s.Iter))
-	for _, p := range mr.Imports {
-		vc.requireImport(p)
-	}
-	return mr, true
 }
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {

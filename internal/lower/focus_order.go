@@ -26,13 +26,8 @@ type focusSlot struct {
 
 type loopSlotInfo struct {
 	forStmt   *ir.For
-	cursorVar *ir.Var // __focusLoopN_cursor
-	// ordName/ordSym are the integer ordinal the cursor is compared against:
-	// the loop's own key where the head can carry one, otherwise the counter
-	// below. pre is that counter's declaration, to be placed before the loop.
-	ordName string
-	ordSym  ir.Symbol
-	pre     []ir.Stmt
+	cursorVar *ir.Var     // __focusLoopN_cursor
+	keyVar    *ir.LoopVar // synthetic loop key (integer index)
 }
 
 func lowerFocusOrder(pkg *ir.Package, _ Caps, _ Options) error {
@@ -40,32 +35,26 @@ func lowerFocusOrder(pkg *ir.Package, _ Caps, _ Options) error {
 		return nil
 	}
 	for _, comp := range pkg.Components {
-		comp.Body = lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
+		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
 	}
 	for _, w := range pkg.Windows {
-		w.Body = lowerFocusInOwner(w.Body, &w.Vars, &w.Funcs)
+		lowerFocusInOwner(w.Body, &w.Vars, &w.Funcs)
 	}
 	return nil
 }
 
-func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) []ir.Stmt {
+func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 	slots := gatherFocusSlots(stmts)
 	if len(slots) == 0 {
-		return stmts
+		return
 	}
 
-	// Ensure every loop slot has an integer ordinal.
-	counters := map[*ir.For][]ir.Stmt{}
+	// Ensure every loop slot has an integer key variable.
 	for i := range slots {
-		if !slots[i].isLoop {
-			continue
-		}
-		ensureLoopOrdinal(slots[i].loop, i)
-		if pre := slots[i].loop.pre; pre != nil {
-			counters[slots[i].loop.forStmt] = pre
+		if slots[i].isLoop {
+			ensureLoopKey(slots[i].loop, i)
 		}
 	}
-	stmts = insertLoopCounters(stmts, counters)
 
 	// __focusID tracks which slot is active.
 	focusIDVar := &ir.Var{
@@ -99,66 +88,18 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) []ir
 		buildFocusNav("__focusNext", slots, focusIDIdent, true),
 		buildFocusNav("__focusPrev", slots, focusIDIdent, false),
 	)
-	return stmts
 }
 
-// insertLoopCounters places each loop's counter declaration immediately before
-// the loop, rebuilding the blocks it passes through.
-func insertLoopCounters(stmts []ir.Stmt, counters map[*ir.For][]ir.Stmt) []ir.Stmt {
-	if len(counters) == 0 {
-		return stmts
-	}
-	out := make([]ir.Stmt, 0, len(stmts))
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.For:
-			out = append(out, counters[n]...)
-			n.Body = insertLoopCounters(n.Body, counters)
-			n.Else = insertLoopCounters(n.Else, counters)
-		case *ir.NodeInst:
-			n.Children = insertLoopCounters(n.Children, counters)
-		case *ir.If:
-			n.Body = insertLoopCounters(n.Body, counters)
-			n.Else = insertLoopCounters(n.Else, counters)
-		case *ir.Window:
-			n.Body = insertLoopCounters(n.Body, counters)
-		case *ir.SlotInst:
-			n.Children = insertLoopCounters(n.Children, counters)
-		case *ir.ErrorBoundary:
-			n.Children = insertLoopCounters(n.Children, counters)
-		case *ir.ContextProvider:
-			n.Children = insertLoopCounters(n.Children, counters)
-		}
-		out = append(out, s)
-	}
-	return out
-}
-
-// ensureLoopOrdinal gives the loop an integer ordinal to compare the cursor
-// against: Key for a list head, rewriting the other list forms into the
-// two-variable one, and a counter beside the loop for a map head, whose two
-// positions both mean something and neither counts.
-func ensureLoopOrdinal(ls *loopSlotInfo, slotIdx int) {
+// ensureLoopKey makes sure the for-loop has an integer key (index) variable
+// that can be compared against the cursor.
+//
+// Only the two-variable list head arrives with an integer Key. The others are
+// rewritten into that form -- index in Key, whatever they bound in Value -- so
+// every consumer downstream keeps reading Key as the index. A map head has no
+// free position to rewrite into, and needs none: the checker refuses a map
+// loop in a view body, so one cannot reach a focus slot.
+func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
 	f := ls.forStmt
-	if ir.DeriveIterKind(f) == ir.IterMapEntries {
-		name := fmt.Sprintf("__focusIdx%d", slotIdx)
-		v := &ir.Var{Name: name, Type: ir.TypInt, Synthesized: true}
-		ls.ordName, ls.ordSym = name, v
-		ls.pre = []ir.Stmt{&ir.LocalVar{
-			Name: name,
-			Type: ir.TypInt,
-			Init: &ir.Unary{Op: ast.UnaryNeg, Operand: intLiteralLit(1), Type: ir.TypInt},
-			Sym:  v,
-		}}
-		// From -1, incremented at the top of the body rather than the bottom,
-		// so an iteration left early cannot leave the count behind.
-		f.Body = append([]ir.Stmt{&ir.Assign{
-			Target: &ir.Ident{Name: name, Type: ir.TypInt, Sym: v, Synthesized: true},
-			Op:     ast.AssignAdd,
-			Value:  intLiteralLit(1),
-		}}, f.Body...)
-		return
-	}
 	if f.Value == "" {
 		// Value "_" when the head bound nothing: from here on the loop is
 		// two-variable and the element position must name something.
@@ -169,7 +110,7 @@ func ensureLoopOrdinal(ls *loopSlotInfo, slotIdx int) {
 		f.Key, f.KeySym = fmt.Sprintf("__focusIdx%d", slotIdx), nil
 	}
 	if f.KeySym != nil {
-		ls.ordName, ls.ordSym = f.Key, f.KeySym
+		ls.keyVar = f.KeySym
 		return
 	}
 	// The checker sets KeySym whenever Key is named, so this is a loop some
@@ -177,9 +118,8 @@ func ensureLoopOrdinal(ls *loopSlotInfo, slotIdx int) {
 	// as well as holding it: an identifier the pass emits below refers to this
 	// one, and a symbol the statement does not carry is a symbol nothing else
 	// can reach.
-	kv := &ir.LoopVar{Name: f.Key, Type: ir.TypInt}
-	f.KeySym = kv
-	ls.ordName, ls.ordSym = f.Key, kv
+	ls.keyVar = &ir.LoopVar{Name: f.Key, Type: ir.TypInt}
+	f.KeySym = ls.keyVar
 }
 
 // ---- slot gathering ----
@@ -301,7 +241,7 @@ func walkInjectFocused(
 					Sym:         ls.cursorVar,
 					Synthesized: true,
 				}
-				keyIdent := &ir.Ident{Name: ls.ordName, Type: ir.TypInt, Sym: ls.ordSym}
+				keyIdent := &ir.Ident{Name: ls.keyVar.Name, Type: ls.keyVar.Type, Sym: ls.keyVar}
 				n.Props = append(n.Props, ir.Arg{
 					Name: "__focused",
 					Value: &ir.Binary{

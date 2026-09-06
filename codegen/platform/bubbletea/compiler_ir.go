@@ -1109,11 +1109,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		}
 		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
-	// ordName is the integer ordinal the cursor is matched against. It is the
-	// loop's own key for a list head; for a map head it is passFocusOrder's
-	// counter, which this loop has to keep for itself -- the counter statements
-	// the pass put in the view body are not part of the handler block.
-	emitLoopCase := func(slotIdx int, keyGuard, cursorVar, ordName string, f *ir.For, block []ir.Stmt) {
+	emitLoopCase := func(slotIdx int, keyGuard, cursorVar string, f *ir.For, block []ir.Stmt) {
 		var tmp strings.Builder
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
@@ -1123,48 +1119,18 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		syncMutatedInputs(&tmp, block, info.widgets, info.binds, gc)
 		body := tmp.String()
 
+		// Bind the element only where the handler reads it: Go rejects an
+		// unused loop variable. The key is the ordinal the emitted cursor test
+		// compares against, so it is always bound.
 		keyName, valName := f.Key, f.Value
-		counter := ordName != keyName
-		// Bind only a loop variable the handler reads: Go rejects an unused one.
-		// The ordinal is read by the emitted cursor test, not by the handler.
-		if !loopVarUsed(block, keyName, f.KeySym) && counter {
-			keyName = ""
-		}
 		if !loopVarUsed(block, valName, f.ValueSym) {
-			valName = ""
-		}
-		if keyName == "_" {
-			keyName = ""
+			valName = "_"
 		}
 		iterExpr := gc.EvalExpr(f.Iter)
 
 		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
-		if counter {
-			fmt.Fprintf(b, "\t\t\t%s := -1\n", ordName)
-		}
-		var inner []string
-		if ir.DeriveIterKind(f) == ir.IterMapEntries {
-			mr := sortedMapRange(iterExpr, fmt.Sprintf("__focusMap%d", slotIdx), keyName, valName, mapKeyType(f.Iter))
-			for _, p := range mr.Imports {
-				gc.RequireImport(p)
-			}
-			for _, l := range mr.Pre {
-				fmt.Fprintf(b, "\t\t\t%s\n", l)
-			}
-			fmt.Fprintf(b, "\t\t\t%s\n", mr.Head)
-			inner = mr.Inner
-		} else if keyName == "" && valName == "" {
-			fmt.Fprintf(b, "\t\t\tfor range %s {\n", iterExpr)
-		} else {
-			fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", orDiscard(keyName), orDiscard(valName), iterExpr)
-		}
-		for _, l := range inner {
-			fmt.Fprintf(b, "\t\t\t\t%s\n", l)
-		}
-		if counter {
-			fmt.Fprintf(b, "\t\t\t\t%s++\n", ordName)
-		}
-		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, ordName)
+		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, valName, iterExpr)
+		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
 		b.WriteString(body)
 		b.WriteString("\t\t\t\t\tbreak\n")
 		b.WriteString("\t\t\t\t}\n")
@@ -1210,11 +1176,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		if !ok {
 			return
 		}
-		ordIdent, ok := rightBin.Right.(*ir.Ident)
-		if !ok {
-			return
-		}
-		emitLoopCase(slotIdx, keyGuard, cursorIdent.Name, ordIdent.Name, currentFor, block)
+		emitLoopCase(slotIdx, keyGuard, cursorIdent.Name, currentFor, block)
 	}
 
 	for _, s := range stmts {
@@ -1509,4 +1471,25 @@ func extractIRAssignTarget(stmts []ir.Stmt) string {
 		}
 	}
 	return ""
+}
+
+// loopVarUsed reports whether block references the loop variable named name.
+// The head binds it only then, since Go rejects an unused one.
+func loopVarUsed(block []ir.Stmt, name string, sym ir.Symbol) bool {
+	if name == "" || name == "_" {
+		return false
+	}
+	found := false
+	_ = ir.Walk(block, func(n ir.Node) error {
+		id, ok := n.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if (sym != nil && id.Sym == sym) || id.Name == name {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

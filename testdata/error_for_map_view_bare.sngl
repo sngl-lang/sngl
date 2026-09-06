@@ -1,0 +1,15 @@
+// The refusal is on what the head evaluates to, not on how many variables it
+// binds: a head that declares nothing still walks the map, and the tree still
+// holds one copy of the body per entry in no defined order.
+
+import . "sngl:ui"
+
+component main {
+    var scores map<string, int> = {alice=10}
+
+    vbox {
+        for scores { // ERROR(check) "a map yields its elements in no defined order"
+            text(value="entry")
+        }
+    }
+}

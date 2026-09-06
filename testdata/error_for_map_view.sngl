@@ -1,0 +1,19 @@
+// A view body's loop is how many copies of its body the rendered tree holds
+// and in what order. A map answers the first question and not the second, so
+// there is nothing for a mutation model to diff against and nothing for a
+// static renderer to write down. Imposing an order instead cost a
+// per-platform contingency at every backend -- a key type the host cannot
+// sort, a host map that happens to be insertion-ordered so the bug shows up
+// only on the other three targets -- which is why the loop is refused here.
+
+import . "sngl:ui"
+
+component main {
+    var scores map<string, int> = {alice=10}
+
+    vbox {
+        for var k, v = scores { // ERROR(check) "a map yields its elements in no defined order"
+            text(value="{k} = {v}")
+        }
+    }
+}
