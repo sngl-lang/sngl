@@ -3026,6 +3026,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// symbols in the enclosing scope, so refs outside the loop type-check
 		// against the unrolled list. Done before pushScope so the symbol
 		// lives in the parent scope.
+		c.checkViewMapFor(x.Pos, iter)
 		hoistedIDs := c.hoistForLoopWindowIDs(&x.Body)
 		c.pushScope()
 		// Resolve &-binding: only the ELEMENT loop var may be &-bound, only
@@ -4563,6 +4564,29 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	}
 	c.popScope()
 	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}
+}
+
+// checkViewMapFor reports a loop over a map written in a view body. It is the
+// fourth member of the family checkHeadlessFor states: a view body's loop is
+// how many copies of its body the rendered tree holds, and *in what order*. A
+// map answers the first question and not the second, so there is nothing for a
+// mutation model to diff against and nothing for a static renderer to write
+// down -- two renders of the same map may lay the body out differently.
+//
+// Imposing an order instead was the alternative, and it costs a per-platform
+// contingency at every backend: a key type the host cannot sort, a widget
+// emitter that walks the map again elsewhere, a host map that happens to be
+// insertion-ordered so the bug only appears on the other three targets.
+//
+// A map reaching the head with its map-ness erased is not caught here and
+// cannot be: `iter<T>` is not one of the erasures, since map<K, V> is not
+// assignable to it, but `dyn` is, and a dyn head says nothing about what it
+// will hold.
+func (c *checker) checkViewMapFor(pos ast.Pos, iter *ir.Type) {
+	if c.funcDepth > 0 || iter == nil || iter.Kind != ir.TypeMap {
+		return
+	}
+	c.error(pos, "a loop over a map cannot be written in a view body: a view repeats its body once per element, and a map yields its elements in no defined order -- iterate a list, or build one in a handler")
 }
 
 // checkViewForElse reports a `for … else` in a view body whose else cannot be
