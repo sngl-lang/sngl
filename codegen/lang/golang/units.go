@@ -271,12 +271,19 @@ func LowerVarInit(v *ir.Var, gc *GoIRContext) string {
 	// emit as quoted strings.
 	if gc != nil {
 		switch v.Init.(type) {
-		case *ir.Literal, *ir.ListLit, *ir.MapLitIR, *ir.StructLit, *ir.Lambda:
-			// Fall through to IRLiteralToGo for these literal-shaped
-			// inits — they don't need context.
+		case *ir.Literal, *ir.Lambda:
+			// Fall through to IRLiteralToGo: a scalar literal carries no
+			// sub-expression, and a lambda body is emitted by its own path.
 		default:
+			// A composite literal is literal-SHAPED, not literal: every
+			// element is an arbitrary expression. Sent to the literal-only
+			// translator, an element that is not itself a literal reached its
+			// "" fallback, so `Node{value=first.value}` emitted `Value: ""`.
+			// It compiled wherever the field was `dyn`, because Go's `any`
+			// accepts a string.
 			return gc.EvalExpr(v.Init)
 		}
+
 	}
 	return IRLiteralToGo(v.Init)
 }
