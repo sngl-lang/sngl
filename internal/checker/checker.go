@@ -428,6 +428,16 @@ type checker struct {
 	// the comment there for why the scope is exactly one check.
 	providedCache map[string][]*ast.Document
 
+	// Flow narrowing of option<T> after a null test. narrowed holds the facts
+	// current at the statement being checked, narrowUsed says which of them a
+	// read actually went through, and narrowChecks defers the soundness
+	// question to after the purity fixed point. noNarrow suspends the rewrite
+	// where an lvalue is being checked. See narrow.go.
+	narrowed     map[narrowKey]narrowFact
+	narrowUsed   map[narrowKey]bool
+	narrowChecks []narrowCheck
+	noNarrow     int
+
 	// Deferred const(expr) assertions. Const-ness can depend on function
 	// purity, which is only assigned after all bodies are checked, so the
 	// assertions are run in a final pass.
@@ -3385,6 +3395,14 @@ func (c *checker) pass2() {
 	for _, v := range c.pkg.Vars {
 		pkgVarSet[v] = struct{}{}
 	}
+	// Every reactive var in the package, which is what a callee could reach.
+	narrowVarSet := make(map[*ir.Var]struct{}, len(pkgVarSet))
+	maps.Copy(narrowVarSet, pkgVarSet)
+	for _, comp := range c.pkg.Components {
+		for _, v := range comp.Vars {
+			narrowVarSet[v] = struct{}{}
+		}
+	}
 	for _, fn := range c.pkg.Funcs {
 		analyzeEffects(fn, pkgVarSet)
 	}
@@ -3437,6 +3455,11 @@ func (c *checker) pass2() {
 	// parameter a call site pinned can be followed to what it pinned it to.
 	c.checkRebuildKeys()
 
+	// Same moment, same reason: a narrowing is only sound if nothing in the
+	// branch could have written the value, and what a call writes is not
+	// settled until the fixed point above has run.
+	c.validateNarrowings(narrowVarSet)
+
 	// Validate deferred const(expr) assertions now that function purities
 	// are known.
 	for _, a := range c.constAsserts {
@@ -3458,9 +3481,11 @@ func (c *checker) enterFuncBody() func() {
 	c.funcDepth++
 	savedLoops := c.loopDepth
 	c.loopDepth = 0
+	restoreNarrow := c.clearNarrowings()
 	return func() {
 		c.funcDepth--
 		c.loopDepth = savedLoops
+		restoreNarrow()
 	}
 }
 

@@ -1,0 +1,23 @@
+import . "sngl:ui"
+
+var maybe option<int> = 3
+
+func clear() {
+    maybe = null
+}
+
+func double(n int) int {
+    return n * 2
+}
+
+func use() int {
+    if maybe != null {
+        clear() // ERROR(check) "maybe is reachable by a mutating call in this branch"
+        return double(maybe)
+    }
+    return 0
+}
+
+component main {
+    text(value=string(use()))
+}
