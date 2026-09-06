@@ -96,3 +96,23 @@ func TestShadowingSurvivesPackageScope(t *testing.T) {
 		t.Fatalf("unexpected diagnostics: %v", errs)
 	}
 }
+
+// TestRejectedFileClaimReservesNothing: a declaration whose file-scope claim
+// fails binds nothing, so it must not hold the package name against a sibling
+// that binds fine. Asserts the whole diagnostic set — a regression shows up as
+// a second and third diagnostic, not a wrong first one, which is why this is
+// not a `sngl check` fixture: the CLI prints only the first.
+func TestRejectedFileClaimReservesNothing(t *testing.T) {
+	errs := checkErrors(parsePkg(t,
+		"import N \"sngl:ui\"\n\nstruct N {\n    x int\n}\n",
+		"import . \"sngl:ui\"\n\nstruct N {\n    y int\n}\n\nfunc useN(s N) int {\n    return s.y\n}\n",
+	))
+	if len(errs) != 1 {
+		t.Fatalf("want one diagnostic, got %d: %v", len(errs), errs)
+	}
+	for _, want := range []string{"a.sngl:3:1:", `"N" is already bound at file scope by an import alias`} {
+		if !strings.Contains(errs[0], want) {
+			t.Errorf("diagnostic %q does not contain %q", errs[0], want)
+		}
+	}
+}
