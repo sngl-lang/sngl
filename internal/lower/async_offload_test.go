@@ -111,3 +111,42 @@ func intrinsicClosure(t *testing.T, s ir.Stmt, id string) []ir.Stmt {
 	}
 	return lam.Func.Block
 }
+
+// The split is over one flat run of statements, so the two shapes it cannot
+// take are a statement wedged between two blocking calls and a blocking call
+// inside a branch. Both are refused, and each has to say which of the two it
+// is: one message covering both named "no answer to hand back" for an `if`,
+// which is not what is wrong with it and sends the reader to rewrite the call
+// rather than lift it out of the branch.
+func TestTheShapesTheSplitCannotTakeSayWhichTheyAre(t *testing.T) {
+	wedged := func() *ir.Package {
+		pkg, h := blockingHandlerPkg()
+		// The blocking call first, so the write to busy sits between it and a
+		// second one.
+		h.Block = []ir.Stmt{h.Block[1], h.Block[0], h.Block[1]}
+		return pkg
+	}
+	branched := func() *ir.Package {
+		pkg, h := blockingHandlerPkg()
+		h.Block = []ir.Stmt{&ir.If{Cond: &ir.Literal{Type: ir.TypBool, Value: "true"}, Body: []ir.Stmt{h.Block[1]}}}
+		return pkg
+	}
+	for _, tc := range []struct {
+		name string
+		mk   func() *ir.Package
+		want string
+	}{
+		{"between two blocking calls", wedged, "has to run somewhere"},
+		{"inside a branch", branched, "inside an if or for"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := applyAsyncOffload(tc.mk(), Caps{NoAsyncCalls: true, AsyncPost: true}, Options{Platform: "fyne"})
+			if err == nil {
+				t.Fatal("a shape the split cannot take was accepted; the offload would have moved work the program did not ask to move")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("the refusal does not say what is wrong with this shape: %v", err)
+			}
+		})
+	}
+}

@@ -1,0 +1,37 @@
+# A Go target with no way back to the thread it draws on refuses the program
+# rather than emitting a call that freezes the window. The unit test in
+# internal/lower says the refusal happens; this says it survives the CLI as a
+# diagnostic a person can act on -- the file, the line and the column of the
+# call, and the name of the platform that has to change.
+#
+# bubbletea is that platform today: its Model is a value Update returns, so a
+# goroutine holding a copy has nothing to write to. gtk4 has an idle tick and
+# takes the same program.
+
+! sngl generate --lang go --platform bubbletea --out out app.sngl
+stderr 'app\.sngl:13:\d+:'
+stderr 'this call blocks'
+stderr 'bubbletea has no way to run anything back on the thread it draws on'
+! exists out
+
+sngl generate --lang go --platform gtk4 --out out2 app.sngl
+grep 'go func\(\) \{' out2/model.go
+grep 'gtk4rt\.Post\(func\(\) \{' out2/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("time", "time.Sleep")]
+#[go.async]
+func sleep(ns int)
+
+component main {
+    var greeting = "idle"
+
+    text #out(value=greeting)
+    button #load(text="load", @click {
+        sleep(300000000)
+        greeting = "done"
+    })
+}

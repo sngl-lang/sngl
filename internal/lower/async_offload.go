@@ -394,6 +394,17 @@ func (st *offloadState) split(s ir.Stmt) (bg, post []ir.Stmt, err error) {
 			Value:  &ir.Ident{Name: name, Type: t, Sym: sym, Synthesized: true},
 		}
 		return []ir.Stmt{tmp}, []ir.Stmt{back}, nil
+	case *ir.If, *ir.For:
+		// The split is over one flat run of statements, and the branch a
+		// blocking call sits in is not that run: whether it happens at all is
+		// decided on the drawing thread, and hoisting the whole `if` onto the
+		// goroutine would move its condition -- and anything else in it -- off
+		// that thread with it. Saying so is the honest answer; saying "no
+		// answer to hand back" named the wrong thing entirely.
+		return nil, nil, fmt.Errorf("%s: this blocking call is inside an if or for, and only a call written directly in the body can be moved off the drawing thread -- lift it out, or put it in a function of its own marked as blocking", offloadPos(s))
+	// An ir.Return is deliberately not here. An entry point returns nothing --
+	// that is what makes it one -- so a `return` in its body carries no value,
+	// and a case for one would be a branch no program can reach.
 	default:
 		return nil, nil, fmt.Errorf("%s: a blocking call here has no answer to hand back -- it is only supported in a call statement or on the right of an assignment", offloadPos(s))
 	}

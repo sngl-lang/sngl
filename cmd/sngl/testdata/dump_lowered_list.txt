@@ -1,10 +1,15 @@
 # Verifies `dump --stage lowered --list` succeeds for every shipping platform.
 # InlinePure runs always-on, and a platform-package override must inline to
 # declared primitives or the build fails.
+#
+# NoAsyncCalls is on every Go target, because Go cannot suspend a function.
+# AsyncPost is on the two that can get back to the thread they draw on, and
+# bubbletea's absence from that list is why the same program it takes here is
+# refused as soon as it contains a blocking call -- see go_async_no_post.txt.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → NoTernary → FocusOrder'
+stdout 'caps: NoTernary,NoAsyncReactive,NoAsyncCalls,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoAsyncReactive → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → NoTernary → FocusOrder → NoAsyncCalls'
 
 # fyne and gtk4 carry ComponentProps and InstanceBodies for the same reason
 # html does: a component the build cannot inline is built as a record with its
@@ -17,8 +22,8 @@ stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExten
 # appends tears its children down every render, so there is no identity for
 # anything to ask about.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → Canvas → Effect → InstanceEvents → ComponentProps → NoReactivity → NoTernary → CanvasReactivity → InstanceBodies → NoDeclarative'
+stdout 'caps: NoTernary,NoAsyncReactive,NoAsyncCalls,AsyncPost,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoAsyncReactive → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → Canvas → Effect → InstanceEvents → ComponentProps → NoReactivity → NoTernary → CanvasReactivity → InstanceBodies → NoDeclarative → NodeEscape → NoAsyncCalls'
 
 # html emits HTML and JS; the language emits only the server half of route
 # mode. So a restriction that exists because the language lacks a construct is
@@ -34,8 +39,8 @@ stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,N
 stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → SlotChildInstances → InstanceEvents → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → Canvas → Effect → InstanceEvents → ComponentProps → NoReactivity → NoTernary → CanvasReactivity → InstanceBodies → NoDeclarative'
+stdout 'caps: NoTernary,NoAsyncReactive,NoAsyncCalls,AsyncPost,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
+stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoAsyncReactive → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → Canvas → Effect → InstanceEvents → ComponentProps → NoReactivity → NoTernary → CanvasReactivity → InstanceBodies → NoDeclarative → NodeEscape → NoAsyncCalls'
 
 # android is the one target with no Effect pass: Compose brackets a keyed
 # lifetime itself, so it asks for the node (Features.Effects) rather than the
