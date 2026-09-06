@@ -193,11 +193,6 @@ func (m *Model) inc_click_handler() {
 	m.__n0.SetText(fmt.Sprint(m.n))
 }
 
-func (m *Model) inc_click_handler() {
-	m.n = (m.n + 1)
-	m.__n0.SetText(fmt.Sprint(m.n))
-}
-
 // incClick invokes the OnTapped callback on the #inc widget; for tests.
 func (m *Model) incClick() {
 	if m.inc.OnTapped != nil {
