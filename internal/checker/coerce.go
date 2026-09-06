@@ -52,7 +52,40 @@ func wrapIfNeeded(expr ir.Expr, target *ir.Type) ir.Expr {
 	if conv, ok := expr.(*ir.Conversion); ok && conv.Type != nil && conv.Type.Equal(target) {
 		return expr
 	}
+	// Promoting into an option is two conversions, not one: `option<float>(1)`
+	// says nothing about which of the two steps a backend is looking at, and
+	// ir.IsOptionWrap can only recognise the promotion when the operand is
+	// already the element type. So the element conversion goes on the inside
+	// and the wrap stays a single, recognisable node.
+	if target.Kind == ir.TypeOption && len(target.Elems) == 1 && target.Elems[0] != nil &&
+		actual.Kind != ir.TypeOption && actual.Kind != ir.TypeNull {
+		expr = wrapIfNeeded(expr, target.Elems[0])
+	}
 	return &ir.Conversion{Type: target, Operand: expr}
+}
+
+// wrapOptionIfNeeded is wrapIfNeeded restricted to the T -> option<T>
+// promotion. Every other assignment position calls wrapIfNeeded outright; a
+// struct literal's fields deliberately do not, because a platform's style
+// emitter reads them by pattern -- `display="flex"` against a `Display` field
+// reaches html's CSS writer as the string literal it was written as, and a
+// general wrap would hand it `Display("flex")` and drop the declaration.
+//
+// The option promotion is not optional in the same way: Go's option<T> is *T,
+// so a bare T left standing there is code that does not compile.
+func wrapOptionIfNeeded(expr ir.Expr, target *ir.Type) ir.Expr {
+	if expr == nil || target == nil || target.Kind != ir.TypeOption {
+		return expr
+	}
+	actual := exprType(expr)
+	if actual == nil {
+		return expr
+	}
+	switch actual.Kind {
+	case ir.TypeOption, ir.TypeNull, ir.TypeDyn, ir.TypeInvalid:
+		return expr
+	}
+	return wrapIfNeeded(expr, target)
 }
 
 // primitiveConvertible reports whether an explicit conversion T(x) from
