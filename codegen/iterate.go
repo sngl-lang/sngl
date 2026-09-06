@@ -173,7 +173,11 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 	// synthesized: passCanvas puts a canvas draw func for a canvas in a window
 	// body here, and passFocusOrder the window's __focusNext/__focusPrev. A
 	// caller that missed them emitted calls to methods it never declared.
-	for _, w := range ctx.Pkg.Windows {
+	//
+	// Windows() rather than Pkg.Windows: a `window` written inside a component
+	// is an ir.Window statement in that component's body and never reaches
+	// Pkg.Windows, so a canvas under one had its draw func emitted nowhere.
+	for _, w := range ctx.Windows() {
 		add(w.Funcs)
 	}
 	return out

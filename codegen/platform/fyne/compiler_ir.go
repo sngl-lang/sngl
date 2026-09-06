@@ -198,16 +198,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	// Package-wide because a promoted handler references nodes created in a
 	// sibling slot Func, which per-Func discovery would not see.
+	// AllFuncs already covers every window's funcs, component-declared ones
+	// included; appending them here again emitted each twice.
 	allFuncs := ctx.AllFuncs()
-	for _, w := range wins {
-		// codegen.Windows() returns a synthetic WindowCtx duplicating
-		// main.Funcs when no explicit window exists; a real one has a
-		// non-nil Window pointer.
-		if w.Window == nil {
-			continue
-		}
-		allFuncs = append(allFuncs, w.Funcs...)
-	}
 	allFuncs = append(allFuncs, promotedHandlersInNonMainComponents(ctx, allFuncs)...)
 	nodeSpecs, err := collectNodes(ctx.Pkg, allFuncs)
 	if err != nil {

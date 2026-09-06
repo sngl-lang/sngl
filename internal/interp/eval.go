@@ -153,6 +153,11 @@ type Env struct {
 	// can read (and assignments can mutate) package-level vars defined in the
 	// root env.
 	parent *Env
+	// inst is the instantiation this component scope was entered through, or
+	// nil at the root and for the children-less call form. It is what an emit
+	// needs: the handlers a call site supplied are written there, and the scope
+	// one runs in is this env's parent.
+	inst *ir.NodeInst
 }
 
 func NewEnv() *Env {
