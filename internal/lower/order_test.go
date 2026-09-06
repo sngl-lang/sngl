@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -85,47 +86,128 @@ func TestAlwaysOnPasses(t *testing.T) {
 	}
 }
 
-// TestCapabilityGatesAPassOnAndOff states the other half of what the old
-// filtered list said: which passes a capability turns on. It is not an
-// ordering claim, and no constraint can make it -- a gate is what a pass asks
-// of a target, and TestAlwaysOnPasses only covers the passes that ask nothing.
+// soleGate is what each capability asks for on its own: the passes
+// EnabledPasses adds when that Caps field is the only one set. Most rows are
+// the one pass named after the flag; the rows that are not are where a
+// capability's cost is more than its name says, and each carries why.
 //
-// NoReactivity is the interesting one: three passes gate on hasInstanceRuntime,
-// which reads it and nothing else, so a target that keeps its reactivity gets
-// none of them.
-func TestCapabilityGatesAPassOnAndOff(t *testing.T) {
+// This is the other half of what the old filtered list said, and no ordering
+// constraint can say it -- a gate is what a pass asks of a target, not what it
+// asks of another pass. Unlike that list it is indexed by capability rather
+// than by position, so a row is wrong only when the gate it names changed.
+var soleGate = map[string][]string{
+	"NoToggle":        {"NoToggle"},
+	"NoTernary":       {"NoTernary"},
+	"NoLambda":        {"NoLambda"},
+	"NoRef":           {"NoRef"},
+	"NoUnit":          {"NoUnit"},
+	"NoEnum":          {"NoEnum"},
+	"NoAsyncReactive": {"NoAsyncReactive"},
+	"NoComputed":      {"NoComputed"},
+	"NoTimer":         {"NoTimer"},
+	"NoListLambdas":   {"NoListLambdas"},
+
+	// Both context flags request the one pass: a target asking for either a
+	// component receiver or a threaded stdlib param needs the context rewrite,
+	// and the pass reads the flags itself to decide how far to thread.
+	"StructComponents":   {"Context"},
+	"StdlibContextParam": {"Context"},
+
+	// hasInstanceRuntime reads NoReactivity and nothing else, so a target that
+	// keeps its reactivity gets none of the instance machinery.
+	"NoReactivity": {"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity"},
+
+	// NodeEscape has no flag of its own: the escape analysis only has
+	// something to analyse once the tree is flat.
+	"NoDeclarative": {"NoDeclarative", "NodeEscape"},
+
+	"NoInlineComponents": {"NoInlineComponents"},
+	"NoImplicitRecv":     {"NoImplicitRecv"},
+	"NoStructSpread":     {"NoStructSpread"},
+	"FocusOrder":         {"FocusOrder"},
+	"Canvas":             {"Canvas"},
+
+	// The pass and the flag are named for opposite sides of the same fact:
+	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
+	// pass that injects it. NoEffects is the same shape.
+	"ReactiveCanvas": {"CanvasReactivity"},
+	"NoEffects":      {"Effect"},
+
+	// Alone it turns on nothing: retaining a slot child buys the placement
+	// match and nothing else, so it is only ever asked alongside an instance
+	// runtime. See TestASlotChildNeedsBothCapabilities.
+	"InsertBefore": nil,
+}
+
+func gatedPasses(c Caps) []string {
 	always := make(map[string]bool, len(alwaysOn))
 	for _, n := range alwaysOn {
 		always[n] = true
 	}
-	gated := func(c Caps) []string {
-		var out []string
-		for _, n := range EnabledPasses(c) {
-			if !always[n] {
-				out = append(out, n)
-			}
+	var out []string
+	for _, n := range EnabledPasses(c) {
+		if !always[n] {
+			out = append(out, n)
 		}
-		slices.Sort(out)
-		return out
 	}
-	tests := []struct {
-		name string
-		caps Caps
-		want []string
-	}{
-		{"nothing asked for", Caps{}, nil},
-		{"a lone statement rewrite", Caps{NoToggle: true}, []string{"NoToggle"}},
-		{"an instance runtime", Caps{NoReactivity: true},
-			[]string{"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity"}},
-		{"and a slot that can place a child", Caps{NoReactivity: true, InsertBefore: true},
-			[]string{"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity", "SlotChildInstances"}},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := gated(tc.caps); !slices.Equal(got, tc.want) {
-				t.Errorf("gated passes = %v; want %v", got, tc.want)
+	slices.Sort(out)
+	return out
+}
+
+// TestEachCapabilityGatesItsPasses walks the Caps fields themselves, so a new
+// capability with no row here fails rather than passing unexamined.
+func TestEachCapabilityGatesItsPasses(t *testing.T) {
+	rt := reflect.TypeOf(Caps{})
+	for i := range rt.NumField() {
+		f := rt.Field(i)
+		want, ok := soleGate[f.Name]
+		if !ok {
+			t.Errorf("Caps.%s gates no passes here; add a row to soleGate saying what it asks for", f.Name)
+			continue
+		}
+		v := reflect.New(rt).Elem()
+		v.Field(i).SetBool(true)
+		t.Run(f.Name, func(t *testing.T) {
+			if got := gatedPasses(v.Interface().(Caps)); !slices.Equal(got, want) {
+				t.Errorf("Caps{%s: true} enables %v; want %v", f.Name, got, want)
 			}
 		})
+	}
+}
+
+// TestASlotChildNeedsBothCapabilities is the one gate two flags answer for:
+// a container that can only append tears its children down every render, so
+// there is no identity for a retained slot child to be asked about.
+func TestASlotChildNeedsBothCapabilities(t *testing.T) {
+	want := []string{"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity", "SlotChildInstances"}
+	if got := gatedPasses(Caps{NoReactivity: true, InsertBefore: true}); !slices.Equal(got, want) {
+		t.Errorf("gated passes = %v; want %v", got, want)
+	}
+	if got := gatedPasses(Caps{InsertBefore: true}); len(got) != 0 {
+		t.Errorf("InsertBefore alone enables %v; want nothing", got)
+	}
+}
+
+// TestEveryPassIsNamedBySomeGate is the other half of what the old full-order
+// list caught. That list noticed a pass disappearing because it wrote every
+// name down in order; this notices it because every pass is either always on
+// or asked for by a capability, and both halves are stated. A pass named
+// nowhere is one whose removal no test would report.
+func TestEveryPassIsNamedBySomeGate(t *testing.T) {
+	named := make(map[string]bool, len(passes))
+	for _, n := range alwaysOn {
+		named[n] = true
+	}
+	for _, ns := range soleGate {
+		for _, n := range ns {
+			named[n] = true
+		}
+	}
+	named["SlotChildInstances"] = true // TestASlotChildNeedsBothCapabilities
+	for _, p := range passes {
+		if !named[p.name] {
+			t.Errorf("no test names pass %q: it is not in alwaysOn and no capability row asks for it, so deleting it would be silent", p.name)
+		}
 	}
 }
 

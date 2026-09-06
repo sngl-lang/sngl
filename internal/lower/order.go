@@ -14,7 +14,15 @@ import "fmt"
 // requirement.
 //
 // The list is not a total order and is not meant to become one: a pair absent
-// from it is a pair the pipeline does not depend on, which is most of them.
+// from it is a pair the pipeline does not depend on, which is most of them --
+// swapping each of the 40 adjacent pairs in `passes` and rebuilding all 113
+// goldens changed the output for 8.
+//
+// All 8 are constraints below, and several non-adjacent pairs were confirmed
+// the same way; where the failure says something the pass's own documentation
+// does not, the Why quotes it. The rest are stated from that documentation and
+// no current fixture reaches them -- a gap in the fixtures, not permission to
+// reorder, since an untested requirement is still one.
 type orderConstraint struct {
 	Earlier string
 	Later   string
@@ -29,6 +37,10 @@ func (c orderConstraint) String() string {
 var orderConstraints = []orderConstraint{
 	{"PlatformExtensionBody", "InlinePure",
 		"until the active platform's override is swapped into Component.Body, a stdlib component is an empty stub, and inlining an empty stub inlines nothing"},
+	{"PlatformExtensionBody", "PropBindings",
+		"the same stub, for a binding written on a stdlib component: with no body swapped in there is nothing for the write-back handler to be attached to, and the android radio goldens come out with `onClick = {}`"},
+	{"InlinePure", "NoInlineComponents",
+		"the user-component inliner rewrites the very calls InlinePure matches on, so a stdlib wrapper standing behind one is never folded away -- swapped, 96 of the 113 goldens grow an un-inlined __cf_ wrapper and the __merge_Style helper its struct spread needs"},
 	{"PropBindings", "RefLoop",
 		"a bound prop is still an ir.Bindings entry until this pass makes it an @event handler, and RefLoop rewrites what the handler assigns to"},
 	{"PropBindings", "NoToggle",
@@ -45,6 +57,8 @@ var orderConstraints = []orderConstraint{
 	{"IndexedIter", "IterKind",
 		"IterKind reads a loop's final variable arity, and this pass turns a two-variable loop over a pull sequence into a one-variable loop plus a counter"},
 
+	{"ViewForElse", "ComponentProps",
+		"the emptiness expression it synthesizes names whatever the loop head names, so every pass that rewrites a name has to see it -- a promoted component prop is the one a fixture catches, and a computed indirection or a context read is the same requirement untested"},
 	{"ViewForElse", "NoReactivity",
 		"the `if` this leaves has to reach reactivity as an ordinary view conditional, so a reactive iterable makes it a render slot"},
 
@@ -107,6 +121,8 @@ var orderConstraints = []orderConstraint{
 	{"NoReactivity", "NoTimer",
 		"a timer handler may have been wrapped by the updater injection, and the schedule/cancel pairs are injected around what that left"},
 
+	{"InstanceBodies", "NoDeclarative",
+		"both flatten a body, and they disagree about handlers: an instance's are kept inline because a factory's handler closes over the call that built it, and the declarative pass would lift them -- swapped, fyne and gtk4 emit `OnTapped = c.__n0_click_handler` for testdata/factory_reactive_slot"},
 	{"NoDeclarative", "NodeEscape",
 		"the escape analysis runs over the flat `var __nN = CreateNode(...)` + `#__nN` sequence NoDeclarative emits, and there is nothing to analyse before it"},
 	{"NoDeclarative", "NoRef",

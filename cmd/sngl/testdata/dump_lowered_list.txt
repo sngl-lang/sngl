@@ -9,7 +9,10 @@
 # attached to any link, and it was silenced by moving a name until it passed.
 #
 # The caps lines are anchored. They were prefixes before, which is why nothing
-# noticed when html grew ReactiveCanvas, NoEffects and InsertBefore.
+# noticed when html grew ReactiveCanvas, NoEffects and InsertBefore. Anchoring
+# them is also what lets the chains go: which passes a target runs is the caps
+# line here composed with internal/lower's TestEachCapabilityGatesItsPasses,
+# and each half of that is checked where it is decided.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
 stdout '^caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas,NoEffects$'
