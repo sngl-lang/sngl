@@ -7,13 +7,15 @@
 #
 # The assertion is on the lowered IR rather than on markup because the static
 # HTML renderer does not fold a map iteration into text — a plain map prop
-# behaves the same way there, so markup could not tell the two apart.
+# behaves the same way there, so markup could not tell the two apart. The body
+# reads the map through `values()` rather than looping it, since a map loop in
+# a view body has no defined order and the checker refuses one.
 
 sngl dump --stage lowered --lang none --platform html app.sngl
 
 # The body's `data` reference became the map built from the call site, so the
 # name that matched and the value written for it both arrived.
-stdout 'for var k, v = \{"dataRole"="row-7"\}'
+stdout 'map\.values\(\{"dataRole"="row-7"\}\)'
 
 # The declared prop still binds under its own name, and is not collected.
 stdout 'textContent="plain"'
@@ -31,7 +33,7 @@ component badge(
     #[wildcard("data[A-Za-z0-9]*")] data map<string, string>,
 ) {
     text(value = label)
-    for var k, v = data {
+    for var v = data.values() {
         text(value = v)
     }
 }

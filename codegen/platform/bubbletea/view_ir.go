@@ -96,10 +96,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 	} else {
 		vc.line("var parts []string")
 		for i, child := range bodyStmts {
-			childVar := fmt.Sprintf("part%d", i)
-			vc.line("var %s string", childVar)
-			vc.renderStmt(child, childVar)
-			vc.line("parts = append(parts, %s)", childVar)
+			vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
 		}
 		vc.line(`content := lipgloss.JoinVertical(lipgloss.Left, parts...)`)
 	}
@@ -206,10 +203,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 	} else {
 		vc.line("var parts []string")
 		for i, child := range cc.Body {
-			childVar := fmt.Sprintf("part%d", i)
-			vc.line("var %s string", childVar)
-			vc.renderStmt(child, childVar)
-			vc.line("parts = append(parts, %s)", childVar)
+			vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
 		}
 		vc.line(`result := lipgloss.JoinVertical(lipgloss.Left, parts...)`)
 		b.WriteString(vc.buf.String())
@@ -220,6 +214,35 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 }
 
 // --- IR view rendering ---
+
+// renderChild renders one child of a joining container into its own part var,
+// or emits it where it stands when it renders nothing to join.
+func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string) {
+	if !rendersPart(child) {
+		vc.renderStmt(child, "")
+		return
+	}
+	vc.line("var %s string", childVar)
+	vc.renderStmt(child, childVar)
+	vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+}
+
+// rendersPart reports whether a view statement produces a string for its
+// parent to join. The rest are emitted as imperative Go where they stand — a
+// hoisted `var __ltN` and its value-only If, a synthesized counter — and
+// joining an empty part for one puts a blank line in the rendered box.
+func rendersPart(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.LocalVar:
+		return false
+	case *ir.If:
+		return !n.FromTernary
+	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
+		*ir.Break, *ir.Continue:
+		return false
+	}
+	return true
+}
 
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	switch s := stmt.(type) {
@@ -441,10 +464,7 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		prevVertical := vc.vertical
 		vc.vertical = true
 		for i, child := range n.Children {
-			childVar := fmt.Sprintf("%s_%d", boxVar, i)
-			vc.line("var %s string", childVar)
-			vc.renderStmt(child, childVar)
-			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+			vc.renderChild(child, fmt.Sprintf("%s_%d", boxVar, i), childrenVar)
 		}
 		vc.vertical = prevVertical
 		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
@@ -475,10 +495,7 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		prevVertical := vc.vertical
 		vc.vertical = bp.Join == joinVertical
 		for i, child := range n.Children {
-			childVar := fmt.Sprintf("%s_%d", resultVar, i)
-			vc.line("var %s string", childVar)
-			vc.renderStmt(child, childVar)
-			vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+			vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 		}
 		vc.vertical = prevVertical
 		// tooltip: reveal the body text (dim) below the trigger while the wrapped
@@ -579,10 +596,7 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 			prevVertical := vc.vertical
 			vc.vertical = s == "vertical"
 			for i, child := range n.Children {
-				childVar := fmt.Sprintf("%s_%d", resultVar, i)
-				vc.line("var %s string", childVar)
-				vc.renderStmt(child, childVar)
-				vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+				vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 			}
 			vc.vertical = prevVertical
 			if s == "vertical" {

@@ -18,13 +18,16 @@ empty one already yields the else; it is the loop that survives to codegen
 whose else was lost. `rows` is a var for that reason, and `n` likewise.
 
 The emptiness question is asked of the iterable rather than stored, which is
-the whole reason this is a second pass and not a wider passForElse. All three
+the whole reason this is a second pass and not a wider passForElse. Both
 iterable forms a view body can hold are here, because each answers it
-differently: a list and a map report a length, and a sngl:seq range is
-measured from its bounds instead, since it has no elements until a host loop
-counts them -- the step is a constant, so the direction of that comparison is
-decided at compile time. None of the three needs anywhere to put a statement,
-and a view body on --lang none has nowhere.
+differently: a list reports a length, and a sngl:seq range is measured from
+its bounds instead, since it has no elements until a host loop counts them --
+the step is a constant, so the direction of that comparison is decided at
+compile time. A map answers by length as well, and ir.EmptyTest still builds
+that test, but the checker refuses a map loop in a view body -- a map yields
+its elements in no defined order -- so the third form cannot be written here.
+Neither of the two needs anywhere to put a statement, and a view body on
+--lang none has nowhere.
 
 deny * `__ran\d` -- a view for-else is a re-evaluated test, never passForElse's flag: a view body on a target with no host language cannot hold the statement that declares one
 deny out/none/html/index.html `<span>NOTHING YET</span>` -- the empty state is not baked into the static markup; each of the three slots is an anchor, and which branch fills it is decided in its render function on every change
@@ -50,13 +53,11 @@ output {
 component main {
     var rows list<string> = []
     var n = 0
-    var tags map<string, string> = ({})
 
     vbox {
         button(text="load", @click {
             rows = ["one", "two"]
             n = 2
-            tags = ({a="1"})
         })
         for var row = rows {
             text(value=row)
@@ -67,11 +68,6 @@ component main {
             text(value="tick")
         } else {
             text(value="NO TICKS")
-        }
-        for var k, v = tags {
-            text(value=k + v)
-        } else {
-            text(value="NO TAGS")
         }
     }
 }
@@ -91,7 +87,6 @@ import (
 type Model struct {
 	rows      []string
 	n         int
-	tags      map[string]string
 	__focusID int
 
 	width, height int
@@ -102,7 +97,6 @@ func New() Model {
 	m := Model{}
 	m.rows = []string{}
 	m.n = 0
-	m.tags = map[string]string{}
 	m.__focusID = 0
 	return m
 }
@@ -155,21 +149,6 @@ func SetNCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setNMsg{value: v} }
 }
 
-func (m Model) Tags() map[string]string {
-	return m.tags
-}
-
-func (m Model) SetTags(v map[string]string) Model {
-	m.tags = v
-	return m
-}
-
-type setTagsMsg struct{ value map[string]string }
-
-func SetTagsCmd(v map[string]string) tea.Cmd {
-	return func() tea.Msg { return setTagsMsg{value: v} }
-}
-
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -183,8 +162,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetRows(msg.value)
 	case setNMsg:
 		m = m.SetN(msg.value)
-	case setTagsMsg:
-		m = m.SetTags(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -199,7 +176,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.rows = []string{"one", "two"}
 			m.n = 2
-			m.tags = map[string]string{"a": "1"}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -243,21 +219,6 @@ func (m Model) View() tea.View {
 		content_2 = strings.Join(content_2Items, "\n")
 	}
 	contentChildren = append(contentChildren, content_2)
-	var content_3 string
-	if len(m.tags) == 0 {
-		content_3 = lipgloss.NewStyle().Render(fmt.Sprint("NO TAGS"))
-	} else {
-		var content_3Items []string
-		for k, v := range m.tags {
-			_ = k
-			_ = v
-			var content_3Item string
-			content_3Item = lipgloss.NewStyle().Render(fmt.Sprint((k + v)))
-			content_3Items = append(content_3Items, content_3Item)
-		}
-		content_3 = strings.Join(content_3Items, "\n")
-	}
-	contentChildren = append(contentChildren, content_3)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -280,14 +241,12 @@ import (
 type Model struct {
 	rows    []string
 	n       int
-	tags    map[string]string
 	__root  *fyne.Container
 	__slot0 []fyne.CanvasObject
 	__slot1 []fyne.CanvasObject
-	__slot2 []fyne.CanvasObject
 
-	__n6 *fyne.Container
-	__n7 *widget.Button
+	__n4 *fyne.Container
+	__n5 *widget.Button
 }
 
 // New creates a Model with default values.
@@ -295,11 +254,9 @@ func New() *Model {
 	m := &Model{}
 	m.rows = []string{}
 	m.n = 0
-	m.tags = map[string]string{}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot1 = nil
-	m.__slot2 = nil
 	return m
 }
 
@@ -343,33 +300,11 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 	}
 }
 
-func (m *Model) __renderSlot2(container *fyne.Container) {
-	for _, __entry := range m.__slot2 {
-		container.Remove(__entry)
-	}
-	m.__slot2 = nil
-	if len(m.tags) == 0 {
-		__n4 := widget.NewLabel("")
-		__n4.SetText("NO TAGS")
-		container.Add(__n4)
-		m.__slot2 = append(m.__slot2, __n4)
-	} else {
-		for k, v := range m.tags {
-			__n5 := widget.NewLabel("")
-			__n5.SetText((k + v))
-			container.Add(__n5)
-			m.__slot2 = append(m.__slot2, __n5)
-		}
-	}
-}
-
-func (m *Model) __n7_click_handler() {
+func (m *Model) __n5_click_handler() {
 	m.rows = []string{"one", "two"}
-	m.__renderSlot0(m.__n6)
+	m.__renderSlot0(m.__n4)
 	m.n = 2
-	m.__renderSlot1(m.__n6)
-	m.tags = map[string]string{"a": "1"}
-	m.__renderSlot2(m.__n6)
+	m.__renderSlot1(m.__n4)
 }
 
 func (m *Model) Rows() []string {
@@ -388,25 +323,16 @@ func (m *Model) SetN(v int) {
 	m.n = v
 }
 
-func (m *Model) Tags() map[string]string {
-	return m.tags
-}
-
-func (m *Model) SetTags(v map[string]string) {
-	m.tags = v
-}
-
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n6 = container.NewVBox()
-	m.__n7 = widget.NewButton("", nil)
-	m.__n7.SetText("load")
-	m.__n7.OnTapped = m.__n7_click_handler
-	m.__n6.Add(m.__n7)
-	m.__renderSlot0(m.__n6)
-	m.__renderSlot1(m.__n6)
-	m.__renderSlot2(m.__n6)
-	content := fyne.CanvasObject(m.__n6)
+	m.__n4 = container.NewVBox()
+	m.__n5 = widget.NewButton("", nil)
+	m.__n5.SetText("load")
+	m.__n5.OnTapped = m.__n5_click_handler
+	m.__n4.Add(m.__n5)
+	m.__renderSlot0(m.__n4)
+	m.__renderSlot1(m.__n4)
+	content := fyne.CanvasObject(m.__n4)
 	return content
 }
 
@@ -444,13 +370,11 @@ import (
 type Model struct {
 	rows    []string
 	n       int
-	tags    map[string]string
 	__root  gtk4rt.Handle
 	__slot0 []gtk4rt.Handle
 	__slot1 []gtk4rt.Handle
-	__slot2 []gtk4rt.Handle
-	__n6    gtk4rt.Handle
-	__n7    gtk4rt.Handle
+	__n4    gtk4rt.Handle
+	__n5    gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -459,11 +383,9 @@ func New() *Model {
 	m := &Model{}
 	m.rows = []string{}
 	m.n = 0
-	m.tags = map[string]string{}
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot1 = nil
-	m.__slot2 = nil
 	return m
 }
 
@@ -507,33 +429,11 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	}
 }
 
-func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
-	for _, __entry := range m.__slot2 {
-		gtk4rt.BoxRemove(parent, __entry)
-	}
-	m.__slot2 = nil
-	if len(m.tags) == 0 {
-		__n4 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n4, "NO TAGS")
-		gtk4rt.BoxAppend(parent, __n4)
-		m.__slot2 = append(m.__slot2, __n4)
-	} else {
-		for k, v := range m.tags {
-			__n5 := gtk4rt.LabelNew("")
-			gtk4rt.LabelSetText(__n5, (k + v))
-			gtk4rt.BoxAppend(parent, __n5)
-			m.__slot2 = append(m.__slot2, __n5)
-		}
-	}
-}
-
-func (m *Model) __n7_clicked_handler() {
+func (m *Model) __n5_clicked_handler() {
 	m.rows = []string{"one", "two"}
-	m.__renderSlot0(m.__n6)
+	m.__renderSlot0(m.__n4)
 	m.n = 2
-	m.__renderSlot1(m.__n6)
-	m.tags = map[string]string{"a": "1"}
-	m.__renderSlot2(m.__n6)
+	m.__renderSlot1(m.__n4)
 }
 
 func (m *Model) Rows() []string {
@@ -552,30 +452,21 @@ func (m *Model) SetN(v int) {
 	m.n = v
 }
 
-func (m *Model) Tags() map[string]string {
-	return m.tags
-}
-
-func (m *Model) SetTags(v map[string]string) {
-	m.tags = v
-}
-
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n6, 6)
-	m.__n7 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n7, "load")
-	gtk4rt.Connect(m.__n7, "clicked", m.__n7_clicked_handler)
-	gtk4rt.BoxAppend(m.__n6, m.__n7)
-	m.__renderSlot0(m.__n6)
-	m.__renderSlot1(m.__n6)
-	m.__renderSlot2(m.__n6)
-	gtk4rt.BoxAppend(m.__root, m.__n6)
+	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n4, 6)
+	m.__n5 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n5, "load")
+	gtk4rt.Connect(m.__n5, "clicked", m.__n5_clicked_handler)
+	gtk4rt.BoxAppend(m.__n4, m.__n5)
+	m.__renderSlot0(m.__n4)
+	m.__renderSlot1(m.__n4)
+	gtk4rt.BoxAppend(m.__root, m.__n4)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -626,13 +517,11 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     val rows = remember { mutableStateListOf<String>() }
     var n by remember { mutableStateOf(0) }
-    var tags by remember { mutableStateOf(emptyMap()) }
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Button(onClick = {
             rows = listOf("one", "two")
             n = 2
-            tags = mapOf("a" to "1")
         }, modifier = Modifier) {
             Text(text = "load", modifier = Modifier)
         }
@@ -650,13 +539,6 @@ fun MainScreen() {
                 Text(text = "tick", modifier = Modifier)
             }
         }
-        if ((tags.size == 0)) {
-            Text(text = "NO TAGS", modifier = Modifier)
-        } else {
-            for ((k, v) in tags) {
-                Text(text = (k + v), modifier = Modifier)
-            }
-        }
     }
 }
 -- out/none/html/index.html --
@@ -672,20 +554,18 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n8" data-sngl-id="__n8" style="display:flex;flex-direction:column">
+<div id="__n5" data-sngl-id="__n5" style="display:flex;flex-direction:column">
   <button id="$0">
     <span>load</span>
   </button>
   <span data-sngl-slot="0" style="display:contents"></span>
   <span data-sngl-slot="1" style="display:contents"></span>
-  <span data-sngl-slot="2" style="display:contents"></span>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { rows: [], n: 0, tags: null };
-  state.tags = /* @__PURE__ */ new Map([]);
+  var state = { rows: [], n: 0 };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -693,7 +573,6 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __slot02 = [];
     let __slot12 = [];
-    let __slot22 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = __prop___p0;
@@ -713,51 +592,19 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __slot02 = [];
     let __slot12 = [];
-    let __slot22 = [];
-    let __n9 = document.createElement("span");
-    __n9.textContent = "tick";
-    __root.appendChild(__n9);
+    let __n6 = document.createElement("span");
+    __n6.textContent = "tick";
+    __root.appendChild(__n6);
     return {
       __root,
       __destroy() {
       }
     };
   }
-  function __cf___child2(props) {
-    const __root = document.createElement("div");
-    __root.style.display = "contents";
-    let __p0 = props.__p0;
-    let __p1 = props.__p1;
-    let __prop___p0 = __p0;
-    let __prop___p1 = __p1;
-    let __slot02 = [];
-    let __slot12 = [];
-    let __slot22 = [];
-    function __set___p0(__v) {
-      __prop___p0 = __v;
-      __n1.textContent = __prop___p0 + __prop___p1;
-    }
-    function __set___p1(__v) {
-      __prop___p1 = __v;
-      __n1.textContent = __prop___p0 + __prop___p1;
-    }
-    let __n1 = document.createElement("span");
-    __n1.textContent = __prop___p0 + __prop___p1;
-    __root.appendChild(__n1);
-    return {
-      __root,
-      __destroy() {
-      },
-      __set___p0,
-      __set___p1
-    };
-  }
   var __slot0 = [];
   var __inst1_live = [];
   var __slot1 = [];
   var __inst3_live = [];
-  var __slot2 = [];
-  var __inst5_live = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
@@ -765,44 +612,44 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     if (state.rows.length === 0) {
-      let __n2 = document.createElement("span");
-      __n2.textContent = "NOTHING YET";
+      let __n1 = document.createElement("span");
+      __n1.textContent = "NOTHING YET";
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
       }
-      if (__place0_i_ref0 === __n2) {
+      if (__place0_i_ref0 === __n1) {
         __place0_i = __place0_i + 1;
       } else {
-        parent.insertBefore(__n2, __place0_i_ref0);
+        parent.insertBefore(__n1, __place0_i_ref0);
       }
-      __slot0.push(__n2);
+      __slot0.push(__n1);
     } else {
       for (const row of state.rows) {
-        let __n3 = null;
+        let __n2 = null;
         if (__inst1_live.length > __inst1_i) {
-          __n3 = __inst1_live[__inst1_i];
-          __n3.__set___p0(row);
+          __n2 = __inst1_live[__inst1_i];
+          __n2.__set___p0(row);
         } else {
           if (__inst1_live.length > __inst1_i) {
             __inst1_live[__inst1_i].__destroy();
           }
-          let __n3__new = __cf___child0({ __p0: row });
-          __n3 = __n3__new;
+          let __n2__new = __cf___child0({ __p0: row });
+          __n2 = __n2__new;
         }
-        __inst1_next.push(__n3);
+        __inst1_next.push(__n2);
         __inst1_i = __inst1_i + 1;
-        let __n3__el = __n3.__root;
+        let __n2__el = __n2.__root;
         let __place0_i_ref1 = null;
         if (__place0_i < __place0_prev.length) {
           __place0_i_ref1 = __place0_prev[__place0_i];
         }
-        if (__place0_i_ref1 === __n3__el) {
+        if (__place0_i_ref1 === __n2__el) {
           __place0_i = __place0_i + 1;
         } else {
-          parent.insertBefore(__n3__el, __place0_i_ref1);
+          parent.insertBefore(__n2__el, __place0_i_ref1);
         }
-        __slot0.push(__n3__el);
+        __slot0.push(__n2__el);
       }
     }
     for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -825,43 +672,43 @@ body { font-family: system-ui, sans-serif; }
     let __inst3_next = [];
     let __inst3_i = 0;
     if (0 >= state.n) {
-      let __n4 = document.createElement("span");
-      __n4.textContent = "NO TICKS";
+      let __n3 = document.createElement("span");
+      __n3.textContent = "NO TICKS";
       let __place2_i_ref0 = null;
       if (__place2_i < __place2_prev.length) {
         __place2_i_ref0 = __place2_prev[__place2_i];
       }
-      if (__place2_i_ref0 === __n4) {
+      if (__place2_i_ref0 === __n3) {
         __place2_i = __place2_i + 1;
       } else {
-        parent.insertBefore(__n4, __place2_i_ref0);
+        parent.insertBefore(__n3, __place2_i_ref0);
       }
-      __slot1.push(__n4);
+      __slot1.push(__n3);
     } else {
       for (let __x = 0, __end = state.n; __x < __end; __x++) {
-        let __n5 = null;
+        let __n4 = null;
         if (__inst3_live.length > __inst3_i) {
-          __n5 = __inst3_live[__inst3_i];
+          __n4 = __inst3_live[__inst3_i];
         } else {
           if (__inst3_live.length > __inst3_i) {
             __inst3_live[__inst3_i].__destroy();
           }
-          let __n5__new = __cf___child1({});
-          __n5 = __n5__new;
+          let __n4__new = __cf___child1({});
+          __n4 = __n4__new;
         }
-        __inst3_next.push(__n5);
+        __inst3_next.push(__n4);
         __inst3_i = __inst3_i + 1;
-        let __n5__el = __n5.__root;
+        let __n4__el = __n4.__root;
         let __place2_i_ref1 = null;
         if (__place2_i < __place2_prev.length) {
           __place2_i_ref1 = __place2_prev[__place2_i];
         }
-        if (__place2_i_ref1 === __n5__el) {
+        if (__place2_i_ref1 === __n4__el) {
           __place2_i = __place2_i + 1;
         } else {
-          parent.insertBefore(__n5__el, __place2_i_ref1);
+          parent.insertBefore(__n4__el, __place2_i_ref1);
         }
-        __slot1.push(__n5__el);
+        __slot1.push(__n4__el);
       }
     }
     for (const [__inst3_i_d, _] of __inst3_live.entries()) {
@@ -877,81 +724,16 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  function __renderSlot2(parent) {
-    let __place4_prev = __slot2;
-    let __place4_i = 0;
-    __slot2 = [];
-    let __inst5_next = [];
-    let __inst5_i = 0;
-    if (state.tags.size === 0) {
-      let __n6 = document.createElement("span");
-      __n6.textContent = "NO TAGS";
-      let __place4_i_ref0 = null;
-      if (__place4_i < __place4_prev.length) {
-        __place4_i_ref0 = __place4_prev[__place4_i];
-      }
-      if (__place4_i_ref0 === __n6) {
-        __place4_i = __place4_i + 1;
-      } else {
-        parent.insertBefore(__n6, __place4_i_ref0);
-      }
-      __slot2.push(__n6);
-    } else {
-      for (const [k, v] of state.tags.entries()) {
-        let __n7 = null;
-        if (__inst5_live.length > __inst5_i) {
-          __n7 = __inst5_live[__inst5_i];
-          __n7.__set___p0(k);
-          __n7.__set___p1(v);
-        } else {
-          if (__inst5_live.length > __inst5_i) {
-            __inst5_live[__inst5_i].__destroy();
-          }
-          let __n7__new = __cf___child2({ __p0: k, __p1: v });
-          __n7 = __n7__new;
-        }
-        __inst5_next.push(__n7);
-        __inst5_i = __inst5_i + 1;
-        let __n7__el = __n7.__root;
-        let __place4_i_ref1 = null;
-        if (__place4_i < __place4_prev.length) {
-          __place4_i_ref1 = __place4_prev[__place4_i];
-        }
-        if (__place4_i_ref1 === __n7__el) {
-          __place4_i = __place4_i + 1;
-        } else {
-          parent.insertBefore(__n7__el, __place4_i_ref1);
-        }
-        __slot2.push(__n7__el);
-      }
-    }
-    for (const [__inst5_i_d, _] of __inst5_live.entries()) {
-      let __inst5_i_j = __inst5_live.length - 1 - __inst5_i_d;
-      if (__inst5_i_j >= __inst5_i) {
-        __inst5_live[__inst5_i_j].__destroy();
-      }
-    }
-    __inst5_live = __inst5_next;
-    for (const __place4_prev_e of __place4_prev) {
-      if (__slot2.indexOf(__place4_prev_e) < 0) {
-        parent.removeChild(__place4_prev_e);
-      }
-    }
-  }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
   __renderSlot1(__slotAnchor_1);
-  var __slotAnchor_2 = document.querySelector('[data-sngl-slot="2"]');
-  __renderSlot2(__slotAnchor_2);
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.rows = ["one", "two"];
     __renderSlot0(__slotAnchor_0);
     state.n = 2;
     __renderSlot1(__slotAnchor_1);
-    state.tags = /* @__PURE__ */ new Map([["a", "1"]]);
-    __renderSlot2(__slotAnchor_2);
   });
 })();
 </script>

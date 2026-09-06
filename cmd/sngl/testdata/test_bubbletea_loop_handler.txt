@@ -1,5 +1,16 @@
 # A handler inside a view loop reads the loop's own variable, on bubbletea.
 #
+# Every head form a focusable loop can take is here, because the focus cursor
+# is an int ordinal and each head answers "which iteration is this?"
+# differently. A map head is not among them: the checker refuses a map loop in
+# a view body, since a map fixes no order for the ordinal to name.
+#
+# Whether the handler reads the element varies from loop to loop, and Go
+# rejects the binding it does not read. The unread name here is one the
+# rendered body happens to spell inside another word -- `it` inside `hits` --
+# which is what a substring test over the rendered Go cannot tell from a
+# reference.
+#
 # This has to be a compiled run: the interpreter never emits either loop, so
 # `--platform none` passes under the bug.
 
@@ -28,6 +39,9 @@ component main {
         }
         for var i, it = items {
             button(text=it, @click { picked = "{i}:{it}" })
+        }
+        for var i, it = items {
+            button(text=it, @click { hits += i })
         }
     }
     text(value=picked)
