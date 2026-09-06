@@ -1,0 +1,33 @@
+# An @mount that awaits is emitted inside functions marked async, all the way
+# up the settle chain.
+#
+# The handler body is lifted into __effectN_mount, which __effectN_up calls,
+# which the group settle calls. The checker coloured the program before any of
+# those existed, so every one of them was emitted as a plain `function` while
+# the call sites still wrote `await` off the callee's colour. esbuild is what
+# noticed: this is a generate test rather than a golden because the assertion
+# is that the bundle parses, and only the real bundler can say so.
+
+sngl generate --out out app.sngl
+exists out/index.html
+grep 'async function __effect0_mount' out/index.html
+grep 'async function __effect0_up' out/index.html
+grep 'async function __effects0_settle' out/index.html
+
+-- app.sngl --
+import . "sngl:ui"
+import api "js:./api"
+
+output { none { html } }
+
+component main {
+    var url = "a"
+    var greeting = ""
+    effect(on=url, @mount(k) {
+        greeting = api.fetchHello(k)
+    })
+    text(value=greeting)
+}
+
+-- api/index.ts --
+export async function fetchHello(name: string): Promise<string> { return "hi " + name; }

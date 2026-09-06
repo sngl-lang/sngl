@@ -140,6 +140,11 @@ func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 }
 
 func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
+	// Set before any body is translated, since it decides how a call to one of
+	// these renders, and before ScopedExprCtx clones it. See
+	// golang.ModelFreeFuncs -- a user type's method is emitted free, and one
+	// calling a top-level func has no Model to reach a Model method through.
+	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
@@ -328,9 +333,32 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 
 	allFuncs := c.ctx.AllFuncs()
+	componentFuncs := gtk4ComponentFuncs(c.ctx.Pkg)
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
-		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+		if fn.IsTest || codegen.IsComputed(fn) {
+			continue
+		}
+		// An instance component carries its own funcs as methods on its record;
+		// emitComponentInstance writes those.
+		if instanceOwnsFunc(c.ctx.Pkg, fn) {
+			continue
+		}
+		// A method on a user struct or enum is a free `ReceiverMethod(this, …)`
+		// -- the type is emitted into this package beside the Model, so Go has
+		// no receiver to hang one of those on, and that is the name the Go
+		// translator spells at the call site. Skipping every func with a
+		// receiver left both these and a component's own funcs undefined where
+		// they were called from.
+		if fn.Receiver != "" && gtk4UserTypeName(c.ctx.Pkg, fn.Receiver) {
+			emitGTK4TypeMethod(&funcBuf, fn, gc)
+			continue
+		}
+		// A top-level func reads no component state, so it is emitted free --
+		// that is what ModelFreeFuncs told the call sites above, and it is the
+		// only form a type method can call.
+		if fn.Receiver == "" && !componentFuncs[fn] && c.shared.canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+			emitGTK4FreeFunc(&funcBuf, fn, gc)
 			continue
 		}
 		if c.shared.canvasByFunc[fn] != nil {
@@ -906,6 +934,74 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 	return false
 }
 
+// gtk4UserTypeName reports whether a receiver names a struct or enum this
+// package declares, which is what separates a type's method from a
+// component's own func -- the latter names its component.
+func gtk4UserTypeName(pkg *ir.Package, name string) bool {
+	if pkg == nil {
+		return false
+	}
+	for _, s := range pkg.Structs {
+		if s.Name == name {
+			return true
+		}
+	}
+	for _, e := range pkg.Enums {
+		if e.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// gtk4ComponentFuncs is every func some component declares; what is left in
+// pkg.Funcs is top level, with no component in scope to read.
+func gtk4ComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	out := map[*ir.Func]bool{}
+	if pkg == nil {
+		return out
+	}
+	for _, comp := range pkg.Components {
+		for _, fn := range comp.Funcs {
+			out[fn] = true
+		}
+	}
+	return out
+}
+
+// emitGTK4FreeFunc emits a top-level func under its exported name, which is
+// what ExprCtx.FreeFuncs told the call sites to expect.
+func emitGTK4FreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+	if len(fn.Block) == 0 {
+		return
+	}
+	fnCopy := *fn
+	fnCopy.Name = golang.ExportName(fn.Name)
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}
+
+// emitGTK4TypeMethod emits a user type's method as the free
+// `ReceiverMethod(this, …)` the Go translator names at every call site. The
+// body touches no widget, so it goes through the plain renderer rather than
+// the gtk4 translator.
+func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
+	if len(fn.Block) == 0 {
+		return
+	}
+	fnCopy := *fn
+	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
+	fnCopy.Receiver = ""
+	for _, line := range gc.EmitFuncDef(&fnCopy) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
+}
+
 // emitGTK4Func emits a top-level user function as a method on *Model, routing
 // the body through WalkLowered so a CanvasRedrawStmt becomes queue_draw.
 func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
@@ -922,9 +1018,13 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *
 	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	fnCopy := *fn
-	if fnCopy.Receiver == "" {
-		fnCopy.Receiver = "Model"
-	}
+	// A component's own func names its component as the receiver
+	// (passNoImplicitRecv). Inlining folded that component into main, so the
+	// Model is the receiver it has here, and the synthetic first parameter is
+	// that receiver rather than an argument.
+	// EmitFuncDef drops the synthetic first parameter for a func with a
+	// receiver, so the component receiver does not also arrive as an argument.
+	fnCopy.Receiver = "Model"
 	fnCopy.Block = body
 	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)

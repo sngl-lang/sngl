@@ -150,7 +150,7 @@ func (env *Env) Exec(s ir.Stmt) error {
 		}
 		return err
 	case *ir.Emit:
-		return nil // no-op in headless tests
+		return env.emit(n)
 	case *ir.LocalVar:
 		if n.Init == nil {
 			env.Set(n.Sym, nil)

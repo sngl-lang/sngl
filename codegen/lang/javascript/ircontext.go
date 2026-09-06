@@ -1023,7 +1023,14 @@ func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
 	for i, p := range fn.Params {
 		params[i] = p.Name
 	}
-	lines = append(lines, "function "+fn.Name+"("+strings.Join(params, ", ")+") {")
+	// The same colour the call sites read: EvalStmt writes `await` in front of a
+	// call to an async func, so a definition that dropped the keyword produced
+	// an await in a sync function -- text no bundler parses.
+	keyword := "function "
+	if fn.IsAsync {
+		keyword = "async function "
+	}
+	lines = append(lines, keyword+fn.Name+"("+strings.Join(params, ", ")+") {")
 
 	bodyJC := jc
 	for _, p := range fn.Params {

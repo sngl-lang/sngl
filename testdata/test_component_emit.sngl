@@ -1,0 +1,70 @@
+import . "sngl:ui"
+import . "sngl:app"
+import . "sngl:test"
+
+output {
+    none { html }
+}
+
+// A component that forwards its own event is the shape every platform override
+// of a stdlib component has: `@click { click() }` on the widget it wraps. The
+// interpreter used to drop every emit, so a fixture could only ever observe the
+// leaf components it renders itself -- a composition delivered nothing here
+// while delivering correctly on every compiled target, which reaches the
+// handler through the inliner's substitution instead.
+var log list<string> = []
+
+func testAnEmitReachesTheCallSiteHandler(t Test, c main) {
+    t.assert(c.pressed == 1)
+}
+
+func testAnEmitCarriesItsPayload(t Test, c main) {
+    t.assert(log.join(",") == "hello")
+}
+
+func testAnUnsubscribedEmitGoesNowhere(t Test, c main) {
+    t.assert(c.quiet == 0)
+}
+
+// The same delivery from a child whose gate came from the declaration's
+// default rather than from the call site: the emit crosses the same boundary.
+func testAnEmitFromADefaultedChildArrives(t Test, c main) {
+    t.assert(c.defaulted == 1)
+}
+
+component relay(on bool = true, @fired ChangeEvent) {
+    var seen = 0
+
+    if on {
+        effect(@mount {
+            seen += 1
+            fired({value="hello"})
+        })
+    }
+
+    text(value=string(seen))
+}
+
+component main {
+    var (
+        pressed = 0
+        quiet = 0
+        defaulted = 0
+    )
+
+    relay(on=true, @fired(e) {
+        pressed += 1
+        log.push(e.value)
+    })
+
+    // No handler for @fired: the emit has no subscriber and goes nowhere.
+    relay(on=true)
+
+    // `on` omitted, so the declared default is what decides whether the
+    // bracket is placed at all.
+    relay(@fired(e) {
+        defaulted += 1
+    })
+
+    text(value="{pressed} {quiet} {defaulted}")
+}

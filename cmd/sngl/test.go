@@ -14,6 +14,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform/none"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/ir"
 	"github.com/spf13/cobra"
 )
@@ -222,7 +223,13 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 		}
 
 		start = time.Now()
-		pkg, err := checkDoc(doc, u.dir, true)
+		// A test run is a build for the platform under test, so the check has
+		// to be configured for that target and not for whatever the source's
+		// `output` block happens to name: a platform absent from the block
+		// would otherwise never have its platform package merged, and every
+		// stdlib component it renders through an override would report itself
+		// unimplemented.
+		pkg, err := checkDoc(doc, u.dir, true, build.SelectedTargets(langIdent(lang), plat.PlatformIdentifier())...)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", u.name, err)
 			totalFail++
