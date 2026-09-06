@@ -224,6 +224,9 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 			for _, s := range x.Body {
 				walkStmt(s)
 			}
+			for _, s := range x.Else {
+				walkStmt(s)
+			}
 		case *ir.LocalVar:
 			if x.Init != nil {
 				walkExpr(x.Init)

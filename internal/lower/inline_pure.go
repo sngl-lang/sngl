@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -179,6 +180,25 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return nil, err
 	}
 	n.Children = children
+	// A named slot's content is a body like any other, and this walk used to
+	// reach every body but that one. Missed, the content arrived at
+	// passReactivity still spelled as the wrapper the caller wrote -- a
+	// platform override, which has a real body -- so a reactive `if` around the
+	// insertion classified it as an instance to reconcile and demanded a setter
+	// no platform primitive has. Sorted, for the reason ir.Walk gives over the
+	// same map: a pass that numbers what it finds must find it in one order
+	// twice.
+	for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+		sc := n.Slots[name]
+		if sc == nil {
+			continue
+		}
+		body, err := st.inlineStmts(sc.Body)
+		if err != nil {
+			return nil, err
+		}
+		sc.Body = body
+	}
 	for _, h := range n.Handlers {
 		if h.Func == nil {
 			continue

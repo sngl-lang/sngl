@@ -32,14 +32,9 @@ import (
 // the flag as the body's first statement also settles `break`, which leaves a
 // loop whose body did run.
 //
-// View bodies are left alone, because a statement declared beside a node is
-// not something a static renderer can write down -- the same bound passCSE
-// documents at greater length. There a for-else is the platform emitter's to
-// render as a structural conditional: one subtree when the loop produced
-// nodes, the other when it did not. Worth knowing that only bubbletea
-// actually does today -- fyne, gtk4, android and html/none emit nothing at
-// all for the else -- so leaving it alone here leaves it unrendered there,
-// rather than handing it to something that handles it.
+// View bodies are passViewForElse's, which runs earlier and leaves no Else
+// behind: a statement declared beside a node is not something a static
+// renderer can write down.
 //
 // Which blocks those are is imperativeBlocks' answer, shared with passCSE --
 // including a lambda body wherever it appears, view prop included, which is

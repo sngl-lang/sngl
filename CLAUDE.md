@@ -70,9 +70,29 @@ before the loop, set as the body's first statement, tested by an `if` after
 it. Every backend already emits those three statements, so no language grows a
 case — before the pass, `codegen/irwalk` read a loop's head and body and
 nothing else, and an imperative for-else compiled with the else silently
-dropped. View bodies keep theirs, where the platform emitters render it
-structurally. Which blocks those are is `imperativeBlocks`
-(`internal/lower/blocks.go`), shared with `passCSE`: the declared imperative
+dropped.
+
+A view body's for-else is `passViewForElse`, and the two cannot share a
+desugaring: a flag is a statement, and a view body on a target with no host
+language has nowhere to put one. So the emptiness question is asked of the
+iterable instead — `if <iterable is empty> { ELSE } else { for … { BODY } }`,
+built by `ir.EmptyTest` — and asked again on every render rather than stored.
+That leaves the checker two requirements the loop itself does not have
+(`checkViewForElse`): the head must be *measurable* (a list or map reports a
+length, a `sngl:seq` range is compared against its bounds; a pull sequence
+answers only by consuming an element) and it must survive a *second*
+evaluation, since it is now written once and read twice. Both are positioned
+errors. The pass runs early, well before `passReactivity`, so the `if` reaches
+that pass as an ordinary view conditional and a reactive iterable makes it a
+render slot — which is what re-asks the question when the list changes.
+Leaving the else to the platform emitters was the previous answer and only
+bubbletea implemented it; fyne, gtk4, android and html on `--lang none` each
+emitted the loop and nothing at all, silently, since the interpreter honours
+`Else` itself and `sngl test` passed everywhere.
+
+Which blocks each pass rewrites is `blocks.go`'s answer: `imperativeBlocks`
+for `passForElse`, shared with `passCSE`, and `viewBlocks` — its complement —
+for `passViewForElse`. The first is the declared imperative
 roots *and every lambda body in the package*, the latter from `ir.Walk`. The
 lambdas are what reach a handler on android, where a handler body is a lambda
 in `NodeInst.Props` by then rather than an `ir.EventHandler` — a hand-written
@@ -161,7 +181,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Three run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Four run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib

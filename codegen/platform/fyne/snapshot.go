@@ -57,12 +57,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		return nil, fmt.Errorf("go not found in PATH")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sngl-fyne-snapshot-*")
-	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	sink := codegen.NewMemSink()
 	if err := g.Generate(&codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
@@ -70,9 +65,10 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 			"package": "main",
 			"main":    false,
 		}),
-	}, codegen.NewDirSink(tmpDir)); err != nil {
+	}, sink); err != nil {
 		return nil, fmt.Errorf("generating fyne code: %w", err)
 	}
+	files := sink.Files()
 
 	harness := fmt.Sprintf(`package main
 
@@ -98,13 +94,16 @@ func main() {
 }
 `, width, height)
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "snapshot_main.go"), []byte(harness), 0o644); err != nil {
-		return nil, fmt.Errorf("writing harness: %w", err)
-	}
+	files["snapshot_main.go"] = []byte(harness)
+	files["go.mod"] = []byte(snapshotGoMod())
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(snapshotGoMod()), 0o644); err != nil {
-		return nil, fmt.Errorf("writing go.mod: %w", err)
+	// Keyed by the generated content so an unchanged snapshot reuses the
+	// directory, and with it the Go build cache. See codegen.BuildDirForContent.
+	tmpDir, release, err := codegen.BuildDirForContent("snapshot-fyne", files)
+	if err != nil {
+		return nil, fmt.Errorf("creating build dir: %w", err)
 	}
+	defer release()
 
 	tidy := exec.Command(goPath, "mod", "tidy")
 	tidy.Dir = tmpDir
@@ -113,7 +112,7 @@ func main() {
 		return nil, fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	run := exec.Command(goPath, "run", "-trimpath", ".")
+	run := exec.Command(goPath, "run", ".")
 	run.Dir = tmpDir
 	var stdout bytes.Buffer
 	run.Stdout = &stdout
@@ -145,11 +144,14 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		return nil, fmt.Errorf("go not found in PATH")
 	}
 
-	tmpDir, err := os.MkdirTemp("", "sngl-fyne-batch-*")
+	// Keyed by which documents are in the batch rather than by their
+	// content: the directory then stays put as they are edited, so the
+	// sub-packages that did not change still hit the Go build cache.
+	tmpDir, release, err := codegen.BuildDir("snapshot-fyne-batch", codegen.BatchKey(docs)...)
 	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
+		return nil, fmt.Errorf("creating build dir: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer release()
 
 	// Generate each doc into its own sub-package.
 	type docPkg struct {
@@ -232,8 +234,10 @@ func main() {
 		return nil, fmt.Errorf("go mod tidy: %w", err)
 	}
 
-	binPath := filepath.Join(tmpDir, "snapshot")
-	build := exec.Command(goPath, "build", "-trimpath", "-o", binPath, ".")
+	// Beside the directory, not in it: the directory is emptied before each
+	// generation, and `go build -o` relinks whenever its output is missing.
+	binPath := tmpDir + ".snapshot"
+	build := exec.Command(goPath, "build", "-o", binPath, ".")
 	build.Dir = tmpDir
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {

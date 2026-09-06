@@ -1,0 +1,21 @@
+// A view for-else renders its else when the iterable yields nothing, and it
+// decides that by asking the iterable -- there is nowhere in a view body on a
+// target with no host language to store the flag an imperative for-else uses.
+// A pull sequence answers that question only by consuming the element that
+// would have been the answer, so the loop is refused rather than lowered into
+// a test that eats an element.
+
+import . "sngl:ui"
+
+component main {
+    var rows list<string> = []
+    var pulled iter<string> = rows
+
+    vbox {
+        for var row = pulled { // ERROR(check) "a pull sequence reports that only by consuming an element"
+            text(value=row)
+        } else {
+            text(value="nothing yet")
+        }
+    }
+}
