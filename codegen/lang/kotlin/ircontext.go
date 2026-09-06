@@ -639,6 +639,15 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 		return nullFuncStubKt(n.Type)
 	}
 	operand := kc.EvalExpr(n.Operand)
+	// A narrowed option: Kotlin's option<T> is T?, and the null test is what
+	// makes the assertion safe.
+	if ir.IsOptionUnwrap(n) {
+		return operand + "!!"
+	}
+	// And the promotion the other way needs nothing: T is a subtype of T?.
+	if ir.IsOptionWrap(n) {
+		return operand
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeInt:

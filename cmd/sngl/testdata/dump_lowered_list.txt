@@ -1,15 +1,29 @@
-# Verifies `dump --stage lowered --list` succeeds for every shipping platform.
-# InlinePure runs always-on, and a platform-package override must inline to
-# declared primitives or the build fails.
+# `dump --stage lowered --list` reports what a target resolves to: the caps its
+# platform and language ask for, and the passes those caps enable. This checks
+# the CLI answers for every shipping platform, and states the three facts about
+# targets the printout is the evidence for.
+#
+# The pass ORDER is not asserted here. It belongs to internal/lower, which
+# states it as pairwise constraints carrying their reasons (orderConstraints);
+# a chain of names in this file was a sixth copy of that order with no reason
+# attached to any link, and it was silenced by moving a name until it passed.
+#
+# The caps lines are anchored. They were prefixes before, which is why nothing
+# noticed when html grew ReactiveCanvas, NoEffects and InsertBefore. Anchoring
+# them is also what lets the chains go: which passes a target runs is the caps
+# line here composed with internal/lower's TestEachCapabilityGatesItsPasses,
+# and each half of that is checked where it is decided.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → TimerPrimitive → NoTernary → FocusOrder'
+stdout '^caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas,NoEffects$'
+stdout '^passes: \w+( → \w+)+$'
+stdout ' → Effect → '
 
 # fyne and gtk4 carry ComponentProps and InstanceBodies for the same reason
 # html does: a component the build cannot inline is built as a record with its
 # own state. Their capabilities are identical, so the gate cannot tell them
-# apart and neither can this list.
+# apart and neither can this list -- which is what the cmp says, rather than
+# two copies of one chain saying it by coincidence.
 #
 # SlotChildInstances is the one that does tell them apart, and html is the only
 # target with it. It gates on InsertBefore as well, because retaining a slot
@@ -17,32 +31,33 @@ stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExten
 # appends tears its children down every render, so there is no identity for
 # anything to ask about.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → Canvas → Effect → TimerPrimitive → InstanceEvents → ComponentProps → NoReactivity → NoTernary → CanvasReactivity → InstanceBodies → NoDeclarative'
+stdout '^caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas,ReactiveCanvas,NoEffects$'
+! stdout 'SlotChildInstances'
+cp stdout fyne.txt
+
+sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
+cmp stdout fyne.txt
 
 # html emits HTML and JS; the language emits only the server half of route
 # mode. So a restriction that exists because the language lacks a construct is
 # not html's -- NoTernary and NoListLambdas are absent here for the same reason
 # they are absent under --lang none, even though Go asks for both. html+go and
-# html+none now lower identically.
+# html+none lower identically, which is again the cmp and not a repeated chain.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → TimerPrimitive → SlotChildInstances → InstanceEvents → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
+stdout '^caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas,ReactiveCanvas,NoEffects,InsertBefore$'
+stdout ' → SlotChildInstances → '
+cp stdout htmlgo.txt
 
 sngl dump --stage lowered --lang none --platform html --list main.sngl
-stdout 'caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoAsyncReactive → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → NoImplicitRecv → Canvas → Effect → TimerPrimitive → SlotChildInstances → InstanceEvents → ComponentProps → NoReactivity → CanvasReactivity → InstanceBodies'
-
-sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
-stdout 'caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → NoListLambdas → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → Canvas → Effect → TimerPrimitive → InstanceEvents → ComponentProps → NoReactivity → NoTernary → CanvasReactivity → InstanceBodies → NoDeclarative'
+cmp stdout htmlgo.txt
 
 # android is the one target with no Effect pass: Compose brackets a keyed
 # lifetime itself, so it asks for the node (Features.Effects) rather than the
-# calls the pass would lower it to.
+# calls the pass would lower it to. The other four match ' → Effect → ' above,
+# so the pattern is one that does match when the pass is there.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout 'caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas'
-stdout 'passes: RootWindow → HoistState → ForeignPrimitive → PlatformExtensionBody → PropBindings → RefLoop → ViewForElse → Query → Context → InlinePure → NoInlineComponents → WindowNesting → RecursionDepth → NoStructSpread → Canvas → TimerPrimitive → IndexedIter → ForElse → CSE → IterKind'
+stdout '^caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas$'
+! stdout ' → Effect → '
 
 # Unknown pass name surfaces a non-zero exit.
 ! sngl dump --stage lowered --lang go --platform bubbletea --after NoBogus main.sngl

@@ -1109,8 +1109,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		}
 		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
-	emitLoopCase := func(slotIdx int, keyGuard, cursorVar, keyName, valName string, iterExpr string, block []ir.Stmt) {
-		// Render body into a temp buffer to check if valName is actually used.
+	emitLoopCase := func(slotIdx int, keyGuard, cursorVar string, f *ir.For, block []ir.Stmt) {
 		var tmp strings.Builder
 		for _, stmt := range block {
 			for _, line := range gc.EvalStmt(stmt) {
@@ -1119,13 +1118,18 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		}
 		syncMutatedInputs(&tmp, block, info.widgets, info.binds, gc)
 		body := tmp.String()
-		// Only bind element variable if the body actually references it.
-		emitVal := "_"
-		if strings.Contains(body, valName) {
-			emitVal = valName
+
+		// Bind the element only where the handler reads it: Go rejects an
+		// unused loop variable. The key is the ordinal the emitted cursor test
+		// compares against, so it is always bound.
+		keyName, valName := f.Key, f.Value
+		if !loopVarUsed(block, valName, f.ValueSym) {
+			valName = "_"
 		}
+		iterExpr := gc.EvalExpr(f.Iter)
+
 		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
-		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, emitVal, iterExpr)
+		fmt.Fprintf(b, "\t\t\tfor %s, %s := range %s {\n", keyName, valName, iterExpr)
 		fmt.Fprintf(b, "\t\t\t\tif m.%s == %s {\n", cursorVar, keyName)
 		b.WriteString(body)
 		b.WriteString("\t\t\t\t\tbreak\n")
@@ -1172,13 +1176,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		if !ok {
 			return
 		}
-		keyName := currentFor.Key
-		valName := currentFor.Value
-		if valName == "" || valName == "_" {
-			valName = "_"
-		}
-		iterExpr := gc.EvalExpr(currentFor.Iter)
-		emitLoopCase(slotIdx, keyGuard, cursorIdent.Name, keyName, valName, iterExpr, block)
+		emitLoopCase(slotIdx, keyGuard, cursorIdent.Name, currentFor, block)
 	}
 
 	for _, s := range stmts {
@@ -1473,4 +1471,25 @@ func extractIRAssignTarget(stmts []ir.Stmt) string {
 		}
 	}
 	return ""
+}
+
+// loopVarUsed reports whether block references the loop variable named name.
+// The head binds it only then, since Go rejects an unused one.
+func loopVarUsed(block []ir.Stmt, name string, sym ir.Symbol) bool {
+	if name == "" || name == "_" {
+		return false
+	}
+	found := false
+	_ = ir.Walk(block, func(n ir.Node) error {
+		id, ok := n.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if (sym != nil && id.Sym == sym) || id.Name == name {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

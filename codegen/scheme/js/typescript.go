@@ -418,5 +418,10 @@ func CallsHere(f ir.Foreign) bool {
 	if f.Marked {
 		return f.Scheme == Scheme
 	}
-	return f.Path != ""
+	// A path is what an imported declaration has; #[js.native] may name a
+	// global instead, which has none. The scheme is what says the name is
+	// JavaScript's either way -- without this a global fell through to the
+	// ordinary call path and was emitted under the SNGL declaration's own
+	// name, which is right only when the two happen to be spelled the same.
+	return f.Path != "" || f.Scheme == Scheme
 }

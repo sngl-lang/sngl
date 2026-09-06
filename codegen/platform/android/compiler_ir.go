@@ -271,6 +271,18 @@ func bindForVar(v *ir.Var) irAndroidBind {
 			initEx = v.Init
 		}
 	}
+	// A struct literal is literal-SHAPED, not literal: its fields are
+	// arbitrary expressions, and the ones IRLiteralToKt cannot spell come back
+	// as its `""` fallback -- INSIDE a result that is not itself `""`, so the
+	// rescue above never sees them. `Holder{inner=b}` emitted
+	// `Holder(inner = "")`. This is the Kotlin half of what !107 fixed for Go.
+	//
+	// Struct only, not every composite: a list keeps its own path above, which
+	// listStateInitKt reads, and a map literal's two spellings differ in what
+	// Kotlin infers from them with nothing else to go on.
+	if _, isStruct := v.Init.(*ir.StructLit); isStruct && !isList {
+		initEx = v.Init
+	}
 	if isList && (initVal == `""` || initVal == "emptyList()") {
 		initVal = ""
 	}

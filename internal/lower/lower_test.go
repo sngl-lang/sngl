@@ -8,71 +8,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func TestPassRegistry_OrderAndUniqueness(t *testing.T) {
-	expectedOrder := []string{
-		"RootWindow",
-		"HoistState",
-		"ForeignPrimitive",
-		"PlatformExtensionBody",
-		"PropBindings",
-		"RefLoop",
-		"ViewForElse",
-		"NoUnit",
-		"NoEnum",
-		"Query",
-		"NoAsyncReactive",
-		"NoComputed",
-		"NoLambda",
-		"NoListLambdas",
-		"NoToggle",
-		"Context",
-		"InlinePure",
-		"NoInlineComponents",
-		"WindowNesting",
-		"RecursionDepth",
-		"NoStructSpread",
-		"NoImplicitRecv",
-		"Canvas",
-		"Effect",
-		"TimerPrimitive",
-		"SlotChildInstances",
-		"InstanceEvents",
-		"ComponentProps",
-		"NoReactivity",
-		"NoTernary",
-		"CanvasReactivity",
-		"FocusOrder",
-		"InstanceBodies",
-		"NoDeclarative",
-		"NodeEscape",
-		"NoRef",
-		"IndexedIter",
-		"ForElse",
-		"CSE",
-		"IterKind",
-		"StampUsage",
-	}
-	if len(passes) != len(expectedOrder) {
-		t.Fatalf("passes length = %d; want %d", len(passes), len(expectedOrder))
-	}
-	seen := make(map[string]bool)
-	for i, p := range passes {
-		if p.name != expectedOrder[i] {
-			t.Errorf("passes[%d].name = %q; want %q", i, p.name, expectedOrder[i])
-		}
-		if seen[p.name] {
-			t.Errorf("duplicate pass name %q", p.name)
-		}
-		seen[p.name] = true
-		if p.apply == nil {
-			t.Errorf("passes[%d] (%s) has nil apply", i, p.name)
-		}
-		if p.enabled == nil {
-			t.Errorf("passes[%d] (%s) has nil enabled", i, p.name)
-		}
-	}
-}
-
 func TestPassRegistry_StubsAreNoOps(t *testing.T) {
 	for _, p := range passes {
 		if err := p.apply(nil, Caps{}, Options{}); err != nil {
@@ -169,30 +104,5 @@ func TestLower_PropagatesPassError(t *testing.T) {
 	err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Caps{NoUnit: true}, Options{})
 	if err == nil || !strings.Contains(err.Error(), "kaboom") {
 		t.Fatalf("Lower err = %v; want wrapped %q", err, wantErr)
-	}
-}
-
-func TestPassNames(t *testing.T) {
-	names := PassNames()
-	if len(names) != len(passes) {
-		t.Fatalf("PassNames len = %d; want %d", len(names), len(passes))
-	}
-	for i, p := range passes {
-		if names[i] != p.name {
-			t.Errorf("PassNames[%d] = %q; want %q", i, names[i], p.name)
-		}
-	}
-}
-
-func TestEnabledPasses(t *testing.T) {
-	got := EnabledPasses(Caps{NoToggle: true, NoReactivity: true})
-	want := []string{"RootWindow", "HoistState", "ForeignPrimitive", "PlatformExtensionBody", "PropBindings", "RefLoop", "ViewForElse", "Query", "NoToggle", "InlinePure", "WindowNesting", "RecursionDepth", "TimerPrimitive", "InstanceEvents", "ComponentProps", "NoReactivity", "InstanceBodies", "IndexedIter", "ForElse", "CSE", "IterKind", "StampUsage"}
-	if len(got) != len(want) {
-		t.Fatalf("got = %v; want %v", got, want)
-	}
-	for i, n := range want {
-		if got[i] != n {
-			t.Errorf("got[%d] = %q; want %q", i, got[i], n)
-		}
 	}
 }

@@ -525,6 +525,32 @@ following holds:
 9. `A` is `option<S>` and `B` is `option<T>` with `S` assignable to `T`, or `A`
    is `T` and `B` is `option<T>` (a bare value auto-wraps into an option).
 
+The auto-wrap stores the value, not a reference to where it was read from: a
+struct is a value in SNGL, so a later write to what was wrapped does not reach
+the option.
+
+```sngl
+import . "sngl:ui"
+
+struct box {
+    value int = 0
+}
+
+struct holder {
+    inner option<box> = null
+}
+
+func wrapped() int {
+    var b = box{value=3}
+    var h = holder{inner=b} // h keeps what b was
+    b.value = 99
+    if h.inner != null {
+        return h.inner.value // 3
+    }
+    return 0
+}
+```
+
 ### Conversions
 
 An explicit conversion is written `T(x)`, naming a type and an operand. The
@@ -542,6 +568,48 @@ A `dyn` operand may be converted to any primitive type (this is how `dyn` is
 narrowed). Conversions whose operand is a struct, component, function, list,
 option, or `null` are rejected. Unit conversions are governed by the unit type's
 factors, with the literal `0` convertible to any unit.
+
+### Narrowing an option
+
+A comparison against `null` says what a value is in the branch where the
+comparison holds. Within that branch an `option<T>` reads as a `T`:
+
+```sngl
+import . "sngl:ui"
+
+func doubled(maybe option<int>) int {
+    if maybe != null {
+        return maybe * 2 // maybe is an int here
+    }
+    return 0
+}
+```
+
+The narrowed thing is a *path*: a variable, parameter or loop variable,
+extended by any number of struct field reads (`node.left`, `a.b.c`). An index
+never extends one, since two spellings may name a single element.
+
+The forms that narrow are:
+
+- `if x != null { … }` — the then branch.
+- `if x == null { … } else { … }` — the else branch.
+- `x != null ? … : …` and `x == null ? … : …` — the matching arm.
+- `a && b` — a null test in `a` narrows `b` and everything the whole condition
+  guards. `a || b` is the same fact negated: a `== null` test in `a` narrows
+  `b`.
+
+Every other form leaves the value an `option<T>`, so reading it as a `T` is
+the ordinary type error rather than a silent wrong type.
+
+A narrowing does not survive anything that could make the value absent again.
+Within the branch, assigning to the tested path or to a prefix of it, taking
+its address, calling a method that mutates it, or — when the path is rooted at
+package or component state a callee could reach — calling anything that
+mutates state, is an error naming the write. A branch that narrows nothing
+anybody read is unaffected, so `if x != null { x = null }` is legal.
+
+A narrowing does not cross into a lambda. The body runs when the lambda is
+called, which may be after the test has stopped holding.
 
 ### Generic type parameters
 
@@ -1220,6 +1288,12 @@ A view body repeats its body once per element of something, which is what
 gives the rendered tree a shape: a list gives that a length and a counted
 sequence gives it a number, while a condition gives it neither. Writing either
 form in a view body is an error.
+
+A loop over a **map** is restricted the same way, for the same reason applied
+to order rather than to count. A map says how many copies of the body the tree
+holds and in no defined order, so two renders of one map may lay it out
+differently. Walk the map in a function or a handler and render the list that
+comes back.
 
 A head expression may not begin with `{`: that brace is the body's. A map or
 anonymous-struct literal in the head of a `for` — or of an `if` — is written

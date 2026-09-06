@@ -268,6 +268,16 @@ component main {
     }
     func labelCount() => labels.length()
 
+    // A map has no defined iteration order, so a view body may not loop one.
+    // Walk it here instead and render the list that comes back.
+    func scoreLines() list<string> {
+        var lines list<string> = []
+        for var k, v = scores {
+            lines.push("{k} = {v}")
+        }
+        return lines
+    }
+
     // --- Mutating methods (block form) ---------------------------
     func increment() { count += 1 }
     func reset() {
@@ -520,9 +530,9 @@ component main {
                 text(value="- {s}")
             }
             divider
-            // map iteration yields key + value
-            for var k, v = scores {
-                text(value="{k} = {v}")
+            // a map is walked in a function; the view renders its result
+            for var line = scoreLines() {
+                text(value=line)
             }
         }
         divider

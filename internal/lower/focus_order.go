@@ -95,10 +95,9 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 //
 // Only the two-variable list head arrives with an integer Key. The others are
 // rewritten into that form -- index in Key, whatever they bound in Value -- so
-// every consumer downstream keeps reading Key as the index. A two-variable map
-// head is the exception and is still wrong (#174): both its positions are
-// taken, so its ordinal has to be a synthesized counter, the passIndexedIter
-// shape, rather than a rewrite.
+// every consumer downstream keeps reading Key as the index. A map head has no
+// free position to rewrite into, and needs none: the checker refuses a map
+// loop in a view body, so one cannot reach a focus slot.
 func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
 	f := ls.forStmt
 	if f.Value == "" {

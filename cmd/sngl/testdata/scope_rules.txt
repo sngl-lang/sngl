@@ -310,8 +310,8 @@ component main {
 import . "sngl:ui"
 
 component main {
-    var m map<string, string> = {}
-    for var k, k = m {
+    var xs list<string> = []
+    for var k, k = xs {
         text(value=k)
     }
 }

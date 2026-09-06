@@ -19,70 +19,15 @@ type pass struct {
 }
 
 // passes is the fixed execution order. Earlier passes may not depend on
-// transformations performed by later ones; later passes may. Order rationale:
+// transformations performed by later ones; later passes may.
 //
-//  0. PropBindings — transforms NodeInst.Bindings into @event+handler pairs.
-//     Runs after PlatformExtensionBody (so stdlib component bodies are resolved)
-//     and before RefLoop/NoToggle so that prop mutations inside component bodies
-//     are still in their original form when we rewrite them to Emit nodes.
-//     0a. RefLoop — rewrites &-bound loop element refs to indexed list access
-//     (list[idx]). Runs before NoReactivity so the resulting list[idx].field
-//     writes are seen as mutations of the list var, and before NoToggle so a
-//     toggled element-ref target is rewritten first.
-//
-//  1. NoUnit, NoEnum — collapse types, no deps.
-//
-//  3. NoAsyncReactive — must run before NoComputed (introduces sync state vars
-//     that NoComputed would otherwise inline away) and before NoReactivity
-//     (synthetic vars must be visible as reactive deps).
-//
-//  4. NoComputed — must run before NoReactivity (plain reads vs. computed indirections).
-//
-//  5. NoLambda — must run before NoReactivity (helpers may inject closures otherwise).
-//
-//  6. NoToggle — cheap stmt rewrite; before NoReactivity so the assignment is visible.
-//     6a. Canvas — must run before NoReactivity. Shape NodeInsts (rect, circle, …)
-//     are removed from the visual tree and replaced by synthesized draw funcs.
-//     If reactivity ran first, it would assign __n* DOM ids to canvas shapes that
-//     never appear in the DOM, generating broken setAttribute calls.
-//     6a. InlinePure — always on; inlines pure user components and
-//     platform-stdlib wrappers. Runs BEFORE reactivity, which flattens a
-//     NodeInst past the point this pass can recognise the wrapper call.
-//     6b. NoInlineComponents — opt-in. Inlines every non-recursive user
-//     component into main, renaming vars/funcs/timers and substituting
-//     prop refs with call-site arg exprs. After this pass, codegen on
-//     opted-in targets sees only main + any recursive components.
-//     6c. NoImplicitRecv — opt-in. Normalizes method calls to always carry
-//     the receiver in Args[0], enabling codegen to drop conditional logic.
-//
-//     The list is the shape of the pipeline, not its census: passes that need no
-//     explanation beyond their name are in `passes` below and not repeated here.
-//
-//  7. NoReactivity — analyzes dataflow, injects updaters.
-//     NoTernary — MUST run AFTER NoReactivity. It rewrites `cond ? a : b`
-//     into a `var __ltN` decl plus a sibling value-only `if cond { __ltN = a }
-//     else { __ltN = b }`. If it ran first, reactivity's collectFromIf would
-//     misclassify that synthesized `if` (when cond reads a reactive var) as a
-//     reactive render slot and relocate it into a __renderSlotN func, orphaning
-//     the `var __ltN` decl + its uses → compile error, and gatherDeps (which
-//     has a correct `case *ir.Ternary`) couldn't see through the opaque temp to
-//     track the reactive deps. Running after reactivity, ternaries stay intact
-//     through dep analysis, then lower in place inside the bodies and updaters
-//     reactivity produced (reactivity deep-copies each prop expression into its
-//     updater so the build-path prop and its updater no longer alias the same
-//     Ternary node, and each lowers independently). Placed before
-//     NoCanvasReactivity because that pass
-//     injects CanvasRedrawStmt nodes that NoTernary's stmt walker does not
-//     handle; canvas draw funcs (built by NoCanvas, earlier) are still walked
-//     by NoTernary via pkg/component/window Funcs, so their ternaries lower.
-//
-//  9. NoDeclarative — flattens the visual tree, destroying shape earlier passes used;
-//     its lifter (when NoLambda is also active) may emit fresh ref<T> shapes for
-//     handlers promoted from inline blocks.
-//
-//  10. NoRef — runs last so it catches every ref<T> shape any earlier pass may have
-//     emitted, including those produced by NoDeclarative's lifter. Idempotent: when
-//     no ref<T> survives, all rewrites are no-ops.
+// What this order has to satisfy is stated as data next door, in
+// orderConstraints (order.go): each pair carries the reason it exists, and
+// TestPassOrderConstraints checks the registry against it. The sequence below
+// is not that reason and never was -- most adjacent pairs in it appear in no
+// constraint, and swapping one changes nothing any target emits. Place a new
+// pass wherever the stated requirements allow; if it has a requirement not yet
+// stated, state it there rather than leaving it to position.
 var passes = []pass{
 	passRootWindow,
 	passHoistState,
@@ -90,11 +35,6 @@ var passes = []pass{
 	passPlatformExtensionBody,
 	passPropBindings,
 	passRefLoop,
-	// Early, and well before passReactivity: the `if` it leaves behind has to
-	// reach that pass as an ordinary view conditional so a reactive iterable
-	// makes it a render slot, and the emptiness expression it synthesizes
-	// names whatever the loop head names -- so every pass that rewrites a
-	// name has to see it.
 	passViewForElse,
 	passUnit,
 	passEnum,
@@ -107,33 +47,15 @@ var passes = []pass{
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
-	// Right after inlining: that is what can splice a component's window into
-	// another window's body, and every pass below reads the tree's shape.
 	passWindowNesting,
-	// After the inliner, which is what leaves a recursive component standing,
-	// and before the passes that read a prop: the depth arrives as one.
 	passRecursionDepth,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passCanvas,
-	// Before passReactivity: a mount handler that writes state has to reach it
-	// as an ordinary assignment, or nothing patches what reads that state.
 	passEffect,
-	// Beside passEffect and for the same reasons: after the inliner, before
-	// passReactivity, before passDeclarative. See timer_primitive.go.
 	passTimerPrimitive,
-	// Before passInstanceEvents, which is what turns the events it declares
-	// into the props the render re-points.
 	passSlotChildInstances,
-	// Before passComponentProps, which is what turns the prop an event becomes
-	// into the cell the render re-points.
 	passInstanceEvents,
-	// After the inliner, whose RuntimeInstance mark says which declarations
-	// get cells at all, and after the two passes above, which are what add
-	// the props a slot child and an instance event arrive as. Before
-	// passReactivity, because a prop promoted to a var *is* a reactive cell
-	// and the pass that injects updaters has to see it as one -- that is how a
-	// setter comes to re-fire the slots reading the prop.
 	passComponentProps,
 	passReactivity,
 	passTernary,
