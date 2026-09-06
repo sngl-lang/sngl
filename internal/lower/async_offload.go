@@ -62,10 +62,10 @@ func applyAsyncOffload(pkg *ir.Package, caps Caps, opts Options) error {
 		return nil
 	}
 	recolourAsync(pkg)
+	st := &offloadState{pts: pkg.PointsTo}
 	if !caps.AsyncPost {
-		return refuseAsyncOffload(pkg, opts)
+		return refuseAsyncOffload(pkg, opts, st)
 	}
-	st := &offloadState{}
 	for _, fn := range offloadEntryPoints(pkg) {
 		block, err := st.transform(fn.Block)
 		if err != nil {
@@ -83,10 +83,10 @@ func applyAsyncOffload(pkg *ir.Package, caps Caps, opts Options) error {
 // and freeze the interface, which is the whole thing the mark exists to
 // prevent, and the program would look like it worked. The refusal names the
 // platform because that is what has to change.
-func refuseAsyncOffload(pkg *ir.Package, opts Options) error {
+func refuseAsyncOffload(pkg *ir.Package, opts Options, st *offloadState) error {
 	for _, block := range allBlocks(pkg) {
 		for _, s := range *block {
-			if !stmtWaits(s) {
+			if !st.stmtWaits(s) {
 				continue
 			}
 			return fmt.Errorf("%s: this call blocks and %s has no way to run anything back on the thread it draws on, so there is nowhere for the answer to land -- the call would freeze the interface", ir.StmtPos(s), platformOrThis(opts.Platform))
@@ -122,7 +122,7 @@ func recolourAsync(pkg *ir.Package) {
 	for {
 		changed := false
 		for _, fn := range funcs {
-			if !fn.IsAsync && ir.BlockHasAsyncCall(fn.Block) {
+			if !fn.IsAsync && ir.BlockHasFuncvarAsyncCall(fn.Block, pkg.PointsTo) {
 				fn.IsAsync = true
 				changed = true
 			}
@@ -326,7 +326,14 @@ func collectCallees(stmts []ir.Stmt, out map[*ir.Func]bool) {
 	})
 }
 
-type offloadState struct{ n int }
+// offloadState carries the points-to information alongside the counter,
+// because deciding whether a statement blocks is not a question about the
+// statement alone: a call through a funcvar names no ir.Func, and the only
+// record of what it may reach is the analysis the checker already ran.
+type offloadState struct {
+	n   int
+	pts *ir.PointsToInfo
+}
 
 func (st *offloadState) fresh() string {
 	name := "__async_off" + strconv.Itoa(st.n)
@@ -337,7 +344,7 @@ func (st *offloadState) fresh() string {
 func (st *offloadState) transform(block []ir.Stmt) ([]ir.Stmt, error) {
 	first, last, count := -1, -1, 0
 	for i, s := range block {
-		if stmtWaits(s) {
+		if st.stmtWaits(s) {
 			if first < 0 {
 				first = i
 			}
@@ -425,32 +432,32 @@ func callStmt(id string, arg ir.Expr) *ir.CallStmt {
 // stmtWaits reports whether s makes a call that does not complete now. It does
 // not descend into a lambda: a blocking call inside one runs when that lambda
 // is called, which is not here.
-func stmtWaits(s ir.Stmt) bool {
+func (st *offloadState) stmtWaits(s ir.Stmt) bool {
 	switch n := s.(type) {
 	case *ir.CallStmt:
-		return exprWaits(n.Call)
+		return st.exprWaits(n.Call)
 	case *ir.Assign:
-		return exprWaits(n.Value)
+		return st.exprWaits(n.Value)
 	case *ir.LocalVar:
-		return exprWaits(n.Init)
+		return st.exprWaits(n.Init)
 	case *ir.Return:
-		return exprWaits(n.Value)
+		return st.exprWaits(n.Value)
 	case *ir.If:
-		return exprWaits(n.Cond) || blockWaits(n.Body) || blockWaits(n.Else)
+		return st.exprWaits(n.Cond) || st.blockWaits(n.Body) || st.blockWaits(n.Else)
 	case *ir.For:
-		return exprWaits(n.Iter) || blockWaits(n.Body) || blockWaits(n.Else)
+		return st.exprWaits(n.Iter) || st.blockWaits(n.Body) || st.blockWaits(n.Else)
 	}
 	return false
 }
 
-func blockWaits(stmts []ir.Stmt) bool {
-	return slices.ContainsFunc(stmts, stmtWaits)
+func (st *offloadState) blockWaits(stmts []ir.Stmt) bool {
+	return slices.ContainsFunc(stmts, st.stmtWaits)
 }
 
 // exprWaits recurses by hand rather than through ir.Walk because it must stop
 // at a lambda: a blocking call written inside one runs when that lambda is
 // called, which is not here.
-func exprWaits(e ir.Expr) bool {
+func (st *offloadState) exprWaits(e ir.Expr) bool {
 	switch x := e.(type) {
 	case nil:
 		return false
@@ -460,41 +467,62 @@ func exprWaits(e ir.Expr) bool {
 		if x.Func != nil && x.Func.IsAsync {
 			return true
 		}
-		if exprWaits(x.Receiver) || exprWaits(x.Callee) {
+		// A call through a funcvar names no ir.Func at all -- the callee is
+		// the variable -- so the flag is not there to read, and the answer is
+		// the slot colour the checker's points-to analysis left behind. Asking
+		// only for the flag left `greeting = handler()` on the drawing thread
+		// with no goroutine and no diagnostic, which is the exact failure the
+		// mark exists to prevent.
+		if x.Func == nil && x.Callee != nil && st.pts != nil {
+			if k, ok := ir.CalleeSlotKey(x.Callee); ok {
+				if colour, present := st.pts.SlotColor[k]; present {
+					if colour == ir.ColorAsync {
+						return true
+					}
+				} else {
+					for _, fn := range st.pts.Candidates(k) {
+						if fn.IsAsync {
+							return true
+						}
+					}
+				}
+			}
+		}
+		if st.exprWaits(x.Receiver) || st.exprWaits(x.Callee) {
 			return true
 		}
 		for _, a := range x.Args {
-			if exprWaits(a.Value) {
+			if st.exprWaits(a.Value) {
 				return true
 			}
 		}
 	case *ir.Binary:
-		return exprWaits(x.Left) || exprWaits(x.Right)
+		return st.exprWaits(x.Left) || st.exprWaits(x.Right)
 	case *ir.Unary:
-		return exprWaits(x.Operand)
+		return st.exprWaits(x.Operand)
 	case *ir.Ternary:
-		return exprWaits(x.Cond) || exprWaits(x.Then) || exprWaits(x.Else)
+		return st.exprWaits(x.Cond) || st.exprWaits(x.Then) || st.exprWaits(x.Else)
 	case *ir.Conversion:
-		return exprWaits(x.Operand)
+		return st.exprWaits(x.Operand)
 	case *ir.Select:
-		return exprWaits(x.Operand)
+		return st.exprWaits(x.Operand)
 	case *ir.Index:
-		return exprWaits(x.Operand) || exprWaits(x.Idx)
+		return st.exprWaits(x.Operand) || st.exprWaits(x.Idx)
 	case *ir.Spread:
-		return exprWaits(x.Operand)
+		return st.exprWaits(x.Operand)
 	case *ir.ListLit:
-		if slices.ContainsFunc(x.Elems, exprWaits) {
+		if slices.ContainsFunc(x.Elems, st.exprWaits) {
 			return true
 		}
 	case *ir.StructLit:
 		for _, f := range x.Fields {
-			if exprWaits(f.Value) {
+			if st.exprWaits(f.Value) {
 				return true
 			}
 		}
 	case *ir.MapLitIR:
 		for _, ent := range x.Entries {
-			if exprWaits(ent.Key) || exprWaits(ent.Value) {
+			if st.exprWaits(ent.Key) || st.exprWaits(ent.Value) {
 				return true
 			}
 		}

@@ -140,3 +140,47 @@ func TestAHandlerInsideAComponentsWindowOffloadsToo(t *testing.T) {
 		t.Errorf("the handler still blocks the drawing thread\n--- model.go ---\n%s", model)
 	}
 }
+
+// asyncFuncvarSrc calls the blocking function through a state var rather than
+// by name. The call names no declaration at all -- the callee is the variable
+// -- so IsAsync is not there to read, and the only record of what the call may
+// reach is the slot colour the checker's points-to analysis left behind.
+// Asking for the flag alone emitted `m.greeting = m.handler()` straight onto
+// the drawing thread, with no goroutine and no diagnostic: the outcome the
+// mark exists to prevent, in the one spelling nothing was watching.
+const asyncFuncvarSrc = `
+import . "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("os", "os.Hostname", fails)]
+#[go.async]
+func host() string
+
+component main {
+    var (
+        handler func() string = host
+        greeting = "idle"
+    )
+
+    text #out(value=greeting)
+    button #load(text="load", @click {
+        greeting = handler()
+    })
+}
+`
+
+// The claim stops at the shape rather than a compile, for the same kind of
+// reason TestAHandlerInsideAComponentsWindowOffloadsToo does: this spelling
+// does not build on fyne for a defect of its own, with or without a blocking
+// call in it. `var handler func() string = host` emits `m.handler = m.host()`
+// -- the Go backend calls the function where it should take a reference to it
+// -- and the program is rejected by the Go compiler before any of this runs.
+// That is a separate bug about funcvar initialisation and is not fixed here;
+// what is asserted here is that the offload sees through the funcvar, which is
+// the half that was silent.
+func TestABlockingCallThroughAFuncvarLeavesTheThreadToo(t *testing.T) {
+	model := generateFyneModelBuilt(t, asyncFuncvarSrc)
+	if !strings.Contains(model, "go func() {") || !strings.Contains(model, "fyne.Do(func() {") {
+		t.Errorf("the call through the funcvar still runs on the drawing thread\n--- model.go ---\n%s", model)
+	}
+}

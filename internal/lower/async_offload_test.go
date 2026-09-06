@@ -61,7 +61,7 @@ func TestABlockingCallSplitsTheBodyInThree(t *testing.T) {
 	if !ok {
 		t.Fatalf("the goroutine's first statement is %T, want the blocking call bound to a local", spawn[0])
 	}
-	if !exprWaits(tmp.Init) {
+	if !(&offloadState{}).exprWaits(tmp.Init) {
 		t.Error("the local the goroutine binds is not the blocking call")
 	}
 	post := intrinsicClosure(t, spawn[1], AsyncPostIntrinsic)
