@@ -134,15 +134,10 @@ func insertLoopCounters(stmts []ir.Stmt, counters map[*ir.For][]ir.Stmt) []ir.St
 	return out
 }
 
-// ensureLoopOrdinal makes sure the for-loop has an integer ordinal that can be
-// compared against the cursor.
-//
-// Only the two-variable list head arrives with an integer Key. The other list
-// heads are rewritten into that form -- index in Key, whatever they bound in
-// Value -- so every consumer downstream keeps reading Key as the index. A map
-// head cannot be: both its positions mean something (key, value) and neither
-// counts, so its ordinal is a counter beside the loop, the shape
-// passIndexedIter uses for the pull sequence that likewise hands out no index.
+// ensureLoopOrdinal gives the loop an integer ordinal to compare the cursor
+// against: Key for a list head, rewriting the other list forms into the
+// two-variable one, and a counter beside the loop for a map head, whose two
+// positions both mean something and neither counts.
 func ensureLoopOrdinal(ls *loopSlotInfo, slotIdx int) {
 	f := ls.forStmt
 	if ir.DeriveIterKind(f) == ir.IterMapEntries {
