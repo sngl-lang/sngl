@@ -84,6 +84,8 @@ import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 )
 
@@ -248,7 +250,9 @@ func (m Model) View() tea.View {
 		content_3 = lipgloss.NewStyle().Render(fmt.Sprint("NO TAGS"))
 	} else {
 		var content_3Items []string
-		for k, v := range m.tags {
+		content_3Map := m.tags
+		for _, k := range slices.Sorted(maps.Keys(content_3Map)) {
+			v := content_3Map[k]
 			_ = k
 			_ = v
 			var content_3Item string

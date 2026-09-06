@@ -333,8 +333,19 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 
 	loopVar := resultVar + "Items"
 	vc.line("var %s []string", loopVar)
-	vc.line("%s", vc.gc.ForHead(s, iterExpr))
-	vc.indent++
+	if mr, ok := vc.mapRangeFor(s, iterExpr, resultVar+"Map"); ok {
+		for _, l := range mr.Pre {
+			vc.line("%s", l)
+		}
+		vc.line("%s", mr.Head)
+		vc.indent++
+		for _, l := range mr.Inner {
+			vc.line("%s", l)
+		}
+	} else {
+		vc.line("%s", vc.gc.ForHead(s, iterExpr))
+		vc.indent++
+	}
 	// The view body may not reference the loop vars; suppress unused errors.
 	if s.Key != "" && s.Key != "_" {
 		vc.line("_ = %s", s.Key)
@@ -370,6 +381,27 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	}
 
 	vc.gc = savedGC
+}
+
+// mapRangeFor is the ordered head a view loop over a map takes, in place of the
+// language driver's bare range -- a rendered row is identified by ordinal, so
+// the order has to hold across frames and match Update()'s (see sortedMapRange).
+func (vc *irViewContext) mapRangeFor(s *ir.For, iterExpr, tmp string) (mapRange, bool) {
+	if ir.DeriveIterKind(s) != ir.IterMapEntries {
+		return mapRange{}, false
+	}
+	key, val := s.Key, s.Value
+	if key == "_" {
+		key = ""
+	}
+	if val == "_" {
+		val = ""
+	}
+	mr := sortedMapRange(iterExpr, tmp, key, val, mapKeyType(s.Iter))
+	for _, p := range mr.Imports {
+		vc.requireImport(p)
+	}
+	return mr, true
 }
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {

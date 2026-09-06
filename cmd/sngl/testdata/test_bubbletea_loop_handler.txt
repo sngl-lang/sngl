@@ -4,8 +4,18 @@
 # is an int ordinal and each head answers "which iteration is this?"
 # differently -- a map head cannot answer at all and needs a counter (#174).
 #
+# Which of the two loop variables the handler reads varies from loop to loop,
+# and Go rejects the one it does not. On a map head the ordinal is a counter
+# rather than the key, so either position can now go unread. The unread names
+# here are ones the rendered body happens to spell inside another word --
+# `k` and `it` inside `picked` and `hits` -- which is what a substring test
+# over the rendered Go cannot tell from a reference.
+#
 # This has to be a compiled run: the interpreter never emits either loop, so
 # `--platform none` passes under the bug.
+#
+# The bool-keyed map is the key type Go will not order for us: it compiles only
+# if the ordered walk has a comparator to fall back on.
 
 [!exec:go] skip 'go toolchain required'
 
@@ -21,6 +31,7 @@ output { go { bubbletea } }
 component main {
     var items list<string> = ["a", "b"]
     var labels map<string, string> = {a = "A", b = "B"}
+    var flags map<bool, string> = {true = "on", false = "off"}
     var picked = ""
     var hits = 0
 
@@ -37,8 +48,20 @@ component main {
         for var k, v = labels {
             button(text=v, @click { picked = k })
         }
+        for var k, v = labels {
+            button(text=v, @click { picked = v })
+        }
+        for var k, v = labels {
+            button(text=v, @click { picked = "" })
+        }
         for labels {
             button(text="any", @click { hits += 1 })
+        }
+        for var i, it = items {
+            button(text=it, @click { hits += i })
+        }
+        for var f, fv = flags {
+            button(text=fv, @click { picked = fv })
         }
     }
     text(value=picked)
