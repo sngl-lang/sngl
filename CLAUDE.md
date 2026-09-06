@@ -359,12 +359,15 @@ can name them, no language registers an emitter for them, and their only
 consumer is `codegen.WalkLowered` dispatching to a platform's
 `IntrinsicTranslator`. A declaration would describe nobody's contract.
 
-**One name, one meaning at file scope.** Two declarations of a name, two
-imports claiming it as an alias, two dot imports lifting it, or a declaration
-taking a name an import alias binds are all errors (`claimTopLevel` in
-`internal/checker/checker.go`). The one exception is shadowing, where only one
-of the two is written in this file: a declaration may shadow a dot-imported
-name, including a built-in.
+**One name, one meaning — over the scope the binding has.** A declaration is
+package-wide, so two files of one package declaring one name is an error
+naming both positions, whichever file loaded first. An import binds into one
+file, so two imports claiming one alias, two dot imports lifting one name, or
+a declaration taking a name an import alias binds are errors within that file.
+Both are `claimTopLevel` in `internal/checker/checker.go`, which measures a
+declaration against `pkgDecls` and an import against `topLevel`. The one
+exception is shadowing, where only one of the two is written in this package:
+a declaration may shadow a dot-imported name, including a built-in.
 
 Two consequences worth knowing: a kind classifies *one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark

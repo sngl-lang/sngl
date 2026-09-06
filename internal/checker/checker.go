@@ -260,9 +260,14 @@ type checker struct {
 
 	// topLevel records every name bound at file scope and how it got there,
 	// so two bindings of one name are reported instead of silently resolving
-	// by declaration order. Reset per file: an alias is one file's, and two
-	// files declaring one name is caught by the package scope instead.
+	// by declaration order. Reset per file: an alias is one file's.
 	topLevel map[string]topLevelBinding
+
+	// pkgDecls is where each name this package declares was declared, since a
+	// declaration is package-wide while topLevel is per file. Per declaration
+	// set: enterPackage clears it for a library loading mid-pass1 and puts the
+	// program's back.
+	pkgDecls map[string]ast.Pos
 
 	// Effective replace map for this package: outer overrides layered over
 	// this package's own `import "p" => "url"` declarations. Populated at the
@@ -365,8 +370,10 @@ type checker struct {
 	macroStruct *ir.StructDef
 
 	// anonStructs interns one synthesized declaration per package and
-	// canonical anonymous struct signature; see internAnonStruct.
+	// canonical anonymous struct signature; see internAnonStruct. anonNames
+	// is the names already taken in each, since two signatures can spell one.
 	anonStructs map[*ir.Package]map[string]*ir.StructDef
+	anonNames   map[*ir.Package]map[string]bool
 
 	// builtinPkg is sngl:builtin, registered ambiently into every file.
 	builtinPkg *ir.Package
@@ -420,6 +427,16 @@ type checker struct {
 	// providedCache memoizes providedDocs for the life of this checker; see
 	// the comment there for why the scope is exactly one check.
 	providedCache map[string][]*ast.Document
+
+	// Flow narrowing of option<T> after a null test. narrowed holds the facts
+	// current at the statement being checked, narrowUsed says which of them a
+	// read actually went through, and narrowChecks defers the soundness
+	// question to after the purity fixed point. noNarrow suspends the rewrite
+	// where an lvalue is being checked. See narrow.go.
+	narrowed     map[narrowKey]narrowFact
+	narrowUsed   map[narrowKey]bool
+	narrowChecks []narrowCheck
+	noNarrow     int
 
 	// Deferred const(expr) assertions. Const-ness can depend on function
 	// purity, which is only assigned after all bodies are checked, so the
@@ -787,8 +804,12 @@ type topLevelBinding struct {
 	pos  ast.Pos
 }
 
-// claimTopLevel records name as bound at file scope and reports a conflict
-// with an existing binding. Returns false when the caller should skip binding.
+// claimTopLevel records name as bound and reports a conflict with an existing
+// binding. Returns false when the caller should skip binding.
+//
+// The scope a claim is held to is the scope the binding has: an import binds
+// into one file, a declaration into the whole package. So two claims are
+// compared in `topLevel` (per file) or in `pkgDecls` (per package) accordingly.
 //
 // A declaration written in the file wins over a dot-imported name — that is the
 // documented override story, and it is unambiguous because only one of the two
@@ -876,6 +897,24 @@ func isExportedMemberName(name string) bool {
 	return name != "" && name[0] != '_'
 }
 
+// claimPackage reports a second declaration of name in this package, whichever
+// file that one is in, and returns false when the caller should bind nothing.
+// It only reads pkgDecls; the name is reserved by claimTopLevel once the
+// file-scope claim has also succeeded, so a declaration that binds nothing
+// reserves nothing.
+func (c *checker) claimPackage(name string, pos ast.Pos) bool {
+	prev, dup := c.pkgDecls[name]
+	if !dup {
+		return true
+	}
+	where := "package"
+	if prev.File == pos.File {
+		where = "file"
+	}
+	c.error(pos, "%q redeclared in this %s (previous declaration at %s)", name, where, prev)
+	return false
+}
+
 func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, path string) bool {
 	if name == "" || name == "_" {
 		return true
@@ -883,6 +922,26 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 	if c.rejectReservedName(pos, name) {
 		return false
 	}
+	// Package before file, so two declarations in one file keep the
+	// redeclaration wording rather than the file-scope conflict's.
+	if kind == bindDecl && !c.claimPackage(name, pos) {
+		return false
+	}
+	if !c.claimFile(name, pos, kind, path) {
+		return false
+	}
+	if kind == bindDecl {
+		if c.pkgDecls == nil {
+			c.pkgDecls = map[string]ast.Pos{}
+		}
+		c.pkgDecls[name] = pos
+	}
+	return true
+}
+
+// claimFile records name as bound at file scope and reports a conflict with an
+// existing binding there.
+func (c *checker) claimFile(name string, pos ast.Pos, kind topLevelKind, path string) bool {
 	if c.topLevel == nil {
 		c.topLevel = map[string]topLevelBinding{}
 	}
@@ -907,15 +966,6 @@ func (c *checker) claimTopLevel(name string, pos ast.Pos, kind topLevelKind, pat
 	case kind == bindDot && prev.kind == bindDot:
 		c.error(pos, "dot import of %q lifts %q, already lifted by dot import of %q; qualify one of them with an alias",
 			path, name, prev.path)
-	case kind == bindDecl && prev.kind == bindDecl:
-		// The set this tracks is a document for a program and a package for a
-		// library, whose files are loaded as one, so the previous declaration
-		// may be in a sibling file. The position says which either way.
-		where := "file"
-		if c.inLibSource() {
-			where = "package"
-		}
-		c.error(pos, "%q redeclared in this %s (previous declaration at %s)", name, where, prev.pos)
 	case kind == bindAlias:
 		// An import whose alias is already taken. The alias is the caller's to
 		// choose, so naming the way out is more useful than naming the clash.
@@ -981,8 +1031,12 @@ func (c *checker) stmts() []ast.Stmt {
 func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedDocs, savedTopLevel := c.docs, c.topLevel
 	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
+	savedPkgDecls := c.pkgDecls
 	restoreFile := c.saveFile()
 	c.docs = docs
+	// A library package is its own declaration set: a name the program already
+	// declared must not read as a redeclaration inside lib/, or the reverse.
+	c.pkgDecls = nil
 	// Cleared rather than merely saved: pass1 accumulates into this one, so
 	// left in place the loaded package would append its own top-level body to
 	// the program's. No lib package writes one today, which is the only reason
@@ -992,6 +1046,7 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		restoreFile()
 		c.docs, c.topLevel = savedDocs, savedTopLevel
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
+		c.pkgDecls = savedPkgDecls
 	}
 }
 
@@ -1002,8 +1057,7 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 // before any const, var or func signature names one.
 //
 // `topLevel` is reset per file rather than per package: an alias is one file's
-// business, and two files declaring one name is reported by the package scope
-// (`declare`), not here.
+// business. Two files declaring one name is `pkgDecls`, which is not.
 func (c *checker) pass1() {
 	// Collect replace map for the whole package before any import is
 	// resolved, so declaration order of `import "p" => "url"` relative to bare
@@ -3341,6 +3395,14 @@ func (c *checker) pass2() {
 	for _, v := range c.pkg.Vars {
 		pkgVarSet[v] = struct{}{}
 	}
+	// Every reactive var in the package, which is what a callee could reach.
+	narrowVarSet := make(map[*ir.Var]struct{}, len(pkgVarSet))
+	maps.Copy(narrowVarSet, pkgVarSet)
+	for _, comp := range c.pkg.Components {
+		for _, v := range comp.Vars {
+			narrowVarSet[v] = struct{}{}
+		}
+	}
 	for _, fn := range c.pkg.Funcs {
 		analyzeEffects(fn, pkgVarSet)
 	}
@@ -3393,6 +3455,11 @@ func (c *checker) pass2() {
 	// parameter a call site pinned can be followed to what it pinned it to.
 	c.checkRebuildKeys()
 
+	// Same moment, same reason: a narrowing is only sound if nothing in the
+	// branch could have written the value, and what a call writes is not
+	// settled until the fixed point above has run.
+	c.validateNarrowings(narrowVarSet)
+
 	// Validate deferred const(expr) assertions now that function purities
 	// are known.
 	for _, a := range c.constAsserts {
@@ -3414,9 +3481,11 @@ func (c *checker) enterFuncBody() func() {
 	c.funcDepth++
 	savedLoops := c.loopDepth
 	c.loopDepth = 0
+	restoreNarrow := c.clearNarrowings()
 	return func() {
 		c.funcDepth--
 		c.loopDepth = savedLoops
+		restoreNarrow()
 	}
 }
 

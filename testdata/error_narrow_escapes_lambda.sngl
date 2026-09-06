@@ -1,0 +1,18 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+func double(n int) int {
+    return n * 2
+}
+
+component main {
+    text(value="x")
+}
+
+func narrowingEscapesIntoALambda(t Test) {
+    var maybe option<int> = 3
+    if maybe != null {
+        var later = func() => double(maybe) // ERROR(check) "cannot pass option<int> as int"
+        t.assert(later() == 6)
+    }
+}

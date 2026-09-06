@@ -72,7 +72,9 @@ func (c *checker) checkExpr(e ast.Expr) ir.Expr {
 			}
 		}
 	}
-	return c.inferExpr(e)
+	// A null test narrows what it tested for the branch where it holds, and
+	// this is the one place every read of a value passes through.
+	return c.applyNarrowing(c.inferExpr(e))
 }
 
 // checkExprExpecting checks an expression with an expected type hint.
@@ -496,7 +498,25 @@ func comparableEq(left, right *ir.Type) bool {
 
 func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 	leftExpr := c.checkExpr(x.Left)
+	// `a && b` evaluates b only where a held, so a null test in a narrows what
+	// follows it; `a || b` evaluates b only where a failed, which is the same
+	// fact negated.
+	restoreNarrow := func() {}
+	if x.Op == ast.BinAnd || x.Op == ast.BinOr {
+		facts := map[narrowKey]narrowFact{}
+		narrowingsFrom(leftExpr, x.Op == ast.BinAnd, facts)
+		var right ir.Expr
+		restoreNarrow = c.pushNarrowings(facts, nil, &right)
+		defer func() { restoreNarrow() }()
+		rightExpr := c.checkExpr(x.Right)
+		right = rightExpr
+		return c.finishBinary(x, leftExpr, rightExpr)
+	}
 	rightExpr := c.checkExpr(x.Right)
+	return c.finishBinary(x, leftExpr, rightExpr)
+}
+
+func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) ir.Expr {
 	left := exprType(leftExpr)
 	right := exprType(rightExpr)
 
@@ -679,6 +699,11 @@ func (c *checker) inferUnary(x *ast.UnaryExpr) ir.Expr {
 			}
 		}
 	}
+	// `&x` names storage, not a value, so the unwrap a narrowing would wrap
+	// the read in has nothing to be the address of.
+	if x.Op == ast.UnaryAddr {
+		defer c.suspendNarrowing()()
+	}
 	operandExpr := c.checkExpr(x.Operand)
 	operand := exprType(operandExpr)
 	skip := operand.Kind == ir.TypeDyn
@@ -742,8 +767,23 @@ func (c *checker) isAddressable(e ir.Expr) bool {
 
 func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 	condExpr := c.checkExpr(x.Cond)
+	// The arms of a ternary are the two branches of an if, so a null test in
+	// the condition narrows them the same way.
+	thenFacts := map[narrowKey]narrowFact{}
+	narrowingsFrom(condExpr, true, thenFacts)
+	var thenRegion ir.Expr
+	restoreThen := c.pushNarrowings(thenFacts, nil, &thenRegion)
 	thenExpr := c.checkExprExpecting(x.Then, c.expected)
+	thenRegion = thenExpr
+	restoreThen()
+
+	elseFacts := map[narrowKey]narrowFact{}
+	narrowingsFrom(condExpr, false, elseFacts)
+	var elseRegion ir.Expr
+	restoreElse := c.pushNarrowings(elseFacts, nil, &elseRegion)
 	elseExpr := c.checkExprExpecting(x.Else, c.expected)
+	elseRegion = elseExpr
+	restoreElse()
 	typ := exprType(thenExpr)
 	// Both ternary arms must share a numeric type. An untyped literal arm
 	// adapts to the other arm's concrete type; two concrete-but-different
@@ -1822,6 +1862,7 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	}
 
 	var fields []ir.FieldInit
+	named := map[string]bool{}
 	for _, f := range x.Fields {
 		if f.Spread {
 			val := c.checkExpr(f.Value)
@@ -1851,11 +1892,24 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			name = field.Name
 		}
 		val := c.checkExprExpecting(f.Value, expected)
+		if field != nil {
+			// `TreeNode{left = leaf1}` against `left option<TreeNode>` reached
+			// codegen as a bare TreeNode, and Go's option is *T -- the one
+			// assignment position that read the declared type and then threw
+			// the conversion away.
+			val = wrapOptionIfNeeded(val, expected)
+		}
 		// Validate field exists on struct. An unexported field of another
 		// package is already reported by structField.
 		if sd != nil && field == nil && isExportedMemberName(f.Name) {
 			c.error(x.Pos, "unknown field %q on struct %s", f.Name, sd.Name)
 		}
+		// A spread carries no name, so `{...base, x = 2}` is an override
+		// rather than a duplicate; only two written fields are one.
+		if named[name] {
+			c.error(f.NamePos, "duplicate field %q in struct literal", f.Name)
+		}
+		named[name] = true
 		fields = append(fields, ir.FieldInit{Name: name, NamePos: f.NamePos, Value: val})
 	}
 
@@ -2135,7 +2189,13 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 	prevReturn := c.returnType
 	c.returnType = fn.Return
 	if x.Body != nil {
+		// The body runs when the lambda is called, which may be after a test
+		// that narrowed something it captured has stopped holding. The block
+		// form gets this from enterFuncBody; an expression body never reaches
+		// one, so it says the same thing here.
+		restoreNarrow := c.clearNarrowings()
 		bodyExpr := c.checkExprExpecting(x.Body, fn.Return)
+		restoreNarrow()
 		if fn.Return == nil {
 			// Expression-body lambda with no annotation and no contextual
 			// return type: take the body's type as the return type. A body
@@ -2611,7 +2671,9 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 	switch x := s.(type) {
 	case *ast.AssignStmt:
+		restoreLvalue := c.suspendNarrowing()
 		targetExpr := c.checkExpr(x.Target)
+		restoreLvalue()
 		targetType := exprType(targetExpr)
 		valueExpr := c.checkExprExpecting(x.Value, targetType)
 		valueType := exprType(valueExpr)
@@ -2657,7 +2719,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		return &ir.Assign{AST: x, Target: targetExpr, Op: x.Op, Value: valueExpr}
 	case *ast.ToggleStmt:
+		restoreLvalue := c.suspendNarrowing()
 		targetExpr := c.checkExpr(x.Target)
+		restoreLvalue()
 		t := exprType(targetExpr)
 		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
@@ -2914,10 +2978,23 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if condType.Kind != ir.TypeDyn && condType.Kind != ir.TypeBool {
 			c.error(x.Pos, "if condition must be bool, got %s", condType)
 		}
+		thenFacts := map[narrowKey]narrowFact{}
+		narrowingsFrom(condExpr, true, thenFacts)
+		var thenRegion []ir.Stmt
+		restoreThen := c.pushNarrowings(thenFacts, &thenRegion, nil)
 		body := c.checkBlockIR(&x.Body)
+		thenRegion = body
+		restoreThen()
+
 		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
+			elseFacts := map[narrowKey]narrowFact{}
+			narrowingsFrom(condExpr, false, elseFacts)
+			var elseRegion []ir.Stmt
+			restoreElse := c.pushNarrowings(elseFacts, &elseRegion, nil)
 			elseBody = c.checkBlockIR(&x.Else)
+			elseRegion = elseBody
+			restoreElse()
 		}
 		return &ir.If{AST: x, Cond: condExpr, Body: body, Else: elseBody}
 	case *ast.ForStmt:
