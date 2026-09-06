@@ -44,6 +44,35 @@ func IsOptionUnwrap(n *Conversion) bool {
 	return src.Elems[0].Equal(n.Type)
 }
 
+// IsOptionWrap reports whether a conversion is the promotion of a bare T into
+// the option<T> a declaration asked for -- the inverse of IsOptionUnwrap.
+//
+// A null operand is not one: `null` already IS the empty option on every
+// target, and each language answers it before it reaches here. Neither is an
+// option operand, which is variance between two options rather than a
+// promotion.
+//
+// The wrap has to survive folding and reach codegen because it is not a no-op
+// everywhere: Go's option<T> is *T, so the T needs a box. Kotlin's is T? and
+// JavaScript's is the value itself, and both emit the operand unchanged.
+func IsOptionWrap(n *Conversion) bool {
+	if n == nil || n.Type == nil || n.Operand == nil {
+		return false
+	}
+	if n.Type.Kind != TypeOption || len(n.Type.Elems) != 1 || n.Type.Elems[0] == nil {
+		return false
+	}
+	src := n.Operand.ExprType()
+	if src == nil {
+		return false
+	}
+	switch src.Kind {
+	case TypeNull, TypeOption, TypeDyn, TypeInvalid:
+		return false
+	}
+	return src.Equal(n.Type.Elems[0])
+}
+
 // IsErrorRaiseFunc reports whether fn is the error-raise intrinsic: either the
 // "error.raise" intrinsic, or the stdlib error.raise method (whose wrapper does
 // not carry Intrinsic, so the receiver+name pair is the stable identifier).

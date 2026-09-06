@@ -784,6 +784,11 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsOptionUnwrap(n) {
 		return operand
 	}
+	// And the promotion the other way, which is the same nothing: an option is
+	// the value or null, so a T already is one.
+	if ir.IsOptionWrap(n) {
+		return operand
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeInt, ir.TypeFloat:

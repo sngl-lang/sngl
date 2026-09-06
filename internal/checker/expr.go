@@ -1891,6 +1891,13 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			name = field.Name
 		}
 		val := c.checkExprExpecting(f.Value, expected)
+		if field != nil {
+			// `TreeNode{left = leaf1}` against `left option<TreeNode>` reached
+			// codegen as a bare TreeNode, and Go's option is *T -- the one
+			// assignment position that read the declared type and then threw
+			// the conversion away.
+			val = wrapOptionIfNeeded(val, expected)
+		}
 		// Validate field exists on struct. An unexported field of another
 		// package is already reported by structField.
 		if sd != nil && field == nil && isExportedMemberName(f.Name) {

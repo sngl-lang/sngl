@@ -1174,6 +1174,14 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsOptionUnwrap(n) {
 		return "(*(" + gc.EvalExpr(n.Operand) + "))"
 	}
+	// And the promotion the other way. Not `&(x)`: `&` needs an addressable
+	// operand, so `&f()` does not compile -- and where it would compile it is
+	// wrong, because it aliases. A SNGL struct is a value, so `h.inner = b`
+	// must not let a later write to `b` reach h. The helper takes its argument
+	// by value and addresses the copy, which answers both at once.
+	if ir.IsOptionWrap(n) {
+		return "snglSome(" + gc.EvalExpr(n.Operand) + ")"
+	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string.

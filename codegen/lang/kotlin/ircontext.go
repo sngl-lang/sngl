@@ -644,6 +644,10 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsOptionUnwrap(n) {
 		return operand + "!!"
 	}
+	// And the promotion the other way needs nothing: T is a subtype of T?.
+	if ir.IsOptionWrap(n) {
+		return operand
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeInt:

@@ -525,6 +525,32 @@ following holds:
 9. `A` is `option<S>` and `B` is `option<T>` with `S` assignable to `T`, or `A`
    is `T` and `B` is `option<T>` (a bare value auto-wraps into an option).
 
+The auto-wrap stores the value, not a reference to where it was read from: a
+struct is a value in SNGL, so a later write to what was wrapped does not reach
+the option.
+
+```sngl
+import . "sngl:ui"
+
+struct box {
+    value int = 0
+}
+
+struct holder {
+    inner option<box> = null
+}
+
+func wrapped() int {
+    var b = box{value=3}
+    var h = holder{inner=b} // h keeps what b was
+    b.value = 99
+    if h.inner != null {
+        return h.inner.value // 3
+    }
+    return 0
+}
+```
+
 ### Conversions
 
 An explicit conversion is written `T(x)`, naming a type and an operand. The
