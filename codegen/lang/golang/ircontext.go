@@ -1167,8 +1167,12 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	// A narrowed option: Go's option<T> is *T, so reading it as the T a null
 	// test proved it to be is the star.
+	// The whole deref is parenthesised, not just its operand: `*` binds looser
+	// than a selector, so `*(m.h.Inner).Value` is a deref OF the field and Go
+	// rejects it. The branch's own fixture read a narrowed path as a call
+	// argument, where nothing follows the unwrap and either spelling compiles.
 	if ir.IsOptionUnwrap(n) {
-		return "*(" + gc.EvalExpr(n.Operand) + ")"
+		return "(*(" + gc.EvalExpr(n.Operand) + "))"
 	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)

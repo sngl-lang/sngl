@@ -145,11 +145,11 @@ func (m Model) View() tea.View {
 	parts = append(parts, part0)
 	var part1 string
 	if m.maybe != nil {
-		part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((*(m.maybe) * 2))))
+		part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((*(m.maybe)) * 2))))
 	}
 	parts = append(parts, part1)
 	var part2 string
-	if (m.maybe != nil) && (*(m.maybe) > 2) {
+	if (m.maybe != nil) && ((*(m.maybe)) > 2) {
 		part2 = lipgloss.NewStyle().Render(fmt.Sprint("big"))
 	}
 	parts = append(parts, part2)
