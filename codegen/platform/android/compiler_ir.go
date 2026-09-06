@@ -159,7 +159,7 @@ type irAndroidBind struct {
 	name   string
 	ktType string
 	init   string  // pre-computed literal init (used for simple values)
-	initEx ir.Expr // raw IR expression when init needs EvalExpr (e.g. i18n calls)
+	initEx ir.Expr // raw IR when init is anything but a scalar literal
 	isList bool
 }
 
@@ -260,10 +260,8 @@ func bindForVar(v *ir.Var) irAndroidBind {
 	ktType := kotlin.IRTypeToKt(v.Type)
 	initVal := irVarInitKt(v)
 	isList := v.Type != nil && v.Type.Kind == ir.TypeList
-	// Anything but a scalar literal is stored raw so the emitter re-evaluates
-	// it through kc.EvalExpr. A composite literal cannot be judged by the text
-	// IRLiteralToKt returned: `P(a = "", b = "")` looks emitted, but each `""`
-	// is a field the context-free walk had no case for.
+	// Judged on the node, not on the text IRLiteralToKt returned: a composite
+	// whose fields all failed to emit still looks emitted.
 	var initEx ir.Expr
 	if _, isLit := v.Init.(*ir.Literal); v.Init != nil && !isLit {
 		initEx = v.Init

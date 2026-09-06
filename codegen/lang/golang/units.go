@@ -238,11 +238,9 @@ func LowerTypedLiteralGo(lit *ir.Literal, target *ir.Type) (string, bool) {
 }
 
 // LowerVarInit emits the Go expression for a state-var initializer.
-// Routes Literal inits through typed/unit helpers first; falls back to
-// the full context-aware GoIRContext.EvalExpr for non-literal exprs
-// (calls, idents, binary ops) so enum members, computed-into-init
-// references, and i18n.tr expressions all resolve correctly. Used by
-// every Go-emitting platform (fyne / bubbletea / gtk4).
+// A scalar literal takes the typed/unit helpers; everything else goes
+// through GoIRContext.EvalExpr, which is the only path that can resolve a
+// name. Used by every Go-emitting platform (fyne / bubbletea / gtk4).
 func LowerVarInit(v *ir.Var, gc *GoIRContext) string {
 	if v == nil {
 		return ""
