@@ -157,7 +157,7 @@ func gatedPasses(c Caps) []string {
 // TestEachCapabilityGatesItsPasses walks the Caps fields themselves, so a new
 // capability with no row here fails rather than passing unexamined.
 func TestEachCapabilityGatesItsPasses(t *testing.T) {
-	rt := reflect.TypeOf(Caps{})
+	rt := reflect.TypeFor[Caps]()
 	for i := range rt.NumField() {
 		f := rt.Field(i)
 		want, ok := soleGate[f.Name]
