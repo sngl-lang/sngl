@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -432,12 +433,7 @@ func stmtWaits(s ir.Stmt) bool {
 }
 
 func blockWaits(stmts []ir.Stmt) bool {
-	for _, s := range stmts {
-		if stmtWaits(s) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(stmts, stmtWaits)
 }
 
 // exprWaits recurses by hand rather than through ir.Walk because it must stop
@@ -476,10 +472,8 @@ func exprWaits(e ir.Expr) bool {
 	case *ir.Spread:
 		return exprWaits(x.Operand)
 	case *ir.ListLit:
-		for _, el := range x.Elems {
-			if exprWaits(el) {
-				return true
-			}
+		if slices.ContainsFunc(x.Elems, exprWaits) {
+			return true
 		}
 	case *ir.StructLit:
 		for _, f := range x.Fields {
