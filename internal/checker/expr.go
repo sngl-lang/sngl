@@ -4770,14 +4770,17 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 	}
 }
 
-// lookupComponentInScope resolves a bare component name through the scope chain
-// rather than the flat symtab.Comps map. Both stdlib and user components are
-// declared into scope, so the map adds nothing except the ability to see names
-// that are not lexically visible — which is exactly the bug: platform-extension
-// bodies, checked against the stdlib scope, would otherwise pick up a
-// same-named user component and shadow the platform's own blueprint.
+// lookupComponentInScope resolves a bare component name through the scope
+// chain, the way every other identifier resolves. It is the lexical half of
+// the question ir.SymbolTable.LookupRootComponent answers for a qualified
+// name: a component declared in a body binds in that body's scope and the
+// package root does not hold it.
+//
+// Going through the chain rather than a flat map is also what keeps a
+// platform-extension body, checked against the stdlib scope, from picking up a
+// same-named user component in place of the platform's own blueprint.
 func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, bool) {
-	sym, ok := c.scope.Lookup(name)
+	sym, ok := c.scope.LookupComponent(name)
 	if !ok {
 		// A name nobody declared is still a node name when a wildcard covers
 		// it — an open element set, reached unqualified inside a `platform x

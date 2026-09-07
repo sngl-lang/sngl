@@ -178,6 +178,28 @@ func (s *Scope) Lookup(name string) (Symbol, bool) {
 	return nil, false
 }
 
+// LookupComponent walks the parent chain for a component bound to name,
+// skipping a binding of that name that is not one. A node position accepts
+// nothing but a component, so a `var progress` in a body does not stop
+// `progress(value=…)` from naming the component of that name -- which is how
+// it worked while the lookup went to the package root instead of here, and the
+// reason this is not plain Lookup.
+//
+// Declared names only, for the reason Lookup gives; a caller resolving a
+// position a wildcard stands in consults WildcardMatches after missing here.
+func (s *Scope) LookupComponent(name string) (Symbol, bool) {
+	for sc := s; sc != nil; sc = sc.Parent {
+		sym, ok := sc.Symbols[name]
+		if !ok {
+			continue
+		}
+		if _, isComp := sym.(*Component); isComp {
+			return sym, true
+		}
+	}
+	return nil, false
+}
+
 // LookupDeclaredLocal checks this scope's declared names only, skipping its
 // wildcards. For asking whether a particular name was declared here — which a
 // wildcard, standing for every name it matches, would always answer yes to.
