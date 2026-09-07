@@ -1155,13 +1155,26 @@ func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.Even
 }
 
 // collectExtensionVars pre-registers the vars and consts a platform extension
-// body declares, the way pass1 does for an ordinary component body. Only state
-// declarations are collected: a struct, enum, unit or func in an extension body
-// is out of scope here and stays unbound.
+// body declares, the way pass1 does for an ordinary component body. A func in
+// an extension body is out of scope here and stays unbound; the type
+// declarations are collectExtensionBodyTypes'.
 func (c *checker) collectExtensionVars(body ast.StmtBlock) []*ir.Var {
 	var out []*ir.Var
 	for _, stmt := range body.Stmts {
 		out = append(out, c.collectComponentVarDecl(stmt)...)
+	}
+	return out
+}
+
+func (c *checker) collectExtensionBodyTypes(body ast.StmtBlock) []ir.Symbol {
+	var out []ir.Symbol
+	for _, stmt := range body.Stmts {
+		switch stmt.(type) {
+		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+			if sym := c.registerBodyType(stmt); sym != nil {
+				out = append(out, sym)
+			}
+		}
 	}
 	return out
 }
@@ -1246,6 +1259,7 @@ func (c *checker) checkPendingExtensions() {
 			savedAST := pe.comp.AST.Body
 			savedBody := pe.comp.Body
 			savedVars := pe.comp.Vars
+			savedBodyTypes := pe.comp.BodyTypes
 			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
 			// An override that listed the props it consumes reads those and no
 			// others: the list is what makes the names in its body traceable
@@ -1265,6 +1279,10 @@ func (c *checker) checkPendingExtensions() {
 			// visible to the override.
 			vars := append(slices.Clip(savedVars), c.collectExtensionVars(pe.body)...)
 			pe.comp.Vars = vars
+			c.pushScope()
+			bodyTypes := c.collectExtensionBodyTypes(pe.body)
+			c.popScope()
+			pe.comp.BodyTypes = append(slices.Clip(savedBodyTypes), bodyTypes...)
 			c.checkComponentBody(pe.comp)
 			checked := ir.Body{Vars: pe.comp.Vars, Stmts: pe.comp.Body}
 			if pe.kind == ir.BuiltinLanguage {
@@ -1275,6 +1293,7 @@ func (c *checker) checkPendingExtensions() {
 			pe.comp.AST.Body = savedAST
 			pe.comp.Body = savedBody
 			pe.comp.Vars = savedVars
+			pe.comp.BodyTypes = savedBodyTypes
 			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
 			if pe.user {
 				c.popScope()

@@ -1238,6 +1238,67 @@ component main {
 `)
 }
 
+func TestBodyRejectsAnImperativeStatement(t *testing.T) {
+	for _, tc := range []struct {
+		what string
+		stmt string
+	}{
+		{"assign", "n = 5"},
+		{"compound", "n += 1"},
+		{"index", "xs[0] = 2"},
+		{"field", "p.x = 2"},
+		{"increment", "n++"},
+		{"decrement", "n--"},
+		{"toggle", "flag!!"},
+		{"return", "return"},
+		{"returnValue", "return 3"},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			expectError(t, `
+struct point {
+	x int
+}
+
+component main {
+	var n = 0
+	var flag = false
+	var xs = [1]
+	var p = point{x = 1}
+
+	`+tc.stmt+`
+}
+`, "not a statement in a view body")
+		})
+	}
+}
+
+func TestAnImperativeStatementIsFineWhereSomethingRunsIt(t *testing.T) {
+	expectNoErrors(t, `
+import . "sngl:ui"
+
+var n = 0
+var flag = false
+
+func bump() int {
+	n = 5
+	n += 1
+	n++
+	n--
+	flag!!
+	return n
+}
+
+component main {
+	func local() {
+		n++
+	}
+
+	effect(@mount { n = 1 })
+	button(text="go", @click { flag!! })
+}
+`)
+}
+
 func testdataDir() string {
 	_, thisFile, _, _ := runtime.Caller(0)
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "testdata")

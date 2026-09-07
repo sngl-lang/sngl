@@ -1,0 +1,11 @@
+// A return in a view body truncated bubbletea's builder: it emitted a View()
+// calling a renderMain it never went on to define, and `sngl generate` exited
+// 0 on Go that does not compile.
+
+import . "sngl:ui"
+
+component main {
+    return // ERROR(check) "not a statement in a view body"
+
+    text(value="hi")
+}
