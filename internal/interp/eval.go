@@ -26,6 +26,16 @@ type LambdaValue struct {
 }
 
 // call invokes the lambda with the given values.
+//
+// The snapshot is what gives the body its own scope, so the parameters do not
+// leak into the scope the lambda closed over. What it must not do is swallow
+// the body's writes: a lambda handed to a function that calls it is how a
+// callback is written, and every assignment one made landed in the copy and was
+// dropped -- `run(func() { n += 1 })` left n where it was, with nothing to say
+// so. The list methods never noticed because a predicate only reads.
+//
+// Rebound even when the body failed, because the statements before the failure
+// did run.
 func (lv *LambdaValue) Call(args []any) (any, error) {
 	child := lv.env.Snapshot()
 	for i, p := range lv.fn.Params {
@@ -33,7 +43,9 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 			child.Set(p, args[i])
 		}
 	}
-	return child.execBlockForResult(lv.fn.Block)
+	res, err := child.execBlockForResult(lv.fn.Block)
+	lv.env.RebindFrom(child)
+	return res, err
 }
 
 // callWithEnv is like call but uses the provided env directly (no snapshot).
@@ -201,6 +213,15 @@ func (env *Env) RebindFrom(src *Env) {
 			}
 			if v, ok := src.Value(sym); ok {
 				e.vals[sym] = v
+				// Credited as a write here too, or the value stops one scope
+				// short of where it has to go: a rebind carries only what its
+				// source was credited with, so a method whose body wrote
+				// through a lambda took the value but was not recorded as
+				// having written it, and the method's own rebind onto the
+				// instance passed over it.
+				if e.assigned != nil {
+					e.assigned[sym] = true
+				}
 			}
 		}
 	}
@@ -290,6 +311,13 @@ func (env *Env) Snapshot() *Env {
 		childEnvs:     childEnvs,       // shared reference — cached child envs persist through scope changes
 		callChildEnvs: env.callChildEnvs,
 		parent:        env.parent,
+		// The instantiation this scope belongs to. A snapshot of a frame is
+		// still that frame, and dropping it broke the one thing that reads it:
+		// an emit finds the nearest enclosing instantiation to know whose
+		// handler to run, so an event emitted from inside a lambda found the
+		// *caller's* instantiation instead, asked it for a subscriber to an
+		// event it does not declare, and went nowhere.
+		inst: env.inst,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
