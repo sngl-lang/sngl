@@ -409,7 +409,8 @@ written rather than that a nested one means nothing. Before the check it
 parsed and was discarded, which told a program only that the *use* of its
 alias was undefined.
 
-Two consequences worth knowing: a kind classifies *one* declaration and does not
+Two consequences of a built-in being identified by its mark: a kind classifies
+*one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark
 would be two incompatible types (the checker rejects a duplicated node mark).
 And `output` is a *directive* kind rather than a node one: it parses as a
