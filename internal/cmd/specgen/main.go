@@ -170,7 +170,7 @@ type section struct {
 }
 
 var sections = []section{
-	{"document", []string{"Document", "TopStmt", "StmtBlock"}},
+	{"document", []string{"Document", "StmtBlock"}},
 	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "SlotNode", "SlotArgList", "AssignOp", "IncDecOp"}},
 	{"imports", []string{"ImportDecl"}},
 	{"type-declarations", []string{"StructDecl", "StructField", "EnumDecl", "UnitDecl"}},

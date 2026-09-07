@@ -122,6 +122,10 @@
         "named": true
       },
       {
+        "type": "component_declaration",
+        "named": true
+      },
+      {
         "type": "const_declaration",
         "named": true
       },
@@ -1050,10 +1054,6 @@
       "types": [
         {
           "type": "_stmt",
-          "named": true
-        },
-        {
-          "type": "component_declaration",
           "named": true
         }
       ]

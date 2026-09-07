@@ -210,12 +210,7 @@ MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rpare
 # A native value — one expression an encoder wrote, see checker.CheckNativeValue
 # — is the second thing a Document can be. Only the native-value lexer emits the
 # sentinel, so ordinary source can never take that branch.
-Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } TopStmt [ semi ] } .
-
-# ComponentDecl is reachable only from here, never from Stmt: a component param
-# needs no type, so a nested declaration and a `component cell(row) { ... }` slot
-# population are the same token sequence.
-TopStmt = ComponentDecl | Stmt .
+Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } Stmt [ semi ] } .
 
 # ── Statements ────────────────────────────────────────────────────────────────
 #
@@ -231,6 +226,7 @@ TopStmt = ComponentDecl | Stmt .
 #   kw_const      → ConstDecl
 #   kw_var        → VarDecl
 #   kw_func       → FuncDecl  (excluded from StatementPrimary)
+#   kw_component  → ComponentDecl
 #   kw_return     → return statement
 #   kw_break      → break statement
 #   kw_continue   → continue statement
@@ -246,6 +242,7 @@ Stmt =
     | ConstDecl
     | VarDecl
     | FuncDecl
+    | ComponentDecl
     | SlotNode
     | kw_return [ Expr ]
     | kw_break

@@ -21,17 +21,8 @@
             ]
           },
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "component_declaration"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "_stmt"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "_stmt"
           },
           {
             "type": "CHOICE",
@@ -1929,6 +1920,10 @@
         {
           "type": "SYMBOL",
           "name": "func_declaration"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "component_declaration"
         },
         {
           "type": "SYMBOL",

@@ -1,12 +1,10 @@
-// A root `component` fails to parse when the statement before it is incomplete,
-// so the failing token is the keyword and the position is the root. The rule
-// about where a component may be declared is not what went wrong, and this
-// fixture asserts the operand error rather than that rule.
+// An incomplete statement before a `component` reports the missing operand,
+// not something about the declaration that follows it.
 
 import . "sngl:ui"
 
 var x =
 
 component main { // ERROR(parse) "unexpected \"component\", expected"
-    text(value = "hi")
+    text(value="hi")
 }

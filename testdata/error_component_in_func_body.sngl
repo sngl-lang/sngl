@@ -1,9 +1,0 @@
-// A function body is a StmtBlock like a component's, so it refuses a
-// declaration for the same reason.
-
-import . "sngl:ui"
-
-func build() {
-    component inner() { // ERROR(parse) "a component may only be declared at the root of a file"
-    }
-}

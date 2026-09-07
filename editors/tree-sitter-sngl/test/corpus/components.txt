@@ -317,26 +317,3 @@ component App {
                 (named_arg
                   name: (identifier)
                   value: (string_literal))))))))))
-
-================
-Nested component declaration does not parse
-================
-
-component outer() {
-    component inner(x string) {
-    }
-}
-
----
-
-(source_file
-  (component_declaration
-    name: (identifier)
-    (statement_block
-      (identifier)
-      (visual_node
-        component: (identifier)
-        (ERROR
-          (identifier))
-        (identifier)
-        (statement_block)))))

@@ -117,30 +117,6 @@ func loopVarNeedsVar(filtered []Token, idx int) bool {
 	return false
 }
 
-func componentDeclInBody(filtered []Token, idx int) bool {
-	if idx < 0 || idx+1 >= len(filtered) {
-		return false
-	}
-	if idx == 0 || filtered[idx].Type != KW_COMPONENT || filtered[idx+1].Type != IDENT {
-		return false
-	}
-	switch filtered[idx-1].Type {
-	case LBRACE, RBRACE, SEMICOLON:
-	default:
-		return false
-	}
-	depth := 0
-	for _, tok := range filtered[:idx] {
-		switch tok.Type {
-		case LBRACE:
-			depth++
-		case RBRACE:
-			depth--
-		}
-	}
-	return depth > 0
-}
-
 func remapErrors(err error, filtered []Token) error {
 	errList, ok := err.(scanner.ErrList)
 	if !ok {
@@ -163,10 +139,6 @@ func remapErrors(err error, filtered []Token) error {
 			// that this is not an expression.
 			if inInterpolation(filtered, idx) {
 				errList[i].Err = errors.New("invalid expression in interpolation")
-				continue
-			}
-			if componentDeclInBody(filtered, idx) {
-				errList[i].Err = errors.New("a component may only be declared at the root of a file")
 				continue
 			}
 			if loopVarNeedsVar(filtered, idx) {

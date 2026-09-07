@@ -1,6 +1,6 @@
-// The same incomplete statement inside a body, where brace depth alone cannot
-// tell the two apart: the failing `component` really is in a StmtBlock, but what
-// went wrong is still the missing initializer above it.
+// The same incomplete statement inside a body, where the `component` that
+// follows it is a declaration the body may hold: what went wrong is still the
+// missing initializer above it.
 
 import . "sngl:ui"
 
