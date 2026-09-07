@@ -369,6 +369,8 @@ attributes and a slashdash prefix, and optionally followed by a semicolon
 ```ebnf
 Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } TopStmt [ ";" ] }
 
+TopStmt = ComponentDecl | Stmt
+
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
 ```
@@ -1585,6 +1587,8 @@ The complete grammar, assembled from `internal/parser/sngl.ebnf`:
 
 ```ebnf
 Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } TopStmt [ ";" ] }
+
+TopStmt = ComponentDecl | Stmt
 
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
