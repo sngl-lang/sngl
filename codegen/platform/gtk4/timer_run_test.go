@@ -61,8 +61,14 @@ import (
 
 // The model arms its schedules in New(). Pumping the loop is what lets them
 // fire; without it the sources exist and nothing ever runs them.
+//
+// Deliberately no gtk4rt.Init(): that is gtk_init(), which needs a display, and
+// CI has none -- it failed here with "cannot open display". A timer is a GLib
+// timeout on the default main context, so arming and pumping one needs no GTK
+// and no display. Skipping the test headlessly would have been the other
+// option, and would have meant the only evidence that a gtk4 timer fires never
+// runs in CI.
 func TestTimersTick(t *testing.T) {
-	gtk4rt.Init()
 	m := New()
 	gtk4rt.PumpFor(200)
 	if m.Seconds() == 0 {
