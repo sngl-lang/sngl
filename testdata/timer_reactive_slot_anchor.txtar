@@ -67,16 +67,16 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: 0, handle__inst1: 0 };
+  var state = { a__inst0: 0, handle__inst0__inst0: 0 };
   function __effect0_mount() {
-    state.handle__inst1 = setInterval(() => {
+    state.handle__inst0__inst0 = setInterval(() => {
       state.a__inst0 = (state.a__inst0 + 1) % 2;
       __renderSlot0(__slotAnchor_0);
       __renderSlot1(__slotAnchor_1);
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst1);
+    clearInterval(state.handle__inst0__inst0);
   }
   function __snglTeardown() {
     __effect0_teardown();

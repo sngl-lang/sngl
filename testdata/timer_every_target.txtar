@@ -543,24 +543,24 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds: 0, running: true, handle__inst0: 0, beats__inst1: 0, handle__inst2: 0 };
+  var state = { seconds: 0, running: true, handle__inst1: 0, beats__inst0: 0, handle__inst0__inst0: 0 };
   function __effect0_mount() {
-    state.handle__inst0 = setInterval(() => {
+    state.handle__inst1 = setInterval(() => {
       state.seconds += 1;
       __n1.textContent = String(state.seconds);
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst0);
+    clearInterval(state.handle__inst1);
   }
   function __effect1_mount() {
-    state.handle__inst2 = setInterval(() => {
-      state.beats__inst1 += 1;
-      __n0.textContent = "beats " + String(state.beats__inst1);
+    state.handle__inst0__inst0 = setInterval(() => {
+      state.beats__inst0 += 1;
+      __n0.textContent = "beats " + String(state.beats__inst0);
     }, __effect1_key);
   }
   function __effect1_unmount() {
-    clearInterval(state.handle__inst2);
+    clearInterval(state.handle__inst0__inst0);
   }
   function __snglTeardown() {
     __effect1_teardown();
@@ -678,7 +678,7 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = "beats " + String(state.beats__inst1);
+    __n0.textContent = "beats " + String(state.beats__inst0);
     __n1.textContent = String(state.seconds);
   }
   __sngl_init();

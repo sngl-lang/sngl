@@ -1,4 +1,4 @@
-expected_error: platform stdlib wrapper "Statefulwrap" must be pure (declares var "count")
+expected_error: platform stdlib wrapper "Statefulwrap" must be pure (declares var "count", which the rendered tree reads)
 -- input.sngl --
 import . "sngl:ui"
 

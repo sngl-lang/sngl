@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -42,6 +43,7 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 		stack:    nil,
 	}
 	for _, comp := range pkg.Components {
+		st.hoist = &comp.Vars
 		body, err := st.inlineStmts(comp.Body)
 		if err != nil {
 			return err
@@ -62,6 +64,7 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 		}
 	}
 	for _, w := range pkg.Windows {
+		st.hoist = &w.Vars
 		body, err := st.inlineStmts(w.Body)
 		if err != nil {
 			return err
@@ -78,6 +81,101 @@ type inlinePureState struct {
 	platform string
 	inFlight map[*ir.Component]bool
 	stack    []*ir.Component // active inline chain, for cycle-error messages
+	// hoist is where a substituted callee's vars land: the owner whose body is
+	// being walked. A var hoisted onto a component that is itself a runtime
+	// instance becomes a local of that instance's factory, which is what makes
+	// one per instance.
+	hoist *[]*ir.Var
+	// instCounter names each substitution's copy of the callee's state.
+	instCounter int
+	// loopDepth counts the `for`s the walk is inside. A call site under one
+	// holds many copies of the body and a substitution makes one, so a callee
+	// with state of its own may not be substituted there -- it stays a runtime
+	// instance and the platform gives each row its own record.
+	loopDepth int
+}
+
+func (st *inlinePureState) freshSuffix() string {
+	n := st.instCounter
+	st.instCounter++
+	return "__inst" + strconv.Itoa(n)
+}
+
+// viewReadVars is every var of comp's that its rendered tree reads.
+//
+// A `var` is what makes a component impure to substitute, and the reason is
+// about the *rendered* tree: a var a node prop, a view condition or an
+// interpolation reads needs an updater when it changes and a setter when a
+// reconcile pushes it, and a substituted body has neither. A var only a
+// handler writes and only another handler reads needs neither -- html's
+// `timer` override holds the setInterval handle in one, and nothing renders it.
+//
+// Conservative in the direction rendersNothing is: an expression not
+// classified here counts as a read, so an unfamiliar body costs a substitution
+// rather than a wrong one. A component with funcs is not asked at all, since
+// isPure disqualifies on those already.
+func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
+	out := map[*ir.Var]bool{}
+	if comp == nil {
+		return out
+	}
+	own := make(map[*ir.Var]bool, len(comp.Vars))
+	for _, v := range comp.Vars {
+		own[v] = true
+	}
+	read := func(root any) {
+		_ = ir.WalkExprs(root, func(e ir.Expr) error {
+			if id, ok := e.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && own[v] {
+					out[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	var visit func(stmts []ir.Stmt)
+	visit = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			switch n := s.(type) {
+			case *ir.NodeInst:
+				// The props and bindings are the rendered reads. Handlers are
+				// deliberately not walked: that is the whole distinction.
+				for _, a := range n.Props {
+					read(a.Value)
+				}
+				for _, b := range n.Bindings {
+					read(b.Target)
+				}
+				visit(n.Children)
+				for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+					if sc := n.Slots[name]; sc != nil {
+						visit(sc.Body)
+					}
+				}
+			case *ir.If:
+				read(n.Cond)
+				visit(n.Body)
+				visit(n.Else)
+			case *ir.For:
+				read(n.Iter)
+				visit(n.Body)
+				visit(n.Else)
+			case *ir.SlotInst:
+				visit(n.Children)
+			case *ir.ErrorBoundary:
+				visit(n.Children)
+			case *ir.ContextProvider:
+				visit(n.Children)
+			default:
+				// Anything else in a view body is not classified, so every
+				// var it mentions counts -- handlers included, since this
+				// walk cannot tell which part of it is rendered.
+				read(s)
+			}
+		}
+	}
+	visit(comp.Body)
+	return out
 }
 
 // isPure reports whether a component carries no state of its own, which is
@@ -88,11 +186,53 @@ type inlinePureState struct {
 // question, and the caller's — for a primitive nothing is expected, for a
 // library component it means the target implemented nothing, and for a user
 // component it means the node renders nothing.
+//
+// "No state" is not the same as "no var". A var nothing in the rendered tree
+// reads (viewReadVars) is hoisted onto the caller and renamed per call site,
+// exactly as passNoInlineComponents does it -- what a substitution cannot
+// supply is an updater and a setter, and such a var needs neither. That is what
+// lets html declare `timer` as an `effect` holding the setInterval handle.
 func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
 		return false
 	}
-	return len(c.Vars) == 0 && len(c.Funcs) == 0 && len(c.Timers) == 0
+	if len(c.Funcs) > 0 || len(c.Timers) > 0 {
+		return false
+	}
+	if len(c.Vars) == 0 {
+		return true
+	}
+	// A var is allowed only for this build's platform override, and only
+	// where the position holds one copy of the body.
+	//
+	// The override is the case that needs it: every platform-package
+	// component must inline or the build fails, so an override that holds
+	// state has nowhere else to go -- html's `timer` keeps the setInterval
+	// handle in one. A *user* component with unrendered state is left alone
+	// deliberately: it becomes a runtime instance today, its platform gives
+	// each one a record, and turning that into a substitution would change
+	// how every component with a private counter compiles for the sake of a
+	// stdlib override.
+	//
+	// Under a `for` neither is substituted, because the position holds a copy
+	// of the body per element and a substitution makes one. Two gauges with a
+	// private hit counter shared it, which is what the fyne instance-canvas
+	// fixture says.
+	if !st.overriddenHere(c) || st.loopDepth > 0 {
+		return false
+	}
+	return len(viewReadVars(c)) == 0
+}
+
+// overriddenHere reports whether c carries a platform extension body for the
+// platform being lowered for. The same question inline_components.go asks as
+// specializedHere; with no platform nothing is specialized.
+func (st *inlinePureState) overriddenHere(c *ir.Component) bool {
+	if st.platform == "" || c == nil || c.PlatformOverrides == nil {
+		return false
+	}
+	_, ok := c.PlatformOverrides[st.platform]
+	return ok
 }
 
 // inlineStmts walks a stmt slice, recursing into nested control-flow
@@ -129,11 +269,14 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 		n.Else = els
 		return []ir.Stmt{n}, nil
 	case *ir.For:
+		st.loopDepth++
 		body, err := st.inlineStmts(n.Body)
 		if err != nil {
+			st.loopDepth--
 			return nil, err
 		}
 		els, err := st.inlineStmts(n.Else)
+		st.loopDepth--
 		if err != nil {
 			return nil, err
 		}
@@ -256,6 +399,15 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return []ir.Stmt{n}, nil
 	}
 
+	// No body means nothing to substitute, whatever the state says. The branch
+	// above answered the component that declares nothing at all; this is the
+	// one that holds a var and renders nothing, which passNoInlineComponents
+	// keeps so the state survives. Reached only since a var the rendered tree
+	// does not read stopped making a component impure.
+	if len(comp.Body) == 0 {
+		return []ir.Stmt{n}, nil
+	}
+
 	if !pure && !strictApplies {
 		return []ir.Stmt{n}, nil
 	}
@@ -324,8 +476,11 @@ func compPos(c *ir.Component) string {
 // Caller has already established len(Vars|Funcs|Timers) > 0.
 func impurityReason(comp *ir.Component) string {
 	var parts []string
-	if len(comp.Vars) > 0 {
-		parts = append(parts, fmt.Sprintf("var %q", comp.Vars[0].Name))
+	for _, v := range comp.Vars {
+		if viewReadVars(comp)[v] {
+			parts = append(parts, fmt.Sprintf("var %q, which the rendered tree reads", v.Name))
+			break
+		}
 	}
 	if len(comp.Funcs) > 0 {
 		parts = append(parts, fmt.Sprintf("func %q", comp.Funcs[0].Name))
@@ -464,6 +619,51 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// Deep-clone the wrapper body so substitution mutations don't leak
 	// across call sites.
 	body := deepCloneStmts(comp.Body)
+
+	// Hoist the callee's own vars onto the owner being walked, one copy per
+	// call site. isPure let them through because nothing rendered reads them,
+	// so they need no updater and no setter -- but they still need somewhere
+	// to live that outlasts the handler that writes them.
+	if len(comp.Vars) > 0 {
+		if st.hoist == nil {
+			return nil, fmt.Errorf("component %q declares state and there is no owner to hoist it onto at %s", comp.Name, compPos(comp))
+		}
+		suffix := st.freshSuffix()
+		renames := map[ir.Symbol]string{}
+		symRenames := map[ir.Symbol]ir.Symbol{}
+		start := len(*st.hoist)
+		for _, v := range comp.Vars {
+			clone := cloneVarShallow(v)
+			clone.Name = v.Name + suffix
+			clone.Init = deepCloneExpr(v.Init)
+			// A synthesized context var carries its default, which the call
+			// site overrides through a hidden __ctx_<name> prop. expandCall
+			// says the same thing; missing it here dropped a provider's
+			// override and every instance read the default.
+			if v.Synthesized {
+				for _, arg := range callsite.Props {
+					if arg.Name == v.Name {
+						clone.Init = deepCloneExpr(arg.Value)
+						break
+					}
+				}
+			}
+			renames[v] = clone.Name
+			symRenames[v] = clone
+			*st.hoist = append(*st.hoist, clone)
+		}
+		for i := start; i < len(*st.hoist); i++ {
+			if (*st.hoist)[i].Init == nil {
+				continue
+			}
+			// The props too, not just the renames: an init may name a prop
+			// (`var handle = interval`), and after substitution the param it
+			// named does not exist.
+			(*st.hoist)[i].Init = substituteParamsExpr((*st.hoist)[i].Init, bindings)
+			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
+		}
+		body = renameIdents(body, renames, symRenames)
+	}
 
 	// Apply param substitution (Ident-with-Param-Sym matching by name).
 	body = substituteParams(body, bindings)
