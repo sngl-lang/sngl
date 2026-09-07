@@ -5,9 +5,13 @@ because a static artifact holds the iterations themselves. That never happened
 for a list of unit literals: `parseLiteral` had no case for a unit, so a unit
 literal was unevaluable, and anything holding one was unevaluable with it.
 
-The failure was silent and total. `for var p = [20ms, 400ms] { … }` rendered
-**one** element, with its loop variable bound to nothing -- not two, not an
-error. Every duration written in a static loop was that.
+The failure was silent and total. A loop over a constant list of durations
+rendered **one** element, with its loop variable bound to nothing -- not two,
+not an error. Every duration written in a static loop was that.
+
+The list is annotated because a unit literal needs an expected type to resolve
+its suffix against; `[20ms, 400ms]` with nothing to infer from is a separate
+question, answered elsewhere.
 
 A unit value is a magnitude per base, which is what makes this expressible at
 all: `20ms` evaluates to 20, and comes back as a literal in the unit's base. The
@@ -40,8 +44,10 @@ output {
     }
 }
 
+const periods list<duration> = [20ms, 400ms]
+
 component main {
-    for var i, p = [20ms, 400ms] {
+    for var i, p = periods {
         text(value="row{i}=" + (p == 20ms ? "fast" : "slow"))
     }
 }
