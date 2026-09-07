@@ -121,7 +121,24 @@ func componentDeclInBody(filtered []Token, idx int) bool {
 	if idx < 0 || idx+1 >= len(filtered) {
 		return false
 	}
-	return filtered[idx].Type == KW_COMPONENT && filtered[idx+1].Type == IDENT
+	if idx == 0 || filtered[idx].Type != KW_COMPONENT || filtered[idx+1].Type != IDENT {
+		return false
+	}
+	switch filtered[idx-1].Type {
+	case LBRACE, RBRACE, SEMICOLON:
+	default:
+		return false
+	}
+	depth := 0
+	for _, tok := range filtered[:idx] {
+		switch tok.Type {
+		case LBRACE:
+			depth++
+		case RBRACE:
+			depth--
+		}
+	}
+	return depth > 0
 }
 
 func remapErrors(err error, filtered []Token) error {
