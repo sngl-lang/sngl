@@ -511,8 +511,6 @@ type htmlGen struct {
 
 	handlers []eventHandler
 
-	timers []timerDef
-
 	componentParams []componentParam
 
 	inlinedStateInits []componentParam
@@ -652,22 +650,6 @@ type eventHandler struct {
 	hasParam bool
 	mutated  map[string]bool
 	isAsync  bool
-}
-
-type timerDef struct {
-	index      int
-	intervalMs int
-	activeVar  string
-	// activeVars is every reactive name the gate reads, and activeExpr the
-	// gate rendered as JS. A gate used to be one bare identifier or nothing:
-	// `enabled=true` reduced to nothing, which read as "always on", and a gate
-	// folded from an enclosing branch reduced to nothing too -- so a timer
-	// under a false `if` armed and ran.
-	activeVars map[string]bool
-	activeExpr string
-	body       string
-	mutated    map[string]bool
-	bodyAsync  bool
 }
 
 // newHTMLGen builds the generator for one window. A caller with no compilation
@@ -901,12 +883,6 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	if g.pkg == nil {
 		return
 	}
-	var visit func(s ir.Stmt)
-	visitStmts := func(stmts []ir.Stmt) {
-		for _, s := range stmts {
-			visit(s)
-		}
-	}
 	rewriteCall := func(call *ir.Call) {
 		if call == nil || call.Func == nil {
 			return
@@ -922,68 +898,26 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 			Synthesized:  true,
 		}
 	}
-	visit = func(s ir.Stmt) {
-		switch n := s.(type) {
-		case *ir.CallStmt:
-			rewriteCall(n.Call)
-			// An inline-closure handler carries slot re-fire calls in its body.
-			if n.Call != nil {
-				for _, a := range n.Call.Args {
-					switch lam := a.Value.(type) {
-					case *ir.Lambda:
-						if lam.Func != nil {
-							visitStmts(lam.Func.Block)
-						}
-					case *ir.Closure:
-						if lam.Func != nil {
-							visitStmts(lam.Func.Block)
-						}
-					}
-				}
+	// ir.Walk rather than a descent of the statements that can hold one,
+	// because "which statement holds the re-fire" is a question this has been
+	// wrong about twice. The descent knew a CallStmt and the lambda arguments
+	// of a CallStmt, so a timer handler was covered while `h = setInterval(func
+	// () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
+	// the parentRef it was threaded with and removeChild'd from the wrong node.
+	visit := func(root any) {
+		_ = ir.Walk(root, func(node ir.Node) error {
+			if c, ok := node.(*ir.Call); ok {
+				rewriteCall(c)
 			}
-		case *ir.NodeInst:
-			if n == nil {
-				return
-			}
-			visitStmts(n.Children)
-			for _, h := range n.Handlers {
-				if h.Func != nil {
-					visitStmts(h.Func.Block)
-				}
-			}
-		case *ir.If:
-			visitStmts(n.Body)
-			visitStmts(n.Else)
-		case *ir.For:
-			visitStmts(n.Body)
-			visitStmts(n.Else)
-		case *ir.Window:
-			visitStmts(n.Body)
-		case *ir.SlotInst:
-			visitStmts(n.Children)
-		case *ir.ErrorBoundary:
-			visitStmts(n.Children)
-		case *ir.ContextProvider:
-			visitStmts(n.Children)
-		default:
-		}
+			return nil
+		})
 	}
-	// Every block where the reactivity pass may have spliced a __renderSlotN
-	// re-fire — mirrors lowerReactivity's pass-2 coverage. Timer handlers
-	// included: a missed one removeChilds from the wrong node.
 	visitHandlers := func(vars []*ir.Var) {
 		for _, v := range vars {
 			for _, h := range v.Handlers {
 				if h.Func != nil {
-					visitStmts(h.Func.Block)
+					visit(h.Func.Block)
 				}
-			}
-		}
-	}
-	visitTimers := func(timers []*ir.Timer) {
-		for _, t := range timers {
-			if t != nil && t.Handler != nil {
-				visitStmts(t.Handler.Block)
 			}
 		}
 	}
@@ -991,33 +925,37 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	// which the lowering already named, and a page anchor would point every
 	// instance at one node.
 	for _, c := range g.pageComponents() {
-		visitStmts(c.Body)
+		visit(c.Body)
 		for _, fn := range c.Funcs {
 			if fn != nil {
-				visitStmts(fn.Block)
+				visit(fn.Block)
 			}
 		}
-		visitTimers(c.Timers)
+		for _, t := range c.Timers {
+			if t != nil && t.Handler != nil {
+				visit(t.Handler.Block)
+			}
+		}
 		visitHandlers(c.Vars)
 	}
 	for _, w := range g.pkg.Windows {
 		if w == nil {
 			continue
 		}
-		visitStmts(w.Body)
+		visit(w.Body)
 		for _, fn := range w.Funcs {
 			if fn != nil {
-				visitStmts(fn.Block)
+				visit(fn.Block)
 			}
 		}
 		visitHandlers(w.Vars)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			visitStmts(w.ErrorHandler.Func.Block)
+			visit(w.ErrorHandler.Func.Block)
 		}
 	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
-			visitStmts(fn.Block)
+			visit(fn.Block)
 		}
 	}
 	visitHandlers(g.pkg.Vars)
@@ -2005,10 +1943,6 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 	savedSlot := g.irSlotChildren
 	g.irSlotChildren = n.Children
 
-	for _, t := range comp.Timers {
-		g.addIRTimer(t)
-	}
-
 	for _, s := range comp.Body {
 		g.renderIRStmt(b, s, depth)
 	}
@@ -2021,21 +1955,6 @@ func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, dept
 }
 
 func (g *htmlGen) emitScript(b *strings.Builder) {
-	// Inlined component timers were already appended during rendering.
-	if g.pkg != nil {
-		for _, t := range g.pkg.Timers {
-			g.addIRTimer(t)
-		}
-		if main := g.rootComp; main != nil {
-			for _, t := range main.Timers {
-				g.addIRTimer(t)
-			}
-		}
-	}
-	for i := range g.timers {
-		g.timers[i].index = i
-	}
-
 	g.optimizeIR()
 
 	// Impure native funcs are surfaced through the __sngl_externs object that
@@ -2194,14 +2113,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 				break
 			}
 		}
-		if !needsSetter {
-			for _, t := range g.timers {
-				if t.activeVars[dv.Name] {
-					needsSetter = true
-					break
-				}
-			}
-		}
 		if !needsSetter && g.pkg != nil {
 			for _, k := range g.pkg.AsyncKickers {
 				if slices.Contains(k.Deps, dv.Name) {
@@ -2280,17 +2191,12 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 
 	g.emitHandlers(b)
 
-	g.emitTimers(b)
-
 	// Every html updater is init-only: NoReactivity inlines the per-mutation
 	// DOM writes into handler bodies, so no callable $u_*() is emitted.
-	if len(g.initWrites) > 0 || len(g.timers) > 0 {
+	if len(g.initWrites) > 0 {
 		b.WriteString("\nfunction __sngl_init() {\n")
 		for _, u := range g.initWrites {
 			fmt.Fprintf(b, "  %s\n", u.body)
-		}
-		for _, t := range g.timers {
-			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
 		}
 		b.WriteString("}\n__sngl_init();\n")
 	}
@@ -2449,23 +2355,6 @@ func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 	b.WriteString(snglCanvasHelper)
 }
 
-// timerSyncCalls returns a $timer_N_sync() call for every timer whose enabled
-// var is in mutated, so the timer starts or stops to match the new state.
-// Handler bodies write state directly rather than through $set_<var>, which
-// carries its own sync, so the call is appended here.
-func (g *htmlGen) timerSyncCalls(mutated map[string]bool) []string {
-	if len(mutated) == 0 {
-		return nil
-	}
-	var out []string
-	for _, t := range g.timers {
-		if anyMutated(t.activeVars, mutated) {
-			out = append(out, fmt.Sprintf("$timer_%d_sync();", t.index))
-		}
-	}
-	return out
-}
-
 // reactiveUpdaterCalls returns the bodies of non-initOnly updaters whose deps
 // overlap the mutated var set — the ones NoReactivity cannot inline, which
 // must be appended to every handler that touches their deps.
@@ -2492,7 +2381,6 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 	for _, h := range g.handlers {
 		var lines []string
 		lines = append(lines, h.body)
-		lines = append(lines, g.timerSyncCalls(h.mutated)...)
 		lines = append(lines, g.reactiveUpdaterCalls(h.mutated)...)
 		if g.preview {
 			lines = append(lines, "__sngl_sync_state();")
@@ -2507,37 +2395,6 @@ func (g *htmlGen) emitHandlers(b *strings.Builder) {
 			param = "e"
 		}
 		fmt.Fprintf(b, "%s.addEventListener(\"%s\", %s(%s) {\n  %s\n});\n", h.elemID, h.event, keyword, param, body)
-	}
-}
-
-func (g *htmlGen) emitTimers(b *strings.Builder) {
-	for _, t := range g.timers {
-		var tickLines []string
-		tickLines = append(tickLines, t.body)
-		tickLines = append(tickLines, g.timerSyncCalls(t.mutated)...)
-		tickLines = append(tickLines, g.reactiveUpdaterCalls(t.mutated)...)
-		if g.preview {
-			tickLines = append(tickLines, "__sngl_sync_state();")
-		}
-		tickBody := strings.Join(tickLines, "\n  ")
-		tickKw := "function"
-		if t.bodyAsync {
-			tickKw = "async function"
-		}
-		fmt.Fprintf(b, "\nlet $timer_%d = null;\n", t.index)
-		fmt.Fprintf(b, "%s $timer_%d_tick() {\n  %s\n}\n", tickKw, t.index, tickBody)
-		fmt.Fprintf(b, "function $timer_%d_sync() {\n", t.index)
-		// No controlling Active var means always-on.
-		activeExpr := t.activeExpr
-		if activeExpr == "" {
-			activeExpr = "true"
-		}
-		fmt.Fprintf(b, "  if (%s && !$timer_%d) {\n", activeExpr, t.index)
-		fmt.Fprintf(b, "    $timer_%d = setInterval($timer_%d_tick, %d);\n", t.index, t.index, t.intervalMs)
-		fmt.Fprintf(b, "  } else if (!%s && $timer_%d) {\n", activeExpr, t.index)
-		fmt.Fprintf(b, "    clearInterval($timer_%d);\n", t.index)
-		fmt.Fprintf(b, "    $timer_%d = null;\n", t.index)
-		b.WriteString("  }\n}\n")
 	}
 }
 
@@ -2560,11 +2417,6 @@ func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
 			for _, line := range g.translateBlockJC(h.Func.Block) {
 				fmt.Fprintf(b, "  %s\n", line)
 			}
-		}
-	}
-	for _, t := range g.timers {
-		if t.activeVars[dv.Name] {
-			fmt.Fprintf(b, "  $timer_%d_sync();\n", t.index)
 		}
 	}
 	if g.pkg != nil {
@@ -2698,24 +2550,11 @@ func (g *htmlGen) optimizeIR() {
 			Mutated: varReg.namesToVarSet(h.mutated),
 		}
 	}
-	timers := make([]codegen.TimerHandler, len(g.timers))
-	for i, t := range g.timers {
-		timers[i] = codegen.TimerHandler{
-			TimerInfo: codegen.TimerInfo{
-				Index:      t.index,
-				IntervalMs: t.intervalMs,
-				ActiveVar:  t.activeVar,
-			},
-			Mutated: varReg.namesToVarSet(t.mutated),
-		}
-	}
-
 	m := &codegen.MutationModel{
 		Analysis:   g.CommonAnalysis,
 		DepTracker: g.dt,
 		Updaters:   updaters,
 		Handlers:   handlers,
-		Timers:     timers,
 	}
 
 	codegen.OptimizeMutation(m)
@@ -3210,52 +3049,6 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 	})
 }
 
-// addIRTimer translates the handler body through the current scope, so state
-// references resolve to the unique renamed field names.
-func (g *htmlGen) addIRTimer(t *ir.Timer) {
-	if t == nil || t.Handler == nil {
-		return
-	}
-	lines := g.translateBlockJC(t.Handler.Block)
-	mutated := make(map[string]bool)
-	for _, s := range t.Handler.Block {
-		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
-			mutated[v.Name] = true
-		}
-	}
-	mutated = g.remapMutated(mutated, g.dataRenames)
-	activeVar := ""
-	if id, ok := t.Enabled.(*ir.Ident); ok {
-		if renamed, ok := g.dataRenames[id.Name]; ok {
-			activeVar = renamed
-		} else {
-			activeVar = id.Name
-		}
-	}
-	// The gate as an expression, plus every reactive name it reads. The bare
-	// identifier above is still what the TestRunner data reports, because that
-	// is the only shape it can name.
-	activeExpr := ""
-	activeVars := map[string]bool{}
-	if t.Enabled != nil {
-		activeExpr = g.exprToJS(t.Enabled)
-		reads := map[string]bool{}
-		gateReads(t.Enabled, reads)
-		for name := range g.remapMutated(reads, g.dataRenames) {
-			activeVars[name] = true
-		}
-	}
-	g.timers = append(g.timers, timerDef{
-		intervalMs: codegen.IntervalToMs(t.Interval),
-		activeVar:  activeVar,
-		activeVars: activeVars,
-		activeExpr: activeExpr,
-		body:       strings.Join(lines, "\n  "),
-		mutated:    mutated,
-		bodyAsync:  ir.BlockHasFuncvarAsyncCall(t.Handler.Block, g.pts()),
-	})
-}
-
 func (g *htmlGen) buildCSSStyle(n *ir.NodeInst) string {
 	if n == nil {
 		return ""
@@ -3618,44 +3411,4 @@ func (g *htmlGen) bodyCalls() []string {
 	}
 	collect(pkg.Body)
 	return out
-}
-
-// anyMutated reports whether any of the names a timer's gate reads was written
-// by the statement whose updaters are being emitted.
-func anyMutated(gate, mutated map[string]bool) bool {
-	for name := range gate {
-		if mutated[name] {
-			return true
-		}
-	}
-	return false
-}
-
-// gateReads collects the reactive names a gate expression reads, which is what
-// says when the schedule has to be re-tested. One name was enough while a gate
-// was one identifier; `a && b`, which is what an enclosing branch folds into
-// one, reads two.
-func gateReads(e ir.Expr, out map[string]bool) {
-	switch n := e.(type) {
-	case nil:
-		return
-	case *ir.Ident:
-		if n.Name != "" {
-			out[n.Name] = true
-		}
-	case *ir.Binary:
-		gateReads(n.Left, out)
-		gateReads(n.Right, out)
-	case *ir.Unary:
-		gateReads(n.Operand, out)
-	case *ir.Select:
-		gateReads(n.Operand, out)
-	case *ir.Conversion:
-		gateReads(n.Operand, out)
-	case *ir.Call:
-		gateReads(n.Receiver, out)
-		for _, a := range n.Args {
-			gateReads(a.Value, out)
-		}
-	}
 }

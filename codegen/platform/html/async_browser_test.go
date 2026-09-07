@@ -87,6 +87,7 @@ func compileAsyncHTML(t *testing.T, src string, fsys fs.FS) []byte {
 		IsMain:    true,
 		Resolver:  resolver,
 		Platforms: []ir.Platform{&Generator{}},
+		Languages: htmlLangs(),
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	for _, d := range diags {

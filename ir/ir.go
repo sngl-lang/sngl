@@ -344,10 +344,14 @@ type Func struct {
 	// LanguageOverrides is the same, keyed by language. A declaration may be
 	// overridden on either axis; the platform's wins where both apply.
 	LanguageOverrides map[string]Body `json:",omitempty"`
-	Purity            Purity
-	IsTest            bool
-	Reads             []*Var // vars read (directly or via called functions)
-	Writes            []*Var // vars mutated (directly or via called functions)
+	// SpecializedFor is the target whose override body was swapped into Block,
+	// so a second swap for the same target is a no-op rather than a reset of
+	// the block lowering has since rewritten.
+	SpecializedFor string `json:",omitempty"`
+	Purity         Purity
+	IsTest         bool
+	Reads          []*Var // vars read (directly or via called functions)
+	Writes         []*Var // vars mutated (directly or via called functions)
 	// Intrinsic is the id a backend implements (e.g. "string.indexOf"). A
 	// declaration carrying one and no body is a signature every backend must
 	// implement; one carrying a body asserts that the body computes the same
@@ -506,6 +510,10 @@ type Component struct {
 	// at run time". Answering the first for the second gave a factory to every
 	// component the page renders as markup.
 	RuntimeInstance bool `json:",omitempty"`
+	// SpecializedFor is the target whose override body was swapped into Body
+	// and Vars, so a second swap for the same target is a no-op instead of a
+	// reset of everything lowering has since added.
+	SpecializedFor string `json:",omitempty"`
 	// WildcardInto names the prop the matched name binds to, from the mark's
 	// second argument. Without it the name a wildcard matched reaches nothing:
 	// the component was resolved by a name it has no way to read.

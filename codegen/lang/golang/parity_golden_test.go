@@ -20,6 +20,7 @@ import (
 	// fixture can be driven end-to-end through the same pipeline `sngl
 	// generate --platform=html --lang=go` uses. The legacy CompileHTTP
 	// path (golang/http.go) is what produces server.go's POST handler.
+	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
 	htmlplat "git.duckfam.us/jonathan/sngl/codegen/platform/html"
 )
@@ -148,6 +149,10 @@ func generateRouteServer(t *testing.T, path string) string {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		FS: os.DirFS(dir), Dir: dir, IsMain: true,
 		Platforms: []ir.Platform{&htmlplat.Generator{}},
+		// And the JavaScript translator, whatever the target language: the
+		// page html writes carries script either way, and html.sngl declares
+		// its setInterval with #[js.native] off sngl:language/js.
+		Languages: []ir.Language{&golang.Translator{}, &javascript.Translator{}},
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "go"}},
 	})
 	for _, d := range diags {

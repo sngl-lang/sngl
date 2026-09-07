@@ -430,6 +430,34 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	return true
 }
 
+// rendersNothing reports whether comp puts nothing in the rendered tree.
+//
+// Conservative: anything it cannot account for renders something, so a body
+// shape not thought of costs an instance election rather than a wrong inline.
+// It does not ask what a nested node renders, because a stdlib component is
+// still abstract here -- a descent reads `text` as rendering nothing.
+func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
+	if comp == nil || len(comp.Timers) > 0 {
+		return false
+	}
+	renders := false
+	_ = ir.Walk(comp.Body, func(node ir.Node) error {
+		if renders {
+			return nil
+		}
+		switch n := node.(type) {
+		case *ir.NodeInst:
+			if !isEffectNode(n) {
+				renders = true
+			}
+		case *ir.SlotInst, *ir.ErrorBoundary, *ir.Window, *ir.CanvasRedrawStmt:
+			renders = true
+		}
+		return nil
+	})
+	return !renders
+}
+
 // specializedHere reports whether comp carries a platform extension body for
 // the platform being lowered for. With no platform (LSP, format) nothing is
 // specialized and nothing qualifies.
@@ -453,14 +481,23 @@ func (st *inlineCompState) isLocalComponent(comp *ir.Component) bool {
 }
 
 func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {
-	return st.inlineStmtsCtx(stmts, false)
+	return st.inlineStmtsCtx(stmts, reactiveCtx{})
 }
 
-func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, inReactive bool) ([]ir.Stmt, bool, error) {
+// reactiveCtx is what the statements below a control-flow construct are written
+// inside: `in` is whether a node here needs reconciling, `repeated` whether the
+// position holds one copy of the body or many. A `for` sets `repeated` even when
+// it is not reactive -- what makes one hoisted var wrong is the copies.
+type reactiveCtx struct {
+	in       bool
+	repeated bool
+}
+
+func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	changed := false
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
-		repl, ch, err := st.inlineStmtCtx(s, inReactive)
+		repl, ch, err := st.inlineStmtCtx(s, rc)
 		if err != nil {
 			return nil, false, err
 		}
@@ -470,10 +507,10 @@ func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, inReactive bool) ([]i
 	return out, changed, nil
 }
 
-func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt, bool, error) {
+func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		ch, chCh, err := st.inlineStmtsCtx(n.Children, inReactive)
+		ch, chCh, err := st.inlineStmtsCtx(n.Children, rc)
 		if err != nil {
 			return nil, false, err
 		}
@@ -483,7 +520,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 			if h.Func == nil {
 				continue
 			}
-			hbody, hCh, err := st.inlineStmtsCtx(h.Func.Block, false)
+			hbody, hCh, err := st.inlineStmtsCtx(h.Func.Block, reactiveCtx{})
 			if err != nil {
 				return nil, false, err
 			}
@@ -494,7 +531,19 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		// construct, or when its target is part of a recursive cycle. Either
 		// case will be lowered to a CreateComponent intrinsic call by later
 		// passes (passReactivity / passDeclarative).
-		if n.Component != nil && (inReactive || st.cycles[n.Component]) {
+		//
+		// Renders nothing is the exception: no node here to reconcile, and
+		// passEffect already reads the enclosing `if` as the bracket's
+		// position. Not under a `for` -- the body is spliced once and its state
+		// hoisted once, so the copies would share one var.
+		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
+			spliced, err := st.expandCall(n)
+			if err != nil {
+				return nil, false, err
+			}
+			return spliced, true, nil
+		}
+		if n.Component != nil && (rc.in || st.cycles[n.Component]) {
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.
@@ -519,12 +568,12 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		}
 		return spliced, true, nil
 	case *ir.If:
-		bodyReactive := inReactive || dependsOnReactiveVar(n.Cond, st.reactive)
-		body, ch1, err := st.inlineStmtsCtx(n.Body, bodyReactive)
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated}
+		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
 		}
-		els, ch2, err := st.inlineStmtsCtx(n.Else, bodyReactive)
+		els, ch2, err := st.inlineStmtsCtx(n.Else, inner)
 		if err != nil {
 			return nil, false, err
 		}
@@ -532,12 +581,12 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.For:
-		bodyReactive := inReactive || dependsOnReactiveVar(n.Iter, st.reactive)
-		body, ch1, err := st.inlineStmtsCtx(n.Body, bodyReactive)
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true}
+		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
 		}
-		els, ch2, err := st.inlineStmtsCtx(n.Else, bodyReactive)
+		els, ch2, err := st.inlineStmtsCtx(n.Else, inner)
 		if err != nil {
 			return nil, false, err
 		}
@@ -545,21 +594,21 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.SlotInst:
-		ch, chCh, err := st.inlineStmtsCtx(n.Children, inReactive)
+		ch, chCh, err := st.inlineStmtsCtx(n.Children, rc)
 		if err != nil {
 			return nil, false, err
 		}
 		n.Children = ch
 		return []ir.Stmt{n}, chCh, nil
 	case *ir.ErrorBoundary:
-		ch, chCh, err := st.inlineStmtsCtx(n.Children, inReactive)
+		ch, chCh, err := st.inlineStmtsCtx(n.Children, rc)
 		if err != nil {
 			return nil, false, err
 		}
 		n.Children = ch
 		hCh := false
 		if n.Handler != nil && n.Handler.Func != nil {
-			body, b, err := st.inlineStmtsCtx(n.Handler.Func.Block, false)
+			body, b, err := st.inlineStmtsCtx(n.Handler.Func.Block, reactiveCtx{})
 			if err != nil {
 				return nil, false, err
 			}
@@ -571,14 +620,14 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, inReactive bool) ([]ir.Stmt,
 		// Window stmts live in component bodies when `window { }` is declared
 		// inside a component (rather than at document root). Recurse into the
 		// window's body so component NodeInsts nested inside it are inlined.
-		body, ch, err := st.inlineStmtsCtx(n.Body, inReactive)
+		body, ch, err := st.inlineStmtsCtx(n.Body, rc)
 		if err != nil {
 			return nil, false, err
 		}
 		n.Body = body
 		anyFuncCh := false
 		for _, f := range n.Funcs {
-			fbody, fch, err := st.inlineStmtsCtx(f.Block, false)
+			fbody, fch, err := st.inlineStmtsCtx(f.Block, reactiveCtx{})
 			if err != nil {
 				return nil, false, err
 			}

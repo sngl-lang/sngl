@@ -57,6 +57,26 @@ func CollectPlatforms() []ir.Platform {
 	return out
 }
 
+// CollectLangs returns all registered languages, ordered by identifier.
+//
+// A check that names every platform needs this too: a platform's own source may
+// import sngl:language/<name>, and that resolves against this list whatever
+// language the build is for.
+func CollectLangs() []ir.Language {
+	langMu.RLock()
+	defer langMu.RUnlock()
+	names := make([]string, 0, len(langs))
+	for name := range langs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]ir.Language, 0, len(langs))
+	for _, name := range names {
+		out = append(out, langs[name])
+	}
+	return out
+}
+
 // LookupLang returns the translator for the given language, or nil.
 func LookupLang(lang string) LangTranslator {
 	langMu.RLock()

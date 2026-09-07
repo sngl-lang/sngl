@@ -14,6 +14,7 @@
 
 import ui "sngl:ui"
 import time "sngl:time"
+import js "sngl:language/js"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -404,18 +405,32 @@ func backend<T>(v T) T
 
 // --- The timer ---
 //
-// A recurring deadline, which is not an element: it has no tag, renders no
-// node, and is the one primitive in this package that is a declaration rather
-// than a wildcard over the web's own vocabulary. passTimerPrimitive takes it
-// out of the tree, so nothing here renders it; the emitted script arms it with
-// setInterval.
-#[intrinsic("html:Timer")]
-component Timer(
-    interval time.duration,
-    enabled bool,
-    @tick,
-) {}
+// The web already schedules, so this platform needs no timer primitive: the
+// setInterval/clearInterval pair is a lifetime with a thing to release, which
+// is what `effect` brackets.
+//
+// `delay` is a duration rather than an int so the call site converts nothing --
+// a duration's magnitude is milliseconds, which is what setInterval wants.
+#[js.native("setInterval")]
+func setInterval(f func(), delay time.duration) int
 
+#[js.native("clearInterval")]
+func clearInterval(handle int)
+
+// `enabled` is the effect's *position*, not part of its key: an effect lives as
+// long as the branch it is written in, so `if enabled` is what makes toggling
+// the gate a mount and an unmount. `on=interval` is the key, because a running
+// schedule is the same schedule for as long as its period is unchanged.
 component time.timer[platform] {
-    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+    var handle = 0
+
+    if enabled {
+        effect(
+            on=interval,
+            @mount(d) { handle = setInterval(tick, d) },
+            @unmount(d) {
+                clearInterval(handle)
+            },
+        )
+    }
 }

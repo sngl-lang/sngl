@@ -737,6 +737,36 @@ func (st *effectState) allOwnerFuncs() []*ir.Func {
 	for _, w := range st.pkg.Windows {
 		funcs = append(funcs, w.Funcs...)
 	}
+	// Plus the func behind every lambda they hold: html's `timer` is
+	// `setInterval(func() { tick() }, d)`, so an awaiting tick is spliced into
+	// that closure and the arrow itself is what needs `async`.
+	seen := make(map[*ir.Func]bool, len(funcs))
+	for _, fn := range funcs {
+		seen[fn] = true
+	}
+	roots := make([]any, 0, len(funcs)+len(st.pkg.Components))
+	for _, fn := range funcs {
+		roots = append(roots, fn.Block)
+	}
+	for _, o := range ir.Owners(st.pkg) {
+		roots = append(roots, o.Stmts)
+	}
+	for _, root := range roots {
+		_ = ir.Walk(root, func(node ir.Node) error {
+			var fn *ir.Func
+			switch x := node.(type) {
+			case *ir.Lambda:
+				fn = x.Func
+			case *ir.Closure:
+				fn = x.Func
+			}
+			if fn != nil && !seen[fn] {
+				seen[fn] = true
+				funcs = append(funcs, fn)
+			}
+			return nil
+		})
+	}
 	return funcs
 }
 
@@ -1030,20 +1060,53 @@ func (st *effectState) injectSettles() {
 	if len(st.byVar) == 0 {
 		return
 	}
-	for _, block := range allBlocks(st.pkg) {
-		*block = st.injectInto(*block)
+	blocks := allBlocks(st.pkg)
+	// A nested `if`/`for` body inside an *imperative* block is not one of
+	// these: allBlocks descends control flow in a view body and adds each
+	// branch, but an imperative block arrives as one pointer. So the recursion
+	// below skips a body that is already on the list, and reaches the ones that
+	// never were -- `@click { if n > 0 { running = !running } }` settled
+	// nothing at all, one brace deeper than the fixture that covers this.
+	own := make(map[*[]ir.Stmt]bool, len(blocks))
+	for _, b := range blocks {
+		own[b] = true
+	}
+	for _, block := range blocks {
+		*block = st.injectInto(*block, own)
 	}
 }
 
-func (st *effectState) injectInto(stmts []ir.Stmt) []ir.Stmt {
+func (st *effectState) injectInto(stmts []ir.Stmt, own map[*[]ir.Stmt]bool) []ir.Stmt {
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
+		st.injectNested(s, own)
 		out = append(out, s)
 		for _, g := range st.settledBy(s) {
 			out = append(out, callOf(g.settle))
 		}
 	}
 	return out
+}
+
+// injectNested descends the control flow a statement holds. A lambda is not
+// descended: allBlocks lists every lambda body in the package, so one is
+// reached on its own iteration.
+func (st *effectState) injectNested(s ir.Stmt, own map[*[]ir.Stmt]bool) {
+	var bodies []*[]ir.Stmt
+	switch n := s.(type) {
+	case *ir.If:
+		bodies = []*[]ir.Stmt{&n.Body, &n.Else}
+	case *ir.For:
+		bodies = []*[]ir.Stmt{&n.Body, &n.Else}
+	default:
+		return
+	}
+	for _, b := range bodies {
+		if own[b] {
+			continue
+		}
+		*b = st.injectInto(*b, own)
+	}
 }
 
 // settledBy is the scopes whose brackets a statement may have moved, in a

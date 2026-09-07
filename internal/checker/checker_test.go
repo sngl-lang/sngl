@@ -1084,7 +1084,7 @@ func sideEffect() {}
 
 component main {
 	greeting()
-	sideEffect()
+	button(text="go", @click { sideEffect() })
 	if true {
 		greeting()
 	}
@@ -1116,10 +1116,20 @@ component main {
 		t.Error("NodeInst.Component is nil, want resolved component")
 	}
 
-	// Second statement: sideEffect() → CallStmt (function call).
-	cs, ok := main.Body[1].(*ir.CallStmt)
+	// Second statement: a node, whose handler is where the call went. The
+	// disambiguation this test is about is between a component call and a
+	// function call; a function call is only a statement in a body that runs,
+	// so the function half of the pair is asserted in a handler.
+	btn, ok := main.Body[1].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("Body[1]: want *CallStmt, got %T", main.Body[1])
+		t.Fatalf("Body[1]: want *NodeInst, got %T", main.Body[1])
+	}
+	if len(btn.Handlers) != 1 || btn.Handlers[0].Func == nil {
+		t.Fatalf("Body[1]: want one resolved handler, got %#v", btn.Handlers)
+	}
+	cs, ok := btn.Handlers[0].Func.Block[0].(*ir.CallStmt)
+	if !ok {
+		t.Fatalf("handler[0]: want *CallStmt, got %T", btn.Handlers[0].Func.Block[0])
 	}
 	if cs.Call == nil {
 		t.Error("CallStmt.Call is nil, want resolved call")
@@ -1181,36 +1191,51 @@ component main {
 	}
 }
 
-func TestBodyBareIdentFunction(t *testing.T) {
-	// Bare identifier that resolves to a function → CallStmt.
-	pkg := parse(t, `
+// A function call is not a statement of a view body, in either spelling. A view
+// body describes a rendered tree and nothing walks it looking for something to
+// run, so such a call was checked, lowered and then dropped -- it compiled
+// clean and never ran.
+func TestBodyRejectsAFunctionCall(t *testing.T) {
+	for _, tc := range []struct {
+		what string
+		body string
+	}{
+		{"called", "doStuff()"},
+		// The bare identifier resolved to a call of its own, so it has to be
+		// refused by the same rule rather than through the parser.
+		{"bare", "doStuff"},
+		{"method", "xs.push(1)"},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			expectError(t, `
 func doStuff() {}
 
 component main {
-	doStuff
+	var xs = [1]
+
+	`+tc.body+`
+}
+`, "not a statement in a view body")
+		})
+	}
+}
+
+// And it is a statement everywhere a body runs.
+func TestAFunctionCallIsAStatementWhereSomethingRunsIt(t *testing.T) {
+	expectNoErrors(t, `
+import . "sngl:ui"
+
+func doStuff() {}
+
+component main {
+	func local() {
+		doStuff()
+	}
+
+	effect(@mount { doStuff() })
+	button(text="go", @click { doStuff() })
 }
 `)
-	var main *ir.Component
-	for _, c := range pkg.Components {
-		if c.Name == "main" {
-			main = c
-		}
-	}
-	if main == nil {
-		t.Fatal("main component not found")
-	}
-	if len(main.Body) == 0 {
-		t.Fatal("Body is empty")
-	}
-	cs, ok := main.Body[0].(*ir.CallStmt)
-	if !ok {
-		t.Fatalf("Body[0]: want *CallStmt, got %T", main.Body[0])
-	}
-	if cs.Call == nil {
-		t.Error("CallStmt.Call is nil, want resolved call")
-	} else if cs.Call.Func == nil {
-		t.Error("CallStmt.Call.Func is nil, want resolved function")
-	}
 }
 
 func testdataDir() string {

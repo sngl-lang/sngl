@@ -161,7 +161,7 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 	// backend emitting its body needs its funcs -- a canvas draw function
 	// among them. One that is inlined away is taken back off below: what the
 	// list means at the end is what this build renders.
-	added := reachableForeignComponents(pkg, local)
+	added := reachableForeignComponents(pkg, local, opts.Platform)
 	pkg.Components = append(slices.Clone(declared), added...)
 	opts.localComponents = local
 	addedSet := make(map[*ir.Component]bool, len(added))
@@ -173,11 +173,16 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 			return
 		}
 		still := map[*ir.Component]bool{}
-		for _, c := range reachableForeignComponents(pkg, local) {
+		for _, c := range reachableForeignComponents(pkg, local, opts.Platform) {
 			still[c] = true
 		}
 		pkg.Components = slices.DeleteFunc(pkg.Components, func(c *ir.Component) bool {
-			return addedSet[c] && !still[c]
+			// A component the build renders as a live instance stays, whether
+			// or not this second walk can still see the node that elected it:
+			// by now that node is a CreateComponent call and not an
+			// ir.NodeInst, so the walk finds nothing and the declaration the
+			// factory is emitted from was being deleted out from under it.
+			return addedSet[c] && !still[c] && !c.RuntimeInstance
 		})
 	}()
 
@@ -330,10 +335,30 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	return out
 }
 
+// statefulOverrideFor reports whether c's platform extension body for the
+// platform being built declares state of its own.
+//
+// Asked while judging whether a component with no body yet is a primitive.
+// This runs before passPlatformExtensionBody, so an overridden stdlib
+// component still looks bodiless -- and one that could survive inlining needs
+// its declaration on the list, because that is what gets a body lowered and
+// what the factory emitter reads.
+//
+// State, not merely an override: a stateless override always inlines into its
+// caller, so it never needs a declaration of its own, and widening every
+// overridden component in lowers bodies nothing renders.
+func statefulOverrideFor(c *ir.Component, platform string) bool {
+	if c == nil || platform == "" || c.PlatformOverrides == nil {
+		return false
+	}
+	ov, ok := c.PlatformOverrides[platform]
+	return ok && len(ov.Vars) > 0
+}
+
 // reachableForeignComponents collects, in first-seen order, every component an
 // imported package declares that this build actually renders: reached from a
 // declared component's or window's body through a NodeInst, transitively.
-func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool) []*ir.Component {
+func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, platform string) []*ir.Component {
 	seen := map[*ir.Component]bool{}
 	var out []*ir.Component
 	var walk func(stmts []ir.Stmt)
@@ -344,7 +369,14 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool) [
 		// A declaration with nothing in it is a primitive -- a stdlib widget,
 		// a platform element -- and the backend that draws it needs no
 		// lowered body. Only a component someone wrote is widened in.
-		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && len(c.Timers) == 0 {
+		//
+		// "Nothing in it" has to count the override this build is about to
+		// swap in: this runs before passPlatformExtensionBody, so a stdlib
+		// component whose body comes from `sngl:platform/<name>` still looks
+		// bodiless here. Judged so, it never joined the list, so a node of it
+		// that survived inlining had no declaration for a backend to emit --
+		// html called `__cf_timer(...)`, a factory nothing defined.
+		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && len(c.Timers) == 0 && !statefulOverrideFor(c, platform) {
 			return
 		}
 		seen[c] = true

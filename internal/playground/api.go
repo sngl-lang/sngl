@@ -140,6 +140,7 @@ func newCheckerConfig(fsys fs.FS, isMain bool) *checker.Config {
 		IsMain:    isMain,
 		Resolver:  &playgroundResolver{fsys: fsys},
 		Platforms: codegen.CollectPlatforms(),
+		Languages: codegen.CollectLangs(),
 	}
 }
 

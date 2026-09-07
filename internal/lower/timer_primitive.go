@@ -10,12 +10,16 @@ import (
 // passTimerPrimitive takes each platform's timer primitive out of the tree and
 // records the schedule it describes.
 //
-// Always on, and not capability-gated, because it answers for every target:
-// `timer` is an ordinary component now, each platform overrides it with the
-// node it schedules with, and a schedule is not a widget. Left standing, a
-// declarative target turns it into one -- fyne asked what Fyne constructor to
-// call for it and stopped the build, which is the honest version of the same
-// failure gtk4 had silently for as long as it had timers at all.
+// Always on, and not capability-gated, because it answers for every target
+// that has such a primitive: `timer` is an ordinary component, and a platform
+// overriding it with a node it schedules with needs that node taken out again,
+// because a schedule is not a widget. Left standing, a declarative target turns
+// it into one -- fyne asked what Fyne constructor to call for it and stopped the
+// build, which is the honest version of the same failure gtk4 had silently for
+// as long as it had timers at all.
+//
+// A platform may also contribute none -- html's override is an `effect` over
+// setInterval -- and finding nothing is an answer, not a failure.
 //
 // Placed beside passEffect and for the same reasons: after the inliner, so a
 // timer written in a child component has arrived in the tree that gets walked;

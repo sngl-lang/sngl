@@ -325,6 +325,74 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	return &ir.Literal{AST: &x.LiteralExpr, Type: ud.SymType(), Value: num, Suffix: x.Suffix}
 }
 
+// eventAsFunc resolves a bare event name in a position that expects a
+// function, by building the lambda that emits it.
+//
+// An event is not a value: `tick` alone names nothing, and `tick()` is an emit
+// recognised in call position. So handing one to a function that takes a
+// callback had to be written `func() { tick() }`, which says the same thing
+// twice -- and says it in a form the reader has to decode before seeing that
+// the callback *is* the event. html's timer override, whose whole body is
+// `setInterval(func() { tick() }, d)`, is the case that asked for this.
+//
+// The lambda is exactly what the author would have written, so nothing
+// downstream changes: passInlinePure's substituteEvents replaces the emit with
+// the caller's handler block, and where the component survives as an instance
+// passInstanceEvents rewrites it to a call of the event's prop. Both of those
+// look for an ir.Emit, and this produces one.
+//
+// The parameters have to line up, and what lines up is defined by what an
+// author could write by hand: a callback taking nothing becomes `{ tick() }`,
+// an emit with no arguments, which is legal for a payloadless event and for one
+// whose payload is dyn -- a bare `@tick` gets the second. A callback taking one
+// value forwards it. Anything else is reported against the event, because by
+// then the name has resolved and "undefined" would be the wrong thing to say.
+func (c *checker) eventAsFunc(x *ast.IdentExpr) ir.Expr {
+	want := c.expected
+	if want == nil || want.Kind != ir.TypeFunc || want.Sig == nil || c.currentComponent == nil {
+		return nil
+	}
+	var evt *ir.EventDecl
+	for _, e := range c.currentComponent.Events {
+		if e.Name == x.Name {
+			evt = e
+			break
+		}
+	}
+	if evt == nil {
+		return nil
+	}
+	// Past this point the name *is* the event, so a shape that does not fit is
+	// reported as that rather than left to the undefined-name error, which
+	// would say the event does not exist.
+	fail := func(why string) ir.Expr {
+		c.error(x.Pos, "event %q cannot be used as %s: %s", evt.Name, want, why)
+		return &ir.Lambda{Type: want, Func: &ir.Func{Return: want.Sig.Return, Purity: ir.PurityMutates}}
+	}
+	if want.Sig.Return != nil && want.Sig.Return.Kind != ir.TypeVoid {
+		return fail("an event answers nothing")
+	}
+	// The return is copied rather than set to void, so the lambda's type is
+	// the expected one exactly: a `func()` written with no return annotation
+	// carries a nil Return, and `func() void` is not assignable to it.
+	fn := &ir.Func{Return: want.Sig.Return, Purity: ir.PurityMutates}
+	var args []ir.CallArg
+	switch {
+	case len(want.Sig.Params) == 0:
+	case len(want.Sig.Params) == 1 && evt.Type != nil && want.Sig.Params[0].Type != nil &&
+		want.Sig.Params[0].Type.IsAssignableTo(evt.Type):
+		p := &ir.Param{Name: "__e", Type: want.Sig.Params[0].Type}
+		fn.Params = []*ir.Param{p}
+		args = []ir.CallArg{{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}}}
+	case evt.Type == nil:
+		return fail("it carries no value to pass")
+	default:
+		return fail("its payload is " + evt.Type.String())
+	}
+	fn.Block = []ir.Stmt{&ir.Emit{Name: evt.Name, Args: args}}
+	return &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc, Sig: fn.FuncSig()}, Func: fn}
+}
+
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	sym, ok := c.scope.Lookup(x.Name)
 	if !ok {
@@ -335,6 +403,10 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 					return &ir.Ident{AST: x, Type: c.expected, Name: x.Name, Member: x.Name}
 				}
 			}
+		}
+		// And an event where a function is expected.
+		if lam := c.eventAsFunc(x); lam != nil {
+			return lam
 		}
 	}
 	if !ok {
@@ -3363,6 +3435,9 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 	if x.Call != nil {
 		call.ErrorHandler = c.extractCallErrorHandler(x.Call)
 	}
+	if c.rejectCallInViewBody(x.Pos, call.Func) {
+		return nil
+	}
 	return &ir.CallStmt{AST: x, Call: call}
 }
 
@@ -3542,6 +3617,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				var args []ir.CallArg
 				for _, p := range props {
 					args = append(args, ir.CallArg{Name: p.Name, Value: p.Value})
+				}
+				if c.rejectCallInViewBody(vn.Pos, fn) {
+					return nil
 				}
 				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: callRetType(fn.FuncSig()), Func: fn, Args: args}}
 			}
@@ -4503,6 +4581,38 @@ func (c *checker) rejectNodeInFuncBody(pos ast.Pos, name string) bool {
 		return false
 	}
 	c.error(pos, "%s cannot be written in a function body: a node is placed in a rendered tree, and a function body renders nothing", nodeDescription(name))
+	return true
+}
+
+// rejectCallInViewBody reports a function call written as a statement of a
+// component's or window's body.
+//
+// The complement of rejectNodeInFuncBody, on the same boundary and for the
+// mirror-image reason: a view body describes a tree, so a backend walking it
+// has nowhere to put a call. One written there was checked, lowered and then
+// dropped -- `run(fired)` at the top of a component compiled clean and never
+// ran, which is a silence a program has no way to notice.
+//
+// A node instantiation is not this: `text(value=…)` also parses as a call and
+// is routed to the node path before either CallStmt is built. Nor is an emit,
+// which is how a wrapper forwards its own event and which every backend
+// substitutes away. What is left is a call to a plain function, and the place
+// for one is a handler, a function or an effect's bracket.
+//
+// It has to have resolved to a declaration, which is what keeps a *component*
+// out of the net: a qualified instantiation whose package the caller could not
+// resolve -- `w.Counter(label=…)` under a test stub, and anything a dynamic
+// callee reaches -- arrives here as a call with no Func, and the rule has no
+// business guessing what such a name will turn out to be.
+func (c *checker) rejectCallInViewBody(pos ast.Pos, fn *ir.Func) bool {
+	if c.funcDepth > 0 || fn == nil {
+		return false
+	}
+	what := "a function call"
+	if fn.Name != "" {
+		what = "a call to " + strconv.Quote(fn.Name)
+	}
+	c.error(pos, "%s is not a statement in a view body: a view body describes a rendered tree, so nothing runs it -- put it in a handler, a function, or an effect's @mount", what)
 	return true
 }
 

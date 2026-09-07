@@ -26,6 +26,7 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		FS: s.FS, Dir: s.Dir, IsMain: true,
 		Platforms: []ir.Platform{&Generator{}},
+		Languages: htmlLangs(),
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	if len(diags) > 0 {
@@ -75,6 +76,7 @@ func generateHTML(t *testing.T, path string) string {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		FS: os.DirFS(dir), Dir: dir, IsMain: true,
 		Platforms: []ir.Platform{&Generator{}},
+		Languages: htmlLangs(),
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	if len(diags) > 0 {
@@ -241,6 +243,7 @@ component main {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		IsMain:    true,
 		Platforms: []ir.Platform{&Generator{}},
+		Languages: htmlLangs(),
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	if len(diags) > 0 {
