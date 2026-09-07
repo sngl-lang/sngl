@@ -1,0 +1,40 @@
+# The build directive belongs to the package, not to a file: any file may carry
+# it, and a second one anywhere in the package names the first.
+#
+# The rule it replaces asked a question about a file -- "output declarations
+# only permitted in main file" -- and counted nothing, so a package could hold
+# as many directives as it had files: each was built, and a target named twice
+# with different options was whichever came out of the merge last.
+
+sngl check pkg
+stdout 'ok'
+
+! sngl check twice
+stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*twice[/\\]a.sngl:3:1'
+
+-- pkg/app.sngl --
+import . "sngl:ui"
+
+component main {
+    text(value="hi")
+}
+-- pkg/targets.sngl --
+output {
+    go {
+        bubbletea()
+    }
+}
+-- twice/a.sngl --
+import . "sngl:ui"
+
+output {
+    go {
+        bubbletea()
+    }
+}
+
+component main {
+    text(value="hi")
+}
+-- twice/b.sngl --
+output(lang="go", platform="bubbletea")

@@ -1,0 +1,13 @@
+// The directive names the whole package's targets, so a file's root is the
+// only place it means anything.
+import . "sngl:ui"
+
+component main {
+    output { // ERROR(check) "output may only be written at the root of a file"
+        go {
+            bubbletea()
+        }
+    }
+
+    text(value="hi")
+}

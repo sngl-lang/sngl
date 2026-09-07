@@ -2881,13 +2881,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// dispatch through the VisualNode special-cases so they register
 		// on package/component instead of becoming a generic node instance.
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok && x.Call.ID == "" {
-			// `output` is matched by name: it is a build directive with its
-			// own data structure, not a component, so nothing in scope
-			// resolves to it (see registerRootVisualNode).
 			// A named slot's insertion is written as an ordinary node, so a
 			// bodyless one (`cell(r)`) parses as a call like any other and has
 			// to come back through the node path to be recognised.
-			isRootish := c.builtinNodeKind(id.Name) != ir.BuiltinNone || id.Name == "output" ||
+			isRootish := c.builtinNodeKind(id.Name) != ir.BuiltinNone ||
 				c.enclosingSlot(id.Name) != nil
 			if isRootish {
 				vn := &ast.VisualNode{
@@ -3503,6 +3500,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// #[builtin] mark of whatever the target resolves to rather than on the
 	// literal name, so a user component of the same name shadows them (D3).
 	kind, builtinComp := c.builtinNode(name)
+	if kind == ir.BuiltinOutput {
+		c.error(vn.Pos, "output may only be written at the root of a file: it is the package's build directive, not a node")
+		return nil
+	}
 	if kind != ir.BuiltinNone && c.rejectNodeInFuncBody(vn.Pos, name) {
 		return nil
 	}
@@ -3536,16 +3537,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// as an inner-scope binding does anywhere else.
 	if slot := c.enclosingSlot(name); slot != nil {
 		return c.checkSlotInsertion(vn, slot)
-	}
-
-	// `output` is not a component (see registerRootVisualNode), so it stays a
-	// literal-name match rather than resolving through scope.
-	if name == "output" {
-		if !c.cfg.IsMain {
-			c.error(vn.Pos, "output declarations only permitted in main file")
-		}
-		c.buildOutputs(vn)
-		return nil
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.

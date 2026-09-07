@@ -43,7 +43,7 @@ func OverriddenComponents(pkg *ir.Package) []*ir.Component {
 // to, and should be empty: a component reaching this list is a widget nothing
 // here builds.
 //
-// A built-in node kind is not one of them. `context` and `effect` are declared
+// A #[builtin] kind is not one of them. `context`, `effect` and `output` are declared
 // as components because that is the form their call site takes, but a visual
 // tree dispatches them to a compiler construct rather than to a widget, so
 // there is no body for a platform to write. They are recognised by their kind
@@ -57,7 +57,7 @@ func BareStdlibComponents(pkg *ir.Package) []string {
 	var out []string
 	pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 		c, ok := sym.(*ir.Component)
-		if !ok || !c.Stdlib || c.Builtin.IsNode() {
+		if !ok || !c.Stdlib || c.Builtin != ir.BuiltinNone {
 			return true
 		}
 		if b, has := c.PlatformOverrides["fyne"]; !has || len(b.Stmts) == 0 {

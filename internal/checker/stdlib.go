@@ -902,8 +902,15 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 	}
 	var declared []ir.StaticTarget
 	for _, stmt := range c.stmts() {
-		if s, ok := stmt.(*ast.VisualNode); ok && visualNodeTarget(s) == "output" {
-			declared = append(declared, declaredOutputTargets(s)...)
+		switch s := stmt.(type) {
+		case *ast.ComponentDecl:
+			if s.Name == "output" {
+				return nil
+			}
+		case *ast.VisualNode:
+			if visualNodeTarget(s) == "output" {
+				declared = append(declared, declaredOutputTargets(s)...)
+			}
 		}
 	}
 	return declared

@@ -204,7 +204,7 @@ because grouping by kind splits every subject in two.
 
 The tiers, and the split between them is the whole point of the system:
 
-- **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
+- **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`: the build directive is here rather than in a tier of its own because a package names its own targets without importing anything. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import . "sngl:ui"` (flattens) or `import <alias> "sngl:ui"` (qualifies).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/tree/` → `sngl:tree`** — the tree vocabulary: the `kind` mark, the `default` tree an ordinary component belongs to, and `one<T>` for a slot that takes exactly one.
@@ -380,9 +380,14 @@ a declaration may shadow a dot-imported name, including a built-in.
 Two consequences worth knowing: a kind classifies *one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark
 would be two incompatible types (the checker rejects a duplicated node mark).
-And `output` is deliberately *not* a built-in node: it parses as a visual node
-but is a build directive with its own data structure, matched by name so that
-`output` need not become a keyword.
+And `output` is a *directive* kind rather than a node one: it parses as a
+visual node and is marked on a component declaration like `window` is, but the
+compiler reads the block into `ir.Output` instead of rendering it. The mark is
+what recognises it — a package declaring its own `component output` gets that
+component and no build directive — and what the mark permits is the root of a
+file, once per package: any file may carry it, a second one anywhere names the
+first, and a `sngl:` library package may not carry one at all
+(`registerOutput`).
 
 Notable stdlib packages:
 

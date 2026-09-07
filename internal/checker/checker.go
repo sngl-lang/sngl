@@ -22,7 +22,7 @@ type Config struct {
 	// so that a relative import it writes is rebased onto it before the
 	// resolver reads it. Empty for the package the caller named.
 	PkgPath   string
-	IsMain    bool           // whether output declarations are allowed
+	IsMain    bool           // whether this is the program's own package, not a dependency
 	Resolver  ImportResolver // import resolver (nil = no imports)
 	Languages []ir.Language  // registered languages
 	Platforms []ir.Platform  // registered platforms
@@ -314,6 +314,8 @@ type checker struct {
 
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
+
+	outputDecl *ast.VisualNode
 
 	// pendingPkgBody holds the statements written at the package's top level,
 	// collected in pass1 and checked in pass2. They cannot be checked where
@@ -1154,6 +1156,8 @@ func (c *checker) pass1() {
 				// the composition a top-level body is usually made of.
 				if c.isContextDeclCallStmt(s) {
 					c.registerRootContextDecl(s)
+				} else if vn := c.outputCallStmt(s); vn != nil {
+					c.registerOutput(vn)
 				} else {
 					c.pendingPkgBody = append(c.pendingPkgBody, s)
 				}
@@ -2625,27 +2629,39 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.bindWindow(vn.Pos, w)
 		return
 	}
-	if kind, comp := c.builtinNode(name); kind == ir.BuiltinTimer {
+	switch kind, comp := c.builtinNode(name); kind {
+	case ir.BuiltinTimer:
 		t := c.buildTimer(vn, comp)
 		c.pkg.Timers = append(c.pkg.Timers, t)
-		return
-	}
-	switch name {
-	// `output` stays a literal name. It parses as a visual node but is a build
-	// directive with its own data structure, not a component — it is only not a
-	// parser-level construct so that `output` need not be a keyword. There is
-	// nothing in scope for it to resolve to.
-	case "output":
-		if !c.cfg.IsMain {
-			c.error(vn.Pos, "output declarations only permitted in main file")
-			return
-		}
-		c.buildOutputs(vn)
+	case ir.BuiltinOutput:
+		c.registerOutput(vn)
 	default:
 		// An ordinary visual node at the top level is the package's own body:
 		// what the program renders, with the package's vars as its state. Held
 		// until pass2, because it reads declarations pass1 is still making.
 		c.pendingPkgBody = append(c.pendingPkgBody, ast.Stmt(vn))
+	}
+}
+
+func (c *checker) outputCallStmt(s *ast.CallStmt) *ast.VisualNode {
+	id, ok := s.Call.Func.(*ast.IdentExpr)
+	if !ok || s.Call.ID != "" || c.builtinNodeKind(id.Name) != ir.BuiltinOutput {
+		return nil
+	}
+	return &ast.VisualNode{Pos: id.Pos, Target: id, Args: s.Call.Args}
+}
+
+func (c *checker) registerOutput(vn *ast.VisualNode) {
+	switch {
+	case c.inLibSource():
+		c.error(vn.Pos, "%s cannot declare output: the build directive is the program's", c.libPkgName)
+	case !c.cfg.IsMain:
+		c.error(vn.Pos, "output declarations only permitted in the program's own package")
+	case c.outputDecl != nil:
+		c.error(vn.Pos, "output is already declared for this package at %s", c.outputDecl.Pos)
+	default:
+		c.outputDecl = vn
+		c.buildOutputs(vn)
 	}
 }
 
@@ -2697,7 +2713,7 @@ func (c *checker) builtinNode(name string) (ir.BuiltinKind, *ir.Component) {
 		return ir.BuiltinNone, nil
 	}
 	comp, ok := sym.(*ir.Component)
-	if !ok || !comp.Builtin.IsNode() {
+	if !ok || !(comp.Builtin.IsNode() || comp.Builtin.IsDirective()) {
 		return ir.BuiltinNone, nil
 	}
 	return comp.Builtin, comp

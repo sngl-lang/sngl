@@ -68,6 +68,8 @@ const (
 	// changed value ends one lifetime and begins the next. See sngl:app.
 	BuiltinEffect BuiltinKind = "effect"
 
+	BuiltinOutput BuiltinKind = "output"
+
 	// Target identities. An opaque value type each of whose values is a const
 	// the compiler synthesizes into one target's package -- html.platform,
 	// go.language. There is no literal, so a string cannot stand in for one,
@@ -147,6 +149,10 @@ func (b BuiltinKind) IsNode() bool {
 	return false
 }
 
+func (b BuiltinKind) IsDirective() bool {
+	return b == BuiltinOutput
+}
+
 // IsConst reports whether the kind marks a predeclared constant. Const kinds
 // are stamped on const declarations, and the compiler replaces the declared
 // type and value.
@@ -167,6 +173,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeDefault,
 		BuiltinWindow, BuiltinTimer, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
+		BuiltinOutput,
 		BuiltinPlatform, BuiltinLanguage,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
 	}
@@ -176,5 +183,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsNode() || b.IsTargetID() || b.IsConst()
+		b.IsSlotBound() || b.IsNode() || b.IsDirective() || b.IsTargetID() || b.IsConst()
 }
