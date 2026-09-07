@@ -1,5 +1,7 @@
 package ir
 
+import "strings"
+
 // SpecializeForTarget swaps every declaration's body for platform into the
 // slot the rest of the compiler reads -- a component's Body and Vars, a
 // function's Block. The checker is platform-agnostic and collects every
@@ -41,6 +43,37 @@ func SpecializeOverriddenBodies(pkg *Package, platform, language string) {
 // and the platform's override wins where both apply -- the platform has the
 // last word on the rest of the build too.
 type target struct{ platform, language string }
+
+// key names the target for the once-per-target guards below. Both halves,
+// because a declaration may be overridden on either axis.
+func (t target) key() string { return t.platform + "/" + t.language }
+
+// covers reports whether a recorded specialization already answers for t.
+//
+// An absent half matches anything. The pipeline's callers disagree about
+// whether to name the language -- the optimizer is given both axes and lowering
+// is routinely given only the platform -- and read strictly, those are two
+// different targets, so the guard never fires and the second swap resets
+// everything the first pass built on top of the body.
+//
+// Two *named* languages under one platform are still different targets, because
+// a function may be overridden on the language axis alone.
+func covers(recorded string, t target) bool {
+	if recorded == "" {
+		return false
+	}
+	rp, rl, ok := strings.Cut(recorded, "/")
+	if !ok {
+		return false
+	}
+	if rp != "" && t.platform != "" && rp != t.platform {
+		return false
+	}
+	if rl != "" && t.language != "" && rl != t.language {
+		return false
+	}
+	return true
+}
 
 // pick returns the body a target selects from the two override maps, and
 // whether there is one at all.
@@ -107,8 +140,8 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 	// points at the *imported* package's stdlib instance — directly into this
 	// package's visual tree. Those instances are no longer reachable via any
 	// symbol table or import edge above, so specialize each Component actually
-	// referenced in the tree. Idempotent: re-swapping an already-specialized
-	// Body is a no-op.
+	// referenced in the tree. A component already specialized for this target
+	// is skipped rather than re-swapped -- see specializeComp.
 	var walk func(stmts []Stmt)
 	walk = func(stmts []Stmt) {
 		for _, s := range stmts {
@@ -148,7 +181,8 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 }
 
 // specializeFunc swaps one function's body for platform into its live Block.
-// Idempotent, like specializeComp: re-swapping writes the same value.
+// Once per target, for the reason specializeComp gives: the assignment is a
+// reset, and by the second call the block may be the lowered one.
 func specializeFunc(fn *Func, t target, bodiedOnly bool) {
 	if fn == nil {
 		return
@@ -156,7 +190,11 @@ func specializeFunc(fn *Func, t target, bodiedOnly bool) {
 	if bodiedOnly && len(fn.Block) == 0 {
 		return
 	}
+	if covers(fn.SpecializedFor, t) {
+		return
+	}
 	if body, ok := pick(t, fn.PlatformOverrides, fn.LanguageOverrides); ok {
+		fn.SpecializedFor = t.key()
 		fn.Block = body.Stmts
 	}
 }
@@ -164,8 +202,11 @@ func specializeFunc(fn *Func, t target, bodiedOnly bool) {
 // specializeComp swaps one component's entries for platform into the live
 // Body and Vars slots. The vars travel with the body wherever the body does:
 // the body reads them, and a var belonging to a platform that is not the
-// build target must never reach codegen. Idempotent — re-swapping an
-// already-specialized component writes the same values.
+// build target must never reach codegen.
+//
+// Once per target, and the comment here used to say "idempotent -- re-swapping
+// writes the same values", which was true of the values it writes and false of
+// everything else in those slots.
 func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	if comp == nil {
 		return
@@ -182,6 +223,21 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	if !ok {
 		return
 	}
+	// Once, per target. The swap is a reset -- it assigns over whatever Body
+	// and Vars currently hold -- so a second one for the same target discards
+	// every declaration lowering added: a build runs the optimizer again after
+	// lowering, and an override that survives as a runtime instance lost the
+	// promoted prop cell and the whole effect settle chain that way. The
+	// factory came out reading names nothing declared.
+	//
+	// Recorded as the target rather than a flag, because one process compiles
+	// a program for several of them and a stdlib component is shared between
+	// those builds: a flag would let the first target's body stand for the
+	// second's.
+	if covers(comp.SpecializedFor, t) {
+		return
+	}
+	comp.SpecializedFor = t.key()
 	// The vars travel with the statements: the body reads them, and a var
 	// belonging to a target that is not this one must never reach codegen.
 	comp.Body, comp.Vars = body.Stmts, body.Vars

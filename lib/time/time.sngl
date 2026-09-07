@@ -1,4 +1,5 @@
 import . "sngl:internal/marks"
+import . "sngl:macro"
 
 // Calendar date in canonical "YYYY-MM-DD" form.
 #[builtin("date")]
@@ -36,7 +37,7 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 // boundary and its interval are answered by the tree it renders into rather
 // than by a list the checker hoisted it onto.
 component timer(
-    interval duration,
-    enabled bool = true,
+    #[construct] interval duration,
+    #[construct] enabled bool = true,
     @tick,
 ) {}
