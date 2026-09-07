@@ -1022,6 +1022,9 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	//
 	// TypeDyn is exempt: a dyn callee is unknown by construction, so a call on
 	// it stays permissive.
+	if calleeType.Kind == ir.TypeUnit {
+		return c.inferUnitConversion(x, calleeType)
+	}
 	if calleeType.Kind != ir.TypeFunc && calleeType.Kind != ir.TypeDyn {
 		c.errorNotCallable(x, calleeExpr, calleeType)
 		return &ir.Call{AST: x, Type: TypDyn, Args: c.checkCallArgs(x.Args, nil)}
@@ -1059,6 +1062,32 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		call.Callee = calleeExpr
 	}
 	return call
+}
+
+// inferUnitConversion type-checks `duration(1m)`: a cast that exists to name
+// the unit, so a literal written where nothing else expects one can still say
+// which unit it means. `t.assert(duration(1m) == 60s)` is the shape -- the
+// leading operand of a bare expression, which no annotation reaches.
+//
+// It converts nothing. A unit value is already a magnitude in its base, so the
+// operand has to *be* of the unit rather than be turned into it: this supplies
+// the expected type and then checks that what came back agrees. Casting a
+// number to a unit is still refused, and the message errorNotCallable gave for
+// every unit cast is what says so.
+func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr {
+	if len(x.Args.Args) != 1 {
+		c.error(x.Pos, "%s(): expected 1 argument, got %d", target, len(x.Args.Args))
+		return &ir.Conversion{AST: x, Type: target}
+	}
+	arg, _ := x.Args.Args[0].(ast.Arg)
+	if arg.Value == nil {
+		return &ir.Conversion{AST: x, Type: target}
+	}
+	argExpr := c.checkExprExpecting(arg.Value, target)
+	if from := exprType(argExpr); from != nil && from.Kind != ir.TypeDyn && !from.Equal(target) {
+		c.error(x.Pos, "cannot cast %s to unit %s (a unit value is written as a literal, e.g. 5%s)", from, target, target)
+	}
+	return argExpr
 }
 
 // inferBuiltinConversion type-checks `T(x)` where T is a builtin primitive
@@ -1140,6 +1169,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 							args := c.checkComponentCallArgs(call, comp)
 							c.validateCallStmtComponentArgs(call, comp)
 							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
+						}
+						// A qualified unit names a type, and naming one is the
+						// point of the cast: `time.duration(1m)` is the same
+						// expected-type provider the bare `duration(1m)` is.
+						if ud, ok := fsym.(*ir.UnitDef); ok {
+							return c.inferUnitConversion(call, ud.SymType())
 						}
 						t := c.symType(fsym)
 						var sig *ir.FuncSig

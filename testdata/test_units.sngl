@@ -49,3 +49,12 @@ func testMeasurementArithmetic(t Test, c units) {
     t.assert(2 * threePx == 6px)
     t.assert(sixteenPx + 2em == 2em + 16px)
 }
+
+// A cast names the unit, which is all a literal needs: it supplies the
+// expected type and converts nothing. This is the shape for the one position
+// no annotation reaches -- the leading operand of a bare expression.
+func testACastNamesTheUnit(t Test, c units) {
+    t.assert(duration(1m) == 60s)
+    t.assert(duration(1s) + 500ms == 1500ms)
+    t.assert(measurement(3px) + 2px == 5px)
+}
