@@ -2913,12 +2913,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		// Check if the call target is a component — handle directly to avoid
 		// double-checking args through both inferCall and resolveCallStmt.
-		// Bare `Foo(...)` resolves via the symbol table; qualified
+		// Bare `Foo(...)` resolves through the lexical chain, the way
+		// checkVisualNodeIR resolves a node that has a body; qualified
 		// `pkg.Foo(...)` resolves through the namespace's package.
 		var comp *ir.Component
 		var compName string
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
-			if sym, ok := c.symtab.LookupComponent(id.Name); ok {
+			if sym, ok := c.lookupComponentInScope(x.Pos, id.Name); ok {
 				if c.rejectUnexported(x.Pos, sym) {
 					return nil
 				}
@@ -3558,7 +3559,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		if sym, sok := c.scope.Lookup(ns); sok {
 			if nsSym, nok := sym.(*ir.Namespace); nok {
 				if nsSym.Pkg != nil {
-					if fsym, ok := nsSym.Pkg.Symbols.LookupComponent(field); ok {
+					if fsym, ok := nsSym.Pkg.Symbols.LookupRootComponent(field); ok {
 						if c.rejectUnexported(vn.Pos, fsym) {
 							return nil
 						}

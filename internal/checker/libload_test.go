@@ -73,7 +73,7 @@ component main {
 			t.Fatalf("unexpected error: %s", d.Error())
 		}
 	}
-	sym, _ := pkg.Symbols.LookupComponent("text")
+	sym, _ := pkg.Symbols.LookupRootComponent("text")
 	text, _ := sym.(*ir.Component)
 	if text == nil {
 		t.Fatal("stdlib text component missing from the symbol table")

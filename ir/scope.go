@@ -340,16 +340,22 @@ func (st *SymbolTable) LookupDeclaredComponent(name string) (Symbol, bool) {
 	return nil, false
 }
 
-// LookupComponent finds a component for this name from the root scope outward,
-// falling back to a wildcard component covering it. A component name is a node
-// position, which is one of the positions a wildcard stands in, so this is one
-// of the sites Scope.Lookup leaves the wildcard consult to. Callers asking
-// whether a name was *declared* want LookupDeclaredComponent.
+// LookupRootComponent finds a component for this name from a package's root
+// scope outward, falling back to a wildcard component covering it. A component
+// name is a node position, which is one of the positions a wildcard stands in,
+// so this is one of the sites Scope.Lookup leaves the wildcard consult to.
+// Callers asking whether a name was *declared* want LookupDeclaredComponent.
+//
+// The root is where a name qualified by a package resolves, and where an
+// override's target resolves. A *bare* reference in a body is a different
+// question and wants the lexical chain every other identifier uses --
+// checker.lookupComponentInScope -- or a component declared inside a body is
+// invisible to it.
 //
 // A name covered by two wildcards in one scope is an ambiguity, reported by
 // the checker paths that hold a position to report it at (scopeWildcard); here
 // the first still answers, as it did when Lookup itself fell back.
-func (st *SymbolTable) LookupComponent(name string) (Symbol, bool) {
+func (st *SymbolTable) LookupRootComponent(name string) (Symbol, bool) {
 	sym, ok := st.Root.Lookup(name)
 	if !ok {
 		if m := st.Root.WildcardMatches(name); len(m) > 0 {

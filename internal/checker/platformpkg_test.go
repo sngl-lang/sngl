@@ -79,7 +79,7 @@ component main {
 		}
 	}
 
-	sym, _ := pkg.Symbols.LookupComponent("text")
+	sym, _ := pkg.Symbols.LookupRootComponent("text")
 	userText, _ := sym.(*ir.Component)
 	if userText == nil {
 		t.Fatal("stdlib text component missing from symbol table")

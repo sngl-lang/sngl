@@ -1811,7 +1811,7 @@ func (g *htmlGen) findIRComponent(name string) *ir.Component {
 			if imp.Alias != ns || imp.Pkg == nil {
 				continue
 			}
-			if sym, ok := imp.Pkg.Symbols.LookupComponent(field); ok {
+			if sym, ok := imp.Pkg.Symbols.LookupRootComponent(field); ok {
 				if c, ok := sym.(*ir.Component); ok {
 					return c
 				}
@@ -1822,7 +1822,7 @@ func (g *htmlGen) findIRComponent(name string) *ir.Component {
 	if g.pkg.Symbols == nil {
 		return nil
 	}
-	if sym, ok := g.pkg.Symbols.LookupComponent(name); ok {
+	if sym, ok := g.pkg.Symbols.LookupRootComponent(name); ok {
 		if c, ok := sym.(*ir.Component); ok {
 			return c
 		}

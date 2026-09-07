@@ -123,7 +123,7 @@ func findFixtureComponent(pkg *ir.Package, name string) *ir.Component {
 		return nil
 	}
 	if pkg.Symbols != nil {
-		if sym, ok := pkg.Symbols.LookupComponent(name); ok {
+		if sym, ok := pkg.Symbols.LookupRootComponent(name); ok {
 			if c, ok := sym.(*ir.Component); ok {
 				return c
 			}

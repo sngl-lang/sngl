@@ -1062,7 +1062,7 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				// reaches user scope only through an import, but a platform
 				// extension targets its declaration either way.
 				target := c.libPkg(pkgName)
-				stdSym, ok := target.Symbols.LookupComponent(local)
+				stdSym, ok := target.Symbols.LookupRootComponent(local)
 				if !ok {
 					c.error(decl.Pos, "extension %q references unknown component %q in sngl:%s", decl.Name, local, pkgName)
 					continue

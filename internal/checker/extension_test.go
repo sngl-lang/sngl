@@ -74,7 +74,7 @@ component main {
 		t.Fatal("nil pkg")
 	}
 
-	sym, _ := pkg.Symbols.LookupComponent("text")
+	sym, _ := pkg.Symbols.LookupRootComponent("text")
 	stdText, ok := sym.(*ir.Component)
 	if !ok || stdText == nil {
 		t.Fatal("stdlib text component missing from symbol table")
@@ -187,7 +187,7 @@ component main {
 		t.Fatal("nil pkg")
 	}
 
-	sym, _ := pkg.Symbols.LookupComponent("text")
+	sym, _ := pkg.Symbols.LookupRootComponent("text")
 	stdText, ok := sym.(*ir.Component)
 	if !ok || stdText == nil {
 		t.Fatal("stdlib text component missing from symbol table")
