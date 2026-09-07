@@ -3435,6 +3435,9 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 	if x.Call != nil {
 		call.ErrorHandler = c.extractCallErrorHandler(x.Call)
 	}
+	if c.rejectCallInViewBody(x.Pos, call.Func) {
+		return nil
+	}
 	return &ir.CallStmt{AST: x, Call: call}
 }
 
@@ -3614,6 +3617,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				var args []ir.CallArg
 				for _, p := range props {
 					args = append(args, ir.CallArg{Name: p.Name, Value: p.Value})
+				}
+				if c.rejectCallInViewBody(vn.Pos, fn) {
+					return nil
 				}
 				return &ir.CallStmt{AST: vn, Call: &ir.Call{Type: callRetType(fn.FuncSig()), Func: fn, Args: args}}
 			}
@@ -4575,6 +4581,38 @@ func (c *checker) rejectNodeInFuncBody(pos ast.Pos, name string) bool {
 		return false
 	}
 	c.error(pos, "%s cannot be written in a function body: a node is placed in a rendered tree, and a function body renders nothing", nodeDescription(name))
+	return true
+}
+
+// rejectCallInViewBody reports a function call written as a statement of a
+// component's or window's body.
+//
+// The complement of rejectNodeInFuncBody, on the same boundary and for the
+// mirror-image reason: a view body describes a tree, so a backend walking it
+// has nowhere to put a call. One written there was checked, lowered and then
+// dropped -- `run(fired)` at the top of a component compiled clean and never
+// ran, which is a silence a program has no way to notice.
+//
+// A node instantiation is not this: `text(value=…)` also parses as a call and
+// is routed to the node path before either CallStmt is built. Nor is an emit,
+// which is how a wrapper forwards its own event and which every backend
+// substitutes away. What is left is a call to a plain function, and the place
+// for one is a handler, a function or an effect's bracket.
+//
+// It has to have resolved to a declaration, which is what keeps a *component*
+// out of the net: a qualified instantiation whose package the caller could not
+// resolve -- `w.Counter(label=…)` under a test stub, and anything a dynamic
+// callee reaches -- arrives here as a call with no Func, and the rule has no
+// business guessing what such a name will turn out to be.
+func (c *checker) rejectCallInViewBody(pos ast.Pos, fn *ir.Func) bool {
+	if c.funcDepth > 0 || fn == nil {
+		return false
+	}
+	what := "a function call"
+	if fn.Name != "" {
+		what = "a call to " + strconv.Quote(fn.Name)
+	}
+	c.error(pos, "%s is not a statement in a view body: a view body describes a rendered tree, so nothing runs it -- put it in a handler, a function, or an effect's @mount", what)
 	return true
 }
 
