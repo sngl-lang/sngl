@@ -877,32 +877,45 @@ func (st *reactivityState) gatherDeps(e ir.Expr, out map[*ir.Var]bool) {
 	}
 }
 
-// injectIntoCallLambdas recurses into every handler this call carries: a bare
-// argument, and a field of a props struct one argument holds.
+// handlerBodiesIn reports the callback bodies one statement holds in its own
+// expressions -- a call's bare argument, a field of the props struct an
+// argument holds, a node prop, the right-hand side of an assignment. It stops
+// at the first nested statement, so it never enters a body injectIntoStmts is
+// about to walk itself, and it takes the outermost callback only, so one
+// written inside another is reached by recursing through it rather than
+// injected into twice.
 //
-// The struct is how a component instantiation hands its props over, so a
-// func-typed prop's lambda is only ever reachable through it.
-func (st *reactivityState) injectIntoCallLambdas(c *ir.Call) {
-	inject := func(e ir.Expr) {
-		switch lam := e.(type) {
+// This used to be two hand-written descents, reachable only from a CallStmt
+// and a LocalVar. A mutation inside a callback held anywhere else got no
+// updater, and the widget reading that state never changed -- html's timer,
+// whose schedule is armed by `handle = setInterval(func() { ... }, d)`, is an
+// assignment and was the case that found it.
+func handlerBodiesIn(s ir.Stmt) []*ir.Func {
+	var out []*ir.Func
+	root := true
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if root {
+			root = false
+			return nil
+		}
+		if _, isStmt := n.(ir.Stmt); isStmt {
+			return ir.SkipDir
+		}
+		switch x := n.(type) {
 		case *ir.Lambda:
-			if lam.Func != nil {
-				lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+			if x.Func != nil {
+				out = append(out, x.Func)
 			}
+			return ir.SkipDir
 		case *ir.Closure:
-			if lam.Func != nil {
-				lam.Func.Block = st.injectIntoStmts(lam.Func.Block)
+			if x.Func != nil {
+				out = append(out, x.Func)
 			}
+			return ir.SkipDir
 		}
-	}
-	for i := range c.Args {
-		inject(c.Args[i].Value)
-		if lit, ok := c.Args[i].Value.(*ir.StructLit); ok {
-			for j := range lit.Fields {
-				inject(lit.Fields[j].Value)
-			}
-		}
-	}
+		return nil
+	})
+	return out
 }
 
 // injectIntoStmts walks stmts, splicing updater Assigns after every Assign
@@ -944,33 +957,21 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 					}
 				}
 			}
-		case *ir.CallStmt:
-			// A statement-level call may carry an inline-closure handler
-			// (e.g. lower.attachHandler(elem, "change", () => { … })), produced
-			// when a reactive slot body is lowered with inline handlers. Recurse
-			// into the closure body so mutations inside it get their dependent
-			// prop/slot updaters spliced — otherwise a list-item handler that
-			// mutates the list would never re-fire the slot.
-			if n.Call != nil {
-				st.injectIntoCallLambdas(n.Call)
-			}
-		case *ir.LocalVar:
-			// The binding a reconcile builds a fresh instance into. Its props
-			// arrive inside the create call's struct, so a handler passed as
-			// one is two levels down rather than a bare argument -- and the
-			// same handler reached through UpdateComponent, one branch away,
-			// is a bare argument and did get its updaters. A row whose
-			// callback the render had not yet re-pointed wrote the state and
-			// updated nothing.
-			if c, ok := n.Init.(*ir.Call); ok {
-				st.injectIntoCallLambdas(c)
-			}
-		case *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
-			*ir.Break, *ir.Continue:
-			// Leaf stmts — no nested blocks to recurse into. updatersFor
-			// below handles Assign-driven updater injection.
+		case *ir.CallStmt, *ir.LocalVar, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle,
+			*ir.ContextProvider, *ir.Break, *ir.Continue:
+			// No child statement list of their own. Any callback they hold --
+			// a statement-level call's inline handler, the props struct a
+			// reconcile builds an instance from -- is reached by the walk
+			// below, and updatersFor handles the mutation the statement is.
 		default:
 			panic(fmt.Sprintf("injectIntoStmts: unhandled %T", n))
+		}
+		// A callback is a body too, and every statement can carry one in its
+		// expressions. Its mutations need the same updaters spliced after them
+		// as any other body's, since the state they write is read by the same
+		// widgets.
+		for _, f := range handlerBodiesIn(s) {
+			f.Block = st.injectIntoStmts(f.Block)
 		}
 		if updaters := st.updatersFor(s); len(updaters) > 0 {
 			out = append(out, updaters...)
