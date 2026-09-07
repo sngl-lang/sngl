@@ -1,0 +1,11 @@
+// ComponentDecl is reachable only from Document, so a nested declaration is a
+// parse error rather than a name the checker never registered.
+
+import . "sngl:ui"
+
+component outer() {
+    component inner(x string) { // ERROR(parse) "a component may only be declared at the root of a file"
+        text(value = x)
+    }
+    inner(x = "hi")
+}

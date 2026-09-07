@@ -117,6 +117,16 @@ func loopVarNeedsVar(filtered []Token, idx int) bool {
 	return false
 }
 
+// componentDeclInBody reports whether the token that failed to parse begins a
+// component declaration. ComponentDecl is reachable only from Document, so the
+// keyword can reach a failing position only where no declaration may stand.
+func componentDeclInBody(filtered []Token, idx int) bool {
+	if idx < 0 || idx+1 >= len(filtered) {
+		return false
+	}
+	return filtered[idx].Type == KW_COMPONENT && filtered[idx+1].Type == IDENT
+}
+
 func remapErrors(err error, filtered []Token) error {
 	errList, ok := err.(scanner.ErrList)
 	if !ok {
@@ -139,6 +149,10 @@ func remapErrors(err error, filtered []Token) error {
 			// that this is not an expression.
 			if inInterpolation(filtered, idx) {
 				errList[i].Err = errors.New("invalid expression in interpolation")
+				continue
+			}
+			if componentDeclInBody(filtered, idx) {
+				errList[i].Err = errors.New("a component may only be declared at the root of a file")
 				continue
 			}
 			if loopVarNeedsVar(filtered, idx) {

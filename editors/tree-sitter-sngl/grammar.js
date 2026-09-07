@@ -55,8 +55,17 @@ module.exports = grammar({
   rules: {
     // ─── Generated from EBNF ──────────────────────────────────
 
+    // A component declaration is reachable only from here, never from _stmt:
+    // a nested `component cell(row) { ... }` is token-identical to the slot
+    // population that spelling is reserved for.
     source_file: ($) =>
-      repeat(seq(optional("/-"), $._stmt, optional($._terminator))),
+      repeat(
+        seq(
+          optional("/-"),
+          choice($.component_declaration, $._stmt),
+          optional($._terminator),
+        ),
+      ),
 
     statement_block: ($) =>
       seq("{", repeat(seq(optional("/-"), $._stmt, optional($._terminator))), "}"),
@@ -343,7 +352,6 @@ module.exports = grammar({
         $.const_declaration,
         $.var_declaration,
         $.func_declaration,
-        $.component_declaration,
         $.return_statement,
         $.break_statement,
         $.continue_statement,

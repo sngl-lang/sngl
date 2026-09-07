@@ -367,7 +367,7 @@ attributes and a slashdash prefix, and optionally followed by a semicolon
 <!-- BEGIN GENERATED: grammar-document -->
 
 ```ebnf
-Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
+Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } TopStmt [ ";" ] }
 
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
@@ -1172,7 +1172,6 @@ Stmt =
     | ConstDecl
     | VarDecl
     | FuncDecl
-    | ComponentDecl
     | SlotNode
     | "return" [ Expr ]
     | "break"
@@ -1585,7 +1584,7 @@ The complete grammar, assembled from `internal/parser/sngl.ebnf`:
 <!-- BEGIN GENERATED: grammar-full -->
 
 ```ebnf
-Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } Stmt [ ";" ] }
+Document = native_value Expr [ ";" ] | { [ "/-" ] { MacroAttr } TopStmt [ ";" ] }
 
 StmtBlock = "{" { [ "/-" ] { MacroAttr } Stmt [ ";" ] } "}"
 
@@ -1600,7 +1599,6 @@ Stmt =
     | ConstDecl
     | VarDecl
     | FuncDecl
-    | ComponentDecl
     | SlotNode
     | "return" [ Expr ]
     | "break"

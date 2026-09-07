@@ -177,7 +177,7 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 		return doc
 	}
 	for !it.done() {
-		// Document = { [ slashdash ] { MacroAttr } Stmt semi } .
+		// Document = { [ slashdash ] { MacroAttr } TopStmt semi } .
 		if !it.isNonTerminal() {
 			tok := it.token()
 			if tok.Type == SLASHDASH {
@@ -186,8 +186,8 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 				for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
 					it.skip()
 				}
-				if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
-					inner := b.buildStmt(it.enter())
+				if !it.done() && it.isNonTerminal() && it.symbol() == TopStmt {
+					inner := b.buildTopStmt(it.enter())
 					doc.Stmts = append(doc.Stmts, &ast.DisabledDecl{
 						Pos:   b.posFromToken(sdPos),
 						Inner: inner,
@@ -204,15 +204,15 @@ func (b *builder) buildDocument(children []int32) *ast.Document {
 			for !it.done() && it.isNonTerminal() && it.symbol() == MacroAttr {
 				attrs = append(attrs, b.buildMacroAttr(it.enter()))
 			}
-			if !it.done() && it.isNonTerminal() && it.symbol() == Stmt {
-				if inner := b.buildStmt(it.enter()); inner != nil {
+			if !it.done() && it.isNonTerminal() && it.symbol() == TopStmt {
+				if inner := b.buildTopStmt(it.enter()); inner != nil {
 					doc.Stmts = append(doc.Stmts, b.attach(attrs, inner))
 				}
 			} else {
 				b.errorf(attrs[0].Pos, "macro attribute has no following declaration")
 			}
-		} else if it.symbol() == Stmt {
-			s := b.buildStmt(it.enter())
+		} else if it.symbol() == TopStmt {
+			s := b.buildTopStmt(it.enter())
 			if s != nil {
 				doc.Stmts = append(doc.Stmts, s)
 			}
@@ -345,6 +345,17 @@ func (b *builder) isInlineComment(tok Token) bool {
 
 // --- Stmt dispatch ---
 
+// TopStmt = ComponentDecl | Stmt .
+func (b *builder) buildTopStmt(it nodeIter) ast.Stmt {
+	if it.done() || !it.isNonTerminal() {
+		return nil
+	}
+	if it.symbol() == ComponentDecl {
+		return b.buildComponentDecl(it.enter())
+	}
+	return b.buildStmt(it.enter())
+}
+
 func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 	if it.done() {
 		return nil
@@ -365,8 +376,6 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildVarDecl(it.enter())
 		case FuncDecl:
 			return b.buildFuncDecl(it.enter())
-		case ComponentDecl:
-			return b.buildComponentDecl(it.enter())
 		case IfNode:
 			return b.buildIfNode(it.enter())
 		case ForNode:

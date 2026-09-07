@@ -210,7 +210,12 @@ MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rpare
 # A native value — one expression an encoder wrote, see checker.CheckNativeValue
 # — is the second thing a Document can be. Only the native-value lexer emits the
 # sentinel, so ordinary source can never take that branch.
-Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } Stmt [ semi ] } .
+Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } TopStmt [ semi ] } .
+
+# ComponentDecl is reachable only from here, never from Stmt: a nested
+# `component cell(row) { ... }` is token-identical to the slot population that
+# spelling is reserved for, and a param needs no type so nothing separates them.
+TopStmt = ComponentDecl | Stmt .
 
 # ── Statements ────────────────────────────────────────────────────────────────
 #
@@ -226,7 +231,6 @@ Document = native_value Expr [ semi ] | { [ slashdash ] { MacroAttr } Stmt [ sem
 #   kw_const      → ConstDecl
 #   kw_var        → VarDecl
 #   kw_func       → FuncDecl  (excluded from StatementPrimary)
-#   kw_component  → ComponentDecl
 #   kw_return     → return statement
 #   kw_break      → break statement
 #   kw_continue   → continue statement
@@ -242,7 +246,6 @@ Stmt =
     | ConstDecl
     | VarDecl
     | FuncDecl
-    | ComponentDecl
     | SlotNode
     | kw_return [ Expr ]
     | kw_break
