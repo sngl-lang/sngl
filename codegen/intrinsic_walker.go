@@ -3,7 +3,6 @@ package codegen
 import (
 	"context"
 
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -113,6 +112,11 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				return t.OnComponentRoot(ctx, n.Name, call.Args[0].Value)
 			}
 		}
+		if v, changed := walkExprLambdas(ctx, n.Init, t); changed {
+			cp := *n
+			cp.Init = v
+			return []ir.Stmt{&cp}
+		}
 	case *ir.CallStmt:
 		if n.Call != nil {
 			switch {
@@ -145,22 +149,6 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				}
 				return ins.OnInsertBefore(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
 			}
-			// The two halves of an offloaded blocking call carry the rest of
-			// the body as closures. Everything a handler would have done --
-			// a prop assignment, a canvas redraw -- is inside one of them,
-			// so the walk has to go in or the platform never sees it: the
-			// widget write came out as its bare IR shape, naming a field the
-			// render function does not declare.
-			if isAsyncOffloadCall(n.Call) {
-				call := *n.Call
-				call.Args = append([]ir.CallArg(nil), n.Call.Args...)
-				for i := range call.Args {
-					call.Args[i].Value = walkHandlerBody(ctx, call.Args[i].Value, t)
-				}
-				cp := *n
-				cp.Call = &call
-				return []ir.Stmt{&cp}
-			}
 			// A slot append as a bare call. push mutates its receiver and
 			// returns nothing, so the lowering emits the call rather than an
 			// assignment back to the slot; the Assign arm below still answers
@@ -171,6 +159,18 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 						return t.OnSlotAppend(ctx, v, n.Call.Args[1].Value)
 					}
 				}
+			}
+			// Any argument may be a callback, and everything a handler would
+			// have done is inside it. This was gated on an offloaded blocking
+			// call, whose two halves carry the rest of the body as closures --
+			// but a plain `run(func() { … })` is the same shape and got
+			// nothing, so an element ref written inside one kept the name the
+			// program gave it rather than the variable the page emitted, and
+			// the page threw on a name nothing declared.
+			if call, changed := walkCallLambdas(ctx, n.Call, t); changed {
+				cp := *n
+				cp.Call = call
+				return []ir.Stmt{&cp}
 			}
 		}
 	case *ir.Assign:
@@ -194,6 +194,13 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				return t.OnPropAssign(ctx, sel.Operand, sel.Field, n.Value)
 			}
 		}
+		// `handle = setInterval(func() { … })` is a callback held by an
+		// assignment, which is the shape this class of walk keeps missing.
+		if v, changed := walkExprLambdas(ctx, n.Value, t); changed {
+			cp := *n
+			cp.Value = v
+			return []ir.Stmt{&cp}
+		}
 	case *ir.For:
 		iterExpr := t.OnIter(ctx, n.Iter)
 		body := WalkLowered(ctx, n.Body, t)
@@ -213,15 +220,6 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 	return t.OnDefault(ctx, s)
 }
 
-// isAsyncOffloadCall reports whether c is one of the two calls
-// passAsyncOffload leaves behind, each holding a closure the walk must enter.
-func isAsyncOffloadCall(c *ir.Call) bool {
-	if c == nil || c.Func == nil {
-		return false
-	}
-	return c.Func.Intrinsic == lower.AsyncSpawnIntrinsic || c.Func.Intrinsic == lower.AsyncPostIntrinsic
-}
-
 // walkHandlerBody rewrites an inline handler's body through the same
 // translator as any other statement block, and returns the handler unchanged
 // when it is not one.
@@ -234,6 +232,47 @@ func isAsyncOffloadCall(c *ir.Call) bool {
 // all (the generic statement path has no rendering for one), and a prop
 // assignment on a node kept its IR shape instead of the platform's. The button
 // worked and the display it was supposed to repaint did not.
+// walkCallLambdas rewrites every callback a call hands over, answering a copy
+// and whether anything moved. Copied rather than rewritten in place for the
+// reason walkComponentProps gives: walking one body twice nests the
+// translation inside itself.
+func walkCallLambdas(ctx context.Context, call *ir.Call, t IntrinsicTranslator) (*ir.Call, bool) {
+	if call == nil {
+		return call, false
+	}
+	changed := false
+	args := append([]ir.CallArg(nil), call.Args...)
+	for i := range args {
+		if v, moved := walkExprLambdas(ctx, args[i].Value, t); moved {
+			args[i].Value = v
+			changed = true
+		}
+	}
+	if !changed {
+		return call, false
+	}
+	cp := *call
+	cp.Args = args
+	return &cp, true
+}
+
+// walkExprLambdas walks the body of a lambda an expression *is*, or of any
+// callback a call inside it hands over. It stops at the outermost lambda,
+// because WalkLowered on its block reaches whatever is nested below.
+func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.Expr, bool) {
+	switch x := e.(type) {
+	case *ir.Lambda:
+		if walked := walkHandlerBody(ctx, x, t); walked != e {
+			return walked, true
+		}
+	case *ir.Call:
+		if call, changed := walkCallLambdas(ctx, x, t); changed {
+			return call, true
+		}
+	}
+	return e, false
+}
+
 func walkHandlerBody(ctx context.Context, handler ir.Expr, t IntrinsicTranslator) ir.Expr {
 	lam, ok := handler.(*ir.Lambda)
 	if !ok || lam.Func == nil {
