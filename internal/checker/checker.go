@@ -244,6 +244,10 @@ type checker struct {
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
 
+	// bodyTypeDecls is where each body-local type name was first declared, per
+	// package it lands in. Interim, for the #198 collision error only.
+	bodyTypeDecls map[*ir.Package]map[string]ast.Pos
+
 	// inferring is the stack of functions whose return type is being inferred,
 	// so a body that calls itself is reported rather than recurring.
 	inferring map[*ir.Func]bool
@@ -1585,12 +1589,63 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 	c.registerNestedMethods(sd.Name, sd.AST.TypeParams, sd.AST.Funcs())
 }
 
+// claimBodyType reports a body-local type name something else in this package
+// already declared -- another body, or a top-level declaration. Both names are
+// correctly scoped and stay so; the collision is that both declarations land in
+// one ir.Package and every backend emits a type declaration straight from it,
+// so the host would get two of that name. #198 renames per body and removes
+// this.
+//
+// Which of two bodies is called second follows registration order, and so for a
+// multi-file package follows document order; the message names both positions
+// for that reason.
+func (c *checker) claimBodyType(name string, pos ast.Pos) {
+	if name == "" || name == "_" {
+		return
+	}
+	// Two in one body is one scope's duplicate, which c.declare reports in its
+	// own words; recording it here would report the interim message instead and
+	// re-point the name at the second of the two.
+	if _, local := c.scope.LookupDeclaredLocal(name); local {
+		return
+	}
+	pkg := c.declPkg()
+	if pkg == nil {
+		return
+	}
+	if c.bodyTypeDecls == nil {
+		c.bodyTypeDecls = map[*ir.Package]map[string]ast.Pos{}
+	}
+	seen := c.bodyTypeDecls[pkg]
+	if seen == nil {
+		seen = map[string]ast.Pos{}
+		c.bodyTypeDecls[pkg] = seen
+	}
+	if prev, dup := seen[name]; dup {
+		c.reportBodyTypeCollision(name, pos, prev, "another body of this package")
+		return
+	}
+	// A top-level declaration of the name is the same collision: it lands in
+	// the same slice, and a body-local type correctly shadows it in scope, so
+	// nothing else reports the pair.
+	if prev, dup := c.pkgDecls[name]; dup {
+		c.reportBodyTypeCollision(name, pos, prev, "this package")
+		return
+	}
+	seen[name] = pos
+}
+
+func (c *checker) reportBodyTypeCollision(name string, pos, prev ast.Pos, where string) {
+	c.error(pos, "%q is declared in %s; a body-local type is not yet renamed per body, so the two would emit one host type (see #198) (previous declaration at %s)", name, where, prev)
+}
+
 func (c *checker) registerBodyType(stmt ast.Stmt) ir.Symbol {
 	switch s := stmt.(type) {
 	case *ast.StructDef:
 		sd := c.buildStructDef(s)
 		c.applyMarks(s, sd)
 		c.declPkg().Structs = append(c.declPkg().Structs, sd)
+		c.claimBodyType(s.Name, s.Pos)
 		c.declare(s.Pos, sd)
 		c.registerNestedMethods(sd.Name, s.TypeParams, s.Funcs())
 		return sd
@@ -1598,6 +1653,7 @@ func (c *checker) registerBodyType(stmt ast.Stmt) ir.Symbol {
 		ed := c.buildEnumDef(s)
 		c.applyMarks(s, ed)
 		c.declPkg().Enums = append(c.declPkg().Enums, ed)
+		c.claimBodyType(s.Name, s.Pos)
 		c.declare(s.Pos, ed)
 		c.registerNestedMethods(ed.Name, nil, s.Funcs())
 		return ed
@@ -1605,6 +1661,7 @@ func (c *checker) registerBodyType(stmt ast.Stmt) ir.Symbol {
 		ud := c.buildUnitDef(s)
 		c.applyMarks(s, ud)
 		c.declPkg().Units = append(c.declPkg().Units, ud)
+		c.claimBodyType(s.Name, s.Pos)
 		c.declare(s.Pos, ud)
 		for _, suffix := range ud.Suffixes {
 			c.unitBySuffix[suffix.Name] = ud
