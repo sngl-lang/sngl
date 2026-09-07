@@ -3412,14 +3412,3 @@ func (g *htmlGen) bodyCalls() []string {
 	collect(pkg.Body)
 	return out
 }
-
-// anyMutated reports whether any of the names a timer's gate reads was written
-// by the statement whose updaters are being emitted.
-func anyMutated(gate, mutated map[string]bool) bool {
-	for name := range gate {
-		if mutated[name] {
-			return true
-		}
-	}
-	return false
-}
