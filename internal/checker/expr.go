@@ -1927,8 +1927,6 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				sd = s
 			}
 		} else {
-			// The literal is the only position naming the type when there is
-			// no annotation for resolveNamedType to report against.
 			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
 		}
 	} else if c.expected != nil && c.expected.Kind == ir.TypeMap {
@@ -3258,9 +3256,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		c.registerBodyType(x)
 		return nil
 	case *ast.Import:
-		// An import binds one name for one file, so a body has no scope to
-		// give it. Dropping it silently reported only the use as undefined.
-		c.error(x.Pos, "import is only allowed at file scope")
+		c.error(x.Pos, "an import may only be written at the root of a file")
 		return nil
 	case *ast.Comment:
 		return nil

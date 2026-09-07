@@ -554,10 +554,7 @@ type Component struct {
 	// nil when the pass did not run. See internal/lower/node_escape.go.
 	LocalRefs map[string]bool  `json:"-"`
 	Methods   map[string]*Func `json:"-"`
-	// BodyTypes are the struct, enum and unit declarations written in this
-	// component's body. They bind only in the body's own scope, so pass2 has
-	// to be handed them rather than finding them on the package.
-	BodyTypes []Symbol `json:"-"`
+	BodyTypes []Symbol         `json:"-"`
 }
 
 func (c *Component) SymName() string { return c.Name }
