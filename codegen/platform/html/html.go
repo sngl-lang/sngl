@@ -3374,7 +3374,10 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 			case ir.TypeNull:
 				return "null"
 			case ir.TypeUnit:
-				return fmt.Sprintf("%q", lit.Value+lit.Suffix)
+				// Shared with the JS lang translator: a unit value is its
+				// magnitude per base. The CSS spelling is applied where the
+				// value reaches a style property, not here.
+				return javascript.UnitLiteral(lit)
 			case ir.TypeStruct:
 				if ir.StringReprStruct(lit.Type) {
 					return fmt.Sprintf("%q", lit.Value)

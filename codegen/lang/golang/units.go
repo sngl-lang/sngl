@@ -31,31 +31,14 @@ func ClassifyUnit(u *ir.UnitDef) UnitGoTypeKind {
 	if u.Name == "duration" {
 		return UnitDuration
 	}
-	bases := 0
-	for _, s := range u.Suffixes {
-		if s.IsBase() {
-			bases++
-		}
-	}
-	if bases <= 1 {
+	if u.IsSingleBase() {
 		return UnitScalar
 	}
 	return UnitMultiBase
 }
 
 // UnitBases returns the IsBase suffixes of u in declaration order.
-func UnitBases(u *ir.UnitDef) []*ir.UnitSuffix {
-	if u == nil {
-		return nil
-	}
-	var out []*ir.UnitSuffix
-	for _, s := range u.Suffixes {
-		if s.IsBase() {
-			out = append(out, s)
-		}
-	}
-	return out
-}
+func UnitBases(u *ir.UnitDef) []*ir.UnitSuffix { return u.Bases() }
 
 // multiBaseUnitOperand returns the UnitDef of whichever operand is a
 // multi-base unit (left preferred), or (nil, false) when neither is.
@@ -72,13 +55,7 @@ func multiBaseUnitOperand(l, r ir.Expr) (*ir.UnitDef, bool) {
 }
 
 // unitDeclOf extracts the UnitDef from a unit-typed ir.Type, or nil.
-func unitDeclOf(t *ir.Type) *ir.UnitDef {
-	if t == nil || t.Kind != ir.TypeUnit {
-		return nil
-	}
-	ud, _ := t.Decl.(*ir.UnitDef)
-	return ud
-}
+func unitDeclOf(t *ir.Type) *ir.UnitDef { return ir.UnitDeclOf(t) }
 
 // isMultiBaseUnitType reports whether t is a multi-base unit type.
 func isMultiBaseUnitType(t *ir.Type) bool {
@@ -116,32 +93,21 @@ func EmitUnitTypeDecls(units []*ir.UnitDef) string {
 //   - single-base scalar units lower to TypeName(value * factor).
 //   - multi-base units lower to TypeName{<base>: value * factor}.
 func LowerUnitLiteralGo(lit *ir.Literal) (string, bool) {
-	if lit == nil || lit.Type == nil || lit.Type.Kind != ir.TypeUnit || lit.Suffix == "" {
-		return "", false
-	}
-	ud, ok := lit.Type.Decl.(*ir.UnitDef)
-	if !ok || ud == nil {
-		return "", false
-	}
-	suf := unitSuffixByName(ud, lit.Suffix)
-	if suf == nil {
-		return "", false
-	}
-	num, ok := parseUnitNumber(lit.Value)
+	mag, base, ok := ir.UnitMagnitude(lit)
 	if !ok {
 		return "", false
 	}
+	ud := ir.UnitDeclOf(lit.Type)
+	val := ir.FormatUnitMagnitude(mag)
 	switch ClassifyUnit(ud) {
 	case UnitDuration:
-		return durationLiteralGo(num, suf), true
+		return durationLiteralGo(lit, mag), true
 	case UnitScalar:
 		// Reduce into the (single) base; the float64-aliased type takes
 		// a single scalar value.
-		val := formatFloat(num * suf.Factor)
 		return fmt.Sprintf("%s(%s)", ExportName(ud.Name), val), true
 	case UnitMultiBase:
-		val := formatFloat(num * suf.Factor)
-		return fmt.Sprintf("%s{%s: %s}", ExportName(ud.Name), ExportName(suf.BaseName), val), true
+		return fmt.Sprintf("%s{%s: %s}", ExportName(ud.Name), ExportName(base), val), true
 	}
 	return "", false
 }
@@ -150,33 +116,28 @@ func LowerUnitLiteralGo(lit *ir.Literal) (string, bool) {
 // num expressed in suffix suf. Picks the closest standard time.* constant
 // (Millisecond/Second/Minute/Hour) so the source `1s` reads as
 // `1*time.Second` instead of `1000*time.Millisecond`.
-func durationLiteralGo(num float64, suf *ir.UnitSuffix) string {
-	unitExpr := "time.Millisecond"
-	switch suf.Name {
-	case "ms":
-		unitExpr = "time.Millisecond"
-	case "s":
-		unitExpr = "time.Second"
-	case "m":
-		unitExpr = "time.Minute"
-	case "h":
-		unitExpr = "time.Hour"
-	default:
-		// Fall back to base (ms) — multiply by the suffix's factor in ms.
-		return fmt.Sprintf("time.Duration(%s) * time.Millisecond", formatFloat(num*suf.Factor))
+func durationLiteralGo(lit *ir.Literal, mag float64) string {
+	if unitExpr, ok := goTimeConst[lit.Suffix]; ok {
+		num, _ := parseUnitNumber(lit.Value)
+		return fmt.Sprintf("time.Duration(%s) * %s", ir.FormatUnitMagnitude(num), unitExpr)
 	}
-	return fmt.Sprintf("time.Duration(%s) * %s", formatFloat(num), unitExpr)
+	return fmt.Sprintf("time.Duration(%s) * time.Millisecond", ir.FormatUnitMagnitude(mag))
+}
+
+// goTimeConst maps duration's declared suffixes onto the time package's own
+// constants, so `1s` reads as 1*time.Second rather than 1000*time.Millisecond.
+// A suffix with no entry falls back to the base, which is ms.
+var goTimeConst = map[string]string{
+	"ms": "time.Millisecond",
+	"s":  "time.Second",
+	"m":  "time.Minute",
+	"h":  "time.Hour",
 }
 
 // formatFloat formats a float64 as a Go literal, preferring integer
 // form when the value is a whole number to keep generated source
 // readable (`5` not `5.000000`).
-func formatFloat(v float64) string {
-	if v == float64(int64(v)) {
-		return strconv.FormatInt(int64(v), 10)
-	}
-	return strconv.FormatFloat(v, 'g', -1, 64)
-}
+func formatFloat(v float64) string { return ir.FormatUnitMagnitude(v) }
 
 // parseUnitNumber parses a unit literal's numeric half. Handles `_` digit
 // separators.
@@ -190,15 +151,6 @@ func parseUnitNumber(num string) (float64, bool) {
 		return 0, false
 	}
 	return n, true
-}
-
-func unitSuffixByName(u *ir.UnitDef, name string) *ir.UnitSuffix {
-	for _, s := range u.Suffixes {
-		if s.Name == name {
-			return s
-		}
-	}
-	return nil
 }
 
 // LowerTimeLiteralGo lowers a date / time / datetime literal to a call
