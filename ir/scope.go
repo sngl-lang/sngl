@@ -178,6 +178,22 @@ func (s *Scope) Lookup(name string) (Symbol, bool) {
 	return nil, false
 }
 
+// LookupComponent walks the parent chain for a component bound to name,
+// skipping a binding of that name that is not one: a node position accepts
+// nothing else. Declared names only, for the reason Lookup gives.
+func (s *Scope) LookupComponent(name string) (Symbol, bool) {
+	for sc := s; sc != nil; sc = sc.Parent {
+		sym, ok := sc.Symbols[name]
+		if !ok {
+			continue
+		}
+		if _, isComp := sym.(*Component); isComp {
+			return sym, true
+		}
+	}
+	return nil, false
+}
+
 // LookupDeclaredLocal checks this scope's declared names only, skipping its
 // wildcards. For asking whether a particular name was declared here — which a
 // wildcard, standing for every name it matches, would always answer yes to.
@@ -340,16 +356,16 @@ func (st *SymbolTable) LookupDeclaredComponent(name string) (Symbol, bool) {
 	return nil, false
 }
 
-// LookupComponent finds a component for this name from the root scope outward,
-// falling back to a wildcard component covering it. A component name is a node
-// position, which is one of the positions a wildcard stands in, so this is one
-// of the sites Scope.Lookup leaves the wildcard consult to. Callers asking
-// whether a name was *declared* want LookupDeclaredComponent.
+// LookupRootComponent finds a component for this name from a package's root
+// scope outward, falling back to a wildcard component covering it. For a name
+// qualified by a package and for an override's target; a bare reference wants
+// Scope.LookupComponent. Callers asking whether a name was *declared* want
+// LookupDeclaredComponent.
 //
 // A name covered by two wildcards in one scope is an ambiguity, reported by
 // the checker paths that hold a position to report it at (scopeWildcard); here
 // the first still answers, as it did when Lookup itself fell back.
-func (st *SymbolTable) LookupComponent(name string) (Symbol, bool) {
+func (st *SymbolTable) LookupRootComponent(name string) (Symbol, bool) {
 	sym, ok := st.Root.Lookup(name)
 	if !ok {
 		if m := st.Root.WildcardMatches(name); len(m) > 0 {

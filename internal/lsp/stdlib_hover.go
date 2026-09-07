@@ -18,7 +18,7 @@ func lookupStdlibSymbol(pkg *ir.Package, name string) (string, bool) {
 	// intercepted by hoverInStmts before this callback fires, so
 	// querying the merged symbol table here returns stdlib decls.
 	if pkg.Symbols != nil {
-		if sym, ok := pkg.Symbols.LookupComponent(name); ok {
+		if sym, ok := pkg.Symbols.LookupRootComponent(name); ok {
 			if c, ok := sym.(*ir.Component); ok {
 				return formatStdlibComponent(c), true
 			}
@@ -213,7 +213,7 @@ func findComponent(pkg *ir.Package, name string) *ir.Component {
 		return nil
 	}
 	if pkg.Symbols != nil {
-		if sym, ok := pkg.Symbols.LookupComponent(name); ok {
+		if sym, ok := pkg.Symbols.LookupRootComponent(name); ok {
 			if c, ok := sym.(*ir.Component); ok {
 				return c
 			}

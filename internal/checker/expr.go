@@ -2931,12 +2931,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		// Check if the call target is a component — handle directly to avoid
 		// double-checking args through both inferCall and resolveCallStmt.
-		// Bare `Foo(...)` resolves via the symbol table; qualified
+		// Bare `Foo(...)` resolves through the lexical chain, the way
+		// checkVisualNodeIR resolves a node that has a body; qualified
 		// `pkg.Foo(...)` resolves through the namespace's package.
 		var comp *ir.Component
 		var compName string
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
-			if sym, ok := c.symtab.LookupComponent(id.Name); ok {
+			if sym, ok := c.lookupComponentInScope(x.Pos, id.Name); ok {
 				if c.rejectUnexported(x.Pos, sym) {
 					return nil
 				}
@@ -3268,8 +3269,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}
 		return nil
-	case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
-		c.registerBodyType(x)
+	case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
+		// One at the top of a component body was registered in pass1
+		// (collectComponentDecls); what reaches here is one in a nested block
+		// or a function body, which pass1 does not walk.
+		c.registerBodyDecl(x)
 		return nil
 	case *ast.Import:
 		c.error(x.Pos, "an import may only be written at the root of a file")
@@ -3582,7 +3586,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		if sym, sok := c.scope.Lookup(ns); sok {
 			if nsSym, nok := sym.(*ir.Namespace); nok {
 				if nsSym.Pkg != nil {
-					if fsym, ok := nsSym.Pkg.Symbols.LookupComponent(field); ok {
+					if fsym, ok := nsSym.Pkg.Symbols.LookupRootComponent(field); ok {
 						if c.rejectUnexported(vn.Pos, fsym) {
 							return nil
 						}
@@ -4800,14 +4804,12 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 	}
 }
 
-// lookupComponentInScope resolves a bare component name through the scope chain
-// rather than the flat symtab.Comps map. Both stdlib and user components are
-// declared into scope, so the map adds nothing except the ability to see names
-// that are not lexically visible — which is exactly the bug: platform-extension
-// bodies, checked against the stdlib scope, would otherwise pick up a
-// same-named user component and shadow the platform's own blueprint.
+// lookupComponentInScope resolves a bare component name through the scope
+// chain, the way every other identifier resolves. Which is also what keeps a
+// platform-extension body, checked against the stdlib scope, from picking up a
+// same-named user component in place of the platform's blueprint.
 func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, bool) {
-	sym, ok := c.scope.Lookup(name)
+	sym, ok := c.scope.LookupComponent(name)
 	if !ok {
 		// A name nobody declared is still a node name when a wildcard covers
 		// it — an open element set, reached unqualified inside a `platform x

@@ -1,0 +1,24 @@
+// A body-local component shadows a top-level one of the same name inside the
+// body that declares it, and nowhere else: `other` is checked against the
+// top-level `card` while `main` is checked against its own.
+
+import . "sngl:ui"
+
+component card(label = "") {
+    text(value="top " + label)
+}
+
+component other() {
+    card(label="y")
+}
+
+component main {
+    component card(label = "") {
+        text(value="inner " + label)
+    }
+
+    vbox {
+        card(label="x")
+        other()
+    }
+}

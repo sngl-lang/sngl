@@ -1,0 +1,15 @@
+// A node position accepts nothing but a component, so a var of the same name
+// does not stand in the way of one: `progress(value=progress)` names the
+// component and reads the var. Only the docs suite caught this when a bare
+// component reference moved from the package root onto the scope chain.
+
+import . "sngl:ui"
+
+component main {
+    var progress float = 0.25
+
+    vbox {
+        progress(value=progress, max=1.0)
+        text(value="{progress}")
+    }
+}

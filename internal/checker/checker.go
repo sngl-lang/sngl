@@ -248,6 +248,18 @@ type checker struct {
 	// package it lands in. Interim, for the #198 collision error only.
 	bodyTypeDecls map[*ir.Package]map[string]ast.Pos
 
+	// bodyComps is every component declared inside a body, in registration
+	// order. Interim, for the #198 collision report only.
+	bodyComps []*ir.Component
+
+	// bodyChecked is the components whose body pass2 has already walked. A
+	// body may register another as it is checked, so the walk is resumable.
+	bodyChecked map[*ir.Component]bool
+
+	// bodyOwner is the body a body-local component was declared in, so its own
+	// body can be checked with its siblings in scope.
+	bodyOwner map[*ir.Component]*ir.Component
+
 	// inferring is the stack of functions whose return type is being inferred,
 	// so a body that calls itself is reported rather than recurring.
 	inferring map[*ir.Func]bool
@@ -1639,8 +1651,16 @@ func (c *checker) reportBodyTypeCollision(name string, pos, prev ast.Pos, where 
 	c.error(pos, "%q is declared in %s; a body-local type is not yet renamed per body, so the two would emit one host type (see #198) (previous declaration at %s)", name, where, prev)
 }
 
-func (c *checker) registerBodyType(stmt ast.Stmt) ir.Symbol {
+// registerBodyDecl registers one declaration written inside a body: the name
+// binds in the scope collectComponentDecls pushed rather than at file scope,
+// and nothing else about the declaration differs. Returns the symbol pass2
+// rebinds, or nil for a statement that is not one of these four kinds.
+func (c *checker) registerBodyDecl(stmt ast.Stmt) ir.Symbol {
 	switch s := stmt.(type) {
+	case *ast.ComponentDecl:
+		// No claimBodyType: a component collides only inside a recursion
+		// cycle, which reportBodyComponentCollisions asks after pass2.
+		return c.registerComponentDecl(s, true)
 	case *ast.StructDef:
 		sd := c.buildStructDef(s)
 		c.applyMarks(s, sd)
@@ -2502,6 +2522,11 @@ func (c *checker) buildSlotDecl(pd ast.SlotDecl) *ir.SlotDecl {
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
+	c.registerComponentDecl(comp, false)
+}
+
+// registerComponentDecl builds and registers one component declaration.
+func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool) *ir.Component {
 	// An override implements one declaration for one target, and says which
 	// target on its own name: `component ui.button[platform] { ... }`.
 	// It is not a declaration of its own, so it registers nothing here --
@@ -2511,6 +2536,12 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	// A parens form with nothing in them is neither: android.sngl writes
 	// `component ui.X() { body }`, whose body the platform reads itself.
 	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
+	// An override merges into a declaration registered elsewhere in the
+	// package, so there is nothing body-scoped for one to land on.
+	if bodyLocal && (comp.Target != nil || strings.IndexByte(comp.Name, '.') > 0) {
+		c.error(comp.Pos, "an override may only be written at the root of a file")
+		return nil
+	}
 	if comp.Target != nil && !bare {
 		if c.inLibSource() {
 			// A library package's overrides belong to mergeTargetExtensions,
@@ -2518,21 +2549,21 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 			// target's namespace is bound. Collecting them here would resolve
 			// `[android.platform]` later and elsewhere, with no `android` in
 			// scope to resolve it against.
-			return
+			return nil
 		}
 		c.userOverrides = append(c.userOverrides, comp)
-		return
+		return nil
 	}
 	if dot := strings.IndexByte(comp.Name, '.'); dot > 0 && !bare {
 		namespace := comp.Name[:dot]
 		if !c.isLibraryNamespace(namespace) {
 			c.error(comp.Pos, "extension namespace %q is not an imported library package; import it, e.g. import %s %q", namespace, namespace, "sngl:ui")
-			return
+			return nil
 		}
 		// Naming another package's declaration is only meaningful as an
 		// override of it, and an override names its target.
 		c.error(comp.Pos, "override %q must name the target it implements, e.g. component %s[html.platform]", comp.Name, comp.Name)
-		return
+		return nil
 	}
 
 	// The parameters are in scope for what the declaration writes after its
@@ -2601,7 +2632,12 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	c.popScope()
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
-	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
+	if bodyLocal {
+		c.bodyComps = append(c.bodyComps, irComp)
+		c.declare(comp.Pos, irComp)
+	} else {
+		c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
+	}
 
 	// The component's type parameters travel with its methods, which is what
 	// puts them in scope for a signature and a body resolved from here: this
@@ -2613,12 +2649,13 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, comp.TypeParams, nestedFuncs)
 	c.popScope()
 	c.claimComponentAPI(comp, irComp)
+	return irComp
 }
 
 // collectComponentDecls walks a component body for nested declarations,
-// recording struct/enum/unit decls on irComp.BodyTypes and attaching vars and
-// consts to irComp. The nested func defs are returned rather than registered,
-// because the caller decides what receiver they get.
+// recording struct/enum/unit/component decls on irComp.BodyDecls and attaching
+// vars and consts to irComp. The nested func defs are returned rather than
+// registered, because the caller decides what receiver they get.
 //
 // checkComponentBody declares comp.Vars into the body scope, so a component
 // whose body is checked must have been through here first.
@@ -2626,9 +2663,10 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
-		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
-			if sym := c.registerBodyType(s); sym != nil {
-				irComp.BodyTypes = append(irComp.BodyTypes, sym)
+		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
+			if sym := c.registerBodyDecl(s); sym != nil {
+				irComp.BodyDecls = append(irComp.BodyDecls, sym)
+				c.noteBodyOwner(irComp, sym)
 			}
 		case *ast.ConstDecl, *ast.VarDecl:
 			// A state declaration's annotation may name the component's type
@@ -2800,7 +2838,7 @@ func (c *checker) resolveComponentSymbol(name string) (ir.Symbol, bool) {
 	if !ok || ns.Pkg == nil {
 		return nil, false
 	}
-	return ns.Pkg.Symbols.LookupComponent(field)
+	return ns.Pkg.Symbols.LookupRootComponent(field)
 }
 
 // isWindowNode reports whether name denotes the built-in window component
@@ -3445,9 +3483,7 @@ func (c *checker) pass2() {
 		c.checkFuncBody(fn)
 	}
 
-	for _, comp := range c.pkg.Components {
-		c.checkComponentBody(comp)
-	}
+	c.checkComponentBodies()
 
 	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
 	for _, w := range c.pkg.Windows {
@@ -3455,6 +3491,9 @@ func (c *checker) pass2() {
 			c.checkWindowBody(w)
 		}
 	}
+	// A window body may declare one too.
+	c.checkComponentBodies()
+	c.reportBodyComponentCollisions()
 
 	c.checkPackageBody()
 
@@ -3811,7 +3850,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
-	c.declareBodyTypes(comp)
+	c.declareBodyDecls(comp)
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
 	}
@@ -3845,8 +3884,39 @@ func propParam(p *ir.Prop) *ir.Param {
 	return p.Sym
 }
 
-func (c *checker) declareBodyTypes(comp *ir.Component) {
-	for _, sym := range comp.BodyTypes {
+// noteBodyOwner records that owner's body declared sym, for the kinds that
+// need to know: a component's own body is checked with its siblings in scope.
+func (c *checker) noteBodyOwner(owner *ir.Component, sym ir.Symbol) {
+	nested, isComp := sym.(*ir.Component)
+	if !isComp {
+		return
+	}
+	if c.bodyOwner == nil {
+		c.bodyOwner = map[*ir.Component]*ir.Component{}
+	}
+	c.bodyOwner[nested] = owner
+}
+
+// checkComponentBodies checks every component body in the package, including
+// one registered mid-walk -- a range would snapshot pkg.Components' length.
+func (c *checker) checkComponentBodies() {
+	for i := 0; i < len(c.pkg.Components); i++ {
+		comp := c.pkg.Components[i]
+		if c.bodyChecked[comp] {
+			continue
+		}
+		if c.bodyChecked == nil {
+			c.bodyChecked = map[*ir.Component]bool{}
+		}
+		c.bodyChecked[comp] = true
+		c.checkComponentBody(comp)
+	}
+}
+
+// declareBodyDecls rebinds what comp's body declares: a scope cannot span the
+// two passes, so pass2 declares them again from the symbols.
+func (c *checker) declareBodyDecls(comp *ir.Component) {
+	for _, sym := range comp.BodyDecls {
 		c.declare(declPos(sym), sym)
 	}
 }
@@ -3859,6 +3929,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	prevComp := c.currentComponent
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
+
+	// A body-local component sees the declarations of the body it was written
+	// in, itself included, and none of that body's props or vars.
+	if owner := c.bodyOwner[comp]; owner != nil {
+		c.declareBodyDecls(owner)
+	}
 
 	// The body may name the component's type parameters, and a prop default is
 	// checked against what they stand for here. A call site binds them from the
@@ -3911,7 +3987,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
 
-	c.declareBodyTypes(comp)
+	c.declareBodyDecls(comp)
 
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
@@ -3981,8 +4057,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // already checked above
 			case *ast.FuncDef:
 				continue // already checked above
-			case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
-				continue
+			case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
+				continue // registered in pass1, rebound above
 			default:
 				if s := c.checkStmt(stmt); s != nil {
 					if w, ok := s.(*ir.Window); ok {

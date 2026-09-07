@@ -217,7 +217,7 @@ func (c *checker) overrideSelection(decl *ast.ComponentDecl, base *ir.Component)
 func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns, local string) {
 	dot := strings.IndexByte(decl.Name, '.')
 	if dot <= 0 {
-		sym, found := c.symtab.LookupComponent(decl.Name)
+		sym, found := c.symtab.LookupRootComponent(decl.Name)
 		if !found {
 			c.error(decl.Pos, "override names unknown component %q", decl.Name)
 			return nil, "", ""
@@ -242,7 +242,7 @@ func (c *checker) overrideBase(decl *ast.ComponentDecl) (base *ir.Component, ns,
 	if nsDecl == nil || nsDecl.Pkg == nil {
 		return nil, "", ""
 	}
-	sym, found := nsDecl.Pkg.Symbols.LookupComponent(local)
+	sym, found := nsDecl.Pkg.Symbols.LookupRootComponent(local)
 	if !found {
 		c.error(decl.Pos, "override %q references unknown component %q in %s", decl.Name, local, ns)
 		return nil, "", ""

@@ -1,0 +1,37 @@
+// A component declared in a body binds in that body's scope and is
+// instantiated there. Two bodies each declaring their own is the case a flat
+// emitted namespace would break, so both are here and both are rendered.
+
+import . "sngl:ui"
+
+component first() {
+    component row(label = "") {
+        text(value="row " + label)
+    }
+
+    component labelled(label = "") {
+        vbox {
+            row(label=label)
+        }
+    }
+
+    vbox {
+        row(label="a")
+        labelled(label="b")
+    }
+}
+
+component second() {
+    component cell(label = "") {
+        text(value="cell " + label)
+    }
+
+    cell(label="c")
+}
+
+component main {
+    vbox {
+        first()
+        second()
+    }
+}

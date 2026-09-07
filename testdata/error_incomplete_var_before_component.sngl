@@ -1,0 +1,10 @@
+// An incomplete statement before a `component` reports the missing operand,
+// not something about the declaration that follows it.
+
+import . "sngl:ui"
+
+var x =
+
+component main { // ERROR(parse) "unexpected \"component\", expected"
+    text(value="hi")
+}

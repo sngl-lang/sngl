@@ -1,0 +1,40 @@
+// Two bodies each declaring a recursive `node`. Both names are correctly
+// scoped, and a recursion cycle is what passNoInlineComponents leaves standing
+// -- so both reach codegen under the declared name and every backend emits one
+// host component twice. Interim until #198 renames per body; without it
+// `sngl generate` writes two `renderNode` methods into one Go file and exits 0.
+
+import . "sngl:ui"
+
+component first() {
+    component node(depth = 0) {
+        vbox {
+            text(value="{depth}")
+            if depth < 2 {
+                node(depth=depth + 1)
+            }
+        }
+    }
+
+    node(depth=0)
+}
+
+component second() {
+    component node(depth = 0) { // ERROR(check) "is declared twice in this package and both declarations recurse"
+        vbox {
+            text(value="d{depth}")
+            if depth < 2 {
+                node(depth=depth + 1)
+            }
+        }
+    }
+
+    node(depth=0)
+}
+
+component main {
+    vbox {
+        first()
+        second()
+    }
+}
