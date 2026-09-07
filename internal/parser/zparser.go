@@ -7415,9 +7415,9 @@ state5:
 
 // TopStmt grammar:
 //
-//	# ComponentDecl is reachable only from here, never from Stmt: a nested
-//	# `component cell(row) { ... }` is token-identical to the slot population that
-//	# spelling is reserved for, and a param needs no type so nothing separates them.
+//	# ComponentDecl is reachable only from here, never from Stmt: a component param
+//	# needs no type, so a nested declaration and a `component cell(row) { ... }` slot
+//	# population are the same token sequence.
 //	TopStmt = ComponentDecl | Stmt .
 //
 //	State 0

@@ -55,9 +55,7 @@ module.exports = grammar({
   rules: {
     // ─── Generated from EBNF ──────────────────────────────────
 
-    // A component declaration is reachable only from here, never from _stmt:
-    // a nested `component cell(row) { ... }` is token-identical to the slot
-    // population that spelling is reserved for.
+    // Mirrors TopStmt in sngl.ebnf: component_declaration is not in _stmt.
     source_file: ($) =>
       repeat(
         seq(

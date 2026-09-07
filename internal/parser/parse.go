@@ -117,9 +117,6 @@ func loopVarNeedsVar(filtered []Token, idx int) bool {
 	return false
 }
 
-// componentDeclInBody reports whether the token that failed to parse begins a
-// component declaration. ComponentDecl is reachable only from Document, so the
-// keyword can reach a failing position only where no declaration may stand.
 func componentDeclInBody(filtered []Token, idx int) bool {
 	if idx < 0 || idx+1 >= len(filtered) {
 		return false
