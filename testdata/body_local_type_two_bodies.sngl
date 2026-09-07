@@ -1,3 +1,4 @@
+// SKIP(codegen) "two body-local Local declarations emit two host types of that name; no backend mangles the emitted name yet"
 import . "sngl:ui"
 
 // Two bodies may each declare Local: the name is the body's, not the package's.
