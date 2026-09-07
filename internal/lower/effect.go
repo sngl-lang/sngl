@@ -737,6 +737,39 @@ func (st *effectState) allOwnerFuncs() []*ir.Func {
 	for _, w := range st.pkg.Windows {
 		funcs = append(funcs, w.Funcs...)
 	}
+	// And the func behind every lambda any of them holds, because a lambda is
+	// where an awaiting body lands once a platform implements a schedule as a
+	// native taking a callback: html's `timer` is `setInterval(func() { tick()
+	// }, d)`, and inlining splices a tick that awaits into that closure. Only
+	// the enclosing __effectN_mount was in this set, so the arrow was emitted
+	// without `async` and no bundler would take the `await` inside it.
+	seen := make(map[*ir.Func]bool, len(funcs))
+	for _, fn := range funcs {
+		seen[fn] = true
+	}
+	roots := make([]any, 0, len(funcs)+len(st.pkg.Components))
+	for _, fn := range funcs {
+		roots = append(roots, fn.Block)
+	}
+	for _, o := range ir.Owners(st.pkg) {
+		roots = append(roots, o.Stmts)
+	}
+	for _, root := range roots {
+		_ = ir.Walk(root, func(node ir.Node) error {
+			var fn *ir.Func
+			switch x := node.(type) {
+			case *ir.Lambda:
+				fn = x.Func
+			case *ir.Closure:
+				fn = x.Func
+			}
+			if fn != nil && !seen[fn] {
+				seen[fn] = true
+				funcs = append(funcs, fn)
+			}
+			return nil
+		})
+	}
 	return funcs
 }
 

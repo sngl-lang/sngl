@@ -1,10 +1,12 @@
 What every target emits for a timer, and where it finds one.
 
-`timer` is an ordinary component. Each platform overrides it with the primitive
-that platform schedules with, and passTimerPrimitive takes that primitive out of
-the tree and records the schedule it describes. So this asserts three things at
-once: that a timer is emitted at all, that a timer written in a child component
-is emitted too, and that its gate reaches the backend as an expression.
+`timer` is an ordinary component, and every target overrides it with what it
+schedules with -- four of them with a primitive of their own, which
+passTimerPrimitive takes out of the tree, and html with an `effect` bracketing
+setInterval, which needs no primitive because the pair of natives already is a
+lifetime with a thing to release. So this asserts three things at once: that a
+timer is emitted at all, that a timer written in a child component is emitted
+too, and that its gate reaches the backend as an expression.
 
 Both were broken before, in opposite directions and on different targets:
 
@@ -541,49 +543,147 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds: 0, running: true, beats__inst0: 0 };
-  function $set_running(v) {
-    state.running = v;
-    $timer_0_sync();
+  var state = { seconds: 0, running: true, handle__inst0: 0, beats__inst1: 0, handle__inst2: 0 };
+  function __effect0_mount() {
+    state.handle__inst0 = setInterval(() => {
+      state.seconds += 1;
+      __n1.textContent = String(state.seconds);
+    }, __effect0_key);
+  }
+  function __effect0_unmount() {
+    clearInterval(state.handle__inst0);
+  }
+  function __effect1_mount() {
+    state.handle__inst2 = setInterval(() => {
+      state.beats__inst1 += 1;
+      __n0.textContent = "beats " + String(state.beats__inst1);
+    }, __effect1_key);
+  }
+  function __effect1_unmount() {
+    clearInterval(state.handle__inst2);
+  }
+  function __snglTeardown() {
+    __effect1_teardown();
+    __effect0_teardown();
+  }
+  var __effect0_key = 0;
+  var __effect0_live = [];
+  var __effect0_desired = [];
+  var __effect1_key = 0;
+  var __effect1_live = [];
+  var __effect1_desired = [];
+  var __effects0_settling = false;
+  var __effects0_pending = false;
+  var __effects0_steps = 0;
+  function __effect0_down() {
+    __effect0_desired = [];
+    if (state.running) {
+      __effect0_desired.push(1e3);
+    }
+    for (const [__effect0_i, _] of __effect0_live.entries()) {
+      let __effect0_j = __effect0_live.length - 1 - __effect0_i;
+      if (__effect0_j >= __effect0_desired.length) {
+        __effect0_key = __effect0_live[__effect0_j];
+        __effect0_unmount();
+      } else {
+        if (__effect0_desired[__effect0_j] !== __effect0_live[__effect0_j]) {
+          __effect0_key = __effect0_live[__effect0_j];
+          __effect0_unmount();
+        }
+      }
+    }
+  }
+  function __effect0_up() {
+    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {
+      if (__effect0_i >= __effect0_live.length) {
+        __effect0_key = __effect0_k;
+        __effect0_mount();
+      } else {
+        if (__effect0_live[__effect0_i] !== __effect0_k) {
+          __effect0_key = __effect0_k;
+          __effect0_mount();
+        }
+      }
+    }
+    __effect0_live = __effect0_desired;
+  }
+  function __effect0_teardown() {
+    for (const [__effect0_ti, _] of __effect0_live.entries()) {
+      __effect0_key = __effect0_live[__effect0_live.length - 1 - __effect0_ti];
+      __effect0_unmount();
+    }
+    __effect0_live = [];
+  }
+  function __effect1_down() {
+    __effect1_desired = [];
+    __effect1_desired.push(250);
+    for (const [__effect1_i, _] of __effect1_live.entries()) {
+      let __effect1_j = __effect1_live.length - 1 - __effect1_i;
+      if (__effect1_j >= __effect1_desired.length) {
+        __effect1_key = __effect1_live[__effect1_j];
+        __effect1_unmount();
+      } else {
+        if (__effect1_desired[__effect1_j] !== __effect1_live[__effect1_j]) {
+          __effect1_key = __effect1_live[__effect1_j];
+          __effect1_unmount();
+        }
+      }
+    }
+  }
+  function __effect1_up() {
+    for (const [__effect1_i, __effect1_k] of __effect1_desired.entries()) {
+      if (__effect1_i >= __effect1_live.length) {
+        __effect1_key = __effect1_k;
+        __effect1_mount();
+      } else {
+        if (__effect1_live[__effect1_i] !== __effect1_k) {
+          __effect1_key = __effect1_k;
+          __effect1_mount();
+        }
+      }
+    }
+    __effect1_live = __effect1_desired;
+  }
+  function __effect1_teardown() {
+    for (const [__effect1_ti, _] of __effect1_live.entries()) {
+      __effect1_key = __effect1_live[__effect1_live.length - 1 - __effect1_ti];
+      __effect1_unmount();
+    }
+    __effect1_live = [];
+  }
+  function __effects0_settle() {
+    if (__effects0_settling) {
+      __effects0_pending = true;
+    } else {
+      __effects0_settling = true;
+      __effects0_pending = true;
+      __effects0_steps = 0;
+      while (__effects0_pending && __effects0_steps < 512) {
+        __effects0_pending = false;
+        __effects0_steps = __effects0_steps + 1;
+        __effect1_down();
+        __effect0_down();
+        __effect0_up();
+        __effect1_up();
+      }
+      __effects0_settling = false;
+      if (__effects0_pending) {
+        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      }
+    }
   }
   function String(v) {
     return "" + v;
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  var $timer_0 = null;
-  function $timer_0_tick() {
-    state.seconds += 1;
-    __n1.textContent = String(state.seconds);
-  }
-  function $timer_0_sync() {
-    if (state.running && !$timer_0) {
-      $timer_0 = setInterval($timer_0_tick, 1e3);
-    } else if (!state.running && $timer_0) {
-      clearInterval($timer_0);
-      $timer_0 = null;
-    }
-  }
-  var $timer_1 = null;
-  function $timer_1_tick() {
-    state.beats__inst0 += 1;
-    __n0.textContent = "beats " + String(state.beats__inst0);
-  }
-  function $timer_1_sync() {
-    if (!$timer_1) {
-      $timer_1 = setInterval($timer_1_tick, 250);
-    } else if (false) {
-      clearInterval($timer_1);
-      $timer_1 = null;
-    }
-  }
   function __sngl_init() {
-    __n0.textContent = "beats " + String(state.beats__inst0);
+    __n0.textContent = "beats " + String(state.beats__inst1);
     __n1.textContent = String(state.seconds);
-    $timer_0_sync();
-    $timer_1_sync();
   }
   __sngl_init();
+  __effects0_settle();
+  window.addEventListener("pagehide", __snglTeardown);
 })();
 </script>
 </body></html>

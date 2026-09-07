@@ -29,10 +29,10 @@ func waitForText(t *testing.T, read func() string, want func(string) bool, what 
 // A timer fires in a real browser, and a timer written in a child component
 // fires too.
 //
-// `timer` is an ordinary component now: html overrides it with its own
-// primitive, passTimerPrimitive takes that out of the tree, and the emitted
-// script arms setInterval. Nothing about that is visible in a page that merely
-// renders, which is why this drives Chrome rather than reading the output.
+// `timer` is an ordinary component, and html's override is an ordinary body:
+// an `effect` keyed on the interval, bracketing setInterval and clearInterval.
+// Nothing about that is visible in a page that merely renders, which is why
+// this drives Chrome rather than reading the output.
 func TestTimer_FiresInTheBrowser(t *testing.T) {
 	src := `
 import . "sngl:ui"
@@ -64,13 +64,15 @@ component main { window(title="H", href="/index.html") { App() } }
 	}, "the child component's timer to fire")
 }
 
-// The gate is the position the override places its primitive at, so a timer
-// under a branch that is not rendering is not armed -- and arming it when the
-// branch appears, and clearing it when the branch goes, is the same question.
+// The gate is the position the override places its bracket at, so a timer under
+// a branch that is not rendering is not armed -- and arming it when the branch
+// appears, and clearing it when the branch goes is the same question, answered
+// by the settle rather than by anything written here.
 //
-// The gate used to reach the emitter as a bare variable name, so a literal
-// `enabled=true` and a gate folded from an enclosing `if` both reduced to
-// nothing, which the emitter read as "always on".
+// This is the shape that needed the rule about instance election: an override
+// holding the setInterval handle in a var renders nothing, and a component that
+// renders nothing inside a reactive `if` is inlined rather than elected an
+// instance the branch would have to reconcile.
 func TestTimer_ABranchIsTheGate(t *testing.T) {
 	src := `
 import . "sngl:ui"

@@ -14,6 +14,7 @@
 
 import ui "sngl:ui"
 import time "sngl:time"
+import js "sngl:language/js"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -404,18 +405,48 @@ func backend<T>(v T) T
 
 // --- The timer ---
 //
-// A recurring deadline, which is not an element: it has no tag, renders no
-// node, and is the one primitive in this package that is a declaration rather
-// than a wildcard over the web's own vocabulary. passTimerPrimitive takes it
-// out of the tree, so nothing here renders it; the emitted script arms it with
-// setInterval.
-#[intrinsic("html:Timer")]
-component Timer(
-    interval time.duration,
-    enabled bool,
-    @tick,
-) {}
+// The web already schedules. `setInterval` takes a callback and a delay and
+// answers a handle, `clearInterval` gives the handle back, and that pair is
+// exactly a lifetime with a thing to release -- which is what `effect`
+// brackets. So this platform needs no timer primitive of its own: the override
+// below is an ordinary component body, and the two natives are the whole of
+// what html adds.
+//
+// The delay is declared as a duration rather than an int, so the call site
+// converts nothing. A duration's magnitude is milliseconds and a duration
+// reaches JavaScript as that number, which is the delay setInterval wants.
+#[js.native("setInterval")]
+func setInterval(f func(), delay time.duration) int
 
+#[js.native("clearInterval")]
+func clearInterval(handle int)
+
+// `enabled` is the effect's *position*, not part of its key. An effect lives as
+// long as the branch it is written in, so putting it under `if enabled` is what
+// makes toggling the gate a mount and an unmount -- the schedule is armed when
+// the branch appears and cleared when it goes, and neither is written here.
+//
+// `on = interval` is the key, because a running schedule is the same schedule
+// for as long as its period is unchanged; a new period ends the old lifetime
+// and begins a new one. A tick changes neither the key nor the position.
+//
+// `@unmount` takes the key it is tearing down rather than reading `interval`,
+// which by then already holds the next value -- but what this one needs is the
+// handle, which is state.
 component time.timer[platform] {
-    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+    var handle = 0
+
+    if enabled {
+        effect(
+            on = interval,
+            @mount(d) {
+                handle = setInterval(func() {
+                    tick()
+                }, d)
+            },
+            @unmount(d) {
+                clearInterval(handle)
+            },
+        )
+    }
 }
