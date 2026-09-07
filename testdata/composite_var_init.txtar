@@ -213,7 +213,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var first by remember { mutableStateOf(Node(value = 1, label = "one")) }
     var second by remember { mutableStateOf(Node(value = first.value, label = first.label)) }
-    val pair = remember { mutableStateListOf("", "") }
+    val pair = remember { mutableStateListOf(first.value, second.value) }
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Text(text = second.label, modifier = Modifier)
