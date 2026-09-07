@@ -179,12 +179,8 @@ func (s *Scope) Lookup(name string) (Symbol, bool) {
 }
 
 // LookupComponent walks the parent chain for a component bound to name,
-// skipping a binding of that name that is not one -- a node position accepts
-// nothing but a component, so a `var progress` in a body must not stop
-// `progress(value=…)` from naming the component of that name.
-//
-// Declared names only, for the reason Lookup gives; a caller resolving a
-// position a wildcard stands in consults WildcardMatches after missing here.
+// skipping a binding of that name that is not one: a node position accepts
+// nothing else. Declared names only, for the reason Lookup gives.
 func (s *Scope) LookupComponent(name string) (Symbol, bool) {
 	for sc := s; sc != nil; sc = sc.Parent {
 		sym, ok := sc.Symbols[name]
@@ -361,14 +357,10 @@ func (st *SymbolTable) LookupDeclaredComponent(name string) (Symbol, bool) {
 }
 
 // LookupRootComponent finds a component for this name from a package's root
-// scope outward, falling back to a wildcard component covering it. A component
-// name is a node position, which is one of the positions a wildcard stands in,
-// so this is one of the sites Scope.Lookup leaves the wildcard consult to.
-// Callers asking whether a name was *declared* want LookupDeclaredComponent.
-//
-// The root is where a name qualified by a package resolves, and where an
-// override's target resolves. A *bare* reference wants the lexical chain
-// instead: Scope.LookupComponent, via checker.lookupComponentInScope.
+// scope outward, falling back to a wildcard component covering it. For a name
+// qualified by a package and for an override's target; a bare reference wants
+// Scope.LookupComponent. Callers asking whether a name was *declared* want
+// LookupDeclaredComponent.
 //
 // A name covered by two wildcards in one scope is an ambiguity, reported by
 // the checker paths that hold a position to report it at (scopeWildcard); here

@@ -245,8 +245,7 @@ type checker struct {
 	unitBySuffix map[string]*ir.UnitDef
 
 	// bodyChecked is the components whose body pass2 has already walked. A
-	// body may register another component as it is checked, so the walk is
-	// resumable rather than a single range.
+	// body may register another as it is checked, so the walk is resumable.
 	bodyChecked map[*ir.Component]bool
 
 	// bodyComps is every component declared inside a body, in registration
@@ -2440,10 +2439,9 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	c.registerComponentDecl(comp, false)
 }
 
-// registerBodyComponent registers a component declared inside a body. The name
-// binds in the current scope instead of at file scope; nothing else about the
-// declaration differs, and the component joins Package.Components like any
-// other so pass2 checks its body and every backend emits it.
+// registerBodyComponent registers a component declared inside a body: the name
+// binds in the current scope instead of at file scope, and nothing else about
+// the declaration differs.
 func (c *checker) registerBodyComponent(comp *ast.ComponentDecl) *ir.Component {
 	return c.registerComponentDecl(comp, true)
 }
@@ -2460,8 +2458,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	// `component ui.X() { body }`, whose body the platform reads itself.
 	bare := comp.HasParens && len(comp.Props.Props) == 0 && comp.ChildrenType == nil
 	// An override merges into a declaration registered elsewhere in the
-	// package, so a body is not a place one can be written: there is nothing
-	// body-scoped about the declaration it would land on.
+	// package, so there is nothing body-scoped for one to land on.
 	if bodyLocal && (comp.Target != nil || strings.IndexByte(comp.Name, '.') > 0) {
 		c.error(comp.Pos, "an override may only be written at the root of a file")
 		return nil
@@ -2582,10 +2579,9 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 // whose body is checked must have been through here first.
 func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Component) []*ast.FuncDef {
 	var nestedFuncs []*ast.FuncDef
-	// bodyScope holds the names of the components this body declares, and is
-	// deliberately not installed as c.scope: the struct/enum/unit cases below
-	// still bind at package scope, and a scope this loop pushed would swallow
-	// them. pass2 rebuilds it from irComp.BodyComponents.
+	// bodyScope is deliberately not installed as c.scope: the struct/enum/unit
+	// cases below still bind at package scope, and a scope this loop pushed
+	// would swallow them.
 	var bodyScope *ir.Scope
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
@@ -3825,9 +3821,8 @@ func propParam(p *ir.Prop) *ir.Param {
 	return p.Sym
 }
 
-// declareBodyComponents rebinds the components comp's body declares. A scope
-// cannot span the two passes, so the symbols travel on comp.BodyComponents and
-// are declared again here.
+// declareBodyComponents rebinds the components comp's body declares: a scope
+// cannot span the two passes, so pass2 declares them again from the symbols.
 func (c *checker) declareBodyComponents(comp *ir.Component) {
 	for _, nested := range comp.BodyComponents {
 		c.declare(compDeclPos(nested), nested)
@@ -3835,8 +3830,7 @@ func (c *checker) declareBodyComponents(comp *ir.Component) {
 }
 
 // checkComponentBodies checks every component body in the package, including
-// one registered while another body was being checked -- a nested declaration
-// joins the same slice, whose length a range would have snapshotted.
+// one registered mid-walk -- a range would snapshot pkg.Components' length.
 func (c *checker) checkComponentBodies() {
 	for i := 0; i < len(c.pkg.Components); i++ {
 		comp := c.pkg.Components[i]
@@ -3861,9 +3855,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	defer func() { c.currentComponent = prevComp }()
 
 	// A body-local component sees the declarations of the body it was written
-	// in, itself included, and nothing else of it: the enclosing props and
-	// vars stay out, since a nested body is a separate render and no target
-	// closes one over the other's state.
+	// in, itself included, and none of that body's props or vars.
 	if owner := c.bodyOwner[comp]; owner != nil {
 		c.declareBodyComponents(owner)
 	}

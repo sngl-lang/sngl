@@ -186,10 +186,9 @@ func (c *checker) registerNestedMethods(recvName string, typeParams []ast.TypePa
 			continue
 		}
 
-		// Collision check: field/member/var on the receiver type. The
-		// component half goes through the current scope, since a component
-		// declared in a body binds there and never at the package root -- from
-		// the root the check found nothing and passed silently.
+		// Collision check: field/member/var on the receiver type. The component
+		// half goes through the current scope, since a component declared in a
+		// body binds there and never at the package root.
 		typeDecl, ok := c.symtab.LookupType(recvName)
 		if !ok {
 			if sym, ok2 := c.scope.Lookup(recvName); ok2 {

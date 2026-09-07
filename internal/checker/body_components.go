@@ -10,14 +10,9 @@ import (
 )
 
 // reportBodyComponentCollisions reports a body-local component whose emitted
-// name another declaration of this package would also emit. Interim, removed
-// by #198.
-//
-// Asked of the recursion cycles only, because those are the components
-// passNoInlineComponents leaves standing: everything else is substituted into
-// its caller with its state renamed per call site (__instN) and never reaches
-// a backend under its declared name. Which is what lets an ordinary body-local
-// component shadow a top-level one.
+// name another declaration of this package would also emit. Asked of the
+// recursion cycles only, since those are the components passNoInlineComponents
+// leaves standing. Interim, removed by #198.
 func (c *checker) reportBodyComponentCollisions() {
 	if c.pkg == nil || len(c.bodyComps) == 0 {
 		return
@@ -29,9 +24,7 @@ func (c *checker) reportBodyComponentCollisions() {
 			byName[comp.Name] = append(byName[comp.Name], comp)
 		}
 	}
-	// One report per colliding name, at the body-local declaration that came
-	// second: registration order, and so document order for a multi-file
-	// package, which is why the message names the other position too.
+	// One report per colliding name, at whichever declaration came second.
 	reported := map[string]bool{}
 	for _, comp := range c.bodyComps {
 		if !surviving[comp] || reported[comp.Name] {
@@ -64,8 +57,7 @@ func comparePos(a, b ast.Pos) int {
 }
 
 // recursiveComponents is every component of pkg that reaches itself through
-// the components it instantiates. Those are the ones passNoInlineComponents
-// leaves standing, so they are the ones whose declared name a backend emits.
+// the components it instantiates -- the ones a backend emits by name.
 func recursiveComponents(pkg *ir.Package) map[*ir.Component]bool {
 	own := make(map[*ir.Component]bool, len(pkg.Components))
 	for _, comp := range pkg.Components {

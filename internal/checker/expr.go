@@ -3252,10 +3252,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		}
 		return nil
 	case *ast.ComponentDecl:
-		// A declaration at the top of a component body was registered in
-		// pass1 (collectComponentDecls) and never reaches here. What does is
-		// one written in a nested block or a function body, which pass1 does
-		// not walk: it registers now, into the block's own scope.
+		// One at the top of a component body was registered in pass1
+		// (collectComponentDecls); what reaches here is one in a nested block
+		// or a function body, which pass1 does not walk.
 		c.registerBodyComponent(x)
 		return nil
 	case *ast.Comment:
@@ -4771,13 +4770,9 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 }
 
 // lookupComponentInScope resolves a bare component name through the scope
-// chain, the way every other identifier resolves; ir.SymbolTable
-// .LookupRootComponent is the same question asked of a package root, for a
-// qualified name.
-//
-// Going through the chain is also what keeps a platform-extension body,
-// checked against the stdlib scope, from picking up a same-named user
-// component in place of the platform's own blueprint.
+// chain, the way every other identifier resolves. Which is also what keeps a
+// platform-extension body, checked against the stdlib scope, from picking up a
+// same-named user component in place of the platform's blueprint.
 func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, bool) {
 	sym, ok := c.scope.LookupComponent(name)
 	if !ok {
