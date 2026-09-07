@@ -4171,15 +4171,10 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if comp != nil {
 				want = componentEventType(comp, arg.Name)
 			}
-			params := make([]*ir.Param, len(arg.Params.Params))
-			for i, p := range arg.Params.Params {
-				typ := c.bindParamType(p.Type, want, bindParamWhat(p.Name, "@"+arg.Name))
-				params[i] = &ir.Param{Name: p.Name, Type: typ}
-			}
-			fn := &ir.Func{Params: params}
+			fn := &ir.Func{Params: c.bindParams(arg.Params, want, "@"+arg.Name, "the event")}
 			// Check the handler body in a scoped context.
 			c.pushScope()
-			for _, p := range params {
+			for _, p := range fn.Params {
 				c.declare(arg.Pos, p)
 			}
 			restore := c.enterFuncBody()
@@ -4797,7 +4792,7 @@ func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 		c.error(x.Pos, "slot %q: a slot is declared in the component's parameter list, and populated only inside a call to it", x.Name)
 		return nil
 	}
-	if len(x.Args) > 0 {
+	if len(x.Args.Args) > 0 {
 		c.error(x.Pos, "the anonymous slot takes no arguments")
 	}
 	if c.rejectNodeInFuncBody(x.Pos, "") {
@@ -4807,8 +4802,9 @@ func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
 }
 
 func (c *checker) rejectSlotArgTypes(x *ast.SlotNode) {
-	for _, a := range x.Args {
-		if a.Type != nil {
+	for _, entry := range x.Args.Args {
+		a, ok := entry.(ast.Arg)
+		if ok && a.Type != nil {
 			c.error(*a.Type.ExprPos(), "a type annotates the name a population binds, and this `slot` is not a population")
 		}
 	}
@@ -4935,12 +4931,16 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
 func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
-	if len(sn.Args) != len(decl.Params) {
-		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args), len(decl.Params))
+	if len(sn.Args.Args) != len(decl.Params) {
+		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args.Args), len(decl.Params))
 	}
 	sc := &ir.SlotContent{}
 	c.pushScope()
-	for i, a := range sn.Args {
+	for i, entry := range sn.Args.Args {
+		a, ok := c.slotBindArg(sn.Name, entry)
+		if !ok {
+			continue
+		}
 		id, ok := a.Value.(*ast.IdentExpr)
 		if !ok {
 			c.error(*a.Value.ExprPos(), "slot %q: a population binds names, not expressions", sn.Name)

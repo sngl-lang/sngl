@@ -406,47 +406,6 @@
     }
   },
   {
-    "type": "bind_param",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "type": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "type_identifier",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
-    "type": "bind_param_list",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "bind_param",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "binding_arg",
     "named": true,
     "fields": {
@@ -519,6 +478,10 @@
         },
         {
           "type": "spread_expression",
+          "named": true
+        },
+        {
+          "type": "typed_arg",
           "named": true
         }
       ]
@@ -684,6 +647,10 @@
         {
           "type": "spread_expression",
           "named": true
+        },
+        {
+          "type": "typed_arg",
+          "named": true
         }
       ]
     }
@@ -708,7 +675,7 @@
       "required": true,
       "types": [
         {
-          "type": "bind_param_list",
+          "type": "func_param",
           "named": true
         },
         {
@@ -1008,6 +975,10 @@
         },
         {
           "type": "spread_expression",
+          "named": true
+        },
+        {
+          "type": "typed_arg",
           "named": true
         }
       ]
@@ -1347,6 +1318,32 @@
     }
   },
   {
+    "type": "typed_arg",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "unary_expression",
     "named": true,
     "fields": {
@@ -1414,6 +1411,10 @@
         {
           "type": "spread_expression",
           "named": true
+        },
+        {
+          "type": "typed_arg",
+          "named": true
         }
       ]
     }
@@ -1442,7 +1443,7 @@
       "required": true,
       "types": [
         {
-          "type": "bind_param_list",
+          "type": "func_param",
           "named": true
         },
         {
@@ -1538,6 +1539,10 @@
         },
         {
           "type": "statement_block",
+          "named": true
+        },
+        {
+          "type": "typed_arg",
           "named": true
         }
       ]

@@ -137,11 +137,10 @@ component App {
           (integer_literal)
           (var_handler
             (identifier)
-            (bind_param_list
-              (bind_param
-                name: (identifier)
-                type: (type_identifier
-                  (identifier))))
+            (func_param
+              name: (identifier)
+              type: (type_identifier
+                (identifier)))
             (statement_block
               (assignment_statement
                 target: (identifier)
@@ -154,11 +153,10 @@ component App {
           value: (identifier))
         (event_arg
           name: (identifier)
-          (bind_param_list
-            (bind_param
-              name: (identifier)
-              type: (type_identifier
-                (identifier))))
+          (func_param
+            name: (identifier)
+            type: (type_identifier
+              (identifier)))
           (statement_block
             (assignment_statement
               target: (identifier)
@@ -166,6 +164,43 @@ component App {
               value: (field_expression
                 operand: (identifier)
                 field: (identifier)))))))))
+
+================
+A slot population binds a name and a type
+================
+
+component App {
+    grid {
+        slot cell(row Row) {
+            text(value = row.title)
+        }
+    }
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (statement_block
+      (visual_node
+        component: (identifier)
+        (statement_block
+          (identifier)
+          (visual_node
+            component: (identifier)
+            (typed_arg
+              name: (identifier)
+              type: (type_identifier
+                (identifier)))
+            (statement_block
+              (visual_node
+                component: (identifier)
+                (named_arg
+                  name: (identifier)
+                  value: (field_expression
+                    operand: (identifier)
+                    field: (identifier)))))))))))
 
 ================
 If node

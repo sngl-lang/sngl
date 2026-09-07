@@ -303,12 +303,10 @@ VarDecl =
 VarSpec = IdentList [ Type ] [ assign Expr ] { VarHandler } .
 
 # Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
-VarHandler = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
-
-# The names a handler binds, at a VarHandler and at an EventArg both.
-BindParamList = BindParam { comma BindParam } [ comma ] .
-
-BindParam = ident [ Type ] .
+# The params are a ParamList, the same production a function's are: a handler
+# binds a name and may annotate its type, and the checker refuses the default
+# value the production also admits.
+VarHandler = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 
 # ── Functions ─────────────────────────────────────────────────────────────────
 #
@@ -458,15 +456,11 @@ ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr 
 # being supplied rather than rendered (a named slot renders as `name(args)`,
 # ordinary node syntax, with no keyword at all).
 #
-# The parenthesised list is expressions at both sites: insertion passes values,
-# population binds names, and an ident is an expression — so one production
-# parses both and the checker rules on which site it is.
-SlotNode = kw_slot [ ident [ lparen [ SlotArgList ] rparen ] ] [ StmtBlock ] .
-
-SlotArgList = SlotArg { comma SlotArg } [ comma ] .
-
-# LL(1) because nothing in Expr may be followed by FIRST(Type).
-SlotArg = Expr [ Type ] .
+# The parenthesised list is an ArgList, the same production a call's arguments
+# are: an ident is an expression, so one production parses both sites and the
+# checker rules on which it is -- and on the named, binding and event forms an
+# ArgList admits that a population does not.
+SlotNode = kw_slot [ ident [ lparen [ ArgList ] rparen ] ] [ StmtBlock ] .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
 
@@ -646,15 +640,21 @@ Arg =
 # 'at ident', with lparen vs lbrace disambiguating the params. The block is
 # part of the production, so `@click` alone is not an argument -- there is no
 # value form of an event reference.
-EventArg = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
+EventArg = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 
 # After consuming 'ident':
 #   assign → named arg
 #   lbrace → struct literal (not in ExprPostfixOp FIRST)
+#   ident  → the name-and-type a slot population binds
 #   else   → expression postfix chain (ExprPostfixOp handles dot-ident + struct lit)
+#
+# FIRST(Type) is disjoint from FIRST(ExprPostfixOp) and from every operator
+# ArgExprCont begins with, so the Type alternative needs no hint; the checker
+# refuses it anywhere but a population.
 IdentArgCont =
       assign Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
+    | Type
     | { ExprPostfixOp } ArgExprCont
     .
 

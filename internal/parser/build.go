@@ -843,8 +843,8 @@ func (b *builder) buildVarSpec(it nodeIter) ast.VarSpec {
 
 // buildAtHandler builds either of the two identical productions
 //
-//	VarHandler = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
-//	EventArg   = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
+//	VarHandler = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
+//	EventArg   = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 //
 // -- a handler declared on a var and one supplied as an argument are the same
 // construct in two positions, so they share a builder.
@@ -856,9 +856,9 @@ func (b *builder) buildAtHandler(it nodeIter) ast.EventHandler {
 		Name: nameTok.Literal,
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
-		it.skip() // lparen
-		if !it.done() && it.isNonTerminal() && it.symbol() == BindParamList {
-			h.Params.Params = b.buildBindParamList(it.enter())
+		lparen := it.shift()
+		if !it.done() && it.isNonTerminal() && it.symbol() == ParamList {
+			h.Params = b.buildParamList(it.enter(), lparen.Line)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -868,27 +868,6 @@ func (b *builder) buildAtHandler(it nodeIter) ast.EventHandler {
 		h.Body = b.buildStmtBlock(it.enter())
 	}
 	return h
-}
-
-func (b *builder) buildBindParamList(it nodeIter) []ast.Param {
-	var out []ast.Param
-	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == BindParam {
-			out = append(out, b.buildBindParam(it.enter()))
-			continue
-		}
-		it.skip() // comma
-	}
-	return out
-}
-
-func (b *builder) buildBindParam(it nodeIter) ast.Param {
-	tok := it.shift()
-	p := ast.Param{Pos: ast.Pos(b.posFromToken(tok)), Name: tok.Literal}
-	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
-		p.Type = b.buildType(it.enter())
-	}
-	return p
 }
 
 func (b *builder) buildIdentList(it nodeIter) []string {
@@ -1729,16 +1708,17 @@ func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDec
 }
 
 // Which site this is — anonymous insertion or population — is the checker's to
-// say; both spell their arguments as expressions.
+// say; both spell their arguments as an ArgList.
 func (b *builder) buildSlotNode(it nodeIter) *ast.SlotNode {
-	// SlotNode = kw_slot [ ident [ lparen [ SlotArgList ] rparen ] ] [ StmtBlock ] .
+	// SlotNode = kw_slot [ ident [ lparen [ ArgList ] rparen ] ] [ StmtBlock ] .
 	pos := b.posFromToken(it.shift()) // kw_slot
 	n := &ast.SlotNode{Pos: ast.Pos(pos)}
+	openLine := 0
 	for !it.done() {
 		if it.isNonTerminal() {
 			switch it.symbol() {
-			case SlotArgList:
-				n.Args = b.buildSlotArgList(it.enter())
+			case ArgList:
+				n.Args = b.buildBindArgList(it.enter(), openLine)
 			case StmtBlock:
 				n.Block = b.buildStmtBlock(it.enter())
 			default:
@@ -1750,39 +1730,12 @@ func (b *builder) buildSlotNode(it nodeIter) *ast.SlotNode {
 			n.Name = it.shift().Literal
 			continue
 		}
+		if it.tokenType() == LPAREN {
+			openLine = it.token().Line
+		}
 		it.skip() // lparen / rparen
 	}
 	return n
-}
-
-func (b *builder) buildSlotArgList(it nodeIter) []ast.SlotArg {
-	var out []ast.SlotArg
-	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == SlotArg {
-			if a, ok := b.buildSlotArg(it.enter()); ok {
-				out = append(out, a)
-			}
-			continue
-		}
-		it.skip() // comma
-	}
-	return out
-}
-
-func (b *builder) buildSlotArg(it nodeIter) (ast.SlotArg, bool) {
-	var a ast.SlotArg
-	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == Type {
-			a.Type = b.buildType(it.enter())
-			continue
-		}
-		if it.isNonTerminal() {
-			a.Value = b.buildExpr(it.enter())
-			continue
-		}
-		it.skip()
-	}
-	return a, a.Value != nil
 }
 
 // --- Expressions ---
@@ -2861,7 +2814,23 @@ func spansLines(openLine int, itemLines []int) bool {
 
 // --- Argument lists ---
 
+// buildArgList builds a call's arguments. A type written on one is refused
+// here: the ArgList production carries it for the slot population that binds a
+// name and a type, and this is the only place that knows which site it is.
 func (b *builder) buildArgList(it nodeIter, openLine int) ast.ArgList {
+	al := b.buildBindArgList(it, openLine)
+	for _, entry := range al.Args {
+		a, ok := entry.(ast.Arg)
+		if ok && a.Type != nil {
+			b.errorf(ast.Pos(*a.Type.ExprPos()), "a type annotates the name a slot population binds: an argument passes a value")
+		}
+	}
+	return al
+}
+
+// buildBindArgList is buildArgList for the slot population, which may write a
+// type on the name it binds.
+func (b *builder) buildBindArgList(it nodeIter, openLine int) ast.ArgList {
 	// ArgList = Arg { (comma | semi) Arg } .
 	var al ast.ArgList
 	var lines []int
@@ -3029,9 +2998,14 @@ func (b *builder) buildArg(it nodeIter) ast.ArgOrEventHandler {
 func (b *builder) buildIdentArgCont(it nodeIter, identTok Token) ast.ArgOrEventHandler {
 	// IdentArgCont = assign Expr
 	//             | StructLitBody { ExprPostfixOp } ArgExprCont
+	//             | Type
 	//             | { ExprPostfixOp } ArgExprCont
 	if it.done() {
 		return ast.Arg{Value: b.tokenToExpr(identTok)}
+	}
+
+	if it.isNonTerminal() && it.symbol() == Type {
+		return ast.Arg{Value: b.tokenToExpr(identTok), Type: b.buildType(it.enter())}
 	}
 
 	// Check first element

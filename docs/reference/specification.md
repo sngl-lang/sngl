@@ -802,11 +802,7 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ "=" Expr ] { VarHandler }
 
-VarHandler = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
-
-BindParamList = BindParam { "," BindParam } [ "," ]
-
-BindParam = IDENT [ Type ]
+VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 ```
 
@@ -1093,11 +1089,12 @@ Arg =
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
-EventArg = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
+EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
+    | Type
     | { ExprPostfixOp } ArgExprCont
 
 ArgExprCont = 
@@ -1191,11 +1188,7 @@ IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
-SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
-
-SlotArgList = SlotArg { "," SlotArg } [ "," ]
-
-SlotArg = Expr [ Type ]
+SlotNode = "slot" [ IDENT [ "(" [ ArgList ] ")" ] ] [ StmtBlock ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1621,11 +1614,7 @@ IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
-SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
-
-SlotArgList = SlotArg { "," SlotArg } [ "," ]
-
-SlotArg = Expr [ Type ]
+SlotNode = "slot" [ IDENT [ "(" [ ArgList ] ")" ] ] [ StmtBlock ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1664,11 +1653,7 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ "=" Expr ] { VarHandler }
 
-VarHandler = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
-
-BindParamList = BindParam { "," BindParam } [ "," ]
-
-BindParam = IDENT [ Type ]
+VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 ```
 
@@ -1802,11 +1787,12 @@ Arg =
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
-EventArg = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
+EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
+    | Type
     | { ExprPostfixOp } ArgExprCont
 
 ArgExprCont = 

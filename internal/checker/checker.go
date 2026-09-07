@@ -4207,7 +4207,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 				continue
 			}
 			restore := c.fileOf(varPos(v))
-			h.Func.Params = c.buildVarHandlerParams(h.AST, v.Type)
+			h.Func.Params = c.bindParams(h.AST.Params, v.Type, "@"+h.Name, "the assignment")
 			c.pushScope()
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)
