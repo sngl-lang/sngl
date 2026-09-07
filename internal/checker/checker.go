@@ -1544,14 +1544,6 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
 
-func (c *checker) registerStruct(s *ast.StructDef) {
-	sd := c.buildStructDef(s)
-	c.applyMarks(s, sd)
-	c.declPkg().Structs = append(c.declPkg().Structs, sd)
-	c.bindDeclared(c.claimTopLevel(s.Name, s.Pos, bindDecl, ""), sd)
-	c.registerNestedMethods(sd.Name, s.TypeParams, s.Funcs())
-}
-
 // registerStructShell registers a struct's name and type parameters without
 // resolving its fields, so the type is visible for forward and mutually
 // recursive references. resolveStructBody fills in the fields (and nested
@@ -1591,6 +1583,41 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 	// condition the fields do.
 	sd.TypeParams = c.resolveTypeParams(sd.AST.TypeParams)
 	c.registerNestedMethods(sd.Name, sd.AST.TypeParams, sd.AST.Funcs())
+}
+
+// registerBodyType registers a struct, enum or unit written inside a component
+// or function body. It still joins the package's IR, which is the only
+// collection a backend emits a type declaration from, but the name binds
+// through c.declare in the body's own scope rather than through claimTopLevel.
+func (c *checker) registerBodyType(stmt ast.Stmt) ir.Symbol {
+	switch s := stmt.(type) {
+	case *ast.StructDef:
+		sd := c.buildStructDef(s)
+		c.applyMarks(s, sd)
+		c.declPkg().Structs = append(c.declPkg().Structs, sd)
+		c.declare(s.Pos, sd)
+		c.registerNestedMethods(sd.Name, s.TypeParams, s.Funcs())
+		return sd
+	case *ast.EnumDef:
+		ed := c.buildEnumDef(s)
+		c.applyMarks(s, ed)
+		c.declPkg().Enums = append(c.declPkg().Enums, ed)
+		c.declare(s.Pos, ed)
+		c.registerNestedMethods(ed.Name, nil, s.Funcs())
+		return ed
+	case *ast.UnitDef:
+		ud := c.buildUnitDef(s)
+		c.applyMarks(s, ud)
+		c.declPkg().Units = append(c.declPkg().Units, ud)
+		c.declare(s.Pos, ud)
+		// A suffix is matched on a literal with no scope to hand it, so the
+		// map stays package-wide even though the type name does not.
+		for _, suffix := range ud.Suffixes {
+			c.unitBySuffix[suffix.Name] = ud
+		}
+		return ud
+	}
+	return nil
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {
@@ -2517,27 +2544,40 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	c.finishDefaultSlot(irComp)
 	popTypeParams()
 
+	// Open across the collect and closed again before the component's own name
+	// is bound: that binding is the package's, and binding it from in here
+	// would put it where nothing outside the body can see it.
+	c.pushScope()
+	bodyTypeScope := c.scope
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
+	c.popScope()
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
 
 	// The component's type parameters travel with its methods, which is what
 	// puts them in scope for a signature and a body resolved from here: this
-	// is past popTypeParams, and the pop cannot move -- the loop above
-	// registers structs, enums and units into the package, and a name
-	// declared while a type-parameter scope is open goes away with it.
+	// is past popTypeParams, and the pop cannot move -- a name declared while
+	// a type-parameter scope is open goes away with it.
 	// buildFunc pushes what it is handed, so handing it the parameters is the
 	// same fix collectComponentDecls makes for a body `var`.
+	//
+	// The body-type scope is reopened for the same reason: a nested method's
+	// signature may name a type the body declared.
+	c.scope = bodyTypeScope
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, comp.TypeParams, nestedFuncs)
+	c.popScope()
 	c.claimComponentAPI(comp, irComp)
 }
 
 // collectComponentDecls walks a component body for nested declarations,
-// hoisting struct/enum/unit decls to package scope (no target has a
-// per-component type scope) and attaching vars and consts to irComp. The
-// nested func defs are returned rather than registered, because the caller
-// decides what receiver they get.
+// recording struct/enum/unit decls on irComp.BodyTypes and attaching vars and
+// consts to irComp. The nested func defs are returned rather than registered,
+// because the caller decides what receiver they get.
+//
+// The caller must have a scope open for the body's type names: registerBodyType
+// binds into the current one, and it must be gone again before the component
+// itself is bound.
 //
 // checkComponentBody declares comp.Vars into the body scope, so a component
 // whose body is checked must have been through here first.
@@ -2545,12 +2585,10 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
-		case *ast.StructDef:
-			c.registerStruct(s)
-		case *ast.EnumDef:
-			c.registerEnum(s)
-		case *ast.UnitDef:
-			c.registerUnit(s)
+		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+			if sym := c.registerBodyType(s); sym != nil {
+				irComp.BodyTypes = append(irComp.BodyTypes, sym)
+			}
 		case *ast.ConstDecl, *ast.VarDecl:
 			// A state declaration's annotation may name the component's type
 			// parameters -- `var last T` is most of what a generic component
@@ -3732,6 +3770,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
+	c.declareBodyTypes(comp)
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
 	}
@@ -3763,6 +3802,15 @@ func propParam(p *ir.Prop) *ir.Param {
 	}
 	p.Sym.Type = p.Type
 	return p.Sym
+}
+
+// declareBodyTypes binds the types a component body declared into the scope
+// pass2 is about to check that body in. They travel on the component because
+// there is nowhere at package scope to look them up, which is the point.
+func (c *checker) declareBodyTypes(comp *ir.Component) {
+	for _, sym := range comp.BodyTypes {
+		c.declare(declPos(sym), sym)
+	}
 }
 
 func (c *checker) checkComponentBody(comp *ir.Component) {
@@ -3824,6 +3872,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
+
+	c.declareBodyTypes(comp)
 
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
@@ -3893,6 +3943,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // already checked above
 			case *ast.FuncDef:
 				continue // already checked above
+			case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+				continue // registered in pass1, bound by declareBodyTypes
 			default:
 				if s := c.checkStmt(stmt); s != nil {
 					if w, ok := s.(*ir.Window); ok {

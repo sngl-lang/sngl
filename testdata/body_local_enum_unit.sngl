@@ -1,0 +1,20 @@
+import . "sngl:ui"
+
+func phase() int {
+    enum Phase {
+        start
+        done
+    }
+    unit tick { tk, kt = 10tk }
+
+    var p = Phase.done
+    var elapsed = 3tk
+    if p == Phase.done {
+        return elapsed.value
+    }
+    return 0
+}
+
+component main {
+    text(value="${phase()}")
+}

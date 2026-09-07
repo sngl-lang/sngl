@@ -1,0 +1,27 @@
+import . "sngl:ui"
+
+// A struct written in a component body is scoped to that body.
+component bodyLocalStruct {
+    struct Local {
+        a int
+    }
+
+    var here = Local{a=1}
+
+    text(value="${here.a}")
+}
+
+// The same in a function body, where the declaration is a statement.
+func bodyLocalInFunc() int {
+    struct Local {
+        a int
+    }
+
+    var v = Local{a=2}
+    return v.a
+}
+
+component main {
+    bodyLocalStruct()
+    text(value="${bodyLocalInFunc()}")
+}

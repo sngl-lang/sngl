@@ -1,0 +1,21 @@
+import . "sngl:ui"
+
+struct Local {
+    a int
+}
+
+func takesFileScoped(v Local) => v.a
+
+// Type identity is per-declaration: this Local shadows the file-scope one and
+// is a second, incompatible type rather than another name for it.
+func inner() int {
+    struct Local {
+        a int
+    }
+
+    return takesFileScoped(Local{a=1}) // ERROR(check) "cannot pass Local as Local"
+}
+
+component main {
+    text(value="${inner()}")
+}

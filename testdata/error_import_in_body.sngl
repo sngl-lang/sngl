@@ -1,0 +1,24 @@
+import . "sngl:ui"
+
+component inComponent {
+    import q "sngl:seq" // ERROR(check) "import is only allowed at file scope"
+
+    for var i = q.count(3) {
+        text(value="${i}")
+    }
+}
+
+func inFunc() int {
+    import r "sngl:seq" // ERROR(check) "import is only allowed at file scope"
+
+    var total = 0
+    for var i = r.count(3) {
+        total = total + i
+    }
+    return total
+}
+
+component main {
+    inComponent()
+    text(value="${inFunc()}")
+}

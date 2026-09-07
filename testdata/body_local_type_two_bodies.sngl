@@ -1,0 +1,37 @@
+import . "sngl:ui"
+
+// Two bodies may each declare Local: the name is the body's, not the package's.
+component first {
+    struct Local {
+        a int
+    }
+
+    var here = Local{a=1}
+
+    text(value="${here.a}")
+}
+
+component second {
+    struct Local {
+        b string
+    }
+
+    var here = Local{b="two"}
+
+    text(value=here.b)
+}
+
+func third() int {
+    struct Local {
+        c int
+    }
+
+    var v = Local{c=3}
+    return v.c
+}
+
+component main {
+    first()
+    second()
+    text(value="${third()}")
+}
