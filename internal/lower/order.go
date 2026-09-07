@@ -71,6 +71,8 @@ var orderConstraints = []orderConstraint{
 
 	{"NoAsyncReactive", "NoComputed",
 		"it introduces sync state vars that NoComputed would otherwise inline away"},
+	{"NoReactivity", "NoAsyncCalls",
+		"the updater statements a state write is followed by are what has to run on the UI thread, and they land in the posted closure only by sitting after the assignment when this pass splits the body"},
 	{"NoAsyncReactive", "NoReactivity",
 		"the settle vars it synthesizes have to be visible to the dep analysis as reactive state"},
 	{"NoComputed", "NoReactivity",

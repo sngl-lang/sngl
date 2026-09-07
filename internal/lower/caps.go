@@ -23,13 +23,23 @@ import "strings"
 // than language limitations: setting them to true requests the corresponding
 // lowering even when the language could handle the construct directly.
 type Features struct {
-	Toggle           bool // can emit x!! natively
-	Ternary          bool // can emit a ? b : c natively
-	Lambda           bool // can emit closures natively
-	Ref              bool // can emit ref<T> natively
-	Unit             bool // can emit unit types natively
-	Enum             bool // can emit enum types natively
-	AsyncReactive    bool // can handle async in reactive contexts natively
+	Toggle        bool // can emit x!! natively
+	Ternary       bool // can emit a ? b : c natively
+	Lambda        bool // can emit closures natively
+	Ref           bool // can emit ref<T> natively
+	Unit          bool // can emit unit types natively
+	Enum          bool // can emit enum types natively
+	AsyncReactive bool // can handle async in reactive contexts natively
+	// AsyncCalls says a call to a function that does not complete now can be
+	// emitted where it is written. JavaScript awaits it and Kotlin suspends;
+	// Go has neither, so on Go the call runs on the goroutine that made it --
+	// which on a UI target is the goroutine drawing the screen.
+	//
+	// False requests passAsyncOffload, which moves the call to a goroutine and
+	// posts the answer back through the target's own scheduler. A platform for
+	// which no goroutine is the wrong one -- an html route handler already runs
+	// on its own -- sets it back to true, the way html re-enables Ternary.
+	AsyncCalls       bool
 	Computed         bool // can handle computed vars natively
 	ListLambdas      bool // can emit xs.filter(f) / xs.map(f) natively
 	Reactivity       bool // can handle reactive deps natively (false → explicit updater stmts)
@@ -77,6 +87,15 @@ type Features struct {
 	// correct, just less direct. A platform declaring this must implement
 	// codegen.ChildInserter.
 	InsertBefore bool
+	// AsyncPost says the platform can run a closure back on the thread it
+	// draws on, and answers lower.AsyncPostIntrinsic with the call that does
+	// it. Without it there is nowhere for a blocking call's answer to land,
+	// and passAsyncOffload refuses the program rather than writing a state
+	// update onto a goroutine that does not own the widgets.
+	//
+	// A platform declaring it must register an emitter for that id; codegen's
+	// tests check the two against each other.
+	AsyncPost bool
 	// Effects says the platform emits an `effect` node itself and wants it left
 	// standing. A framework whose own model already brackets a lifetime keyed
 	// on a value -- Compose's DisposableEffect is one -- expresses the
@@ -96,6 +115,7 @@ func AllFeatures() Features {
 		Unit:             true,
 		Enum:             true,
 		AsyncReactive:    true,
+		AsyncCalls:       true,
 		Computed:         true,
 		ListLambdas:      true,
 		Reactivity:       true,
@@ -117,6 +137,7 @@ func (f Features) ToLowerCaps() Caps {
 		NoUnit:             !f.Unit,
 		NoEnum:             !f.Enum,
 		NoAsyncReactive:    !f.AsyncReactive,
+		NoAsyncCalls:       !f.AsyncCalls,
 		NoComputed:         !f.Computed,
 		NoListLambdas:      !f.ListLambdas,
 		NoReactivity:       !f.Reactivity,
@@ -129,6 +150,7 @@ func (f Features) ToLowerCaps() Caps {
 		FocusOrder:         f.FocusOrder,
 		Canvas:             f.Canvas,
 		ReactiveCanvas:     f.ReactiveCanvas,
+		AsyncPost:          f.AsyncPost,
 		NoEffects:          !f.Effects,
 		InsertBefore:       f.InsertBefore,
 	}
@@ -145,6 +167,8 @@ type Caps struct {
 	NoUnit          bool // unit values → underlying int
 	NoEnum          bool // enum members → int constants
 	NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
+	NoAsyncCalls    bool // a blocking call → a goroutine, and the answer posted back
+	AsyncPost       bool // the platform can run a closure back on its drawing thread
 	NoComputed      bool // computed vars → inlined exprs or memoized funcs
 	// StructComponents declares that components compile to structs with
 	// methods rather than functions/closures. User-declared `context #foo`
@@ -237,6 +261,12 @@ func (c Caps) String() string {
 	}
 	if c.NoAsyncReactive {
 		parts = append(parts, "NoAsyncReactive")
+	}
+	if c.NoAsyncCalls {
+		parts = append(parts, "NoAsyncCalls")
+	}
+	if c.AsyncPost {
+		parts = append(parts, "AsyncPost")
 	}
 	if c.NoComputed {
 		parts = append(parts, "NoComputed")

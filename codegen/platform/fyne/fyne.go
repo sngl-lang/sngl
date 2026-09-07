@@ -49,6 +49,10 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// state var read by a draw func mutates.
 	f.Canvas = true
 	f.ReactiveCanvas = true
+	// fyne.Do queues onto the goroutine running the driver, which is the one
+	// that owns every widget -- so a blocking call can be moved off it and its
+	// answer written back. See async.go for the emitter.
+	f.AsyncPost = true
 	return f
 }
 

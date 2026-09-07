@@ -1,7 +1,12 @@
 # `dump --stage lowered --list` reports what a target resolves to: the caps its
 # platform and language ask for, and the passes those caps enable. This checks
-# the CLI answers for every shipping platform, and states the three facts about
+# the CLI answers for every shipping platform, and states the four facts about
 # targets the printout is the evidence for.
+#
+# NoAsyncCalls is on every Go target, because Go cannot suspend a function.
+# AsyncPost is on the two that can get back to the thread they draw on, and
+# bubbletea's absence from that list is why the same program it takes here is
+# refused as soon as it contains a blocking call -- see go_async_no_post.txt.
 #
 # The pass ORDER is not asserted here. It belongs to internal/lower, which
 # states it as pairwise constraints carrying their reasons (orderConstraints);
@@ -15,7 +20,7 @@
 # and each half of that is checked where it is decided.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
-stdout '^caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas,NoEffects$'
+stdout '^caps: NoTernary,NoAsyncReactive,NoAsyncCalls,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas,NoEffects$'
 stdout '^passes: \w+( → \w+)+$'
 stdout ' → Effect → '
 
@@ -31,7 +36,7 @@ stdout ' → Effect → '
 # appends tears its children down every render, so there is no identity for
 # anything to ask about.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout '^caps: NoTernary,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas,ReactiveCanvas,NoEffects$'
+stdout '^caps: NoTernary,NoAsyncReactive,NoAsyncCalls,AsyncPost,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas,ReactiveCanvas,NoEffects$'
 ! stdout 'SlotChildInstances'
 cp stdout fyne.txt
 
