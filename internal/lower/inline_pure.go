@@ -653,12 +653,6 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
 		case *ir.NodeInst:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
-			// A prop lambda is the enclosing scope of its own body: a
-			// parameter a user handler names but the emit passes no argument
-			// for is the one this lambda receives.
-			for _, f := range propLambdas(n) {
-				f.Block = substituteEventsUnder(f.Block, handlers, f, under)
-			}
 			for i := range n.Handlers {
 				h := &n.Handlers[i]
 				if h.Func == nil {
@@ -677,13 +671,21 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
-			// Leaf/imperative — no nested Emit that this pass would
-			// substitute.
+			// No child statement list of their own; the lambda walk below is
+			// what reaches an emit written inside one of their expressions.
 		case *ir.Emit:
 			// Emit already handled at top of loop; reaching here means
 			// no matching handler — pass-through.
 		default:
 			panic(fmt.Sprintf("substituteEvents: unhandled %T", n))
+		}
+		// A lambda is a body too, and every statement can carry one in its
+		// expressions -- `h = setInterval(func() { tick() }, d)` is an Assign,
+		// which the switch above treats as a leaf. A lambda is also the
+		// enclosing scope of its own block: a parameter a user handler names
+		// but the emit passes no argument for is the one this lambda receives.
+		for _, f := range lambdaBodiesIn(s) {
+			f.Block = substituteEventsUnder(f.Block, handlers, f, under)
 		}
 		out = append(out, s)
 	}
@@ -792,6 +794,36 @@ func propLambdas(n *ir.NodeInst) []*ir.Func {
 			out = append(out, lam.Func)
 		}
 	}
+	return out
+}
+
+// lambdaBodiesIn reports the lambdas one statement holds in its own
+// expressions -- a prop's value, a call's argument, an assignment's right-hand
+// side -- and stops at the first nested statement, so it never enters a body
+// the caller's own descent is about to walk.
+//
+// Outermost only, for the same reason: a lambda written inside another is
+// reached by recursing through the outer one's block, and visiting it here as
+// well would substitute into it twice.
+func lambdaBodiesIn(s ir.Stmt) []*ir.Func {
+	var out []*ir.Func
+	root := true
+	_ = ir.Walk(s, func(n ir.Node) error {
+		if root {
+			root = false
+			return nil
+		}
+		if _, isStmt := n.(ir.Stmt); isStmt {
+			return ir.SkipDir
+		}
+		if lam, ok := n.(*ir.Lambda); ok {
+			if lam.Func != nil {
+				out = append(out, lam.Func)
+			}
+			return ir.SkipDir
+		}
+		return nil
+	})
 	return out
 }
 
