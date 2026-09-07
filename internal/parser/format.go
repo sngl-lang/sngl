@@ -1550,7 +1550,11 @@ func (f *formatter) writeSlotNode(s *ast.SlotNode) {
 			if i > 0 {
 				f.write(", ")
 			}
-			f.writeExpr(a)
+			f.writeExpr(a.Value)
+			if a.Type != nil {
+				f.write(" ")
+				f.writeType(a.Type)
+			}
 		}
 		f.write(")")
 	}

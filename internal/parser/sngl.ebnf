@@ -303,7 +303,14 @@ VarDecl =
 VarSpec = IdentList [ Type ] [ assign Expr ] { VarHandler } .
 
 # Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
-VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+VarHandler = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
+
+# The names a handler binds, at a VarHandler and at an EventArg both. The type
+# is optional because the signature is the compiler's already; the checker is
+# what holds a written one to it.
+BindParamList = BindParam { comma BindParam } [ comma ] .
+
+BindParam = ident [ Type ] .
 
 # ── Functions ─────────────────────────────────────────────────────────────────
 #
@@ -458,7 +465,12 @@ ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr 
 # parses both and the checker rules on which site it is.
 SlotNode = kw_slot [ ident [ lparen [ SlotArgList ] rparen ] ] [ StmtBlock ] .
 
-SlotArgList = Expr { comma Expr } [ comma ] .
+SlotArgList = SlotArg { comma SlotArg } [ comma ] .
+
+# LL(1) because nothing in Expr may be followed by FIRST(Type). The type is
+# meaningless at an insertion, but only the checker knows which site this is,
+# so it stays on the shared production and the checker refuses it there.
+SlotArg = Expr [ Type ] .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
 
@@ -638,7 +650,7 @@ Arg =
 # 'at ident', with lparen vs lbrace disambiguating the params. The block is
 # part of the production, so `@click` alone is not an argument -- there is no
 # value form of an event reference.
-EventArg = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+EventArg = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
 
 # After consuming 'ident':
 #   assign → named arg

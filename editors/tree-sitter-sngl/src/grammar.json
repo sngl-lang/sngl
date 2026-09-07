@@ -436,6 +436,80 @@
         ]
       }
     },
+    "bind_param_list": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "bind_param"
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": ","
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "bind_param"
+                }
+              ]
+            }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": ","
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "bind_param": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "name",
+            "content": {
+              "type": "SYMBOL",
+              "name": "identifier"
+            }
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "FIELD",
+                "name": "type",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "type_identifier"
+                }
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        ]
+      }
+    },
     "var_declaration": {
       "type": "CHOICE",
       "members": [
@@ -583,7 +657,7 @@
                   "members": [
                     {
                       "type": "SYMBOL",
-                      "name": "identifier_list"
+                      "name": "bind_param_list"
                     },
                     {
                       "type": "BLANK"
@@ -2318,7 +2392,7 @@
                   "members": [
                     {
                       "type": "SYMBOL",
-                      "name": "identifier_list"
+                      "name": "bind_param_list"
                     },
                     {
                       "type": "BLANK"

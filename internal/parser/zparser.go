@@ -129,79 +129,82 @@ const (
 	VarDecl           = Symbol(107) // VarDecl
 	VarSpec           = Symbol(108) // VarSpec
 	VarHandler        = Symbol(109) // VarHandler
-	FuncDecl          = Symbol(110) // FuncDecl
-	TargetIndex       = Symbol(111) // TargetIndex
-	FuncTail          = Symbol(112) // FuncTail
-	FuncBodyTail      = Symbol(113) // FuncBodyTail
-	FuncName          = Symbol(114) // FuncName
-	TypeParamList     = Symbol(115) // TypeParamList
-	TypeParam         = Symbol(116) // TypeParam
-	ParamList         = Symbol(117) // ParamList
-	Param             = Symbol(118) // Param
-	ComponentDecl     = Symbol(119) // ComponentDecl
-	CompParamList     = Symbol(120) // CompParamList
-	CompParam         = Symbol(121) // CompParam
-	CompParamBody     = Symbol(122) // CompParamBody
-	SlotParam         = Symbol(123) // SlotParam
-	CompParamTail     = Symbol(124) // CompParamTail
-	VisualOrStmt      = Symbol(125) // VisualOrStmt
-	IncDecOp          = Symbol(126) // IncDecOp
-	StatementPrimary  = Symbol(127) // StatementPrimary
-	IfNode            = Symbol(128) // IfNode
-	ForNode           = Symbol(129) // ForNode
-	SlotNode          = Symbol(130) // SlotNode
-	SlotArgList       = Symbol(131) // SlotArgList
-	AssignOp          = Symbol(132) // AssignOp
-	Expr              = Symbol(133) // Expr
-	TernaryExpr       = Symbol(134) // TernaryExpr
-	OrExpr            = Symbol(135) // OrExpr
-	AndExpr           = Symbol(136) // AndExpr
-	EqExpr            = Symbol(137) // EqExpr
-	CmpExpr           = Symbol(138) // CmpExpr
-	AddExpr           = Symbol(139) // AddExpr
-	MulExpr           = Symbol(140) // MulExpr
-	EqOp              = Symbol(141) // EqOp
-	CmpOp             = Symbol(142) // CmpOp
-	AddOp             = Symbol(143) // AddOp
-	MulOp             = Symbol(144) // MulOp
-	UnaryExpr         = Symbol(145) // UnaryExpr
-	PostfixExpr       = Symbol(146) // PostfixExpr
-	CondExpr          = Symbol(147) // CondExpr
-	CondOrExpr        = Symbol(148) // CondOrExpr
-	CondAndExpr       = Symbol(149) // CondAndExpr
-	CondEqExpr        = Symbol(150) // CondEqExpr
-	CondCmpExpr       = Symbol(151) // CondCmpExpr
-	CondAddExpr       = Symbol(152) // CondAddExpr
-	CondMulExpr       = Symbol(153) // CondMulExpr
-	CondUnaryExpr     = Symbol(154) // CondUnaryExpr
-	CondPostfixExpr   = Symbol(155) // CondPostfixExpr
-	CondPrimary       = Symbol(156) // CondPrimary
-	CondPostfixOp     = Symbol(157) // CondPostfixOp
-	ExprPostfixOp     = Symbol(158) // ExprPostfixOp
-	StmtPostfixOp     = Symbol(159) // StmtPostfixOp
-	PrimaryExpr       = Symbol(160) // PrimaryExpr
-	ImportExpr        = Symbol(161) // ImportExpr
-	ListBody          = Symbol(162) // ListBody
-	ListElem          = Symbol(163) // ListElem
-	StructLitBody     = Symbol(164) // StructLitBody
-	AnonStructLit     = Symbol(165) // AnonStructLit
-	AnonField         = Symbol(166) // AnonField
-	FuncLit           = Symbol(167) // FuncLit
-	ArgList           = Symbol(168) // ArgList
-	Arg               = Symbol(169) // Arg
-	EventArg          = Symbol(170) // EventArg
-	IdentArgCont      = Symbol(171) // IdentArgCont
-	ArgExprCont       = Symbol(172) // ArgExprCont
-	NonIdentPrimary   = Symbol(173) // NonIdentPrimary
-	Type              = Symbol(174) // Type
-	TypeList          = Symbol(175) // TypeList
-	FuncTypeParamList = Symbol(176) // FuncTypeParamList
-	FuncTypeParam     = Symbol(177) // FuncTypeParam
+	BindParamList     = Symbol(110) // BindParamList
+	BindParam         = Symbol(111) // BindParam
+	FuncDecl          = Symbol(112) // FuncDecl
+	TargetIndex       = Symbol(113) // TargetIndex
+	FuncTail          = Symbol(114) // FuncTail
+	FuncBodyTail      = Symbol(115) // FuncBodyTail
+	FuncName          = Symbol(116) // FuncName
+	TypeParamList     = Symbol(117) // TypeParamList
+	TypeParam         = Symbol(118) // TypeParam
+	ParamList         = Symbol(119) // ParamList
+	Param             = Symbol(120) // Param
+	ComponentDecl     = Symbol(121) // ComponentDecl
+	CompParamList     = Symbol(122) // CompParamList
+	CompParam         = Symbol(123) // CompParam
+	CompParamBody     = Symbol(124) // CompParamBody
+	SlotParam         = Symbol(125) // SlotParam
+	CompParamTail     = Symbol(126) // CompParamTail
+	VisualOrStmt      = Symbol(127) // VisualOrStmt
+	IncDecOp          = Symbol(128) // IncDecOp
+	StatementPrimary  = Symbol(129) // StatementPrimary
+	IfNode            = Symbol(130) // IfNode
+	ForNode           = Symbol(131) // ForNode
+	SlotNode          = Symbol(132) // SlotNode
+	SlotArgList       = Symbol(133) // SlotArgList
+	SlotArg           = Symbol(134) // SlotArg
+	AssignOp          = Symbol(135) // AssignOp
+	Expr              = Symbol(136) // Expr
+	TernaryExpr       = Symbol(137) // TernaryExpr
+	OrExpr            = Symbol(138) // OrExpr
+	AndExpr           = Symbol(139) // AndExpr
+	EqExpr            = Symbol(140) // EqExpr
+	CmpExpr           = Symbol(141) // CmpExpr
+	AddExpr           = Symbol(142) // AddExpr
+	MulExpr           = Symbol(143) // MulExpr
+	EqOp              = Symbol(144) // EqOp
+	CmpOp             = Symbol(145) // CmpOp
+	AddOp             = Symbol(146) // AddOp
+	MulOp             = Symbol(147) // MulOp
+	UnaryExpr         = Symbol(148) // UnaryExpr
+	PostfixExpr       = Symbol(149) // PostfixExpr
+	CondExpr          = Symbol(150) // CondExpr
+	CondOrExpr        = Symbol(151) // CondOrExpr
+	CondAndExpr       = Symbol(152) // CondAndExpr
+	CondEqExpr        = Symbol(153) // CondEqExpr
+	CondCmpExpr       = Symbol(154) // CondCmpExpr
+	CondAddExpr       = Symbol(155) // CondAddExpr
+	CondMulExpr       = Symbol(156) // CondMulExpr
+	CondUnaryExpr     = Symbol(157) // CondUnaryExpr
+	CondPostfixExpr   = Symbol(158) // CondPostfixExpr
+	CondPrimary       = Symbol(159) // CondPrimary
+	CondPostfixOp     = Symbol(160) // CondPostfixOp
+	ExprPostfixOp     = Symbol(161) // ExprPostfixOp
+	StmtPostfixOp     = Symbol(162) // StmtPostfixOp
+	PrimaryExpr       = Symbol(163) // PrimaryExpr
+	ImportExpr        = Symbol(164) // ImportExpr
+	ListBody          = Symbol(165) // ListBody
+	ListElem          = Symbol(166) // ListElem
+	StructLitBody     = Symbol(167) // StructLitBody
+	AnonStructLit     = Symbol(168) // AnonStructLit
+	AnonField         = Symbol(169) // AnonField
+	FuncLit           = Symbol(170) // FuncLit
+	ArgList           = Symbol(171) // ArgList
+	Arg               = Symbol(172) // Arg
+	EventArg          = Symbol(173) // EventArg
+	IdentArgCont      = Symbol(174) // IdentArgCont
+	ArgExprCont       = Symbol(175) // ArgExprCont
+	NonIdentPrimary   = Symbol(176) // NonIdentPrimary
+	Type              = Symbol(177) // Type
+	TypeList          = Symbol(178) // TypeList
+	FuncTypeParamList = Symbol(179) // FuncTypeParamList
+	FuncTypeParam     = Symbol(180) // FuncTypeParam
 )
 
-const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_breakkw_componentkw_constkw_continuekw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_slotkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameTypeParamListTypeParamParamListParamComponentDeclCompParamListCompParamCompParamBodySlotParamCompParamTailVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeSlotNodeSlotArgListAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPrimaryCondPostfixOpExprPostfixOpStmtPostfixOpPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgEventArgIdentArgContArgExprContNonIdentPrimaryTypeTypeListFuncTypeParamListFuncTypeParam"
+const SymbolNames = "EOFampassignatattr_openbangbangbangcoloncommadotellipsiseqfat_arrowfloat_litgtgtehashi18n_case_endi18n_case_fulli18n_case_starti18n_str_endi18n_str_fulli18n_str_resumei18n_str_starti18n_triple_endi18n_triple_fulli18n_triple_startidentint_litkw_breakkw_componentkw_constkw_continuekw_elsekw_enumkw_forkw_funckw_ifkw_importkw_returnkw_slotkw_structkw_unitkw_varlandlbracelbracketlorlparenltlteminusminus_assignminus_minusnative_valueneqpct_assignpercentplusplus_assignplus_plusquestionraw_strrbracerbracketrparensemislashslash_assignslashdashstarstar_assignstr_endstr_fullstr_resumestr_starttriple_endtriple_fulltriple_startunit_litwhite_spaceInterpStrTripleInterpI18nInterpStrI18nTripleI18nPlaceholderI18nThirdArgMsgBodyTailMsgCaseSelectorMsgBodyMacroAttrDocumentStmtStmtBlockImportDeclStructDeclStructBodyItemStructBodyDeclStructFieldEnumDeclEnumBodyItemEnumMemberUnitDeclConstDeclConstSpecIdentListVarDeclVarSpecVarHandlerBindParamListBindParamFuncDeclTargetIndexFuncTailFuncBodyTailFuncNameTypeParamListTypeParamParamListParamComponentDeclCompParamListCompParamCompParamBodySlotParamCompParamTailVisualOrStmtIncDecOpStatementPrimaryIfNodeForNodeSlotNodeSlotArgListSlotArgAssignOpExprTernaryExprOrExprAndExprEqExprCmpExprAddExprMulExprEqOpCmpOpAddOpMulOpUnaryExprPostfixExprCondExprCondOrExprCondAndExprCondEqExprCondCmpExprCondAddExprCondMulExprCondUnaryExprCondPostfixExprCondPrimaryCondPostfixOpExprPostfixOpStmtPostfixOpPrimaryExprImportExprListBodyListElemStructLitBodyAnonStructLitAnonFieldFuncLitArgListArgEventArgIdentArgContArgExprContNonIdentPrimaryTypeTypeListFuncTypeParamListFuncTypeParam"
 
-var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 249, 261, 269, 280, 287, 294, 300, 307, 312, 321, 330, 337, 346, 353, 359, 363, 369, 377, 380, 386, 388, 391, 396, 408, 419, 431, 434, 444, 451, 455, 466, 475, 483, 490, 496, 504, 510, 514, 519, 531, 540, 544, 555, 562, 570, 580, 589, 599, 610, 622, 630, 641, 650, 662, 675, 685, 700, 712, 723, 730, 738, 745, 754, 762, 766, 775, 785, 795, 809, 823, 834, 842, 854, 864, 872, 881, 890, 899, 906, 913, 923, 931, 942, 950, 962, 970, 983, 992, 1001, 1006, 1019, 1032, 1041, 1054, 1063, 1076, 1088, 1096, 1112, 1118, 1125, 1133, 1144, 1152, 1156, 1167, 1173, 1180, 1186, 1193, 1200, 1207, 1211, 1216, 1221, 1226, 1235, 1246, 1254, 1264, 1275, 1285, 1296, 1307, 1318, 1331, 1346, 1357, 1370, 1383, 1396, 1407, 1417, 1425, 1433, 1446, 1459, 1468, 1475, 1482, 1485, 1493, 1505, 1516, 1531, 1535, 1543, 1560, 1573}
+var SymbolIndex = [...]uint16{0, 3, 6, 12, 14, 23, 27, 35, 40, 45, 48, 56, 58, 67, 76, 78, 81, 85, 98, 112, 127, 139, 152, 167, 181, 196, 212, 229, 234, 241, 249, 261, 269, 280, 287, 294, 300, 307, 312, 321, 330, 337, 346, 353, 359, 363, 369, 377, 380, 386, 388, 391, 396, 408, 419, 431, 434, 444, 451, 455, 466, 475, 483, 490, 496, 504, 510, 514, 519, 531, 540, 544, 555, 562, 570, 580, 589, 599, 610, 622, 630, 641, 650, 662, 675, 685, 700, 712, 723, 730, 738, 745, 754, 762, 766, 775, 785, 795, 809, 823, 834, 842, 854, 864, 872, 881, 890, 899, 906, 913, 923, 936, 945, 953, 964, 972, 984, 992, 1005, 1014, 1023, 1028, 1041, 1054, 1063, 1076, 1085, 1098, 1110, 1118, 1134, 1140, 1147, 1155, 1166, 1173, 1181, 1185, 1196, 1202, 1209, 1215, 1222, 1229, 1236, 1240, 1245, 1250, 1255, 1264, 1275, 1283, 1293, 1304, 1314, 1325, 1336, 1347, 1360, 1375, 1386, 1399, 1412, 1425, 1436, 1446, 1454, 1462, 1475, 1488, 1497, 1504, 1511, 1514, 1522, 1534, 1545, 1560, 1564, 1572, 1589, 1602}
 
 func (s Symbol) String() string {
 	idx := int(s) - 0
@@ -222,7 +225,7 @@ var errorSets = [...][]Symbol{
 	{FuncLit, AnonStructLit, ListElem, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Expr, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rbracket, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, bang, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Expr, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, bang, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, ellipsis, bang, amp},
-	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Expr, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rparen, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, bang, amp},
+	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Expr, SlotArg, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rparen, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, bang, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, rparen, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, bang, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, Expr, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, bang, amp},
 	{FuncLit, AnonStructLit, ImportExpr, PrimaryExpr, PostfixExpr, UnaryExpr, MulExpr, AddExpr, CmpExpr, EqExpr, AndExpr, OrExpr, TernaryExpr, StructDecl, I18nTriple, I18nInterpStr, TripleInterp, InterpStr, unit_lit, triple_start, triple_full, str_start, str_full, star, raw_str, minus, lparen, lbracket, lbrace, kw_struct, kw_import, kw_func, kw_const, int_lit, ident, i18n_triple_start, i18n_triple_full, i18n_str_start, i18n_str_full, hash, float_lit, bang, amp},
@@ -302,7 +305,7 @@ var errorSets = [...][]Symbol{
 	{lbrace, ident},
 	{IdentList, lparen, ident},
 	{IdentList, rparen, ident},
-	{rparen, ident},
+	{BindParam, rparen, ident},
 	{ident},
 	{int_lit},
 	{assign},
@@ -1839,6 +1842,94 @@ func (p *Parser) AssignOp() (r []int32) {
 	return p.stop(r, accept, errorSet)
 state1:
 	accept, errorSet = true, 0
+	return p.stop(r, accept, errorSet)
+}
+
+// BindParam grammar:
+//
+//	BindParam = ident [ Type ] .
+//
+//	State 0
+//		on  ident
+//			shift and goto state 1
+//	State 1
+//		Accept
+//		on  ident, kw_enum, kw_func, kw_struct, kw_unit
+//			call Type and goto state 2
+//	State 2
+//		Accept
+//
+// BindParam is used internally from Parse.
+func (p *Parser) BindParam() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(BindParam), 0)
+	// state0:
+	accept, errorSet = false, 91
+	switch Symbol(p.tok.Ch) {
+	case ident:
+		r = append(r, p.shift())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 81
+	switch Symbol(p.tok.Ch) {
+	case ident, kw_enum, kw_func, kw_struct, kw_unit:
+		r = p.add(r, p.Type())
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state2:
+	accept, errorSet = true, 0
+	return p.stop(r, accept, errorSet)
+}
+
+// BindParamList grammar:
+//
+//	# The names a handler binds, at a VarHandler and at an EventArg both. The type
+//	# is optional because the signature is the compiler's already; the checker is
+//	# what holds a written one to it.
+//	BindParamList = BindParam { comma BindParam } [ comma ] .
+//
+//	State 0
+//		on  ident
+//			call BindParam and goto state 1
+//	State 1
+//		Accept
+//		on  comma
+//			shift and goto state 2
+//	State 2
+//		Accept
+//		on  ident
+//			call BindParam and goto state 1
+//
+// BindParamList is used internally from Parse.
+func (p *Parser) BindParamList() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(BindParamList), 0)
+	// state0:
+	accept, errorSet = false, 91
+	switch Symbol(p.tok.Ch) {
+	case ident:
+		r = p.add(r, p.BindParam())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 155
+	switch Symbol(p.tok.Ch) {
+	case comma:
+		r = append(r, p.shift())
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state2:
+	accept, errorSet = true, 91
+	switch Symbol(p.tok.Ch) {
+	case ident:
+		r = p.add(r, p.BindParam())
+		goto state1
+	}
 	return p.stop(r, accept, errorSet)
 }
 
@@ -3531,7 +3622,7 @@ state1:
 //	# 'at ident', with lparen vs lbrace disambiguating the params. The block is
 //	# part of the production, so `@click` alone is not an argument -- there is no
 //	# value form of an event reference.
-//	EventArg = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+//	EventArg = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
 //
 //	State 0
 //		on  at
@@ -3548,7 +3639,7 @@ state1:
 //		on  rparen
 //			shift and goto state 4
 //		on  ident
-//			call IdentList and goto state 6
+//			call BindParamList and goto state 6
 //	State 4
 //		on  lbrace
 //			call StmtBlock and goto state 5
@@ -3596,7 +3687,7 @@ state3:
 		r = append(r, p.shift())
 		goto state4
 	case ident:
-		r = p.add(r, p.IdentList())
+		r = p.add(r, p.BindParamList())
 		goto state6
 	}
 	return p.stop(r, accept, errorSet)
@@ -6224,13 +6315,55 @@ state2:
 	return p.stop(r, accept, errorSet)
 }
 
-// SlotArgList grammar:
+// SlotArg grammar:
 //
-//	SlotArgList = Expr { comma Expr } [ comma ] .
+//	# LL(1) because nothing in Expr may be followed by FIRST(Type). The type is
+//	# meaningless at an insertion, but only the checker knows which site this is,
+//	# so it stays on the shared production and the checker refuses it there.
+//	SlotArg = Expr [ Type ] .
 //
 //	State 0
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
 //			call Expr and goto state 1
+//	State 1
+//		Accept
+//		on  ident, kw_enum, kw_func, kw_struct, kw_unit
+//			call Type and goto state 2
+//	State 2
+//		Accept
+//
+// SlotArg is used internally from Parse.
+func (p *Parser) SlotArg() (r []int32) {
+	accept, errorSet := false, 0
+	r = append(p.get(), -int32(SlotArg), 0)
+	// state0:
+	accept, errorSet = false, 13
+	switch Symbol(p.tok.Ch) {
+	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
+		r = p.add(r, p.Expr())
+		goto state1
+	}
+	return p.stop(r, accept, errorSet)
+state1:
+	accept, errorSet = true, 81
+	switch Symbol(p.tok.Ch) {
+	case ident, kw_enum, kw_func, kw_struct, kw_unit:
+		r = p.add(r, p.Type())
+		goto state2
+	}
+	return p.stop(r, accept, errorSet)
+state2:
+	accept, errorSet = true, 0
+	return p.stop(r, accept, errorSet)
+}
+
+// SlotArgList grammar:
+//
+//	SlotArgList = SlotArg { comma SlotArg } [ comma ] .
+//
+//	State 0
+//		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
+//			call SlotArg and goto state 1
 //	State 1
 //		Accept
 //		on  comma
@@ -6238,17 +6371,17 @@ state2:
 //	State 2
 //		Accept
 //		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 1
+//			call SlotArg and goto state 1
 //
 // SlotArgList is used internally from Parse.
 func (p *Parser) SlotArgList() (r []int32) {
 	accept, errorSet := false, 0
 	r = append(p.get(), -int32(SlotArgList), 0)
 	// state0:
-	accept, errorSet = false, 13
+	accept, errorSet = false, 12
 	switch Symbol(p.tok.Ch) {
 	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
+		r = p.add(r, p.SlotArg())
 		goto state1
 	}
 	return p.stop(r, accept, errorSet)
@@ -6261,10 +6394,10 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = true, 13
+	accept, errorSet = true, 12
 	switch Symbol(p.tok.Ch) {
 	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
+		r = p.add(r, p.SlotArg())
 		goto state1
 	}
 	return p.stop(r, accept, errorSet)
@@ -8000,7 +8133,7 @@ state4:
 // VarHandler grammar:
 //
 //	# Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
-//	VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+//	VarHandler = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
 //
 //	State 0
 //		on  at
@@ -8017,7 +8150,7 @@ state4:
 //		on  rparen
 //			shift and goto state 4
 //		on  ident
-//			call IdentList and goto state 6
+//			call BindParamList and goto state 6
 //	State 4
 //		on  lbrace
 //			call StmtBlock and goto state 5
@@ -8065,7 +8198,7 @@ state3:
 		r = append(r, p.shift())
 		goto state4
 	case ident:
-		r = p.add(r, p.IdentList())
+		r = p.add(r, p.BindParamList())
 		goto state6
 	}
 	return p.stop(r, accept, errorSet)

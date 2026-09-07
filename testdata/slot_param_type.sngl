@@ -1,0 +1,34 @@
+// A slot population's binding may name its type. The declaration carries the
+// types and no names, so a population names positions -- and a written type
+// has to agree with the position it names.
+
+import . "sngl:ui"
+
+struct Row {
+    title string
+}
+
+component table(rows list<Row>, slot cell(Row)) {
+    vbox {
+        for var r = rows {
+            cell(r)
+        }
+    }
+}
+
+component main {
+    vbox {
+        // Name only.
+        table(rows=[]) {
+            slot cell(row) {
+                text(value=row.title)
+            }
+        }
+        // The same binding, said out loud.
+        table(rows=[]) {
+            slot cell(row Row) {
+                text(value=row.title)
+            }
+        }
+    }
+}

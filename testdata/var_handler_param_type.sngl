@@ -1,0 +1,18 @@
+// A var handler's parameter is the value that changed, so the var's own type
+// is the signature it binds against.
+//
+// SKIP(codegen) "no backend passes a var handler its argument: html names the setter's parameter itself and inlines the body verbatim, so any other name is emitted undefined"
+
+import . "sngl:ui"
+
+component main {
+    var count = 0 @change(v int) {
+        count = v
+    }
+    vbox {
+        button(text="+", @click {
+            count = count + 1
+        })
+        text(value="{count}")
+    }
+}

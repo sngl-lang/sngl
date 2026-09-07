@@ -114,6 +114,60 @@ component App {
               value: (integer_literal))))))))
 
 ================
+Handler params carry an optional type
+================
+
+component App {
+    var count = 0 @change(v int) {
+        count = v
+    }
+    input(value=count, @change(e ChangeEvent) { count = e.value })
+}
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (statement_block
+      (var_declaration
+        (var_spec
+          (identifier_list
+            (identifier))
+          (integer_literal)
+          (var_handler
+            (identifier)
+            (bind_param_list
+              (bind_param
+                name: (identifier)
+                type: (type_identifier
+                  (identifier))))
+            (statement_block
+              (assignment_statement
+                target: (identifier)
+                operator: (assignment_operator)
+                value: (identifier))))))
+      (visual_node
+        component: (identifier)
+        (named_arg
+          name: (identifier)
+          value: (identifier))
+        (event_arg
+          name: (identifier)
+          (bind_param_list
+            (bind_param
+              name: (identifier)
+              type: (type_identifier
+                (identifier))))
+          (statement_block
+            (assignment_statement
+              target: (identifier)
+              operator: (assignment_operator)
+              value: (field_expression
+                operand: (identifier)
+                field: (identifier)))))))))
+
+================
 If node
 ================
 

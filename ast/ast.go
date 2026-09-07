@@ -431,8 +431,13 @@ type EventHandler struct {
 type SlotNode struct {
 	Pos   Pos
 	Name  string // "" for the anonymous slot
-	Args  []Expr
+	Args  []SlotArg
 	Block StmtBlock
+}
+
+type SlotArg struct {
+	Value Expr
+	Type  TypeExpr `json:",omitempty"`
 }
 
 // --- Visual nodes ---

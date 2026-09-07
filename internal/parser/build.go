@@ -843,8 +843,8 @@ func (b *builder) buildVarSpec(it nodeIter) ast.VarSpec {
 
 // buildAtHandler builds either of the two identical productions
 //
-//	VarHandler = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
-//	EventArg   = at ident [ lparen [ IdentList ] rparen ] StmtBlock .
+//	VarHandler = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
+//	EventArg   = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
 //
 // -- a handler declared on a var and one supplied as an argument are the same
 // construct in two positions, so they share a builder.
@@ -857,11 +857,8 @@ func (b *builder) buildAtHandler(it nodeIter) ast.EventHandler {
 	}
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		it.skip() // lparen
-		if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
-			names, positions := b.buildIdentListWithPos(it.enter())
-			for i, name := range names {
-				h.Params.Params = append(h.Params.Params, ast.Param{Pos: positions[i], Name: name})
-			}
+		if !it.done() && it.isNonTerminal() && it.symbol() == BindParamList {
+			h.Params.Params = b.buildBindParamList(it.enter())
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -871,6 +868,27 @@ func (b *builder) buildAtHandler(it nodeIter) ast.EventHandler {
 		h.Body = b.buildStmtBlock(it.enter())
 	}
 	return h
+}
+
+func (b *builder) buildBindParamList(it nodeIter) []ast.Param {
+	var out []ast.Param
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == BindParam {
+			out = append(out, b.buildBindParam(it.enter()))
+			continue
+		}
+		it.skip() // comma
+	}
+	return out
+}
+
+func (b *builder) buildBindParam(it nodeIter) ast.Param {
+	tok := it.shift()
+	p := ast.Param{Pos: ast.Pos(b.posFromToken(tok)), Name: tok.Literal}
+	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+		p.Type = b.buildType(it.enter())
+	}
+	return p
 }
 
 func (b *builder) buildIdentList(it nodeIter) []string {
@@ -1737,19 +1755,34 @@ func (b *builder) buildSlotNode(it nodeIter) *ast.SlotNode {
 	return n
 }
 
-func (b *builder) buildSlotArgList(it nodeIter) []ast.Expr {
-	// SlotArgList = Expr { comma Expr } [ comma ] .
-	var out []ast.Expr
+func (b *builder) buildSlotArgList(it nodeIter) []ast.SlotArg {
+	var out []ast.SlotArg
 	for !it.done() {
-		if it.isNonTerminal() {
-			if e := b.buildExpr(it.enter()); e != nil {
-				out = append(out, e)
+		if it.isNonTerminal() && it.symbol() == SlotArg {
+			if a, ok := b.buildSlotArg(it.enter()); ok {
+				out = append(out, a)
 			}
 			continue
 		}
 		it.skip() // comma
 	}
 	return out
+}
+
+func (b *builder) buildSlotArg(it nodeIter) (ast.SlotArg, bool) {
+	var a ast.SlotArg
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == Type {
+			a.Type = b.buildType(it.enter())
+			continue
+		}
+		if it.isNonTerminal() {
+			a.Value = b.buildExpr(it.enter())
+			continue
+		}
+		it.skip()
+	}
+	return a, a.Value != nil
 }
 
 // --- Expressions ---

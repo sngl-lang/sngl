@@ -802,7 +802,11 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ "=" Expr ] { VarHandler }
 
-VarHandler = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+VarHandler = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
+
+BindParamList = BindParam { "," BindParam } [ "," ]
+
+BindParam = IDENT [ Type ]
 
 ```
 
@@ -1089,7 +1093,7 @@ Arg =
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
-EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+EventArg = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr
@@ -1189,7 +1193,9 @@ ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ Con
 
 SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
 
-SlotArgList = Expr { "," Expr } [ "," ]
+SlotArgList = SlotArg { "," SlotArg } [ "," ]
+
+SlotArg = Expr [ Type ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1617,7 +1623,9 @@ ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ Con
 
 SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
 
-SlotArgList = Expr { "," Expr } [ "," ]
+SlotArgList = SlotArg { "," SlotArg } [ "," ]
+
+SlotArg = Expr [ Type ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1656,7 +1664,11 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ "=" Expr ] { VarHandler }
 
-VarHandler = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+VarHandler = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
+
+BindParamList = BindParam { "," BindParam } [ "," ]
+
+BindParam = IDENT [ Type ]
 
 ```
 
@@ -1790,7 +1802,7 @@ Arg =
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
-EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+EventArg = "@" IDENT [ "(" [ BindParamList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr

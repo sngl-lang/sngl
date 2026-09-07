@@ -635,7 +635,7 @@ func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 		sc := n.Slots[name]
 		sn := &ast.SlotNode{Name: name, Block: c.convertStmtBlock(sc.Body)}
 		for _, p := range sc.Params {
-			sn.Args = append(sn.Args, &ast.IdentExpr{Name: p.Name})
+			sn.Args = append(sn.Args, ast.SlotArg{Value: &ast.IdentExpr{Name: p.Name}})
 		}
 		out = append(out, sn)
 	}
