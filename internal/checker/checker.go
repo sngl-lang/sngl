@@ -249,6 +249,10 @@ type checker struct {
 	// resumable rather than a single range.
 	bodyChecked map[*ir.Component]bool
 
+	// bodyComps is every component declared inside a body, in registration
+	// order. Interim, for the #198 collision report only.
+	bodyComps []*ir.Component
+
 	// bodyOwner is the body a body-local component was declared in, so its own
 	// body can be checked with its siblings in scope.
 	bodyOwner map[*ir.Component]*ir.Component
@@ -2550,6 +2554,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	if bodyLocal {
+		c.bodyComps = append(c.bodyComps, irComp)
 		c.declare(comp.Pos, irComp)
 	} else {
 		c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
@@ -3431,6 +3436,7 @@ func (c *checker) pass2() {
 	}
 	// A window body may declare one too.
 	c.checkComponentBodies()
+	c.reportBodyComponentCollisions()
 
 	c.checkPackageBody()
 
