@@ -1,3 +1,4 @@
+// SKIP(codegen) "names sngl:platform/html, which a per-platform harness does not register; the html output is pinned by body_local_type_override.txtar"
 import ui "sngl:ui"
 import "sngl:platform/html"
 
