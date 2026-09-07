@@ -1886,9 +1886,7 @@ state2:
 
 // BindParamList grammar:
 //
-//	# The names a handler binds, at a VarHandler and at an EventArg both. The type
-//	# is optional because the signature is the compiler's already; the checker is
-//	# what holds a written one to it.
+//	# The names a handler binds, at a VarHandler and at an EventArg both.
 //	BindParamList = BindParam { comma BindParam } [ comma ] .
 //
 //	State 0
@@ -6317,9 +6315,7 @@ state2:
 
 // SlotArg grammar:
 //
-//	# LL(1) because nothing in Expr may be followed by FIRST(Type). The type is
-//	# meaningless at an insertion, but only the checker knows which site this is,
-//	# so it stays on the shared production and the checker refuses it there.
+//	# LL(1) because nothing in Expr may be followed by FIRST(Type).
 //	SlotArg = Expr [ Type ] .
 //
 //	State 0

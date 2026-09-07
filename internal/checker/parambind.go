@@ -7,16 +7,17 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// bindParamType returns want, and errors at written naming what unless written is nil, ir.Type.Equal to want, or want is nil (no signature: written stands).
+// A written type is held to the signature; an unknown want means there is none.
 func (c *checker) bindParamType(written ast.TypeExpr, want *ir.Type, what string) *ir.Type {
+	unknown := want == nil || want.Kind == ir.TypeDyn
 	if written == nil {
-		if want == nil {
+		if unknown {
 			return TypDyn
 		}
 		return want
 	}
 	got := c.resolveType(written)
-	if want == nil {
+	if unknown {
 		return got
 	}
 	if !want.Equal(got) {

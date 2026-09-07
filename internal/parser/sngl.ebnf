@@ -305,9 +305,7 @@ VarSpec = IdentList [ Type ] [ assign Expr ] { VarHandler } .
 # Left-factored: both forms start with 'at ident'; lparen vs lbrace disambiguates.
 VarHandler = at ident [ lparen [ BindParamList ] rparen ] StmtBlock .
 
-# The names a handler binds, at a VarHandler and at an EventArg both. The type
-# is optional because the signature is the compiler's already; the checker is
-# what holds a written one to it.
+# The names a handler binds, at a VarHandler and at an EventArg both.
 BindParamList = BindParam { comma BindParam } [ comma ] .
 
 BindParam = ident [ Type ] .
@@ -467,9 +465,7 @@ SlotNode = kw_slot [ ident [ lparen [ SlotArgList ] rparen ] ] [ StmtBlock ] .
 
 SlotArgList = SlotArg { comma SlotArg } [ comma ] .
 
-# LL(1) because nothing in Expr may be followed by FIRST(Type). The type is
-# meaningless at an insertion, but only the checker knows which site this is,
-# so it stays on the shared production and the checker refuses it there.
+# LL(1) because nothing in Expr may be followed by FIRST(Type).
 SlotArg = Expr [ Type ] .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
