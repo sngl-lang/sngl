@@ -18,6 +18,7 @@ func checkedPkgForTest(t *testing.T, src string) *ir.Package {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		IsMain:    true,
 		Platforms: []ir.Platform{&Generator{}},
+		Languages: htmlLangs(),
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	for _, d := range diags {

@@ -63,6 +63,7 @@ func generateMainPage(t *testing.T, src string) string {
 	pkg, diags := checker.Check(doc, &checker.Config{
 		IsMain:    true,
 		Platforms: []ir.Platform{gen},
+		Languages: htmlLangs(),
 		Targets:   []ir.StaticTarget{{Platform: gen.PlatformIdentifier(), Language: lang.LanguageIdentifier()}},
 	})
 	if len(diags) > 0 {

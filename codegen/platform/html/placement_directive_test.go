@@ -38,7 +38,7 @@ component main {
 		IsMain:    true,
 		Platforms: []ir.Platform{gen},
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
-		Languages: []ir.Language{lang},
+		Languages: htmlLangs(lang),
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
