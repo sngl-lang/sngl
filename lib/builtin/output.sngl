@@ -1,7 +1,7 @@
 import . "sngl:internal/marks"
 
-// The build directive: which language and platform pairs the package
-// compiles to, and the options each target is built with.
+// Declares what the package compiles to: which language and platform
+// pairs to build, and the options each is built with.
 //
 // Written at the root of a file, once per package -- any file of the
 // package may carry it. Two forms, and they mean the same thing:
@@ -14,15 +14,23 @@ import . "sngl:internal/marks"
 //
 //     output(lang = "go", platform = "bubbletea")
 //
+// The block form groups targets under a language, so a package that
+// ships more than one names each platform once:
+//
+//     output {
+//         js {
+//             html(minify = true)
+//         }
+//         go {
+//             bubbletea()
+//         }
+//     }
+//
 // A build that names its targets on the command line ignores the
 // directive; a build that names none compiles exactly what is written
 // here.
 //
-// The declaration exists so that the name is recognised the way every
-// other built-in is -- by its mark, through the scope -- which is what
-// makes it shadowable: a package declaring its own `output` component
-// gets that component and no build directive. The compiler reads the
-// block itself rather than rendering it, so the slot is what lets the
-// language and platform nodes inside it parse as children.
+// A package that declares its own `output` component gets that
+// component, and has no build directive.
 #[builtin("output")]
 component output(slot _) {}
