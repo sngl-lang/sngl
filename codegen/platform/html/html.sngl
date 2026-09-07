@@ -427,14 +427,7 @@ component time.timer[platform] {
     if enabled {
         effect(
             on=interval,
-            @mount(d) {
-                handle = setInterval(
-                    func() {
-                        tick()
-                    },
-                    d,
-                )
-            },
+            @mount(d) { handle = setInterval(tick, d) },
             @unmount(d) {
                 clearInterval(handle)
             },

@@ -1,0 +1,46 @@
+// An event used as a function has to fit the signature it is handed to.
+//
+// The sugar builds the lambda an author would have written, so what it accepts
+// is what one could write: a callback taking nothing emits with no arguments, a
+// callback taking one value forwards it. Anything else has no honest lambda --
+// there is no payload to invent and none to drop silently -- and is reported
+// against the event, because by then the name has resolved and "undefined"
+// would be the wrong thing to say.
+
+import . "sngl:ui"
+
+func takesString(f func(string)) {
+    f("x")
+}
+
+func takesTwo(f func(int, int)) {
+    f(1, 2)
+}
+
+func takesAnswer(f func() int) {
+    f()
+}
+
+component mismatched(@fired int) {
+    effect(@mount {
+        takesString(fired) // ERROR(check) "cannot be used as"
+    })
+}
+
+component tooMany(@fired int) {
+    effect(@mount {
+        takesTwo(fired) // ERROR(check) "cannot be used as"
+    })
+}
+
+component wantsValue(@fired int) {
+    effect(@mount {
+        takesAnswer(fired) // ERROR(check) "an event answers nothing"
+    })
+}
+
+component main {
+    mismatched(@fired(v) {})
+    tooMany(@fired(v) {})
+    wantsValue(@fired(v) {})
+}
