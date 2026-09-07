@@ -1,0 +1,12 @@
+// An increment is an assignment the parser spells shorter, and a view body
+// has nowhere to run either.
+
+import . "sngl:ui"
+
+var n = 0
+
+component main {
+    n++ // ERROR(check) "not a statement in a view body"
+
+    text(value="{n}")
+}

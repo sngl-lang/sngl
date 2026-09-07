@@ -2795,6 +2795,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
+		if c.rejectStmtInViewBody(x.Pos, targetDescription("an assignment", "to", x.Target)) {
+			return nil
+		}
 		return &ir.Assign{AST: x, Target: targetExpr, Op: x.Op, Value: valueExpr}
 	case *ast.ToggleStmt:
 		restoreLvalue := c.suspendNarrowing()
@@ -2804,11 +2807,23 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
+		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
+			return nil
+		}
 		return &ir.Toggle{AST: x, Target: targetExpr}
 	case *ast.IncDecStmt:
 		op := ast.BinAdd
 		if x.IsDec {
 			op = ast.BinSub
+		}
+		what := "an increment"
+		if x.IsDec {
+			what = "a decrement"
+		}
+		// Reported before the rewrite, or the AssignStmt it lowers to would
+		// report the same statement as an assignment the source never wrote.
+		if c.rejectStmtInViewBody(x.Pos, targetDescription(what, "of", x.Target)) {
+			return nil
 		}
 		lowered := &ast.AssignStmt{
 			Pos:    x.Pos,
@@ -2862,6 +2877,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn {
 				valExpr = wrapIfNeeded(valExpr, c.returnType)
 			}
+		}
+		if c.rejectStmtInViewBody(x.Pos, "a return") {
+			return nil
 		}
 		return &ir.Return{AST: x, Value: valExpr}
 	case *ast.BreakStmt:
@@ -4605,15 +4623,38 @@ func (c *checker) rejectNodeInFuncBody(pos ast.Pos, name string) bool {
 // callee reaches -- arrives here as a call with no Func, and the rule has no
 // business guessing what such a name will turn out to be.
 func (c *checker) rejectCallInViewBody(pos ast.Pos, fn *ir.Func) bool {
-	if c.funcDepth > 0 || fn == nil {
+	if fn == nil {
 		return false
 	}
 	what := "a function call"
 	if fn.Name != "" {
 		what = "a call to " + strconv.Quote(fn.Name)
 	}
+	return c.rejectStmtInViewBody(pos, what)
+}
+
+// rejectStmtInViewBody is the same rule for the statements that carry no
+// callee to look at first: an assignment, an increment, a toggle and a return.
+// Each reached a backend the way the call did and was then honoured or dropped
+// depending on which -- fyne wrote `m.n = 5` into its builder while bubbletea
+// and html discarded it, and a `return` truncated bubbletea's builder into a
+// View() calling a renderMain it never went on to define.
+func (c *checker) rejectStmtInViewBody(pos ast.Pos, what string) bool {
+	if c.funcDepth > 0 {
+		return false
+	}
 	c.error(pos, "%s is not a statement in a view body: a view body describes a rendered tree, so nothing runs it -- put it in a handler, a function, or an effect's @mount", what)
 	return true
+}
+
+// targetDescription names the target a diagnostic is about. Only a plain
+// identifier is quoted: spelling a field or index target back out here would
+// be a second formatter.
+func targetDescription(what, prep string, target ast.Expr) string {
+	if id, ok := target.(*ast.IdentExpr); ok {
+		return what + " " + prep + " " + strconv.Quote(id.Name)
+	}
+	return what
 }
 
 // nodeDescription names the node a diagnostic is about, falling back to the
