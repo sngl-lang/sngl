@@ -127,7 +127,7 @@ func LowerUnitLiteralGo(lit *ir.Literal) (string, bool) {
 	if suf == nil {
 		return "", false
 	}
-	num, ok := parseUnitNumber(lit.Value, lit.Suffix)
+	num, ok := parseUnitNumber(lit.Value)
 	if !ok {
 		return "", false
 	}
@@ -178,11 +178,10 @@ func formatFloat(v float64) string {
 	return strconv.FormatFloat(v, 'g', -1, 64)
 }
 
-// parseUnitNumber strips the suffix off the literal's raw source and
-// parses the remaining numeric portion. Handles `_` digit separators.
-func parseUnitNumber(raw, suffix string) (float64, bool) {
-	numStr := strings.TrimSuffix(raw, suffix)
-	numStr = strings.ReplaceAll(numStr, "_", "")
+// parseUnitNumber parses a unit literal's numeric half. Handles `_` digit
+// separators.
+func parseUnitNumber(num string) (float64, bool) {
+	numStr := strings.ReplaceAll(num, "_", "")
 	if numStr == "" {
 		return 0, false
 	}

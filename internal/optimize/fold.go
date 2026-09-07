@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -328,7 +327,7 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 	if unit.Suffix == "" || num.Suffix != "" {
 		return nil
 	}
-	amount, err := strconv.ParseFloat(strings.TrimSuffix(unit.Value, unit.Suffix), 64)
+	amount, err := strconv.ParseFloat(unit.Value, 64)
 	if err != nil {
 		return nil
 	}
@@ -348,7 +347,7 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 	if amount == math.Trunc(amount) && !math.IsInf(amount, 0) {
 		text = strconv.FormatInt(int64(amount), 10)
 	}
-	return &ir.Literal{Type: unit.Type, Value: text + unit.Suffix, Suffix: unit.Suffix}
+	return &ir.Literal{Type: unit.Type, Value: text, Suffix: unit.Suffix}
 }
 
 // isRef reports whether e denotes a reference. An expression with no type is

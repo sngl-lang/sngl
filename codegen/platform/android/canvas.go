@@ -143,7 +143,7 @@ func canvasIntProp(n *ir.NodeInst, name string) int {
 			continue
 		}
 		if lit, ok := p.Value.(*ir.Literal); ok {
-			raw := strings.TrimSuffix(lit.Value, lit.Suffix)
+			raw := lit.Value
 			if v, err := strconv.Atoi(raw); err == nil {
 				return v
 			}

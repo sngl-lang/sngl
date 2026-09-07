@@ -311,12 +311,18 @@ func parseHexChannels(raw string) (r, g, b, a int, ok bool) {
 }
 
 func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
+	// Value is the number and Suffix is the unit, the same split ir.Literal
+	// makes for every other kind: Raw is the spelling, Value is what it stands
+	// for. Carrying the spelling here instead left the suffix in both halves,
+	// so every consumer that wanted the magnitude trimmed it back off and
+	// every one that wanted the spelling risked writing it twice.
+	num := strings.TrimSuffix(x.Raw, x.Suffix)
 	ud, ok := c.unitBySuffix[x.Suffix]
 	if !ok {
 		c.error(x.Pos, "unknown unit suffix %q", x.Suffix)
-		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Value: x.Raw, Suffix: x.Suffix}
+		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Value: num, Suffix: x.Suffix}
 	}
-	return &ir.Literal{AST: &x.LiteralExpr, Type: ud.SymType(), Value: x.Raw, Suffix: x.Suffix}
+	return &ir.Literal{AST: &x.LiteralExpr, Type: ud.SymType(), Value: num, Suffix: x.Suffix}
 }
 
 func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {

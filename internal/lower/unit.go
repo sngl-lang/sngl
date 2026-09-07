@@ -3,7 +3,6 @@ package lower
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -131,7 +130,7 @@ func scaleUnitLiteral(lit *ir.Literal) (*ir.Literal, bool) {
 		}
 	}
 
-	raw := strings.TrimSuffix(lit.Value, lit.Suffix)
+	raw := lit.Value
 
 	if i, err := strconv.ParseInt(raw, 10, 64); err == nil {
 		scaled := float64(i) * factor

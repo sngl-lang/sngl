@@ -3374,7 +3374,7 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 			case ir.TypeNull:
 				return "null"
 			case ir.TypeUnit:
-				return fmt.Sprintf("%q", lit.Value)
+				return fmt.Sprintf("%q", lit.Value+lit.Suffix)
 			case ir.TypeStruct:
 				if ir.StringReprStruct(lit.Type) {
 					return fmt.Sprintf("%q", lit.Value)
