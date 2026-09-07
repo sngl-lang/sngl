@@ -11,14 +11,17 @@ component bodyLocalStruct {
     text(value="${here.a}")
 }
 
-// The same in a function body, where the declaration is a statement.
+// The same in a function body, where the declaration is a statement. The
+// field is deliberately not the one the component's Local carries: hoisting
+// either declaration to file scope makes the other's literal name a field
+// that declaration does not have.
 func bodyLocalInFunc() int {
     struct Local {
-        a int
+        b int
     }
 
-    var v = Local{a=2}
-    return v.a
+    var v = Local{b=2}
+    return v.b
 }
 
 component main {
