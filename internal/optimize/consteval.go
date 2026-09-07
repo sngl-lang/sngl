@@ -572,6 +572,27 @@ func parseLiteral(lit *ir.Literal) any {
 		return f
 	case ir.TypeString:
 		return lit.Value
+	case ir.TypeUnit:
+		// A unit value is its magnitude in the unit's base, so it evaluates
+		// like the number it is. Without this a unit literal was simply
+		// unevaluable, and anything holding one went with it -- most visibly a
+		// constant list, so `for var p = [20ms, 400ms]` did not unroll on a
+		// target that writes every iteration into its output, and rendered one
+		// element with its variable bound to nothing.
+		// Only a single-base unit: a magnitude is spellable again in the one
+		// base it reduces to, and a multi-base one -- `measurement`, whose
+		// value is a record of px/em/vw/vh/pct -- is not. Reducing one of
+		// those anyway dropped the unit on the way back and every rem and vw
+		// in a style came out as a bare number.
+		ud := ir.UnitDeclOf(lit.Type)
+		if ud == nil || !ud.IsSingleBase() {
+			return nil
+		}
+		mag, _, ok := ir.UnitMagnitude(lit)
+		if !ok {
+			return nil
+		}
+		return mag
 	case ir.TypeStruct:
 		// A target identity is opaque to the program but is a name to the
 		// compiler, so `PLATFORM == html.platform` folds the way the string
@@ -586,6 +607,12 @@ func parseLiteral(lit *ir.Literal) any {
 // irLiteral converts a Go value back to an IR Literal.
 // For strings, Raw stores the unquoted content (the formatter adds %q quoting).
 func irLiteral(val any, typ *ir.Type) *ir.Literal {
+	// A unit target comes first: the magnitude arrives as a float64 like any
+	// other number, and matching on the value alone would spell it back as a
+	// bare float and lose the unit.
+	if lit := unitLiteral(val, typ); lit != nil {
+		return lit
+	}
 	switch v := val.(type) {
 	case string:
 		return &ir.Literal{Type: ir.TypString, Value: v}
@@ -605,6 +632,31 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 		return &ir.Literal{Type: ir.TypNull, Value: "null"}
 	}
 	return nil
+}
+
+// unitLiteral spells a magnitude back as a literal of the unit type it came
+// from, in that unit's base: 1s evaluates to 1000 and returns as `1000ms`.
+// Normalising to the base rather than the written suffix is what a unit value
+// already is -- its magnitude per base, not its own spelling.
+func unitLiteral(val any, typ *ir.Type) *ir.Literal {
+	ud := ir.UnitDeclOf(typ)
+	if ud == nil || !ud.IsSingleBase() {
+		return nil
+	}
+	var mag float64
+	switch v := val.(type) {
+	case float64:
+		mag = v
+	case int:
+		mag = float64(v)
+	default:
+		return nil
+	}
+	bases := ud.Bases()
+	if len(bases) != 1 {
+		return nil
+	}
+	return &ir.Literal{Type: typ, Value: ir.FormatUnitMagnitude(mag), Suffix: bases[0].Name}
 }
 
 // intLitType returns typ when it is an integer type (preserving a sized

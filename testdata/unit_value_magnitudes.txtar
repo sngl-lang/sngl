@@ -106,7 +106,7 @@ func New() Model {
 	m.reduced = Measurement{Em: 18}
 	m.mixed = Measurement{Px: Measurement{Px: 1}.Px + Measurement{Pct: 2}.Px, Em: Measurement{Px: 1}.Em + Measurement{Pct: 2}.Em, Vw: Measurement{Px: 1}.Vw + Measurement{Pct: 2}.Vw, Vh: Measurement{Px: 1}.Vh + Measurement{Pct: 2}.Vh, Pct: Measurement{Px: 1}.Pct + Measurement{Pct: 2}.Pct}
 	m.short = time.Duration(100) * time.Millisecond
-	m.long = time.Duration(1) * time.Second
+	m.long = time.Duration(1000) * time.Millisecond
 	m.total = (m.short + m.long)
 	return m
 }
