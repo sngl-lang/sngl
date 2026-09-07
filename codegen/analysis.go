@@ -137,9 +137,12 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		a.Enums = append(a.Enums, e)
 	}
 
-	for _, u := range pkg.Units {
-		a.Units = append(a.Units, u)
-	}
+	// pkg.Units carries the units the *program* declares. A unit it merely
+	// uses -- `measurement`, declared in sngl:ui -- is not there, so a
+	// backend emitting a type per unit was emitting `Measurement{Px: 7}`
+	// against a type it never declared. Every unit reached by a type in the
+	// package is collected instead.
+	a.Units = collectUsedUnits(pkg)
 
 	for _, c := range pkg.Components {
 		a.Components = append(a.Components, c)

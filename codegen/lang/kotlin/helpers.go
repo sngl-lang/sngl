@@ -17,8 +17,8 @@ func translateIRLiteral(n *ir.Literal) string {
 	if n == nil {
 		return "null"
 	}
-	if n.Suffix != "" {
-		return fmt.Sprintf("%q", n.Value+n.Suffix)
+	if s, ok := UnitLiteralKt(n); ok {
+		return s
 	}
 	if n.Type != nil {
 		switch n.Type.Kind {

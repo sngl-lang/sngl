@@ -92,9 +92,8 @@ func irLiteralStaticValue(lit *ir.Literal) string {
 	if lit == nil {
 		return ""
 	}
-	// Unit literals carry their suffix separately (e.g. "16"+"px").
-	if lit.Suffix != "" {
-		return lit.Value
+	if css, ok := UnitLiteralToCSS(lit); ok {
+		return css
 	}
 	if lit.Type == nil {
 		return lit.Value

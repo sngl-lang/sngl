@@ -92,6 +92,14 @@ type PathCmd struct {
 	R   float64
 }
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	__n0        *canvas.Raster
@@ -340,6 +348,14 @@ func _snglCairoStroke(cr *C.cairo_t, s CanvasStyle) {
 	C.cairo_stroke(cr)
 }
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	__n0   *C.GtkDrawingArea
@@ -423,6 +439,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.foundation.layout.aspectRatio
 
+data class Measurement(
+    val px: Double = 0.0,
+    val em: Double = 0.0,
+    val vw: Double = 0.0,
+    val vh: Double = 0.0,
+    val pct: Double = 0.0
+)
+
 data class Color(
     var r: Int = 0,
     var g: Int = 0,
@@ -489,7 +513,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:100px;width:200px;width:100%;height:auto;aspect-ratio:200/100" height="100px" width="200px">
+<canvas id="$0" style="height:100px;width:200px;width:100%;height:auto;aspect-ratio:200/100" height="100" width="200">
 </canvas>
 
 <script>

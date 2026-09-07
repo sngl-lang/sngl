@@ -124,7 +124,7 @@ func canvasIntProp(n *ir.NodeInst, name string) int {
 	if !ok || lit == nil {
 		return 0
 	}
-	v, err := strconv.ParseFloat(strings.TrimSuffix(lit.Value, lit.Suffix), 64)
+	v, err := strconv.ParseFloat(lit.Value, 64)
 	if err != nil {
 		return 0
 	}

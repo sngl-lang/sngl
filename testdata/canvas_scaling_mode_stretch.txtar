@@ -44,7 +44,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<canvas id="$0" style="height:100px;width:200px;width:100%;height:100%" height="100px" width="200px">
+<canvas id="$0" style="height:100px;width:200px;width:100%;height:100%" height="100" width="200">
 </canvas>
 
 <script>

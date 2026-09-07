@@ -3,7 +3,6 @@ package lower
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -104,34 +103,36 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 	return e
 }
 
-// scaleUnitLiteral multiplies lit's numeric Raw by its suffix's Factor,
-// returning a new int (or float) Literal with TypInt / TypFloat. Returns
-// (nil, false) when the unit decl can't be resolved or the value can't be
-// parsed.
+// scaleUnitLiteral multiplies lit's number by its suffix's Factor, returning
+// a new int (or float) Literal with TypInt / TypFloat. Returns (nil, false)
+// when the unit decl can't be resolved or the value can't be parsed.
+//
+// A multi-base unit is refused: erasing `measurement` to a bare number would
+// make `1px` and `1pct` the same value, and this pass has no record to put
+// the other bases in. NoUnit is for a target with no unit vocabulary at all
+// (the interpreter test runner), where a single-base unit is exactly its
+// magnitude and a multi-base one has no meaning to preserve. Every real
+// backend keeps ir.TypeUnit and maps it -- a number for one base, a per-base
+// record for several -- because a platform still has to spell it (CSS wants
+// `7px`), and a number that has forgotten its base cannot be spelled.
 func scaleUnitLiteral(lit *ir.Literal) (*ir.Literal, bool) {
 	if lit.Type == nil || lit.Type.Decl == nil {
 		return nil, false
 	}
 	decl, ok := lit.Type.Decl.(*ir.UnitDef)
-	if !ok {
+	if !ok || !decl.IsSingleBase() {
 		return nil, false
 	}
 	factor := 1.0
 	if lit.Suffix != "" {
-		found := false
-		for _, s := range decl.Suffixes {
-			if s.Name == lit.Suffix {
-				factor = s.Factor
-				found = true
-				break
-			}
-		}
-		if !found {
+		suf := decl.SuffixByName(lit.Suffix)
+		if suf == nil {
 			return nil, false
 		}
+		factor = suf.Factor
 	}
 
-	raw := strings.TrimSuffix(lit.Value, lit.Suffix)
+	raw := lit.Value
 
 	if i, err := strconv.ParseInt(raw, 10, 64); err == nil {
 		scaled := float64(i) * factor
