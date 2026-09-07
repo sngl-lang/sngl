@@ -1,0 +1,13 @@
+// A view body describes a rendered tree, and nothing walks it looking for
+// something to run. fyne wrote the assignment into its builder; bubbletea and
+// html dropped it, silently, on a program that compiled clean.
+
+import . "sngl:ui"
+
+var n = 0
+
+component main {
+    n = 5 // ERROR(check) "not a statement in a view body"
+
+    text(value="{n}")
+}
