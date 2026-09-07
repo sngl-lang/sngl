@@ -1,0 +1,24 @@
+// A body-local component is invisible outside the body that declares it, so
+// the sibling naming it has an undefined name where it wrote it -- not a
+// silently dropped declaration, which is what #184 was.
+
+import . "sngl:ui"
+
+component outer() {
+    component inner(label = "") {
+        text(value=label)
+    }
+
+    inner(label="hi")
+}
+
+component other() {
+    inner(label="nope") // ERROR(check) "undefined: inner"
+}
+
+component main {
+    vbox {
+        outer()
+        other()
+    }
+}

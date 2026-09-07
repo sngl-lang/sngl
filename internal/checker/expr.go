@@ -3251,6 +3251,13 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}
 		return nil
+	case *ast.ComponentDecl:
+		// A declaration at the top of a component body was registered in
+		// pass1 (collectComponentDecls) and never reaches here. What does is
+		// one written in a nested block or a function body, which pass1 does
+		// not walk: it registers now, into the block's own scope.
+		c.registerBodyComponent(x)
+		return nil
 	case *ast.Comment:
 		return nil
 	case *ast.DisabledDecl:

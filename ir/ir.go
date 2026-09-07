@@ -554,6 +554,11 @@ type Component struct {
 	// nil when the pass did not run. See internal/lower/node_escape.go.
 	LocalRefs map[string]bool  `json:"-"`
 	Methods   map[string]*Func `json:"-"`
+	// BodyComponents are the components declared inside this one's body. They
+	// are ordinary members of Package.Components; this records which body
+	// bound their names, so pass2 can rebind them in the scope pass1 declared
+	// them in.
+	BodyComponents []*Component `json:"-"`
 }
 
 func (c *Component) SymName() string { return c.Name }

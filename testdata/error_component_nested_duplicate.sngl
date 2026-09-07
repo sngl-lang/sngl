@@ -1,0 +1,16 @@
+// Two of one name in one body is that scope's duplicate, reported the way any
+// other duplicate in a scope is.
+
+import . "sngl:ui"
+
+component main {
+    component row(label = "") {
+        text(value=label)
+    }
+
+    component row(label = "") { // ERROR(check) "row is already declared in this scope"
+        text(value="second " + label)
+    }
+
+    row(label="a")
+}
