@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -42,6 +41,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		x.Left = foldExpr(x.Left, ctx)
 		x.Right = foldExpr(x.Right, ctx)
 		if lit := scaledUnitLiteral(x); lit != nil {
+			return lit
+		}
+		if lit := combinedUnitLiteral(x); lit != nil {
 			return lit
 		}
 	case *ir.Unary:
@@ -307,8 +309,8 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 // const expression was falling back to the 300x150 default on every platform.
 //
 // Scaling is the case that needs no conversion table: the suffix is the one
-// the unit literal was written with. Adding two units does need one, and is
-// left alone.
+// the unit literal was written with. Adding two needs one, which is
+// combinedUnitLiteral below.
 func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 	if x.Op != ast.BinMul && x.Op != ast.BinDiv {
 		return nil
@@ -328,7 +330,7 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 	if unit.Suffix == "" || num.Suffix != "" {
 		return nil
 	}
-	amount, err := strconv.ParseFloat(strings.TrimSuffix(unit.Value, unit.Suffix), 64)
+	amount, err := strconv.ParseFloat(unit.Value, 64)
 	if err != nil {
 		return nil
 	}
@@ -348,7 +350,42 @@ func scaledUnitLiteral(x *ir.Binary) *ir.Literal {
 	if amount == math.Trunc(amount) && !math.IsInf(amount, 0) {
 		text = strconv.FormatInt(int64(amount), 10)
 	}
-	return &ir.Literal{Type: unit.Type, Value: text + unit.Suffix, Suffix: unit.Suffix}
+	return &ir.Literal{Type: unit.Type, Value: text, Suffix: unit.Suffix}
+}
+
+// combinedUnitLiteral folds `3px + 4px` into `7px` and `1rem + 2em` into
+// `18em`, using ir.UnitMagnitude to reduce each side into the base it belongs
+// to. This is the design's "prefer a plain number when the terms share a
+// base": once folded, every backend emits one magnitude instead of a
+// per-base record built out of two.
+//
+// Two literals in *different* bases -- `1px + 2pct` -- have no single number
+// and are deliberately left alone, for the backend's multi-base
+// representation to carry. That is the only case that reaches it.
+func combinedUnitLiteral(x *ir.Binary) *ir.Literal {
+	if x.Op != ast.BinAdd && x.Op != ast.BinSub {
+		return nil
+	}
+	left, _ := x.Left.(*ir.Literal)
+	right, _ := x.Right.(*ir.Literal)
+	if left == nil || right == nil {
+		return nil
+	}
+	lm, lbase, ok := ir.UnitMagnitude(left)
+	if !ok {
+		return nil
+	}
+	rm, rbase, ok := ir.UnitMagnitude(right)
+	if !ok || lbase != rbase || !left.Type.SameUnitType(right.Type) {
+		return nil
+	}
+	sum := lm + rm
+	if x.Op == ast.BinSub {
+		sum = lm - rm
+	}
+	// The result is stated in the shared base, not in either operand's
+	// suffix: `1rem + 2em` is 18em, and there is no rem count that says so.
+	return &ir.Literal{Type: left.Type, Value: ir.FormatUnitMagnitude(sum), Suffix: lbase}
 }
 
 // isRef reports whether e denotes a reference. An expression with no type is

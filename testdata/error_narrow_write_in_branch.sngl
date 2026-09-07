@@ -1,0 +1,19 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+func double(n int) int {
+    return n * 2
+}
+
+component main {
+    text(value="x")
+}
+
+func writesTheNarrowedValue(t Test) {
+    var maybe option<int> = 3
+    if maybe != null {
+        maybe = null // ERROR(check) "maybe is assigned in this branch, so the null test on it no longer holds"
+        var d = double(maybe)
+        t.assert(d == 0)
+    }
+}

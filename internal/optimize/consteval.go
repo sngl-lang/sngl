@@ -495,6 +495,13 @@ func evalPureGoCall(call *ir.Call, name string, ns *ir.NativeImport, args []any,
 }
 
 func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
+	// A T promoted to option<T> is not a value change, so folding it produces
+	// the operand's value and the rebuilt expression is typed T again -- the
+	// wrap vanishes, and Go's *T field is assigned a T. There is nothing to
+	// gain by folding it either: the operand folds on its own.
+	if ir.IsOptionWrap(conv) {
+		return nil, false
+	}
 	operand, ok := evalExpr(conv.Operand, ctx)
 	if !ok {
 		return nil, false

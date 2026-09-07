@@ -266,6 +266,8 @@ func bindForVar(v *ir.Var) irAndroidBind {
 	if _, isLit := v.Init.(*ir.Literal); v.Init != nil && !isLit {
 		initEx = v.Init
 	}
+	// An empty map arrives as `mapOf()` either way and Kotlin infers
+	// Map<Nothing, Nothing> from both spellings -- see #176.
 	if isList && (initVal == `""` || initVal == "emptyList()") {
 		initVal = ""
 	}
@@ -453,6 +455,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 
 	// Pass 2: render body. kc.RequireImport fires for any i18n calls.
 	var body strings.Builder
+
+	// A multi-base unit is a data class of per-base magnitudes, the same
+	// shape Go gives it. A single-base one is a plain number and declares
+	// nothing.
+	body.WriteString(kotlin.EmitUnitDataClasses(info.Units))
 
 	// Data classes
 	for _, sd := range info.Structs {

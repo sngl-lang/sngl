@@ -56,6 +56,11 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// either way -- and lowering it built the same kind of temporary.
 	f.Ternary = true
 	f.ListLambdas = true
+	// And AsyncCalls for a third time. Go withdraws it because a blocking call
+	// runs on the goroutine that made it, which on a UI toolkit is the one
+	// drawing; html has no such goroutine -- a route handler already runs on
+	// its own, and blocking there is what a handler is for.
+	f.AsyncCalls = true
 	f.AsyncReactive = false
 	f.ImplicitRecv = false
 	f.InlineComponents = false
@@ -1543,6 +1548,14 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	var out []*ir.Func
 	add := func(f *ir.Func) {
 		if f.Synthesized {
+			return
+		}
+		// A native declaration is not emitted: the identifier already exists,
+		// and a call becomes a call to it. Emitted anyway, the bodyless
+		// signature came out as `function setInterval(f, ms) { return 0; }`,
+		// which shadows the global it names -- a stub that compiles, runs, and
+		// schedules nothing.
+		if f.Foreign.Name != "" && !f.Foreign.Marked {
 			return
 		}
 		if _, dup := seen[f]; dup {
@@ -3361,7 +3374,10 @@ func (g *htmlGen) literalToJS(expr ir.Expr) string {
 			case ir.TypeNull:
 				return "null"
 			case ir.TypeUnit:
-				return fmt.Sprintf("%q", lit.Value)
+				// Shared with the JS lang translator: a unit value is its
+				// magnitude per base. The CSS spelling is applied where the
+				// value reaches a style property, not here.
+				return javascript.UnitLiteral(lit)
 			case ir.TypeStruct:
 				if ir.StringReprStruct(lit.Type) {
 					return fmt.Sprintf("%q", lit.Value)

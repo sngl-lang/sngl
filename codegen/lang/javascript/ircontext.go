@@ -43,6 +43,9 @@ func (jc *JsIRContext) Literal(n *ir.Literal) string { return jc.evalLiteral(n) 
 func (jc *JsIRContext) Ident(n *ir.Ident) string     { return jc.evalIdent(n) }
 
 func (jc *JsIRContext) Binary(n *ir.Binary, left, right string) string {
+	if out, ok := multiBaseUnitBinaryJS(n, left, right); ok {
+		return out
+	}
 	if n.Op == ast.BinDiv && isIntIR(n.Left) && isIntIR(n.Right) {
 		// BigInt division truncates toward zero natively; Number division needs
 		// an explicit Math.trunc to match integer semantics.
@@ -779,6 +782,16 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 		return nullFuncStubJS(n.Type)
 	}
 	operand := jc.EvalExpr(n.Operand)
+	// A narrowed option: JavaScript's option<T> is the value or null, so the
+	// unwrap is the value as it stands.
+	if ir.IsOptionUnwrap(n) {
+		return operand
+	}
+	// And the promotion the other way, which is the same nothing: an option is
+	// the value or null, so a T already is one.
+	if ir.IsOptionWrap(n) {
+		return operand
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeInt, ir.TypeFloat:

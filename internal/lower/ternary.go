@@ -21,6 +21,13 @@ var passTernary = pass{
 // Sub-ternaries inside Cond surface before the synthesized If; sub-ternaries
 // inside Then/Else are hoisted into the matching branch body (preserving
 // the short-circuit semantics of the source).
+//
+// Running after passReactivity (orderConstraints says it must) costs nothing:
+// a ternary is intact through dep analysis, where gatherDeps has a case for
+// it, and reactivity deep-copies each prop expression into its updater -- so
+// the build-path prop and its updater no longer alias one Ternary node and
+// each lowers independently here. Canvas draw funcs, extracted earlier by
+// passCanvas, are reached through the package's Funcs like any other body.
 func lowerTernary(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil

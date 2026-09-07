@@ -26,6 +26,14 @@ func (t *Translator) Capabilities() lower.Features {
 	// Go can't represent typed lambdas behind an interface{} surface
 	// (no type-asserting a `func(int) bool`). Lower xs.filter/map to loops.
 	f.ListLambdas = false
+	// Go cannot suspend a function: a blocking call runs on the goroutine that
+	// made it. Lower it to a goroutine and a post back to the caller's thread.
+	f.AsyncCalls = false
+	// Nor can it hold a blocking call in a reactive expression. The pass that
+	// answers that -- a settled state field and a kicker that fills it -- was
+	// written for html's JS and produces exactly the void entry point
+	// passAsyncOffload then moves off the UI thread.
+	f.AsyncReactive = false
 	return f
 }
 

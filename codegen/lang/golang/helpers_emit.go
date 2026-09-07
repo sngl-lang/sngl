@@ -32,6 +32,10 @@ type HelperSet struct {
 	// the sequence is the pull func iter<int> is spelled as. One helper says
 	// that in three lines rather than a closure at every call site.
 	NeedSeq bool
+	// A bare T promoted into an option<T>. Go's option is *T and `&` is only
+	// legal on an addressable operand, so the box is a helper rather than an
+	// operator -- see the IsOptionWrap arm of evalConversion.
+	NeedSome bool
 }
 
 // StringToNumberHelper names the helper a conversion needs, or "" when Go's
@@ -97,6 +101,9 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 			recordTypeHelpers(&h, n.Type)
 		case *ir.Conversion:
 			recordTypeHelpers(&h, n.Type)
+			if ir.IsOptionWrap(n) {
+				h.NeedSome = true
+			}
 		}
 		return nil
 	})
@@ -167,6 +174,16 @@ func (h HelperSet) Emit() string {
 			}
 		}
 	}
+}
+
+`)
+	}
+	if h.NeedSome {
+		// By value, so the pointer addresses a copy: a SNGL struct is a value,
+		// and `&x` would let a later write to x reach whatever holds the
+		// option. It is also what makes a non-addressable operand work.
+		b.WriteString(`func snglSome[T any](v T) *T {
+	return &v
 }
 
 `)

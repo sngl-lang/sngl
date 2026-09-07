@@ -44,10 +44,18 @@ The last two are **imperative-only** — function, handler, timer — and so are
 `break` and `continue`. A view body's loop says how many copies of its body
 the rendered tree holds: a list gives that a length and a counted sequence a
 number, and a condition gives neither, so there is nothing for a mutation
-model to diff and nothing for a static renderer to write down. The checker
-refuses all four in a view body with a positioned error (`checkHeadlessFor`,
-`requireLoop`), which keeps codegen to the imperative paths that route through
-`ForHead`. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
+model to diff and nothing for a static renderer to write down. **A map over
+the first head is imperative-only for the same reason applied to order**: it
+says how many copies, and in no defined order, so two renders of one map may
+lay the body out differently and neither a diff nor a static page has anything
+to hold. Imposing an order instead buys a per-platform contingency at every
+backend — a key type the host cannot sort, a host map that happens to be
+insertion-ordered so the bug appears only on the other targets. The checker
+refuses all five in a view body with a positioned error (`checkHeadlessFor`,
+`checkViewMapFor`, `requireLoop`), which keeps codegen to the imperative paths
+that route through `ForHead`. A map whose map-ness the head has erased is out
+of reach: `map<K, V>` is not assignable to `iter<T>`, but `dyn` holds one and
+says nothing about it. `c.funcDepth == 0` is what "in a view body" means; `c.loopDepth` is
 what an escape requires one of, and it resets at every imperative-body
 boundary (`enterFuncBody`) so a lambda cannot break a loop it was written
 inside.
@@ -359,12 +367,15 @@ can name them, no language registers an emitter for them, and their only
 consumer is `codegen.WalkLowered` dispatching to a platform's
 `IntrinsicTranslator`. A declaration would describe nobody's contract.
 
-**One name, one meaning at file scope.** Two declarations of a name, two
-imports claiming it as an alias, two dot imports lifting it, or a declaration
-taking a name an import alias binds are all errors (`claimTopLevel` in
-`internal/checker/checker.go`). The one exception is shadowing, where only one
-of the two is written in this file: a declaration may shadow a dot-imported
-name, including a built-in.
+**One name, one meaning — over the scope the binding has.** A declaration is
+package-wide, so two files of one package declaring one name is an error
+naming both positions, whichever file loaded first. An import binds into one
+file, so two imports claiming one alias, two dot imports lifting one name, or
+a declaration taking a name an import alias binds are errors within that file.
+Both are `claimTopLevel` in `internal/checker/checker.go`, which measures a
+declaration against `pkgDecls` and an import against `topLevel`. The one
+exception is shadowing, where only one of the two is written in this package:
+a declaration may shadow a dot-imported name, including a built-in.
 
 Two consequences worth knowing: a kind classifies *one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark
@@ -395,7 +406,7 @@ When adding a new stdlib package that needs runtime support:
 ### Built-in Generic Types
 
 - **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
-- **`iter<T>`** — opaque generic iterator type. `list<T>` and `map<K, V>` implicitly convert to `iter<T>` (list elements; map yields key-value pairs). For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
+- **`iter<T>`** — opaque generic iterator type. `list<T>` implicitly converts to `iter<T>`; `map<K, V>` does not, so a map cannot reach an `iter` position with its map-ness erased. For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
 
 Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 

@@ -3,6 +3,7 @@ package codegen
 import (
 	"context"
 
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -144,6 +145,22 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 				}
 				return ins.OnInsertBefore(ctx, n.Call.Args[0].Value, n.Call.Args[1].Value, n.Call.Args[2].Value)
 			}
+			// The two halves of an offloaded blocking call carry the rest of
+			// the body as closures. Everything a handler would have done --
+			// a prop assignment, a canvas redraw -- is inside one of them,
+			// so the walk has to go in or the platform never sees it: the
+			// widget write came out as its bare IR shape, naming a field the
+			// render function does not declare.
+			if isAsyncOffloadCall(n.Call) {
+				call := *n.Call
+				call.Args = append([]ir.CallArg(nil), n.Call.Args...)
+				for i := range call.Args {
+					call.Args[i].Value = walkHandlerBody(ctx, call.Args[i].Value, t)
+				}
+				cp := *n
+				cp.Call = &call
+				return []ir.Stmt{&cp}
+			}
 			// A slot append as a bare call. push mutates its receiver and
 			// returns nothing, so the lowering emits the call rather than an
 			// assignment back to the slot; the Assign arm below still answers
@@ -194,6 +211,15 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		return []ir.Stmt{&cp}
 	}
 	return t.OnDefault(ctx, s)
+}
+
+// isAsyncOffloadCall reports whether c is one of the two calls
+// passAsyncOffload leaves behind, each holding a closure the walk must enter.
+func isAsyncOffloadCall(c *ir.Call) bool {
+	if c == nil || c.Func == nil {
+		return false
+	}
+	return c.Func.Intrinsic == lower.AsyncSpawnIntrinsic || c.Func.Intrinsic == lower.AsyncPostIntrinsic
 }
 
 // walkHandlerBody rewrites an inline handler's body through the same

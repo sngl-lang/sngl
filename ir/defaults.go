@@ -69,7 +69,7 @@ func ZeroExpr(t *Type) Expr {
 				}
 			}
 		}
-		return &Literal{Type: t, Value: "0" + suffix, Suffix: suffix}
+		return &Literal{Type: t, Value: "0", Suffix: suffix}
 	case TypeFunc:
 		return zeroFuncExpr(t)
 	}

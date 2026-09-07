@@ -3,11 +3,11 @@ import . "sngl:test"
 
 struct TreeNode {
     value int = 0
-    left dyn = null
-    right dyn = null
+    left option<TreeNode> = null
+    right option<TreeNode> = null
 }
 
-component tree_view(node dyn = null) {
+component tree_view(node TreeNode) {
     vbox {
         text #val(value=string(node.value))
         if node.left != null {

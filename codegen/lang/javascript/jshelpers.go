@@ -17,9 +17,9 @@ func translateIRLiteral(n *ir.Literal) string {
 	if n == nil {
 		return "null"
 	}
-	// Unit literal (e.g. 500ms): emit as quoted string carrying the suffix.
-	if n.Suffix != "" {
-		return strconv.Quote(n.Value + n.Suffix)
+	// Unit literal (e.g. 500ms): its magnitude, not its spelling.
+	if s, ok := unitLiteralJS(n); ok {
+		return s
 	}
 	if s, ok := NumericLiteral(n); ok {
 		return s

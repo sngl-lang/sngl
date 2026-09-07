@@ -29,6 +29,25 @@ struct Options {
 // declarations, since a mark resolves through the scope like any other name.
 func native(path string, name string, flags list<NativeFlag> = []) ir.Macro
 
+// Says a call to this function blocks, so a target that draws on one thread
+// must not make the call there.
+//
+// Go has no way to suspend a function: a call runs on the goroutine that made
+// it, and on fyne, gtk4 or bubbletea that goroutine is the one drawing the
+// screen. The mark is what tells a target to run the call on a goroutine of its
+// own and hand the answer back through whatever reaches its thread — `fyne.Do`,
+// a GLib idle tick, a message into the Bubble Tea loop.
+//
+// It is not `#[foreign(..., async)]`. That flag says the declaration *returns a
+// promise its caller awaits*, which is what the TypeScript importer reads off a
+// `Promise<T>`; a Go function that blocks returns its value directly and has no
+// promise, so the flag would be a false statement about the declaration. What
+// the two do share is the propagation rule, and so the fact they both record: a
+// function that calls one is one.
+//
+// Only a function carries it — a struct has no call to describe.
+func async() ir.Macro
+
 // What a Go declaration's shape says beyond its name.
 //
 // `fails` says the function returns `(T, error)` where the SNGL declaration

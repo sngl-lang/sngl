@@ -1,0 +1,30 @@
+// A map loop is refused in a view body alone. An imperative body -- function,
+// handler, timer -- walks a statement stream rather than stamping out a tree,
+// so nothing there depends on the order the entries come back in.
+
+import . "sngl:ui"
+
+component main {
+    var scores map<string, int> = {alice=10, bob=20}
+    var total = 0
+    var report = ""
+
+    func sum() int {
+        var acc = 0
+        for var k, v = scores {
+            acc = acc + v
+        }
+        return acc
+    }
+
+    vbox {
+        text(value="{total}")
+        button(text="add", @click {
+            for var k, v = scores {
+                total = total + v
+                report = k
+            }
+            total = total + sum()
+        })
+    }
+}

@@ -98,7 +98,7 @@ func intProp(n *ir.NodeInst, name string) int {
 		if !ok {
 			return 0
 		}
-		raw := strings.TrimSuffix(lit.Value, lit.Suffix)
+		raw := lit.Value
 		if v, err := strconv.Atoi(raw); err == nil {
 			return v
 		}

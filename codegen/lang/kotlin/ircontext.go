@@ -82,6 +82,9 @@ func (kc *KtIRContext) Literal(n *ir.Literal) string { return kc.evalLiteral(n) 
 func (kc *KtIRContext) Ident(n *ir.Ident) string     { return kc.evalIdent(n) }
 
 func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
+	if out, ok := multiBaseUnitBinaryKt(n, left, right); ok {
+		return out
+	}
 	return "(" + left + " " + n.Op.String() + " " + right + ")"
 }
 func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {
@@ -339,6 +342,9 @@ func (kc *KtIRContext) Scoped(name string) irwalk.Renderer { return kc.WithLocal
 func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 	if n.Type == nil {
 		return n.Value
+	}
+	if s, ok := UnitLiteralKt(n); ok {
+		return s
 	}
 	switch n.Type.Kind {
 	case ir.TypeString:
@@ -639,6 +645,15 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 		return nullFuncStubKt(n.Type)
 	}
 	operand := kc.EvalExpr(n.Operand)
+	// A narrowed option: Kotlin's option<T> is T?, and the null test is what
+	// makes the assertion safe.
+	if ir.IsOptionUnwrap(n) {
+		return operand + "!!"
+	}
+	// And the promotion the other way needs nothing: T is a subtype of T?.
+	if ir.IsOptionWrap(n) {
+		return operand
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
 		case ir.TypeInt:
@@ -869,10 +884,7 @@ func IRTypeToKt(t *ir.Type) string {
 		}
 		return "String"
 	case ir.TypeUnit:
-		if t.Decl != nil && t.Decl.SymName() == "duration" {
-			return "Long" // milliseconds
-		}
-		return "String"
+		return UnitKtType(ir.UnitDeclOf(t))
 	case ir.TypeFunc:
 		return "Any" // TODO: proper function types
 	case ir.TypeNull, ir.TypeDyn:
@@ -910,6 +922,9 @@ func IRLiteralToKt(e ir.Expr) string {
 	case *ir.Literal:
 		if n.Type == nil {
 			return n.Value
+		}
+		if s, ok := UnitLiteralKt(n); ok {
+			return s
 		}
 		switch n.Type.Kind {
 		case ir.TypeString:

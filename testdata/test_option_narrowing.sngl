@@ -1,0 +1,68 @@
+import . "sngl:ui"
+import . "sngl:test"
+
+struct Node {
+    value int = 0
+    next option<Node> = null
+}
+
+func double(n int) int {
+    return n * 2
+}
+
+func valueOf(n Node) int {
+    return n.value
+}
+
+component main {
+    var maybe option<int> = 3
+    var absent option<int> = null
+
+    vbox {
+        if maybe != null {
+            text #present(value=string(double(maybe)))
+        }
+        if absent == null {
+            text #missing(value="none")
+        } else {
+            text(value=string(double(absent)))
+        }
+        if maybe != null && maybe > 2 {
+            text #chained(value=string(double(maybe)))
+        }
+    }
+}
+
+func testNarrowsInThenBranch(t Test, c main) {
+    t.assert(c.present.value == "6")
+}
+
+func testNarrowsInElseBranch(t Test, c main) {
+    t.assert(c.missing.value == "none")
+}
+
+func testNarrowsThroughAndChain(t Test, c main) {
+    t.assert(c.chained.value == "6")
+}
+
+func testNarrowsAFieldPath(t Test) {
+    var tail = Node{value=4}
+    var head = Node{value=1, next=tail}
+    var got = 0
+    if head.next != null {
+        got = valueOf(head.next)
+    }
+    t.assert(got == 4)
+}
+
+func testNarrowsATernaryArm(t Test) {
+    var maybe option<int> = 5
+    var got = maybe != null ? double(maybe) : 0
+    t.assert(got == 10)
+}
+
+func testNegatedTestNarrowsTheElseArm(t Test) {
+    var maybe option<int> = 5
+    var got = maybe == null ? 0 : double(maybe)
+    t.assert(got == 10)
+}
