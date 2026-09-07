@@ -432,26 +432,10 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 
 // rendersNothing reports whether comp puts nothing in the rendered tree.
 //
-// Asked only to decide whether a reactive position needs a runtime instance,
-// so it answers conservatively: anything it cannot account for renders
-// something, and the caller falls back to electing the instance it would have
-// elected before. `effect` is the one construct that reaches a body and leaves
-// the tree again -- passEffect takes it out and keeps only the list of keys its
-// position describes -- so it is the one node that does not count. A timer is a
-// schedule the owner holds rather than a node, but it is per-instance state all
-// the same, so a component holding one is not exempt either.
-//
-// Every other node counts, without asking what *it* renders. Descending would
-// be answering about a component this pass has not reached yet, and the one
-// case it would buy -- a body that is nothing but another invisible component
-// -- is not worth a recursion that reads an unlowered declaration. A stdlib
-// component still abstract at this point has an empty body, so a descent would
-// read `text` as rendering nothing.
-//
-// The walk is ir.Walk's rather than a descent of the view statements, because
-// the bias has to point the safe way: a body shape this did not think of must
-// read as rendering, and a hand-written descent that fails to reach one reads
-// as not.
+// Conservative: anything it cannot account for renders something, so a body
+// shape not thought of costs an instance election rather than a wrong inline.
+// It does not ask what a nested node renders, because a stdlib component is
+// still abstract here -- a descent reads `text` as rendering nothing.
 func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 	if comp == nil || len(comp.Timers) > 0 {
 		return false
@@ -500,13 +484,10 @@ func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error)
 	return st.inlineStmtsCtx(stmts, reactiveCtx{})
 }
 
-// reactiveCtx is what the statements below a control-flow construct are
-// written inside. `in` is the question passReactivity asks -- does a node here
-// have to be reconciled when the condition or the iterable changes -- and
-// `repeated` is the separate one of whether this position holds one copy of the
-// body or many. A `for` says yes to the second whether or not it is reactive,
-// because what makes one hoisted var wrong for a body is the copies, not the
-// reconcile.
+// reactiveCtx is what the statements below a control-flow construct are written
+// inside: `in` is whether a node here needs reconciling, `repeated` whether the
+// position holds one copy of the body or many. A `for` sets `repeated` even when
+// it is not reactive -- what makes one hoisted var wrong is the copies.
 type reactiveCtx struct {
 	in       bool
 	repeated bool
@@ -551,14 +532,10 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// case will be lowered to a CreateComponent intrinsic call by later
 		// passes (passReactivity / passDeclarative).
 		//
-		// Renders nothing is the exception: there is no node at this position
-		// for a reconcile to patch, and the construct it is written inside is
-		// already the answer -- passEffect reads the enclosing `if` as the
-		// bracket's position, so the branch appearing is the mount and the
-		// branch going is the unmount. Elected an instance instead, the same
-		// branch demands a setter for every prop it would push and the build
-		// stops. Not under a `for`, though: the body is spliced once and its
-		// state hoisted once, so the copies would share one var.
+		// Renders nothing is the exception: no node here to reconcile, and
+		// passEffect already reads the enclosing `if` as the bracket's
+		// position. Not under a `for` -- the body is spliced once and its state
+		// hoisted once, so the copies would share one var.
 		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {

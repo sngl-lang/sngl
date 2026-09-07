@@ -18,9 +18,8 @@ import (
 // build, which is the honest version of the same failure gtk4 had silently for
 // as long as it had timers at all.
 //
-// A platform can also have nothing here: html's override is an `effect` over
-// setInterval, so the tree it hands on carries no primitive and this pass finds
-// none.
+// A platform may also contribute none -- html's override is an `effect` over
+// setInterval -- and finding nothing is an answer, not a failure.
 //
 // Placed beside passEffect and for the same reasons: after the inliner, so a
 // timer written in a child component has arrived in the tree that gets walked;

@@ -59,12 +59,9 @@ func CollectPlatforms() []ir.Platform {
 
 // CollectLangs returns all registered languages, ordered by identifier.
 //
-// The companion to CollectPlatforms, and a check that names one should name
-// both: a platform's own package source may import sngl:language/<name> --
-// html.sngl declares setInterval with #[js.native] -- and that import resolves
-// against this list whatever language the build is *for*. A harness passing
-// every platform and no language reported the platform's own import as an
-// unknown language.
+// A check that names every platform needs this too: a platform's own source may
+// import sngl:language/<name>, and that resolves against this list whatever
+// language the build is for.
 func CollectLangs() []ir.Language {
 	langMu.RLock()
 	defer langMu.RUnlock()
