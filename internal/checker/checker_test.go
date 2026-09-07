@@ -1238,11 +1238,6 @@ component main {
 `)
 }
 
-// The rest of the statements that change state rather than describe a tree.
-// Each one reached a backend and was then honoured or dropped depending on
-// which: fyne wrote the assignment into its builder while bubbletea and html
-// discarded it, and a return truncated bubbletea's builder into a View()
-// calling a renderMain it never defined.
 func TestBodyRejectsAnImperativeStatement(t *testing.T) {
 	for _, tc := range []struct {
 		what string
@@ -1277,7 +1272,6 @@ component main {
 	}
 }
 
-// And each is a statement everywhere a body runs.
 func TestAnImperativeStatementIsFineWhereSomethingRunsIt(t *testing.T) {
 	expectNoErrors(t, `
 import . "sngl:ui"

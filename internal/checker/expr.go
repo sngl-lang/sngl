@@ -2820,8 +2820,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if x.IsDec {
 			what = "a decrement"
 		}
-		// Reported before the rewrite, or the AssignStmt it lowers to would
-		// report the same statement as an assignment the source never wrote.
 		if c.rejectStmtInViewBody(x.Pos, targetDescription(what, "of", x.Target)) {
 			return nil
 		}
@@ -4633,12 +4631,6 @@ func (c *checker) rejectCallInViewBody(pos ast.Pos, fn *ir.Func) bool {
 	return c.rejectStmtInViewBody(pos, what)
 }
 
-// rejectStmtInViewBody is the same rule for the statements that carry no
-// callee to look at first: an assignment, an increment, a toggle and a return.
-// Each reached a backend the way the call did and was then honoured or dropped
-// depending on which -- fyne wrote `m.n = 5` into its builder while bubbletea
-// and html discarded it, and a `return` truncated bubbletea's builder into a
-// View() calling a renderMain it never went on to define.
 func (c *checker) rejectStmtInViewBody(pos ast.Pos, what string) bool {
 	if c.funcDepth > 0 {
 		return false
@@ -4647,9 +4639,6 @@ func (c *checker) rejectStmtInViewBody(pos ast.Pos, what string) bool {
 	return true
 }
 
-// targetDescription names the target a diagnostic is about. Only a plain
-// identifier is quoted: spelling a field or index target back out here would
-// be a second formatter.
 func targetDescription(what, prep string, target ast.Expr) string {
 	if id, ok := target.(*ast.IdentExpr); ok {
 		return what + " " + prep + " " + strconv.Quote(id.Name)
