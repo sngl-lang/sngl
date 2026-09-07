@@ -310,6 +310,13 @@ func parseHexChannels(raw string) (r, g, b, a int, ok bool) {
 	return 0, 0, 0, 0, false
 }
 
+// inferUnitLiteral resolves `20ms` against the type the position expects.
+//
+// A suffix belongs to the unit that declares it, and nothing else says which
+// unit a literal means -- so the expected type is what resolves it, and a
+// position with no expected type has no answer. `ms` is `duration`'s only
+// because `duration` declares it; two units may each declare `m`, and under a
+// registry keyed by suffix alone one of them silently won.
 func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	// Value is the number and Suffix is the unit, the same split ir.Literal
 	// makes for every other kind: Raw is the spelling, Value is what it stands
@@ -317,12 +324,51 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	// so every consumer that wanted the magnitude trimmed it back off and
 	// every one that wanted the spelling risked writing it twice.
 	num := strings.TrimSuffix(x.Raw, x.Suffix)
-	ud, ok := c.unitBySuffix[x.Suffix]
-	if !ok {
-		c.error(x.Pos, "unknown unit suffix %q", x.Suffix)
+	bad := func(format string, args ...any) ir.Expr {
+		c.error(x.Pos, format, args...)
 		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Value: num, Suffix: x.Suffix}
 	}
-	return &ir.Literal{AST: &x.LiteralExpr, Type: ud.SymType(), Value: num, Suffix: x.Suffix}
+	ud := ir.UnitDeclOf(c.expected)
+	if ud == nil {
+		return bad("%s needs a unit type here: a suffix belongs to the unit that declares it, and nothing in this position says which", x.Raw)
+	}
+	if ud.SuffixByName(x.Suffix) == nil {
+		// Naming the unit that *does* declare it is what makes a shadowed
+		// library unit legible: two declarations called `duration` are two
+		// types, and the suffix is the thing that says which one was meant.
+		if other := c.unitDeclaring(ud, x.Suffix); other != nil {
+			want, got := ir.Contrast(c.expected, other.SymType())
+			return bad("cannot initialize %s with %s: %q is a suffix of the second", want, got, x.Suffix)
+		}
+		return bad("unit %s has no suffix %q", ud.Name, x.Suffix)
+	}
+	return &ir.Literal{AST: &x.LiteralExpr, Type: c.expected, Value: num, Suffix: x.Suffix}
+}
+
+// unitDeclaring finds a unit other than want that declares suffix, for a
+// diagnostic only -- resolution is the expected type's job, and this is what
+// tells a reader which other declaration they were thinking of.
+func (c *checker) unitDeclaring(want *ir.UnitDef, suffix string) *ir.UnitDef {
+	consider := func(units []*ir.UnitDef) *ir.UnitDef {
+		for _, u := range units {
+			if u != want && u.SuffixByName(suffix) != nil {
+				return u
+			}
+		}
+		return nil
+	}
+	if u := consider(c.declPkg().Units); u != nil {
+		return u
+	}
+	for _, imp := range c.pkg.Imports {
+		if imp == nil || imp.Pkg == nil {
+			continue
+		}
+		if u := consider(imp.Pkg.Units); u != nil {
+			return u
+		}
+	}
+	return nil
 }
 
 // eventAsFunc resolves a bare event name in a position that expects a
@@ -590,7 +636,15 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		right = rightExpr
 		return c.finishBinary(x, leftExpr, rightExpr)
 	}
-	rightExpr := c.checkExpr(x.Right)
+	// A unit on the left is what the right is expected to be: a suffix resolves
+	// against an expected type, and the only thing `a == 1000ms` offers the
+	// literal is the type of what it is being compared with. Only a unit,
+	// because `2 * 3px` would otherwise expect the int the left is.
+	rightExpected := c.expected
+	if lt := exprType(leftExpr); ir.UnitDeclOf(lt) != nil {
+		rightExpected = lt
+	}
+	rightExpr := c.checkExprExpecting(x.Right, rightExpected)
 	return c.finishBinary(x, leftExpr, rightExpr)
 }
 

@@ -4,7 +4,7 @@ import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
 
-component Ticker(rate = 1s) {
+component Ticker(rate duration = 1s) {
     var tick = 0
     timer(interval=rate, @tick { tick = tick + 1 })
     text(value=string(tick))

@@ -7,10 +7,10 @@ import . "sngl:ui"
 // INLAY-NOT(8px) ""
 // INLAY-NOT(20pct) ""
 component App {
-    var headerSize = 16em
-    var bodySize = 1rem
-    var halfWidth = 50vw
-    var halfHeight = 50vh
-    var pxValue = 8px
-    var pctValue = 20pct
+    var headerSize measurement = 16em
+    var bodySize measurement = 1rem
+    var halfWidth measurement = 50vw
+    var halfHeight measurement = 50vh
+    var pxValue measurement = 8px
+    var pctValue measurement = 20pct
 }

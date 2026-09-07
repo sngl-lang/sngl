@@ -1,0 +1,24 @@
+// A unit literal resolves its suffix against the type the position expects.
+//
+// A suffix belongs to the unit that declares it, and nothing else says which
+// unit a literal means -- so a position with no expected type has no answer.
+// This was a checker-wide map from suffix to unit, which made a suffix a
+// global name: two units declaring `m` were a silent collision, and whichever
+// registered last won for every literal in the program.
+//
+// The shapes that do supply one are in test_units.sngl and test_unit_types.sngl
+// -- an annotated var, a prop, and the other side of an operator.
+
+import . "sngl:ui"
+
+unit duration { ms, s = 1000ms, m = 60s }
+unit distance { mm, cm = 10mm, m = 100cm }
+
+component main {
+    var noType = 5ms             // ERROR(check) "needs a unit type here"
+    var wrongUnit distance = 5ms // ERROR(check) "cannot initialize distance"
+    var unknown duration = 5xyz  // ERROR(check) "has no suffix"
+    var ok duration = 5ms
+
+    text(value="{ok.string()}{noType.string()}{wrongUnit.string()}{unknown.string()}")
+}

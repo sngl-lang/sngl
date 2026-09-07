@@ -475,13 +475,6 @@ func (c *checker) evalUnitFactorWithLocals(e ast.Expr, local map[string]float64)
 		if f, ok := local[ul.Suffix]; ok {
 			return num * f
 		}
-		if ref, ok := c.unitBySuffix[ul.Suffix]; ok {
-			for _, s := range ref.Suffixes {
-				if s.Name == ul.Suffix {
-					return num * s.Factor
-				}
-			}
-		}
 		return num
 	}
 	return c.evalUnitFactor(e)
@@ -504,13 +497,9 @@ func (c *checker) evalUnitFactor(e ast.Expr) float64 {
 		raw := strings.TrimSuffix(x.Raw, x.Suffix)
 		raw = strings.ReplaceAll(raw, "_", "")
 		num, _ := strconv.ParseFloat(raw, 64)
-		if ref, ok := c.unitBySuffix[x.Suffix]; ok {
-			for _, s := range ref.Suffixes {
-				if s.Name == x.Suffix {
-					return num * s.Factor
-				}
-			}
-		}
+		// Only this declaration's own suffixes, which the caller supplies as
+		// `local`: a factor written in one unit cannot be denominated in
+		// another's.
 		return num
 	case *ast.BinaryExpr:
 		left := c.evalUnitFactor(x.Left)

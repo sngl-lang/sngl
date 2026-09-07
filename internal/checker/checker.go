@@ -242,7 +242,6 @@ type checker struct {
 	refCoercions []refCoercion
 
 	// Unit suffix reverse lookup.
-	unitBySuffix map[string]*ir.UnitDef
 
 	// inferring is the stack of functions whose return type is being inferred,
 	// so a body that calls itself is reported rather than recurring.
@@ -475,7 +474,6 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		pkg:          &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
 		symtab:       symtab,
 		scope:        symtab.Root,
-		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      cfg.visitedStack(),
 		dirPkgs:      cfg.dirPkgCache(),
 		pkgWindowIDs: make(map[string]bool),
@@ -1599,9 +1597,6 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 	c.applyMarks(u, ud)
 	c.declPkg().Units = append(c.declPkg().Units, ud)
 	c.bindDeclared(claimed, ud)
-	for _, s := range ud.Suffixes {
-		c.unitBySuffix[s.Name] = ud
-	}
 }
 
 func (c *checker) registerConsts(decl *ast.ConstDecl) {

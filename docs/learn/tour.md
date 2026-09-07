@@ -684,6 +684,7 @@ Timers compose with `var`s and `if` blocks cleanly: pause/resume UI falls out of
 ```sngl
 import . "sngl:ui"
 import . "sngl:app"
+import . "sngl:time"
 
 component main {
     var seconds = 0
