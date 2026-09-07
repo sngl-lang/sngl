@@ -1,0 +1,23 @@
+import . "sngl:ui"
+
+struct Local {
+    a int
+}
+
+func takesFileScoped(v Local) => v.a
+
+// Type identity is per-declaration: this Local shadows the file-scope one and
+// is a second, incompatible type rather than another name for it. The
+// collision error is #198's interim, and the two assertions are independent --
+// the shadowing is the language rule, the collision a codegen limitation.
+func inner() int {
+    struct Local { // ERROR(check) "is declared in this package"
+        a int
+    }
+
+    return takesFileScoped(Local{a=1}) // ERROR(check) "cannot pass Local as Local"
+}
+
+component main {
+    text(value="${inner()}")
+}

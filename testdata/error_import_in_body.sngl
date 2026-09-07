@@ -1,0 +1,24 @@
+import . "sngl:ui"
+
+component inComponent {
+    import q "sngl:seq" // ERROR(check) "an import may only be written at the root of a file"
+
+    for var i = q.count(3) {
+        text(value="${i}")
+    }
+}
+
+func inFunc() int {
+    import r "sngl:seq" // ERROR(check) "an import may only be written at the root of a file"
+
+    var total = 0
+    for var i = r.count(3) {
+        total = total + i
+    }
+    return total
+}
+
+component main {
+    inComponent()
+    text(value="${inFunc()}")
+}

@@ -1926,6 +1926,8 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			if s, ok := sym.(*ir.StructDef); ok {
 				sd = s
 			}
+		} else {
+			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
 		}
 	} else if c.expected != nil && c.expected.Kind == ir.TypeMap {
 		// Anonymous struct literal (all-ident keys) with expected map type:
@@ -3265,6 +3267,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		} else if c.pkg != nil {
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}
+		return nil
+	case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+		c.registerBodyType(x)
+		return nil
+	case *ast.Import:
+		c.error(x.Pos, "an import may only be written at the root of a file")
 		return nil
 	case *ast.Comment:
 		return nil
