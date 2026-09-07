@@ -161,6 +161,9 @@ type Model struct {
 {{- range .WidgetFields}}
 	{{.Name}} {{.GoType}}
 {{- end}}
+{{- range .Timers}}
+	timer{{.Index}}ID uint
+{{- end}}
 }
 
 // New creates a Model with default values. Binds initialize
@@ -170,8 +173,37 @@ func New() *Model {
 {{- range .Binds}}
 	m.{{.Name}} = {{.InitVal}}
 {{- end}}
+{{- if .Timers}}
+	m.startTimers()
+{{- end}}
 	return m
 }
+{{- if .Timers}}
+
+// startTimers arms every schedule the program describes. A GLib timeout source
+// already runs its callback on the main thread, so a tick body mutates the
+// model in the same place a signal handler does.
+//
+// Armed unconditionally and gated inside: flipping the gate then pauses and
+// resumes with no re-arming wiring, and the next tick simply fires or skips.
+func (m *Model) startTimers() {
+{{- range .Timers}}
+	m.timer{{.Index}}ID = gtk4rt.Every({{.IntervalMs}}, func() {
+		if !({{.Gate}}) {
+			return
+		}
+		m.__timer{{.Index}}_tick()
+	})
+{{- end}}
+}
+
+// StopTimers removes every source startTimers armed.
+func (m *Model) StopTimers() {
+{{- range .Timers}}
+	gtk4rt.CancelEvery(m.timer{{.Index}}ID)
+{{- end}}
+}
+{{- end}}
 
 {{range .Computeds}}
 func (m *Model) {{.Name}}() {{.GoType}} {

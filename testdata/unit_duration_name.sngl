@@ -19,8 +19,8 @@ component main {
     var ticks = 0
     var iv duration = 250ms
 
-    timer(interval=iv) {
+    timer(interval=iv, @tick {
         ticks = ticks + 1
-    }
+    })
     text(value="{takes(annotated).string()} {sum(zero).string()} {inferred.string()} {ticks}")
 }

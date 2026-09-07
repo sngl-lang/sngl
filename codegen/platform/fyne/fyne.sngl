@@ -43,6 +43,7 @@
 //   theme/layout implementation needs; today the assignment is dropped.
 
 import ui "sngl:ui"
+import time "sngl:time"
 import tr "sngl:tree"
 import . "sngl:macro"
 import . "sngl:internal/marks"
@@ -586,4 +587,23 @@ component ui.input[platform] {
 
 component ui.textarea[platform] {
     MultiLineEntry(text=value, placeholder=placeholder, rows=rows, style={...style}, @input { input() }) {}
+}
+
+// --- The timer ---
+//
+// A recurring deadline is not a widget, so it is a primitive of its own rather
+// than a Spec over one: it has no constructor, no Go type and nothing to add to
+// a container. It draws nothing, and the emitter skips it in the view.
+//
+// The gate is a prop rather than the position the node is written at, because
+// the schedule is started and stopped outside the tree the position describes.
+#[intrinsic("fyne:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+) {}
+
+component time.timer[platform] {
+    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }

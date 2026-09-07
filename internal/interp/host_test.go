@@ -25,7 +25,6 @@ component main {
         for var it = items {
             text(value=it, key=it)
         }
-        timer(interval=100ms, enabled=true, @tick { count += 10 })
     }
 }
 `
@@ -73,7 +72,10 @@ func TestTheHostTreeTracksTheSessionAcrossEveryOperation(t *testing.T) {
 	p, err := s.Invoke(inc, "click")
 	step(t, "click", h, s, p, err)
 
-	// A timer.
+	// A tick with nothing scheduled: the invariant has to hold across an
+	// operation that changes nothing. What a timer's patches do to the host
+	// tree is internal/interp/timertest's, since a schedule needs the platform
+	// that declares the primitive registered.
 	p, err = s.Tick()
 	step(t, "tick", h, s, p, err)
 
@@ -118,8 +120,8 @@ func TestTheHostTreeTracksTheSessionAcrossEveryOperation(t *testing.T) {
 	// And the handler the reload introduced actually runs.
 	p, err = s.Invoke(s.View().Find("out")[0].Key, "click")
 	step(t, "click the new handler", h, s, p, err)
-	if got := h.Find("out")[0].Props["value"]; got != "count = 111" {
-		t.Errorf("value is %v, want \"count = 111\"", got)
+	if got := h.Find("out")[0].Props["value"]; got != "count = 101" {
+		t.Errorf("value is %v, want \"count = 101\"", got)
 	}
 }
 

@@ -6,7 +6,7 @@ import . "sngl:app"
 
 component Ticker(rate = 1s) {
     var tick = 0
-    timer(interval=rate) { tick = tick + 1 }
+    timer(interval=rate, @tick { tick = tick + 1 })
     text(value=string(tick))
 }
 component main {
@@ -18,8 +18,8 @@ import . "sngl:time"
 import . "sngl:app"
 component main {
     var tick__inst0 int = 0
-    timer(2s) {
+    timer(interval=2s, @tick {
         tick__inst0 = tick__inst0 + 1
-    }
+    })
     text(value=string(tick__inst0))
 }

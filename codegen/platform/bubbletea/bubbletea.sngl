@@ -7,6 +7,7 @@
 // primitive lowers to lipgloss / bubbles model code.
 
 import ui "sngl:ui"
+import time "sngl:time"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -416,4 +417,23 @@ component ui.toolbar[platform] {
 
 component ui.avatar[platform] {
     Styled(content=initials, style={...style}) {}
+}
+
+// A recurring deadline. Not a blueprint primitive: a timer renders nothing, so
+// it carries no Kind and never reaches the view. compiler_ir.go collects it and
+// emits the tea.Tick / Msg pair the Elm architecture schedules with -- a
+// callback cannot be the shape here, because Update takes the Model by value
+// and returns it, so nothing a scheduler called later would have to mutate.
+//
+// The gate is a prop rather than the position the node is written at, because
+// arming happens in Init and Update, outside the view the position describes.
+#[intrinsic("bubbletea:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+) {}
+
+component time.timer[platform] {
+    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }

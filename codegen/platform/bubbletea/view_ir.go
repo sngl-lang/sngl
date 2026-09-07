@@ -195,14 +195,15 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		slotVar:     slotVar,
 	}
 
-	if len(cc.Body) == 1 {
+	ccBody := cc.Body
+	if len(ccBody) == 1 {
 		vc.line("var result string")
-		vc.renderStmt(cc.Body[0], "result")
+		vc.renderStmt(ccBody[0], "result")
 		b.WriteString(vc.buf.String())
 		b.WriteString("\treturn result\n")
 	} else {
 		vc.line("var parts []string")
-		for i, child := range cc.Body {
+		for i, child := range ccBody {
 			vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
 		}
 		vc.line(`result := lipgloss.JoinVertical(lipgloss.Left, parts...)`)

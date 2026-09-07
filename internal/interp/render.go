@@ -36,11 +36,51 @@ func (env *Env) ResolveElementRef(id string) (any, error) {
 	return out, nil
 }
 
+// bindProps evaluates a call site's arguments in the caller's scope and binds
+// each to the declaration it names, after binding every declared default.
+//
+// A call site names the prop, so the declaration it means is the component's,
+// found by that name. Defaults come first so a prop the call site omitted is
+// bound to what the declaration says rather than left unbound: BuildEnv did
+// this for the root component and nothing did it for a child, which is
+// invisible while an unbound prop only renders as an empty string and wrong
+// the moment one is tested.
+func bindProps(caller, child *Env, comp *ir.Component, inst *ir.NodeInst) {
+	for _, p := range comp.Props {
+		if p.Default == nil {
+			continue
+		}
+		child.Set(p.Sym, evalInit(child, p.Default))
+	}
+	for _, arg := range inst.Props {
+		if arg.Name == "" {
+			continue
+		}
+		v, err := caller.Eval(arg.Value)
+		if err == nil {
+			child.Set(propSym(comp, arg.Name), v)
+		}
+	}
+}
+
 func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	if env.childEnvs == nil {
 		env.childEnvs = map[*ir.NodeInst]*Env{}
 	}
 	if cached, ok := env.childEnvs[inst]; ok {
+		// The cache is for the component's own state, which has to survive a
+		// re-mount. Its props are inputs and must not: they are the call site's
+		// expressions, and the call site's state moves. `enabled=running`
+		// bound once at first mount left a timer running after a test set
+		// `running` to false, because the branch testing it read the value the
+		// prop had when the tree was first built.
+		bindProps(env, cached, comp, inst)
+		// And the scope it answers to. Snapshot() shares the child cache, so a
+		// cached child still points at the env it was first mounted from --
+		// which for a subtest is the enclosing test's. An emit runs its handler
+		// in that scope, so leaving it stale wrote the subtest's timer tick
+		// into the test containing it.
+		cached.parent = env
 		return cached
 	}
 
@@ -51,17 +91,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	child.parent = env
 	child.inst = inst
 
-	// Override with instance prop values. A call site names the prop, so the
-	// declaration it means is the component's, found by that name.
-	for _, arg := range inst.Props {
-		if arg.Name == "" {
-			continue
-		}
-		v, err := env.Eval(arg.Value)
-		if err == nil {
-			child.Set(propSym(comp, arg.Name), v)
-		}
-	}
+	bindProps(env, child, comp, inst)
 	for _, v := range comp.Vars {
 		child.Set(v, evalInit(child, v.Init))
 	}

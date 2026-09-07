@@ -45,6 +45,35 @@ static void sngl_gtk_idle_add(int idx) {
     g_idle_add(sngl_idle_tramp, GINT_TO_POINTER(idx));
 }
 
+// G_SOURCE_CONTINUE where the idle trampoline returns G_SOURCE_REMOVE: a timer
+// is the same dispatch wired to a source that stays armed. Cancelling is
+// g_source_remove on the id this returns.
+static gboolean sngl_timeout_tramp(gpointer data) {
+    snglGoDispatch(GPOINTER_TO_INT(data));
+    return G_SOURCE_CONTINUE;
+}
+static guint sngl_gtk_timeout_add(int ms, int idx) {
+    return g_timeout_add(ms, sngl_timeout_tramp, GINT_TO_POINTER(idx));
+}
+static void sngl_gtk_source_remove(guint id) {
+    if (id != 0) g_source_remove(id);
+}
+
+static gboolean sngl_pump_tick(gpointer data);
+
+// Runs the default main context until the deadline. Blocking iterations, with
+// a tick source to keep one from parking past it -- the same shape
+// sngl_pump_until_mapped uses, and for the same reason: a non-blocking poll
+// returns immediately and is not a wait at all.
+static void sngl_pump_for(int ms) {
+    gint64 deadline = g_get_monotonic_time() + (gint64)ms * 1000;
+    guint tick = g_timeout_add(5, sngl_pump_tick, NULL);
+    while (g_get_monotonic_time() < deadline) {
+        g_main_context_iteration(NULL, TRUE);
+    }
+    g_source_remove(tick);
+}
+
 // A bare GLib main loop, for exercising the idle source above without a
 // display. See mainLoopNew below.
 static GMainLoop *sngl_loop;
@@ -338,6 +367,35 @@ func Emit(w Handle, signal string) {
 	c, free := cstr(signal)
 	defer free()
 	C.sngl_emit(C.gpointer(p(w)), c)
+}
+
+// Every schedules fn to run on the GLib main loop every ms milliseconds until
+// the returned id is passed to CancelEvery. It is the timer runtime for this
+// platform: a GLib timeout source already runs its callback on the main thread,
+// so a tick body mutates the model in the same place a signal handler does and
+// needs no marshalling of its own.
+func Every(ms int, fn func()) uint {
+	if ms <= 0 {
+		return 0
+	}
+	idx := cbind.Register(fn)
+	return uint(C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)))
+}
+
+// CancelEvery removes a source Every armed. Zero is accepted and does nothing,
+// so a caller need not track whether it ever armed one.
+func CancelEvery(id uint) {
+	C.sngl_gtk_source_remove(C.guint(id))
+}
+
+// PumpFor runs the GLib main loop for ms milliseconds and returns. It is the
+// seam a test needs to observe anything the loop drives -- a timer above all --
+// without opening a window and never coming back.
+func PumpFor(ms int) {
+	if ms <= 0 {
+		return
+	}
+	C.sngl_pump_for(C.int(ms))
 }
 
 // A bare GLib main loop, which is what Post's idle source is scheduled

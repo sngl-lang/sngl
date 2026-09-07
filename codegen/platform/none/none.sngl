@@ -1,0 +1,29 @@
+// The interpreter's platform package.
+//
+// The interpreter emits nothing, so this package holds only what it has to be
+// *told* rather than shown: a primitive whose meaning is a schedule, which no
+// visual tree can express and no host widget stands in for.
+
+import time "sngl:time"
+import . "sngl:internal/marks"
+
+// A deadline that recurs. The interpreter's clock finds these in the rendered
+// tree and fires each one's `@tick` when the clock reaches its deadline.
+//
+// It is a node, so its position is its lifetime: one written under an `if` is
+// scheduled only while that branch renders, and one in a child component is
+// scheduled because the child rendered it. That is the whole reason `timer`
+// stopped being a compiler concept -- a schedule hoisted onto the component had
+// neither.
+#[intrinsic("none:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+) {}
+
+component time.timer[platform] {
+    if enabled {
+        Timer(interval=interval, enabled=true, @tick { tick() })
+    }
+}

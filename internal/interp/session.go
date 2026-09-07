@@ -28,14 +28,18 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	if clock == nil {
 		clock = NewVirtual()
 	}
+	// The interpreter is a target, and a target gets the bodies its own
+	// platform package declares. Nothing here lowers -- the interpreter is
+	// written against checked IR -- so this is the one thing it still takes
+	// from the pipeline: without it `sngl:time`'s `timer` is the empty stub
+	// every stdlib component is before a platform implements it, and schedules
+	// nothing.
+	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
 	env, err := BuildEnv(pkg, comp)
 	if err != nil {
 		return nil, err
 	}
-	timers, err := NewTimers(clock, env)
-	if err != nil {
-		return nil, err
-	}
+	timers := NewTimers(clock)
 	// Settling here rather than after: a mount handler runs before anything has
 	// seen the tree, so what a host is first handed already reflects it. An
 	// effect that fetches has its request in flight before the first frame,
@@ -46,6 +50,7 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	timers.Retarget(view)
 	return &Session{Pkg: pkg, Comp: comp, Env: env, Clock: clock, Timers: timers, view: view, fx: fx}, nil
 }
 
@@ -92,6 +97,9 @@ func (s *Session) Sync() ([]Patch, error) {
 		}
 		patches = append(patches, Diff(s.view, next)...)
 		s.view = next
+		// Before the effects settle: a mount handler may write state a deadline
+		// is positioned on, and the next round re-mounts anyway.
+		s.Timers.Retarget(next)
 		key, ran, err := s.fx.Reconcile(next, s.Env)
 		if err != nil {
 			return patches, err
@@ -180,6 +188,10 @@ func (s *Session) Invoke(key Key, event string, args ...any) ([]Patch, error) {
 // holding the old entry left it running a func of the package the reload threw
 // away, in a scope whose symbols the session no longer binds.
 func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
+	// The reloaded program is a program this target runs, so it takes this
+	// platform's bodies exactly as the first one did. Without it a reload
+	// silently dropped every timer: `timer` reverted to the empty stub.
+	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
 	env, err := BuildEnv(pkg, s.Comp)
 	if err != nil {
 		return nil, err
@@ -197,12 +209,6 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 		}
 	}
 	carry()
-
-	timers, err := NewTimers(s.Clock, env)
-	if err != nil {
-		return nil, err
-	}
-	timers.Rebase(s.Timers)
 
 	// Mounted first only for the key set Retarget needs: which brackets the new
 	// source describes decides which of the running ones are ending.
@@ -223,7 +229,11 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 		return nil, err
 	}
 	patches := Diff(s.view, next)
-	s.Pkg, s.Env, s.Timers, s.view = pkg, env, timers, next
+	s.Pkg, s.Env, s.view = pkg, env, next
+	// Carried rather than rebuilt: Retarget keys on the mounted path, so a
+	// deadline the edit did not move keeps its phase and saving a file does not
+	// restart every timer in the program.
+	s.Timers.Retarget(next)
 	// And the setup half, which is the new program's: a bracket the edit added
 	// mounts here, and whatever its handler writes is patched like any other
 	// settle.

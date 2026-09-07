@@ -376,6 +376,14 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 	}
 
+	// A tick body is emitted as a Model method rather than inlined into the
+	// arming closure, because the widget refs it writes are model fields and
+	// only this path qualifies them: inlined, the reactive updater the lowering
+	// injected came out as `__n0.Label = ...` and did not compile.
+	for _, t := range c.info.Timers {
+		emitIRTimerTick(&funcBuf, t, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
+	}
+
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonMainComponents() {
 		// A component the build renders as a live instance gets a record of
@@ -488,6 +496,24 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	}
 	td.LangHelpers = helpers.Emit() + golang.EmitMergeFuncs(c.ctx.Pkg.MergeStructs)
 
+	// Timers. The gate is the expression the primitive carried, not the bare
+	// variable name the analysis reduces it to: `enabled=true` has no variable
+	// to name, and a gate folded from an enclosing branch has none either.
+	for _, t := range c.info.Timers {
+		gate := "true"
+		if t.Enabled != nil {
+			gate = gc.EvalExpr(t.Enabled)
+		}
+		td.Timers = append(td.Timers, timerData{
+			Index:      t.Index,
+			IntervalMs: t.IntervalMs,
+			Gate:       gate,
+		})
+	}
+	if len(td.Timers) > 0 {
+		td.Imports[gtk4rtPkg] = true
+	}
+
 	// Units (excluding the special-cased `duration`).
 	td.UnitDecls = golang.EmitUnitTypeDecls(c.info.Units)
 
@@ -581,6 +607,38 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 	}
 
 	return td, nil
+}
+
+// emitIRTimerTick emits a schedule's body as a Model method.
+//
+// A method rather than a body inlined into the arming closure, because the
+// widget refs a tick writes are model fields and only a translator emits them
+// as such: rendered straight through the expression evaluator, the reactive
+// updater the lowering injected came out as `__n0.Label = ...` and did not
+// compile.
+//
+// idCTypes is pre-populated for the reason the promoted-handler path does it:
+// the nodes this body assigns to were created in buildWidgetTree, so their
+// CreateNode sites are not in this block and the setter has no C type to pick
+// without it. Left out, the assignment was not mis-emitted -- it was dropped,
+// and the label never changed.
+func emitIRTimerTick(b *strings.Builder, t codegen.TimerInfo, gc *golang.GoIRContext, widgetFields *[]widgetField, pkg *ir.Package, reg *gir.TypeRegistry, shared *emitShared, wrapped bool) {
+	tr := newGtk4Translator(gc, func(name, cType string) {
+		*widgetFields = append(*widgetFields, widgetField{name: name, goType: widgetFieldGoType(cType, wrapped)})
+	}).withPkg(pkg).withRegistry(reg).withShared(shared).withLocalRefs(t.LocalRefs).withWrapped(wrapped)
+	maps.Copy(tr.idCTypes, collectNodeCTypes(pkg))
+	tr.collectTagComponents(t.Body)
+	synthesized := &ir.Func{
+		Name:     fmt.Sprintf("__timer%d_tick", t.Index),
+		Receiver: "Model",
+		Return:   ir.TypVoid,
+		Block:    codegen.WalkLowered(context.Background(), t.Body, tr),
+	}
+	for _, line := range gc.EmitFuncDef(synthesized) {
+		b.WriteString(line)
+		b.WriteByte('\n')
+	}
+	b.WriteByte('\n')
 }
 
 // emitIRSlotFunc emits a lowering-synthesized Func as a Model method. Only a

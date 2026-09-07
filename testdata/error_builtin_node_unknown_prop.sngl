@@ -10,9 +10,9 @@ import . "sngl:ui"
 component main {
     var n = 0
 
-    timer(every=1s) { // ERROR(check) "unknown prop \"every\" on component timer"
+    timer(every=1s, @tick { // ERROR(check) "unknown prop \"every\" on component timer"
         n = n + 1
-    }
+    })
 
     errorBoundary(fallback="oops", @error(e) {}) { // ERROR(check) "unknown prop \"fallback\" on component errorBoundary"
         text(value="n=" + string(n))

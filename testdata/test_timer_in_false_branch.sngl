@@ -1,0 +1,29 @@
+import . "sngl:ui"
+import . "sngl:time"
+import . "sngl:app"
+import . "sngl:test"
+
+output {
+    none { html }
+}
+
+// The `if` is false, so the timer is not in the tree and must not fire.
+func testTimerInFalseBranchNeverFires(t Test, c main) {
+    t.tick()
+    t.assert(c.n == 0)
+}
+
+component main {
+    var (
+        show = false
+        n = 0
+    )
+
+    if show {
+        timer(interval=100ms, enabled=true, @tick {
+            n += 1
+        })
+    }
+
+    text(value=string(n))
+}

@@ -14,6 +14,9 @@ func Run(pkg *ir.Package) ([]*codegen.TestResult, error) {
 	if pkg == nil {
 		return nil, nil
 	}
+	// See interp.NewSession: the interpreter takes its platform's bodies, and
+	// the test runner builds envs without going through a Session.
+	ir.SpecializeForTarget(pkg, interp.InterpreterPlatform, "")
 	var results []*codegen.TestResult
 	for _, fn := range pkg.Funcs {
 		if !fn.IsTest {
@@ -134,24 +137,34 @@ type testingT struct {
 	timers *interp.Timers
 }
 
-// sched returns the test's timer schedule, building it on first use.
+// sched re-derives the test's timer schedule from the tree the component
+// currently renders.
 //
-// The interval is evaluated once, here. A timer whose interval names a var that
-// later changes keeps the rate it was built with -- which is still strictly
-// more than the interpreter used to honour, since it ignored Interval outright.
-func (tv *testingT) sched(cv *componentValue) (*interp.Timers, error) {
-	if tv.timers != nil {
-		return tv.timers, nil
-	}
+// Re-derived on every call rather than built once, because a schedule is a fact
+// about the rendered tree and the tree is a fact about state a test is free to
+// move: `c.running = false` before a tick has to leave nothing to fire, and
+// that is the same question as whether the branch holding the timer renders.
+// Phase survives it -- Retarget keys on the mounted path, so a deadline already
+// scheduled keeps the one it had.
+//
+// env is the scope the tick will run in, and must be the same one the caller
+// then hands to Tick: each entry holds the env it was mounted against, so a
+// handler that writes state writes it where the caller reads it back from.
+// compEnv() snapshots, so two calls are two scopes and the write would land in
+// the one that is thrown away.
+func (tv *testingT) sched(env *interp.Env) (*interp.Timers, error) {
 	if tv.clock == nil {
 		tv.clock = interp.NewVirtual()
 	}
-	ts, err := interp.NewTimers(tv.clock, cv.compEnv())
+	if tv.timers == nil {
+		tv.timers = interp.NewTimers(tv.clock)
+	}
+	v, err := interp.Mount(env)
 	if err != nil {
 		return nil, err
 	}
-	tv.timers = ts
-	return ts, nil
+	tv.timers.Retarget(v)
+	return tv.timers, nil
 }
 
 // componentValue is the runtime value of a test function's component

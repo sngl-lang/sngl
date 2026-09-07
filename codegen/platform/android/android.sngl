@@ -16,6 +16,7 @@
 // on each says which.
 
 import ui "sngl:ui"
+import time "sngl:time"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 
@@ -443,4 +444,25 @@ component ui.toolbar[platform] {
 
 component ui.avatar[platform] {
     Text(text="") {}
+}
+
+// --- The timer ---
+//
+// A recurring deadline. Compose has a shape for it -- LaunchedEffect keyed on
+// the gate, with a delay loop inside -- so the primitive is that, and the
+// emitter builds it from the declaration.
+//
+// The gate reaches the emitter as an expression rather than as the bare
+// variable name the analysis used to reduce it to. `enabled=true` produced
+// `LaunchedEffect() { while () {`, which is not Kotlin, and no golden covered
+// an android timer to say so.
+#[intrinsic("android:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+) {}
+
+component time.timer[platform] {
+    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
 }

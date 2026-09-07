@@ -9,11 +9,15 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/internal/testtargets"
 	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func TestRunFixtures(t *testing.T) {
+	// Registered because a timer needs its platform: `sngl:time`'s `timer` has
+	// no body, and the schedule is sngl:platform/none's override of it.
+	langs, plats := testtargets.Targets()
 	for s := range testutil.CodegenSamples(t) {
 		t.Run(s.Name, func(t *testing.T) {
 			doc, err := parser.Parse(s.Filename, []byte(s.Source))
@@ -25,7 +29,11 @@ func TestRunFixtures(t *testing.T) {
 				}
 				t.Fatalf("parse: %v", err)
 			}
-			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			pkg, diags := checker.Check(doc, &checker.Config{
+				FS: s.FS, Dir: s.Dir, IsMain: true,
+				Languages: langs, Platforms: plats,
+				Targets: []ir.StaticTarget{{Platform: "none"}},
+			})
 			// What makes a fixture runnable is that it declares a test
 			// function, which is readable from the fixture itself. A prefix
 			// list stood here instead, and a fixture left off it had its

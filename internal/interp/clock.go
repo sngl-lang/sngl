@@ -43,68 +43,72 @@ type Real struct{}
 
 func (Real) Now() time.Time { return time.Now() }
 
-// Timers is the firing schedule for one component's timers.
+// Timers is the firing schedule the mounted tree describes.
 //
-// The interpreter previously had no schedule at all: every timer fired once per
-// `t.tick()`, so ir.Timer.Interval was parsed, checked, and then ignored. A
-// 100ms timer and a 5s timer advanced at the same rate, which is invisible in a
-// fixture with one timer and wrong everywhere else.
+// Rebuilt from the View rather than read off a declaration, which is what makes
+// a timer's position mean something: one written under a branch that did not
+// render describes no deadline, and one in a child component describes one
+// because the child rendered it. Read off a flat `Component.Timers` the checker
+// hoisted every timer onto, neither held -- and the two failures pointed in
+// opposite directions.
+//
+// The interpreter previously had no schedule at all either: every timer fired
+// once per `t.tick()`, so the interval was parsed, checked and then ignored.
 type Timers struct {
 	clock   Clock
 	entries []*timerEntry
 }
 
 type timerEntry struct {
-	// Key identifies the timer across a reload. A timer is written as a node
-	// but the checker hoists it out of the body onto Component.Timers, so its
-	// path is positional within that list.
+	// Key is the mounted path, which is what says two schedules are the same
+	// schedule across a re-mount -- the same thing it says for an effect.
 	Key      Key
-	Timer    *ir.Timer
 	Interval time.Duration
-	// next is when this timer fires again. Carried across a reload when the
-	// interval is unchanged, so reloading does not reset every timer's phase.
+	Tick     *ir.Func
+	Env      *Env
+	// next is when this timer fires again. Carried across a re-mount when the
+	// interval is unchanged, so re-rendering does not reset every timer's
+	// phase, and neither does a reload.
 	next time.Time
 }
 
-// NewTimers builds the schedule for env's component. The interval is an
-// expression -- it may name a var or a unit-suffixed constant -- so it is
-// evaluated against env rather than read off the IR.
-func NewTimers(clock Clock, env *Env) (*Timers, error) {
-	ts := &Timers{clock: clock}
-	if env == nil || env.Comp == nil {
-		return ts, nil
-	}
-	now := clock.Now()
-	for i, t := range env.Comp.Timers {
-		d, err := intervalOf(env, t)
-		if err != nil {
-			return nil, fmt.Errorf("timer %d of %s: %w", i, env.Comp.Name, err)
-		}
-		ts.entries = append(ts.entries, &timerEntry{
-			Key:      TimerKey(env.Comp.Name, i),
-			Timer:    t,
-			Interval: d,
-			next:     now.Add(d),
-		})
-	}
-	return ts, nil
-}
+// NewTimers returns an empty schedule. What it holds comes from Retarget: a
+// program describes its deadlines by rendering, so there is nothing to read
+// here.
+func NewTimers(clock Clock) *Timers { return &Timers{clock: clock} }
 
-// intervalOf evaluates a timer's interval to a duration. `unit duration` bases
-// on ms (lib/time/time.sngl), so the evaluated number is milliseconds.
-func intervalOf(env *Env, t *ir.Timer) (time.Duration, error) {
-	if t.Interval == nil {
-		return 0, fmt.Errorf("no interval")
+// Retarget moves the schedule to the one v describes.
+//
+// A deadline whose key and interval both survive keeps its phase. A changed
+// interval is a different schedule as far as phase goes and starts fresh --
+// carrying a deadline computed from the old interval would fire it at neither
+// rate.
+func (ts *Timers) Retarget(v *View) {
+	if ts == nil {
+		return
 	}
-	v, err := env.Eval(t.Interval)
-	if err != nil {
-		return 0, err
+	old := make(map[Key]*timerEntry, len(ts.entries))
+	for _, e := range ts.entries {
+		old[e.Key] = e
 	}
-	ms := toFloat(v)
-	if ms <= 0 {
-		return 0, fmt.Errorf("interval is %v, want a positive duration", v)
+	now := ts.clock.Now()
+	var out []*timerEntry
+	if v != nil {
+		for _, mt := range v.Timers {
+			e := &timerEntry{
+				Key:      mt.Key,
+				Interval: mt.Interval,
+				Tick:     mt.Tick,
+				Env:      mt.Env,
+				next:     now.Add(mt.Interval),
+			}
+			if p, ok := old[mt.Key]; ok && p.Interval == mt.Interval {
+				e.next = p.next
+			}
+			out = append(out, e)
+		}
 	}
-	return time.Duration(ms * float64(time.Millisecond)), nil
+	ts.entries = out
 }
 
 // Next reports when the earliest timer fires, and false when there are none.
@@ -122,10 +126,12 @@ func (ts *Timers) Next() (time.Time, bool) {
 // FireDue runs every timer due at the clock's current time and reschedules it.
 // This is what a window's event loop calls.
 //
-// A disabled timer is rescheduled without firing rather than left behind, so
-// re-enabling it does not deliver a burst of the fires it missed. That is what
-// `enabled` means in lib/time: a gate, not a pause.
-func (ts *Timers) FireDue(env *Env) (int, error) {
+// No `enabled` gate remains here. `enabled` is the position the platform
+// override writes its primitive at -- `if enabled { Tick(...) }` -- so a
+// disabled timer describes no deadline and is not in this list at all. That is
+// also why a re-enabled timer delivers no burst of the fires it missed: it was
+// never scheduled to miss them.
+func (ts *Timers) FireDue(_ *Env) (int, error) {
 	now := ts.clock.Now()
 	fired := 0
 	for _, e := range ts.entries {
@@ -133,23 +139,12 @@ func (ts *Timers) FireDue(env *Env) (int, error) {
 			continue
 		}
 		e.next = now.Add(e.Interval)
-
-		enabled := true
-		if e.Timer.Enabled != nil {
-			v, err := env.Eval(e.Timer.Enabled)
-			if err != nil {
-				return fired, err
-			}
-			if b, ok := v.(bool); ok {
-				enabled = b
-			}
-		}
-		if !enabled || e.Timer.Handler == nil {
+		if e.Tick == nil || e.Env == nil {
 			continue
 		}
 		// ExecBlock rather than a raw Exec loop: a `return` in a handler ends
 		// that handler, and only ExecBlock swallows the signal.
-		if err := env.ExecBlock(e.Timer.Handler.Block); err != nil {
+		if err := e.Env.ExecBlock(e.Tick.Block); err != nil {
 			return fired, err
 		}
 		fired++
@@ -175,26 +170,15 @@ func (ts *Timers) Tick(env *Env) (int, error) {
 	return ts.FireDue(env)
 }
 
-// Rebase carries firing phase from a previous schedule across a reload.
-//
-// A timer whose key and interval both survive keeps its deadline: reloading a
-// file must not reset every timer in the program. A changed interval is a
-// different timer as far as phase goes, and is scheduled fresh -- carrying a
-// deadline computed from the old interval would fire it at neither rate.
-func (ts *Timers) Rebase(prev *Timers) {
-	if prev == nil {
-		return
-	}
-	old := make(map[Key]*timerEntry, len(prev.entries))
-	for _, e := range prev.entries {
-		old[e.Key] = e
-	}
+// Keys is the mounted path of every scheduled timer, in mount order. A timer is
+// keyed on where it is written, the same way an effect is, so a caller that
+// wants one has to ask which are there rather than construct a positional key.
+func (ts *Timers) Keys() []Key {
+	out := make([]Key, 0, len(ts.entries))
 	for _, e := range ts.entries {
-		p, ok := old[e.Key]
-		if ok && p.Interval == e.Interval {
-			e.next = p.next
-		}
+		out = append(out, e.Key)
 	}
+	return out
 }
 
 // NextFor reports when the timer with the given key fires. The reconciler needs
@@ -209,7 +193,12 @@ func (ts *Timers) NextFor(key Key) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// TimerKey is the key of a component's nth timer.
-func TimerKey(comp string, i int) Key {
-	return Key{Comp: comp, Path: fmt.Sprintf("timer@%d", i)}
+// durationFromMs turns an evaluated `duration` into a Go duration. `unit
+// duration` bases on ms (lib/time/time.sngl), so the number is milliseconds.
+func durationFromMs(v any) (time.Duration, error) {
+	ms := toFloat(v)
+	if ms <= 0 {
+		return 0, fmt.Errorf("interval is %v, want a positive duration", v)
+	}
+	return time.Duration(ms * float64(time.Millisecond)), nil
 }

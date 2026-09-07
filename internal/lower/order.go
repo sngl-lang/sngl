@@ -46,6 +46,13 @@ var orderConstraints = []orderConstraint{
 	{"PropBindings", "NoToggle",
 		"the same, for a binding whose handler toggles its target: NoToggle rewrites the Toggle stmt PropBindings emits"},
 
+	{"InlinePure", "TimerPrimitive",
+		"the primitive is lifted out of the tree it is placed in, so a timer inside a component the inliner has not yet folded into its caller is not in the tree being walked -- which is why a timer in a non-main component never fired"},
+	{"TimerPrimitive", "NoReactivity",
+		"a tick body's writes have to still look like assignments when the updater injection descends, or the widget reading what a tick writes is never patched"},
+	{"TimerPrimitive", "InstanceEvents",
+		"InstanceEvents turns a declared event into the prop the render re-points, and the timer primitive declares @tick"},
+
 	{"RefLoop", "NoReactivity",
 		"the list[idx].field write this leaves has to reach reactivity as a mutation of the list var, or the loop's slot never re-renders"},
 	{"RefLoop", "NoToggle",
@@ -120,8 +127,6 @@ var orderConstraints = []orderConstraint{
 
 	{"NoReactivity", "NoTernary",
 		"the value-only `if` NoTernary synthesizes would be misread as a reactive render slot and relocated into a __renderSlotN func, orphaning the `var __ltN` it assigns into"},
-	{"NoReactivity", "NoTimer",
-		"a timer handler may have been wrapped by the updater injection, and the schedule/cancel pairs are injected around what that left"},
 
 	{"InstanceBodies", "NoDeclarative",
 		"both flatten a body, and they disagree about handlers: an instance's are kept inline because a factory's handler closes over the call that built it, and the declarative pass would lift them -- swapped, fyne and gtk4 emit `OnTapped = c.__n0_click_handler` for testdata/factory_reactive_slot"},
