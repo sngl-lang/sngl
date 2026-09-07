@@ -1367,7 +1367,7 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 				}
 			}
 		}
-		if !it.isNonTerminal() && it.tokenType() == BANGBANG {
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == BANGBANG {
 			it.skip()
 			if target, ok := base.(ast.TargetExpr); ok {
 				return &ast.ToggleStmt{
@@ -1376,7 +1376,7 @@ func (b *builder) buildVisualOrStmt(it nodeIter) ast.Stmt {
 				}
 			}
 		}
-		if it.isNonTerminal() && it.symbol() == IncDecOp {
+		if !it.done() && it.isNonTerminal() && it.symbol() == IncDecOp {
 			inner := it.enter()
 			isDec := false
 			if !inner.done() {
@@ -2814,9 +2814,9 @@ func spansLines(openLine int, itemLines []int) bool {
 
 // --- Argument lists ---
 
-// buildArgList builds a call's arguments. A type written on one is refused
-// here: the ArgList production carries it for the slot population that binds a
-// name and a type, and this is the only place that knows which site it is.
+// buildArgList builds a call's arguments, and refuses a type written on one.
+// The check is here rather than in the checker because the two sites share the
+// production and only the builder is told which one it is reading.
 func (b *builder) buildArgList(it nodeIter, openLine int) ast.ArgList {
 	al := b.buildBindArgList(it, openLine)
 	for _, entry := range al.Args {

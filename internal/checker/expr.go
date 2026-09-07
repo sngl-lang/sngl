@@ -3461,8 +3461,12 @@ func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 // declared type is not ErrorEvent.
 func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	errEvtType := c.errorEventType()
+	c.refuseParamMarks(eh.Params.Params)
 	params := make([]*ir.Param, len(eh.Params.Params))
 	for i, p := range eh.Params.Params {
+		if p.Default != nil {
+			c.rejectBindDefault(ast.Pos(*p.Default.ExprPos()), bindParamWhat(p.Name, "@"+eh.Name), "the error")
+		}
 		typ := c.resolveType(p.Type)
 		if typ == nil || typ.Kind == ir.TypeDyn {
 			typ = errEvtType

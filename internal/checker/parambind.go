@@ -33,8 +33,7 @@ func bindParamWhat(name, owner string) string {
 
 // bindParams builds the parameters a handler binds. The list is the ParamList a
 // function declares its parameters with, so it admits a default value and a
-// mark; supplier names what hands the value over, since that is why neither
-// belongs here.
+// mark; supplier is what hands the value over, and names it in the report.
 func (c *checker) bindParams(pl ast.ParamList, want *ir.Type, owner, supplier string) []*ir.Param {
 	c.refuseParamMarks(pl.Params)
 	params := make([]*ir.Param, len(pl.Params))
@@ -64,7 +63,7 @@ func (c *checker) slotBindArg(slot string, entry ast.ArgOrEventHandler) (ast.Arg
 		case strings.HasPrefix(v.Name, ":"):
 			c.error(v.NamePos, "slot %q: a population binds names, and %s is a prop binding", slot, v.Name)
 		case v.Name != "":
-			c.rejectBindDefault(v.NamePos, bindParamWhat(v.Name, "slot "+strconv.Quote(slot)), "the component")
+			c.error(v.NamePos, "slot %q: a population binds names, and %s= is a named argument", slot, v.Name)
 		default:
 			return v, true
 		}

@@ -17,9 +17,10 @@ component table(rows list<Row>, slot cell(Row)) {
 }
 
 component main {
+    var count = 0
     vbox {
         table(rows=[]) {
-            slot cell(row=1) { // ERROR(check) "parameter \"row\" of slot \"cell\" takes no default value: the component supplies what the name is bound to"
+            slot cell(row=1) { // ERROR(check) "slot \"cell\": a population binds names, and row= is a named argument"
                 text(value="x")
             }
         }
@@ -29,7 +30,11 @@ component main {
             }
         }
         table(rows=[]) {
-            slot cell(@click {}) { // ERROR(check) "slot \"cell\": a population binds names, and @click is an event handler"
+            slot cell(@click { // ERROR(check) "slot \"cell\": a population binds names, and @click is an event handler"
+                // The handler's block is a block of the population's argument
+                // list, so the formatter has to reach it to place this.
+                count = 1
+            }) {
                 text(value="x")
             }
         }

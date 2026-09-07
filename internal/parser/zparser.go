@@ -4817,12 +4817,12 @@ state3:
 //	# After consuming 'ident':
 //	#   assign → named arg
 //	#   lbrace → struct literal (not in ExprPostfixOp FIRST)
-//	#   ident  → the name-and-type a slot population binds
+//	#   FIRST(Type) → the name-and-type a slot population binds
 //	#   else   → expression postfix chain (ExprPostfixOp handles dot-ident + struct lit)
 //	#
-//	# FIRST(Type) is disjoint from FIRST(ExprPostfixOp) and from every operator
-//	# ArgExprCont begins with, so the Type alternative needs no hint; the checker
-//	# refuses it anywhere but a population.
+//	# FIRST(Type) is ident, kw_func, kw_struct, kw_enum and kw_unit, all disjoint
+//	# from FIRST(ExprPostfixOp) and from every operator ArgExprCont begins with, so
+//	# the Type alternative needs no hint. buildArgList refuses it in a call.
 //	IdentArgCont =
 //	      assign Expr
 //	    | StructLitBody { ExprPostfixOp } ArgExprCont
@@ -6242,7 +6242,7 @@ state2:
 //	#
 //	# The parenthesised list is an ArgList, the same production a call's arguments
 //	# are: an ident is an expression, so one production parses both sites and the
-//	# checker rules on which it is -- and on the named, binding and event forms an
+//	# checker rules on which it is, and on the named, binding and event forms an
 //	# ArgList admits that a population does not.
 //	SlotNode = kw_slot [ ident [ lparen [ ArgList ] rparen ] ] [ StmtBlock ] .
 //

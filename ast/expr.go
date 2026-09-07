@@ -363,8 +363,8 @@ type Arg struct {
 	NamePos Pos
 	Value   Expr
 	// Type is the type written after a positional argument, which only a slot
-	// population may do — `slot cell(row Row)`. Elsewhere the checker refuses
-	// it.
+	// population may do — `slot cell(row Row)`. In a call the builder refuses
+	// it, so nothing downstream sees one.
 	Type TypeExpr `json:",omitempty"`
 }
 
