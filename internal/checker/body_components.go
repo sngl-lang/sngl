@@ -10,18 +10,14 @@ import (
 )
 
 // reportBodyComponentCollisions reports a body-local component whose emitted
-// name another declaration of this package would also emit. Interim, for #198.
+// name another declaration of this package would also emit. Interim, removed
+// by #198.
 //
-// Every platform sets InlineComponents=false, so passNoInlineComponents
-// substitutes each component into its caller and renames the state it carries
-// per call site (__instN). What survives that is a recursion cycle, and a
-// surviving component is emitted under its declared name -- two of one name
-// then emit one host declaration twice, which `sngl generate` writes and exits
-// 0 on. #198 renames per body and removes this.
-//
-// So the question is asked of the cycles only, and after pass2: a body-local
-// component that is not in one shares nothing with a namesake, which is what
-// lets a body-local component shadow a top-level one.
+// Asked of the recursion cycles only, because those are the components
+// passNoInlineComponents leaves standing: everything else is substituted into
+// its caller with its state renamed per call site (__instN) and never reaches
+// a backend under its declared name. Which is what lets an ordinary body-local
+// component shadow a top-level one.
 func (c *checker) reportBodyComponentCollisions() {
 	if c.pkg == nil || len(c.bodyComps) == 0 {
 		return

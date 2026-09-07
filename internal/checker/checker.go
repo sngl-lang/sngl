@@ -2582,11 +2582,10 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 // whose body is checked must have been through here first.
 func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Component) []*ast.FuncDef {
 	var nestedFuncs []*ast.FuncDef
-	// bodyScope holds the names of the components this body declares. It is
-	// not installed as c.scope, because the struct/enum/unit cases below still
-	// bind at package scope and a scope this loop pushed would swallow them.
-	// pass2 rebuilds it from irComp.BodyComponents; what it does here is
-	// report two of one name in one body.
+	// bodyScope holds the names of the components this body declares, and is
+	// deliberately not installed as c.scope: the struct/enum/unit cases below
+	// still bind at package scope, and a scope this loop pushed would swallow
+	// them. pass2 rebuilds it from irComp.BodyComponents.
 	var bodyScope *ir.Scope
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {

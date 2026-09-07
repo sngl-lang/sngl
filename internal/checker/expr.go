@@ -4771,14 +4771,13 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 }
 
 // lookupComponentInScope resolves a bare component name through the scope
-// chain, the way every other identifier resolves. It is the lexical half of
-// the question ir.SymbolTable.LookupRootComponent answers for a qualified
-// name: a component declared in a body binds in that body's scope and the
-// package root does not hold it.
+// chain, the way every other identifier resolves; ir.SymbolTable
+// .LookupRootComponent is the same question asked of a package root, for a
+// qualified name.
 //
-// Going through the chain rather than a flat map is also what keeps a
-// platform-extension body, checked against the stdlib scope, from picking up a
-// same-named user component in place of the platform's own blueprint.
+// Going through the chain is also what keeps a platform-extension body,
+// checked against the stdlib scope, from picking up a same-named user
+// component in place of the platform's own blueprint.
 func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, bool) {
 	sym, ok := c.scope.LookupComponent(name)
 	if !ok {
