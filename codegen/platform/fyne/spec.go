@@ -352,7 +352,7 @@ func literalNumber(e ir.Expr) (float64, bool) {
 	if !ok || lit == nil {
 		return 0, false
 	}
-	v, err := strconv.ParseFloat(strings.TrimSuffix(lit.Value, lit.Suffix), 64)
+	v, err := strconv.ParseFloat(lit.Value, 64)
 	if err != nil {
 		return 0, false
 	}

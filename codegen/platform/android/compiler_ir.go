@@ -471,6 +471,11 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// Pass 2: render body. kc.RequireImport fires for any i18n calls.
 	var body strings.Builder
 
+	// A multi-base unit is a data class of per-base magnitudes, the same
+	// shape Go gives it. A single-base one is a plain number and declares
+	// nothing.
+	body.WriteString(kotlin.EmitUnitDataClasses(info.Units))
+
 	// Data classes
 	for _, sd := range info.Structs {
 		fmt.Fprintf(&body, "data class %s(\n", exportName(sd.Name))
