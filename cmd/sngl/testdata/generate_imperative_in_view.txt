@@ -1,0 +1,47 @@
+# A view-body return used to reach codegen: bubbletea emitted a View() calling
+# a renderMain it never defined, and generate exited 0 on Go that does not
+# compile. The exit code is the assertion.
+! sngl generate --platform=bubbletea --lang=go --out=out ret.sngl
+stderr 'a return is not a statement in a view body'
+! exists out/model.go
+
+# The same for an assignment, which fyne wrote into its builder while
+# bubbletea and html dropped it.
+! sngl generate --platform=bubbletea --lang=go --out=out2 assign.sngl
+stderr 'an assignment to "n" is not a statement in a view body'
+
+# Moved into an effect, the same write generates.
+sngl generate --platform=bubbletea --lang=go --out=out3 effect.sngl
+exists out3/model.go
+grep 'm\.n = 5' out3/model.go
+
+-- ret.sngl --
+import . "sngl:ui"
+
+component main {
+    return
+
+    text(value="hi")
+}
+-- assign.sngl --
+import . "sngl:ui"
+
+var n = 0
+
+component main {
+    n = 5
+
+    text(value="{n}")
+}
+-- effect.sngl --
+import . "sngl:ui"
+
+var n = 0
+
+component main {
+    effect(@mount {
+        n = 5
+    })
+
+    text(value="{n}")
+}

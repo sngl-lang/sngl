@@ -1,0 +1,22 @@
+import . "sngl:ui"
+
+component holder {
+    struct Local {
+        a int
+    }
+
+    var here = Local{a=1}
+
+    text(value="${here.a}")
+}
+
+// Local belongs to holder's body, not to the file.
+func outside() int {
+    var v = Local{a=2} // ERROR(check) "undefined: Local"
+    return v.a
+}
+
+component main {
+    holder()
+    text(value="${outside()}")
+}

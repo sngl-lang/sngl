@@ -554,10 +554,11 @@ type Component struct {
 	// nil when the pass did not run. See internal/lower/node_escape.go.
 	LocalRefs map[string]bool  `json:"-"`
 	Methods   map[string]*Func `json:"-"`
-	// BodyComponents are the components declared inside this one's body --
-	// ordinary members of Package.Components, recorded here so pass2 can
-	// rebind their names in the scope pass1 declared them in.
-	BodyComponents []*Component `json:"-"`
+	// BodyDecls are the declarations written inside this component's body: a
+	// struct, enum, unit or component. Each is an ordinary member of the
+	// package collection its kind lands in; this records which body bound its
+	// name, so pass2 can rebind it in the scope pass1 declared it in.
+	BodyDecls []Symbol `json:"-"`
 }
 
 func (c *Component) SymName() string { return c.Name }

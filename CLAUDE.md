@@ -377,33 +377,64 @@ declaration against `pkgDecls` and an import against `topLevel`. The one
 exception is shadowing, where only one of the two is written in this package:
 a declaration may shadow a dot-imported name, including a built-in.
 
-**A `component` written in a body is scoped to that body.** It is an ordinary
-member of `ir.Package.Components` — pass2 checks its body and every backend
-emits it — and only its *name* is body-scoped: `registerBodyComponent` binds it
-through `c.declare` in the current scope and reaches `claimTopLevel` not at
-all, so it shadows a top-level component of the same name inside that body and
-is undefined outside it. A scope cannot span the two passes, so the symbols
-travel on `ir.Component.BodyComponents` and `declareBodyComponents` rebinds
-them in pass2, the shape `BodyTypes` uses for a body-local type. An override is
-refused there: it merges into a declaration registered elsewhere in the
-package, and there is nothing body-scoped about that.
+**A `struct`, `enum`, `unit` or `component` written in a body is scoped to that
+body**, and `registerBodyDecl` is where all four register. The declaration
+still joins the package collection its kind lands in — `ir.Package.Structs`,
+`.Enums`, `.Units`, `.Components` — because that is what a backend emits from,
+and only the *name* is body-scoped: it binds through `c.declare` in the scope
+`collectComponentDecls` pushed and reaches `claimTopLevel` not at all. So it is
+keyed by nothing — the declaration is its identity, and two bodies each writing
+`struct Local` declare two incompatible types, the rule that makes two
+packages each declaring `struct shape` declare two trees; a body-local
+`component card` likewise shadows a top-level one inside that body and is
+undefined outside it. A component body needs the binding in both passes and a
+scope cannot span them, so the symbols travel on `ir.Component.BodyDecls` and
+`declareBodyDecls` rebinds them in pass2. A unit's *suffix* map stays
+package-wide regardless: a suffix is matched on a literal, which hands it no
+scope. An **override** may not be written in a body: it merges into a
+declaration registered elsewhere in the package, so there is nothing
+body-scoped for one to land on.
 
-What a nested body sees is its siblings and itself, not the enclosing props and
-vars — a nested body is a separate render, and no target closes one over
-another's state. Which makes a body-local component recursive, and recursion is
-what `passNoInlineComponents` leaves standing: every platform sets
-`InlineComponents=false`, so a component that is not in a cycle is substituted
-into its caller with its state renamed per call site (`__instN`) and never
-reaches a backend under its declared name. Two *recursive* declarations of one
-name do, and would emit one host component twice —
-`reportBodyComponentCollisions` is that pair as a positioned error naming #198,
-which is a **codegen limitation surfaced in the checker** and not a language
-rule. Asked after pass2 and of the cycles only, which is what lets the ordinary
-shadowing and two-bodies cases through.
+Two in *one* body is that scope's duplicate and `c.declare` says so. Two in
+*different* bodies is correct and the language allows it, but the emitted
+namespace is flat — so each kind is asked, in its own terms, whether the two
+would collide there, and both answers are a **codegen limitation surfaced in
+the checker** rather than a language rule. #198 renames per body and deletes
+both, along with the fixtures that pin them.
 
-Bare resolution is `checker.lookupComponentInScope` — the lexical chain, like
-every other identifier. `ir.SymbolTable.LookupRootComponent` is the other
-question: a name qualified by a package, and an override's target.
+- A **type** collides always: every backend emits a type declaration straight
+  from `ir.Package.Structs` and none renames. `claimBodyType` reports the pair
+  at registration, and reports a body-local type against a *top-level* one of
+  the same name for the same reason
+  (`error_body_local_type_two_bodies.sngl`).
+- A **component** collides only inside a recursion cycle, which is why the two
+  checks differ in breadth. Every platform sets `InlineComponents=false`, so
+  `passNoInlineComponents` substitutes a component that is not in a cycle into
+  its caller with its state renamed per call site (`__instN`) and it never
+  reaches a backend under its declared name. What survives is a cycle, and two
+  surviving declarations of one name emit one host component twice.
+  `reportBodyComponentCollisions` asks that after pass2 and of the cycles only
+  (`error_component_nested_recursive_collision.sngl`), which is what lets the
+  ordinary shadowing and two-bodies cases through.
+
+What a nested *component* body sees is the declarations of the body it was
+written in — its siblings and itself — and not that body's props and vars.
+Capture is #202, still undecided: a nested `func` does reach the enclosing
+model, a nested component is a separate render with no such destination, and
+the three available lowerings disagree about what it is.
+
+Bare component resolution is `checker.lookupComponentInScope` — the lexical
+chain, like every other identifier. `ir.SymbolTable.LookupRootComponent` is
+the other question: a name qualified by a package, and an override's target.
+
+An `import` outside the root of a file is an error at the import. That is a
+**policy** and not a structural impossibility: the parser still produces the
+node and `checkStmt` refuses it at one site, so relaxing it JS-style — a
+body-level import binding in the body's scope — is deleting that check and
+wiring a scope. Which is why the diagnostic says where an import may be
+written rather than that a nested one means nothing. Before the check it
+parsed and was discarded, which told a program only that the *use* of its
+alias was undefined.
 
 Two consequences worth knowing: a kind classifies *one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark

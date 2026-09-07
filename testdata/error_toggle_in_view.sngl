@@ -1,0 +1,12 @@
+// Same for a toggle: it flips state, and a view body renders state rather
+// than changing it.
+
+import . "sngl:ui"
+
+var flag = false
+
+component main {
+    flag!! // ERROR(check) "not a statement in a view body"
+
+    text(value="{flag}")
+}
