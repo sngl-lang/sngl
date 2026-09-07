@@ -244,6 +244,10 @@ type checker struct {
 	// Unit suffix reverse lookup.
 	unitBySuffix map[string]*ir.UnitDef
 
+	// bodyTypeDecls is where each body-local type name was first declared, per
+	// package it lands in. Interim, for the #198 collision error only.
+	bodyTypeDecls map[*ir.Package]map[string]ast.Pos
+
 	// inferring is the stack of functions whose return type is being inferred,
 	// so a body that calls itself is reported rather than recurring.
 	inferring map[*ir.Func]bool
@@ -1544,14 +1548,6 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
 }
 
-func (c *checker) registerStruct(s *ast.StructDef) {
-	sd := c.buildStructDef(s)
-	c.applyMarks(s, sd)
-	c.declPkg().Structs = append(c.declPkg().Structs, sd)
-	c.bindDeclared(c.claimTopLevel(s.Name, s.Pos, bindDecl, ""), sd)
-	c.registerNestedMethods(sd.Name, s.TypeParams, s.Funcs())
-}
-
 // registerStructShell registers a struct's name and type parameters without
 // resolving its fields, so the type is visible for forward and mutually
 // recursive references. resolveStructBody fills in the fields (and nested
@@ -1591,6 +1587,88 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 	// condition the fields do.
 	sd.TypeParams = c.resolveTypeParams(sd.AST.TypeParams)
 	c.registerNestedMethods(sd.Name, sd.AST.TypeParams, sd.AST.Funcs())
+}
+
+// claimBodyType reports a body-local type name something else in this package
+// already declared -- another body, or a top-level declaration. Both names are
+// correctly scoped and stay so; the collision is that both declarations land in
+// one ir.Package and every backend emits a type declaration straight from it,
+// so the host would get two of that name. #198 renames per body and removes
+// this.
+//
+// Which of two bodies is called second follows registration order, and so for a
+// multi-file package follows document order; the message names both positions
+// for that reason.
+func (c *checker) claimBodyType(name string, pos ast.Pos) {
+	if name == "" || name == "_" {
+		return
+	}
+	// Two in one body is one scope's duplicate, which c.declare reports in its
+	// own words; recording it here would report the interim message instead and
+	// re-point the name at the second of the two.
+	if _, local := c.scope.LookupDeclaredLocal(name); local {
+		return
+	}
+	pkg := c.declPkg()
+	if pkg == nil {
+		return
+	}
+	if c.bodyTypeDecls == nil {
+		c.bodyTypeDecls = map[*ir.Package]map[string]ast.Pos{}
+	}
+	seen := c.bodyTypeDecls[pkg]
+	if seen == nil {
+		seen = map[string]ast.Pos{}
+		c.bodyTypeDecls[pkg] = seen
+	}
+	if prev, dup := seen[name]; dup {
+		c.reportBodyTypeCollision(name, pos, prev, "another body of this package")
+		return
+	}
+	// A top-level declaration of the name is the same collision: it lands in
+	// the same slice, and a body-local type correctly shadows it in scope, so
+	// nothing else reports the pair.
+	if prev, dup := c.pkgDecls[name]; dup {
+		c.reportBodyTypeCollision(name, pos, prev, "this package")
+		return
+	}
+	seen[name] = pos
+}
+
+func (c *checker) reportBodyTypeCollision(name string, pos, prev ast.Pos, where string) {
+	c.error(pos, "%q is declared in %s; a body-local type is not yet renamed per body, so the two would emit one host type (see #198) (previous declaration at %s)", name, where, prev)
+}
+
+func (c *checker) registerBodyType(stmt ast.Stmt) ir.Symbol {
+	switch s := stmt.(type) {
+	case *ast.StructDef:
+		sd := c.buildStructDef(s)
+		c.applyMarks(s, sd)
+		c.declPkg().Structs = append(c.declPkg().Structs, sd)
+		c.claimBodyType(s.Name, s.Pos)
+		c.declare(s.Pos, sd)
+		c.registerNestedMethods(sd.Name, s.TypeParams, s.Funcs())
+		return sd
+	case *ast.EnumDef:
+		ed := c.buildEnumDef(s)
+		c.applyMarks(s, ed)
+		c.declPkg().Enums = append(c.declPkg().Enums, ed)
+		c.claimBodyType(s.Name, s.Pos)
+		c.declare(s.Pos, ed)
+		c.registerNestedMethods(ed.Name, nil, s.Funcs())
+		return ed
+	case *ast.UnitDef:
+		ud := c.buildUnitDef(s)
+		c.applyMarks(s, ud)
+		c.declPkg().Units = append(c.declPkg().Units, ud)
+		c.claimBodyType(s.Name, s.Pos)
+		c.declare(s.Pos, ud)
+		for _, suffix := range ud.Suffixes {
+			c.unitBySuffix[suffix.Name] = ud
+		}
+		return ud
+	}
+	return nil
 }
 
 func (c *checker) registerUnit(u *ast.UnitDef) {
@@ -2515,27 +2593,30 @@ func (c *checker) registerComponent(comp *ast.ComponentDecl) {
 	c.finishDefaultSlot(irComp)
 	popTypeParams()
 
+	c.pushScope()
+	bodyTypeScope := c.scope
 	nestedFuncs := c.collectComponentDecls(comp, irComp)
+	c.popScope()
 
 	c.declPkg().Components = append(c.declPkg().Components, irComp)
 	c.bindDeclared(c.claimTopLevel(irComp.Name, comp.Pos, bindDecl, ""), irComp)
 
 	// The component's type parameters travel with its methods, which is what
 	// puts them in scope for a signature and a body resolved from here: this
-	// is past popTypeParams, and the pop cannot move -- the loop above
-	// registers structs, enums and units into the package, and a name
-	// declared while a type-parameter scope is open goes away with it.
+	// is past popTypeParams, and the pop cannot move -- a name declared while
+	// a type-parameter scope is open goes away with it.
 	// buildFunc pushes what it is handed, so handing it the parameters is the
 	// same fix collectComponentDecls makes for a body `var`.
+	c.scope = bodyTypeScope
 	irComp.Funcs = c.registerNestedMethods(irComp.Name, comp.TypeParams, nestedFuncs)
+	c.popScope()
 	c.claimComponentAPI(comp, irComp)
 }
 
 // collectComponentDecls walks a component body for nested declarations,
-// hoisting struct/enum/unit decls to package scope (no target has a
-// per-component type scope) and attaching vars and consts to irComp. The
-// nested func defs are returned rather than registered, because the caller
-// decides what receiver they get.
+// recording struct/enum/unit decls on irComp.BodyTypes and attaching vars and
+// consts to irComp. The nested func defs are returned rather than registered,
+// because the caller decides what receiver they get.
 //
 // checkComponentBody declares comp.Vars into the body scope, so a component
 // whose body is checked must have been through here first.
@@ -2543,12 +2624,10 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 	var nestedFuncs []*ast.FuncDef
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
-		case *ast.StructDef:
-			c.registerStruct(s)
-		case *ast.EnumDef:
-			c.registerEnum(s)
-		case *ast.UnitDef:
-			c.registerUnit(s)
+		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+			if sym := c.registerBodyType(s); sym != nil {
+				irComp.BodyTypes = append(irComp.BodyTypes, sym)
+			}
 		case *ast.ConstDecl, *ast.VarDecl:
 			// A state declaration's annotation may name the component's type
 			// parameters -- `var last T` is most of what a generic component
@@ -3730,6 +3809,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
+	c.declareBodyTypes(comp)
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
 	}
@@ -3761,6 +3841,12 @@ func propParam(p *ir.Prop) *ir.Param {
 	}
 	p.Sym.Type = p.Type
 	return p.Sym
+}
+
+func (c *checker) declareBodyTypes(comp *ir.Component) {
+	for _, sym := range comp.BodyTypes {
+		c.declare(declPos(sym), sym)
+	}
 }
 
 func (c *checker) checkComponentBody(comp *ir.Component) {
@@ -3822,6 +3908,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
+
+	c.declareBodyTypes(comp)
 
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
@@ -3891,6 +3979,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // already checked above
 			case *ast.FuncDef:
 				continue // already checked above
+			case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+				continue
 			default:
 				if s := c.checkStmt(stmt); s != nil {
 					if w, ok := s.(*ir.Window); ok {

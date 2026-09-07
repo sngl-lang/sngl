@@ -554,6 +554,7 @@ type Component struct {
 	// nil when the pass did not run. See internal/lower/node_escape.go.
 	LocalRefs map[string]bool  `json:"-"`
 	Methods   map[string]*Func `json:"-"`
+	BodyTypes []Symbol         `json:"-"`
 }
 
 func (c *Component) SymName() string { return c.Name }

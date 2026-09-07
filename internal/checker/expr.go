@@ -1926,6 +1926,8 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 			if s, ok := sym.(*ir.StructDef); ok {
 				sd = s
 			}
+		} else {
+			c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
 		}
 	} else if c.expected != nil && c.expected.Kind == ir.TypeMap {
 		// Anonymous struct literal (all-ident keys) with expected map type:
@@ -2795,6 +2797,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
+		if c.rejectStmtInViewBody(x.Pos, targetDescription("an assignment", "to", x.Target)) {
+			return nil
+		}
 		return &ir.Assign{AST: x, Target: targetExpr, Op: x.Op, Value: valueExpr}
 	case *ast.ToggleStmt:
 		restoreLvalue := c.suspendNarrowing()
@@ -2804,11 +2809,21 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
+		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
+			return nil
+		}
 		return &ir.Toggle{AST: x, Target: targetExpr}
 	case *ast.IncDecStmt:
 		op := ast.BinAdd
 		if x.IsDec {
 			op = ast.BinSub
+		}
+		what := "an increment"
+		if x.IsDec {
+			what = "a decrement"
+		}
+		if c.rejectStmtInViewBody(x.Pos, targetDescription(what, "of", x.Target)) {
+			return nil
 		}
 		lowered := &ast.AssignStmt{
 			Pos:    x.Pos,
@@ -2862,6 +2877,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if c.returnType != nil && c.returnType.Kind != ir.TypeDyn {
 				valExpr = wrapIfNeeded(valExpr, c.returnType)
 			}
+		}
+		if c.rejectStmtInViewBody(x.Pos, "a return") {
+			return nil
 		}
 		return &ir.Return{AST: x, Value: valExpr}
 	case *ast.BreakStmt:
@@ -3249,6 +3267,12 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		} else if c.pkg != nil {
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}
+		return nil
+	case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
+		c.registerBodyType(x)
+		return nil
+	case *ast.Import:
+		c.error(x.Pos, "an import may only be written at the root of a file")
 		return nil
 	case *ast.Comment:
 		return nil
@@ -4603,15 +4627,29 @@ func (c *checker) rejectNodeInFuncBody(pos ast.Pos, name string) bool {
 // callee reaches -- arrives here as a call with no Func, and the rule has no
 // business guessing what such a name will turn out to be.
 func (c *checker) rejectCallInViewBody(pos ast.Pos, fn *ir.Func) bool {
-	if c.funcDepth > 0 || fn == nil {
+	if fn == nil {
 		return false
 	}
 	what := "a function call"
 	if fn.Name != "" {
 		what = "a call to " + strconv.Quote(fn.Name)
 	}
+	return c.rejectStmtInViewBody(pos, what)
+}
+
+func (c *checker) rejectStmtInViewBody(pos ast.Pos, what string) bool {
+	if c.funcDepth > 0 {
+		return false
+	}
 	c.error(pos, "%s is not a statement in a view body: a view body describes a rendered tree, so nothing runs it -- put it in a handler, a function, or an effect's @mount", what)
 	return true
+}
+
+func targetDescription(what, prep string, target ast.Expr) string {
+	if id, ok := target.(*ast.IdentExpr); ok {
+		return what + " " + prep + " " + strconv.Quote(id.Name)
+	}
+	return what
 }
 
 // nodeDescription names the node a diagnostic is about, falling back to the

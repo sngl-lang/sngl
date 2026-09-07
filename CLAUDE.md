@@ -377,6 +377,38 @@ declaration against `pkgDecls` and an import against `topLevel`. The one
 exception is shadowing, where only one of the two is written in this package:
 a declaration may shadow a dot-imported name, including a built-in.
 
+**A `struct`, `enum` or `unit` written in a body is scoped to that body**, and
+`registerBodyType` is where all three register: the declaration still joins
+`ir.Package.Structs`/`.Enums`/`.Units`, because that is the only collection a
+backend emits a type declaration from, but the name binds through `c.declare`
+in the current scope and reaches `claimTopLevel` not at all. So it is keyed by
+nothing — the declaration is its identity, and two bodies each writing
+`struct Local` declare two incompatible types, the rule that makes two
+packages each declaring `struct shape` declare two trees. A component body
+needs the binding in both passes and a scope cannot span them, so the symbols
+travel on `ir.Component.BodyTypes` and `declareBodyTypes` rebinds them in
+pass2. A unit's *suffix* map stays package-wide regardless: a suffix is
+matched on a literal, which hands it no scope.
+
+Two in *one* body is that scope's duplicate and `c.declare` says so. Two in
+*different* bodies is correct, and the language allows it — but every backend
+emits a type declaration straight from `ir.Package.Structs` and none renames,
+so the host would get two types of one name. Until #198 renames per body,
+`claimBodyType` reports that pair as a positioned error naming both
+declarations, and reports a body-local type against a *top-level* one of the
+same name for the same reason. It is a **codegen limitation surfaced in the
+checker**, not a language rule: #198 deletes it, along with the
+`error_body_local_type_two_bodies.sngl` fixture that pins it.
+
+An `import` outside the root of a file is an error at the import. That is a
+**policy** and not a structural impossibility: the parser still produces the
+node and `checkStmt` refuses it at one site, so relaxing it JS-style — a
+body-level import binding in the body's scope — is deleting that check and
+wiring a scope. Which is why the diagnostic says where an import may be
+written rather than that a nested one means nothing. Before the check it
+parsed and was discarded, which told a program only that the *use* of its
+alias was undefined.
+
 Two consequences worth knowing: a kind classifies *one* declaration and does not
 alias two — type identity is per-declaration, so two structs sharing a mark
 would be two incompatible types (the checker rejects a duplicated node mark).

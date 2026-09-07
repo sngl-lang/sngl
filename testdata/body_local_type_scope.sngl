@@ -1,0 +1,36 @@
+import . "sngl:ui"
+
+// A struct written in a component body is scoped to that body.
+component bodyLocalStruct {
+    struct Row {
+        a int
+    }
+
+    var here = Row{a=1}
+
+    text(value="${here.a}")
+}
+
+// The same in a function body, where the declaration is a statement. The
+// annotation is what fails if the declaration is not in scope: the literal
+// alone would report nothing before this was a scope at all.
+func bodyLocalInFunc(n int) int {
+    struct Cell {
+        b int
+    }
+
+    var v Cell = Cell{b=n}
+    return v.b
+}
+
+// seed is state, so the call is not folded away and Cell reaches codegen.
+component caller {
+    var seed = 2
+
+    text(value="${bodyLocalInFunc(seed)}")
+}
+
+component main {
+    bodyLocalStruct()
+    caller()
+}

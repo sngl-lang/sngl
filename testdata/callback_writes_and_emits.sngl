@@ -1,0 +1,89 @@
+// A lambda handed to a function is a callback, and calling it has effects.
+//
+// This is the interpreter's gap, not the language's: every compiled target ran
+// these correctly, and `sngl test` ran the callback and threw its work away. So
+// no fixture graded by the interpreter alone could assert anything about a
+// callback -- it would pass while measuring nothing, which is worse than
+// failing.
+//
+// Three depths, because each was stopped by a different thing:
+//
+//   - `local` is a write to the enclosing function's own var. The lambda body
+//     ran in a *snapshot* of the scope it closed over, so the write landed in
+//     the copy and was dropped when the call returned.
+//   - `viaMethod` is the same write from a component method. Carrying the
+//     snapshot's writes back was not enough: a rebind copied the value in
+//     without crediting the scope with having written it, and the method's own
+//     rebind onto the instance carries only what it was credited with, so the
+//     value stopped one scope short.
+//   - `emitted` is an event emitted from inside the callback. An emit finds the
+//     nearest enclosing instantiation to know whose handler to run, and a
+//     snapshot did not carry that -- so it found the *caller's* instantiation,
+//     asked it for a subscriber to an event it does not declare, and delivered
+//     nothing.
+//
+// The list methods never showed any of it, because a predicate only reads.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+func run(f func()) {
+    f()
+}
+
+func applied(f func() int) => f()
+
+component inner(@fired) {
+    var ran = 0
+
+    func go() {
+        run(func() {
+            ran += 1
+            fired()
+        })
+    }
+
+    text(value="{ran}")
+}
+
+component main {
+    var (
+        viaMethod = 0
+        emitted = 0
+    )
+
+    inner #child(@fired {
+        emitted += 1
+    })
+    func bump() {
+        run(func() {
+            viaMethod += 1
+        })
+    }
+
+    text(value="{viaMethod}:{emitted}")
+}
+
+func testACallbackRuns(t Test, c main) {
+    t.assert(applied(func() => 7) == 7)
+}
+
+func testACallbackWritesALocal(t Test, c main) {
+    var local = 0
+
+    run(func() {
+        local += 1
+    })
+    t.assert(local == 1)
+}
+
+func testACallbackWritesComponentState(t Test, c main) {
+    c.bump()
+    t.assert(c.viaMethod == 1)
+}
+
+func testACallbackEmits(t Test, c main) {
+    c.child.go()
+    t.assert(c.child.ran == 1)
+    t.assert(c.emitted == 1)
+}
