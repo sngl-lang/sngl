@@ -45,6 +45,30 @@ func (c *checker) reportBodyComponentCollisions() {
 	}
 }
 
+// reportBodyComponentCapture reports a body-local component that both captures
+// its owner's state and survives as a host declaration.
+//
+// Capture is the owner's own var (#202), and the inliner reaches it by
+// splicing the nested body into the owner's before the owner is renamed per
+// instance. A component in a recursion cycle is never spliced, so its body
+// would emit the captured name against a host record that has one field per
+// *owner* instance and no scope the recursive render can name. Same shape as
+// reportBodyComponentCollisions: a codegen limitation surfaced here rather
+// than a language rule.
+func (c *checker) reportBodyComponentCapture() {
+	if c.pkg == nil || len(c.bodyComps) == 0 {
+		return
+	}
+	surviving := recursiveComponents(c.pkg)
+	owners := ir.BodyOwners(c.pkg)
+	for _, comp := range c.bodyComps {
+		if !surviving[comp] || !ir.CapturesEnclosingState(comp, owners) {
+			continue
+		}
+		c.error(compDeclPos(comp), "%q recurses and reads the state of the body it is declared in, so it is not inlined away and the capture has no instance to read from; give it a prop instead", comp.Name)
+	}
+}
+
 // comparePos orders two positions by file, then line, then column.
 func comparePos(a, b ast.Pos) int {
 	if a.File != b.File {

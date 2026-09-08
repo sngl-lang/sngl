@@ -3500,6 +3500,7 @@ func (c *checker) pass2() {
 	// A window body may declare one too.
 	c.checkComponentBodies()
 	c.reportBodyComponentCollisions()
+	c.reportBodyComponentCapture()
 
 	c.checkPackageBody()
 
@@ -3856,6 +3857,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
+	c.declareEnclosingBody(comp)
 	c.declareBodyDecls(comp)
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
@@ -3907,16 +3909,29 @@ func (c *checker) noteBodyOwner(owner *ir.Component, sym ir.Symbol) {
 // one registered mid-walk -- a range would snapshot pkg.Components' length.
 func (c *checker) checkComponentBodies() {
 	for i := 0; i < len(c.pkg.Components); i++ {
-		comp := c.pkg.Components[i]
-		if c.bodyChecked[comp] {
-			continue
-		}
-		if c.bodyChecked == nil {
-			c.bodyChecked = map[*ir.Component]bool{}
-		}
-		c.bodyChecked[comp] = true
-		c.checkComponentBody(comp)
+		c.checkBodyOnce(c.pkg.Components[i])
 	}
+}
+
+// checkBodyOnce checks comp's body, and the body that declared it first.
+//
+// The order matters for capture: an unannotated `var count = 0` gets its type
+// from the owner's own body check, and pass1 registers a nested declaration
+// ahead of its owner -- so read in package order, a nested body saw the
+// captured var as Dyn and an interpolation of it emitted an unconverted
+// operand.
+func (c *checker) checkBodyOnce(comp *ir.Component) {
+	if c.bodyChecked[comp] {
+		return
+	}
+	if c.bodyChecked == nil {
+		c.bodyChecked = map[*ir.Component]bool{}
+	}
+	c.bodyChecked[comp] = true
+	if owner := c.bodyOwner[comp]; owner != nil {
+		c.checkBodyOnce(owner)
+	}
+	c.checkComponentBody(comp)
 }
 
 // declareBodyDecls rebinds what comp's body declares: a scope cannot span the
@@ -3924,6 +3939,40 @@ func (c *checker) checkComponentBodies() {
 func (c *checker) declareBodyDecls(comp *ir.Component) {
 	for _, sym := range comp.BodyDecls {
 		c.declare(declPos(sym), sym)
+	}
+}
+
+// declareEnclosingBody declares, into comp's body scope, what the body comp
+// was written in declares -- its own body decls, props, vars and plain funcs,
+// outermost owner first so a nearer declaration shadows a farther one.
+//
+// A nested component reads the owner's state directly rather than through a
+// synthesized prop, which is what makes a write from inside it a write to the
+// owner's var; passNoInlineComponents splices the nested body into the owner's
+// before the owner is inlined anywhere, so the reference survives the
+// per-instance rename. No-op for a component nobody's body declared.
+//
+// The funcs loop mirrors checkComponentBody's and so covers only the ones with
+// no receiver -- a func in a nested block, lifted here. A `func` at the top of
+// the owner's body is a method and resolves through currentComponent, which is
+// the nested component by the time this scope is open.
+func (c *checker) declareEnclosingBody(comp *ir.Component) {
+	owner := c.bodyOwner[comp]
+	if owner == nil {
+		return
+	}
+	c.declareEnclosingBody(owner)
+	c.declareBodyDecls(owner)
+	for _, p := range owner.Props {
+		c.declare(compDeclPos(owner), propParam(p))
+	}
+	for _, v := range owner.Vars {
+		c.declare(varPos(v), v)
+	}
+	for _, fn := range owner.Funcs {
+		if fn.Receiver == "" {
+			c.declare(funcDeclPos(fn), fn)
+		}
 	}
 }
 
@@ -3936,11 +3985,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
 
-	// A body-local component sees the declarations of the body it was written
-	// in, itself included, and none of that body's props or vars.
-	if owner := c.bodyOwner[comp]; owner != nil {
-		c.declareBodyDecls(owner)
-	}
+	// A body-local component sees the body it was written in: its sibling
+	// declarations, and its props and vars (#202).
+	c.declareEnclosingBody(comp)
 
 	// The body may name the component's type parameters, and a prop default is
 	// checked against what they stand for here. A call site binds them from the

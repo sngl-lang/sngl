@@ -417,11 +417,36 @@ both, along with the fixtures that pin them.
   (`error_component_nested_recursive_collision.sngl`), which is what lets the
   ordinary shadowing and two-bodies cases through.
 
-What a nested *component* body sees is the declarations of the body it was
-written in — its siblings and itself — and not that body's props and vars.
-Capture is #202, still undecided: a nested `func` does reach the enclosing
-model, a nested component is a separate render with no such destination, and
-the three available lowerings disagree about what it is.
+What a nested *component* body sees is the body it was written in: its sibling
+declarations, and that body's props and vars. **Capture is lowered as
+shared state** (#202) — the nested body reads and writes the owner's own var,
+the way a nested func's method does, which is what makes a write from inside it
+a write the owner sees. A synthesized prop was the alternative and could not
+express the write, since a prop is not a binding.
+
+The **accepted cost** is that two instantiations of one nested component share
+the captured var rather than each getting an `__instN` copy of it, exactly as
+two calls of a nested func share the model. Its own state is unaffected and
+stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
+that, because it is the surprising half.
+
+`declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
+body check ahead of the bodies it declared — pass1 registers a nested
+declaration first, so read in package order an unannotated `var count = 0` was
+still `Dyn` where the nested body named it. The lowering half is
+`spliceNestedCaptures` (`internal/lower/nested_capture.go`): a capturing nested
+body is substituted into the body that declared it *before* that body is
+inlined anywhere, because `expandCall` renames the body it splices and not the
+separate declaration a `NodeInst` inside it points at. Left to the main walk,
+the nested body arrived after its owner was already spliced away and emitted
+the captured names with nothing declaring them. Only the capturing ones move
+early; a nested component that reads nothing of its owner is placed at its call
+site as before.
+
+What capture does *not* yet reach is a `func` written at the top of the owner's
+body: that is a method with `Receiver == owner.Name`, resolved by the
+`currentComponent` path in `inferIdent`/`inferCall`, and `currentComponent` is
+the nested component there. So a nested body calling one is an undefined name.
 
 Bare component resolution is `checker.lookupComponentInScope` — the lexical
 chain, like every other identifier. `ir.SymbolTable.LookupRootComponent` is
