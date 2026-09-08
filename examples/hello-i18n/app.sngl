@@ -14,7 +14,7 @@
 // for English (manifest fallback), French, and Spanish.
 
 import ui "sngl:ui"
-import time "sngl:time"
+import . "sngl:time"
 import "sngl:i18n"
 
 output {
@@ -29,7 +29,7 @@ component main {
     var gender Gender = Gender.female
     var guests = 1
     var price = 1234
-    var partyDate time.date = time.date("2026-05-09")
+    var partyDate date = date("2026-05-09")
 
     ui.vbox(style={gap=16, padding=24, maxWidth=480}) {
         ui.text(value=$"Party RSVP", style={fontSize=24, fontWeight=bold})
