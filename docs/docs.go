@@ -256,12 +256,15 @@ type Component struct {
 	Name string
 	// Pkg is the import path a program writes to reach it, and Href the page
 	// its documentation is generated at.
-	Pkg             string
-	Href            string
-	Doc             string // full doc string
-	Blurb           string // first sentence of Doc, for index/card listings
-	Children        string // "none", "one", "many"
-	Props           []ComponentProp
+	Pkg      string
+	Href     string
+	Doc      string // full doc string
+	Blurb    string // first sentence of Doc, for index/card listings
+	Children string // "none", "exactly one", "at most one", "many"
+	Props    []ComponentProp
+	// Slots are in declaration order, not sorted: the rest slot conventionally
+	// ends the list and a reader looking for where bare children go reads down.
+	Slots           []ComponentSlot
 	Events          []ComponentEvent
 	Examples        []string // raw .sngl source for each example
 	HighlightedCode string   // syntax-highlighted HTML of the first example
@@ -272,6 +275,15 @@ type ComponentProp struct {
 	Name string
 	Type string
 	Doc  string
+}
+
+// ComponentSlot is one slot of a component. Type is spelled as the declaration
+// wrote it, so a rest slot's `...` and a scoped slot's parameter names -- which
+// by-name matching makes contract -- are both visible.
+type ComponentSlot struct {
+	Name string
+	Type string
+	Rest bool
 }
 
 type ComponentEvent struct {
@@ -377,6 +389,13 @@ func packageComponents(uri string) []Component {
 			})
 		}
 		sort.Slice(c.Props, func(i, j int) bool { return c.Props[i].Name < c.Props[j].Name })
+		for _, sl := range schema.Slots {
+			c.Slots = append(c.Slots, ComponentSlot{
+				Name: sl.Name,
+				Type: parser.FormatType(sl.Type),
+				Rest: sl.Rest,
+			})
+		}
 		for ename, payload := range schema.Events {
 			c.Events = append(c.Events, ComponentEvent{
 				Name:        ename,

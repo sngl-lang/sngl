@@ -289,6 +289,19 @@ component main {
 						}
 					}
 				}
+				text(value="Slots", style={fontSize=20, fontWeight="bold"})
+				docui.Table {
+					docui.HeaderRow {
+						docui.HeaderCell(value="Name")
+						docui.HeaderCell(value="Type")
+					}
+					for var sl = comp.slots {
+						docui.Row {
+							docui.CodeCell(value=sl.name)
+							docui.Cell(value=sl.type)
+						}
+					}
+				}
 				text(value="Events", style={fontSize=20, fontWeight="bold"})
 				docui.Table {
 					docui.HeaderRow {

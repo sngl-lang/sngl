@@ -483,6 +483,20 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 		sb.WriteString("```\n\n")
 	}
 
+	if len(schema.Slots) > 0 {
+		sb.WriteString("## Slots\n\n```\n")
+		for _, sl := range schema.Slots {
+			// A plugin-synthesized component has no declaration to render, so
+			// the name is all there is to say.
+			typ := parser.FormatType(sl.Type)
+			if typ == "" {
+				typ = "component"
+			}
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", sl.Name, typ))
+		}
+		sb.WriteString("```\n\n")
+	}
+
 	if len(schema.Events) > 0 {
 		sb.WriteString("## Events\n\n```\n")
 		type eventEntry struct {
@@ -590,6 +604,11 @@ func renderPropMD(p *lookup.PropDetail) string {
 		if p.Schema.Doc != "" {
 			sb.WriteString(p.Schema.Doc + "\n")
 		}
+		return sb.String()
+	}
+	if p.Slot != nil {
+		sb.WriteString(fmt.Sprintf("# %s.%s (slot)\n\n", p.Component, p.Name))
+		sb.WriteString(fmt.Sprintf("Type: %s\n", parser.FormatType(p.Slot)))
 		return sb.String()
 	}
 	sb.WriteString(fmt.Sprintf("# %s.%s (event)\n\n", p.Component, p.Name))

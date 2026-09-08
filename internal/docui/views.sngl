@@ -189,6 +189,15 @@ component ComponentView(detail lookup.ComponentDetailView) {
                 }
             }
         }
+        if detail.slots.length() > 0 {
+            text(value="Slots", style={fontWeight="bold", paddingTop=8})
+            for var sl = detail.slots {
+                hbox(style={gap=12, padding=2}) {
+                    text(value=sl.name, style={fontFamily="monospace", minWidth=120})
+                    text(value=sl.type, style={color="#58a6ff"})
+                }
+            }
+        }
         if detail.events.length() > 0 {
             text(value="Events", style={fontWeight="bold", paddingTop=8})
             for var e = detail.events {

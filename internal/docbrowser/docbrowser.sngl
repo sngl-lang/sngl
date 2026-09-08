@@ -139,6 +139,10 @@ component main {
                     for var p = entry().componentDoc.props {
                         text(value="  " + p.name + "  " + p.type + "  " + p.doc)
                     }
+                    text(value="SLOTS", style={fontWeight="bold", color="#888"})
+                    for var sl = entry().componentDoc.slots {
+                        text(value="  " + sl.name + "  " + sl.type)
+                    }
                     text(value="EVENTS", style={fontWeight="bold", color="#888"})
                     for var e = entry().componentDoc.events {
                         text(value="  @" + e.name + "  " + e.payload)
