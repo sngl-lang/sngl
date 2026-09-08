@@ -4,6 +4,10 @@ import "sngl:platform/html"
 
 // An override body is collected on its own, so its type declarations need
 // collecting there too -- pass1 only ever sees the parenless stub.
+//
+// The unit here is declared and not used: a bare unit literal needs an expected
+// type since 3c223a7e, and a body-local type does not resolve in an annotation
+// inside an override body (#204).
 component thing {
     ui.text(value="base")
 }
@@ -30,9 +34,8 @@ component tagged[html.platform] {
     unit tick { tk, kt = 10tk }
 
     var p = Phase.done
-    var elapsed = 3tk
 
-    ui.text(value="${elapsed.value}")
+    ui.text(value="${p}")
 }
 
 component main {

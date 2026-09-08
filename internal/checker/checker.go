@@ -1685,9 +1685,6 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt) ir.Symbol {
 		c.declPkg().Units = append(c.declPkg().Units, ud)
 		c.claimBodyType(s.Name, s.Pos)
 		c.declare(s.Pos, ud)
-		for _, suffix := range ud.Suffixes {
-			c.unitBySuffix[suffix.Name] = ud
-		}
 		return ud
 	}
 	return nil
