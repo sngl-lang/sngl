@@ -13,10 +13,27 @@ import (
 // ComponentSchema describes a stdlib component for documentation.
 // Only exported components appear in the schema registry.
 type ComponentSchema struct {
-	Doc      string
-	Props    map[string]PropSchema
-	Events   map[string]string
+	Doc    string
+	Props  map[string]PropSchema
+	Events map[string]string
+	// Slots are in declaration order, unlike Props and Events: a slot list
+	// reads as the author arranged it, and the rest slot conventionally ends it.
+	Slots    []SlotSchema
 	Children *ir.Type // nil = no children
+}
+
+// SlotSchema describes one slot of a component for documentation.
+type SlotSchema struct {
+	Name string
+	// Type is the declaration's own type expression rather than a rendering of
+	// the resolved ir.SlotDecl, so it documents what the author wrote: the
+	// `...` marking the slot bare children land in, and the names on its
+	// invocation parameters, which by-name matching makes contract. A caller
+	// formats it with parser.FormatType.
+	Type ast.TypeExpr
+	// Rest says bare children go here. Derivable from Type, and stated so a
+	// renderer need not re-read the type to group or order by it.
+	Rest bool
 }
 
 type PropSchema struct {
@@ -149,6 +166,7 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 			Doc:      compDocs[comp.Name],
 			Props:    make(map[string]PropSchema),
 			Events:   make(map[string]string),
+			Slots:    slotSchemas(comp),
 			Children: comp.ChildrenType,
 		}
 		for _, p := range comp.Props {
@@ -166,6 +184,30 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 		reg[comp.Name] = schema
 	}
 	return reg
+}
+
+// slotSchemas reads a component's slots off the declaration it was built from.
+// A component a plugin synthesized has no AST, so its slots are named from the
+// IR and carry no type expression to render.
+func slotSchemas(comp *ir.Component) []SlotSchema {
+	if comp.AST == nil {
+		out := make([]SlotSchema, 0, len(comp.Slots))
+		for _, s := range comp.Slots {
+			out = append(out, SlotSchema{Name: s.Name, Rest: s.Rest})
+		}
+		return out
+	}
+	var out []SlotSchema
+	for _, p := range comp.AST.Props.Props {
+		pd, ok := p.(ast.Param)
+		if !ok {
+			continue
+		}
+		if _, rest, isSlot := ast.SlotType(pd.Type); isSlot {
+			out = append(out, SlotSchema{Name: pd.Name, Type: pd.Type, Rest: rest})
+		}
+	}
+	return out
 }
 
 // PrefixedExamples extracts `_example_<name>` prefixed components from a

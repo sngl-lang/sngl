@@ -1309,11 +1309,6 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 		return
 	}
 	switch n.Name {
-	case "slot":
-		for _, s := range g.irSlotChildren {
-			g.renderIRStmt(b, s, depth)
-		}
-		return
 	case "window":
 		return
 	case "timer":

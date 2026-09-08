@@ -23,7 +23,8 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	shapeTree := &ir.StructDef{Name: "shape", Pkg: "sngl:ui/draw", IsTree: true}
 	shapeSlot := func() []*ir.SlotDecl {
 		return []*ir.SlotDecl{{
-			Name:    ir.DefaultSlot,
+			Name:    "shapes",
+			Rest:    true,
 			Content: &ir.Type{Kind: ir.TypeStruct, Decl: shapeTree},
 		}}
 	}

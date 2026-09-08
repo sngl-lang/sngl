@@ -333,6 +333,10 @@ func propMD(p *PropDetail) string {
 		}
 		return sb.String()
 	}
+	if p.Slot != nil {
+		sb.WriteString(fmt.Sprintf("_Slot type:_ `%s`\n", parser.FormatType(p.Slot)))
+		return sb.String()
+	}
 	if p.Event != "" {
 		sb.WriteString(fmt.Sprintf("_Event payload:_ `%s`\n", p.Event))
 	}

@@ -16,11 +16,11 @@ func TestPlatformOverrideDropsDefault(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import "sngl:platform/html"
-component Layout(slot _) {
+component Layout(children ...component) {
     if PLATFORM == html.platform {
         html.div(class="site") {
             html.hr
-            slot
+            children
         }
     } else {
         vbox { text(value="DEFAULT_BODY") }

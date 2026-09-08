@@ -265,11 +265,16 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		props = append(props, ed)
 	}
 	for _, s := range comp.Slots {
-		sd := ast.SlotDecl{Name: s.Name, Type: c.convertSlotContent(s)}
+		ct := &ast.ComponentType{Tree: c.convertSlotContent(s)}
 		for _, p := range s.Params {
-			sd.Params = append(sd.Params, c.convertType(p))
+			ct.Params = append(ct.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
 		}
-		props = append(props, sd)
+		ct.HasParens = len(ct.Params) > 0
+		var typ ast.TypeExpr = ct
+		if s.Rest {
+			typ = &ast.VariadicType{Elem: ct}
+		}
+		props = append(props, ast.Param{Name: s.Name, Type: typ})
 	}
 	if len(props) > 0 {
 		cd.Props = ast.PropList{
@@ -622,7 +627,9 @@ func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
 	return out
 }
 
-// convertSlotContents renders what a call site supplied for each named slot.
+// convertSlotContents renders what a call site supplied for each named slot: a
+// component declaration in the instantiation's block, which is what a
+// population is.
 // Sorted, because the IR holds them in a map and a dump has to be stable.
 func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 	names := make([]string, 0, len(n.Slots))
@@ -633,11 +640,13 @@ func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 	out := make([]ast.Stmt, 0, len(names))
 	for _, name := range names {
 		sc := n.Slots[name]
-		sn := &ast.SlotNode{Name: name, Block: c.convertStmtBlock(sc.Body)}
+		cd := &ast.ComponentDecl{Name: name, Body: c.convertStmtBlock(sc.Body)}
+		cd.Body.IsMultiline = true
 		for _, p := range sc.Params {
-			sn.Args.Args = append(sn.Args.Args, ast.Arg{Value: &ast.IdentExpr{Name: p.Name}})
+			cd.Props.Props = append(cd.Props.Props, ast.Param{Name: p.Name})
 		}
-		out = append(out, sn)
+		cd.HasParens = len(cd.Props.Props) > 0
+		out = append(out, cd)
 	}
 	return out
 }
@@ -708,13 +717,8 @@ func (c *converter) convertCallStmt(cs *CallStmt) *ast.CallStmt {
 }
 
 func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
-	// The default slot's insertion is spelled `slot`, not by its name: `_` is
-	// what the declaration calls it, and the body has the keyword for it.
-	name := s.Name
-	if name == "" || name == DefaultSlot {
-		name = "slot"
-	}
-	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: name}}
+	// Every insertion is written by name now, the rest slot included.
+	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: s.Name}}
 	for _, a := range s.Args {
 		vn.Args.Args = append(vn.Args.Args, ast.Arg{Value: c.convertExpr(a)})
 	}

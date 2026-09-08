@@ -134,26 +134,26 @@ component element(
     // fires.
     #[wildcard("[a-z][a-z0-9]*")]
     @event,
-    slot _,
+    children ...component,
 ) {}
 
 // --- Core Layout ---
 
 component ui.vbox[platform] {
     html.div(style={...style, display="flex", flexDirection="column"}) {
-        slot
+        children
     }
 }
 
 component ui.hbox[platform] {
     html.div(style={...style, display="flex", flexDirection="row"}) {
-        slot
+        children
     }
 }
 
 component ui.stack[platform] {
     html.div(style={...style, position="relative"}) {
-        slot
+        layers
     }
 }
 
@@ -166,7 +166,7 @@ component ui.spacer[platform] {
 // wrapping an element that a wildcard cannot do for itself.
 component ui.scroll[platform] {
     html.div(style={...style, overflow="auto"}, @scroll { scroll() }, @scrollend { scrollEnd() }) {
-        slot
+        content
     }
 }
 
@@ -183,7 +183,7 @@ component ui.text[platform] {
 component ui.button[platform] {
     html.button(disabled=disabled, style={...style}, @click { click() }, @contextmenu { longPress() }) {
         html.span(textContent=text) {}
-        slot
+        content
     }
 }
 
@@ -235,7 +235,6 @@ component ui.select[platform] {
 
 component ui.textarea[platform] {
     html.textarea(placeholder=placeholder, disabled=disabled, readonly=readonly, rows=string(rows), style={...style}, @input { input() }, @change { change() }) {
-        slot
     }
 }
 
@@ -266,7 +265,7 @@ component ui.tabs[platform] {
             }
         }
         html.div(role="tabpanel") {
-            slot
+            panels
         }
     }
 }
@@ -289,32 +288,32 @@ component ui.modal[platform] {
             if title != "" {
                 html.h3(textContent=title, style={margin="0 0 16px"})
             }
-            slot
+            content
         }
     }
 }
 
 component ui.drawer[platform] {
     html.div(style={...style, position="fixed", top=0, bottom=0, background="#fff", zIndex=1000}) {
-        slot
+        content
     }
 }
 
 component ui.tooltip[platform] {
     html.div(title=text, style={...style}) {
-        slot
+        trigger
     }
 }
 
 component ui.popover[platform] {
     html.div(style={...style, position="relative"}) {
-        slot
+        content
     }
 }
 
 component ui.splitview[platform] {
     html.div(style={...style, display="flex"}) {
-        slot
+        panes
     }
 }
 
@@ -351,19 +350,17 @@ component ui.tree[platform] {
 
 component ui.menu[platform] {
     html.div(style={...style, position="absolute", background="#fff", border="1px solid #ddd", borderRadius=4, padding=4, zIndex=100}) {
-        slot
     }
 }
 
 component ui.menubar[platform] {
     html.nav(style={...style, display="flex", gap=4}) {
-        slot
     }
 }
 
 component ui.toolbar[platform] {
     html.div(style={...style, display="flex", gap=4, alignItems="center"}) {
-        slot
+        controls
     }
 }
 
@@ -387,7 +384,7 @@ component ui.avatar[platform] {
 
 component ui.card[platform] {
     html.div(style={borderRadius=8, padding=16, ...style}) {
-        slot
+        content
     }
 }
 

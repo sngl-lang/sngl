@@ -106,6 +106,7 @@ type ComponentDetailView struct {
 	Children string
 	Props    []PropView
 	Events   []PropView
+	Slots    []PropView
 	Examples []string
 }
 
@@ -643,6 +644,9 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 				Payload: c.Schema.Events[n],
 			})
 		}
+		for _, sl := range c.Schema.Slots {
+			v.Slots = append(v.Slots, PropView{Name: sl.Name, Type: formatType(sl.Type)})
+		}
 		if c.Schema.Children != nil {
 			v.Children = c.Schema.Children.String()
 		}
@@ -651,6 +655,15 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 		for _, p := range c.AST.Props.Props {
 			switch pd := p.(type) {
 			case ast.Param:
+				if pd.IsSlot() {
+					if !hasProp(v.Slots, pd.Name) {
+						v.Slots = append(v.Slots, PropView{
+							Name: pd.Name,
+							Type: formatType(pd.Type),
+						})
+					}
+					continue
+				}
 				if !hasProp(v.Props, pd.Name) {
 					v.Props = append(v.Props, PropView{
 						Name: pd.Name,
@@ -810,6 +823,10 @@ func mapProp(p *PropDetail) PropDetailView {
 		v.Type = (&p.Schema.Type).String()
 		v.Doc = p.Schema.Doc
 		v.EnumValues = append([]string(nil), p.Schema.Enum...)
+		return v
+	}
+	if p.Slot != nil {
+		v.Type = formatType(p.Slot)
 		return v
 	}
 	v.IsEvent = true

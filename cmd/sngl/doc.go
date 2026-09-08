@@ -483,6 +483,20 @@ func renderComponentDoc(name string, schema *checker.ComponentSchema) string {
 		sb.WriteString("```\n\n")
 	}
 
+	if len(schema.Slots) > 0 {
+		sb.WriteString("## Slots\n\n```\n")
+		for _, sl := range schema.Slots {
+			// A plugin-synthesized component has no declaration to render, so
+			// the name is all there is to say.
+			typ := parser.FormatType(sl.Type)
+			if typ == "" {
+				typ = "component"
+			}
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", sl.Name, typ))
+		}
+		sb.WriteString("```\n\n")
+	}
+
 	if len(schema.Events) > 0 {
 		sb.WriteString("## Events\n\n```\n")
 		type eventEntry struct {
@@ -592,6 +606,11 @@ func renderPropMD(p *lookup.PropDetail) string {
 		}
 		return sb.String()
 	}
+	if p.Slot != nil {
+		sb.WriteString(fmt.Sprintf("# %s.%s (slot)\n\n", p.Component, p.Name))
+		sb.WriteString(fmt.Sprintf("Type: %s\n", parser.FormatType(p.Slot)))
+		return sb.String()
+	}
 	sb.WriteString(fmt.Sprintf("# %s.%s (event)\n\n", p.Component, p.Name))
 	if p.Event != "" {
 		sb.WriteString(fmt.Sprintf("Payload type: %s\n", p.Event))
@@ -625,12 +644,16 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 		sb.WriteString(doc + "\n\n")
 	}
 
-	var params []ast.Param
+	var params, slots []ast.Param
 	var events []ast.EventDecl
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
-			params = append(params, pd)
+			if pd.IsSlot() {
+				slots = append(slots, pd)
+			} else {
+				params = append(params, pd)
+			}
 		case ast.EventDecl:
 			events = append(events, pd)
 		}
@@ -644,6 +667,14 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 				pType = "any"
 			}
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", p.Name, pType))
+		}
+		sb.WriteString("```\n\n")
+	}
+
+	if len(slots) > 0 {
+		sb.WriteString("## Slots\n\n```\n")
+		for _, sl := range slots {
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", sl.Name, parser.FormatType(sl.Type)))
 		}
 		sb.WriteString("```\n\n")
 	}

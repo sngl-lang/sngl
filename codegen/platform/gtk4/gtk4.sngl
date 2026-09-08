@@ -63,19 +63,19 @@ component ui.textarea[platform] {
 
 component ui.vbox[platform] {
     gtk4.GtkBox(orientation="vertical", spacing=6, style={...style}) {
-        slot
+        children
     }
 }
 
 component ui.hbox[platform] {
     gtk4.GtkBox(orientation="horizontal", spacing=6, style={...style}) {
-        slot
+        children
     }
 }
 
 component ui.scroll[platform] {
     gtk4.GtkScrolledWindow(style={...style}) {
-        slot
+        content
     }
 }
 
@@ -136,19 +136,19 @@ component ui.spacer[platform] {
 // wrapped content inside it.
 component ui.tooltip[platform] {
     gtk4.GtkBox(tooltipText=text, style={...style}) {
-        slot
+        trigger
     }
 }
 
 component ui.card[platform] {
     gtk4.GtkFrame(style={...style}) {
-        slot
+        content
     }
 }
 
 component ui.stack[platform] {
     gtk4.GtkStack(style={...style}) {
-        slot
+        layers
     }
 }
 
@@ -159,7 +159,7 @@ component ui.stack[platform] {
 // orientation.
 component ui.popover[platform] {
     gtk4.GtkPopover(visible=open, autohide=true, style={...style}, @closed { close() }) {
-        slot
+        content
     }
 }
 

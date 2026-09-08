@@ -19,9 +19,9 @@ struct Row {
 
 component table(
     rows list<Row>,
-    slot header,
-    slot cell(Row),
-    slot _,
+    header component,
+    cell component(Row),
+    children ...component,
 ) {
     vbox {
         header {
@@ -30,14 +30,14 @@ component table(
         for var r = rows {
             cell(r)
         }
-        slot
+        children
     }
 }
 
 // A slot may be declared alongside props and events without colliding: the
 // three are read differently (a slot is a tag, a prop a value, an event a
 // handler) and only share the one list they are written in.
-component labelled(caption string, slot body, @click ClickEvent) {
+component labelled(caption string, body component, @click ClickEvent) {
     vbox {
         text(value=caption)
         body {}
@@ -46,25 +46,25 @@ component labelled(caption string, slot body, @click ClickEvent) {
 
 component main {
     table(rows=[Row{title="alpha"}, Row{title="beta"}]) {
-        slot header {
+        component header {
             text(value="Rows")
         }
-        slot cell(row) {
+        component cell(row) {
             text(value=row.title)
         }
-        text(value="goes to the anonymous slot")
+        text(value="goes to the rest slot")
     }
 
     // A slot with no population renders its insertion's block instead, so a
     // fallback needs no separate syntax.
     table(rows=[]) {
-        slot cell(row) {
+        component cell(row) {
             text(value=row.title)
         }
     }
 
     labelled(caption="hi", @click {}) {
-        slot body {
+        component body {
             text(value="supplied")
         }
     }

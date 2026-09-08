@@ -558,7 +558,7 @@ func componentDecl(t *testing.T, src, name string) string {
 		t.Fatalf("generated source declares no %s", name)
 	}
 	rest := src[i:]
-	before, _, ok := strings.Cut(rest, "    slot _,\n) {}")
+	before, _, ok := strings.Cut(rest, "    children ...component,\n) {}")
 	if !ok {
 		t.Fatalf("the %s declaration does not end", name)
 	}

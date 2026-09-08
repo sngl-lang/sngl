@@ -1,0 +1,35 @@
+// One `ParamList` production serves every param-like list, so a form legal in
+// one is legal in all of them: a trailing comma after the last entry, and a
+// list written across lines. A component's list is the same production as a
+// function's, which is what folded `CompParamList` away — and what the
+// trailing comma comes from, since only the component form used to admit one.
+
+import . "sngl:ui"
+
+func add(
+    a int,
+    b int,
+) int {
+    return a + b
+}
+
+component sums(
+    left int,
+    right int,
+    :total int = 0,
+    @done ClickEvent,
+    children ...component,
+) {
+    vbox {
+        text(value=string(add(left, right)))
+        children
+    }
+}
+
+component main {
+    vbox {
+        sums(left=1, right=2, @done {}) {
+            text(value="child")
+        }
+    }
+}

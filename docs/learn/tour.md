@@ -454,7 +454,7 @@ component main {
 
 ## Slots and Children
 
-Components accept children by declaring the default slot — `slot _` — in the parameter list. Inside, `slot` marks where the caller's children are projected. This is how layout primitives like `vbox` and `hbox` work.
+A slot is an ordinary parameter whose type is a **component type**, and `...component` is the *rest slot* — the one a caller fills with the children written bare. Inside the body its name marks where those children are projected. This is how layout primitives like `vbox` and `hbox` work. A component that declares no rest slot accepts no children.
 
 Slots let you build reusable shells — dialogs, cards, panels — without coupling the shell to any particular content.
 
@@ -462,10 +462,10 @@ Slots let you build reusable shells — dialogs, cards, panels — without coupl
 import . "sngl:ui"
 import . "sngl:app"
 
-component Panel(title = "", slot _) {
+component Panel(title = "", content ...component) {
     vbox(style={gap=8, padding=12, background=#ffffff, borderRadius=8}) {
         text(value=title, style={fontWeight="bold", fontSize=18, color=#333333})
-        slot
+        content
     }
 }
 
@@ -525,10 +525,10 @@ Inside the library itself, components are just normal declarations. The example 
 import . "sngl:ui"
 import . "sngl:app"
 
-component Card(title = "", slot _) {
+component Card(title = "", content ...component) {
     vbox(style={gap=6, padding=12, background=#ffffff, borderRadius=8}) {
         text(value=title, style={fontWeight="bold", fontSize=18})
-        slot
+        content
     }
 }
 

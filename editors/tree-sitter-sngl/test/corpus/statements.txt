@@ -99,7 +99,7 @@ component App(@submit) {
 (source_file
   (component_declaration
     name: (identifier)
-    (component_param
+    (func_param
       name: (identifier))
     (statement_block
       (visual_node

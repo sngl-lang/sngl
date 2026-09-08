@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import "sngl:platform/html"
 
-component Sidebar(homeHref = "/", logo = "", slot _) {
+component Sidebar(homeHref = "/", logo = "", children ...component) {
     if PLATFORM == html.platform {
         html.nav {
             html.div(class="sidebar-header") {
@@ -11,13 +11,13 @@ component Sidebar(homeHref = "/", logo = "", slot _) {
                 }
                 html.button(id="theme-toggle", class="theme-toggle", type="button", title="Toggle theme", innerHTML="&#9788;")
             }
-            slot
+            children
         }
     } else {
         vbox(style={width=260, padding=8, gap=4}) {
             link(text="SNGL", href=homeHref, style={fontWeight="bold", fontSize=16, padding=8})
             divider
-            slot
+            children
         }
     }
 }

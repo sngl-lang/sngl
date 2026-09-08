@@ -1,10 +1,10 @@
 import . "sngl:ui"
 
 // slot: A-tier — Wrapper uses slot{} to project children from main.
-component Wrapper(slot _) {
+component Wrapper(children ...component) {
     vbox {
         text(value="header")
-        slot
+        children
         text(value="footer")
     }
 }

@@ -69,12 +69,12 @@ func isShapeContainer(ni *ir.NodeInst) bool {
 		ir.IsDrawShapeTree(treeHosted(ni.Component))
 }
 
-// treeHosted is the segmented tree a component's default slot accepts, or nil.
+// treeHosted is the segmented tree a component's rest slot accepts, or nil.
 // A canvas hosts shapes; a rect, being one, hosts its own and is not a
 // container.
 func treeHosted(comp *ir.Component) *ir.StructDef {
 	for _, s := range comp.Slots {
-		if s.Name != ir.DefaultSlot || s.Content == nil || s.Content.Kind != ir.TypeStruct {
+		if !s.Rest || s.Content == nil || s.Content.Kind != ir.TypeStruct {
 			continue
 		}
 		if sd, ok := s.Content.Decl.(*ir.StructDef); ok && sd.IsTree {

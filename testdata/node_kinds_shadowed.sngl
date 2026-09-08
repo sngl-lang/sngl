@@ -7,14 +7,14 @@ import . "sngl:app"
 // an ordinary node instance rather than as the compiler's own construct — no
 // package timer is registered, no error boundary.
 //
-// `slot` is not in this family and is absent on purpose: it is a keyword in the
-// declaration family (func, component, struct, enum, unit), not a #[builtin]
-// node resolved by name, so there is nothing for a user declaration to shadow.
-component timer(label string, slot _) {
+// A slot is absent on purpose: it is a parameter of the component being
+// checked, resolved before any component of that name, not a #[builtin] node —
+// so there is nothing for a user declaration to shadow.
+component timer(label string, children ...component) {
     text(value=label)
 }
 
-component errorBoundary(label string, slot _) {
+component errorBoundary(label string, children ...component) {
     text(value=label)
 }
 

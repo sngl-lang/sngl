@@ -80,7 +80,7 @@ func scanKeywordTokens(content string) []rawToken {
 		"struct": true, "enum": true, "unit": true, "window": true,
 		"if": true, "else": true, "for": true, "return": true,
 		"break": true, "continue": true,
-		"import": true, "slot": true,
+		"import": true,
 	}
 	var out []rawToken
 	lines := strings.Split(content, "\n")

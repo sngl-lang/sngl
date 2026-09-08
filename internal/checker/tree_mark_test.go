@@ -27,9 +27,9 @@ struct block {}
 #[tree.kind]
 struct inline {}
 
-component document(slot _ block) {}
+component document(children ...component block) {}
 
-component para(slot _ inline) block {}
+component para(children ...component inline) block {}
 
 component bold(weight int) inline {}
 

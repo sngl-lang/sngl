@@ -8,12 +8,12 @@ output {
 
 // What a call site supplies to a user component is part of the rendered tree,
 // so a #id inside it resolves like any other. Both routes in: ordinary
-// children fill the default slot, `slot header { … }` fills a named one.
+// children fill the rest slot, `component header { … }` fills a named one.
 //
 // Slot content is written in the caller's body, so it reads the caller's
 // scope -- #head interpolates main's `title`, not anything of frame's.
 func testSuppliedSlotContentIsAddressable(t Test, c main) {
-    t.assert(c.body.value == "in the default slot")
+    t.assert(c.body.value == "in the rest slot")
     t.assert(c.head.value == "Hello")
     t.assert(c.own.value == "frame's own")
 }
@@ -23,17 +23,17 @@ func testUnfilledSlotRendersItsFallback(t Test, c bare) {
     t.assert(c.fallback.value == "nothing supplied")
 }
 
-component frame(slot _, slot header) {
+component frame(children ...component, header component) {
     vbox {
         header {}
         text #own(value="frame's own")
-        slot
+        children
     }
 }
 
-component bare(slot _) {
+component bare(children ...component) {
     vbox {
-        slot {
+        children {
             text #fallback(value="nothing supplied")
         }
     }
@@ -43,8 +43,8 @@ component main {
     var title = "Hello"
 
     frame {
-        text #body(value="in the default slot")
-        slot header {
+        text #body(value="in the rest slot")
+        component header {
             text #head(value=title)
         }
     }

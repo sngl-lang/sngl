@@ -82,21 +82,22 @@ func TestParseErrorDirectives(t *testing.T) {
 // iterator walked off the tree and the panic surfaced as
 // "parser panic: index out of range" alongside the real errors.
 //
-// A trailing comma is what exhausts it: ParamList has none, so `@change(e,)`
-// leaves the recovery tree one element short of what the three tests read.
+// An empty entry is what exhausts it: ParamList admits a *trailing* comma, so
+// `@change(,)` -- a comma with no Param before it -- leaves the recovery tree
+// one element short of what the three tests read.
 func TestMalformedParamListDoesNotPanic(t *testing.T) {
 	src := []byte(`import . "sngl:ui"
 
 component main {
     var d = ""
-    input(value=d, @change(e,) {
+    input(value=d, @change(,) {
         d = ""
     })
 }
 `)
 	_, err := parser.Parse("trailing.sngl", src)
 	if err == nil {
-		t.Fatal("parsed without error; a trailing comma in a param list is not valid")
+		t.Fatal("parsed without error; a param list with no entry before its comma is not valid")
 	}
 	if strings.Contains(err.Error(), "parser panic") {
 		t.Errorf("builder panicked: %s", err)

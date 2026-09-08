@@ -27,8 +27,8 @@ type NodeInst struct {
 	Handlers  []EventHandler // inline event handlers
 	Bindings  []PropBinding  // first-class bidi prop bindings; consumed by lowering
 	Children  []Stmt         // type-checked body
-	// Slots is the content supplied per named slot; Children go to the
-	// anonymous one.
+	// Slots is the content supplied per named slot; Children go to the rest
+	// slot.
 	Slots      map[string]*SlotContent `json:",omitempty"`
 	ID         string                  // #id binding
 	Key        Expr                    // key expression for list diffing (nil → implicit index)
@@ -74,8 +74,12 @@ func (*CallStmt) stmtNode() {}
 
 // SlotInst is the slot pseudo-element.
 type SlotInst struct {
-	AST      *ast.VisualNode
-	Name     string // ir.DefaultSlot for the one filled by ordinary children
+	AST  *ast.VisualNode
+	Name string
+	// Rest mirrors the declaration's: this insertion renders the children a
+	// caller wrote bare, which arrive on NodeInst.Children rather than through
+	// its Slots map.
+	Rest     bool   `json:",omitempty"`
 	Args     []Expr `json:",omitempty"` // values passed to a scoped slot
 	Children []Stmt // fallback: rendered when the caller supplies nothing
 }

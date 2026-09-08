@@ -5,10 +5,10 @@
 # component that dropped its children. The three sit in different packages, so
 # each is qualified by the alias of the one that declares it.
 #
-# `slot` is not in this family: it is a keyword, not a declaration reached
-# through a package, so `s.slot` does not parse and bare `slot` is the only
-# spelling. slot.sngl holds that pair — a qualified window hosting a component
-# whose projection point is the unqualified keyword.
+# A slot is not in this family: it is a parameter of the component being
+# checked, not a declaration reached through a package, so `s.children` names
+# nothing. slot.sngl holds that pair — a qualified window hosting a component
+# whose projection point is its own unqualified parameter name.
 
 sngl check slot.sngl
 stdout 'slot.sngl: ok'
@@ -16,7 +16,7 @@ sngl generate --out slotout slot.sngl
 grep 'inner' slotout/index.html
 
 ! sngl check qualslot.sngl
-stderr 'expected identifier'
+stderr 'unknown component "s.children"'
 
 sngl check window.sngl
 stdout 'window.sngl: ok'
@@ -39,9 +39,9 @@ grep 'from widgets' shadowout/index.html
 import s "sngl:ui"
 import app "sngl:app"
 
-component Card(slot _) {
+component Card(children ...component) {
     s.vbox {
-        slot
+        children
     }
 }
 
@@ -57,9 +57,9 @@ output { none { html } }
 -- qualslot.sngl --
 import s "sngl:ui"
 
-component Card(slot _) {
+component Card(children ...component) {
     s.vbox {
-        s.slot
+        s.children
     }
 }
 -- window.sngl --
