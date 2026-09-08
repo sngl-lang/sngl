@@ -2869,10 +2869,6 @@ func (b *builder) buildIdentArgCont(it nodeIter, identTok Token) ast.ArgOrEventH
 		return ast.Arg{Value: b.tokenToExpr(identTok)}
 	}
 
-	if it.isNonTerminal() && it.symbol() == Type {
-		return ast.Arg{Value: b.tokenToExpr(identTok), Type: b.buildType(it.enter())}
-	}
-
 	// Check first element
 	if !it.isNonTerminal() && it.tokenType() == ASSIGN {
 		// Named arg: ident = Expr

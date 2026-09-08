@@ -928,10 +928,6 @@ func (f *formatter) writeArgOrHandler(a ast.ArgOrEventHandler) {
 			f.write("=")
 		}
 		f.writeExpr(v.Value)
-		if v.Type != nil {
-			f.write(" ")
-			f.writeType(v.Type)
-		}
 	case ast.EventHandler:
 		f.writeEventHandler(v)
 	}
