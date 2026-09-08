@@ -20,12 +20,12 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, slot _) {
+component table(rows list<Row>, children ...component) {
     vbox {
         for var r = rows {
             text(value=r.title)
         }
-        slot
+        children
     }
 }
 

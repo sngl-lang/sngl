@@ -55,7 +55,7 @@ func TestSlotFallbackRendersWhenNothingIsSupplied(t *testing.T) {
 
 component frame(children ...component) {
     vbox {
-        slot {
+        children {
             text #fallback(value="nothing supplied")
         }
     }

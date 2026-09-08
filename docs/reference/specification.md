@@ -847,9 +847,9 @@ TypeParamList = "<" TypeParam { "," TypeParam } ">"
 
 TypeParam = IDENT [ "=" Type ]
 
-ParamList = Param { "," Param }
+ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT | "@" IDENT | IDENT ) [ Type ] [ "=" Expr ]
 
 ```
 
@@ -1094,7 +1094,6 @@ EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 IdentArgCont = 
     "=" Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
-    | Type
     | { ExprPostfixOp } ArgExprCont
 
 ArgExprCont = 
@@ -1174,7 +1173,6 @@ Stmt =
     | VarDecl
     | FuncDecl
     | ComponentDecl
-    | SlotNode
     | "return" [ Expr ]
     | "break"
     | "continue"
@@ -1187,8 +1185,6 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
-
-SlotNode = "slot" [ IDENT [ "(" [ ArgList ] ")" ] ] [ StmtBlock ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1347,23 +1343,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
-
-CompParamList = CompParam { "," CompParam } [ "," ]
-
-CompParam = { MacroAttr } CompParamBody
-
-CompParamBody = 
-    ":" IDENT [ Type ] [ "=" Expr ]
-    | "@" IDENT [ Type ]
-    | SlotParam
-    | IDENT [ CompParamTail ]
-
-SlotParam = "slot" IDENT [ "(" [ TypeList ] ")" ] [ Type ]
-
-CompParamTail = 
-    "=" Expr
-    | Type [ "=" Expr ]
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] StmtBlock
 
 ```
 
@@ -1393,24 +1373,70 @@ A component parameter is one of three kinds:
   payloadless event) — an outgoing event the component fires by calling its
   name (`name(args)`) and the caller handles with `@name { … }`.
 
-### Children
+### Slots and children
 
-A component accepts children by declaring the default slot, named `_`, in its
-parameter list. Its type says which family the children belong to and how many
-are accepted:
+A **slot** is a region of UI the caller supplies. It is an ordinary parameter
+whose type is a **component type**, so a component's whole API — props, events
+and slots — is one parameter list:
 
-- *no slot declared* — the component accepts no children;
-- `slot _` — any number, of whatever family the component itself belongs to;
-- `slot _ shape` — any number of that tree's members;
-- `slot _ tree.one<T>` — exactly one;
-- `slot _ option<T>` — zero or one.
+- `header component` — any number of nodes, of whatever family the component
+  itself belongs to;
+- `shapes component shape` — any number of that tree's members;
+- `body component tree.one<T>` — exactly one;
+- `badge component option<T>` — zero or one;
+- `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
+  the population binds a name for it.
 
-Within the body, `slot` projects the caller-supplied children into position.
-When it appears inside a conditional or loop, the surrounding structure is
+A slot renders where its name is written in the body, as an ordinary node
+(`header { … }` supplies a fallback, `cell(r)` passes an argument). When an
+insertion appears inside a conditional or loop, the surrounding structure is
 rendered per the reactive rules below.
 
-A named slot is declared the same way and populated by name at the call site
-(`slot header { … }`), rendering where its name is written as an ordinary node.
+A caller populates a slot by name with a `component` declaration written
+directly in the instantiation's block:
+
+<!-- SNGL-component
+struct Row { title string }
+component table(rows list<Row>, cell component(Row)) { vbox { for var r = rows { cell(r) } } }
+var rs list<Row> = []
+-->
+
+```sngl
+table(rows=rs) {
+    component cell(row) {
+        text(value=row.title)
+    }
+}
+```
+
+The parameters a population declares are its own names for what the insertion
+passes, matched by position; a type written on one is optional and must agree
+with the position it names.
+
+**The rest slot takes the children written bare.** `...` before the component
+type is a count bound saying the slot collects everything the caller did not
+supply by name:
+
+```sngl
+import . "sngl:ui"
+
+component card(header component, content ...component) {
+    vbox {
+        header {}
+        content
+    }
+}
+```
+
+A component declares at most one rest slot, and a component that declares none
+accepts no children at all. A rest slot names no invocation parameters — bare
+children are written once, with nothing to bind them to — and populating it by
+name *and* writing bare children populates it twice.
+
+A `component` declaration in a body is read by **position**: at the root of a
+component definition it is a nested declaration, and directly in a child node's
+block it is a slot population. Anywhere else — inside an `if` or `for`, or in a
+function body — is an error.
 
 ### Instantiation and visual nodes
 
@@ -1600,7 +1626,6 @@ Stmt =
     | VarDecl
     | FuncDecl
     | ComponentDecl
-    | SlotNode
     | "return" [ Expr ]
     | "break"
     | "continue"
@@ -1613,8 +1638,6 @@ VisualOrStmt = StatementPrimary { StmtPostfixOp } [ AssignOp Expr | "!!" | IncDe
 IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
-
-SlotNode = "slot" [ IDENT [ "(" [ ArgList ] ")" ] ] [ StmtBlock ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1674,30 +1697,14 @@ TypeParamList = "<" TypeParam { "," TypeParam } ">"
 
 TypeParam = IDENT [ "=" Type ]
 
-ParamList = Param { "," Param }
+ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } IDENT [ Type ] [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT | "@" IDENT | IDENT ) [ Type ] [ "=" Expr ]
 
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ CompParamList ] ")" ] [ Type ] StmtBlock
-
-CompParamList = CompParam { "," CompParam } [ "," ]
-
-CompParam = { MacroAttr } CompParamBody
-
-CompParamBody = 
-    ":" IDENT [ Type ] [ "=" Expr ]
-    | "@" IDENT [ Type ]
-    | SlotParam
-    | IDENT [ CompParamTail ]
-
-SlotParam = "slot" IDENT [ "(" [ TypeList ] ")" ] [ Type ]
-
-CompParamTail = 
-    "=" Expr
-    | Type [ "=" Expr ]
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] StmtBlock
 
 ```
 
@@ -1792,7 +1799,6 @@ EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 IdentArgCont = 
     "=" Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
-    | Type
     | { ExprPostfixOp } ArgExprCont
 
 ArgExprCont = 
@@ -1839,7 +1845,9 @@ I18nPlaceholder = Expr [ "," IDENT [ "," I18nThirdArg ] ]
 ```ebnf
 Type = 
     IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" ]
-    | "func" "(" [ FuncTypeParamList ] ")" [ Type ]
+    | "func"      [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
+    | "component" [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
+    | "..." Type
     | StructDecl
     | EnumDecl
     | UnitDecl
@@ -1850,7 +1858,9 @@ FuncTypeParamList = FuncTypeParam { "," FuncTypeParam }
 
 FuncTypeParam = 
     IDENT [ "." IDENT [ "<" TypeList ">" ] | "<" TypeList ">" | Type ]
-    | "func" "(" [ FuncTypeParamList ] ")" [ Type ]
+    | "func"      [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
+    | "component" [ "(" [ FuncTypeParamList ] ")" ] [ Type ]
+    | "..." Type
     | StructDecl
     | EnumDecl
     | UnitDecl

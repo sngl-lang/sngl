@@ -31,7 +31,7 @@ output {
 
 context #theme("light")
 
-component framed(slot caption) {
+component framed(caption component) {
     caption {
         text(value="(none)")
     }
@@ -39,7 +39,7 @@ component framed(slot caption) {
 
 component main {
     framed() {
-        slot caption {
+        component caption {
             text(value=theme)
         }
     }

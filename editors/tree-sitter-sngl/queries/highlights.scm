@@ -41,9 +41,8 @@
 (struct_field name: (identifier) @property)
 
 ; Component params (positional, named, binding, or event form).
-(component_param name: (identifier) @variable.parameter)
-(component_param "@" @punctuation.special)
-(component_param ":" @punctuation.special)
+(func_param "@" @punctuation.special)
+(func_param ":" @punctuation.special)
 
 ; var / const specs
 (var_spec (identifier_list (identifier) @variable))

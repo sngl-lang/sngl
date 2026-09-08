@@ -155,41 +155,29 @@ module.exports = grammar({
     type_param_list: ($) =>
       seq("<", $.identifier, repeat(seq(",", $.identifier)), ">"),
 
+    // One list for every param-like site: a function's parameters, a lambda's,
+    // a handler's, a component's props, and the names a slot population binds.
+    // The `:` and `@` forms are legal only in a component declaration, which
+    // the compiler says rather than the grammar.
     _param_list: ($) =>
-      seq($.func_param, repeat(seq(",", $.func_param))),
+      seq($.func_param, repeat(seq(",", $.func_param)), optional(",")),
 
     func_param: ($) =>
-      prec.right(seq(field("name", $.identifier), optional(field("type", $.type_identifier)), optional(seq("=", field("default", $._expression))))),
+      prec.right(seq(
+      optional(choice(":", "@")),
+      field("name", $.identifier),
+      optional(field("type", $.type_identifier)),
+      optional(seq("=", field("default", $._expression)))
+    )),
 
     component_declaration: ($) =>
       seq(
       "component",
       field("name", $.identifier),
-      optional(seq("(", optional($._comp_param_list), ")")),
+      optional(seq("(", optional($._param_list), ")")),
       optional($.type_identifier),
       $.statement_block
     ),
-
-    _comp_param_list: ($) =>
-      seq($.component_param, repeat(seq(",", $.component_param))),
-
-    component_param: ($) =>
-      choice(
-      seq(
-        ":",
-        field("name", $.identifier),
-        optional(field("type", $.type_identifier)),
-        optional(seq("=", field("default", $._expression)))
-      ),
-      seq("@", field("name", $.identifier), optional(field("type", $.type_identifier))),
-      seq(field("name", $.identifier), optional($._comp_param_tail))
-    ),
-
-    _comp_param_tail: ($) =>
-      prec.right(choice(
-      seq("=", $._expression),
-      seq($.type_identifier, optional(seq("=", $._expression)))
-    )),
 
     if_node: ($) =>
       seq(
@@ -316,16 +304,30 @@ module.exports = grammar({
         seq("<", $.type_identifier, ">")
       ))
       ),
-      "component",
-      seq(
+      // A slot's type. The parenthesised list is what the slot is invoked
+      // with; the trailing type is the tree it accepts. Parens are optional on
+      // both keyword forms, which is unambiguous because "(" cannot begin a
+      // type.
+      $.component_type,
+      prec.right(seq(
         "func",
-        "(",
-        optional($._type_list),
-        ")",
-        optional(seq("->", $.type_identifier))
-      ),
+        optional(seq("(", optional($._type_list), ")")),
+        optional($.type_identifier)
+      )),
+      $.variadic_type,
       $.enum_declaration
     ),
+
+    component_type: ($) =>
+      prec.right(seq(
+      "component",
+      optional(seq("(", optional($._type_list), ")")),
+      optional(field("tree", $.type_identifier))
+    )),
+
+    // `...T` — a count bound written as a type prefix. On a slot it is the
+    // children a caller writes bare.
+    variadic_type: ($) => prec.right(seq("...", $.type_identifier)),
 
     _type_list: ($) =>
       seq($.type_identifier, repeat(seq(",", $.type_identifier))),
@@ -404,18 +406,8 @@ module.exports = grammar({
         $.binding_arg,
         $.event_arg,
         $.named_arg,
-        $.typed_arg,
         $.spread_expression,
         $._expression,
-      ),
-
-    // `row Row` — the name and type a slot population binds. The argument list
-    // is one production at both sites, so an ordinary call parses it too and
-    // the compiler refuses it there.
-    typed_arg: ($) =>
-      seq(
-        field("name", $.identifier),
-        field("type", $.type_identifier),
       ),
 
     binding_arg: ($) =>
