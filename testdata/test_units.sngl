@@ -7,42 +7,54 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
 component units {
-    var t1 = 1s + 500ms
-    var t2 = 1h + 30m
-    var m1 = 16px + 2em
-    var m2 = 1rem + 2em
+    var t1 duration = 1s + 500ms
+    var t2 duration = 1h + 30m
+    var m1 measurement = 16px + 2em
+    var m2 measurement = 1rem + 2em
 
     text(value="test")
 }
 
 func testDurationArithmetic(t Test, c units) {
-    t.assert(1s == 1000ms)
-    t.assert(1m == 60000ms)
-    t.assert(1h == 3600000ms)
-    t.assert(1s + 500ms == 1500ms)
-    t.assert(1h + 30m == 5400000ms)
+    var (
+        oneS duration = 1s
+        oneM duration = 1m
+        oneH duration = 1h
+        twoS duration = 2s
+    )
+
+    t.assert(oneS == 1000ms)
+    t.assert(oneM == 60000ms)
+    t.assert(oneH == 3600000ms)
+    t.assert(oneS + 500ms == 1500ms)
+    t.assert(oneH + 30m == 5400000ms)
+    t.assert(twoS - 500ms == 1500ms)
 }
 
 func testMeasurementArithmetic(t Test, c units) {
-    t.assert(1rem == 16em)
-    t.assert(1rem + 2em == 18em)
-    t.assert(3px + 2px == 5px)
+    var (
+        oneRem measurement = 1rem
+        threePx measurement = 3px
+        fivePx measurement = 5px
+        sixPx measurement = 6px
+        sixteenPx measurement = 16px
+    )
+
+    t.assert(oneRem == 16em)
+    t.assert(oneRem + 2em == 18em)
+    t.assert(threePx + 2px == 5px)
+    t.assert(fivePx - 2px == 3px)
+    t.assert(sixPx / 2 == 3px)
+    t.assert(threePx * 2 == 6px)
+    t.assert(2 * threePx == 6px)
+    t.assert(sixteenPx + 2em == 2em + 16px)
 }
 
-func testMixedMeasurementComponents(t Test, c units) {
-    t.assert(16px + 2em == 2em + 16px)
-}
-
-func testScalarMultiplication(t Test, c units) {
-    t.assert(2 * 3px == 6px)
-    t.assert(3px * 2 == 6px)
-}
-
-func testScalarDivision(t Test, c units) {
-    t.assert(6px / 2 == 3px)
-}
-
-func testSubtraction(t Test, c units) {
-    t.assert(5px - 2px == 3px)
-    t.assert(2s - 500ms == 1500ms)
+// A cast names the unit, which is all a literal needs: it supplies the
+// expected type and converts nothing. This is the shape for the one position
+// no annotation reaches -- the leading operand of a bare expression.
+func testACastNamesTheUnit(t Test, c units) {
+    t.assert(duration(1m) == 60s)
+    t.assert(duration(1s) + 500ms == 1500ms)
+    t.assert(measurement(3px) + 2px == 5px)
 }

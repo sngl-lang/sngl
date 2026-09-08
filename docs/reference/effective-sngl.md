@@ -300,15 +300,16 @@ import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
+import . "sngl:time"
 var count = 0
 var name = "World"
 var bg = #ff0000
-var timeout = 5s
+var timeout duration = 5s
 var todos list<Todo> = []
 var status Status = active
 ```
 
-The rule: if the right side is an empty list, a zero-value struct, or a bare enum member, annotate the type so the member resolves. Otherwise, let inference do its job.
+The rule: if the right side is an empty list, a zero-value struct, a bare enum member, or a unit literal, annotate the type so it resolves. A suffix belongs to the unit that declares it, and the annotation is what says which unit `5s` means. Otherwise, let inference do its job.
 
 ### Function types
 

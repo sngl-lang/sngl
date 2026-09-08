@@ -9,15 +9,22 @@ import . "sngl:test"
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
 component sizes {
-    var base = 16px
+    var base measurement = 16px
 
     text(value="sized")
 }
 
 func testMeasurementArithmetic(t Test, c sizes) {
-    t.assert(3px + 2px == 5px)
-    t.assert(16px + 2em == 2em + 16px)
-    t.assert(5px - 2px == 3px)
-    t.assert(2 * 3px == 6px)
-    t.assert(6px / 2 == 3px)
+    var (
+        three measurement = 3px
+        five measurement = 5px
+        six measurement = 6px
+        sixteen measurement = 16px
+    )
+
+    t.assert(three + 2px == 5px)
+    t.assert(sixteen + 2em == 2em + 16px)
+    t.assert(five - 2px == 3px)
+    t.assert(2 * three == 6px)
+    t.assert(six / 2 == 3px)
 }

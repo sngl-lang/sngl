@@ -4,7 +4,7 @@ import . "sngl:time"
 component main {
     var (
         bg = #ff0000
-        timeout = 5s
+        timeout duration = 5s
         birthday date = "2026-03-12"
         noon time = "12:00"
         event_time datetime = "2026-03-12T10:00:00Z"

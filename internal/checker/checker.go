@@ -242,7 +242,6 @@ type checker struct {
 	refCoercions []refCoercion
 
 	// Unit suffix reverse lookup.
-	unitBySuffix map[string]*ir.UnitDef
 
 	// bodyTypeDecls is where each body-local type name was first declared, per
 	// package it lands in. Interim, for the #198 collision error only.
@@ -493,7 +492,6 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		pkg:          &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
 		symtab:       symtab,
 		scope:        symtab.Root,
-		unitBySuffix: make(map[string]*ir.UnitDef),
 		visited:      cfg.visitedStack(),
 		dirPkgs:      cfg.dirPkgCache(),
 		pkgWindowIDs: make(map[string]bool),
@@ -1701,9 +1699,6 @@ func (c *checker) registerUnit(u *ast.UnitDef) {
 	c.applyMarks(u, ud)
 	c.declPkg().Units = append(c.declPkg().Units, ud)
 	c.bindDeclared(claimed, ud)
-	for _, s := range ud.Suffixes {
-		c.unitBySuffix[s.Name] = ud
-	}
 }
 
 func (c *checker) registerConsts(decl *ast.ConstDecl) {

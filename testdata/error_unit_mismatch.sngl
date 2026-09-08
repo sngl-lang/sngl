@@ -6,7 +6,7 @@ unit duration { ms, s = 1000ms }
 unit distance { mm, cm = 10mm, m = 100cm }
 
 component main {
-    var bad = 1s + 2cm // ERROR(check) "operator + not defined"
+    var bad duration = 1s + 2cm // ERROR(check) "cannot initialize duration"
 
     text(value="x")
 }

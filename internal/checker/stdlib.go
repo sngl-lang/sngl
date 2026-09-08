@@ -198,13 +198,6 @@ func (c *checker) adoptAmbient(pkg *ir.Package) {
 	for _, sym := range pkg.Symbols.Root.Symbols {
 		c.bindLib(symPos(sym), c.scope, sym)
 	}
-	// The suffix index is the checker's, not the package's, so it is rebuilt
-	// from the declarations rather than only where a unit is first registered.
-	for _, u := range pkg.Units {
-		for _, sfx := range u.Suffixes {
-			c.unitBySuffix[sfx.Name] = u
-		}
-	}
 }
 
 // libDocs returns the parsed source of lib package name: what lib/ embeds,
@@ -464,11 +457,6 @@ func (c *checker) libPkg(name string) *ir.Package {
 // an outer one, which is the point — the declaration a platform extension is
 // attached to has to be the declaration user code resolves.
 func (c *checker) adoptLib(name string, pkg *ir.Package) {
-	for _, u := range pkg.Units {
-		for _, sfx := range u.Suffixes {
-			c.unitBySuffix[sfx.Name] = u
-		}
-	}
 	if name == irPkg && c.macroStruct == nil {
 		if sym, ok := pkg.Symbols.Root.LookupLocal(macroTypeName); ok {
 			if sd, isStruct := sym.(*ir.StructDef); isStruct {

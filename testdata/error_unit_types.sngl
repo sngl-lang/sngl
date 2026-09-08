@@ -6,6 +6,7 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
 component main {
-    var bad1 = 5xyz // ERROR(check) "unknown unit suffix"
+    var bad1 duration = 5xyz // ERROR(check) "has no suffix"
+    var bad2 = 5ms           // ERROR(check) "needs a unit type here"
     text(value="test")
 }

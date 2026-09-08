@@ -2,14 +2,18 @@
 // hardcoded entry in the builtin scalar registry, which won in type position,
 // so every written `duration` annotation got a different type from the one a
 // `5s` literal produces -- "cannot initialize duration with duration". Only
-// the alias form (`s.duration`) and inference worked.
+// the alias form (`s.duration`) worked.
+//
+// Every unit literal here is annotated because that is now the only way one
+// resolves: a suffix belongs to the unit that declares it, and the expected
+// type is what says which.
 import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
 
 var annotated duration = 5s
 var zero duration = 0
-var inferred = 5s
+var inferred duration = 5s
 
 func takes(d duration) => d
 

@@ -7,12 +7,12 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
 component unitTypes {
-    var t1 = 1s
-    var t2 = 500ms
-    var m1 = 10px
-    var m2 = 2em
-    var sep = 1_000ms
-    var sepPx = 1_000px
+    var t1 duration = 1s
+    var t2 duration = 500ms
+    var m1 measurement = 10px
+    var m2 measurement = 2em
+    var sep duration = 1_000ms
+    var sepPx measurement = 1_000px
 
     text(value="test")
 }
@@ -26,11 +26,17 @@ func testUnderscoredMeasurement(t Test, c unitTypes) {
 }
 
 func testUnitArithmeticWithUnderscore(t Test, c unitTypes) {
-    t.assert(1_000ms + 500ms == 1_500ms)
-    t.assert(1_000px * 2 == 2_000px)
+    var ms duration = 1_000ms
+    var px measurement = 1_000px
+
+    t.assert(ms + 500ms == 1_500ms)
+    t.assert(px * 2 == 2_000px)
 }
 
 func testZeroUnitLiteral(t Test, c unitTypes) {
-    t.assert(0ms == 0s)
-    t.assert(0px == 0em)
+    var zeroMs duration = 0ms
+    var zeroPx measurement = 0px
+
+    t.assert(zeroMs == 0s)
+    t.assert(zeroPx == 0em)
 }

@@ -43,7 +43,7 @@ output {
 
 component main {
     var ticks = 0
-    var periods = [20ms, 500ms]
+    var periods list<duration> = [20ms, 500ms]
 
     button(text="add", @click { periods.push(1000ms) })
     for var p = periods {

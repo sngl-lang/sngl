@@ -16,7 +16,7 @@ unit px { suffix = "px" }
 component main {
     var a = Point(1.0, 2.0) // ERROR(check) "cannot cast to struct Point"
     var b = Mode("fast")    // ERROR(check) "cannot cast to enum Mode"
-    var c = px(5)           // ERROR(check) "cannot cast to unit px"
+    var c = px(5)           // ERROR(check) "cannot cast int to unit px"
     var d = option(5)       // ERROR(check) "cannot cast to option"
     var n = 5
     var e = n() // ERROR(check) "int is not a function"

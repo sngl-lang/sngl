@@ -310,6 +310,13 @@ func parseHexChannels(raw string) (r, g, b, a int, ok bool) {
 	return 0, 0, 0, 0, false
 }
 
+// inferUnitLiteral resolves `20ms` against the type the position expects.
+//
+// A suffix belongs to the unit that declares it, and nothing else says which
+// unit a literal means -- so the expected type is what resolves it, and a
+// position with no expected type has no answer. `ms` is `duration`'s only
+// because `duration` declares it; two units may each declare `m`, and under a
+// registry keyed by suffix alone one of them silently won.
 func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	// Value is the number and Suffix is the unit, the same split ir.Literal
 	// makes for every other kind: Raw is the spelling, Value is what it stands
@@ -317,12 +324,51 @@ func (c *checker) inferUnitLiteral(x *ast.UnitLiteral) ir.Expr {
 	// so every consumer that wanted the magnitude trimmed it back off and
 	// every one that wanted the spelling risked writing it twice.
 	num := strings.TrimSuffix(x.Raw, x.Suffix)
-	ud, ok := c.unitBySuffix[x.Suffix]
-	if !ok {
-		c.error(x.Pos, "unknown unit suffix %q", x.Suffix)
+	bad := func(format string, args ...any) ir.Expr {
+		c.error(x.Pos, format, args...)
 		return &ir.Literal{AST: &x.LiteralExpr, Type: TypDyn, Value: num, Suffix: x.Suffix}
 	}
-	return &ir.Literal{AST: &x.LiteralExpr, Type: ud.SymType(), Value: num, Suffix: x.Suffix}
+	ud := ir.UnitDeclOf(c.expected)
+	if ud == nil {
+		return bad("%s needs a unit type here: a suffix belongs to the unit that declares it, and nothing in this position says which", x.Raw)
+	}
+	if ud.SuffixByName(x.Suffix) == nil {
+		// Naming the unit that *does* declare it is what makes a shadowed
+		// library unit legible: two declarations called `duration` are two
+		// types, and the suffix is the thing that says which one was meant.
+		if other := c.unitDeclaring(ud, x.Suffix); other != nil {
+			want, got := ir.Contrast(c.expected, other.SymType())
+			return bad("cannot initialize %s with %s: %q is a suffix of the second", want, got, x.Suffix)
+		}
+		return bad("unit %s has no suffix %q", ud.Name, x.Suffix)
+	}
+	return &ir.Literal{AST: &x.LiteralExpr, Type: c.expected, Value: num, Suffix: x.Suffix}
+}
+
+// unitDeclaring finds a unit other than want that declares suffix, for a
+// diagnostic only -- resolution is the expected type's job, and this is what
+// tells a reader which other declaration they were thinking of.
+func (c *checker) unitDeclaring(want *ir.UnitDef, suffix string) *ir.UnitDef {
+	consider := func(units []*ir.UnitDef) *ir.UnitDef {
+		for _, u := range units {
+			if u != want && u.SuffixByName(suffix) != nil {
+				return u
+			}
+		}
+		return nil
+	}
+	if u := consider(c.declPkg().Units); u != nil {
+		return u
+	}
+	for _, imp := range c.pkg.Imports {
+		if imp == nil || imp.Pkg == nil {
+			continue
+		}
+		if u := consider(imp.Pkg.Units); u != nil {
+			return u
+		}
+	}
+	return nil
 }
 
 // eventAsFunc resolves a bare event name in a position that expects a
@@ -590,7 +636,15 @@ func (c *checker) inferBinary(x *ast.BinaryExpr) ir.Expr {
 		right = rightExpr
 		return c.finishBinary(x, leftExpr, rightExpr)
 	}
-	rightExpr := c.checkExpr(x.Right)
+	// A unit on the left is what the right is expected to be: a suffix resolves
+	// against an expected type, and the only thing `a == 1000ms` offers the
+	// literal is the type of what it is being compared with. Only a unit,
+	// because `2 * 3px` would otherwise expect the int the left is.
+	rightExpected := c.expected
+	if lt := exprType(leftExpr); ir.UnitDeclOf(lt) != nil {
+		rightExpected = lt
+	}
+	rightExpr := c.checkExprExpecting(x.Right, rightExpected)
 	return c.finishBinary(x, leftExpr, rightExpr)
 }
 
@@ -968,6 +1022,9 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 	//
 	// TypeDyn is exempt: a dyn callee is unknown by construction, so a call on
 	// it stays permissive.
+	if calleeType.Kind == ir.TypeUnit {
+		return c.inferUnitConversion(x, calleeType)
+	}
 	if calleeType.Kind != ir.TypeFunc && calleeType.Kind != ir.TypeDyn {
 		c.errorNotCallable(x, calleeExpr, calleeType)
 		return &ir.Call{AST: x, Type: TypDyn, Args: c.checkCallArgs(x.Args, nil)}
@@ -1005,6 +1062,32 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		call.Callee = calleeExpr
 	}
 	return call
+}
+
+// inferUnitConversion type-checks `duration(1m)`: a cast that exists to name
+// the unit, so a literal written where nothing else expects one can still say
+// which unit it means. `t.assert(duration(1m) == 60s)` is the shape -- the
+// leading operand of a bare expression, which no annotation reaches.
+//
+// It converts nothing. A unit value is already a magnitude in its base, so the
+// operand has to *be* of the unit rather than be turned into it: this supplies
+// the expected type and then checks that what came back agrees. Casting a
+// number to a unit is still refused, and the message errorNotCallable gave for
+// every unit cast is what says so.
+func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr {
+	if len(x.Args.Args) != 1 {
+		c.error(x.Pos, "%s(): expected 1 argument, got %d", target, len(x.Args.Args))
+		return &ir.Conversion{AST: x, Type: target}
+	}
+	arg, _ := x.Args.Args[0].(ast.Arg)
+	if arg.Value == nil {
+		return &ir.Conversion{AST: x, Type: target}
+	}
+	argExpr := c.checkExprExpecting(arg.Value, target)
+	if from := exprType(argExpr); from != nil && from.Kind != ir.TypeDyn && !from.Equal(target) {
+		c.error(x.Pos, "cannot cast %s to unit %s (a unit value is written as a literal, e.g. 5%s)", from, target, target)
+	}
+	return argExpr
 }
 
 // inferBuiltinConversion type-checks `T(x)` where T is a builtin primitive
@@ -1086,6 +1169,12 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 							args := c.checkComponentCallArgs(call, comp)
 							c.validateCallStmtComponentArgs(call, comp)
 							return &ir.Call{AST: call, Type: comp.SymType(), Receiver: receiverExpr, Args: args}
+						}
+						// A qualified unit names a type, and naming one is the
+						// point of the cast: `time.duration(1m)` is the same
+						// expected-type provider the bare `duration(1m)` is.
+						if ud, ok := fsym.(*ir.UnitDef); ok {
+							return c.inferUnitConversion(call, ud.SymType())
 						}
 						t := c.symType(fsym)
 						var sig *ir.FuncSig
