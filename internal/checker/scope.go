@@ -53,6 +53,17 @@ func (c *checker) lookupMethod(recv, method string) (*ir.Func, bool) {
 	return fn, ok
 }
 
+// lookupBodyMethod finds a component-body method by bare name: on the
+// component being checked, then on each body that declared it.
+func (c *checker) lookupBodyMethod(name string) (*ir.Func, bool) {
+	for comp := c.currentComponent; comp != nil; comp = c.bodyOwner[comp] {
+		if fn, ok := c.lookupMethod(comp.Name, name); ok {
+			return fn, true
+		}
+	}
+	return nil, false
+}
+
 // declareMethod makes fn a member of the declaration its receiver names,
 // reporting an unknown receiver at pos. Returns the member it collides with
 // when the caller must report a duplicate, and nil when the attach stands:

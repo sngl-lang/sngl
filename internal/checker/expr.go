@@ -469,7 +469,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		// will treat it as a value the same way it did pre-T7, when these
 		// were closures registered on scope).
 		if c.currentComponent != nil {
-			if fn, ok := c.lookupMethod(c.currentComponent.Name, x.Name); ok {
+			if fn, ok := c.lookupBodyMethod(x.Name); ok {
 				// Bare reference to a sibling component-method. Expose a func
 				// type with the synthetic `this` stripped, so implicit-call
 				// paths (interpolation, prop binding) and explicit `name()`

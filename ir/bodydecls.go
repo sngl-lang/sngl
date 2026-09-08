@@ -44,10 +44,10 @@ func CapturesEnclosingState(nested *Component, owners map[*Component]*Component)
 				enclosing[p.Sym] = true
 			}
 		}
+		// Every func, receiver or none: a nested body reaches an owner's
+		// method by bare name too, and that call needs the same splice.
 		for _, f := range owner.Funcs {
-			if f.Receiver == "" {
-				enclosing[f] = true
-			}
+			enclosing[f] = true
 		}
 	}
 	if len(enclosing) == 0 {

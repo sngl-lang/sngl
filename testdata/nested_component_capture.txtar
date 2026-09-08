@@ -1,5 +1,6 @@
 A component declared in a body reads and writes that body's state, on every
-target (#202). `inner` names `count` and `label`, which `outer` declares.
+target (#202). `inner` names `count`, `label` and `bump()`, which `outer`
+declares -- a var, a prop and a method.
 
 What the shape is here for: `inner` declares a var of its own, so
 passInlinePure will not substitute it and the capture has to survive
@@ -15,6 +16,8 @@ substituted by the call site's argument.
 
 deny * `\bcount\b` -- the captured var is the owner's, so every target names the per-owner-instance clone and never the declared name
 deny * `\blabel\b` -- the captured prop is substituted by the instantiation's argument, so no target emits its name
+deny * `\bbump\b` -- the owner's method is cloned per owner instance, so every target calls the clone and never the declared name
+deny * `\bhit\b` -- `tap` captures nothing but `hit()`, so the method alone has to mark it for the splice
 
 -- app.sngl --
 import . "sngl:ui"
@@ -34,6 +37,8 @@ output {
 component outer(label = "") {
     var count = 0
 
+    func bump() { count = count + 100 }
+
     component inner(step = 1) {
         var runs = 0
 
@@ -42,6 +47,7 @@ component outer(label = "") {
             button(text="+", @click {
                 count = count + step
                 runs = runs + 1
+                bump()
             })
         }
     }
@@ -52,10 +58,34 @@ component outer(label = "") {
     }
 }
 
+// A nested body whose *only* capture is the owner's method: nothing about the
+// vars or props marks `tap` as capturing, so the method has to.
+component methodOnly() {
+    var hits = 0
+
+    func hit() { hits = hits + 1 }
+
+    component tap() {
+        var taps = 0
+
+        button(text="tap", @click {
+            hit()
+            taps = taps + 1
+        })
+    }
+
+    vbox {
+        tap()
+        text(value="{hits}")
+    }
+}
+
 component main {
     vbox {
         outer(label="a")
         outer(label="b")
+        methodOnly()
+        methodOnly()
     }
 }
 -- out/go/bubbletea/model.go --
@@ -71,12 +101,16 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	count__inst2       int
-	runs__inst0__inst2 int
-	runs__inst1__inst2 int
 	count__inst3       int
 	runs__inst0__inst3 int
 	runs__inst1__inst3 int
+	count__inst4       int
+	runs__inst0__inst4 int
+	runs__inst1__inst4 int
+	hits__inst5        int
+	taps__inst2__inst5 int
+	hits__inst6        int
+	taps__inst2__inst6 int
 	__focusID          int
 
 	width, height int
@@ -85,12 +119,16 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.count__inst2 = 0
-	m.runs__inst0__inst2 = 0
-	m.runs__inst1__inst2 = 0
 	m.count__inst3 = 0
 	m.runs__inst0__inst3 = 0
 	m.runs__inst1__inst3 = 0
+	m.count__inst4 = 0
+	m.runs__inst0__inst4 = 0
+	m.runs__inst1__inst4 = 0
+	m.hits__inst5 = 0
+	m.taps__inst2__inst5 = 0
+	m.hits__inst6 = 0
+	m.taps__inst2__inst6 = 0
 	m.__focusID = 0
 	return m
 }
@@ -99,6 +137,22 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) bump__inst3() {
+	m.count__inst3 = (m.count__inst3 + 100)
+}
+
+func (m *Model) bump__inst4() {
+	m.count__inst4 = (m.count__inst4 + 100)
+}
+
+func (m *Model) hit__inst5() {
+	m.hits__inst5 = (m.hits__inst5 + 1)
+}
+
+func (m *Model) hit__inst6() {
+	m.hits__inst6 = (m.hits__inst6 + 1)
 }
 
 func (m *Model) __focusNext() {
@@ -112,7 +166,15 @@ func (m *Model) __focusNext() {
 				m.__focusID = 3
 			} else {
 				if m.__focusID == 3 {
-					m.__focusID = 0
+					m.__focusID = 4
+				} else {
+					if m.__focusID == 4 {
+						m.__focusID = 5
+					} else {
+						if m.__focusID == 5 {
+							m.__focusID = 0
+						}
+					}
 				}
 			}
 		}
@@ -121,7 +183,7 @@ func (m *Model) __focusNext() {
 
 func (m *Model) __focusPrev() {
 	if m.__focusID == 0 {
-		m.__focusID = 3
+		m.__focusID = 5
 	} else {
 		if m.__focusID == 1 {
 			m.__focusID = 0
@@ -131,55 +193,18 @@ func (m *Model) __focusPrev() {
 			} else {
 				if m.__focusID == 3 {
 					m.__focusID = 2
+				} else {
+					if m.__focusID == 4 {
+						m.__focusID = 3
+					} else {
+						if m.__focusID == 5 {
+							m.__focusID = 4
+						}
+					}
 				}
 			}
 		}
 	}
-}
-
-func (m Model) Count__inst2() int {
-	return m.count__inst2
-}
-
-func (m Model) SetCount__inst2(v int) Model {
-	m.count__inst2 = v
-	return m
-}
-
-type setCount__inst2Msg struct{ value int }
-
-func SetCount__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setCount__inst2Msg{value: v} }
-}
-
-func (m Model) Runs__inst0__inst2() int {
-	return m.runs__inst0__inst2
-}
-
-func (m Model) SetRuns__inst0__inst2(v int) Model {
-	m.runs__inst0__inst2 = v
-	return m
-}
-
-type setRuns__inst0__inst2Msg struct{ value int }
-
-func SetRuns__inst0__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setRuns__inst0__inst2Msg{value: v} }
-}
-
-func (m Model) Runs__inst1__inst2() int {
-	return m.runs__inst1__inst2
-}
-
-func (m Model) SetRuns__inst1__inst2(v int) Model {
-	m.runs__inst1__inst2 = v
-	return m
-}
-
-type setRuns__inst1__inst2Msg struct{ value int }
-
-func SetRuns__inst1__inst2Cmd(v int) tea.Cmd {
-	return func() tea.Msg { return setRuns__inst1__inst2Msg{value: v} }
 }
 
 func (m Model) Count__inst3() int {
@@ -227,6 +252,111 @@ func SetRuns__inst1__inst3Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setRuns__inst1__inst3Msg{value: v} }
 }
 
+func (m Model) Count__inst4() int {
+	return m.count__inst4
+}
+
+func (m Model) SetCount__inst4(v int) Model {
+	m.count__inst4 = v
+	return m
+}
+
+type setCount__inst4Msg struct{ value int }
+
+func SetCount__inst4Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setCount__inst4Msg{value: v} }
+}
+
+func (m Model) Runs__inst0__inst4() int {
+	return m.runs__inst0__inst4
+}
+
+func (m Model) SetRuns__inst0__inst4(v int) Model {
+	m.runs__inst0__inst4 = v
+	return m
+}
+
+type setRuns__inst0__inst4Msg struct{ value int }
+
+func SetRuns__inst0__inst4Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setRuns__inst0__inst4Msg{value: v} }
+}
+
+func (m Model) Runs__inst1__inst4() int {
+	return m.runs__inst1__inst4
+}
+
+func (m Model) SetRuns__inst1__inst4(v int) Model {
+	m.runs__inst1__inst4 = v
+	return m
+}
+
+type setRuns__inst1__inst4Msg struct{ value int }
+
+func SetRuns__inst1__inst4Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setRuns__inst1__inst4Msg{value: v} }
+}
+
+func (m Model) Hits__inst5() int {
+	return m.hits__inst5
+}
+
+func (m Model) SetHits__inst5(v int) Model {
+	m.hits__inst5 = v
+	return m
+}
+
+type setHits__inst5Msg struct{ value int }
+
+func SetHits__inst5Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setHits__inst5Msg{value: v} }
+}
+
+func (m Model) Taps__inst2__inst5() int {
+	return m.taps__inst2__inst5
+}
+
+func (m Model) SetTaps__inst2__inst5(v int) Model {
+	m.taps__inst2__inst5 = v
+	return m
+}
+
+type setTaps__inst2__inst5Msg struct{ value int }
+
+func SetTaps__inst2__inst5Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTaps__inst2__inst5Msg{value: v} }
+}
+
+func (m Model) Hits__inst6() int {
+	return m.hits__inst6
+}
+
+func (m Model) SetHits__inst6(v int) Model {
+	m.hits__inst6 = v
+	return m
+}
+
+type setHits__inst6Msg struct{ value int }
+
+func SetHits__inst6Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setHits__inst6Msg{value: v} }
+}
+
+func (m Model) Taps__inst2__inst6() int {
+	return m.taps__inst2__inst6
+}
+
+func (m Model) SetTaps__inst2__inst6(v int) Model {
+	m.taps__inst2__inst6 = v
+	return m
+}
+
+type setTaps__inst2__inst6Msg struct{ value int }
+
+func SetTaps__inst2__inst6Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTaps__inst2__inst6Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -236,18 +366,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setCount__inst2Msg:
-		m = m.SetCount__inst2(msg.value)
-	case setRuns__inst0__inst2Msg:
-		m = m.SetRuns__inst0__inst2(msg.value)
-	case setRuns__inst1__inst2Msg:
-		m = m.SetRuns__inst1__inst2(msg.value)
 	case setCount__inst3Msg:
 		m = m.SetCount__inst3(msg.value)
 	case setRuns__inst0__inst3Msg:
 		m = m.SetRuns__inst0__inst3(msg.value)
 	case setRuns__inst1__inst3Msg:
 		m = m.SetRuns__inst1__inst3(msg.value)
+	case setCount__inst4Msg:
+		m = m.SetCount__inst4(msg.value)
+	case setRuns__inst0__inst4Msg:
+		m = m.SetRuns__inst0__inst4(msg.value)
+	case setRuns__inst1__inst4Msg:
+		m = m.SetRuns__inst1__inst4(msg.value)
+	case setHits__inst5Msg:
+		m = m.SetHits__inst5(msg.value)
+	case setTaps__inst2__inst5Msg:
+		m = m.SetTaps__inst2__inst5(msg.value)
+	case setHits__inst6Msg:
+		m = m.SetHits__inst6(msg.value)
+	case setTaps__inst2__inst6Msg:
+		m = m.SetTaps__inst2__inst6(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -260,17 +398,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.count__inst2 = (m.count__inst2 + 1)
-			m.runs__inst0__inst2 = (m.runs__inst0__inst2 + 1)
-		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.count__inst2 = (m.count__inst2 + 10)
-			m.runs__inst1__inst2 = (m.runs__inst1__inst2 + 1)
-		case msg.Code == tea.KeyEnter && m.__focusID == 2:
 			m.count__inst3 = (m.count__inst3 + 1)
 			m.runs__inst0__inst3 = (m.runs__inst0__inst3 + 1)
-		case msg.Code == tea.KeyEnter && m.__focusID == 3:
+			m.bump__inst3()
+		case msg.Code == tea.KeyEnter && m.__focusID == 1:
 			m.count__inst3 = (m.count__inst3 + 10)
 			m.runs__inst1__inst3 = (m.runs__inst1__inst3 + 1)
+			m.bump__inst3()
+		case msg.Code == tea.KeyEnter && m.__focusID == 2:
+			m.count__inst4 = (m.count__inst4 + 1)
+			m.runs__inst0__inst4 = (m.runs__inst0__inst4 + 1)
+			m.bump__inst4()
+		case msg.Code == tea.KeyEnter && m.__focusID == 3:
+			m.count__inst4 = (m.count__inst4 + 10)
+			m.runs__inst1__inst4 = (m.runs__inst1__inst4 + 1)
+			m.bump__inst4()
+		case msg.Code == tea.KeyEnter && m.__focusID == 4:
+			m.hit__inst5()
+			m.taps__inst2__inst5 = (m.taps__inst2__inst5 + 1)
+		case msg.Code == tea.KeyEnter && m.__focusID == 5:
+			m.hit__inst6()
+			m.taps__inst2__inst6 = (m.taps__inst2__inst6 + 1)
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -284,7 +432,7 @@ func (m Model) View() tea.View {
 	var content_0_0 string
 	var content_0_0Children []string
 	var content_0_0_0 string
-	content_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst2)) + " ") + fmt.Sprint(m.runs__inst0__inst2))))
+	content_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst0__inst3))))
 	content_0_0Children = append(content_0_0Children, content_0_0_0)
 	var content_0_0_1 string
 	content_0_0_1Focused := (m.__focusID == 0)
@@ -299,7 +447,7 @@ func (m Model) View() tea.View {
 	var content_0_1 string
 	var content_0_1Children []string
 	var content_0_1_0 string
-	content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst2)) + " ") + fmt.Sprint(m.runs__inst1__inst2))))
+	content_0_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("a " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst1__inst3))))
 	content_0_1Children = append(content_0_1Children, content_0_1_0)
 	var content_0_1_1 string
 	content_0_1_1Focused := (m.__focusID == 1)
@@ -318,7 +466,7 @@ func (m Model) View() tea.View {
 	var content_1_0 string
 	var content_1_0Children []string
 	var content_1_0_0 string
-	content_1_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst0__inst3))))
+	content_1_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst4)) + " ") + fmt.Sprint(m.runs__inst0__inst4))))
 	content_1_0Children = append(content_1_0Children, content_1_0_0)
 	var content_1_0_1 string
 	content_1_0_1Focused := (m.__focusID == 2)
@@ -333,7 +481,7 @@ func (m Model) View() tea.View {
 	var content_1_1 string
 	var content_1_1Children []string
 	var content_1_1_0 string
-	content_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst3)) + " ") + fmt.Sprint(m.runs__inst1__inst3))))
+	content_1_1_0 = lipgloss.NewStyle().Render(fmt.Sprint(((("b " + fmt.Sprint(m.count__inst4)) + " ") + fmt.Sprint(m.runs__inst1__inst4))))
 	content_1_1Children = append(content_1_1Children, content_1_1_0)
 	var content_1_1_1 string
 	content_1_1_1Focused := (m.__focusID == 3)
@@ -347,6 +495,36 @@ func (m Model) View() tea.View {
 	content_1Children = append(content_1Children, content_1_1)
 	content_1 = lipgloss.JoinVertical(lipgloss.Left, content_1Children...)
 	contentChildren = append(contentChildren, content_1)
+	var content_2 string
+	var content_2Children []string
+	var content_2_0 string
+	content_2_0Focused := (m.__focusID == 4)
+	content_2_0Prefix := " "
+	if content_2_0Focused {
+		content_2_0Prefix = ">"
+	}
+	content_2_0 = lipgloss.NewStyle().Render(content_2_0Prefix + " " + fmt.Sprint("tap"))
+	content_2Children = append(content_2Children, content_2_0)
+	var content_2_1 string
+	content_2_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst5)))
+	content_2Children = append(content_2Children, content_2_1)
+	content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
+	contentChildren = append(contentChildren, content_2)
+	var content_3 string
+	var content_3Children []string
+	var content_3_0 string
+	content_3_0Focused := (m.__focusID == 5)
+	content_3_0Prefix := " "
+	if content_3_0Focused {
+		content_3_0Prefix = ">"
+	}
+	content_3_0 = lipgloss.NewStyle().Render(content_3_0Prefix + " " + fmt.Sprint("tap"))
+	content_3Children = append(content_3Children, content_3_0)
+	var content_3_1 string
+	content_3_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.hits__inst6)))
+	content_3Children = append(content_3Children, content_3_1)
+	content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
+	contentChildren = append(contentChildren, content_3)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -390,29 +568,55 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var count__inst2 by remember { mutableStateOf(0) }
-    var runs__inst0__inst2 by remember { mutableStateOf(0) }
-    var runs__inst1__inst2 by remember { mutableStateOf(0) }
     var count__inst3 by remember { mutableStateOf(0) }
     var runs__inst0__inst3 by remember { mutableStateOf(0) }
     var runs__inst1__inst3 by remember { mutableStateOf(0) }
+    var count__inst4 by remember { mutableStateOf(0) }
+    var runs__inst0__inst4 by remember { mutableStateOf(0) }
+    var runs__inst1__inst4 by remember { mutableStateOf(0) }
+    var hits__inst5 by remember { mutableStateOf(0) }
+    var taps__inst2__inst5 by remember { mutableStateOf(0) }
+    var hits__inst6 by remember { mutableStateOf(0) }
+    var taps__inst2__inst6 by remember { mutableStateOf(0) }
+
+
+    fun bump__inst3() {
+        count__inst3 = (count__inst3 + 100)
+    }
+
+
+    fun bump__inst4() {
+        count__inst4 = (count__inst4 + 100)
+    }
+
+
+    fun hit__inst5() {
+        hits__inst5 = (hits__inst5 + 1)
+    }
+
+
+    fun hit__inst6() {
+        hits__inst6 = (hits__inst6 + 1)
+    }
 
     Column(modifier = Modifier.safeDrawingPadding()) {
         Column(modifier = Modifier) {
             Column(modifier = Modifier) {
-                Text(text = ((("a " + count__inst2.toString()) + " ") + runs__inst0__inst2.toString()), modifier = Modifier)
+                Text(text = ((("a " + count__inst3.toString()) + " ") + runs__inst0__inst3.toString()), modifier = Modifier)
                 Button(onClick = {
-                    count__inst2 = (count__inst2 + 1)
-                    runs__inst0__inst2 = (runs__inst0__inst2 + 1)
+                    count__inst3 = (count__inst3 + 1)
+                    runs__inst0__inst3 = (runs__inst0__inst3 + 1)
+                    /* unresolved method outer.bump__inst3 */
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
             }
             Column(modifier = Modifier) {
-                Text(text = ((("a " + count__inst2.toString()) + " ") + runs__inst1__inst2.toString()), modifier = Modifier)
+                Text(text = ((("a " + count__inst3.toString()) + " ") + runs__inst1__inst3.toString()), modifier = Modifier)
                 Button(onClick = {
-                    count__inst2 = (count__inst2 + 10)
-                    runs__inst1__inst2 = (runs__inst1__inst2 + 1)
+                    count__inst3 = (count__inst3 + 10)
+                    runs__inst1__inst3 = (runs__inst1__inst3 + 1)
+                    /* unresolved method outer.bump__inst3 */
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
@@ -420,23 +624,43 @@ fun MainScreen() {
         }
         Column(modifier = Modifier) {
             Column(modifier = Modifier) {
-                Text(text = ((("b " + count__inst3.toString()) + " ") + runs__inst0__inst3.toString()), modifier = Modifier)
+                Text(text = ((("b " + count__inst4.toString()) + " ") + runs__inst0__inst4.toString()), modifier = Modifier)
                 Button(onClick = {
-                    count__inst3 = (count__inst3 + 1)
-                    runs__inst0__inst3 = (runs__inst0__inst3 + 1)
+                    count__inst4 = (count__inst4 + 1)
+                    runs__inst0__inst4 = (runs__inst0__inst4 + 1)
+                    /* unresolved method outer.bump__inst4 */
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
             }
             Column(modifier = Modifier) {
-                Text(text = ((("b " + count__inst3.toString()) + " ") + runs__inst1__inst3.toString()), modifier = Modifier)
+                Text(text = ((("b " + count__inst4.toString()) + " ") + runs__inst1__inst4.toString()), modifier = Modifier)
                 Button(onClick = {
-                    count__inst3 = (count__inst3 + 10)
-                    runs__inst1__inst3 = (runs__inst1__inst3 + 1)
+                    count__inst4 = (count__inst4 + 10)
+                    runs__inst1__inst4 = (runs__inst1__inst4 + 1)
+                    /* unresolved method outer.bump__inst4 */
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
             }
+        }
+        Column(modifier = Modifier) {
+            Button(onClick = {
+                /* unresolved method methodOnly.hit__inst5 */
+                taps__inst2__inst5 = (taps__inst2__inst5 + 1)
+            }, modifier = Modifier) {
+                Text(text = "tap", modifier = Modifier)
+            }
+            Text(text = hits__inst5.toString(), modifier = Modifier)
+        }
+        Column(modifier = Modifier) {
+            Button(onClick = {
+                /* unresolved method methodOnly.hit__inst6 */
+                taps__inst2__inst6 = (taps__inst2__inst6 + 1)
+            }, modifier = Modifier) {
+                Text(text = "tap", modifier = Modifier)
+            }
+            Text(text = hits__inst6.toString(), modifier = Modifier)
         }
     }
 }
@@ -486,16 +710,50 @@ body { font-family: system-ui, sans-serif; }
       </button>
     </div>
   </div>
+  <div style="display:flex;flex-direction:column">
+    <button id="$12">
+      <span>tap</span>
+    </button>
+    <span id="__n4" data-sngl-id="__n4">
+    </span>
+  </div>
+  <div style="display:flex;flex-direction:column">
+    <button id="$14">
+      <span>tap</span>
+    </button>
+    <span id="__n5" data-sngl-id="__n5">
+    </span>
+  </div>
 </div>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count__inst2: 0, runs__inst0__inst2: 0, runs__inst1__inst2: 0, count__inst3: 0, runs__inst0__inst3: 0, runs__inst1__inst3: 0 };
+  var state = { count__inst3: 0, runs__inst0__inst3: 0, runs__inst1__inst3: 0, count__inst4: 0, runs__inst0__inst4: 0, runs__inst1__inst4: 0, hits__inst5: 0, taps__inst2__inst5: 0, hits__inst6: 0, taps__inst2__inst6: 0 };
+  function outer_bump__inst3(state2) {
+    state2.count__inst3 = state2.count__inst3 + 100;
+    __n0.textContent = "a " + String(state2.count__inst3) + " " + String(state2.runs__inst0__inst3);
+    __n1.textContent = "a " + String(state2.count__inst3) + " " + String(state2.runs__inst1__inst3);
+  }
+  function outer_bump__inst4(state2) {
+    state2.count__inst4 = state2.count__inst4 + 100;
+    __n2.textContent = "b " + String(state2.count__inst4) + " " + String(state2.runs__inst0__inst4);
+    __n3.textContent = "b " + String(state2.count__inst4) + " " + String(state2.runs__inst1__inst4);
+  }
+  function methodOnly_hit__inst5(state2) {
+    state2.hits__inst5 = state2.hits__inst5 + 1;
+    __n4.textContent = String(state2.hits__inst5);
+  }
+  function methodOnly_hit__inst6(state2) {
+    state2.hits__inst6 = state2.hits__inst6 + 1;
+    __n5.textContent = String(state2.hits__inst6);
+  }
   function String(v) {
     return "" + v;
   }
   var $10 = document.getElementById("$10");
+  var $12 = document.getElementById("$12");
+  var $14 = document.getElementById("$14");
   var $3 = document.getElementById("$3");
   var $5 = document.getElementById("$5");
   var $8 = document.getElementById("$8");
@@ -503,39 +761,55 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
+  var __n4 = document.querySelector('[data-sngl-id="__n4"]');
+  var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   $3.addEventListener("click", function() {
-    state.count__inst2 = state.count__inst2 + 1;
-    __n0.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst0__inst2);
-    __n1.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst1__inst2);
-    state.runs__inst0__inst2 = state.runs__inst0__inst2 + 1;
-    __n0.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst0__inst2);
+    state.count__inst3 = state.count__inst3 + 1;
+    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    state.runs__inst0__inst3 = state.runs__inst0__inst3 + 1;
+    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    outer_bump__inst3(state);
   });
   $5.addEventListener("click", function() {
-    state.count__inst2 = state.count__inst2 + 10;
-    __n0.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst0__inst2);
-    __n1.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst1__inst2);
-    state.runs__inst1__inst2 = state.runs__inst1__inst2 + 1;
-    __n1.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst1__inst2);
+    state.count__inst3 = state.count__inst3 + 10;
+    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    state.runs__inst1__inst3 = state.runs__inst1__inst3 + 1;
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    outer_bump__inst3(state);
   });
   $8.addEventListener("click", function() {
-    state.count__inst3 = state.count__inst3 + 1;
-    __n2.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    __n3.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
-    state.runs__inst0__inst3 = state.runs__inst0__inst3 + 1;
-    __n2.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    state.count__inst4 = state.count__inst4 + 1;
+    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    state.runs__inst0__inst4 = state.runs__inst0__inst4 + 1;
+    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    outer_bump__inst4(state);
   });
   $10.addEventListener("click", function() {
-    state.count__inst3 = state.count__inst3 + 10;
-    __n2.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    __n3.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
-    state.runs__inst1__inst3 = state.runs__inst1__inst3 + 1;
-    __n3.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    state.count__inst4 = state.count__inst4 + 10;
+    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    state.runs__inst1__inst4 = state.runs__inst1__inst4 + 1;
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    outer_bump__inst4(state);
+  });
+  $12.addEventListener("click", function() {
+    methodOnly_hit__inst5(state);
+    state.taps__inst2__inst5 = state.taps__inst2__inst5 + 1;
+  });
+  $14.addEventListener("click", function() {
+    methodOnly_hit__inst6(state);
+    state.taps__inst2__inst6 = state.taps__inst2__inst6 + 1;
   });
   function __sngl_init() {
-    __n0.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst0__inst2);
-    __n1.textContent = "a " + String(state.count__inst2) + " " + String(state.runs__inst1__inst2);
-    __n2.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    __n3.textContent = "b " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
+    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
+    __n4.textContent = String(state.hits__inst5);
+    __n5.textContent = String(state.hits__inst6);
   }
   __sngl_init();
 })();

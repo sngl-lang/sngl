@@ -3954,7 +3954,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	defer func() { c.currentComponent = prevComp }()
 
 	// A body-local component sees the body it was written in: its sibling
-	// declarations, and its props and vars (#202).
+	// declarations, and its props, vars and funcs (#202).
 	c.declareEnclosingBody(comp)
 
 	// The body may name the component's type parameters, and a prop default is
@@ -4191,7 +4191,7 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	// in scope by bare name: inferIdent reaches them only when the scope lookup
 	// misses. So `button #bump` beside `func bump()` would shadow the method.
 	if c.currentComponent != nil {
-		if _, ok := c.lookupMethod(c.currentComponent.Name, id); ok {
+		if _, ok := c.lookupBodyMethod(id); ok {
 			return
 		}
 	}

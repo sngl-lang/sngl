@@ -552,10 +552,12 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			}
 			return spliced, true, nil
 		}
-		// The capture pre-pass leaves both decisions to the main walk: it is
-		// walking a declaration rather than the rendered tree, and a nested
-		// body left standing under a reactive `if` would be a separate render
-		// reading a var only the owner's instance has.
+		if st.captureOnly != nil && rc.in && st.captureOnly[n.Component] {
+			return nil, false, fmt.Errorf("%s: %q reads the state of the body it is declared in and is instantiated inside a reactive if or for, where each copy needs state of its own -- capture would hand every copy the one cell the owner holds; lift it to a top-level component and pass what it reads as props", nodePos(n), n.Component.Name)
+		}
+		// Both decisions below are the main walk's: the pre-pass is walking a
+		// declaration rather than the rendered tree, and a capturing body
+		// cannot be the runtime instance the first branch elects.
 		if st.captureOnly == nil && n.Component != nil && (rc.in || st.cycles[n.Component]) {
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
