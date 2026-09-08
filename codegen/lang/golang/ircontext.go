@@ -1359,6 +1359,14 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 	}
 }
 
+// WithRenamedLocal binds name as a local that renders as `as` — what a var
+// handler's parameter needs, the setter having named the value already.
+func (gc *GoIRContext) WithRenamedLocal(name, as string) *GoIRContext {
+	c := gc.WithLocal(name)
+	c.Ctx = gc.Ctx.WithRenamedLocal(name, as)
+	return c
+}
+
 func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 	return &GoIRContext{
 		Ctx:                gc.Ctx.ForComponent(comp),

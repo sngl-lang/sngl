@@ -898,8 +898,7 @@ func (jc *JsIRContext) WithLocal(name string) *JsIRContext {
 // receiver is spelled `this`, which JavaScript will not accept as a parameter
 // name, so the emitter picks another and the body has to agree with it.
 func (jc *JsIRContext) WithRenamedLocal(name, as string) *JsIRContext {
-	ctx := jc.Ctx.WithLocal(name)
-	ctx.Renames[name] = as
+	ctx := jc.Ctx.WithRenamedLocal(name, as)
 	return &JsIRContext{
 		Ctx:      ctx,
 		EventVar: jc.EventVar,

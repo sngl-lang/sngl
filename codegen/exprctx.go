@@ -276,6 +276,14 @@ func (ctx *ExprCtx) WithLocal(name string) *ExprCtx {
 	return c
 }
 
+// WithRenamedLocal returns a clone where name is a local that renders as `as`.
+func (ctx *ExprCtx) WithRenamedLocal(name, as string) *ExprCtx {
+	c := ctx.Clone()
+	c.Locals[name] = true
+	c.Renames[name] = as
+	return c
+}
+
 // WithEvent returns a clone bound to a handler's event parameter.
 func (ctx *ExprCtx) WithEvent(eventVar string, param ir.Symbol) *ExprCtx {
 	c := ctx.Clone()
