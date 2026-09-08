@@ -443,6 +443,11 @@ the captured names with nothing declaring them. Only the capturing ones move
 early; a nested component that reads nothing of its owner is placed at its call
 site as before.
 
+A cycle is the one shape that cannot be spliced, so capture inside one is
+reported instead of emitted: `reportBodyComponentCapture`, beside the
+collision report above and for the same reason
+(`error_component_nested_capture_recursive.sngl`).
+
 What capture does *not* yet reach is a `func` written at the top of the owner's
 body: that is a method with `Receiver == owner.Name`, resolved by the
 `currentComponent` path in `inferIdent`/`inferCall`, and `currentComponent` is
