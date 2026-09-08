@@ -1,5 +1,5 @@
 import ir "sngl:internal/ir"
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // Marks a struct as naming a tree. The struct is the tree: nothing is stored in
 // it and no value of it exists, so a component naming it says which family it
@@ -12,7 +12,7 @@ func kind() ir.Macro
 // The tree an ordinary component belongs to: the one whose members are
 // interchangeable, where a container hosts anything. A component that names no
 // tree is a member of this one, and a slot that names no type accepts it.
-#[builtin("treeDefault")]
+#[marks.builtin("treeDefault")]
 struct default {}
 
 // Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
@@ -20,5 +20,5 @@ struct default {}
 //
 // T defaults to the tree an ordinary component belongs to, so `tree.one` on its
 // own says "exactly one child, of whatever family the slot already accepts".
-#[builtin("treeOne")]
+#[marks.builtin("treeOne")]
 struct one<T = default> {}

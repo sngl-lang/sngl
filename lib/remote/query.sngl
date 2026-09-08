@@ -1,4 +1,4 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // Returns the box for `id` and `key`, starting `fetch` if no attempt has been
 // made for it.
@@ -34,5 +34,5 @@ import . "sngl:internal/marks"
 // build time, but a second call with the same key returns the same box and
 // starts nothing — which is the only footing on which a call evaluated during
 // render is acceptable at all.
-#[intrinsic("RemoteQuery", readonly)]
+#[marks.intrinsic("RemoteQuery", readonly)]
 func query<T>(id string, key list<dyn>, fetch func() T) Value<T>

@@ -1,15 +1,15 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // 0, 1, … n-1 — the sequence that runs a loop n times. Empty when n <= 0.
-#[intrinsic("seq.count")]
+#[marks.intrinsic("seq.count")]
 func count(n int) iter<int>
 
 // start, start+1, … end-1. Empty when end <= start.
-#[intrinsic("seq.range")]
+#[marks.intrinsic("seq.range")]
 func range(start int, end int) iter<int>
 
 // start, start+by, … stopping short of end: below it when by is positive,
 // above it when by is negative. A `by` of 0 yields nothing, since the
 // alternative is a loop that never ends.
-#[intrinsic("seq.step")]
+#[marks.intrinsic("seq.step")]
 func step(start int, end int, by int) iter<int>
