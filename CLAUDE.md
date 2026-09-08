@@ -318,6 +318,16 @@ with at its insertion point, and the trailing type is the tree it *accepts*,
 wrapped in whatever bounds the count — bare is any number, `tree.one<T>`
 exactly one, `option<T>` none or one.
 
+The parenthesised list reuses `FuncTypeParamList`, so a parameter there may be
+named (`cell component(row Row)`) — and **the name is contract, not
+documentation**, because a slot's structural match is by name (Jonathan's call:
+a call already assigns by name, `add(b = 2, a = 1)`). So `ir.SlotDecl.Params`
+is `[]*Param` and not `[]*Type`, the shape `ir.FuncSig.Params` already has;
+dropping the name would leave #206 nothing to match on. Renaming one is a
+breaking change to every caller. Note that `FuncTypeParamList` has no `@` form,
+so a slot's contract cannot mention events — true today as a consequence of the
+reuse rather than as a decision anyone made.
+
 `...component` is the **rest slot**: the one a caller fills with the children
 written bare. Its name is the author's (`content`, `shapes`, `panes`,
 `children` where nothing better is true), and it is inserted by that name like

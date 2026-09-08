@@ -2518,7 +2518,7 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
 	for _, p := range ct.Params {
-		slot.Params = append(slot.Params, c.resolveType(p.Type))
+		slot.Params = append(slot.Params, &ir.Param{Name: p.Name, Type: c.resolveType(p.Type)})
 	}
 	if pd.Default != nil {
 		c.error(pd.Pos, "slot %q takes no default value: what fills it is written at the call site", pd.Name)

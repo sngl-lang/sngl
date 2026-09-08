@@ -617,11 +617,15 @@ type EventDecl struct {
 }
 
 // SlotDecl is a resolved slot declaration: a parameter whose type is a
-// component type. Params are types only, so an insertion matches them by
-// position.
+// component type.
 type SlotDecl struct {
-	Name   string
-	Params []*Type `json:",omitempty"`
+	Name string
+	// Params are what the slot is invoked with. They carry names as well as
+	// types, the way FuncSig.Params does, because a slot's structural match is
+	// by name -- so a name written in the type is part of the contract and
+	// renaming one is a breaking change, not an edit to a comment. An entry
+	// with no name written carries "".
+	Params []*Param `json:",omitempty"`
 	// Content is what each supplied node must be; Card is how many are
 	// accepted. Absent, a slot takes any number of components.
 	Content *Type    `json:",omitempty"`

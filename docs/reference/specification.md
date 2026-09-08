@@ -1387,6 +1387,10 @@ and slots — is one parameter list:
 - `cell component(Row)` — a *scoped* slot: the insertion passes a `Row`, and
   the population binds a name for it.
 
+A slot's invocation parameters may be named in the type — `cell component(row Row)` — and the name is **part of the contract**, not documentation: two slot
+types match by name. Renaming one is therefore a breaking change to every
+component supplied to that slot.
+
 A slot renders where its name is written in the body, as an ordinary node
 (`header { … }` supplies a fallback, `cell(r)` passes an argument). When an
 insertion appears inside a conditional or loop, the surrounding structure is

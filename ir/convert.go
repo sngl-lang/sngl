@@ -267,7 +267,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	for _, s := range comp.Slots {
 		ct := &ast.ComponentType{Tree: c.convertSlotContent(s)}
 		for _, p := range s.Params {
-			ct.Params = append(ct.Params, ast.FuncTypeParam{Type: c.convertType(p)})
+			ct.Params = append(ct.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
 		}
 		ct.HasParens = len(ct.Params) > 0
 		var typ ast.TypeExpr = ct

@@ -4956,7 +4956,7 @@ func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.S
 	for i, a := range args {
 		var want *ir.Type
 		if i < len(slot.Params) {
-			want = slot.Params[i]
+			want = slot.Params[i].Type
 		}
 		e := c.checkExprExpecting(a, want)
 		if want != nil {
@@ -5072,7 +5072,7 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 		}
 		var want *ir.Type
 		if i < len(decl.Params) {
-			want = decl.Params[i]
+			want = decl.Params[i].Type
 		}
 		typ := c.bindParamType(a.Type, want, bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name)))
 		p := &ir.Param{Name: a.Name, Type: typ}

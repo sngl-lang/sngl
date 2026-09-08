@@ -5,12 +5,16 @@
 # component whose rest slot set ChildrenType printed both, which is refused on
 # the way back in.
 #
+# A name written on a slot's invocation parameter is part of the contract, not a
+# comment -- a slot's structural match is by name -- so the IR has to carry it
+# and the dump has to print it.
+#
 # The check is the round trip, not the text: dump it, check the dump.
 
 sngl dump --stage checked --format sngl slots.sngl
 stdout 'header component tr.one'
 stdout 'children \.\.\.component,'
-stdout 'cell component\(Row\)'
+stdout 'cell component\(row Row\)'
 
 cp stdout out.sngl
 sngl check out.sngl
@@ -28,7 +32,7 @@ component table(
     rows list<Row>,
     children ...component tr.default,
     header component tr.one,
-    cell component(Row),
+    cell component(row Row),
 ) {
     vbox {
         header {
