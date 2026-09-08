@@ -339,8 +339,7 @@ children populates it twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot
 the lookup; the old answer was the name `_`, which is why nothing keys on a
 slot's name any more.
 
-**`...` and a count wrapper compose**, and deliberately: `content ...component
-tree.one` is "the bare children, of which exactly one". The two say different
+**`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the
 wrapper says *how many* — so they are orthogonal rather than two spellings of
 one bound. `scroll`, `tooltip` and fyne's `Wrapper` are all of that shape, and
