@@ -3642,14 +3642,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w
-	case ir.BuiltinTimer:
-		t := c.buildTimer(vn, builtinComp)
-		if c.currentComponent != nil {
-			c.currentComponent.Timers = append(c.currentComponent.Timers, t)
-		} else {
-			c.pkg.Timers = append(c.pkg.Timers, t)
-		}
-		return nil
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn, builtinComp)
 	case ir.BuiltinEffect:
