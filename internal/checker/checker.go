@@ -2428,8 +2428,6 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 			// The `@` is declaration syntax, not part of the name, so an event
 			// competes with everything else on the bare identifier.
 			claim(pd.Name, "event", pd.Pos)
-		case ast.SlotDecl:
-			claim(pd.Name, "slot", pd.Pos)
 		}
 	}
 	for _, v := range comp.Vars {
@@ -2479,12 +2477,20 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 					out = append(out, elementRef{n.ID, n.Pos})
 				}
 				walk(n.Block.Stmts)
+				// A component declaration in a node's block is a slot
+				// population, so its body is written in *this* component's
+				// body and any id in it is this component's. One at the root
+				// of a body is a declaration and its ids are its own, which
+				// is why this sits here rather than in walk.
+				for _, inner := range n.Block.Stmts {
+					if cd, isDecl := inner.(*ast.ComponentDecl); isDecl {
+						walk(cd.Body.Stmts)
+					}
+				}
 			case *ast.CallStmt:
 				if _, id, isElem := elementRefCallInfo(n.Call); isElem && id != "" {
 					out = append(out, elementRef{id, n.Pos})
 				}
-			case *ast.SlotNode:
-				walk(n.Block.Stmts)
 			case *ast.IfStmt:
 				walk(n.Body.Stmts)
 				walk(n.Else.Stmts)
@@ -2498,19 +2504,54 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 	return out
 }
 
-// buildSlotDecl resolves one slot declaration, for either registration path.
-func (c *checker) buildSlotDecl(pd ast.SlotDecl) *ir.SlotDecl {
-	slot := &ir.SlotDecl{Name: pd.Name}
-	if pd.Type != nil {
-		slot.Content, slot.Card = c.resolveSlotContent(pd.Type)
+// slotParamType reads a parameter's type as a slot's contract. ok is false for
+// an ordinary prop, including a variadic one -- `...` bounds a count, and only
+// a slot has a count to bound.
+func slotParamType(t ast.TypeExpr) (ct *ast.ComponentType, rest, ok bool) {
+	if v, isVariadic := t.(*ast.VariadicType); isVariadic {
+		ct, isComp := v.Elem.(*ast.ComponentType)
+		return ct, true, isComp
 	}
-	if pd.Name == ir.DefaultSlot && len(pd.Params) > 0 {
-		// Its content is written as ordinary children, which have no binding
-		// site, so there is nowhere to collect a parameter.
-		c.error(pd.Pos, "the default slot takes no parameters: its content is written as ordinary children")
+	ct, isComp := t.(*ast.ComponentType)
+	return ct, false, isComp
+}
+
+// cardBound names the count bound a card came from, the way it is written.
+func cardBound(card ir.SlotCard) string {
+	switch card {
+	case ir.SlotOne:
+		return "tree.one"
+	case ir.SlotOptional:
+		return "option"
 	}
-	for _, t := range pd.Params {
-		slot.Params = append(slot.Params, c.resolveType(t))
+	return ""
+}
+
+// buildSlotDecl resolves one slot declaration: a parameter whose type is a
+// component type.
+func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) *ir.SlotDecl {
+	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest}
+	if ct.Tree != nil {
+		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
+	}
+	for _, p := range ct.Params {
+		slot.Params = append(slot.Params, c.resolveType(p.Type))
+	}
+	if pd.Default != nil {
+		c.error(pd.Pos, "slot %q takes no default value: what fills it is written at the call site", pd.Name)
+	}
+	if !rest {
+		return slot
+	}
+	if bound := cardBound(slot.Card); bound != "" {
+		c.error(pd.Pos, "slot %q: `...` and %s are both count bounds, and a type carries one", pd.Name, bound)
+		slot.Card = ir.SlotAny
+	}
+	if len(slot.Params) > 0 {
+		// Its content is written as ordinary children, once, so there is no
+		// per-invocation binding site to collect a parameter at.
+		c.error(pd.Pos, "rest slot %q takes no parameters: bare children are written once, with nothing to bind them to", pd.Name)
+		slot.Params = nil
 	}
 	return slot
 }
@@ -2576,9 +2617,22 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	}
 	c.applyMarks(comp, irComp)
 
+	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
+			if ct, rest, isSlot := slotParamType(pd.Type); isSlot {
+				if rest {
+					if restSlot != nil {
+						c.error(pd.Pos, "component %s declares a second rest slot %q: the children written bare go to one (%q is at %s)",
+							comp.Name, pd.Name, restSlot.Name, restSlot.Pos)
+					} else {
+						restSlot = &pd
+					}
+				}
+				irComp.Slots = append(irComp.Slots, c.buildSlotDecl(pd, ct, rest))
+				continue
+			}
 			prop := &ir.Prop{
 				Name:          pd.Name,
 				Type:          c.resolveType(pd.Type),
@@ -2607,8 +2661,6 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
-		case ast.SlotDecl:
-			irComp.Slots = append(irComp.Slots, c.buildSlotDecl(pd))
 		}
 	}
 
@@ -2617,7 +2669,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		irComp.ChildrenType = c.resolveType(comp.ChildrenType)
 	}
 	c.finishTreeMarks(comp, irComp, c.declPkg())
-	c.finishDefaultSlot(irComp)
+	c.finishRestSlot(irComp)
 	popTypeParams()
 
 	c.pushScope()
@@ -4450,11 +4502,11 @@ func (c *checker) flattenDotImport(imp *ast.Import, irImport *ir.Import) {
 	}
 }
 
-// finishDefaultSlot derives the children contract from the `_` slot.
-func (c *checker) finishDefaultSlot(comp *ir.Component) {
-	slot := findSlot(comp, ir.DefaultSlot)
-	if slot == nil {
-		return
+// finishRestSlot derives the children contract from the rest slot. A component
+// without one has no contract, which is what refuses children at every call
+// site.
+func (c *checker) finishRestSlot(comp *ir.Component) {
+	if slot := comp.RestSlot(); slot != nil {
+		comp.ChildrenType = childrenTypeFor(slot)
 	}
-	comp.ChildrenType = childrenTypeFor(slot)
 }

@@ -65,7 +65,6 @@
 # kw_else       0x3B  KW_ELSE
 # kw_func       0x3C  KW_FUNC
 # kw_unit       0x3D  KW_UNIT
-# kw_slot       0x3E  KW_SLOT
 # kw_break      0x3F  KW_BREAK
 # kw_return     0x40  KW_RETURN
 # kw_continue   0x41  KW_CONTINUE
@@ -149,7 +148,6 @@ kw_for       = `\x3A` .
 kw_else      = `\x3B` .
 kw_func      = `\x3C` .
 kw_unit      = `\x3D` .
-kw_slot      = `\x3E` .
 kw_break     = `\x3F` .
 kw_return    = `\x40` .
 kw_continue  = `\x41` .
@@ -243,7 +241,6 @@ Stmt =
     | VarDecl
     | FuncDecl
     | ComponentDecl
-    | SlotNode
     | kw_return [ Expr ]
     | kw_break
     | kw_continue
@@ -362,39 +359,22 @@ TypeParamList = lt TypeParam { comma TypeParam } gt .
 # argument list that stops short falls back to them, right to left.
 TypeParam = ident [ assign Type ] .
 
-ParamList = Param { comma Param } .
+ParamList = Param { comma Param } [ comma ] .
 
-Param = { MacroAttr } ident [ Type ] [ assign Expr ] .
+# One production for every param-like list in the language: a function's
+# parameters, a lambda's, a handler's, a component's props, and the names a slot
+# population binds.
+#
+# Param first tokens: colon → a bidirectional prop binding, at → an event,
+# ident → an ordinary parameter. Which of the three a given list admits is the
+# checker's to say -- a lambda has neither sigil, a component declaration has
+# both -- and so is whether a type is required, optional or forbidden there.
+# Attrs are hoisted ahead of the alternation so all three forms accept them.
+Param = { MacroAttr } ( colon ident | at ident | ident ) [ Type ] [ assign Expr ] .
 
 # ── Components ────────────────────────────────────────────────────────────────
 
-ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
-
-CompParamList = CompParam { comma CompParam } [ comma ] .
-
-# CompParam first tokens: colon → binding :field, at → event @event, ident → regular param.
-# Attrs are hoisted ahead of the alternation so all three forms accept them
-# without repeating the repetition in each branch.
-CompParam = { MacroAttr } CompParamBody .
-
-CompParamBody =
-      colon ident [ Type ] [ assign Expr ]
-    | at ident [ Type ]
-    | SlotParam
-    | ident [ CompParamTail ]
-    .
-
-# A slot: a region of UI the caller supplies. Parenthesised types are what the
-# slot is *invoked* with; the trailing Type is the tree it *accepts*, bare for
-# any number and wrapped to narrow the count. The default slot is named `_`, so
-# the name is never optional — `slot` followed by an optional name could not be
-# told from a type, both being idents.
-SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] [ Type ] .
-
-CompParamTail =
-      assign Expr
-    | Type [ assign Expr ]
-    .
+ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
 
 # ── Visual nodes + expression statements ──────────────────────────────────────
 #
@@ -404,7 +384,7 @@ CompParamTail =
 # Emits and element-ref event calls carry no sigil: they parse as ordinary
 # calls (save(count), c.inc.click()) and the checker resolves the name to a
 # declared event. The '@' sigil survives only on event declarations
-# (@click in CompParam), handlers (@click { } in ArgList), and VarHandler.
+# (@click in Param), handlers (@click { } in ArgList), and VarHandler.
 #
 # StmtBlock is a PostfixOp, so trailing bodies attach naturally:
 #   Button { Text("hi") }           → ident + StmtBlock postfix
@@ -449,18 +429,6 @@ IfNode = kw_if CondExpr StmtBlock [ kw_else ( IfNode | StmtBlock ) ] .
 # iterable, so `for seq.count(3) { }` -- a loop that binds nothing -- needs no
 # lookahead to tell from `for var i = xs { }`.
 ForNode = kw_for ( kw_var [ amp ] ident [ comma [ amp ] ident ] assign CondExpr | [ CondExpr ] ) StmtBlock [ kw_else StmtBlock ] .
-
-# `slot` in statement position. Bare, it is the anonymous slot's insertion point
-# — the one place the keyword means "render here". Named, it populates a slot of
-# the component whose block this is, and the marker is what says the node is
-# being supplied rather than rendered (a named slot renders as `name(args)`,
-# ordinary node syntax, with no keyword at all).
-#
-# The parenthesised list is an ArgList, the same production a call's arguments
-# are: an ident is an expression, so one production parses both sites and the
-# checker rules on which it is, and on the named, binding and event forms an
-# ArgList admits that a population does not.
-SlotNode = kw_slot [ ident [ lparen [ ArgList ] rparen ] ] [ StmtBlock ] .
 
 AssignOp = assign | plus_assign | minus_assign | star_assign | slash_assign | pct_assign .
 
@@ -645,16 +613,10 @@ EventArg = at ident [ lparen [ ParamList ] rparen ] StmtBlock .
 # After consuming 'ident':
 #   assign → named arg
 #   lbrace → struct literal (not in ExprPostfixOp FIRST)
-#   FIRST(Type) → the name-and-type a slot population binds
 #   else   → expression postfix chain (ExprPostfixOp handles dot-ident + struct lit)
-#
-# FIRST(Type) is ident, kw_func, kw_struct, kw_enum and kw_unit, all disjoint
-# from FIRST(ExprPostfixOp) and from every operator ArgExprCont begins with, so
-# the Type alternative needs no hint. buildArgList refuses it in a call.
 IdentArgCont =
       assign Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
-    | Type
     | { ExprPostfixOp } ArgExprCont
     .
 
@@ -693,11 +655,23 @@ NonIdentPrimary =
 
 # ── Types ─────────────────────────────────────────────────────────────────────
 
-# `component` is not a type. It was the widest children type before slots and
-# trees, and the keyword now only introduces a declaration.
+# A slot is an ordinary parameter whose type is a component type, so the type
+# carries the whole of a slot's contract: the parenthesised list is what the slot
+# is *invoked* with, the trailing Type is the tree it *accepts*, and an `...`
+# prefix is the count bound collecting the children a caller writes bare.
+#
+# Parens are optional on both keyword forms. lparen is not in FIRST(Type), so
+# after the keyword a lparen unambiguously opens the parameter list and anything
+# in FIRST(Type) is the return-or-tree position.
+#
+# Nothing here says a component type may only be a slot's, or that `...` may
+# only bound a slot: both parse wherever a type does, and the checker rejects
+# the rest with a message naming the rule.
 Type =
       ident [ dot ident [ lt TypeList gt ] | lt TypeList gt ]
-    | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
+    | kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | ellipsis Type
     | StructDecl
     | EnumDecl
     | UnitDecl
@@ -709,7 +683,9 @@ FuncTypeParamList = FuncTypeParam { comma FuncTypeParam } .
 
 FuncTypeParam =
       ident [ dot ident [ lt TypeList gt ] | lt TypeList gt | Type ]
-    | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
+    | kw_func      [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+    | ellipsis Type
     | StructDecl
     | EnumDecl
     | UnitDecl

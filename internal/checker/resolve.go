@@ -28,6 +28,15 @@ func (c *checker) resolveType(te ast.TypeExpr) *ir.Type {
 		return c.resolveAnonEnum(t)
 	case *ast.UnitDef:
 		return c.resolveAnonUnit(t)
+	case *ast.ComponentType:
+		// The grammar admits a component type wherever a type is written; what
+		// it *means* is a slot, and only a component's parameter list has one.
+		// registerComponentDecl reads a slot's type itself and never gets here.
+		c.error(t.Pos, "a component type declares a slot, so only a parameter of a component may have one")
+		return TypDyn
+	case *ast.VariadicType:
+		c.error(t.Pos, "`...` bounds how many nodes a slot takes, so only a slot's type may carry one")
+		return TypDyn
 	default:
 		c.error(ast.Pos{}, "internal: unknown type expression %T", te)
 		return TypDyn

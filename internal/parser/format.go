@@ -306,8 +306,6 @@ func (f *formatter) formatStmt(s ast.Stmt) {
 		f.writeIfStmt(x)
 	case *ast.ForStmt:
 		f.writeForStmt(x)
-	case *ast.SlotNode:
-		f.writeSlotNode(x)
 	case *ast.AssignStmt:
 		f.writeAssignStmt(x)
 	case *ast.ToggleStmt:
@@ -402,8 +400,6 @@ func propLeadLine(p ast.ParamOrEventDecl) int {
 	case ast.Param:
 		return leadLine(v.Pos.Line, v.Leading, v.Attrs)
 	case ast.EventDecl:
-		return leadLine(v.Pos.Line, v.Leading, v.Attrs)
-	case ast.SlotDecl:
 		return leadLine(v.Pos.Line, v.Leading, v.Attrs)
 	}
 	return 0
@@ -1003,8 +999,6 @@ func propComment(p ast.ParamOrEventDecl) *ast.Comment {
 		return v.Trailing
 	case ast.EventDecl:
 		return v.Trailing
-	case ast.SlotDecl:
-		return v.Trailing
 	}
 	return nil
 }
@@ -1048,25 +1042,6 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 		f.writeParamAttrs(v.Attrs, v.Pos, multiline)
 		f.write("@")
 		f.write(v.Name)
-		if v.Type != nil {
-			f.write(" ")
-			f.writeType(v.Type)
-		}
-	case ast.SlotDecl:
-		f.writeLeadingComments(v.Leading)
-		f.writeParamAttrs(v.Attrs, v.Pos, multiline)
-		f.write("slot ")
-		f.write(v.Name)
-		if len(v.Params) > 0 {
-			f.write("(")
-			for i, t := range v.Params {
-				if i > 0 {
-					f.write(", ")
-				}
-				f.writeType(t)
-			}
-			f.write(")")
-		}
 		if v.Type != nil {
 			f.write(" ")
 			f.writeType(v.Type)
@@ -1466,6 +1441,29 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 			f.write(" ")
 			f.writeType(t.Return)
 		}
+	case *ast.ComponentType:
+		f.write("component")
+		if len(t.Params) > 0 || t.HasParens {
+			f.write("(")
+			for i, p := range t.Params {
+				if i > 0 {
+					f.write(", ")
+				}
+				if p.Name != "" {
+					f.write(p.Name)
+					f.write(" ")
+				}
+				f.writeType(p.Type)
+			}
+			f.write(")")
+		}
+		if t.Tree != nil {
+			f.write(" ")
+			f.writeType(t.Tree)
+		}
+	case *ast.VariadicType:
+		f.write("...")
+		f.writeType(t.Elem)
 	case *ast.StructDef:
 		f.writeStructDef(t)
 	case *ast.EnumDef:
@@ -1539,22 +1537,5 @@ func (f *formatter) writeParamAttrs(attrs []ast.MacroAttr, declPos ast.Pos, mult
 		} else {
 			f.write(" ")
 		}
-	}
-}
-
-func (f *formatter) writeSlotNode(s *ast.SlotNode) {
-	f.write("slot")
-	if s.Name != "" {
-		f.write(" ")
-		f.write(s.Name)
-	}
-	if len(s.Args.Args) > 0 {
-		f.write("(")
-		f.writeArgs(s.Args)
-		f.write(")")
-	}
-	if s.Block.IsDefined() {
-		f.write(" ")
-		f.writeBlock(&s.Block)
 	}
 }

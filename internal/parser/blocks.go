@@ -109,9 +109,6 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 	case *ast.VisualNode:
 		walkArgs(&x.Args)
 		add(&x.Block)
-	case *ast.SlotNode:
-		walkArgs(&x.Args)
-		add(&x.Block)
 	case *ast.IfStmt:
 		walkExpr(x.Cond)
 		add(&x.Body)

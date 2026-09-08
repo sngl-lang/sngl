@@ -27,8 +27,6 @@ func DeclFormName(decl any) string {
 		return "an import"
 	case *Param:
 		return "a parameter"
-	case SlotDecl, *SlotDecl:
-		return "a slot"
 	case nil:
 		return "nothing"
 	default:

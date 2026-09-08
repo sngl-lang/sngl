@@ -171,7 +171,7 @@ type section struct {
 
 var sections = []section{
 	{"document", []string{"Document", "StmtBlock"}},
-	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "SlotNode", "AssignOp", "IncDecOp"}},
+	{"statements", []string{"Stmt", "VisualOrStmt", "IfNode", "ForNode", "AssignOp", "IncDecOp"}},
 	{"imports", []string{"ImportDecl"}},
 	{"type-declarations", []string{"StructDecl", "StructField", "EnumDecl", "UnitDecl"}},
 	{"constants-variables", []string{
@@ -179,7 +179,7 @@ var sections = []section{
 		"VarDecl", "VarSpec", "VarHandler",
 	}},
 	{"functions", []string{"FuncDecl", "FuncTail", "FuncBodyTail", "FuncName", "TypeParamList", "TypeParam", "ParamList", "Param"}},
-	{"components", []string{"ComponentDecl", "CompParamList", "CompParam", "CompParamBody", "SlotParam", "CompParamTail"}},
+	{"components", []string{"ComponentDecl"}},
 	{"expressions", []string{
 		"Expr", "TernaryExpr", "OrExpr", "AndExpr",
 		"EqExpr", "CmpExpr", "AddExpr", "MulExpr",
