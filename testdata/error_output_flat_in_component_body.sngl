@@ -1,0 +1,9 @@
+// The flat form carries no block, so it parses as a call rather than a visual
+// node and reaches the rule by the other route.
+import . "sngl:ui"
+
+component main {
+    output(lang="go", platform="bubbletea") // ERROR(check) "output may only be written at the root of a file"
+
+    text(value="hi")
+}

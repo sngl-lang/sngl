@@ -1,0 +1,25 @@
+# `output` is a declared component carrying a #[builtin] mark, so a package
+# declaring its own takes the name back: the node is instantiated and the
+# package has no build directive.
+#
+# While the name was matched literally the node was read as a directive and
+# dropped -- `main` rendered nothing and the build said nothing, which is why
+# this asserts what reaches the generated code rather than that the check is
+# clean.
+
+sngl dump --stage checked app.sngl
+stdout 'output\(label="hi"\)'
+
+sngl generate --lang go --platform bubbletea --out out app.sngl
+grep '"hi"' out/model.go
+
+-- app.sngl --
+import . "sngl:ui"
+
+component output(label string) {
+    text(value=label)
+}
+
+component main {
+    output(label="hi")
+}

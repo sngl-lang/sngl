@@ -1,6 +1,7 @@
 package lspcore
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 
@@ -58,6 +59,8 @@ const (
 	CtxImportPath // inside the quotes of an import path
 )
 
+var outputShadowed = regexp.MustCompile(`(?m)^[ \t]*component[ \t]+output\b`)
+
 func CompletionContext(content string, line, col int) CompletionCtx {
 	lines := strings.Split(content, "\n")
 	if line < 1 || line > len(lines) {
@@ -78,7 +81,7 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 	}
 
 	// Output line detection — must be before brace depth check since outputs are top-level
-	if strings.HasPrefix(l, "output ") || l == "output" {
+	if (strings.HasPrefix(l, "output ") || l == "output") && !outputShadowed.MatchString(content) {
 		// Check if cursor is inside parens
 		raw := lines[line-1]
 		prefix := raw[:min(col-1, len(raw))]
@@ -119,12 +122,12 @@ func CompletionContext(content string, line, col int) CompletionCtx {
 }
 
 func TopLevelKeywords() []CompletionItem {
-	kws := []string{"import", "output", "struct", "enum", "unit", "const", "style", "styles", "component"}
+	kws := []string{"import", "struct", "enum", "unit", "const", "style", "styles", "component"}
 	items := make([]CompletionItem, len(kws))
 	for i, kw := range kws {
 		items[i] = CompletionItem{Label: kw, Kind: CIKKeyword}
 	}
-	return items
+	return append(items, scopeOf("", nil).components()...)
 }
 
 // ComponentKeywords is what can start a statement in a component body: the
