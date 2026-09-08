@@ -3881,13 +3881,9 @@ func (c *checker) checkComponentBodies() {
 	}
 }
 
-// checkBodyOnce checks comp's body, and the body that declared it first.
-//
-// The order matters for capture: an unannotated `var count = 0` gets its type
-// from the owner's own body check, and pass1 registers a nested declaration
-// ahead of its owner -- so read in package order, a nested body saw the
-// captured var as Dyn and an interpolation of it emitted an unconverted
-// operand.
+// checkBodyOnce checks comp's body, and the body that declared it first: an
+// unannotated `var` gets its type from the owner's own body check, and pass1
+// registers a nested declaration ahead of its owner.
 func (c *checker) checkBodyOnce(comp *ir.Component) {
 	if c.bodyChecked[comp] {
 		return
@@ -3911,19 +3907,12 @@ func (c *checker) declareBodyDecls(comp *ir.Component) {
 }
 
 // declareEnclosingBody declares, into comp's body scope, what the body comp
-// was written in declares -- its own body decls, props, vars and plain funcs,
-// outermost owner first so a nearer declaration shadows a farther one.
+// was written in declares -- body decls, props, vars and receiverless funcs,
+// outermost owner first so a nearer declaration shadows a farther one. No-op
+// for a component nobody's body declared.
 //
-// A nested component reads the owner's state directly rather than through a
-// synthesized prop, which is what makes a write from inside it a write to the
-// owner's var; passNoInlineComponents splices the nested body into the owner's
-// before the owner is inlined anywhere, so the reference survives the
-// per-instance rename. No-op for a component nobody's body declared.
-//
-// The funcs loop mirrors checkComponentBody's and so covers only the ones with
-// no receiver -- a func in a nested block, lifted here. A `func` at the top of
-// the owner's body is a method and resolves through currentComponent, which is
-// the nested component by the time this scope is open.
+// A method is not among them: it has a receiver rather than a name in scope,
+// and lookupBodyMethod is what walks the chain for one.
 func (c *checker) declareEnclosingBody(comp *ir.Component) {
 	owner := c.bodyOwner[comp]
 	if owner == nil {

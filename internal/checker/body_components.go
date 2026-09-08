@@ -45,16 +45,10 @@ func (c *checker) reportBodyComponentCollisions() {
 	}
 }
 
-// reportBodyComponentCapture reports a body-local component that both captures
-// its owner's state and survives as a host declaration.
-//
-// Capture is the owner's own var (#202), and the inliner reaches it by
-// splicing the nested body into the owner's before the owner is renamed per
-// instance. A component in a recursion cycle is never spliced, so its body
-// would emit the captured name against a host record that has one field per
-// *owner* instance and no scope the recursive render can name. Same shape as
-// reportBodyComponentCollisions: a codegen limitation surfaced here rather
-// than a language rule.
+// reportBodyComponentCapture reports a body-local component that captures its
+// owner's state and recurses: nothing splices a cycle, so its surviving render
+// would name a var only an instance of the owner has. Same shape as
+// reportBodyComponentCollisions -- a codegen limitation, not a language rule.
 func (c *checker) reportBodyComponentCapture() {
 	if c.pkg == nil || len(c.bodyComps) == 0 {
 		return
