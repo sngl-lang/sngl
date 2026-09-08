@@ -2426,7 +2426,7 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 			// A slot is a Param whose type is a component type, and the
 			// collision message names what the author wrote.
 			kind := "prop"
-			if _, _, isSlot := slotParamType(pd.Type); isSlot {
+			if pd.IsSlot() {
 				kind = "slot"
 			}
 			claim(pd.Name, kind, pd.Pos)
@@ -2508,18 +2508,6 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 	}
 	walk(stmts)
 	return out
-}
-
-// slotParamType reads a parameter's type as a slot's contract. ok is false for
-// an ordinary prop, including a variadic one -- `...` bounds a count, and only
-// a slot has a count to bound.
-func slotParamType(t ast.TypeExpr) (ct *ast.ComponentType, rest, ok bool) {
-	if v, isVariadic := t.(*ast.VariadicType); isVariadic {
-		ct, isComp := v.Elem.(*ast.ComponentType)
-		return ct, true, isComp
-	}
-	ct, isComp := t.(*ast.ComponentType)
-	return ct, false, isComp
 }
 
 // buildSlotDecl resolves one slot declaration: a parameter whose type is a
@@ -2612,7 +2600,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
-			if ct, rest, isSlot := slotParamType(pd.Type); isSlot {
+			if ct, rest, isSlot := ast.SlotType(pd.Type); isSlot {
 				if rest {
 					if restSlot != nil {
 						c.error(pd.Pos, "component %s declares a second rest slot %q: the children written bare go to one (%q is at %s)",
@@ -4006,7 +3994,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	if comp.AST != nil {
 		propIdx := 0
 		for _, p := range comp.AST.Props.Props {
-			if pd, ok := p.(ast.Param); ok {
+			// A slot is a Param too, and is not in comp.Props -- counting one
+			// here walks propIdx off the end of the props it is indexing.
+			if pd, ok := p.(ast.Param); ok && !pd.IsSlot() {
 				if propIdx < len(comp.Props) && pd.Default != nil {
 					prop := comp.Props[propIdx]
 					// A default states a value of what the prop takes here,

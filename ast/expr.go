@@ -144,6 +144,29 @@ type VariadicType struct {
 	Elem TypeExpr
 }
 
+// SlotType reads a parameter's type as a slot's contract: the component type it
+// names, and whether an `...` bounds the count. ok is false for an ordinary
+// parameter — a variadic non-component included, since `...` bounds a count and
+// only a slot has a count to bound.
+//
+// It lives here rather than in the checker because every walk over a
+// ComponentDecl's parameter list has to tell a slot from a prop, and the docs
+// site and the CLI walk one without a checker in reach.
+func SlotType(t TypeExpr) (ct *ComponentType, rest, ok bool) {
+	if v, isVariadic := t.(*VariadicType); isVariadic {
+		ct, isComp := v.Elem.(*ComponentType)
+		return ct, true, isComp
+	}
+	ct, isComp := t.(*ComponentType)
+	return ct, false, isComp
+}
+
+// IsSlot reports whether p declares a slot rather than a prop.
+func (p Param) IsSlot() bool {
+	_, _, ok := SlotType(p.Type)
+	return ok
+}
+
 // StructDef, EnumDef, and UnitDef also implement TypeExpr for anonymous type forms.
 
 // --- Expressions ---

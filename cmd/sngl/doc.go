@@ -625,12 +625,16 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 		sb.WriteString(doc + "\n\n")
 	}
 
-	var params []ast.Param
+	var params, slots []ast.Param
 	var events []ast.EventDecl
 	for _, p := range comp.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
-			params = append(params, pd)
+			if pd.IsSlot() {
+				slots = append(slots, pd)
+			} else {
+				params = append(params, pd)
+			}
 		case ast.EventDecl:
 			events = append(events, pd)
 		}
@@ -644,6 +648,14 @@ func renderUserComponentDoc(comp *ast.ComponentDecl, doc string) string {
 				pType = "any"
 			}
 			sb.WriteString(fmt.Sprintf("%-16s %s\n", p.Name, pType))
+		}
+		sb.WriteString("```\n\n")
+	}
+
+	if len(slots) > 0 {
+		sb.WriteString("## Slots\n\n```\n")
+		for _, sl := range slots {
+			sb.WriteString(fmt.Sprintf("%-16s %s\n", sl.Name, parser.FormatType(sl.Type)))
 		}
 		sb.WriteString("```\n\n")
 	}

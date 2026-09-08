@@ -725,7 +725,7 @@ func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 		for _, p := range decl.Props.Props {
 			switch pp := p.(type) {
 			case ast.Param:
-				if pp.Name == ident {
+				if pp.Name == ident && !pp.IsSlot() {
 					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident}}, nil
 				}
 			case ast.EventDecl:

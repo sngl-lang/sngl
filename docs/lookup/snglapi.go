@@ -651,7 +651,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 		for _, p := range c.AST.Props.Props {
 			switch pd := p.(type) {
 			case ast.Param:
-				if !hasProp(v.Props, pd.Name) {
+				if !pd.IsSlot() && !hasProp(v.Props, pd.Name) {
 					v.Props = append(v.Props, PropView{
 						Name: pd.Name,
 						Type: formatType(pd.Type),
