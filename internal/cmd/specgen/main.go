@@ -258,7 +258,6 @@ var tokenReplacements = map[string]string{
 	"kw_if": `"if"`, "kw_for": `"for"`, "kw_else": `"else"`,
 	"kw_func": `"func"`, "kw_unit": `"unit"`, "kw_return": `"return"`,
 	"kw_break": `"break"`, "kw_continue": `"continue"`,
-	"kw_slot":   `"slot"`,
 	"slashdash": `"/-"`, "semi": `";"`,
 	"str_start": "STR_START", "str_end": "STR_END", "str_resume": "STR_RESUME",
 	"triple_start": "TRIPLE_START", "triple_end": "TRIPLE_END",
