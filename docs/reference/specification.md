@@ -1433,7 +1433,9 @@ component card(header component, content ...component) {
 ```
 
 A component declares at most one rest slot, and a component that declares none
-accepts no children at all. A rest slot names no invocation parameters — bare
+accepts no children at all. `...` composes with a count bound — `content ...component tree.one` is "the bare children, of which exactly one" — because
+the two say different things: `...` says which children arrive here, the
+wrapper how many. A rest slot names no invocation parameters — bare
 children are written once, with nothing to bind them to — and populating it by
 name *and* writing bare children populates it twice.
 

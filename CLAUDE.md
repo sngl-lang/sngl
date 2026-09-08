@@ -339,6 +339,16 @@ children populates it twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot
 the lookup; the old answer was the name `_`, which is why nothing keys on a
 slot's name any more.
 
+**`...` and a count wrapper compose**, and deliberately: `content ...component
+tree.one` is "the bare children, of which exactly one". The two say different
+things — `...` says *which* children arrive here (the unnamed ones), the
+wrapper says *how many* — so they are orthogonal rather than two spellings of
+one bound. `scroll`, `tooltip` and fyne's `Wrapper` are all of that shape, and
+`Wrapper`'s codegen assigns the single child to a field, so the combination is
+load-bearing rather than tolerated. #193 briefly specified it as an error on
+the grounds that both were count bounds; that would have left the contract
+unspellable and is retracted there.
+
 **A population is a `ComponentDecl` read by position.** At the root of a
 component definition's body it is a nested declaration (pass1's
 `collectComponentDecls`); directly in a child node's block it populates one of
