@@ -1,0 +1,39 @@
+# A component declared in a body calls the owner's method by bare name, and
+# the compiled Go runs it (#202).
+#
+# Not a testdata/component_*.sngl fixture: that harness runs every platform,
+# and android emits `/* unresolved method */` for a component-body method call
+# from any handler, nested component or not. This asserts the shape on a
+# Go-backed target, where the call resolves.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var count = 2
+    var seen = -1
+
+    func bump() { count = count + 10 }
+
+    component readout() {
+        effect(@mount {
+            seen = count
+            bump()
+        })
+
+        text(value="{count}")
+    }
+
+    readout()
+    text(value="{count}:{seen}")
+}
+
+func testNestedBodyCallsTheOwnersMethod(t Test, c main) {
+    t.assert(c.seen == 2)
+    t.assert(c.count == 12)
+}

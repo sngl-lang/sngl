@@ -3468,6 +3468,7 @@ func (c *checker) pass2() {
 	// A window body may declare one too.
 	c.checkComponentBodies()
 	c.reportBodyComponentCollisions()
+	c.reportBodyComponentCapture()
 
 	c.checkPackageBody()
 
@@ -3824,6 +3825,7 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 	for _, p := range comp.Props {
 		c.declare(compDeclPos(comp), propParam(p))
 	}
+	c.declareEnclosingBody(comp)
 	c.declareBodyDecls(comp)
 	for _, v := range comp.Vars {
 		c.declare(varPos(v), v)
@@ -3875,16 +3877,25 @@ func (c *checker) noteBodyOwner(owner *ir.Component, sym ir.Symbol) {
 // one registered mid-walk -- a range would snapshot pkg.Components' length.
 func (c *checker) checkComponentBodies() {
 	for i := 0; i < len(c.pkg.Components); i++ {
-		comp := c.pkg.Components[i]
-		if c.bodyChecked[comp] {
-			continue
-		}
-		if c.bodyChecked == nil {
-			c.bodyChecked = map[*ir.Component]bool{}
-		}
-		c.bodyChecked[comp] = true
-		c.checkComponentBody(comp)
+		c.checkBodyOnce(c.pkg.Components[i])
 	}
+}
+
+// checkBodyOnce checks comp's body, and the body that declared it first: an
+// unannotated `var` gets its type from the owner's own body check, and pass1
+// registers a nested declaration ahead of its owner.
+func (c *checker) checkBodyOnce(comp *ir.Component) {
+	if c.bodyChecked[comp] {
+		return
+	}
+	if c.bodyChecked == nil {
+		c.bodyChecked = map[*ir.Component]bool{}
+	}
+	c.bodyChecked[comp] = true
+	if owner := c.bodyOwner[comp]; owner != nil {
+		c.checkBodyOnce(owner)
+	}
+	c.checkComponentBody(comp)
 }
 
 // declareBodyDecls rebinds what comp's body declares: a scope cannot span the
@@ -3892,6 +3903,33 @@ func (c *checker) checkComponentBodies() {
 func (c *checker) declareBodyDecls(comp *ir.Component) {
 	for _, sym := range comp.BodyDecls {
 		c.declare(declPos(sym), sym)
+	}
+}
+
+// declareEnclosingBody declares, into comp's body scope, what the body comp
+// was written in declares -- body decls, props, vars and receiverless funcs,
+// outermost owner first so a nearer declaration shadows a farther one. No-op
+// for a component nobody's body declared.
+//
+// A method is not among them: it has a receiver rather than a name in scope,
+// and lookupBodyMethod is what walks the chain for one.
+func (c *checker) declareEnclosingBody(comp *ir.Component) {
+	owner := c.bodyOwner[comp]
+	if owner == nil {
+		return
+	}
+	c.declareEnclosingBody(owner)
+	c.declareBodyDecls(owner)
+	for _, p := range owner.Props {
+		c.declare(compDeclPos(owner), propParam(p))
+	}
+	for _, v := range owner.Vars {
+		c.declare(varPos(v), v)
+	}
+	for _, fn := range owner.Funcs {
+		if fn.Receiver == "" {
+			c.declare(funcDeclPos(fn), fn)
+		}
 	}
 }
 
@@ -3904,11 +3942,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	c.currentComponent = comp
 	defer func() { c.currentComponent = prevComp }()
 
-	// A body-local component sees the declarations of the body it was written
-	// in, itself included, and none of that body's props or vars.
-	if owner := c.bodyOwner[comp]; owner != nil {
-		c.declareBodyDecls(owner)
-	}
+	// A body-local component sees the body it was written in: its sibling
+	// declarations, and its props, vars and funcs (#202).
+	c.declareEnclosingBody(comp)
 
 	// The body may name the component's type parameters, and a prop default is
 	// checked against what they stand for here. A call site binds them from the
@@ -4144,7 +4180,7 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	// in scope by bare name: inferIdent reaches them only when the scope lookup
 	// misses. So `button #bump` beside `func bump()` would shadow the method.
 	if c.currentComponent != nil {
-		if _, ok := c.lookupMethod(c.currentComponent.Name, id); ok {
+		if _, ok := c.lookupBodyMethod(id); ok {
 			return
 		}
 	}

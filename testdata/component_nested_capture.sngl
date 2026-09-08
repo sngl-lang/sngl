@@ -1,0 +1,40 @@
+// A component declared in a body reads and writes that body's state
+// directly, the way a nested func's method does (#202): `readout` names
+// `count` and `seen`, which `main` declares.
+//
+// The effect is what makes both observable from `main` -- an element inside a
+// nested body has no name a test can reach, so the nested body reports the
+// value it read by writing a var `main` declares. `seen` is the read and the
+// bumped `count` is the write.
+//
+// The enclosing body is `main` itself because that is where a test's `c` is
+// rooted; a nested body whose owner is inlined in turn is
+// nested_component_capture.txtar.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var count = 2
+    var seen = -1
+
+    component readout() {
+        var renders = 0
+
+        effect(@mount {
+            renders = renders + 1
+            seen = count
+            count = count + 1
+        })
+
+        text(value="{count} {renders}")
+    }
+
+    readout()
+    text(value="{count}:{seen}")
+}
+
+func testNestedBodyReadsAndWritesTheOwnersVar(t Test, c main) {
+    t.assert(c.seen == 2)
+    t.assert(c.count == 3)
+}

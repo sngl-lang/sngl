@@ -45,6 +45,24 @@ func (c *checker) reportBodyComponentCollisions() {
 	}
 }
 
+// reportBodyComponentCapture reports a body-local component that captures its
+// owner's state and recurses: nothing splices a cycle, so its surviving render
+// would name a var only an instance of the owner has. Same shape as
+// reportBodyComponentCollisions -- a codegen limitation, not a language rule.
+func (c *checker) reportBodyComponentCapture() {
+	if c.pkg == nil || len(c.bodyComps) == 0 {
+		return
+	}
+	surviving := recursiveComponents(c.pkg)
+	owners := ir.BodyOwners(c.pkg)
+	for _, comp := range c.bodyComps {
+		if !surviving[comp] || !ir.CapturesEnclosingState(comp, owners) {
+			continue
+		}
+		c.error(compDeclPos(comp), "%q recurses and reads the state of the body it is declared in, so it is not inlined away and the capture has no instance to read from; give it a prop instead", comp.Name)
+	}
+}
+
 // comparePos orders two positions by file, then line, then column.
 func comparePos(a, b ast.Pos) int {
 	if a.File != b.File {

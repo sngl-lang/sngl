@@ -417,11 +417,56 @@ both, along with the fixtures that pin them.
   (`error_component_nested_recursive_collision.sngl`), which is what lets the
   ordinary shadowing and two-bodies cases through.
 
-What a nested *component* body sees is the declarations of the body it was
-written in — its siblings and itself — and not that body's props and vars.
-Capture is #202, still undecided: a nested `func` does reach the enclosing
-model, a nested component is a separate render with no such destination, and
-the three available lowerings disagree about what it is.
+What a nested *component* body sees is the body it was written in: its sibling
+declarations, and that body's props, vars and funcs. **Capture is lowered as
+shared state** (#202) — the nested body reads and writes the owner's own var,
+the way a nested func's method does, which is what makes a write from inside it
+a write the owner sees. A synthesized prop was the alternative and could not
+express the write, since a prop is not a binding.
+
+The **accepted cost** is that two instantiations of one nested component share
+the captured var rather than each getting an `__instN` copy of it, exactly as
+two calls of a nested func share the model. Its own state is unaffected and
+stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
+that, because it is the surprising half.
+
+`declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
+body check ahead of the bodies it declared — pass1 registers a nested
+declaration first, so read in package order an unannotated `var count = 0` was
+still `Dyn` where the nested body named it. The lowering half is
+`spliceNestedCaptures` (`internal/lower/nested_capture.go`): a capturing nested
+body is substituted into the body that declared it *before* that body is
+inlined anywhere, because `expandCall` renames the body it splices and not the
+separate declaration a `NodeInst` inside it points at. Left to the main walk,
+the nested body arrived after its owner was already spliced away and emitted
+the captured names with nothing declaring them. Only the capturing ones move
+early; a nested component that reads nothing of its owner is placed at its call
+site as before.
+
+Two shapes cannot be spliced, and both are reported rather than emitted:
+
+- A **recursion cycle** — nothing substitutes it, so its surviving render would
+  name a var belonging to an instance of its owner.
+  `reportBodyComponentCapture` in the checker, beside the collision report
+  above and for the same reason
+  (`error_component_nested_capture_recursive.sngl`).
+- A **reactive `if` or `for`** — each copy there needs state of its own, which
+  is what the main walk's `RuntimeInstance` election gives a *non*-capturing
+  nested component, and a capturing one cannot have. Reported by
+  `spliceNestedCaptures`, since reactivity is not a fact the checker holds
+  (`cmd/sngl/testdata/nested_capture_in_reactive_position.txt`). A
+  **non-reactive** loop is deliberately allowed: a nested component shares one
+  cell there with or without capture, which is the pre-existing `rc.repeated`
+  limitation.
+
+An owner's `func` is reached too, and by a different route: a component-body
+`func` is a method with `Receiver == owner.Name` rather than a name in scope,
+so `lookupBodyMethod` walks the owner chain where `inferIdent` used to ask
+`currentComponent` alone. The lowering needed nothing — `renameIdents` already
+repoints `Call.Func`, so the owner's per-instance clone is what the spliced
+body calls. `CapturesEnclosingState` counts every func for that reason, while
+`declareEnclosingBody` still declares only the receiverless ones: declaring a
+method by bare name would shadow it.
 
 Bare component resolution is `checker.lookupComponentInScope` — the lexical
 chain, like every other identifier. `ir.SymbolTable.LookupRootComponent` is

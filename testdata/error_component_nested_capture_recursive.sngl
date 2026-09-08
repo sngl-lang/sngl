@@ -1,0 +1,27 @@
+// A body-local component that captures its owner's state is reached by
+// splicing its body into that owner's before the owner is renamed per
+// instance (#202). A component in a recursion cycle is never spliced, so
+// there is no instance for the capture to read from and the emitted render
+// would name a var nothing declares -- reported here rather than compiled
+// into code that does not build.
+
+import . "sngl:ui"
+
+component outer() {
+    var count = 0
+
+    component inner(depth = 0) { // ERROR(check) "recurses and reads the state of the body it is declared in"
+        vbox {
+            text(value="{count}")
+            if depth < 2 {
+                inner(depth=depth + 1)
+            }
+        }
+    }
+
+    inner(depth=0)
+}
+
+component main {
+    outer()
+}

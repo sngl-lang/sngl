@@ -1,0 +1,35 @@
+// The accepted cost of capture (#202): two instantiations of one nested
+// component share the captured var rather than each getting an `__instN` copy
+// of it, which is the same relationship a nested func has to the model.
+//
+// So the two mounts land on one `count` and it ends at 11. Private copies
+// would leave `main`'s own `count` at 0 -- the value this asserts against.
+//
+// `runs` is the other half of the trade and stays per instance: it is the
+// nested component's own state, renamed per call site as ever.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component main {
+    var count = 0
+
+    component inner(step = 1) {
+        var runs = 0
+
+        effect(@mount {
+            runs = runs + 1
+            count = count + step
+        })
+
+        text(value="{runs}")
+    }
+
+    inner(step=1)
+    inner(step=10)
+    text(value="{count}")
+}
+
+func testTwoInstantiationsShareOneCapturedVar(t Test, c main) {
+    t.assert(c.count == 11)
+}

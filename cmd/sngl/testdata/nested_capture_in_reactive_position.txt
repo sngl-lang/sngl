@@ -1,0 +1,139 @@
+# A capturing nested component instantiated in a reactive `for` is reported
+# rather than emitted (#202).
+#
+# The boundary is what the inliner already computes. A *non*-capturing nested
+# component in the same position survives as a real component whose state the
+# render owns -- `var picked by remember` inside the Compose function, per row.
+# A capturing one cannot survive that way, because its body reads a var only
+# the owner's instance has, so splicing it hands every row the one cell: it
+# builds and then behaves wrong. A reactive `if` is the same shape, with the
+# state outliving the unmount instead of being fresh per mount.
+#
+# (bubbletea hoists a surviving component's var to a Model field, so it shares
+# one cell there too -- its own defect in the RuntimeInstance path, and not a
+# reason to let capture in.)
+#
+# A *non-reactive* loop is deliberately not an error: a nested component there
+# shares one cell with or without capture, which is the pre-existing
+# rc.repeated limitation and not this change's to widen.
+
+! sngl generate --lang go --platform bubbletea --out out reactive.sngl
+stderr 'reads the state of the body it is declared in and is instantiated inside a reactive if or for'
+
+! sngl generate --lang go --platform bubbletea --out out2 reactive_if.sngl
+stderr 'reads the state of the body it is declared in and is instantiated inside a reactive if or for'
+
+# Same program with the capture removed: allowed, and `row` survives as a
+# component of its own rather than being spliced.
+sngl generate --lang go --platform bubbletea --out out3 nocapture.sngl
+grep 'func \(m Model\) renderRow' out3/model.go
+
+# Capture under a loop that depends on nothing reactive stays allowed.
+sngl generate --lang go --platform bubbletea --out out4 static.sngl
+
+-- reactive.sngl --
+import . "sngl:ui"
+
+component outer() {
+    var count = 0
+    var items = [1, 2, 3]
+
+    component row(n = 0) {
+        var picked = false
+
+        button(text="{n} {picked}", @click {
+            picked = !picked
+            count = count + 1
+        })
+    }
+
+    button(text="grow", @click { items = [1, 2, 3, 4] })
+
+    for var i = items {
+        row(n=i)
+    }
+
+    text(value="{count}")
+}
+
+component main {
+    outer()
+}
+
+-- reactive_if.sngl --
+import . "sngl:ui"
+
+component outer() {
+    var count = 0
+    var shown = false
+
+    component panel() {
+        var picked = false
+
+        button(text="{picked}", @click {
+            picked = !picked
+            count = count + 1
+        })
+    }
+
+    button(text="toggle", @click { shown = !shown })
+
+    if shown {
+        panel()
+    }
+
+    text(value="{count}")
+}
+
+component main {
+    outer()
+}
+
+-- nocapture.sngl --
+import . "sngl:ui"
+
+component outer() {
+    var items = [1, 2, 3]
+
+    component row(n = 0) {
+        var picked = false
+
+        button(text="{n} {picked}", @click { picked = !picked })
+    }
+
+    button(text="grow", @click { items = [1, 2, 3, 4] })
+
+    for var i = items {
+        row(n=i)
+    }
+}
+
+component main {
+    outer()
+}
+
+-- static.sngl --
+import . "sngl:ui"
+
+component outer() {
+    var count = 0
+
+    component row(n = 0) {
+        var picked = false
+
+        button(text="{n} {picked}", @click {
+            picked = !picked
+            count = count + 1
+        })
+    }
+
+    for var i = [1, 2, 3] {
+        row(n=i)
+    }
+
+    text(value="{count}")
+}
+
+component main {
+    outer()
+}

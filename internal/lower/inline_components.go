@@ -135,7 +135,10 @@ type inlineCompState struct {
 	// hoist is where an inlined callee's own declarations land. Set per
 	// container as run() walks: a component holds all three slices, a window
 	// holds vars and funcs and borrows pkg.Timers.
-	hoist       hoistTarget
+	hoist hoistTarget
+	// captureOnly, while spliceNestedCaptures runs, is the set of nested
+	// components that round may splice. Nil for the main walk.
+	captureOnly map[*ir.Component]bool
 	cycles      map[*ir.Component]bool
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
@@ -167,6 +170,9 @@ func (st *inlineCompState) run() error {
 	}
 	for c := range st.cycles {
 		st.keep[c] = true
+	}
+	if err := st.spliceNestedCaptures(); err != nil {
+		return err
 	}
 	for {
 		ch, anyFuncCh := false, false
@@ -411,6 +417,9 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	if comp == nil || (st.main != nil && comp == st.main) {
 		return false
 	}
+	if st.captureOnly != nil && !st.captureOnly[comp] {
+		return false
+	}
 	if st.cycles[comp] {
 		return false
 	}
@@ -543,7 +552,12 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			}
 			return spliced, true, nil
 		}
-		if n.Component != nil && (rc.in || st.cycles[n.Component]) {
+		if st.captureOnly != nil && rc.in && st.captureOnly[n.Component] {
+			return nil, false, fmt.Errorf("%s: %q reads the state of the body it is declared in and is instantiated inside a reactive if or for, where each copy needs state of its own -- capture would hand every copy the one cell the owner holds; lift it to a top-level component and pass what it reads as props", nodePos(n), n.Component.Name)
+		}
+		// Left to the main walk: a capturing body cannot be the runtime
+		// instance this branch elects, and the pre-pass already refused it.
+		if st.captureOnly == nil && n.Component != nil && (rc.in || st.cycles[n.Component]) {
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.
@@ -557,7 +571,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			// left an imported component's canvas un-lowered. Only what the
 			// list already carries -- a primitive was never on it, and putting
 			// one there would have the package declaring `text` and `button`.
-			if n.Component != nil && st.onList[n.Component] {
+			if st.captureOnly == nil && n.Component != nil && st.onList[n.Component] {
 				st.keep[n.Component] = true
 			}
 			return []ir.Stmt{n}, chCh || anyHandlerCh, nil
