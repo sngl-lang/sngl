@@ -123,19 +123,40 @@ func buildUnitTables(pkg *ir.Package) map[string]*unitTable {
 			}
 		}
 	}
+	// Precedence, widest last: what the program declares, then what a dot
+	// import lifted into its scope, then what an import holds under a name of
+	// its own.
+	addIfNew := func(units []*ir.UnitDef) {
+		for _, u := range units {
+			t := buildUnitTableFromDef(u)
+			for suffix := range t.Conversions {
+				if _, exists := tables[suffix]; !exists {
+					tables[suffix] = t
+				}
+			}
+		}
+	}
 	add(pkg.Units)
 	if pkg.Symbols != nil {
+		var found []*ir.UnitDef
 		pkg.Symbols.EachSymbol(func(sym ir.Symbol) bool {
 			if u, ok := sym.(*ir.UnitDef); ok {
-				t := buildUnitTableFromDef(u)
-				for suffix := range t.Conversions {
-					if _, exists := tables[suffix]; !exists {
-						tables[suffix] = t
-					}
-				}
+				found = append(found, u)
 			}
 			return true
 		})
+		addIfNew(found)
+	}
+	// An aliased import binds a namespace, not the declarations inside it, so
+	// the walk above never sees them: `import time "sngl:time"` left the
+	// interpreter with no table for `ms`/`s`/`m`/`h` at all, and a duration
+	// literal was then its own bare number -- `1m` and `60s` compared as 1
+	// against 60 and reported unequal. A dot import worked, which is what hid
+	// it.
+	for _, imp := range pkg.Imports {
+		if imp != nil && imp.Pkg != nil {
+			addIfNew(imp.Pkg.Units)
+		}
 	}
 	return tables
 }

@@ -1,0 +1,37 @@
+// A unit imported under a name of its own is the same unit.
+//
+// The interpreter builds one conversion table per unit declaration and keys it
+// by suffix, from what the program declares and from what its scope holds. An
+// aliased import binds a *namespace*, not the declarations inside it, so that
+// walk never saw `duration`: there was no table for `ms`, `s`, `m` or `h`, and
+// a duration literal was then its own bare number. `1m` and `60s` compared as
+// 1 against 60 and reported unequal -- the arithmetic silently became
+// suffix-blind.
+//
+// A dot import lifts the declaration into scope and so always worked, which is
+// what hid this: every other unit fixture writes one.
+//
+// The compiled targets were never affected. They fold or emit unit arithmetic
+// from the IR, where the declaration is reached through the type rather than
+// looked up by suffix.
+
+import . "sngl:ui"
+import . "sngl:test"
+import time "sngl:time"
+
+component main {
+    var oneMinute time.duration = 1m
+    var half time.duration = 500ms
+
+    text(value="{oneMinute.string()}")
+}
+
+func testAnAliasedUnitComparesByMagnitude(t Test, c main) {
+    t.assert(c.oneMinute == 60s)
+    t.assert(c.oneMinute == 60000ms)
+}
+
+func testAnAliasedUnitAddsByMagnitude(t Test, c main) {
+    t.assert(c.half + 500ms == 1s)
+    t.assert(c.oneMinute - 30s == 30s)
+}
