@@ -4,7 +4,7 @@
 // characters wide, plus a fourth column for the decimal point. The segment
 // data is the same `Glyph` the canvas renderer paints -- only the ink differs.
 
-import . "sngl:ui"
+import ui "sngl:ui"
 import "../calc"
 
 // Cell art is 3 columns wide plus the point's own column.
@@ -54,11 +54,11 @@ func boxBottom() => BOX_BL + rule() + BOX_BR
 func boxLine(entry string, row int) => BOX_V + " " + rowOf(cells(entry), row) + " " + BOX_V
 
 component AsciiReadout(entry = "0") {
-    vbox(style={gap=0}) {
-        text(value=boxTop)
-        text(value=boxLine(entry, 0))
-        text(value=boxLine(entry, 1))
-        text(value=boxLine(entry, 2))
-        text(value=boxBottom)
+    ui.vbox(style={gap=0}) {
+        ui.text(value=boxTop)
+        ui.text(value=boxLine(entry, 0))
+        ui.text(value=boxLine(entry, 1))
+        ui.text(value=boxLine(entry, 2))
+        ui.text(value=boxBottom)
     }
 }

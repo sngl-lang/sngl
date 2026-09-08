@@ -10,8 +10,8 @@
 // the method that answers it, and a window to hang them in. The tests are in
 // calc_test.sngl beside this file.
 
-import . "sngl:ui"
-import . "sngl:app"
+import ui "sngl:ui"
+import app "sngl:app"
 import "./calc"
 import "./keypad"
 import "./readout"
@@ -58,8 +58,8 @@ component main {
         }
     }
 
-    window #calculator(title="Calculator", href="/") {
-        vbox(style={flex=1, background=#15171c}) {
+    app.window #calculator(title="Calculator", href="/") {
+        ui.vbox(style={flex=1, background=#15171c}) {
             readout.Readout(entry=state.entry, pending=state.pending())
             keypad.Keypad(@press(k) { press(k) })
         }

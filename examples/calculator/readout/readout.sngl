@@ -4,12 +4,12 @@
 // -- an html build carries no box-drawing characters and a TUI build carries
 // no canvas.
 
-import . "sngl:ui"
+import ui "sngl:ui"
 import "sngl:platform/bubbletea"
 
 component Readout(entry = "0", pending = "") {
-    vbox(style={gap=4, padding=12, alignItems="center"}) {
-        text(value=pending == "" ? " " : pending, style={fontSize=14, color=#7f9c95, fontFamily="monospace"})
+    ui.vbox(style={gap=4, padding=12, alignItems="center"}) {
+        ui.text(value=pending == "" ? " " : pending, style={fontSize=14, color=#7f9c95, fontFamily="monospace"})
         if PLATFORM == bubbletea.platform {
             AsciiReadout(entry=entry)
         } else {
