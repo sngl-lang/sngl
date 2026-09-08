@@ -10,7 +10,7 @@ component frame(body component tr.one, badge component option<tr.default>) {
     }
 }
 
-// The default slot's count binds a bodyless call too: that path builds its
+// The rest slot's count binds a bodyless call too: that path builds its
 // NodeInst without going through the visual-node one, where a children count is
 // what gets read.
 component one(content ...component tr.one) {

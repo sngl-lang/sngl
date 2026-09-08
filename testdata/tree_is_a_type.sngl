@@ -15,7 +15,7 @@ struct block {}
 #[tr.kind]
 struct inline {}
 
-// A container that is not itself a member: its default slot names the family
+// A container that is not itself a member: its rest slot names the family
 // it hosts.
 component document(children ...component block) {}
 

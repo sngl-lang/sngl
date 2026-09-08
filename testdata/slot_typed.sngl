@@ -17,9 +17,8 @@ component frame(body component tr.one, badge component option<tr.default>, rows 
     }
 }
 
-// The default slot carries a type the same way. It is named `_`, so every slot
-// has the one shape and the name is never optional — `slot` followed by an
-// optional name would be ambiguous with a type, both being idents.
+// The rest slot carries a type the same way: `...` is the count bound, and
+// what follows `component` is still the tree it accepts.
 component strip(children ...component tr.default) {
     vbox {
         children

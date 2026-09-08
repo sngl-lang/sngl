@@ -52,7 +52,7 @@ component main {
         component cell(row) {
             text(value=row.title)
         }
-        text(value="goes to the anonymous slot")
+        text(value="goes to the rest slot")
     }
 
     // A slot with no population renders its insertion's block instead, so a

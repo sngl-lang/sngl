@@ -54,7 +54,7 @@ struct shape {}
 // changes what the drawing looks like.
 enum ScalingMode { center, fit, fill, stretch }
 
-// Immediate-mode drawing surface. Its default slot accepts shapes, so a canvas
+// Immediate-mode drawing surface. Its rest slot accepts shapes, so a canvas
 // hosts them without being one. They paint in declaration order — later shapes
 // cover earlier ones — in pixels from the top-left, whatever measurement unit
 // `width` and `height` are given in.

@@ -52,7 +52,7 @@ import tr "sngl:tree"
 #[tr.kind]
 struct block {}
 
-component para(slot _ block) {}
+component para(children ...component block) {}
 component bold(weight int) block {}
 
 component main {
@@ -67,7 +67,7 @@ import whatever "sngl:tree"
 #[whatever.kind]
 struct block {}
 
-component para(slot _ block) {}
+component para(children ...component block) {}
 component bold(weight int) block {}
 
 component main {
