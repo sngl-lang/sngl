@@ -1,0 +1,30 @@
+// An event handler's parameter may name its type. The component declares the
+// event, so the signature is the compiler's already: the name alone is enough,
+// and a written type is a claim about that position rather than a declaration
+// of it.
+
+import . "sngl:ui"
+
+component form(:draft string) {
+    vbox {
+        // Name only: the type comes from the declaration.
+        input(value=draft, @change(e) {
+            draft = e.value
+        })
+        // The same position, said out loud.
+        input(value=draft, @change(e ChangeEvent) {
+            draft = e.value
+        })
+        // A handler that binds no name is unaffected.
+        button(text="clear", @click {
+            draft = ""
+        })
+    }
+}
+
+component main {
+    var draft = ""
+    vbox {
+        form(draft=draft)
+    }
+}

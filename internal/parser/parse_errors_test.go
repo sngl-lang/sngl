@@ -75,3 +75,33 @@ func TestParseErrorDirectives(t *testing.T) {
 	}
 	t.Logf("evaluated %d fixture(s)", found)
 }
+
+// A malformed parameter list must reach the caller as parse errors and nothing
+// else. buildVisualOrStmt tested for a trailing assign, toggle and increment
+// under one done() guard while each of the three consumed, so an exhausted
+// iterator walked off the tree and the panic surfaced as
+// "parser panic: index out of range" alongside the real errors.
+//
+// A trailing comma is what exhausts it: ParamList has none, so `@change(e,)`
+// leaves the recovery tree one element short of what the three tests read.
+func TestMalformedParamListDoesNotPanic(t *testing.T) {
+	src := []byte(`import . "sngl:ui"
+
+component main {
+    var d = ""
+    input(value=d, @change(e,) {
+        d = ""
+    })
+}
+`)
+	_, err := parser.Parse("trailing.sngl", src)
+	if err == nil {
+		t.Fatal("parsed without error; a trailing comma in a param list is not valid")
+	}
+	if strings.Contains(err.Error(), "parser panic") {
+		t.Errorf("builder panicked: %s", err)
+	}
+	if !strings.Contains(err.Error(), `unexpected ")"`) {
+		t.Errorf("expected the ordinary parse error, got: %s", err)
+	}
+}

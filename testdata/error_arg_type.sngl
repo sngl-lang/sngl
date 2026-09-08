@@ -1,0 +1,12 @@
+// One production parses a call's arguments and a slot population's bindings,
+// so a type written on an argument reaches the builder. Only a population
+// binds a name for one to annotate, and the builder is the only place that
+// knows which of the two sites it is looking at.
+
+import . "sngl:ui"
+
+component main {
+    vbox {
+        text(value string) // ERROR(parse) "a type annotates the name a slot population binds: an argument passes a value"
+    }
+}

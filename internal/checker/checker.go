@@ -2081,9 +2081,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				handler := &ir.EventHandler{
 					AST:  h,
 					Name: h.Name,
-					Func: &ir.Func{
-						Params: c.buildParams(h.Params),
-					},
+					Func: &ir.Func{},
 				}
 				v.Handlers = append(v.Handlers, handler)
 			}
@@ -2722,7 +2720,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 					v.Handlers = append(v.Handlers, &ir.EventHandler{
 						AST:  h,
 						Name: h.Name,
-						Func: &ir.Func{Params: c.buildParams(h.Params)},
+						Func: &ir.Func{},
 					})
 				}
 				out = append(out, v)
@@ -4386,6 +4384,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 				continue
 			}
 			restore := c.fileOf(varPos(v))
+			h.Func.Params = c.bindParams(h.AST.Params, v.Type, "@"+h.Name, "the assignment")
 			c.pushScope()
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)

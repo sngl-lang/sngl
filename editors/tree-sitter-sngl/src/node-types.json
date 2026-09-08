@@ -479,6 +479,10 @@
         {
           "type": "spread_expression",
           "named": true
+        },
+        {
+          "type": "typed_arg",
+          "named": true
         }
       ]
     }
@@ -643,6 +647,10 @@
         {
           "type": "spread_expression",
           "named": true
+        },
+        {
+          "type": "typed_arg",
+          "named": true
         }
       ]
     }
@@ -667,7 +675,7 @@
       "required": true,
       "types": [
         {
-          "type": "identifier_list",
+          "type": "func_param",
           "named": true
         },
         {
@@ -967,6 +975,10 @@
         },
         {
           "type": "spread_expression",
+          "named": true
+        },
+        {
+          "type": "typed_arg",
           "named": true
         }
       ]
@@ -1306,6 +1318,32 @@
     }
   },
   {
+    "type": "typed_arg",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "unary_expression",
     "named": true,
     "fields": {
@@ -1373,6 +1411,10 @@
         {
           "type": "spread_expression",
           "named": true
+        },
+        {
+          "type": "typed_arg",
+          "named": true
         }
       ]
     }
@@ -1401,11 +1443,11 @@
       "required": true,
       "types": [
         {
-          "type": "identifier",
+          "type": "func_param",
           "named": true
         },
         {
-          "type": "identifier_list",
+          "type": "identifier",
           "named": true
         },
         {
@@ -1497,6 +1539,10 @@
         },
         {
           "type": "statement_block",
+          "named": true
+        },
+        {
+          "type": "typed_arg",
           "named": true
         }
       ]

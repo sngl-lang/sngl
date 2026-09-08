@@ -932,6 +932,10 @@ func (f *formatter) writeArgOrHandler(a ast.ArgOrEventHandler) {
 			f.write("=")
 		}
 		f.writeExpr(v.Value)
+		if v.Type != nil {
+			f.write(" ")
+			f.writeType(v.Type)
+		}
 	case ast.EventHandler:
 		f.writeEventHandler(v)
 	}
@@ -1544,14 +1548,9 @@ func (f *formatter) writeSlotNode(s *ast.SlotNode) {
 		f.write(" ")
 		f.write(s.Name)
 	}
-	if len(s.Args) > 0 {
+	if len(s.Args.Args) > 0 {
 		f.write("(")
-		for i, a := range s.Args {
-			if i > 0 {
-				f.write(", ")
-			}
-			f.writeExpr(a)
-		}
+		f.writeArgs(s.Args)
 		f.write(")")
 	}
 	if s.Block.IsDefined() {

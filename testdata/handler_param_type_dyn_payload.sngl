@@ -1,0 +1,13 @@
+// A handler whose declared event carries no payload has nothing for a written
+// type to be held against: `dyn` is the compiler saying it does not know, not
+// a type anybody can write. So the annotation stands unchecked -- holding it
+// to `dyn` by equality would make every written type an error, and name `dyn`
+// as the one that would work.
+
+import . "sngl:ui"
+import . "sngl:time"
+
+component main {
+    timer(interval=1s, @tick(x int) {})
+    text(value="x")
+}

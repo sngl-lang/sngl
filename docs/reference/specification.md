@@ -802,7 +802,7 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ "=" Expr ] { VarHandler }
 
-VarHandler = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 ```
 
@@ -1089,11 +1089,12 @@ Arg =
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
-EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
+    | Type
     | { ExprPostfixOp } ArgExprCont
 
 ArgExprCont = 
@@ -1187,9 +1188,7 @@ IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
-SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
-
-SlotArgList = Expr { "," Expr } [ "," ]
+SlotNode = "slot" [ IDENT [ "(" [ ArgList ] ")" ] ] [ StmtBlock ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1615,9 +1614,7 @@ IfNode = "if" CondExpr StmtBlock [ "else" ( IfNode | StmtBlock ) ]
 
 ForNode = "for" ( "var" [ "&" ] IDENT [ "," [ "&" ] IDENT ] "=" CondExpr | [ CondExpr ] ) StmtBlock [ "else" StmtBlock ]
 
-SlotNode = "slot" [ IDENT [ "(" [ SlotArgList ] ")" ] ] [ StmtBlock ]
-
-SlotArgList = Expr { "," Expr } [ "," ]
+SlotNode = "slot" [ IDENT [ "(" [ ArgList ] ")" ] ] [ StmtBlock ]
 
 AssignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
 
@@ -1656,7 +1653,7 @@ VarDecl =
 
 VarSpec = IdentList [ Type ] [ "=" Expr ] { VarHandler }
 
-VarHandler = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+VarHandler = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 ```
 
@@ -1790,11 +1787,12 @@ Arg =
     | "const" UnaryExpr ArgExprCont
     | NonIdentPrimary { StmtPostfixOp } ArgExprCont
 
-EventArg = "@" IDENT [ "(" [ IdentList ] ")" ] StmtBlock
+EventArg = "@" IDENT [ "(" [ ParamList ] ")" ] StmtBlock
 
 IdentArgCont = 
     "=" Expr
     | StructLitBody { ExprPostfixOp } ArgExprCont
+    | Type
     | { ExprPostfixOp } ArgExprCont
 
 ArgExprCont = 

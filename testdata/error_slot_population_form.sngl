@@ -1,0 +1,47 @@
+// A population binds names. Its list is the `ArgList` a call passes arguments
+// with, so the named, binding and event forms parse there too, and none of
+// them names a position.
+
+import . "sngl:ui"
+
+struct Row {
+    title string
+}
+
+component table(rows list<Row>, slot cell(Row)) {
+    vbox {
+        for var r = rows {
+            cell(r)
+        }
+    }
+}
+
+component main {
+    var count = 0
+    vbox {
+        table(rows=[]) {
+            slot cell(row=1) { // ERROR(check) "slot \"cell\": a population binds names, and row= is a named argument"
+                text(value="x")
+            }
+        }
+        table(rows=[]) {
+            slot cell(:row=row) { // ERROR(check) "slot \"cell\": a population binds names, and :row is a prop binding"
+                text(value="x")
+            }
+        }
+        table(rows=[]) {
+            slot cell(@click { // ERROR(check) "slot \"cell\": a population binds names, and @click is an event handler"
+                // The handler's block is a block of the population's argument
+                // list, so the formatter has to reach it to place this.
+                count = 1
+            }) {
+                text(value="x")
+            }
+        }
+        table(rows=[]) {
+            slot cell(1) { // ERROR(check) "slot \"cell\": a population binds names, not expressions"
+                text(value="x")
+            }
+        }
+    }
+}

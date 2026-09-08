@@ -431,7 +431,7 @@ type EventHandler struct {
 type SlotNode struct {
 	Pos   Pos
 	Name  string // "" for the anonymous slot
-	Args  []Expr
+	Args  ArgList
 	Block StmtBlock
 }
 

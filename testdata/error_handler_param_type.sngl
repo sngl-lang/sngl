@@ -1,0 +1,15 @@
+// A handler parameter's type is optional and must agree with the signature
+// the compiler already holds.
+
+import . "sngl:ui"
+
+component main {
+    var count = 0 @change(v string) { // ERROR(check) "cannot use string as int for parameter \"v\" of @change"
+        count = 1
+    }
+    vbox {
+        input(value="", @change(e ClickEvent) { // ERROR(check) "cannot use ClickEvent as ChangeEvent for parameter \"e\" of @change"
+            count = 1
+        })
+    }
+}

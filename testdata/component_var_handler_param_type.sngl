@@ -1,0 +1,18 @@
+// A var handler's parameter is the value that changed, so the var's own type
+// is the signature it binds against.
+//
+// SKIP(codegen) "#197: no backend binds a var handler its parameter. The value is already in scope as the setter's own parameter -- $set_<var>(v) in html, Set<Var>(v) in bubbletea and fyne -- and the spliced body keeps the declared name, so this fixture emits `undefined: nv`. The fix is that rename; remove this directive in the commit that closes #197."
+
+import . "sngl:ui"
+
+component main {
+    var count = 0 @change(nv int) {
+        count = nv
+    }
+    vbox {
+        button(text="+", @click {
+            count = count + 1
+        })
+        text(value="{count}")
+    }
+}

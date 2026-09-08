@@ -127,7 +127,7 @@ module.exports = grammar({
       seq(
       "@",
       $.identifier,
-      optional(seq("(", optional($.identifier_list), ")")),
+      optional(seq("(", optional($._param_list), ")")),
       $.statement_block
     ),
 
@@ -404,8 +404,18 @@ module.exports = grammar({
         $.binding_arg,
         $.event_arg,
         $.named_arg,
+        $.typed_arg,
         $.spread_expression,
         $._expression,
+      ),
+
+    // `row Row` — the name and type a slot population binds. The argument list
+    // is one production at both sites, so an ordinary call parses it too and
+    // the compiler refuses it there.
+    typed_arg: ($) =>
+      seq(
+        field("name", $.identifier),
+        field("type", $.type_identifier),
       ),
 
     binding_arg: ($) =>
@@ -423,7 +433,7 @@ module.exports = grammar({
       seq(
         "@",
         field("name", $.identifier),
-        optional(seq("(", optional($.identifier_list), ")")),
+        optional(seq("(", optional($._param_list), ")")),
         $.statement_block,
       ),
 

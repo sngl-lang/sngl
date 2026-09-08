@@ -3575,8 +3575,12 @@ func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 // declared type is not ErrorEvent.
 func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	errEvtType := c.errorEventType()
+	c.refuseParamMarks(eh.Params.Params)
 	params := make([]*ir.Param, len(eh.Params.Params))
 	for i, p := range eh.Params.Params {
+		if p.Default != nil {
+			c.rejectBindDefault(ast.Pos(*p.Default.ExprPos()), bindParamWhat(p.Name, "@"+eh.Name), "the error")
+		}
 		typ := c.resolveType(p.Type)
 		if typ == nil || typ.Kind == ir.TypeDyn {
 			typ = errEvtType
@@ -4275,20 +4279,14 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 				continue
 			}
 			seen[arg.Name] = arg.Pos
-			params := make([]*ir.Param, len(arg.Params.Params))
-			for i, p := range arg.Params.Params {
-				typ := c.resolveType(p.Type)
-				if typ.Kind == ir.TypeDyn && comp != nil {
-					if et := componentEventType(comp, arg.Name); et != nil {
-						typ = et
-					}
-				}
-				params[i] = &ir.Param{Name: p.Name, Type: typ}
+			var want *ir.Type
+			if comp != nil {
+				want = componentEventType(comp, arg.Name)
 			}
-			fn := &ir.Func{Params: params}
+			fn := &ir.Func{Params: c.bindParams(arg.Params, want, "@"+arg.Name, "the event")}
 			// Check the handler body in a scoped context.
 			c.pushScope()
-			for _, p := range params {
+			for _, p := range fn.Params {
 				c.declare(arg.Pos, p)
 			}
 			restore := c.enterFuncBody()
@@ -4913,17 +4911,27 @@ func (c *checker) lookupComponentInScope(pos ast.Pos, name string) (ir.Symbol, b
 // checked, so reaching here means it was written outside any call to a
 // component that declares it.
 func (c *checker) checkSlotNodeIR(x *ast.SlotNode) ir.Stmt {
+	c.rejectSlotArgTypes(x)
 	if x.Name != "" {
 		c.error(x.Pos, "slot %q: a slot is declared in the component's parameter list, and populated only inside a call to it", x.Name)
 		return nil
 	}
-	if len(x.Args) > 0 {
+	if len(x.Args.Args) > 0 {
 		c.error(x.Pos, "the anonymous slot takes no arguments")
 	}
 	if c.rejectNodeInFuncBody(x.Pos, "") {
 		return nil
 	}
 	return &ir.SlotInst{Name: ir.DefaultSlot, Children: c.checkBlockIR(&x.Block)}
+}
+
+func (c *checker) rejectSlotArgTypes(x *ast.SlotNode) {
+	for _, entry := range x.Args.Args {
+		a, ok := entry.(ast.Arg)
+		if ok && a.Type != nil {
+			c.error(*a.Type.ExprPos(), "a type annotates the name a population binds, and this `slot` is not a population")
+		}
+	}
 }
 
 // enclosingSlot returns the slot of the component being checked that name
@@ -5009,6 +5017,7 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 		}
 		if sn.Name == ir.DefaultSlot {
 			c.error(sn.Pos, "the default slot is filled by ordinary children, not by name")
+			c.rejectSlotArgTypes(sn)
 			continue
 		}
 		decl := findSlot(comp, sn.Name)
@@ -5046,24 +5055,26 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
 func (c *checker) checkSlotContent(sn *ast.SlotNode, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
-	if len(sn.Args) != len(decl.Params) {
-		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args), len(decl.Params))
+	if len(sn.Args.Args) != len(decl.Params) {
+		c.error(sn.Pos, "slot %q binds %d parameter(s), but declares %d", sn.Name, len(sn.Args.Args), len(decl.Params))
 	}
 	sc := &ir.SlotContent{}
 	c.pushScope()
-	for i, a := range sn.Args {
-		id, ok := a.(*ast.IdentExpr)
+	for i, entry := range sn.Args.Args {
+		a, ok := c.slotBindArg(sn.Name, entry)
 		if !ok {
-			c.error(*a.ExprPos(), "slot %q: a population binds names, not expressions", sn.Name)
 			continue
 		}
-		var typ *ir.Type
-		if i < len(decl.Params) {
-			typ = decl.Params[i]
-		} else {
-			// checkSlotContent reported the arity mismatch before the loop.
-			typ = ir.TypDyn
+		id, ok := a.Value.(*ast.IdentExpr)
+		if !ok {
+			c.error(*a.Value.ExprPos(), "slot %q: a population binds names, not expressions", sn.Name)
+			continue
 		}
+		var want *ir.Type
+		if i < len(decl.Params) {
+			want = decl.Params[i]
+		}
+		typ := c.bindParamType(a.Type, want, bindParamWhat(id.Name, "slot "+strconv.Quote(sn.Name)))
 		p := &ir.Param{Name: id.Name, Type: typ}
 		c.declare(id.Pos, p)
 		sc.Params = append(sc.Params, p)

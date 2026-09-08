@@ -1,0 +1,44 @@
+// A handler binds the name its payload arrives under. Its parameters are the
+// `ParamList` a function declares its own with, so a default value and a mark
+// parse there — and neither says anything about a name the other side
+// supplies.
+
+import . "sngl:ui"
+import . "sngl:app"
+
+component inner(@go) {
+    button(text="go", @click {
+        go()
+    })
+}
+
+component main {
+    var count = 0 @change(v = 1) { // ERROR(check) "parameter \"v\" of @change takes no default value: the assignment supplies what the name is bound to"
+        count = v
+    }
+    vbox {
+        input(value="", @change(e = 1) { // ERROR(check) "parameter \"e\" of @change takes no default value: the event supplies what the name is bound to"
+            count = 1
+        })
+        input(value="", @change(#[nosuch.mark] e) { // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
+            count = 1
+        })
+        text(value="{count}")
+        // An @error handler defaults its own parameter to ErrorEvent, and the
+        // forms it may not write are the same.
+        errorBoundary(@error(#[nosuch.mark] e) { // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
+            count = 1
+        }) {
+            text(value="x")
+        }
+        errorBoundary(@error(e = 1) { // ERROR(check) "parameter \"e\" of @error takes no default value: the error supplies what the name is bound to"
+            count = 1
+        }) {
+            text(value="x")
+        }
+        // A handler supplied to a component the caller wrote.
+        inner(@go(p = 2) { // ERROR(check) "parameter \"p\" of @go takes no default value: the event supplies what the name is bound to"
+            count = 1
+        })
+    }
+}

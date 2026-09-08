@@ -110,9 +110,7 @@ func stmtBlocks(s ast.Stmt) (blocks []*ast.StmtBlock, commit func()) {
 		walkArgs(&x.Args)
 		add(&x.Block)
 	case *ast.SlotNode:
-		for _, a := range x.Args {
-			walkExpr(a)
-		}
+		walkArgs(&x.Args)
 		add(&x.Block)
 	case *ast.IfStmt:
 		walkExpr(x.Cond)
