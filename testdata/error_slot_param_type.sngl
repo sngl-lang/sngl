@@ -1,6 +1,6 @@
-// A slot binding's type is optional and must agree with the position it
-// names. One production parses both sites, so the annotation arrives wherever
-// the arguments do -- and only a population has a name to annotate.
+// A population's parameter types are optional and must agree with the
+// position they name: the compiler holds the slot's signature, the population
+// names a position, and a written type is measured against it.
 
 import . "sngl:ui"
 
@@ -8,7 +8,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, slot cell(Row)) {
+component table(rows list<Row>, cell component(Row)) {
     vbox {
         for var r = rows {
             cell(r)
@@ -17,15 +17,8 @@ component table(rows list<Row>, slot cell(Row)) {
 }
 
 component main {
-    // Not a population: a `slot` outside a call to the declaring component is
-    // a declaration written in the wrong place, and there is no signature for
-    // a type to agree with.
-    slot stray(row Row) { // ERROR(check) "a type annotates the name a population binds"
-        text(value="x")
-    }
-
     table(rows=[]) {
-        slot cell(row string) { // ERROR(check) "cannot use string as Row for parameter \"row\" of slot \"cell\""
+        component cell(row string) { // ERROR(check) "cannot use string as Row for parameter \"row\" of slot \"cell\""
             text(value="x")
         }
     }

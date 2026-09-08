@@ -11,8 +11,8 @@ component main {
     }
 }
 
-component wrapper(slot _) {
+component wrapper(children ...component) {
     vbox {
-        slot
+        children
     }
 }

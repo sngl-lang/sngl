@@ -5,7 +5,7 @@
 
 import . "sngl:ui"
 
-component collides(header string, slot header) { // ERROR(check) "name is already declared as a prop"
+component collides(header string, header component) { // ERROR(check) "name is already declared as a prop"
     vbox {
         text(value=header)
     }

@@ -404,18 +404,33 @@ func (m Model) View() tea.View {
 		var content_3_4 string
 		content_3_4 = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888")).
-			Bold(true).Render(fmt.Sprint("EVENTS"))
+			Bold(true).Render(fmt.Sprint("SLOTS"))
 		content_3Children = append(content_3Children, content_3_4)
 		var content_3_5 string
 		var content_3_5Items []string
-		for _, e := range m.entry().ComponentDoc.Events {
-			_ = e
+		for _, sl := range m.entry().ComponentDoc.Slots {
+			_ = sl
 			var content_3_5Item string
-			content_3_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  @" + e.Name) + "  ") + e.Payload)))
+			content_3_5Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  " + sl.Name) + "  ") + sl.Type)))
 			content_3_5Items = append(content_3_5Items, content_3_5Item)
 		}
 		content_3_5 = strings.Join(content_3_5Items, "\n")
 		content_3Children = append(content_3Children, content_3_5)
+		var content_3_6 string
+		content_3_6 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888")).
+			Bold(true).Render(fmt.Sprint("EVENTS"))
+		content_3Children = append(content_3Children, content_3_6)
+		var content_3_7 string
+		var content_3_7Items []string
+		for _, e := range m.entry().ComponentDoc.Events {
+			_ = e
+			var content_3_7Item string
+			content_3_7Item = lipgloss.NewStyle().Render(fmt.Sprint(((("  @" + e.Name) + "  ") + e.Payload)))
+			content_3_7Items = append(content_3_7Items, content_3_7Item)
+		}
+		content_3_7 = strings.Join(content_3_7Items, "\n")
+		content_3Children = append(content_3Children, content_3_7)
 		content_3 = lipgloss.JoinVertical(lipgloss.Left, content_3Children...)
 	}
 	contentChildren = append(contentChildren, content_3)

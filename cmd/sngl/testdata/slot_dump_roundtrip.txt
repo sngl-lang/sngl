@@ -2,15 +2,19 @@
 # source. Slots gave it three ways not to be: the declarations live in
 # Component.Slots rather than Props, so the parameter list came out empty; a
 # population lives in NodeInst.Slots rather than Children, so it vanished; and a
-# component whose default slot set ChildrenType printed both, which is refused on
+# component whose rest slot set ChildrenType printed both, which is refused on
 # the way back in.
+#
+# A name written on a slot's invocation parameter is part of the contract, not a
+# comment -- a slot's structural match is by name -- so the IR has to carry it
+# and the dump has to print it.
 #
 # The check is the round trip, not the text: dump it, check the dump.
 
 sngl dump --stage checked --format sngl slots.sngl
-stdout 'slot header tr.one'
-stdout 'slot _,'
-stdout 'slot cell\(Row\)'
+stdout 'header component tr.one'
+stdout 'children \.\.\.component,'
+stdout 'cell component\(row Row\)'
 
 cp stdout out.sngl
 sngl check out.sngl
@@ -26,9 +30,9 @@ struct Row {
 
 component table(
     rows list<Row>,
-    slot _ tr.default,
-    slot header tr.one,
-    slot cell(Row),
+    children ...component tr.default,
+    header component tr.one,
+    cell component(row Row),
 ) {
     vbox {
         header {
@@ -37,16 +41,16 @@ component table(
         for var r = rows {
             cell(r)
         }
-        slot
+        children
     }
 }
 
 component main {
     table(rows=[Row{title = "a"}]) {
-        slot header {
+        component header {
             text(value="Rows")
         }
-        slot cell(row) {
+        component cell(row) {
             text(value=row.title)
         }
         text(value="ordinary")

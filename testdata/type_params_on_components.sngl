@@ -36,7 +36,7 @@ component bracket<T = int>(on T = 0) {
 // specialization like the props are. `slot cell(T)` hands the population what
 // the call bound T to; against the declaration it handed out a parameter still
 // named T, and `v + 1` was "operator + not defined for T and int".
-component grid<T>(seed T, slot cell(T)) {
+component grid<T>(seed T, cell component(T)) {
     vbox {
         cell(seed)
     }
@@ -47,7 +47,7 @@ component grid<T>(seed T, slot cell(T)) {
 // before the body's declarations were collected, so `var last T` resolved
 // against a scope that no longer had T in it: `unknown type "T"`, on a name the
 // declaration two lines above introduces.
-component holder<T>(on T, slot shown(T)) {
+component holder<T>(on T, shown component(T)) {
     var last T = on
 
     // A method names them too, in its signature and in its own body, which is
@@ -80,7 +80,7 @@ component main {
     bracket #keyed(on=7)
 
     grid(seed=2) {
-        slot cell(v) {
+        component cell(v) {
             text #cell(value=string(v + 1))
         }
     }
@@ -92,7 +92,7 @@ component main {
 // handler in `main`.
 component stateful {
     holder(on=7) {
-        slot shown(v) {
+        component shown(v) {
             text #held(value=string(v))
         }
     }

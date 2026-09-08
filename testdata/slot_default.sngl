@@ -1,25 +1,25 @@
-// The default slot is declared in the parameter list too, under the name `_`.
-// A component's whole contract is then the one list: props, events, and slots,
-// with nothing to distinguish the default one but its name.
+// The rest slot is declared in the parameter list like any other slot, with
+// `...` on its type. A component's whole contract is then the one list: props,
+// events, and slots, with nothing to distinguish the rest one but that bound.
 //
 // It takes no invocation parameters, because the caller fills it with ordinary
-// children and there is no population site to bind anything at.
+// children, written once, with nothing to bind them to.
 
 import . "sngl:ui"
 
-component card(caption string, slot _) {
+component card(caption string, children ...component) {
     vbox {
         text(value=caption)
-        slot
+        children
     }
 }
 
-component panel(slot _, slot header) {
+component panel(children ...component, header component) {
     vbox {
         header {
             text(value="(untitled)")
         }
-        slot
+        children
     }
 }
 
@@ -28,7 +28,7 @@ component main {
         text(value="child")
     }
     panel() {
-        slot header {
+        component header {
             text(value="Head")
         }
         text(value="body")

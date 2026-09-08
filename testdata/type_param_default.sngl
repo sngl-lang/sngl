@@ -43,7 +43,7 @@ component show(
     b Boxed = {v=3},
     // tr.one's parameter defaults to the tree an ordinary component belongs
     // to, so the wrapper stands on its own.
-    slot body tr.one,
+    body component tr.one,
 ) {
     vbox {
         text(value=p.right)
@@ -69,7 +69,7 @@ component main {
     var greeting = pick("hi")
 
     show() {
-        slot body {
+        component body {
             text(value="{names.length()}{greeting}")
         }
     }

@@ -2,9 +2,9 @@ caps:
 -- input.sngl --
 import . "sngl:ui"
 
-component card(slot _) {
+component card(children ...component) {
     vbox(style={padding=16}) {
-        slot
+        children
     }
 }
 
@@ -15,9 +15,9 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component card(slot _) {
+component card(children ...component) {
     vbox(style=Style{padding=16}) {
-        slot
+        children
     }
 }
 component main {

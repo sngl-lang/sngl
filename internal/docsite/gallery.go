@@ -21,8 +21,16 @@ const StarterPkg = "ui"
 
 // ChildPolicyString returns a human-readable string for a component's children policy.
 func ChildPolicyString(children *ir.Type) string {
-	if children == nil {
+	// The three shapes childrenTypeFor builds from the rest slot's count
+	// bound. Answering "many" for all of them documented `scroll` and
+	// `tooltip` as taking any number of children when each takes one.
+	switch {
+	case children == nil:
 		return "none"
+	case children.Kind == ir.TypeList:
+		return "many"
+	case children.Kind == ir.TypeOption:
+		return "at most one"
 	}
-	return "many"
+	return "exactly one"
 }

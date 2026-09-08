@@ -139,6 +139,11 @@ type PropDetail struct {
 	Name      string
 	Schema    *checker.PropSchema // non-nil for prop; nil for event
 	Event     string              // payload type when this is an event (Schema is nil)
+	// Slot is the slot's type expression when this names a slot rather than a
+	// prop or an event. Nothing else distinguishes the three: a slot is a
+	// parameter of the component like the other two, and `sngl doc ui vbox
+	// children` has to resolve rather than report an unknown prop.
+	Slot ast.TypeExpr
 }
 
 type FieldDetail struct {
@@ -720,14 +725,23 @@ func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 			if payload, ok := schema.Events[ident]; ok {
 				return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Event: payload}}, nil
 			}
+			for _, sl := range schema.Slots {
+				if sl.Name == ident {
+					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Slot: sl.Type}}, nil
+				}
+			}
 			return Result{}, fmt.Errorf("%w: prop %q on component %s", ErrNotFound, ident, info.Name)
 		}
 		for _, p := range decl.Props.Props {
 			switch pp := p.(type) {
 			case ast.Param:
-				if pp.Name == ident {
-					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident}}, nil
+				if pp.Name != ident {
+					continue
 				}
+				if pp.IsSlot() {
+					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Slot: pp.Type}}, nil
+				}
+				return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident}}, nil
 			case ast.EventDecl:
 				if pp.Name == ident {
 					payload := ""

@@ -1,6 +1,6 @@
-// A population binds names. Its list is the `ArgList` a call passes arguments
-// with, so the named, binding and event forms parse there too, and none of
-// them names a position.
+// A population binds names. Its list is the `ParamList` a component declares
+// its props with, so the default, binding and event forms parse there too, and
+// none of them names a position an insertion supplies.
 
 import . "sngl:ui"
 
@@ -8,7 +8,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, slot cell(Row)) {
+component table(rows list<Row>, cell component(Row)) {
     vbox {
         for var r = rows {
             cell(r)
@@ -17,29 +17,19 @@ component table(rows list<Row>, slot cell(Row)) {
 }
 
 component main {
-    var count = 0
     vbox {
         table(rows=[]) {
-            slot cell(row=1) { // ERROR(check) "slot \"cell\": a population binds names, and row= is a named argument"
+            component cell(row = Row{title="x"}) { // ERROR(check) "parameter \"row\" takes no default value"
+                text(value=row.title)
+            }
+        }
+        table(rows=[]) {
+            component cell(:row) { // ERROR(check) "a population binds plain names"
                 text(value="x")
             }
         }
         table(rows=[]) {
-            slot cell(:row=row) { // ERROR(check) "slot \"cell\": a population binds names, and :row is a prop binding"
-                text(value="x")
-            }
-        }
-        table(rows=[]) {
-            slot cell(@click { // ERROR(check) "slot \"cell\": a population binds names, and @click is an event handler"
-                // The handler's block is a block of the population's argument
-                // list, so the formatter has to reach it to place this.
-                count = 1
-            }) {
-                text(value="x")
-            }
-        }
-        table(rows=[]) {
-            slot cell(1) { // ERROR(check) "slot \"cell\": a population binds names, not expressions"
+            component cell(@row) { // ERROR(check) "a population binds plain names"
                 text(value="x")
             }
         }

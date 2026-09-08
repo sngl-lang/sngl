@@ -4,7 +4,7 @@
 #
 # `header` is populated and renders the supplied content; `cell` is a scoped
 # slot inside a `for`, so it renders once per row with the loop's value bound to
-# the populator's own name; the anonymous slot takes the ordinary children.
+# the populator's own name; the rest slot takes the ordinary children.
 
 sngl generate --out out table.sngl
 grep 'Rows' out/index.html
@@ -13,7 +13,7 @@ grep 'beta' out/index.html
 grep 'ordinary child' out/index.html
 
 # An unpopulated named slot renders the insertion's own block, while the
-# anonymous slot beside it still takes the ordinary children. A name-blind
+# rest slot beside it still takes the ordinary children. A name-blind
 # substitution puts the children in both positions, so "untitled" disappearing
 # is what this catches -- and without it a fallback is parsed, checked and
 # silently dropped.
@@ -42,7 +42,7 @@ grep 'label__inst1 = state.label__inst1' instout/index.html
 sngl fmt propargs.sngl
 sngl check propargs.sngl
 stdout 'propargs.sngl: ok'
-grep 'slot heading\(string\)' propargs.sngl
+grep 'heading component\(string\)' propargs.sngl
 
 -- table.sngl --
 import . "sngl:ui"
@@ -52,7 +52,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, slot header, slot cell(Row), slot _) {
+component table(rows list<Row>, header component, cell component(Row), children ...component) {
     vbox {
         header {
             text(value="(untitled)")
@@ -60,17 +60,17 @@ component table(rows list<Row>, slot header, slot cell(Row), slot _) {
         for var r = rows {
             cell(r)
         }
-        slot
+        children
     }
 }
 
 component main {
     window #w(href="/index.html") {
         table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
-            slot header {
+            component header {
                 text(value="Rows")
             }
-            slot cell(row) {
+            component cell(row) {
                 text(value=row.title)
             }
             text(value="ordinary child")
@@ -83,12 +83,12 @@ output { none { html } }
 import . "sngl:ui"
 import . "sngl:app"
 
-component card(slot heading, slot _) {
+component card(heading component, children ...component) {
     vbox {
         heading {
             text(value="untitled")
         }
-        slot
+        children
     }
 }
 
@@ -105,7 +105,7 @@ output { none { html } }
 import . "sngl:ui"
 import . "sngl:app"
 
-component card(caption string, slot heading(string), slot _) {
+component card(caption string, heading component(string), children ...component) {
     vbox {
         heading(caption) {
             text(value="fallback")
@@ -116,7 +116,7 @@ component card(caption string, slot heading(string), slot _) {
 component main {
     window #w(href="/index.html") {
         card(caption="CAP") {
-            slot heading(c) {
+            component heading(c) {
                 text(value=c)
             }
         }
@@ -128,7 +128,7 @@ output { none { html } }
 import . "sngl:ui"
 import . "sngl:app"
 
-component card(slot heading, slot _) {
+component card(heading component, children ...component) {
     var open = true
     vbox {
         heading {
@@ -138,11 +138,11 @@ component card(slot heading, slot _) {
     }
 }
 
-component wrapper(start string, slot _) {
+component wrapper(start string, children ...component) {
     var label = start
     vbox {
         card() {
-            slot heading {
+            component heading {
                 text(value=label)
                 button(text="bump", @click { label = label + "!" })
             }

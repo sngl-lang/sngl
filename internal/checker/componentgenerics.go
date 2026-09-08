@@ -199,9 +199,11 @@ func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type) *ir.C
 		t := *s
 		t.Content = s.Content.Substitute(bindings)
 		if len(s.Params) > 0 {
-			t.Params = make([]*ir.Type, len(s.Params))
-			for j, pt := range s.Params {
-				t.Params[j] = pt.Substitute(bindings)
+			t.Params = make([]*ir.Param, len(s.Params))
+			for j, sp := range s.Params {
+				q := *sp
+				q.Type = sp.Type.Substitute(bindings)
+				t.Params[j] = &q
 			}
 		}
 		out.Slots[i] = &t

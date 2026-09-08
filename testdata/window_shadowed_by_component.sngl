@@ -5,7 +5,7 @@ import . "sngl:app"
 // resolves before the #[builtin("window")] declaration, so this
 // instantiates as an ordinary node instance rather than registering a
 // package window.
-component window(label string, slot _) {
+component window(label string, children ...component) {
     text(value=label)
 }
 

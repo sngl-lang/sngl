@@ -15,23 +15,23 @@ struct block {}
 #[tr.kind]
 struct inline {}
 
-// A container that is not itself a member: its default slot names the family
+// A container that is not itself a member: its rest slot names the family
 // it hosts.
-component document(slot _ block) {}
+component document(children ...component block) {}
 
 // A member that hosts a different family — the rich-text case the mechanism
 // was generalised for.
-component para(slot _ inline) block {}
+component para(children ...component inline) block {}
 
 // A member with no slot hosts nothing.
 component bold(weight int) inline {}
 
 // A member whose slot names no family hosts its own, so this holds inlines.
-component span(slot _) inline {}
+component span(children ...component) inline {}
 
 // The default tree is the absence of one: naming it is the same as naming
 // nothing, and an ordinary component belongs to it.
-component plain(slot _ tr.default) {}
+component plain(children ...component tr.default) {}
 
 component main {
     document() {

@@ -284,13 +284,13 @@ nothing in the mechanism knows what a shape is.
 #[tree.kind]
 struct shape {}
 
-component circle(…)     shape {}   // is a shape
-component canvas(slot _ shape) {}  // hosts shapes, is not one
-component group(slot _) shape {}   // is one, and hosts its own family
+component circle(…)                    shape {}  // is a shape
+component canvas(shapes ...component shape) {}    // hosts shapes, is not one
+component group(children ...component) shape {}   // is one, and hosts its own family
 ```
 
-The **return position says what a component is**; what it *hosts* is its
-default slot's type, which is how a member hosts a different family. A slot
+The **return position says what a component is**; what it *hosts* is its rest
+slot's type, which is how a member hosts a different family. A slot
 naming no tree accepts the one its component belongs to, so a member hosts its
 own without saying so — but declaring a slot at all is what makes it host
 anything. Naming something that is not a tree in the return position is an
@@ -310,14 +310,58 @@ membership is the return position and no mark is written to opt in. Nothing
 about a mark reaches the AST: the source carries the `#[...]` as written and the
 checker applies it where it registers the declaration.
 
-**Slots are declared in the parameter list**, beside the props and events, so a
-component's whole API is one list. The default slot is named `_`; a named one
-is populated at the call site with `slot name { … }` and renders where its name
-is written, as an ordinary node. A slot's type is the tree it accepts, wrapped
-in whatever bounds the count: bare is any number, `tree.one<T>` exactly one,
-`option<T>` none or one. `component` is no longer a type — it was the widest
-children type before slots and trees, and the keyword now only introduces a
-declaration.
+**A slot is an ordinary parameter whose type is a component type**, declared in
+the parameter list beside the props and events, so a component's whole API is
+one list. `slot` is not a keyword. The type carries the whole of a slot's
+contract: `component(Row)`'s parenthesised list is what the slot is *invoked*
+with at its insertion point, and the trailing type is the tree it *accepts*,
+wrapped in whatever bounds the count — bare is any number, `tree.one<T>`
+exactly one, `option<T>` none or one.
+
+The parenthesised list reuses `FuncTypeParamList`, so a parameter there may be
+named (`cell component(row Row)`) — and **the name is contract, not
+documentation**, because a slot's structural match is by name (Jonathan's call:
+a call already assigns by name, `add(b = 2, a = 1)`). So `ir.SlotDecl.Params`
+is `[]*Param` and not `[]*Type`, the shape `ir.FuncSig.Params` already has;
+dropping the name would leave #206 nothing to match on. Renaming one is a
+breaking change to every caller. Note that `FuncTypeParamList` has no `@` form,
+so a slot's contract cannot mention events — true today as a consequence of the
+reuse rather than as a decision anyone made.
+
+`...component` is the **rest slot**: the one a caller fills with the children
+written bare. Its name is the author's (`content`, `shapes`, `panes`,
+`children` where nothing better is true), and it is inserted by that name like
+any other slot. A component declares at most one; one that declares none
+accepts no children, which is where `component X does not accept children`
+comes from. It names no invocation parameters — bare children are written once,
+with nothing to bind them to — and supplying both a population by name and bare
+children populates it twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot()`
+the lookup; the old answer was the name `_`, which is why nothing keys on a
+slot's name any more.
+
+**`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
+things — `...` says *which* children arrive here (the unnamed ones), the
+wrapper says *how many* — so they are orthogonal rather than two spellings of
+one bound. `scroll`, `tooltip` and fyne's `Wrapper` are all of that shape, and
+`Wrapper`'s codegen assigns the single child to a field, so the combination is
+load-bearing rather than tolerated. #193 briefly specified it as an error on
+the grounds that both were count bounds; that would have left the contract
+unspellable and is retracted there.
+
+**A population is a `ComponentDecl` read by position.** At the root of a
+component definition's body it is a nested declaration (pass1's
+`collectComponentDecls`); directly in a child node's block it populates one of
+that node's slots (`checkSlotPopulations`, which peels it off before the
+children are checked). Anywhere else — inside an `if`/`for`, or in a function
+body — is an error, which is what a `ComponentDecl` reaching `checkStmt` now
+means. Its parameter list is a `ParamList` read in *bind* mode: the compiler
+holds the slot's signature, an entry names a position, and a written type is
+optional and measured against it by `parambind.go`'s `bindParamType`.
+
+A component type parses wherever a type is written, and `...` wherever a type
+prefix could go; `resolveType` refuses both outside a slot. That is deliberate
+— a permissive production plus a specific diagnostic, the same trade `ArgList`
+makes.
 
 **`#[intrinsic]` on a component is a platform primitive.** On a function the
 mark names a signature in `ir.Intrinsics` that every language backend must

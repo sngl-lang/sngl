@@ -1,8 +1,9 @@
 // What a named slot rejects.
 //
-// The declaration is in the parameter list, so `slot` appearing anywhere else
-// is either a population inside a call to the declaring component, or a
-// declaration written in the wrong place. Nothing else.
+// The declaration is in the parameter list. What a call site writes is a
+// population naming one of the callee's slots, matched by name and bound by
+// position -- so a name it does not declare, a second population of one slot,
+// and a count that does not match are each refused where they are written.
 
 import . "sngl:ui"
 
@@ -10,7 +11,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, slot cell(Row)) {
+component table(rows list<Row>, cell component(Row)) {
     vbox {
         for var r = rows {
             cell(r)
@@ -27,7 +28,7 @@ component table(rows list<Row>, slot cell(Row)) {
 // the same name is a collision the parameter list on its own cannot see. Left
 // unreported, the call in a handler became a slot insertion nothing renders and
 // codegen panicked on it.
-component collidesWithFunc(slot ping, slot _) {
+component collidesWithFunc(ping component, children ...component) {
     func ping() {} // ERROR(check) "already declared as a slot"
     vbox {
         ping {
@@ -37,21 +38,16 @@ component collidesWithFunc(slot ping, slot _) {
 }
 
 component main {
-    // A declaration written outside the parameter list.
-    slot stray { // ERROR(check) "populated only inside a call to it"
-        text(value="x")
-    }
-
     table(rows=[]) {
-        slot cell(row) {
+        component cell(row) {
             text(value=row.title)
         }
         // Two populations of one slot: the second has nowhere to go.
-        slot cell(row) { // ERROR(check) "is already populated"
+        component cell(row) { // ERROR(check) "is already populated"
             text(value=row.title)
         }
         // A name the callee does not declare.
-        slot nope { // ERROR(check) "has no slot"
+        component nope { // ERROR(check) "has no slot"
             text(value="x")
         }
     }
@@ -59,7 +55,7 @@ component main {
     table(rows=[]) {
         // A population binds names to the insertion's arguments, so the
         // count has to match what the slot declares.
-        slot cell(row, extra) { // ERROR(check) "binds 2 parameter(s), but declares 1"
+        component cell(row, extra) { // ERROR(check) "binds 2 parameter(s), but declares 1"
             text(value=row.title)
         }
     }

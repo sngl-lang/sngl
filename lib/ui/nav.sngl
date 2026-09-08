@@ -31,7 +31,7 @@ component tabs(
     selected int,
     variant string,
     @change SelectEvent,
-    slot _,
+    panels ...component,
 ) {}
 
 component _example_tabs {
@@ -89,7 +89,7 @@ component toolbar(
     style Style,
     items list<string>,
     @select MenuEvent,
-    slot _,
+    controls ...component,
 ) {}
 
 component _example_toolbar {

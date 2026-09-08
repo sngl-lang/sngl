@@ -11,9 +11,9 @@ component Button(label = "Click") {
 (source_file
   (component_declaration
     name: (identifier)
-    (component_param
+    (func_param
       name: (identifier)
-      (string_literal))
+      default: (string_literal))
     (statement_block
       (visual_node
         component: (identifier)
@@ -166,12 +166,16 @@ component App {
                 field: (identifier)))))))))
 
 ================
-A slot population binds a name and a type
+A slot declaration and its population
 ================
+
+component grid(cell component(Row), children ...component) {
+    children
+}
 
 component App {
     grid {
-        slot cell(row Row) {
+        component cell(row) {
             text(value = row.title)
         }
     }
@@ -182,17 +186,30 @@ component App {
 (source_file
   (component_declaration
     name: (identifier)
+    (func_param
+      name: (identifier)
+      type: (type_identifier
+        (component_type
+          (type_identifier
+            (identifier)))))
+    (func_param
+      name: (identifier)
+      type: (type_identifier
+        (variadic_type
+          (type_identifier
+            (component_type)))))
+    (statement_block
+      (identifier)))
+  (component_declaration
+    name: (identifier)
     (statement_block
       (visual_node
         component: (identifier)
         (statement_block
-          (identifier)
-          (visual_node
-            component: (identifier)
-            (typed_arg
-              name: (identifier)
-              type: (type_identifier
-                (identifier)))
+          (component_declaration
+            name: (identifier)
+            (func_param
+              name: (identifier))
             (statement_block
               (visual_node
                 component: (identifier)

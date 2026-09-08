@@ -2,7 +2,6 @@ package checker
 
 import (
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -49,24 +48,4 @@ func (c *checker) bindParams(pl ast.ParamList, want *ir.Type, owner, supplier st
 
 func (c *checker) rejectBindDefault(pos ast.Pos, what, supplier string) {
 	c.error(pos, "%s takes no default value: %s supplies what the name is bound to", what, supplier)
-}
-
-// slotBindArg is one entry of a population's list. The list is the ArgList a
-// call passes its arguments with, so it admits the named, binding and event
-// forms too, and none of those binds a name.
-func (c *checker) slotBindArg(slot string, entry ast.ArgOrEventHandler) (ast.Arg, bool) {
-	switch v := entry.(type) {
-	case ast.EventHandler:
-		c.error(v.Pos, "slot %q: a population binds names, and @%s is an event handler", slot, v.Name)
-	case ast.Arg:
-		switch {
-		case strings.HasPrefix(v.Name, ":"):
-			c.error(v.NamePos, "slot %q: a population binds names, and %s is a prop binding", slot, v.Name)
-		case v.Name != "":
-			c.error(v.NamePos, "slot %q: a population binds names, and %s= is a named argument", slot, v.Name)
-		default:
-			return v, true
-		}
-	}
-	return ast.Arg{}, false
 }

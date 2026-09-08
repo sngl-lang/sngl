@@ -46,7 +46,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		}
 		declared[info.CType] = true
 		fmt.Fprintf(&b, "\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
-		taken := map[string]bool{stylePropName: true}
+		taken := map[string]bool{stylePropName: true, restSlotName: true}
 		for _, p := range info.Props {
 			// A construct-only property is not declared: the widget exists
 			// before any prop is assigned, and GObject refuses the write
@@ -82,10 +82,15 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// GIR does not say which widgets accept children, and declaring a
 		// bound would refuse either every container or every leaf. The
 		// emitter knows which parent types have a child-append API.
-		b.WriteString("    slot _,\n) {}\n")
+		fmt.Fprintf(&b, "    %s ...component,\n) {}\n", restSlotName)
 	}
 	return []byte(b.String())
 }
+
+// restSlotName is the rest slot every generated widget declares. Reserved
+// against the property names too: a GTK property spelling the same word would
+// otherwise collide with it in the one parameter list.
+const restSlotName = "children"
 
 // intrinsicPrefix namespaces gtk4's component intrinsic ids. The suffix is the
 // widget's C type, so the id both dispatches the emitter and names the GIR
