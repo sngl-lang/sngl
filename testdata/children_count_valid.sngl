@@ -3,16 +3,16 @@
 import . "sngl:ui"
 import tr "sngl:tree"
 
-component RequiresOne(slot _ tr.one) {
-    vbox { slot }
+component RequiresOne(content ...component tr.one) {
+    vbox { content }
 }
 
-component OptionalOne(slot _ option<tr.default>) {
-    vbox { slot }
+component OptionalOne(content ...component option<tr.default>) {
+    vbox { content }
 }
 
-component AnyChildren(slot _) {
-    vbox { slot }
+component AnyChildren(children ...component) {
+    vbox { children }
 }
 
 component main {

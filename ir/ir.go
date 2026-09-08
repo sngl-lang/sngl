@@ -565,6 +565,9 @@ type Component struct {
 // RestSlot is the slot the children a caller writes bare go to, or nil for a
 // component that accepts none.
 func (c *Component) RestSlot() *SlotDecl {
+	if c == nil {
+		return nil
+	}
 	for _, s := range c.Slots {
 		if s.Rest {
 			return s

@@ -33,4 +33,4 @@ import . "sngl:internal/marks"
 // A package that declares its own `output` component gets that
 // component, and has no build directive.
 #[builtin("output")]
-component output(slot _) {}
+component output(targets ...component) {}

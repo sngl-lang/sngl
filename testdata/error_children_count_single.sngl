@@ -4,9 +4,9 @@ import tr "sngl:tree"
 
 // Component declares exactly one child (bare type T).
 // Zero children: error.
-component RequiresOne(slot _ tr.one) {
+component RequiresOne(content ...component tr.one) {
     vbox {
-        slot
+        content
     }
 }
 

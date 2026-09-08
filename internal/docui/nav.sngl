@@ -14,19 +14,19 @@ component NavItem(href = "", text = "", active = false) {
     }
 }
 
-component NavGroup(title = "", href = "", slot _) {
+component NavGroup(title = "", href = "", children ...component) {
     if PLATFORM == html.platform {
         html.li {
             html.a(href=href, class="nav-group-title", innerText=title)
             html.ul {
-                slot
+                children
             }
         }
     } else {
         vbox(style={gap=2, paddingTop=8}) {
             text(value=title, style={fontWeight="bold", fontSize=14, padding="4px 8px", color="#666"})
             vbox(style={gap=1, paddingLeft=8}) {
-                slot
+                children
             }
         }
     }

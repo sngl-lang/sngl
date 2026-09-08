@@ -9,7 +9,7 @@ import ui "sngl:ui"
 #[builtin("errorBoundary")]
 component errorBoundary(
     @error ui.ErrorEvent,
-    slot _,
+    content ...component,
 ) {}
 
 // A top-level window — the entry point of a UI. `href` is the route the
@@ -27,7 +27,7 @@ component window(
     href string,
     favicon string,
     @error ui.ErrorEvent,
-    slot _,
+    content ...component,
 ) {}
 
 // Receiver type for raising runtime errors caught by an

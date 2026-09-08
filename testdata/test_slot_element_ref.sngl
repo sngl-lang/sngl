@@ -23,17 +23,17 @@ func testUnfilledSlotRendersItsFallback(t Test, c bare) {
     t.assert(c.fallback.value == "nothing supplied")
 }
 
-component frame(slot _, slot header) {
+component frame(children ...component, header component) {
     vbox {
         header {}
         text #own(value="frame's own")
-        slot
+        children
     }
 }
 
-component bare(slot _) {
+component bare(children ...component) {
     vbox {
-        slot {
+        children {
             text #fallback(value="nothing supplied")
         }
     }
@@ -44,7 +44,7 @@ component main {
 
     frame {
         text #body(value="in the default slot")
-        slot header {
+        component header {
             text #head(value=title)
         }
     }

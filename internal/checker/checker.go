@@ -2423,7 +2423,13 @@ func (c *checker) claimComponentAPI(decl *ast.ComponentDecl, comp *ir.Component)
 	for _, p := range decl.Props.Props {
 		switch pd := p.(type) {
 		case ast.Param:
-			claim(pd.Name, "prop", pd.Pos)
+			// A slot is a Param whose type is a component type, and the
+			// collision message names what the author wrote.
+			kind := "prop"
+			if _, _, isSlot := slotParamType(pd.Type); isSlot {
+				kind = "slot"
+			}
+			claim(pd.Name, kind, pd.Pos)
 		case ast.EventDecl:
 			// The `@` is declaration syntax, not part of the name, so an event
 			// competes with everything else on the bare identifier.
@@ -2516,17 +2522,6 @@ func slotParamType(t ast.TypeExpr) (ct *ast.ComponentType, rest, ok bool) {
 	return ct, false, isComp
 }
 
-// cardBound names the count bound a card came from, the way it is written.
-func cardBound(card ir.SlotCard) string {
-	switch card {
-	case ir.SlotOne:
-		return "tree.one"
-	case ir.SlotOptional:
-		return "option"
-	}
-	return ""
-}
-
 // buildSlotDecl resolves one slot declaration: a parameter whose type is a
 // component type.
 func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) *ir.SlotDecl {
@@ -2542,10 +2537,6 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	}
 	if !rest {
 		return slot
-	}
-	if bound := cardBound(slot.Card); bound != "" {
-		c.error(pd.Pos, "slot %q: `...` and %s are both count bounds, and a type carries one", pd.Name, bound)
-		slot.Card = ir.SlotAny
 	}
 	if len(slot.Params) > 0 {
 		// Its content is written as ordinary children, once, so there is no

@@ -10,7 +10,7 @@ component vbox(
     scroll bool,
     refreshing bool,
     @refresh RefreshEvent,
-    slot _,
+    children ...component,
 ) {}
 
 component _example_vbox {
@@ -28,7 +28,7 @@ component _example_vbox {
 component hbox(
     style Style,
     scroll bool,
-    slot _,
+    children ...component,
 ) {}
 
 component _example_hbox {
@@ -46,7 +46,7 @@ component _example_hbox {
 // placement.
 component stack(
     style Style,
-    slot _,
+    layers ...component,
 ) {}
 
 component _example_stack {
@@ -70,7 +70,7 @@ component scroll(
     showScrollbar string,
     @scroll ScrollEvent,
     @scrollEnd ScrollEvent,
-    slot _ tr.one,
+    content ...component tr.one,
 ) {}
 
 component _example_scroll {
@@ -137,7 +137,7 @@ component splitview(
     maxPosition float,
     resizable bool,
     @resize ResizeEvent,
-    slot _,
+    panes ...component,
 ) {}
 
 component _example_splitview {
@@ -160,7 +160,7 @@ component card(
     variant string,
     clickable bool,
     @click ClickEvent,
-    slot _,
+    content ...component,
 ) {}
 
 component _example_card {

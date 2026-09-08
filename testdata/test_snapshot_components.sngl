@@ -13,10 +13,10 @@ component holder {
 }
 
 // What a call site supplies is part of what renders, at the insertion point.
-component frame(slot _, slot header) {
+component frame(children ...component, header component) {
     vbox {
         header {}
-        slot
+        children
     }
 }
 
@@ -28,7 +28,7 @@ component page {
         holder()
         frame {
             text(value="body text")
-            slot header {
+            component header {
                 text(value=title)
             }
         }

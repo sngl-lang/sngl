@@ -3,7 +3,7 @@
 import . "sngl:ui"
 import tr "sngl:tree"
 
-component frame(slot body tr.one, slot badge option<tr.default>) {
+component frame(body component tr.one, badge component option<tr.default>) {
     vbox {
         body {}
         badge {}
@@ -13,9 +13,9 @@ component frame(slot body tr.one, slot badge option<tr.default>) {
 // The default slot's count binds a bodyless call too: that path builds its
 // NodeInst without going through the visual-node one, where a children count is
 // what gets read.
-component one(slot _ tr.one) {
+component one(content ...component tr.one) {
     vbox {
-        slot
+        content
     }
 }
 
@@ -27,11 +27,11 @@ component main {
     frame() // ERROR(check) "requires slot \"body\" to be populated"
 
     frame() {
-        slot body { // ERROR(check) "takes exactly one node, got 2"
+        component body { // ERROR(check) "takes exactly one node, got 2"
             text(value="one")
             text(value="two")
         }
-        slot badge { // ERROR(check) "takes at most one node, got 2"
+        component badge { // ERROR(check) "takes at most one node, got 2"
             text(value="a")
             text(value="b")
         }

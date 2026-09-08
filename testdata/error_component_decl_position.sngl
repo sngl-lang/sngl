@@ -1,0 +1,39 @@
+// Position says what a `component` written in a body means, and two positions
+// mean nothing.
+//
+// At the root of a component definition it is a nested declaration; directly
+// in a child node's block it populates one of that node's slots. Inside an
+// `if` or `for` there is no node whose slots it could name, and in a function
+// body there is no view at all.
+
+import . "sngl:ui"
+
+component holder(children ...component) {
+    vbox {
+        children
+    }
+}
+
+component main {
+    var on = true
+
+    // The legal position: the root of a component definition's body.
+    component ok() {
+        text(value="ok")
+    }
+
+    func build() {
+        component inFunc() { // ERROR(check) "a component is declared at the root of a file or of a component body"
+            text(value="x")
+        }
+    }
+
+    vbox {
+        ok()
+        if on {
+            component inIf() { // ERROR(check) "a component is declared at the root of a file or of a component body"
+                text(value="x")
+            }
+        }
+    }
+}

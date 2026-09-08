@@ -9,7 +9,7 @@
 import . "sngl:ui"
 import . "sngl:ui/draw"
 
-component framed(slot header) {
+component framed(header component) {
     vbox {
         header()
     }
@@ -17,7 +17,7 @@ component framed(slot header) {
 
 component gallery {
     framed {
-        slot header {
+        component header {
             text(value="titled")
         }
     }

@@ -12,7 +12,7 @@ component modal(
     closable bool,
     size string,
     @close DismissEvent,
-    slot _,
+    content ...component,
 ) {}
 
 component _example_modal {
@@ -36,7 +36,7 @@ component drawer(
     side string,
     size string,
     @close DismissEvent,
-    slot _,
+    content ...component,
 ) {}
 
 component _example_drawer {
@@ -61,7 +61,7 @@ component tooltip(
     text string,
     position string,
     delay int,
-    slot _ tr.one,
+    trigger ...component tr.one,
 ) {}
 
 component _example_tooltip {
@@ -83,7 +83,7 @@ component popover(
     position string,
     openOn string,
     @close DismissEvent,
-    slot _,
+    content ...component,
 ) {}
 
 component _example_popover {

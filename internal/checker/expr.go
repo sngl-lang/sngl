@@ -5021,6 +5021,9 @@ func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (
 		}
 		content[cd.Name] = c.checkSlotContent(cd, decl, comp)
 	}
+	if comp == nil {
+		return nil, rest
+	}
 	if r := comp.RestSlot(); r != nil && content[r.Name] != nil && len(rest.Stmts) > 0 {
 		c.error(vn.Pos, "slot %q is populated by name and by the children written bare on component %s", r.Name, comp.Name)
 	}

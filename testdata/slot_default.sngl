@@ -7,19 +7,19 @@
 
 import . "sngl:ui"
 
-component card(caption string, slot _) {
+component card(caption string, children ...component) {
     vbox {
         text(value=caption)
-        slot
+        children
     }
 }
 
-component panel(slot _, slot header) {
+component panel(children ...component, header component) {
     vbox {
         header {
             text(value="(untitled)")
         }
-        slot
+        children
     }
 }
 
@@ -28,7 +28,7 @@ component main {
         text(value="child")
     }
     panel() {
-        slot header {
+        component header {
             text(value="Head")
         }
         text(value="body")

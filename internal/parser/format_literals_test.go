@@ -102,9 +102,6 @@ func commentTexts(doc *ast.Document) []string {
 			case ast.EventDecl:
 				take(v.Leading...)
 				take(v.Trailing)
-			case ast.SlotDecl:
-				take(v.Leading...)
-				take(v.Trailing)
 			}
 		}
 	}

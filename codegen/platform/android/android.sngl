@@ -81,14 +81,14 @@ struct Options {
 component Column(
     modifier ui.Style,
     chain list<string>,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:Box")]
 component Box(
     modifier ui.Style,
     chain list<string>,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:Row")]
@@ -96,7 +96,7 @@ component Row(
     modifier ui.Style,
     chain list<string>,
     args list<string>,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:Spacer")]
@@ -134,25 +134,25 @@ component Button(
     modifier ui.Style,
     colors ui.Style,
     shape ui.Style,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:Badge")]
 component Badge(
     modifier ui.Style,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:Card")]
 component Card(
     modifier ui.Style,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:Checkbox")]
@@ -186,32 +186,32 @@ component OutlinedTextField(
 #[intrinsic("android:Dialog")]
 component Dialog(
     onDismissRequest func(),
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("android:Surface")]
 component Surface(
     args list<string>,
-    slot _,
+    children ...component,
 ) {}
 
 // --- Core Layout ---
 
 component ui.vbox[platform] {
     Column(modifier={...style}) {
-        slot
+        children
     }
 }
 
 component ui.hbox[platform] {
     Row(modifier={...style}) {
-        slot
+        children
     }
 }
 
 component ui.stack[platform] {
     Box(modifier={...style}) {
-        slot
+        layers
     }
 }
 
@@ -224,7 +224,7 @@ component ui.scroll[platform] {
         modifier={...style},
         chain=["verticalScroll(rememberScrollState())"],
     ) {
-        slot
+        content
     }
 }
 
@@ -359,7 +359,7 @@ component ui.divider[platform] {
 
 component ui.card[platform] {
     Card(modifier={...style}) {
-        slot
+        content
     }
 }
 
@@ -377,7 +377,7 @@ component ui.link[platform] {
 
 component ui.tabs[platform] {
     TabRow(selectedTabIndex=selected) {
-        slot
+        panels
     }
 }
 
@@ -389,7 +389,7 @@ component ui.modal[platform] {
                     if title != "" {
                         Text(text=title) {}
                     }
-                    slot
+                    content
                 }
             }
         }
@@ -398,25 +398,25 @@ component ui.modal[platform] {
 
 component ui.drawer[platform] {
     Column(modifier={...style}) {
-        slot
+        content
     }
 }
 
 component ui.tooltip[platform] {
     Column(modifier={...style}) {
-        slot
+        trigger
     }
 }
 
 component ui.popover[platform] {
     Column(modifier={...style}) {
-        slot
+        content
     }
 }
 
 component ui.splitview[platform] {
     Column(modifier={...style}) {
-        slot
+        panes
     }
 }
 
@@ -438,7 +438,7 @@ component ui.menubar[platform] {
 
 component ui.toolbar[platform] {
     Column(modifier={...style}) {
-        slot
+        controls
     }
 }
 
