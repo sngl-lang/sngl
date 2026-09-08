@@ -2736,10 +2736,7 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		c.bindWindow(vn.Pos, w)
 		return
 	}
-	switch kind, comp := c.builtinNode(name); kind {
-	case ir.BuiltinTimer:
-		t := c.buildTimer(vn, comp)
-		c.pkg.Timers = append(c.pkg.Timers, t)
+	switch kind, _ := c.builtinNode(name); kind {
 	case ir.BuiltinOutput:
 		c.registerOutput(vn)
 	default:
@@ -3373,35 +3370,6 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 	}
 	eb.Children = c.checkBlockIR(&vn.Block)
 	return eb
-}
-
-func (c *checker) buildTimer(vn *ast.VisualNode, comp *ir.Component) *ir.Timer {
-	t := &ir.Timer{
-		AST:     vn,
-		Handler: &ir.Func{},
-	}
-	// Checked against the declaration, as a window's node is and for the same
-	// reason: the builder reads the two props it knows by name, so anything
-	// else was neither stored nor reported -- `timer(every=1s)` set no
-	// interval and compiled clean.
-	c.validateVisualNodeProps(vn, comp)
-	named := resolvePositionalArgs(vn.Args, []string{"interval", "enabled"})
-	if e, ok := named["interval"]; ok {
-		t.Interval = c.checkExpr(e)
-	}
-	if e, ok := named["enabled"]; ok {
-		t.Enabled = c.checkExpr(e)
-	}
-	for _, a := range vn.Args.Args {
-		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "tick" {
-			t.Handler = &ir.Func{
-				Params: c.buildParams(eh.Params),
-			}
-			// Body is checked later in checkTimerBody.
-			vn.Block = eh.Body
-		}
-	}
-	return t
 }
 
 func literalString(e ast.Expr) string {
