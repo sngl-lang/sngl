@@ -230,7 +230,7 @@ by convention, as `lib/ui/doc.sngl` does.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/app` against both `lib/ui` and `sngl:internal/marks` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
-A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes are spread across tiers — `window` and `errorBoundary` in `app`, `timer` in `time`, `slot` in `ui`.
+A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in — the builtin visual nodes are spread across tiers — `window` and `errorBoundary` in `app`, `effect`, `context` and `output` in `builtin`.
 
 `internal/checker/stdlib.go` parses the library at startup. User declarations shadow stdlib ones. Platform-specific component implementations live in that platform's own package; its source imports the stdlib under an alias and overrides through it (`import ui "sngl:ui"` + `component ui.vbox`), and the prefix is that alias, not a fixed name. The override names the target it implements as the package's own identity const, unqualified — `component ui.vbox[platform]`, not `[android.platform]`: inside the package that declares it, saying the package name would say it twice. A program outside the package writes the qualified form, `[html.platform]`, because that is how the const reaches it.
 
@@ -253,9 +253,9 @@ refuses a mark on one that does not.
 a `#[builtin("kind")]` mark on its `lib/` declaration, never by matching its
 name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
-node kinds (`window`, `timer`, `slot`, `errorBoundary`) mark a component, and the
-checker dispatches a visual node to the matching IR construct off the mark. The
-mark is declared in `lib/internal/marks` and implemented in
+node kinds (`window`, `errorBoundary`, `effect`, `context`, `output`) mark a
+component, and the checker dispatches a visual node to the matching IR construct
+off the mark. The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
