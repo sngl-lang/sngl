@@ -3169,6 +3169,16 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 	if sc := slots[eb.FailedSlot]; sc != nil {
 		eb.Failed = sc.Body
 	}
+	// The content may also be populated by name, like any rest slot. Read it
+	// here rather than only reading what was left bare: checkSlotPopulations
+	// peels a named population out of the block, so a boundary written that
+	// way checked clean and rendered nothing at all.
+	var named []ir.Stmt
+	if r := comp.RestSlot(); r != nil {
+		if sc := slots[r.Name]; sc != nil {
+			named = sc.Body
+		}
+	}
 	switch {
 	case eb.Handler == nil && len(eb.Failed) == 0:
 		// Either half is enough, and neither is not: a boundary that does not
@@ -3185,6 +3195,10 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		eb.Handler = &ir.EventHandler{Name: "error", Func: &ir.Func{}}
 	}
 	eb.Children = c.checkBlockIR(&rest)
+	if len(named) > 0 {
+		// Both is the double population checkSlotPopulations already reported.
+		eb.Children = append(eb.Children, named...)
+	}
 	// A boundary belongs to no family and hosts whatever it was handed --
 	// `component boundary<T>(content ...component T, failed component T) T`.
 	// Nothing at the call site names T, so the content binds it: the first

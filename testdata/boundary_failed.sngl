@@ -60,5 +60,26 @@ func testEachInstanceCatchesAlone(t Test, c pair) {
     t.snapshot("first-only")
 }
 
+// The content slot may be populated by name like any rest slot, and the
+// fallback beside it. Both peel off before the block is read, so a boundary
+// written this way used to check clean and render nothing at all.
+component byName node {
+    boundary(@error(e) {}) {
+        component content {
+            button #go(text="Go", @click { error.raise("boom", "") })
+        }
+
+        component failed {
+            text(value="named fallback")
+        }
+    }
+}
+
+func testTheContentSlotMayBePopulatedByName(t Test, c byName) {
+    t.snapshot("named-intact")
+    c.go.click()
+    t.snapshot("named-caught")
+}
+
 window {
 }
