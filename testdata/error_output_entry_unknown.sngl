@@ -1,11 +1,12 @@
-// A misspelled entry is a window nobody declared, reported where it is
-// written. That is the reason it is an element reference rather than a string:
-// a string that matched nothing would say nothing.
+// A misspelled entry is a name nobody declared, reported where it is written.
+// That is the reason it is an element reference rather than a string: `entry`
+// is an ordinary prop, so the expression check resolves it like any other
+// name, and a string that matched nothing would have said nothing.
 
 import app "sngl:app"
 import ui "sngl:ui"
 
-output(entry=hoem) // ERROR(check) "output entry: no window is declared with the id \"hoem\""
+output(entry=hoem) // ERROR(check) "undefined: hoem"
 
 app.window #home(title="Home") {
     ui.text(value="hi")

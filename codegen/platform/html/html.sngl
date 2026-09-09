@@ -17,30 +17,32 @@ import time "sngl:time"
 import js "sngl:language/js"
 import . "sngl:macro"
 import . "sngl:internal/marks"
+import build "sngl:build"
 
-#[options]
-struct Options {
+// The `html` node of a build directive: `output { js { html() } }`. Its props
+// are the build options this platform accepts.
+component html(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
-    preview bool
+    preview bool,
     // Emit a test harness instead of the normal app bundle.
-    test bool
+    test bool,
     // Relative path to a CSS file included in every page.
-    stylesheet string
+    stylesheet string,
     // Absolute path to the project root. Set automatically by `sngl generate`; used to resolve relative asset paths.
-    projectDir string
+    projectDir string,
     // Route mode: target Go package name (default "ui", or "main" when main=true).
-    package string
+    package string,
     // Route mode: emit a main() that calls ListenAndServe.
-    main bool
+    main bool,
     // Route mode: HTTP framework (default "net/http").
-    framework string
+    framework string,
     // Route mode: host:port for `sngl run` to listen on.
-    listen string
+    listen string,
     // Minify emitted HTML and inline JS via esbuild.
-    minify bool
+    minify bool,
     // Disable content-hash filenames for emitted assets; produce stable paths.
-    noCacheBust bool
-}
+    noCacheBust bool,
+) build.platform {}
 
 // The element every tag resolves to. The web's element set is open — a new
 // standard adds to it, and a custom element is a tag nobody declared — so one

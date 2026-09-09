@@ -1,55 +1,55 @@
 package checker
 
 import (
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// entryOption is the build directive's name for the window a build opens at.
-// It is a global option and not a per-target one: which window is the program
-// is a property of the program.
+// entryOption is the build directive's prop naming the window a build opens
+// at. It is declared on `output` itself and not on a language or a platform:
+// which window is the program is a property of the program.
 const entryOption = "entry"
 
-// readEntryOption records `output(entry = home)`. The value is an element
-// reference and not a string, so what a program writes there is a name the
-// compiler resolves -- see resolveEntryWindow, which does the resolving once
-// the windows exist.
-func (c *checker) readEntryOption(vn *ast.VisualNode) {
-	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name != entryOption || arg.Value == nil {
-			continue
-		}
-		id, isIdent := arg.Value.(*ast.IdentExpr)
-		if !isIdent {
-			c.error(vn.Pos, "output %s names a window by its #id, not a value", entryOption)
-			continue
-		}
-		c.entryName, c.entryPos = id.Name, vn.Pos
-	}
-}
-
-// resolveEntryWindow binds what `entry` named to a window, after the bodies
-// that declare them have been checked.
+// resolveEntryWindow binds what `output(entry = home)` named to a window.
 //
 // This is the fact codegen refused to guess: it scopes a build to the single
 // window a program has and, past one, to nothing at all, deliberately, because
-// nothing said which. Naming it is what lets that stop.
-func (c *checker) resolveEntryWindow() {
-	if c.entryName == "" {
+// nothing said which.
+//
+// The value is an element reference and not a string, so a name nothing
+// declares is an unresolved name where it is written, reported by the
+// expression check that failed to resolve it. What is left to report here is a
+// name that *did* resolve, to something other than a window.
+func (c *checker) resolveEntryWindow(root *ir.NodeInst) {
+	if root == nil {
 		return
 	}
-	for _, w := range c.packageWindows() {
-		if w.Name == c.entryName {
+	for _, p := range root.Props {
+		if p.Name != entryOption {
+			continue
+		}
+		id, ok := p.Value.(*ir.Ident)
+		if !ok {
+			c.error(p.NamePos, "output %s names a window by its #id, not a value", entryOption)
+			return
+		}
+		if w, isWindow := id.Sym.(*ir.Window); isWindow {
 			c.pkg.EntryWindow = w.Name
 			return
 		}
-	}
-	if _, ok := c.symtab.Root.Lookup(c.entryName); ok {
-		c.error(c.entryPos, "output %s names a window, and %s is not one", entryOption, c.entryName)
+		// A window a component renders is bound in that component's scope
+		// rather than the root one, so the reference resolves to nothing there
+		// and the name is what finds it.
+		for _, w := range c.packageWindows() {
+			if w.Name == id.Name {
+				c.pkg.EntryWindow = w.Name
+				return
+			}
+		}
+		if id.Sym != nil {
+			c.error(p.NamePos, "output %s names a window, and %s is not one", entryOption, id.Name)
+		}
 		return
 	}
-	c.error(c.entryPos, "output %s: no window is declared with the id %q", entryOption, c.entryName)
 }
 
 // packageWindows is every window the program declares: those at the root of a

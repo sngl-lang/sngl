@@ -10,7 +10,7 @@ sngl check pkg
 stdout 'ok'
 
 ! sngl check twice
-stderr 'twice[/\\]b.sngl:3:1: output is already declared for this package at .*twice[/\\]a.sngl:4:1'
+stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*twice[/\\]a.sngl:4:1'
 
 -- pkg/app.sngl --
 import . "sngl:ui"
@@ -24,15 +24,10 @@ app.window {
     main
 }
 -- pkg/targets.sngl --
-import app "sngl:app"
-
 output {
     go {
         bubbletea()
     }
-}
-
-app.window {
 }
 -- twice/a.sngl --
 import . "sngl:ui"
@@ -52,9 +47,8 @@ app.window {
     main
 }
 -- twice/b.sngl --
-import app "sngl:app"
-
-output(lang="go", platform="bubbletea")
-
-app.window {
+output {
+    go {
+        bubbletea()
+    }
 }

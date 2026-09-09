@@ -11,16 +11,17 @@ import time "sngl:time"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import tree "sngl:tree"
+import build "sngl:build"
 
-#[options]
-struct Options {
+// The `bubbletea` node of a build directive: `output { go { bubbletea() } }`.
+component bubbletea(
     // Go package name for the generated files.
-    package string
+    package string,
     // Emit a standalone main() or a library-style module.
-    main bool
+    main bool,
     // Emit companion test files (default: true; set "false" to skip).
-    tests bool
-}
+    tests bool,
+) build.platform {}
 
 // --- Blueprint vocabulary ---
 //

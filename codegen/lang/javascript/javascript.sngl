@@ -1,16 +1,19 @@
 // JavaScript language package. Declarations here are visible at every output
 // target that selects --lang js.
 //
-// The Options schema is empty and declared anyway. An empty schema is a fact —
-// this target takes no build options — and `output(...)` is checked against it,
-// so a misspelled or misplaced option is reported here rather than accepted and
-// ignored. A target with no package at all could not say even that.
+// The build node is declared with no props and that is deliberate. An empty
+// prop list is a fact — this target takes no build options — so a misspelled or
+// misplaced option is reported here rather than accepted and ignored. A target
+// with no package at all could not say even that.
 
 import . "sngl:macro"
 import ir "sngl:internal/ir"
+import build "sngl:build"
 
-#[options]
-struct Options {}
+// The `js` node of a build directive: `output { js { html() } }`. It carries
+// no props, which is a fact rather than an omission -- this target takes no
+// build options -- and a misplaced option is reported against it.
+component js(platforms ...component build.platform) build.language {}
 
 // Names the JavaScript identifier a declaration *is*, rather than one it
 // corresponds to. The JS counterpart of `go.native`, and the same thin spelling

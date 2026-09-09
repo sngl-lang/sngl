@@ -1,0 +1,17 @@
+// Constant means what `const(...)` means: a call the compiler can evaluate is
+// allowed, and one it cannot is not.
+import . "sngl:ui"
+
+func label() string {
+    return "app"
+}
+
+output {
+    go {
+        bubbletea(package=label()) // ERROR(check) "must be constant"
+    }
+}
+
+component main ui.ui {
+    text(value="hi")
+}

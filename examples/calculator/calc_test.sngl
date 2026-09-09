@@ -2,54 +2,54 @@
 // checking about a calculator is that pressing keys in an order produces the
 // number one would produce, and that is `calc/`'s business alone.
 
-import . "sngl:test"
+import test "sngl:test"
 import "./calc"
 import "./keypad"
 import "./readout"
 
 // --- The state machine ---
 
-func testDigitsAccumulate(t Test) {
+func testDigitsAccumulate(t test.Test) {
     var s = calc.Calc{}.digit("1").digit("2").digit("3")
     t.assert(s.entry == "123")
 }
 
-func testLeadingZeroIsReplaced(t Test) {
+func testLeadingZeroIsReplaced(t test.Test) {
     t.assert(calc.Calc{}.entry == "0")
     t.assert(calc.Calc{}.digit("7").entry == "7")
 }
 
-func testPointOnceOnly(t Test) {
+func testPointOnceOnly(t test.Test) {
     t.assert(calc.Calc{}.digit("1").point().digit("5").point().entry == "1.5")
 }
 
-func testPointWithNothingTypedStartsAtZero(t Test) {
+func testPointWithNothingTypedStartsAtZero(t test.Test) {
     t.assert(calc.Calc{}.point().entry == "0.")
 }
 
-func testAddition(t Test) {
+func testAddition(t test.Test) {
     t.assert(calc.Calc{}.digit("2").operate(calc.Op.add).digit("3").equals().entry == "5")
 }
 
 // A second operator settles the first, which is what makes a running total
 // visible before `=` is ever pressed.
-func testChainedOperatorsSettleAsYouGo(t Test) {
+func testChainedOperatorsSettleAsYouGo(t test.Test) {
     var s = calc.Calc{}.digit("2").operate(calc.Op.add).digit("3").operate(calc.Op.add)
     t.assert(s.entry == "5")
     t.assert(s.digit("4").equals().entry == "9")
 }
 
-func testDivisionRounds(t Test) {
+func testDivisionRounds(t test.Test) {
     t.assert(calc.Calc{}.digit("1").operate(calc.Op.div).digit("3").equals().entry == "0.333333")
 }
 
 // The reason `format` exists: binary floats say 0.30000000000000004.
-func testAdditionDoesNotLeakFloatNoise(t Test) {
+func testAdditionDoesNotLeakFloatNoise(t test.Test) {
     var s = calc.Calc{}.digit("0").point().digit("1").operate(calc.Op.add)
     t.assert(s.digit("0").point().digit("2").equals().entry == "0.3")
 }
 
-func testDivideByZeroIsAnErrorState(t Test) {
+func testDivideByZeroIsAnErrorState(t test.Test) {
     var s = calc.Calc{}.digit("8").operate(calc.Op.div).digit("0").equals()
     t.assert(s.failed)
     t.assert(s.entry == "E")
@@ -58,7 +58,7 @@ func testDivideByZeroIsAnErrorState(t Test) {
     t.assert(s.clear().entry == "0")
 }
 
-func testNegateAndPercent(t Test) {
+func testNegateAndPercent(t test.Test) {
     t.assert(calc.Calc{}.digit("5").negate().entry == "-5")
     t.assert(calc.Calc{}.digit("5").negate().negate().entry == "5")
     t.assert(calc.Calc{}.negate().entry == "0")
@@ -67,14 +67,14 @@ func testNegateAndPercent(t Test) {
 
 // Backspace edits what is being typed and leaves a result alone: deleting a
 // digit from an answer would show a number nobody entered.
-func testBackspace(t Test) {
+func testBackspace(t test.Test) {
     t.assert(calc.Calc{}.digit("1").digit("2").backspace().entry == "1")
     t.assert(calc.Calc{}.digit("1").backspace().entry == "0")
     var answer = calc.Calc{}.digit("2").operate(calc.Op.add).digit("3").equals()
     t.assert(answer.backspace().entry == "5")
 }
 
-func testEntryIsCappedAtTheDisplayWidth(t Test) {
+func testEntryIsCappedAtTheDisplayWidth(t test.Test) {
     var s = calc.Calc{}
     for var d = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "1", "2", "3"] {
         s = s.digit(d)
@@ -83,14 +83,14 @@ func testEntryIsCappedAtTheDisplayWidth(t Test) {
     t.assert(s.entry == "1234567891")
 }
 
-func testPendingLine(t Test) {
+func testPendingLine(t test.Test) {
     t.assert(calc.Calc{}.pending() == "")
     t.assert(calc.Calc{}.digit("2").operate(calc.Op.add).pending() == "2 +")
 }
 
 // Every calculator repeats the last operation on a second `=`. `1 + 1 = = =`
 // is 4, not 2, and the operand it repeats with is the one on the right.
-func testEqualsRepeatsTheLastOperation(t Test) {
+func testEqualsRepeatsTheLastOperation(t test.Test) {
     var c = calc.Calc{}
     c = c.digit("1").operate(calc.Op.add).digit("1").equals()
     t.assert(c.entry == "2")
@@ -102,7 +102,7 @@ func testEqualsRepeatsTheLastOperation(t Test) {
 
 // The repeat is the right operand, not the left: `9 - 2 = =` counts down by
 // two rather than subtracting from nine again.
-func testRepeatKeepsTheRightOperand(t Test) {
+func testRepeatKeepsTheRightOperand(t test.Test) {
     var c = calc.Calc{}
     c = c.digit("9").operate(calc.Op.sub).digit("2").equals()
     t.assert(c.entry == "7")
@@ -110,7 +110,7 @@ func testRepeatKeepsTheRightOperand(t Test) {
 }
 
 // A new operation replaces what `=` repeats.
-func testANewOperationReplacesTheRepeat(t Test) {
+func testANewOperationReplacesTheRepeat(t test.Test) {
     var c = calc.Calc{}
     c = c.digit("1").operate(calc.Op.add).digit("1").equals()
     c = c.operate(calc.Op.mul).digit("3").equals()
@@ -119,7 +119,7 @@ func testANewOperationReplacesTheRepeat(t Test) {
 }
 
 // `=` with nothing behind it does nothing at all.
-func testEqualsAloneIsInert(t Test) {
+func testEqualsAloneIsInert(t test.Test) {
     var c = calc.Calc{}
     t.assert(c.equals().entry == "0")
     t.assert(c.digit("7").equals().entry == "7")
@@ -133,14 +133,14 @@ func testEqualsAloneIsInert(t Test) {
 
 // A point folds onto the cell to its left and the number is padded from the
 // left, so "1.5" lights two cells at the right-hand end and not three.
-func testReadoutCells(t Test) {
+func testReadoutCells(t test.Test) {
     var lit = readout.cells("1.5")
     t.assert(lit.length() == calc.WIDTH)
     t.assert(lit[calc.WIDTH - 2].point)
     t.assert(!lit[calc.WIDTH - 1].point)
 }
 
-func testGlyphSegments(t Test) {
+func testGlyphSegments(t test.Test) {
     // 1 lights the two right-hand verticals and nothing else.
     var one = readout.glyphOf("1")
     t.assert(one.b && one.c)
@@ -151,7 +151,7 @@ func testGlyphSegments(t Test) {
 }
 
 // The ASCII renderer reads the same Glyph the canvas one paints.
-func testAsciiRows(t Test) {
+func testAsciiRows(t test.Test) {
     var one = readout.glyphOf("1")
     t.assert(one.row(0) == "    ")
     t.assert(one.row(1) == "  | ")
@@ -164,7 +164,7 @@ func testAsciiRows(t Test) {
 
 // --- The keypad, and the wiring ---
 
-func testKeypadCoversEveryKey(t Test) {
+func testKeypadCoversEveryKey(t test.Test) {
     var labels = ""
     for var row = keypad.rows() {
         for var k = row {
@@ -177,7 +177,7 @@ func testKeypadCoversEveryKey(t Test) {
 // Pressing keys goes through the same handler the keypad is wired to. `main`
 // is declared in app.sngl, the file next to this one: a directory is one
 // package, so a test names what its package declares.
-func testPressingKeysDrivesTheCalculator(t Test, c main) {
+func testPressingKeysDrivesTheCalculator(t test.Test, c main) {
     c.press(keypad.digitKey("4"))
     c.press(keypad.opKey(calc.Op.mul))
     c.press(keypad.digitKey("6"))

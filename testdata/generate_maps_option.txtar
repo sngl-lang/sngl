@@ -11,9 +11,9 @@ at all. Both are why the golden here is the whole page.
 import . "sngl:ui"
 import app "sngl:app"
 
-output {
+output(maps=true) {
     none {
-        html(maps=true)
+        html()
     }
 }
 

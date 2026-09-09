@@ -1,27 +1,27 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // K is the key type (must be comparable); V is the value type.
-#[builtin("map")]
+#[marks.builtin("map")]
 struct map<K, V> {}
 
 // Number of entries currently in m.
-#[intrinsic("map.length")]
+#[marks.intrinsic("map.length")]
 func map<K, V>.length() int
 
 // List of keys in m in unspecified order.
-#[intrinsic("map.keys")]
+#[marks.intrinsic("map.keys")]
 func map<K, V>.keys() list<K>
 
 // List of values in m in unspecified order.
-#[intrinsic("map.values")]
+#[marks.intrinsic("map.values")]
 func map<K, V>.values() list<V>
 
 // True iff key exists in m.
-#[intrinsic("map.contains")]
+#[marks.intrinsic("map.contains")]
 func map<K, V>.contains(key K) bool
 
 // Lookup with default — returns the value if key is present in m,
 // otherwise returns the default value. Both are coerced to match the
 // declared value type.
-#[intrinsic("map.get")]
+#[marks.intrinsic("map.get")]
 func map<K, V>.get(key K, default V) V

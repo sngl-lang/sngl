@@ -4,19 +4,23 @@
 import . "sngl:macro"
 import ir "sngl:internal/ir"
 import http "sngl:remote/http"
+import build "sngl:build"
 
-#[options]
-struct Options {
-    // Go toolchain version emitted in generated go.mod files (default: 1.23).
-    goVersion string
-
+// The `go` node of a build directive: `output { go { bubbletea() } }`. Its
+// props are the build options every Go target accepts, and its slot is the
+// platforms built with them.
+component go(
+    // Go toolchain version emitted in generated go.mod files. Unset takes the
+    // host's own go.mod line, and 1.23 where there is none.
+    goVersion string,
     // Extra text appended verbatim to temp module go.mod files written by
     // platform test runners. Typical use: a `replace
     // git.duckfam.us/jonathan/sngl => /path/to/repo` directive so generated
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
-    goModExtra string
-}
+    goModExtra string,
+    platforms ...component build.platform,
+) build.language {}
 
 // --- sngl:remote/http ---
 

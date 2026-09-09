@@ -14,7 +14,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-output { go { bubbletea(test=true) } }
+output(test=true) { go { bubbletea() } }
 
 component main ui {
     var count = 0

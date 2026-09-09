@@ -205,16 +205,17 @@ because grouping by kind splits every subject in two.
 The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`: the build directive is here rather than in a tier of its own because a package names its own targets without importing anything. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
-- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `ui` family they belong to, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import . "sngl:ui"` (flattens) or `import <alias> "sngl:ui"` (qualifies).
+- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `ui` family they belong to, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s and not a `tree.default` here.
-- **`lib/app/` → `sngl:app`** — the application shell: the `root` tree a package body accepts, `window` and `errorBoundary`, the `error` those boundaries catch, and the top-level `Options` schema. The checker loads it at startup without binding it, because its declarations carry node kinds a visual tree dispatches on; a program still imports it to write a `window`.
+- **`lib/app/` → `sngl:app`** — the application shell: the `root` tree a package body accepts, `window` and `errorBoundary`, and the `error` those boundaries catch. The checker loads it at startup without binding it, because its declarations carry node kinds a visual tree dispatches on; a program still imports it to write a `window`.
+- **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:app` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:app` imports `sngl:ui`, which loads before `sngl:builtin` is adopted into the ambient scope, and the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component that lowers to an effect, not a builtin node, which is why it carries no `#[builtin]` mark. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup like `sngl:app`, for the same reason: its declarations carry kinds the compiler dispatches on.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
-- **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `options`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
+- **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A library package documents itself with a **package comment**: a run of line
@@ -262,12 +263,19 @@ The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[tree.kind]` needs `import "sngl:tree"`, and the unqualified
-`#[builtin("...")]` and `#[intrinsic("...")]` need
-`import . "sngl:internal/marks"` — which is why every `lib/` file carrying a
-mark declares it. The alias is an
+`#[tree.kind]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
+`#[marks.intrinsic("...")]` need `import marks "sngl:internal/marks"` — which
+is why every `lib/` file carrying a mark declares it. The alias is an
 ordinary file-scope binding, so the mark follows it: `import t "sngl:tree"`
 means `#[t.kind]`.
+
+**Write the qualified form.** A dot import stays legal and supported — with
+`import . "sngl:internal/marks"` the mark is the bare `#[builtin("...")]` —
+but the repository's own source no longer uses one, so that what a reader
+learns from is the qualified form. The alias is the package's last path
+segment (`marks`, `ui`, `seq`, `draw` for `sngl:ui/draw`). `sngl:builtin` is
+unaffected: it is ambient rather than dot-imported, and it is how `int`,
+`string` and `color` are named.
 
 A lib package may carry macros alongside its declarations — `sngl:tree`
 ships the `kind` mark next to the default tree it applies to — so the
@@ -595,12 +603,46 @@ alias two — type identity is per-declaration, so two structs sharing a mark
 would be two incompatible types (the checker rejects a duplicated node mark).
 And `output` is a *directive* kind rather than a node one: it parses as a
 visual node and is marked on a component declaration like `window` is, but the
-compiler reads the block into `ir.Output` instead of rendering it. The mark is
+compiler reads the tree into `ir.Output` instead of rendering it. The mark is
 what recognises it — a package declaring its own `component output` gets that
 component and no build directive — and what the mark permits is the root of a
 file, once per package: any file may carry it, a second one anywhere names the
 first, and a `sngl:` library package may not carry one at all
 (`registerOutput`).
+
+**Its contents are an ordinary component tree**, and the second user of
+`sngl:tree`. `output`'s slot takes `build.language` members, a language node's
+takes `build.platform` ones, and a target declares its own node in its own
+package: `sngl:language/go` declares `go`, `sngl:platform/html` declares `html`.
+So the nesting rule is a slot's type, a misspelled target is an unresolved name,
+and a build option is a declared prop with a type and a default — written at the
+level that declares it, `output(name=…)` for the ones every target shares,
+`go(goVersion=…)` for a language's, `html(minify=…)` for a platform's.
+`ir.Output` is the projection a build reads: one per pair, with the three levels
+of props flattened into `Options`.
+
+Three things follow. A target package now declares a component sharing the
+package's own name, and the package binds *itself* as a namespace under that
+name so its bodies can write `html.div`; the namespace wins inside the package,
+and an output block reaches the node off the package rather than through that
+scope. Resolution inside the directive is by level rather than by scope
+(`checker.targetNode`, keyed on `c.outputDepth`), trying the tier that level
+accepts first and the other second — `none` is both a language and a platform,
+and trying the other tier second is what makes a misplaced target a
+tree-membership error rather than an unresolved name. And every value in the
+tree must satisfy `ir.IsConst`, the test `const(…)` uses: the directive is read
+once, before the program runs, so a `var` read would compile to a snapshot of
+whatever it held first, while a `#[foreign(pure)]` call is a build-time value
+and passes.
+
+Whether a name nothing declares is a *misspelling* is `Config.TargetsComplete`'s
+answer, and only a caller holding the whole registry may claim it
+(`internal/build.Check`, the fixture harness). A platform's own test harness
+registers itself while its fixtures name five other targets: that is a build the
+check does not have rather than a name nobody serves, and from a partial
+registry the two are indistinguishable. Everyone else gets a stand-in node with
+the right family and no schema, which is the tolerance `mergedOptions` returning
+nil used to give per lookup.
 
 Notable stdlib packages:
 

@@ -1,0 +1,15 @@
+// The directive is read once, before the program runs, so an option that reads
+// state would compile to a snapshot of whatever it held first.
+import . "sngl:ui"
+
+var pkgName = "app"
+
+output {
+    go {
+        bubbletea(package=pkgName) // ERROR(check) "must be constant"
+    }
+}
+
+component main ui.ui {
+    text(value="hi")
+}

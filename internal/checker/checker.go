@@ -33,6 +33,13 @@ type Config struct {
 	// own `output` blocks name targets too, and an explicit import of one
 	// names it as well.
 	Targets []ir.StaticTarget
+	// TargetsComplete says Languages and Platforms are every target that
+	// exists, not a subset this caller happens to have linked. Only a caller
+	// that can say so may claim it, and it is what lets a build directive
+	// naming a target nobody serves be reported as a misspelling rather than
+	// accepted as one this check was not told about -- the answer a partial
+	// registry cannot tell apart.
+	TargetsComplete bool
 	// Replaces maps local import paths to replacement URLs, supplied by an
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
@@ -342,17 +349,21 @@ type checker struct {
 	// same symbol rather than declaring a second one.
 	pkgBodyWindowIDs map[string]*ir.Var
 
-	// Cached Options structs from platform/language packages, keyed by target
-	// identifier (e.g. "html", "kotlin").
-	optionsCache map[string]*ir.StructDef
+	// outputDepth is where in the build directive's tree the checker is: 0
+	// outside it, 1 among the languages `output` hosts, 2 among a language's
+	// platforms. It is what makes a bare `none` the language at one level and
+	// the platform at the other, and the question is asked before the node is
+	// a node, which is earlier than a tree membership test can answer it.
+	outputDepth int
 
-	// Cached merged Options structs (stdlib ∪ lang ∪ platform), keyed by
-	// "lang|platform". A nil value means we resolved and cached "no options".
-	mergedOptionsCache map[string]*ir.StructDef
+	// synthTargets are the stand-in nodes minted for targets this check has no
+	// registry for, keyed by tier URI so one name is one declaration.
+	synthTargets map[string]*ir.Component
 
-	// Cached stdlib Options struct. Built lazily.
-	stdlibOptions    *ir.StructDef
-	stdlibOptionsSet bool
+	// The two `sngl:build` tree kinds, resolved once.
+	langTree      *ir.StructDef
+	platformTree  *ir.StructDef
+	buildTreesSet bool
 
 	// The #[builtin("window")] component, and its instance type. Window
 	// symbols are typed with the component's own type, so `home.href` resolves
@@ -413,11 +424,6 @@ type checker struct {
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
 	currentWindow *ir.Window
-	// entryName is the window id `output(entry = …)` named, and entryPos the
-	// directive it was written on. Held rather than resolved on the spot: the
-	// windows do not exist until pass2 has walked the bodies that declare them.
-	entryName string
-	entryPos  ast.Pos
 	// rootTree is the #[builtin("treeRoot")] tree, sngl:app's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
@@ -2820,8 +2826,9 @@ func (c *checker) registerOutput(vn *ast.VisualNode) {
 	case c.outputDecl != nil:
 		c.error(vn.Pos, "output is already declared for this package at %s", c.outputDecl.Pos)
 	default:
+		// Recorded here and checked in pass2: the tree instantiates
+		// declarations a target package carries, which pass1 cannot resolve.
 		c.outputDecl = vn
-		c.buildOutputs(vn)
 	}
 }
 
@@ -2964,150 +2971,6 @@ func visualNodeTarget(vn *ast.VisualNode) string {
 	return ""
 }
 
-// buildOutputs validates and extracts output declarations from an output visual node.
-// Supports flat form: output(lang="js", platform="html", stylesheet="...")
-// and nested form: output { lang { platform(opts...) } }
-func (c *checker) buildOutputs(vn *ast.VisualNode) {
-	c.validateOutputArgs(vn)
-	c.readEntryOption(vn)
-
-	// Flat form: output node itself has lang/platform args.
-	if c.outputHasLangPlatform(vn) {
-		out := &ir.Output{AST: vn}
-		for _, a := range vn.Args.Args {
-			if arg, ok := a.(ast.Arg); ok && arg.Name != "" {
-				switch arg.Name {
-				case "lang":
-					out.Lang = literalString(arg.Value)
-				case "platform":
-					out.Platform = literalString(arg.Value)
-				}
-			}
-		}
-		merged := c.mergedOptions(vn.Pos, out.Lang, out.Platform)
-		out.Options = c.buildOptionsStructLit(vn.Pos, filterOptionArgs(vn.Args, "lang", "platform", entryOption), merged)
-		c.pkg.Outputs = append(c.pkg.Outputs, out)
-		return
-	}
-
-	// Nested form: output { lang { platform(opts...) } }
-	for _, stmt := range vn.Block.Stmts {
-		langNode, ok := stmt.(*ast.VisualNode)
-		if !ok {
-			c.error(*stmt.StmtPos(), "output block may only contain language targets")
-			continue
-		}
-		c.validateOutputArgs(langNode)
-		lang := visualNodeTarget(langNode)
-
-		// Lang node with no block = bare lang (no platforms specified).
-		if len(langNode.Block.Stmts) == 0 {
-			continue
-		}
-
-		for _, langStmt := range langNode.Block.Stmts {
-			out := c.buildPlatformOutput(langStmt, lang)
-			if out != nil {
-				c.pkg.Outputs = append(c.pkg.Outputs, out)
-			}
-		}
-	}
-}
-
-// buildPlatformOutput extracts a platform Output from a statement inside a lang block.
-// Handles both VisualNode (bare `bubbletea`) and CallStmt (`html(entry="app")`).
-func (c *checker) buildPlatformOutput(stmt ast.Stmt, lang string) *ir.Output {
-	switch s := stmt.(type) {
-	case *ast.VisualNode:
-		c.validateOutputArgs(s)
-		platform := visualNodeTarget(s)
-		if len(s.Block.Stmts) > 0 {
-			c.error(s.Pos, "platform %q must not contain a body", platform)
-		}
-		out := &ir.Output{AST: s, Lang: lang, Platform: platform}
-		merged := c.mergedOptions(s.Pos, lang, platform)
-		out.Options = c.buildOptionsStructLit(s.Pos, s.Args, merged)
-		return out
-	case *ast.CallStmt:
-		out := &ir.Output{Lang: lang}
-		if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
-			out.Platform = ident.Name
-		} else {
-			c.error(s.Pos, "platform target must be a simple name")
-			return nil
-		}
-		for _, a := range s.Call.Args.Args {
-			if eh, ok := a.(ast.EventHandler); ok {
-				c.error(s.Pos, "event handlers not permitted in output declarations")
-				_ = eh
-				continue
-			}
-			if arg, ok := a.(ast.Arg); ok && arg.Value != nil {
-				if name := c.nonConstRef(arg.Value); name != "" {
-					c.error(s.Pos, "output option %q must be a constant expression (references %q)", arg.Name, name)
-				}
-			}
-		}
-		merged := c.mergedOptions(s.Pos, lang, out.Platform)
-		out.Options = c.buildOptionsStructLit(s.Pos, s.Call.Args, merged)
-		return out
-	default:
-		c.error(*stmt.StmtPos(), "language block may only contain platform targets")
-		return nil
-	}
-}
-
-// filterOptionArgs returns args without entries whose Name is in the exclude
-// set. Used for the flat output(lang=..., platform=..., opt=...) form so the
-// discriminator args don't leak into the options struct lit.
-func filterOptionArgs(args ast.ArgList, exclude ...string) ast.ArgList {
-	excluded := make(map[string]bool, len(exclude))
-	for _, n := range exclude {
-		excluded[n] = true
-	}
-	out := ast.ArgList{IsMultiline: args.IsMultiline}
-	for _, a := range args.Args {
-		if arg, ok := a.(ast.Arg); ok && excluded[arg.Name] {
-			continue
-		}
-		out.Args = append(out.Args, a)
-	}
-	return out
-}
-
-// validateOutputArgs checks that an output-level node has no event handlers
-// and all option values are constant expressions.
-func (c *checker) validateOutputArgs(vn *ast.VisualNode) {
-	for _, a := range vn.Args.Args {
-		switch a := a.(type) {
-		case ast.EventHandler:
-			c.error(vn.Pos, "event handlers not permitted in output declarations")
-		case ast.Arg:
-			// entry names a window rather than holding a value, which is the
-			// point of it: a typo is a window nobody declared, reported with
-			// the other build-directive diagnostics, and not a string that
-			// silently matched nothing.
-			if a.Name == entryOption {
-				continue
-			}
-			if a.Value != nil {
-				if name := c.nonConstRef(a.Value); name != "" {
-					c.error(vn.Pos, "output option %q must be a constant expression (references %q)", a.Name, name)
-				}
-			}
-		}
-	}
-}
-
-func (c *checker) outputHasLangPlatform(vn *ast.VisualNode) bool {
-	for _, a := range vn.Args.Args {
-		if arg, ok := a.(ast.Arg); ok && (arg.Name == "lang" || arg.Name == "platform") {
-			return true
-		}
-	}
-	return false
-}
-
 // pkgProvider is satisfied by both ir.Platform and ir.Language.
 type pkgProvider interface {
 	Description() string
@@ -3166,122 +3029,6 @@ func (c *checker) lookupTargetIn(name string, kind ir.BuiltinKind) pkgProvider {
 	return nil
 }
 
-// lookupOptions returns the Options struct a target of this tier declares, or
-// nil when there is no such target or it declares none.
-//
-// The tier comes from the caller because the caller has it -- an output block
-// names a language and a platform, and which of the two `go` is is not
-// something to rediscover from the name. Guessing it is what let a language be
-// asked for its platform package.
-func (c *checker) lookupOptions(name string, kind ir.BuiltinKind) *ir.StructDef {
-	uri := targetTierMember(kind) + "/" + name
-	if c.optionsCache != nil {
-		if sd, ok := c.optionsCache[uri]; ok {
-			return sd
-		}
-	}
-	if c.lookupTargetIn(name, kind) == nil {
-		return nil
-	}
-	if c.optionsCache == nil {
-		c.optionsCache = make(map[string]*ir.StructDef)
-	}
-	// Read the options schema off the loaded package rather than asking the
-	// plugin: the schema is the #[options]-marked declaration that package
-	// holds, and the mark is only on the IR.
-	if c.hasLibPkg(uri) {
-		for _, sd := range c.libPkg(uri).Structs {
-			if sd.Options {
-				c.optionsCache[uri] = sd
-				return sd
-			}
-		}
-	}
-	c.optionsCache[uri] = nil
-	return nil
-}
-
-// lookupStdlibOptions returns the stdlib's top-level Options struct, or nil
-// if the stdlib does not declare one.
-//
-// It reads sngl:app alone, not the whole embedded corpus: several lib
-// packages declare an `Options`, and the corpus is ordered by sorted package
-// path, so a scan of all of it would return whichever package sorts first
-// rather than the stdlib's.
-func (c *checker) lookupStdlibOptions() *ir.StructDef {
-	if c.stdlibOptionsSet {
-		return c.stdlibOptions
-	}
-	c.stdlibOptionsSet = true
-	for _, sd := range c.libPkg(optionsPkg).Structs {
-		if sd.Options {
-			c.stdlibOptions = sd
-			return c.stdlibOptions
-		}
-	}
-	return nil
-}
-
-// mergedOptions returns the synthetic Options struct that unions stdlib,
-// language, and platform Options for the given (lang, platform) target. Field
-// collisions are allowed only when types match; mismatched-type collisions are
-// reported once at the position pos and the offending field is dropped from
-// the merged schema.
-//
-// Returns nil when the named lang/platform is not registered with the checker
-// (e.g. a test driver running without targets) — callers must treat that as
-// "skip validation" since we can't tell if an arg is valid.
-//
-// The synthetic struct is not registered in any scope — it's used purely for
-// validating output() arg names and types.
-func (c *checker) mergedOptions(pos ast.Pos, lang, platform string) *ir.StructDef {
-	// If the user named a target that isn't registered, we have no schema for
-	// its options. Returning nil tells the caller to skip validation rather
-	// than reject options the platform itself would have accepted.
-	if lang != "" && c.lookupTargetIn(lang, ir.BuiltinLanguage) == nil {
-		return nil
-	}
-	if platform != "" && c.lookupTargetIn(platform, ir.BuiltinPlatform) == nil {
-		return nil
-	}
-
-	key := lang + "|" + platform
-	if c.mergedOptionsCache == nil {
-		c.mergedOptionsCache = make(map[string]*ir.StructDef)
-	}
-	if sd, ok := c.mergedOptionsCache[key]; ok {
-		return sd
-	}
-
-	merged := &ir.StructDef{Name: "Options"}
-	add := func(source string, sd *ir.StructDef) {
-		if sd == nil {
-			return
-		}
-		for _, f := range sd.Fields {
-			existing := findField(merged, f.Name)
-			if existing == nil {
-				merged.Fields = append(merged.Fields, f)
-				continue
-			}
-			if !existing.Type.Equal(f.Type) {
-				c.error(pos, "option %q declared with conflicting types: %s vs %s.%s", f.Name, existing.Type, source, f.Name)
-			}
-			// Same-type collision: keep the first-seen field.
-		}
-	}
-	add("stdlib", c.lookupStdlibOptions())
-	if lang != "" {
-		add(lang, c.lookupOptions(lang, ir.BuiltinLanguage))
-	}
-	if platform != "" {
-		add(platform, c.lookupOptions(platform, ir.BuiltinPlatform))
-	}
-
-	c.mergedOptionsCache[key] = merged
-	return merged
-}
-
 func findField(sd *ir.StructDef, name string) *ir.StructField {
 	for _, f := range sd.Fields {
 		if f.Name == name {
@@ -3289,49 +3036,6 @@ func findField(sd *ir.StructDef, name string) *ir.StructField {
 		}
 	}
 	return nil
-}
-
-// buildOptionsStructLit type-checks each named arg against the merged options
-// schema and returns an *ir.StructLit suitable for storing on ir.Output.Options.
-// Unknown option names are reported as diagnostics. Args that don't fit the
-// arg.Name+arg.Value shape (event handlers, positional args) are silently
-// skipped — those are checked elsewhere.
-//
-// When opts is nil (target not registered with the checker), validation is
-// skipped and arg values are checked without an expected-type hint.
-func (c *checker) buildOptionsStructLit(pos ast.Pos, args ast.ArgList, opts *ir.StructDef) *ir.StructLit {
-	lit := &ir.StructLit{Def: opts}
-	if opts != nil {
-		lit.Type = &ir.Type{Kind: ir.TypeStruct, Decl: opts}
-	}
-	for _, a := range args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name == "" {
-			continue
-		}
-		var field *ir.StructField
-		if opts != nil {
-			field = findField(opts, arg.Name)
-			if field == nil {
-				c.error(pos, "unknown option %q (available: %s)", arg.Name, optionFieldNames(opts))
-				continue
-			}
-		}
-		var value ir.Expr
-		if arg.Value != nil {
-			prev := c.expected
-			if field != nil {
-				c.expected = field.Type
-			}
-			value = c.checkExpr(arg.Value)
-			c.expected = prev
-			if field != nil && value != nil && value.ExprType() != nil && !typeAssignable(value.ExprType(), field.Type) {
-				c.error(pos, "option %q: expected %s, got %s", arg.Name, field.Type, value.ExprType())
-			}
-		}
-		lit.Fields = append(lit.Fields, ir.FieldInit{Name: arg.Name, Value: value})
-	}
-	return lit
 }
 
 // typeAssignable reports whether src is assignable to dst, allowing the same
@@ -3348,14 +3052,6 @@ func typeAssignable(src, dst *ir.Type) bool {
 		return true
 	}
 	return false
-}
-
-func optionFieldNames(sd *ir.StructDef) string {
-	names := make([]string, len(sd.Fields))
-	for i, f := range sd.Fields {
-		names[i] = f.Name
-	}
-	return fmt.Sprintf("%v", names)
 }
 
 // checkDuplicateWindowID reports an error if w.Name is non-empty and another
@@ -3582,7 +3278,7 @@ func (c *checker) pass2() {
 	c.reportBodyComponentCapture()
 
 	c.checkPackageBody()
-	c.resolveEntryWindow()
+	c.checkOutputTree()
 
 	// Check timer handler bodies (component timers are checked inside
 	// checkComponentBody so they can see component vars in scope).

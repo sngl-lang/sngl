@@ -1344,7 +1344,7 @@ func TestCheckTestdata(t *testing.T) {
 				t.Fatalf("parse: %v", parseErr)
 			}
 			langs, plats := testtargets.Targets()
-			cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats}
+			cfg := &checker.Config{IsMain: true, Languages: langs, Platforms: plats, TargetsComplete: true}
 			for _, s := range doc.Stmts {
 				if _, ok := s.(*ast.Import); ok {
 					cfg.Resolver = newTestResolver()
@@ -1556,7 +1556,7 @@ func TestCheckProjectTestdata(t *testing.T) {
 				t.Skipf("v2 parse failed: %v", err)
 			}
 			langs, plats := testtargets.Targets()
-			_, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats})
+			_, diags := checker.Check(doc, &checker.Config{IsMain: true, Languages: langs, Platforms: plats, TargetsComplete: true})
 			// Log errors but don't fail — project testdata uses v1 ERROR(check)
 			// directives which may not match v2 checker messages.
 			for _, d := range diags {

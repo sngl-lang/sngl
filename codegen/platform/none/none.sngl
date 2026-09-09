@@ -5,8 +5,12 @@
 // visual tree can express and no host widget stands in for.
 
 import time "sngl:time"
+import build "sngl:build"
 import . "sngl:internal/marks"
 import tree "sngl:tree"
+
+// The `none` node of a build directive: the interpreter as a build target.
+component none() build.platform {}
 
 // A deadline that recurs. The interpreter's clock finds these in the rendered
 // tree and fires each one's `@tick` when the clock reaches its deadline.

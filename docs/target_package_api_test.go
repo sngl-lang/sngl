@@ -3,6 +3,8 @@ package docs
 import (
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
@@ -19,26 +21,26 @@ func TestTargetPackagesAnswerThePackageLevelAPI(t *testing.T) {
 			if checker.HasPackage(uri) {
 				t.Fatalf("%s is embedded under lib/ after all; this test no longer proves anything", uri)
 			}
-			sd := checker.OptionsStruct(uri)
-			if sd == nil {
-				t.Fatalf("OptionsStruct(%q) = nil: no --opt documentation for this target", uri)
+			comp := checker.TargetNode(uri)
+			if comp == nil {
+				t.Fatalf("TargetNode(%q) = nil: this target has no build node, so no --opt documentation", uri)
 			}
-			if sd.AST == nil {
-				t.Fatalf("OptionsStruct(%q) carries no declaration", uri)
+			if comp.AST == nil {
+				t.Fatalf("TargetNode(%q) carries no declaration", uri)
 			}
-			// The docs read the mark off the IR and then find the declaration
+			// The docs read the node off the IR and then find the declaration
 			// in the source, by pointer. Two parses of one file never share
 			// one, so this fails unless the source is served from one parse.
 			found := false
 			for _, doc := range checker.PackageSource(uri) {
 				for _, stmt := range doc.Stmts {
-					if stmt == sd.AST {
+					if stmt == ast.Stmt(comp.AST) {
 						found = true
 					}
 				}
 			}
 			if !found {
-				t.Errorf("the #[options] declaration of %s is in no document PackageSource returns", uri)
+				t.Errorf("the build node of %s is in no document PackageSource returns", uri)
 			}
 			if opts := optionsForPackage(uri); len(opts) == 0 {
 				t.Errorf("optionsForPackage(%q) is empty: the target documents no options", uri)

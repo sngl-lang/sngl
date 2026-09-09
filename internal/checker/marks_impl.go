@@ -18,7 +18,6 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	{"tree", "kind"}:                markTreeKind,
 	{"tree", "none"}:                markTreeNone,
-	{"macro", "options"}:            markOptions,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
@@ -327,25 +326,6 @@ func uniqueFlags(flags []string, mark string) ([]string, error) {
 		}
 	}
 	return flags, nil
-}
-
-// markOptions implements #[options], which says the struct it annotates is a
-// target's build-option schema — the fields an `output(...)` block may name.
-//
-// The mark, not the declaration's name, is what the compiler keys on: every
-// site that looks up an options schema finds the marked struct, so a target may
-// call the struct whatever it likes and a struct incidentally named Options is
-// not one.
-func markOptions(m *mark) error {
-	sd, ok := m.sym.(*ir.StructDef)
-	if !ok {
-		return fmt.Errorf("#[options] cannot mark %s; only a struct declares an options schema", ast.DeclFormName(m.decl))
-	}
-	if sd.Options {
-		return fmt.Errorf("#[options]: already marked as an options schema")
-	}
-	sd.Options = true
-	return nil
 }
 
 func markTreeKind(m *mark) error {

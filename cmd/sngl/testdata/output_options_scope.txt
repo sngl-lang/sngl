@@ -1,39 +1,39 @@
-# The options schema is assembled per target: sngl:app's Options are global,
-# while a platform's or language's own Options are in scope only for a build
-# selecting it. Guards the tier split — every platforms/ and languages/ package
-# declares an `Options`, so a merged scan of the library would hand one of
-# theirs to every target.
+# An option belongs to the level that declares it: the props on `output` are
+# what every target accepts, a language's are on the language node and a
+# platform's on the platform node. Guards the tier split -- a platform option
+# written on another platform, or a language's written on a platform, is an
+# unknown prop rather than a name some merged schema happened to hold.
 sngl check ok.sngl
 stdout 'ok'
 
 ! sngl check platform_leak.sngl
-stderr 'unknown option "stylesheet"'
+stderr 'unknown prop "stylesheet" on component bubbletea'
 
 ! sngl check lang_leak.sngl
-stderr 'unknown option "goVersion"'
+stderr 'unknown prop "goVersion" on component html'
 
 -- ok.sngl --
-import . "sngl:ui"
+import ui "sngl:ui"
 import app "sngl:app"
 
-output {
+output(name="Demo", icon="favicon.png") {
     none {
-        html(name="Demo", icon="favicon.png", stylesheet="app.css")
+        html(stylesheet="app.css")
     }
-    go {
-        bubbletea(goVersion="1.23")
+    go(goVersion="1.23") {
+        bubbletea()
     }
 }
 
-component main ui {
-    text(value="hello")
+component main ui.ui {
+    ui.text(value="hello")
 }
 
 app.window {
     main
 }
 -- platform_leak.sngl --
-import . "sngl:ui"
+import ui "sngl:ui"
 import app "sngl:app"
 
 output {
@@ -42,15 +42,15 @@ output {
     }
 }
 
-component main ui {
-    text(value="hello")
+component main ui.ui {
+    ui.text(value="hello")
 }
 
 app.window {
     main
 }
 -- lang_leak.sngl --
-import . "sngl:ui"
+import ui "sngl:ui"
 import app "sngl:app"
 
 output {
@@ -59,8 +59,8 @@ output {
     }
 }
 
-component main ui {
-    text(value="hello")
+component main ui.ui {
+    ui.text(value="hello")
 }
 
 app.window {

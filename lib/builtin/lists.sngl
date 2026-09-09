@@ -1,15 +1,15 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // Heterogeneous list. `list<T>` is the parameterized form; element type
 // is inferred from literals. Methods on the `list` receiver
 // (`length`, `push`, `filter`, `map`, …) cover the common operations and
 // are all pure — they return new lists rather than mutating in place.
 // T is the element type.
-#[builtin("list")]
+#[marks.builtin("list")]
 struct list<T> {}
 
 // Number of items in l.
-#[intrinsic("list.length")]
+#[marks.intrinsic("list.length")]
 func list<T>.length() int
 
 // Appends item to the receiver list (`this`), in place. Index assignment
@@ -24,7 +24,7 @@ func list<T>.length() int
 // function of its argument. It also could not be honestly compiled: Go's
 // append returns a new slice rather than mutating, so the two halves had to be
 // emitted separately and no single expression said both.
-#[intrinsic("list.push", mutates, mutatesReceiver)]
+#[marks.intrinsic("list.push", mutates, mutatesReceiver)]
 func list<T>.push(item T)
 
 // Removes the item at index from the receiver list (`this`) in place.
@@ -33,36 +33,36 @@ func list<T>.push(item T)
 // Returns nothing, for the reason `push` does not: a method that mutates its
 // receiver and also returns it invites `l = l.remove(i)`, which performs the
 // removal once and reads as though it performed it twice.
-#[intrinsic("list.remove", mutates, mutatesReceiver)]
+#[marks.intrinsic("list.remove", mutates, mutatesReceiver)]
 func list<T>.remove(index int)
 
 // Index of the first occurrence of item in l (by equality), or -1 if
 // absent.
-#[intrinsic("list.indexOf")]
+#[marks.intrinsic("list.indexOf")]
 func list<T>.indexOf(item T) int
 
 // Joins the items of l into a single string, separated by sep. Items
 // are coerced via the platform's default string conversion.
-#[intrinsic("list.join")]
+#[marks.intrinsic("list.join")]
 func list<T>.join(sep string) string
 
 // Returns a copy of l with items in reverse order.
-#[intrinsic("list.reverse")]
+#[marks.intrinsic("list.reverse")]
 func list<T>.reverse() list<T>
 
 // Returns a new list containing items from start (inclusive) to end
 // (exclusive). Bounds are clamped to [0, length(l)].
-#[intrinsic("list.slice")]
+#[marks.intrinsic("list.slice")]
 func list<T>.slice(start int, end int) list<T>
 
 // Returns a new list containing the items of l for which pred returns
 // true. Item order is preserved.
-#[intrinsic("list.filter")]
+#[marks.intrinsic("list.filter")]
 func list<T>.filter(pred func(T) bool) list<T>
 
 // Returns a new list built by applying fn to each item of l. The
 // result's length equals the input's.
-#[intrinsic("list.map")]
+#[marks.intrinsic("list.map")]
 func list<T>.map<U>(fn func(T) U) list<U>
 
 // True if item appears in l (by equality). Equivalent to
@@ -73,5 +73,5 @@ func list<T>.contains(item T) => this.indexOf(item) >= 0
 // to a context expecting iter<T> (or iter<(K, V)> for map). For-loops
 // bind elements when iterating over an iter<T>. The type is opaque —
 // no methods, no fields.
-#[builtin("iter")]
+#[marks.builtin("iter")]
 struct iter<T> {}

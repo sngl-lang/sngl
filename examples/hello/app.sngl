@@ -1,17 +1,17 @@
-import . "sngl:ui"
+import ui "sngl:ui"
 import app "sngl:app"
 
 output {
     none { html }
 }
 
-component main ui {
+component main ui.ui {
     var name = "World"
 
-    vbox(style={gap=12, padding=16}) {
-        text(value="Hello, {name}!", style={fontSize=24, fontWeight=bold})
-        hbox(style={gap=8, alignItems=center}) {
-            input(:value=name, placeholder="Enter your name")
+    ui.vbox(style={gap=12, padding=16}) {
+        ui.text(value="Hello, {name}!", style={fontSize=24, fontWeight=bold})
+        ui.hbox(style={gap=8, alignItems=center}) {
+            ui.input(:value=name, placeholder="Enter your name")
         }
     }
 }
