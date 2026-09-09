@@ -71,7 +71,7 @@ func collectBlocks(pkg *ir.Package, imperative, views bool) []*[]ir.Stmt {
 		c.owner(comp.Funcs, comp.Vars, comp.Timers, &comp.Body)
 	}
 	for _, w := range pkg.Windows {
-		c.owner(w.Funcs, w.Vars, nil, &w.Body)
+		c.owner(w.Funcs, w.Vars, w.Timers, &w.Body)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			c.addImperative(&w.ErrorHandler.Func.Block)
 		}

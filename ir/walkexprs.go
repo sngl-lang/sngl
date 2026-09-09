@@ -377,6 +377,9 @@ func (w *rewriter) window(win *Window) {
 	if win.ErrorHandler != nil {
 		w.fn(win.ErrorHandler.Func)
 	}
+	for _, t := range win.Timers {
+		w.timer(t)
+	}
 	win.Body = w.stmts(win.Body)
 }
 

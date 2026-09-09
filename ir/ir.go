@@ -743,6 +743,7 @@ type Window struct {
 	Favicon      Expr  // checked favicon expression
 	Vars         []*Var
 	Funcs        []*Func
+	Timers       []*Timer
 	Body         []Stmt        // type-checked body statements
 	Checked      bool          // true if body was already checked in context (e.g., inside a for-loop)
 	ErrorHandler *EventHandler // optional @error handler; outermost error boundary for this window

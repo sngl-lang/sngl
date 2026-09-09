@@ -233,6 +233,11 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
+		for _, t := range w.Timers {
+			if t.Handler != nil {
+				t.Handler.Block = st.rewriteAndInject(t.Handler.Block)
+			}
+		}
 	}
 	// After the walks, because a registry only exists once the slot render
 	// that opened it has been built.

@@ -180,6 +180,11 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 			schedules = append(schedules, comp.Timers...)
 		}
 	}
+	for _, win := range pkg.Windows {
+		if win != nil {
+			schedules = append(schedules, win.Timers...)
+		}
+	}
 	for i, t := range schedules {
 		if t == nil || t.Handler == nil {
 			continue

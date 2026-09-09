@@ -179,6 +179,9 @@ func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 	if main := ctx.RootDecl(); main != nil {
 		allTimers = append(allTimers, main.Timers...)
 	}
+	for _, w := range ctx.Pkg.Windows {
+		allTimers = append(allTimers, w.Timers...)
+	}
 	for i, t := range allTimers {
 		mutated := make(map[*ir.Var]struct{})
 		if t.Handler != nil {

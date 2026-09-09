@@ -55,7 +55,7 @@ func lowerTimerPrimitives(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	st := &timerPrimState{pkg: pkg}
 	for _, o := range ir.Owners(pkg) {
-		st.owner = o.Comp
+		st.comp, st.win = o.Comp, o.Win
 		body := st.stmts(o.Stmts, nil)
 		switch {
 		case o.Comp != nil:
@@ -71,13 +71,15 @@ func lowerTimerPrimitives(pkg *ir.Package, _ Caps, _ Options) error {
 
 type timerPrimState struct {
 	pkg *ir.Package
-	// owner is the component the statements being walked belong to, or nil for
-	// the package body. A schedule is recorded on its owner rather than all on
-	// the package, because the passes that walk a component's imperative
-	// bodies -- reactivity's updater injection above all -- descend per owner:
-	// recorded on the package, a tick body that wrote state got no updater and
-	// the widget reading that state never changed.
-	owner *ir.Component
+	// comp and win are the declaration the statements being walked belong to;
+	// both nil for the package body. A schedule is recorded on its owner rather
+	// than all on the package, because the passes that walk an owner's
+	// imperative bodies -- reactivity's updater injection above all -- descend
+	// per owner: recorded on the package, a tick body that wrote state got no
+	// updater and the widget reading that state never changed. A window is such
+	// an owner, which is what the component-only field missed.
+	comp *ir.Component
+	win  *ir.Window
 }
 
 // stmts rewrites one statement list, dropping every timer primitive in it.
@@ -135,11 +137,14 @@ func (st *timerPrimState) record(n *ir.NodeInst, gates []ir.Expr) {
 	for _, g := range gates {
 		t.Enabled = andExpr(t.Enabled, g)
 	}
-	if st.owner != nil {
-		st.owner.Timers = append(st.owner.Timers, t)
-		return
+	switch {
+	case st.comp != nil:
+		st.comp.Timers = append(st.comp.Timers, t)
+	case st.win != nil:
+		st.win.Timers = append(st.win.Timers, t)
+	default:
+		st.pkg.Timers = append(st.pkg.Timers, t)
 	}
-	st.pkg.Timers = append(st.pkg.Timers, t)
 }
 
 func propOf(n *ir.NodeInst, name string) ir.Expr {
