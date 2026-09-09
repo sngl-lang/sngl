@@ -37,4 +37,8 @@ component main {
     text(value="hi")
 }
 -- twice/b.sngl --
-output(lang="go", platform="bubbletea")
+output {
+    go {
+        bubbletea()
+    }
+}

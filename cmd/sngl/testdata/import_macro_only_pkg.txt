@@ -13,9 +13,9 @@ stderr 'unknown stdlib package'
 
 -- ok.sngl --
 import . "sngl:ui"
-import . "sngl:macro"
+import macro "sngl:macro"
 
-#[options]
+#[macro.foreign("Knobs")]
 struct Knobs {
     gadget string = ""
 }

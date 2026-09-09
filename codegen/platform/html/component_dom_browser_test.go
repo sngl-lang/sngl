@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/html/internal/webtest"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
@@ -118,7 +117,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 		// html's client script is JavaScript either way, so a page may name a
 		// JavaScript identifier through sngl:language/js, and the checker can
 		// only resolve that package for a language it knows.
-		Languages: []ir.Language{&javascript.Translator{}},
+		Languages: htmlLangs(),
 		Targets:   []ir.StaticTarget{{Platform: "html", Language: "none"}},
 	})
 	for _, d := range diags {

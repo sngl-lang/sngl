@@ -13,7 +13,7 @@ grep cannot.
 import . "sngl:ui"
 import . "sngl:test"
 
-output { go { bubbletea(test=true) } }
+output(test=true) { go { bubbletea() } }
 
 component main {
     var count = 0

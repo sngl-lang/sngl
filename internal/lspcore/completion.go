@@ -477,8 +477,9 @@ func PropListCompletions(content string, doc *ast.Document, line, col int) []Com
 }
 
 // OutputOptsCompletions returns completion items for output option keys
-// inside the parenthesized options of an output declaration. The candidate
-// set is the union of stdlib, language, and platform Options structs.
+// inside the parenthesized options of an output declaration. The candidate set
+// is the props of the three nodes that contribute options: `output` itself, the
+// language node, and the platform node.
 func OutputOptsCompletions(content string, line int) []CompletionItem {
 	lines := strings.Split(content, "\n")
 	if line < 1 || line > len(lines) {
@@ -490,35 +491,34 @@ func OutputOptsCompletions(content string, line int) []CompletionItem {
 	langName := extractOutputLang(l)
 
 	// Build options are directive surface, not declarations the file imports:
-	// `output { none { html(name="X") } }` checks with no import at all, so
-	// these are read from the package that declares them rather than from
-	// whatever the file has in scope. The #[options] mark is on the loaded
-	// IR, so the package is loaded rather than only parsed.
-	uris := []string{"app"}
+	// an output block checks with no import at all, so these are read from the
+	// packages that declare the target nodes rather than from whatever the
+	// file has in scope. A node's props are its schema, and props are on the
+	// loaded IR, so each package is loaded rather than only parsed.
+	nodes := []*ir.Component{checker.OutputNode()}
 	if langName != "" {
-		uris = append(uris, "language/"+langName)
+		nodes = append(nodes, checker.TargetNode("language/"+langName))
 	}
 	if platformName != "" {
-		uris = append(uris, "platform/"+platformName)
+		nodes = append(nodes, checker.TargetNode("platform/"+platformName))
 	}
 
 	seen := map[string]bool{}
 	var items []CompletionItem
-	for _, uri := range uris {
-		sd := checker.OptionsStruct(uri)
-		if sd == nil {
+	for _, comp := range nodes {
+		if comp == nil {
 			continue
 		}
-		for _, f := range sd.Fields {
-			if seen[f.Name] {
+		for _, prop := range comp.Props {
+			if seen[prop.Name] {
 				continue
 			}
-			seen[f.Name] = true
+			seen[prop.Name] = true
 			items = append(items, CompletionItem{
-				Label:      f.Name,
+				Label:      prop.Name,
 				Kind:       CIKProperty,
-				Detail:     f.Type.String(),
-				InsertText: f.Name + "=",
+				Detail:     prop.Type.String(),
+				InsertText: prop.Name + "=",
 			})
 		}
 	}

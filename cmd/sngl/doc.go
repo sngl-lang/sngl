@@ -390,10 +390,9 @@ func renderIndexMD(idx *lookup.DeclIndex) string {
 	writeSummarySection(&sb, "Data", idx.Data)
 	writeSummarySection(&sb, "Functions", idx.Functions)
 	writeSummarySection(&sb, "Macros", idx.Macros)
-	if len(idx.Overrides) > 0 || len(idx.PlatformTypes) > 0 {
+	if len(idx.Overrides) > 0 {
 		sb.WriteString("---\n\n")
 		writeSummarySection(&sb, "Platform Overrides", idx.Overrides)
-		writeSummarySection(&sb, "Platform Types", idx.PlatformTypes)
 	}
 	return sb.String()
 }

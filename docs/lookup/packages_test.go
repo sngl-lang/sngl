@@ -22,8 +22,8 @@ func TestLookupPlatformAndroid(t *testing.T) {
 		t.Errorf("Title: got %q", res.Index.Title)
 	}
 	// Android platform exposes some Components and at minimum an Options struct.
-	if len(res.Index.Components) == 0 && len(res.Index.PlatformTypes) == 0 && len(res.Index.Overrides) == 0 {
-		t.Error("android index has no Components, Overrides, or PlatformTypes — expected at least one")
+	if len(res.Index.Components) == 0 && len(res.Index.Overrides) == 0 {
+		t.Error("android index has no Components or Overrides — expected at least one")
 	}
 }
 

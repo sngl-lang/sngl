@@ -111,15 +111,6 @@ func SearchIndex() []SearchEntry {
 				Kind:  "override",
 			})
 		}
-		for _, t := range idx.PlatformTypes {
-			add(SearchEntry{
-				Title: t.Name,
-				Href:  declHref(pkg.Path, "platform-types", t.Name, ""),
-				Crumb: pkgCrumb + " / Platform Types",
-				Blurb: t.Doc,
-				Kind:  "platform-type",
-			})
-		}
 	}
 
 	// Enum members — pulled from AllDeclPages because PackageIndex's enum
