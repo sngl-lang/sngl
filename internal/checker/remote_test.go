@@ -13,6 +13,7 @@ import (
 // pkg/<lang>/remote runtimes land.
 
 const remotePrelude = `import remote "sngl:remote"
+import ui "sngl:ui"
 
 struct User {
     name string
@@ -37,7 +38,7 @@ func TestRemoteMethodsDispatch(t *testing.T) {
 		"users.ready()",
 		"users.failed()",
 	} {
-		src := remotePrelude + "\ncomponent c() {\n    var b bool = " + expr + "\n}\n"
+		src := remotePrelude + "\ncomponent c() ui.ui {\n    var b bool = " + expr + "\n}\n"
 		if errs := checkSrc(t, src); len(errs) > 0 {
 			t.Errorf("%s: %v", expr, errs[0].Error())
 		}
@@ -47,7 +48,7 @@ func TestRemoteMethodsDispatch(t *testing.T) {
 // or() is the way out of the box, and the type argument travels through it.
 func TestRemoteOrUnwrapsToTheTypeArgument(t *testing.T) {
 	src := remotePrelude + `
-component c() {
+component c() ui.ui {
     var names list<User> = users.or([])
     var n int = count.or(0)
 }
@@ -60,7 +61,7 @@ component c() {
 // error() carries the package's own Failure rather than app.error.
 func TestRemoteErrorIsAnOptionalFailure(t *testing.T) {
 	src := remotePrelude + `
-component c() {
+component c() ui.ui {
     var why option<remote.Failure> = users.error()
 }
 `
@@ -101,8 +102,9 @@ func unboxed() int {
 // test render each branch of a view without a fetch.
 func TestRemoteConstructorsBuildEachState(t *testing.T) {
 	src := `import remote "sngl:remote"
+import ui "sngl:ui"
 
-component c() {
+component c() ui.ui {
     var settled remote.Value<int> = remote.of(1)
     var broken remote.Value<int> = remote.failedWith(remote.Failure{kind = transport, message = "no route", code = ""})
     var waiting remote.Value<int> = remote.pending()
@@ -117,8 +119,9 @@ component c() {
 // option report theirs.
 func TestRemoteRequiresATypeArgument(t *testing.T) {
 	src := `import remote "sngl:remote"
+import ui "sngl:ui"
 
-component c() {
+component c() ui.ui {
     var r remote.Value = 0
 }
 `
@@ -141,12 +144,13 @@ component c() {
 // explicitly is an error. So this asserts the rule rather than one type.
 func TestQualifiedBuiltinGenericIsTheBuiltin(t *testing.T) {
 	src := `import remote "sngl:remote"
+import ui "sngl:ui"
 
 func a() remote.Value<int> {
     return remote.of(1)
 }
 
-component c() {
+component c() ui.ui {
     var v remote.Value<int> = a()
 }
 `

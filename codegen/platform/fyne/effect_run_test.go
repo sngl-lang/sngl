@@ -7,7 +7,7 @@ import "testing"
 const effectModelSrc = `
 import . "sngl:ui"
 
-component main {
+component main ui {
     var (
         n = 0
         log list<string> = []
@@ -60,7 +60,7 @@ func TestTheModelsEffectSettles(t *testing.T) {
 const effectInstanceSrc = `
 import . "sngl:ui"
 
-component row(name = "") {
+component row(name = "") ui {
     var (
         n = 0
         log list<string> = []
@@ -75,7 +75,7 @@ component row(name = "") {
     button(text=name, @click { n += 1 })
 }
 
-component main {
+component main ui {
     var names list<string> = ["a", "b"]
     for var nm = names {
         row(name=nm)

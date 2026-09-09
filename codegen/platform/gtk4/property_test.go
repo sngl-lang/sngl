@@ -81,7 +81,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/gtk4"
 
-component main {
+component main ui {
     window(title="t") {
         gtk4.GtkEntry(primaryIconName="edit-find", enableEmojiCompletion=true, maxLength=12) {}
         gtk4.GtkLabel(label="hi", accessibleRole="button") {}

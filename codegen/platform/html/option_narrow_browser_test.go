@@ -19,7 +19,7 @@ func TestNarrowedOptionIsArithmeticInTheBrowser(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var maybe option<int> = 3
     if maybe != null {
         text(value="[" + string(maybe * 2) + "]")
@@ -32,7 +32,7 @@ component App() {
     button(text="clear", @click { maybe = null })
     button(text="set", @click { maybe = 21 })
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

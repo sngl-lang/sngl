@@ -44,7 +44,7 @@ func patchLines(patches []Patch) string {
 
 const diffSrc = `import . "sngl:ui"
 
-component main {
+component main ui {
     var (
         label = "before"
         shown = false
@@ -162,7 +162,7 @@ func TestReorderingAnUnkeyedListAssignsRatherThanMoves(t *testing.T) {
 
 const keyedSrc = `import . "sngl:ui"
 
-component main {
+component main ui {
     var items = ["a", "b", "c"]
     vbox {
         for var it = items {
@@ -248,7 +248,7 @@ func TestKeyedIterationsSurviveAReload(t *testing.T) {
 func TestADuplicateKeyDoesNotDropANode(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component main {
+component main ui {
     var items = ["a", "a", "b"]
     vbox {
         for var it = items {
@@ -278,7 +278,7 @@ component main {
 func TestAParentAndItsChildAppearParentFirst(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component main {
+component main ui {
     var shown = false
     vbox {
         if shown {
@@ -306,7 +306,7 @@ component main {
 
 const reloadA = `import . "sngl:ui"
 
-component main {
+component main ui {
     var n = 0
     vbox {
         text #lbl(value="one")
@@ -344,7 +344,7 @@ func TestARecheckOfIdenticalSourceProducesNoPatches(t *testing.T) {
 func TestAnEditedLiteralAcrossAReloadIsOneAssignment(t *testing.T) {
 	edited := `import . "sngl:ui"
 
-component main {
+component main ui {
     var n = 0
     vbox {
         text #lbl(value="two")
@@ -372,7 +372,7 @@ component main {
 func TestChangingANodesElementReplacesIt(t *testing.T) {
 	edited := `import . "sngl:ui"
 
-component main {
+component main ui {
     var n = 0
     vbox {
         text #lbl(value="one")
@@ -416,7 +416,7 @@ component main {
 func TestAddingAHandlerRebinds(t *testing.T) {
 	edited := `import . "sngl:ui"
 
-component main {
+component main ui {
     var n = 0
     vbox {
         text #lbl(value="one", @click { n += 1 })
@@ -453,11 +453,11 @@ struct Point {
     y int = 0
 }
 
-component dot(at Point) {
+component dot(at Point) ui {
     text(value="{at.x}")
 }
 
-component main {
+component main ui {
     dot #d(at=Point{x=1, y=2})
 }
 `

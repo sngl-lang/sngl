@@ -56,7 +56,7 @@ func compileBubbletea(t *testing.T, src string) string {
 func TestNewFormTextBindsValue(t *testing.T) {
 	src := `import . "sngl:ui"
 output { go { bubbletea } }
-component main {
+component main ui {
     text(value="HELLO")
 }`
 	out := compileBubbletea(t, src)

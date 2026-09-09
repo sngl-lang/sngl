@@ -33,7 +33,7 @@ func decodeSemTokens(data []uint32) []semTok {
 }
 
 func TestSemanticTokens_ClassifiesIdentifiers(t *testing.T) {
-	src := `component Counter(label = "") {
+	src := `component Counter(label = "") ui {
     var count = 0
     func add() {
         count += 1
@@ -89,7 +89,7 @@ func TestSemanticTokens_ClassifiesIdentifiers(t *testing.T) {
 }
 
 func TestSemanticTokens_FallbackWithoutIR(t *testing.T) {
-	src := `component Foo() {
+	src := `component Foo() ui {
     var x = 1
 }
 `

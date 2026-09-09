@@ -12,7 +12,7 @@ import (
 // existing IfStmt.Else StmtBlock (no new AST shape).
 func TestElseIfChain(t *testing.T) {
 	doc := mustParse(t, `
-component main {
+component main ui {
     var n = 0
     func classify() int {
         if n == 0 {
@@ -42,7 +42,7 @@ component main {
 
 // The formatter prints an else-if chain as `else if`, not `else { if ... }`.
 func TestElseIfFormatting(t *testing.T) {
-	doc := mustParse(t, `component main {
+	doc := mustParse(t, `component main ui {
     var n = 0
     func f() int {
         if n == 0 {

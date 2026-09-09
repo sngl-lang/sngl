@@ -21,12 +21,12 @@ func TestConstruct_ChangedValueRebuildsTheInstance(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:macro"
-component badge(#[construct] start int, label string) {
+component badge(#[construct] start int, label string) ui {
     var n = start
     text(value="[" + label + ":" + string(n) + "]")
     button(text="bump", @click { n = n + 1 })
 }
-component App() {
+component App() ui {
     var (
         names list<string> = ["a"]
         base = 10
@@ -38,7 +38,7 @@ component App() {
     button(text="rebase", @click { base = base + 100 })
     button(text="rename", @click { tag = "y" })
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -79,12 +79,12 @@ func TestConstruct_UnchangedValueKeepsTheInstance(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:macro"
-component badge(#[construct] start int, label string) {
+component badge(#[construct] start int, label string) ui {
     var n = start
     text(value="[" + label + ":" + string(n) + "]")
     button(text="bump", @click { n = n + 1 })
 }
-component App() {
+component App() ui {
     var (
         names list<string> = ["a"]
         base = 10
@@ -96,7 +96,7 @@ component App() {
     button(text="touch", @click { base = base })
     button(text="rename", @click { tag = "y" })
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

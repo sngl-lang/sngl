@@ -15,12 +15,12 @@ const constructInstanceSrc = `
 import . "sngl:ui"
 import . "sngl:macro"
 
-component card(#[construct] seed int, name = "") {
+component card(#[construct] seed int, name = "") ui {
     var clicks = seed
     button(text="{name} ({clicks})", @click { clicks += 1 })
 }
 
-component main {
+component main ui {
     var (
         names list<string> = ["a", "b"]
         base = 0
@@ -127,7 +127,7 @@ const constructStaticSrc = `
 import . "sngl:ui"
 import . "sngl:macro"
 
-component seeded(#[construct] start int, tail = "") {
+component seeded(#[construct] start int, tail = "") ui {
     var n = start
     text(value="{tail}:{n}")
     if n > 3 {
@@ -135,7 +135,7 @@ component seeded(#[construct] start int, tail = "") {
     }
 }
 
-component main {
+component main ui {
     var k = 0
     button(text="bump", @click { k = k + 1 })
     seeded(start=k, tail="solo")

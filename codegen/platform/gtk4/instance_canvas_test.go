@@ -18,14 +18,14 @@ struct Item {
     level float = 0.0
 }
 
-component gauge(level = 0.0) {
+component gauge(level = 0.0) ui {
     var hits = 0
     canvas(width=100px, height=100px) {
         rect(x=0.0, y=0.0, w=level, h=10.0) {}
     }
 }
 
-component main {
+component main ui {
     var items list<Item> = [
         {level=10.0},
         {level=20.0},

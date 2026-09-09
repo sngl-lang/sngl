@@ -8,7 +8,7 @@ import (
 const hostSrc = `import . "sngl:ui"
 import . "sngl:time"
 
-component main {
+component main ui {
     var (
         count = 0
         shown = false
@@ -205,13 +205,13 @@ func TestNoIRReachesTheHost(t *testing.T) {
 func TestAUserComponentIsTransparentToTheHost(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component panel(label string) {
+component panel(label string) ui {
     vbox {
         text #inner(value=label)
     }
 }
 
-component main {
+component main ui {
     vbox #outer {
         panel(label="hi")
     }

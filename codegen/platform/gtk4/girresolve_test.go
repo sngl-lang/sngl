@@ -100,7 +100,7 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 func TestBundledGIRLosesNoSetter(t *testing.T) {
 	const src = `import . "sngl:ui"
 import . "sngl:app"
-component main() {
+component main() ui {
     window(title="t") {
         vbox {
             text(value="a")

@@ -20,6 +20,7 @@ import (
 // slot's type, which is how a member hosts a different family from its own.
 const treeStubSource = `
 import tree "sngl:tree"
+import ui "sngl:ui"
 
 #[tree.kind]
 struct block {}
@@ -27,13 +28,13 @@ struct block {}
 #[tree.kind]
 struct inline {}
 
-component document(children ...component block) {}
+component document(children ...component block) ui.ui {}
 
 component para(children ...component inline) block {}
 
 component bold(weight int) inline {}
 
-component plain() {}
+component plain() ui.ui {}
 `
 
 func treeStubConfig(t *testing.T) *checker.Config {
@@ -67,7 +68,7 @@ func checkTreeStub(t *testing.T, body string) []string {
 
 func TestTreeChildrenAcceptsItsOwnKind(t *testing.T) {
 	errs := checkTreeStub(t, `
-component main {
+component main ui {
     document() {
         para() {
             bold(weight=700) {}
@@ -83,7 +84,7 @@ component main {
 func TestTreeChildrenRejectsAForeignKind(t *testing.T) {
 	// bold is an inline, not a block: right tree, wrong segment.
 	errs := checkTreeStub(t, `
-component main {
+component main ui {
     document() {
         bold(weight=700) {}
     }
@@ -97,7 +98,7 @@ component main {
 
 func TestTreeChildrenRejectsAnUnmarkedComponent(t *testing.T) {
 	errs := checkTreeStub(t, `
-component main {
+component main ui {
     para() {
         plain() {}
     }
@@ -114,7 +115,7 @@ component main {
 // `bold` declares none.
 func TestAMemberWithNoSlotHostsNothing(t *testing.T) {
 	errs := checkTreeStub(t, `
-component main {
+component main ui {
     bold(weight=1) {
         bold(weight=2)
     }

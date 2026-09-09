@@ -21,7 +21,7 @@ struct Holder {
     inner option<Box> = null
 }
 
-component main {
+component main ui {
     var b = Box{value=3}
     var h = Holder{inner=null}
     var seen = 0

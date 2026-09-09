@@ -64,7 +64,7 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg *ir.Package) []byte {
 // AllFuncs — all platforms must dedup funcs by pointer.
 func TestComputedNotDoubleEmitted(t *testing.T) {
 	src := `import . "sngl:ui"
-component main {
+component main ui {
     var count = 0
     func doubled() => count * 2
     text(value=string(doubled))

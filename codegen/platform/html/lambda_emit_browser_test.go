@@ -29,7 +29,7 @@ func run(f func()) {
     f()
 }
 
-component chooser(@picked) {
+component chooser(@picked) ui {
     button(text="pick", @click {
         run(func() {
             picked()
@@ -37,13 +37,13 @@ component chooser(@picked) {
     })
 }
 
-component App() {
+component App() ui {
     var picks = 0
 
     chooser(@picked { picks += 1 })
     text(value="picks=" + string(picks))
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 
 func TestEmitInsideALambdaReachesTheHandler(t *testing.T) {

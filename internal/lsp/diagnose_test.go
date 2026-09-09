@@ -9,7 +9,7 @@ import (
 
 func TestAnalyze_ValidFile(t *testing.T) {
 	srv := New()
-	fs := srv.ws.open("file:///test.sngl", `component main {
+	fs := srv.ws.open("file:///test.sngl", `component main ui {
 	var count = 0
 	text(value="hello")
 }
@@ -25,7 +25,7 @@ func TestAnalyze_ValidFile(t *testing.T) {
 
 func TestAnalyze_ParseError(t *testing.T) {
 	srv := New()
-	fs := srv.ws.open("file:///test.sngl", `component main {
+	fs := srv.ws.open("file:///test.sngl", `component main ui {
 	var =
 }
 `, 1)
@@ -38,7 +38,7 @@ func TestAnalyze_ParseError(t *testing.T) {
 func TestAnalyze_CheckerError(t *testing.T) {
 	srv := New()
 	// Unknown component reference should trigger checker error
-	fs := srv.ws.open("file:///test.sngl", `component main {
+	fs := srv.ws.open("file:///test.sngl", `component main ui {
 	nonexistent_widget(value="hi")
 }
 `, 1)

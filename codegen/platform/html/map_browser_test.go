@@ -21,13 +21,13 @@ func TestMapIndexWriteReachesTheMap(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var counts map<string, int> = {}
     text(value="[" + string(counts.length()) + ":" + string(counts.get("a", 0)) + "]")
     button(text="put", @click { counts["a"] = 7 })
     button(text="bump", @click { counts["a"] += 5 })
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

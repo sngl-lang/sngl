@@ -22,7 +22,7 @@ struct pair {
     a int
     b string
 }
-component App() {
+component App() ui {
     var (
         key pair = pair{a = 1, b = "x"}
         log list<string> = []
@@ -32,7 +32,7 @@ component App() {
     effect(on=key, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

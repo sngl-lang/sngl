@@ -59,7 +59,7 @@ func startComponent(t *testing.T, src string) *webtest.Browser {
 func TestInteraction_InputTwoWay(t *testing.T) {
 	const src = `
 import . "sngl:ui"
-component main {
+component main ui {
     var name = "World"
     text(value="Hello, {name}!")
     input(:value=name)
@@ -101,7 +101,7 @@ component main {
 func TestInteraction_SelectChange(t *testing.T) {
 	const src = `
 import . "sngl:ui"
-component main {
+component main ui {
     var fruit = "apple"
     text(value="picked: {fruit}")
     select(options=["apple","banana","cherry"], :value=fruit)

@@ -319,7 +319,7 @@ func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
 	content := `import . "sngl:ui"
 import . "sngl:macro"
 
-component main {
+component main ui {
     #[foreign("js:./api", "compute", pure)]
     func compute(a int, b int) => a + b
 

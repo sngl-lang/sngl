@@ -26,7 +26,7 @@ import "sngl:platform/fyne"
 
 var reading int = 42
 
-component Gauge(:level int, @change ChangeEvent) {
+component Gauge(:level int, @change ChangeEvent) ui {
     fyne.Widget(
         spec=fyne.Spec{
             new=fyne.Native{path="github.com/example/fyne-gauge/fynegauge", name="NewGauge"},
@@ -40,7 +40,7 @@ component Gauge(:level int, @change ChangeEvent) {
     ) {}
 }
 
-component main {
+component main ui {
     vbox {
         Gauge(:level=reading)
     }
@@ -128,7 +128,7 @@ func TestFynePrimitiveWithoutASpecIsAnError(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/fyne"
 
-component main {
+component main ui {
     vbox {
         fyne.Widget(text="no spec") {}
     }
@@ -159,7 +159,7 @@ import "sngl:platform/fyne"
 
 var reading int = 42
 
-component Gauge(:level int, @change ChangeEvent) {
+component Gauge(:level int, @change ChangeEvent) ui {
     fyne.Widget(
         spec=fyne.Spec{
             new=fyne.Native{path="github.com/example/fyne-charts/v2", name="NewGauge"},
@@ -173,7 +173,7 @@ component Gauge(:level int, @change ChangeEvent) {
     ) {}
 }
 
-component main {
+component main ui {
     vbox {
         Gauge(:level=reading, @change {})
     }

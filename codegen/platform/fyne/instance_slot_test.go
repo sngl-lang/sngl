@@ -12,7 +12,7 @@ import (
 const slotInstanceSrc = `
 import . "sngl:ui"
 
-component card(name = "") {
+component card(name = "") ui {
     var open = true
     button(text=name, @click { open = !open })
     if open {
@@ -20,7 +20,7 @@ component card(name = "") {
     }
 }
 
-component main {
+component main ui {
     var items list<string> = ["a", "b"]
     for var it = items {
         card(name=it)

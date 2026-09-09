@@ -15,7 +15,7 @@ func TestTwoWayBindingUsesEventTargetValue(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+component main ui {
     var name = "World"
     text(value="Hello, {name}!")
     input(:value=name, placeholder="Enter your name")

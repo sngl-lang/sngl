@@ -20,7 +20,7 @@ import lib "go:git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
 
 const items = lib.Anything()
 
-component main {
+component main ui {
     var rows = items
 
     window #app(title="t") {

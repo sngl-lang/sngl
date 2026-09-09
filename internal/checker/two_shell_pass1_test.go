@@ -73,7 +73,7 @@ func TestConstTypePropagatesToVar(t *testing.T) {
 	pkg := checkNoErrors(t, `
 const MAX = 10
 var count = MAX
-component main { text(value="{count}") }
+component main ui { text(value="{count}") }
 `)
 	var v *ir.Var
 	for _, x := range pkg.Vars {

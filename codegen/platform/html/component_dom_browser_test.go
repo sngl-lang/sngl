@@ -31,52 +31,52 @@ type componentDOMCase struct {
 
 var componentDOMCases = []componentDOMCase{
 	{"text", `import . "sngl:ui"
-component main { text(value="HELLO") }`, []string{"<span", "HELLO"}},
+component main ui { text(value="HELLO") }`, []string{"<span", "HELLO"}},
 	{"vbox", `import . "sngl:ui"
-component main { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
+component main ui { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
 	// Caller `style` on a stdlib wrapper must merge onto the wrapper's root
 	// element alongside its structural style (forwardStyle in lower), and a
 	// `#hex` color literal must render as a CSS color (colorStructToCSS).
 	{"vbox-style", `import . "sngl:ui"
-component main { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
+component main ui { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
 		[]string{"flex-direction:column", "gap:8px", "background-color:#ff0000"}},
 	{"text-color", `import . "sngl:ui"
-component main { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
+component main ui { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
 	{"hbox", `import . "sngl:ui"
-component main { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
+component main ui { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
 	{"button", `import . "sngl:ui"
-component main { button(text="CLICK") }`, []string{"<button", "CLICK"}},
+component main ui { button(text="CLICK") }`, []string{"<button", "CLICK"}},
 	{"input", `import . "sngl:ui"
-component main { var n = "Bob" input(:value=n) }`, []string{"<input"}},
+component main ui { var n = "Bob" input(:value=n) }`, []string{"<input"}},
 	{"checkbox", `import . "sngl:ui"
-component main { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
+component main ui { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
 	{"image", `import . "sngl:ui"
-component main { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
+component main ui { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
 	{"link", `import . "sngl:ui"
-component main { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
+component main ui { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
 	{"select", `import . "sngl:ui"
-component main { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
+component main ui { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
 		[]string{"<select", "<option", ">a<", ">b<", ">c<", "pick"}},
 	{"radio", `import . "sngl:ui"
-component main { var r = "y" radio(options=["x","y"], :value=r) }`,
+component main ui { var r = "y" radio(options=["x","y"], :value=r) }`,
 		[]string{"<fieldset", `type="radio"`, `value="x"`, `value="y"`}},
 	{"textarea", `import . "sngl:ui"
-component main { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
+component main ui { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
 	{"tabs", `import . "sngl:ui"
-component main { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
+component main ui { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
 		[]string{`role="tablist"`, "One", "Two", "panel"}},
 	{"table", `import . "sngl:ui"
-component main { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
+component main ui { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
 		[]string{"<table", "<thead", "<tbody", ">A<", ">B<", ">1<", ">4<"}},
 	{"tree", `import . "sngl:ui"
-component main { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
+component main ui { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
 	{"modal", `import . "sngl:ui"
-component main { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
+component main ui { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
 		[]string{"Dialog", "body"}},
 	{"divider", `import . "sngl:ui"
-component main { divider() }`, []string{"<hr"}},
+component main ui { divider() }`, []string{"<hr"}},
 	{"badge", `import . "sngl:ui"
-component main { badge(value="3") }`, []string{"3"}},
+component main ui { badge(value="3") }`, []string{"3"}},
 }
 
 func TestComponentDOM(t *testing.T) {

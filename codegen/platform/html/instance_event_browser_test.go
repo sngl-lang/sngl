@@ -18,11 +18,11 @@ import (
 const instanceEventSrc = `
 import . "sngl:ui"
 import . "sngl:app"
-component row(label string, @pick) {
+component row(label string, @pick) ui {
     var seen = 0
     button(text="pick " + label + ":" + string(seen), @click { seen = seen + 1 pick(label) })
 }
-component App() {
+component App() ui {
     var items list<string> = ["a", "b", "c"]
     var picked string = ""
     text(value="picked=" + picked)
@@ -31,7 +31,7 @@ component App() {
     }
     button(text="unshift", @click { items = ["z", "a", "b", "c"] })
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 
 // The event reaches the handler the call site wrote.

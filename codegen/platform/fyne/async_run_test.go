@@ -22,7 +22,7 @@ func sleep(ns int)
 #[go.async]
 func host() string
 
-component main {
+component main ui {
     var (
         greeting = "idle"
         busy = false
@@ -110,7 +110,7 @@ import go "sngl:language/go"
 #[go.async]
 func sleep(ns int)
 
-component main {
+component main ui {
     var busy = false
 
     window(title="probe") {
@@ -156,7 +156,7 @@ import go "sngl:language/go"
 #[go.async]
 func host() string
 
-component main {
+component main ui {
     var (
         handler func() string = host
         greeting = "idle"

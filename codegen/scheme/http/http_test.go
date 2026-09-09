@@ -41,7 +41,7 @@ func buildTarGz(t *testing.T, files map[string]string) []byte {
 
 func TestHTTPImporterFetchesAndCaches(t *testing.T) {
 	archive := buildTarGz(t, map[string]string{
-		"pkg/widgets.sngl": `component Counter(label = "") { }`,
+		"pkg/widgets.sngl": `component Counter(label = "") ui { }`,
 		"pkg/README.md":    "readme",
 	})
 	expectHash := fmt.Sprintf("%x", sha256.Sum256(archive))

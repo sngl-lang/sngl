@@ -22,7 +22,7 @@ func TestEffect_TwoPositionsEndBothBeforeEitherBegins(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var (
         k = 0
         log list<string> = []
@@ -32,7 +32,7 @@ component App() {
     effect(on=k, @mount { log.push("+B") }, @unmount { log.push("-B") })
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -55,7 +55,7 @@ func TestEffect_PushMountsTheNewBracket(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var (
         items list<string> = ["a"]
         log list<string> = []
@@ -66,7 +66,7 @@ component App() {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -92,7 +92,7 @@ import . "sngl:app"
 struct counter {
     n int
 }
-component App() {
+component App() ui {
     var (
         key counter = counter{n = 0}
         log list<string> = []
@@ -101,7 +101,7 @@ component App() {
     effect(on=key.n, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -129,12 +129,12 @@ var (
     log list<string> = []
 )
 func scaled(m int) => m * n
-component App() {
+component App() ui {
     button(text="bump", @click { n = n + 1 })
     effect(on=scaled(2), @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -176,7 +176,7 @@ var (
     y = 0
     runs = 0
 )
-component App() {
+component App() ui {
     effect(on=x, @mount {
         runs += 1
         y = y + 1
@@ -187,7 +187,7 @@ component App() {
     })
     text(value="[" + "{runs}" + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

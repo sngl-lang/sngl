@@ -49,17 +49,19 @@ func newTestResolver() *mockResolver {
 		"widgets": `
 import . "sngl:ui"
 
-component Counter(label = "") {
+component Counter(label = "") ui {
     var count = 0
     text(value=label)
 }
 
-component _helper() {
+component _helper() ui {
     text(value="private")
 }
 `,
 		"badlib": `
-component main {
+import . "sngl:ui"
+
+component main ui {
     text(value="oops")
 }
 `,
@@ -87,7 +89,7 @@ func TestTernaryNumericPromotion(t *testing.T) {
 	// is constant representability, not a value-level int→float conversion —
 	// the branch becomes a float literal rather than being wrapped in a cast.
 	pkg := parse(t, `
-component main {
+component main ui {
 	func pick(b bool) => b ? 0 : 1.5
 	text(value=string(pick(true)))
 }`)
@@ -244,7 +246,7 @@ func int.double(x int) => x + x
 
 func TestComponentDef(t *testing.T) {
 	pkg := parse(t, `
-component Counter(label string, :count int, @click) {
+component Counter(label string, :count int, @click) ui {
 }
 `)
 	if len(pkg.Components) != 1 {
@@ -373,7 +375,7 @@ func TestUnaryOpValid(t *testing.T) {
 
 func TestCheckRefAndDeref(t *testing.T) {
 	expectNoErrors(t, `
-component main {
+component main ui {
     var x int = 0
     var p ref<int> = &x
     var y int = *p
@@ -382,7 +384,7 @@ component main {
 
 func TestCheckAddrOfNonLvalue(t *testing.T) {
 	expectError(t, `
-component main {
+component main ui {
     var p ref<int> = &(1 + 2)
 }`, "non-lvalue")
 }
@@ -395,7 +397,7 @@ func TestCheckValueForARefParam(t *testing.T) {
 	expectNoErrors(t, `
 func peek(r ref<int>) => *r
 
-component main {
+component main ui {
     var n int = 1
     var a int = peek(&n)
     var b int = peek(n)
@@ -411,7 +413,7 @@ func keep(r ref<int>) ref<int> {
     return r
 }
 
-component main {
+component main ui {
     var n int = 1
     var a int = *keep(n)
 }`, "lets it escape")
@@ -421,7 +423,7 @@ component main {
 // may be reached before the declaration it names.
 func TestCheckValueForARefParamDeclaredLater(t *testing.T) {
 	expectError(t, `
-component main {
+component main ui {
     var n int = 1
     var a int = *keep(n)
 }
@@ -433,7 +435,7 @@ func keep(r ref<int>) ref<int> {
 
 func TestCheckDerefNonRef(t *testing.T) {
 	expectError(t, `
-component main {
+component main ui {
     var x int = 0
     var y int = *x
 }`, "cannot dereference")
@@ -444,7 +446,7 @@ func TestCheckAutoDerefSelect(t *testing.T) {
 struct Node {
     value int
 }
-component main {
+component main ui {
     var n Node = Node{value=0}
     var p ref<Node> = &n
     var v int = p.value
@@ -471,7 +473,7 @@ const x = const (y + 1)
 
 func TestConstExprInsideComponent(t *testing.T) {
 	expectError(t, `
-component main {
+component main ui {
 	var count = 0
 	text(value=const count)
 }
@@ -599,9 +601,10 @@ func TestImportIdentAlias(t *testing.T) {
 		"widgets": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
+import . "sngl:ui"
 import w "widgets"
 
-component main {
+component main ui {
     w.Counter(label="Clicks")
 }
 `))
@@ -623,9 +626,10 @@ func TestImportReplaceRoutesToReplacementURL(t *testing.T) {
 		"widgets_v2": counterPkg,
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
+import . "sngl:ui"
 import "widgets" => "widgets_v2"
 
-component main {
+component main ui {
     widgets.Counter(label="x")
 }
 `))
@@ -645,9 +649,10 @@ func TestImportReplacePropagatesToLibrary(t *testing.T) {
 	// which must be redirected via the main's replace map.
 	r := &mockResolver{pkgs: map[string]string{
 		"shim": `
+import . "sngl:ui"
 import "widgets"
 
-component Wrapped(label = "") {
+component Wrapped(label = "") ui {
     widgets.Counter(label=label)
 }
 `,
@@ -655,9 +660,10 @@ component Wrapped(label = "") {
 	}}
 	doc, err := parser.Parse("test.sngl", []byte(`
 import "shim"
+import . "sngl:ui"
 import "widgets" => "widgets_v2"
 
-component main {
+component main ui {
     shim.Wrapped(label="x")
 }
 `))
@@ -682,9 +688,10 @@ func TestImportSchemeFSDispatch(t *testing.T) {
 		},
 	}
 	doc, err := parser.Parse("test.sngl", []byte(`
+import . "sngl:ui"
 import "widgets" => "git://example.com/widgets@v1#-"
 
-component main {
+component main ui {
     widgets.Counter(label="x")
 }
 `))
@@ -725,7 +732,7 @@ func (r *schemeFSResolver) ResolveSchemeFS(scheme, uri, _ string) ([]*ast.Docume
 // what it is actually testing.
 const counterPkg = `import . "sngl:ui"
 
-component Counter(label = "") {
+component Counter(label = "") ui {
     text(value=label)
 }`
 
@@ -1010,7 +1017,7 @@ func test() {
 func TestStdlibComponentResolution(t *testing.T) {
 	// text() should resolve as a stdlib component, not an error.
 	expectNoErrors(t, `
-component main {
+component main ui {
 	text(value="hello")
 }
 `)
@@ -1018,7 +1025,7 @@ component main {
 
 func TestStdlibComponentWithChildren(t *testing.T) {
 	expectNoErrors(t, `
-component main {
+component main ui {
 	vbox {
 		text(value="a")
 		text(value="b")
@@ -1029,7 +1036,7 @@ component main {
 
 func TestStdlibComponentUnknownProp(t *testing.T) {
 	expectError(t, `
-component main {
+component main ui {
 	text(bogus="bad")
 }
 `, `unknown prop "bogus" on component text`)
@@ -1055,7 +1062,7 @@ func test() {
 
 func TestStdlibComponentCallStmt(t *testing.T) {
 	expectNoErrors(t, `
-component main {
+component main ui {
 	text(value="hello")
 	button(text="click me")
 }
@@ -1068,8 +1075,8 @@ func TestStdlibQualifiedAccess(t *testing.T) {
 	expectNoErrors(t, `
 import sngl "sngl:ui"
 
-component text() {}
-component main {
+component text() sngl.ui {}
+component main sngl.ui {
 	sngl.text(value="stdlib text")
 	text()
 }
@@ -1078,11 +1085,11 @@ component main {
 
 func TestBodyDisambiguation(t *testing.T) {
 	pkg := parse(t, `
-component greeting() {}
+component greeting() ui {}
 
 func sideEffect() {}
 
-component main {
+component main ui {
 	greeting()
 	button(text="go", @click { sideEffect() })
 	if true {
@@ -1152,7 +1159,7 @@ component main {
 
 func TestBodyForLoop(t *testing.T) {
 	pkg := parse(t, `
-component main {
+component main ui {
 	var items = [1, 2, 3]
 	for var item = items {
 		text(value="hi")
@@ -1210,7 +1217,7 @@ func TestBodyRejectsAFunctionCall(t *testing.T) {
 			expectError(t, `
 func doStuff() {}
 
-component main {
+component main ui {
 	var xs = [1]
 
 	`+tc.body+`
@@ -1227,7 +1234,7 @@ import . "sngl:ui"
 
 func doStuff() {}
 
-component main {
+component main ui {
 	func local() {
 		doStuff()
 	}
@@ -1259,7 +1266,7 @@ struct point {
 	x int
 }
 
-component main {
+component main ui {
 	var n = 0
 	var flag = false
 	var xs = [1]
@@ -1288,7 +1295,7 @@ func bump() int {
 	return n
 }
 
-component main {
+component main ui {
 	func local() {
 		n++
 	}
@@ -1589,7 +1596,7 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 // A canvas accepts shapes because its default slot names that tree.
 func TestCheckShapeType(t *testing.T) {
 	expectNoErrors(t, `
-component myWidget() {
+component myWidget() ui {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0)
         circle(cx=50.0, cy=50.0, r=30.0)
@@ -1603,7 +1610,7 @@ component myWidget() {
 // that does declare one, and names no tree on it, hosts its own family.
 func TestCheckShapeHostsOnlyThroughASlot(t *testing.T) {
 	expectError(t, `
-component myWidget() {
+component myWidget() ui {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0) {
             circle(cx=50.0, cy=50.0, r=30.0)
@@ -1615,7 +1622,7 @@ component myWidget() {
 	expectNoErrors(t, `
 component group(children ...component) shape {}
 
-component myWidget() {
+component myWidget() ui {
     canvas(width=400px, height=300px) {
         group() {
             circle(cx=50.0, cy=50.0, r=30.0)
@@ -1627,8 +1634,8 @@ component myWidget() {
 
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
-component notAShape() {}
-component myWidget() {
+component notAShape() ui {}
+component myWidget() ui {
     canvas(width=400px, height=300px) {
         notAShape() {}
     }
@@ -1641,7 +1648,7 @@ component myWidget() {
 // as a var's.
 func TestCheckShape_IsNotAValueType(t *testing.T) {
 	expectError(t, `
-component myWidget() {
+component myWidget() ui {
     var bad shape = 0
 }
 `, "names a tree, which has no values")
@@ -1649,7 +1656,7 @@ component myWidget() {
 
 func TestCheckCanvasStdlib(t *testing.T) {
 	expectNoErrors(t, `
-component myWidget() {
+component myWidget() ui {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{}) {}
         circle(cx=50.0, cy=50.0, r=30.0, style=CanvasStyle{}) {}
@@ -1666,7 +1673,7 @@ component myWidget() {
 // reach the IR as nothing at all.
 func TestComponentFuncKeepsItsMarks(t *testing.T) {
 	src := withStd(`
-component main {
+component main ui {
     #[foreign("js:./api", "shout")]
     func shout() => "hi"
 

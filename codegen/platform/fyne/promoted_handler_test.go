@@ -18,7 +18,7 @@ func TestPromotedHandlerRewritesOnlyTheSynthesizedBind(t *testing.T) {
 		out := generateFyneGo(t, `
 import . "sngl:ui"
 var name string = ""
-component main {
+component main ui {
     vbox {
         input(:value=name)
     }
@@ -38,7 +38,7 @@ component main {
 		out := generateFyneGo(t, `
 import . "sngl:ui"
 var hits int = 0
-component main {
+component main ui {
     vbox {
         input(@input { hits = 1 })
     }

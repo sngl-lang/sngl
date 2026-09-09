@@ -14,7 +14,7 @@ func manyBracketsSrc(n int) string {
 	return fmt.Sprintf(`import . "sngl:ui"
 import "sngl:seq"
 
-component main {
+component main ui {
     var mounted = 0
 
     for var i = seq.count(%d) {
@@ -59,7 +59,7 @@ func TestManyBracketsSettle(t *testing.T) {
 // rekeying itself no longer compiles.
 const mutualRekeySrc = `import . "sngl:ui"
 
-component main {
+component main ui {
     var (
         x = 0
         y = 0

@@ -44,7 +44,7 @@ func componentNamed(pkg *ir.Package, name string) *ir.Component {
 // an effect over setInterval rather than as a primitive of its own.
 func TestAnInvisibleComponentUnderAReactiveIfIsInlined(t *testing.T) {
 	pkg := lowerOne(t, `
-component held(period int) {
+component held(period int) ui {
     var handle = 0
 
     effect(
@@ -54,7 +54,7 @@ component held(period int) {
     )
 }
 
-component main {
+component main ui {
     var shown = false
 
     button(text="toggle", @click { shown = !shown })
@@ -85,7 +85,7 @@ component main {
 // stands.
 func TestAnInvisibleComponentUnderAReactiveForStaysAnInstance(t *testing.T) {
 	pkg := lowerOne(t, `
-component held(period int) {
+component held(period int) ui {
     var handle = 0
 
     effect(
@@ -95,7 +95,7 @@ component held(period int) {
     )
 }
 
-component main {
+component main ui {
     var periods = [10, 20]
 
     button(text="add", @click { periods.push(30) })
@@ -120,13 +120,13 @@ func TestAVisibleComponentUnderAReactiveIfStaysAnInstance(t *testing.T) {
 	pkg := lowerOne(t, `
 import . "sngl:ui"
 
-component held(label string) {
+component held(label string) ui {
     var n = 0
 
     text(value=label + string(n))
 }
 
-component main {
+component main ui {
     var shown = false
 
     button(text="toggle", @click { shown = !shown })

@@ -14,7 +14,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:ui/draw"
 
-component main {
+component main ui {
     var radius = 50.0
 
     window #w(title="c", href="/") {

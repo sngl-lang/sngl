@@ -20,7 +20,7 @@ struct Item {
     name string = ""
 }
 
-component card(name = "") {
+component card(name = "") ui {
     var clicks = 0
     var tags list<string> = ["a"]
     func label() => "{name}:{clicks}:{tags.length()}"
@@ -30,7 +30,7 @@ component card(name = "") {
     }
 }
 
-component main {
+component main ui {
     var items list<Item> = [{name = "a"}, {name = "b"}]
     for var item = items {
         card(name = item.name)

@@ -12,11 +12,11 @@ import (
 const funcPropSrc = `
 import . "sngl:ui"
 import . "sngl:app"
-component row(label string, onpick func(string)) {
+component row(label string, onpick func(string)) ui {
     var hits = 0
     button(text="pick " + label + ":" + string(hits), @click { onpick(label) })
 }
-component App() {
+component App() ui {
     var items list<string> = ["a", "b"]
     var picked string = ""
     text(value="picked=" + picked)
@@ -24,7 +24,7 @@ component App() {
         row(label=item, onpick=func(s string) { picked = s })
     }
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 
 // The page builds at all.

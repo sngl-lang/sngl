@@ -8,7 +8,7 @@ import "testing"
 const selectOptionsSrc = `
 import . "sngl:ui"
 
-component main {
+component main ui {
     var opts list<string> = ["a", "b"]
     var pick = "b"
     vbox {

@@ -35,7 +35,7 @@ func TestEffect_BranchIsTheLifetime(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var (
         shown = true
         log list<string> = []
@@ -46,7 +46,7 @@ component App() {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -73,7 +73,7 @@ func TestEffect_OneBracketPerElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
@@ -84,7 +84,7 @@ component App() {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -109,7 +109,7 @@ func TestEffect_TwoEndingsRunNewestFirst(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var (
         items list<string> = ["a", "b", "c"]
         log list<string> = []
@@ -120,7 +120,7 @@ component App() {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -139,7 +139,7 @@ func TestEffect_UnchangedKeyDoesNothing(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() {
+component App() ui {
     var (
         n = 0
         log list<string> = []
@@ -149,7 +149,7 @@ component App() {
     effect(on=n, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

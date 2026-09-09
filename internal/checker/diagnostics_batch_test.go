@@ -61,7 +61,7 @@ func mustReturn() int {
 // as missing-return.
 func TestMissingReturnForElseOK(t *testing.T) {
 	checkNoErrors(t, `
-component main {
+component main ui {
     func first(xs list<int>) int {
         for var x = xs {
             return x
@@ -78,7 +78,7 @@ component main {
 // never return) must NOT be flagged as missing-return.
 func TestMissingReturnTrailingCallOK(t *testing.T) {
 	checkNoErrors(t, `
-component main {
+component main ui {
     func sideEffect() { }
     func boom() int {
         sideEffect()
@@ -91,7 +91,7 @@ component main {
 // #7 — an integer literal exceeding int64 range is an error.
 func TestIntegerOverflow(t *testing.T) {
 	expectCheckError(t, `
-component main {
+component main ui {
     var x int = 99999999999999999999
     text(value="{x}")
 }

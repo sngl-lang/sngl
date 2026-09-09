@@ -22,13 +22,13 @@ const timerRunSrc = `
 import . "sngl:ui"
 import . "sngl:time"
 
-component beat(label = "") {
+component beat(label = "") ui {
     var beats = 0
     timer(interval=10ms, enabled=true, @tick { beats += 1 })
     text(value="{label} {beats}")
 }
 
-component main {
+component main ui {
     var (
         seconds = 0
         running = true

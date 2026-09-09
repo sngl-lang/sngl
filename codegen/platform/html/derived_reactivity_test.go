@@ -18,7 +18,7 @@ func TestDerivedFuncGatesReactiveSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+component main ui {
     var name = "world"
     func isLong() => name.length > 3
     vbox {
@@ -54,7 +54,7 @@ func TestDerivedFuncChainGatesReactiveSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+component main ui {
     var name = "world"
     func longish() => name.length > 3
     func isLong() => longish()
@@ -83,7 +83,7 @@ func TestToggleSplicesReactiveUpdaters(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+component main ui {
     var enabled = true
     button(text="Toggle", @click { enabled!! })
     text(value="enabled: {enabled}")
@@ -115,7 +115,7 @@ struct User {
     name string = "anon"
     score int = 0
 }
-component main {
+component main ui {
     var u User = User{name = "Ada", score = 42}
     text(value="Score: {u.score}")
     button(text="+10", @click { u.score += 10 })
@@ -146,7 +146,7 @@ output { none { html() } }
 struct Task {
     label string = ""
 }
-component main {
+component main ui {
     var tasks list<Task> = [Task{label = "A"}]
     text(value="{tasks.length} tasks")
     for var t = tasks {
@@ -183,7 +183,7 @@ func TestStringIntrinsicEmitsNativeAfterInlining(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+component main ui {
     var s = "hi"
     text(value="{s.upper()} {s.length}")
     button(text="x", @click { s = s.upper() })

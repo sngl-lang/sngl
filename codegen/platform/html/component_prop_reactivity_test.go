@@ -15,13 +15,13 @@ func TestComponentNonConstPropReactivity(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component Stat(label = "", value = 0) {
+component Stat(label = "", value = 0) ui {
     vbox {
         text(value=label)
         text(value=string(value))
     }
 }
-component main {
+component main ui {
     var posts = 12
     vbox {
         Stat(label="Posts", value=posts)

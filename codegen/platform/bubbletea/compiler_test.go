@@ -91,7 +91,7 @@ struct Todo {
     done bool
 }
 
-component main {
+component main ui {
     var (
         count = 0
         todos list<Todo>
@@ -132,7 +132,7 @@ component main {
 // activation handlers stay unguarded.
 func TestOverlayFocusCapture(t *testing.T) {
 	src := `import . "sngl:ui"
-component main {
+component main ui {
     var (
         showModal = false
         showDrawer = false

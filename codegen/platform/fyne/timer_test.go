@@ -17,7 +17,7 @@ func TestTimerEmitsTickerRuntime(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
-component main {
+component main ui {
     var seconds = 0
     var running = false
     timer(interval=1000ms, enabled=running, @tick { seconds += 1 })

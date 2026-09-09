@@ -23,7 +23,7 @@ func blocky() int {
     var x = n + 1
     return x * 3
 }
-component main {
+component main ui {
     vbox {
         text(value="expr=" + string(doubled()))
         text(value="block=" + string(blocky()))

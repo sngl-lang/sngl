@@ -88,7 +88,7 @@ func TestParseErrorDirectives(t *testing.T) {
 func TestMalformedParamListDoesNotPanic(t *testing.T) {
 	src := []byte(`import . "sngl:ui"
 
-component main {
+component main ui {
     var d = ""
     input(value=d, @change(,) {
         d = ""

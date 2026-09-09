@@ -109,7 +109,7 @@ enum Status {
     inactive
 }
 
-component main {
+component main ui {
     vbox {
     }
 }

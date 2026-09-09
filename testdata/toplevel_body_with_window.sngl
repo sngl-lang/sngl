@@ -6,7 +6,7 @@
 import . "sngl:ui"
 import . "sngl:app"
 
-output(entry = home)
+output(entry=home)
 
 var visits = 0
 

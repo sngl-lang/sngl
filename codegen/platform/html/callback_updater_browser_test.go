@@ -41,7 +41,7 @@ func run(f func()) int {
     return 7
 }
 
-component App() {
+component App() ui {
     var n = 0
     var handle = 0
 
@@ -52,7 +52,7 @@ component App() {
     })
     text(value="n=" + string(n))
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 
 func TestAWriteInsideACallbackUpdatesWhatReadsIt(t *testing.T) {

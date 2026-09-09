@@ -22,7 +22,7 @@ func fib(n int) int {
     if n < 2 { return n }
     return fib(n - 1) + fib(n - 2)
 }
-component main {
+component main ui {
     var seed = 10
     text(value=string(fib(seed)))
 }`

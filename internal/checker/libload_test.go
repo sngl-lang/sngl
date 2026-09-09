@@ -23,7 +23,7 @@ struct Probe {
     m ir.Macro
 }
 
-component main {
+component main ui {
     text(value="hi")
 }
 `
@@ -49,7 +49,7 @@ func TestImportedPackageSharesStdlibIdentity(t *testing.T) {
 		"sub": `
 import . "sngl:ui"
 
-component Label() {
+component Label() ui {
     text(value="x")
 }
 `,
@@ -58,7 +58,7 @@ component Label() {
 import "sub"
 import . "sngl:ui"
 
-component main {
+component main ui {
     text(value="hi")
     sub.Label {}
 }

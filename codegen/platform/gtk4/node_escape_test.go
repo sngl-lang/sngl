@@ -24,14 +24,14 @@ struct TreeNode {
     left dyn = null
     right dyn = null
 }
-component TreeView(node dyn = null) {
+component TreeView(node dyn = null) ui {
     vbox(style={paddingLeft=12, gap=2}) {
         text(value=string(node.value))
         if node.left != null { TreeView(node=node.left) }
         if node.right != null { TreeView(node=node.right) }
     }
 }
-component main {
+component main ui {
     var count = 0
     var tree = TreeNode{value=5, left=TreeNode{value=3}, right=TreeNode{value=8}}
     vbox {

@@ -14,7 +14,7 @@ func TestReactiveSlot_CarouselShowsOneAtATime(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component Car() {
+component Car() ui {
     var a = 0
     button(text="next", @click { a = (a + 1) % 2 })
     stack {
@@ -22,7 +22,7 @@ component Car() {
         if a == 1 { text(value="ONE") }
     }
 }
-component main { window(title="H", href="/index.html") { Car() } }
+component main ui { window(title="H", href="/index.html") { Car() } }
 `
 	b := startComponent(t, src) // skips if no browser
 	defer b.Close()
@@ -53,7 +53,7 @@ component main { window(title="H", href="/index.html") { Car() } }
 func TestReactiveSlot_TopLevelToggle(t *testing.T) {
 	src := `
 import . "sngl:ui"
-component main {
+component main ui {
     var on = true
     button(text="t", @click { on = !on })
     if on { text(value="SHOWN") }

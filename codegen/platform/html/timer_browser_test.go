@@ -38,18 +38,18 @@ func TestTimer_FiresInTheBrowser(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:time"
-component beat(label = "") {
+component beat(label = "") ui {
     var beats = 0
     timer(interval=20ms, enabled=true, @tick { beats += 1 })
     text(value="{label}=" + string(beats))
 }
-component App() {
+component App() ui {
     var seconds = 0
     timer(interval=20ms, enabled=true, @tick { seconds += 1 })
     beat(label="child")
     text(value="root=" + string(seconds))
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -78,7 +78,7 @@ func TestTimer_ABranchIsTheGate(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:time"
-component App() {
+component App() ui {
     var (
         shown = false
         n = 0
@@ -89,7 +89,7 @@ component App() {
     }
     text(value="n=" + string(n))
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

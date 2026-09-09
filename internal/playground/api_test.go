@@ -18,7 +18,7 @@ import lib "js:./lib"
 
 import . "sngl:ui"
 
-component main {
+component main ui {
     var n = 0.0
     button(text="add", @click { n = lib.add(2.0, 3.0) })
     text(value=string(n))
@@ -51,7 +51,7 @@ export function add(a: number, b: number): number {
 // the editor buffer is one SNGL file. Must still compile.
 func TestCompileBareSource(t *testing.T) {
 	const source = `import . "sngl:ui"
-component main {
+component main ui {
     text(value="hello")
 }
 `

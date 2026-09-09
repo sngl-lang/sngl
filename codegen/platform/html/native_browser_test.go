@@ -43,7 +43,7 @@ func btoa(s string) string
 #[js.native("btoa")]
 func base64(s string) string
 
-component App() {
+component App() ui {
     var (
         same = "unset"
         renamed = "unset"
@@ -54,7 +54,7 @@ component App() {
     })
     text(value="same=" + same + " renamed=" + renamed)
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 
 func TestJSNative_CallsTheRealGlobal(t *testing.T) {

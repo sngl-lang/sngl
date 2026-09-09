@@ -56,7 +56,7 @@ component sngl.text[extstub.platform] {
 }
 `
 	const userSource = `
-component main {
+component main ui {
     text(value="hi")
 }
 `
@@ -154,7 +154,7 @@ component sngl.text[stubB.platform] {
 }
 `
 	const userSource = `
-component main {
+component main ui {
     vbox {
         text(value="one")
         text(value="two")

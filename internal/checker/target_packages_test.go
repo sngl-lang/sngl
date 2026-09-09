@@ -68,7 +68,7 @@ output {
     none { html }
 }
 
-component main {
+component main ui {
     text(value="hi")
 }
 `
@@ -80,7 +80,7 @@ output {
     none { html }
 }
 
-component main {
+component main ui {
     text(value="hi")
 }
 `
@@ -112,7 +112,7 @@ output {
     none { tgtstub }
 }
 
-component main {
+component main ui {
     text(value="hi")
 }
 `
@@ -141,7 +141,7 @@ component main {
 		const intoStub = `import . "sngl:ui"
 import _ "sngl:platform/nowhere" => "sngl:platform/tgtstub"
 
-component main {
+component main ui {
     text(value="hi")
 }
 `
@@ -152,7 +152,7 @@ component main {
 		const awayFromStub = `import . "sngl:ui"
 import _ "sngl:platform/tgtstub" => "sngl:ui"
 
-component main {
+component main ui {
     text(value="hi")
 }
 `

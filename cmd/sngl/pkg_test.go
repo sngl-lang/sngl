@@ -35,7 +35,7 @@ func buildTarGz(t *testing.T, files map[string]string) []byte {
 
 func TestPkgDownloadPopulatesCache(t *testing.T) {
 	archive := buildTarGz(t, map[string]string{
-		"pkg/widgets.sngl": `component Counter(label = "") { }`,
+		"pkg/widgets.sngl": `component Counter(label = "") ui { }`,
 	})
 	expectHash := fmt.Sprintf("%x", sha256.Sum256(archive))
 
@@ -51,7 +51,7 @@ func TestPkgDownloadPopulatesCache(t *testing.T) {
 	host := strings.TrimPrefix(srv.URL, "http://")
 	mainSrc := fmt.Sprintf(`import "widgets" => "http://%s/widgets.tar.gz#%s"
 
-component main {
+component main ui {
     widgets.Counter(label="x")
 }
 `, host, expectHash)

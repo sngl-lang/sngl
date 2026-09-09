@@ -30,19 +30,19 @@ func TestPlacement_AppendingTouchesOneNode(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component row(label string) {
+component row(label string) ui {
     var hits = 0
     text(value="row " + label + ":" + string(hits))
     button(text="hit " + label, @click { hits = hits + 1 })
 }
-component App() {
+component App() ui {
     var rows list<string> = ["a", "b"]
     for var r = rows {
         row(label=r, key=r)
     }
     button(text="add", @click { rows = ["a", "b", "c"] })
 }
-component main { window(title="H", href="/index.html") { App() } }
+component main ui { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

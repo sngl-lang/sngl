@@ -24,7 +24,7 @@ func TestCanvas_EmitsGGDrawAndRedraw(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:ui/draw"
 output { none { html } }
-component main {
+component main ui {
     var radius = 50.0
     canvas(width=400px, height=280px) {
         rect(x=0.0, y=0.0, w=400.0, h=280.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
@@ -133,7 +133,7 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:ui/draw"
 output { none { html } }
-component main {
+component main ui {
     var radius = 60.0
     canvas(width=200px, height=200px) {
         rect(x=0.0, y=0.0, w=200.0, h=200.0, style=CanvasStyle{fill=color{r=240, g=240, b=240, a=255}}) {}

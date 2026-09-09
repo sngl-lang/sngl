@@ -15,7 +15,7 @@ func TestIndexedForBindsIndexAndElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+component main ui {
     for var i, x = ["A", "B", "C"] {
         text(value="i={i} x={x}")
     }
@@ -31,7 +31,7 @@ component main {
 	out2 := generateMainPage(t, `
 import . "sngl:ui"
 output { none { html() } }
-component main { for var x = ["P", "Q"] { text(value=x) } }
+component main ui { for var x = ["P", "Q"] { text(value=x) } }
 `)
 	if !strings.Contains(out2, ">P<") || !strings.Contains(out2, ">Q<") {
 		t.Errorf("single-var for regressed:\n%s", out2)
@@ -43,7 +43,7 @@ component main { for var x = ["P", "Q"] { text(value=x) } }
 	out3 := generateMainPage(t, `
 import . "sngl:ui"
 output { none { html() } }
-component main { for var i, x = ["A", "B"] { text(value="n" + string(i)) } }
+component main ui { for var i, x = ["A", "B"] { text(value="n" + string(i)) } }
 `)
 	if !strings.Contains(out3, ">n0<") || !strings.Contains(out3, ">n1<") {
 		t.Errorf("two-var with unused element var misbound the index:\n%s", out3)

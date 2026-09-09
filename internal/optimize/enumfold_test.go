@@ -23,7 +23,7 @@ enum Color { red, green, blue }
 
 const picked = Color.green
 
-component keeps {
+component keeps ui {
     var current Color = picked
     text(value="x")
 }

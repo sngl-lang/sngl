@@ -27,7 +27,7 @@ struct Counter {
 
 }
 
-component main {
+component main ui {
     var c Counter
 
     func press() {
