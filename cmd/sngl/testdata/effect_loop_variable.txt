@@ -10,7 +10,7 @@
 
 ! sngl generate --platform=html --lang=none --out=ht reads_loop_var.sngl
 stderr 'reads the loop variable "it"'
-stderr 'reads_loop_var.sngl:10:'
+stderr 'reads_loop_var.sngl:11:'
 
 # The same bracket, written the way it is meant to be, lowers on every target
 # that lowers effects for itself.

@@ -21,9 +21,8 @@ import . "sngl:ui"
 import . "sngl:app"
 import clib "c:lib/math.h"
 
-component main ui {
-  var result int
-  window #app {
+var result int
+
+window #app {
     button(text="compute", @click { result = clib.add(1, 2) })
-  }
 }

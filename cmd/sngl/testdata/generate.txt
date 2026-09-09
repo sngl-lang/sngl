@@ -73,13 +73,9 @@ app.window {
 }
 -- myapp/counter.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component Counter(initial = 0) ui {
     text(value="Count: " + string(initial))
-}
-
-app.window {
 }
 -- badoutput/app.sngl --
 import . "sngl:ui"

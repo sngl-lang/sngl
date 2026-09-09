@@ -97,8 +97,6 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-counter()
-
 component counter ui {
     var n = 0
     vbox {
@@ -108,4 +106,5 @@ component counter ui {
 }
 
 app.window {
+    counter()
 }

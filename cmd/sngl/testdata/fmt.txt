@@ -28,6 +28,7 @@ component   main ui {
 }
 
 app.window {
+    main
 }
 -- expected.sngl --
 import . "sngl:ui"

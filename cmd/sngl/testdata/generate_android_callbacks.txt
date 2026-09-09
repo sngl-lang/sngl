@@ -70,7 +70,10 @@ component tapper(onTap func(), decorate func(s string) string) ui {
     button(text=decorate("hi"), @click { onTap() })
 }
 
-component main ui {
+// The state is the window's, so the emitted Kotlin names it as written: a
+// component the window renders is inlined into it with its vars renamed per
+// instance, and every assertion below reads a var by name.
+app.window {
     var label = ""
     var notes = ""
     var flag = false
@@ -84,8 +87,4 @@ component main ui {
     }
     android.Switch(checked=flag, onCheckedChange=func(v) { flag = v })
     tapper(onTap=func() { label = "hi!" }, decorate=func(s) => s + "!")
-}
-
-app.window {
-    main
 }
