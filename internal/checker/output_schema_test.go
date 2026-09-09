@@ -40,7 +40,7 @@ component optstub(gadget string, knob string = "fallback") build.platform {}
 const optStubLangSource = `
 import build "sngl:build"
 
-component optlang(lever string, slot _ build.platform) build.language {}
+component optlang(lever string, platforms ...component build.platform) build.language {}
 `
 
 // A declared default is part of the schema, so it reaches the record a build
