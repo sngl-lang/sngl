@@ -20,7 +20,7 @@ component main ui {
     var title = "Hello"
     frame {
         text #body(value="in the default slot")
-        component header ui {
+        component header {
             text #head(value=title)
         }
     }

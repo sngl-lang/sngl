@@ -8,7 +8,7 @@ import . "sngl:test"
 //     `c.label` as the zero-arg method call `c.label()`)
 //   - WRITING c.<field> raw (RawFieldAccess write path: `c.count = N` lowers
 //     to a direct unexported-field assignment, exercising lowerTestRawFieldWrite)
-component counter {
+component counter ui {
     var count = 0
 
     func label() => "n={count}"

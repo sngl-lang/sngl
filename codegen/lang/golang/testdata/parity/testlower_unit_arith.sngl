@@ -8,7 +8,7 @@ import . "sngl:test"
 // unification must close; the golden pins the legacy expansion byte-for-byte.
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
-component sizes {
+component sizes ui {
     var base measurement = 16px
 
     text(value="sized")

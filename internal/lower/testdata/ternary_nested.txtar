@@ -2,7 +2,7 @@ caps: NoTernary
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main ui {
     var a bool = true
     var b bool = false
     var label string = ""
@@ -13,7 +13,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main ui {
     var a bool = true
     var b bool = false
     var label string = ""

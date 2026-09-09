@@ -44,6 +44,8 @@ func componentNamed(pkg *ir.Package, name string) *ir.Component {
 // an effect over setInterval rather than as a primitive of its own.
 func TestAnInvisibleComponentUnderAReactiveIfIsInlined(t *testing.T) {
 	pkg := lowerOne(t, `
+import . "sngl:ui"
+
 component held(period int) ui {
     var handle = 0
 
@@ -85,6 +87,8 @@ component main ui {
 // stands.
 func TestAnInvisibleComponentUnderAReactiveForStaysAnInstance(t *testing.T) {
 	pkg := lowerOne(t, `
+import . "sngl:ui"
+
 component held(period int) ui {
     var handle = 0
 

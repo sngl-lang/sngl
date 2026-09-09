@@ -2,7 +2,7 @@ caps: NoLambda
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main ui {
     var sum int = 0
     func run() {
         for var x = [1, 2, 3] {
@@ -20,7 +20,7 @@ struct __lambda0_caps {
 func __lambda0(state __lambda0_caps) {
     *state.sum = *state.sum + state.x
 }
-component main {
+component main ui {
     var sum int = 0
     func run(this main) {
         for var x = [1, 2, 3] {

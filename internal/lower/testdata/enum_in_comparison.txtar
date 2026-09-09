@@ -8,7 +8,7 @@ enum Color {
     blue
 }
 
-component main {
+component main ui {
     var c Color = Color.red
 
     if c == Color.green {
@@ -24,7 +24,7 @@ enum Color {
     green
     blue
 }
-component main {
+component main ui {
     var c Color = 0
     if c == 1 {
         text(value="is green")

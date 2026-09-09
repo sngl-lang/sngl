@@ -3,7 +3,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main ui {
     var name string = ""
 
     vbox {

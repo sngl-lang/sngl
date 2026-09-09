@@ -34,7 +34,7 @@ const screenshotTerminal = public.path("snapshots/todo/todo_bubbletea.png")
 const screenshotDesktop = public.path("snapshots/todo/todo_fyne.png")
 const screenshotAndroid = public.path("snapshots/todo/todo_android.png")
 
-component NavSidebar(currentHref = "") {
+component NavSidebar(currentHref = "") ui {
 	docui.Sidebar(homeHref="/index.html", logo=logo) {
 		docui.SearchBox(entries=searchEntries)
 		html.ul {
@@ -56,7 +56,7 @@ component NavSidebar(currentHref = "") {
 	}
 }
 
-component PlatformCarousel() {
+component PlatformCarousel() ui {
 	var (
 		active = 0
 		rotating = true
@@ -105,7 +105,7 @@ component PlatformCarousel() {
 	}
 }
 
-component PageLayout(title = "", currentHref = "", children ...component) {
+component PageLayout(title = "", currentHref = "", children ...component) ui {
 	if PLATFORM == html.platform {
 		html.div(class="site") {
 			html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")
@@ -139,7 +139,7 @@ component PageLayout(title = "", currentHref = "", children ...component) {
 	}
 }
 
-component PlaygroundContent() {
+component PlaygroundContent() ui {
 	if PLATFORM == html.platform {
 		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
 		html.link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css")
@@ -189,7 +189,7 @@ component PlaygroundContent() {
 	}
 }
 
-component TutorialContent() {
+component TutorialContent() ui {
 	if PLATFORM == html.platform {
 		html.link(rel="stylesheet", href=pgAssets.path("playground.css"))
 		html.link(rel="stylesheet", href=pgAssets.path("tutorial.css"))
@@ -230,7 +230,7 @@ component TutorialContent() {
 	}
 }
 
-component main {
+component main ui {
 	// Components — the starter set, in reading order. Everything else is one
 	// click on, in the package the component belongs to.
 	window(title="Components", href="/components/index.html", favicon=logo) {

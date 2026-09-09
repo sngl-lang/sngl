@@ -16,6 +16,7 @@
 import . "sngl:ui"
 import . "sngl:time"
 import "sngl:i18n"
+import app "sngl:app"
 
 output {
     none { html }
@@ -24,7 +25,7 @@ output {
 
 enum Gender { female, male, other }
 
-component main {
+component main ui {
     var name = "Alice"
     var gender Gender = Gender.female
     var guests = 1
@@ -76,4 +77,8 @@ component main {
             style={fontSize=14, color="#555"},
         )
     }
+}
+
+app.window {
+    main
 }

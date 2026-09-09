@@ -35,6 +35,9 @@ type converter struct {
 	// aliases maps a library package's URI to what this file imported it as,
 	// so a name from one is spelled the way the source spells it.
 	aliases map[string]string
+	// dotted is the packages this file dot-imported. A name from one is
+	// spelled bare, and qualifying it with the package would not resolve.
+	dotted map[string]bool
 }
 
 // --- Package → Document ---
@@ -43,8 +46,16 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	var stmts []ast.Stmt
 
 	c.aliases = map[string]string{}
+	c.dotted = map[string]bool{}
 	for _, imp := range pkg.Imports {
-		if uri, ok := strings.CutPrefix(imp.Path, "sngl:"); ok && imp.Alias != "" && imp.Alias != "." {
+		uri, ok := strings.CutPrefix(imp.Path, "sngl:")
+		if !ok {
+			continue
+		}
+		switch {
+		case imp.Alias == ".":
+			c.dotted[uri] = true
+		case imp.Alias != "":
 			c.aliases[uri] = imp.Alias
 		}
 	}
@@ -691,6 +702,10 @@ func (c *converter) treePkg() string { return c.aliasFor("tree") }
 // aliasFor is what this file imported a library package as, defaulting to the
 // last segment of its URI — which is the alias an unaliased import binds.
 func (c *converter) aliasFor(uri string) string {
+	uri = strings.TrimPrefix(uri, "sngl:")
+	if c.dotted[uri] {
+		return ""
+	}
 	if a := c.aliases[uri]; a != "" {
 		return a
 	}

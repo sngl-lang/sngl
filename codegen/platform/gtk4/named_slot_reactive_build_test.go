@@ -24,7 +24,7 @@ component q(body component) ui {
 
 component main ui {
     q {
-        component body ui {
+        component body {
             text(value="SUPPLIED")
         }
     }
@@ -47,7 +47,7 @@ component q(ready component(int)) ui {
 
 component main ui {
     q {
-        component ready(v) ui {
+        component ready(v) {
             text(value="N=" + string(v))
         }
     }

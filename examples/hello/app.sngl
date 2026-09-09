@@ -1,10 +1,11 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     none { html }
 }
 
-component main {
+component main ui {
     var name = "World"
 
     vbox(style={gap=12, padding=16}) {
@@ -13,4 +14,8 @@ component main {
             input(:value=name, placeholder="Enter your name")
         }
     }
+}
+
+app.window {
+    main
 }

@@ -1,11 +1,12 @@
 import . "sngl:ui"
 import . "sngl:ui/draw"
+import app "sngl:app"
 
 output {
     none { html }
 }
 
-component main {
+component main ui {
     var radius = 50.0
 
     func circleStyle() => CanvasStyle{
@@ -117,4 +118,8 @@ component main {
             ) {}
         }
     }
+}
+
+app.window {
+    main
 }

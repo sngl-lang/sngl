@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     go {
@@ -14,7 +15,7 @@ struct Todo {
     done bool = false
 }
 
-component main {
+component main ui {
     var (
         newTodo = ""
         todos list<Todo> = [
@@ -39,4 +40,8 @@ component main {
         }
         button(text="Remove", @click { todos.remove(todos.length - 1) }, style={alignItems="center"})
     }
+}
+
+app.window {
+    main
 }

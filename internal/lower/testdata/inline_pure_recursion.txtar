@@ -2,22 +2,22 @@ caps:
 -- input.sngl --
 import . "sngl:ui"
 
-component foo() {
+component foo() ui {
     foo()
 }
 
-component main {
+component main ui {
     foo()
 }
 -- expected.sngl --
 import . "sngl:ui"
-component foo(__depth int = 0) {
+component foo(__depth int = 0) ui {
     if __depth >= 512 {
         error.raise(message="foo: recursion exceeded 512 nested instances", kind="recursion")
     } else {
         foo(__depth=__depth + 1)
     }
 }
-component main {
+component main ui {
     foo(__depth=0)
 }

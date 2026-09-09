@@ -14,7 +14,7 @@ func clamp(x int, lo int, hi int) int {
     return result
 }
 
-component main {
+component main ui {
     var n int = 5
 
     func display() => "clamped: " + string(clamp(n, 0, 10))

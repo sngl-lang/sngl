@@ -25,7 +25,7 @@ component panel(header component) ui {
 }
 component chain(#[construct] n int) ui {
     panel() {
-        component header ui {
+        component header {
             text(value="[" + string(n) + "]")
             if n > 0 {
                 chain(n=n - 1)

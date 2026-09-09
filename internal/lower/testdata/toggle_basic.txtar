@@ -2,13 +2,13 @@ caps: NoToggle
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main ui {
     var on bool = false
     button(@click { on!! })
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main ui {
     var on bool = false
     button(@click {
         on = !on

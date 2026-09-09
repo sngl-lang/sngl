@@ -3,13 +3,13 @@
 
 import . "sngl:ui"
 
-component Badge(label = "", count int = 0) {
+component Badge(label = "", count int = 0) ui {
     hbox {
         text(value=label + ": " + string(count))
     }
 }
 
-component main {
+component main ui {
     var clicks int = 0
     var name string = "World"
 

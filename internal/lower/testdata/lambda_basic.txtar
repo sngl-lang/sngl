@@ -2,7 +2,7 @@ caps: NoLambda
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main ui {
     var k int = 5
     var addK func(int) int = func(x int) => x + k
 }
@@ -14,7 +14,7 @@ struct __lambda0_caps {
 func __lambda0(state __lambda0_caps, x int) int {
     return x + state.k
 }
-component main {
+component main ui {
     var k int = 5
     var addK func(int) int = __closure(__lambda0, __lambda0_caps{k=k})
 }

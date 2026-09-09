@@ -25,7 +25,7 @@ output {
     kotlin { android }
 }
 
-component main {
+component main ui {
     var state calc.Calc
 
     // One key, one method. The calculator never edits itself: each method

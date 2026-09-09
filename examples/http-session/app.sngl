@@ -9,7 +9,7 @@ output {
 
 import "go:git.duckfam.us/jonathan/sngl/examples/http-session/session"
 
-component main {
+component main ui {
     var sidebarOpen = false
 
     window #home(title="Dashboard", href="/") {

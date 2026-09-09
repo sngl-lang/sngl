@@ -533,6 +533,7 @@ func checkAndOptimizeFS(t *testing.T, fsys fs.FS, entry, platform, lang string) 
 func TestOptimize_ImportedComponentForUnrolls(t *testing.T) {
 	fsys := fstest.MapFS{
 		"main.sngl": &fstest.MapFile{Data: []byte(`
+import . "sngl:ui"
 import "lib"
 component main ui {
 	lib.List()

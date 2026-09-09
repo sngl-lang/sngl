@@ -237,6 +237,23 @@ const (
 // IsDrawShapeTree reports whether sd is the drawing tree.
 func IsDrawShapeTree(sd *StructDef) bool { return isTreeNamed(sd, drawPkg, shapeTree) }
 
+// The widget family, sngl:ui's `ui`. It is the one tree whose members are
+// ordinary components -- a button composes away into its caller the way any
+// wrapper does -- so the passes that ask "is this rendered rather than
+// composed" have to tell it from a specialised family. Every other tree
+// answers yes by existing.
+const (
+	uiPkg  = "sngl:ui"
+	uiTree = "ui"
+)
+
+// IsUITree reports whether sd is the widget family.
+func IsUITree(sd *StructDef) bool { return isTreeNamed(sd, uiPkg, uiTree) }
+
+// IsSegmentedTree reports whether sd is a tree with its own rendering rules --
+// any tree but the widget family.
+func IsSegmentedTree(sd *StructDef) bool { return sd != nil && sd.IsTree && !IsUITree(sd) }
+
 // UsesDrawShapes reports whether a member of the drawing tree reaches p.
 func (p *Package) UsesDrawShapes() bool { return p.usesTree(drawPkg, shapeTree) }
 

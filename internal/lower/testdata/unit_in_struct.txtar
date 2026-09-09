@@ -9,7 +9,7 @@ struct Box {
     height length
 }
 
-component main {
+component main ui {
     var b Box = Box{width=100px, height=50px}
 }
 -- expected.sngl --
@@ -22,7 +22,7 @@ unit length {
     px
     em = 16
 }
-component main {
+component main ui {
     var b Box = Box{
         width = 100,
         height = 50,

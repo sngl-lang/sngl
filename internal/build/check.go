@@ -74,14 +74,6 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 			return pkg, d
 		}
 	}
-	// A build's rule rather than the language's, which is why it is here and
-	// not in the checker: `component c { … }` on its own is a perfectly good
-	// thing to type-check, and it is only as something to *run* that it has
-	// nowhere to draw. The package body is a slot for the root tree, and a
-	// window is that tree's one renderable member.
-	if cfg.IsMain && !pkg.IsProgram() {
-		return pkg, fmt.Errorf("%s: a program declares at least one window: the package body renders only what a window holds", dir)
-	}
 	return pkg, nil
 }
 

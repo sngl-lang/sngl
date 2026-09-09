@@ -2,20 +2,20 @@ caps: NoInlineComponents
 -- input.sngl --
 import . "sngl:ui"
 
-component LabeledCounter(start = 0, @changed) {
+component LabeledCounter(start = 0, @changed) ui {
     var n = start
     button(text=string(n), @click {
         n = n + 1
         changed(n)
     })
 }
-component main {
+component main ui {
     var clicks = 0
     LabeledCounter(start=0, @changed(c) { clicks = c })
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main ui {
     var clicks int = 0
     var n__inst0 int = 0
     button(text=string(n__inst0), @click {

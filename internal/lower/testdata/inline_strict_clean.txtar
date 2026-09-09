@@ -3,12 +3,12 @@ import . "sngl:ui"
 
 import "sngl:platform/teststub"
 
-component main {
+component main ui {
     teststub.Cleanwrap(value="hi")
 }
 -- expected.sngl --
 import . "sngl:ui"
 import teststub "sngl:platform/teststub"
-component main {
+component main ui {
     sngl.text(value="hi")
 }

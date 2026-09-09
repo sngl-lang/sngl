@@ -9,7 +9,7 @@ import "sngl:platform/html"
 
 // SummaryRow is one entry in a decl list: name + one-line doc. Renders as a
 // link in html when `href` is set; `active` highlights the current row.
-component SummaryRow(name = "", doc = "", href = "", active = false) {
+component SummaryRow(name = "", doc = "", href = "", active = false) ui {
     if PLATFORM == html.platform {
         html.li(class=active ? "doc-row active" : "doc-row") {
             html.a(href=href, innerText=name, class="doc-row-name")
@@ -29,7 +29,7 @@ component SummaryRow(name = "", doc = "", href = "", active = false) {
 // Types) becomes a header + list of SummaryRows. `hrefPrefix` lets callers
 // build per-decl links like "/p/sngl/" + name. `activeName` highlights the
 // current selection in the sidebar.
-component PackageIndex(path = "", hrefPrefix = "", activeName = "") {
+component PackageIndex(path = "", hrefPrefix = "", activeName = "") ui {
     PackageIndexView(view=lookup.PackageIndex(path), hrefPrefix=hrefPrefix, activeName=activeName)
 }
 
@@ -38,7 +38,7 @@ component PackageIndex(path = "", hrefPrefix = "", activeName = "") {
 // (e.g. "/docs/sngl/types/"). Internal helper — not callable across .sngl
 // files because struct identity (lookup.Summary) doesn't cross checker
 // boundaries; use PackageSections / StdlibSections as the public entry.
-component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") {
+component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") ui {
     if items.length() > 0 {
         text(value=title, style={fontWeight="bold", paddingTop=8})
         for var it = items {
@@ -51,13 +51,13 @@ component KindSection(title = "", items list<lookup.Summary>, hrefPrefix = "") {
 // path. Use this for non-stdlib packages (platforms, languages); the stdlib
 // is rendered by website.sngl with a tier gallery on top followed by
 // StdlibSections.
-component PackagePage(path = "", baseHref = "") {
+component PackagePage(path = "", baseHref = "") ui {
     PackagePageView(view=lookup.PackageIndex(path), baseHref=baseHref)
 }
 
 // PackagePageView is the inner renderer — kept in this file so the
 // lookup.PackageView type identity matches the import in this scope.
-component PackagePageView(view lookup.PackageView, baseHref = "") {
+component PackagePageView(view lookup.PackageView, baseHref = "") ui {
     vbox(style={gap=4, padding=8}) {
         if view.title != "" {
             text(value=view.title, style={fontSize=20, fontWeight="bold"})
@@ -83,11 +83,11 @@ component PackagePageView(view lookup.PackageView, baseHref = "") {
 // StdlibSections renders only the non-component groups (types, enums, funcs,
 // constants, data, overrides, platform types) for a package. Used by the
 // stdlib landing page, where Components are surfaced via the tier gallery.
-component StdlibSections(path = "", baseHref = "") {
+component StdlibSections(path = "", baseHref = "") ui {
     StdlibSectionsView(view=lookup.PackageIndex(path), baseHref=baseHref)
 }
 
-component StdlibSectionsView(view lookup.PackageView, baseHref = "") {
+component StdlibSectionsView(view lookup.PackageView, baseHref = "") ui {
     vbox(style={gap=4, padding=8}) {
         KindSection(title="Types", items=view.typeSummaries, hrefPrefix=baseHref)
         KindSection(title="Enums", items=view.enums, hrefPrefix=baseHref)
@@ -101,7 +101,7 @@ component StdlibSectionsView(view lookup.PackageView, baseHref = "") {
 
 // PackageIndexView renders a prebuilt PackageView. Internal to docui — used by
 // PackageIndex and by EntryView when entry.kind == "index".
-component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName = "") {
+component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName = "") ui {
     vbox(style={gap=4, padding=8}) {
         if view.title != "" {
             text(value=view.title, style={fontSize=20, fontWeight="bold"})
@@ -170,7 +170,7 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
 
 // ComponentView renders a stdlib or user component's full page: header, doc,
 // props + events tables, children policy, and example source.
-component ComponentView(detail lookup.ComponentDetailView) {
+component ComponentView(detail lookup.ComponentDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.name, style={fontSize=22, fontWeight="bold"})
         if detail.doc != "" {
@@ -221,7 +221,7 @@ component ComponentView(detail lookup.ComponentDetailView) {
 
 // TypeView renders a struct type (fields + methods) or a primitive receiver
 // (methods only).
-component TypeView(detail lookup.TypeDetailView) {
+component TypeView(detail lookup.TypeDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.name, style={fontSize=22, fontWeight="bold"})
         if detail.isNative && detail.nativeName != "" {
@@ -253,7 +253,7 @@ component TypeView(detail lookup.TypeDetailView) {
 }
 
 // EnumView renders an enum's members.
-component EnumView(detail lookup.EnumDetailView) {
+component EnumView(detail lookup.EnumDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.name, style={fontSize=22, fontWeight="bold"})
         if detail.doc != "" {
@@ -269,7 +269,7 @@ component EnumView(detail lookup.EnumDetailView) {
 }
 
 // FuncView renders a function's signature, params, and return type.
-component FuncView(detail lookup.FuncDetailView) {
+component FuncView(detail lookup.FuncDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.name, style={fontSize=22, fontWeight="bold"})
         if detail.signature != "" {
@@ -298,7 +298,7 @@ component FuncView(detail lookup.FuncDetailView) {
 }
 
 // ValueView renders a const or var declaration.
-component ValueView(detail lookup.ValueDetailView) {
+component ValueView(detail lookup.ValueDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=(detail.isConst ? "const " : "var ") + detail.name,
              style={fontSize=22, fontWeight="bold"})
@@ -316,7 +316,7 @@ component ValueView(detail lookup.ValueDetailView) {
 }
 
 // PropView renders a single component prop or event.
-component PropDocView(detail lookup.PropDetailView) {
+component PropDocView(detail lookup.PropDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.componentName + "." + detail.name + (detail.isEvent ? " (event)" : ""),
              style={fontSize=22, fontWeight="bold"})
@@ -339,7 +339,7 @@ component PropDocView(detail lookup.PropDetailView) {
 }
 
 // FieldDocView renders a single struct field.
-component FieldDocView(detail lookup.FieldDetailView) {
+component FieldDocView(detail lookup.FieldDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.type + "." + detail.name,
              style={fontSize=22, fontWeight="bold"})
@@ -353,7 +353,7 @@ component FieldDocView(detail lookup.FieldDetailView) {
 }
 
 // MemberDocView renders a single enum member.
-component MemberDocView(detail lookup.MemberDetailView) {
+component MemberDocView(detail lookup.MemberDetailView) ui {
     vbox(style={gap=8, padding=8}) {
         text(value=detail.enumName + "." + detail.name,
              style={fontSize=22, fontWeight="bold"})
@@ -368,14 +368,14 @@ component MemberDocView(detail lookup.MemberDetailView) {
 // the package boundary (sngl's checker resolves native Go types per import —
 // struct identity doesn't survive nested checker invocations).
 component EntryView(path = "", ident1 = "", ident2 = "",
-                    hrefPrefix = "", activeName = "") {
+                    hrefPrefix = "", activeName = "") ui {
     EntryViewInner(entry=lookup.Resolve(path, ident1, ident2),
                    hrefPrefix=hrefPrefix, activeName=activeName)
 }
 
 // EntryViewInner is the dispatch body. Internal to docui — keeps struct args
 // inside a single .sngl file where native-type Decls are shared.
-component EntryViewInner(entry lookup.Entry, hrefPrefix = "", activeName = "") {
+component EntryViewInner(entry lookup.Entry, hrefPrefix = "", activeName = "") ui {
     if !entry.found && entry.error != "" {
         vbox(style={padding=8, gap=8}) {
             text(value="Not found", style={fontWeight="bold"})

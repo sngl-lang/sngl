@@ -2,20 +2,20 @@ caps: NoInlineComponents
 -- input.sngl --
 import . "sngl:ui"
 
-component Counter(start = 0) {
+component Counter(start = 0) ui {
     var n = start
     text(value=string(n))
 }
-component Page(initial = 0) {
+component Page(initial = 0) ui {
     Counter(start=initial)
     Counter(start=initial + 10)
 }
-component main {
+component main ui {
     Page(initial=1)
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main ui {
     var n__inst0 int = 1
     var n__inst1 int = 1 + 10
     text(value=string(n__inst0))

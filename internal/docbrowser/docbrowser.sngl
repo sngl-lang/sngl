@@ -16,7 +16,7 @@ import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "../docui"
 import "sngl:platform/html"
 
-component main {
+component main ui {
     var path = "sngl"
     var ident1 = ""
     var ident2 = ""

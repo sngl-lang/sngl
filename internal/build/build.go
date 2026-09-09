@@ -68,6 +68,14 @@ type Result struct {
 // works on pkg itself and leaves it optimized and lowered. A caller that
 // needs the checked IR afterwards has to clone before calling.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
+	// A build's rule and not the language's, which is why it is asked here
+	// rather than in the checker: `component c { … }` on its own is a
+	// perfectly good thing to type-check, and it is only as something to
+	// *run* that it has nowhere to draw. The package body is a slot for the
+	// root tree, and a window is that tree's one renderable member.
+	if !pkg.IsProgram() {
+		return nil, fmt.Errorf("%s: a program declares at least one window: the package body renders only what a window holds", o.Dir)
+	}
 	if err := ValidateOutputs(pkg); err != nil {
 		return nil, err
 	}

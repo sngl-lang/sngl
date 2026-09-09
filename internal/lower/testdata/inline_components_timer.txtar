@@ -4,19 +4,19 @@ import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
 
-component Ticker(rate duration = 1s) {
+component Ticker(rate duration = 1s) ui {
     var tick = 0
     timer(interval=rate, @tick { tick = tick + 1 })
     text(value=string(tick))
 }
-component main {
+component main ui {
     Ticker(rate=2s)
 }
 -- expected.sngl --
 import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
-component main {
+component main ui {
     var tick__inst0 int = 0
     timer(interval=2s, @tick {
         tick__inst0 = tick__inst0 + 1

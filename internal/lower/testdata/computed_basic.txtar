@@ -2,7 +2,7 @@ caps: NoComputed
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main ui {
     var n int = 5
 
     func double() => n * 2
@@ -11,7 +11,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main ui {
     var n int = 5
     text(value=string(n * 2))
 }

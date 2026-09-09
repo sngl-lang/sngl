@@ -2,7 +2,7 @@
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main ui {
     var visible bool = true
     vbox(style={gap=4}) {
         button(@click { visible = !visible })
@@ -13,7 +13,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main ui {
     var visible bool = true
     var __root dyn
     var __slot0 list<dyn> = []

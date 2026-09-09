@@ -20,7 +20,7 @@ const searchFilterJS = `window.snglFilterSearch = function(input) {
 // passes a compile-time const list of entries; the html codegen unrolls
 // the for-loop into static <a class="search-hit"> siblings, and the inline
 // JS hides/shows them client-side as the user types.
-component SearchBox(entries list<docs.SearchEntry> = []) {
+component SearchBox(entries list<docs.SearchEntry> = []) ui {
     var query = ""
 
     if PLATFORM == html.platform {
@@ -52,7 +52,7 @@ component SearchBox(entries list<docs.SearchEntry> = []) {
     }
 }
 
-component SearchHit(entry docs.SearchEntry, query = "") {
+component SearchHit(entry docs.SearchEntry, query = "") ui {
     func matches() => query != "" && string.contains(string.lower(entry.title + " " + entry.crumb + " " + entry.blurb), string.lower(query))
 
     if PLATFORM == html.platform {

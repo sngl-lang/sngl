@@ -2,16 +2,16 @@ caps: NoInlineComponents
 -- input.sngl --
 import . "sngl:ui"
 
-component Tree(name = "leaf") {
+component Tree(name = "leaf") ui {
     text(value=name)
     Tree(name="child")
 }
-component main {
+component main ui {
     Tree(name="root")
 }
 -- expected.sngl --
 import . "sngl:ui"
-component Tree(name string = "leaf", __depth int = 0) {
+component Tree(name string = "leaf", __depth int = 0) ui {
     text(value=name)
     if __depth >= 512 {
         error.raise(message="Tree: recursion exceeded 512 nested instances", kind="recursion")
@@ -19,6 +19,6 @@ component Tree(name string = "leaf", __depth int = 0) {
         Tree(name="child", __depth=__depth + 1)
     }
 }
-component main {
+component main ui {
     Tree(name="root", __depth=0)
 }

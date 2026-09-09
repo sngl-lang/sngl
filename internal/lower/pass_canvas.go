@@ -65,7 +65,7 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 // draws it, so only the outermost host becomes a draw function.
 func isShapeContainer(ni *ir.NodeInst) bool {
 	return ni.Component != nil &&
-		ni.Component.Tree == nil &&
+		!ir.IsDrawShapeTree(ni.Component.Tree) &&
 		ir.IsDrawShapeTree(treeHosted(ni.Component))
 }
 
@@ -77,7 +77,7 @@ func treeHosted(comp *ir.Component) *ir.StructDef {
 		if !s.Rest || s.Content == nil || s.Content.Kind != ir.TypeStruct {
 			continue
 		}
-		if sd, ok := s.Content.Decl.(*ir.StructDef); ok && sd.IsTree {
+		if sd, ok := s.Content.Decl.(*ir.StructDef); ok && ir.IsSegmentedTree(sd) {
 			return sd
 		}
 	}
