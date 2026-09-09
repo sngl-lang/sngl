@@ -5199,77 +5199,57 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 // checkTreeMembership holds every supplied node to the tree the position
 // accepts. Compared by declaration, so two packages each declaring a tree of
 // the same name are two trees.
+//
+// A node reports its family or it reports none, and only a *different* family
+// is the error. Belonging to none is a claim a declaration makes with
+// #[tree.none], and it is honoured everywhere: an effect goes in a canvas as
+// readily as in a layout. The compiler's own constructs -- an error boundary,
+// a context override -- say the same thing by not being a node instance at
+// all, and each holds its own children to a family of their own.
 func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
 	if want == nil {
 		return
 	}
 	for _, st := range content {
+		switch s := st.(type) {
 		// An `if` or a `for` is not a node in the tree, it is how the nodes
 		// under it got there -- so the rule applies to its body. Reading only
 		// the direct children is what rejected a canvas whose shapes come
 		// from a list.
-		switch s := st.(type) {
 		case *ir.If:
 			c.checkTreeMembership(pos, s.Body, want, where)
 			c.checkTreeMembership(pos, s.Else, want, where)
-			continue
 		case *ir.For:
 			c.checkTreeMembership(pos, s.Body, want, where)
 			c.checkTreeMembership(pos, s.Else, want, where)
-			continue
-		}
 		// A slot insertion is a position rather than a node: what lands there
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
-		if si, isSlot := st.(*ir.SlotInst); isSlot {
-			if slotTree(c.currentComponent, c.enclosingSlot(si.Name)) == want {
+		case *ir.SlotInst:
+			if got := slotTree(c.currentComponent, c.enclosingSlot(s.Name)); got != nil && got != want {
+				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
+			}
+		// A window is the checker's own IR and never a NodeInst, so its
+		// family is read off the declaration the mark bound.
+		case *ir.Window:
+			if c.windowComp != nil && c.windowComp.Tree != nil && c.windowComp.Tree != want {
+				at := pos
+				if s.AST != nil {
+					at = s.AST.Pos
+				}
+				c.error(at, "expected %s component %s, got window", want.Name, where)
+			}
+		case *ir.NodeInst:
+			if s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
 				continue
-			}
-		}
-		// An error boundary is the compiler's own IR rather than a NodeInst,
-		// and it belongs to no family: it takes the one its children turn out
-		// to be, which buildErrorBoundary holds them to.
-		if _, isEB := st.(*ir.ErrorBoundary); isEB {
-			continue
-		}
-		// A window is a node the checker builds its own IR for, so it never
-		// reaches here as a NodeInst; its family is the one its declaration
-		// names, like anything else's.
-		if w, isWin := st.(*ir.Window); isWin {
-			if c.windowComp != nil && c.windowComp.Tree == want {
-				continue
-			}
-			at := pos
-			if w.AST != nil {
-				at = w.AST.Pos
-			}
-			c.error(at, "expected %s component %s, got window", want.Name, where)
-			continue
-		}
-		ni, ok := st.(*ir.NodeInst)
-		// A component that belongs to no family may be placed in any of them:
-		// a lifetime bracket or a scheduler renders nothing, so it is no more
-		// a widget than it is a shape. What keeps that from being a hole is
-		// the matching rule on its body -- see checkTreelessBody.
-		if ok && ni.Component != nil && ni.Component.Tree == nil {
-			continue
-		}
-		if ok && ni.Component != nil && ni.Component.Tree == want {
-			continue
-		}
-		name := "unknown"
-		at := pos
-		if ok {
-			name = ni.Name
-			if ni.Component != nil {
-				name = ni.Component.Name
 			}
 			// The offending child is a better place to point than the position
 			// that hosts it.
-			if sp := stmtPos(ni.AST); sp != nil {
+			at := pos
+			if sp := stmtPos(s.AST); sp != nil {
 				at = *sp
 			}
+			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Component.Name)
 		}
-		c.error(at, "expected %s component %s, got %s", want.Name, where, name)
 	}
 }

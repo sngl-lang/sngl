@@ -71,52 +71,6 @@ func (c *checker) treeOptional(decl *ast.ComponentDecl, comp *ir.Component) bool
 	return decl.Target != nil || strings.Contains(decl.Name, ".") || comp.Builtin.IsDirective()
 }
 
-// checkHasWindow reports a program that opens none. The package body renders
-// nothing by itself -- it is a slot for the root tree, whose one renderable
-// member is a window -- so a program without one has nowhere to draw.
-//
-// Only the program's own package: a library is imported by one that has a
-// window, and a lib package may not declare one at all.
-func (c *checker) checkHasWindow() {
-	if !c.cfg.IsMain || c.inLibSource() {
-		return
-	}
-	found := len(c.pkg.Windows) > 0
-	seen := func(stmts []ir.Stmt) {
-		ir.WalkStmts(stmts, func(s ir.Stmt) error {
-			if _, ok := s.(*ir.Window); ok {
-				found = true
-				return ir.SkipDir
-			}
-			return nil
-		})
-	}
-	seen(c.pkg.Body)
-	for _, comp := range c.pkg.Components {
-		if found {
-			break
-		}
-		seen(comp.Body)
-	}
-	if !found {
-		// Nothing is missing at a particular place, so the diagnostic goes to
-		// the top of the first file rather than to a statement that would
-		// suggest the fix belongs there.
-		c.error(firstFilePos(c.docs), "a program declares at least one window: the package body renders only what a window holds")
-	}
-}
-
-// firstFilePos is the top of the package's first file: where a diagnostic
-// about the package as a whole goes, since nothing in it is at fault.
-func firstFilePos(docs []*ast.Document) ast.Pos {
-	for _, d := range docs {
-		if name := docFileName(d); name != "" {
-			return ast.Pos{File: name, Line: 1, Column: 1}
-		}
-	}
-	return ast.Pos{}
-}
-
 // checkTreelessBody holds a tree-less component to containing no member of any
 // family. Placing one is unrestricted (a lifetime bracket belongs in a drawing
 // as much as in a layout), and this is what keeps that from being a hole: a

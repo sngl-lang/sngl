@@ -3543,7 +3543,6 @@ func (c *checker) pass2() {
 	c.reportBodyComponentCapture()
 
 	c.checkPackageBody()
-	c.checkHasWindow()
 	c.resolveEntryWindow()
 
 	// Check timer handler bodies (component timers are checked inside
