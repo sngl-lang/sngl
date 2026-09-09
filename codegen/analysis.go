@@ -101,13 +101,16 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		for _, v := range o.Vars {
 			a.ModelFields[v.Name] = true
 		}
-		// A window's funcs are synthesized and reached through
-		// CodegenCtx.AllFuncs, not by name from an expression, so they do not
-		// join FuncNames.
-		if o.Win != nil {
-			continue
-		}
 		for _, f := range o.Funcs {
+			// A window's *synthesized* funcs -- a canvas draw, the focus
+			// order's __focusNext -- are reached through CodegenCtx.AllFuncs
+			// and never named by an expression, so they do not join FuncNames.
+			// A `func` written in a window body is named by one, and left out
+			// its computed resolved as a method call: `doubled().toString()`
+			// against the `val doubled by remember` beside it.
+			if o.Win != nil && f.Synthesized {
+				continue
+			}
 			a.FuncNames[f.Name] = true
 			if f.Receiver != "" {
 				a.FuncNames[f.Receiver+"."+f.Name] = true

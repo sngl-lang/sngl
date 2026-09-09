@@ -424,8 +424,14 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		// `state.label()` in Android test mode).
 		if kc.IdentRewrites != nil {
 			if rewritten, ok := kc.IdentRewrites[fname]; ok {
+				if kc.isScopeComputed(fname, n.Func) {
+					return rewritten
+				}
 				return rewritten + "(" + strings.Join(args, ", ") + ")"
 			}
+		}
+		if kc.isScopeComputed(fname, n.Func) {
+			return fname
 		}
 		codegen.RequireIntrinsicFallback(langKt, n.Func)
 		return fname + "(" + strings.Join(args, ", ") + ")"
@@ -599,6 +605,22 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// isScopeComputed reports whether a bare call names derived state of the
+// enclosing scope, which Compose emits as a `val <name> by remember {
+// derivedStateOf { … } }` and so reads by name rather than calling.
+//
+// A component's computed arrives as a method and evalTypeMethodCall answers
+// for it. A window's has no receiver -- the checker leaves it a plain func in
+// Window.Funcs -- so it reached the ordinary call path and was emitted as
+// `doubled()` against the property declared beside it.
+func (kc *KtIRContext) isScopeComputed(name string, fn *ir.Func) bool {
+	if fn == nil || !codegen.IsComputed(fn) || kc.Ctx == nil {
+		return false
+	}
+	sym, kind := kc.Ctx.Resolve(name)
+	return kind == codegen.NameComputed && sym == ir.Symbol(fn)
 }
 
 // receiverIsComponent reports whether name matches a component declared in the

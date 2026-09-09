@@ -49,5 +49,12 @@ func testRecursionInsideTheBoundIsUntouched(t Test, c terminatingRecursion) {
     t.assert(c.step[3].value == "0")
 }
 
+// The window renders both wrappers, because a program renders what a window
+// holds: unreached, dead-code elimination takes the declaration and the entry
+// into the recursion cycle with it, which is the site
+// codegen/platform/bubbletea/recursion_depth_seed_test.go asserts seeds the
+// depth.
 window {
+    boundReachesTheBoundary
+    terminatingRecursion
 }

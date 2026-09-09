@@ -2824,6 +2824,20 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				Name: name,
 				Type: typ,
 			}
+			// A `var` at the top of a window body is that window's state, and
+			// it is this path that builds it -- so a handler written on one has
+			// to travel with the symbol, the way collectComponentVarDecl does
+			// for a component's. Dropped here, a window's `@change` was parsed
+			// and then silently gone: html emitted no `$set_` for it, and
+			// nothing wrote the derived value.
+			for i := range spec.Handlers {
+				h := &spec.Handlers[i]
+				sym.Handlers = append(sym.Handlers, &ir.EventHandler{
+					AST:  h,
+					Name: h.Name,
+					Func: &ir.Func{},
+				})
+			}
 			c.declare(decl.Pos, sym)
 			out = append(out, &ir.LocalVar{
 				Name: name,

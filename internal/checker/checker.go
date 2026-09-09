@@ -4217,7 +4217,36 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		// the declaration's answer: `content ...component ui.ui`.
 		c.checkTreeMembership(w.AST.Pos, w.Body,
 			slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
+		c.checkWindowVarHandlers(w)
 	}
+}
+
+// checkWindowVarHandlers checks the bodies of the handlers written on a
+// window's own vars.
+//
+// A component's are reached through comp.Vars, which pass1 filled; a window's
+// state is still a statement in its body at this point -- passHoistState is
+// what promotes it -- so the symbols are collected from there. They are
+// re-declared in a scope of their own because checkBlockIR has already popped
+// the one it bound them in, and a handler body reads its siblings.
+func (c *checker) checkWindowVarHandlers(w *ir.Window) {
+	var vars []*ir.Var
+	for _, s := range w.Body {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil && len(lv.Sym.Handlers) > 0 {
+			vars = append(vars, lv.Sym)
+		}
+	}
+	if len(vars) == 0 {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	for _, s := range w.Body {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			c.declare(varPos(lv.Sym), lv.Sym)
+		}
+	}
+	c.checkVarHandlerBodies(vars)
 }
 
 // declareNodeIDs declares every named visual node's #id within block as a

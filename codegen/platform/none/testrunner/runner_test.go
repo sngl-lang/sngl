@@ -93,9 +93,12 @@ component counter ui {
 	button #b(text="+", @click { n += 1 })
 	text #o(value=string(n))
 }
-app.window {
+component main ui {
 	counter #l()
 	counter #r()
+}
+app.window {
+	main
 }
 func testIsolation(t Test, c main) {
 	var l = c.l
