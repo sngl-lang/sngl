@@ -20,7 +20,7 @@ SNGL programs are `.sngl` source files. Every runnable program has one `componen
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     text(value="Hello, world!")
 }
 ```
@@ -37,7 +37,7 @@ That starts a static server on `http://localhost:8080`. Change `--platform` to `
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     text(value="Hello, world!")
 }
 ```
@@ -52,7 +52,7 @@ String interpolation with `{expr}` embeds the current value of `name` into a str
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var name = "world"
     vbox(style={gap=8, padding=16}) {
         text(value="Hello, {name}!", style={fontSize=24})
@@ -71,7 +71,7 @@ When a zero-arg func is referenced by name (without `()`) in a property expressi
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var name = "world"
     func isLong() => name.length > 3
     vbox(style={gap=8, padding=16}) {
@@ -94,7 +94,7 @@ Compile-time evaluation is useful on constrained platforms (HTML doesn't ship th
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     const greeting = "Hello, SNGL!"
     const accent color = #2196f3
     vbox(style={padding=16, gap=8}) {
@@ -120,7 +120,7 @@ output {
     kotlin { android }
 }
 
-component main ui {
+window {
     text(value="One source, many targets.")
 }
 ```
@@ -137,7 +137,7 @@ The `+` operator doubles as string concatenation when both sides are strings. Mi
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var a = 7
     var b = 3
     vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
@@ -160,7 +160,7 @@ Booleans drive `if` blocks, disabled states, and derived flags. The `!!` postfix
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var n = 5
     var enabled = true
     func positive() => n > 0
@@ -183,7 +183,7 @@ String interpolation can contain arbitrary expressions, including ternaries. Com
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var count = 0
     func label() => count == 0 ? "empty" : (count == 1 ? "one item" : "{count} items")
     vbox(style={gap=8, padding=16}) {
@@ -206,7 +206,7 @@ The checker tracks which state each `if` condition reads, so only the flips that
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var age = 17
     vbox(style={gap=8, padding=16}) {
         text(value="Age: {age}")
@@ -239,7 +239,7 @@ SNGL tracks list mutations (`push`, `remove`, index assignments) and patches the
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var items list<string> = ["apples", "bread", "cheese"]
     var next = ""
     vbox(style={gap=8, padding=16}) {
@@ -269,7 +269,7 @@ Pair function literals with derived `func()`s to keep transformation logic local
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var n = 4
     var doubler = func(x int) => x * 2
     var clamp = func(x int) int {
@@ -305,7 +305,7 @@ struct User {
     score int = 0
 }
 
-component main ui {
+window {
     var u User = User{name="Ada", score=42}
     vbox(style={gap=4, padding=16}) {
         text(value=u.name, style={fontSize=20})
@@ -327,7 +327,7 @@ import . "sngl:app"
 
 enum Status { draft, published, archived }
 
-component main ui {
+window {
     var status Status = Status.draft
     func clr() => status == Status.published ? #228B22 : (status == Status.archived ? #888888 : #CC5500)
     vbox(style={gap=8, padding=16}) {
@@ -358,7 +358,7 @@ struct Task {
     done bool = false
 }
 
-component main ui {
+window {
     var tasks list<Task> = [{label="Write tests"}, {label="Ship it", done=true}, {label="Celebrate"}]
     var next = ""
     func remainingCount() => tasks.filter(func(x) => !x.done).length
@@ -388,7 +388,7 @@ The `color`, `duration`, and `measurement` types let you share palette and spaci
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     const accent color = #2196f3
     const padding measurement = 16px
     vbox(style={gap=8, padding=padding, background=#f5f5f5}) {
@@ -417,7 +417,7 @@ component Card(title = "", body = "") ui {
     }
 }
 
-component main ui {
+window {
     vbox(style={gap=8, padding=16, background=#eeeeee}) {
         Card(title="One", body="First card")
         Card(title="Two", body="Second card")
@@ -443,7 +443,7 @@ component Counter(label = "") ui {
     }
 }
 
-component main ui {
+window {
     vbox(style={gap=6, padding=16}) {
         Counter(label="Apples")
         Counter(label="Oranges")
@@ -469,7 +469,7 @@ component Panel(title = "", content ...component) ui {
     }
 }
 
-component main ui {
+window {
     vbox(style={gap=10, padding=16, background=#f0f2f5}) {
         Panel(title="Profile") {
             text(value="Name: Ada")
@@ -493,7 +493,7 @@ For custom components, declare parameters like `@submit` to emit events that par
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var query = ""
     var results list<string>
     vbox(style={gap=8, padding=16}) {
@@ -539,7 +539,7 @@ component Stat(label = "", value = 0) ui {
     }
 }
 
-component main ui {
+window {
     vbox(style={gap=10, padding=16, background=#f0f2f5}) {
         Card(title="Today") {
             Stat(label="Visitors", value=248)
@@ -568,7 +568,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component main ui {
+window {
     vbox(style={gap=6, padding=16}) {
         text(value="Hand-rolled link:")
         html.a(href="https://example.com", innerText="example.com", style={color="#2196f3"})
@@ -587,7 +587,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import h "sngl:platform/html"
 
-component main ui {
+window {
     vbox(style={gap=8, padding=16}) {
         text(value="Aliased raw HTML access:")
         h.details(style={padding="6px", background="#f5f5f5"}) {
@@ -634,7 +634,7 @@ component Collapsible(title = "", body = "") ui {
     }
 }
 
-component main ui {
+window {
     vbox(style={gap=8, padding=16}) {
         text(value="Each row renders differently per platform.", style={color=#555555})
         text(value="In this HTML playground: click to expand.", style={color=#555555})
@@ -655,7 +655,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component main ui {
+window {
     var volume = 60
     vbox(style={gap=10, padding=16}) {
         text(value="Native browser widgets:", style={fontWeight="bold"})
@@ -686,7 +686,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:time"
 
-component main ui {
+window {
     var seconds = 0
     var running = false
     timer(interval=1000ms, enabled=running, @tick {
@@ -719,7 +719,7 @@ component Stat(label = "", value = 0, accent color = #2196f3) ui {
     }
 }
 
-component main ui {
+window {
     var posts = 12
     var followers = 348
     var likes = 1024
@@ -754,7 +754,7 @@ component Card(label = "") ui {
     text(value="{label}: {theme}", style={padding=12})
 }
 
-component main ui {
+window {
     var dark = false
     vbox(style={gap=8, padding=16}) {
         button(text="toggle theme", @click { dark = !dark })
@@ -789,7 +789,7 @@ component Cart(count = 0, price = 0) ui {
     }
 }
 
-component main ui {
+window {
     var count = 3
     var price = 1499
     vbox(style={gap=12, padding=16}) {
@@ -815,7 +815,7 @@ Inputs, selects, textareas, checkboxes, toggles — any stdlib component whose p
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     var first = ""
     var last = ""
     var subscribed = false
@@ -842,7 +842,7 @@ You've seen the core of SNGL: components, reactive state, derived funcs, lists, 
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+window {
     vbox(style={gap=8, padding=24, alignItems="center"}) {
         text(value="Happy building!", style={fontSize=28, fontWeight="bold"})
         text(value="Open the Playground, Component Gallery, or Reference docs.", style={color=#555555})
