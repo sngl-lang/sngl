@@ -223,10 +223,14 @@ component main ui {
 	}
 
 	// Lower for stubA only. NoInlineComponents is the capability android and
-	// bubbletea build with; it hoists component state into main with a
+	// bubbletea build with; it hoists component state into the root with a
 	// per-instance rename, which is where an override's var has to land.
+	//
+	// RootComponent names `main` because this program declares no window: a
+	// window is the root now, and a harness that wants a component to be one
+	// says so — the same thing `sngl test` does for a component under test.
 	caps := lower.Caps{NoInlineComponents: true}
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "stubA"}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "stubA", RootComponent: "main"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	var main *ir.Component

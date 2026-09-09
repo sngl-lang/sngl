@@ -155,7 +155,7 @@ func TestTodoApp(t *testing.T) {
 		"state = {",
 		"state.todos",
 		"state.newTodo",
-		`function main_status(`,
+		`function main_status__inst0(`,
 		`function Todo(`,
 		"function String(v)",
 		"document.",
@@ -176,8 +176,8 @@ func TestFullExample(t *testing.T) {
 		"<!DOCTYPE html>",
 		"state = {",
 		"state.count",
-		`function main_greeting(`,
-		`function main_isAdult(`,
+		`function main_greeting__inst0(`,
+		`function main_isAdult__inst0(`,
 		"document.",
 		"addEventListener",
 	}
@@ -215,8 +215,8 @@ func TestFullFixture(t *testing.T) {
 		"state = {",
 		"state.count",
 		"state.name",
-		`function main_greeting(`,
-		`function main_doubled(`,
+		`function main_greeting__inst0(`,
+		`function main_doubled__inst0(`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(html, check) {

@@ -35,8 +35,12 @@ app.window {
 		t.Fatalf("derived-func `if` was not lowered to a reactive slot (likely const-folded):\n%s", out)
 	}
 	// The slot must re-evaluate the condition on each render (not bake the
-	// initial result).
-	if !strings.Contains(out, "if (main_isLong(state))") {
+	// initial result). It is the derived func's body rather than a call to it:
+	// a pure zero-argument func in a window body inlines into its one caller,
+	// which is what the func being a *window* func rather than the root
+	// component's changed. Either spelling re-evaluates; a baked result would
+	// be a literal here.
+	if !strings.Contains(out, "if (state.name.length > 3)") {
 		t.Errorf("slot body does not re-evaluate the derived func:\n%s", out)
 	}
 	// Mutating `name` in the input handler must re-fire the slot.

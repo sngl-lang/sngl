@@ -435,6 +435,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.stylesheet = stylesheetURL
 		gen.irBodyStmts = win.Body
 		gen.irWindowFuncs = win.Funcs
+		gen.irWindowVars = win.Vars
 		gen.irWindow = win.Window
 		if win.Window != nil {
 			gen.ctx = gen.ctx.ForWindow(win.Window)
@@ -569,6 +570,9 @@ type htmlGen struct {
 
 	irBodyStmts []ir.Stmt
 
+	// irWindowVars is the window's own state, which is the page's: a window is
+	// a state owner like the package and the root component (ir.Owners).
+	irWindowVars []*ir.Var
 	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
 	// IR node rather than on the package or main component.
 	irWindowFuncs []*ir.Func
@@ -1378,28 +1382,33 @@ func (g *htmlGen) stateVars() []*ir.Var {
 	return out
 }
 
-// synthesizedVars returns the Synthesized vars of the package and main
-// component, deduplicated by name: the context lowering pass injects a var
-// like __ctx_locale into both pkg.Vars and component.Vars.
+// synthesizedVars returns the Synthesized vars of the package, the root
+// component and the window, deduplicated by name: the context lowering pass
+// injects a var like __ctx_locale into both pkg.Vars and component.Vars.
+//
+// A window owns state the way the other two do (ir.Owners), and an effect
+// placed in a window body puts its bookkeeping there -- so left out, the
+// page read `__effectN_live` before anything declared it and threw at
+// startup. A harness convention hid this: `component main` was the owner.
 func (g *htmlGen) synthesizedVars() []*ir.Var {
 	var out []*ir.Var
 	seen := make(map[string]bool)
-	if g.pkg != nil {
-		for _, v := range g.pkg.Vars {
-			if v.Synthesized && !seen[v.Name] {
+	add := func(vars []*ir.Var) {
+		for _, v := range vars {
+			if v != nil && v.Synthesized && !seen[v.Name] {
 				seen[v.Name] = true
 				out = append(out, v)
 			}
 		}
-		if main := g.rootComp; main != nil {
-			for _, v := range main.Vars {
-				if v.Synthesized && !seen[v.Name] {
-					seen[v.Name] = true
-					out = append(out, v)
-				}
-			}
-		}
 	}
+	if g.pkg == nil {
+		return nil
+	}
+	add(g.pkg.Vars)
+	if main := g.rootComp; main != nil {
+		add(main.Vars)
+	}
+	add(g.irWindowVars)
 	return out
 }
 
@@ -1511,6 +1520,16 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 		for _, f := range main.Funcs {
 			add(f)
 		}
+	}
+	// A window owns funcs the way a component does (ir.Owners), and its state
+	// is the page's state -- so its funcs are the page's functions.
+	// synthesizedFuncs already reads this list and takes the synthesized half;
+	// left out here, the other half was declared nowhere. An effect placed in
+	// a window body is where that shows: __effectN_mount was called by the
+	// settle chain and never defined, so the page threw at startup and no
+	// bracket ever ran.
+	for _, f := range g.irWindowFuncs {
+		add(f)
 	}
 	return out
 }
