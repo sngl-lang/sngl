@@ -84,7 +84,12 @@ func runGolden(t *testing.T, path string) {
 		}
 	}
 
-	lowerErr := Lower(pkg, caps, Options{})
+	// RootComponent names `main`: these fixtures are about a lowering pass and
+	// not about program shape, so they declare no window and say instead that
+	// the harness renders one component -- the same thing `sngl test` says for
+	// a component under test. Left unset, there is no root to inline into and
+	// every inliner fixture lowered to nothing.
+	lowerErr := Lower(pkg, caps, Options{RootComponent: "main"})
 	if wantErr != "" {
 		if lowerErr == nil {
 			t.Fatalf("expected lower error containing %q; got nil", wantErr)

@@ -160,7 +160,7 @@ func TestConstructPropAtAStaticPositionRebuildsTheInstance(t *testing.T) {
 	pkg := checkForLower(t, constructStaticSrc)
 	caps := staticConstructCaps
 	caps.InsertBefore = true
-	if err := Lower(pkg, caps, Options{Platform: "html"}); err != nil {
+	if err := Lower(pkg, caps, Options{Platform: "html", RootComponent: "main"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	// The click handler is what the rebuild was spliced into.
@@ -194,7 +194,7 @@ func TestConstructPropAtAStaticPositionRebuildsTheInstance(t *testing.T) {
 // the click.
 func TestConstructPropAtAStaticPositionNeedsInsertBefore(t *testing.T) {
 	pkg := checkForLower(t, constructStaticSrc)
-	err := Lower(pkg, staticConstructCaps, Options{Platform: "fyne"})
+	err := Lower(pkg, staticConstructCaps, Options{Platform: "fyne", RootComponent: "main"})
 	if err == nil {
 		t.Fatal("want a diagnostic for a rebuild the platform cannot place")
 	}

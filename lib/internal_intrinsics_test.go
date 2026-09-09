@@ -102,7 +102,10 @@ func TestEveryIntrinsicIsDeclared(t *testing.T) {
 
 // markRE captures an #[intrinsic] id and the declaration form it was written
 // on. The declaration may carry a doc comment between the two.
-var markRE = regexp.MustCompile(`#\[intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n\s*)*(func|component)\b`)
+// The mark may be qualified by whatever alias the file imported
+// sngl:internal/marks as, which is how every other mark package is written and
+// what lib/ is converting to.
+var markRE = regexp.MustCompile(`#\[(?:[A-Za-z_][A-Za-z0-9_]*\.)?intrinsic\("([^"]+)"[^\]]*\]\s*(?://[^\n]*\n\s*)*(func|component)\b`)
 
 // A component a program can write is a component someone has to look up, so
 // every exported one carries a doc comment. The draw shapes shipped without
