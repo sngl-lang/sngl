@@ -63,4 +63,8 @@ component main {
 
 const blank = http.Result{status=0, body="", headers={}}
 
-output(lang="go", platform="bubbletea")
+output {
+    go {
+        bubbletea()
+    }
+}

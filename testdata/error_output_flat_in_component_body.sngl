@@ -3,7 +3,7 @@
 import . "sngl:ui"
 
 component main {
-    output(lang="go", platform="bubbletea") // ERROR(check) "output may only be written at the root of a file"
+    output { go { bubbletea() } } // ERROR(check) "output may only be written at the root of a file"
 
     text(value="hi")
 }
