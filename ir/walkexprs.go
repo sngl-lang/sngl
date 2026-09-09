@@ -301,6 +301,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 			w.fn(n.Handler.Func)
 		}
 		n.Children = w.stmts(n.Children)
+		n.Failed = w.stmts(n.Failed)
 	case *Window:
 		w.window(n)
 	case *ContextProvider:

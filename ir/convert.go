@@ -526,6 +526,8 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		return c.convertCallStmt(s)
 	case *SlotInst:
 		return c.convertSlotInst(s)
+	case *ErrorBoundary:
+		return c.convertErrorBoundary(s)
 	case *Assign:
 		return &ast.AssignStmt{
 			Target: c.convertExpr(s.Target).(ast.TargetExpr),
@@ -693,6 +695,37 @@ func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 		out = append(out, cd)
 	}
 	return out
+}
+
+// convertErrorBoundary writes a boundary back out as the node it was written
+// as: the @error handler in the argument list, the content bare in the block,
+// and the fallback as a `component failed` population beside it.
+//
+// The node's name is the AST's, because the boundary is reached by the
+// #[builtin] mark rather than by a name -- a program that shadowed the
+// ambient `boundary` and reached the built-in through a qualified alias must
+// print back as what it wrote. Without the AST there is nothing left to read
+// it off, and the mark's own kind is what is left to say.
+//
+// Convert had no case at all for a boundary, so `sngl dump --stage checked`
+// panicked on every program that wrote one.
+func (c *converter) convertErrorBoundary(n *ErrorBoundary) ast.Stmt {
+	name := n.AST.TargetName()
+	if name == "" {
+		name = string(BuiltinErrorBoundary)
+	}
+	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: name}}
+	if n.Handler != nil {
+		vn.Args = ast.ArgList{Args: []ast.ArgOrEventHandler{c.convertEventHandler(n.Handler)}}
+	}
+	vn.Block = c.convertStmtBlock(n.Children)
+	vn.Block.IsMultiline = true
+	if len(n.Failed) > 0 {
+		cd := &ast.ComponentDecl{Name: n.FailedSlot, Body: c.convertStmtBlock(n.Failed)}
+		cd.Body.IsMultiline = true
+		vn.Block.Stmts = append([]ast.Stmt{cd}, vn.Block.Stmts...)
+	}
+	return vn
 }
 
 // convertSlotContent is a slot's declared type: the element type, rewrapped in

@@ -189,7 +189,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Four run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Five run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -346,12 +346,45 @@ halves:
   both.
 
 **A wrapper whose family is whatever it was handed says so with a type
-parameter** — `component boundary<T>(@error error, content ...component T) T`. Nothing at a call site names a type argument and nothing
+parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
 needs to: a slot's content *is* an argument, so the children bind `T` — the
 first one that belongs to a family says which, and the rest are held to it
 (`slotWant`, `childrenTree`). An empty body binds nothing and leaves `T`
 unbound: there is no content for a binding to have checked, and a default
-would name a family the wrapper has no reason to prefer.
+would name a family the wrapper has no reason to prefer. `failed` is held to
+the *content's* answer rather than to its own, because it stands where the
+content stood: a boundary around widgets cannot fall back to a shape.
+
+**A boundary has two halves and one of them is required.** `@error` reports,
+`failed` replaces; a boundary declaring neither catches an error and drops it,
+which reads as handling something. Which slot the fallback is comes from the
+declaration's *shape* — the marked component declares one rest slot for the
+content and one named slot for the fallback — so nothing in Go spells
+`failed`, and `ir.ErrorBoundary.FailedSlot` carries the name back for
+`ir.Convert` to print. A fallback with no handler gets an empty one **in the
+checker**, not in the lowering: `analyzeErrors` resolves every raise to the
+nearest boundary that has one and runs at the end of the check, so a handler
+synthesized later left the raise resolved past the boundary.
+
+`passBoundaryFailed` is the meaning: a flag on the owner, set as the handler's
+first statement, and `if __failedN { FALLBACK } else { CONTENT }` in place of
+the content. Both are shapes every backend already emits, so no platform
+emitter grew a case — the trade `passForElse` makes. It runs early, so the `if`
+reaches `passReactivity` as an ordinary view conditional and the flag makes it
+a render slot. The flag is marked `Synthesized` **on the Var and on every
+reference**, and the two must agree: html reads the first to write a top-level
+binding and the second to spell a bare name, where an unsynthesized var is a
+field of `state`; marked on one half only, the page declared one binding and
+read another, falsy by accident. bubbletea says it from the other side —
+`__failed0` title-cases to itself, so the accessor it skips for a synthesized
+field would have collided with the field.
+
+**The interpreter answers it itself**, in `Env.caught`. `sngl test` on the
+`none` platform runs the *checked* IR with no lowering at all — the same reason
+the interpreter honours `For.Else` itself — so the pass is not in that path.
+The map is keyed by the boundary's `@error` handler, which is what a raise
+reaches through `Call.ResolvedHandler`, and held per scope so two
+instantiations of one component catch separately.
 
 **`sngl:ui`'s `root` is the family a package body accepts**, and that is the
 whole of what makes a window top-level — no syntactic rule names the

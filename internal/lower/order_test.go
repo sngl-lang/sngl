@@ -57,6 +57,7 @@ func TestPassRegistryIsWellFormed(t *testing.T) {
 // them. It is a set and not an order: what it states is that a pass cannot
 // quietly acquire a gate, or quietly lose one, without someone saying so.
 var alwaysOn = []string{
+	"BoundaryFailed",
 	"CSE",
 	"ForElse",
 	"ForeignPrimitive",

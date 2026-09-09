@@ -38,6 +38,7 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 			n.Children = sp.Substitute(n.Children, callsite)
 		case *ErrorBoundary:
 			n.Children = sp.Substitute(n.Children, callsite)
+			n.Failed = sp.Substitute(n.Failed, callsite)
 		case *ContextProvider:
 			n.Children = sp.Substitute(n.Children, callsite)
 		case *Window:

@@ -3156,17 +3156,69 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		}
 		eb.Handler = c.buildErrorHandler(&eh)
 	}
-	if eb.Handler == nil {
-		c.error(vn.Pos, "%s requires an @error handler", visualNodeTarget(vn))
+	// The fallback population is peeled off before the children are checked,
+	// the way checkSlotPopulations does it for an ordinary node: what is left
+	// in the block is the rest slot's content.
+	//
+	// Which slot the fallback is comes from the declaration's shape and not
+	// from its name: the marked component declares one rest slot for the
+	// content and one named slot for the fallback, so the named one is it.
+	// The library is free to call it something else.
+	slots, rest := c.checkSlotPopulations(vn, comp)
+	eb.FailedSlot = fallbackSlotName(comp)
+	if sc := slots[eb.FailedSlot]; sc != nil {
+		eb.Failed = sc.Body
 	}
-	eb.Children = c.checkBlockIR(&vn.Block)
+	switch {
+	case eb.Handler == nil && len(eb.Failed) == 0:
+		// Either half is enough, and neither is not: a boundary that does not
+		// report and does not replace catches the error and does nothing with
+		// it, which is a silent swallow written as if it handled something.
+		c.error(vn.Pos, "%s requires an @error handler, a %s slot, or both", visualNodeTarget(vn), eb.FailedSlot)
+	case eb.Handler == nil:
+		// A fallback with nothing to run still needs a handler, and needs one
+		// here rather than at the lowering that fills it in: analyzeErrors
+		// resolves every raise beneath this node to the nearest boundary that
+		// has one, and it runs at the end of this check. Synthesized later,
+		// the raise had already resolved past the boundary to the platform's
+		// default and the fallback never showed.
+		eb.Handler = &ir.EventHandler{Name: "error", Func: &ir.Func{}}
+	}
+	eb.Children = c.checkBlockIR(&rest)
 	// A boundary belongs to no family and hosts whatever it was handed --
-	// `component boundary<T>(content ...component T) T`. Nothing at the
-	// call site names T, so the children bind it: the first one that belongs
-	// to a family says which, and the rest are held to that. An empty
-	// boundary binds nothing, and has nothing to check.
-	c.checkTreeMembership(vn.Pos, eb.Children, childrenTree(eb.Children), "in "+visualNodeTarget(vn))
+	// `component boundary<T>(content ...component T, failed component T) T`.
+	// Nothing at the call site names T, so the content binds it: the first
+	// child that belongs to a family says which, and the rest are held to
+	// that. An empty boundary binds nothing, and has nothing to check.
+	//
+	// `failed` is held to the same T, since it stands where the content
+	// stood -- and to the content's answer rather than to its own, so a
+	// boundary around widgets cannot fall back to a shape. A boundary with no
+	// content takes T from the fallback instead, which is the only thing left
+	// to take it from.
+	where := "in " + visualNodeTarget(vn)
+	want := childrenTree(eb.Children)
+	if want == nil {
+		want = childrenTree(eb.Failed)
+	}
+	c.checkTreeMembership(vn.Pos, eb.Children, want, where)
+	c.checkTreeMembership(vn.Pos, eb.Failed, want, where)
 	return eb
+}
+
+// fallbackSlotName is the boundary's one non-rest slot: what it renders in
+// place of its content once it has caught. Empty when the declaration has no
+// such slot, which is a boundary that can only report.
+func fallbackSlotName(comp *ir.Component) string {
+	if comp == nil {
+		return ""
+	}
+	for _, s := range comp.Slots {
+		if !s.Rest {
+			return s.Name
+		}
+	}
+	return ""
 }
 
 func literalString(e ast.Expr) string {

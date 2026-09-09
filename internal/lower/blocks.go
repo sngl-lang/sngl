@@ -182,6 +182,7 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 				c.addImperative(&n.Handler.Func.Block)
 			}
 			c.viewIn(&n.Children)
+			c.viewIn(&n.Failed)
 		case *ir.ContextProvider:
 			c.viewIn(&n.Children)
 		case *ir.Window:

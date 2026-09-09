@@ -163,6 +163,7 @@ func bodiedPackage() *Package {
 				&ErrorBoundary{
 					Handler:  h("ErrorBoundary.Handler"),
 					Children: body("ErrorBoundary.Children"),
+					Failed:   body("ErrorBoundary.Failed"),
 				},
 				&ContextProvider{Children: body("ContextProvider.Children")},
 				&SlotInst{Children: body("SlotInst.Children")},

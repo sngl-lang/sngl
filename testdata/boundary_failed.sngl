@@ -1,0 +1,64 @@
+// A boundary has two halves and either is enough on its own: `@error` reports
+// what happened, and the `failed` slot is what stands in place of the content
+// once it has. The snapshots are the assertion — the content until the
+// boundary catches, the fallback after, and nothing of the other either time.
+
+import . "sngl:test"
+import . "sngl:ui"
+
+component both node {
+    var caught = ""
+    boundary(@error(e) { caught = e.message }) {
+        text(value="body")
+        button #go(text="Go", @click { error.raise("boom", "") })
+
+        component failed {
+            text(value="fallback")
+        }
+    }
+    text(value=caught)
+}
+
+func testTheContentShowsUntilItCatches(t Test, c both) {
+    t.snapshot("intact")
+}
+
+// The handler runs as well as the swap, and the flag is set first: a handler
+// that raised again would leave the fallback showing rather than the content.
+func testTheFallbackReplacesTheContent(t Test, c both) {
+    c.go.click()
+    t.assert(c.caught == "boom")
+    t.snapshot("caught")
+}
+
+// The slot alone. There is nothing to run, only something to show instead, so
+// the boundary declares no handler and the lowering gives it one.
+component slotOnly node {
+    boundary {
+        button #go(text="Go", @click { error.raise("boom", "") })
+
+        component failed {
+            text(value="gone")
+        }
+    }
+}
+
+func testTheSlotAloneIsEnough(t Test, c slotOnly) {
+    c.go.click()
+    t.snapshot("gone")
+}
+
+// Two instantiations of one boundary-bearing component get a flag each: the
+// pass hangs it on the component, and inlining renames it per call site.
+component pair node {
+    both #first
+    both #second
+}
+
+func testEachInstanceCatchesAlone(t Test, c pair) {
+    c.first.go.click()
+    t.snapshot("first-only")
+}
+
+window {
+}
