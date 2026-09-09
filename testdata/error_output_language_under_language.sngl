@@ -1,0 +1,13 @@
+// The other half of the same rule: a language node hosts platforms, so a
+// language under a language is a member of the wrong family.
+import . "sngl:ui"
+
+output {
+    go {
+        js() // ERROR(check) "expected platform component in go"
+    }
+}
+
+component main {
+    text(value="hi")
+}

@@ -1,0 +1,11 @@
+// The nesting is the slot's type: `output` hosts languages, so a platform
+// written directly under it is an ordinary tree-membership error.
+import . "sngl:ui"
+
+output {
+    bubbletea() // ERROR(check) "expected language component in output"
+}
+
+component main {
+    text(value="hi")
+}

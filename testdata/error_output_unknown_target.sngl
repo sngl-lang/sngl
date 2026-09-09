@@ -1,0 +1,13 @@
+// A target is a declaration its own package carries, so a misspelled one is a
+// name nothing declares rather than a string no registry matched.
+import . "sngl:ui"
+
+output {
+    go {
+        bubbltea() // ERROR(check) "unknown platform \"bubbltea\" in output"
+    }
+}
+
+component main {
+    text(value="hi")
+}
