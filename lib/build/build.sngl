@@ -1,0 +1,10 @@
+import tree "sngl:tree"
+
+// The family a build-target language belongs to: the members `output` hosts.
+#[tree.kind]
+struct language {}
+
+// The family a build-target platform belongs to: the members a language node
+// hosts.
+#[tree.kind]
+struct platform {}

@@ -1,0 +1,16 @@
+// The build-target tree: the two families an `output` directive is written
+// from.
+//
+// A build directive is a component tree like any other. `output` hosts
+// languages, a language hosts platforms, and neither family accepts the
+// other's members — which is the shape `sngl:tree` describes, so the nesting
+// rule is a slot's type rather than a rule written in the compiler.
+//
+// A target declares its own node in its own package: `sngl:language/go`
+// declares `go`, `sngl:platform/html` declares `html`, and each names the
+// family it belongs to here. The build options a target accepts are that
+// node's props, so a misspelled option is an unknown prop and a misspelled
+// target is an unresolved name.
+//
+// Nothing here is written by an application. It is imported by `sngl:builtin`,
+// which declares `output`, and by every target package.

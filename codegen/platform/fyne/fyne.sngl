@@ -47,12 +47,15 @@ import time "sngl:time"
 import tr "sngl:tree"
 import . "sngl:macro"
 import . "sngl:internal/marks"
+import build "sngl:build"
 
-#[options]
-struct Options {
-    package string
-    main bool
-}
+// The `fyne` node of a build directive: `output { go { fyne() } }`.
+component fyne(
+    // Go package name for the generated files.
+    package string,
+    // Emit a standalone main() or a library-style module.
+    main bool,
+) build.platform {}
 
 // --- The Spec vocabulary ---
 

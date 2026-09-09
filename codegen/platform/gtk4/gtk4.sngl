@@ -22,13 +22,19 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:macro"
+import build "sngl:build"
 
-#[options]
-struct Options {
-    package string
-    main bool
-    gir string
-}
+// The `gtk4` node of a build directive: `output { go { gtk4() } }`.
+component gtk4(
+    // Go package name for the generated files.
+    package string,
+    // Emit a standalone main() or a library-style module.
+    main bool,
+    // Which introspection data to read the widget vocabulary from: "builtin"
+    // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
+    // system locations and fall back to the bundled subset.
+    gir string,
+) build.platform {}
 
 // --- Leaf widgets ---
 
