@@ -22,7 +22,7 @@ func StripForCompare(pkg *Package) {
 // It is a derived index keyed by declaration, and DeepEqual compares map keys
 // by pointer, so a clone's own declarations can never match the original's.
 // Imports are cut above, but a *library* package is still reachable through
-// the scope chain a symbol carries -- and every program reaches sngl:app that
+// the scope chain a symbol carries -- and every program reaches sngl:ui that
 // way now that its window names a tree.
 func clearReachableTreeKinds(pkg *Package) {
 	seen := map[uintptr]bool{}

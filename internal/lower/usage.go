@@ -93,7 +93,7 @@ func pkgUsesErrorHandling(pkg *ir.Package) bool {
 		// A window owns funcs the way a component does, and the ones this
 		// lowering synthesized are where the raises are: an effect group's
 		// settle raises when it does not converge. Reading the body alone left
-		// ErrorEvent undeclared in a program whose only raise was in there.
+		// the error payload undeclared in a program whose only raise was there.
 		for _, f := range w.Funcs {
 			if f.CanError || stmtsUseErrorHandling(f.Block) {
 				return true

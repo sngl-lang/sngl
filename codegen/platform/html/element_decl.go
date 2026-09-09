@@ -166,7 +166,7 @@ func domEventName(comp *ir.Component, event string) string {
 // element also declares is that element's state read back — `InputEvent.value`
 // is the control's `value` — so the parameter stands for the target. A field
 // the element declares nothing of is the event's own data —
-// `ErrorEvent.message` — so it stands for the event. A payload with no fields
+// `error.message` — so it stands for the event. A payload with no fields
 // is read by nobody and takes the event.
 //
 // Binding every event to the target is what turned `e.message` into

@@ -20,8 +20,9 @@ component _example_text node {
 // Displays an image from a URL or asset path. `fit` controls how the
 // image is scaled into its frame (see `ObjectFit`). `alt` provides the
 // accessibility label. `@load` fires once decoding completes; `@error`
-// fires on fetch/decode failure with an `ErrorEvent` describing the
-// failure.
+// fires on fetch/decode failure with the ambient `error` describing it --
+// the same value `error.raise` throws and a `boundary` catches, because a
+// failure is a failure whoever noticed it.
 component image(
     style Style,
     src string,
@@ -29,7 +30,7 @@ component image(
     fit ObjectFit,
     @click ClickEvent,
     @load LoadEvent,
-    @error ErrorEvent,
+    @error error,
 ) node {}
 
 component _example_image node {
