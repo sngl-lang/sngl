@@ -418,9 +418,33 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		})
 	}
 
+	// A var handler's body carries reactivity-injected widget updates like a
+	// tick body does, so it goes through WalkLowered for the same reason. The
+	// value being assigned is the setter's own `v`.
+	varHandlerCode := map[string]string{}
+	for name, handlers := range info.dataEvents {
+		var hb strings.Builder
+		for _, h := range handlers {
+			if h.Name != "change" || h.Func == nil {
+				continue
+			}
+			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
+				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
+			}, addWidgetImport)
+			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
+			hgc := codegen.BindVarHandlerValue(gc, h, "v")
+			for _, stmt := range codegen.WalkLowered(context.Background(), h.Func.Block, tr) {
+				for _, line := range hgc.EvalStmt(stmt) {
+					fmt.Fprintf(&hb, "\t%s\n", line)
+				}
+			}
+		}
+		varHandlerCode[name] = hb.String()
+	}
+
 	emitFyneEventInvokers(&funcBuf, eventInvokers)
 
-	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), gc, ctx, lang)
+	td, err := newIRTemplateData(info, cfg, widgetFields, entrySync, widgetImports, funcBuf.String(), varHandlerCode, gc, ctx, lang)
 	if hasCanvas {
 		// Skip any struct the user already declared, to avoid a duplicate
 		// type decl.
@@ -467,7 +491,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	return b.String(), imports, assignedAliases(gc), td.CgoPreamble, nil
 }
 
-func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
+func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetField, entrySync []entrySyncRec, widgetImports map[string]bool, functionCode string, varHandlerCode map[string]string, gc *golang.GoIRContext, ctx *codegen.CodegenCtx, lang codegen.LangTranslator) (templateData, error) {
 	td := templateData{
 		Package:      cfg.Package,
 		Main:         cfg.Main,
@@ -544,17 +568,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 				fmt.Fprintf(&extra, "\tm.%s%s(v)\n", sync.fieldName, sync.target)
 			}
 		}
-		if handlers, ok := info.dataEvents[bind.name]; ok {
-			for _, h := range handlers {
-				if h.Name == "change" && h.Func != nil {
-					for _, stmt := range h.Func.Block {
-						for _, line := range gc.EvalStmt(stmt) {
-							fmt.Fprintf(&extra, "\t%s\n", line)
-						}
-					}
-				}
-			}
-		}
+		extra.WriteString(varHandlerCode[bind.name])
 		bd.SetterExtra = extra.String()
 		td.Binds = append(td.Binds, bd)
 	}
