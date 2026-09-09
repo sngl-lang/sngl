@@ -16,14 +16,19 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output { none { html } }
 
-component main {
+component main ui {
     var name = "world"
     text(value=name)
 }
 
 func testInitial(t Test, c main) {
     t.snapshot("initial")
+}
+
+app.window {
+    main
 }

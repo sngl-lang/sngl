@@ -19,17 +19,27 @@ exists np
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var hex = int.parse("FF", 16)
     text(value=string(hex))
 }
+
+app.window {
+    main
+}
 -- bt.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main {
+component main ui {
     var hex = int.parse("FF", 16)
     text(value=string(hex))
+}
+
+app.window {
+    main
 }

@@ -27,6 +27,7 @@ stderr 'example.com/api'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:example.com/api", "Entry")]
 struct Entry {
@@ -34,14 +35,18 @@ struct Entry {
     title string
 }
 
-component main {
+component main ui {
     var e = Entry{title = "hello"}
     text(value=e.title)
 }
 
+app.window {
+    main
+}
 -- goapp.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("go:example.com/api", "api.Entry")]
 struct Entry {
@@ -49,15 +54,23 @@ struct Entry {
     title string
 }
 
-component main {
+component main ui {
     var e = Entry{title = "hello"}
     text(value=e.title)
 }
 
+app.window {
+    main
+}
 -- needsimport.sngl --
 import . "sngl:ui"
 import api "js:example.com/api"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value=string(api.anything()))
+}
+
+app.window {
+    main
 }

@@ -35,7 +35,7 @@ component App() ui {
     button(text="toggle", @click { on = !on })
     if on { Row(label="x") }
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()
@@ -79,7 +79,7 @@ component App() ui {
     button(text="deeper", @click { d = d + 1 })
     chain(n=d)
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

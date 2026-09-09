@@ -21,6 +21,7 @@ stdout '1 tests, 0 failures'
 -- guards.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 func sign(n int) string {
     if n < 0 {
@@ -50,7 +51,7 @@ func firstNegative(xs list<int>) int {
     return 0
 }
 
-component main {
+component main ui {
     var n = 0
     func label() => sign(n)
     text #out(value=label)
@@ -78,11 +79,15 @@ func testReturnOutOfLoop(t Test, c main) {
     t.assert(firstNegative([3, 1]) == 0)
 }
 
+app.window {
+    main
+}
 -- iterate.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var word = "abc"
 
     func letters() => string.split(word, "")
@@ -96,4 +101,8 @@ component main {
 
 func testComputedIterator(t Test, c main) {
     t.assert(c.letters().length() == 3)
+}
+
+app.window {
+    main
 }

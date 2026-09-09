@@ -17,14 +17,18 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output { go { bubbletea } }
 
-component counter {
+component counter ui {
     var count = 0
     text(value=string(count))
 }
 
 func testInitialSnapshotMatches(t Test, c counter) {
     t.snapshot("initial")
+}
+
+app.window {
 }

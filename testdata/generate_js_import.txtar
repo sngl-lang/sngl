@@ -6,6 +6,7 @@ esbuild's IIFE wrapper.
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 output {
     none {
@@ -13,10 +14,14 @@ output {
     }
 }
 
-component main {
+component main ui {
     var n = 0.0
     button(text="add", @click { n = lib.add(2.0, 3.0) })
     text(value=string(n))
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 export function add(a: number, b: number): number {

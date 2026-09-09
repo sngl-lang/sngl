@@ -28,6 +28,7 @@ stderr 'cannot pass Style as Style'
 -- app.sngl --
 import . "sngl:ui"
 import sub "./sub"
+import app "sngl:app"
 
 struct Style {
     x int = 0
@@ -37,12 +38,18 @@ func take(v struct {
     s Style
 }) => v.s.x
 
-component main {
+component main ui {
     var theirs = {s=sub.make()}
 
     text(value=string(take(theirs)))
 }
+
+app.window {
+    main
+}
 -- sub/lib.sngl --
+import app "sngl:app"
+
 struct Style {
     y int = 0
 }
@@ -50,9 +57,13 @@ struct Style {
 func make() Style {
     return Style{y = 5}
 }
+
+app.window {
+}
 -- direct/main.sngl --
 import . "sngl:ui"
 import sub "../sub"
+import app "sngl:app"
 
 struct Style {
     x int = 0
@@ -60,6 +71,10 @@ struct Style {
 
 func take(v Style) => v.x
 
-component main {
+component main ui {
     text(value=string(take(sub.make())))
+}
+
+app.window {
+    main
 }

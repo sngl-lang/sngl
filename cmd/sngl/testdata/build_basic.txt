@@ -8,9 +8,14 @@ exists myapp
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main {
+component main ui {
     text(value="hello")
+}
+
+app.window {
+    main
 }

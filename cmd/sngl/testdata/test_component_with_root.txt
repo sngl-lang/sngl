@@ -56,8 +56,9 @@ stdout 'ok'
 -- alone.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component counter {
+component counter ui {
     var n = 3
     vbox {
         text(value="{n}")
@@ -68,13 +69,16 @@ func testInitial(t Test, c counter) {
     t.assert(c.n == 3)
 }
 
+app.window {
+}
 -- composed.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 counter()
 
-component counter {
+component counter ui {
     var n = 3
     vbox {
         text(value="{n}")
@@ -85,15 +89,18 @@ func testInitial(t Test, c counter) {
     t.assert(c.n == 3)
 }
 
+app.window {
+}
 -- rooted.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     counter()
 }
 
-component counter {
+component counter ui {
     var n = 3
     vbox {
         text(value="{n}")
@@ -104,23 +111,27 @@ func testInitial(t Test, c counter) {
     t.assert(c.n == 3)
 }
 
+app.window {
+    main
+}
 -- two.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 vbox {
     counter()
     greeter()
 }
 
-component counter {
+component counter ui {
     var n = 3
     vbox {
         text(value="{n}")
     }
 }
 
-component greeter {
+component greeter ui {
     var who = "world"
     vbox {
         text(value="hi {who}")
@@ -133,4 +144,7 @@ func testCounter(t Test, cnt counter) {
 
 func testGreeter(t Test, g greeter) {
     t.assert(g.who == "world")
+}
+
+app.window {
 }

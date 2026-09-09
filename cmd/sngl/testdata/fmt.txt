@@ -11,18 +11,32 @@ cmp input.sngl expected.sngl
 
 -- formatted.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
+}
+
+app.window {
+    main
 }
 -- unformatted.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component   main   {
+component   main ui {
     var   x   =   0
+}
+
+app.window {
 }
 -- expected.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var x = 0
+}
+
+app.window {
+    main
 }

@@ -230,7 +230,10 @@ component TutorialContent() ui {
 	}
 }
 
-component main ui {
+// The site's windows, gathered in a component of the root family: it is one
+// declaration rather than two hundred lines at a file's top level, and
+// passRootWindow lifts them onto pkg.Windows either way.
+component pages() root {
 	// Components — the starter set, in reading order. Everything else is one
 	// click on, in the package the component belongs to.
 	window(title="Components", href="/components/index.html", favicon=logo) {
@@ -488,3 +491,5 @@ component main ui {
 	}
 
 }
+
+pages()

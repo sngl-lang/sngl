@@ -42,13 +42,14 @@ stderr 'undefined: someUndefinedIdentifier'
 -- spread.sngl --
 import std "sngl:app"
 import html "sngl:platform/html"
+import ui "sngl:ui"
 
 struct tdAttrs {
     bgcolor string
     colspan string
 }
 
-component main() {
+component main() ui.ui {
     std.window {
         html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
     }
@@ -56,8 +57,9 @@ component main() {
 -- typo.sngl --
 import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-component main() {
+component main() ui.ui {
     window {
         html.thisIsATypoNotATag(id = "x") { }
     }
@@ -66,7 +68,7 @@ component main() {
 import . "sngl:ui"
 import . "sngl:app"
 
-component main() {
+component main() ui {
     window {
         text(value=string(bubbletea.JoinDir.vertical))
     }
@@ -74,8 +76,9 @@ component main() {
 -- dotimport.sngl --
 import std "sngl:app"
 import . "sngl:platform/html"
+import ui "sngl:ui"
 
-component main() {
+component main() ui.ui {
     std.window {
         div(id = "x") { }
     }
@@ -87,7 +90,7 @@ import . "sngl:platform/html"
 
 func typoed() => someUndefinedIdentifier
 
-component main() {
+component main() std.ui {
     std.window {
         std.text(value = "x")
     }
@@ -95,8 +98,9 @@ component main() {
 -- dotdecl.sngl --
 import std "sngl:app"
 import . "sngl:platform/html"
+import ui "sngl:ui"
 
-component main() {
+component main() ui.ui {
     std.window {
         element(tag = "div") { }
     }

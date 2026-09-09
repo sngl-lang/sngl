@@ -48,7 +48,7 @@ func label[html.platform] {
     return "web n=" + string(n)
 }
 
-component main {
+component main ui {
     window #w(title="t") {
         text(value=label(3))
     }
@@ -67,7 +67,7 @@ func int.describe[html.platform] {
     return "web " + string(n)
 }
 
-component main {
+component main ui {
     window #w(title="t") {
         text(value=int.describe(3))
     }
@@ -82,7 +82,7 @@ func label(n int) string { return "base" }
 
 func label[html.platform](n int) { return "x" }
 
-component main {
+component main ui {
     window #w(title="t") {
         text(value=label(1))
     }
@@ -97,7 +97,7 @@ func label(n int) string { return "base" }
 
 func label[html.platform] string { return "x" }
 
-component main {
+component main ui {
     window #w(title="t") {
         text(value=label(1))
     }
@@ -114,7 +114,7 @@ func label[html.platform] { return "a" }
 
 func label[html.platform] { return "b" }
 
-component main {
+component main ui {
     window #w(title="t") {
         text(value=label(1))
     }
@@ -127,7 +127,7 @@ import "sngl:platform/html"
 
 func nope[html.platform] { return "x" }
 
-component main {
+component main ui {
     window #w(title="t") {
         text(value="hi")
     }

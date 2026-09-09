@@ -25,8 +25,9 @@ grep '<div' out/index.html
 -- badname.sngl --
 import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-component main {
+component main ui.ui {
     window {
         html.div(innerTxt = "x")
     }
@@ -36,7 +37,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component main {
+component main ui {
     window {
         html.button(style = "wide")
     }
@@ -44,8 +45,9 @@ component main {
 -- custom.sngl --
 import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-component main {
+component main ui.ui {
     window {
         html.div {
             html.element(tag = "my-widget", innerText = "hi")

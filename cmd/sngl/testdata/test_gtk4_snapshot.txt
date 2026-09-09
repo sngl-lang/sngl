@@ -17,14 +17,18 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output { go { gtk4 } }
 
-component greeter {
+component greeter ui {
     var name = "world"
     text(value=name)
 }
 
 func testGreeterSnapshot(t Test, c greeter) {
     t.snapshot("initial")
+}
+
+app.window {
 }

@@ -14,6 +14,7 @@ stderr 'unknown option "goVersion"'
 
 -- ok.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     none {
@@ -24,12 +25,16 @@ output {
     }
 }
 
-component main {
+component main ui {
     text(value="hello")
 }
 
+app.window {
+    main
+}
 -- platform_leak.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     go {
@@ -37,12 +42,16 @@ output {
     }
 }
 
-component main {
+component main ui {
     text(value="hello")
 }
 
+app.window {
+    main
+}
 -- lang_leak.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     none {
@@ -50,6 +59,10 @@ output {
     }
 }
 
-component main {
+component main ui {
     text(value="hello")
+}
+
+app.window {
+    main
 }

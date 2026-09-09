@@ -27,7 +27,7 @@ output {
     }
 }
 
-component main {
+component main ui {
     var shown bool = false
     var locked bool = true
     var rows list<string> = ["a"]

@@ -36,8 +36,9 @@ stdout 'PASS'
 -- passing.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component math {
+component math ui {
     var x = 0
     text(value="{x}")
 }
@@ -56,11 +57,15 @@ func testMul(t Test, c math) {
     c.x = 3 * 7
     t.assert(c.x == 21)
 }
+
+app.window {
+}
 -- failing.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component counter {
+component counter ui {
     var n = 0
     text(value="{n}")
 }
@@ -68,19 +73,32 @@ component counter {
 func testShouldFail(t Test, c counter) {
     t.assert(c.n == 999)
 }
+
+app.window {
+}
 -- notests.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
+}
+
+app.window {
+    main
 }
 -- bad.sngl --
 import . "sngl:test"
+import ui "sngl:ui"
+import app "sngl:app"
 
-component broken {
+component broken ui.ui {
     var x = unknownFunc()
 }
 
 func testBad(t Test, c broken) {
     t.assert(c.x == 0)
+}
+
+app.window {
 }
 -- empty/.gitkeep --

@@ -28,7 +28,7 @@ struct Node {
     label string = ""
 }
 
-component main {
+component main ui {
     var (
         first = Node{value=1, label="one"}
         second = Node{value=first.value, label=first.label}

@@ -24,7 +24,7 @@ output {
     }
 }
 
-component main {
+component main ui {
     window #w {
         draw.canvas(width=200px, height=100px, scalingMode=draw.ScalingMode.stretch) {
             draw.rect(x=0.0, y=0.0, w=200.0, h=100.0, style=draw.CanvasStyle{fill=#3366cc})

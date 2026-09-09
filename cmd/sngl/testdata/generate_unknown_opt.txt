@@ -10,11 +10,16 @@ sngl generate --opt listen=127.0.0.1:9000 --out=out app.sngl
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     none { html }
 }
 
-component main {
+component main ui {
     text(value="hi")
+}
+
+app.window {
+    main
 }

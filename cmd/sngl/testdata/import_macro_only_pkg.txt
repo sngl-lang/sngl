@@ -14,28 +14,41 @@ stderr 'unknown stdlib package'
 -- ok.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[options]
 struct Knobs {
     gadget string = ""
 }
 
-component main {
+component main ui {
     text(value="hello")
 }
 
+app.window {
+    main
+}
 -- internal.sngl --
 import . "sngl:ui"
 import . "sngl:internal/marks"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value="hello")
 }
 
+app.window {
+    main
+}
 -- nosuch.sngl --
 import . "sngl:ui"
 import . "sngl:nosuch"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value="hello")
+}
+
+app.window {
+    main
 }

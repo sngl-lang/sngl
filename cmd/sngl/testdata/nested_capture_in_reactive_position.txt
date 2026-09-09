@@ -33,8 +33,9 @@ sngl generate --lang go --platform bubbletea --out out4 static.sngl
 
 -- reactive.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component outer() {
+component outer() ui {
     var count = 0
     var items = [1, 2, 3]
 
@@ -56,14 +57,18 @@ component outer() {
     text(value="{count}")
 }
 
-component main {
+component main ui {
     outer()
 }
 
+app.window {
+    main
+}
 -- reactive_if.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component outer() {
+component outer() ui {
     var count = 0
     var shown = false
 
@@ -85,14 +90,18 @@ component outer() {
     text(value="{count}")
 }
 
-component main {
+component main ui {
     outer()
 }
 
+app.window {
+    main
+}
 -- nocapture.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component outer() {
+component outer() ui {
     var items = [1, 2, 3]
 
     component row(n = 0) {
@@ -108,14 +117,18 @@ component outer() {
     }
 }
 
-component main {
+component main ui {
     outer()
 }
 
+app.window {
+    main
+}
 -- static.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component outer() {
+component outer() ui {
     var count = 0
 
     component row(n = 0) {
@@ -134,6 +147,10 @@ component outer() {
     text(value="{count}")
 }
 
-component main {
+component main ui {
     outer()
+}
+
+app.window {
+    main
 }

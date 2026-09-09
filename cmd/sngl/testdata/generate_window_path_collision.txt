@@ -9,7 +9,7 @@ import . "sngl:app"
 
 output { none { html } }
 
-component main {
+component main ui {
     window #a(title="A", href="/dup.html") { text(value="a") }
     window #b(title="B", href="/dup.html") { text(value="b") }
 }

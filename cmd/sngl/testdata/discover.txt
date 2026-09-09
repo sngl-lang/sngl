@@ -8,11 +8,21 @@ stdout 'app.sngl: ok'
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
+}
+
+app.window {
+    main
 }
 -- single/app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
+}
+
+app.window {
+    main
 }

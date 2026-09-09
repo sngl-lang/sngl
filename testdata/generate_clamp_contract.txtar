@@ -5,6 +5,7 @@ deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `coerceIn`
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     kotlin {
@@ -15,10 +16,14 @@ output {
     }
 }
 
-component main {
+component main ui {
     var raw int = 42
     var v int = int.clamp(raw, 0, 10)
     text(value="{v}")
+}
+
+app.window {
+    main
 }
 -- out/kotlin/android/app/build.gradle.kts --
 plugins {

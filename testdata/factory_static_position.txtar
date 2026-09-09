@@ -39,20 +39,20 @@ output {
     }
 }
 
-component chain(n int) {
+component chain(n int) ui {
     text(value="[" + string(n) + "]")
     if n > 0 {
         chain(n=n - 1)
     }
 }
 
-component App() {
+component App() ui {
     var d = 2
     button(text="deeper", @click { d = d + 1 })
     chain(n=d)
 }
 
-component main {
+component main ui {
     window(title="H", href="/index.html") {
         App()
     }

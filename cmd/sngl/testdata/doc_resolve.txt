@@ -65,21 +65,34 @@ stdout 'aliased_i18n.sngl: ok'
 -- app.sngl --
 import . "sngl:ui"
 import w "./widgets"
-component main {
+import app "sngl:app"
+component main ui {
     w.Counter(count = 1)
+}
+
+app.window {
+    main
 }
 -- widgets/widgets.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component Counter(count int) {
+component Counter(count int) ui {
     text { value = "count: ${count}" }
 }
 
+app.window {
+}
 -- aliased_i18n.sngl --
 import . "sngl:ui"
 import tr "sngl:i18n"
+import app "sngl:app"
 
-component main {
+component main ui {
     var n int = 1
     text(value=$"hi {n}")
+}
+
+app.window {
+    main
 }

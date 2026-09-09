@@ -33,50 +33,78 @@ stdout 'aliased.sngl: ok'
 stderr 'unknown macro "kind": package "sngl:i18n" declares none of that name'
 
 -- no_import.sngl --
-#[tree.kind]
-struct block {}
--- qualified.sngl --
-import "sngl:tree"
+import app "sngl:app"
 
 #[tree.kind]
 struct block {}
+
+app.window {
+}
+-- qualified.sngl --
+import "sngl:tree"
+import app "sngl:app"
+
+#[tree.kind]
+struct block {}
+
+app.window {
+}
 -- bare_builtin.sngl --
+import app "sngl:app"
+
 #[builtin("int")]
 struct Fake {
     v int
 }
+
+app.window {
+}
 -- with_std.sngl --
 import . "sngl:ui"
 import tr "sngl:tree"
+import app "sngl:app"
 
 #[tr.kind]
 struct block {}
 
-component para(children ...component block) {}
+component para(children ...component block) ui {}
 component bold(weight int) block {}
 
-component main {
+component main ui {
     para() {
         bold(weight=700)
     }
+}
+
+app.window {
+    main
 }
 -- aliased.sngl --
 import . "sngl:ui"
 import whatever "sngl:tree"
+import app "sngl:app"
 
 #[whatever.kind]
 struct block {}
 
-component para(children ...component block) {}
+component para(children ...component block) ui {}
 component bold(weight int) block {}
 
-component main {
+component main ui {
     para() {
         bold(weight=700)
     }
 }
+
+app.window {
+    main
+}
 -- no_macros.sngl --
 import b "sngl:i18n"
+import app "sngl:app"
 
 #[b.kind]
 struct block {}
+
+app.window {
+}

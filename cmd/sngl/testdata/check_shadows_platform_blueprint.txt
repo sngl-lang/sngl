@@ -19,15 +19,20 @@ grep 'user widget' out/model.go
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output { none { html } }
 
-component Widget(title string, children ...component) {
+component Widget(title string, children ...component) ui {
     text(value=title)
 }
 
-component main {
+component main ui {
     var name = ""
     Widget(title="user widget")
     input(value=name)
+}
+
+app.window {
+    main
 }

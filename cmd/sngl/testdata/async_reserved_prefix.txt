@@ -6,5 +6,9 @@ stderr 'uses reserved prefix'
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 func __async_foo() => "hello"
+
+app.window {
+}

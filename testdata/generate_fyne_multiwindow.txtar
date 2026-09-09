@@ -16,7 +16,7 @@ import . "sngl:app"
 
 output { go { fyne(main=true) } }
 
-component main {
+component main ui {
     window #app(title="App") {
         vbox {
             text(value="App page")

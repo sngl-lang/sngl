@@ -5,6 +5,7 @@ state assignment inside it awaits fetchHello.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
+import app "sngl:app"
 
 output {
     none {
@@ -12,12 +13,16 @@ output {
     }
 }
 
-component main {
+component main ui {
     var greeting = ""
     button(text="Go", @click {
         greeting = api.fetchHello("world")
     })
     text(value=greeting)
+}
+
+app.window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(name: string): Promise<string> { return "Hello " + name; }

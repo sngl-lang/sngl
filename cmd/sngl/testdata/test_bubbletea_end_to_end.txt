@@ -8,10 +8,11 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output { go { bubbletea } }
 
-component counter {
+component counter ui {
     var count = 0
     button(text="+", @click { count += 1 })
     text(value=string(count))
@@ -24,4 +25,7 @@ func testStartsAtZero(t Test, c counter) {
 func testIncrementWorks(t Test, c counter) {
     c.count = 5
     t.assert(c.count == 5)
+}
+
+app.window {
 }

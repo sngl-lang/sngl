@@ -27,19 +27,24 @@ stdout 'tag="div"'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 component badge(
     label string = "",
     #[wildcard("data[A-Za-z0-9]*")] data map<string, string>,
-) {
+) ui {
     text(value = label)
     for var v = data.values() {
         text(value = v)
     }
 }
 
-component main {
+component main ui {
     vbox {
         badge(label = "plain", dataRole = "row-7")
     }
+}
+
+app.window {
+    main
 }

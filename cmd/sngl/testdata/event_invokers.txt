@@ -76,8 +76,9 @@ sngl generate --platform=html --lang=none --out=plain rooted.sngl
 -- click.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component counter {
+component counter ui {
     var n = 0
     vbox {
         text(value="{n}")
@@ -90,15 +91,21 @@ func testIncrement(t Test, c counter) {
     t.assert(c.n == 1)
 }
 
+app.window {
+}
 -- rooted.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 counter()
 
-component counter {
+component counter ui {
     var n = 0
     vbox {
         text(value="{n}")
         button #inc(text="+", @click { n = n + 1 })
     }
+}
+
+app.window {
 }

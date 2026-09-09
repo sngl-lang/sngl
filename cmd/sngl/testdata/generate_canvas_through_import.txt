@@ -10,16 +10,25 @@ stdout 'CanvasDrawRect'
 -- app.sngl --
 import . "sngl:ui"
 import g "./geom"
+import app "sngl:app"
 
-component main {
+component main ui {
     g.Chart()
+}
+
+app.window {
+    main
 }
 -- geom/g.sngl --
 import . "sngl:ui"
 import . "sngl:ui/draw"
+import app "sngl:app"
 
-component Chart() {
+component Chart() ui {
     canvas(width=100px, height=100px) {
         rect(x=1.0, y=2.0, w=3.0, h=4.0)
     }
+}
+
+app.window {
 }

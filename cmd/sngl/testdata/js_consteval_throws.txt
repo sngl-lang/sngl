@@ -20,13 +20,18 @@ stderr 'compile-time evaluation of boom produced no value'
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 const bad = lib.boom()
 const good = lib.fine()
 
-component main {
+component main ui {
     text(value=bad)
     text(value=good)
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 /** @sngl-pure */

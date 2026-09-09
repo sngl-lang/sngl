@@ -14,6 +14,7 @@ deny out/go/html/server.go `class=[^>]*row` -- the loop runs no iterations, so i
 -- empty.sngl --
 import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
 output {
     go {
@@ -23,7 +24,7 @@ output {
 
 const packages list<string> = []
 
-component main {
+component main ui.ui {
     window #home(title="Docs", href="/") {
         html.nav {
             html.span(innerText="still here")

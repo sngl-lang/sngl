@@ -16,7 +16,7 @@ output {
     }
 }
 
-component main {
+component main ui {
     var count int = 0
     window(title="Counter") {
         vbox {

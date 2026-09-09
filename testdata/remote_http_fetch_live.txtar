@@ -23,7 +23,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import http "sngl:remote/http"
 
-component main {
+component main ui {
     var url = "https://example.com/"
     var res = http.fetch(&url)
 

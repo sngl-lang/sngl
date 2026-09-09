@@ -17,13 +17,18 @@ stderr 'is not the value of any member of Color'
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 const c = lib.pick()
 
-component main {
+component main ui {
     if c == lib.Color.Red {
         text(value="red")
     }
+}
+
+app.window {
+    main
 }
 -- lib/index.d.ts --
 export declare enum Color {

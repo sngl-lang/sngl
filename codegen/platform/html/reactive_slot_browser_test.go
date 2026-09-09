@@ -22,7 +22,7 @@ component Car() ui {
         if a == 1 { text(value="ONE") }
     }
 }
-window { window(title="H", href="/index.html") { Car() } }
+window(title="H", href="/index.html") { Car() }
 `
 	b := startComponent(t, src) // skips if no browser
 	defer b.Close()

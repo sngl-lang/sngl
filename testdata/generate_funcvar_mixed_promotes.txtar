@@ -6,6 +6,7 @@ unconditionally rather than decided at runtime.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
+import app "sngl:app"
 
 output {
     none {
@@ -17,12 +18,16 @@ func syncFetch() string {
     return "sync"
 }
 
-component main {
+component main ui {
     var handler func() string = api.fetchHello
     button(text="UseSync", @click { handler = syncFetch })
     button(text="UseAsync", @click { handler = api.fetchHello })
     button(text="Run", @click { handler() })
     text(value="hi")
+}
+
+app.window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(): Promise<string> { return "hi"; }

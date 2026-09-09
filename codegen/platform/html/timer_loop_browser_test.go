@@ -40,7 +40,7 @@ component App() ui {
     }
     text(value="fast=" + string(fast) + " slow=" + string(slow))
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

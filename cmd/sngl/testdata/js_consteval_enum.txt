@@ -41,12 +41,13 @@ grep 'code = -1' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 const c = lib.pickColor()
 const l = lib.pickLevel()
 const s = lib.pickCode()
 
-component main {
+component main ui {
     var col = c
     var lvl = l
     var code = s
@@ -60,6 +61,10 @@ component main {
     if s == lib.Code.Minus {
         text(value="minus wins")
     }
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 export enum Color {

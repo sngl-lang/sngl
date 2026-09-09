@@ -14,18 +14,29 @@ stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*t
 
 -- pkg/app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value="hi")
 }
+
+app.window {
+    main
+}
 -- pkg/targets.sngl --
+import app "sngl:app"
+
 output {
     go {
         bubbletea()
     }
+}
+
+app.window {
 }
 -- twice/a.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output {
     go {
@@ -33,8 +44,17 @@ output {
     }
 }
 
-component main {
+component main ui {
     text(value="hi")
 }
+
+app.window {
+    main
+}
 -- twice/b.sngl --
+import app "sngl:app"
+
 output(lang="go", platform="bubbletea")
+
+app.window {
+}

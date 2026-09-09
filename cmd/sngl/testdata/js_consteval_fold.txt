@@ -22,15 +22,20 @@ grep '>1e-07<' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 const greeting = lib.shout("hello world")
 const big = lib.big()
 const small = lib.small()
 
-component main {
+component main ui {
     text(value=greeting)
     text(value=string(big))
     text(value=string(small))
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 /** @sngl-pure */

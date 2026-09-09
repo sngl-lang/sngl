@@ -22,7 +22,7 @@ output {
     }
 }
 
-component main {
+component main ui {
     var n string = ""
     window {
         textarea(:value=n, rows=4)

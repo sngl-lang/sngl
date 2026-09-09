@@ -39,13 +39,13 @@ grep 'from widgets' shadowout/index.html
 import s "sngl:ui"
 import app "sngl:app"
 
-component Card(children ...component) {
+component Card(children ...component) s.ui {
     s.vbox {
         children
     }
 }
 
-component main {
+component main s.ui {
     s.window #w(href="/index.html") {
         Card {
             s.text(value="inner")
@@ -56,17 +56,21 @@ component main {
 output { none { html } }
 -- qualslot.sngl --
 import s "sngl:ui"
+import app "sngl:app"
 
-component Card(children ...component) {
+component Card(children ...component) s.ui {
     s.vbox {
         s.children
     }
+}
+
+app.window {
 }
 -- window.sngl --
 import s "sngl:ui"
 import app "sngl:app"
 
-component main {
+component main s.ui {
     s.window #home(href="/index.html") {
         s.text(value="Hello")
     }
@@ -76,36 +80,49 @@ output { none { html } }
 -- timer.sngl --
 import s "sngl:ui"
 import t "sngl:time"
+import app "sngl:app"
 
-component main {
+component main s.ui {
     var n int = 0
     t.timer(interval=1s, @tick {
         n = n + 1
     })
     s.text(value="tick")
 }
+
+app.window {
+    main
+}
 -- boundary.sngl --
 import s "sngl:ui"
 import app "sngl:app"
 
-component main {
+component main s.ui {
     s.errorBoundary(@error(e) {}) {
         s.text(value="body")
     }
+}
+
+app.window {
+    main
 }
 -- widgets/lib.sngl --
 import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
 
-component timer() {
+component timer() ui {
     text(value="from widgets")
+}
+
+window {
 }
 -- shadowed.sngl --
 import s "sngl:app"
 import w "widgets"
+import ui "sngl:ui"
 
-component main {
+component main ui.ui {
     s.window #w2(href="/index.html") {
         w.timer
     }

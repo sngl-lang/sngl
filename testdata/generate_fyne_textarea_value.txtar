@@ -20,7 +20,7 @@ output {
     go { fyne(main=true) }
 }
 
-component main {
+component main ui {
     var content = "initial value"
 
     window #app(title="t") {

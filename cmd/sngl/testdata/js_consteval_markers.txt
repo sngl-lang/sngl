@@ -28,8 +28,9 @@ grep 'folded-pure-hash' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
-component main {
+component main ui {
     // Bound to state rather than used inline: an unfolded call is shipped as
     // the module's own function, which is what the negative assertions look
     // for. An inline use of one is dropped instead, and asserts nothing.
@@ -48,6 +49,10 @@ component main {
     text(value=e)
     text(value=f)
     text(value=g)
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 /** @sngl-pure */

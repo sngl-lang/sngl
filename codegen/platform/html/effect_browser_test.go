@@ -46,7 +46,7 @@ component App() ui {
     }
     text(value="[" + log.join(",") + "]")
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -84,7 +84,7 @@ component App() ui {
     }
     text(value="[" + log.join(",") + "]")
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -120,7 +120,7 @@ component App() ui {
     }
     text(value="[" + log.join(",") + "]")
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -149,7 +149,7 @@ component App() ui {
     effect(on=n, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

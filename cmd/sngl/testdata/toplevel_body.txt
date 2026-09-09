@@ -56,6 +56,7 @@ grep 'state.n__inst0 = state.n__inst0 \+ 1' comp/index.html
 
 -- top.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 var n = 0
 
@@ -64,6 +65,8 @@ vbox {
     button #inc(text="+", @click { n = n + 1 })
 }
 
+app.window {
+}
 -- win.sngl --
 import . "sngl:ui"
 import . "sngl:app"
@@ -97,13 +100,17 @@ window #about(title="About", href="/about") {
 
 -- compose.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 counter()
 
-component counter {
+component counter ui {
     var n = 0
     vbox {
         text(value="{n}")
         button #inc(text="+", @click { n = n + 1 })
     }
+}
+
+app.window {
 }

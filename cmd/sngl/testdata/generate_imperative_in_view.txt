@@ -17,31 +17,46 @@ grep 'm\.n = 5' out3/model.go
 
 -- ret.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     return
 
     text(value="hi")
 }
+
+app.window {
+    main
+}
 -- assign.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 var n = 0
 
-component main {
+component main ui {
     n = 5
 
     text(value="{n}")
 }
+
+app.window {
+    main
+}
 -- effect.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 var n = 0
 
-component main {
+component main ui {
     effect(@mount {
         n = 5
     })
 
     text(value="{n}")
+}
+
+app.window {
+    main
 }

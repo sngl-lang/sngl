@@ -36,7 +36,7 @@ output {
     }
 }
 
-component main {
+component main ui {
     window(title="t") {
         progress(value=2.0, max=10.0)
         progress(value=0.5)

@@ -17,10 +17,11 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output { none { html } }
 
-component greeter {
+component greeter ui {
     var name = "world"
     vbox {
         text(value=name)
@@ -29,4 +30,7 @@ component greeter {
 
 func testGreeterRenders(t Test, c greeter) {
     t.assert(c.name == "world")
+}
+
+app.window {
 }

@@ -20,6 +20,7 @@ stderr 'cannot pass Entry as'
 -- ok.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:example.com/api", "Entry")]
 struct A {
@@ -28,13 +29,17 @@ struct A {
 
 func take(a A) => a.title
 
-component main {
+component main ui {
     text(value=take(A{title="x"}))
 }
 
+app.window {
+    main
+}
 -- twomarks.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:example.com/api", "Entry")]
 struct A {
@@ -48,14 +53,18 @@ struct B {
 
 func take(b B) => b.title
 
-component main {
+component main ui {
     text(value=take(A{title="x"}))
 }
 
+app.window {
+    main
+}
 -- markvsimport.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
 import api "js:./api"
+import app "sngl:app"
 
 #[foreign("js:./api", "Entry")]
 struct Entry {
@@ -64,8 +73,12 @@ struct Entry {
 
 func take(e api.Entry) => e.title
 
-component main {
+component main ui {
     text(value=take(Entry{title="x"}))
+}
+
+app.window {
+    main
 }
 -- api/index.ts --
 export type Entry = { title: string };

@@ -1424,7 +1424,7 @@ supply by name:
 ```sngl
 import . "sngl:ui"
 
-component card(header component, content ...component) {
+component card(header component, content ...component) ui {
     vbox {
         header {}
         content

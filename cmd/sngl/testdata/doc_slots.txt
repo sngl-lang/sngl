@@ -44,12 +44,13 @@ stdout 'body +...component'
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(row Row), body ...component) {
+component table(rows list<Row>, cell component(row Row), body ...component) ui {
     vbox {
         for var r = rows {
             cell(r)
@@ -58,10 +59,14 @@ component table(rows list<Row>, cell component(row Row), body ...component) {
     }
 }
 
-component main {
+component main ui {
     table(rows=[]) {
         component cell(r) {
             text(value=r.title)
         }
     }
+}
+
+app.window {
+    main
 }

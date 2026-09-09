@@ -23,6 +23,7 @@ stdout 'out.sngl: ok'
 -- slots.sngl --
 import . "sngl:ui"
 import tr "sngl:tree"
+import app "sngl:app"
 
 struct Row {
     title string
@@ -33,7 +34,7 @@ component table(
     children ...component tr.default,
     header component tr.one,
     cell component(row Row),
-) {
+) ui {
     vbox {
         header {
             text(value="(untitled)")
@@ -45,7 +46,7 @@ component table(
     }
 }
 
-component main {
+component main ui {
     table(rows=[Row{title = "a"}]) {
         component header {
             text(value="Rows")
@@ -55,4 +56,8 @@ component main {
         }
         text(value="ordinary")
     }
+}
+
+app.window {
+    main
 }

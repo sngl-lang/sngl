@@ -36,16 +36,22 @@ grep 'no pixels here' tui/model.go
 import . "sngl:ui"
 import "./gfx"
 import "sngl:platform/bubbletea"
+import app "sngl:app"
 
-component main {
+component main ui {
     var lit = true
     gfx.Panel(lit=lit)
     button(text="t", @click { lit!! })
+}
+
+app.window {
+    main
 }
 -- gfx/gfx.sngl --
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 import "sngl:platform/bubbletea"
+import app "sngl:app"
 
 // An aliased import: the shapes are named draw.rect, not rect.
 component Bar(on = false, x = 0.0) draw.shape {
@@ -63,7 +69,7 @@ component Cell(on = false, x = 0.0) draw.shape {
 func columns() => [0.0, 30.0]
 
 // The canvas is one arm of a target test, and its shapes come from a loop.
-component Panel(lit = false) {
+component Panel(lit = false) ui {
     vbox {
         if PLATFORM == bubbletea.platform {
             text(value="no pixels here")
@@ -76,4 +82,7 @@ component Panel(lit = false) {
             }
         }
     }
+}
+
+app.window {
 }

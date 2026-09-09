@@ -16,12 +16,11 @@ import . "sngl:app"
 import . "sngl:test"
 import . "sngl:ui/draw"
 output { none { html() } }
-component main {
-    var size float = 100.0
-    window(title="Canvas Reactive Test", href="/index.html") {
-        canvas(width=400px, height=300px) {
-            rect(x=10.0, y=10.0, w=size, h=50.0) {}
-        }
+var size float = 100.0
+
+window(title="Canvas Reactive Test", href="/index.html") {
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=size, h=50.0) {}
     }
 }
 `

@@ -13,6 +13,7 @@ and a list lambda in route_path_param_lambda.txtar.
 -- param.sngl --
 import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
 output {
     go {
@@ -20,7 +21,7 @@ output {
     }
 }
 
-component main {
+component main ui.ui {
     window #pkg(title="t", href="/p/{pkg}") {
         html.a(href="/p/" + pkg, innerText=pkg)
     }

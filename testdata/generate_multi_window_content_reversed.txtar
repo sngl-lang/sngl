@@ -27,7 +27,7 @@ import . "sngl:app"
 
 output { none { html } }
 
-component main {
+component main ui {
     var alphaCount = 0
     var betaCount = 0
     var gammaCount = 0

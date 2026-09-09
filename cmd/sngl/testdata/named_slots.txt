@@ -52,7 +52,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, header component, cell component(Row), children ...component) {
+component table(rows list<Row>, header component, cell component(Row), children ...component) ui {
     vbox {
         header {
             text(value="(untitled)")
@@ -64,7 +64,7 @@ component table(rows list<Row>, header component, cell component(Row), children 
     }
 }
 
-component main {
+component main ui {
     window #w(href="/index.html") {
         table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
             component header {
@@ -83,7 +83,7 @@ output { none { html } }
 import . "sngl:ui"
 import . "sngl:app"
 
-component card(heading component, children ...component) {
+component card(heading component, children ...component) ui {
     vbox {
         heading {
             text(value="untitled")
@@ -92,7 +92,7 @@ component card(heading component, children ...component) {
     }
 }
 
-component main {
+component main ui {
     window #w(href="/index.html") {
         card() {
             text(value="ordinary")
@@ -105,7 +105,7 @@ output { none { html } }
 import . "sngl:ui"
 import . "sngl:app"
 
-component card(caption string, heading component(string), children ...component) {
+component card(caption string, heading component(string), children ...component) ui {
     vbox {
         heading(caption) {
             text(value="fallback")
@@ -113,7 +113,7 @@ component card(caption string, heading component(string), children ...component)
     }
 }
 
-component main {
+component main ui {
     window #w(href="/index.html") {
         card(caption="CAP") {
             component heading(c) {
@@ -128,7 +128,7 @@ output { none { html } }
 import . "sngl:ui"
 import . "sngl:app"
 
-component card(heading component, children ...component) {
+component card(heading component, children ...component) ui {
     var open = true
     vbox {
         heading {
@@ -138,7 +138,7 @@ component card(heading component, children ...component) {
     }
 }
 
-component wrapper(start string, children ...component) {
+component wrapper(start string, children ...component) ui {
     var label = start
     vbox {
         card() {
@@ -150,7 +150,7 @@ component wrapper(start string, children ...component) {
     }
 }
 
-component main {
+component main ui {
     window #w(href="/index.html") {
         wrapper(start="AAA")
         wrapper(start="BBB")

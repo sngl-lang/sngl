@@ -24,7 +24,7 @@ const items list<Item> = [
     {slug="two", title="Two"},
 ]
 
-component main {
+component main ui {
     for var it = items {
         window #page(title=it.title, href="/" + it.slug + ".html") {
             text(value=it.title)

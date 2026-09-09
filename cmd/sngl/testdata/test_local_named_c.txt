@@ -20,6 +20,7 @@ stdout '3 tests, 0 failures'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output {
     none { html }
@@ -36,7 +37,7 @@ struct Counter {
     }
 }
 
-component main {
+component main ui {
     var count Counter
 
     func tick() {
@@ -62,4 +63,8 @@ func testNoComponentParam(t Test) {
 func testComponentParamIsBound(t Test, screen main) {
     screen.tick()
     t.assert(screen.count.n == 1)
+}
+
+app.window {
+    main
 }

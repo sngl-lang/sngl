@@ -6,6 +6,7 @@ emitted async and each of its call sites awaits it.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
+import app "sngl:app"
 
 output {
     none {
@@ -21,10 +22,14 @@ func run(f func() string) {
     f()
 }
 
-component main {
+component main ui {
     button(text="RunSync", @click { run(syncHello) })
     button(text="RunAsync", @click { run(api.fetchHello) })
     text(value="hi")
+}
+
+app.window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(): Promise<string> { return "hi"; }

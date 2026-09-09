@@ -27,7 +27,7 @@ output {
 	}
 }
 
-component main {
+component main ui {
 	window(title = "w") {
 		window(title = "b") {
 			text(value = "x")
@@ -45,13 +45,13 @@ output {
 	}
 }
 
-component inner {
+component inner ui {
 	window(title = "b") {
 		text(value = "x")
 	}
 }
 
-component main {
+component main ui {
 	window(title = "w") {
 		inner()
 	}
@@ -67,12 +67,12 @@ output {
 	}
 }
 
-component inner {
+component inner ui {
 	window(title = "b") {
 		text(value = "x")
 	}
 }
 
-component main {
+component main ui {
 	inner()
 }

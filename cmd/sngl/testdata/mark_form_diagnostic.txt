@@ -11,3 +11,7 @@ import . "sngl:internal/marks"
 
 #[builtin("int")]
 import _ "sngl:ui"
+import app "sngl:app"
+
+app.window {
+}

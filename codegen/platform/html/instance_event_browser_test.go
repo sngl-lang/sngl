@@ -31,7 +31,7 @@ component App() ui {
     }
     button(text="unshift", @click { items = ["z", "a", "b", "c"] })
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 
 // The event reaches the handler the call site wrote.

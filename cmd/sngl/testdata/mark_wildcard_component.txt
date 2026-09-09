@@ -25,8 +25,9 @@ stderr 'unknown component "Widget" in package w'
 -- app.sngl --
 import . "sngl:app"
 import "./widgets"
+import ui "sngl:ui"
 
-component main() {
+component main() ui.ui {
     window {
         widgets.marquee(tag = "marquee")
         widgets.blink(tag = "blink")
@@ -36,8 +37,9 @@ component main() {
 -- declared.sngl --
 import . "sngl:app"
 import "./widgets"
+import ui "sngl:ui"
 
-component main() {
+component main() ui.ui {
     window {
         widgets.box(label = "declared")
     }
@@ -46,8 +48,9 @@ component main() {
 -- badprop.sngl --
 import . "sngl:app"
 import "./widgets"
+import ui "sngl:ui"
 
-component main() {
+component main() ui.ui {
     window {
         widgets.marquee(tag = "marquee", nope = 1)
     }
@@ -56,8 +59,9 @@ component main() {
 -- nomatch.sngl --
 import . "sngl:app"
 import w "./widgets"
+import ui "sngl:ui"
 
-component main() {
+component main() ui.ui {
     window {
         w.Widget(tag = "x")
     }
@@ -66,12 +70,16 @@ component main() {
 -- widgets/widgets.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[wildcard("[a-z][a-z0-9]*")]
-component element(tag string) {
+component element(tag string) ui {
     text(value = tag)
 }
 
-component box(label string) {
+component box(label string) ui {
     text(value = label)
+}
+
+app.window {
 }

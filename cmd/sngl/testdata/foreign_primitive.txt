@@ -14,9 +14,14 @@ exists out2/MainScreen.kt
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:platform/android"
+import app "sngl:app"
 
-component main {
+component main ui {
     vbox {
         android.Switch(checked=true, onCheckedChange=func(v bool) {})
     }
+}
+
+app.window {
+    main
 }

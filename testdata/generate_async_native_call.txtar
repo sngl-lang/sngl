@@ -6,6 +6,7 @@ awaited at the site.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
+import app "sngl:app"
 
 output {
     none {
@@ -17,8 +18,12 @@ func loadAll() {
     api.fetchHello("test")
 }
 
-component main {
+component main ui {
     button(text="Go", @click { loadAll() })
+}
+
+app.window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(url: string): Promise<string> { return "hi"; }

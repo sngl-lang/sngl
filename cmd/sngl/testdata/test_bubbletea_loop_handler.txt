@@ -22,10 +22,11 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main {
+component main ui {
     var items list<string> = ["a", "b"]
     var picked = ""
     var hits = 0
@@ -50,4 +51,8 @@ component main {
 func testStartsEmpty(t Test, c main) {
     t.assert(c.picked == "")
     t.assert(c.hits == 0)
+}
+
+app.window {
+    main
 }

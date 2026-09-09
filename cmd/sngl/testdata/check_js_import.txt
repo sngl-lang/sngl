@@ -9,11 +9,16 @@ import . "sngl:ui"
 output { js { html } }
 
 import lib "js:./lib"
+import app "sngl:app"
 
 func wrap(a float, b float) => lib.add(a, b)
 
-component main {
+component main ui {
     text(value=string(wrap(1, 2)))
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 export function add(a: number, b: number): number {

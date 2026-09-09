@@ -35,10 +35,15 @@ stdout 'component main'
 
 -- main.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 var count = 0
 
-component main {
+component main ui {
     text(value="hello")
     button(text="go", @click { count = count + 1 })
+}
+
+app.window {
+    main
 }

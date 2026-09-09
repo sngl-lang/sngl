@@ -23,7 +23,7 @@ output {
     }
 }
 
-component main {
+component main ui {
     window #w {
         text(value="hello")
     }

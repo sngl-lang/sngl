@@ -30,81 +30,146 @@ sngl check nested/
 -- app.sngl --
 import . "sngl:ui"
 import "./pkg"
+import app "sngl:app"
 
-component main {
+component main ui {
     vbox {
         text(value="LIMIT is {pkg.LIMIT}")
         text(value="twice: {pkg.twice(pkg.LIMIT)}")
         pkg.Badge(label="Badge")
     }
 }
+
+app.window {
+    main
+}
 -- pkg/types.sngl --
+import app "sngl:app"
+
 enum Op { none, add }
 
 struct Pair {
     x int = 0
     op Op = Op.add
 }
+
+app.window {
+}
 -- pkg/consts.sngl --
+import app "sngl:app"
+
 const LIMIT = 7
+
+app.window {
+}
 -- pkg/funcs.sngl --
+import app "sngl:app"
+
 func twice(n int) => n * 2
 
 // Names a type from types.sngl and a const from consts.sngl.
 func widened(p Pair) => p.x + LIMIT
+
+app.window {
+}
 -- pkg/views.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component Badge(label = "") {
+component Badge(label = "") ui {
     text(value=label)
+}
+
+app.window {
 }
 -- leak/app.sngl --
 import . "sngl:ui"
 import "./gfx"
+import app "sngl:app"
 
-component main {
+component main ui {
     gfx.Panel
+}
+
+app.window {
+    main
 }
 -- leak/gfx/parts.sngl --
 import . "sngl:ui"
 import draw "sngl:ui/draw"
+import app "sngl:app"
 
-component Panel {
+component Panel ui {
     draw.canvas(width=10px, height=10px) {
         draw.rect(x=0.0, y=0.0, w=10.0, h=10.0, style=draw.CanvasStyle{fill=#000000})
     }
 }
+
+app.window {
+}
 -- leak/gfx/types.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component Sneaky {
+component Sneaky ui {
     draw.canvas(width=10px, height=10px) {}
+}
+
+app.window {
 }
 -- twice/app.sngl --
 import . "sngl:ui"
 import "./shared"
 import "./user"
+import app "sngl:app"
 
-component main {
+component main ui {
     var op shared.Op = shared.Op.add
     text(value=user.describe(op))
 }
+
+app.window {
+    main
+}
 -- twice/shared/shared.sngl --
+import app "sngl:app"
+
 enum Op { none, add }
+
+app.window {
+}
 -- twice/user/user.sngl --
 import "../shared"
+import app "sngl:app"
 
 func describe(o shared.Op) => o == shared.Op.add ? "add" : "none"
+
+app.window {
+}
 -- nested/app.sngl --
 import . "sngl:ui"
 import "./outer"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value=outer.label())
+}
+
+app.window {
+    main
 }
 -- nested/outer/outer.sngl --
 import "../inner"
+import app "sngl:app"
 
 func label() => inner.NAME
+
+app.window {
+}
 -- nested/inner/inner.sngl --
+import app "sngl:app"
+
 const NAME = "inner"
+
+app.window {
+}

@@ -21,12 +21,13 @@ grep 'gtk4rt\.Post\(func\(\) \{' out2/model.go
 -- app.sngl --
 import . "sngl:ui"
 import go "sngl:language/go"
+import app "sngl:app"
 
 #[go.native("time", "time.Sleep")]
 #[go.async]
 func sleep(ns int)
 
-component main {
+component main ui {
     var greeting = "idle"
 
     text #out(value=greeting)
@@ -34,4 +35,8 @@ component main {
         sleep(300000000)
         greeting = "done"
     })
+}
+
+app.window {
+    main
 }

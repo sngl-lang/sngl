@@ -26,7 +26,7 @@ output {
     }
 }
 
-component Car() {
+component Car() ui {
     var a = 0
 
     timer(interval=1000ms, @tick { a = (a + 1) % 2 })
@@ -40,7 +40,7 @@ component Car() {
     }
 }
 
-component main {
+component main ui {
     window(title="H", href="/index.html") {
         Car()
     }

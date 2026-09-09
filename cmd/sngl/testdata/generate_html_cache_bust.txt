@@ -34,11 +34,16 @@ output {
 }
 
 import here "file:."
+import app "sngl:app"
 
 const logo = here.path("logo.svg")
 
-component main {
+component main ui {
     image(src=logo)
+}
+
+app.window {
+    main
 }
 -- site.css --
 body { background: #fff; }

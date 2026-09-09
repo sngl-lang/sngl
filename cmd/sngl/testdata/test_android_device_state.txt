@@ -11,14 +11,18 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output { kotlin { android } }
 
-component counter {
+component counter ui {
     var count = 0
     text(value=string(count))
 }
 
 func testStartsAtZero(t Test, c counter) {
     t.assert(c.count == 0)
+}
+
+app.window {
 }

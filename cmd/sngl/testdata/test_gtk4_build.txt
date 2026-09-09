@@ -13,10 +13,14 @@ exists out/app
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output { go { gtk4 } }
 
-component greeter {
+component greeter ui {
     var name = "world"
     text(value=name)
+}
+
+app.window {
 }

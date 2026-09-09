@@ -39,8 +39,9 @@ grep 'm\.inc\.OnTapped = m\.inc_click_handler' fy/model.go
 -- tagged.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component counter {
+component counter ui {
     var n = 3
     vbox {
         text(value="{n}")
@@ -50,4 +51,7 @@ component counter {
 
 func testInitial(t Test, c counter) {
     t.assert(c.n == 3)
+}
+
+app.window {
 }

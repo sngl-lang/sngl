@@ -13,8 +13,9 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 2
     var seen = -1
 
@@ -36,4 +37,8 @@ component main {
 func testNestedBodyCallsTheOwnersMethod(t Test, c main) {
     t.assert(c.seen == 2)
     t.assert(c.count == 12)
+}
+
+app.window {
+    main
 }

@@ -20,8 +20,9 @@ stdout 'ok'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
-component main {
+component main ui {
     #[foreign("js:example.com/api", "Entry")]
     struct Entry {
         #[foreign("Title")]
@@ -32,13 +33,21 @@ component main {
     text(value=e.title)
 }
 
+app.window {
+    main
+}
 -- fn.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
-component main {
+component main ui {
     #[foreign("js:./api", "compute", pure)]
     func compute(a int, b int) => a + b
 
     text(value=string(compute(2, 3)))
+}
+
+app.window {
+    main
 }

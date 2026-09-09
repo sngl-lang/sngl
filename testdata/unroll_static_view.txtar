@@ -18,6 +18,7 @@ deny out/go/html/server.go `range` -- the three iterations are markup in the han
 -- app.sngl --
 import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
 output {
     go {
@@ -30,7 +31,7 @@ output {
 
 const packages list<string> = ["alpha", "beta", "gamma"]
 
-component main {
+component main ui.ui {
     window #home(title="Docs", href="/") {
         html.nav {
             for var p = packages {

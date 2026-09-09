@@ -45,7 +45,7 @@ output { go { html } }
 
 import "go:example.com/wasm-complex/api"
 
-component main {
+component main ui {
     var rows list<string> = []
 
     window #app(title="t") {

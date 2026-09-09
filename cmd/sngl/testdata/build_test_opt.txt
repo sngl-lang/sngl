@@ -9,15 +9,25 @@ exists tapp
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value="hi")
+}
+
+app.window {
+    main
 }
 -- bt.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main {
+component main ui {
     text(value="hi")
+}
+
+app.window {
+    main
 }

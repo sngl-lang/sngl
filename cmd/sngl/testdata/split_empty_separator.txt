@@ -22,6 +22,7 @@ grep '_snglSplit\(' a/MainScreen.kt
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 output {
     none { html }
@@ -32,7 +33,7 @@ func chars(s string) list<string> {
     return string.split(s, "")
 }
 
-component main {
+component main ui {
     var n = chars("abc").length()
 
     text(value="{n}")
@@ -50,4 +51,8 @@ func testEmptySeparatorGivesTheCharacters(t Test) {
 func testOrdinarySeparatorIsUnchanged(t Test) {
     t.assert(string.split("a,b", ",").length() == 2)
     t.assert(chars("").length() == 0)
+}
+
+app.window {
+    main
 }

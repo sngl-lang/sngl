@@ -15,7 +15,7 @@ import . "sngl:app"
 
 func double(x int) => x + x
 
-component main {
+component main ui {
     var n = 0
 
     func bump() int {

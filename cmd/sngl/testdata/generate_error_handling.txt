@@ -28,13 +28,17 @@ output {
 
 var lastErr = ""
 
-component main {
+component main ui {
     vbox {
         errorBoundary(@error(e) { lastErr = e.message }) {
             button(text="Go", @click { error.raise("boom", "") })
         }
         text(value=("Last: " + lastErr))
     }
+}
+
+window {
+    main
 }
 -- unhandled.sngl --
 import . "sngl:ui"
@@ -49,6 +53,10 @@ output {
     }
 }
 
-component main {
+component main ui {
     button(text="Go", @click { error.raise("unhandled", "") })
+}
+
+window {
+    main
 }

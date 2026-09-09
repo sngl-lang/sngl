@@ -24,7 +24,7 @@ component App() ui {
         row(label=item, onpick=func(s string) { picked = s })
     }
 }
-window { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 
 // The page builds at all.

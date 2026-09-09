@@ -39,35 +39,58 @@ exists out3/index.html
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 0
     button(text="+", @click { count += 1 })
     text(value="Count: {count}")
 }
+
+app.window {
+    main
+}
 -- bad.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 not valid sngl
+
+app.window {
+}
 -- empty/.gitkeep --
 -- myapp/app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 0
     Counter(initial=count)
 }
+
+app.window {
+    main
+}
 -- myapp/counter.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component Counter(initial = 0) {
+component Counter(initial = 0) ui {
     text(value="Count: " + string(initial))
+}
+
+app.window {
 }
 -- badoutput/app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 output js html
 
-component main {
+component main ui {
     text(value="hello")
+}
+
+app.window {
+    main
 }

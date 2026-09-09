@@ -32,34 +32,51 @@ sngl check override
 stdout 'override/b\.sngl: ok'
 
 -- dup/a.sngl --
+import app "sngl:app"
+
 struct Style {
     x int
 }
 
 func widthOf(s Style) int {
     return s.x
+}
+
+app.window {
 }
 -- dup/b.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Style {
     y int
 }
 
-component main {
+component main ui {
     text(value=string(widthOf(Style{y = 7})))
+}
+
+app.window {
+    main
 }
 -- flip/a_main.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Style {
     y int
 }
 
-component main {
+component main ui {
     text(value=string(widthOf(Style{y = 7})))
 }
+
+app.window {
+    main
+}
 -- flip/z_lib.sngl --
+import app "sngl:app"
+
 struct Style {
     x int
 }
@@ -67,33 +84,51 @@ struct Style {
 func widthOf(s Style) int {
     return s.x
 }
+
+app.window {
+}
 -- cross/a.sngl --
+import app "sngl:app"
+
 struct Style {
     x int
+}
+
+app.window {
 }
 -- cross/b.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
 func widthOf(s Style) int {
     return s.x
 }
 
-component main {
+component main ui {
     text(value=string(widthOf(Style{x = 7})))
+}
+
+app.window {
+    main
 }
 -- override/a.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component mybox(label string) {
+component mybox(label string) ui {
     text(value=label)
 }
 
 func caption(n int) string {
     return "n=" + string(n)
 }
+
+app.window {
+}
 -- override/b.sngl --
 import . "sngl:ui"
 import html "sngl:platform/html"
+import app "sngl:app"
 
 component mybox[html.platform] {
     button(text=label)
@@ -103,6 +138,10 @@ func caption[html.platform] {
     return "html n=" + string(n)
 }
 
-component main {
+component main ui {
     mybox(label=caption(1))
+}
+
+app.window {
+    main
 }

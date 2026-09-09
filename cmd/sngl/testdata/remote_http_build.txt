@@ -49,8 +49,9 @@ grep 'func \(m \*Model\) __remoteSettled\(\)' mainfy/model.go
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:remote/http"
+import app "sngl:app"
 
-component main {
+component main ui {
     var contents = http.fetch("https://example.com")
 
     vbox {
@@ -64,3 +65,7 @@ component main {
 const blank = http.Result{status=0, body="", headers={}}
 
 output(lang="go", platform="bubbletea")
+
+app.window {
+    main
+}

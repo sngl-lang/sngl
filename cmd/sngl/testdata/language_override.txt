@@ -28,7 +28,7 @@ import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:language/go"
 
-component Badge(value string) {
+component Badge(value string) ui {
     text(value="default " + value)
 }
 
@@ -40,7 +40,7 @@ component Badge[html.platform] {
     html.span(textContent="html " + value)
 }
 
-component main {
+component main ui {
     window #w(title="t") {
         Badge(value="x")
     }
@@ -51,7 +51,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:language/go"
 
-component Badge(value string) {
+component Badge(value string) ui {
     text(value=value)
 }
 
@@ -63,7 +63,7 @@ component Badge[go.language] {
     text(value="b" + value)
 }
 
-component main {
+component main ui {
     window #w(title="t") {
         Badge(value="x")
     }

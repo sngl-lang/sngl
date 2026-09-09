@@ -35,58 +35,79 @@ stderr 'which describes a call'
 -- pure.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:./api", "add", pure)]
 func add(a int, b int) => a + b
 
-component main {
+component main ui {
     text(value=string(add(2, 3)))
 }
 
+app.window {
+    main
+}
 -- stub.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:./api", "add")]
 func add(a int, b int) => 0
 
-component main {
+component main ui {
     text(value=string(add(2, 3)))
 }
 
+app.window {
+    main
+}
 -- async.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:./api", "fetchHello", async)]
 func fetchHello(name string) => "hi " + name
 
 func greeting() => fetchHello("world")
 
-component main {
+component main ui {
     text(value=greeting())
 }
 
+app.window {
+    main
+}
 -- typo.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:./api", "add", puer)]
 func add(a int, b int) => a + b
 
-component main {
+component main ui {
     text(value=string(add(2, 3)))
 }
 
+app.window {
+    main
+}
 -- onstruct.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
+import app "sngl:app"
 
 #[foreign("js:./api", "Entry", pure)]
 struct Entry {
     title string
 }
 
-component main {
+component main ui {
     text(value=Entry{title = "x"}.title)
+}
+
+app.window {
+    main
 }

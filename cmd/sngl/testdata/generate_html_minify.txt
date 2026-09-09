@@ -31,11 +31,16 @@ grep 'function [a-z]\([a-z],[a-z]\)\{return [a-z]\+[a-z]\}' min/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
-component main {
+component main ui {
     var n = 0.0
     button(text="add", @click { n = lib.add(2.0, 3.0) })
     text(value=string(n))
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 export function add(a: number, b: number): number {

@@ -17,11 +17,16 @@ stderr 'lib/index.ts'
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 const padded = lib.pad("x")
 
-component main {
+component main ui {
     text(value=padded)
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 import leftPad from "left-pad";

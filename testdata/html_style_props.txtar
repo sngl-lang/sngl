@@ -31,7 +31,7 @@ output {
     }
 }
 
-component main {
+component main ui {
     var rows list<string> = ["a"]
 
     window {

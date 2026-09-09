@@ -17,13 +17,17 @@ stdout 'map ok'
 
 -- app.sngl --
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 0
     text(value=string(count))
     button(text="+", @click { count += 1 })
 }
 
+app.window {
+    main
+}
 -- check_map.js --
 // Decode the inline source map out of index.html.
 const fs = require("fs");

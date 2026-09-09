@@ -19,7 +19,7 @@ struct Issue {
     assignee string
 }
 
-component main {
+component main ui {
     var current = Issue{}
 
     window #app(title="t") {
@@ -30,7 +30,7 @@ component main {
     }
 }
 
-component detailPanel(it Issue) {
+component detailPanel(it Issue) ui {
     vbox {
         text(value=it.key)
         text(value=it.summary)

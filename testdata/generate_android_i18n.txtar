@@ -18,10 +18,11 @@ app/src/main/assets/, where the runtime loads it.
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
+import app "sngl:app"
 
 output { kotlin { android(main=true) } }
 
-component main {
+component main ui {
     var count int = 1
     var label = $"You have {count, plural, one{# item} other{# items}}"
     text(value=label)
@@ -29,6 +30,10 @@ component main {
         count = count + 1
         label = $"You have {count, plural, one{# item} other{# items}}"
     })
+}
+
+app.window {
+    main
 }
 -- i18n.manifest.json --
 {"Hello":{"en":"Hello","fr":"Bonjour"}}

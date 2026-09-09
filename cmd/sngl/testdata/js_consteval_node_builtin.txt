@@ -13,11 +13,16 @@ grep 'a/b/c.txt' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 const p = lib.joined()
 
-component main {
+component main ui {
     text(value=p)
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 import { join } from "node:path";

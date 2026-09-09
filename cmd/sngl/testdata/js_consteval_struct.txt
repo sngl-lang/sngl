@@ -26,13 +26,18 @@ grep '1\.5' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
+import app "sngl:app"
 
 const who = lib.profile("ada", "lovelace")
 
-component main {
+component main ui {
     text(value=who.name)
     text(value=string(who.id))
     text(value=string(who.score))
+}
+
+app.window {
+    main
 }
 -- lib/index.ts --
 export interface Profile {

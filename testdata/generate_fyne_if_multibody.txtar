@@ -20,7 +20,7 @@ import . "sngl:app"
 
 output { go { fyne(main=true) } }
 
-component main {
+component main ui {
     var visible = true
 
     window #app(title="t") {

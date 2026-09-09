@@ -32,7 +32,7 @@ component App() ui {
     }
 }
 
-window { window(title="C", href="/index.html") { App() } }
+window(title="C", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
