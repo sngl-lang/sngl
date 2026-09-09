@@ -7,7 +7,7 @@
 # The name goes to whichever file declared it first, and the error names both
 # positions. It is reported where the second declaration is written.
 ! sngl check dup
-stderr 'dup/b\.sngl:3:1: "Style" redeclared in this package \(previous declaration at .*dup/a\.sngl:1:1\)'
+stderr 'dup/b\.sngl:4:1: "Style" redeclared in this package \(previous declaration at .*dup/a\.sngl:3:1\)'
 
 # The declaration that lost used to overwrite the one that won, so the only
 # diagnostic was a field error against the file that was self-consistent.

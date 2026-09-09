@@ -54,4 +54,5 @@ func testInitial(t Test, c counter) {
 }
 
 app.window {
+    counter
 }

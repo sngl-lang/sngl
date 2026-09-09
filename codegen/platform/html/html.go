@@ -719,16 +719,22 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	// over the by-name lookup newHTMLGen had to fall back on.
 	g.rootComp = ctx.RootDecl()
 	g.currentComp = g.rootComp
+	// Adopt the caller's ExprCtx either way. It carries what the *build* said
+	// -- Maps above all -- and newHTMLGen's own is built from the package
+	// alone, so with no root component to scope to the generator kept an
+	// ExprCtx that had never heard of `--opt maps=true` and the JS translator
+	// emitted no position markers at all. Re-cloning replaces newHTMLGen's
+	// wiring, so the two maps it seeded are carried across.
+	helpers := g.ctx.Helpers
+	native := g.ctx.NativeImports
 	if main := ctx.RootDecl(); main != nil {
 		g.irBodyStmts = main.Body
-		// ForComponent re-clones, replacing newHTMLGen's wiring with
-		// ctx.ExprCtx's own maps, so capture it first.
-		helpers := g.ctx.Helpers
-		native := g.ctx.NativeImports
 		g.ctx = ctx.ExprCtx.ForComponent(main)
-		g.ctx.Helpers = helpers
-		g.ctx.NativeImports = native
+	} else {
+		g.ctx = ctx.ExprCtx.Clone()
 	}
+	g.ctx.Helpers = helpers
+	g.ctx.NativeImports = native
 	return g
 }
 

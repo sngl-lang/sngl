@@ -37,10 +37,8 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component main ui {
-    window {
-        html.button(style = "wide")
-    }
+window {
+    html.button(style = "wide")
 }
 -- custom.sngl --
 import . "sngl:app"

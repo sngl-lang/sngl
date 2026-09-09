@@ -9,7 +9,7 @@
 # takes the same program.
 
 ! sngl generate --lang go --platform bubbletea --out out app.sngl
-stderr 'app\.sngl:13:\d+:'
+stderr 'app\.sngl:14:\d+:'
 stderr 'this call blocks'
 stderr 'bubbletea has no way to run anything back on the thread it draws on'
 ! exists out

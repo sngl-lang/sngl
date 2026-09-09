@@ -1,19 +1,24 @@
 # A window inside a window is what every backend already refuses -- html,
 # bubbletea and android each panic with "unexpected nested Window" and fyne and
-# gtk4 fall into irwalk's generic one. It is reported instead, with the position
-# of the inner window, whichever route put it there.
+# gtk4 fall into irwalk's generic one. It is reported instead, whichever route
+# put it there.
 
+# Written that way, it is the ordinary tree error: a window's rest slot accepts
+# `ui` and a window is a member of the root family.
 ! sngl generate --lang=go --platform=fyne --out=out1 direct.sngl
-stderr 'direct.sngl:12:9: a window cannot be nested inside another window'
+stderr 'direct.sngl:11:8: expected ui component in window, got window'
 
-# Inlining is the other route: a component declaring a window, placed in one.
+! sngl generate --lang=none --platform=html --out=out3 direct.sngl
+stderr 'expected ui component in window, got window'
+
+# Inlining is the other route, and the only one that reaches the lowering
+# guard: a `ui` component may declare a window -- its own body is not checked
+# against its own tree -- so nothing has said no until it is spliced into one.
 ! sngl generate --lang=go --platform=fyne --out=out2 viacomponent.sngl
 stderr 'viacomponent.sngl:11:8: a window cannot be nested inside another window'
 
-! sngl generate --lang=none --platform=html --out=out3 direct.sngl
-stderr 'a window cannot be nested inside another window'
-
-# A component that declares a window is fine where the window itself would be.
+# A component that declares a window is fine where the window itself would be,
+# which is the root of a file -- so it names the root family.
 sngl generate --lang=go --platform=fyne --out=out4 toplevel.sngl
 exists out4/model.go
 
@@ -27,11 +32,9 @@ output {
 	}
 }
 
-component main ui {
-	window(title = "w") {
-		window(title = "b") {
-			text(value = "x")
-		}
+window(title = "w") {
+	window(title = "b") {
+		text(value = "x")
 	}
 }
 
@@ -51,10 +54,8 @@ component inner ui {
 	}
 }
 
-component main ui {
-	window(title = "w") {
-		inner()
-	}
+window(title = "w") {
+	inner()
 }
 
 -- toplevel.sngl --
@@ -67,12 +68,10 @@ output {
 	}
 }
 
-component inner ui {
+component inner root {
 	window(title = "b") {
 		text(value = "x")
 	}
 }
 
-component main ui {
-	inner()
-}
+inner()

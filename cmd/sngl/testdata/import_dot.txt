@@ -135,10 +135,8 @@ import . "widgets"
 
 func Greet(who string) => "MINE " + who
 
-component main ui {
-    window #w(href="/index.html") {
-        text(value=Greet("x"))
-    }
+window #w(href="/index.html") {
+    text(value=Greet("x"))
 }
 -- std.sngl --
 import . "sngl:ui"

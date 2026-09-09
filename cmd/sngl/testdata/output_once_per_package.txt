@@ -10,7 +10,7 @@ sngl check pkg
 stdout 'ok'
 
 ! sngl check twice
-stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*twice[/\\]a.sngl:3:1'
+stderr 'twice[/\\]b.sngl:3:1: output is already declared for this package at .*twice[/\\]a.sngl:4:1'
 
 -- pkg/app.sngl --
 import . "sngl:ui"

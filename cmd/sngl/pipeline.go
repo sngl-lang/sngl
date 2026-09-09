@@ -23,6 +23,9 @@ type pipelineOpts struct {
 	outDir  string
 	main    bool
 	quiet   bool
+	// library marks the input a library package the command line named, which
+	// is exempt from the window rule -- see build.Options.Library.
+	library bool
 	// onTarget runs after generation, per target. Nil = generate-only.
 	// For an interpreted target it runs instead of generation, against the
 	// checked package.
@@ -55,7 +58,9 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		// The package has no project directory of its own — its source is
 		// embedded, or the target synthesized it — so "." means generating into
 		// the working directory.
-		if err := emitPackage(in.Pkg, in.Path, ".", cliLang, cliPlat, p); err != nil {
+		libOpts := p
+		libOpts.library = true
+		if err := emitPackage(in.Pkg, in.Path, ".", cliLang, cliPlat, libOpts); err != nil {
 			return err
 		}
 	}
@@ -126,6 +131,7 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		Opts:     p.cliOpts,
 		Main:     p.main,
 		OutDir:   p.outDir,
+		Library:  p.library,
 	})
 	if err != nil {
 		return err

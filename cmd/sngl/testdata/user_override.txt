@@ -59,10 +59,8 @@ component Avatar[html.platform] {
     html.img(src=url, alt="avatar")
 }
 
-component main ui {
-    window #w(title="t") {
-        Avatar(url="/a.png", size=32)
-    }
+window #w(title="t") {
+    Avatar(url="/a.png", size=32)
 }
 
 -- typo.sngl --
@@ -77,10 +75,8 @@ component Avatar[htlm.platform] {
     text(value=url)
 }
 
-component main ui {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- nottarget.sngl --
@@ -96,10 +92,8 @@ component Avatar[html.element] {
     text(value=url)
 }
 
-component main ui {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- duplicate.sngl --
@@ -131,10 +125,8 @@ component Avatar[html.platform](url string) {
     text(value=url)
 }
 
-component main ui {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- selectsunknown.sngl --
@@ -150,10 +142,8 @@ component Avatar[html.platform](url, bogus) {
     html.img(src=url)
 }
 
-component main ui {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- unselected.sngl --
@@ -169,10 +159,8 @@ component Avatar[html.platform](url) {
     html.img(src=url, width=size)
 }
 
-component main ui {
-    window #w(title="t") {
-        Avatar(url="/a.png", size=1)
-    }
+window #w(title="t") {
+    Avatar(url="/a.png", size=1)
 }
 
 -- noselection.sngl --
@@ -188,8 +176,6 @@ component Avatar[html.platform] {
     html.img(src=url, alt=string(size))
 }
 
-component main ui {
-    window #w(title="t") {
-        Avatar(url="/a.png", size=1)
-    }
+window #w(title="t") {
+    Avatar(url="/a.png", size=1)
 }

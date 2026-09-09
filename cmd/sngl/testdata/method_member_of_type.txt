@@ -32,22 +32,18 @@ app.window {
 }
 -- geom/geom.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Point {
     x int = 0
 }
 
 func Point.shifted(p Point) => p.x + 1
-
-app.window {
-}
 -- dup.sngl.txt --
 import . "sngl:ui"
 import . "./geom"
 
 func Point.shifted(p Point) => p.x + 99
 
-component main {
+component main ui {
     text(value="x")
 }

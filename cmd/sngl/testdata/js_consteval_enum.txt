@@ -47,7 +47,7 @@ const c = lib.pickColor()
 const l = lib.pickLevel()
 const s = lib.pickCode()
 
-component main ui {
+app.window {
     var col = c
     var lvl = l
     var code = s
@@ -61,10 +61,6 @@ component main ui {
     if s == lib.Code.Minus {
         text(value="minus wins")
     }
-}
-
-app.window {
-    main
 }
 -- lib/index.ts --
 export enum Color {

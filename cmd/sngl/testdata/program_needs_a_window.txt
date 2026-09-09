@@ -1,0 +1,38 @@
+# A program declares at least one window, and internal/build.Emit is where
+# that is asked -- not the checker: `component c { … }` on its own is a
+# perfectly good thing to type-check, and it is only as something to *run* that
+# it has nowhere to draw.
+
+sngl check nowindow.sngl
+stdout 'nowindow.sngl: ok'
+
+! sngl generate --lang=none --platform=html --out=out nowindow.sngl
+stderr 'a program declares at least one window'
+! exists out/index.html
+
+# A library package the command line names is exempt: generating one is a
+# request for its declarations, and a library has no window by construction.
+sngl generate --lang go --platform gtk4 -o libout sngl:platform/gtk4
+exists libout/model.go
+
+# The same file with a window builds.
+sngl generate --lang=none --platform=html --out=ok window.sngl
+exists ok/index.html
+
+-- nowindow.sngl --
+import . "sngl:ui"
+
+component card ui {
+    text(value="hi")
+}
+-- window.sngl --
+import . "sngl:ui"
+import . "sngl:app"
+
+component card ui {
+    text(value="hi")
+}
+
+window {
+    card
+}

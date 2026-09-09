@@ -64,17 +64,15 @@ component table(rows list<Row>, header component, cell component(Row), children 
     }
 }
 
-component main ui {
-    window #w(href="/index.html") {
-        table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
-            component header {
-                text(value="Rows")
-            }
-            component cell(row) {
-                text(value=row.title)
-            }
-            text(value="ordinary child")
+window #w(href="/index.html") {
+    table(rows=[Row{title = "alpha"}, Row{title = "beta"}]) {
+        component header {
+            text(value="Rows")
         }
+        component cell(row) {
+            text(value=row.title)
+        }
+        text(value="ordinary child")
     }
 }
 
@@ -92,11 +90,9 @@ component card(heading component, children ...component) ui {
     }
 }
 
-component main ui {
-    window #w(href="/index.html") {
-        card() {
-            text(value="ordinary")
-        }
+window #w(href="/index.html") {
+    card() {
+        text(value="ordinary")
     }
 }
 
@@ -113,12 +109,10 @@ component card(caption string, heading component(string), children ...component)
     }
 }
 
-component main ui {
-    window #w(href="/index.html") {
-        card(caption="CAP") {
-            component heading(c) {
-                text(value=c)
-            }
+window #w(href="/index.html") {
+    card(caption="CAP") {
+        component heading(c) {
+            text(value=c)
         }
     }
 }
@@ -150,11 +144,9 @@ component wrapper(start string, children ...component) ui {
     }
 }
 
-component main ui {
-    window #w(href="/index.html") {
-        wrapper(start="AAA")
-        wrapper(start="BBB")
-    }
+window #w(href="/index.html") {
+    wrapper(start="AAA")
+    wrapper(start="BBB")
 }
 
 output { none { html } }

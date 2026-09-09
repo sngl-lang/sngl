@@ -40,10 +40,8 @@ component Badge[html.platform] {
     html.span(textContent="html " + value)
 }
 
-component main ui {
-    window #w(title="t") {
-        Badge(value="x")
-    }
+window #w(title="t") {
+    Badge(value="x")
 }
 
 -- dup_language.sngl --
@@ -63,8 +61,6 @@ component Badge[go.language] {
     text(value="b" + value)
 }
 
-component main ui {
-    window #w(title="t") {
-        Badge(value="x")
-    }
+window #w(title="t") {
+    Badge(value="x")
 }

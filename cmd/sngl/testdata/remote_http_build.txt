@@ -51,7 +51,11 @@ import . "sngl:ui"
 import "sngl:remote/http"
 import app "sngl:app"
 
-component main ui {
+const blank = http.Result{status=0, body="", headers={}}
+
+output(lang="go", platform="bubbletea")
+
+app.window {
     var contents = http.fetch("https://example.com")
 
     vbox {
@@ -60,12 +64,4 @@ component main ui {
         text(value="Failed: {contents.failed()}")
         text(value="OK: {contents.value().ok()}")
     }
-}
-
-const blank = http.Result{status=0, body="", headers={}}
-
-output(lang="go", platform="bubbletea")
-
-app.window {
-    main
 }

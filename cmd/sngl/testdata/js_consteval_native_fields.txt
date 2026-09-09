@@ -28,15 +28,11 @@ import app "sngl:app"
 
 const total = lib.sum(lib.Point{x = 10.0, y = 20.0})
 
-component main ui {
+app.window {
     text(value=string(total))
     var p = lib.origin()
     text(value=string(p.x))
     button(text="bump", @click { p.x = p.x + 1.0 })
-}
-
-app.window {
-    main
 }
 -- lib/index.ts --
 export interface Point {

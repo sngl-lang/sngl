@@ -76,8 +76,6 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-counter()
-
 component counter ui {
     var n = 3
     vbox {
@@ -90,6 +88,7 @@ func testInitial(t Test, c counter) {
 }
 
 app.window {
+    counter()
 }
 -- rooted.sngl --
 import . "sngl:ui"
@@ -119,11 +118,6 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-vbox {
-    counter()
-    greeter()
-}
-
 component counter ui {
     var n = 3
     vbox {
@@ -147,4 +141,8 @@ func testGreeter(t Test, g greeter) {
 }
 
 app.window {
+    vbox {
+        counter()
+        greeter()
+    }
 }

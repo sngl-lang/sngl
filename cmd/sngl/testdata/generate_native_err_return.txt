@@ -32,15 +32,13 @@ output { go { fyne } }
 
 import "go:example.com/native-err/api"
 
-component main ui {
+window #app(title="t") {
     var rows list<string> = []
 
-    window #app(title="t") {
-        vbox {
-            button(text="Load", @click {
-                rows = api.Fetch("hello")
-            })
-            text(value="rows {string(rows.length)}")
-        }
+    vbox {
+        button(text="Load", @click {
+            rows = api.Fetch("hello")
+        })
+        text(value="rows {string(rows.length)}")
     }
 }

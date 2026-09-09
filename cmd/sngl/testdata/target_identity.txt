@@ -52,27 +52,23 @@ import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:language/go"
 
-component main ui {
-    window #w(title="t") {
-        if PLATFORM == html.platform {
-            text(value="html-only")
-        }
-        if LANGUAGE == go.language {
-            text(value="go-only")
-        }
-        text(value="always")
+window #w(title="t") {
+    if PLATFORM == html.platform {
+        text(value="html-only")
     }
+    if LANGUAGE == go.language {
+        text(value="go-only")
+    }
+    text(value="always")
 }
 
 -- string_compare.sngl --
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
-    window #w(title="t") {
-        if PLATFORM == "html" {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == "html" {
+        text(value="x")
     }
 }
 
@@ -80,11 +76,9 @@ component main ui {
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
-    window #w(title="t") {
-        if PLATFORM == htlm.platform {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == htlm.platform {
+        text(value="x")
     }
 }
 
@@ -93,11 +87,9 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/bubbletea"
 
-component main ui {
-    window #w(title="t") {
-        if PLATFORM == bubbletea.pltform {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == bubbletea.pltform {
+        text(value="x")
     }
 }
 
@@ -106,11 +98,9 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component main ui {
-    window #w(title="t") {
-        if PLATFORM == html.marquee {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == html.marquee {
+        text(value="x")
     }
 }
 
@@ -119,9 +109,7 @@ import . "sngl:ui"
 import "sngl:platform/html"
 import . "sngl:app"
 
-component main ui {
-    window #w(title="t") {
-        var c html.color = #ff0000
-        text(value="x")
-    }
+window #w(title="t") {
+    var c html.color = #ff0000
+    text(value="x")
 }

@@ -21,7 +21,7 @@ component main ui {
 
     func bump() { count = count + 10 }
 
-    component readout() {
+    component readout() ui {
         effect(@mount {
             seen = count
             bump()

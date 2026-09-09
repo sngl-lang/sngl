@@ -571,13 +571,11 @@ output { none { html } }
 
 const PLATFORM = "zzz"
 
-component main ui {
-    window #w(href="/index.html") {
-        if PLATFORM == "html" {
-            text(value="TARGET")
-        }
-        if PLATFORM == "zzz" {
-            text(value="SHADOWED")
-        }
+window #w(href="/index.html") {
+    if PLATFORM == "html" {
+        text(value="TARGET")
+    }
+    if PLATFORM == "zzz" {
+        text(value="SHADOWED")
     }
 }

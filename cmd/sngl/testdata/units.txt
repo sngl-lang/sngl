@@ -51,15 +51,9 @@ app.window {
     main
 }
 -- app/helper.sngl --
-import app "sngl:app"
-
 func twice(n int) => n * 2
-
-app.window {
-}
 -- app/app_test.sngl --
 import . "sngl:test"
-import app "sngl:app"
 
 func testHelper(t Test) {
     t.assert(twice(3) == 6)
@@ -68,9 +62,6 @@ func testHelper(t Test) {
 // `main` is declared in app.sngl, the file next to this one.
 func testComponent(t Test, c main) {
     t.assert(c.out.value == "twice: 14")
-}
-
-app.window {
 }
 -- corpus/one.sngl --
 import . "sngl:ui"
