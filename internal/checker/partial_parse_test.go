@@ -12,11 +12,11 @@ import (
 // nil arm may not become a panic.
 func TestPartialParseDoesNotPanic(t *testing.T) {
 	srcs := map[string]string{
-		"spread_no_operand": "component main ui {\n    var xs = [...]\n}\n",
-		"spread_after_elem": "component main ui {\n    var xs = [1, ...]\n}\n",
-		"spread_empty_expr": "component main ui {\n    var xs = [...()]\n}\n",
-		"const_empty_expr":  "component main ui {\n    var x = const(())\n}\n",
-		"ternary_no_then":   "component main ui {\n    var x = true ? : 2\n}\n",
+		"spread_no_operand": "component main node {\n    var xs = [...]\n}\n",
+		"spread_after_elem": "component main node {\n    var xs = [1, ...]\n}\n",
+		"spread_empty_expr": "component main node {\n    var xs = [...()]\n}\n",
+		"const_empty_expr":  "component main node {\n    var x = const(())\n}\n",
+		"ternary_no_then":   "component main node {\n    var x = true ? : 2\n}\n",
 	}
 	for name, src := range srcs {
 		t.Run(name, func(t *testing.T) {

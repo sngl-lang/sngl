@@ -28,7 +28,7 @@ const greeting = lib.shout("hello world")
 const big = lib.big()
 const small = lib.small()
 
-component main ui {
+component main node {
     text(value=greeting)
     text(value=string(big))
     text(value=string(small))

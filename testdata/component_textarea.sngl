@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // textarea: state-binding fixture — mutating the bound `value`
 // var propagates to the textarea editor.
-component main ui {
+component main node {
     var text = ""
     textarea(value=text, placeholder="Notes", rows=4)
 }

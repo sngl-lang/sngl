@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component items ui {
+component items node {
     var list = [1, 2, 3]
 
     text(value="{list}")

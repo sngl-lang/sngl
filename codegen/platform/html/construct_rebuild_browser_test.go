@@ -27,7 +27,7 @@ func TestConstruct_APropWrittenFromStateRebuildsTheInstance(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:macro"
-component seeded(#[construct] start int, more = 0) ui {
+component seeded(#[construct] start int, more = 0) node {
     var n = start
     button(text="bump inner", @click { n = n + 5 })
     text(value="s:" + string(n))
@@ -35,7 +35,7 @@ component seeded(#[construct] start int, more = 0) ui {
         seeded(start=start, more=more - 1)
     }
 }
-component App() ui {
+component App() node {
     var k = 10
     text(value="before")
     button(text="bump", @click { k = k + 1 })

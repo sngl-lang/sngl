@@ -8,7 +8,7 @@ const propInitComponentSrc = `
 import . "sngl:ui"
 import app "sngl:app"
 
-component greeter(name = "") ui {
+component greeter(name = "") node {
     var greeting = "hi " + name
     text(value=greeting)
 }

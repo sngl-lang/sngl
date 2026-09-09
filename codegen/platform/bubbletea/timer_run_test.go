@@ -23,7 +23,7 @@ import . "sngl:ui"
 import . "sngl:time"
 import app "sngl:app"
 
-component beat(label = "") ui {
+component beat(label = "") node {
     var beats = 0
     timer(interval=10ms, enabled=true, @tick { beats += 1 })
     text(value="{label} {beats}")

@@ -8,7 +8,7 @@
 //
 // What is left here is the wiring: one `Calc`, one handler that maps a key to
 // the method that answers it, and a window to hang it in. The window is at the
-// root of the file, because that is what the root tree accepts and a `ui`
+// root of the file, because that is what the root tree accepts and a `node`
 // component is not a place a window belongs. The tests are in calc_test.sngl
 // beside this file.
 
@@ -27,7 +27,7 @@ output {
     kotlin { android }
 }
 
-component main ui.ui {
+component main ui.node {
     var state calc.Calc
 
     // One key, one method. The calculator never edits itself: each method

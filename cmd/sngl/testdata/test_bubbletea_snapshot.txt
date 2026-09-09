@@ -21,7 +21,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component counter ui {
+component counter node {
     var count = 0
     text(value=string(count))
 }

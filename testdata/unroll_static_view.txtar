@@ -31,7 +31,7 @@ output {
 
 const packages list<string> = ["alpha", "beta", "gamma"]
 
-component main ui.ui {
+component main ui.node {
     window #home(title="Docs", href="/") {
         html.nav {
             for var p = packages {

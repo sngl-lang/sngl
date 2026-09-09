@@ -49,7 +49,7 @@ struct tdAttrs {
     colspan string
 }
 
-component main() ui.ui {
+component main() ui.node {
     std.window {
         html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
     }
@@ -59,7 +59,7 @@ import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.ui {
+component main() ui.node {
     window {
         html.thisIsATypoNotATag(id = "x") { }
     }
@@ -68,7 +68,7 @@ component main() ui.ui {
 import . "sngl:ui"
 import . "sngl:app"
 
-component main() ui {
+component main() node {
     window {
         text(value=string(bubbletea.JoinDir.vertical))
     }
@@ -78,7 +78,7 @@ import std "sngl:app"
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.ui {
+component main() ui.node {
     std.window {
         div(id = "x") { }
     }
@@ -90,7 +90,7 @@ import . "sngl:platform/html"
 
 func typoed() => someUndefinedIdentifier
 
-component main() std.ui {
+component main() std.node {
     std.window {
         std.text(value = "x")
     }
@@ -100,7 +100,7 @@ import std "sngl:app"
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.ui {
+component main() ui.node {
     std.window {
         element(tag = "div") { }
     }

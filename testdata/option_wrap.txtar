@@ -40,7 +40,7 @@ struct Holder {
     inner option<Box> = null
 }
 
-component main ui {
+component main node {
     var b = Box{value=3}
     var h = Holder{inner=b}
     var seen = 0

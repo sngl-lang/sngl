@@ -1,20 +1,20 @@
 -- input.sngl --
 import . "sngl:ui"
 
-component Stepper(:count = 0) ui {
+component Stepper(:count = 0) node {
     button(text="+", @click { count += 1 })
     button(text="-", @click { count -= 1 })
     text(value=string(count))
 }
 
-component main ui {
+component main node {
     var steps = 0
     Stepper(:count=steps)
     text(value="steps={steps}")
 }
 -- expected.sngl --
 import . "sngl:ui"
-component Stepper(:count int = 0, @count int) ui {
+component Stepper(:count int = 0, @count int) node {
     button(text="+", @click {
         count(count + 1)
     })
@@ -23,7 +23,7 @@ component Stepper(:count int = 0, @count int) ui {
     })
     text(value=string(count))
 }
-component main ui {
+component main node {
     var steps int = 0
     button(text="+", @click {
         steps = steps + 1

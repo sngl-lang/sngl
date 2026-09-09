@@ -17,11 +17,11 @@ import (
 func TestPropBindings_EventNamesTheHandlersParam(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component field(:value string) ui {
+component field(:value string) node {
     input(value=value, @input { })
 }
 
-component main ui {
+component main node {
     var name string = ""
     field(:value=name)
 }

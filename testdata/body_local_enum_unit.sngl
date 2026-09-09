@@ -16,7 +16,7 @@ func phase() int {
     return 0
 }
 
-component main ui {
+component main node {
     text(value="${phase()}")
 }
 

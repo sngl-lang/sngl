@@ -6,7 +6,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:test"
 
-component boundaryCatches ui {
+component boundaryCatches node {
     var caught = ""
     errorBoundary(@error(e) { caught = e.message }) {
         button #go(text="Go", @click { error.raise("boom", "") })
@@ -18,7 +18,7 @@ func testBoundaryCatchesBubblesUp(t Test, c boundaryCatches) {
     t.assert(c.caught == "boom")
 }
 
-component innerWinsOverOuter ui {
+component innerWinsOverOuter node {
     var innerCaught = ""
     var outerCaught = ""
     errorBoundary(@error(e) { outerCaught = e.message }) {
@@ -34,7 +34,7 @@ func testInnerBoundaryWins(t Test, c innerWinsOverOuter) {
     t.assert(c.outerCaught == "")
 }
 
-component kindPropagates ui {
+component kindPropagates node {
     var k = ""
     errorBoundary(@error(e) { k = e.kind }) {
         button #go(text="Go", @click { error.raise("m", "validation") })

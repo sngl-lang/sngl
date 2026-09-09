@@ -8,7 +8,7 @@ import . "sngl:test"
 import . "sngl:ui"
 import app "sngl:app"
 
-component tally ui {
+component tally node {
     var labels = ["a", "b", "c"]
 
     vbox {

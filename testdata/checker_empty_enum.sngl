@@ -3,7 +3,7 @@ import app "sngl:app"
 
 enum Empty {}
 
-component main ui {
+component main node {
     text(value="ok")
 }
 

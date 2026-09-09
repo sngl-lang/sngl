@@ -9,7 +9,7 @@ unit Len { mm, cm = 10mm }
 
 func Len.doubled(v Len) => v + v
 
-component main ui {
+component main node {
     var five Len = 5mm
     var d Len = five.doubled()
     text(value=string(d))

@@ -15,7 +15,7 @@ import . "sngl:ui"
 import s "../sub"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value=string(s.dist(s.origin())))
 }
 

@@ -6,7 +6,7 @@ import app "sngl:app"
 // interpreter/const-folder (values above 2^63 are modeled exactly, not as
 // two's-complement Go int). Operands are concrete-typed locals so the
 // arithmetic runs at the declared width.
-component uints ui.ui {
+component uints ui.node {
     var dummy = 0
 }
 

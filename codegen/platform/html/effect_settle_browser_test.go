@@ -22,7 +22,7 @@ func TestEffect_TwoPositionsEndBothBeforeEitherBegins(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() ui {
+component App() node {
     var (
         k = 0
         log list<string> = []
@@ -55,7 +55,7 @@ func TestEffect_PushMountsTheNewBracket(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component App() ui {
+component App() node {
     var (
         items list<string> = ["a"]
         log list<string> = []
@@ -92,7 +92,7 @@ import . "sngl:app"
 struct counter {
     n int
 }
-component App() ui {
+component App() node {
     var (
         key counter = counter{n = 0}
         log list<string> = []
@@ -129,7 +129,7 @@ var (
     log list<string> = []
 )
 func scaled(m int) => m * n
-component App() ui {
+component App() node {
     button(text="bump", @click { n = n + 1 })
     effect(on=scaled(2), @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
@@ -176,7 +176,7 @@ var (
     y = 0
     runs = 0
 )
-component App() ui {
+component App() node {
     effect(on=x, @mount {
         runs += 1
         y = y + 1

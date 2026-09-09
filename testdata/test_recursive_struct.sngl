@@ -8,7 +8,7 @@ struct TreeNode {
     right dyn = null
 }
 
-component main ui {
+component main node {
     // Build a small tree:
     //       5
     //      / \

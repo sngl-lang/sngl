@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
 }
 
 app.window {

@@ -4,19 +4,19 @@ import app "sngl:app"
 
 // Two components with the same-named var prove pointer-keyed deps
 // don't cross-subscribe.
-component left ui {
+component left node {
     var x = 0
     button #bump(text="L", @click { x += 1 })
     text #out(value=string(x))
 }
 
-component right ui {
+component right node {
     var x = 100
     button #bump(text="R", @click { x += 1 })
     text #out(value=string(x))
 }
 
-component main ui {
+component main node {
     left #l()
     right #r()
 }

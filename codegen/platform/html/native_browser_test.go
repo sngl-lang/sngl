@@ -43,7 +43,7 @@ func btoa(s string) string
 #[js.native("btoa")]
 func base64(s string) string
 
-component App() ui {
+component App() node {
     var (
         same = "unset"
         renamed = "unset"

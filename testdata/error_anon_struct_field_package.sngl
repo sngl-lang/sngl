@@ -23,7 +23,7 @@ func takeMine(v struct {
     s Style
 }) => v.s.x
 
-component main ui {
+component main node {
     var theirs = {s=uipkg.Style{}}
     var n = takeMine(theirs) // ERROR(check) "cannot pass struct { s Style } as struct { s Style }"
 

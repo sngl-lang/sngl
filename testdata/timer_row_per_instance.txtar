@@ -41,7 +41,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var ticks = 0
     var periods list<duration> = [20ms, 500ms]
 

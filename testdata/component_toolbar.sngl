@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // toolbar: A-tier — declaration only.
-component main ui {
+component main node {
     toolbar {
         button(text="New")
         button(text="Open")

@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component real ui {
+component real node {
     var x = 0
     text(value=string(x))
 }

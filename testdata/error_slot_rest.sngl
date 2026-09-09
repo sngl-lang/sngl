@@ -8,26 +8,26 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component twice(head ...component, tail ...component) ui { // ERROR(check) "declares a second rest slot \"tail\""
+component twice(head ...component, tail ...component) node { // ERROR(check) "declares a second rest slot \"tail\""
     vbox {
         head
         tail
     }
 }
 
-component scoped(children ...component(string)) ui { // ERROR(check) "rest slot \"children\" takes no parameters"
+component scoped(children ...component(string)) node { // ERROR(check) "rest slot \"children\" takes no parameters"
     vbox {
         children
     }
 }
 
-component card(children ...component) ui {
+component card(children ...component) node {
     vbox {
         children
     }
 }
 
-component main ui {
+component main node {
     vbox {
         card() { // ERROR(check) "slot \"children\" is populated by name and by the children written bare"
             component children {

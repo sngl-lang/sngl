@@ -5,7 +5,7 @@ import . "sngl:test"
 // Component-instance member access is typed, not silently `dyn`: a wrong-typed
 // assignment or comparison through a component-typed value is caught. Before
 // members resolved through scope this degraded to `dyn` and slipped through.
-component counter ui {
+component counter node {
     var count int = 0
     var label string = ""
     func doubled() => count * 2

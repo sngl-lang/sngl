@@ -21,7 +21,7 @@ exists np
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var hex = int.parse("FF", 16)
     text(value=string(hex))
 }
@@ -35,7 +35,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var hex = int.parse("FF", 16)
     text(value=string(hex))
 }

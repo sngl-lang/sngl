@@ -8,7 +8,7 @@ import app "sngl:app"
 // wrapped in a conversion from func to string instead — which the html
 // backend emitted as an empty span. The emission is covered by
 // cmd/sngl/testdata; what this pins is that the call happens at all.
-component main ui {
+component main node {
     var count = 2
     func doubled() => count * 2
     text(value=string(doubled))

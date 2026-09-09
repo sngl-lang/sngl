@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // drawer: state-binding fixture — toggling bound `open` slides the
 // drawer in/out.
-component main ui {
+component main node {
     var open = false
     drawer(open=open, side="right", size="medium") {
         text(value="drawer content")

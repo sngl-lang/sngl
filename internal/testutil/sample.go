@@ -199,9 +199,9 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 
 				switch block.Annotation {
 				case "component":
-					src += "component main ui {\n" + body + "\n}"
+					src += "component main node {\n" + body + "\n}"
 				case "expression":
-					src += "component main ui {\n  computed _x = " + strings.TrimSpace(body) + "\n}"
+					src += "component main node {\n  computed _x = " + strings.TrimSpace(body) + "\n}"
 				default:
 					src += body
 				}

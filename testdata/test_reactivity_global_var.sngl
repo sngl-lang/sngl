@@ -4,11 +4,11 @@ import app "sngl:app"
 
 var theme = "light"
 
-component card ui {
+component card node {
     text #out(value=theme)
 }
 
-component main ui {
+component main node {
     button #toggle(text="toggle", @click { theme = "dark" })
     card #cd()
 }

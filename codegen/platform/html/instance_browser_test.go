@@ -22,12 +22,12 @@ func TestInstance_StatePerElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component badge(label string) ui {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit " + label, @click { hits = hits + 1 })
 }
-component App() ui {
+component App() node {
     var names list<string> = ["a", "b"]
     for var n = names {
         badge(label=n)
@@ -73,12 +73,12 @@ func TestInstance_PropUpdateReachesTheLeaf(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component badge(label string) ui {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit", @click { hits = hits + 1 })
 }
-component App() ui {
+component App() node {
     var (
         names list<string> = ["a"]
         tag = "x"
@@ -118,13 +118,13 @@ func TestInstance_Recursive(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component chain(depth int) ui {
+component chain(depth int) node {
     text(value="<" + string(depth))
     if depth > 0 {
         chain(depth=depth - 1)
     }
 }
-component App() ui {
+component App() node {
     chain(depth=3)
 }
 window(title="H", href="/index.html") { App() }
@@ -155,12 +155,12 @@ func TestInstance_GrowingTheListKeepsTheOthers(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component badge(label string) ui {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit " + label, @click { hits = hits + 1 })
 }
-component App() ui {
+component App() node {
     var names list<string> = ["a", "b"]
     for var n = names {
         badge(label=n)
@@ -210,12 +210,12 @@ func TestInstance_KeyedInsertAtFront(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component badge(label string) ui {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit " + label, @click { hits = hits + 1 })
 }
-component App() ui {
+component App() node {
     var names list<string> = ["a", "b"]
     for var n = names {
         badge(label=n, key=n)
@@ -262,12 +262,12 @@ func TestInstance_DuplicateKeysAreDistinctInstances(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component badge(label string) ui {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit", @click { hits = hits + 1 })
 }
-component App() ui {
+component App() node {
     var names list<string> = ["a", "a"]
     for var n = names {
         badge(label=n, key=n)
@@ -319,12 +319,12 @@ func TestInstance_BranchReentryResetsState(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component badge() ui {
+component badge() node {
     var hits = 0
     text(value="[" + string(hits) + "]")
     button(text="hit", @click { hits = hits + 1 })
 }
-component App() ui {
+component App() node {
     var shown = true
     button(text="toggle", @click { shown = !shown })
     if shown {

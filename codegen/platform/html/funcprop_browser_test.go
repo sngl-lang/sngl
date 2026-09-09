@@ -12,11 +12,11 @@ import (
 const funcPropSrc = `
 import . "sngl:ui"
 import . "sngl:app"
-component row(label string, onpick func(string)) ui {
+component row(label string, onpick func(string)) node {
     var hits = 0
     button(text="pick " + label + ":" + string(hits), @click { onpick(label) })
 }
-component App() ui {
+component App() node {
     var items list<string> = ["a", "b"]
     var picked string = ""
     text(value="picked=" + picked)

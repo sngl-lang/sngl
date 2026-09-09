@@ -108,12 +108,12 @@ func TestMountAgreesWithThePreTreeWalk(t *testing.T) {
 func TestMountKeysAreUniqueAndStable(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component row(label string) ui {
+component row(label string) node {
     text(value=label)
     text(value="fixed")
 }
 
-component main ui {
+component main node {
     var items = ["a", "b", "c"]
     vbox {
         row(label="one")
@@ -166,11 +166,11 @@ component main ui {
 func TestAComponentInstantiationIsANodeWithItsExpansionBeneath(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component leaf() ui {
+component leaf() node {
     text #inner(value="hi")
 }
 
-component main ui {
+component main node {
     leaf #outer()
 }
 `
@@ -211,11 +211,11 @@ component main ui {
 func TestComponentNodeCarriesItsArguments(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component leaf(label string) ui {
+component leaf(label string) node {
     text(value=label)
 }
 
-component main ui {
+component main node {
     var greeting = "hello"
     leaf #outer(label=greeting)
 }
@@ -388,7 +388,7 @@ func sortedKeys(v *View) []Key {
 }
 
 // TestAnEmptyBodiedComponentIsBothReadings is the rule a fixture caught rather
-// than a test: `component main ui { var x = 5 }` renders nothing of its own, so in
+// than a test: `component main node { var x = 5 }` renders nothing of its own, so in
 // the rendered tree it *is* the element and Find must return it -- while
 // `c.m.double()` still needs its scope, so it must also be a component node.
 //
@@ -398,11 +398,11 @@ func sortedKeys(v *View) []Key {
 func TestAnEmptyBodiedComponentIsBothReadings(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component holder ui {
+component holder node {
     var x = 5
 }
 
-component main ui {
+component main node {
     holder #h()
 }
 `
@@ -432,11 +432,11 @@ component main ui {
 	// And a component that DOES render is skipped by Find, as before.
 	src2 := `import . "sngl:ui"
 
-component leaf() ui {
+component leaf() node {
     text(value="hi")
 }
 
-component main ui {
+component main node {
     leaf #l()
 }
 `

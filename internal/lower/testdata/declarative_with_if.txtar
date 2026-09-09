@@ -2,7 +2,7 @@ caps: NoDeclarative
 -- input.sngl --
 import . "sngl:ui"
 
-component main ui {
+component main node {
     var n int = 0
     if n > 0 {
         text(value="big")
@@ -12,7 +12,7 @@ component main ui {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main ui {
+component main node {
     var n int = 0
     if n > 0 {
         var __n0 text = lower.CreateNode("text")

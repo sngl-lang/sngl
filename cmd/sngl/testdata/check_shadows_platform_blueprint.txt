@@ -23,11 +23,11 @@ import app "sngl:app"
 
 output { none { html } }
 
-component Widget(title string, children ...component) ui {
+component Widget(title string, children ...component) node {
     text(value=title)
 }
 
-component main ui {
+component main node {
     var name = ""
     Widget(title="user widget")
     input(value=name)

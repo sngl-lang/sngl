@@ -9,7 +9,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var scores map<string, int> = {alice=10}
 
     vbox {

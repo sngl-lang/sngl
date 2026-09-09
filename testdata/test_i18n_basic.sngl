@@ -4,7 +4,7 @@ import "sngl:i18n"
 import app "sngl:app"
 
 // Plain translatable string with no interpolation.
-component i18nBasic ui {
+component i18nBasic node {
     var label = $"Login"
 
     // Triple-quoted form (whitespace-trimmed by ICU template lowering).

@@ -51,7 +51,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string, size int) ui {
+component Avatar(url string, size int) node {
     text(value="avatar fallback: " + url)
 }
 
@@ -67,7 +67,7 @@ window #w(title="t") {
 import . "sngl:ui"
 import . "sngl:app"
 
-component Avatar(url string) ui {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -84,7 +84,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string) ui {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -106,7 +106,7 @@ component sngl.badge[html.platform] {
     html.span(textContent=value)
 }
 
-component main sngl.ui {
+component main sngl.node {
     window #w(title="t") {
         badge(value="7")
     }
@@ -117,7 +117,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string) ui {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -134,7 +134,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string) ui {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -151,7 +151,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string, size int) ui {
+component Avatar(url string, size int) node {
     text(value=url)
 }
 
@@ -168,7 +168,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string, size int) ui {
+component Avatar(url string, size int) node {
     text(value=url)
 }
 

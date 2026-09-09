@@ -15,13 +15,13 @@ var loud = true
 
 #[tree.none]
 component logger(label string) {
-    ui.text(value=label) // ERROR(check) "component logger names no tree, so it may not contain the ui component text"
+    ui.text(value=label) // ERROR(check) "component logger names no tree, so it may not contain the node component text"
 }
 
 #[tree.none]
 component branching(label string) {
     if loud {
-        ui.text(value=label) // ERROR(check) "component branching names no tree, so it may not contain the ui component text"
+        ui.text(value=label) // ERROR(check) "component branching names no tree, so it may not contain the node component text"
     }
 }
 

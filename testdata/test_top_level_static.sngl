@@ -9,7 +9,7 @@ struct S {
 // No S-typed first param → static in S's namespace.
 func S.helper(n int) => n * 2
 
-component main ui {
+component main node {
     text(value=string(S.helper(5)))
 }
 

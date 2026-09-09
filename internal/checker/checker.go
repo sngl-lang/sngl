@@ -3937,7 +3937,7 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		w.Body = c.checkBlockIR(&w.AST.Block)
 		// A window is its own IR construct, so its children never reach the
 		// slot check every other node's go through. What it accepts is still
-		// the declaration's answer: `content ...component ui.ui`.
+		// the declaration's answer: `content ...component ui.node`.
 		c.checkTreeMembership(w.AST.Pos, w.Body,
 			slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
 		c.checkWindowVarHandlers(w)

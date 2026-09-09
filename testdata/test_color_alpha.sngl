@@ -5,7 +5,7 @@ import app "sngl:app"
 // A colour is its complete value, alpha included. hex() dropped alpha in
 // every backend while the interpreter kept it, so an assertion on a
 // translucent colour passed headless and failed in a real build.
-component main ui {
+component main node {
     var opaque color = color{r=255, g=0, b=0}
     var faded color = color{r=255, g=0, b=0, a=128}
     text(value=opaque.hex() + faded.hex())

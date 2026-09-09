@@ -46,7 +46,7 @@ func TestAnInvisibleComponentUnderAReactiveIfIsInlined(t *testing.T) {
 	pkg := lowerOne(t, `
 import . "sngl:ui"
 
-component held(period int) ui {
+component held(period int) node {
     var handle = 0
 
     effect(
@@ -56,7 +56,7 @@ component held(period int) ui {
     )
 }
 
-component main ui {
+component main node {
     var shown = false
 
     button(text="toggle", @click { shown = !shown })
@@ -89,7 +89,7 @@ func TestAnInvisibleComponentUnderAReactiveForStaysAnInstance(t *testing.T) {
 	pkg := lowerOne(t, `
 import . "sngl:ui"
 
-component held(period int) ui {
+component held(period int) node {
     var handle = 0
 
     effect(
@@ -99,7 +99,7 @@ component held(period int) ui {
     )
 }
 
-component main ui {
+component main node {
     var periods = [10, 20]
 
     button(text="add", @click { periods.push(30) })
@@ -124,13 +124,13 @@ func TestAVisibleComponentUnderAReactiveIfStaysAnInstance(t *testing.T) {
 	pkg := lowerOne(t, `
 import . "sngl:ui"
 
-component held(label string) ui {
+component held(label string) node {
     var n = 0
 
     text(value=label + string(n))
 }
 
-component main ui {
+component main node {
     var shown = false
 
     button(text="toggle", @click { shown = !shown })

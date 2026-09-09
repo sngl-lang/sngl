@@ -27,7 +27,7 @@ import . "sngl:app"
 import "./widgets"
 import ui "sngl:ui"
 
-component main() ui.ui {
+component main() ui.node {
     window {
         widgets.marquee(tag = "marquee")
         widgets.blink(tag = "blink")
@@ -39,7 +39,7 @@ import . "sngl:app"
 import "./widgets"
 import ui "sngl:ui"
 
-component main() ui.ui {
+component main() ui.node {
     window {
         widgets.box(label = "declared")
     }
@@ -50,7 +50,7 @@ import . "sngl:app"
 import "./widgets"
 import ui "sngl:ui"
 
-component main() ui.ui {
+component main() ui.node {
     window {
         widgets.marquee(tag = "marquee", nope = 1)
     }
@@ -61,7 +61,7 @@ import . "sngl:app"
 import w "./widgets"
 import ui "sngl:ui"
 
-component main() ui.ui {
+component main() ui.node {
     window {
         w.Widget(tag = "x")
     }
@@ -73,11 +73,11 @@ import . "sngl:macro"
 import app "sngl:app"
 
 #[wildcard("[a-z][a-z0-9]*")]
-component element(tag string) ui {
+component element(tag string) node {
     text(value = tag)
 }
 
-component box(label string) ui {
+component box(label string) node {
     text(value = label)
 }
 

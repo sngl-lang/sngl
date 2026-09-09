@@ -19,7 +19,7 @@ func outer() {
     f()
 }
 
-component main ui {
+component main node {
     button(text="Go", @click { outer() })
 }
 

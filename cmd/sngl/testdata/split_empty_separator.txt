@@ -33,7 +33,7 @@ func chars(s string) list<string> {
     return string.split(s, "")
 }
 
-component main ui {
+component main node {
     var n = chars("abc").length()
 
     text(value="{n}")

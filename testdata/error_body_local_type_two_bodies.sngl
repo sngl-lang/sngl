@@ -5,7 +5,7 @@ import app "sngl:app"
 // declarations land in one package and no backend renames either, so the host
 // would get two types of that name. #198 hoists and renames per body and
 // removes this error.
-component first ui {
+component first node {
     struct Local {
         a int
     }
@@ -15,7 +15,7 @@ component first ui {
     text(value="${here.a}")
 }
 
-component second ui {
+component second node {
     struct Local { // ERROR(check) "is declared in another body of this package"
         b string
     }
@@ -25,7 +25,7 @@ component second ui {
     text(value=here.b)
 }
 
-component main ui {
+component main node {
     first()
     second()
 }

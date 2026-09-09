@@ -13,7 +13,7 @@ const slotInstanceSrc = `
 import . "sngl:ui"
 import app "sngl:app"
 
-component card(name = "") ui {
+component card(name = "") node {
     var open = true
     button(text=name, @click { open = !open })
     if open {

@@ -39,7 +39,7 @@ import app "sngl:app"
 
 var count = 0
 
-component main ui {
+component main node {
     text(value="hello")
     button(text="go", @click { count = count + 1 })
 }

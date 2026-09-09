@@ -18,7 +18,7 @@ output {
 
 func labels() => ["a", "b", "c"]
 
-component main ui {
+component main node {
     var chosen = ""
 
     func pick(label string) {

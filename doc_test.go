@@ -111,7 +111,7 @@ func TestDocSNGLFormat(t *testing.T) {
 
 				switch block.Annotation {
 				case "component":
-					src += "component main ui {\n" + block.Source + "\n}"
+					src += "component main node {\n" + block.Source + "\n}"
 				default:
 					src += block.Source
 				}
@@ -265,7 +265,7 @@ func TestPlatformSourcesPassChecker(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.platform, func(t *testing.T) {
-			src := "output {\n    " + tt.lang + " {\n        " + tt.platform + "\n    }\n}\n\ncomponent main ui {\n    text(value=\"hi\")\n}\n"
+			src := "output {\n    " + tt.lang + " {\n        " + tt.platform + "\n    }\n}\n\ncomponent main node {\n    text(value=\"hi\")\n}\n"
 			doc, err := parser.Parse("test.sngl", []byte(withStdSrc(src)))
 			if err != nil {
 				t.Fatalf("parse: %v", err)

@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component methodfold ui {
+component methodfold node {
     // int methods (qualified)
     var imin = int.min(3, 7) // FOLD 3
     var imax = int.max(3, 7) // FOLD 7

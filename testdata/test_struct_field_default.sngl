@@ -12,7 +12,7 @@ struct P {
     tag string = "none"
 }
 
-component main ui { text(value="x") }
+component main node { text(value="x") }
 
 func testOmittedFieldTakesItsDefault(t Test, c main) {
     var p P = {y=1}

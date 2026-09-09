@@ -18,7 +18,7 @@ struct inline {}
 
 // A container that is not itself a member: its rest slot names the family
 // it hosts.
-component document(children ...component block) ui {}
+component document(children ...component block) node {}
 
 // A member that hosts a different family — the rich-text case the mechanism
 // was generalised for.
@@ -30,11 +30,11 @@ component bold(weight int) inline {}
 // A member whose slot names no family hosts its own, so this holds inlines.
 component span(children ...component) inline {}
 
-// `ui` is a family like any other: naming it in a slot says the same thing as
+// `node` is a family like any other: naming it in a slot says the same thing as
 // naming nothing there, because that is the family this component belongs to.
-component plain(children ...component ui) ui {}
+component plain(children ...component node) node {}
 
-component main ui {
+component main node {
     document() {
         para() {
             bold(weight=700)

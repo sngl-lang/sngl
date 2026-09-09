@@ -4,19 +4,19 @@ import . "sngl:ui"
 import tr "sngl:tree"
 import app "sngl:app"
 
-component RequiresOne(content ...component tr.one) ui {
+component RequiresOne(content ...component tr.one) node {
     vbox { content }
 }
 
-component OptionalOne(content ...component option<ui>) ui {
+component OptionalOne(content ...component option<node>) node {
     vbox { content }
 }
 
-component AnyChildren(children ...component) ui {
+component AnyChildren(children ...component) node {
     vbox { children }
 }
 
-component main ui {
+component main node {
     RequiresOne {
         text(value="exactly one")
     }

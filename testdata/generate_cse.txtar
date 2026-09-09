@@ -38,7 +38,7 @@ func weight(n int) int {
     return 0
 }
 
-component main ui {
+component main node {
     var total = 0
     var seed = 4
     var a = 4

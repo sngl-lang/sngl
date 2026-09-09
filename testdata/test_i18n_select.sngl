@@ -4,7 +4,7 @@ import "sngl:i18n"
 import app "sngl:app"
 
 // String-keyed selection.
-component i18nSelect ui {
+component i18nSelect node {
     var gender = "female"
     var pronoun = $"{gender, select,
         male{he}

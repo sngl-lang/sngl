@@ -33,7 +33,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var names list<string> = ["a", "b"]
     var total = 0
     var joined = ""

@@ -19,7 +19,7 @@ import app "sngl:app"
 
 output { kotlin { android(main=true) } }
 
-component main ui {
+component main node {
     var msg = $"Hello"
     text(value=msg)
 }

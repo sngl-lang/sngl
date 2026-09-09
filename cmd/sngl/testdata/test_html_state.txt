@@ -12,7 +12,7 @@ import app "sngl:app"
 
 output { none { html } }
 
-component main ui {
+component main node {
     var count = 0
     text(value=string(count))
 }

@@ -4,15 +4,15 @@
 # put it there.
 
 # Written that way, it is the ordinary tree error: a window's rest slot accepts
-# `ui` and a window is a member of the root family.
+# `node` and a window is a member of the root family.
 ! sngl generate --lang=go --platform=fyne --out=out1 direct.sngl
-stderr 'direct.sngl:11:8: expected ui component in window, got window'
+stderr 'direct.sngl:11:8: expected node component in window, got window'
 
 ! sngl generate --lang=none --platform=html --out=out3 direct.sngl
-stderr 'expected ui component in window, got window'
+stderr 'expected node component in window, got window'
 
 # Inlining is the other route, and the only one that reaches the lowering
-# guard: a `ui` component may declare a window -- its own body is not checked
+# guard: a `node` component may declare a window -- its own body is not checked
 # against its own tree -- so nothing has said no until it is spliced into one.
 ! sngl generate --lang=go --platform=fyne --out=out2 viacomponent.sngl
 stderr 'viacomponent.sngl:11:8: a window cannot be nested inside another window'
@@ -48,7 +48,7 @@ output {
 	}
 }
 
-component inner ui {
+component inner node {
 	window(title = "b") {
 		text(value = "x")
 	}

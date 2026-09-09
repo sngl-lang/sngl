@@ -14,7 +14,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var n int = 1234
     var s = t.numberInt(n, "decimal")
     text(value=s)

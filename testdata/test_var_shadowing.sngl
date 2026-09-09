@@ -10,7 +10,7 @@ var total = 10
 
 func packageTotal() => total
 
-component shadowed ui {
+component shadowed node {
     var total = 1
 
     func localTotal() => total

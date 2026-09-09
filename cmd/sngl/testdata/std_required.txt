@@ -77,7 +77,7 @@ stdout 'draw_names_free.sngl: ok'
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     text(value="x")
 }
 
@@ -88,7 +88,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -99,7 +99,7 @@ app.window {
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     var n int = int.max(1, 2)
     var f float = float.sqrt(2.0)
     var s string = string.upper("hi")
@@ -113,7 +113,7 @@ app.window {
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     var d date = "2026-08-21"
 }
 
@@ -125,7 +125,7 @@ import . "sngl:time"
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     var d date = "2026-08-21"
     var t time = "09:30"
     var dt datetime = "2026-08-21T09:30:00"
@@ -139,7 +139,7 @@ import . "sngl:builtin"
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     var n int = 1
 }
 
@@ -152,11 +152,11 @@ import "sngl:platform/gtk4"
 import ui "sngl:ui"
 import app "sngl:app"
 
-component Foo() ui.ui {
+component Foo() ui.node {
     html.marquee() {}
 }
 
-component Bar() ui.ui {
+component Bar() ui.node {
     gtk4.GtkLabel(label="x") {}
 }
 
@@ -166,7 +166,7 @@ app.window {
 import ui "sngl:ui"
 import app "sngl:app"
 
-component Bar() ui.ui {
+component Bar() ui.node {
     gtk4.GtkLabel(label="x") {}
 }
 
@@ -178,7 +178,7 @@ import app "sngl:app"
 
 func render() => ui.text(value="x")
 
-component main ui.ui {
+component main ui.node {
     ui.text(value="y")
 }
 
@@ -192,7 +192,7 @@ import app "sngl:app"
 
 func render() => w.helper()
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -203,7 +203,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component helper() ui {
+component helper() node {
     text(value="private")
 }
 
@@ -213,7 +213,7 @@ app.window {
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     ui.text(value="x")
 }
 
@@ -224,7 +224,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     canvas(width=100px, height=100px) {}
 }
 
@@ -236,7 +236,7 @@ import . "sngl:ui"
 import d "sngl:ui/draw"
 import app "sngl:app"
 
-component main ui {
+component main node {
     d.canvas(width=100px, height=100px) {
         d.circle(cx=5.0, cy=5.0, r=2.0)
     }
@@ -250,7 +250,7 @@ import . "sngl:ui"
 import . "sngl:ui/draw"
 import app "sngl:app"
 
-component main ui {
+component main node {
     canvas(width=100px, height=100px) {
         circle(cx=5.0, cy=5.0, r=2.0)
     }
@@ -263,11 +263,11 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component rect(label string) ui {
+component rect(label string) node {
     text(value=label)
 }
 
-component main ui {
+component main node {
     rect(label="mine")
 }
 

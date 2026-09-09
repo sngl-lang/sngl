@@ -27,7 +27,7 @@ func placeWidget() {
     text(value="dropped") // ERROR(check) "visual node \"text\" cannot be written in a function body"
 }
 
-component main ui {
+component main node {
     var touched = 0 @change {
         text(value="dropped") // ERROR(check) "cannot be written in a function body"
     }

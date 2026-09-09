@@ -35,7 +35,7 @@ func testVoidActionFunctions(t Test, c main) {
     t.assert(c.count == 8)
 }
 
-component main ui {
+component main node {
     var count = 10
 
     func add(a int, b int) => a + b

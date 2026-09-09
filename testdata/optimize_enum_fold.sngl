@@ -11,7 +11,7 @@ enum Color { red, green, blue }
 
 const picked = Color.red
 
-component enumfold ui {
+component enumfold node {
     var isRed = picked == Color.red    // FOLD true
     var isBlue = picked == Color.blue  // FOLD false
     var notBlue = picked != Color.blue // FOLD true

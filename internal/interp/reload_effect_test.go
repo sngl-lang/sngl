@@ -13,7 +13,7 @@ import (
 // session running the value it already held and the tree would not move at all.
 const reloadEffectSrc = `import . "sngl:ui"
 
-component main ui {
+component main node {
     var (
         log = ""
         extra = 0

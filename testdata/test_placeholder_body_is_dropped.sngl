@@ -11,7 +11,7 @@ import app "sngl:app"
 // The drop is asserted where it is observable —
 // cmd/sngl/testdata/generate_int_parse.txt, where the const folder had been
 // baking the placeholder's 0 into the output.
-component main ui {
+component main node {
     const parsed = int.parse("FF", 16)
     text(value="{parsed}")
 }

@@ -19,17 +19,17 @@ import . "sngl:test"
 import . "sngl:ui"
 import app "sngl:app"
 
-component box<T>(item T, label string) ui {
+component box<T>(item T, label string) node {
     text #out(value=label)
 }
 
 // The payload of an event follows the parameter, so a handler's argument is
 // typed by the prop the caller passed.
-component job<T>(seed T, @done T) ui {
+component job<T>(seed T, @done T) node {
     text(value="job")
 }
 
-component bracket<T = int>(on T = 0) ui {
+component bracket<T = int>(on T = 0) node {
     text #b(value="bracket")
 }
 
@@ -37,7 +37,7 @@ component bracket<T = int>(on T = 0) ui {
 // specialization like the props are. `slot cell(T)` hands the population what
 // the call bound T to; against the declaration it handed out a parameter still
 // named T, and `v + 1` was "operator + not defined for T and int".
-component grid<T>(seed T, cell component(T)) ui {
+component grid<T>(seed T, cell component(T)) node {
     vbox {
         cell(seed)
     }
@@ -48,7 +48,7 @@ component grid<T>(seed T, cell component(T)) ui {
 // before the body's declarations were collected, so `var last T` resolved
 // against a scope that no longer had T in it: `unknown type "T"`, on a name the
 // declaration two lines above introduces.
-component holder<T>(on T, shown component(T)) ui {
+component holder<T>(on T, shown component(T)) node {
     var last T = on
 
     // A method names them too, in its signature and in its own body, which is
@@ -68,7 +68,7 @@ component holder<T>(on T, shown component(T)) ui {
     }
 }
 
-component main ui {
+component main node {
     box #i(item=1, label="int")
     box #s(item="x", label="str")
 
@@ -91,7 +91,7 @@ component main ui {
 // takes the first node index in whatever component hosts it -- which
 // codegen/platform/gtk4/component_event_param_test.go names for `job`'s
 // handler in `main`.
-component stateful ui {
+component stateful node {
     holder(on=7) {
         component shown(v) {
             text #held(value=string(v))

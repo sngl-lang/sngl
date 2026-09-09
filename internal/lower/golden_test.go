@@ -207,11 +207,11 @@ func (testStubPlatform) Resolve(string) ir.Symbol   { return nil }
 const testStubSource = `
 import sngl "sngl:ui"
 
-component Cleanwrap(value string) sngl.ui {
+component Cleanwrap(value string) sngl.node {
     sngl.text(value=value)
 }
 
-component Statefulwrap() sngl.ui {
+component Statefulwrap() sngl.node {
     var count int = 0
     sngl.text(value=string(count))
 }

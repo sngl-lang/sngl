@@ -5,20 +5,20 @@ import . "sngl:ui"
 import tr "sngl:tree"
 import app "sngl:app"
 
-component bare(children ...component int) ui { // ERROR(check) "a slot accepts a tree, and int is not one"
+component bare(children ...component int) node { // ERROR(check) "a slot accepts a tree, and int is not one"
     vbox {
         children
     }
 }
 
 // The wrapper is read for its count and its argument still has to be a tree.
-component wrapped(x component option<string>) ui { // ERROR(check) "a slot accepts a tree, and string is not one"
+component wrapped(x component option<string>) node { // ERROR(check) "a slot accepts a tree, and string is not one"
     vbox {
         x {}
     }
 }
 
-component fine(ok component tr.one) ui {
+component fine(ok component tr.one) node {
     vbox {
         ok {}
     }

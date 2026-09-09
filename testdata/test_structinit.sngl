@@ -7,7 +7,7 @@ struct Vec {
     y int = 0
 }
 
-component geo ui {
+component geo node {
     var pos = Vec{x=5, y=10}
     func sum() => pos.x + pos.y
 

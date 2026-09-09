@@ -16,7 +16,7 @@ import . "sngl:ui"
 import lib "js:./lib"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var greeting = lib.shout("hello world")
     text(value=greeting)
 }

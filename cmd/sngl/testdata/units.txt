@@ -42,7 +42,7 @@ stdout '2 tests, 0 failures'
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var n = 7
     text #out(value="twice: {twice(n)}")
 }
@@ -68,7 +68,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var a = 1
     text(value=string(a))
 }
@@ -85,7 +85,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var b = 2
     text(value=string(b))
 }

@@ -15,7 +15,7 @@ func testPositionalPropsOnAnElementRef(t Test, c main) {
     t.assert(c.named.value == "named")
 }
 
-component main ui {
+component main node {
     text #pos({}, "positional")
     text #named(value="named")
 }

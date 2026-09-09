@@ -15,7 +15,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     text(value="got " + api.fetchHello("world"))
 }
 

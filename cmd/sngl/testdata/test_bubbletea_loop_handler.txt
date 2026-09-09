@@ -26,7 +26,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var items list<string> = ["a", "b"]
     var picked = ""
     var hits = 0

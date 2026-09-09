@@ -2,25 +2,25 @@ caps:
 -- input.sngl --
 import . "sngl:ui"
 
-component card(children ...component) ui {
+component card(children ...component) node {
     vbox(style={padding=16}) {
         children
     }
 }
 
-component main ui {
+component main node {
     card() {
         text(value="hello")
     }
 }
 -- expected.sngl --
 import . "sngl:ui"
-component card(children ...component) ui {
+component card(children ...component) node {
     vbox(style=Style{padding=16}) {
         children
     }
 }
-component main ui {
+component main node {
     vbox(style=Style{padding=16}) {
         text(value="hello")
     }

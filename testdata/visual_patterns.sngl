@@ -1,14 +1,14 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component Card(title = "Card", subtitle = "", children ...component) ui {
+component Card(title = "Card", subtitle = "", children ...component) node {
     vbox {
         text(value=title)
         text(value=subtitle)
     }
 }
 
-component main ui {
+component main node {
     var (
         items = ["a", "b", "c"]
         show = true

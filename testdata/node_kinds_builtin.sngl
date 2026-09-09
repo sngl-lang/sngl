@@ -4,14 +4,14 @@ import . "sngl:app"
 
 // The built-in visual nodes, unshadowed: each dispatches to its own compiler
 // construct off the #[builtin] mark rather than off the literal name.
-component main ui {
+component main node {
     timer(interval=1s, @tick {})
     errorBoundary(@error(e) {}) {
         text(value="guarded")
     }
 }
 
-component wrapper(children ...component) ui {
+component wrapper(children ...component) node {
     vbox {
         children
     }

@@ -35,7 +35,7 @@ struct Entry {
     title string
 }
 
-component main ui {
+component main node {
     var e = Entry{title = "hello"}
     text(value=e.title)
 }
@@ -54,7 +54,7 @@ struct Entry {
     title string
 }
 
-component main ui {
+component main node {
     var e = Entry{title = "hello"}
     text(value=e.title)
 }
@@ -67,7 +67,7 @@ import . "sngl:ui"
 import api "js:example.com/api"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value=string(api.anything()))
 }
 

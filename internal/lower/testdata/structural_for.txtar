@@ -2,7 +2,7 @@ caps: NoReactivity
 -- input.sngl --
 import . "sngl:ui"
 
-component main ui {
+component main node {
     var items list<int> = [1, 2, 3]
     button(text="add", @click { items.push(4) })
     for var item = items {
@@ -11,7 +11,7 @@ component main ui {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main ui {
+component main node {
     var items list<int> = [1, 2, 3]
     var __root dyn
     var __slot0 list<dyn> = []

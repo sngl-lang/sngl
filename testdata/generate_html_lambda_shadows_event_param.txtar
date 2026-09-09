@@ -16,7 +16,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var xs list<int> = [1, 2, 3]
     var n int = 0
     var name = ""

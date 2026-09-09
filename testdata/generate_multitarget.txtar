@@ -14,7 +14,7 @@ output {
     go { bubbletea }
 }
 
-component main ui {
+component main node {
     var count = 0
     button(text="inc", @click { count = count + 1 })
     text(value=string(count))

@@ -78,7 +78,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component counter ui {
+component counter node {
     var n = 0
     vbox {
         text(value="{n}")
@@ -97,7 +97,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component counter ui {
+component counter node {
     var n = 0
     vbox {
         text(value="{n}")

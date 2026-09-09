@@ -9,7 +9,7 @@ import . "sngl:test"
 // used to be one — so the runner picked between them by ranging a map and got
 // the enclosing test's roughly half the time, writing the subtest's timer tick
 // into it.
-component main ui {
+component main node {
     var p = 0
     const LIMIT = 5
     timer(interval=100ms, enabled=true, @tick { p += 1 })

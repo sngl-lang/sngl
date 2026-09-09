@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     // Anonymous func type: no param names in the type, named calls rejected.
     var f func(int, int) int = func(a int, b int) => a + b
 

@@ -22,7 +22,7 @@ struct pair {
     a int
     b string
 }
-component App() ui {
+component App() node {
     var (
         key pair = pair{a = 1, b = "x"}
         log list<string> = []

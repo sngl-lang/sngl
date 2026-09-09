@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component choice ui {
+component choice node {
     var x = 10
     var y = 5
     var label = ""

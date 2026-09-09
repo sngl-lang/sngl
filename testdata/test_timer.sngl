@@ -21,7 +21,7 @@ func testTickRespectsActiveVar(t Test, c main) {
     t.assert(c.progress == 0)
 }
 
-component main ui {
+component main node {
     var (
         progress float = 0
         running = true

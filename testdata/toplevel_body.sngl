@@ -4,7 +4,7 @@
 // package is a state owner like the other two (ir.Owners), and passRootWindow
 // lifts the window onto pkg.Windows so nothing downstream needs a third shape.
 //
-// A `ui` node written here is an error: it belongs to a family the package
+// A `node` written here is an error: it belongs to a family the package
 // body does not accept. See error_toplevel_ui_node.sngl.
 
 import . "sngl:ui"

@@ -66,7 +66,7 @@ import . "sngl:ui"
 import android "sngl:platform/android"
 import app "sngl:app"
 
-component tapper(onTap func(), decorate func(s string) string) ui {
+component tapper(onTap func(), decorate func(s string) string) node {
     button(text=decorate("hi"), @click { onTap() })
 }
 

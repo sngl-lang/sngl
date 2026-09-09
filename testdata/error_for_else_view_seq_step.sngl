@@ -10,7 +10,7 @@ import app "sngl:app"
 
 const by = 2
 
-component main ui {
+component main node {
     var n = 0
 
     vbox {

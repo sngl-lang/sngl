@@ -12,10 +12,10 @@ import . "sngl:test"
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 0
 
-    component inner(step = 1) ui {
+    component inner(step = 1) node {
         var runs = 0
 
         effect(@mount {

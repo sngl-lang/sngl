@@ -4,8 +4,10 @@
 // packages do not re-export a dot import, and neither should this one.
 import std "sngl:ui"
 
-// `#[tree.kind]` is what marks the shape struct below as naming a tree.
+// `#[tree.kind]` is what marks the shape struct below as naming a tree, and
+// `#[marks.builtin("treeShape")]` is how the compiler names that one tree.
 import tree "sngl:tree"
+import marks "sngl:internal/marks"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
 // so a shape draws nothing until one of them is set. `fontSize` and
@@ -38,7 +40,14 @@ struct PathCmd {
 // The tree the shapes form. Declaring it here is what makes `shape` a name a
 // component can resolve, so a misspelling is an unresolved name rather than a
 // family nobody joins.
+//
+// The builtin mark is the one thing this family has that an ordinary one does
+// not: passCanvas emits this package's own primitives, so the compiler has to
+// name the tree those rules are about. It names it by the mark rather than by
+// the pair "sngl:ui/draw" and "shape", so a program declaring `struct shape`
+// of its own is a different family and is not painted.
 #[tree.kind]
+#[marks.builtin("treeShape")]
 struct shape {}
 
 // How a canvas is shown when the room it is given is not the size it draws at.
@@ -68,7 +77,7 @@ component canvas(
     style CanvasStyle,
     @click std.ClickEvent,
     shapes ...component shape,
-) std.ui {}
+) std.node {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
 component rect(x float, y float, w float, h float, style CanvasStyle) shape {}

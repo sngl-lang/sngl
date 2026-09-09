@@ -6,7 +6,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     vbox {
         text(value string) // ERROR(parse) "unexpected identifier, expected \")\""
     }

@@ -25,7 +25,7 @@ output(name="Demo", icon="favicon.png") {
     }
 }
 
-component main ui.ui {
+component main ui.node {
     ui.text(value="hello")
 }
 
@@ -42,7 +42,7 @@ output {
     }
 }
 
-component main ui.ui {
+component main ui.node {
     ui.text(value="hello")
 }
 
@@ -59,7 +59,7 @@ output {
     }
 }
 
-component main ui.ui {
+component main ui.node {
     ui.text(value="hello")
 }
 

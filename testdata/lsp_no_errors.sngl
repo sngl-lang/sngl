@@ -1,10 +1,10 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component label(value string) ui {
+component label(value string) node {
 }
 
-component main ui {
+component main node {
     var count int = 0
     label(value="hello")
 }

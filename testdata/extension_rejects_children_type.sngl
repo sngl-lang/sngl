@@ -6,7 +6,7 @@ component sngl.text[html.platform] list<dyn> { // ERROR(check) "may not declare 
     span(textContent=value) {}
 }
 
-component main sngl.ui {
+component main sngl.node {
     text(value="hi")
 }
 

@@ -274,7 +274,7 @@ struct Row {
     n int = 0
 }
 
-component App ui.ui {
+component App ui.node {
     #[std.foreign("js:example.com/api", "Double", pure)]
     func Row.double(x int) => x * 2
 }

@@ -6,7 +6,7 @@ import app "sngl:app"
 
 /* leading top-level block comment */
 
-component main ui {
+component main node {
     // before decl
     var count int = 0
     var sum = 1 + 2 + count // trailing line

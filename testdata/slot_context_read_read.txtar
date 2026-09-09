@@ -32,13 +32,13 @@ output {
 
 context #theme("light")
 
-component framed(caption component) ui {
+component framed(caption component) node {
     caption {
         text(value="(none)")
     }
 }
 
-component main ui {
+component main node {
     framed() {
         component caption {
             text(value=theme)

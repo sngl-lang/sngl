@@ -13,7 +13,7 @@ struct Holder {
     c component // ERROR(check) "only a parameter of a component may have one"
 }
 
-component counts(xs ...int) ui { // ERROR(check) "only a slot's type may carry one"
+component counts(xs ...int) node { // ERROR(check) "only a slot's type may carry one"
     vbox {
         text(value="x")
     }

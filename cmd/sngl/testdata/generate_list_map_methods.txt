@@ -24,7 +24,7 @@ exists lm
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var xs list<int> = [3, 1, 2]
     var m map<string, int> = {"a" = 1}
 
@@ -53,7 +53,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var xs list<int> = [3, 1, 2]
     var m map<string, int> = {"a" = 1}
 

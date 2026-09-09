@@ -6,7 +6,7 @@ struct Point {
     y int = 0
 }
 
-component main ui {
+component main node {
     var bad Point = {x=1, z=2} // ERROR(check) "unknown field"
 
     text(value=string(bad.x))

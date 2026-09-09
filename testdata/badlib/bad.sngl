@@ -1,5 +1,5 @@
 import . "sngl:ui"
 
-component main ui {
+component main node {
     text(value="I should not be in a library")
 }

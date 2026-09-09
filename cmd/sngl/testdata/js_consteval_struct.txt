@@ -30,7 +30,7 @@ import app "sngl:app"
 
 const who = lib.profile("ada", "lovelace")
 
-component main ui {
+component main node {
     text(value=who.name)
     text(value=string(who.id))
     text(value=string(who.score))

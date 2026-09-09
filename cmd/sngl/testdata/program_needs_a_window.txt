@@ -22,14 +22,14 @@ exists ok/index.html
 -- nowindow.sngl --
 import . "sngl:ui"
 
-component card ui {
+component card node {
     text(value="hi")
 }
 -- window.sngl --
 import . "sngl:ui"
 import . "sngl:app"
 
-component card ui {
+component card node {
     text(value="hi")
 }
 

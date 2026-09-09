@@ -67,7 +67,7 @@ stderr 'only the sngl scheme names a source package'
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="hello")
 }
 

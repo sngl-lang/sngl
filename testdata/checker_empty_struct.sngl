@@ -3,7 +3,7 @@ import app "sngl:app"
 
 struct Empty {}
 
-component main ui {
+component main node {
     var e Empty = Empty{}
 
     text(value="ok")

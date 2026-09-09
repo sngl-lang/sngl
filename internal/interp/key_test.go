@@ -34,7 +34,7 @@ func keysOf(t *testing.T, src, comp string) []Key {
 
 const keySrc = `import . "sngl:ui"
 
-component main ui {
+component main node {
     vbox {
         text #greeting(value="hi")
         text(value="there")
@@ -84,7 +84,7 @@ func TestKeysSurviveARecheck(t *testing.T) {
 func TestAnIDKeyIsStableAcrossAnInsertAbove(t *testing.T) {
 	before := keysOf(t, `import . "sngl:ui"
 
-component main ui {
+component main node {
     vbox {
         text #greeting(value="hi")
     }
@@ -93,7 +93,7 @@ component main ui {
 
 	after := keysOf(t, `import . "sngl:ui"
 
-component main ui {
+component main node {
     vbox {
         image()
         text #greeting(value="hi")
@@ -115,7 +115,7 @@ component main ui {
 func TestPositionalKeysCountAmongSameNamedSiblings(t *testing.T) {
 	before := keysOf(t, `import . "sngl:ui"
 
-component main ui {
+component main node {
     vbox {
         text(value="hi")
     }
@@ -124,7 +124,7 @@ component main ui {
 
 	after := keysOf(t, `import . "sngl:ui"
 
-component main ui {
+component main node {
     vbox {
         image()
         text(value="hi")

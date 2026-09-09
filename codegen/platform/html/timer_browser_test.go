@@ -38,12 +38,12 @@ func TestTimer_FiresInTheBrowser(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:time"
-component beat(label = "") ui {
+component beat(label = "") node {
     var beats = 0
     timer(interval=20ms, enabled=true, @tick { beats += 1 })
     text(value="{label}=" + string(beats))
 }
-component App() ui {
+component App() node {
     var seconds = 0
     timer(interval=20ms, enabled=true, @tick { seconds += 1 })
     beat(label="child")
@@ -78,7 +78,7 @@ func TestTimer_ABranchIsTheGate(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:time"
-component App() ui {
+component App() node {
     var (
         shown = false
         n = 0

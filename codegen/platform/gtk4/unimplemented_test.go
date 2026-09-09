@@ -75,7 +75,7 @@ func TestUserComponentWithEmptyBodyStillBuilds(t *testing.T) {
 	files, err := buildForGtk4(t, `
 import . "sngl:ui"
 import app "sngl:app"
-component label(value string) ui {
+component label(value string) node {
 }
 app.window {
     label(value="hello")

@@ -6,7 +6,7 @@ import app "sngl:app"
 // backends disagreed: Go and JS composed it the other way round (hi wins) and
 // Kotlin's coerceIn throws. The declaration's own body is the contract, and
 // it is marked usable, so the emitters have to match it.
-component main ui { text(value="x") }
+component main node { text(value="x") }
 
 func testClampMalformedRange(t Test, c main) {
     t.assert(int.clamp(5, 10, 0) == 10)

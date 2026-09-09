@@ -14,7 +14,7 @@ import (
 // path only, say -- leaves the rest nil, which is worse than none of them
 // having it.
 func TestCollectionTypesCarryTheirDeclaration(t *testing.T) {
-	const src = `component main ui {
+	const src = `component main node {
     var annotated list<int> = [1]
     var inferred = [1, 2]
     var nested list<list<string>> = [["a"]]

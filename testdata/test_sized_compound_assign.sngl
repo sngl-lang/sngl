@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // Compound assignment (+=, -=, *=) on sized integers wraps at the declared
 // width, not at 64 bits. The target's declared type drives the width.
-component compound ui.ui {
+component compound ui.node {
     var dummy = 0
 }
 

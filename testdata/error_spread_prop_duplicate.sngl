@@ -4,9 +4,9 @@ import app "sngl:app"
 struct Opts {
     text string
 }
-component Button(text string) ui {}
+component Button(text string) node {}
 
-component main ui {
+component main node {
     var opts = Opts{text="hi"}
     Button(text="explicit", ...opts) // ERROR(check) "already provided"
 }

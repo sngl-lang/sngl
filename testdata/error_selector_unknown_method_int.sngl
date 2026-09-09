@@ -5,7 +5,7 @@ import app "sngl:app"
 // `int` has no method `bogusMethod`, but the selector resolution falls through
 // without producing a diagnostic (see internal/checker/expr.go inferIndex/select
 // — primitives miss the same "no method/field" check that struct/enum honor).
-component main ui {
+component main node {
     var i = 5
     var bad = i.bogusMethod() // ERROR(check) "no method"
     text(value="x")

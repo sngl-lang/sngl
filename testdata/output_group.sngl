@@ -10,7 +10,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     text(value="hello")
 }
 

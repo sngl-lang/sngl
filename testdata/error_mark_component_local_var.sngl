@@ -4,7 +4,7 @@
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+component main node {
     #[nosuchmacro] // ERROR(check) "unknown macro \"nosuchmacro\""
     var x = 1
 

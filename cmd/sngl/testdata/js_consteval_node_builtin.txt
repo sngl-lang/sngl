@@ -17,7 +17,7 @@ import app "sngl:app"
 
 const p = lib.joined()
 
-component main ui {
+component main node {
     text(value=p)
 }
 

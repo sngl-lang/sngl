@@ -37,7 +37,7 @@ const empty list<string> = []
 
 const two list<string> = ["a", "b"]
 
-component main ui {
+component main node {
     vbox {
         for var x = empty {
             text(value=x)

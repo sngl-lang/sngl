@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // scroll: state-binding fixture — mutating bound scrollX/scrollY
 // propagates through the scroll viewport.
-component main ui {
+component main node {
     var x = 0.0
     var y = 0.0
     scroll(direction="both", scrollX=x, scrollY=y) {

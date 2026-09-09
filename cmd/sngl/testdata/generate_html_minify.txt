@@ -33,7 +33,7 @@ import . "sngl:ui"
 import lib "js:./lib"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var n = 0.0
     button(text="add", @click { n = lib.add(2.0, 3.0) })
     text(value=string(n))

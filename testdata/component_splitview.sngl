@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // splitview: A-tier — declaration validates parse + check.
-component main ui {
+component main node {
     splitview(direction="horizontal", position=0.5) {
         vbox { text(value="Left") }
         vbox { text(value="Right") }

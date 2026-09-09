@@ -3,7 +3,7 @@ import "widgets"
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     widgets.Counter(label="Test")
     widgets.Counter(label="Missing", nonExistent="x") // ERROR(check) "unknown prop"
 }

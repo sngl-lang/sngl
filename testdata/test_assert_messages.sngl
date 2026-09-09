@@ -9,7 +9,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component box ui {
+component box node {
     var count = 0
     var name = "hello"
     var items = [1, 2, 3]

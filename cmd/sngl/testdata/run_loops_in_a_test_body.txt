@@ -21,7 +21,7 @@ import . "sngl:test"
 import "sngl:seq"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="hi")
 }
 

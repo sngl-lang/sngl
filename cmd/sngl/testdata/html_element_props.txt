@@ -27,7 +27,7 @@ import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main ui.ui {
+component main ui.node {
     window {
         html.div(innerTxt = "x")
     }
@@ -45,7 +45,7 @@ import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main ui.ui {
+component main ui.node {
     window {
         html.div {
             html.element(tag = "my-widget", innerText = "hi")

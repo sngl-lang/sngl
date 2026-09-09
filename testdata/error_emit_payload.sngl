@@ -20,33 +20,33 @@ struct Payload {
 component emitter(
     @one Payload,
     @none FocusEvent,
-) ui {
+) node {
     text(value="a", @click { one({value="x"}) })
     text(value="b", @click { one(Payload{value="y"}) })
     text(value="c", @click { none() })
 }
 
 // The field's own type is not the payload's, however few fields it has.
-component fieldValue(@one Payload) ui {
+component fieldValue(@one Payload) node {
     text(value="d", @click { one("x") }) // ERROR(check) "cannot use string as Payload for event \"one\""
 }
 
-component wrongType(@one Payload) ui {
+component wrongType(@one Payload) node {
     var flag = false
     text(value="e", @click { one(flag) }) // ERROR(check) "cannot use bool as Payload for event \"one\""
 }
 
 // A payload with no fields is still a payload: an empty literal is one, and a
 // value of another type is not.
-component emptyPayload(@none FocusEvent) ui {
+component emptyPayload(@none FocusEvent) node {
     text(value="f", @click { none({}) })
 }
 
-component emptyPayloadWrongType(@none FocusEvent) ui {
+component emptyPayloadWrongType(@none FocusEvent) node {
     text(value="g", @click { none("x") }) // ERROR(check) "cannot use string as FocusEvent for event \"none\""
 }
 
-component tooManyArgs(@one Payload) ui {
+component tooManyArgs(@one Payload) node {
     text(value="h", @click { one({value="a"}, {value="b"}) }) // ERROR(check) "event \"one\" takes at most one argument, got 2"
 }
 

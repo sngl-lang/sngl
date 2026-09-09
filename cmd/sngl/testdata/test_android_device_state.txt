@@ -15,7 +15,7 @@ import app "sngl:app"
 
 output { kotlin { android } }
 
-component counter ui {
+component counter node {
     var count = 0
     text(value=string(count))
 }

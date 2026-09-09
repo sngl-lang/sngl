@@ -40,7 +40,7 @@ import app "sngl:app"
 #[foreign("js:./api", "add", pure)]
 func add(a int, b int) => a + b
 
-component main ui {
+component main node {
     text(value=string(add(2, 3)))
 }
 
@@ -55,7 +55,7 @@ import app "sngl:app"
 #[foreign("js:./api", "add")]
 func add(a int, b int) => 0
 
-component main ui {
+component main node {
     text(value=string(add(2, 3)))
 }
 
@@ -72,7 +72,7 @@ func fetchHello(name string) => "hi " + name
 
 func greeting() => fetchHello("world")
 
-component main ui {
+component main node {
     text(value=greeting())
 }
 
@@ -87,7 +87,7 @@ import app "sngl:app"
 #[foreign("js:./api", "add", puer)]
 func add(a int, b int) => a + b
 
-component main ui {
+component main node {
     text(value=string(add(2, 3)))
 }
 
@@ -104,7 +104,7 @@ struct Entry {
     title string
 }
 
-component main ui {
+component main node {
     text(value=Entry{title = "x"}.title)
 }
 

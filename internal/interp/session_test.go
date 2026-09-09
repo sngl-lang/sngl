@@ -17,7 +17,7 @@ func sessionFor(t *testing.T, src, comp string) *Session {
 const sessionSrc = `import . "sngl:ui"
 import . "sngl:time"
 
-component main ui {
+component main node {
     var (
         count = 0
         label = "start"

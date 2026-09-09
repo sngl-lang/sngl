@@ -4,7 +4,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component mapIndex ui {
+component mapIndex node {
     var scores map<string, int> = {alice=10, bob=20}
     var aliceScore = scores["alice"]
     text(value="{aliceScore}")

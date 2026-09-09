@@ -6,7 +6,7 @@ import app "sngl:app"
 // for vars/consts/funcs/types in the same scope.
 var x = 1
 var x = 2 // ERROR(check) "duplicate"
-component main ui {
+component main node {
     text(value="{x}")
 }
 

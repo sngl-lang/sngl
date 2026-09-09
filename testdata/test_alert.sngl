@@ -3,7 +3,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main ui {
+component main node {
     var (
         confirmed = false
         filePath = ""

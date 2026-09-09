@@ -10,7 +10,7 @@ import . "sngl:test"
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var (
         n = 0
         log list<string> = []

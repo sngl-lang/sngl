@@ -10,7 +10,7 @@ struct S {
     b int = 0
 }
 
-component main ui {
+component main node {
     var x S = {a=1, ...{a=0, b=2}}
     text(value=string(x.a) + "/" + string(x.b))
 }

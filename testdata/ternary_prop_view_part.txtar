@@ -22,7 +22,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var on = false
     var label = ""
 

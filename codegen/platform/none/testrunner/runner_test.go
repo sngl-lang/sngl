@@ -88,12 +88,12 @@ func TestChildrenLiveAcrossMutations(t *testing.T) {
 	src := `import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
-component counter ui {
+component counter node {
 	var n = 0
 	button #b(text="+", @click { n += 1 })
 	text #o(value=string(n))
 }
-component main ui {
+component main node {
 	counter #l()
 	counter #r()
 }

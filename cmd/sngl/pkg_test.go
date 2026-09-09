@@ -35,7 +35,7 @@ func buildTarGz(t *testing.T, files map[string]string) []byte {
 
 func TestPkgDownloadPopulatesCache(t *testing.T) {
 	archive := buildTarGz(t, map[string]string{
-		"pkg/widgets.sngl": `component Counter(label = "") ui { }`,
+		"pkg/widgets.sngl": `component Counter(label = "") node { }`,
 	})
 	expectHash := fmt.Sprintf("%x", sha256.Sum256(archive))
 

@@ -6,7 +6,7 @@ struct Config {
     value int = 0
 }
 
-component Widget(title = "default", count = 0, active = true, items list<int> = [], config Config) ui {
+component Widget(title = "default", count = 0, active = true, items list<int> = [], config Config) node {
     func label() => title + ": " + string(count)
     func doubled() => count * 2
     func negated() => -count
@@ -28,7 +28,7 @@ component Widget(title = "default", count = 0, active = true, items list<int> = 
     }
 }
 
-component main ui {
+component main node {
     var n = 10
     var active = true
     var things = [1, 2, 3]

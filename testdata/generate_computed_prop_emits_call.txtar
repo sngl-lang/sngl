@@ -15,7 +15,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var count = 2
     func doubled() => count * 2
     text(value=string(doubled))

@@ -79,7 +79,7 @@ func TestATreeSurvivesTheWire(t *testing.T) {
 func TestAStructPropCrossesTheWireIntact(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component main ui {
+component main node {
     text #t({}, "hi")
 }
 `

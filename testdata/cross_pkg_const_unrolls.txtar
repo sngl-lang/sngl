@@ -22,7 +22,7 @@ output {
 
 const items = ["a", "b"]
 
-component main ui {
+component main node {
     widgets.Row(entries=items)
 }
 
@@ -33,7 +33,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component Row(entries list<string> = []) ui {
+component Row(entries list<string> = []) node {
     for var x = entries {
         text(value=x)
     }

@@ -20,7 +20,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, children ...component) ui {
+component table(rows list<Row>, children ...component) node {
     vbox {
         for var r = rows {
             text(value=r.title)

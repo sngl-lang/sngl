@@ -9,7 +9,7 @@ import app "sngl:app"
 
 const labels list<string> = ["one", "two", "three"]
 
-component focusLoop ui {
+component focusLoop node {
     vbox {
         button(text="before", focusable=true)
         for var l = labels {

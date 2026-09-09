@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component indexed ui {
+component indexed node {
     var items = ["a", "b", "c"]
     var rate = 0.0
     var empty list<string> = []

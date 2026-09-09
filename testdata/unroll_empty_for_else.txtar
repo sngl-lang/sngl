@@ -25,7 +25,7 @@ output {
 
 const empty list<int> = []
 
-component main ui {
+component main node {
     vbox {
         for var x = empty {
             text(value="item {x}")

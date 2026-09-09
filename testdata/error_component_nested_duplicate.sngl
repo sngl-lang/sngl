@@ -4,12 +4,12 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
-    component row(label = "") ui {
+component main node {
+    component row(label = "") node {
         text(value=label)
     }
 
-    component row(label = "") ui { // ERROR(check) "row is already declared in this scope"
+    component row(label = "") node { // ERROR(check) "row is already declared in this scope"
         text(value="second " + label)
     }
 

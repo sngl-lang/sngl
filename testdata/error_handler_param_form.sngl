@@ -6,13 +6,13 @@
 import . "sngl:ui"
 import . "sngl:app"
 
-component inner(@go) ui {
+component inner(@go) node {
     button(text="go", @click {
         go()
     })
 }
 
-component main ui {
+component main node {
     var count = 0 @change(v = 1) { // ERROR(check) "parameter \"v\" of @change takes no default value: the assignment supplies what the name is bound to"
         count = v
     }

@@ -17,7 +17,7 @@ output(maps=true) {
     }
 }
 
-component main ui {
+component main node {
     text(value="hello")
 }
 

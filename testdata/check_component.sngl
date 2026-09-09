@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component Counter(label string, :count int, @click) ui {
+component Counter(label string, :count int, @click) node {
     var internal int
 
     func increment() {

@@ -9,7 +9,7 @@ import app "sngl:app"
 
 func wrap<T>(v T) => {item=v}
 
-component main ui {
+component main node {
     var (
         n = wrap(1)
         s = wrap("x")

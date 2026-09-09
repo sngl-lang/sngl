@@ -5,16 +5,16 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component card(label = "") ui {
+component card(label = "") node {
     text(value="top " + label)
 }
 
-component other() ui {
+component other() node {
     card(label="y")
 }
 
-component main ui {
-    component card(label = "") ui {
+component main node {
+    component card(label = "") node {
         text(value="inner " + label)
     }
 

@@ -6,11 +6,11 @@ import app "sngl:app"
 // instantiates as an ordinary node instance rather than registering a
 // package window — which is why the program still has to open a real one,
 // reached through the qualified name the shadowing left standing.
-component window(label string, children ...component) ui {
+component window(label string, children ...component) node {
     text(value=label)
 }
 
-component main ui {
+component main node {
     window(label="ordinary node")
 }
 

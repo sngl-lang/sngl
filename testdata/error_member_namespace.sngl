@@ -9,7 +9,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component idVsMethod ui {
+component idVsMethod node {
     var n = 0
 
     func bump() { n += 1 }
@@ -18,17 +18,17 @@ component idVsMethod ui {
     text(value=string(n))
 }
 
-component eventVsFunc(@save) ui {
+component eventVsFunc(@save) node {
     func save() {} // ERROR(check) "func \"save\" on component eventVsFunc: name is already declared as an event"
     text(value="x")
 }
 
-component slotVsVar(body component) ui {
+component slotVsVar(body component) node {
     var body = 0 // ERROR(check) "var \"body\" on component slotVsVar: name is already declared as a slot"
     text(value=string(body))
 }
 
-component propVsVar(label string = "hi") ui {
+component propVsVar(label string = "hi") node {
     var label = "bye" // ERROR(check) "var \"label\" on component propVsVar: name is already declared as a prop"
     text(value=label)
 }

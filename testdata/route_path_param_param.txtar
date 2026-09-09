@@ -21,7 +21,7 @@ output {
     }
 }
 
-component main ui.ui {
+component main ui.node {
     window #pkg(title="t", href="/p/{pkg}") {
         html.a(href="/p/" + pkg, innerText=pkg)
     }

@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // toggle: state-binding fixture — flipping the bound `checked` var
 // propagates to the switch, and the label sits after the switch.
-component main ui {
+component main node {
     var on = false
     toggle(checked=on, label="Notifications")
 }

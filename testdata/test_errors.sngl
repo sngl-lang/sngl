@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component errs ui {
+component errs node {
     var count = 0
     var items = [1, 2, 3]
     text(value="{count}")

@@ -22,7 +22,7 @@ output {
 
 func greeting() => api.fetchHello("world")
 
-component main ui {
+component main node {
     text(value=greeting())
 }
 

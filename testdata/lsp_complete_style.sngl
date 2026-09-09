@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // TODO: restore style completion test when stdlib is available in v2
-component main ui {
+component main node {
 }
 
 app.window {

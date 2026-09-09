@@ -14,7 +14,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var count = 0 @change {
         api.fetchHello("updated")
     }

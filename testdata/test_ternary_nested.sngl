@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var a int = 1
     var b int = 2
     var c int = 3

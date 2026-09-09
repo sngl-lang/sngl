@@ -6,7 +6,7 @@ import app "sngl:app"
 // The formatting primitives live in sngl:i18n as unexported members, so a
 // program reaches them only through the entry points that thread the active
 // locale. They used to be sngl:internal/intl, a package with one importer.
-component main ui {
+component main node {
     var n int = 1234
     text(value=i18n.numberInt(n, "decimal"))
 }

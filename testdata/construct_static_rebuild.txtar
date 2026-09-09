@@ -33,7 +33,7 @@ output {
     }
 }
 
-component seeded(#[construct] start int, more = 0) ui {
+component seeded(#[construct] start int, more = 0) node {
     var n = start
     button(text="bump inner", @click { n = n + 5 })
     text(value="s:" + string(n))
@@ -42,7 +42,7 @@ component seeded(#[construct] start int, more = 0) ui {
     }
 }
 
-component App() ui {
+component App() node {
     var k = 10
     text(value="before")
     button(text="bump", @click { k = k + 1 })

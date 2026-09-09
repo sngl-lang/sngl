@@ -71,7 +71,7 @@ stdout '^caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSp
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="hello")
 }
 

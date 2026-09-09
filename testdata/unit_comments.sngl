@@ -15,7 +15,7 @@ unit storage { // the base is the byte
     gb = 1000mb
 }
 
-component unitComments ui {
+component unitComments node {
     var small storage = 4kb
     var large storage = 2gb
 

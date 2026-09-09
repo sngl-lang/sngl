@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // Every node form accepts key=, the list-diffing key: a visual node with a
 // body, a childless call, and an element ref carrying an #id.
-component keyed ui {
+component keyed node {
     var items = ["a", "b"]
 
     vbox {

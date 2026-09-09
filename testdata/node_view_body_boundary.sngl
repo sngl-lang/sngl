@@ -10,13 +10,13 @@ import . "sngl:ui"
 import . "sngl:ui/draw"
 import app "sngl:app"
 
-component framed(header component) ui {
+component framed(header component) node {
     vbox {
         header()
     }
 }
 
-component gallery ui {
+component gallery node {
     framed {
         component header {
             text(value="titled")

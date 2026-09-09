@@ -35,11 +35,11 @@ sngl generate --lang go --platform bubbletea --out out4 static.sngl
 import . "sngl:ui"
 import app "sngl:app"
 
-component outer() ui {
+component outer() node {
     var count = 0
     var items = [1, 2, 3]
 
-    component row(n = 0) ui {
+    component row(n = 0) node {
         var picked = false
 
         button(text="{n} {picked}", @click {
@@ -57,7 +57,7 @@ component outer() ui {
     text(value="{count}")
 }
 
-component main ui {
+component main node {
     outer()
 }
 
@@ -68,11 +68,11 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component outer() ui {
+component outer() node {
     var count = 0
     var shown = false
 
-    component panel() ui {
+    component panel() node {
         var picked = false
 
         button(text="{picked}", @click {
@@ -90,7 +90,7 @@ component outer() ui {
     text(value="{count}")
 }
 
-component main ui {
+component main node {
     outer()
 }
 
@@ -101,10 +101,10 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component outer() ui {
+component outer() node {
     var items = [1, 2, 3]
 
-    component row(n = 0) ui {
+    component row(n = 0) node {
         var picked = false
 
         button(text="{n} {picked}", @click { picked = !picked })
@@ -117,7 +117,7 @@ component outer() ui {
     }
 }
 
-component main ui {
+component main node {
     outer()
 }
 
@@ -128,10 +128,10 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component outer() ui {
+component outer() node {
     var count = 0
 
-    component row(n = 0) ui {
+    component row(n = 0) node {
         var picked = false
 
         button(text="{n} {picked}", @click {
@@ -147,7 +147,7 @@ component outer() ui {
     text(value="{count}")
 }
 
-component main ui {
+component main node {
     outer()
 }
 

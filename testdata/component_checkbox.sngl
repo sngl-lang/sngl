@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // checkbox: state-binding fixture — toggling the bound `checked`
 // var propagates to the checkbox.
-component main ui {
+component main node {
     var on = false
     checkbox(checked=on, label="Enable")
 }

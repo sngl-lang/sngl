@@ -13,7 +13,7 @@ cmp input.sngl expected.sngl
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
 }
 
 app.window {
@@ -23,7 +23,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component   main ui {
+component   main node {
     var   x   =   0
 }
 
@@ -34,7 +34,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var x = 0
 }
 

@@ -31,7 +31,7 @@ import app "sngl:app"
 
 output { none { html } }
 
-component main ui {
+component main node {
     var items list<string> = ["a", "b", "c"]
     button(text="add", @click { items.push("new") })
     for var item = items {

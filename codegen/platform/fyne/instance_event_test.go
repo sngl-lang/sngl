@@ -18,7 +18,7 @@ const instanceEventSrc = `
 import . "sngl:ui"
 import app "sngl:app"
 
-component row(label = "", @pick) ui {
+component row(label = "", @pick) node {
     var seen = 0
     button(text=label, @click { seen = seen + 1 pick() })
 }

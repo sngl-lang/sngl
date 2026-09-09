@@ -1,10 +1,10 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component greeter(name string) ui {
+component greeter(name string) node {
 }
 
-component main ui {
+component main node {
     greeter(name="world") //@ hover("greeter", "component greeter")
 }
 

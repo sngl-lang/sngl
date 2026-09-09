@@ -28,7 +28,7 @@ window #app(title="t") {
     }
 }
 
-component detailPanel(it Issue) ui {
+component detailPanel(it Issue) node {
     vbox {
         text(value=it.key)
         text(value=it.summary)

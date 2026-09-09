@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // A struct written in a component body is scoped to that body.
-component bodyLocalStruct ui {
+component bodyLocalStruct node {
     struct Row {
         a int
     }
@@ -25,13 +25,13 @@ func bodyLocalInFunc(n int) int {
 }
 
 // seed is state, so the call is not folded away and Cell reaches codegen.
-component caller ui {
+component caller node {
     var seed = 2
 
     text(value="${bodyLocalInFunc(seed)}")
 }
 
-component main ui {
+component main node {
     bodyLocalStruct()
     caller()
 }

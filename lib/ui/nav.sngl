@@ -11,9 +11,9 @@ component link(
     disabled bool,
     focusable bool = true,
     @click ClickEvent,
-) ui {}
+) node {}
 
-component _example_link ui {
+component _example_link node {
     hbox(style={gap=16, padding=16}) {
         link(href="https://example.com", text="Example Site")
         link(href="https://example.com", text="New Tab", target="blank")
@@ -32,9 +32,9 @@ component tabs(
     variant string,
     @change SelectEvent,
     panels ...component,
-) ui {}
+) node {}
 
-component _example_tabs ui {
+component _example_tabs node {
     var selected = 0
     vbox(style={padding=16}) {
         tabs(items=["Overview", "Details", "Settings"], selected=selected) {
@@ -55,9 +55,9 @@ component menu(
     open bool,
     @select MenuEvent,
     @close DismissEvent,
-) ui {}
+) node {}
 
-component _example_menu ui {
+component _example_menu node {
     var showMenu = false
     vbox(style={padding=16}) {
         button(text="Show Menu", @click { showMenu = true })
@@ -73,9 +73,9 @@ component menubar(
     style Style,
     items list<string>,
     @select MenuEvent,
-) ui {}
+) node {}
 
-component _example_menubar ui {
+component _example_menubar node {
     vbox(style={padding=16}) {
         menubar(items=["File", "Edit", "View", "Help"])
     }
@@ -90,9 +90,9 @@ component toolbar(
     items list<string>,
     @select MenuEvent,
     controls ...component,
-) ui {}
+) node {}
 
-component _example_toolbar ui {
+component _example_toolbar node {
     vbox(style={padding=16}) {
         toolbar {
             button(text="New")

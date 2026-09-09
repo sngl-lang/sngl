@@ -12,7 +12,7 @@ const secondary = Style{
     fontStyle = "italic",
 }
 
-component main ui {
+component main node {
     vbox {
         text(value="hello", style=primary)
         text(value="world", style=secondary)

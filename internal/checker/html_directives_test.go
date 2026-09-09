@@ -18,7 +18,7 @@ func TestHtmlPlacementDirectivesResolve(t *testing.T) {
 	src := `import . "sngl:ui"
 import "sngl:platform/html"
 
-component main ui {
+component main node {
     var n = 0
     text(value="v {html.frontend(n)}")
     text(value="w {html.backend(n)}")
@@ -33,7 +33,7 @@ component main ui {
 // Func.Intrinsic == "html.frontend" — i.e. the identity directive is NOT folded
 // away by InlinePure, so the html placement analysis can still see it.
 func TestHtmlDirectiveIsPreservedIntrinsic(t *testing.T) {
-	src := "import . \"sngl:ui\"\nimport \"sngl:platform/html\"\n\ncomponent main ui { var n = 0  text(value=\"x {html.frontend(n)}\") }"
+	src := "import . \"sngl:ui\"\nimport \"sngl:platform/html\"\n\ncomponent main node { var n = 0  text(value=\"x {html.frontend(n)}\") }"
 	pkg := checkOptimizeLower(t, src)
 	if !pkgHasIntrinsicCall(pkg, "html.frontend") {
 		t.Fatal("html.frontend call was erased; must survive as an intrinsic for placement analysis")

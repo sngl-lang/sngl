@@ -18,7 +18,7 @@ import app "sngl:app"
 
 output { go { fyne } }
 
-component greeter ui {
+component greeter node {
     var name = "world"
     text(value=name)
 }

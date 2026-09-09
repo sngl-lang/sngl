@@ -10,7 +10,7 @@ struct pageArgs {
     on int
 }
 
-component main ui {
+component main node {
     var page = 3
     // A literal field rather than `on=page`: bubbletea emits a struct-literal
     // var initialised from another var as `PageArgs{On: ""}`, which is a defect

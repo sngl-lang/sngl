@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component editor ui {
+component editor node {
     var name = ""
     var lastCommit = ""
 

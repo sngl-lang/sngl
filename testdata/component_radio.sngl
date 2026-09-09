@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // radio: state-binding fixture — mutating the bound `value` var
 // changes the selected radio option.
-component main ui {
+component main node {
     var sel = "medium"
     radio(options=["small", "medium", "large"], value=sel, direction="horizontal")
 }

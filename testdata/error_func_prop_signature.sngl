@@ -5,11 +5,11 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component edit(onEdit func(s string)) ui {
+component edit(onEdit func(s string)) node {
     text(value="x")
 }
 
-component main ui {
+component main node {
     var log = ""
 
     edit(onEdit=func(s) => s)             // ERROR(check) "cannot use func(string) string as func(string)"

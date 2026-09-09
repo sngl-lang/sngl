@@ -1,9 +1,9 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component Button(text string) ui {}
+component Button(text string) node {}
 
-component main ui {
+component main node {
     var xs list<string> = ["a", "b"]
     Button(...xs) // ERROR(check) "spread requires a struct type"
 }

@@ -20,7 +20,7 @@ func testEachTimerFiresAtItsOwnRate(t Test, c main) {
     t.assert(c.slow == 1)
 }
 
-component main ui {
+component main node {
     var (
         fast = 0
         slow = 0

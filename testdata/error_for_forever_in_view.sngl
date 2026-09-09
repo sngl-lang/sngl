@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     for { // ERROR(check) "cannot be written in a view body"
         text(value="x")
     }

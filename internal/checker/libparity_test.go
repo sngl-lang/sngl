@@ -27,7 +27,7 @@ func libParityConfig(t *testing.T, src string) (*ir.Package, []ir.Diagnostic) {
 	doc, err := parser.Parse("main.sngl", []byte(`import . "sngl:ui"
 import stub "sngl:libparitystub"
 
-component main ui {
+component main node {
     text(value="x")
 }
 `))

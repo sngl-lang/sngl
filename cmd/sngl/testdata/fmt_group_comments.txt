@@ -32,7 +32,7 @@ var (
     total = 0
 )
 
-component main ui {
+component main node {
     text(value="{WIDTH}x{ROWS}{total}")
 }
 

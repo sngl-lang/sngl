@@ -6,7 +6,7 @@ window #home(title="Home", href="/") {
     text(value="hi")
 }
 
-component Widget ui {
+component Widget node {
     context #size(42) // ERROR(check) "context decl only permitted at file top level"
     text(value="x")
 }

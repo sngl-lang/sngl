@@ -205,9 +205,9 @@ because grouping by kind splits every subject in two.
 The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`: the build directive is here rather than in a tier of its own because a package names its own targets without importing anything. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
-- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `ui` family they belong to, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
+- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
-- **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s and not a `tree.default` here.
+- **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/app/` → `sngl:app`** — the application shell: the `root` tree a package body accepts, `window` and `errorBoundary`, and the `error` those boundaries catch. The checker loads it at startup without binding it, because its declarations carry node kinds a visual tree dispatches on; a program still imports it to write a `window`.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:app` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:app` imports `sngl:ui`, which loads before `sngl:builtin` is adopted into the ambient scope, and the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component that lowers to an effect, not a builtin node, which is why it carries no `#[builtin]` mark. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup like `sngl:app`, for the same reason: its declarations carry kinds the compiler dispatches on.
@@ -256,9 +256,15 @@ name — so every built-in is shadowable by a user declaration of the same name.
 Type kinds (`int`, `color`, `datetime`, `list`, `option`, …) mark a struct;
 node kinds (`window`, `errorBoundary`, `effect`, `context`, `output`) mark a
 component, and the checker dispatches a visual node to the matching IR construct
-off the mark. `treeRoot` is the odd one and marks the *tree* a package body
-accepts (`sngl:app`'s `root`): the compiler has to name that family to check
-the body against it, and every other family it compares by declaration alone.
+off the mark. Three tree kinds are the odd ones out and mark a *tree* rather than a
+component: `treeRoot` (the family a package body accepts), `treeNode` (the
+widget family) and `treeShape` (the drawing tree). Each is a family the
+compiler itself has to name — to check the body against, to tell an ordinary
+component from a rendered one, to know which canvas passCanvas paints — and
+every other family it compares by declaration alone. Marking them is what
+keeps `ir.go` from holding a package URI and a name for each: `ir.IsUITree`
+and its two siblings read `StructDef.Builtin`, so a family may be renamed or
+moved and a program's own `struct shape` does not become the painted one.
 The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
@@ -296,7 +302,7 @@ nothing in the mechanism knows what a shape is.
 struct shape {}
 
 component circle(…)                          shape {}   // is a shape
-component canvas(shapes ...component shape)   ui.ui {}   // hosts shapes, is a widget
+component canvas(shapes ...component shape)   ui.node {}   // hosts shapes, is a widget
 component group(children ...component)        shape {}   // is one, and hosts its own family
 ```
 
@@ -311,9 +317,11 @@ The tree is the *declaration*, not its name, so a misspelling is an unresolved
 name where it is written, and two packages each declaring `struct shape`
 declare two trees. A tree struct holds nothing and no value of it exists.
 
-**`sngl:ui`'s `ui` is the widget family**, and it is a family like any other:
-naming it in a slot accepts widgets and nothing else, which is what makes
-`vbox { circle(…) }` an error. It used to be `tree.default`, and the default
+**`sngl:ui`'s `node` is the widget family**, and it is a family like any
+other: naming it in a slot accepts widgets and nothing else, which is what
+makes `vbox { circle(…) }` an error. It is named for what a member *is* — a
+member of `draw.shape` is a shape, a member of this one is a node — which is
+also what keeps `ui.ui` from appearing in every declaration that spells it. It used to be `tree.default`, and the default
 tree was not a family at all — `checkTreeMembership` opened with `if want == nil { return }`, so membership was enforced *into* a named tree and never *out
 of* the unnamed one. `sngl:tree` keeps the `kind` mark, the `none` mark and
 the count wrappers; the families live where their members do.
@@ -348,7 +356,7 @@ would name a family the wrapper has no reason to prefer.
 
 **`sngl:app`'s `root` is the family a package body accepts**, and that is the
 whole of what makes a window top-level — no syntactic rule names the
-construct. So a `ui` node at the root of a file is the ordinary
+construct. So a `node` at the root of a file is the ordinary
 tree-membership error, an `if` or a `for` there still works (neither is a
 node), and a component that names `root` itself renders windows, which
 `passRootWindow` lifts onto `pkg.Windows`. `output` is exempt: it is read as a
@@ -452,8 +460,9 @@ tree kind (a shape, or the canvas that hosts them) — the marks are the whole
 list, and each says in its own vocabulary that the declaration is rendered
 rather than composed away. Segmented is `ir.IsSegmentedTree`: any tree but the
 widget family, whose members are precisely the ordinary components this pass
-exists to compose away. `Tree != nil` was the test while `ui` was not a tree,
-and reading it after the change exempted every wrapper in the language.
+exists to compose away. `Tree != nil` was the test while the widget family was
+not a tree, and reading it after the change exempted every wrapper in the
+language.
 `isPlatformStdlibComponent` is a different question: whether a component came
 from a `sngl:platform/` package the program imports.
 

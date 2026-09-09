@@ -4,7 +4,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 0 @change(v string) { // ERROR(check) "cannot use string as int for parameter \"v\" of @change"
         count = 1
     }

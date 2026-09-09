@@ -7,7 +7,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var rows list<string> = []
     var seen = 0
 

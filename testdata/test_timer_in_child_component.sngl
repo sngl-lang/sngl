@@ -15,7 +15,7 @@ func testChildTimerFires(t Test, c main) {
     t.assert(childTicks == 1)
 }
 
-component ticker(n int) ui {
+component ticker(n int) node {
     timer(interval=100ms, enabled=true, @tick {
         childTicks += 1
     })
@@ -23,7 +23,7 @@ component ticker(n int) ui {
     text(value=string(n))
 }
 
-component main ui {
+component main node {
     var outer = 0
 
     timer(interval=100ms, enabled=true, @tick {

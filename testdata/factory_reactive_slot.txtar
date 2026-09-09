@@ -38,7 +38,7 @@ output {
     }
 }
 
-component card(name = "") ui {
+component card(name = "") node {
     var open = true
     button(text=name, @click { open = !open })
     if open {
@@ -46,7 +46,7 @@ component card(name = "") ui {
     }
 }
 
-component main ui {
+component main node {
     var items list<string> = ["a", "b"]
     for var it = items {
         card(name=it)

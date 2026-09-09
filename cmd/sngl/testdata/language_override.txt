@@ -28,7 +28,7 @@ import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:language/go"
 
-component Badge(value string) ui {
+component Badge(value string) node {
     text(value="default " + value)
 }
 
@@ -49,7 +49,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:language/go"
 
-component Badge(value string) ui {
+component Badge(value string) node {
     text(value=value)
 }
 

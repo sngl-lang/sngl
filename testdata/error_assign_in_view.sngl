@@ -7,7 +7,7 @@ import app "sngl:app"
 
 var n = 0
 
-component main ui {
+component main node {
     n = 5 // ERROR(check) "not a statement in a view body"
 
     text(value="{n}")

@@ -2,7 +2,7 @@ import . "sngl:ui"
 import "widgets"
 import app "sngl:app"
 
-component main ui {
+component main node {
     widgets._helper() // ERROR(check) "unexported"
 }
 

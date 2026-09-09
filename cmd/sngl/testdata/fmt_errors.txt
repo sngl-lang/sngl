@@ -16,7 +16,7 @@ cmp copy.sngl expected.sngl
 import . "sngl:ui"
 import app "sngl:app"
 
-component widget ui {
+component widget node {
     var   x  =  0
     text(value="{x}")
 }
@@ -27,7 +27,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component widget ui {
+component widget node {
     var x = 0
     text(value="{x}")
 }
@@ -38,7 +38,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
 }
 
 app.window {
@@ -48,7 +48,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
 }
 
 app.window {

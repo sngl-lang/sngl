@@ -10,7 +10,7 @@ app.window {
     counter()
 }
 
-component counter ui {
+component counter node {
     var n = 0
 
     vbox {

@@ -3,7 +3,7 @@ import . "sngl:app"
 
 context #theme("light")
 
-component Toolbar ui {
+component Toolbar node {
     text(value=theme)
 }
 

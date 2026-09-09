@@ -18,7 +18,7 @@ import . "sngl:test"
 import d "./geom"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var p d.Point = d.Point{x = 1}
     text #out(value=string(p.shifted()))
 }
@@ -44,6 +44,6 @@ import . "./geom"
 
 func Point.shifted(p Point) => p.x + 99
 
-component main ui {
+component main node {
     text(value="x")
 }

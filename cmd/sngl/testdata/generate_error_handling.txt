@@ -28,7 +28,7 @@ output {
 
 var lastErr = ""
 
-component main ui {
+component main node {
     vbox {
         errorBoundary(@error(e) { lastErr = e.message }) {
             button(text="Go", @click { error.raise("boom", "") })
@@ -53,7 +53,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     button(text="Go", @click { error.raise("unhandled", "") })
 }
 

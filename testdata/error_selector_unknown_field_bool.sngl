@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // Bug: unknown field on bool typechecks silently.
-component main ui {
+component main node {
     var b = true
     var bad = b.fakeField // ERROR(check) "no field"
     text(value="x")

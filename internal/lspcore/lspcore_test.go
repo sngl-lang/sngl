@@ -319,7 +319,7 @@ func TestAnalyze_MarkedDeclarationInAComponentBody(t *testing.T) {
 	content := `import . "sngl:ui"
 import . "sngl:macro"
 
-component main ui {
+component main node {
     #[foreign("js:./api", "compute", pure)]
     func compute(a int, b int) => a + b
 
@@ -407,7 +407,7 @@ func TestStylePropCompletions(t *testing.T) {
 }
 
 func TestCompletionContext_OutputTarget(t *testing.T) {
-	content := "output \n\ncomponent main ui {\n    text(value=\"hi\")\n}"
+	content := "output \n\ncomponent main node {\n    text(value=\"hi\")\n}"
 	ctx := lspcore.CompletionContext(content, 1, 8)
 	if ctx != lspcore.CtxOutputTarget {
 		t.Errorf("expected CtxOutputTarget, got %v", ctx)
@@ -415,7 +415,7 @@ func TestCompletionContext_OutputTarget(t *testing.T) {
 }
 
 func TestCompletionContext_OutputOpts(t *testing.T) {
-	content := "output js html(\n\ncomponent main ui {\n    text(value=\"hi\")\n}"
+	content := "output js html(\n\ncomponent main node {\n    text(value=\"hi\")\n}"
 	ctx := lspcore.CompletionContext(content, 1, 16)
 	if ctx != lspcore.CtxOutputOpts {
 		t.Errorf("expected CtxOutputOpts, got %v", ctx)
@@ -473,7 +473,7 @@ func TestExtractOutputPlatform(t *testing.T) {
 // completion cannot tell the two cases apart — it has one parsed document and
 // no checker — so it must not offer the name at all.
 func TestPropListCompletions_OmitsWildcardProp(t *testing.T) {
-	content := "component attrs(\n  label string = \"\",\n  #[wildcard(\"data[A-Za-z0-9]+\")] data map<string, string>,\n) {\n  text(value = label)\n}\ncomponent main ui {\n  window {\n    attrs()\n  }\n}\n"
+	content := "component attrs(\n  label string = \"\",\n  #[wildcard(\"data[A-Za-z0-9]+\")] data map<string, string>,\n) {\n  text(value = label)\n}\ncomponent main node {\n  window {\n    attrs()\n  }\n}\n"
 	doc, _ := lspcore.Analyze(content, "test.sngl", nil, "", nil)
 	items := lspcore.PropListCompletions(content, doc, 9, 11)
 	var labels []string

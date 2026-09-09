@@ -21,10 +21,10 @@ func TestNodeOp_IsNeverRenderedAsAnElement(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:macro"
 import app "sngl:app"
-component panel(header component) ui {
+component panel(header component) node {
     vbox { header }
 }
-component chain(#[construct] n int) ui {
+component chain(#[construct] n int) node {
     panel() {
         component header {
             text(value="[" + string(n) + "]")

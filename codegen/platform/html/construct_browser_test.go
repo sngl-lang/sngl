@@ -21,12 +21,12 @@ func TestConstruct_ChangedValueRebuildsTheInstance(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:macro"
-component badge(#[construct] start int, label string) ui {
+component badge(#[construct] start int, label string) node {
     var n = start
     text(value="[" + label + ":" + string(n) + "]")
     button(text="bump", @click { n = n + 1 })
 }
-component App() ui {
+component App() node {
     var (
         names list<string> = ["a"]
         base = 10
@@ -79,12 +79,12 @@ func TestConstruct_UnchangedValueKeepsTheInstance(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:macro"
-component badge(#[construct] start int, label string) ui {
+component badge(#[construct] start int, label string) node {
     var n = start
     text(value="[" + label + ":" + string(n) + "]")
     button(text="bump", @click { n = n + 1 })
 }
-component App() ui {
+component App() node {
     var (
         names list<string> = ["a"]
         base = 10

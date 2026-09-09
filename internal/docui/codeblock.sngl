@@ -8,7 +8,7 @@ import "sngl:platform/html"
 // folds docs.Highlight(code, language) to a literal HTML string when both
 // args are const, so the page ships pre-rendered markup with no runtime
 // highlighting work.
-component CodeBlock(code = "", language = "") ui {
+component CodeBlock(code = "", language = "") node {
     if PLATFORM == html.platform {
         html.div(innerHTML=docs.Highlight(code, language), class="hl-code")
     } else {

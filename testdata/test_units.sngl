@@ -6,7 +6,7 @@ import . "sngl:test"
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
-component units ui {
+component units node {
     var t1 duration = 1s + 500ms
     var t2 duration = 1h + 30m
     var m1 measurement = 16px + 2em

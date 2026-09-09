@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component state ui {
+component state node {
     var count = 0
     var name = "init"
 

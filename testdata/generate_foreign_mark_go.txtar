@@ -23,7 +23,7 @@ struct Entry {
     title string
 }
 
-component main ui {
+component main node {
     var e = Entry{title="hello"}
     text(value=e.title)
 }

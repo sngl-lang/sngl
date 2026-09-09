@@ -7,7 +7,7 @@ import "sngl:i18n"
 import ui "sngl:ui"
 import app "sngl:app"
 
-component Counter ui.ui {
+component Counter ui.node {
     var n = 1234
     func formatted() => i18n.numberInt(n, "decimal")
 }

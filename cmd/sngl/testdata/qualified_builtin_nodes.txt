@@ -39,13 +39,13 @@ grep 'from widgets' shadowout/index.html
 import s "sngl:ui"
 import app "sngl:app"
 
-component Card(children ...component) s.ui {
+component Card(children ...component) s.node {
     s.vbox {
         children
     }
 }
 
-component main s.ui {
+component main s.node {
     s.window #w(href="/index.html") {
         Card {
             s.text(value="inner")
@@ -58,7 +58,7 @@ output { none { html } }
 import s "sngl:ui"
 import app "sngl:app"
 
-component Card(children ...component) s.ui {
+component Card(children ...component) s.node {
     s.vbox {
         s.children
     }
@@ -70,7 +70,7 @@ app.window {
 import s "sngl:ui"
 import app "sngl:app"
 
-component main s.ui {
+component main s.node {
     s.window #home(href="/index.html") {
         s.text(value="Hello")
     }
@@ -82,7 +82,7 @@ import s "sngl:ui"
 import t "sngl:time"
 import app "sngl:app"
 
-component main s.ui {
+component main s.node {
     var n int = 0
     t.timer(interval=1s, @tick {
         n = n + 1
@@ -97,7 +97,7 @@ app.window {
 import s "sngl:ui"
 import app "sngl:app"
 
-component main s.ui {
+component main s.node {
     s.errorBoundary(@error(e) {}) {
         s.text(value="body")
     }
@@ -111,7 +111,7 @@ import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:app"
 
-component timer() ui {
+component timer() node {
     text(value="from widgets")
 }
 
@@ -122,7 +122,7 @@ import s "sngl:app"
 import w "widgets"
 import ui "sngl:ui"
 
-component main ui.ui {
+component main ui.node {
     s.window #w2(href="/index.html") {
         w.timer
     }

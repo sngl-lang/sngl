@@ -18,7 +18,7 @@ components, is in inline_window_form_anon.txtar.
 import . "sngl:ui"
 import app "sngl:app"
 
-component standalone ui {
+component standalone node {
     vbox {
         text(value="standalone")
     }

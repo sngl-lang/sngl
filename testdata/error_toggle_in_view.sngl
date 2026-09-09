@@ -6,7 +6,7 @@ import app "sngl:app"
 
 var flag = false
 
-component main ui {
+component main node {
     flag!! // ERROR(check) "not a statement in a view body"
 
     text(value="{flag}")

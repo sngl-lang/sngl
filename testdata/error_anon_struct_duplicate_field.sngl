@@ -5,7 +5,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var s = {a=1, a=2} // ERROR(check) "duplicate field \"a\" in struct literal"
 
     text(value=string(s.a))

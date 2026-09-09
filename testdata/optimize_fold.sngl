@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component fold ui {
+component fold node {
     var s = string(42)                 // FOLD "42"
     var i = int(3.14)                  // FOLD 3
     var f = float(1)                   // FOLD 1.0

@@ -6,7 +6,7 @@ import app "sngl:app"
 
 output { kotlin { android } }
 
-component main ui {
+component main node {
     var scores map<string, int> = {alice=10, bob=20}
     var total = 0
     button(text="sum", @click {

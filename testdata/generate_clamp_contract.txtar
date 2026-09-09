@@ -16,7 +16,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var raw int = 42
     var v int = int.clamp(raw, 0, 10)
     text(value="{v}")

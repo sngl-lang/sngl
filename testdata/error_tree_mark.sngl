@@ -12,7 +12,7 @@ struct sized {
 }
 
 #[tr.kind] // ERROR(check) "a tree is named by a struct"
-component marked() ui.ui {}
+component marked() ui.node {}
 
 app.window {
 }

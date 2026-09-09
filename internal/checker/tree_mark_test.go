@@ -28,13 +28,13 @@ struct block {}
 #[tree.kind]
 struct inline {}
 
-component document(children ...component block) ui.ui {}
+component document(children ...component block) ui.node {}
 
 component para(children ...component inline) block {}
 
 component bold(weight int) inline {}
 
-component plain() ui.ui {}
+component plain() ui.node {}
 `
 
 func treeStubConfig(t *testing.T) *checker.Config {
@@ -68,7 +68,7 @@ func checkTreeStub(t *testing.T, body string) []string {
 
 func TestTreeChildrenAcceptsItsOwnKind(t *testing.T) {
 	errs := checkTreeStub(t, `
-component main ui {
+component main node {
     document() {
         para() {
             bold(weight=700) {}
@@ -84,7 +84,7 @@ component main ui {
 func TestTreeChildrenRejectsAForeignKind(t *testing.T) {
 	// bold is an inline, not a block: right tree, wrong segment.
 	errs := checkTreeStub(t, `
-component main ui {
+component main node {
     document() {
         bold(weight=700) {}
     }
@@ -98,7 +98,7 @@ component main ui {
 
 func TestTreeChildrenRejectsAnUnmarkedComponent(t *testing.T) {
 	errs := checkTreeStub(t, `
-component main ui {
+component main node {
     para() {
         plain() {}
     }
@@ -115,7 +115,7 @@ component main ui {
 // `bold` declares none.
 func TestAMemberWithNoSlotHostsNothing(t *testing.T) {
 	errs := checkTreeStub(t, `
-component main ui {
+component main node {
     bold(weight=1) {
         bold(weight=2)
     }

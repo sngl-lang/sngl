@@ -12,7 +12,7 @@ import . "sngl:ui"
 import g "./geom"
 import app "sngl:app"
 
-component main ui {
+component main node {
     g.Chart()
 }
 
@@ -24,7 +24,7 @@ import . "sngl:ui"
 import . "sngl:ui/draw"
 import app "sngl:app"
 
-component Chart() ui {
+component Chart() node {
     canvas(width=100px, height=100px) {
         rect(x=1.0, y=2.0, w=3.0, h=4.0)
     }

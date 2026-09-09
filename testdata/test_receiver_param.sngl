@@ -13,7 +13,7 @@ struct Box<T> {
 func Box<T>.same(b Box<T>) Box<T> { return b }
 func int.twice(n int) int { return n * 2 }
 
-component main ui {
+component main node {
     var b Box<int> = {value=1}
     text(value="{b.value}")
 }

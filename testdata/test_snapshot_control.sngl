@@ -5,7 +5,7 @@ import app "sngl:app"
 // A snapshot is the concrete tree for the state it was taken in: only the live
 // branch of an `if` appears, and a `for` appears once per element with no trace
 // of the loop itself.
-component board ui {
+component board node {
     var (
         items = ["a", "b"]
         ready = false

@@ -35,7 +35,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var xs list<int> = []
     var note = ""
     var total = 0

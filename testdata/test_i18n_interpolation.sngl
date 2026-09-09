@@ -4,7 +4,7 @@ import "sngl:i18n"
 import app "sngl:app"
 
 // Simple identifier interpolation.
-component i18nInterp ui {
+component i18nInterp node {
     var nm = "world"
     var greeting = $"Hello, {nm}!"
 

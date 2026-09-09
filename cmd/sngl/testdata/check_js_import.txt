@@ -13,7 +13,7 @@ import app "sngl:app"
 
 func wrap(a float, b float) => lib.add(a, b)
 
-component main ui {
+component main node {
     text(value=string(wrap(1, 2)))
 }
 

@@ -16,11 +16,11 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component bracket<T = struct {}>(on T = struct {}{}) ui {
+component bracket<T = struct {}>(on T = struct {}{}) node {
     text(value="held")
 }
 
-component main ui {
+component main node {
     var (
         empty = struct {}{}
         written = struct {

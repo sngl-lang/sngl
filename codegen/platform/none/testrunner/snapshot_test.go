@@ -42,7 +42,7 @@ func (e *runFail) Error() string { return e.desc + ": " + e.msg }
 
 const snapshotSrc = `import . "sngl:ui"
 import . "sngl:test"
-component counter ui {
+component counter node {
 	var count = 0
 	vbox {
 		text(value="Count: {count}")

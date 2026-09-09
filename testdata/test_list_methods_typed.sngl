@@ -5,7 +5,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component listMethods ui {
+component listMethods node {
     var xs list<int> = [1, 2, 3, 4, 5]
     text(value="{xs.length()}")
 }

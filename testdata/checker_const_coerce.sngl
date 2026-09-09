@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     const PROGRESS_VAL = 50
     const DERIVED = PROGRESS_VAL + 25
 

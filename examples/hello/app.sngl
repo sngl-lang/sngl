@@ -5,7 +5,7 @@ output {
     none { html }
 }
 
-component main ui.ui {
+component main ui.node {
     var name = "World"
 
     ui.vbox(style={gap=12, padding=16}) {

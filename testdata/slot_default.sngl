@@ -8,14 +8,14 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component card(caption string, children ...component) ui {
+component card(caption string, children ...component) node {
     vbox {
         text(value=caption)
         children
     }
 }
 
-component panel(children ...component, header component) ui {
+component panel(children ...component, header component) node {
     vbox {
         header {
             text(value="(untitled)")
@@ -24,7 +24,7 @@ component panel(children ...component, header component) ui {
     }
 }
 
-component main ui {
+component main node {
     card(caption="hi") {
         text(value="child")
     }

@@ -16,7 +16,7 @@ import app "sngl:app"
 
 const greeting = lib.shout("hello world")
 
-component main ui {
+component main node {
     text(value=greeting)
 }
 

@@ -18,7 +18,7 @@ func loadAll() {
     api.fetchHello("test")
 }
 
-component main ui {
+component main node {
     button(text="Go", @click { loadAll() })
 }
 

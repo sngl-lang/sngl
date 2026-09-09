@@ -4,7 +4,7 @@ import . "sngl:ui"
 
 unit length { px, em = 16px }
 
-component main ui {
+component main node {
     var w length = 32px
     var pad length = 2em
 }
@@ -14,7 +14,7 @@ unit length {
     px
     em = 16
 }
-component main ui {
+component main node {
     var w length = 32
     var pad length = 32
 }

@@ -3,7 +3,7 @@ import . "sngl:app"
 
 context #theme("light")
 
-component Inner ui {
+component Inner node {
     text(value="static")
 }
 

@@ -123,7 +123,7 @@ func TestServerDiagnostics(t *testing.T) {
 				"uri":        "file:///tmp/test.sngl",
 				"languageId": "sngl",
 				"version":    1,
-				"text":       "component main ui {\n    unknown_widget(value=\"hi\")\n}\n",
+				"text":       "component main node {\n    unknown_widget(value=\"hi\")\n}\n",
 			},
 		},
 	})
@@ -181,7 +181,7 @@ func TestServerHover(t *testing.T) {
 				"uri":        "file:///tmp/test.sngl",
 				"languageId": "sngl",
 				"version":    1,
-				"text":       "component main ui {\n    var count = 0\n    text(value=\"hello\")\n}\n",
+				"text":       "component main node {\n    var count = 0\n    text(value=\"hello\")\n}\n",
 			},
 		},
 	})
@@ -246,7 +246,7 @@ func TestServerCompletion(t *testing.T) {
 				"uri":        "file:///tmp/test.sngl",
 				"languageId": "sngl",
 				"version":    1,
-				"text":       "component main ui {\n    \n}\n",
+				"text":       "component main node {\n    \n}\n",
 			},
 		},
 	})
@@ -344,7 +344,7 @@ func TestE2EDocumentColor(t *testing.T) {
 				"uri":        "file:///tmp/test.sngl",
 				"languageId": "sngl",
 				"version":    1,
-				"text":       "component main ui {\n    Text(value=\"x\", color = #ff0000)\n}\n",
+				"text":       "component main node {\n    Text(value=\"x\", color = #ff0000)\n}\n",
 			},
 		},
 	})

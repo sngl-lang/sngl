@@ -17,7 +17,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var n int = 2
     text(value=i18n.plural(n, {i18n.one="one item", i18n.other="many items"}))
 }

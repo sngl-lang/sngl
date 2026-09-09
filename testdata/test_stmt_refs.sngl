@@ -17,7 +17,7 @@ func testSubtestCallRefs(t Test, c main) {
     })
 }
 
-component main ui {
+component main node {
     var count = 0
 
     func increment(n int) {

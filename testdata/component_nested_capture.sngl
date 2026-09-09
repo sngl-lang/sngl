@@ -15,11 +15,11 @@ import . "sngl:test"
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 2
     var seen = -1
 
-    component readout() ui {
+    component readout() node {
         var renders = 0
 
         effect(@mount {

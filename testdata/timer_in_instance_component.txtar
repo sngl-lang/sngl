@@ -34,14 +34,14 @@ output {
     }
 }
 
-component Car() ui {
+component Car() node {
     var n = 0
 
     timer(interval=100ms, enabled=true, @tick { n += 1 })
     text(value="n=" + string(n))
 }
 
-component main ui {
+component main node {
     var shown = false
 
     button(text="toggle", @click { shown = !shown })

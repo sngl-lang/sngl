@@ -3,7 +3,7 @@ import app "sngl:app"
 
 enum Status { active, inactive, pending }
 
-component main ui {
+component main node {
     var status Status = unknown // ERROR(check) "undefined: unknown"
 
     text(value=status)

@@ -39,11 +39,11 @@ import . "sngl:ui"
 import b "box"
 import app "sngl:app"
 
-component show(h b.Holder<int>) ui {
+component show(h b.Holder<int>) node {
     text(value="holding {h.item}")
 }
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -64,7 +64,7 @@ import . "sngl:ui"
 import b "box"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var h b.Holder<int> = b.Holder<int>{item = 3}
     text(value="{h.item}")
 }
@@ -86,7 +86,7 @@ import . "sngl:ui"
 import b "box"
 import app "sngl:app"
 
-component show(p b.Plain<int>) ui {
+component show(p b.Plain<int>) node {
     text(value="{p.n}")
 }
 

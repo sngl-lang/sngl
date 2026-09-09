@@ -6,7 +6,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var name = "world"
 
     input(:value="literal") // ERROR(check) "must be assignable"

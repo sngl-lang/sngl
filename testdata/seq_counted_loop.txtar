@@ -41,7 +41,7 @@ func total(xs iter<int>) int {
     return sum
 }
 
-component main ui {
+component main node {
     var n = 6
     var total2 = 0
 

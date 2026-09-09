@@ -21,7 +21,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component box ui {
+component box node {
     var xs list<int> = [1, 2]
     var note = ""
 

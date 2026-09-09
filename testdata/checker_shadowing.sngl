@@ -9,7 +9,7 @@ func compute(LIMIT int) int {
     return inner
 }
 
-component main ui {
+component main node {
     var outer = LIMIT
     var result = compute(5)
 

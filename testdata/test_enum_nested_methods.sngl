@@ -8,7 +8,7 @@ enum Status {
     func isOk() => this == Status.ok
 }
 
-component main ui {
+component main node {
     var s = Status.ok
     text(value=s.isOk() ? "yes" : "no")
 }

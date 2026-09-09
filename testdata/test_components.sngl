@@ -2,13 +2,13 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component badge(label = "default", count = 0) ui {
+component badge(label = "default", count = 0) node {
     func display() => label
 
     text #lbl(value=display)
 }
 
-component dashboard ui {
+component dashboard node {
     var name = "test"
     var total = 5
 

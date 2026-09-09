@@ -15,7 +15,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import lib "c:pkg:nonexistent-lib-xyz-9999"
 
-component main ui {
+component main node {
   window #app {
     text "hello"
   }

@@ -51,7 +51,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var rows list<string> = []
     var n = 0
 

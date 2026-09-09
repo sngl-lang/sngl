@@ -40,7 +40,7 @@ import . "sngl:app"
 import "go:dynbody/srv"
 import "sngl:platform/html"
 
-component main ui {
+component main node {
     var hits = 0
 
     window #page(title="t", href="/p/{pkg}") {

@@ -18,7 +18,7 @@ import . "sngl:app"
 
 var v int = html.backend(42)
 
-component App ui {
+component App node {
     vbox {
         text(value="{v}")
     }

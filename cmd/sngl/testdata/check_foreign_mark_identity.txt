@@ -29,7 +29,7 @@ struct A {
 
 func take(a A) => a.title
 
-component main ui {
+component main node {
     text(value=take(A{title="x"}))
 }
 
@@ -53,7 +53,7 @@ struct B {
 
 func take(b B) => b.title
 
-component main ui {
+component main node {
     text(value=take(A{title="x"}))
 }
 
@@ -73,7 +73,7 @@ struct Entry {
 
 func take(e api.Entry) => e.title
 
-component main ui {
+component main node {
     text(value=take(Entry{title="x"}))
 }
 

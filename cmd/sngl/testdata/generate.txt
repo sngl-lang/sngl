@@ -41,7 +41,7 @@ exists out3/index.html
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 0
     button(text="+", @click { count += 1 })
     text(value="Count: {count}")
@@ -63,7 +63,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 0
     Counter(initial=count)
 }
@@ -74,7 +74,7 @@ app.window {
 -- myapp/counter.sngl --
 import . "sngl:ui"
 
-component Counter(initial = 0) ui {
+component Counter(initial = 0) node {
     text(value="Count: " + string(initial))
 }
 -- badoutput/app.sngl --
@@ -83,7 +83,7 @@ import app "sngl:app"
 
 output js html
 
-component main ui {
+component main node {
     text(value="hello")
 }
 

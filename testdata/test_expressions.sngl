@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component exprs ui {
+component exprs node {
     var a = 10
     var b = 3
     var s = "hello world"

@@ -28,7 +28,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var count = 0
 
     var tracked = 0 @change(nv int) {

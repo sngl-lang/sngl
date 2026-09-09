@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component main ui {
+component main node {
     // _-prefix params: usable in body, not targetable by name at call site.
     func parse(_input string, _index int) => _input
     func offset(_base int, delta int) => _base + delta

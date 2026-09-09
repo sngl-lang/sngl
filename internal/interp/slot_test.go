@@ -9,14 +9,14 @@ import "testing"
 func TestSuppliedSlotContentIsMounted(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component frame(children ...component, header component) ui {
+component frame(children ...component, header component) node {
     vbox {
         header {}
         children
     }
 }
 
-component main ui {
+component main node {
     var title = "Hello"
     frame {
         text #body(value="in the default slot")
@@ -53,7 +53,7 @@ component main ui {
 func TestSlotFallbackRendersWhenNothingIsSupplied(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component frame(children ...component) ui {
+component frame(children ...component) node {
     vbox {
         children {
             text #fallback(value="nothing supplied")
@@ -61,7 +61,7 @@ component frame(children ...component) ui {
     }
 }
 
-component main ui {
+component main node {
     frame()
 }
 `

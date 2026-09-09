@@ -10,7 +10,7 @@ import (
 // a Go map made this a coin flip.
 func TestRepeatedGenerationIsIdentical(t *testing.T) {
 	src := strings.Replace(versionedWidgetSrc, "app.window {", `
-component Gauge2(level int) ui {
+component Gauge2(level int) node {
     fyne.Widget(
         spec=fyne.Spec{
             new=fyne.Native{path="github.com/example/fyne-charts/v2", name="NewDial"},

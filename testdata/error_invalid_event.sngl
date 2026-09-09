@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var x = 0
 
     vbox(@click { x = 1 }) { // ERROR(check) "unknown event"

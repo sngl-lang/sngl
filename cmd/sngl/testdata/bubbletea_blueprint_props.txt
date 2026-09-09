@@ -26,7 +26,7 @@ import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 import app "sngl:app"
 
-component main ui {
+component main node {
     bt.Styled(content = "hi", styl = {}) {}
 }
 
@@ -38,7 +38,7 @@ import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 import app "sngl:app"
 
-component main ui {
+component main node {
     bt.Layout(join = bt.JoinDir.vertical, @bogus { }) {}
 }
 
@@ -50,7 +50,7 @@ import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 import app "sngl:app"
 
-component main ui {
+component main node {
     bt.Layout(join = "vertical") {}
 }
 
@@ -62,7 +62,7 @@ import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 import app "sngl:app"
 
-component main ui {
+component main node {
     bt.Layout(join = bt.JoinDir.vertical) {
         bt.Styled(content = "hi") {}
     }

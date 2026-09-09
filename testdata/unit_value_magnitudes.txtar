@@ -44,7 +44,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     // Shares a base: folds to one magnitude in the shared base.
     var samebase measurement = 3px + 4px
     // Reduces through `rem = 16em`: 18em, in em rather than in rem.

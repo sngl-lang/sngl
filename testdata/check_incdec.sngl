@@ -3,7 +3,7 @@ import app "sngl:app"
 
 var count int
 
-component Counter ui {
+component Counter node {
     button(text="+", @click { count++ })
     button(text="-", @click { count-- })
 }

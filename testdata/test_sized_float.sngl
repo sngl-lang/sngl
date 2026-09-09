@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // Sized floating-point types. float64 behaves like the default float;
 // float32 carries single-precision rounding.
-component floats ui.ui {
+component floats ui.node {
     var f32 float32 = 0.1
     var f64 float64 = 0.1
 }

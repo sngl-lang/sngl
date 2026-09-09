@@ -29,7 +29,7 @@ grep '\$1.textContent = String\(state.v__inst1\)' out/index.html
 import . "sngl:ui"
 import app "sngl:app"
 
-component holder(seed int) ui {
+component holder(seed int) node {
     var v = seed
     hbox {
         text #shown(value=string(v))
@@ -37,7 +37,7 @@ component holder(seed int) ui {
     }
 }
 
-component main ui {
+component main node {
     holder #p(seed=1)
     holder #q(seed=2)
 }

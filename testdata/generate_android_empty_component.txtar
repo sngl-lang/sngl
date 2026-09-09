@@ -20,16 +20,16 @@ output {
     }
 }
 
-component blank(value string) ui {
+component blank(value string) node {
 }
 
-component shown(caption string) ui {
+component shown(caption string) node {
     vbox {
         text(value=caption)
     }
 }
 
-component main ui {
+component main node {
     blank(value="hello")
     shown(caption="x")
 }

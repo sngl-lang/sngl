@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component config ui {
+component config node {
     const max = 100
     const label = "limit"
     var count = 0

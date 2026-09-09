@@ -11,7 +11,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var xs list<string> = ["a"]
     var ys list<string> = []
     var n int = 0

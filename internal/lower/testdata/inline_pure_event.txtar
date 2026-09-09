@@ -2,22 +2,22 @@ caps:
 -- input.sngl --
 import . "sngl:ui"
 
-component clicker(@click) ui {
+component clicker(@click) node {
     button(text="click", @click { click() })
 }
 
-component main ui {
+component main node {
     var count int = 0
     clicker(@click { count = count + 1 })
 }
 -- expected.sngl --
 import . "sngl:ui"
-component clicker(@click dyn) ui {
+component clicker(@click dyn) node {
     button(text="click", @click {
         click()
     })
 }
-component main ui {
+component main node {
     var count int = 0
     button(text="click", @click {
         count = count + 1

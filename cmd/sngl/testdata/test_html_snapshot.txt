@@ -20,7 +20,7 @@ import app "sngl:app"
 
 output { none { html } }
 
-component main ui {
+component main node {
     var name = "world"
     text(value=name)
 }

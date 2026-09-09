@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import "sngl:platform/html"
 
-component NavItem(href = "", text = "", active = false) ui {
+component NavItem(href = "", text = "", active = false) node {
     if PLATFORM == html.platform {
         html.li {
             html.a(href=href, class=active ? "active" : "", innerText=text)
@@ -14,7 +14,7 @@ component NavItem(href = "", text = "", active = false) ui {
     }
 }
 
-component NavGroup(title = "", href = "", children ...component) ui {
+component NavGroup(title = "", href = "", children ...component) node {
     if PLATFORM == html.platform {
         html.li {
             html.a(href=href, class="nav-group-title", innerText=title)

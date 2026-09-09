@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // image: state-binding fixture — mutating the bound `src` var
 // propagates to the image component.
-component main ui {
+component main node {
     var src = "https://example.com/a.png"
     image(src=src, alt="test")
 }

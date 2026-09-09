@@ -32,7 +32,7 @@ struct Point {
 
 func origin() => Point{y=1, x=7}
 
-component main ui {
+component main node {
     var here = origin()
 
     text(value="{string(here.x)}")

@@ -18,7 +18,7 @@ func syncFetch() string {
     return "sync"
 }
 
-component main ui {
+component main node {
     var handler func() string = api.fetchHello
     button(text="UseSync", @click { handler = syncFetch })
     button(text="UseAsync", @click { handler = api.fetchHello })

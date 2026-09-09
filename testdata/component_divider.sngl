@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // divider: A-tier — only style/direction/label, no testable state.
-component main ui {
+component main node {
     vbox {
         text(value="Section 1")
         divider

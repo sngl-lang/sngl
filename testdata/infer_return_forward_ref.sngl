@@ -23,7 +23,7 @@ func middle() => inner() * 2
 
 func inner() => 7
 
-component main ui {
+component main node {
     // Same question inside a component, and in the other direction.
     func shown() => label()
 

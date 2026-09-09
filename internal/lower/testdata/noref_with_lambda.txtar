@@ -2,7 +2,7 @@ caps: NoLambda, NoRef
 -- input.sngl --
 import . "sngl:ui"
 
-component main ui {
+component main node {
     var count int = 0
     var inc func() = func() { count = count + 1 }
 }
@@ -17,7 +17,7 @@ struct __ref_int {
 func __lambda0(state __lambda0_caps) {
     state.count.value = state.count.value + 1
 }
-component main ui {
+component main node {
     var count __ref_int = __ref_int{value=0}
     var inc func() = __closure(__lambda0, __lambda0_caps{count=count})
 }

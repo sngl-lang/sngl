@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // Bug: unknown field on float typechecks silently.
-component main ui {
+component main node {
     var f = 3.14
     var bad = f.junkField // ERROR(check) "no field"
     text(value="x")

@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // Bug: toggle (`!!`) on string passes typecheck.
-component main ui {
+component main node {
     var s = "x"
     button(@click {
         s!! // ERROR(check) "bool"

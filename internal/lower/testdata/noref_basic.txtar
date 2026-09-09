@@ -2,7 +2,7 @@ caps: NoRef
 -- input.sngl --
 import . "sngl:ui"
 
-component main ui {
+component main node {
     var n int = 0
     var p ref<int> = &n
     func get() int {
@@ -17,7 +17,7 @@ import . "sngl:ui"
 struct __ref_int {
     value int
 }
-component main ui {
+component main node {
     var n __ref_int = __ref_int{value=0}
     var p __ref_int = n
     func get(this main) int {

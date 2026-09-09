@@ -32,7 +32,7 @@ import . "sngl:ui"
 import "./pkg"
 import app "sngl:app"
 
-component main ui {
+component main node {
     vbox {
         text(value="LIMIT is {pkg.LIMIT}")
         text(value="twice: {pkg.twice(pkg.LIMIT)}")
@@ -76,7 +76,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component Badge(label = "") ui {
+component Badge(label = "") node {
     text(value=label)
 }
 
@@ -87,7 +87,7 @@ import . "sngl:ui"
 import "./gfx"
 import app "sngl:app"
 
-component main ui {
+component main node {
     gfx.Panel
 }
 
@@ -99,7 +99,7 @@ import . "sngl:ui"
 import draw "sngl:ui/draw"
 import app "sngl:app"
 
-component Panel ui {
+component Panel node {
     draw.canvas(width=10px, height=10px) {
         draw.rect(x=0.0, y=0.0, w=10.0, h=10.0, style=draw.CanvasStyle{fill=#000000})
     }
@@ -111,7 +111,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component Sneaky ui {
+component Sneaky node {
     draw.canvas(width=10px, height=10px) {}
 }
 
@@ -123,7 +123,7 @@ import "./shared"
 import "./user"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var op shared.Op = shared.Op.add
     text(value=user.describe(op))
 }
@@ -151,7 +151,7 @@ import . "sngl:ui"
 import "./outer"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value=outer.label())
 }
 

@@ -12,7 +12,7 @@ import app "sngl:app"
 func nothing() {
 }
 
-component main ui {
+component main node {
     var n int = 0
 
     button(text="a", @click {

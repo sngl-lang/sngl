@@ -3,7 +3,7 @@ import app "sngl:app"
 
 enum Status { active, inactive, pending }
 
-component main ui {
+component main node {
     var status Status = active
 
     text(value=string(status))

@@ -82,7 +82,7 @@ var w kg = 5
 
 func TestNullToFuncCompiles(t *testing.T) {
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var h func() int = null
     var n = h()
     text(value="{n}")
@@ -92,7 +92,7 @@ component main ui {
 
 func TestInterpolatePrimitives(t *testing.T) {
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var n = 42
     var f = 3.14
     var b = true
@@ -107,7 +107,7 @@ struct Vec {
     x int = 0
     y int = 0
 }
-component main ui {
+component main node {
     var v = Vec{x=1, y=2}
     text(value="v={v}")
 }
@@ -121,7 +121,7 @@ struct Vec {
     y int = 0
 }
 func Vec.string(v Vec) => "{v.x},{v.y}"
-component main ui {
+component main node {
     var v = Vec{x=1, y=2}
     text(value="v={v}")
 }
@@ -130,7 +130,7 @@ component main ui {
 
 func TestIRWrapsImplicitIntToFloat(t *testing.T) {
 	doc, err := parser.Parse("test.sngl", []byte(`
-component main ui {
+component main node {
     var x int = 3
     var y float = x
     text(value="hi")
@@ -163,7 +163,7 @@ func TestMixedTypedNumericArithmeticRejected(t *testing.T) {
 	// promotion; it requires an explicit conversion. (Untyped constants still
 	// unify — that is covered elsewhere.)
 	expectError(t, `
-component main ui {
+component main node {
     var a int = 3
     var b float = 1.5
     var c = a + b
@@ -243,7 +243,7 @@ func test() {
 func TestConvFuncImplicitCall(t *testing.T) {
 	// string(fn) where fn is zero-arg implicitly calls fn().
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var n = 42
     func total() => n * 2
     text(value=string(total))
@@ -273,7 +273,7 @@ func zero() ms {
 func TestUnitZeroInAssignment(t *testing.T) {
 	expectNoErrors(t, `
 unit ms { ms, s = 1000ms }
-component main ui {
+component main node {
     var t ms = 5ms
     func reset() {
         t = 0
@@ -295,7 +295,7 @@ func test() {
 
 func TestNullToOption(t *testing.T) {
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var maybe option<int> = null
     text(value="hi")
 }
@@ -316,7 +316,7 @@ func TestNullFuncZeroReturn(t *testing.T) {
 	// Null flowing into a func-typed slot must still compile; codegen
 	// produces a zero-value callable so calling through it does not panic.
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var h func() int = null
     var g func(int) string = null
     var n = h()
@@ -328,7 +328,7 @@ component main ui {
 
 func TestStringToColorAssignment(t *testing.T) {
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var c color = "#ff0000"
     text(value="hi")
 }
@@ -337,7 +337,7 @@ component main ui {
 
 func TestStringDomainToStringInterp(t *testing.T) {
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var c color = "#ff0000"
     var d date = "2026-03-12"
     text(value="c={c} d={d}")
@@ -348,7 +348,7 @@ component main ui {
 func TestInterpolateEnum(t *testing.T) {
 	expectNoErrors(t, `
 enum Status { active, inactive }
-component main ui {
+component main node {
     var s = Status.active
     text(value="s={s}")
 }
@@ -358,7 +358,7 @@ component main ui {
 func TestInterpolateUnit(t *testing.T) {
 	expectNoErrors(t, `
 unit ms { ms, s = 1000ms }
-component main ui {
+component main node {
     var d ms = 500ms
     text(value="d={d}")
 }
@@ -369,7 +369,7 @@ func TestInterpolateList(t *testing.T) {
 	// Lists currently fall back to a language-native stringifier when no
 	// `list.string()` method exists — no checker error.
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var xs list<int> = [1, 2, 3]
     text(value="xs={xs}")
 }
@@ -378,7 +378,7 @@ component main ui {
 
 func TestInterpolateOption(t *testing.T) {
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var maybe option<int> = null
     text(value="maybe={maybe}")
 }
@@ -388,7 +388,7 @@ component main ui {
 func TestInterpolateLambdaCall(t *testing.T) {
 	// Zero-arg lambda in interpolation implicitly calls.
 	expectNoErrors(t, `
-component main ui {
+component main node {
     var n = 3
     var double = func() => n * 2
     text(value="double={double}")
@@ -398,12 +398,12 @@ component main ui {
 
 func TestInterpolateComponentRejected(t *testing.T) {
 	expectError(t, `
-component Inner ui {
+component Inner node {
     var x = 1
     text(value="hi")
 }
 
-component main ui {
+component main node {
     var inst = Inner()
     text(value="inst={inst}")
 }
@@ -412,7 +412,7 @@ component main ui {
 
 func TestMixedTypedMulRejected(t *testing.T) {
 	expectError(t, `
-component main ui {
+component main node {
     var a int = 3
     var b float = 1.5
     var c = a * b
@@ -423,7 +423,7 @@ component main ui {
 
 func TestMixedTypedDivRejected(t *testing.T) {
 	expectError(t, `
-component main ui {
+component main node {
     var a int = 3
     var b float = 1.5
     var c = a / b
@@ -446,7 +446,7 @@ func test() {
 
 func TestIRBuiltinCastEmitsConversion(t *testing.T) {
 	doc, _ := parser.Parse("test.sngl", []byte(`
-component main ui {
+component main node {
     var x float = 3.14
     var n = int(x)
     text(value="hi")
@@ -469,7 +469,7 @@ func TestIRInterpolationEmitsConversion(t *testing.T) {
 	doc, _ := parser.Parse("test.sngl", []byte(`
 import . "sngl:ui"
 
-component main ui {
+component main node {
     var n = 42
     text(value="n={n}")
 }

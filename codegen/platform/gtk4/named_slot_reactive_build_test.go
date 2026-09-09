@@ -12,7 +12,7 @@ const namedSlotReactiveSrc = `
 import . "sngl:ui"
 import app "sngl:app"
 
-component q(body component) ui {
+component q(body component) node {
     var on = false
 
     button #t(text="toggle", @click { on = !on })
@@ -36,7 +36,7 @@ const scopedNamedSlotReactiveSrc = `
 import . "sngl:ui"
 import app "sngl:app"
 
-component q(ready component(int)) ui {
+component q(ready component(int)) node {
     var n = 0
 
     button #b(text="bump", @click { n = n + 1 })

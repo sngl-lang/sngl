@@ -35,12 +35,12 @@ output {
     }
 }
 
-component outer(label = "") ui {
+component outer(label = "") node {
     var count = 0
 
     func bump() { count = count + 100 }
 
-    component inner(step = 1) ui {
+    component inner(step = 1) node {
         var runs = 0
 
         vbox {
@@ -61,12 +61,12 @@ component outer(label = "") ui {
 
 // A nested body whose *only* capture is the owner's method: nothing about the
 // vars or props marks `tap` as capturing, so the method has to.
-component methodOnly() ui {
+component methodOnly() node {
     var hits = 0
 
     func hit() { hits = hits + 1 }
 
-    component tap() ui {
+    component tap() node {
         var taps = 0
 
         button(text="tap", @click {
@@ -81,7 +81,7 @@ component methodOnly() ui {
     }
 }
 
-component main ui {
+component main node {
     vbox {
         outer(label="a")
         outer(label="b")

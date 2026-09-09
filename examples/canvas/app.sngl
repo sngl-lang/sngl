@@ -6,7 +6,7 @@ output {
     none { html }
 }
 
-component main ui.ui {
+component main ui.node {
     var radius = 50.0
 
     func circleStyle() => draw.CanvasStyle{

@@ -41,7 +41,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component counter ui {
+component counter node {
     var n = 3
     vbox {
         text(value="{n}")

@@ -2,9 +2,9 @@ import . "sngl:ui"
 import . "sngl:ui/draw"
 import app "sngl:app"
 
-component notAShape ui {}
+component notAShape node {}
 
-component myWidget ui {
+component myWidget node {
     canvas(width=400px, height=300px) {
         notAShape {} // ERROR(check) "expected shape component in canvas, got notAShape"
     }

@@ -6,7 +6,7 @@ import . "sngl:ui"
 import "sngl:i18n"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count int = 1
     var label = $"You have {count, plural, one{# item} other{# items}}"
     text(value=label)

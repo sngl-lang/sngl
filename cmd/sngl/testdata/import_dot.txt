@@ -90,7 +90,7 @@ import . "sngl:ui"
 import . "widgets"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var c Card = {title = "t"}
     var g = Greet("world")
     text(value=c.title + g)
@@ -104,7 +104,7 @@ import . "sngl:ui"
 import "widgets"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var c Card = {title = "t"}
     text(value=c.title)
 }
@@ -117,7 +117,7 @@ import . "sngl:ui"
 import . "widgets"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var h = _helper()
     text(value=h)
 }
@@ -142,7 +142,7 @@ window #w(href="/index.html") {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -153,7 +153,7 @@ app.window {
 import "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     ui.text(value="x")
 }
 
@@ -164,9 +164,9 @@ app.window {
 import lib "sngl:ui"
 import app "sngl:app"
 
-component text() lib.ui {}
+component text() lib.node {}
 
-component main lib.ui {
+component main lib.node {
     lib.text(value="stdlib, not the shadow")
     text()
 }
@@ -178,7 +178,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     sngl.text(value="x")
 }
 
@@ -190,7 +190,7 @@ import . "sngl:ui"
 import "std"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value=std.greet())
 }
 
@@ -213,7 +213,7 @@ component notstd.text {
     span(textContent=value) {}
 }
 
-component main sngl.ui {
+component main sngl.node {
     text(value="x")
 }
 
@@ -236,7 +236,7 @@ import . "widgets"
 import . "other"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var c Card = {title = "t"}
     text(value=c.title)
 }
@@ -250,7 +250,7 @@ import . "widgets"
 import o "other"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var c Card = {title = "t"}
     var d o.Card = {subtitle = "s"}
     text(value=c.title + d.subtitle)
@@ -264,7 +264,7 @@ import . "sngl:ui"
 import "sngl:widgets"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="x")
 }
 

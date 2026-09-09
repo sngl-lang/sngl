@@ -21,7 +21,7 @@ import app "sngl:app"
 
 const c = lib.pick()
 
-component main ui {
+component main node {
     if c == lib.Color.Red {
         text(value="red")
     }

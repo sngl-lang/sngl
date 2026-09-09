@@ -2,14 +2,14 @@ caps: NoReactivity
 -- input.sngl --
 import . "sngl:ui"
 
-component main ui {
+component main node {
     var n int = 0
     text(value=string(n))
     button(text="+", @click { n = n + 1 })
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main ui {
+component main node {
     var n int = 0
     text #__n0(value=string(n))
     button(text="+", @click {

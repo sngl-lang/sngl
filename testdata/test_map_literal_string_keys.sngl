@@ -5,7 +5,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component mapStringKeys ui {
+component mapStringKeys node {
     var prices map<string, int> = {
         apple = 1,
         pear = 2,

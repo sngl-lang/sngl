@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component greeting ui {
+component greeting node {
     var name = "world"
     var msg = "hello"
 

@@ -160,7 +160,7 @@ import app "sngl:app"
 
 func f(b w.Box) => b._hidden
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -174,7 +174,7 @@ import app "sngl:app"
 
 func f(b w.Box) => b._secret()
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -190,7 +190,7 @@ func f(b w.Box) => b.Shown()
 
 func g(b w.Box) => b.v
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -209,7 +209,7 @@ func Local._m() => 1
 
 func use(l Local) => l._m() + l._p
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -224,7 +224,7 @@ func dup() => 1
 
 func dup() => 2
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -237,7 +237,7 @@ import x "w"
 import x "other"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -249,11 +249,11 @@ import . "sngl:ui"
 import helper "w"
 import app "sngl:app"
 
-component helper() ui {
+component helper() node {
     text(value="x")
 }
 
-component main ui {
+component main node {
     text(value="y")
 }
 
@@ -264,11 +264,11 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component text(value string) ui {
+component text(value string) node {
     button(text=value)
 }
 
-component main ui {
+component main node {
     text(value="mine")
 }
 
@@ -282,7 +282,7 @@ import app "sngl:app"
 
 func f() => color{tag="x"}.tag
 
-component main ui {
+component main node {
     text(value=f())
 }
 
@@ -308,7 +308,7 @@ import app "sngl:app"
 
 func f() => int{n = "mine"}.n
 
-component main ui {
+component main node {
     text(value=f())
 }
 
@@ -322,7 +322,7 @@ import app "sngl:app"
 
 var picked option = first
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -367,7 +367,7 @@ import . "pa"
 import . "pb"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value=Greet())
 }
 
@@ -380,7 +380,7 @@ import . "pc"
 import . "pd"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="{LIMIT}")
 }
 
@@ -394,7 +394,7 @@ import app "sngl:app"
 const K = 1
 const K = 2
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -405,7 +405,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var y int = 1
     var y int = 2
     text(value="x")
@@ -418,7 +418,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var xs list<string> = []
     for var k, k = xs {
         text(value=k)
@@ -434,7 +434,7 @@ import "sngl:ui/draw"
 import draw "sngl:ui/draw"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -447,7 +447,7 @@ import x "sngl:ui/draw"
 import x "sngl:i18n"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -530,7 +530,7 @@ func g() => Mode._B
 
 var m Mode = _B
 
-component main ui {
+component main node {
     text(value="x")
 }
 
@@ -543,7 +543,7 @@ import app "sngl:app"
 
 const true = 0 != 0
 
-component main ui {
+component main node {
     text(value="{true}")
 }
 
@@ -556,7 +556,7 @@ import app "sngl:app"
 
 const null = "nothing"
 
-component main ui {
+component main node {
     text(value=null)
 }
 

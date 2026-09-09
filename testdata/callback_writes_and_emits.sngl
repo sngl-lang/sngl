@@ -34,7 +34,7 @@ func run(f func()) {
 
 func applied(f func() int) => f()
 
-component inner(@fired) ui {
+component inner(@fired) node {
     var ran = 0
 
     func go() {
@@ -47,7 +47,7 @@ component inner(@fired) ui {
     text(value="{ran}")
 }
 
-component main ui {
+component main node {
     var (
         viaMethod = 0
         emitted = 0

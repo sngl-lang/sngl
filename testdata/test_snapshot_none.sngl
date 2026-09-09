@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component counter ui {
+component counter node {
     var count = 0
 
     vbox {

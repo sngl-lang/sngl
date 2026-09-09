@@ -20,7 +20,7 @@ import . "sngl:test"
 import time "sngl:time"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var oneMinute time.duration = 1m
     var half time.duration = 500ms
 

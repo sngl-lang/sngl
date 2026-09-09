@@ -19,9 +19,9 @@ struct ItemProps {
 func greet(name string, greeting string) string { return greeting + ", " + name }
 func addInts(x int, y int) int { return x + y }
 
-component Item(label string, count int) ui.ui {}
+component Item(label string, count int) ui.node {}
 
-component main ui.ui {
+component main ui.node {
     func greetLocal(name string, greeting string) string { return greeting + ", " + name }
 
     // Struct field order doesn't matter — spread binds by name.
@@ -37,7 +37,7 @@ component main ui.ui {
     Item #it(...opts)
 }
 
-component root ui.ui {
+component root ui.node {
     main #m()
 }
 

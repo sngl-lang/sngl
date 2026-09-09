@@ -67,10 +67,10 @@ import app "sngl:app"
 #[tr.kind]
 struct block {}
 
-component para(children ...component block) ui {}
+component para(children ...component block) node {}
 component bold(weight int) block {}
 
-component main ui {
+component main node {
     para() {
         bold(weight=700)
     }
@@ -87,10 +87,10 @@ import app "sngl:app"
 #[whatever.kind]
 struct block {}
 
-component para(children ...component block) ui {}
+component para(children ...component block) node {}
 component bold(weight int) block {}
 
-component main ui {
+component main node {
     para() {
         bold(weight=700)
     }

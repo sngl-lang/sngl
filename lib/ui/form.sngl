@@ -13,9 +13,9 @@ component button(
     @click ClickEvent,
     @longPress LongPressEvent,
     content ...component,
-) ui {}
+) node {}
 
-component _example_button ui {
+component _example_button node {
     var count = 0
     vbox(style={gap=8, padding=16}) {
         hbox(style={gap=8}) {
@@ -47,9 +47,9 @@ component input(
     @focus FocusEvent,
     @blur FocusEvent,
     @submit SubmitEvent,
-) ui {}
+) node {}
 
-component _example_input ui {
+component _example_input node {
     var name = ""
     vbox(style={gap=8, padding=16}) {
         input(placeholder="Enter your name", value=name, @input(e) { name = e.value })
@@ -76,9 +76,9 @@ component textarea(
     @change ChangeEvent,
     @focus FocusEvent,
     @blur FocusEvent,
-) ui {}
+) node {}
 
-component _example_textarea ui {
+component _example_textarea node {
     var notes = ""
     vbox(style={gap=8, padding=16}) {
         textarea(placeholder="Write some notes...", rows=4, value=notes, @input(e) { notes = e.value })
@@ -97,9 +97,9 @@ component checkbox(
     disabled bool,
     focusable bool = true,
     @change ChangeEvent,
-) ui {}
+) node {}
 
-component _example_checkbox ui {
+component _example_checkbox node {
     var darkMode = false
     vbox(style={gap=8, padding=16}) {
         checkbox(checked=darkMode, label="Dark mode", @change { darkMode!! })
@@ -119,9 +119,9 @@ component radio(
     disabled bool,
     direction string,
     @change ChangeEvent,
-) ui {}
+) node {}
 
-component _example_radio ui {
+component _example_radio node {
     var size = "medium"
     vbox(style={gap=8, padding=16}) {
         radio(options=["small", "medium", "large"], value=size, direction="horizontal")
@@ -139,9 +139,9 @@ component toggle(
     disabled bool,
     focusable bool = true,
     @change ChangeEvent,
-) ui {}
+) node {}
 
-component _example_toggle ui {
+component _example_toggle node {
     var notifications = false
     vbox(style={gap=8, padding=16}) {
         toggle(checked=notifications, label="Notifications", @change { notifications!! })
@@ -164,9 +164,9 @@ component select(
     @change ChangeEvent,
     @focus FocusEvent,
     @blur FocusEvent,
-) ui {}
+) node {}
 
-component _example_select ui {
+component _example_select node {
     var fruit = ""
     vbox(style={gap=8, padding=16}) {
         select(options=["Apple", "Banana", "Cherry"], placeholder="Pick a fruit", value=fruit)
@@ -188,9 +188,9 @@ component datepicker(
     @change DateEvent,
     @focus FocusEvent,
     @blur FocusEvent,
-) ui {}
+) node {}
 
-component _example_datepicker ui {
+component _example_datepicker node {
     vbox(style={padding=16}) {
         datepicker(placeholder="Select a date")
     }

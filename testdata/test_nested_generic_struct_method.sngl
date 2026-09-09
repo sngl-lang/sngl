@@ -7,7 +7,7 @@ struct box<T> {
     func get() => this.v
 }
 
-component main ui {
+component main node {
     var b box<int> = {v=42}
     text(value=string(b.get()))
 }

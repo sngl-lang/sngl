@@ -22,7 +22,7 @@ struct hasList {
     tags list<string>
 }
 
-component main ui {
+component main node {
     var (
         x = 0
         y = "s"
@@ -61,13 +61,13 @@ component main ui {
 // becomes a type is the call that binds it. Unchecked, the bracket reached
 // bubbletea as `m.__effect0_live[i] != k` over a []int, which Go does not
 // compile, and html as `!==` over an array, which is identity.
-component keyed<T>(k T) ui {
+component keyed<T>(k T) node {
     effect(on=k, @mount {})
 
     text(value="keyed")
 }
 
-component keys ui {
+component keys node {
     var n = 0
     var xs list<int> = [1]
 

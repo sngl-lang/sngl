@@ -29,7 +29,7 @@ func bump() {
     shared += 1
 }
 
-component main ui {
+component main node {
     var (
         n = 0
         other = 0

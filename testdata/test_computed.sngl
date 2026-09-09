@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component pricing ui {
+component pricing node {
     var price = 100
     var quantity = 2
     func total() => price * quantity

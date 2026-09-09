@@ -16,7 +16,7 @@ stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*t
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="hi")
 }
 
@@ -39,7 +39,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     text(value="hi")
 }
 

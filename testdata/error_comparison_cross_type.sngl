@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var c color = #ff0000
     var s string = "red"
     var bad = c == s // ERROR(check) "operator == not defined"

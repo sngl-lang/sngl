@@ -110,7 +110,7 @@ func makeBadge(b struct {
 // ----- 9. Child component with prop + event sink -------------------
 // Components are declared at top level. Props live in the header.
 // `@event` props let the parent receive events emitted by the child.
-component LabeledCounter(label = "Clicks", start = 0, @changed) ui.ui {
+component LabeledCounter(label = "Clicks", start = 0, @changed) ui.node {
     var n = start
 
     ui.hbox(style={gap=8, alignItems="center"}) {
@@ -131,7 +131,7 @@ struct TreeNode {
     right dyn = null
 }
 
-component TreeView(node dyn = null) ui.ui {
+component TreeView(node dyn = null) ui.node {
     ui.vbox(style={paddingLeft=12, gap=2}) {
         ui.text(value=string(node.value))
         if node.left != null {
@@ -157,7 +157,7 @@ component TreeView(node dyn = null) ui.ui {
 // Translations live in `i18n.manifest.json` next to this file. The
 // runtime picks a locale from LC_ALL / LC_MESSAGES / LANG (or the
 // platform equivalent on Android).
-component I18nDemo ui.ui {
+component I18nDemo ui.node {
     var who = "World"
     var unread = 5
     var role = "admin"
@@ -195,11 +195,11 @@ component I18nDemo ui.ui {
 
 context #theme("light")
 
-component ThemedBox(label = "") ui.ui {
+component ThemedBox(label = "") ui.node {
     ui.text(value="{label}: {theme}", style={padding=8})
 }
 
-component ContextDemo ui.ui {
+component ContextDemo ui.node {
     var dark = false
     ui.vbox(style={gap=4}) {
         ui.button(text="toggle theme", @click { dark = !dark })
@@ -218,7 +218,7 @@ component ContextDemo ui.ui {
 // patches the visual tree. The visual block below mirrors the original
 // stdlib-component showcase; the language-feature sections cross-
 // reference the relevant earlier section.
-component main ui.ui {
+component main ui.node {
     // --- Primitive state (with explicit + inferred types) ---------
     var (
         count = 0

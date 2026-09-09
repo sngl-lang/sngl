@@ -62,7 +62,7 @@ const effectInstanceSrc = `
 import . "sngl:ui"
 import app "sngl:app"
 
-component row(name = "") ui {
+component row(name = "") node {
     var (
         n = 0
         log list<string> = []

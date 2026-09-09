@@ -26,7 +26,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var running = true
     var last = ""
     timer(interval=500ms, enabled=running, @tick {

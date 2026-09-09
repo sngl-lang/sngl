@@ -9,7 +9,7 @@ import . "sngl:test"
 // reached codegen verbatim, so Go emitted `m.double(this)` (undefined →
 // gtk4/bubbletea/fyne compile error) and JS emitted `main_double(this)`
 // (wrong receiver → html runtime error).
-component main ui {
+component main node {
     var n = 3
     func double() => n * 2
     func summary() string {

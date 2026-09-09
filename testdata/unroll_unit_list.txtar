@@ -47,7 +47,7 @@ output {
 
 const periods list<duration> = [20ms, 400ms]
 
-component main ui {
+component main node {
     for var i, p = periods {
         text(value="row{i}=" + (p == 20ms ? "fast" : "slow"))
     }

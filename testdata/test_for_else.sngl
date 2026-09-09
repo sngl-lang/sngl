@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component emptylist ui {
+component emptylist node {
     var items list<string> = []
 
     vbox {

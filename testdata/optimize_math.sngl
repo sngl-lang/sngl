@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component mathfold ui {
+component mathfold node {
     // Trig functions
     var fsin = float.sin(0.0)          // FOLD 0.0
     var fcos = float.cos(0.0)          // FOLD 1.0

@@ -41,7 +41,7 @@ func run(f func()) int {
     return 7
 }
 
-component App() ui {
+component App() node {
     var n = 0
     var handle = 0
 

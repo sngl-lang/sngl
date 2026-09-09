@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component Counter(label = "Count") ui {
+component Counter(label = "Count") node {
     hbox {
         text(value=label)
     }

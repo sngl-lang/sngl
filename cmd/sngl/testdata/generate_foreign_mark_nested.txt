@@ -22,7 +22,7 @@ import . "sngl:ui"
 import . "sngl:macro"
 import app "sngl:app"
 
-component main ui {
+component main node {
     #[foreign("js:example.com/api", "Entry")]
     struct Entry {
         #[foreign("Title")]
@@ -41,7 +41,7 @@ import . "sngl:ui"
 import . "sngl:macro"
 import app "sngl:app"
 
-component main ui {
+component main node {
     #[foreign("js:./api", "compute", pure)]
     func compute(a int, b int) => a + b
 

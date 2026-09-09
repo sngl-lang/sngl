@@ -14,7 +14,7 @@ struct Cmd {
     name string
 }
 
-component main ui { text(value="x") }
+component main node { text(value="x") }
 
 func testGenericFieldIsTerminatedByTheNewline(t Test, c main) {
     var cmd Cmd = {

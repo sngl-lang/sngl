@@ -27,7 +27,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var pick string = "a"
     radio(:value=pick, options=["a", "b"])
     text(value=pick)

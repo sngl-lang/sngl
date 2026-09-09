@@ -50,7 +50,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(row Row), body ...component) ui {
+component table(rows list<Row>, cell component(row Row), body ...component) node {
     vbox {
         for var r = rows {
             cell(r)
@@ -59,7 +59,7 @@ component table(rows list<Row>, cell component(row Row), body ...component) ui {
     }
 }
 
-component main ui {
+component main node {
     table(rows=[]) {
         component cell(r) {
             text(value=r.title)

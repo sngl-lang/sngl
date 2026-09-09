@@ -5,7 +5,7 @@ component foo.bar { // ERROR(check) "extension namespace \"foo\" is not an impor
     span() {}
 }
 
-component main ui {
+component main node {
     text(value="hi")
 }
 

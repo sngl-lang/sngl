@@ -5,7 +5,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component outer() ui {
+component outer() node {
     var x =
 
     component inner() { // ERROR(parse) "unexpected \"component\", expected"

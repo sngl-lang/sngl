@@ -17,7 +17,7 @@ func TestPlatformOverrideDropsDefault(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/html"
 import app "sngl:app"
-component Layout(children ...component) ui {
+component Layout(children ...component) node {
     if PLATFORM == html.platform {
         html.div(class="site") {
             html.hr

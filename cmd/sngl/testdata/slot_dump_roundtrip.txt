@@ -34,7 +34,7 @@ component table(
     children ...component,
     header component tr.one,
     cell component(row Row),
-) ui {
+) node {
     vbox {
         header {
             text(value="(untitled)")
@@ -46,7 +46,7 @@ component table(
     }
 }
 
-component main ui {
+component main node {
     table(rows=[Row{title = "a"}]) {
         component header {
             text(value="Rows")

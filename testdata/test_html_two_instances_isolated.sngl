@@ -2,13 +2,13 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component counter ui {
+component counter node {
     var n = 0
     button #bump(text="+", @click { n += 1 })
     text #out(value=string(n))
 }
 
-component main ui {
+component main node {
     counter()
     counter()
 }

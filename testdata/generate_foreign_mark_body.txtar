@@ -25,7 +25,7 @@ func label() string {
     return "theme=" + theme
 }
 
-component Toolbar ui {
+component Toolbar node {
     text(value=label())
 }
 

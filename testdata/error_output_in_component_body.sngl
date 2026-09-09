@@ -3,7 +3,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     output { // ERROR(check) "output may only be written at the root of a file"
         go {
             bubbletea()

@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 0
     var items = ["a", "b"]
 

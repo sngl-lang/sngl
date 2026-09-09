@@ -11,7 +11,7 @@ output { go { html } }
 
 import "go:example.com/route-post/api"
 
-component main ui {
+component main node {
     var count = 0
 
     window #app(title="t", href="/") {

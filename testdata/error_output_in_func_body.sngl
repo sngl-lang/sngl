@@ -11,7 +11,7 @@ func d() {
     }
 }
 
-component main ui {
+component main node {
     text(value="hi")
 }
 

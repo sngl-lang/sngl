@@ -23,7 +23,7 @@ component mybox[html.platform] {
     text(value="html")
 }
 
-component mybox ui {
+component mybox node {
     text(value="generic")
 }
 
@@ -39,7 +39,7 @@ component mybox[platform] {
     text(value="x")
 }
 
-component mybox ui {
+component mybox node {
     text(value="generic")
 }
 

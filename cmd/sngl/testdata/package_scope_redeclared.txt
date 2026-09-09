@@ -52,7 +52,7 @@ struct Style {
     y int
 }
 
-component main ui {
+component main node {
     text(value=string(widthOf(Style{y = 7})))
 }
 
@@ -67,7 +67,7 @@ struct Style {
     y int
 }
 
-component main ui {
+component main node {
     text(value=string(widthOf(Style{y = 7})))
 }
 
@@ -104,7 +104,7 @@ func widthOf(s Style) int {
     return s.x
 }
 
-component main ui {
+component main node {
     text(value=string(widthOf(Style{x = 7})))
 }
 
@@ -115,7 +115,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component mybox(label string) ui {
+component mybox(label string) node {
     text(value=label)
 }
 
@@ -138,7 +138,7 @@ func caption[html.platform] {
     return "html n=" + string(n)
 }
 
-component main ui {
+component main node {
     mybox(label=caption(1))
 }
 

@@ -10,7 +10,7 @@ func pair<A, B>(a A, b B) list<A> {
     return [a]
 }
 
-component main ui {
+component main node {
     var matrix list<list<int>> = [[1, 2], [3, 4], [5, 6]]
     var maybes list<option<int>> = [1, null, 3]
 

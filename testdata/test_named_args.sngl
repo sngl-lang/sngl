@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component main ui {
+component main node {
     func add(a int, b int) => a + b
     func sub(a int, b int) => a - b
     func clamp(val int, lo int, hi int) int {

@@ -21,7 +21,7 @@ struct Knobs {
     gadget string = ""
 }
 
-component main ui {
+component main node {
     text(value="hello")
 }
 
@@ -33,7 +33,7 @@ import . "sngl:ui"
 import . "sngl:internal/marks"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="hello")
 }
 
@@ -45,7 +45,7 @@ import . "sngl:ui"
 import . "sngl:nosuch"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="hello")
 }
 

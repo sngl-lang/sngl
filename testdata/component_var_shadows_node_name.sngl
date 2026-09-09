@@ -6,7 +6,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var progress float = 0.25
 
     vbox {

@@ -49,7 +49,7 @@ struct P {
     b int
 }
 
-component main ui {
+component main node {
     var (
         a = 1
         b = 2

@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var doubler = func(x int) => x * 2
     var addBlock = func(x int) int { return x + 100 }
 

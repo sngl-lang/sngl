@@ -1,10 +1,10 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component card(title string) ui {
+component card(title string) node {
 }
 
-component main ui {
+component main node {
     vbox() {
     } //@ complete("", "card", "main")
 }

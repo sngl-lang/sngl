@@ -10,7 +10,7 @@ import . "sngl:test"
 import "sngl:i18n"
 import app "sngl:app"
 
-component SetCtxGreeting ui {
+component SetCtxGreeting node {
     func label() => $"Hello"
     text(value=label())
 }

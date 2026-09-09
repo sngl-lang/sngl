@@ -9,7 +9,7 @@ struct pageArgs {
     on int
 }
 
-component main ui {
+component main node {
     var page = 3
     var a = pageArgs{on=page}
 

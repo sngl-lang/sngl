@@ -21,10 +21,10 @@ output {
     }
 }
 
-component Cart(count = 0) ui {
+component Cart(count = 0) node {
     text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
 }
-component main ui {
+component main node {
     var count = 3
     vbox {
         i18n.locale("es-MX") {

@@ -32,14 +32,14 @@ output {
     }
 }
 
-component countdown(n int) ui {
+component countdown(n int) node {
     text(value="[" + string(n) + "]")
     if n > 0 {
         countdown(n=n - 1)
     }
 }
 
-component main ui {
+component main node {
     countdown(n=3)
 }
 

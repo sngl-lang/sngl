@@ -22,7 +22,7 @@ func run(f func() string) {
     f()
 }
 
-component main ui {
+component main node {
     button(text="RunSync", @click { run(syncHello) })
     button(text="RunAsync", @click { run(api.fetchHello) })
     text(value="hi")

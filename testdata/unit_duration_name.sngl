@@ -19,7 +19,7 @@ func takes(d duration) => d
 
 func sum(d duration) => d + 5s
 
-component main ui {
+component main node {
     var ticks = 0
     var iv duration = 250ms
 

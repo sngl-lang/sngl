@@ -25,7 +25,7 @@ func TestNonMainComponentPromotedHandlersAreEmitted(t *testing.T) {
 	// testdata/focus_order_loop.sngl has.
 	src := `
 import . "sngl:ui"
-component focusLoop ui {
+component focusLoop node {
     vbox {
         button(text="before", focusable=true)
         button(text="after", focusable=true)

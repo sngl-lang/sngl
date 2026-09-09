@@ -12,7 +12,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var count = 5
     var msg = i18n.plural(count, {
         i18n.exactly(0) = "no items",

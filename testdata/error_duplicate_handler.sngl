@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     button(@click { foo() }, @click { bar() }) // ERROR(check) "duplicate event handler"
 }
 

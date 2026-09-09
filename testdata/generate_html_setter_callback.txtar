@@ -14,7 +14,7 @@ import app "sngl:app"
 
 output { none { html } }
 
-component main ui {
+component main node {
     var name = "World"
     var count int = 0
 

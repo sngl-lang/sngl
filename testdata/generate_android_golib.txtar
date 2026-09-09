@@ -30,7 +30,7 @@ func fib(n int) int {
     return fib(n - 1) + fib(n - 2)
 }
 
-component main ui {
+component main node {
     var k int = 10
     text(value=string(fib(k)))
     button(text="+", @click { k = k + 1 })

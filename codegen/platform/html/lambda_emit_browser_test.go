@@ -29,7 +29,7 @@ func run(f func()) {
     f()
 }
 
-component chooser(@picked) ui {
+component chooser(@picked) node {
     button(text="pick", @click {
         run(func() {
             picked()
@@ -37,7 +37,7 @@ component chooser(@picked) ui {
     })
 }
 
-component App() ui {
+component App() node {
     var picks = 0
 
     chooser(@picked { picks += 1 })

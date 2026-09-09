@@ -37,7 +37,7 @@ struct Counter {
     }
 }
 
-component main ui {
+component main node {
     var count Counter
 
     func tick() {

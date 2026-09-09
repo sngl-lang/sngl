@@ -16,8 +16,8 @@ func TestStdlibHoverFollowsImports(t *testing.T) {
 		src  string
 		want bool
 	}{
-		{"imported", "import . \"sngl:ui\"\n\ncomponent main ui {\n    text(value=\"x\")\n}\n", true},
-		{"not imported", "component main ui {\n    var n int = 1\n}\n", false},
+		{"imported", "import . \"sngl:ui\"\n\ncomponent main node {\n    text(value=\"x\")\n}\n", true},
+		{"not imported", "component main node {\n    var n int = 1\n}\n", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			doc, err := parser.Parse("t.sngl", []byte(tc.src))

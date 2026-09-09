@@ -5,12 +5,12 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component first() ui {
-    component row(label = "") ui {
+component first() node {
+    component row(label = "") node {
         text(value="row " + label)
     }
 
-    component labelled(label = "") ui {
+    component labelled(label = "") node {
         vbox {
             row(label=label)
         }
@@ -22,15 +22,15 @@ component first() ui {
     }
 }
 
-component second() ui {
-    component cell(label = "") ui {
+component second() node {
+    component cell(label = "") node {
         text(value="cell " + label)
     }
 
     cell(label="c")
 }
 
-component main ui {
+component main node {
     vbox {
         first()
         second()

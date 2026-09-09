@@ -7,7 +7,7 @@ struct User {
     loggedIn bool = false
 }
 
-component Counter(label = "") ui {
+component Counter(label = "") node {
     var count = 0
 
     hbox {
@@ -17,7 +17,7 @@ component Counter(label = "") ui {
     }
 }
 
-component main ui {
+component main node {
     var (
         user = User{name="World", age=25, loggedIn=false}
         count = 0

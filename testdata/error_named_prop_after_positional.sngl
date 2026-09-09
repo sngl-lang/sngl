@@ -1,11 +1,11 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component Card(title string, subtitle string) ui {
+component Card(title string, subtitle string) node {
     text(value=title)
 }
 
-component main ui {
+component main node {
     Card(title="Hi", "oops") // ERROR(check) "positional argument after named"
 }
 

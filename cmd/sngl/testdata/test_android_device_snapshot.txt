@@ -21,7 +21,7 @@ import app "sngl:app"
 
 output { kotlin { android } }
 
-component greeter ui {
+component greeter node {
     var name = "world"
     text(value=name)
 }

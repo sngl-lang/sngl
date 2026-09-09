@@ -7,7 +7,7 @@ struct Point {
     y int = 0
 }
 
-component shapes ui {
+component shapes node {
     var p = Point{x=10, y=20}
     var name = "origin"
     text(value="{p.x}")

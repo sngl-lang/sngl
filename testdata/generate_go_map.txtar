@@ -12,7 +12,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var scores map<string, int> = {alice=10, bob=20}
     var size = 0
     button(text="count", @click {

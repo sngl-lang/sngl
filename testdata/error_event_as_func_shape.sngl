@@ -22,25 +22,25 @@ func takesAnswer(f func() int) {
     f()
 }
 
-component mismatched(@fired int) ui {
+component mismatched(@fired int) node {
     effect(@mount {
         takesString(fired) // ERROR(check) "cannot be used as"
     })
 }
 
-component tooMany(@fired int) ui {
+component tooMany(@fired int) node {
     effect(@mount {
         takesTwo(fired) // ERROR(check) "cannot be used as"
     })
 }
 
-component wantsValue(@fired int) ui {
+component wantsValue(@fired int) node {
     effect(@mount {
         takesAnswer(fired) // ERROR(check) "an event answers nothing"
     })
 }
 
-component main ui {
+component main node {
     mismatched(@fired(v) {})
     tooMany(@fired(v) {})
     wantsValue(@fired(v) {})

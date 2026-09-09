@@ -17,7 +17,7 @@ struct Handler {
     run func() string
 }
 
-component main ui {
+component main node {
     var h = Handler{run=api.fetchHello}
     button(text="Go", @click { h.run() })
     text(value="hi")

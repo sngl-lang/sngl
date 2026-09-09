@@ -47,7 +47,7 @@ func TestParseParamAttrs(t *testing.T) {
 component element(
     tag string,
     #[some.mark("^data-")] attributes map<string, string>,
-) ui {}
+) node {}
 `
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
@@ -97,14 +97,14 @@ func TestParseParamAttrForms(t *testing.T) {
 		src     string
 		wantErr bool
 	}{
-		{"bare", `component c(#[m] a) ui {}`, false},
-		{"typed", `component c(#[m] a int) ui {}`, false},
-		{"default", `component c(#[m] a = 1) ui {}`, false},
-		{"binding", `component c(#[m] :a int) ui {}`, false},
-		{"multiple", `component c(#[m] #[n("x")] a int) ui {}`, false},
+		{"bare", `component c(#[m] a) node {}`, false},
+		{"typed", `component c(#[m] a int) node {}`, false},
+		{"default", `component c(#[m] a = 1) node {}`, false},
+		{"binding", `component c(#[m] :a int) node {}`, false},
+		{"multiple", `component c(#[m] #[n("x")] a int) node {}`, false},
 		{"lambda", `func f() => func(#[m] a int) => a`, false},
-		{"event", `component c(#[m] @click) ui {}`, false},
-		{"event typed", `component c(#[m] @click E) ui {}`, false},
+		{"event", `component c(#[m] @click) node {}`, false},
+		{"event typed", `component c(#[m] @click E) node {}`, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -139,8 +139,8 @@ func TestFormatParamAttrs(t *testing.T) {
 		"component element(\n    #[some.mark(\"^data-\")]\n    attributes map<string, string>,\n) {}")
 
 	assertFormat(t,
-		`component c(#[m] #[n(1)] :a int = 2) ui {}`,
-		`component c(#[m] #[n(1)] :a int = 2) ui {}`)
+		`component c(#[m] #[n(1)] :a int = 2) node {}`,
+		`component c(#[m] #[n(1)] :a int = 2) node {}`)
 
 	assertFormat(t,
 		`func f() => func(#[m] a int) => a`,

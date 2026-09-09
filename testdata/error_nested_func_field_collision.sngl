@@ -6,7 +6,7 @@ struct Bad {
     func x() => 1 // ERROR(check) "duplicate declaration"
 }
 
-component main ui {
+component main node {
     text(value="x")
 }
 

@@ -7,7 +7,7 @@ struct Item {
     name string = ""
 }
 
-component main ui {
+component main node {
     var items list<Item> = [
         {id=1, name="a"},
         {id=2, name="b"},

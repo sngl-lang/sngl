@@ -15,7 +15,7 @@ func valueOf(n Node) int {
     return n.value
 }
 
-component main ui {
+component main node {
     var maybe option<int> = 3
     var absent option<int> = null
 

@@ -22,7 +22,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var n = 6
     var i = 0
     var total = 0

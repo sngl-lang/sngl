@@ -410,7 +410,7 @@ Naming is Pascal-case for user components, lower-case for stdlib primitives.
 import . "sngl:ui"
 import . "sngl:app"
 
-component Card(title = "", body = "") ui {
+component Card(title = "", body = "") node {
     vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=6}) {
         text(value=title, style={fontWeight="bold", fontSize=18})
         text(value=body, style={color=#555555})
@@ -434,7 +434,7 @@ Each component instance has independent state. A counter component with its own 
 import . "sngl:ui"
 import . "sngl:app"
 
-component Counter(label = "") ui {
+component Counter(label = "") node {
     var count = 0
     hbox(style={gap=8, alignItems="center"}) {
         text(value="{label}: {count}", style={flex=1})
@@ -462,7 +462,7 @@ Slots let you build reusable shells — dialogs, cards, panels — without coupl
 import . "sngl:ui"
 import . "sngl:app"
 
-component Panel(title = "", content ...component) ui {
+component Panel(title = "", content ...component) node {
     vbox(style={gap=8, padding=12, background=#ffffff, borderRadius=8}) {
         text(value=title, style={fontWeight="bold", fontSize=18, color=#333333})
         content
@@ -525,14 +525,14 @@ Inside the library itself, components are just normal declarations. The example 
 import . "sngl:ui"
 import . "sngl:app"
 
-component Card(title = "", content ...component) ui {
+component Card(title = "", content ...component) node {
     vbox(style={gap=6, padding=12, background=#ffffff, borderRadius=8}) {
         text(value=title, style={fontWeight="bold", fontSize=18})
         content
     }
 }
 
-component Stat(label = "", value = 0) ui {
+component Stat(label = "", value = 0) node {
     hbox(style={gap=12, alignItems="center"}) {
         text(value=label, style={flex=1, color=#555555})
         text(value=string(value), style={fontWeight="bold"})
@@ -618,7 +618,7 @@ import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:platform/bubbletea"
 
-component Collapsible(title = "", body = "") ui {
+component Collapsible(title = "", body = "") node {
     if PLATFORM == html.platform {
         html.details(style={padding="8px", background="#e0f7fa", borderRadius="6px"}) {
             html.summary(innerText=title, style={cursor="pointer", fontWeight="bold"})
@@ -712,7 +712,7 @@ The example below builds a small stats dashboard from a `Stat` component. Adjust
 import . "sngl:ui"
 import . "sngl:app"
 
-component Stat(label = "", value = 0, accent color = #2196f3) ui {
+component Stat(label = "", value = 0, accent color = #2196f3) node {
     vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=8}) {
         text(value=label, style={color=#888888})
         text(value=string(value), style={fontSize=28, fontWeight="bold", color=accent})
@@ -750,7 +750,7 @@ import . "sngl:app"
 
 context #theme("light")
 
-component Card(label = "") ui {
+component Card(label = "") node {
     text(value="{label}: {theme}", style={padding=12})
 }
 
@@ -782,7 +782,7 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:i18n"
 
-component Cart(count = 0, price = 0) ui {
+component Cart(count = 0, price = 0) node {
     vbox(style={gap=4, padding=8}) {
         text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
         text(value="total: " + i18n.numberInt(price, "decimal"))

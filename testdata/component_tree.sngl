@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // tree: state-binding fixture — mutating the bound `selected`
 // label changes the chosen node.
-component main ui {
+component main node {
     var sel = ""
     tree(items=["Documents", "Photos", "Music"], selected=sel)
 }

@@ -12,7 +12,7 @@ import (
 const slotChildSrc = `
 import . "sngl:ui"
 import . "sngl:app"
-component App() ui {
+component App() node {
     var rows list<string> = ["a", "b", "c"]
     var picked string = ""
     text(value="picked=" + picked)

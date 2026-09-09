@@ -17,7 +17,7 @@ stderr '--opt gir='
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var name = "world"
     text(value=name)
 }

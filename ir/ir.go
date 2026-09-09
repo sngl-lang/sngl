@@ -193,16 +193,16 @@ func (p *Package) IsProgram() bool {
 	return found
 }
 
-// UsesTree reports whether a member of the tree that pkg declares as name
-// reaches this package. Matched on the declaring package as well as the name,
-// because a tree is its declaration: a program's own `struct shape` is not the
-// one sngl:ui/draw paints.
-func (p *Package) usesTree(pkg, name string) bool {
+// usesTreeRole reports whether a member of the tree carrying kind reaches this
+// package. Matched on the mark rather than on a name, because a tree is its
+// declaration: a program's own `struct shape` is not the one sngl:ui/draw
+// paints, and carries no mark saying it is.
+func (p *Package) usesTreeRole(kind BuiltinKind) bool {
 	if p == nil {
 		return false
 	}
 	for sd := range p.TreeKinds {
-		if sd.Pkg == pkg && sd.Name == name {
+		if isTreeRole(sd, kind) {
 			return true
 		}
 	}
@@ -220,53 +220,29 @@ func (p *Package) NoteTreeKind(sd *StructDef) {
 	p.TreeKinds[sd] = true
 }
 
-// isTreeNamed reports whether sd is the tree that pkg declares as name.
-func isTreeNamed(sd *StructDef, pkg, name string) bool {
-	return sd != nil && sd.IsTree && sd.Pkg == pkg && sd.Name == name
+// isTreeRole reports whether sd is the tree carrying kind. The three roles a
+// phase asks after are marked on their declarations (#[marks.builtin]), so
+// nothing here spells a package and a name: a tree renamed or moved keeps its
+// role, and a program declaring `struct shape` of its own does not acquire one.
+func isTreeRole(sd *StructDef, kind BuiltinKind) bool {
+	return sd != nil && sd.IsTree && sd.Builtin == kind
 }
 
-// The drawing tree is sngl:ui/draw's `shape`, and this is the only place the
-// compiler spells it. passCanvas emits that package's own primitives, so it is
-// the one tree there are rules about; a tree that carried its own would need
-// none of this.
-const (
-	drawPkg   = "sngl:ui/draw"
-	shapeTree = "shape"
-)
-
 // IsDrawShapeTree reports whether sd is the drawing tree.
-func IsDrawShapeTree(sd *StructDef) bool { return isTreeNamed(sd, drawPkg, shapeTree) }
-
-// The widget family, sngl:ui's `ui`. It is the one tree whose members are
-// ordinary components -- a button composes away into its caller the way any
-// wrapper does -- so the passes that ask "is this rendered rather than
-// composed" have to tell it from a specialised family. Every other tree
-// answers yes by existing.
-const (
-	uiPkg  = "sngl:ui"
-	uiTree = "ui"
-)
+func IsDrawShapeTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeShape) }
 
 // IsUITree reports whether sd is the widget family.
-func IsUITree(sd *StructDef) bool { return isTreeNamed(sd, uiPkg, uiTree) }
-
-// The family a package body accepts, sngl:app's `root`. A component that names
-// it renders windows rather than widgets, which is what lets a program decide
-// at build time which windows it contains.
-const (
-	appPkg   = "sngl:app"
-	rootTree = "root"
-)
+func IsUITree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeNode) }
 
 // IsAppRootTree reports whether sd is the family a package body accepts.
-func IsAppRootTree(sd *StructDef) bool { return isTreeNamed(sd, appPkg, rootTree) }
+func IsAppRootTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeRoot) }
 
 // IsSegmentedTree reports whether sd is a tree with its own rendering rules --
 // any tree but the widget family.
 func IsSegmentedTree(sd *StructDef) bool { return sd != nil && sd.IsTree && !IsUITree(sd) }
 
 // UsesDrawShapes reports whether a member of the drawing tree reaches p.
-func (p *Package) UsesDrawShapes() bool { return p.usesTree(drawPkg, shapeTree) }
+func (p *Package) UsesDrawShapes() bool { return p.usesTreeRole(BuiltinTreeShape) }
 
 // Import records a resolved import.
 type Import struct {

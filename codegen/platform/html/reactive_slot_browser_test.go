@@ -14,7 +14,7 @@ func TestReactiveSlot_CarouselShowsOneAtATime(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component Car() ui {
+component Car() node {
     var a = 0
     button(text="next", @click { a = (a + 1) % 2 })
     stack {

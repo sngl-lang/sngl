@@ -9,7 +9,7 @@ struct Point {
 
 func originPlus(p Point) => p.x + p.y
 
-component main ui {
+component main node {
     var named Point = {x=3, y=4}
     var inline = {x=1, y=2}
     var fromCall = originPlus({x=5, y=6})

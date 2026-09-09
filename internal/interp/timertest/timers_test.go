@@ -22,7 +22,7 @@ import (
 const twoTimersSrc = `import . "sngl:ui"
 import . "sngl:time"
 
-component main ui {
+component main node {
     var (
         fast = 0
         slow = 0
@@ -193,7 +193,7 @@ func TestRetargetReschedulesAChangedInterval(t *testing.T) {
 	edited := envFor(t, `import . "sngl:ui"
 import . "sngl:time"
 
-component main ui {
+component main node {
     var (
         fast = 0
         slow = 0
@@ -225,7 +225,7 @@ func TestADisabledTimerDescribesNoDeadline(t *testing.T) {
 	env := envFor(t, `import . "sngl:ui"
 import . "sngl:time"
 
-component main ui {
+component main node {
     var (
         n = 0
         on = false
@@ -264,7 +264,7 @@ component main ui {
 const sessionSrc = `import . "sngl:ui"
 import . "sngl:time"
 
-component main ui {
+component main node {
     var (
         count = 0
         label = "start"
@@ -324,7 +324,7 @@ func TestReloadDoesNotRestartTimerPhase(t *testing.T) {
 	edited := sessionSrc[:0] + `import . "sngl:ui"
 import . "sngl:time"
 
-component main ui {
+component main node {
     var (
         count = 0
         label = "restarted"

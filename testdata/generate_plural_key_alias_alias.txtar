@@ -21,7 +21,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var n int = 2
     text(value=t.plural(n, {t.one="one item", t.other="many items"}))
 }

@@ -11,7 +11,7 @@ exists tapp
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="hi")
 }
 
@@ -24,7 +24,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     text(value="hi")
 }
 

@@ -45,7 +45,7 @@ func formatDoc(doc *ast.Document) string {
 func TestOptimize_ConstFolding(t *testing.T) {
 	src := `
 const x = 2 + 3
-component main ui {
+component main node {
 	text(value=string(x))
 }
 `
@@ -65,7 +65,7 @@ func TestOptimize_ConstExprFolds(t *testing.T) {
 	// in the output.
 	src := `
 const x = const (3 + 4)
-component main ui {
+component main node {
 	text(value=string(x))
 }
 `
@@ -82,7 +82,7 @@ func TestOptimize_ConstExprFoldsPureCall(t *testing.T) {
 	src := `
 func double(x int) int { return x * 2 }
 const x int = const double(21)
-component main ui {
+component main node {
 	text(value=string(x))
 }
 `
@@ -110,7 +110,7 @@ func TestOptimize_IfConstTrue(t *testing.T) {
 	src := `
 const gate = "html"
 
-component main ui {
+component main node {
 	if gate == "html" {
 		text(value="yes")
 	}
@@ -127,7 +127,7 @@ func TestOptimize_IfConstFalse(t *testing.T) {
 	src := `
 const gate = "html"
 
-component main ui {
+component main node {
 	if gate == "bubbletea" {
 		text(value="no")
 	}
@@ -144,7 +144,7 @@ func TestOptimize_ConstPropagation(t *testing.T) {
 	src := `
 const greeting = "hello"
 const msg = greeting + " world"
-component main ui {
+component main node {
 	text(value=msg)
 }
 `
@@ -162,7 +162,7 @@ func TestOptimize_FunctionInlining(t *testing.T) {
 	src := `
 func double(x int) => x * 2
 
-component main ui {
+component main node {
 	text(value=string(double(21)))
 }
 `
@@ -213,7 +213,7 @@ func TestOptimize_ShakeUnusedConst(t *testing.T) {
 	src := `
 const used = 1
 const unused = 2
-component main ui {
+component main node {
 	text string(used)
 }
 `
@@ -229,7 +229,7 @@ func TestOptimize_ShakeUnusedFunc(t *testing.T) {
 	src := `
 func used() => 1
 func unused() => 2
-component main ui {
+component main node {
 	text(value=string(used()))
 }
 `
@@ -248,7 +248,7 @@ func TestOptimize_KeepStructUsedOnlyAsType(t *testing.T) {
 	// for the shake.go walkType-on-Var/LocalVar/Func-type fix.
 	src := `
 struct User { name string = "" }
-component main ui {
+component main node {
 	var picked option<User> = null
 	text(value="hi")
 }
@@ -275,7 +275,7 @@ struct TreeNode {
 	value int = 0
 	left dyn = null
 }
-component main ui {
+component main node {
 	var tree = TreeNode{value=5, left=TreeNode{value=3}}
 	text(value=string(tree.value))
 }
@@ -309,7 +309,7 @@ component main ui {
 func TestOptimize_KeepTestFunc(t *testing.T) {
 	src := `
 func testFoo() => 1
-component main ui {
+component main node {
 	text(value="hi")
 }
 `
@@ -338,12 +338,12 @@ func TestOptimize_EmptyPkg(t *testing.T) {
 func TestOptimize_PropPropagatesAsConst(t *testing.T) {
 	src := `
 const items = ["a", "b"]
-component Row(entries list<string> = []) ui {
+component Row(entries list<string> = []) node {
 	for var x = entries {
 		text(value=x)
 	}
 }
-component main ui {
+component main node {
 	Row(entries=items)
 }
 `
@@ -394,7 +394,7 @@ component main ui {
 func TestFoldDoesNotCollapseDerefOfAddrOfConst(t *testing.T) {
 	src := `
 const k int = 5
-component main ui {
+component main node {
     var p ref<int> = &k
     var v int = *p
 }
@@ -535,7 +535,7 @@ func TestOptimize_ImportedComponentForUnrolls(t *testing.T) {
 		"main.sngl": &fstest.MapFile{Data: []byte(`
 import . "sngl:ui"
 import "lib"
-component main ui {
+component main node {
 	lib.List()
 }
 `)},
@@ -543,7 +543,7 @@ component main ui {
 import . "sngl:ui"
 
 const tags = ["x", "y"]
-component List() ui {
+component List() node {
 	for var t = tags {
 		text(value=t)
 	}

@@ -21,7 +21,7 @@ import app "sngl:app"
 
 output { none { html } }
 
-component greeter ui {
+component greeter node {
     var name = "world"
     vbox {
         text(value=name)

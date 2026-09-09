@@ -4,24 +4,24 @@ import app "sngl:app"
 
 // A user component is expanded: a snapshot is the rendered tree, not the
 // authored one, so `badge` never appears and what its body renders does.
-component badge(label string) ui {
+component badge(label string) node {
     text(value="[{label}]")
 }
 
 // A component with no visual body renders nothing at all.
-component holder ui {
+component holder node {
     var n = 0
 }
 
 // What a call site supplies is part of what renders, at the insertion point.
-component frame(children ...component, header component) ui {
+component frame(children ...component, header component) node {
     vbox {
         header {}
         children
     }
 }
 
-component page ui {
+component page node {
     var title = "Report"
 
     vbox {

@@ -9,7 +9,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(Row)) ui {
+component table(rows list<Row>, cell component(Row)) node {
     vbox {
         for var r = rows {
             cell(r)
@@ -17,7 +17,7 @@ component table(rows list<Row>, cell component(Row)) ui {
     }
 }
 
-component main ui {
+component main node {
     vbox {
         table(rows=[]) {
             component cell(row = Row{title="x"}) { // ERROR(check) "parameter \"row\" takes no default value"

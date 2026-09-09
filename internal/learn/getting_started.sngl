@@ -8,7 +8,7 @@ import . "sngl:app"
 // branches; no JS hacks, no innerHTML escape paths for the prose.
 import "internal/docui"
 
-component GettingStarted() ui {
+component GettingStarted() node {
     var runPlatform = "html"
     var generateLang = "go"
     var embedLang = "go"
@@ -22,7 +22,7 @@ component GettingStarted() ui {
         docui.Paragraph(value="A SNGL app is a tree of components rooted at one called `main`. The smallest app is a single text node:")
         docui.CodeBlock(code=`import . "sngl:ui"
 
-component main ui {
+component main node {
     text(value="Hello, World!")
 }`, language="sngl")
         docui.Paragraph(value="Save it as `hello.sngl` and run:")
@@ -32,7 +32,7 @@ component main ui {
         docui.Paragraph(value="State is declared with `var` (mutable) or zero-arg `func` (derived). The `:value` prefix on a prop is two-way binding: changes flow both ways.")
         docui.CodeBlock(code=`import . "sngl:ui"
 
-component main ui {
+component main node {
     var name = "World"
     func greeting() => "Hello, {name}!"
     vbox(style={gap=8, padding=16}) {
@@ -105,7 +105,7 @@ struct Todo {
     done bool = false
 }
 
-component main ui {
+component main node {
     var (
         newTodo = ""
         todos list<Todo> = []
@@ -137,7 +137,7 @@ component main ui {
         docui.CodeBlock(code=`import . "sngl:ui"
 import "go:myapp/store"
 
-component main ui {
+component main node {
     var todos list<Todo> = store.Load() @change {
         store.Save(todos)
     }

@@ -46,13 +46,13 @@ func runWith(f func(int)) {
     f(7)
 }
 
-component direct(@fired) ui {
+component direct(@fired) node {
     effect(@mount {
         run(fired)
     })
 }
 
-component wrapped(@fired) ui {
+component wrapped(@fired) node {
     effect(@mount {
         run(func() {
             fired()
@@ -60,13 +60,13 @@ component wrapped(@fired) ui {
     })
 }
 
-component carries(@fired int) ui {
+component carries(@fired int) node {
     effect(@mount {
         runWith(fired)
     })
 }
 
-component main ui {
+component main node {
     var (
         a = 0
         b = 0

@@ -22,7 +22,7 @@ output {
 
 const two list<int> = [1, 2]
 
-component main ui {
+component main node {
     vbox {
         for var x = two {
             text(value="item {x}")

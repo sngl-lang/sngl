@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component box ui {
+component box node {
     var maybe option<int> = null
     var set option<int> = 42
     text(value="hi")

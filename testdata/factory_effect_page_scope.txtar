@@ -33,13 +33,13 @@ output {
     }
 }
 
-component Row(label string) ui {
+component Row(label string) node {
     var log list<string> = []
     effect(on=label, @mount { log.push("+") }, @unmount { log.push("-") })
     text(value=label + "[" + log.join(",") + "]")
 }
 
-component App() ui {
+component App() node {
     var on = true
     button(text="toggle", @click { on = !on })
     if on {

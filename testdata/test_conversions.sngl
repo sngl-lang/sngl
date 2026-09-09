@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component conv ui {
+component conv node {
     var count = 42
     var rate = 3.14
     var label = "hello"

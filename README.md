@@ -18,7 +18,7 @@ struct Todo {
     done bool = false
 }
 
-component main ui {
+component main node {
     var (
         newTodo = ""
         todos list<Todo> = []

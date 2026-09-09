@@ -11,11 +11,11 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component OneWay(count int) ui {
+component OneWay(count int) node {
     text(value=string(count))
 }
 
-component main ui {
+component main node {
     var n = 0
 
     OneWay(:count=n) // ERROR(check) "one-way prop"

@@ -5,11 +5,11 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component Holder(value dyn) ui {
+component Holder(value dyn) node {
     text(value="held")
 }
 
-component main ui {
+component main node {
     Holder(value=1)
     Holder(value="two")
 }

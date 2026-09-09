@@ -2,7 +2,7 @@ caps: NoToggle
 -- input.sngl --
 import . "sngl:ui"
 
-component main ui {
+component main node {
     var on bool = true
     var ready bool = false
 
@@ -15,7 +15,7 @@ component main ui {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main ui {
+component main node {
     var on bool = true
     var ready bool = false
     func toggleBoth(this main) {

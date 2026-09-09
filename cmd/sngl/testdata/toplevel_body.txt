@@ -1,6 +1,6 @@
 # A program's top level is its windows. The package body is a slot for the
 # root tree and a window is that tree's one renderable member, so what a file's
-# root holds is windows -- and a `ui` node there is the ordinary tree error
+# root holds is windows -- and a `node` there is the ordinary tree error
 # (testdata/error_toplevel_ui_node.sngl). `component main` is not a wrapper a
 # program writes either way (#135, #208).
 #
@@ -81,7 +81,7 @@ window {
     counter()
 }
 
-component counter ui {
+component counter node {
     var n = 0
     vbox {
         text(value="{n}")

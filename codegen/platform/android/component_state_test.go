@@ -21,7 +21,7 @@ struct Item {
     name string = ""
 }
 
-component card(name = "") ui {
+component card(name = "") node {
     var clicks = 0
     var tags list<string> = ["a"]
     func label() => "{name}:{clicks}:{tags.length()}"

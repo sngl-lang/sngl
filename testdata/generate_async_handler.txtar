@@ -13,7 +13,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var greeting = ""
     button(text="Go", @click {
         greeting = api.fetchHello("world")

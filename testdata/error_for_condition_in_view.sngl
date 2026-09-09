@@ -5,7 +5,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var n int = 0
 
     for n < 3 { // ERROR(check) "cannot be written in a view body"

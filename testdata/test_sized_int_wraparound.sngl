@@ -5,7 +5,7 @@ import app "sngl:app"
 // Runtime two's-complement wraparound at each signed width. The operands are
 // concrete-typed locals, so the arithmetic runs in the interpreter/opeval at
 // the declared width and the result wraps (no compile-time range check).
-component wrap ui.ui {
+component wrap ui.node {
     var dummy = 0
 }
 

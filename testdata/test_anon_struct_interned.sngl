@@ -16,7 +16,7 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component main ui {
+component main node {
     var (
         one = {a=1, b=2}
         two = {b=4, a=3}

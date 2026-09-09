@@ -6,4 +6,4 @@ import . "sngl:ui"
 // HOVER(Counter) "step"
 // HOVER(Counter) "(required)"
 // A counter button.
-component Counter(label string, step int = 1) ui { vbox {} }
+component Counter(label string, step int = 1) node { vbox {} }

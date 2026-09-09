@@ -20,7 +20,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var n = 0
     scroll(@scrollEnd { n = n + 1 }) {
         text(value=string(n))

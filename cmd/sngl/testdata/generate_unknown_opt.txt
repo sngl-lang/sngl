@@ -16,7 +16,7 @@ output {
     none { html }
 }
 
-component main ui {
+component main node {
     text(value="hi")
 }
 

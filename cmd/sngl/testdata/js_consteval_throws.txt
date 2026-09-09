@@ -25,7 +25,7 @@ import app "sngl:app"
 const bad = lib.boom()
 const good = lib.fine()
 
-component main ui {
+component main node {
     text(value=bad)
     text(value=good)
 }

@@ -7,7 +7,7 @@ struct Pair {
     val int = 0
 }
 
-component main ui {
+component main node {
     const (
         MSG = "count: {string(10)}"
         ITEMS = [1, 2, 3]

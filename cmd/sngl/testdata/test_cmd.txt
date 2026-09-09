@@ -38,7 +38,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component math ui {
+component math node {
     var x = 0
     text(value="{x}")
 }
@@ -65,7 +65,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component counter ui {
+component counter node {
     var n = 0
     text(value="{n}")
 }
@@ -80,7 +80,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
 }
 
 app.window {
@@ -91,7 +91,7 @@ import . "sngl:test"
 import ui "sngl:ui"
 import app "sngl:app"
 
-component broken ui.ui {
+component broken ui.node {
     var x = unknownFunc()
 }
 

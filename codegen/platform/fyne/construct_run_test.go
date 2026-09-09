@@ -19,7 +19,7 @@ import . "sngl:ui"
 import . "sngl:macro"
 import app "sngl:app"
 
-component card(#[construct] seed int, name = "") ui {
+component card(#[construct] seed int, name = "") node {
     var clicks = seed
     button(text="{name} ({clicks})", @click { clicks += 1 })
 }

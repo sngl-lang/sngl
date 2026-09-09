@@ -10,6 +10,6 @@ import ui "sngl:ui"
 app.window {
     app.errorBoundary(@error(e) {}) {
         ui.text(value="a widget")
-        d.circle(cx=1.0, cy=1.0, r=1.0) // ERROR(check) "expected ui component in errorBoundary, got circle"
+        d.circle(cx=1.0, cy=1.0, r=1.0) // ERROR(check) "expected node component in errorBoundary, got circle"
     }
 }

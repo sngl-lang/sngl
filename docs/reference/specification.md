@@ -1401,7 +1401,7 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list<Row>, cell component(Row)) ui { vbox { for var r = rows { cell(r) } } }
+component table(rows list<Row>, cell component(Row)) node { vbox { for var r = rows { cell(r) } } }
 var rs list<Row> = []
 -->
 
@@ -1424,7 +1424,7 @@ supply by name:
 ```sngl
 import . "sngl:ui"
 
-component card(header component, content ...component) ui {
+component card(header component, content ...component) node {
     vbox {
         header {}
         content

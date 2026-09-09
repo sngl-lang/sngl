@@ -4,7 +4,7 @@ import "sngl:platform/html"
 // Paragraph renders a block of prose. Generic platforms get a styled text
 // node; html emits a real <p> so default browser typography (margins, line
 // height) applies.
-component Paragraph(value = "") ui {
+component Paragraph(value = "") node {
     if PLATFORM == html.platform {
         html.p(innerText=value)
     } else {

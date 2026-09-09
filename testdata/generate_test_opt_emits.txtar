@@ -16,7 +16,7 @@ import app "sngl:app"
 
 output(test=true) { go { bubbletea() } }
 
-component main ui {
+component main node {
     var count = 0
     button(text="+", @click { count += 1 })
     text(value="x")

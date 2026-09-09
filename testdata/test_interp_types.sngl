@@ -4,7 +4,7 @@ import . "sngl:test"
 
 enum Status { active, inactive, pending }
 
-component view ui {
+component view node {
     var n = 42
     var f = 3.14
     var b = true

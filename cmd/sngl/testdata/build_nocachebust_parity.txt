@@ -11,7 +11,7 @@ exists gen2/index.html
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     text(value="x")
 }
 

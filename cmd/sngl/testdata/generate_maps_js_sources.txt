@@ -19,7 +19,7 @@ stdout 'map ok'
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 0
     text(value=string(count))
     button(text="+", @click { count += 1 })

@@ -4,7 +4,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var xs list<int> = [1]
 
     for var x = xs {

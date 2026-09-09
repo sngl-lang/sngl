@@ -9,7 +9,7 @@ import . "sngl:macro"
 component seeded(
     #[construct] start int,
     label string,
-) ui {
+) node {
     var n = start
     text(value=label + string(n))
 }
@@ -17,7 +17,7 @@ component seeded(
 component doubled(
     #[construct]
     #[construct] start int, // ERROR(check) "already construct-only"
-) ui {
+) node {
     text(value=string(start))
 }
 

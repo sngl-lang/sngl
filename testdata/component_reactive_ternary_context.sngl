@@ -10,11 +10,11 @@ import app "sngl:app"
 // the consumers carry a reactive dep on `dark`.
 context #theme("light")
 
-component ThemedBox(label = "") ui {
+component ThemedBox(label = "") node {
     text(value="{label}: {theme}")
 }
 
-component main ui {
+component main node {
     var dark = false
     vbox {
         button(text="toggle", @click { dark = !dark })

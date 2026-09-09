@@ -4,6 +4,6 @@ import . "sngl:ui"
 // HOVER(r=255) "int"
 // HOVER(r=255) "field on `struct color`"
 // HOVER(g=0) "color.g:"
-component App ui {
+component App node {
     var hot = color{r=255, g=0, b=0, a=255}
 }

@@ -12,7 +12,7 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component main ui {
+component main node {
     var (
         a = 3
         b = 4

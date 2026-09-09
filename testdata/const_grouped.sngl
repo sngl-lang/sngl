@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component main ui {
+component main node {
     const (
         MAX_ITEMS = 100
         DEFAULT_NAME = "unnamed"

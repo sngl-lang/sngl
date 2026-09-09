@@ -15,7 +15,7 @@ import app "sngl:app"
 unit duration { ms, s = 1000ms, m = 60s }
 unit distance { mm, cm = 10mm, m = 100cm }
 
-component main ui {
+component main node {
     var noType = 5ms             // ERROR(check) "needs a unit type here"
     var wrongUnit distance = 5ms // ERROR(check) "cannot initialize distance"
     var unknown duration = 5xyz  // ERROR(check) "has no suffix"

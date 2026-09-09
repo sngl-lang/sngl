@@ -54,7 +54,7 @@ func emptyWidth(e struct {}) => 0
 const a = 1
 const b = 2
 
-component main ui {
+component main node {
     var (
         empty = {}
         pair = {a=a, b=b}

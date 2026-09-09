@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // popover: state-binding fixture — toggling bound `open` shows
 // or hides the popover panel.
-component main ui {
+component main node {
     var visible = false
     popover(open=visible, position="bottom", openOn="click") {
         button(text="toggle")

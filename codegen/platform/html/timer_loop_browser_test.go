@@ -24,7 +24,7 @@ func TestTimer_ARowOfTimersKeepsOneScheduleEach(t *testing.T) {
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:time"
-component App() ui {
+component App() node {
     var fast = 0
     var slow = 0
     var periods list<duration> = [20ms, 500ms]

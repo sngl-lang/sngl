@@ -16,7 +16,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var count = 0
     button(text="+", @click { count += 1 })
     text(value="Count: {count}")

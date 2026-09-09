@@ -13,7 +13,7 @@ import (
 const nestedRegistrySrc = `
 import . "sngl:ui"
 import app "sngl:app"
-component nest(tag string, depth int, note func(string)) ui {
+component nest(tag string, depth int, note func(string)) node {
     var kids list<string> = depth > 0 ? [tag + "-"] : []
     effect(on=tag, @unmount { note(tag) })
     text(value="[" + tag + "]")

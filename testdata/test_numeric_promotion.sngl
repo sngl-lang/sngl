@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component promo ui {
+component promo node {
     var i int = 3
     var f float = 1.5
     text(value="hi")

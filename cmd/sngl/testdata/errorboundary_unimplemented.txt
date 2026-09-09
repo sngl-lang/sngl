@@ -24,7 +24,7 @@ sngl generate --platform=android --lang=kotlin --out=an boundary.sngl
 import . "sngl:ui"
 import . "sngl:app"
 
-component main ui {
+component main node {
     var caught = ""
     errorBoundary(@error(e) { caught = e.message }) {
         button #go(text="Go", @click { error.raise("boom", "") })

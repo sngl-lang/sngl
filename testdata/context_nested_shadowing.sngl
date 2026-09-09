@@ -3,7 +3,7 @@ import . "sngl:app"
 
 context #theme("outer-default")
 
-component Show ui {
+component Show node {
     text(value=theme)
 }
 

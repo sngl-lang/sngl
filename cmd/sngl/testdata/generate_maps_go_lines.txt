@@ -34,7 +34,7 @@ import app "sngl:app"
 
 output { go { bubbletea } }
 
-component main ui {
+component main node {
     var count = 0
     text(value=string(count))
     button(text="+", @click { count += 1 })

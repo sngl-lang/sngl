@@ -4,7 +4,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import app "sngl:app"
 
-component mapIntKeys ui {
+component mapIntKeys node {
     var grades map<int, string> = {
         1 = "one",
         2 = "two",

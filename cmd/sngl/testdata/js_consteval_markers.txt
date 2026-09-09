@@ -30,7 +30,7 @@ import . "sngl:ui"
 import lib "js:./lib"
 import app "sngl:app"
 
-component main ui {
+component main node {
     // Bound to state rather than used inline: an unfolded call is shipped as
     // the module's own function, which is what the negative assertions look
     // for. An inline use of one is dropped instead, and asserts nothing.

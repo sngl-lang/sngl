@@ -16,7 +16,7 @@ func TestComponentNonConstPropReactivity(t *testing.T) {
 import . "sngl:ui"
 import app "sngl:app"
 output { none { html() } }
-component Stat(label = "", value = 0) ui {
+component Stat(label = "", value = 0) node {
     vbox {
         text(value=label)
         text(value=string(value))

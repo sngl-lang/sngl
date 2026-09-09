@@ -15,7 +15,7 @@ func testMethodSyntaxCalls(t Test, c main) {
     t.assert(c.name.exclaim() == "hello!")
 }
 
-component main ui {
+component main node {
     var (
         n = 5
         name = "hello"

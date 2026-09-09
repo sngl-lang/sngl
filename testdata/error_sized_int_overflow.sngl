@@ -5,7 +5,7 @@ import ui "sngl:ui"
 // following the untyped-constant model: literals adopt the annotated type,
 // but only if they fit. (Runtime *values* wrap; compile-time *constants*
 // are rejected — see sized_int_wraparound.sngl for the runtime side.)
-component overflows ui.ui {
+component overflows ui.node {
     var a int8 = 200 // ERROR(check) "overflows int8"
 }
 

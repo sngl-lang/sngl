@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component Counter(label = "") ui {
+component Counter(label = "") node {
     var count = 0
 
     hbox {
@@ -11,7 +11,7 @@ component Counter(label = "") ui {
     }
 }
 
-component main ui {
+component main node {
     var (
         count = 0
         name = "World"

@@ -2,7 +2,7 @@ import . "sngl:ui"
 import app "sngl:app"
 
 // A void method referenced bare types void, not dyn -- the same as calling it.
-component main ui {
+component main node {
     var n = 0
 
     func bump() {

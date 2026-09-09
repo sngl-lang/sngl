@@ -9,7 +9,7 @@ struct Cfg {
     b int = 0
 }
 
-component main ui {
+component main node {
     var base Cfg = {a=1}
     var merged Cfg = {...base, b=2}
     text(value=string(merged.a) + "/" + string(merged.b))

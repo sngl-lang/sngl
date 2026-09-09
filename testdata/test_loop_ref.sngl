@@ -13,7 +13,7 @@ struct Task {
     done bool = false
 }
 
-component main ui {
+component main node {
     var tasks list<Task> = [{label="a", done=false}, {label="b", done=true}]
     var nums list<int> = [1, 2, 3]
 

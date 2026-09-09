@@ -25,7 +25,7 @@ func sleep(ns int)
 #[go.async]
 func host() string
 
-component main ui {
+component main node {
     var (
         greeting = "idle"
         busy = false

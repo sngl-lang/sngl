@@ -20,7 +20,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main ui { text(value="") }
+component main node { text(value="") }
 -->
 
 ```sngl
@@ -44,7 +44,7 @@ import . "sngl:dialog"
 import . "sngl:test"
 import "shared"
 
-component main ui {
+component main node {
     var w shared.Widget
     text(value=w.name)
 }
@@ -59,7 +59,7 @@ import . "sngl:dialog"
 import . "sngl:test"
 import "go:go/ast"
 
-component main ui {
+component main node {
     var file ast.File
     text(value=string(file))
 }
@@ -142,7 +142,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main ui {
+component main node {
 }
 ```
 
@@ -158,7 +158,7 @@ output {
     js { html }
 }
 
-component main ui {
+component main node {
     text(value="Hello, SNGL")
 }
 ```
@@ -661,7 +661,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component Counter(label = "", start = 0) ui {
+component Counter(label = "", start = 0) node {
     var count = start
     hbox {
         text(value="{label}: {count}")
@@ -684,7 +684,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component MyWidget(label = "default", count int, size enum { small, medium, large } = medium) ui {
+component MyWidget(label = "default", count int, size enum { small, medium, large } = medium) node {
     text(value=label)
 }
 ```
@@ -692,7 +692,7 @@ component MyWidget(label = "default", count int, size enum { small, medium, larg
 Without a default, params use the type's zero value. Parents pass params as named arguments:
 
 <!-- SNGL-component
-component Counter(label = "", start = 0) ui { text(value=label) }
+component Counter(label = "", start = 0) node { text(value=label) }
 -->
 
 ```sngl
@@ -705,7 +705,7 @@ Counter()
 Components can use other components:
 
 <!-- SNGL-component
-component Counter(label = "", start = 0) ui { text(value=label) }
+component Counter(label = "", start = 0) node { text(value=label) }
 -->
 
 ```sngl
@@ -817,12 +817,12 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component Stepper(:count = 0) ui {
+component Stepper(:count = 0) node {
     button(text="+", @click { count += 1 })
     text(value=string(count))
 }
 
-component main ui {
+component main node {
     var steps = 0
     Stepper(:count=steps)
     text(value="Steps: {steps}")
@@ -1102,11 +1102,11 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component SaveButton(label = "Save", @save) ui {
+component SaveButton(label = "Save", @save) node {
     button(text=label, @click { save() })
 }
 
-component main ui {
+component main node {
     var status = ""
     SaveButton(@save { status = "saved" })
     text(value=status)
@@ -1125,7 +1125,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main ui {
+component main node {
     var (
         progress float = 0
         running = true
@@ -1178,7 +1178,7 @@ import . "sngl:test"
 const primary Style = Style{color=#0000ff, fontWeight="bold", fontSize=16}
 const secondary Style = Style{color=#777777, fontStyle="italic"}
 
-component main ui {
+component main node {
     vbox {
         text(value="hello", style=primary)
         text(value="world", style=secondary)
@@ -1210,7 +1210,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component counter ui {
+component counter node {
     var count = 0
     button #inc(text="+", @click { count += 1 })
     text #display(value="Count: {count}")
@@ -1269,7 +1269,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component app ui {
+component app node {
     var x = 0
     text(value="{x}")
 }
@@ -1322,7 +1322,7 @@ struct Todo {
     done bool = false
 }
 
-component main ui {
+component main node {
     var (
         newTodo = ""
         todos list<Todo> = []
@@ -1354,7 +1354,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main ui {
+component main node {
     var email = ""
     func valid() => string.contains(email, "@") && string.length(email) > 3
     vbox(style={padding=16, gap=8}) {
@@ -1375,7 +1375,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main ui {
+component main node {
     var showModal = false
     vbox(style={padding=16}) {
         button(text="Open", @click { showModal = true })
@@ -1395,7 +1395,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main ui {
+component main node {
     var (
         progress float = 0.0
         running = false
@@ -1427,7 +1427,7 @@ struct Todo {
     done bool = false
 }
 
-component main ui {
+component main node {
     var todos = [Todo{text="Write docs", done=true}, Todo{text="Fix bug", done=false}]
     func active() => todos.filter(func(t) => !t.done)
     func activeCount() => active().length()

@@ -5,7 +5,7 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     const frozen list<int> = [1, 2, 3]
     var xs list<int> = [1, 2, 3]
     var m map<string, int> = {"a"=1}

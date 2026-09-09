@@ -5,7 +5,7 @@ func pair<A, B>(a A, b B) A {
     return a
 }
 
-component main ui {
+component main node {
     var bad = pair(1) // ERROR(check) "missing required argument"
 
     text(value="x")

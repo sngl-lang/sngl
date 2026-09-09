@@ -2,7 +2,7 @@ import . "sngl:ui"
 import . "sngl:time"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var (
         bg = #ff0000
         timeout duration = 5s

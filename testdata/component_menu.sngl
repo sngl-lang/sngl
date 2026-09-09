@@ -4,7 +4,7 @@ import app "sngl:app"
 
 // menu: state-binding fixture — toggling the bound `open` var
 // shows/hides the menu.
-component main ui {
+component main node {
     var open = false
     menu(items=["Cut", "Copy", "Paste"], open=open)
 }

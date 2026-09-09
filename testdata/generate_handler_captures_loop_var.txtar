@@ -27,7 +27,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var items list<string> = ["a", "b"]
     var picked = ""
 

@@ -7,7 +7,7 @@ import app "sngl:app"
 // `text({}, "x")` and `text(style={}, value="x")` are one thing by here.
 // Handlers print after them as bare `@name` markers: a snapshot records that a
 // handler is attached, never what it would do.
-component card ui {
+component card node {
     var label = "hi"
 
     vbox {

@@ -2,13 +2,13 @@ import . "sngl:test"
 import ui "sngl:ui"
 import app "sngl:app"
 
-component main ui.ui {
+component main ui.node {
     var x = 5
 }
 
 func main.double(this main) => this.x * 2
 
-component root ui.ui {
+component root ui.node {
     main #m()
 }
 

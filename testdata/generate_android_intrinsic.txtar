@@ -27,7 +27,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     android.Column(chain=["fillMaxSize()"]) {
         android.Row #bar(modifier={padding=4}) {
             android.Spacer(modifier={height=8})

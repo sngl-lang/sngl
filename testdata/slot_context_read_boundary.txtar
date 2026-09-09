@@ -33,7 +33,7 @@ output {
 
 context #theme("light")
 
-component main ui {
+component main node {
     var caught = ""
     errorBoundary(@error(e) { caught = theme }) {
         button #go(text="Go", @click { error.raise("boom", "") })

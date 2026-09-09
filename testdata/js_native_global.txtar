@@ -25,7 +25,7 @@ func btoa(s string) string
 #[js.native("btoa")]
 func renamed(s string) string
 
-component main ui {
+component main node {
     var a = "unset"
     var b = "unset"
 

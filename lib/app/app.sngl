@@ -49,7 +49,7 @@ component window(
     href string,
     favicon string,
     @error ui.ErrorEvent,
-    content ...component ui.ui,
+    content ...component ui.node,
 ) root {}
 
 // Receiver type for raising runtime errors caught by an

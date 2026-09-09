@@ -45,7 +45,7 @@ func run(f func()) {
     f()
 }
 
-component main ui {
+component main node {
     var n = 0
 
     effect(@mount {

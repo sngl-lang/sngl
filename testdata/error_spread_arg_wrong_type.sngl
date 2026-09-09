@@ -3,7 +3,7 @@ import app "sngl:app"
 
 func f(x int, y int) int { return x + y }
 
-component main ui {
+component main node {
     var xs list<int> = [1, 2]
     var bad = f(...xs) // ERROR(check) "spread requires a struct type"
 }

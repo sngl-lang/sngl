@@ -5,19 +5,19 @@
 import . "sngl:ui"
 import app "sngl:app"
 
-component outer() ui {
-    component inner(label = "") ui {
+component outer() node {
+    component inner(label = "") node {
         text(value=label)
     }
 
     inner(label="hi")
 }
 
-component other() ui {
+component other() node {
     inner(label="nope") // ERROR(check) "undefined: inner"
 }
 
-component main ui {
+component main node {
     vbox {
         outer()
         other()

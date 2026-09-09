@@ -25,12 +25,12 @@ func TestFactory_AnEffectInsideAFactoryIsNotCalledFromThePage(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component Row(label string) ui {
+component Row(label string) node {
     var log list<string> = []
     effect(on=label, @mount { log.push("+") }, @unmount { log.push("-") })
     text(value=label + "[" + log.join(",") + "]")
 }
-component App() ui {
+component App() node {
     var on = true
     button(text="toggle", @click { on = !on })
     if on { Row(label="x") }
@@ -70,11 +70,11 @@ func TestFactory_AnInstanceAtAStaticPositionIsBuiltAndPlaced(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:app"
-component chain(n int) ui {
+component chain(n int) node {
     text(value="[" + string(n) + "]")
     if n > 0 { chain(n=n - 1) }
 }
-component App() ui {
+component App() node {
     var d = 2
     button(text="deeper", @click { d = d + 1 })
     chain(n=d)

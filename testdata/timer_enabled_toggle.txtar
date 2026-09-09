@@ -29,7 +29,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var seconds = 0
     var running = false
 

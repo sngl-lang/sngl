@@ -38,7 +38,7 @@ import app "sngl:app"
 
 const logo = here.path("logo.svg")
 
-component main ui {
+component main node {
     image(src=logo)
 }
 

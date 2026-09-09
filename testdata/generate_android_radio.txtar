@@ -28,7 +28,7 @@ output {
     }
 }
 
-component main ui {
+component main node {
     var pick = "medium"
     var chosen = ""
     var more = ["a", "b"]

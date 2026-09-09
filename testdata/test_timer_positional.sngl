@@ -19,13 +19,13 @@ func testMixedTimerProps(t Test, c main2) {
     t.assert(c.count == 1)
 }
 
-component main ui {
+component main node {
     var count = 0
     timer(100ms, true, @tick { count += 1 })
     text(value=string(count))
 }
 
-component main2 ui {
+component main2 node {
     var count = 0
     timer(100ms, enabled=true, @tick { count += 1 })
     text(value=string(count))

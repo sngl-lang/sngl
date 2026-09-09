@@ -26,7 +26,7 @@ sngl generate --platform=android --lang=kotlin --out=ok_an reads_loop_var.sngl
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
@@ -46,7 +46,7 @@ app.window {
 import . "sngl:ui"
 import app "sngl:app"
 
-component main ui {
+component main node {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
