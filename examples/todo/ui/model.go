@@ -201,7 +201,7 @@ func (m Model) View() tea.View {
 	var contentChildren []string
 	var content_0 string
 	content_0 = lipgloss.NewStyle().
-		Bold(true).Render(fmt.Sprint(m.status()))
+		Bold(true).Render(fmt.Sprint((("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")))
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Children []string

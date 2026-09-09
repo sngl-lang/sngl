@@ -15,13 +15,13 @@ struct Todo {
     done bool = false
 }
 
-component main ui {
+app.window {
     var (
         newTodo = ""
         todos list<Todo> = [
-            {text = "Buy groceries", done = false},
-            {text = "Walk the dog", done = true},
-            {text = "Write SNGL docs", done = false},
+            {text="Buy groceries", done=false},
+            {text="Walk the dog", done=true},
+            {text="Write SNGL docs", done=false},
         ]
     )
 
@@ -31,7 +31,10 @@ component main ui {
         text(value=status, style={fontWeight=bold, fontSize=24})
         hbox(style={alignItems=center, gap=8, textAlign=center}) {
             input(placeholder="Buy eggs", @input(e) { newTodo = e.value })
-            button(text="Add", @click { todos.push(Todo{text=newTodo}); newTodo = "" })
+            button(text="Add", @click {
+                todos.push(Todo{text=newTodo})
+                newTodo = ""
+            })
         }
         vbox(style={gap=4}) {
             for var index, item = todos {
@@ -40,8 +43,4 @@ component main ui {
         }
         button(text="Remove", @click { todos.remove(todos.length - 1) }, style={alignItems="center"})
     }
-}
-
-app.window {
-    main
 }

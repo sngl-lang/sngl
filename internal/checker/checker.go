@@ -1188,10 +1188,18 @@ func (c *checker) pass1() {
 				} else {
 					c.pendingPkgBody = append(c.pendingPkgBody, s)
 				}
+			case *ast.IfStmt, *ast.ForStmt:
+				// Part of the package body: an `if` or a `for` is not a node,
+				// it is how the nodes under it got there, and the root tree is
+				// what makes that the shape a program's windows are written in
+				// -- `if PLATFORM == html.platform { window … }`. Held for
+				// pass2 with the rest of the body, which is where a window
+				// inside one is built. Dropped here, a root-level branch
+				// reached nothing at all and the program rendered none of it.
+				c.pendingPkgBody = append(c.pendingPkgBody, stmt)
 			case *ast.DisabledDecl:
 			case *ast.Comment:
 			default:
-				// IfStmt, ForStmt at top level are checked in pass2.
 			}
 		}
 	}
