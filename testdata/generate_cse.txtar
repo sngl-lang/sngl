@@ -80,13 +80,13 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	total     int
-	seed      int
-	a         int
-	b         int
-	log       int
-	ticks     int
-	__focusID int
+	total__inst0 int
+	seed__inst0  int
+	a__inst0     int
+	b__inst0     int
+	log__inst0   int
+	ticks__inst0 int
+	__focusID    int
 
 	width, height int
 }
@@ -94,12 +94,12 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.total = 0
-	m.seed = 4
-	m.a = 4
-	m.b = 3
-	m.log = 0
-	m.ticks = 0
+	m.total__inst0 = 0
+	m.seed__inst0 = 4
+	m.a__inst0 = 4
+	m.b__inst0 = 3
+	m.log__inst0 = 0
+	m.ticks__inst0 = 0
 	m.__focusID = 0
 	return m
 }
@@ -110,9 +110,9 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) noisy() int {
-	m.ticks = (m.ticks + 1)
-	return m.ticks
+func (m Model) noisy__inst0() int {
+	m.ticks__inst0 = (m.ticks__inst0 + 1)
+	return m.ticks__inst0
 }
 
 func Weight(n int) int {
@@ -150,94 +150,94 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Total() int {
-	return m.total
+func (m Model) Total__inst0() int {
+	return m.total__inst0
 }
 
-func (m Model) SetTotal(v int) Model {
-	m.total = v
+func (m Model) SetTotal__inst0(v int) Model {
+	m.total__inst0 = v
 	return m
 }
 
-type setTotalMsg struct{ value int }
+type setTotal__inst0Msg struct{ value int }
 
-func SetTotalCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setTotalMsg{value: v} }
+func SetTotal__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
-func (m Model) Seed() int {
-	return m.seed
+func (m Model) Seed__inst0() int {
+	return m.seed__inst0
 }
 
-func (m Model) SetSeed(v int) Model {
-	m.seed = v
+func (m Model) SetSeed__inst0(v int) Model {
+	m.seed__inst0 = v
 	return m
 }
 
-type setSeedMsg struct{ value int }
+type setSeed__inst0Msg struct{ value int }
 
-func SetSeedCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setSeedMsg{value: v} }
+func SetSeed__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setSeed__inst0Msg{value: v} }
 }
 
-func (m Model) A() int {
-	return m.a
+func (m Model) A__inst0() int {
+	return m.a__inst0
 }
 
-func (m Model) SetA(v int) Model {
-	m.a = v
+func (m Model) SetA__inst0(v int) Model {
+	m.a__inst0 = v
 	return m
 }
 
-type setAMsg struct{ value int }
+type setA__inst0Msg struct{ value int }
 
-func SetACmd(v int) tea.Cmd {
-	return func() tea.Msg { return setAMsg{value: v} }
+func SetA__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setA__inst0Msg{value: v} }
 }
 
-func (m Model) B() int {
-	return m.b
+func (m Model) B__inst0() int {
+	return m.b__inst0
 }
 
-func (m Model) SetB(v int) Model {
-	m.b = v
+func (m Model) SetB__inst0(v int) Model {
+	m.b__inst0 = v
 	return m
 }
 
-type setBMsg struct{ value int }
+type setB__inst0Msg struct{ value int }
 
-func SetBCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setBMsg{value: v} }
+func SetB__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setB__inst0Msg{value: v} }
 }
 
-func (m Model) Log() int {
-	return m.log
+func (m Model) Log__inst0() int {
+	return m.log__inst0
 }
 
-func (m Model) SetLog(v int) Model {
-	m.log = v
+func (m Model) SetLog__inst0(v int) Model {
+	m.log__inst0 = v
 	return m
 }
 
-type setLogMsg struct{ value int }
+type setLog__inst0Msg struct{ value int }
 
-func SetLogCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setLogMsg{value: v} }
+func SetLog__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setLog__inst0Msg{value: v} }
 }
 
-func (m Model) Ticks() int {
-	return m.ticks
+func (m Model) Ticks__inst0() int {
+	return m.ticks__inst0
 }
 
-func (m Model) SetTicks(v int) Model {
-	m.ticks = v
+func (m Model) SetTicks__inst0(v int) Model {
+	m.ticks__inst0 = v
 	return m
 }
 
-type setTicksMsg struct{ value int }
+type setTicks__inst0Msg struct{ value int }
 
-func SetTicksCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setTicksMsg{value: v} }
+func SetTicks__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTicks__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -249,18 +249,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setTotalMsg:
-		m = m.SetTotal(msg.value)
-	case setSeedMsg:
-		m = m.SetSeed(msg.value)
-	case setAMsg:
-		m = m.SetA(msg.value)
-	case setBMsg:
-		m = m.SetB(msg.value)
-	case setLogMsg:
-		m = m.SetLog(msg.value)
-	case setTicksMsg:
-		m = m.SetTicks(msg.value)
+	case setTotal__inst0Msg:
+		m = m.SetTotal__inst0(msg.value)
+	case setSeed__inst0Msg:
+		m = m.SetSeed__inst0(msg.value)
+	case setA__inst0Msg:
+		m = m.SetA__inst0(msg.value)
+	case setB__inst0Msg:
+		m = m.SetB__inst0(msg.value)
+	case setLog__inst0Msg:
+		m = m.SetLog__inst0(msg.value)
+	case setTicks__inst0Msg:
+		m = m.SetTicks__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -273,13 +273,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			__cse0 := Weight(m.seed)
-			m.total = (__cse0 + (__cse0 * 2))
+			__cse0 := Weight(m.seed__inst0)
+			m.total__inst0 = (__cse0 + (__cse0 * 2))
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			__cse1 := Weight(m.a)
-			m.total = (((__cse1 * 100) + Weight(m.b)) + __cse1)
+			__cse1 := Weight(m.a__inst0)
+			m.total__inst0 = (((__cse1 * 100) + Weight(m.b__inst0)) + __cse1)
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
-			m.log = (m.noisy() + m.noisy())
+			m.log__inst0 = (m.noisy__inst0() + m.noisy__inst0())
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -312,7 +312,7 @@ func (m Model) View() tea.View {
 	part2 = lipgloss.NewStyle().Render(part2Prefix + " " + fmt.Sprint("three"))
 	parts = append(parts, part2)
 	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.total) + fmt.Sprint(m.log))))
+	part3 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.total__inst0) + fmt.Sprint(m.log__inst0))))
 	parts = append(parts, part3)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -357,36 +357,36 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var total by remember { mutableStateOf(0) }
-    var seed by remember { mutableStateOf(4) }
-    var a by remember { mutableStateOf(4) }
-    var b by remember { mutableStateOf(3) }
-    var log by remember { mutableStateOf(0) }
-    var ticks by remember { mutableStateOf(0) }
-    val noisy by remember { derivedStateOf(fun(): Int {
-        ticks = (ticks + 1)
-        return ticks
+    var total__inst0 by remember { mutableStateOf(0) }
+    var seed__inst0 by remember { mutableStateOf(4) }
+    var a__inst0 by remember { mutableStateOf(4) }
+    var b__inst0 by remember { mutableStateOf(3) }
+    var log__inst0 by remember { mutableStateOf(0) }
+    var ticks__inst0 by remember { mutableStateOf(0) }
+    val noisy__inst0 by remember { derivedStateOf(fun(): Int {
+        ticks__inst0 = (ticks__inst0 + 1)
+        return ticks__inst0
     }) }
 
     Column {
         Button(onClick = {
-            var __cse0 = weight(seed)
-            total = (__cse0 + (__cse0 * 2))
+            var __cse0 = weight(seed__inst0)
+            total__inst0 = (__cse0 + (__cse0 * 2))
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "one", modifier = Modifier)
         }
         Button(onClick = {
-            var __cse1 = weight(a)
-            total = (((__cse1 * 100) + weight(b)) + __cse1)
+            var __cse1 = weight(a__inst0)
+            total__inst0 = (((__cse1 * 100) + weight(b__inst0)) + __cse1)
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "two", modifier = Modifier)
         }
         Button(onClick = {
-            log = (noisy + noisy)
+            log__inst0 = (noisy__inst0 + noisy__inst0)
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "three", modifier = Modifier)
         }
-        Text(text = (total.toString() + log.toString()), modifier = Modifier.safeDrawingPadding())
+        Text(text = (total__inst0.toString() + log__inst0.toString()), modifier = Modifier.safeDrawingPadding())
     }
 }
 
@@ -424,11 +424,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { total: 0, seed: 4, a: 4, b: 3, log: 0, ticks: 0 };
-  function main_noisy(state2) {
-    state2.ticks = state2.ticks + 1;
-    return state2.ticks;
-  }
+  var state = { total__inst0: 0, seed__inst0: 4, a__inst0: 4, b__inst0: 3, log__inst0: 0, ticks__inst0: 0 };
   function weight(n) {
     if (n > 2) {
       ;
@@ -436,6 +432,10 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
     return 0;
+  }
+  function main_noisy__inst0(state2) {
+    state2.ticks__inst0 = state2.ticks__inst0 + 1;
+    return state2.ticks__inst0;
   }
   function String(v) {
     return "" + v;
@@ -445,21 +445,21 @@ body { font-family: system-ui, sans-serif; }
   var $2 = document.getElementById("$2");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    let __cse0 = weight(state.seed);
-    state.total = __cse0 + __cse0 * 2;
-    __n0.textContent = String(state.total) + String(state.log);
+    let __cse0 = weight(state.seed__inst0);
+    state.total__inst0 = __cse0 + __cse0 * 2;
+    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   $1.addEventListener("click", function() {
-    let __cse1 = weight(state.a);
-    state.total = __cse1 * 100 + weight(state.b) + __cse1;
-    __n0.textContent = String(state.total) + String(state.log);
+    let __cse1 = weight(state.a__inst0);
+    state.total__inst0 = __cse1 * 100 + weight(state.b__inst0) + __cse1;
+    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   $2.addEventListener("click", function() {
-    state.log = main_noisy(state) + main_noisy(state);
-    __n0.textContent = String(state.total) + String(state.log);
+    state.log__inst0 = main_noisy__inst0(state) + main_noisy__inst0(state);
+    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.total) + String(state.log);
+    __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
   }
   __sngl_init();
 })();

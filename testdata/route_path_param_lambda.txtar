@@ -21,11 +21,10 @@ output {
     }
 }
 
-component main ui.ui {
+window #home(title="t", href="/") {
     var nums list<int> = [1, 2, 3]
-    window #home(title="t", href="/") {
-        html.span(innerText=string(nums.filter(func(n) => n > 1).length()))
-    }
+
+    html.span(innerText=string(nums.filter(func(n) => n > 1).length()))
 }
 -- out/go/html/server.go --
 package ui

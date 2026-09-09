@@ -43,23 +43,23 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { scores: null, total: 0 };
-  state.scores = /* @__PURE__ */ new Map([["alice", 10], ["bob", 20]]);
+  var state = { scores__inst0: null, total__inst0: 0 };
+  state.scores__inst0 = /* @__PURE__ */ new Map([["alice", 10], ["bob", 20]]);
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    for (const [k, v] of state.scores.entries()) {
+    for (const [k, v] of state.scores__inst0.entries()) {
       ;
-      state.total = state.total + v;
-      __n0.textContent = String(state.total);
+      state.total__inst0 = state.total__inst0 + v;
+      __n0.textContent = String(state.total__inst0);
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.total);
+    __n0.textContent = String(state.total__inst0);
   }
   __sngl_init();
 })();

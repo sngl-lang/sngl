@@ -55,10 +55,10 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	items   []string
-	picked  string
-	__root  *fyne.Container
-	__slot0 []fyne.CanvasObject
+	items__inst0  []string
+	picked__inst0 string
+	__root        *fyne.Container
+	__slot0       []fyne.CanvasObject
 
 	__n2 *fyne.Container
 	__n0 *widget.Label
@@ -67,8 +67,8 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.items = []string{"a", "b"}
-	m.picked = ""
+	m.items__inst0 = []string{"a", "b"}
+	m.picked__inst0 = ""
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	return m
@@ -79,32 +79,32 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot0 = nil
-	for _, it := range m.items {
+	for _, it := range m.items__inst0 {
 		__n1 := widget.NewButton("", nil)
 		__n1.SetText(it)
 		__n1.OnTapped = func() {
-			m.picked = it
-			m.__n0.SetText(m.picked)
+			m.picked__inst0 = it
+			m.__n0.SetText(m.picked__inst0)
 		}
 		container.Add(__n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	}
 }
 
-func (m *Model) Items() []string {
-	return m.items
+func (m *Model) Items__inst0() []string {
+	return m.items__inst0
 }
 
-func (m *Model) SetItems(v []string) {
-	m.items = v
+func (m *Model) SetItems__inst0(v []string) {
+	m.items__inst0 = v
 }
 
-func (m *Model) Picked() string {
-	return m.picked
+func (m *Model) Picked__inst0() string {
+	return m.picked__inst0
 }
 
-func (m *Model) SetPicked(v string) {
-	m.picked = v
+func (m *Model) SetPicked__inst0(v string) {
+	m.picked__inst0 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
@@ -112,7 +112,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = container.NewVBox()
 	m.__renderSlot0(m.__n2)
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(m.picked)
+	m.__n0.SetText(m.picked__inst0)
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.__n2)
 	parts = append(parts, m.__n0)
@@ -134,20 +134,20 @@ import (
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	items   []string
-	picked  string
-	__root  gtk4rt.Handle
-	__slot0 []gtk4rt.Handle
-	__n2    gtk4rt.Handle
-	__n0    gtk4rt.Handle
+	items__inst0  []string
+	picked__inst0 string
+	__root        gtk4rt.Handle
+	__slot0       []gtk4rt.Handle
+	__n2          gtk4rt.Handle
+	__n0          gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.items = []string{"a", "b"}
-	m.picked = ""
+	m.items__inst0 = []string{"a", "b"}
+	m.picked__inst0 = ""
 	m.__root = nil
 	m.__slot0 = nil
 	return m
@@ -158,31 +158,31 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
-	for _, it := range m.items {
+	for _, it := range m.items__inst0 {
 		__n1 := gtk4rt.ButtonNew()
 		gtk4rt.ButtonSetLabel(__n1, it)
 		gtk4rt.Connect(__n1, "clicked", func() {
-			m.picked = it
+			m.picked__inst0 = it
 		})
 		gtk4rt.BoxAppend(parent, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	}
 }
 
-func (m *Model) Items() []string {
-	return m.items
+func (m *Model) Items__inst0() []string {
+	return m.items__inst0
 }
 
-func (m *Model) SetItems(v []string) {
-	m.items = v
+func (m *Model) SetItems__inst0(v []string) {
+	m.items__inst0 = v
 }
 
-func (m *Model) Picked() string {
-	return m.picked
+func (m *Model) Picked__inst0() string {
+	return m.picked__inst0
 }
 
-func (m *Model) SetPicked(v string) {
-	m.picked = v
+func (m *Model) SetPicked__inst0(v string) {
+	m.picked__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -195,7 +195,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxSetSpacing(m.__n2, 6)
 	m.__renderSlot0(m.__n2)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.picked)
+	gtk4rt.LabelSetText(m.__n0, m.picked__inst0)
 	gtk4rt.BoxAppend(m.__root, m.__n2)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 }

@@ -41,8 +41,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	locales []string
-	n       int
+	locales__inst0 []string
+	n__inst0       int
 
 	width, height int
 }
@@ -50,8 +50,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.locales = []string{"en-US", "fr-FR", "es-MX"}
-	m.n = 1234
+	m.locales__inst0 = []string{"en-US", "fr-FR", "es-MX"}
+	m.n__inst0 = 1234
 	return m
 }
 
@@ -61,34 +61,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) Locales() []string {
-	return m.locales
+func (m Model) Locales__inst0() []string {
+	return m.locales__inst0
 }
 
-func (m Model) SetLocales(v []string) Model {
-	m.locales = v
+func (m Model) SetLocales__inst0(v []string) Model {
+	m.locales__inst0 = v
 	return m
 }
 
-type setLocalesMsg struct{ value []string }
+type setLocales__inst0Msg struct{ value []string }
 
-func SetLocalesCmd(v []string) tea.Cmd {
-	return func() tea.Msg { return setLocalesMsg{value: v} }
+func SetLocales__inst0Cmd(v []string) tea.Cmd {
+	return func() tea.Msg { return setLocales__inst0Msg{value: v} }
 }
 
-func (m Model) N() int {
-	return m.n
+func (m Model) N__inst0() int {
+	return m.n__inst0
 }
 
-func (m Model) SetN(v int) Model {
-	m.n = v
+func (m Model) SetN__inst0(v int) Model {
+	m.n__inst0 = v
 	return m
 }
 
-type setNMsg struct{ value int }
+type setN__inst0Msg struct{ value int }
 
-func SetNCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setNMsg{value: v} }
+func SetN__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setN__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -100,10 +100,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setLocalesMsg:
-		m = m.SetLocales(msg.value)
-	case setNMsg:
-		m = m.SetN(msg.value)
+	case setLocales__inst0Msg:
+		m = m.SetLocales__inst0(msg.value)
+	case setN__inst0Msg:
+		m = m.SetN__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -119,10 +119,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	var contentItems []string
-	for _, l := range m.locales {
+	for _, l := range m.locales__inst0 {
 		_ = l
 		var contentItem string
-		contentItem = lipgloss.NewStyle().Render(fmt.Sprint(i18n.NumberInt(l, m.n, "decimal")))
+		contentItem = lipgloss.NewStyle().Render(fmt.Sprint(i18n.NumberInt(l, m.n__inst0, "decimal")))
 		contentItems = append(contentItems, contentItem)
 	}
 	content = strings.Join(contentItems, "")

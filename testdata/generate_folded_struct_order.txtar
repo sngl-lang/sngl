@@ -60,7 +60,7 @@ type Point struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	here Point
+	here__inst0 Point
 
 	width, height int
 }
@@ -68,7 +68,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.here = Point{Y: 1, X: 7, Tag: "none"}
+	m.here__inst0 = Point{Y: 1, X: 7, Tag: "none"}
 	return m
 }
 
@@ -78,19 +78,19 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) Here() Point {
-	return m.here
+func (m Model) Here__inst0() Point {
+	return m.here__inst0
 }
 
-func (m Model) SetHere(v Point) Model {
-	m.here = v
+func (m Model) SetHere__inst0(v Point) Model {
+	m.here__inst0 = v
 	return m
 }
 
-type setHereMsg struct{ value Point }
+type setHere__inst0Msg struct{ value Point }
 
-func SetHereCmd(v Point) tea.Cmd {
-	return func() tea.Msg { return setHereMsg{value: v} }
+func SetHere__inst0Cmd(v Point) tea.Cmd {
+	return func() tea.Msg { return setHere__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -102,8 +102,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setHereMsg:
-		m = m.SetHere(msg.value)
+	case setHere__inst0Msg:
+		m = m.SetHere__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -118,7 +118,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.here.X)))
+	content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.here__inst0.X)))
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v

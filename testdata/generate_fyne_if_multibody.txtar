@@ -20,16 +20,14 @@ import . "sngl:app"
 
 output { go { fyne(main=true) } }
 
-component main ui {
+window #app(title="t") {
     var visible = true
 
-    window #app(title="t") {
-        vbox {
-            if visible {
-                text(value="A")
-                text(value="B")
-                text(value="C")
-            }
+    vbox {
+        if visible {
+            text(value="A")
+            text(value="B")
+            text(value="C")
         }
     }
 }

@@ -26,11 +26,10 @@ output {
     }
 }
 
-component main ui.ui {
+window #home(title="t", href="/") {
     var active = true
-    window #home(title="t", href="/") {
-        html.a(class=active ? "on" : "off", innerText="x")
-    }
+
+    html.a(class=active ? "on" : "off", innerText="x")
 }
 -- out/go/html/server.go --
 package ui

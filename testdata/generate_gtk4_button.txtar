@@ -185,31 +185,31 @@ func boolToInt(b bool) int {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	count int
-	__n0  *C.GtkApplicationWindow
-	__n1  *C.GtkBox
-	__n2  *C.GtkLabel
-	__n3  *C.GtkButton
+	count__inst0 int
+	__n0         *C.GtkApplicationWindow
+	__n1         *C.GtkBox
+	__n2         *C.GtkLabel
+	__n3         *C.GtkButton
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.count = 0
+	m.count__inst0 = 0
 	return m
 }
 
 func (m *Model) __n3_clicked_handler() {
-	m.count = (m.count + 1)
+	m.count__inst0 = (m.count__inst0 + 1)
 }
 
-func (m *Model) Count() int {
-	return m.count
+func (m *Model) Count__inst0() int {
+	return m.count__inst0
 }
 
-func (m *Model) SetCount(v int) {
-	m.count = v
+func (m *Model) SetCount__inst0(v int) {
+	m.count__inst0 = v
 }
 
 func (m *Model) buildWidgetTree() {

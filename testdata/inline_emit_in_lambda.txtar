@@ -70,8 +70,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	picks     int
-	__focusID int
+	picks__inst0 int
+	__focusID    int
 
 	width, height int
 }
@@ -79,7 +79,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.picks = 0
+	m.picks__inst0 = 0
 	m.__focusID = 0
 	return m
 }
@@ -106,19 +106,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Picks() int {
-	return m.picks
+func (m Model) Picks__inst0() int {
+	return m.picks__inst0
 }
 
-func (m Model) SetPicks(v int) Model {
-	m.picks = v
+func (m Model) SetPicks__inst0(v int) Model {
+	m.picks__inst0 = v
 	return m
 }
 
-type setPicksMsg struct{ value int }
+type setPicks__inst0Msg struct{ value int }
 
-func SetPicksCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setPicksMsg{value: v} }
+func SetPicks__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setPicks__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -130,8 +130,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setPicksMsg:
-		m = m.SetPicks(msg.value)
+	case setPicks__inst0Msg:
+		m = m.SetPicks__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -145,7 +145,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			Run(func() {
-				m.picks += 1
+				m.picks__inst0 += 1
 			})
 		}
 	}
@@ -163,7 +163,7 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("pick"))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(("picks=" + fmt.Sprint(m.picks))))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(("picks=" + fmt.Sprint(m.picks__inst0))))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -208,17 +208,17 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var picks by remember { mutableStateOf(0) }
+    var picks__inst0 by remember { mutableStateOf(0) }
 
     Column {
         Button(onClick = {
             run({  ->
-    picks += 1
+    picks__inst0 += 1
 })
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "pick", modifier = Modifier)
         }
-        Text(text = ("picks=" + picks.toString()), modifier = Modifier.safeDrawingPadding())
+        Text(text = ("picks=" + picks__inst0.toString()), modifier = Modifier.safeDrawingPadding())
     }
 }
 
@@ -247,7 +247,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { picks: 0 };
+  var state = { picks__inst0: 0 };
   function run(f) {
     f();
   }
@@ -258,16 +258,16 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
     run(() => {
-      state.picks += 1;
-      __n0.textContent = "picks=" + String(state.picks);
+      state.picks__inst0 += 1;
+      __n0.textContent = "picks=" + String(state.picks__inst0);
     });
   });
   $0.addEventListener("picked", function() {
-    state.picks += 1;
-    __n0.textContent = "picks=" + String(state.picks);
+    state.picks__inst0 += 1;
+    __n0.textContent = "picks=" + String(state.picks__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = "picks=" + String(state.picks);
+    __n0.textContent = "picks=" + String(state.picks__inst0);
   }
   __sngl_init();
 })();

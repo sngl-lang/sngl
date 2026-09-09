@@ -78,12 +78,12 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var k by remember { mutableStateOf(10) }
+    var k__inst0 by remember { mutableStateOf(10) }
 
     Column {
-        Text(text = golib.Golib.Fib(k).toString(), modifier = Modifier.safeDrawingPadding())
+        Text(text = golib.Golib.Fib(k__inst0).toString(), modifier = Modifier.safeDrawingPadding())
         Button(onClick = {
-            k = (k + 1)
+            k__inst0 = (k__inst0 + 1)
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "+", modifier = Modifier)
         }

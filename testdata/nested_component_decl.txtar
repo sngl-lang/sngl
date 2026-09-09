@@ -39,7 +39,7 @@ component other() ui {
 }
 
 component first() ui {
-    component row(label = "") {
+    component row(label = "") ui {
         text(value="row " + label)
     }
 
@@ -47,7 +47,7 @@ component first() ui {
 }
 
 component main ui {
-    component card(label = "") {
+    component card(label = "") ui {
         text(value="inner " + label)
     }
 

@@ -4674,6 +4674,13 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 		if c.isWindowNode(visualNodeTarget(n)) && n.ID != "" {
 			if !seen[n.ID] {
 				seen[n.ID] = true
+				// A name this checker already hoisted for the package body
+				// is the same list, so the loop reports it again rather than
+				// declaring a second symbol for it.
+				if v, ok := c.pkgBodyWindowIDs[n.ID]; ok {
+					*vars = append(*vars, v)
+					return
+				}
 				// Skip if a symbol with this name already exists in the
 				// enclosing scope (e.g., a package-level window with the
 				// same id — duplicate-id checking belongs elsewhere).

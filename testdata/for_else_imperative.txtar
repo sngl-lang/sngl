@@ -74,10 +74,10 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	xs        []int
-	note      string
-	total     int
-	__focusID int
+	xs__inst0    []int
+	note__inst0  string
+	total__inst0 int
+	__focusID    int
 
 	width, height int
 }
@@ -85,9 +85,9 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.xs = []int{}
-	m.note = ""
-	m.total = 0
+	m.xs__inst0 = []int{}
+	m.note__inst0 = ""
+	m.total__inst0 = 0
 	m.__focusID = 0
 	return m
 }
@@ -110,49 +110,49 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Xs() []int {
-	return m.xs
+func (m Model) Xs__inst0() []int {
+	return m.xs__inst0
 }
 
-func (m Model) SetXs(v []int) Model {
-	m.xs = v
+func (m Model) SetXs__inst0(v []int) Model {
+	m.xs__inst0 = v
 	return m
 }
 
-type setXsMsg struct{ value []int }
+type setXs__inst0Msg struct{ value []int }
 
-func SetXsCmd(v []int) tea.Cmd {
-	return func() tea.Msg { return setXsMsg{value: v} }
+func SetXs__inst0Cmd(v []int) tea.Cmd {
+	return func() tea.Msg { return setXs__inst0Msg{value: v} }
 }
 
-func (m Model) Note() string {
-	return m.note
+func (m Model) Note__inst0() string {
+	return m.note__inst0
 }
 
-func (m Model) SetNote(v string) Model {
-	m.note = v
+func (m Model) SetNote__inst0(v string) Model {
+	m.note__inst0 = v
 	return m
 }
 
-type setNoteMsg struct{ value string }
+type setNote__inst0Msg struct{ value string }
 
-func SetNoteCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setNoteMsg{value: v} }
+func SetNote__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setNote__inst0Msg{value: v} }
 }
 
-func (m Model) Total() int {
-	return m.total
+func (m Model) Total__inst0() int {
+	return m.total__inst0
 }
 
-func (m Model) SetTotal(v int) Model {
-	m.total = v
+func (m Model) SetTotal__inst0(v int) Model {
+	m.total__inst0 = v
 	return m
 }
 
-type setTotalMsg struct{ value int }
+type setTotal__inst0Msg struct{ value int }
 
-func SetTotalCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setTotalMsg{value: v} }
+func SetTotal__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -164,12 +164,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setXsMsg:
-		m = m.SetXs(msg.value)
-	case setNoteMsg:
-		m = m.SetNote(msg.value)
-	case setTotalMsg:
-		m = m.SetTotal(msg.value)
+	case setXs__inst0Msg:
+		m = m.SetXs__inst0(msg.value)
+	case setNote__inst0Msg:
+		m = m.SetNote__inst0(msg.value)
+	case setTotal__inst0Msg:
+		m = m.SetTotal__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -183,23 +183,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			__ran0 := false
-			for _, x := range m.xs {
+			for _, x := range m.xs__inst0 {
 				__ran0 = true
 				if x == 0 {
 					continue
 				}
-				m.total = (m.total + x)
+				m.total__inst0 = (m.total__inst0 + x)
 			}
 			if !__ran0 {
-				m.note = "empty"
+				m.note__inst0 = "empty"
 			}
 			__ran1 := false
-			for _, y := range m.xs {
+			for _, y := range m.xs__inst0 {
 				__ran1 = true
-				m.total = (m.total + y)
+				m.total__inst0 = (m.total__inst0 + y)
 			}
 			if !__ran1 {
-				m.note = "still empty"
+				m.note__inst0 = "still empty"
 			}
 		}
 	}
@@ -217,7 +217,7 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("run"))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(m.note))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(m.note__inst0))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -262,35 +262,35 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    val xs = remember { mutableStateListOf<Int>() }
-    var note by remember { mutableStateOf("") }
-    var total by remember { mutableStateOf(0) }
+    val xs__inst0 = remember { mutableStateListOf<Int>() }
+    var note__inst0 by remember { mutableStateOf("") }
+    var total__inst0 by remember { mutableStateOf(0) }
 
     Column {
         Button(onClick = {
             var __ran0 = false
-            for (x in xs) {
+            for (x in xs__inst0) {
             	__ran0 = true
             	if ((x == 0)) {
             		continue
             	}
-            	total = (total + x)
+            	total__inst0 = (total__inst0 + x)
             }
             if (!__ran0) {
-            	note = "empty"
+            	note__inst0 = "empty"
             }
             var __ran1 = false
-            for (y in xs) {
+            for (y in xs__inst0) {
             	__ran1 = true
-            	total = (total + y)
+            	total__inst0 = (total__inst0 + y)
             }
             if (!__ran1) {
-            	note = "still empty"
+            	note__inst0 = "still empty"
             }
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "run", modifier = Modifier)
         }
-        Text(text = note, modifier = Modifier.safeDrawingPadding())
+        Text(text = note__inst0, modifier = Modifier.safeDrawingPadding())
     }
 }
 -- out/none/html/index.html --
@@ -315,12 +315,12 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { xs: [], note: "", total: 0 };
+  var state = { xs__inst0: [], note__inst0: "", total__inst0: 0 };
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
     let __ran0 = false;
-    for (const x of state.xs) {
+    for (const x of state.xs__inst0) {
       ;
       __ran0 = true;
       if (x === 0) {
@@ -328,31 +328,31 @@ body { font-family: system-ui, sans-serif; }
         continue;
       }
       ;
-      state.total = state.total + x;
+      state.total__inst0 = state.total__inst0 + x;
     }
     ;
     if (!__ran0) {
       ;
-      state.note = "empty";
-      __n0.textContent = state.note;
+      state.note__inst0 = "empty";
+      __n0.textContent = state.note__inst0;
     }
     ;
     let __ran1 = false;
-    for (const y of state.xs) {
+    for (const y of state.xs__inst0) {
       ;
       __ran1 = true;
-      state.total = state.total + y;
+      state.total__inst0 = state.total__inst0 + y;
     }
     ;
     if (!__ran1) {
       ;
-      state.note = "still empty";
-      __n0.textContent = state.note;
+      state.note__inst0 = "still empty";
+      __n0.textContent = state.note__inst0;
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = state.note;
+    __n0.textContent = state.note__inst0;
   }
   __sngl_init();
 })();

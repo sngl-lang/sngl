@@ -81,10 +81,10 @@ type Holder struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	b         Box
-	h         Holder
-	seen      int
-	__focusID int
+	b__inst0    Box
+	h__inst0    Holder
+	seen__inst0 int
+	__focusID   int
 
 	width, height int
 }
@@ -92,9 +92,9 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.b = Box{Value: 3}
-	m.h = Holder{Inner: snglSome(m.b)}
-	m.seen = 0
+	m.b__inst0 = Box{Value: 3}
+	m.h__inst0 = Holder{Inner: snglSome(m.b__inst0)}
+	m.seen__inst0 = 0
 	m.__focusID = 0
 	return m
 }
@@ -117,49 +117,49 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) B() Box {
-	return m.b
+func (m Model) B__inst0() Box {
+	return m.b__inst0
 }
 
-func (m Model) SetB(v Box) Model {
-	m.b = v
+func (m Model) SetB__inst0(v Box) Model {
+	m.b__inst0 = v
 	return m
 }
 
-type setBMsg struct{ value Box }
+type setB__inst0Msg struct{ value Box }
 
-func SetBCmd(v Box) tea.Cmd {
-	return func() tea.Msg { return setBMsg{value: v} }
+func SetB__inst0Cmd(v Box) tea.Cmd {
+	return func() tea.Msg { return setB__inst0Msg{value: v} }
 }
 
-func (m Model) H() Holder {
-	return m.h
+func (m Model) H__inst0() Holder {
+	return m.h__inst0
 }
 
-func (m Model) SetH(v Holder) Model {
-	m.h = v
+func (m Model) SetH__inst0(v Holder) Model {
+	m.h__inst0 = v
 	return m
 }
 
-type setHMsg struct{ value Holder }
+type setH__inst0Msg struct{ value Holder }
 
-func SetHCmd(v Holder) tea.Cmd {
-	return func() tea.Msg { return setHMsg{value: v} }
+func SetH__inst0Cmd(v Holder) tea.Cmd {
+	return func() tea.Msg { return setH__inst0Msg{value: v} }
 }
 
-func (m Model) Seen() int {
-	return m.seen
+func (m Model) Seen__inst0() int {
+	return m.seen__inst0
 }
 
-func (m Model) SetSeen(v int) Model {
-	m.seen = v
+func (m Model) SetSeen__inst0(v int) Model {
+	m.seen__inst0 = v
 	return m
 }
 
-type setSeenMsg struct{ value int }
+type setSeen__inst0Msg struct{ value int }
 
-func SetSeenCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setSeenMsg{value: v} }
+func SetSeen__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setSeen__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -171,12 +171,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setBMsg:
-		m = m.SetB(msg.value)
-	case setHMsg:
-		m = m.SetH(msg.value)
-	case setSeenMsg:
-		m = m.SetSeen(msg.value)
+	case setB__inst0Msg:
+		m = m.SetB__inst0(msg.value)
+	case setH__inst0Msg:
+		m = m.SetH__inst0(msg.value)
+	case setSeen__inst0Msg:
+		m = m.SetSeen__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -189,8 +189,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			if m.h.Inner != nil {
-				m.seen = (*(m.h.Inner)).Value
+			if m.h__inst0.Inner != nil {
+				m.seen__inst0 = (*(m.h__inst0.Inner)).Value
 			}
 		}
 	}
@@ -208,7 +208,7 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("read"))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.seen)))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.seen__inst0)))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -261,19 +261,19 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var b by remember { mutableStateOf(Box(value = 3)) }
-    var h by remember { mutableStateOf(Holder(inner = b)) }
-    var seen by remember { mutableStateOf(0) }
+    var b__inst0 by remember { mutableStateOf(Box(value = 3)) }
+    var h__inst0 by remember { mutableStateOf(Holder(inner = b__inst0)) }
+    var seen__inst0 by remember { mutableStateOf(0) }
 
     Column {
         Button(onClick = {
-            if ((h.inner != null)) {
-            	seen = h.inner!!.value
+            if ((h__inst0.inner != null)) {
+            	seen__inst0 = h__inst0.inner!!.value
             }
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "read", modifier = Modifier)
         }
-        Text(text = seen.toString(), modifier = Modifier.safeDrawingPadding())
+        Text(text = seen__inst0.toString(), modifier = Modifier.safeDrawingPadding())
     }
 }
 -- out/none/html/index.html --
@@ -298,9 +298,9 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { b: null, h: null, seen: 0 };
-  state.b = { value: 3 };
-  state.h = { inner: state.b };
+  var state = { b__inst0: null, h__inst0: null, seen__inst0: 0 };
+  state.b__inst0 = { value: 3 };
+  state.h__inst0 = { inner: state.b__inst0 };
   function Box(value) {
     return { value };
   }
@@ -313,15 +313,15 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    if (state.h.inner !== null) {
+    if (state.h__inst0.inner !== null) {
       ;
-      state.seen = state.h.inner.value;
-      __n0.textContent = String(state.seen);
+      state.seen__inst0 = state.h__inst0.inner.value;
+      __n0.textContent = String(state.seen__inst0);
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.seen);
+    __n0.textContent = String(state.seen__inst0);
   }
   __sngl_init();
 })();

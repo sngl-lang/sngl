@@ -40,9 +40,9 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	scores    map[string]int
-	size      int
-	__focusID int
+	scores__inst0 map[string]int
+	size__inst0   int
+	__focusID     int
 
 	width, height int
 }
@@ -50,8 +50,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.scores = map[string]int{"alice": 10, "bob": 20}
-	m.size = 0
+	m.scores__inst0 = map[string]int{"alice": 10, "bob": 20}
+	m.size__inst0 = 0
 	m.__focusID = 0
 	return m
 }
@@ -82,34 +82,34 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Scores() map[string]int {
-	return m.scores
+func (m Model) Scores__inst0() map[string]int {
+	return m.scores__inst0
 }
 
-func (m Model) SetScores(v map[string]int) Model {
-	m.scores = v
+func (m Model) SetScores__inst0(v map[string]int) Model {
+	m.scores__inst0 = v
 	return m
 }
 
-type setScoresMsg struct{ value map[string]int }
+type setScores__inst0Msg struct{ value map[string]int }
 
-func SetScoresCmd(v map[string]int) tea.Cmd {
-	return func() tea.Msg { return setScoresMsg{value: v} }
+func SetScores__inst0Cmd(v map[string]int) tea.Cmd {
+	return func() tea.Msg { return setScores__inst0Msg{value: v} }
 }
 
-func (m Model) Size() int {
-	return m.size
+func (m Model) Size__inst0() int {
+	return m.size__inst0
 }
 
-func (m Model) SetSize(v int) Model {
-	m.size = v
+func (m Model) SetSize__inst0(v int) Model {
+	m.size__inst0 = v
 	return m
 }
 
-type setSizeMsg struct{ value int }
+type setSize__inst0Msg struct{ value int }
 
-func SetSizeCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setSizeMsg{value: v} }
+func SetSize__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setSize__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -121,10 +121,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setScoresMsg:
-		m = m.SetScores(msg.value)
-	case setSizeMsg:
-		m = m.SetSize(msg.value)
+	case setScores__inst0Msg:
+		m = m.SetScores__inst0(msg.value)
+	case setSize__inst0Msg:
+		m = m.SetSize__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -137,10 +137,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.size = len(m.scores)
+			m.size__inst0 = len(m.scores__inst0)
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			m.size = func() int {
-				if __v, __ok := m.scores["alice"]; __ok {
+			m.size__inst0 = func() int {
+				if __v, __ok := m.scores__inst0["alice"]; __ok {
 					return __v
 				}
 				return 0
@@ -169,7 +169,7 @@ func (m Model) View() tea.View {
 	part1 = lipgloss.NewStyle().Render(part1Prefix + " " + fmt.Sprint("check"))
 	parts = append(parts, part1)
 	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.size)))
+	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.size__inst0)))
 	parts = append(parts, part2)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)

@@ -61,11 +61,11 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    val xs = remember { mutableStateListOf(3, 1, 2) }
-    val rev = remember { xs.reversed().toMutableStateList() }
-    val evens = remember { xs.filter({ n -> ((n % 2) == 0) }).toMutableStateList() }
-    val empty = remember { mutableStateListOf<Int>() }
-    var idx by remember { mutableStateOf(xs.indexOf(2)) }
+    val xs__inst0 = remember { mutableStateListOf(3, 1, 2) }
+    val rev__inst0 = remember { xs__inst0.reversed().toMutableStateList() }
+    val evens__inst0 = remember { xs__inst0.filter({ n -> ((n % 2) == 0) }).toMutableStateList() }
+    val empty__inst0 = remember { mutableStateListOf<Int>() }
+    var idx__inst0 by remember { mutableStateOf(xs__inst0.indexOf(2)) }
 
-    Text(text = (((rev.size.toString() + evens.size.toString()) + empty.size.toString()) + idx.toString()), modifier = Modifier.safeDrawingPadding())
+    Text(text = (((rev__inst0.size.toString() + evens__inst0.size.toString()) + empty__inst0.size.toString()) + idx__inst0.toString()), modifier = Modifier.safeDrawingPadding())
 }

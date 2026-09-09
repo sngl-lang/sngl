@@ -28,18 +28,16 @@ struct Node {
     label string = ""
 }
 
-component main ui {
+window {
     var (
         first = Node{value=1, label="one"}
         second = Node{value=first.value, label=first.label}
         pair = [first.value, second.value]
     )
 
-    window {
-        vbox {
-            text(value=second.label)
-            text(value=string(pair.length()))
-        }
+    vbox {
+        text(value=second.label)
+        text(value=string(pair.length()))
     }
 }
 -- out/go/bubbletea/model.go --

@@ -1,12 +1,18 @@
-NoInlineComponents inlines user components into the app root, which is
-`component main` or the top-level windows. This package has neither: a lone
-component that nothing instantiates.
+NoInlineComponents inlines user components into the app root, and a component
+nothing instantiates is unreachable from it -- so it is dropped, and the fyne
+output holds nothing of `standalone`. The window is what makes the question
+answerable: it is the root, and a component no root reaches is a declaration
+the program does not render.
 
-Nothing is unreachable when there is no root, so the pass leaves the package
-alone -- dropping what it cannot reach would empty the program. `standalone`
-reaches the fyne output intact.
+The pass leaves a package with *no* root alone instead, since every component
+there is its own entry point and dropping what it cannot reach would empty the
+program. That form is a library package, which a golden cannot hold -- a
+golden compiles a program, and a program declares a window -- so it is pinned
+by `sngl generate sngl:platform/gtk4` in
+cmd/sngl/testdata/program_needs_a_window.txt.
 
-The other form, a window as the root, is in inline_window_form_anon.txtar.
+The other form, a window as the root of a program that *does* render its
+components, is in inline_window_form_anon.txtar.
 
 -- lone.sngl --
 import . "sngl:ui"
@@ -29,7 +35,6 @@ package ui
 
 import (
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -46,12 +51,4 @@ func New() *Model {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	return widget.NewLabel("")
-}
-
-func (m *Model) renderStandalone() fyne.CanvasObject {
-	__n0 := container.NewVBox()
-	__n1 := widget.NewLabel("")
-	__n1.SetText("standalone")
-	__n0.Add(__n1)
-	return __n0
 }

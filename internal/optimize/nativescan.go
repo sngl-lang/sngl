@@ -103,6 +103,9 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		for _, f := range w.Funcs {
 			scanStmts(f.Block, visit)
 		}
+		for _, t := range w.Timers {
+			scanTimer(t, visit)
+		}
 		scanStmts(w.Body, visit)
 	}
 	for _, t := range pkg.Timers {

@@ -58,7 +58,7 @@ body { font-family: system-ui, sans-serif; }
     let f = async () => {
       await fetchHello("x");
     };
-    f();
+    await f();
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", async function() {

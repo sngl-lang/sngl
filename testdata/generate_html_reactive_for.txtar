@@ -63,7 +63,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { items: ["a", "b", "c"] };
+  var state = { items__inst0: ["a", "b", "c"] };
   function __cf___child0(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -92,7 +92,7 @@ body { font-family: system-ui, sans-serif; }
     __slot0 = [];
     let __inst1_next = [];
     let __inst1_i = 0;
-    for (const item of state.items) {
+    for (const item of state.items__inst0) {
       let __n1 = null;
       if (__inst1_live.length > __inst1_i) {
         __n1 = __inst1_live[__inst1_i];
@@ -135,7 +135,7 @@ body { font-family: system-ui, sans-serif; }
   __renderSlot0(__slotAnchor_0);
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
-    state.items.push("new");
+    state.items__inst0.push("new");
     __renderSlot0(__slotAnchor_0);
   });
 })();

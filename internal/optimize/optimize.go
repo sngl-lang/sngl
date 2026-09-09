@@ -512,6 +512,9 @@ func foldWindow(w *ir.Window, ctx *evalCtx) {
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 		w.ErrorHandler.Func.Block = foldStmts(w.ErrorHandler.Func.Block, ctx)
 	}
+	for _, t := range w.Timers {
+		foldTimer(t, ctx)
+	}
 	w.Body = foldStmts(w.Body, ctx)
 }
 

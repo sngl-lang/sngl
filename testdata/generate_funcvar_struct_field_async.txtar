@@ -54,14 +54,14 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { h: null };
-  state.h = { run: fetchHello };
+  var state = { h__inst0: null };
+  state.h__inst0 = { run: fetchHello };
   function Handler(run) {
     return { run };
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", async function() {
-    await state.h.run();
+    await state.h__inst0.run();
   });
 })();
 </script>

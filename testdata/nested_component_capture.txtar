@@ -40,7 +40,7 @@ component outer(label = "") ui {
 
     func bump() { count = count + 100 }
 
-    component inner(step = 1) {
+    component inner(step = 1) ui {
         var runs = 0
 
         vbox {
@@ -66,7 +66,7 @@ component methodOnly() ui {
 
     func hit() { hits = hits + 1 }
 
-    component tap() {
+    component tap() ui {
         var taps = 0
 
         button(text="tap", @click {
@@ -611,7 +611,7 @@ fun MainScreen() {
                 Button(onClick = {
                     count__inst3 = (count__inst3 + 1)
                     runs__inst0__inst3 = (runs__inst0__inst3 + 1)
-                    /* unresolved method outer.bump__inst3 */
+                    bump__inst3()
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
@@ -621,7 +621,7 @@ fun MainScreen() {
                 Button(onClick = {
                     count__inst3 = (count__inst3 + 10)
                     runs__inst1__inst3 = (runs__inst1__inst3 + 1)
-                    /* unresolved method outer.bump__inst3 */
+                    bump__inst3()
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
@@ -633,7 +633,7 @@ fun MainScreen() {
                 Button(onClick = {
                     count__inst4 = (count__inst4 + 1)
                     runs__inst0__inst4 = (runs__inst0__inst4 + 1)
-                    /* unresolved method outer.bump__inst4 */
+                    bump__inst4()
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
@@ -643,7 +643,7 @@ fun MainScreen() {
                 Button(onClick = {
                     count__inst4 = (count__inst4 + 10)
                     runs__inst1__inst4 = (runs__inst1__inst4 + 1)
-                    /* unresolved method outer.bump__inst4 */
+                    bump__inst4()
                 }, modifier = Modifier) {
                     Text(text = "+", modifier = Modifier)
                 }
@@ -651,7 +651,7 @@ fun MainScreen() {
         }
         Column(modifier = Modifier) {
             Button(onClick = {
-                /* unresolved method methodOnly.hit__inst5 */
+                hit__inst5()
                 taps__inst2__inst5 = (taps__inst2__inst5 + 1)
             }, modifier = Modifier) {
                 Text(text = "tap", modifier = Modifier)
@@ -660,7 +660,7 @@ fun MainScreen() {
         }
         Column(modifier = Modifier) {
             Button(onClick = {
-                /* unresolved method methodOnly.hit__inst6 */
+                hit__inst6()
                 taps__inst2__inst6 = (taps__inst2__inst6 + 1)
             }, modifier = Modifier) {
                 Text(text = "tap", modifier = Modifier)

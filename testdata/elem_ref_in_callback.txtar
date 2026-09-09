@@ -78,14 +78,14 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n: 0 };
+  var state = { n__inst0: 0 };
   function run(f) {
     f();
   }
   function __effect0_mount() {
     run(() => {
-      state.n += 1;
-      $0.textContent = String(state.n);
+      state.n__inst0 += 1;
+      $0.textContent = String(state.n__inst0);
     });
   }
   var __effect0_live = [];
@@ -133,7 +133,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var $0 = document.getElementById("$0");
   function __sngl_init() {
-    $0.textContent = String(state.n);
+    $0.textContent = String(state.n__inst0);
   }
   __sngl_init();
   __effects0_settle();

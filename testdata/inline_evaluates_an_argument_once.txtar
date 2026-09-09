@@ -15,7 +15,7 @@ import . "sngl:app"
 
 func double(x int) => x + x
 
-component main ui {
+window(title="once") {
     var n = 0
 
     func bump() int {
@@ -23,9 +23,7 @@ component main ui {
         return n
     }
 
-    window(title="once") {
-        text(value=string(double(bump())))
-    }
+    text(value=string(double(bump())))
 }
 
 output(lang="go", platform="bubbletea")

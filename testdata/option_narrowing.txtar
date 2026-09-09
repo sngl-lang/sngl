@@ -62,8 +62,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	maybe     *int
-	__focusID int
+	maybe__inst0 *int
+	__focusID    int
 
 	width, height int
 }
@@ -71,7 +71,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.maybe = nil
+	m.maybe__inst0 = nil
 	m.__focusID = 0
 	return m
 }
@@ -94,19 +94,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Maybe() *int {
-	return m.maybe
+func (m Model) Maybe__inst0() *int {
+	return m.maybe__inst0
 }
 
-func (m Model) SetMaybe(v *int) Model {
-	m.maybe = v
+func (m Model) SetMaybe__inst0(v *int) Model {
+	m.maybe__inst0 = v
 	return m
 }
 
-type setMaybeMsg struct{ value *int }
+type setMaybe__inst0Msg struct{ value *int }
 
-func SetMaybeCmd(v *int) tea.Cmd {
-	return func() tea.Msg { return setMaybeMsg{value: v} }
+func SetMaybe__inst0Cmd(v *int) tea.Cmd {
+	return func() tea.Msg { return setMaybe__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -118,8 +118,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setMaybeMsg:
-		m = m.SetMaybe(msg.value)
+	case setMaybe__inst0Msg:
+		m = m.SetMaybe__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -132,7 +132,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.maybe = nil
+			m.maybe__inst0 = nil
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -149,12 +149,12 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("clear"))
 	parts = append(parts, part0)
 	var part1 string
-	if m.maybe != nil {
-		part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((*(m.maybe)) * 2))))
+	if m.maybe__inst0 != nil {
+		part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((*(m.maybe__inst0)) * 2))))
 	}
 	parts = append(parts, part1)
 	var part2 string
-	if (m.maybe != nil) && ((*(m.maybe)) > 2) {
+	if (m.maybe__inst0 != nil) && ((*(m.maybe__inst0)) > 2) {
 		part2 = lipgloss.NewStyle().Render(fmt.Sprint("big"))
 	}
 	parts = append(parts, part2)
@@ -201,18 +201,18 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var maybe by remember { mutableStateOf<Int?>(null) }
+    var maybe__inst0 by remember { mutableStateOf<Int?>(null) }
 
     Column {
         Button(onClick = {
-            maybe = null
+            maybe__inst0 = null
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "clear", modifier = Modifier)
         }
-        if ((maybe != null)) {
-            Text(text = (maybe!! * 2).toString(), modifier = Modifier.safeDrawingPadding())
+        if ((maybe__inst0 != null)) {
+            Text(text = (maybe__inst0!! * 2).toString(), modifier = Modifier.safeDrawingPadding())
         }
-        if (((maybe != null) && (maybe!! > 2))) {
+        if (((maybe__inst0 != null) && (maybe__inst0!! > 2))) {
             Text(text = "big", modifier = Modifier.safeDrawingPadding())
         }
     }
@@ -239,16 +239,16 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { maybe: null };
+  var state = { maybe__inst0: null };
   var __slot0 = [];
   var __slot1 = [];
   function __renderSlot0(parent) {
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
-    if (state.maybe !== null) {
+    if (state.maybe__inst0 !== null) {
       let __n0 = document.createElement("span");
-      __n0.textContent = String(state.maybe * 2);
+      __n0.textContent = String(state.maybe__inst0 * 2);
       let __place0_i_ref0 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref0 = __place0_prev[__place0_i];
@@ -270,7 +270,7 @@ body { font-family: system-ui, sans-serif; }
     let __place1_prev = __slot1;
     let __place1_i = 0;
     __slot1 = [];
-    if (state.maybe !== null && state.maybe > 2) {
+    if (state.maybe__inst0 !== null && state.maybe__inst0 > 2) {
       let __n1 = document.createElement("span");
       __n1.textContent = "big";
       let __place1_i_ref0 = null;
@@ -299,7 +299,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
-    state.maybe = null;
+    state.maybe__inst0 = null;
     __renderSlot0(__slotAnchor_0);
     __renderSlot1(__slotAnchor_1);
   });

@@ -63,15 +63,15 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	greeting string
-	busy     bool
+	greeting__inst0 string
+	busy__inst0     bool
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.greeting = "idle"
-	m.busy = false
+	m.greeting__inst0 = "idle"
+	m.busy__inst0 = false
 	return m
 }
 
@@ -80,31 +80,31 @@ func (m *Model) host() string {
 }
 
 func (m *Model) load_click_handler() {
-	m.busy = true
+	m.busy__inst0 = true
 	go func() {
 		time.Sleep(300000000)
 		__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 		fyne.Do(func() {
-			m.greeting = __async_off0
-			m.busy = false
+			m.greeting__inst0 = __async_off0
+			m.busy__inst0 = false
 		})
 	}()
 }
 
-func (m *Model) Greeting() string {
-	return m.greeting
+func (m *Model) Greeting__inst0() string {
+	return m.greeting__inst0
 }
 
-func (m *Model) SetGreeting(v string) {
-	m.greeting = v
+func (m *Model) SetGreeting__inst0(v string) {
+	m.greeting__inst0 = v
 }
 
-func (m *Model) Busy() bool {
-	return m.busy
+func (m *Model) Busy__inst0() bool {
+	return m.busy__inst0
 }
 
-func (m *Model) SetBusy(v bool) {
-	m.busy = v
+func (m *Model) SetBusy__inst0(v bool) {
+	m.busy__inst0 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.

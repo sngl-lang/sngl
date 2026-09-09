@@ -19,14 +19,12 @@ struct Issue {
     assignee string
 }
 
-component main ui {
+window #app(title="t") {
     var current = Issue{}
 
-    window #app(title="t") {
-        vbox {
-            text(value="header")
-            detailPanel(it=current)
-        }
+    vbox {
+        text(value="header")
+        detailPanel(it=current)
     }
 }
 

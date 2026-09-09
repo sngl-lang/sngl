@@ -146,6 +146,9 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 		for _, f := range w.Funcs {
 			walk(f)
 		}
+		for _, t := range w.Timers {
+			walkTimer(t, used, walk)
+		}
 		walkStmts(w.Body, used, walk)
 	}
 	for _, t := range pkg.Timers {

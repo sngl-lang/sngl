@@ -156,10 +156,10 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var __ctx_locale by remember { mutableStateOf(I18n.defaultLocale()) }
-    var msg by remember { mutableStateOf(I18n.translate(__ctx_locale, "Hello", "Hello", mapOf())) }
+    var __ctx_locale__inst0 by remember { mutableStateOf(I18n.defaultLocale()) }
+    var msg__inst0 by remember { mutableStateOf(I18n.translate(__ctx_locale__inst0, "Hello", "Hello", mapOf())) }
 
-    Text(text = msg, modifier = Modifier.safeDrawingPadding())
+    Text(text = msg__inst0, modifier = Modifier.safeDrawingPadding())
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/ui/theme/Theme.kt --
 package test.sngl.app.ui.theme

@@ -337,6 +337,11 @@ type checker struct {
 	// they are found: they read vars and instantiate components that pass1 is
 	// still registering.
 	pendingPkgBody []ast.Stmt
+	// pkgBodyWindowIDs are the `list<window>` symbols a `for` at the root of a
+	// file declares, hoisted ahead of the window bodies that read them --
+	// hoistPkgBodyWindowIDs says why -- and kept so the ordinary hoist during
+	// the body check answers with the same symbol rather than a second one.
+	pkgBodyWindowIDs map[string]*ir.Var
 
 	// Cached Options structs from platform/language packages, keyed by target
 	// identifier (e.g. "html", "kotlin").
@@ -2851,6 +2856,33 @@ func (c *checker) checkPackageBody() {
 	}
 }
 
+// hoistPkgBodyWindowIDs declares the `#id` of every window a `for` at the root
+// of a file opens, before any window body is checked.
+//
+// A loop's window id names the *list* of windows it unrolls to, and a sibling
+// window iterates it -- `for var p = page` walks the pages the first loop
+// declared. Root window bodies are checked ahead of the package body, so
+// without this the name is undefined wherever it is read: the two loops used
+// to sit in one `component main` body, where the ordinary hoist ran first.
+//
+// The symbols are recorded rather than only declared, because
+// collectForLoopWindowIDs skips a name the scope already holds and the
+// ir.For still needs its HoistedWindowIDs.
+func (c *checker) hoistPkgBodyWindowIDs() {
+	for _, s := range c.pendingPkgBody {
+		f, ok := s.(*ast.ForStmt)
+		if !ok {
+			continue
+		}
+		for _, v := range c.hoistForLoopWindowIDs(&f.Body) {
+			if c.pkgBodyWindowIDs == nil {
+				c.pkgBodyWindowIDs = map[string]*ir.Var{}
+			}
+			c.pkgBodyWindowIDs[v.Name] = v
+		}
+	}
+}
+
 // firstStmtPos is where a block starts, for a diagnostic about the block
 // rather than about one statement in it.
 func firstStmtPos(stmts []ast.Stmt) ast.Pos {
@@ -3543,6 +3575,8 @@ func (c *checker) pass2() {
 
 	c.checkComponentBodies()
 
+	c.hoistPkgBodyWindowIDs()
+
 	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
 	for _, w := range c.pkg.Windows {
 		if !w.Checked {
@@ -3576,9 +3610,9 @@ func (c *checker) pass2() {
 	// A window owns state the way the package and a component do (ir.Owners),
 	// and a func written in a window body is registered at package level -- so
 	// left out of this set, a write to a window var was recorded nowhere and
-	// the func read as pure.
+	// the func read as pure. `double(bump())` then inlined and counted by two.
 	for _, w := range c.pkg.Windows {
-		for _, v := range w.Vars {
+		for _, v := range windowStateVars(w) {
 			pkgVarSet[v] = struct{}{}
 		}
 	}
@@ -4221,6 +4255,23 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	}
 }
 
+// windowStateVars is a window's own state: `w.Vars` plus the vars its body
+// declares.
+//
+// Both, because *when* this is asked decides which of the two holds them: the
+// checker sees a `var` at the top of a window body as an ir.LocalVar statement
+// carrying its symbol, and passHoistState is what moves those onto `w.Vars`
+// later. A caller in the checker that reads `w.Vars` alone finds nothing.
+func windowStateVars(w *ir.Window) []*ir.Var {
+	out := append([]*ir.Var{}, w.Vars...)
+	for _, s := range w.Body {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			out = append(out, lv.Sym)
+		}
+	}
+	return out
+}
+
 // checkWindowVarHandlers checks the bodies of the handlers written on a
 // window's own vars.
 //
@@ -4230,10 +4281,11 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 // re-declared in a scope of their own because checkBlockIR has already popped
 // the one it bound them in, and a handler body reads its siblings.
 func (c *checker) checkWindowVarHandlers(w *ir.Window) {
+	state := windowStateVars(w)
 	var vars []*ir.Var
-	for _, s := range w.Body {
-		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil && len(lv.Sym.Handlers) > 0 {
-			vars = append(vars, lv.Sym)
+	for _, v := range state {
+		if len(v.Handlers) > 0 {
+			vars = append(vars, v)
 		}
 	}
 	if len(vars) == 0 {
@@ -4241,10 +4293,8 @@ func (c *checker) checkWindowVarHandlers(w *ir.Window) {
 	}
 	c.pushScope()
 	defer c.popScope()
-	for _, s := range w.Body {
-		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
-			c.declare(varPos(lv.Sym), lv.Sym)
-		}
+	for _, v := range state {
+		c.declare(varPos(v), v)
 	}
 	c.checkVarHandlerBodies(vars)
 }

@@ -36,8 +36,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	count     int
-	__focusID int
+	count__inst0 int
+	__focusID    int
 
 	width, height int
 }
@@ -45,7 +45,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.count = 0
+	m.count__inst0 = 0
 	m.__focusID = 0
 	return m
 }
@@ -68,19 +68,19 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Count() int {
-	return m.count
+func (m Model) Count__inst0() int {
+	return m.count__inst0
 }
 
-func (m Model) SetCount(v int) Model {
-	m.count = v
+func (m Model) SetCount__inst0(v int) Model {
+	m.count__inst0 = v
 	return m
 }
 
-type setCountMsg struct{ value int }
+type setCount__inst0Msg struct{ value int }
 
-func SetCountCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setCountMsg{value: v} }
+func SetCount__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setCount__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -92,8 +92,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setCountMsg:
-		m = m.SetCount(msg.value)
+	case setCount__inst0Msg:
+		m = m.SetCount__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -106,7 +106,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.count = (m.count + 1)
+			m.count__inst0 = (m.count__inst0 + 1)
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -123,7 +123,7 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("inc"))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count)))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count__inst0)))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -152,18 +152,18 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count: 0 };
+  var state = { count__inst0: 0 };
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.count = state.count + 1;
-    __n0.textContent = String(state.count);
+    state.count__inst0 = state.count__inst0 + 1;
+    __n0.textContent = String(state.count__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count);
+    __n0.textContent = String(state.count__inst0);
   }
   __sngl_init();
 })();

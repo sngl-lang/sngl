@@ -49,9 +49,9 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	on        bool
-	label     string
-	__focusID int
+	on__inst0    bool
+	label__inst0 string
+	__focusID    int
 
 	width, height int
 }
@@ -59,8 +59,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.on = false
-	m.label = ""
+	m.on__inst0 = false
+	m.label__inst0 = ""
 	m.__focusID = 0
 	return m
 }
@@ -83,34 +83,34 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) On() bool {
-	return m.on
+func (m Model) On__inst0() bool {
+	return m.on__inst0
 }
 
-func (m Model) SetOn(v bool) Model {
-	m.on = v
+func (m Model) SetOn__inst0(v bool) Model {
+	m.on__inst0 = v
 	return m
 }
 
-type setOnMsg struct{ value bool }
+type setOn__inst0Msg struct{ value bool }
 
-func SetOnCmd(v bool) tea.Cmd {
-	return func() tea.Msg { return setOnMsg{value: v} }
+func SetOn__inst0Cmd(v bool) tea.Cmd {
+	return func() tea.Msg { return setOn__inst0Msg{value: v} }
 }
 
-func (m Model) Label() string {
-	return m.label
+func (m Model) Label__inst0() string {
+	return m.label__inst0
 }
 
-func (m Model) SetLabel(v string) Model {
-	m.label = v
+func (m Model) SetLabel__inst0(v string) Model {
+	m.label__inst0 = v
 	return m
 }
 
-type setLabelMsg struct{ value string }
+type setLabel__inst0Msg struct{ value string }
 
-func SetLabelCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setLabelMsg{value: v} }
+func SetLabel__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setLabel__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -122,10 +122,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setOnMsg:
-		m = m.SetOn(msg.value)
-	case setLabelMsg:
-		m = m.SetLabel(msg.value)
+	case setOn__inst0Msg:
+		m = m.SetOn__inst0(msg.value)
+	case setLabel__inst0Msg:
+		m = m.SetLabel__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -138,7 +138,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.on = !m.on
+			m.on__inst0 = !m.on__inst0
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -148,7 +148,7 @@ func (m Model) View() tea.View {
 	var content string
 	var contentChildren []string
 	var __lt0 string
-	if m.on {
+	if m.on__inst0 {
 		__lt0 = "yes"
 	} else {
 		__lt0 = "no"
@@ -165,7 +165,7 @@ func (m Model) View() tea.View {
 	content_3 = lipgloss.NewStyle().Render(content_3Prefix + " " + fmt.Sprint("toggle"))
 	contentChildren = append(contentChildren, content_3)
 	var content_4 string
-	content_4 = lipgloss.NewStyle().Render(fmt.Sprint(m.label))
+	content_4 = lipgloss.NewStyle().Render(fmt.Sprint(m.label__inst0))
 	contentChildren = append(contentChildren, content_4)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)

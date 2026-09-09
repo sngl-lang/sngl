@@ -765,6 +765,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		if st.reactive[v] {
 			st.reactive[clone] = true
 		}
+		// And it holds what the original held. The points-to result is keyed
+		// by declaration, so a clone is a slot nothing has analysed: the async
+		// colour on a funcvar var went missing the moment the component
+		// declaring it was inlined, and `handler()` came out without its
+		// `await`.
+		carryPointsTo(st.pkg, ir.SlotVarKey(v), ir.SlotVarKey(clone))
 		*hoist.vars = append(*hoist.vars, clone)
 	}
 	funcStart := len(*hoist.funcs)
@@ -774,6 +780,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone.Block = deepCloneStmts(f.Block)
 		renames[f] = clone.Name
 		symRenames[f] = clone
+		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
 	}
 	timerStart := len(*hoist.timers)
@@ -860,6 +867,22 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	body = substituteEvents(body, n.Handlers)
 
 	return body, nil
+}
+
+// carryPointsTo copies one slot's candidates and colour onto a second key,
+// for a declaration a pass has cloned. A key with nothing recorded is left
+// absent rather than given an empty entry, so "no candidates" and "not a
+// funcvar slot" stay distinguishable.
+func carryPointsTo(pkg *ir.Package, from, to ir.PointsToKey) {
+	if pkg == nil || pkg.PointsTo == nil {
+		return
+	}
+	if cands, ok := pkg.PointsTo.Sites[from]; ok {
+		pkg.PointsTo.Sites[to] = append([]*ir.Func{}, cands...)
+	}
+	if col, ok := pkg.PointsTo.SlotColor[from]; ok {
+		pkg.PointsTo.SlotColor[to] = col
+	}
 }
 
 func cloneVarShallow(v *ir.Var) *ir.Var {

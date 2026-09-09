@@ -101,7 +101,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a: 0, b: 0, seen: 0 };
+  var state = { a__inst0: 0, b__inst0: 0, seen__inst0: 0 };
   function run(f) {
     f();
   }
@@ -110,20 +110,20 @@ body { font-family: system-ui, sans-serif; }
   }
   function __effect0_mount() {
     run(() => {
-      state.a += 1;
-      __n0.textContent = String(state.a) + ":" + String(state.b) + ":" + String(state.seen);
+      state.a__inst0 += 1;
+      __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
     });
   }
   function __effect1_mount() {
     run(() => {
-      state.b += 1;
-      __n0.textContent = String(state.a) + ":" + String(state.b) + ":" + String(state.seen);
+      state.b__inst0 += 1;
+      __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
     });
   }
   function __effect2_mount() {
     runWith((__e) => {
-      state.seen = __e;
-      __n0.textContent = String(state.a) + ":" + String(state.b) + ":" + String(state.seen);
+      state.seen__inst0 = __e;
+      __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
     });
   }
   var __effect0_live = [];
@@ -211,7 +211,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = String(state.a) + ":" + String(state.b) + ":" + String(state.seen);
+    __n0.textContent = String(state.a__inst0) + ":" + String(state.b__inst0) + ":" + String(state.seen__inst0);
   }
   __sngl_init();
   __effects0_settle();

@@ -74,19 +74,19 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var pick by remember { mutableStateOf("a") }
+    var pick__inst0 by remember { mutableStateOf("a") }
 
     Column {
         Column(modifier = Modifier.safeDrawingPadding()) {
             for (opt in listOf("a", "b")) {
                 Row(modifier = Modifier, verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = (pick == opt), onClick = {
-                        pick = opt
+                    RadioButton(selected = (pick__inst0 == opt), onClick = {
+                        pick__inst0 = opt
                     })
                     Text(text = opt, modifier = Modifier)
                 }
             }
         }
-        Text(text = pick, modifier = Modifier.safeDrawingPadding())
+        Text(text = pick__inst0, modifier = Modifier.safeDrawingPadding())
     }
 }

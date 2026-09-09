@@ -836,12 +836,12 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 				}
 			}
 		}
-		// Emit @change handlers from IR vars
-		allVars := ctx.Pkg.Vars
-		if main := ctx.RootDecl(); main != nil {
-			allVars = append(allVars, main.Vars...)
-		}
-		for _, v := range allVars {
+		// Emit @change handlers from IR vars. ModelState is the enumeration
+		// of who owns this Model's state, so a var the inliner hoisted onto
+		// the window is in it: read as pkg.Vars plus the root component's, a
+		// `@change` on such a var reached the setter as nothing at all.
+		for _, ov := range ctx.ModelState() {
+			v := ov.Var
 			if v.Name != bind.name {
 				continue
 			}

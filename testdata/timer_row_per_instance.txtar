@@ -78,7 +78,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { ticks: 0, periods: [20, 500] };
+  var state = { ticks__inst0: 0, periods__inst0: [20, 500] };
   function __cf_timer(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
@@ -186,21 +186,21 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_next = [];
     let __inst1_i = 0;
     let __inst1_now_interval = [];
-    for (const p of state.periods) {
+    for (const p of state.periods__inst0) {
       let __n1 = null;
       if (__inst1_live.length > __inst1_i && __inst1_was_interval[__inst1_i] === p) {
         __n1 = __inst1_live[__inst1_i];
         __n1.__set_tick((_) => {
-          state.ticks += 1;
-          __n0.textContent = "ticks=" + String(state.ticks);
+          state.ticks__inst0 += 1;
+          __n0.textContent = "ticks=" + String(state.ticks__inst0);
         });
       } else {
         if (__inst1_live.length > __inst1_i) {
           __inst1_live[__inst1_i].__destroy();
         }
         let __n1__new = __cf_timer({ interval: p, enabled: true, tick: (_) => {
-          state.ticks += 1;
-          __n0.textContent = "ticks=" + String(state.ticks);
+          state.ticks__inst0 += 1;
+          __n0.textContent = "ticks=" + String(state.ticks__inst0);
         } });
         __n1 = __n1__new;
       }
@@ -241,11 +241,11 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.periods.push(1e3);
+    state.periods__inst0.push(1e3);
     __renderSlot0(__slotAnchor_0);
   });
   function __sngl_init() {
-    __n0.textContent = "ticks=" + String(state.ticks);
+    __n0.textContent = "ticks=" + String(state.ticks__inst0);
   }
   __sngl_init();
 })();

@@ -48,8 +48,8 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { scores: null, size: 0 };
-  state.scores = /* @__PURE__ */ new Map([["alice", 10], ["bob", 20]]);
+  var state = { scores__inst0: null, size__inst0: 0 };
+  state.scores__inst0 = /* @__PURE__ */ new Map([["alice", 10], ["bob", 20]]);
   function String(v) {
     return "" + v;
   }
@@ -57,15 +57,15 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.size = state.scores.size;
-    __n0.textContent = String(state.size);
+    state.size__inst0 = state.scores__inst0.size;
+    __n0.textContent = String(state.size__inst0);
   });
   $1.addEventListener("click", function() {
-    state.size = state.scores.has("alice") ? state.scores.get("alice") : 0;
-    __n0.textContent = String(state.size);
+    state.size__inst0 = state.scores__inst0.has("alice") ? state.scores__inst0.get("alice") : 0;
+    __n0.textContent = String(state.size__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.size);
+    __n0.textContent = String(state.size__inst0);
   }
   __sngl_init();
 })();

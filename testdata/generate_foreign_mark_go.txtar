@@ -48,7 +48,7 @@ type Entry struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	e Entry
+	e__inst0 Entry
 
 	width, height int
 }
@@ -56,7 +56,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.e = Entry{Title: "hello"}
+	m.e__inst0 = Entry{Title: "hello"}
 	return m
 }
 
@@ -66,19 +66,19 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) E() Entry {
-	return m.e
+func (m Model) E__inst0() Entry {
+	return m.e__inst0
 }
 
-func (m Model) SetE(v Entry) Model {
-	m.e = v
+func (m Model) SetE__inst0(v Entry) Model {
+	m.e__inst0 = v
 	return m
 }
 
-type setEMsg struct{ value Entry }
+type setE__inst0Msg struct{ value Entry }
 
-func SetECmd(v Entry) tea.Cmd {
-	return func() tea.Msg { return setEMsg{value: v} }
+func SetE__inst0Cmd(v Entry) tea.Cmd {
+	return func() tea.Msg { return setE__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -90,8 +90,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setEMsg:
-		m = m.SetE(msg.value)
+	case setE__inst0Msg:
+		m = m.SetE__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -106,7 +106,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(m.e.Title))
+	content = lipgloss.NewStyle().Render(fmt.Sprint(m.e__inst0.Title))
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v

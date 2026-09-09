@@ -63,8 +63,8 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { handler: null };
-  state.handler = fetchHello;
+  var state = { handler__inst0: null };
+  state.handler__inst0 = fetchHello;
   function syncFetch() {
     return "sync";
   }
@@ -72,13 +72,13 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
   $0.addEventListener("click", function() {
-    state.handler = syncFetch();
+    state.handler__inst0 = syncFetch();
   });
   $1.addEventListener("click", function() {
-    state.handler = fetchHello;
+    state.handler__inst0 = fetchHello;
   });
   $2.addEventListener("click", async function() {
-    await state.handler();
+    await state.handler__inst0();
   });
 })();
 </script>

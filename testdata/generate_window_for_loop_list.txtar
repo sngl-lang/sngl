@@ -24,16 +24,15 @@ const items list<Item> = [
     {slug="two", title="Two"},
 ]
 
-component main ui {
-    for var it = items {
-        window #page(title=it.title, href="/" + it.slug + ".html") {
-            text(value=it.title)
-        }
+window #index(title="Index", href="/index.html") {
+    for var p = page {
+        html.a(href=p.href, innerText=p.title)
     }
-    window #index(title="Index", href="/index.html") {
-        for var p = page {
-            html.a(href=p.href, innerText=p.title)
-        }
+}
+
+for var it = items {
+    window #page(title=it.title, href="/" + it.slug + ".html") {
+        text(value=it.title)
     }
 }
 -- out/none/html/index.html --

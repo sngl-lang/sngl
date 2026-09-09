@@ -17,12 +17,10 @@ import . "sngl:ui"
 import . "sngl:app"
 import http "sngl:remote/http"
 
-component main ui {
+window(title="get") {
     var url = "https://example.com/"
 
-    window(title="get") {
-        text(value=http.get(url).body)
-    }
+    text(value=http.get(url).body)
 }
 
 output(lang="go", platform="bubbletea")

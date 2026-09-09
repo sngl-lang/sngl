@@ -164,15 +164,15 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var __ctx_locale by remember { mutableStateOf(I18n.defaultLocale()) }
-    var count by remember { mutableStateOf(1) }
-    var label by remember { mutableStateOf(I18n.translate(__ctx_locale, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count))) }
+    var __ctx_locale__inst0 by remember { mutableStateOf(I18n.defaultLocale()) }
+    var count__inst0 by remember { mutableStateOf(1) }
+    var label__inst0 by remember { mutableStateOf(I18n.translate(__ctx_locale__inst0, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count__inst0))) }
 
     Column {
-        Text(text = label, modifier = Modifier.safeDrawingPadding())
+        Text(text = label__inst0, modifier = Modifier.safeDrawingPadding())
         Button(onClick = {
-            count = (count + 1)
-            label = I18n.translate(__ctx_locale, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count))
+            count__inst0 = (count__inst0 + 1)
+            label__inst0 = I18n.translate(__ctx_locale__inst0, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", mapOf("count" to count__inst0))
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "Add", modifier = Modifier)
         }

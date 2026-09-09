@@ -96,12 +96,12 @@ type __anon_e3b0c4 struct {
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	empty     __anon_e3b0c4
-	pair      __anon_a_b_8dc8a4
-	swapped   __anon_a_b_8dc8a4
-	shorthand __anon_a_b_8dc8a4
-	written   __anon_a_b_8dc8a4
-	total     int
+	empty__inst0     __anon_e3b0c4
+	pair__inst0      __anon_a_b_8dc8a4
+	swapped__inst0   __anon_a_b_8dc8a4
+	shorthand__inst0 __anon_a_b_8dc8a4
+	written__inst0   __anon_a_b_8dc8a4
+	total__inst0     int
 
 	width, height int
 }
@@ -109,12 +109,12 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.empty = __anon_e3b0c4{}
-	m.pair = __anon_a_b_8dc8a4{A: 1, B: 2}
-	m.swapped = __anon_a_b_8dc8a4{B: 4, A: 3}
-	m.shorthand = __anon_a_b_8dc8a4{A: 1, B: 2}
-	m.written = __anon_a_b_8dc8a4{A: 5, B: 6}
-	m.total = ((((m.pair.A + m.pair.B) + (m.swapped.A + m.swapped.B)) + (m.shorthand.A + m.shorthand.B)) + (m.written.A + m.written.B))
+	m.empty__inst0 = __anon_e3b0c4{}
+	m.pair__inst0 = __anon_a_b_8dc8a4{A: 1, B: 2}
+	m.swapped__inst0 = __anon_a_b_8dc8a4{B: 4, A: 3}
+	m.shorthand__inst0 = __anon_a_b_8dc8a4{A: 1, B: 2}
+	m.written__inst0 = __anon_a_b_8dc8a4{A: 5, B: 6}
+	m.total__inst0 = ((((m.pair__inst0.A + m.pair__inst0.B) + (m.swapped__inst0.A + m.swapped__inst0.B)) + (m.shorthand__inst0.A + m.shorthand__inst0.B)) + (m.written__inst0.A + m.written__inst0.B))
 	return m
 }
 
@@ -124,94 +124,94 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) Empty() __anon_e3b0c4 {
-	return m.empty
+func (m Model) Empty__inst0() __anon_e3b0c4 {
+	return m.empty__inst0
 }
 
-func (m Model) SetEmpty(v __anon_e3b0c4) Model {
-	m.empty = v
+func (m Model) SetEmpty__inst0(v __anon_e3b0c4) Model {
+	m.empty__inst0 = v
 	return m
 }
 
-type setEmptyMsg struct{ value __anon_e3b0c4 }
+type setEmpty__inst0Msg struct{ value __anon_e3b0c4 }
 
-func SetEmptyCmd(v __anon_e3b0c4) tea.Cmd {
-	return func() tea.Msg { return setEmptyMsg{value: v} }
+func SetEmpty__inst0Cmd(v __anon_e3b0c4) tea.Cmd {
+	return func() tea.Msg { return setEmpty__inst0Msg{value: v} }
 }
 
-func (m Model) Pair() __anon_a_b_8dc8a4 {
-	return m.pair
+func (m Model) Pair__inst0() __anon_a_b_8dc8a4 {
+	return m.pair__inst0
 }
 
-func (m Model) SetPair(v __anon_a_b_8dc8a4) Model {
-	m.pair = v
+func (m Model) SetPair__inst0(v __anon_a_b_8dc8a4) Model {
+	m.pair__inst0 = v
 	return m
 }
 
-type setPairMsg struct{ value __anon_a_b_8dc8a4 }
+type setPair__inst0Msg struct{ value __anon_a_b_8dc8a4 }
 
-func SetPairCmd(v __anon_a_b_8dc8a4) tea.Cmd {
-	return func() tea.Msg { return setPairMsg{value: v} }
+func SetPair__inst0Cmd(v __anon_a_b_8dc8a4) tea.Cmd {
+	return func() tea.Msg { return setPair__inst0Msg{value: v} }
 }
 
-func (m Model) Swapped() __anon_a_b_8dc8a4 {
-	return m.swapped
+func (m Model) Swapped__inst0() __anon_a_b_8dc8a4 {
+	return m.swapped__inst0
 }
 
-func (m Model) SetSwapped(v __anon_a_b_8dc8a4) Model {
-	m.swapped = v
+func (m Model) SetSwapped__inst0(v __anon_a_b_8dc8a4) Model {
+	m.swapped__inst0 = v
 	return m
 }
 
-type setSwappedMsg struct{ value __anon_a_b_8dc8a4 }
+type setSwapped__inst0Msg struct{ value __anon_a_b_8dc8a4 }
 
-func SetSwappedCmd(v __anon_a_b_8dc8a4) tea.Cmd {
-	return func() tea.Msg { return setSwappedMsg{value: v} }
+func SetSwapped__inst0Cmd(v __anon_a_b_8dc8a4) tea.Cmd {
+	return func() tea.Msg { return setSwapped__inst0Msg{value: v} }
 }
 
-func (m Model) Shorthand() __anon_a_b_8dc8a4 {
-	return m.shorthand
+func (m Model) Shorthand__inst0() __anon_a_b_8dc8a4 {
+	return m.shorthand__inst0
 }
 
-func (m Model) SetShorthand(v __anon_a_b_8dc8a4) Model {
-	m.shorthand = v
+func (m Model) SetShorthand__inst0(v __anon_a_b_8dc8a4) Model {
+	m.shorthand__inst0 = v
 	return m
 }
 
-type setShorthandMsg struct{ value __anon_a_b_8dc8a4 }
+type setShorthand__inst0Msg struct{ value __anon_a_b_8dc8a4 }
 
-func SetShorthandCmd(v __anon_a_b_8dc8a4) tea.Cmd {
-	return func() tea.Msg { return setShorthandMsg{value: v} }
+func SetShorthand__inst0Cmd(v __anon_a_b_8dc8a4) tea.Cmd {
+	return func() tea.Msg { return setShorthand__inst0Msg{value: v} }
 }
 
-func (m Model) Written() __anon_a_b_8dc8a4 {
-	return m.written
+func (m Model) Written__inst0() __anon_a_b_8dc8a4 {
+	return m.written__inst0
 }
 
-func (m Model) SetWritten(v __anon_a_b_8dc8a4) Model {
-	m.written = v
+func (m Model) SetWritten__inst0(v __anon_a_b_8dc8a4) Model {
+	m.written__inst0 = v
 	return m
 }
 
-type setWrittenMsg struct{ value __anon_a_b_8dc8a4 }
+type setWritten__inst0Msg struct{ value __anon_a_b_8dc8a4 }
 
-func SetWrittenCmd(v __anon_a_b_8dc8a4) tea.Cmd {
-	return func() tea.Msg { return setWrittenMsg{value: v} }
+func SetWritten__inst0Cmd(v __anon_a_b_8dc8a4) tea.Cmd {
+	return func() tea.Msg { return setWritten__inst0Msg{value: v} }
 }
 
-func (m Model) Total() int {
-	return m.total
+func (m Model) Total__inst0() int {
+	return m.total__inst0
 }
 
-func (m Model) SetTotal(v int) Model {
-	m.total = v
+func (m Model) SetTotal__inst0(v int) Model {
+	m.total__inst0 = v
 	return m
 }
 
-type setTotalMsg struct{ value int }
+type setTotal__inst0Msg struct{ value int }
 
-func SetTotalCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setTotalMsg{value: v} }
+func SetTotal__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -223,18 +223,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setEmptyMsg:
-		m = m.SetEmpty(msg.value)
-	case setPairMsg:
-		m = m.SetPair(msg.value)
-	case setSwappedMsg:
-		m = m.SetSwapped(msg.value)
-	case setShorthandMsg:
-		m = m.SetShorthand(msg.value)
-	case setWrittenMsg:
-		m = m.SetWritten(msg.value)
-	case setTotalMsg:
-		m = m.SetTotal(msg.value)
+	case setEmpty__inst0Msg:
+		m = m.SetEmpty__inst0(msg.value)
+	case setPair__inst0Msg:
+		m = m.SetPair__inst0(msg.value)
+	case setSwapped__inst0Msg:
+		m = m.SetSwapped__inst0(msg.value)
+	case setShorthand__inst0Msg:
+		m = m.SetShorthand__inst0(msg.value)
+	case setWritten__inst0Msg:
+		m = m.SetWritten__inst0(msg.value)
+	case setTotal__inst0Msg:
+		m = m.SetTotal__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -250,13 +250,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total)))
+	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total__inst0)))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.pair.A)))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.pair__inst0.A)))
 	parts = append(parts, part1)
 	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((m.pair.A + m.pair.B) + 0))))
+	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((m.pair__inst0.A + m.pair__inst0.B) + 0))))
 	parts = append(parts, part2)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -309,17 +309,17 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var empty by remember { mutableStateOf(__anon_e3b0c4()) }
-    var pair by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 1, b = 2)) }
-    var swapped by remember { mutableStateOf(__anon_a_b_8dc8a4(b = 4, a = 3)) }
-    var shorthand by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 1, b = 2)) }
-    var written by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 5, b = 6)) }
-    var total by remember { mutableStateOf(((((pair.a + pair.b) + (swapped.a + swapped.b)) + (shorthand.a + shorthand.b)) + (written.a + written.b))) }
+    var empty__inst0 by remember { mutableStateOf(__anon_e3b0c4()) }
+    var pair__inst0 by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 1, b = 2)) }
+    var swapped__inst0 by remember { mutableStateOf(__anon_a_b_8dc8a4(b = 4, a = 3)) }
+    var shorthand__inst0 by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 1, b = 2)) }
+    var written__inst0 by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 5, b = 6)) }
+    var total__inst0 by remember { mutableStateOf(((((pair__inst0.a + pair__inst0.b) + (swapped__inst0.a + swapped__inst0.b)) + (shorthand__inst0.a + shorthand__inst0.b)) + (written__inst0.a + written__inst0.b))) }
 
     Column {
-        Text(text = total.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = pair.a.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = ((pair.a + pair.b) + 0).toString(), modifier = Modifier.safeDrawingPadding())
+        Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+        Text(text = pair__inst0.a.toString(), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((pair__inst0.a + pair__inst0.b) + 0).toString(), modifier = Modifier.safeDrawingPadding())
     }
 }
 -- out/none/html/index.html --
@@ -345,13 +345,13 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { empty: null, pair: null, swapped: null, shorthand: null, written: null, total: null };
-  state.empty = {};
-  state.pair = { a: 1, b: 2 };
-  state.swapped = { b: 4, a: 3 };
-  state.shorthand = { a: 1, b: 2 };
-  state.written = { a: 5, b: 6 };
-  state.total = state.pair.a + state.pair.b + (state.swapped.a + state.swapped.b) + (state.shorthand.a + state.shorthand.b) + (state.written.a + state.written.b);
+  var state = { empty__inst0: null, pair__inst0: null, swapped__inst0: null, shorthand__inst0: null, written__inst0: null, total__inst0: null };
+  state.empty__inst0 = {};
+  state.pair__inst0 = { a: 1, b: 2 };
+  state.swapped__inst0 = { b: 4, a: 3 };
+  state.shorthand__inst0 = { a: 1, b: 2 };
+  state.written__inst0 = { a: 5, b: 6 };
+  state.total__inst0 = state.pair__inst0.a + state.pair__inst0.b + (state.swapped__inst0.a + state.swapped__inst0.b) + (state.shorthand__inst0.a + state.shorthand__inst0.b) + (state.written__inst0.a + state.written__inst0.b);
   function __anon_a_b_8dc8a4(a, b) {
     return { a, b };
   }
@@ -365,9 +365,9 @@ body { font-family: system-ui, sans-serif; }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   function __sngl_init() {
-    __n0.textContent = String(state.total);
-    __n1.textContent = String(state.pair.a);
-    __n2.textContent = String(state.pair.a + state.pair.b + 0);
+    __n0.textContent = String(state.total__inst0);
+    __n1.textContent = String(state.pair__inst0.a);
+    __n2.textContent = String(state.pair__inst0.a + state.pair__inst0.b + 0);
   }
   __sngl_init();
 })();

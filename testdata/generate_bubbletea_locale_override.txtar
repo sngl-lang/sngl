@@ -39,8 +39,8 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	n     int
-	price string
+	n__inst0     int
+	price__inst0 string
 
 	width, height int
 }
@@ -48,8 +48,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.n = 1234
-	m.price = i18n.NumberInt("es-MX", m.n, "decimal")
+	m.n__inst0 = 1234
+	m.price__inst0 = i18n.NumberInt("es-MX", m.n__inst0, "decimal")
 	return m
 }
 
@@ -59,34 +59,34 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) N() int {
-	return m.n
+func (m Model) N__inst0() int {
+	return m.n__inst0
 }
 
-func (m Model) SetN(v int) Model {
-	m.n = v
+func (m Model) SetN__inst0(v int) Model {
+	m.n__inst0 = v
 	return m
 }
 
-type setNMsg struct{ value int }
+type setN__inst0Msg struct{ value int }
 
-func SetNCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setNMsg{value: v} }
+func SetN__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setN__inst0Msg{value: v} }
 }
 
-func (m Model) Price() string {
-	return m.price
+func (m Model) Price__inst0() string {
+	return m.price__inst0
 }
 
-func (m Model) SetPrice(v string) Model {
-	m.price = v
+func (m Model) SetPrice__inst0(v string) Model {
+	m.price__inst0 = v
 	return m
 }
 
-type setPriceMsg struct{ value string }
+type setPrice__inst0Msg struct{ value string }
 
-func SetPriceCmd(v string) tea.Cmd {
-	return func() tea.Msg { return setPriceMsg{value: v} }
+func SetPrice__inst0Cmd(v string) tea.Cmd {
+	return func() tea.Msg { return setPrice__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -98,10 +98,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setNMsg:
-		m = m.SetN(msg.value)
-	case setPriceMsg:
-		m = m.SetPrice(msg.value)
+	case setN__inst0Msg:
+		m = m.SetN__inst0(msg.value)
+	case setPrice__inst0Msg:
+		m = m.SetPrice__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -116,7 +116,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(m.price))
+	content = lipgloss.NewStyle().Render(fmt.Sprint(m.price__inst0))
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v

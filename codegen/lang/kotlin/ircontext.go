@@ -410,6 +410,19 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	if n.Receiver != nil {
 		return kc.evalNamespaceCall(n)
 	}
+	// Before the receiver: the enclosing scope's own declaration wins over the
+	// name the receiver spells. A component's method that the inliner hoisted
+	// onto the window still carries `Receiver: "main"`, and that component is
+	// gone from the package by then -- so receiverIsComponent said no and the
+	// call came out as `/* unresolved method main.noisy */`.
+	if n.Func != nil {
+		if name, ok := kc.scopeFuncName(n.Func); ok {
+			if codegen.IsComputed(n.Func) {
+				return name
+			}
+			return name + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
+		}
+	}
 	if n.Func != nil && n.Func.Receiver != "" {
 		return kc.evalTypeMethodCall(n)
 	}
@@ -621,6 +634,27 @@ func (kc *KtIRContext) isScopeComputed(name string, fn *ir.Func) bool {
 	}
 	sym, kind := kc.Ctx.Resolve(name)
 	return kind == codegen.NameComputed && sym == ir.Symbol(fn)
+}
+
+// scopeFuncName is the name a call reaches fn by when the enclosing scope --
+// the window or component this expression is being emitted for -- is what
+// declares it. Compose puts such a declaration inside the composable, so the
+// call is by bare name and no receiver is involved.
+func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
+	if fn == nil || kc.Ctx == nil {
+		return "", false
+	}
+	sym, kind := kc.Ctx.Resolve(fn.Name)
+	if sym != ir.Symbol(fn) || (kind != codegen.NameComputed && kind != codegen.NameFunc) {
+		return "", false
+	}
+	name := fn.Name
+	if kc.IdentRewrites != nil {
+		if rw, ok := kc.IdentRewrites[name]; ok {
+			name = rw
+		}
+	}
+	return name, true
 }
 
 // receiverIsComponent reports whether name matches a component declared in the

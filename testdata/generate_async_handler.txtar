@@ -53,15 +53,15 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { greeting: "" };
+  var state = { greeting__inst0: "" };
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", async function() {
-    state.greeting = await fetchHello("world");
-    __n0.textContent = state.greeting;
+    state.greeting__inst0 = await fetchHello("world");
+    __n0.textContent = state.greeting__inst0;
   });
   function __sngl_init() {
-    __n0.textContent = state.greeting;
+    __n0.textContent = state.greeting__inst0;
   }
   __sngl_init();
 })();

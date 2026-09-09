@@ -9,8 +9,8 @@ main anywhere. The window is the root, so `table` inlines and its slot content
 lands in the output rather than surviving as an ir.SlotInst.
 
 A package with neither a main nor a window is left alone instead, since every
-component there is its own entry point -- that form is in
-inline_window_form_lone.txtar.
+component there is its own entry point; and a component no root reaches is
+dropped -- those two are in inline_window_form_lone.txtar.
 
 -- anon.sngl --
 import . "sngl:ui"
@@ -53,6 +53,9 @@ type Row struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
+	__n0 *fyne.Container
+	__n1 *widget.Label
+	__n2 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -63,15 +66,15 @@ func New() *Model {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	__n0 := container.NewVBox()
+	m.__n0 = container.NewVBox()
 	for _, r := range []Row{Row{Title: "alpha"}} {
-		__n1 := widget.NewLabel("")
-		__n1.SetText(r.Title)
-		__n0.Add(__n1)
+		m.__n1 = widget.NewLabel("")
+		m.__n1.SetText(r.Title)
+		m.__n0.Add(m.__n1)
 	}
-	__n2 := widget.NewLabel("")
-	__n2.SetText("inner")
-	__n0.Add(__n2)
-	content := fyne.CanvasObject(__n0)
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText("inner")
+	m.__n0.Add(m.__n2)
+	content := fyne.CanvasObject(m.__n0)
 	return content
 }

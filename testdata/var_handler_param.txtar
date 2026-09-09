@@ -59,9 +59,9 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	count     int
-	tracked   int
-	__focusID int
+	count__inst0   int
+	tracked__inst0 int
+	__focusID      int
 
 	width, height int
 }
@@ -69,8 +69,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.count = 0
-	m.tracked = 0
+	m.count__inst0 = 0
+	m.tracked__inst0 = 0
 	m.__focusID = 0
 	return m
 }
@@ -93,35 +93,35 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Count() int {
-	return m.count
+func (m Model) Count__inst0() int {
+	return m.count__inst0
 }
 
-func (m Model) SetCount(v int) Model {
-	m.count = v
+func (m Model) SetCount__inst0(v int) Model {
+	m.count__inst0 = v
 	return m
 }
 
-type setCountMsg struct{ value int }
+type setCount__inst0Msg struct{ value int }
 
-func SetCountCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setCountMsg{value: v} }
+func SetCount__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setCount__inst0Msg{value: v} }
 }
 
-func (m Model) Tracked() int {
-	return m.tracked
+func (m Model) Tracked__inst0() int {
+	return m.tracked__inst0
 }
 
-func (m Model) SetTracked(v int) Model {
-	m.tracked = v
-	m.count = (v + 1)
+func (m Model) SetTracked__inst0(v int) Model {
+	m.tracked__inst0 = v
+	m.count__inst0 = (v + 1)
 	return m
 }
 
-type setTrackedMsg struct{ value int }
+type setTracked__inst0Msg struct{ value int }
 
-func SetTrackedCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setTrackedMsg{value: v} }
+func SetTracked__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setTracked__inst0Msg{value: v} }
 }
 
 func (m Model) Init() tea.Cmd {
@@ -133,10 +133,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setCountMsg:
-		m = m.SetCount(msg.value)
-	case setTrackedMsg:
-		m = m.SetTracked(msg.value)
+	case setCount__inst0Msg:
+		m = m.SetCount__inst0(msg.value)
+	case setTracked__inst0Msg:
+		m = m.SetTracked__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -149,7 +149,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.tracked = (m.tracked + 1)
+			m.tracked__inst0 = (m.tracked__inst0 + 1)
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -167,7 +167,7 @@ func (m Model) View() tea.View {
 	content_0 = lipgloss.NewStyle().Render(content_0Prefix + " " + fmt.Sprint("+"))
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
-	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count)))
+	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count__inst0)))
 	contentChildren = append(contentChildren, content_1)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
@@ -188,8 +188,8 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	count   int
-	tracked int
+	count__inst0   int
+	tracked__inst0 int
 
 	__n1 *fyne.Container
 	__n2 *widget.Button
@@ -199,31 +199,31 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.count = 0
-	m.tracked = 0
+	m.count__inst0 = 0
+	m.tracked__inst0 = 0
 	return m
 }
 
 func (m *Model) __n2_click_handler() {
-	m.tracked = (m.tracked + 1)
+	m.tracked__inst0 = (m.tracked__inst0 + 1)
 }
 
-func (m *Model) Count() int {
-	return m.count
+func (m *Model) Count__inst0() int {
+	return m.count__inst0
 }
 
-func (m *Model) SetCount(v int) {
-	m.count = v
+func (m *Model) SetCount__inst0(v int) {
+	m.count__inst0 = v
 }
 
-func (m *Model) Tracked() int {
-	return m.tracked
+func (m *Model) Tracked__inst0() int {
+	return m.tracked__inst0
 }
 
-func (m *Model) SetTracked(v int) {
-	m.tracked = v
-	m.count = (v + 1)
-	m.__n0.SetText(fmt.Sprint(m.count))
+func (m *Model) SetTracked__inst0(v int) {
+	m.tracked__inst0 = v
+	m.count__inst0 = (v + 1)
+	m.__n0.SetText(fmt.Sprint(m.count__inst0))
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
@@ -234,7 +234,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2.OnTapped = m.__n2_click_handler
 	m.__n1.Add(m.__n2)
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(fmt.Sprint(m.count))
+	m.__n0.SetText(fmt.Sprint(m.count__inst0))
 	m.__n1.Add(m.__n0)
 	content := fyne.CanvasObject(m.__n1)
 	return content
@@ -263,11 +263,11 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { count: 0, tracked: 0 };
-  function $set_tracked(v) {
-    state.tracked = v;
-    state.count = v + 1;
-    __n0.textContent = String(state.count);
+  var state = { count__inst0: 0, tracked__inst0: 0 };
+  function $set_tracked__inst0(v) {
+    state.tracked__inst0 = v;
+    state.count__inst0 = v + 1;
+    __n0.textContent = String(state.count__inst0);
   }
   function String(v) {
     return "" + v;
@@ -275,10 +275,10 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
-    state.tracked = state.tracked + 1;
+    state.tracked__inst0 = state.tracked__inst0 + 1;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count);
+    __n0.textContent = String(state.count__inst0);
   }
   __sngl_init();
 })();

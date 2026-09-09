@@ -68,15 +68,15 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds: 0, running: false, handle__inst0: 0 };
+  var state = { seconds__inst0: 0, running__inst0: false, handle__inst0__inst0: 0 };
   function __effect0_mount() {
-    state.handle__inst0 = setInterval(() => {
-      state.seconds += 1;
-      __n0.textContent = String(state.seconds) + " s";
+    state.handle__inst0__inst0 = setInterval(() => {
+      state.seconds__inst0 += 1;
+      __n0.textContent = String(state.seconds__inst0) + " s";
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst0);
+    clearInterval(state.handle__inst0__inst0);
   }
   function __snglTeardown() {
     __effect0_teardown();
@@ -89,7 +89,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
-    if (state.running) {
+    if (state.running__inst0) {
       __effect0_desired.push(1e3);
     }
     for (const [__effect0_i, _] of __effect0_live.entries()) {
@@ -152,13 +152,13 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $1.addEventListener("click", function() {
-    state.running = !state.running;
-    __n1.textContent = state.running ? "Pause" : "Start";
+    state.running__inst0 = !state.running__inst0;
+    __n1.textContent = state.running__inst0 ? "Pause" : "Start";
     __effects0_settle();
   });
   function __sngl_init() {
-    __n0.textContent = String(state.seconds) + " s";
-    __n1.textContent = state.running ? "Pause" : "Start";
+    __n0.textContent = String(state.seconds__inst0) + " s";
+    __n1.textContent = state.running__inst0 ? "Pause" : "Start";
   }
   __sngl_init();
   __effects0_settle();

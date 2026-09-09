@@ -61,17 +61,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a: "unset", b: "unset" };
+  var state = { a__inst0: "unset", b__inst0: "unset" };
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.a = btoa("hi");
-    __n0.textContent = state.a + state.b;
-    state.b = btoa("hi");
-    __n0.textContent = state.a + state.b;
+    state.a__inst0 = btoa("hi");
+    __n0.textContent = state.a__inst0 + state.b__inst0;
+    state.b__inst0 = btoa("hi");
+    __n0.textContent = state.a__inst0 + state.b__inst0;
   });
   function __sngl_init() {
-    __n0.textContent = state.a + state.b;
+    __n0.textContent = state.a__inst0 + state.b__inst0;
   }
   __sngl_init();
 })();

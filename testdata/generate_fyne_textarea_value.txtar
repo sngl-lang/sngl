@@ -20,14 +20,12 @@ output {
     go { fyne(main=true) }
 }
 
-component main ui {
+window #app(title="t") {
     var content = "initial value"
 
-    window #app(title="t") {
-        vbox {
-            textarea(value=content, rows=4)
-            button(text="set", @click { content = "after click" })
-        }
+    vbox {
+        textarea(value=content, rows=4)
+        button(text="set", @click { content = "after click" })
     }
 }
 -- out/go/fyne/model.go --

@@ -579,16 +579,16 @@ body { font-family: system-ui, sans-serif; }
     }
     return __toCommonJS(i18n_entry_exports);
   })();
-  var state = { count: 3 };
-  var __ctx_locale__inst0 = "es-MX";
+  var state = { count__inst0: 3 };
+  var __ctx_locale__inst1 = "es-MX";
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
-    state.count += 1;
-    __n0.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
+    state.count__inst0 += 1;
+    __n0.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
   });
   function __sngl_init() {
-    __n0.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
+    __n0.textContent = i18n.getTranslator().tr("Cart: {count, plural, =0{empty} one{1 item} other{# items}}", "Cart: {count, plural, =0{empty} one{1 item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count__inst0]]));
   }
   __sngl_init();
 })();

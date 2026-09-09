@@ -66,27 +66,26 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { chosen: "" };
-  function main_pick(state2, label) {
-    state2.chosen = label;
-    __n0.textContent = state2.chosen;
-    __n0.textContent = state2.chosen;
+  var state = { chosen__inst0: "" };
+  function main_pick__inst0(state2, label) {
+    state2.chosen__inst0 = label;
+    __n0.textContent = state2.chosen__inst0;
   }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
-    main_pick(state, "a");
+    main_pick__inst0(state, "a");
   });
   $2.addEventListener("click", function() {
-    main_pick(state, "b");
+    main_pick__inst0(state, "b");
   });
   $3.addEventListener("click", function() {
-    main_pick(state, "c");
+    main_pick__inst0(state, "c");
   });
   function __sngl_init() {
-    __n0.textContent = state.chosen;
+    __n0.textContent = state.chosen__inst0;
   }
   __sngl_init();
 })();
