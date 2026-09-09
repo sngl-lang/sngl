@@ -641,6 +641,15 @@ func fyneComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 			out[fn] = true
 		}
 	}
+	// A window owns funcs the way a component does and its state is in the
+	// same Model, so one of its funcs is a Model method too. Left out, an
+	// effect's __effectN_mount in a window body was emitted as a free func
+	// and its body named `m` with no receiver to read it from.
+	for _, w := range pkg.Windows {
+		for _, fn := range w.Funcs {
+			out[fn] = true
+		}
+	}
 	return out
 }
 
@@ -912,13 +921,19 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 }
 
 // mainScopeLocalRefs returns the non-escaping widget-ref set passNodeEscape
-// recorded for the scope the BuildUI emission walks (the first window's body
-// if present, else the main component body).
+// recorded for the scope the BuildUI emission walks: a harness-isolated root
+// component's body, and nothing for a window's.
+//
+// Nil for the entry scope, and deliberately: the locals a ref set buys are for
+// a *recursive* render method, where a frame must not clobber the widget temp
+// of the frame that called it. BuildUI runs once and is reached from nowhere,
+// so nothing there needs a frame of its own -- while everything else emitted
+// beside it may name a ref it created, and only some of those sites go through
+// a qualifier that knows about locals. A window's own set reads as "all of
+// them are local", which is what emitted `m.__renderSlot0(m.__n3)` against a
+// local `__n3`.
 func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		if wins[0].Window != nil {
-			return wins[0].Window.LocalRefs
-		}
 		return nil
 	}
 	if main := ctx.RootDecl(); main != nil {

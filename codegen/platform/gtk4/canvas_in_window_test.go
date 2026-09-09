@@ -3,20 +3,25 @@ package gtk4
 import "testing"
 
 // passCanvas attaches a canvas's draw func to whatever body holds the canvas,
-// and a `window` written inside a component is an ir.Window statement in that
-// component's body -- not one of pkg.Windows. CodegenCtx.AllFuncs walked only
-// pkg.Windows, so a canvas under a component-declared window produced a
+// and a `window` a component renders is an ir.Window statement in that
+// component's body until passRootWindow lifts it. CodegenCtx.AllFuncs walked
+// only pkg.Windows, so a canvas under a component-declared window produced a
 // BuildUI calling m._canvasDraw0 against a method nothing declared:
 // examples/calculator, whose seven-segment readout is exactly that shape.
+//
+// A component that renders windows names the root family; the radius is the
+// package's, because a root component's own state has no route into the one
+// Model -- passRootWindow empties its body and dead-code elimination takes the
+// declaration with it.
 func TestACanvasUnderAComponentDeclaredWindowEmitsItsDrawFunc(t *testing.T) {
 	files := generateGTK4FilesBuilt(t, `
 import . "sngl:ui"
 import . "sngl:app"
 import . "sngl:ui/draw"
 
-component main ui {
-    var radius = 50.0
+var radius = 50.0
 
+component main root {
     window #w(title="c", href="/") {
         canvas(width=400px, height=280px) {
             circle(cx=200.0, cy=140.0, r=radius, style=CanvasStyle{fill=color{r=99, g=102, b=241, a=255}}) {}
