@@ -13,9 +13,9 @@ import (
 // `build.platform` ones.
 const buildPkg = "build"
 
-// treeKinds are the tree structs `sngl:build` declares, resolved once. A
-// target node's membership is compared against these, so a package declaring
-// its own `struct language` declares a different tree and its nodes do not pass.
+// buildTrees are the tree structs `sngl:build` declares, resolved once.
+// Membership is compared against these declarations, so a package declaring its
+// own `struct language` declares a different tree and its nodes do not pass.
 func (c *checker) buildTrees() (lang, platform *ir.StructDef) {
 	if c.buildTreesSet {
 		return c.langTree, c.platformTree
@@ -79,10 +79,9 @@ func (c *checker) targetNode(name string, depth int) *ir.Component {
 
 // judgesTargets reports whether this check is in a position to call a name at
 // this level a misspelling. Only a caller holding the whole registry is: a
-// platform's own test harness registers itself and a fixture's directive names
-// five other targets, which is a build this check does not have rather than a
-// name nobody serves. Which is the answer the option schema gave before the
-// tree, for the same reason.
+// platform's own test harness registers itself while its fixtures name five
+// other targets, which is a build this check does not have rather than a name
+// nobody serves.
 func (c *checker) judgesTargets(depth int) bool {
 	if !c.cfg.TargetsComplete {
 		return false
