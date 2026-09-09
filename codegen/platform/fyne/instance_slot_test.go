@@ -11,6 +11,7 @@ import (
 // is what the instance has to render as.
 const slotInstanceSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
 component card(name = "") ui {
     var open = true
@@ -20,7 +21,7 @@ component card(name = "") ui {
     }
 }
 
-component main ui {
+app.window {
     var items list<string> = ["a", "b"]
     for var it = items {
         card(name=it)

@@ -405,6 +405,10 @@ type checker struct {
 	// the mark rather than the word is what lets a program shadow `context`.
 	contextComp *ir.Component
 	windowType  *ir.Type
+	// currentWindow is the window whose body is being checked, so a func or a
+	// var written there is attached to it rather than to the package. nil
+	// outside a window body.
+	currentWindow *ir.Window
 	// entryName is the window id `output(entry = …)` named, and entryPos the
 	// directive it was written on. Held rather than resolved on the spot: the
 	// windows do not exist until pass2 has walked the bodies that declare them.
@@ -3561,6 +3565,15 @@ func (c *checker) pass2() {
 	for _, v := range c.pkg.Vars {
 		pkgVarSet[v] = struct{}{}
 	}
+	// A window owns state the way the package and a component do (ir.Owners),
+	// and a func written in a window body is registered at package level -- so
+	// left out of this set, a write to a window var was recorded nowhere and
+	// the func read as pure.
+	for _, w := range c.pkg.Windows {
+		for _, v := range w.Vars {
+			pkgVarSet[v] = struct{}{}
+		}
+	}
 	// Every reactive var in the package, which is what a callee could reach.
 	narrowVarSet := make(map[*ir.Var]struct{}, len(pkgVarSet))
 	maps.Copy(narrowVarSet, pkgVarSet)
@@ -4170,6 +4183,9 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	if w.AST != nil {
 		defer c.fileOf(w.AST.Pos)()
 	}
+	prevWindow := c.currentWindow
+	c.currentWindow = w
+	defer func() { c.currentWindow = prevWindow }()
 	c.pushScope()
 	defer c.popScope()
 

@@ -17,13 +17,14 @@ import (
 func TestComputed_IsCalledUnderTheNameItIsDeclaredWith(t *testing.T) {
 	src := `
 import . "sngl:ui"
+import app "sngl:app"
 var n = 3
 func doubled() => n * 2
 func blocky() int {
     var x = n + 1
     return x * 3
 }
-component main ui {
+app.window {
     vbox {
         text(value="expr=" + string(doubled()))
         text(value="block=" + string(blocky()))

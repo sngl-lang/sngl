@@ -64,7 +64,7 @@ func TestTheKeyIgnoresTheProgram(t *testing.T) {
 		t.Fatalf("workerKey: %v", err)
 	}
 
-	write(t, dir, "app.sngl", "component main {\n    text(value=\"edited\")\n}\n")
+	write(t, dir, "app.sngl", "component main ui {\n    text(value=\"edited\")\n}\n")
 	after, err := workerKey(dir)
 	if err != nil {
 		t.Fatalf("workerKey: %v", err)

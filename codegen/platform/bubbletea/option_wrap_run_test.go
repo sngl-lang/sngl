@@ -21,6 +21,7 @@ import (
 // case the unwrap's parenthesisation decides.
 const optionWrapRunSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Box {
     value int = 0
@@ -37,7 +38,7 @@ func nextBox() Box {
     return Box{value=made * 10}
 }
 
-component main ui {
+app.window {
     var b = Box{value=3}
     var h = Holder{inner=b}
     var fresh = Holder{inner=null}

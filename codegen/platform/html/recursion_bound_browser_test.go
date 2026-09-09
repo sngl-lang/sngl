@@ -34,7 +34,7 @@ component App() ui {
         chain(n=0)
     }
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startTrapped(t, src)
 	defer b.Close()
@@ -72,7 +72,7 @@ component App() ui {
         chain(n=d)
     }
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startTrapped(t, src)
 	defer b.Close()
@@ -113,7 +113,7 @@ component App() ui {
     button(text=lbl, @click { lbl = "went" })
     countdown(n=3)
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

@@ -39,21 +39,19 @@ struct rowAttrs {
     dataRole string = "row"
 }
 
-component main() ui {
-    window {
-        attrs(label="hi", dataRole="row", dataIndex7="3")
-        // A name the wildcard covers reaches the component it belongs to, and
-        // arrives in the prop `into` named.
-        boxRed()
-        // A spread field is a written prop name like any other, so one the
-        // wildcard covers is collected into it rather than becoming an arg
-        // named after a prop that does not exist — which every backend
-        // dropped.
-        attrs(...rowAttrs{})
-        // A declared event and two the wildcard covers, on one node.
-        surface(@click {}, @onHover {}, @onDragEnd {})
-        // The declared name still binds: a wildcard adds names, it does not
-        // take its own away.
-        attrs(data={dataRole="plain"})
-    }
+window {
+    attrs(label="hi", dataRole="row", dataIndex7="3")
+    // A name the wildcard covers reaches the component it belongs to, and
+    // arrives in the prop `into` named.
+    boxRed()
+    // A spread field is a written prop name like any other, so one the
+    // wildcard covers is collected into it rather than becoming an arg
+    // named after a prop that does not exist — which every backend
+    // dropped.
+    attrs(...rowAttrs{})
+    // A declared event and two the wildcard covers, on one node.
+    surface(@click {}, @onHover {}, @onDragEnd {})
+    // The declared name still binds: a wildcard adds names, it does not
+    // take its own away.
+    attrs(data={dataRole="plain"})
 }

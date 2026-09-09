@@ -47,11 +47,9 @@ import . "sngl:app"
 import . "sngl:test"
 import . "sngl:ui/draw"
 output { none { html() } }
-component main {
-    window(title="Canvas Test", href="/index.html") {
-        canvas(width=400px, height=300px) {
-            rect(x=10.0, y=10.0, w=100.0, h=50.0) {}
-        }
+window(title="Canvas Test", href="/index.html") {
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=100.0, h=50.0) {}
     }
 }
 `

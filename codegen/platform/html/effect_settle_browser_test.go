@@ -32,7 +32,7 @@ component App() ui {
     effect(on=k, @mount { log.push("+B") }, @unmount { log.push("-B") })
     text(value="[" + log.join(",") + "]")
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -66,7 +66,7 @@ component App() ui {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -101,7 +101,7 @@ component App() ui {
     effect(on=key.n, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -134,7 +134,7 @@ component App() ui {
     effect(on=scaled(2), @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -187,7 +187,7 @@ component App() ui {
     })
     text(value="[" + "{runs}" + "]")
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

@@ -22,8 +22,9 @@ func TestHtmlDirectiveSurvivesWithPlatformActive(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import "sngl:platform/html"
+import app "sngl:app"
 output { js { html } }
-component main ui {
+app.window {
     var n = 0
     text(value="x {html.frontend(n)}")
     html.div { text(value="raw element still works") }

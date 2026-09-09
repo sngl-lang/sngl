@@ -164,7 +164,7 @@ component main ui {
 	t.Run("naming nothing loads everything", func(t *testing.T) {
 		// No flag, no output block, no import: there is no build to restrict
 		// to, so every registered platform loads -- what a bare check wants.
-		const noOutput = "import . \"sngl:ui\"\n\ncomponent main {\n    text(value=\"hi\")\n}\n"
+		const noOutput = "import . \"sngl:ui\"\n\ncomponent main ui {\n    text(value=\"hi\")\n}\n"
 		if !brokenOverrideReported(t, noOutput) {
 			t.Error("a check naming no target did not load the registered platforms")
 		}

@@ -19,8 +19,9 @@ import (
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
+import app "sngl:app"
 
-component main ui {
+app.window {
     var visible bool = true
     button(text="toggle", @click { visible = !visible })
     if visible {
@@ -69,8 +70,9 @@ component main ui {
 func TestIntegration_ReactiveForEmitsRenderSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
+import app "sngl:app"
 
-component main ui {
+app.window {
     var items list<string> = ["a", "b"]
     button(text="add", @click { items.push("c") })
     for var item = items {

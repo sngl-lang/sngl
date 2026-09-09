@@ -38,7 +38,7 @@ component App() ui {
     button(text="rebase", @click { base = base + 100 })
     button(text="rename", @click { tag = "y" })
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -96,7 +96,7 @@ component App() ui {
     button(text="touch", @click { base = base })
     button(text="rename", @click { tag = "y" })
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

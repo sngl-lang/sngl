@@ -19,6 +19,7 @@ import (
 // parent appends a box to itself → GTK parent-child cycle → infinite layout.
 const recursiveTreeSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 struct TreeNode {
     value int = 0
     left dyn = null
@@ -31,7 +32,7 @@ component TreeView(node dyn = null) ui {
         if node.right != null { TreeView(node=node.right) }
     }
 }
-component main ui {
+app.window {
     var count = 0
     var tree = TreeNode{value=5, left=TreeNode{value=3}, right=TreeNode{value=8}}
     vbox {

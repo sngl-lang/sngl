@@ -16,13 +16,14 @@ import (
 // which is what makes the write cross a boundary.
 const instanceEventSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
 component row(label = "", @pick) ui {
     var seen = 0
     button(text=label, @click { seen = seen + 1 pick() })
 }
 
-component main ui {
+app.window {
     var items list<string> = ["a", "b"]
     var picked = ""
 

@@ -20,7 +20,8 @@ func TestCanvas_EmitsCairoDrawAndRedraw(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:ui/draw"
-component main ui {
+import app "sngl:app"
+app.window {
     var radius = 50.0
     canvas(width=400px, height=280px) {
         rect(x=0.0, y=0.0, w=400.0, h=280.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
@@ -122,7 +123,8 @@ func TestCanvas_EllipseUsesBezierPath(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:ui/draw"
-component main ui {
+import app "sngl:app"
+app.window {
     canvas(width=200px, height=120px) {
         ellipse(cx=100.0, cy=60.0, rx=60.0, ry=35.0, style=CanvasStyle{fill=color{r=52, g=211, b=153, a=255}, stroke=color{r=5, g=150, b=105, a=255}, strokeWidth=2.0}) {}
     }

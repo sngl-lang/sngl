@@ -7,8 +7,6 @@ import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main ui.ui {
-    window {
-        html.div(innerTxt="x") // ERROR(check) "unknown prop \"innerTxt\" on component element"
-    }
+window {
+    html.div(innerTxt="x") // ERROR(check) "unknown prop \"innerTxt\" on component element"
 }

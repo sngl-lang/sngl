@@ -21,7 +21,7 @@ component App() ui {
     }
     button(text="unshift", @click { rows = ["z", "a", "b", "c"] })
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 
 // A retained plain-node row reports the value it now renders.
@@ -94,7 +94,8 @@ func TestSlotChildInstance_ARowReadingStateThroughACallRepaints(t *testing.T) {
 	// nothing and this leak's precondition never arises there.
 	src := `
 import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     var items list<string> = ["a", "b"]
     var suffix string = "!"
     func decorate() => suffix

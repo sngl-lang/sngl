@@ -23,6 +23,7 @@ import (
 const thirdPartyWidgetSrc = `
 import . "sngl:ui"
 import "sngl:platform/fyne"
+import app "sngl:app"
 
 var reading int = 42
 
@@ -40,7 +41,7 @@ component Gauge(:level int, @change ChangeEvent) ui {
     ) {}
 }
 
-component main ui {
+app.window {
     vbox {
         Gauge(:level=reading)
     }
@@ -127,8 +128,9 @@ func TestFynePrimitiveWithoutASpecIsAnError(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import "sngl:platform/fyne"
+import app "sngl:app"
 
-component main ui {
+app.window {
     vbox {
         fyne.Widget(text="no spec") {}
     }
@@ -156,6 +158,7 @@ component main ui {
 const versionedWidgetSrc = `
 import . "sngl:ui"
 import "sngl:platform/fyne"
+import app "sngl:app"
 
 var reading int = 42
 
@@ -173,7 +176,7 @@ component Gauge(:level int, @change ChangeEvent) ui {
     ) {}
 }
 
-component main ui {
+app.window {
     vbox {
         Gauge(:level=reading, @change {})
     }

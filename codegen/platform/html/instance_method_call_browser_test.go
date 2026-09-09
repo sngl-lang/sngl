@@ -30,7 +30,7 @@ component App ui {
         button(text="bump", @click { bump() })
     }
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

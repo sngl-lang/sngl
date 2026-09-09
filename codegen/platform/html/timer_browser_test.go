@@ -49,7 +49,7 @@ component App() ui {
     beat(label="child")
     text(value="root=" + string(seconds))
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -89,7 +89,7 @@ component App() ui {
     }
     text(value="n=" + string(n))
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

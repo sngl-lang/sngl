@@ -42,7 +42,7 @@ component App() ui {
     }
     button(text="add", @click { rows = ["a", "b", "c"] })
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

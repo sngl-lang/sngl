@@ -14,6 +14,7 @@ import "testing"
 func TestAUserStructsMethodsAreEmitted(t *testing.T) {
 	model := generateGTK4ModelBuilt(t, `
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Counter {
     n int = 0
@@ -27,7 +28,7 @@ struct Counter {
 
 }
 
-component main ui {
+app.window {
     var c Counter
 
     func press() {

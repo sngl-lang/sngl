@@ -38,11 +38,12 @@ func compileCanvasSrc(t *testing.T, src string) string {
 
 const canvasReactiveSrc = `import . "sngl:ui"
 import . "sngl:ui/draw"
+import app "sngl:app"
 output {
     none { html }
 }
 
-component main ui {
+app.window {
     var radius = 50.0
 
     func circleStyle() => CanvasStyle{
@@ -108,7 +109,8 @@ func TestCanvasComposeEmission(t *testing.T) {
 func TestCanvasTextRendersViaNativeCanvas(t *testing.T) {
 	src := `import . "sngl:ui"
 import . "sngl:ui/draw"
-component main ui {
+import app "sngl:app"
+app.window {
     canvas(width=200px, height=80px) {
         canvasText(x=10.0, y=40.0, content="hi", style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}, fontSize=14.0}) {}
     }
@@ -129,7 +131,8 @@ component main ui {
 func TestCanvasImageRenders(t *testing.T) {
 	src := `import . "sngl:ui"
 import . "sngl:ui/draw"
-component main ui {
+import app "sngl:app"
+app.window {
     canvas(width=100px, height=100px) {
         canvasImage(x=5.0, y=5.0, w=40.0, h=40.0, src="/tmp/p.png") {}
     }

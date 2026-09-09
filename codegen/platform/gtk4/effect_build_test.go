@@ -12,8 +12,9 @@ import (
 // emitted from.
 const effectModelSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
-component main ui {
+app.window {
     var (
         n = 0
         log list<string> = []
@@ -32,6 +33,7 @@ component main ui {
 
 const effectInstanceSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
 component row(name = "") ui {
     var (
@@ -48,7 +50,7 @@ component row(name = "") ui {
     button(text=name, @click { n += 1 })
 }
 
-component main ui {
+app.window {
     var names list<string> = ["a", "b"]
     for var nm = names {
         row(name=nm)

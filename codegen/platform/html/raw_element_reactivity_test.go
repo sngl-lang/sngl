@@ -21,8 +21,9 @@ func TestRawPlatformElementReactiveAttrUpdates(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/html"
 import "sngl:platform/html"
+import app "sngl:app"
 output { none { html() } }
-component main ui {
+app.window {
     var volume = 60
     vbox {
         html.progress(value=string(volume), max="100")

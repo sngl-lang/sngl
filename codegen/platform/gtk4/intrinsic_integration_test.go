@@ -16,7 +16,8 @@ func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     var visible bool = true
     button(text="toggle", @click { visible = !visible })
     if visible {
@@ -97,7 +98,8 @@ func TestIntegration_StdlibComponentsWrapWithoutCgo(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     var name string = ""
     var on bool = false
     vbox {

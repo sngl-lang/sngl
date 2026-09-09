@@ -219,8 +219,16 @@ func rtOrientationConst(value string) (ir.Expr, bool) {
 // buildWidgetTree + BuildUI scaffolding using gtk4rt over gtk4rt.Handle. The
 // widget-tree body (buildBuf) was already emitted in wrapped mode by the
 // translator, so only the surrounding scaffolding is produced here.
-func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, title string) {
-	mref := func(ref string) string { return "m." + ref }
+func emitBuildUIWrapped(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, title string, fields map[string]bool) {
+	// A ref the translator did not put in the Model is a local in
+	// buildWidgetTree; see buildRef, which answers the same question for the
+	// inline-cgo path.
+	mref := func(ref string) string {
+		if !fields[ref] {
+			return ref
+		}
+		return "m." + ref
+	}
 
 	// Empty component: BuildUI just creates a window.
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {

@@ -42,7 +42,7 @@ component App() ui {
     seeded(start=k, more=0)
     text(value="after")
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

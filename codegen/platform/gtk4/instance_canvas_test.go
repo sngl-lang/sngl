@@ -13,6 +13,7 @@ import (
 const instanceCanvasSrc = `
 import . "sngl:ui"
 import . "sngl:ui/draw"
+import app "sngl:app"
 
 struct Item {
     level float = 0.0
@@ -25,7 +26,7 @@ component gauge(level = 0.0) ui {
     }
 }
 
-component main ui {
+app.window {
     var items list<Item> = [
         {level=10.0},
         {level=20.0},

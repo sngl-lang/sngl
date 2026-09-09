@@ -22,7 +22,7 @@ component Car() ui {
         if a == 1 { text(value="ONE") }
     }
 }
-component main ui { window(title="H", href="/index.html") { Car() } }
+window { window(title="H", href="/index.html") { Car() } }
 `
 	b := startComponent(t, src) // skips if no browser
 	defer b.Close()
@@ -53,7 +53,8 @@ component main ui { window(title="H", href="/index.html") { Car() } }
 func TestReactiveSlot_TopLevelToggle(t *testing.T) {
 	src := `
 import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     var on = true
     button(text="t", @click { on = !on })
     if on { text(value="SHOWN") }

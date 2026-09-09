@@ -52,7 +52,7 @@ component App() ui {
     })
     text(value="n=" + string(n))
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 
 func TestAWriteInsideACallbackUpdatesWhatReadsIt(t *testing.T) {

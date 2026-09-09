@@ -22,7 +22,10 @@ import (
 func TestAComponentEventHandlerKeepsItsPayloadParameter(t *testing.T) {
 	model := generateGTK4Model(t, fixtureSource(t, "type_params_on_components.sngl"))
 
-	const want = "func (m *Model) __n0_done_handler(v int) {"
+	// The handler is a method on the instance record now: `main` is an
+	// ordinary component under the window that renders it, rather than the
+	// Model it used to be by harness convention.
+	const want = "func (c *MainInstance) __n0_done_handler(v int) {"
 	if !strings.Contains(model, want) {
 		t.Errorf("emitted Go missing %q\n--- model.go ---\n%s", want, model)
 	}

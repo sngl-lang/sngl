@@ -30,18 +30,36 @@ var passRootWindow = pass{
 }
 
 func applyRootWindow(pkg *ir.Package, _ Caps, _ Options) error {
-	if pkg == nil || len(pkg.Body) == 0 {
+	if pkg == nil {
 		return nil
 	}
-	var lifted []*ir.Window
-	ir.WalkStmts(pkg.Body, func(s ir.Stmt) error {
+	lifted := liftWindows(pkg.Body)
+	pkg.Body = nil
+	// A component that names the root family renders windows rather than
+	// widgets, so its body is a second place they are written. Left there, a
+	// backend walking the component as a view meets a window in the middle of
+	// one -- which bubbletea panics on and the others mis-render.
+	for _, comp := range pkg.Components {
+		if !ir.IsAppRootTree(comp.Tree) {
+			continue
+		}
+		lifted = append(lifted, liftWindows(comp.Body)...)
+		comp.Body = nil
+	}
+	pkg.Windows = append(lifted, pkg.Windows...)
+	return nil
+}
+
+// liftWindows is every window a block holds, including those a build-time
+// branch put there.
+func liftWindows(stmts []ir.Stmt) []*ir.Window {
+	var out []*ir.Window
+	ir.WalkStmts(stmts, func(s ir.Stmt) error {
 		if w, ok := s.(*ir.Window); ok {
-			lifted = append(lifted, w)
+			out = append(out, w)
 			return ir.SkipDir
 		}
 		return nil
 	})
-	pkg.Windows = append(lifted, pkg.Windows...)
-	pkg.Body = nil
-	return nil
+	return out
 }

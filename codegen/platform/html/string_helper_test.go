@@ -16,7 +16,8 @@ import (
 func TestStringHelperEmittedFromHandler(t *testing.T) {
 	src := `
 import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     var count = 0
     var label = ""
     button(text="Add", @click { count = count + 1
@@ -44,7 +45,8 @@ component main ui {
 func TestStringHelperEmittedFromSetter(t *testing.T) {
 	src := `
 import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     var label = ""
     var tracked = 0 @change {
         label = string(tracked)

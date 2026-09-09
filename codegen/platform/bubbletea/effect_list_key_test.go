@@ -30,8 +30,9 @@ import (
 // to hold an answer for a key it cannot compare.
 const effectListKeySrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
-component main ui {
+app.window {
     var (
         tags list<string> = ["a"]
         log list<string> = []

@@ -9,17 +9,15 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/html"
 
-component main ui {
-    var n int = 3
+var n int = 3
 
-    // Fine: a literal is untyped, and int widens to float.
-    progress(value=1, max=5)
-    progress(value=n)
+// Fine: a literal is untyped, and int widens to float.
+progress(value=1, max=5)
+progress(value=n)
 
-    window {
-        html.div(hidden="yes") {} // ERROR(check) "cannot use string as bool for prop \"hidden\""
-        html.input(value=42) {}   // ERROR(check) "cannot use int as string for prop \"value\""
-        text(value=n)             // ERROR(check) "cannot use int as string for prop \"value\""
-        progress(value="x")       // ERROR(check) "cannot use string as float for prop \"value\""
-    }
+window {
+    html.div(hidden="yes") {} // ERROR(check) "cannot use string as bool for prop \"hidden\""
+    html.input(value=42) {}   // ERROR(check) "cannot use int as string for prop \"value\""
+    text(value=n)             // ERROR(check) "cannot use int as string for prop \"value\""
+    progress(value="x")       // ERROR(check) "cannot use string as float for prop \"value\""
 }

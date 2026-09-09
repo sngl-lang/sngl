@@ -3348,9 +3348,19 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// appended to any IR collection — leaving call sites referencing an
 		// undefined function. Lift to the enclosing component (analogous to
 		// the LocalVar→Var promotion done by passNoContext for vars).
-		if c.currentComponent != nil {
+		switch {
+		case c.currentComponent != nil:
 			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
-		} else if c.pkg != nil {
+		case c.currentWindow != nil:
+			// A window owns funcs the way a component does (ir.Owners), and
+			// its state is in the same model -- so a target that emits a
+			// component's funcs as methods has to emit these as methods too.
+			// Registered in both collections, the way a component's nested
+			// methods are, because pkg.Funcs is what a call site resolves
+			// through.
+			c.currentWindow.Funcs = append(c.currentWindow.Funcs, fn)
+			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
+		case c.pkg != nil:
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}
 		return nil

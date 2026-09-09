@@ -6,13 +6,14 @@ import "testing"
 // prop -- the one ordering a promoted prop can get wrong.
 const propInitComponentSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
 component greeter(name = "") ui {
     var greeting = "hi " + name
     text(value=greeting)
 }
 
-component main ui {
+app.window {
     var names list<string> = ["ann", "bob"]
     for var n = names {
         greeter(name=n)

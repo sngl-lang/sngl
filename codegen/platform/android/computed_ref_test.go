@@ -11,7 +11,8 @@ import (
 // Kotlin. Regression for the kotlin evalTypeMethodCall component-self fix.
 func TestComputedReferenceResolves(t *testing.T) {
 	src := `import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     var count = 0
     func doubled() => count * 2
     vbox {

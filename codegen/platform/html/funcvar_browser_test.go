@@ -48,8 +48,9 @@ func TestBrowser_FuncvarStoredAsyncUpdatesDOM(t *testing.T) {
 	const snglSrc = `
 import . "sngl:ui"
 import api "js:./api"
+import app "sngl:app"
 
-component main ui {
+app.window {
     var handler func() string = api.fetchHello
     var greeting = "before"
     text(value=greeting)

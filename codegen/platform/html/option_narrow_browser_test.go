@@ -32,7 +32,7 @@ component App() ui {
     button(text="clear", @click { maybe = null })
     button(text="set", @click { maybe = 21 })
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

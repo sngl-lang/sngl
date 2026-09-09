@@ -250,6 +250,17 @@ const (
 // IsUITree reports whether sd is the widget family.
 func IsUITree(sd *StructDef) bool { return isTreeNamed(sd, uiPkg, uiTree) }
 
+// The family a package body accepts, sngl:app's `root`. A component that names
+// it renders windows rather than widgets, which is what lets a program decide
+// at build time which windows it contains.
+const (
+	appPkg   = "sngl:app"
+	rootTree = "root"
+)
+
+// IsAppRootTree reports whether sd is the family a package body accepts.
+func IsAppRootTree(sd *StructDef) bool { return isTreeNamed(sd, appPkg, rootTree) }
+
 // IsSegmentedTree reports whether sd is a tree with its own rendering rules --
 // any tree but the widget family.
 func IsSegmentedTree(sd *StructDef) bool { return sd != nil && sd.IsTree && !IsUITree(sd) }

@@ -26,12 +26,10 @@ func TestMainElementNotSwallowedByMainComponent(t *testing.T) {
 import . "sngl:app"
 import "sngl:platform/html"
 output { none { html() } }
-component main {
-    window(title="Home", href="/index.html") {
-        html.div {
-            html.main {
-                html.p(innerText="BODY CONTENT")
-            }
+window(title="Home", href="/index.html") {
+    html.div {
+        html.main {
+            html.p(innerText="BODY CONTENT")
         }
     }
 }

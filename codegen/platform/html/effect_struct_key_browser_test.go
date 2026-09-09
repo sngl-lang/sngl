@@ -32,7 +32,7 @@ component App() ui {
     effect(on=key, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

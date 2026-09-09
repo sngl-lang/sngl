@@ -54,7 +54,7 @@ component App() ui {
     })
     text(value="same=" + same + " renamed=" + renamed)
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 
 func TestJSNative_CallsTheRealGlobal(t *testing.T) {

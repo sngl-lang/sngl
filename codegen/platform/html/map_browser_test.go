@@ -27,7 +27,7 @@ component App() ui {
     button(text="put", @click { counts["a"] = 7 })
     button(text="bump", @click { counts["a"] += 5 })
 }
-component main ui { window(title="H", href="/index.html") { App() } }
+window { window(title="H", href="/index.html") { App() } }
 `
 	b := startComponent(t, src)
 	defer b.Close()

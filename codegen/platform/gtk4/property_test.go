@@ -67,7 +67,7 @@ func checkGtk4(t *testing.T, src string) []string {
 // gtk4Window wraps one platform-gtk4 body in the smallest program that
 // reaches the emitter.
 func gtk4Window(body string) string {
-	return "\nimport . \"sngl:ui\"\nimport . \"sngl:app\"\nimport \"sngl:platform/gtk4\"\n\ncomponent main {\n    window(title=\"t\") {\n" + body + "\n    }\n}\n"
+	return "\nimport . \"sngl:ui\"\nimport . \"sngl:app\"\nimport \"sngl:platform/gtk4\"\n\nwindow(title=\"t\") {\n" + body + "\n}\n"
 }
 
 // setterlessSource sets four GTK properties GIR names no setter for — one of
@@ -81,14 +81,12 @@ import . "sngl:ui"
 import . "sngl:app"
 import "sngl:platform/gtk4"
 
-component main ui {
-    window(title="t") {
-        gtk4.GtkEntry(primaryIconName="edit-find", enableEmojiCompletion=true, maxLength=12) {}
-        gtk4.GtkLabel(label="hi", accessibleRole="button") {}
-        gtk4.GtkTextBuffer(text="hi") {}
-        gtk4.GtkCellRendererText(alignSet=true, scale=0.25) {}
-        gtk4.GtkGrid(columnSpacing=4) {}
-    }
+window(title="t") {
+    gtk4.GtkEntry(primaryIconName="edit-find", enableEmojiCompletion=true, maxLength=12) {}
+    gtk4.GtkLabel(label="hi", accessibleRole="button") {}
+    gtk4.GtkTextBuffer(text="hi") {}
+    gtk4.GtkCellRendererText(alignSet=true, scale=0.25) {}
+    gtk4.GtkGrid(columnSpacing=4) {}
 }
 `
 
@@ -153,10 +151,8 @@ func TestGObjectPropSet_HelperIsGatedOnUse(t *testing.T) {
 import . "sngl:app"
 import "sngl:platform/gtk4"
 
-component main {
-    window(title="t") {
-        gtk4.GtkGrid(columnSpacing=4) {}
-    }
+window(title="t") {
+    gtk4.GtkGrid(columnSpacing=4) {}
 }
 `)
 	if err != nil {
@@ -181,10 +177,8 @@ func TestUnsettableProp_FailsTheBuild(t *testing.T) {
 import . "sngl:app"
 import "sngl:platform/gtk4"
 
-component main {
-    window(title="t") {
-        gtk4.GtkLabel(label="hi", ellipsize="end") {}
-    }
+window(title="t") {
+    gtk4.GtkLabel(label="hi", ellipsize="end") {}
 }
 `)
 	if err == nil {
@@ -205,10 +199,8 @@ func TestEnumProp_RejectsUnknownMember(t *testing.T) {
 import . "sngl:app"
 import "sngl:platform/gtk4"
 
-component main {
-    window(title="t") {
-        gtk4.GtkLabel(label="hi", justify="middle") {}
-    }
+window(title="t") {
+    gtk4.GtkLabel(label="hi", justify="middle") {}
 }
 `)
 	if err == nil {

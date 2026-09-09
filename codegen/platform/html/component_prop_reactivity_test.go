@@ -14,6 +14,7 @@ import (
 func TestComponentNonConstPropReactivity(t *testing.T) {
 	src := `
 import . "sngl:ui"
+import app "sngl:app"
 output { none { html() } }
 component Stat(label = "", value = 0) ui {
     vbox {
@@ -21,7 +22,7 @@ component Stat(label = "", value = 0) ui {
         text(value=string(value))
     }
 }
-component main ui {
+app.window {
     var posts = 12
     vbox {
         Stat(label="Posts", value=posts)

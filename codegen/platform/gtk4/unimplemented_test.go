@@ -48,7 +48,8 @@ func TestUnimplementedStdlibComponentFailsBuild(t *testing.T) {
 	skipWithoutGIR(t)
 	files, err := buildForGtk4(t, `
 import . "sngl:ui"
-component main ui {
+import app "sngl:app"
+app.window {
     text(value="visible")
     avatar(initials="ab")
 }
@@ -73,9 +74,10 @@ func TestUserComponentWithEmptyBodyStillBuilds(t *testing.T) {
 	skipWithoutGIR(t)
 	files, err := buildForGtk4(t, `
 import . "sngl:ui"
+import app "sngl:app"
 component label(value string) ui {
 }
-component main ui {
+app.window {
     label(value="hello")
     text(value="visible")
 }
@@ -104,7 +106,8 @@ func TestStdlibOverrides_EmitTheirWidgets(t *testing.T) {
 	files, err := buildForGtk4(t, `
 import . "sngl:ui"
 import . "sngl:time"
-component main ui {
+import app "sngl:app"
+app.window {
     var frac = 0.25
     var on = false
     var shown = false

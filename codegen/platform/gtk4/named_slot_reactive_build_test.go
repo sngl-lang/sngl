@@ -10,6 +10,7 @@ import "testing"
 // children and the defect does not appear.
 const namedSlotReactiveSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
 component q(body component) ui {
     var on = false
@@ -22,7 +23,7 @@ component q(body component) ui {
     }
 }
 
-component main ui {
+app.window {
     q {
         component body {
             text(value="SUPPLIED")
@@ -33,6 +34,7 @@ component main ui {
 
 const scopedNamedSlotReactiveSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
 component q(ready component(int)) ui {
     var n = 0
@@ -45,7 +47,7 @@ component q(ready component(int)) ui {
     }
 }
 
-component main ui {
+app.window {
     q {
         component ready(v) {
             text(value="N=" + string(v))

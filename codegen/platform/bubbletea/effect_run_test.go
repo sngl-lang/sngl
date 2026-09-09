@@ -19,8 +19,9 @@ import (
 // a handler, through Update.
 const effectRunSrc = `
 import . "sngl:ui"
+import app "sngl:app"
 
-component main ui {
+app.window {
     var (
         n = 0
         log list<string> = []

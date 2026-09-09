@@ -100,28 +100,26 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 func TestBundledGIRLosesNoSetter(t *testing.T) {
 	const src = `import . "sngl:ui"
 import . "sngl:app"
-component main() ui {
-    window(title="t") {
-        vbox {
-            text(value="a")
-            button(text="b")
-            input(value="c")
-            checkbox(label="d", checked=true)
-            image(src="e")
-            progress(value=0.5, showValue=true)
-            spinner(label="f")
-            divider()
-            toggle(checked=true)
-            datepicker()
-            link(href="g", text="h")
-            card {}
-            stack {}
-            popover(open=true)
-            tooltip(text="i") { text(value="j") }
-            spacer()
-            scroll { text(value="s") }
-            textarea(value="k")
-        }
+window(title="t") {
+    vbox {
+        text(value="a")
+        button(text="b")
+        input(value="c")
+        checkbox(label="d", checked=true)
+        image(src="e")
+        progress(value=0.5, showValue=true)
+        spinner(label="f")
+        divider()
+        toggle(checked=true)
+        datepicker()
+        link(href="g", text="h")
+        card {}
+        stack {}
+        popover(open=true)
+        tooltip(text="i") { text(value="j") }
+        spacer()
+        scroll { text(value="s") }
+        textarea(value="k")
     }
 }
 `
