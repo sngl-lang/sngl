@@ -1,0 +1,15 @@
+// The children bind the wrapper's tree parameter, so they have to agree about
+// what it is: the first one that belongs to a family says which, and the rest
+// are measured against it. Without that, `T` would be satisfied by anything
+// and the boundary would be the hole the tree system exists to close.
+
+import app "sngl:app"
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+app.window {
+    app.errorBoundary(@error(e) {}) {
+        ui.text(value="a widget")
+        d.circle(cx=1.0, cy=1.0, r=1.0) // ERROR(check) "expected ui component in errorBoundary, got circle"
+    }
+}
