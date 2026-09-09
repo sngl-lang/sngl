@@ -1613,7 +1613,7 @@ component myWidget() {
 `, "does not accept children")
 
 	expectNoErrors(t, `
-component group(slot _) shape {}
+component group(children ...component) shape {}
 
 component myWidget() {
     canvas(width=400px, height=300px) {

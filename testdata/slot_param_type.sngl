@@ -8,7 +8,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, slot cell(Row)) {
+component table(rows list<Row>, cell component(Row)) {
     vbox {
         for var r = rows {
             cell(r)
@@ -16,7 +16,7 @@ component table(rows list<Row>, slot cell(Row)) {
     }
 }
 
-component grid(rows list<Row>, slot row(Row, int)) {
+component grid(rows list<Row>, row component(Row, int)) {
     vbox {
         for var i, r = rows {
             row(r, i)
@@ -28,20 +28,20 @@ component main {
     vbox {
         // Name only.
         table(rows=[]) {
-            slot cell(row) {
+            component cell(row) {
                 text(value=row.title)
             }
         }
         // The same binding, said out loud.
         table(rows=[]) {
-            slot cell(row Row) {
+            component cell(row Row) {
                 text(value=row.title)
             }
         }
         // Across lines: the population is written the way an argument list is,
         // so the formatter writes it back the same way.
         grid(rows=[]) {
-            slot row(
+            component row(
                 r Row,
                 i int,
             ) {

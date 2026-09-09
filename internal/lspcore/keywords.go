@@ -18,7 +18,6 @@ var keywordDocs = map[string]string{
 	"break":     "Ends the innermost enclosing loop.",
 	"continue":  "Ends this iteration of the innermost enclosing loop and begins the next.",
 	"import":    "Imports a module.",
-	"slot":      "Declares or populates a named slot — a region of UI the caller supplies.",
 	"true":      "Boolean literal.",
 	"false":     "Boolean literal.",
 	"nil":       "Null literal.",

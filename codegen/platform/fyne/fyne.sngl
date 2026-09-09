@@ -12,7 +12,7 @@
 // what a component declaration cannot express as data:
 //
 //   Widget     no children      — a leaf.
-//   Container  a default slot        — children attach through a method (`Add`).
+//   Container  a rest slot           — children attach through a method (`Add`).
 //   Wrapper    component        — the child is assigned to a field (`Content`).
 //
 // Everything below Widget/Container/Wrapper — Label, Button, VBox and the rest
@@ -168,7 +168,7 @@ component Container(
     @click ui.ClickEvent,
     @change ui.ChangeEvent,
     @input ui.InputEvent,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("fyne:Wrapper")]
@@ -183,7 +183,7 @@ component Wrapper(
     @click ui.ClickEvent,
     @change ui.ChangeEvent,
     @input ui.InputEvent,
-    slot _ tr.one,
+    content ...component tr.one,
 ) {}
 
 // --- The Fyne widgets ---
@@ -346,7 +346,7 @@ component Spacer(style ui.Style) {
     ) {}
 }
 
-component VBox(style ui.Style, slot _) {
+component VBox(style ui.Style, children ...component) {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
@@ -356,11 +356,11 @@ component VBox(style ui.Style, slot _) {
         },
         style={...style},
     ) {
-        slot
+        children
     }
 }
 
-component HBox(style ui.Style, slot _) {
+component HBox(style ui.Style, children ...component) {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
@@ -370,11 +370,11 @@ component HBox(style ui.Style, slot _) {
         },
         style={...style},
     ) {
-        slot
+        children
     }
 }
 
-component VScroll(style ui.Style, slot _ tr.one) {
+component VScroll(style ui.Style, content ...component tr.one) {
     Wrapper(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
@@ -384,7 +384,7 @@ component VScroll(style ui.Style, slot _ tr.one) {
         },
         style={...style},
     ) {
-        slot
+        content
     }
 }
 
@@ -392,13 +392,13 @@ component VScroll(style ui.Style, slot _ tr.one) {
 
 component ui.vbox[platform] {
     VBox(style={...style}) {
-        slot
+        children
     }
 }
 
 component ui.hbox[platform] {
     HBox(style={...style}) {
-        slot
+        children
     }
 }
 
@@ -407,13 +407,13 @@ component ui.hbox[platform] {
 // they just do not overlap.
 component ui.stack[platform] {
     VBox(style={...style}) {
-        slot
+        layers
     }
 }
 
 component ui.scroll[platform] {
     VScroll(style={...style}) {
-        slot
+        content
     }
 }
 
@@ -423,13 +423,13 @@ component ui.spacer[platform] {
 
 component ui.card[platform] {
     VBox(style={...style}) {
-        slot
+        content
     }
 }
 
 component ui.splitview[platform] {
     HBox(style={...style}) {
-        slot
+        panes
     }
 }
 
@@ -442,19 +442,19 @@ component ui.splitview[platform] {
 
 component ui.modal[platform] {
     VBox(style={...style}) {
-        slot
+        content
     }
 }
 
 component ui.drawer[platform] {
     VBox(style={...style}) {
-        slot
+        content
     }
 }
 
 component ui.popover[platform] {
     VBox(style={...style}) {
-        slot
+        content
     }
 }
 
@@ -462,7 +462,7 @@ component ui.popover[platform] {
 // content inside it.
 component ui.tooltip[platform] {
     VBox(style={...style}) {
-        slot
+        trigger
     }
 }
 
@@ -475,13 +475,13 @@ component ui.tooltip[platform] {
 
 component ui.tabs[platform] {
     HBox(style={...style}) {
-        slot
+        panels
     }
 }
 
 component ui.toolbar[platform] {
     HBox(style={...style}) {
-        slot
+        controls
     }
 }
 

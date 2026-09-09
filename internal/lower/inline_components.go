@@ -786,6 +786,15 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		if (*hoist.vars)[i].Init != nil {
 			(*hoist.vars)[i].Init = renameInExpr((*hoist.vars)[i].Init, renames, symRenames)
 		}
+		// A var handler's body reads and writes the instance's state like any
+		// other block the callee wrote. Left unrenamed it kept pointing at the
+		// pre-inlining name, which every instance shares -- a silent
+		// wrong-variable write, since the emitters splice it verbatim.
+		for _, h := range (*hoist.vars)[i].Handlers {
+			if h.Func != nil {
+				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
+			}
+		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = renameIdents((*hoist.funcs)[i].Block, renames, symRenames)
@@ -821,6 +830,11 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Prop refs may appear in the hoisted callee-scope Vars/Funcs/Timers too.
 	for i := varStart; i < len(*hoist.vars); i++ {
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
+		for _, h := range (*hoist.vars)[i].Handlers {
+			if h.Func != nil {
+				h.Func.Block = substituteParams(h.Func.Block, bindings)
+			}
+		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)

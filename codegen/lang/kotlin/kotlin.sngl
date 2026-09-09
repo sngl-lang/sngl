@@ -12,4 +12,4 @@ import . "sngl:macro"
 import build "sngl:build"
 
 // The `kotlin` node of a build directive: `output { kotlin { android() } }`.
-component kotlin(slot _ build.platform) build.language {}
+component kotlin(platforms ...component build.platform) build.language {}

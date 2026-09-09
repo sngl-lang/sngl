@@ -84,9 +84,9 @@ func SlotBody(si *SlotInst, callsite *NodeInst) (body []Stmt, sc *SlotContent, s
 	if c := callsite.Slots[si.Name]; c != nil {
 		return c.Body, c, true
 	}
-	// The default slot's content arrives as ordinary children rather than
-	// through the map.
-	if si.Name == DefaultSlot && len(callsite.Children) > 0 {
+	// The rest slot's content arrives as ordinary children rather than through
+	// the map.
+	if si.Rest && len(callsite.Children) > 0 {
 		return callsite.Children, nil, true
 	}
 	return si.Children, nil, false

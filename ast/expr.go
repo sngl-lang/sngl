@@ -119,6 +119,54 @@ type FuncType struct {
 	Return TypeExpr        // nil for void
 }
 
+// ComponentType is an anonymous component type: `component`, `component(Row)`,
+// `component shape`, `component(Row) shape`. A parameter typed with one is a
+// slot, and the type carries the slot's whole contract.
+type ComponentType struct {
+	Pos Pos
+	// Params are what the slot is invoked with at its insertion point. A named
+	// parameter documents the position; the name binds nothing here.
+	Params []FuncTypeParam
+	// HasParens records that `()` was written, which an empty Params cannot say
+	// on its own.
+	HasParens bool
+	// Tree is what the slot accepts: the tree each supplied node belongs to,
+	// wrapped in whatever bounds the count. Nil accepts any number of the tree
+	// the declaring component itself belongs to.
+	Tree TypeExpr
+}
+
+// VariadicType is `...T`, a count bound written as a type prefix: the parameter
+// collects the arguments nothing else matched. On a slot that is the children a
+// caller writes bare.
+type VariadicType struct {
+	Pos  Pos
+	Elem TypeExpr
+}
+
+// SlotType reads a parameter's type as a slot's contract: the component type it
+// names, and whether an `...` bounds the count. ok is false for an ordinary
+// parameter — a variadic non-component included, since `...` bounds a count and
+// only a slot has a count to bound.
+//
+// It lives here rather than in the checker because every walk over a
+// ComponentDecl's parameter list has to tell a slot from a prop, and the docs
+// site and the CLI walk one without a checker in reach.
+func SlotType(t TypeExpr) (ct *ComponentType, rest, ok bool) {
+	if v, isVariadic := t.(*VariadicType); isVariadic {
+		ct, isComp := v.Elem.(*ComponentType)
+		return ct, true, isComp
+	}
+	ct, isComp := t.(*ComponentType)
+	return ct, false, isComp
+}
+
+// IsSlot reports whether p declares a slot rather than a prop.
+func (p Param) IsSlot() bool {
+	_, _, ok := SlotType(p.Type)
+	return ok
+}
+
 // StructDef, EnumDef, and UnitDef also implement TypeExpr for anonymous type forms.
 
 // --- Expressions ---
@@ -362,10 +410,6 @@ type Arg struct {
 	Name    string
 	NamePos Pos
 	Value   Expr
-	// Type is the type written after a positional argument, which only a slot
-	// population may do — `slot cell(row Row)`. In a call the builder refuses
-	// it, so nothing downstream sees one.
-	Type TypeExpr `json:",omitempty"`
 }
 
 // ArgOrEventHandler is an argument or inline event handler in an ArgList.
@@ -464,6 +508,8 @@ func (x *I18nInterpExpr) ExprPos() *Pos      { return &x.Pos }
 func (x *I18nPlaceholderExpr) ExprPos() *Pos { return &x.Pos }
 func (x *NamedType) ExprPos() *Pos           { return &x.Pos }
 func (x *FuncType) ExprPos() *Pos            { return &x.Pos }
+func (x *ComponentType) ExprPos() *Pos       { return &x.Pos }
+func (x *VariadicType) ExprPos() *Pos        { return &x.Pos }
 func (x *StructDef) ExprPos() *Pos           { return &x.Pos }
 func (x *EnumDef) ExprPos() *Pos             { return &x.Pos }
 func (x *UnitDef) ExprPos() *Pos             { return &x.Pos }
@@ -471,11 +517,13 @@ func (x *StmtBlock) ExprPos() *Pos           { return &x.Pos }
 
 // --- typeExpr implementations ---
 
-func (*NamedType) typeExpr() {}
-func (*FuncType) typeExpr()  {}
-func (*StructDef) typeExpr() {}
-func (*EnumDef) typeExpr()   {}
-func (*UnitDef) typeExpr()   {}
+func (*NamedType) typeExpr()     {}
+func (*FuncType) typeExpr()      {}
+func (*ComponentType) typeExpr() {}
+func (*VariadicType) typeExpr()  {}
+func (*StructDef) typeExpr()     {}
+func (*EnumDef) typeExpr()       {}
+func (*UnitDef) typeExpr()       {}
 
 // --- targetExpr implementations ---
 

@@ -176,7 +176,7 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	// Windows and zero-visual nodes are skipped (handled at route level).
 	switch n.Name {
-	case "window", "timer", "slot":
+	case "window", "timer":
 		return
 	}
 

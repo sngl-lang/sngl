@@ -20,12 +20,12 @@ func TestNodeOp_IsNeverRenderedAsAnElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:macro"
-component panel(slot header) {
+component panel(header component) {
     vbox { header }
 }
 component chain(#[construct] n int) {
     panel() {
-        slot header {
+        component header {
             text(value="[" + string(n) + "]")
             if n > 0 {
                 chain(n=n - 1)

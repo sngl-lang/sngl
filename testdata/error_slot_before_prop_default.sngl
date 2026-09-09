@@ -1,0 +1,22 @@
+// A slot and a prop are both `Param` entries in one list, but only the props
+// reach `ir.Component.Props` -- so the walk that attaches a written default to
+// the prop it belongs to has to skip the slot rather than count it. Counting
+// it walked the index past the end and dropped the check for every prop
+// declared after a slot, silently.
+
+import . "sngl:ui"
+
+component framed(children ...component, n int = "oops") { // ERROR(check) "default value type string does not match param type int"
+    vbox {
+        text(value=string(n))
+        children
+    }
+}
+
+component main {
+    vbox {
+        framed() {
+            text(value="x")
+        }
+    }
+}

@@ -78,7 +78,7 @@ component Layout(
     style ui.Style,
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip string,
-    slot _,
+    children ...component,
 ) {}
 
 #[intrinsic("bubbletea:Styled")]
@@ -113,26 +113,26 @@ component Overlay(
     placement string,
     dim bool,
     style ui.Style,
-    slot _,
+    children ...component,
 ) {}
 
 // --- Core Layout ---
 
 component ui.vbox[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
-        slot
+        children
     }
 }
 
 component ui.hbox[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
-        slot
+        children
     }
 }
 
 component ui.stack[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
-        slot
+        layers
     }
 }
 
@@ -142,7 +142,7 @@ component ui.spacer[platform] {
 
 component ui.scroll[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
-        slot
+        content
     }
 }
 
@@ -196,7 +196,6 @@ component ui.checkbox[platform] {
 
 component ui.radio[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
-        slot
     }
 }
 
@@ -287,7 +286,7 @@ component ui.divider[platform] {
 
 component ui.card[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
-        slot
+        content
     }
 }
 
@@ -306,14 +305,14 @@ component ui.link[platform] {
 
 component ui.tabs[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
-        slot
+        panels
     }
 }
 
 component ui.modal[platform] {
     if open {
         Overlay(placement="center", dim=true, style={...style}) {
-            slot
+            content
         }
     }
 }
@@ -321,7 +320,7 @@ component ui.modal[platform] {
 component ui.drawer[platform] {
     if open {
         Overlay(placement=side, dim=true, style={...style}) {
-            slot
+            content
         }
     }
 }
@@ -332,19 +331,19 @@ component ui.tooltip[platform] {
     // text to the Layout renderer, which appends it gated on the focusable
     // descendant's focus expression (see renderBlueprint in view_ir.go).
     Layout(join=JoinDir.vertical, tooltip=text, style={...style}) {
-        slot
+        trigger
     }
 }
 
 component ui.popover[platform] {
     Layout(join=JoinDir.vertical, style={...style}) {
-        slot
+        content
     }
 }
 
 component ui.splitview[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
-        slot
+        panes
     }
 }
 
@@ -406,13 +405,12 @@ component ui.menu[platform] {
 
 component ui.menubar[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
-        slot
     }
 }
 
 component ui.toolbar[platform] {
     Layout(join=JoinDir.horizontal, style={...style}) {
-        slot
+        controls
     }
 }
 

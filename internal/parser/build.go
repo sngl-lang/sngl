@@ -371,8 +371,6 @@ func (b *builder) buildStmt(it nodeIter) ast.Stmt {
 			return b.buildIfNode(it.enter())
 		case ForNode:
 			return b.buildForNode(it.enter())
-		case SlotNode:
-			return b.buildSlotNode(it.enter())
 		case VisualOrStmt:
 			return b.buildVisualOrStmt(it.enter())
 		}
@@ -1039,39 +1037,86 @@ func (b *builder) buildTypeParam(it nodeIter) ast.TypeParam {
 	return tp
 }
 
+// buildParamList is the ParamList production read where only ordinary
+// parameters are legal — a function, a lambda, a handler. The `:name` and
+// `@name` forms the production also admits are refused here, since neither
+// binds a name the body can read.
 func (b *builder) buildParamList(it nodeIter, openLine int) ast.ParamList {
-	// ParamList = Param { comma Param } .
 	var pl ast.ParamList
 	var lines []int
-	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == Param {
-			sub := it.enter()
-			p := b.buildParam(sub)
-			if !pl.Pos.IsSet() {
-				pl.Pos = p.Pos
-			}
-			pl.Params = append(pl.Params, p)
-			lines = append(lines, p.Pos.Line)
-		} else {
-			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
-				pl.IsMultiline = true
-			}
-			it.skip() // comma or semi
+	for _, entry := range b.buildParamEntries(it, openLine, &pl.IsMultiline, &lines) {
+		p, ok := entry.(ast.Param)
+		if !ok {
+			e := entry.(ast.EventDecl)
+			b.errorf(ast.Pos(e.Pos), "an event is declared on a component, not in this parameter list")
+			continue
 		}
+		if p.Bidirectional {
+			b.errorf(p.Pos, "a prop binding is declared on a component, not in this parameter list")
+			continue
+		}
+		if !pl.Pos.IsSet() {
+			pl.Pos = p.Pos
+		}
+		pl.Params = append(pl.Params, p)
 	}
 	pl.IsMultiline = pl.IsMultiline || spansLines(openLine, lines)
 	b.attachParamComments(openLine, &pl)
 	return pl
 }
 
-func (b *builder) buildParam(it nodeIter) ast.Param {
-	// Param = { MacroAttr } ident [ Type ] [ assign Expr ] .
+// buildPropList is the ParamList production read as a component's declaration,
+// where all three forms mean something.
+func (b *builder) buildPropList(it nodeIter, openLine int) ast.PropList {
+	var pl ast.PropList
+	var lines []int
+	pl.Props = b.buildParamEntries(it, openLine, &pl.IsMultiline, &lines)
+	pl.IsMultiline = pl.IsMultiline || spansLines(openLine, lines)
+	b.attachPropComments(openLine, &pl)
+	return pl
+}
+
+// buildParamEntries walks one ParamList, reporting each entry's line so a
+// caller can decide whether the list was written across lines.
+func (b *builder) buildParamEntries(it nodeIter, openLine int, multiline *bool, lines *[]int) []ast.ParamOrEventDecl {
+	// ParamList = Param { comma Param } [ comma ] .
+	var out []ast.ParamOrEventDecl
+	for !it.done() {
+		if it.isNonTerminal() && it.symbol() == Param {
+			p := b.buildParam(it.enter())
+			out = append(out, p)
+			*lines = append(*lines, propPos(p).Line)
+			continue
+		}
+		if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
+			*multiline = true
+		}
+		it.skip() // comma or semi
+	}
+	return out
+}
+
+func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
+	// Param = { MacroAttr } ( colon ident | at ident | ident ) [ Type ] [ assign Expr ] .
 	attrs := b.buildParamAttrs(&it)
+	if it.done() {
+		return ast.Param{Attrs: attrs}
+	}
+	bidi, event := false, false
+	switch it.tokenType() {
+	case COLON:
+		bidi = true
+		it.skip()
+	case AT:
+		event = true
+		it.skip()
+	}
 	nameTok := it.shift()
 	p := ast.Param{
-		Pos:   ast.Pos(b.posFromToken(nameTok)),
-		Name:  nameTok.Literal,
-		Attrs: attrs,
+		Pos:           ast.Pos(b.posFromToken(nameTok)),
+		Name:          nameTok.Literal,
+		Bidirectional: bidi,
+		Attrs:         attrs,
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		p.Type = b.buildType(it.enter())
@@ -1082,13 +1127,19 @@ func (b *builder) buildParam(it nodeIter) ast.Param {
 			p.Default = b.buildExpr(it.enter())
 		}
 	}
-	return p
+	if !event {
+		return p
+	}
+	if p.Default != nil {
+		b.errorf(p.Pos, "event %q takes no default value", p.Name)
+	}
+	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Type: p.Type, Attrs: attrs}
 }
 
 // --- Components ---
 
 func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
-	// ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ CompParamList ] rparen ] [ Type ] StmtBlock .
+	// ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
 	pos := b.posFromToken(it.shift()) // kw_component
 	c := &ast.ComponentDecl{Pos: pos}
 	c.Name = it.shift().Literal // ident
@@ -1110,8 +1161,8 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
 		c.HasParens = true
 		open := it.shift() // lparen
-		if !it.done() && it.isNonTerminal() && it.symbol() == CompParamList {
-			c.Props = b.buildCompParamList(it.enter(), open.Line)
+		if !it.done() && it.isNonTerminal() && it.symbol() == ParamList {
+			c.Props = b.buildPropList(it.enter(), open.Line)
 		}
 		if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
 			it.skip() // rparen
@@ -1124,27 +1175,6 @@ func (b *builder) buildComponentDecl(it nodeIter) *ast.ComponentDecl {
 		c.Body = b.buildStmtBlock(it.enter())
 	}
 	return c
-}
-
-func (b *builder) buildCompParamList(it nodeIter, openLine int) ast.PropList {
-	// CompParamList = CompParam { comma CompParam } .
-	var pl ast.PropList
-	var lines []int
-	for !it.done() {
-		if it.isNonTerminal() && it.symbol() == CompParam {
-			p := b.buildCompParam(it.enter())
-			pl.Props = append(pl.Props, p)
-			lines = append(lines, propPos(p).Line)
-		} else {
-			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
-				pl.IsMultiline = true
-			}
-			it.skip() // comma or semi
-		}
-	}
-	pl.IsMultiline = pl.IsMultiline || spansLines(openLine, lines)
-	b.attachPropComments(openLine, &pl)
-	return pl
 }
 
 // claimInlineComment takes the comment written after code on line, if there is
@@ -1192,9 +1222,6 @@ func (b *builder) attachPropComments(openLine int, pl *ast.PropList) {
 		case ast.EventDecl:
 			v.Leading, v.Trailing = leading, trailing
 			pl.Props[i] = v
-		case ast.SlotDecl:
-			v.Leading, v.Trailing = leading, trailing
-			pl.Props[i] = v
 		}
 	}
 }
@@ -1223,97 +1250,8 @@ func propPos(p ast.ParamOrEventDecl) ast.Pos {
 		return v.Pos
 	case ast.EventDecl:
 		return v.Pos
-	case ast.SlotDecl:
-		return v.Pos
 	}
 	return ast.Pos{}
-}
-
-func (b *builder) buildCompParam(it nodeIter) ast.ParamOrEventDecl {
-	// CompParam = { MacroAttr } CompParamBody .
-	attrs := b.buildParamAttrs(&it)
-	if !it.done() && it.isNonTerminal() && it.symbol() == CompParamBody {
-		it = it.enter()
-	}
-	return b.buildCompParamBody(it, attrs)
-}
-
-func (b *builder) buildCompParamBody(it nodeIter, attrs []ast.MacroAttr) ast.ParamOrEventDecl {
-	// CompParamBody = colon ident [Type] [assign Expr] | at ident [Type] | SlotParam | ident [CompParamTail] .
-	if it.done() {
-		return ast.Param{Attrs: attrs}
-	}
-	if it.isNonTerminal() && it.symbol() == SlotParam {
-		return b.buildSlotParam(it.enter(), attrs)
-	}
-	if !it.isNonTerminal() {
-		switch it.tokenType() {
-		case COLON:
-			it.skip() // colon
-			nameTok := it.shift()
-			p := ast.Param{
-				Pos:           ast.Pos(b.posFromToken(nameTok)),
-				Name:          nameTok.Literal,
-				Bidirectional: true,
-				Attrs:         attrs,
-			}
-			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
-				p.Type = b.buildType(it.enter())
-			}
-			if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
-				it.skip()
-				if !it.done() && it.isNonTerminal() {
-					p.Default = b.buildExpr(it.enter())
-				}
-			}
-			return p
-		case AT:
-			it.skip() // at
-			nameTok := it.shift()
-			e := ast.EventDecl{
-				Pos:  b.posFromToken(nameTok),
-				Name: nameTok.Literal,
-			}
-			if !it.done() && it.isNonTerminal() && it.symbol() == Type {
-				e.Type = b.buildType(it.enter())
-			}
-			e.Attrs = attrs
-			return e
-		case IDENT:
-			nameTok := it.shift()
-			p := ast.Param{
-				Pos:   ast.Pos(b.posFromToken(nameTok)),
-				Name:  nameTok.Literal,
-				Attrs: attrs,
-			}
-			if !it.done() && it.isNonTerminal() && it.symbol() == CompParamTail {
-				b.buildCompParamTail(it.enter(), &p)
-			}
-			return p
-		}
-	}
-	it.skip()
-	return ast.Param{Attrs: attrs}
-}
-
-func (b *builder) buildCompParamTail(it nodeIter, p *ast.Param) {
-	// CompParamTail = assign Expr | Type [ assign Expr ] .
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
-		it.skip()
-		if !it.done() && it.isNonTerminal() {
-			p.Default = b.buildExpr(it.enter())
-		}
-		return
-	}
-	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
-		p.Type = b.buildType(it.enter())
-	}
-	if !it.done() && !it.isNonTerminal() && it.tokenType() == ASSIGN {
-		it.skip()
-		if !it.done() && it.isNonTerminal() {
-			p.Default = b.buildExpr(it.enter())
-		}
-	}
 }
 
 // --- Visual nodes + expression statements ---
@@ -1676,66 +1614,6 @@ func (b *builder) buildForNode(it nodeIter) *ast.ForStmt {
 		}
 	}
 	return stmt
-}
-
-func (b *builder) buildSlotParam(it nodeIter, attrs []ast.MacroAttr) ast.SlotDecl {
-	// SlotParam = kw_slot ident [ lparen [ TypeList ] rparen ] .
-	it.skip() // kw_slot
-	if it.done() {
-		return ast.SlotDecl{Attrs: attrs}
-	}
-	nameTok := it.shift()
-	d := ast.SlotDecl{
-		Pos:   ast.Pos(b.posFromToken(nameTok)),
-		Name:  nameTok.Literal,
-		Attrs: attrs,
-	}
-	for !it.done() {
-		if it.isNonTerminal() {
-			switch it.symbol() {
-			case TypeList:
-				d.Params = b.buildTypeList(it.enter())
-			case Type:
-				d.Type = b.buildType(it.enter())
-			default:
-				it.skip()
-			}
-			continue
-		}
-		it.skip() // lparen / rparen
-	}
-	return d
-}
-
-// Which site this is — anonymous insertion or population — is the checker's to
-// say; both spell their arguments as an ArgList.
-func (b *builder) buildSlotNode(it nodeIter) *ast.SlotNode {
-	// SlotNode = kw_slot [ ident [ lparen [ ArgList ] rparen ] ] [ StmtBlock ] .
-	pos := b.posFromToken(it.shift()) // kw_slot
-	n := &ast.SlotNode{Pos: ast.Pos(pos)}
-	openLine := 0
-	for !it.done() {
-		if it.isNonTerminal() {
-			switch it.symbol() {
-			case ArgList:
-				n.Args = b.buildBindArgList(it.enter(), openLine)
-			case StmtBlock:
-				n.Block = b.buildStmtBlock(it.enter())
-			default:
-				it.skip()
-			}
-			continue
-		}
-		if it.tokenType() == IDENT {
-			n.Name = it.shift().Literal
-			continue
-		}
-		if it.tokenType() == LPAREN {
-			openLine = it.token().Line
-		}
-		it.skip() // lparen / rparen
-	}
-	return n
 }
 
 // --- Expressions ---
@@ -2818,19 +2696,6 @@ func spansLines(openLine int, itemLines []int) bool {
 // The check is here rather than in the checker because the two sites share the
 // production and only the builder is told which one it is reading.
 func (b *builder) buildArgList(it nodeIter, openLine int) ast.ArgList {
-	al := b.buildBindArgList(it, openLine)
-	for _, entry := range al.Args {
-		a, ok := entry.(ast.Arg)
-		if ok && a.Type != nil {
-			b.errorf(ast.Pos(*a.Type.ExprPos()), "a type annotates the name a slot population binds: an argument passes a value")
-		}
-	}
-	return al
-}
-
-// buildBindArgList is buildArgList for the slot population, which may write a
-// type on the name it binds.
-func (b *builder) buildBindArgList(it nodeIter, openLine int) ast.ArgList {
 	// ArgList = Arg { (comma | semi) Arg } .
 	var al ast.ArgList
 	var lines []int
@@ -3004,10 +2869,6 @@ func (b *builder) buildIdentArgCont(it nodeIter, identTok Token) ast.ArgOrEventH
 		return ast.Arg{Value: b.tokenToExpr(identTok)}
 	}
 
-	if it.isNonTerminal() && it.symbol() == Type {
-		return ast.Arg{Value: b.tokenToExpr(identTok), Type: b.buildType(it.enter())}
-	}
-
 	// Check first element
 	if !it.isNonTerminal() && it.tokenType() == ASSIGN {
 		// Named arg: ident = Expr
@@ -3134,7 +2995,10 @@ func (b *builder) buildNonIdentPrimary(it nodeIter) ast.Expr {
 // --- Types ---
 
 func (b *builder) buildType(it nodeIter) ast.TypeExpr {
-	// Type = ident [ dot ident | lt Type gt ] | kw_component | kw_func lparen [TypeList] rparen [Type] | StructDecl | EnumDecl | UnitDecl .
+	// Type = ident [ dot ident | lt TypeList gt ]
+	//      | kw_func [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+	//      | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+	//      | ellipsis Type | StructDecl | EnumDecl | UnitDecl .
 	if it.done() {
 		return nil
 	}
@@ -3153,8 +3017,27 @@ func (b *builder) buildType(it nodeIter) ast.TypeExpr {
 	tok := it.token()
 	switch tok.Type {
 	case KW_COMPONENT:
-		pos := b.posFromToken(it.shift())
-		return &ast.NamedType{Pos: pos, Name: "component"}
+		ct := &ast.ComponentType{Pos: b.posFromToken(it.shift())}
+		if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
+			ct.HasParens = true
+			it.skip() // lparen
+			if !it.done() && it.isNonTerminal() && it.symbol() == FuncTypeParamList {
+				ct.Params = b.buildFuncTypeParamList(it.enter())
+			}
+			if !it.done() && !it.isNonTerminal() && it.tokenType() == RPAREN {
+				it.skip() // rparen
+			}
+		}
+		if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+			ct.Tree = b.buildType(it.enter())
+		}
+		return ct
+	case ELLIPSIS:
+		v := &ast.VariadicType{Pos: b.posFromToken(it.shift())}
+		if !it.done() && it.isNonTerminal() && it.symbol() == Type {
+			v.Elem = b.buildType(it.enter())
+		}
+		return v
 	case IDENT:
 		nameTok := it.shift()
 		nt := &ast.NamedType{Pos: b.posFromToken(nameTok), Name: nameTok.Literal}
@@ -3225,8 +3108,9 @@ func (b *builder) buildFuncTypeParamList(it nodeIter) []ast.FuncTypeParam {
 func (b *builder) buildFuncTypeParam(it nodeIter) ast.FuncTypeParam {
 	// FuncTypeParam =
 	//   ident [ dot ident [ lt TypeList gt ] | lt TypeList gt | Type ]
-	// | kw_func lparen [ FuncTypeParamList ] rparen [ Type ]
-	// | StructDecl | EnumDecl | UnitDecl .
+	// | kw_func [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+	// | kw_component [ lparen [ FuncTypeParamList ] rparen ] [ Type ]
+	// | ellipsis Type | StructDecl | EnumDecl | UnitDecl .
 	//
 	// The parse tree is flat: tokens and nonterminals are direct children.
 	if it.done() {

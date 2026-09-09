@@ -524,10 +524,11 @@ type Component struct {
 	// order -- ["T"] for `component effect<T>(on T)`. Bound at the call site
 	// from the props supplied there, the same way a func's are bound from its
 	// arguments.
-	TypeParams   []TypeParam `json:",omitempty"`
-	Props        []*Prop
-	Events       []*EventDecl
-	Slots        []*SlotDecl `json:",omitempty"`
+	TypeParams []TypeParam `json:",omitempty"`
+	Props      []*Prop
+	Events     []*EventDecl
+	Slots      []*SlotDecl `json:",omitempty"`
+
 	ChildrenType *Type
 	Vars         []*Var
 	Funcs        []*Func
@@ -559,6 +560,20 @@ type Component struct {
 	// package collection its kind lands in; this records which body bound its
 	// name, so pass2 can rebind it in the scope pass1 declared it in.
 	BodyDecls []Symbol `json:"-"`
+}
+
+// RestSlot is the slot the children a caller writes bare go to, or nil for a
+// component that accepts none.
+func (c *Component) RestSlot() *SlotDecl {
+	if c == nil {
+		return nil
+	}
+	for _, s := range c.Slots {
+		if s.Rest {
+			return s
+		}
+	}
+	return nil
 }
 
 func (c *Component) SymName() string { return c.Name }
@@ -601,21 +616,25 @@ type EventDecl struct {
 	Wildcard string `json:",omitempty"`
 }
 
-// SlotDecl is a resolved named-slot declaration. Params are types only, so an
-// insertion matches them by position.
+// SlotDecl is a resolved slot declaration: a parameter whose type is a
+// component type.
 type SlotDecl struct {
-	Name   string
-	Params []*Type `json:",omitempty"`
+	Name string
+	// Params are what the slot is invoked with. They carry names as well as
+	// types, the way FuncSig.Params does, because a slot's structural match is
+	// by name -- so a name written in the type is part of the contract and
+	// renaming one is a breaking change, not an edit to a comment. An entry
+	// with no name written carries "".
+	Params []*Param `json:",omitempty"`
 	// Content is what each supplied node must be; Card is how many are
 	// accepted. Absent, a slot takes any number of components.
 	Content *Type    `json:",omitempty"`
 	Card    SlotCard `json:",omitempty"`
+	// Rest says the slot was declared `...component`: it collects the children
+	// a caller writes bare, rather than being populated by name. At most one
+	// per component, and a component without one accepts no children at all.
+	Rest bool `json:",omitempty"`
 }
-
-// DefaultSlot is the name of the slot a caller fills with ordinary children.
-// It is a slot like any other; only its content arrives as sugar, which is why
-// it cannot be populated by name.
-const DefaultSlot = "_"
 
 // SlotCard is how many nodes a slot accepts.
 type SlotCard string

@@ -12,7 +12,7 @@ struct option<T> {
     v T
 }
 
-component frame(slot badge option<int>) { // ERROR(check) "a slot accepts a tree, and option<int> is not one"
+component frame(badge component option<int>) { // ERROR(check) "a slot accepts a tree, and option<int> is not one"
     vbox {
         badge {}
     }

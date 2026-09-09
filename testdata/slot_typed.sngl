@@ -9,7 +9,7 @@
 import . "sngl:ui"
 import tr "sngl:tree"
 
-component frame(slot body tr.one, slot badge option<tr.default>, slot rows) {
+component frame(body component tr.one, badge component option<tr.default>, rows component) {
     vbox {
         body {}
         badge {}
@@ -17,29 +17,28 @@ component frame(slot body tr.one, slot badge option<tr.default>, slot rows) {
     }
 }
 
-// The default slot carries a type the same way. It is named `_`, so every slot
-// has the one shape and the name is never optional — `slot` followed by an
-// optional name would be ambiguous with a type, both being idents.
-component strip(slot _ tr.default) {
+// The rest slot carries a type the same way: `...` is the count bound, and
+// what follows `component` is still the tree it accepts.
+component strip(children ...component tr.default) {
     vbox {
-        slot
+        children
     }
 }
 
 component main {
     frame() {
-        slot body {
+        component body {
             text(value="one")
         }
     }
     frame() {
-        slot body {
+        component body {
             text(value="one")
         }
-        slot badge {
+        component badge {
             text(value="b")
         }
-        slot rows {
+        component rows {
             text(value="a")
             text(value="b")
         }

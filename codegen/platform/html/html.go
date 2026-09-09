@@ -1309,11 +1309,6 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 		return
 	}
 	switch n.Name {
-	case "slot":
-		for _, s := range g.irSlotChildren {
-			g.renderIRStmt(b, s, depth)
-		}
-		return
 	case "window":
 		return
 	case "timer":
@@ -2414,7 +2409,8 @@ func (g *htmlGen) emitSetter(b *strings.Builder, dv *ir.Var) {
 	fmt.Fprintf(b, "  state.%s = v;\n", dv.Name)
 	for _, h := range dv.Handlers {
 		if h.Name == "change" && h.Func != nil {
-			for _, line := range g.translateBlockJC(h.Func.Block) {
+			hjc := codegen.BindVarHandlerValue(g.scopedJC(), h, "v")
+			for _, line := range g.translateBlockWithJC(hjc, h.Func.Block) {
 				fmt.Fprintf(b, "  %s\n", line)
 			}
 		}
@@ -2844,7 +2840,12 @@ func (g *htmlGen) scopedJCFresh() *javascript.JsIRContext {
 // translateBlockJC routes an IR block through WalkLowered + htmlTranslator +
 // JsIRContext, returning JS statements with trailing semicolons.
 func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
-	jc := g.scopedJC()
+	return g.translateBlockWithJC(g.scopedJC(), body)
+}
+
+// translateBlockWithJC is translateBlockJC over a caller-supplied scope, for a
+// body emitted inside a binding the block itself does not declare.
+func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stmt) []string {
 	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
 	// A CanvasRedrawStmt needs a NodeInst→ID lookup only htmlGen has, so it is
 	// handled here rather than in the translator.

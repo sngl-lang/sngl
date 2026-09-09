@@ -58,5 +58,5 @@ component output(
     // alongside the application code, using that language's native test
     // runner (Go's testing, Kotlin's JUnit, JS's Jest/Vitest).
     test bool,
-    slot _ build.language,
+    targets ...component build.language,
 ) {}

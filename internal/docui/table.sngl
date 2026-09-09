@@ -3,42 +3,42 @@ import "sngl:platform/html"
 
 // Simple table layout — uses platform bodies for cross-platform rendering.
 // Children should be Row components.
-component Table(slot _) {
+component Table(rows ...component) {
     if PLATFORM == html.platform {
         html.table {
-            slot
+            rows
         }
     } else {
         vbox(style={gap=0}) {
-            slot
+            rows
         }
     }
 }
 
 // Table header row.
-component HeaderRow(slot _) {
+component HeaderRow(cells ...component) {
     if PLATFORM == html.platform {
         html.thead {
             html.tr {
-                slot
+                cells
             }
         }
     } else {
         hbox(style={fontWeight="bold", gap=16, padding=4, borderBottom="1px solid #ddd"}) {
-            slot
+            cells
         }
     }
 }
 
 // Table body row.
-component Row(slot _) {
+component Row(cells ...component) {
     if PLATFORM == html.platform {
         html.tr {
-            slot
+            cells
         }
     } else {
         hbox(style={gap=16, padding=4}) {
-            slot
+            cells
         }
     }
 }

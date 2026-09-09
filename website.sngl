@@ -105,7 +105,7 @@ component PlatformCarousel() {
 	}
 }
 
-component PageLayout(title = "", currentHref = "", slot _) {
+component PageLayout(title = "", currentHref = "", children ...component) {
 	if PLATFORM == html.platform {
 		html.div(class="site") {
 			html.div(innerHTML="<input type='checkbox' id='nav-toggle' class='nav-toggle'><label class='nav-hamburger' for='nav-toggle'>&#9776;</label>")
@@ -113,7 +113,7 @@ component PageLayout(title = "", currentHref = "", slot _) {
 			html.main {
 				html.article {
 					html.h1(innerText=title)
-					slot
+					children
 				}
 				html.footer(class="site-footer") {
 					// docsgen replaces the year marker with the commit's year.
@@ -133,7 +133,7 @@ component PageLayout(title = "", currentHref = "", slot _) {
 			NavSidebar(currentHref=currentHref)
 			vbox(style={padding=24, flex=1}) {
 				text(value=title, style={fontSize=28, fontWeight="bold"})
-				slot
+				children
 			}
 		}
 	}
@@ -286,6 +286,19 @@ component main {
 							docui.CodeCell(value=prop.name)
 							docui.Cell(value=prop.type)
 							docui.Cell(value=prop.doc)
+						}
+					}
+				}
+				text(value="Slots", style={fontSize=20, fontWeight="bold"})
+				docui.Table {
+					docui.HeaderRow {
+						docui.HeaderCell(value="Name")
+						docui.HeaderCell(value="Type")
+					}
+					for var sl = comp.slots {
+						docui.Row {
+							docui.CodeCell(value=sl.name)
+							docui.Cell(value=sl.type)
 						}
 					}
 				}

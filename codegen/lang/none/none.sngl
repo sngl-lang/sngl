@@ -10,4 +10,4 @@ import . "sngl:macro"
 import build "sngl:build"
 
 // The `none` node of a build directive: `output { none { html() } }`.
-component none(slot _ build.platform) build.language {}
+component none(platforms ...component build.platform) build.language {}

@@ -19,7 +19,7 @@ component go(
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
     goModExtra string,
-    slot _ build.platform,
+    platforms ...component build.platform,
 ) build.language {}
 
 // --- sngl:remote/http ---

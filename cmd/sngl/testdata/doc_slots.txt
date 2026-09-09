@@ -1,0 +1,67 @@
+# A slot's name is the author's and is what a caller writes, so `sngl doc` has
+# to say it. It is also an `ast.Param` like a prop, which is what makes the
+# `! stdout` lines here worth having: the schema carried Props, Events and a
+# Children *type* and no slots at all, so `children` was nameless -- and the
+# first fix that gave slots a name gave them one in the Properties table.
+
+# A plain container: the rest slot is named, its `...` visible, and it is not
+# a property.
+sngl doc vbox
+stdout '## Slots'
+stdout 'children +\.\.\.component'
+stdout '\*\*Children:\*\* many'
+
+# `scroll` bounds the bare children to one. Both halves of that show: the
+# slot's own type carries the bound, and the children line stops claiming
+# "many", which it said for every component that accepted any children at all.
+sngl doc scroll
+stdout 'content +\.\.\.component tr\.one'
+stdout '\*\*Children:\*\* exactly one'
+
+# A slot that accepts a segmented tree names it.
+sngl doc canvas
+stdout 'shapes +\.\.\.component shape'
+
+# A component with no rest slot has no Slots section and no children.
+sngl doc text
+! stdout '## Slots'
+stdout '\*\*Children:\*\* none'
+
+# Addressable on its own, and answered as a slot rather than as an event --
+# which is what everything that is not a prop used to be called.
+sngl doc sngl:ui vbox.children
+stdout 'vbox.children \(slot\)'
+stdout 'Type: \.\.\.component'
+! stdout 'event'
+
+# A scoped slot's parameters are contract, not documentation, so the names are
+# printed alongside their types. No stdlib component declares one, so this is
+# the local-declaration path.
+sngl doc . table
+stdout '## Slots'
+stdout 'cell +component\(row Row\)'
+stdout 'body +...component'
+
+-- app.sngl --
+import . "sngl:ui"
+
+struct Row {
+    title string
+}
+
+component table(rows list<Row>, cell component(row Row), body ...component) {
+    vbox {
+        for var r = rows {
+            cell(r)
+        }
+        body
+    }
+}
+
+component main {
+    table(rows=[]) {
+        component cell(r) {
+            text(value=r.title)
+        }
+    }
+}
