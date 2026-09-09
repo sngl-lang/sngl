@@ -28,11 +28,11 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { clicks: 0, name: "World" };
-  function main_greeting(state2) {
-    return "Hello, " + state2.name + "!";
+  function greeting() {
+    return "Hello, " + state.name + "!";
   }
-  function main_doubled(state2) {
-    return state2.clicks * 2;
+  function doubled() {
+    return state.clicks * 2;
   }
   function String(v) {
     return "" + v;
@@ -44,12 +44,12 @@ body { font-family: system-ui, sans-serif; }
   $3.addEventListener("click", function() {
     state.clicks = state.clicks + 1;
     __n1.textContent = "Clicks: " + String(state.clicks);
-    __n2.textContent = "Doubled: " + String(main_doubled(state));
+    __n2.textContent = "Doubled: " + String(doubled());
   });
   function __sngl_init() {
-    __n0.textContent = main_greeting(state);
+    __n0.textContent = greeting();
     __n1.textContent = "Clicks: " + String(state.clicks);
-    __n2.textContent = "Doubled: " + String(main_doubled(state));
+    __n2.textContent = "Doubled: " + String(doubled());
   }
   __sngl_init();
 })();

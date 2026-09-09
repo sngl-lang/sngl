@@ -1,8 +1,9 @@
 // intdiv.sngl — exercises integer division in a reactive computed func.
 
+import . "sngl:app"
 import . "sngl:ui"
 
-component main ui {
+window {
     var a int = 10
     var b int = 3
 

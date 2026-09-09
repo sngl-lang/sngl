@@ -23,8 +23,8 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { a: 10, b: 3 };
-  function main_quotient(state2) {
-    return Math.trunc(state2.a / state2.b);
+  function quotient() {
+    return Math.trunc(state.a / state.b);
   }
   function String(v) {
     return "" + v;
@@ -34,14 +34,14 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
     state.a = state.a + 1;
-    __n0.textContent = String(main_quotient(state));
+    __n0.textContent = String(quotient());
   });
   $2.addEventListener("click", function() {
     state.b = state.b + 1;
-    __n0.textContent = String(main_quotient(state));
+    __n0.textContent = String(quotient());
   });
   function __sngl_init() {
-    __n0.textContent = String(main_quotient(state));
+    __n0.textContent = String(quotient());
   }
   __sngl_init();
 })();

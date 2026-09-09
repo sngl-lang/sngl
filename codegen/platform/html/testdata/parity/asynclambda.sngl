@@ -1,8 +1,9 @@
 // asynclambda.sngl — exercises list .map() and .filter() with lambda expressions.
 
+import . "sngl:app"
 import . "sngl:ui"
 
-component main ui {
+window {
     var xs list<int> = [1, 2, 3, 4, 5]
 
     func evens() => xs.filter(func(x int) => x % 2 == 0)
