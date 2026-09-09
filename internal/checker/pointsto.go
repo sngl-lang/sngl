@@ -82,7 +82,7 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 	switch x := s.(type) {
 	case *ir.LocalVar:
 		if isFuncType(x.Type) && x.Init != nil {
-			w.bindRHS(ir.SlotLocalKey(x), x.Init)
+			w.bindRHS(localVarSlotKey(x), x.Init)
 		}
 		w.walkExpr(x.Init)
 	case *ir.Assign:
@@ -268,6 +268,24 @@ func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
 		}
 	}
 	// Other shapes: skip conservatively.
+}
+
+// localVarSlotKey keys a LocalVar by the symbol an Ident referring to it
+// resolves to, and falls back to the statement only where there is none.
+//
+// A `var` in a window or component body is a LocalVar statement carrying a
+// Sym, and every read of it -- ir.CalleeSlotKey, slotKeyForAssignTarget --
+// asks for SlotVar. Binding the statement instead put the funcvar's
+// candidates under a key nothing looks up, so an async function stored in a
+// window's var reached a call site with no colour on it: no goroutine, no
+// diagnostic, and the drawing thread blocked. A component's var is bound a
+// second time through comp.Vars, whose Init the checker does fill in, which is
+// why the component spelling worked and the window one did not.
+func localVarSlotKey(x *ir.LocalVar) ir.PointsToKey {
+	if x.Sym != nil {
+		return ir.SlotVarKey(x.Sym)
+	}
+	return ir.SlotLocalKey(x)
 }
 
 func isFuncType(t *ir.Type) bool {
