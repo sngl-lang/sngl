@@ -35,12 +35,10 @@ app.window {
 		t.Fatalf("derived-func `if` was not lowered to a reactive slot (likely const-folded):\n%s", out)
 	}
 	// The slot must re-evaluate the condition on each render (not bake the
-	// initial result). It is the derived func's body rather than a call to it:
-	// a pure zero-argument func in a window body inlines into its one caller,
-	// which is what the func being a *window* func rather than the root
-	// component's changed. Either spelling re-evaluates; a baked result would
-	// be a literal here.
-	if !strings.Contains(out, "if (state.name.length > 3)") {
+	// initial result), so it is a call. The func reads a window var, which
+	// makes it readonly rather than pure -- and a pure one is exactly what
+	// gets folded, which is the first of the two bugs above.
+	if !strings.Contains(out, "if (isLong())") {
 		t.Errorf("slot body does not re-evaluate the derived func:\n%s", out)
 	}
 	// Mutating `name` in the input handler must re-fire the slot.
