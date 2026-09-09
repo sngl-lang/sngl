@@ -209,6 +209,17 @@ func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
 	return slices.Contains(cc.ctx.Pkg.Components, comp)
 }
 
+// declaredName is the name the component was declared under, which is what the
+// switch below is written against. NodeInst.Name is the call site's spelling
+// instead, so a program reaching the same component through a qualified import
+// writes `ui.input` and misses every case.
+func declaredName(n *ir.NodeInst) string {
+	if n.Component != nil && n.Component.Name != "" {
+		return n.Component.Name
+	}
+	return n.Name
+}
+
 // renderStdlibComposable emits the components whose android body is still
 // written here rather than declared in codegen/platform/android. It reports
 // whether it recognised n; an unrecognised one is a missing override, which
@@ -216,7 +227,7 @@ func (cc *irComposeContext) isUserComponent(comp *ir.Component) bool {
 func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 	style := cc.buildModifier(n)
 
-	switch n.Name {
+	switch declaredName(n) {
 	case "input":
 		// Resolve `value=...` for the controlled-input expression.
 		valueExpr := "\"\""

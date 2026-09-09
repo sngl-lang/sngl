@@ -1,8 +1,8 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // Optional value: `option<T>` is either a `T` or absent. Constructed by the
 // compiler; T is the wrapped type.
-#[builtin("option")]
+#[marks.builtin("option")]
 struct option<T> {}
 
 // Mutable reference cell: `ref<T>` is a handle to a `T` rather than a copy of
@@ -17,7 +17,7 @@ struct option<T> {}
 //
 // NoLambda's lowering uses one for a mutable capture, which is where the type
 // came from.
-#[builtin("ref")]
+#[marks.builtin("ref")]
 struct ref<T> {}
 
 // The absence of a value. Assignable to any `option<T>`, and what a bare
@@ -25,5 +25,5 @@ struct ref<T> {}
 //
 // The written value is a placeholder the compiler replaces: `null` has no
 // literal to be declared with, and its type is not one that can be spelled.
-#[builtin("null")]
+#[marks.builtin("null")]
 const null = 0

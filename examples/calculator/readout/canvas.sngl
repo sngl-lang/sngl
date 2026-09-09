@@ -4,7 +4,7 @@
 // is what makes it read as a seven-segment display rather than as a font --
 // the shape of the digit is the part that is *not* showing.
 
-import . "sngl:ui"
+import ui "sngl:ui"
 import draw "sngl:ui/draw"
 import "../calc"
 

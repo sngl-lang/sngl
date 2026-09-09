@@ -3,7 +3,7 @@
 // It reports a press and knows nothing about arithmetic. `main` owns the
 // calculator; this owns the grid.
 
-import . "sngl:ui"
+import ui "sngl:ui"
 import "../calc"
 
 const (
@@ -48,7 +48,7 @@ func rows() list<list<Key>> {
 // One key. `flex` is what makes the grid fill the window: every key claims its
 // span of its row, and every row claims an equal share of the keypad.
 component KeyCap(entry Key, @press Key) {
-    button(
+    ui.button(
         text=entry.label,
         style={
             flex = entry.span,
@@ -64,9 +64,9 @@ component KeyCap(entry Key, @press Key) {
 }
 
 component Keypad(@press Key) {
-    vbox(style={flex=1, gap=0, padding=6}) {
+    ui.vbox(style={flex=1, gap=0, padding=6}) {
         for var row = rows() {
-            hbox(style={flex=1, gap=0}) {
+            ui.hbox(style={flex=1, gap=0}) {
                 for var entry = row {
                     KeyCap(entry=entry, @press(k) { press(k) })
                 }

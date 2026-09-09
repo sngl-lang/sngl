@@ -1,4 +1,4 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // RGBA color with 8-bit channels. Component values range 0-255; alpha
 // defaults to fully opaque (255). Colors can be constructed in three
@@ -10,7 +10,7 @@ import . "sngl:internal/marks"
 // `#ff0000`).
 // Derived colors (lighten, darken, opacity-adjust) are available via
 // the functions on the `color` receiver.
-#[builtin("color")]
+#[marks.builtin("color")]
 struct color {
     r uint8 = 0
     g uint8 = 0
@@ -35,7 +35,7 @@ func color.opacity(c color, a int) color { return color{r=c.r, g=c.g, b=c.b, a=a
 // Renders c as `#RRGGBB`, or `#RRGGBBAA` when it is not opaque: a colour is
 // its complete value, and dropping alpha would print two different colours
 // the same.
-#[intrinsic("color.hex")]
+#[marks.intrinsic("color.hex")]
 func color.hex(c color) string
 
 // Mixes c toward white by pct (0.0-1.0) on each RGB channel,

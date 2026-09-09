@@ -21,6 +21,8 @@
 // package of their own because every component in every one of those
 // packages refers to them; they are the vocabulary, not a separate concern.
 //
-// Nothing here is in scope until it is imported. `import . "sngl:ui"` writes
-// its declarations unqualified; `import <alias> "sngl:ui"` qualifies them,
-// and is also how a platform overrides a component (`component <alias>.vbox`).
+// Nothing here is in scope until it is imported. `import <alias> "sngl:ui"`
+// qualifies its declarations (`alias.vbox`), and is also how a platform
+// overrides a component (`component <alias>.vbox`); it is the form this
+// repository writes. `import . "sngl:ui"` writes them unqualified and remains
+// supported.

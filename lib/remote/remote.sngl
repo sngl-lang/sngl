@@ -1,4 +1,4 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
 
 // A value fetched from outside the program: absent until it arrives, able to
 // fail, and able to arrive again. T is the fetched type.
@@ -13,30 +13,30 @@ import . "sngl:internal/marks"
 // below make the settled, failed and pending states directly, for an adapter
 // that already has its answer and for a test that needs to render one branch. A bare `T` is not a `Value<T>` and does not become one on its
 // own — a `Value` carries fetch state that no plain value implies.
-#[builtin("remote")]
+#[marks.builtin("remote")]
 struct Value<T> {}
 
 // The most recent value that arrived, or `null` if none ever has. A failure
 // does not clear it: a refresh that fails leaves the previous value in place,
 // which is what lets a screen keep rendering while it warns.
-#[intrinsic("remote.value")]
+#[marks.intrinsic("remote.value")]
 func Value<T>.value() option<T>
 
 // How the most recent attempt failed, or `null` if it succeeded. An attempt
 // that succeeds clears it.
-#[intrinsic("remote.error")]
+#[marks.intrinsic("remote.error")]
 func Value<T>.error() option<Failure>
 
 // True while an attempt is in flight. Orthogonal to the other two: a refresh
 // runs over a value that is already there, and over a failure that is still
 // worth showing.
-#[intrinsic("remote.inFlight")]
+#[marks.intrinsic("remote.inFlight")]
 func Value<T>.inFlight() bool
 
 // The value if one has arrived, otherwise fallback. The idiomatic way to bind
 // a remote into a prop, since a component wants a `T` rather than a box —
 // `map.get` takes its default the same way and for the same reason.
-#[intrinsic("remote.or")]
+#[marks.intrinsic("remote.or")]
 func Value<T>.or(fallback T) T
 
 // Re-runs the fetch behind this box, bypassing any cached answer.
@@ -51,7 +51,7 @@ func Value<T>.or(fallback T) T
 // for the reasons nothing in the program observes: a retry button after a
 // failure, a pull-to-refresh gesture, a poll driven by a `timer`. Calling it
 // while an attempt is in flight is not an error and starts no second attempt.
-#[intrinsic("remote.refresh", mutates, mutatesReceiver)]
+#[marks.intrinsic("remote.refresh", mutates, mutatesReceiver)]
 func Value<T>.refresh()
 
 // True when there is nothing to show yet: an attempt is in flight and no value
@@ -72,16 +72,16 @@ func Value<T>.failed() => this.error() != null
 // query — what a fetch that already has its answer returns. This is how an
 // adapter hands over data it did not have to go and get, and how a test builds
 // the ready branch without a fetch.
-#[intrinsic("remote.of")]
+#[marks.intrinsic("remote.of")]
 func of<T>(value T) Value<T>
 
 // A box whose most recent attempt failed, holding no value. A test builds the
 // failure branch with this; for the harder case a screen actually has to
 // handle — a stale value beside a failure — only a real refresh produces it.
-#[intrinsic("remote.failedWith")]
+#[marks.intrinsic("remote.failedWith")]
 func failedWith<T>(f Failure) Value<T>
 
 // A box with an attempt in flight and nothing to show: the spinner state. Also
 // what the idle box reads as, since neither has a value.
-#[intrinsic("remote.pending")]
+#[marks.intrinsic("remote.pending")]
 func pending<T>() Value<T>

@@ -1,16 +1,16 @@
-import . "sngl:internal/marks"
-import . "sngl:macro"
+import marks "sngl:internal/marks"
+import macro "sngl:macro"
 
 // Calendar date in canonical "YYYY-MM-DD" form.
-#[builtin("date")]
+#[marks.builtin("date")]
 struct date {}
 
 // Wall-clock time in "HH:MM" or "HH:MM:SS" form.
-#[builtin("time")]
+#[marks.builtin("time")]
 struct time {}
 
 // ISO-8601 date and time together.
-#[builtin("datetime")]
+#[marks.builtin("datetime")]
 struct datetime {}
 
 // Time quantity used by `timer.interval` and animation APIs. Unit
@@ -18,7 +18,7 @@ struct datetime {}
 //
 // The mark lets a foreign-type importer hand out this type where it has no
 // scope to resolve the name in — a Go `time.Duration` maps to it.
-#[builtin("duration")]
+#[marks.builtin("duration")]
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 
 // Periodic callback. Fires `@tick` every `interval` while `enabled`
@@ -37,7 +37,7 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 // boundary and its interval are answered by the tree it renders into rather
 // than by a list the checker hoisted it onto.
 component timer(
-    #[construct] interval duration,
-    #[construct] enabled bool = true,
+    #[macro.construct] interval duration,
+    #[macro.construct] enabled bool = true,
     @tick,
 ) {}

@@ -13,11 +13,11 @@
 //     Project: https://sngl.dev   |   Source: git.duckfam.us/jonathan/sngl
 // =====================================================================
 
-import . "sngl:ui"
+import ui "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
+import app "sngl:app"
 import . "sngl:dialog"
-import . "sngl:test"
+import test "sngl:test"
 import "sngl:i18n"
 
 // ----- 1. Output -----------------------------------------------------
@@ -113,9 +113,9 @@ func makeBadge(b struct {
 component LabeledCounter(label = "Clicks", start = 0, @changed) {
     var n = start
 
-    hbox(style={gap=8, alignItems="center"}) {
-        text(value="{label}: {n}")
-        button(text="+1", @click {
+    ui.hbox(style={gap=8, alignItems="center"}) {
+        ui.text(value="{label}: {n}")
+        ui.button(text="+1", @click {
             n += 1
             changed(n) // emit upward
         })
@@ -132,8 +132,8 @@ struct TreeNode {
 }
 
 component TreeView(node dyn = null) {
-    vbox(style={paddingLeft=12, gap=2}) {
-        text(value=string(node.value))
+    ui.vbox(style={paddingLeft=12, gap=2}) {
+        ui.text(value=string(node.value))
         if node.left != null {
             TreeView(node=node.left)
         }
@@ -164,20 +164,20 @@ component I18nDemo {
     var price = 1234
     var party date = date("2026-05-09")
 
-    vbox(style={gap=4}) {
-        text(value=$"Welcome, {who}!")
-        text(value=$"You have {unread, plural,
+    ui.vbox(style={gap=4}) {
+        ui.text(value=$"Welcome, {who}!")
+        ui.text(value=$"You have {unread, plural,
             =0{no new messages}
             one{1 new message}
             other{# new messages}
         }.")
-        text(value=$"Role: {role, select,
+        ui.text(value=$"Role: {role, select,
             admin{Administrator}
             member{Member}
             other{Guest}
         }")
-        text(value=$"Ticket price: {price, number, currency}")
-        text(value=$"Party date: {party, date, long}")
+        ui.text(value=$"Ticket price: {price, number, currency}")
+        ui.text(value=$"Party date: {party, date, long}")
     }
 }
 
@@ -196,13 +196,13 @@ component I18nDemo {
 context #theme("light")
 
 component ThemedBox(label = "") {
-    text(value="{label}: {theme}", style={padding=8})
+    ui.text(value="{label}: {theme}", style={padding=8})
 }
 
 component ContextDemo {
     var dark = false
-    vbox(style={gap=4}) {
-        button(text="toggle theme", @click { dark = !dark })
+    ui.vbox(style={gap=4}) {
+        ui.button(text="toggle theme", @click { dark = !dark })
         theme(dark ? "dark" : "light") {
             ThemedBox(label="outer")
             theme("high-contrast") {
@@ -300,194 +300,194 @@ component main {
     // ============================================================
     //                    VISUAL TREE BELOW
     // ============================================================
-    vbox(
+    ui.vbox(
         scroll=true,
         refreshing=false,
         @refresh { Alert.toast("Refreshed!", "info") },
         style={gap=24, maxWidth=900, padding=24},
     ) {
         // --- Heading ---------------------------------------------
-        text(value=APP_NAME, style={fontSize=32, fontWeight="bold"})
-        text(
+        ui.text(value=APP_NAME, style={fontSize=32, fontWeight="bold"})
+        ui.text(
             value="Every stdlib component + every language feature, one file.",
             style={color=#666666},
         )
-        divider
+        ui.divider
 
         // --- Text + button + computed (§ — `greeting` is computed) ---
-        text(value="Text & Button", style={fontSize=20, fontWeight="bold"})
-        hbox(style={alignItems="center", gap=12}) {
-            text(value=greeting, style={fontSize=18})
-            button(text="Increment", @click { count += 1 })
-            button(text="Reset", @click {
+        ui.text(value="Text & Button", style={fontSize=20, fontWeight="bold"})
+        ui.hbox(style={alignItems="center", gap=12}) {
+            ui.text(value=greeting, style={fontSize=18})
+            ui.button(text="Increment", @click { count += 1 })
+            ui.button(text="Reset", @click {
                 count = 0
                 name = "World"
             })
-            badge(value=string(count), style={background=#2196f3, color=#ffffff})
+            ui.badge(value=string(count), style={background=#2196f3, color=#ffffff})
         }
-        divider
+        ui.divider
 
         // --- Input -----------------------------------------------
-        text(value="Input", style={fontSize=20, fontWeight="bold"})
-        hbox(style={gap=12}) {
-            input(
+        ui.text(value="Input", style={fontSize=20, fontWeight="bold"})
+        ui.hbox(style={gap=12}) {
+            ui.input(
                 placeholder="Enter your name",
                 value=name,
                 @input(e) { name = e.value },
             )
-            input(placeholder="Password", type="password")
-            input(placeholder="Search...", type="search")
+            ui.input(placeholder="Password", type="password")
+            ui.input(placeholder="Search...", type="search")
         }
-        text(value="Textarea", style={fontSize=20, fontWeight="bold"})
-        textarea(
+        ui.text(value="Textarea", style={fontSize=20, fontWeight="bold"})
+        ui.textarea(
             placeholder="Write some notes...",
             rows=4,
             value=notes,
             @input(e) { notes = e.value },
         )
-        divider
+        ui.divider
 
         // --- Checkbox / Toggle / Radio (§ — `!!` flips a bool) ---
-        text(
+        ui.text(
             value="Checkbox, Toggle & Radio",
             style={fontSize=20, fontWeight="bold"},
         )
-        hbox(style={gap=24}) {
-            checkbox(
+        ui.hbox(style={gap=24}) {
+            ui.checkbox(
                 checked=darkMode,
                 label="Dark mode",
                 @change { darkMode!! },
             )
-            toggle(checked=toggleOn, label="Notifications")
-            radio(
+            ui.toggle(checked=toggleOn, label="Notifications")
+            ui.radio(
                 direction="horizontal",
                 options=["small", "medium", "large"],
                 value=selectedRadio,
             )
         }
-        text(value="Select", style={fontSize=20, fontWeight="bold"})
-        select(
+        ui.text(value="Select", style={fontSize=20, fontWeight="bold"})
+        ui.select(
             options=["Apple", "Banana", "Cherry", "Date"],
             placeholder="Pick a fruit",
             value=selectedOption,
         )
-        divider
+        ui.divider
 
         // --- Progress / Spinner / Tabs ---------------------------
-        text(
+        ui.text(
             value="Progress & Spinner",
             style={fontSize=20, fontWeight="bold"},
         )
-        hbox(style={alignItems="center", gap=24}) {
-            progress(max=1, value=sliderVal)
-            spinner(label="Loading...")
+        ui.hbox(style={alignItems="center", gap=24}) {
+            ui.progress(max=1, value=sliderVal)
+            ui.spinner(label="Loading...")
         }
-        text(value="Tabs", style={fontSize=20, fontWeight="bold"})
-        tabs(items=["Overview", "Details", "Settings"], selected=selectedTab) {
-            text(value="This is the overview content.")
-            text(value="Here are the details.")
-            text(value="Settings would go here.")
+        ui.text(value="Tabs", style={fontSize=20, fontWeight="bold"})
+        ui.tabs(items=["Overview", "Details", "Settings"], selected=selectedTab) {
+            ui.text(value="This is the overview content.")
+            ui.text(value="Here are the details.")
+            ui.text(value="Settings would go here.")
         }
-        divider
+        ui.divider
 
         // --- Link / Chip / Avatar --------------------------------
-        text(value="Link & Chip", style={fontSize=20, fontWeight="bold"})
-        hbox(style={alignItems="center", gap=8}) {
-            link(href="https://sngl.dev", text="SNGL Website")
-            chip(label="Tag")
-            chip(label="Removable", removable=true)
-            chip(label="Success", variant="success")
+        ui.text(value="Link & Chip", style={fontSize=20, fontWeight="bold"})
+        ui.hbox(style={alignItems="center", gap=8}) {
+            ui.link(href="https://sngl.dev", text="SNGL Website")
+            ui.chip(label="Tag")
+            ui.chip(label="Removable", removable=true)
+            ui.chip(label="Success", variant="success")
         }
-        text(value="Avatar", style={fontSize=20, fontWeight="bold"})
-        hbox(style={gap=8}) {
-            avatar(initials="JD")
-            avatar(initials="AB", variant="square")
-            avatar(alt="User")
+        ui.text(value="Avatar", style={fontSize=20, fontWeight="bold"})
+        ui.hbox(style={gap=8}) {
+            ui.avatar(initials="JD")
+            ui.avatar(initials="AB", variant="square")
+            ui.avatar(alt="User")
         }
-        divider
+        ui.divider
 
         // --- Card ------------------------------------------------
-        text(value="Card", style={fontSize=20, fontWeight="bold"})
-        hbox(style={gap=16}) {
-            card(variant="outlined") {
-                text(value="Outlined Card", style={fontWeight="bold"})
-                text(value="With a border")
+        ui.text(value="Card", style={fontSize=20, fontWeight="bold"})
+        ui.hbox(style={gap=16}) {
+            ui.card(variant="outlined") {
+                ui.text(value="Outlined Card", style={fontWeight="bold"})
+                ui.text(value="With a border")
             }
-            card(variant="elevated") {
-                text(value="Elevated Card", style={fontWeight="bold"})
-                text(value="With a shadow")
+            ui.card(variant="elevated") {
+                ui.text(value="Elevated Card", style={fontWeight="bold"})
+                ui.text(value="With a shadow")
             }
-            card(variant="filled") {
-                text(value="Filled Card", style={fontWeight="bold"})
-                text(value="With a background")
+            ui.card(variant="filled") {
+                ui.text(value="Filled Card", style={fontWeight="bold"})
+                ui.text(value="With a background")
             }
         }
-        divider
+        ui.divider
 
         // --- Modal / Drawer / Toast ------------------------------
-        text(value="Modal & Drawer", style={fontSize=20, fontWeight="bold"})
-        hbox(style={gap=12}) {
-            button(text="Open Modal", @click { showModal = true })
-            button(text="Open Drawer", @click { showDrawer = true })
-            button(
+        ui.text(value="Modal & Drawer", style={fontSize=20, fontWeight="bold"})
+        ui.hbox(style={gap=12}) {
+            ui.button(text="Open Modal", @click { showModal = true })
+            ui.button(text="Open Drawer", @click { showDrawer = true })
+            ui.button(
                 text="Show Toast",
                 @click { Alert.toast("Action completed!", "success") },
             )
         }
-        modal(closable=true, open=showModal, title="Example Modal") {
-            text(value="This is modal content.")
-            button(text="Close", @click { showModal = false })
+        ui.modal(closable=true, open=showModal, title="Example Modal") {
+            ui.text(value="This is modal content.")
+            ui.button(text="Close", @click { showModal = false })
         }
-        drawer(open=showDrawer, side="right") {
-            vbox(style={gap=12, padding=16}) {
-                text(value="Drawer Content", style={fontWeight="bold"})
-                text(value="Slide-out panel")
-                button(text="Close", @click { showDrawer = false })
+        ui.drawer(open=showDrawer, side="right") {
+            ui.vbox(style={gap=12, padding=16}) {
+                ui.text(value="Drawer Content", style={fontWeight="bold"})
+                ui.text(value="Slide-out panel")
+                ui.button(text="Close", @click { showDrawer = false })
             }
         }
-        divider
+        ui.divider
 
         // --- Tooltip / Split / Table / Tree ----------------------
-        text(value="Tooltip", style={fontSize=20, fontWeight="bold"})
-        tooltip(text="This is a tooltip") {
-            button(text="Hover me")
+        ui.text(value="Tooltip", style={fontSize=20, fontWeight="bold"})
+        ui.tooltip(text="This is a tooltip") {
+            ui.button(text="Hover me")
         }
-        text(value="Split View", style={fontSize=20, fontWeight="bold"})
-        splitview(direction="horizontal", style={height=120}) {
-            vbox(style={padding=12}) {
-                text(value="Left pane")
-                text(value="Resizable split")
+        ui.text(value="Split View", style={fontSize=20, fontWeight="bold"})
+        ui.splitview(direction="horizontal", style={height=120}) {
+            ui.vbox(style={padding=12}) {
+                ui.text(value="Left pane")
+                ui.text(value="Resizable split")
             }
-            vbox(style={padding=12}) {
-                text(value="Right pane")
-                text(value="Side by side")
+            ui.vbox(style={padding=12}) {
+                ui.text(value="Right pane")
+                ui.text(value="Side by side")
             }
         }
-        divider
-        text(value="Table", style={fontSize=20, fontWeight="bold"})
-        table(columns=["Name", "Role", "Status"])
-        text(value="Tree", style={fontSize=20, fontWeight="bold"})
-        tree(items=["Documents", "Photos", "Music", "Videos"])
-        divider
+        ui.divider
+        ui.text(value="Table", style={fontSize=20, fontWeight="bold"})
+        ui.table(columns=["Name", "Role", "Status"])
+        ui.text(value="Tree", style={fontSize=20, fontWeight="bold"})
+        ui.tree(items=["Documents", "Photos", "Music", "Videos"])
+        ui.divider
 
         // --- Menubar / Toolbar / DatePicker ----------------------
-        text(value="Menubar", style={fontSize=20, fontWeight="bold"})
-        menubar(items=["File", "Edit", "View", "Help"])
-        text(value="Toolbar", style={fontSize=20, fontWeight="bold"})
-        toolbar {
-            button(text="New")
-            button(text="Open")
-            button(text="Save")
-            spacer
-            button(text="Settings")
+        ui.text(value="Menubar", style={fontSize=20, fontWeight="bold"})
+        ui.menubar(items=["File", "Edit", "View", "Help"])
+        ui.text(value="Toolbar", style={fontSize=20, fontWeight="bold"})
+        ui.toolbar {
+            ui.button(text="New")
+            ui.button(text="Open")
+            ui.button(text="Save")
+            ui.spacer
+            ui.button(text="Settings")
         }
-        divider
-        text(value="Date Picker", style={fontSize=20, fontWeight="bold"})
-        datepicker(placeholder="Select birthday", value=birthday)
-        divider
+        ui.divider
+        ui.text(value="Date Picker", style={fontSize=20, fontWeight="bold"})
+        ui.datepicker(placeholder="Select birthday", value=birthday)
+        ui.divider
 
         // --- Composition: child component + event sink (§9) -----
-        text(
+        ui.text(
             value="Composition (child component emits event upward)",
             style={fontSize=20, fontWeight="bold"},
         )
@@ -496,81 +496,81 @@ component main {
             start=0,
             @changed(n) { clicks = n },
         )
-        text(value="Parent saw clicks = {clicks}")
-        divider
+        ui.text(value="Parent saw clicks = {clicks}")
+        ui.divider
 
         // --- Recursive component (§10) --------------------------
-        text(
+        ui.text(
             value="Recursive component (TreeView calls itself)",
             style={fontSize=20, fontWeight="bold"},
         )
         TreeView(node=tree)
-        divider
+        ui.divider
 
         // --- For-loops, if, list/map iteration ------------------
-        text(
+        ui.text(
             value="For-loops & if",
             style={fontSize=20, fontWeight="bold"},
         )
-        vbox(style={gap=4}) {
+        ui.vbox(style={gap=4}) {
             // for with index + nested if-else (loop var deps only,
             // so the inner if doesn't allocate its own reactive slot).
             for var idx, n = nums {
                 if n % 2 == 0 {
-                    text(value="{idx}: {n} (even)")
+                    ui.text(value="{idx}: {n} (even)")
                 } else {
-                    text(value="{idx}: {n} (odd)")
+                    ui.text(value="{idx}: {n} (odd)")
                 }
             } else {
-                text(value="empty list")
+                ui.text(value="empty list")
             }
-            divider
+            ui.divider
             // simple iteration over a list of strings
             for var s = labels {
-                text(value="- {s}")
+                ui.text(value="- {s}")
             }
-            divider
+            ui.divider
             // a map is walked in a function; the view renders its result
             for var line = scoreLines() {
-                text(value=line)
+                ui.text(value=line)
             }
         }
-        divider
+        ui.divider
 
         // --- Top-level if at component scope -------------------
-        text(
+        ui.text(
             value="If statement",
             style={fontSize=20, fontWeight="bold"},
         )
         if count > 0 {
-            text(value="count is positive: {count}")
+            ui.text(value="count is positive: {count}")
         } else {
-            text(value="count is zero — press Increment")
+            ui.text(value="count is zero — press Increment")
         }
-        divider
+        ui.divider
 
         // --- Computed values pulling list methods (§ — generics) ---
-        text(
+        ui.text(
             value="Computed (filter/map/total)",
             style={fontSize=20, fontWeight="bold"},
         )
-        text(value="nums   = {nums}")
-        text(value="evens  = {evens}")
-        text(value="x2     = {doubled}")
-        text(value="total  = {total}")
-        divider
+        ui.text(value="nums   = {nums}")
+        ui.text(value="evens  = {evens}")
+        ui.text(value="x2     = {doubled}")
+        ui.text(value="total  = {total}")
+        ui.divider
 
         // --- i18n showcase (§11) --------------------------------
-        text(value="i18n", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="i18n", style={fontSize=20, fontWeight="bold"})
         I18nDemo
 
-        divider
+        ui.divider
 
         // --- Reactive context (§12) -----------------------------
-        text(value="reactive context", style={fontSize=20, fontWeight="bold"})
+        ui.text(value="reactive context", style={fontSize=20, fontWeight="bold"})
         ContextDemo
 
-        divider(label="End of Tour")
+        ui.divider(label="End of Tour")
     }
 }
 
@@ -580,10 +580,10 @@ component main {
 // platforms wire them into their own runners. See `internal/testutil`
 // for the framework. Per-feature coverage lives in `testdata/`.
 
-func testInitialCount(t Test, c main) {
+func testInitialCount(t test.Test, c main) {
     t.assert(c.count == 0)
 }
 
-func testGreetingDefault(t Test, c main) {
+func testGreetingDefault(t test.Test, c main) {
     t.assert(c.greeting == "Hello, World!")
 }
