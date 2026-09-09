@@ -317,6 +317,10 @@ func rootForTests(pkg *ir.Package, comp string) {
 	}
 	pkg.Body = nil
 	pkg.Windows = nil
+	// Recorded rather than left implicit: with the windows gone, this is the
+	// only thing left that says which declaration the program renders, and
+	// AnalyzeCommon runs from the package alone.
+	pkg.RootComponent = comp
 }
 
 // prepareForLaunch runs the generate pipeline's full optimize→lower→optimize

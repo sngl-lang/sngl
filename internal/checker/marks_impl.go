@@ -17,6 +17,7 @@ var markImpls = map[markKey]markImpl{
 	{"internal/marks", "builtin"}:   markBuiltin,
 	{"internal/marks", "intrinsic"}: markIntrinsic,
 	{"tree", "kind"}:                markTreeKind,
+	{"tree", "none"}:                markTreeNone,
 	{"macro", "options"}:            markOptions,
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
@@ -356,6 +357,21 @@ func markTreeKind(m *mark) error {
 		return fmt.Errorf("#[tree.kind]: a tree struct holds nothing; remove its fields")
 	}
 	sd.IsTree = true
+	return nil
+}
+
+// markTreeNone implements #[tree.none]: this component belongs to no family.
+//
+// It has to be written rather than left out, because leaving the return
+// position out is now the error that drove every declaration to name `ui`.
+// The mark is the difference between "renders nothing, so it goes anywhere"
+// and "somebody forgot".
+func markTreeNone(m *mark) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[tree.none] cannot mark %s; only a component belongs to a tree", ast.DeclFormName(m.decl))
+	}
+	comp.Treeless = true
 	return nil
 }
 

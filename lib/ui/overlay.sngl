@@ -13,9 +13,9 @@ component modal(
     size string,
     @close DismissEvent,
     content ...component,
-) {}
+) ui {}
 
-component _example_modal {
+component _example_modal ui {
     var showModal = false
     vbox(style={padding=16}) {
         button(text="Open Modal", @click { showModal = true })
@@ -37,9 +37,9 @@ component drawer(
     size string,
     @close DismissEvent,
     content ...component,
-) {}
+) ui {}
 
-component _example_drawer {
+component _example_drawer ui {
     var showDrawer = false
     vbox(style={padding=16}) {
         button(text="Open Drawer", @click { showDrawer = true })
@@ -62,9 +62,9 @@ component tooltip(
     position string,
     delay int,
     trigger ...component tr.one,
-) {}
+) ui {}
 
-component _example_tooltip {
+component _example_tooltip ui {
     vbox(style={padding=16}) {
         tooltip(text="This is a tooltip") {
             button(text="Hover me")
@@ -84,9 +84,9 @@ component popover(
     openOn string,
     @close DismissEvent,
     content ...component,
-) {}
+) ui {}
 
-component _example_popover {
+component _example_popover ui {
     var showPop = false
     vbox(style={padding=16}) {
         popover(open=showPop, position="bottom", openOn="click") {

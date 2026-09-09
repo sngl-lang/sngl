@@ -158,7 +158,7 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 		c.cfg.GoLib = true
 	}
 	var stmts []ir.Stmt
-	if main := c.ctx.MainComponent(); main != nil {
+	if main := c.ctx.RootDecl(); main != nil {
 		stmts = main.Body
 	}
 	return c.ctx.BuildRender(stmts), nil

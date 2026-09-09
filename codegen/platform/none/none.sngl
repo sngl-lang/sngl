@@ -6,6 +6,7 @@
 
 import time "sngl:time"
 import . "sngl:internal/marks"
+import tree "sngl:tree"
 
 // A deadline that recurs. The interpreter's clock finds these in the rendered
 // tree and fires each one's `@tick` when the clock reaches its deadline.
@@ -15,6 +16,7 @@ import . "sngl:internal/marks"
 // scheduled because the child rendered it. That is the whole reason `timer`
 // stopped being a compiler concept -- a schedule hoisted onto the component had
 // neither.
+#[tree.none]
 #[intrinsic("none:Timer")]
 component Timer(
     interval time.duration,

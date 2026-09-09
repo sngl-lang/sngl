@@ -690,7 +690,13 @@ func (c *checker) requireTree(pos ast.Pos, t *ir.Type) *ir.Type {
 	if t == nil || t.Kind == ir.TypeDyn {
 		return t
 	}
-	if sd, ok := t.Decl.(*ir.StructDef); ok && (sd.IsTree || sd.Builtin == ir.BuiltinTreeDefault) {
+	if sd, ok := t.Decl.(*ir.StructDef); ok && sd.IsTree {
+		return t
+	}
+	// A type parameter is a tree the call site names: the wrapper that returns
+	// one accepts whatever family it was handed. Which parameter, and that the
+	// component declares it, is finishTreeMarks' question.
+	if t.Kind == ir.TypeTypeParam {
 		return t
 	}
 	c.error(pos, "a slot accepts a tree, and %s is not one", t)
@@ -742,6 +748,11 @@ func (c *checker) slotWrapper(nt *ast.NamedType) (ir.SlotCard, *ir.Type) {
 	switch {
 	case len(nt.TypeArgs) == 1:
 		return card, c.resolveType(nt.TypeArgs[0])
+	case len(nt.TypeArgs) == 0 && card == ir.SlotOne:
+		// Bare `tree.one` is a count and no family: one of whatever the slot
+		// already accepts, which is the tree its owner belongs to. `option`
+		// has a type to name and no such reading.
+		return card, nil
 	case len(nt.TypeArgs) == 0 && c.typeParamDefault(sd, 0) != nil:
 		return card, c.typeParamDefault(sd, 0)
 	}

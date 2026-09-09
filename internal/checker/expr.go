@@ -3788,7 +3788,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
 			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
 		}
-		c.checkTreeMembership(vn.Pos, children, slotTree(spec, spec.RestSlot()), "in "+spec.Name)
+		c.checkTreeMembership(vn.Pos, children, slotWant(spec, spec.RestSlot(), children), "in "+spec.Name)
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
 
@@ -5074,7 +5074,7 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 	sc.Body = c.checkBlockIR(&cd.Body)
 	c.popScope()
 	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
-	c.checkTreeMembership(cd.Pos, sc.Body, slotTree(owner, decl), "in slot \""+cd.Name+"\"")
+	c.checkTreeMembership(cd.Pos, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
 	return sc
 }
 
@@ -5107,8 +5107,8 @@ func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what str
 	}
 }
 
-// slotTree is the segmented tree a slot accepts, or nil for the default tree —
-// the one whose members are interchangeable.
+// slotTree is the segmented tree a slot accepts, or nil where nothing pins one
+// — a tree-less owner's bare slot, or a tree parameter no call site has bound.
 //
 // owner is the component the slot is declared on: a slot naming no tree accepts
 // the owner's.
@@ -5126,10 +5126,65 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
 		return nil
 	}
 	sd, ok := slot.Content.Decl.(*ir.StructDef)
-	if !ok || sd.Builtin == ir.BuiltinTreeDefault || !sd.IsTree {
+	if !ok || !sd.IsTree {
 		return nil
 	}
 	return sd
+}
+
+// slotWant is the tree one population of a slot is held to: what the
+// declaration names, or -- for a slot typed by the tree parameter its owner
+// returns -- what the content supplied here turns out to be.
+//
+// owner is the specialization the call site produced, so a parameter a prop
+// pinned is already substituted and only an unpinned one reaches the second
+// case.
+func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.StructDef {
+	if sd := slotTree(owner, slot); sd != nil {
+		return sd
+	}
+	if owner == nil || owner.TreeParam == "" || slot == nil || slot.Content == nil {
+		return nil
+	}
+	if slot.Content.Kind != ir.TypeTypeParam || slot.Content.ParamName != owner.TreeParam {
+		return nil
+	}
+	return childrenTree(content)
+}
+
+// childrenTree is the tree the nodes written in a block belong to, for a slot
+// whose content type is the component's own tree parameter. Nothing at the
+// call site names a type argument, so the children are what binds it: the
+// first one that belongs to a family says which, and checkTreeMembership then
+// holds the rest to it.
+//
+// An empty body binds nothing and is left unbound. There is no content to
+// check, and a default would have to name a family the wrapper has no reason
+// to prefer.
+func childrenTree(content []ir.Stmt) *ir.StructDef {
+	for _, st := range content {
+		switch s := st.(type) {
+		case *ir.If:
+			if sd := childrenTree(s.Body); sd != nil {
+				return sd
+			}
+			if sd := childrenTree(s.Else); sd != nil {
+				return sd
+			}
+		case *ir.For:
+			if sd := childrenTree(s.Body); sd != nil {
+				return sd
+			}
+			if sd := childrenTree(s.Else); sd != nil {
+				return sd
+			}
+		case *ir.NodeInst:
+			if s.Component != nil && s.Component.Tree != nil {
+				return s.Component.Tree
+			}
+		}
+	}
+	return nil
 }
 
 // stmtPos is a statement's position, or nil for a synthesized node that has no
@@ -5171,7 +5226,34 @@ func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.S
 				continue
 			}
 		}
+		// An error boundary is the compiler's own IR rather than a NodeInst,
+		// and it belongs to no family: it takes the one its children turn out
+		// to be, which buildErrorBoundary holds them to.
+		if _, isEB := st.(*ir.ErrorBoundary); isEB {
+			continue
+		}
+		// A window is a node the checker builds its own IR for, so it never
+		// reaches here as a NodeInst; its family is the one its declaration
+		// names, like anything else's.
+		if w, isWin := st.(*ir.Window); isWin {
+			if c.windowComp != nil && c.windowComp.Tree == want {
+				continue
+			}
+			at := pos
+			if w.AST != nil {
+				at = w.AST.Pos
+			}
+			c.error(at, "expected %s component %s, got window", want.Name, where)
+			continue
+		}
 		ni, ok := st.(*ir.NodeInst)
+		// A component that belongs to no family may be placed in any of them:
+		// a lifetime bracket or a scheduler renders nothing, so it is no more
+		// a widget than it is a shape. What keeps that from being a hole is
+		// the matching rule on its body -- see checkTreelessBody.
+		if ok && ni.Component != nil && ni.Component.Tree == nil {
+			continue
+		}
 		if ok && ni.Component != nil && ni.Component.Tree == want {
 			continue
 		}

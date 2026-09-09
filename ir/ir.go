@@ -1,7 +1,6 @@
 package ir
 
 import (
-	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -44,12 +43,21 @@ type Package struct {
 	// it is kept here rather than bound in scope. The declaration is what says
 	// a macro exists, what arguments it takes and what it does; the compiler
 	// adds only an implementation for the ones it implements.
-	Macros   []*Func
-	Windows  []*Window
-	Timers   []*Timer
-	Outputs  []*Output
-	Contexts []*Context
-	Symbols  *SymbolTable
+	Macros  []*Func
+	Windows []*Window
+	Timers  []*Timer
+	Outputs []*Output
+	// RootComponent is the component a test harness isolated as the whole
+	// program, having cleared the body and the windows around it. Empty for
+	// every ordinary build, where a window is the root and a component is
+	// only ever a component.
+	RootComponent string `json:",omitempty"`
+	// EntryWindow is the id `output(entry = home)` names: the window a build
+	// scopes to when the program opens more than one. Empty when the
+	// directive names none, which the single-window case does not need.
+	EntryWindow string `json:",omitempty"`
+	Contexts    []*Context
+	Symbols     *SymbolTable
 
 	// Body is what the package itself renders: visual nodes written at the top
 	// level, outside any component or window. The package is then a state
@@ -155,8 +163,34 @@ type AsyncKickerEntry struct {
 	Deps         []string // sorted names of reactive state vars whose mutation should re-fire the kicker
 }
 
-func (p *Package) IsMain() bool {
-	return slices.ContainsFunc(p.Components, func(c *Component) bool { return c.Name == "main" })
+// IsProgram reports whether the package is something to build rather than a
+// library to import. A window is what says so: it is the only renderable
+// member of the root tree, so a package without one has nothing to open.
+func (p *Package) IsProgram() bool {
+	if len(p.Windows) > 0 {
+		return true
+	}
+	found := false
+	WalkStmts(p.Body, func(s Stmt) error {
+		if _, ok := s.(*Window); ok {
+			found = true
+			return SkipDir
+		}
+		return nil
+	})
+	for _, c := range p.Components {
+		if found {
+			break
+		}
+		WalkStmts(c.Body, func(s Stmt) error {
+			if _, ok := s.(*Window); ok {
+				found = true
+				return SkipDir
+			}
+			return nil
+		})
+	}
+	return found
 }
 
 // UsesTree reports whether a member of the tree that pkg declares as name
@@ -486,9 +520,19 @@ type Component struct {
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin BuiltinKind
 	// Tree is the segmented tree this component is a member of, named in its
-	// return position. Nil for a member of the default tree — an ordinary
-	// component, interchangeable with any other.
+	// return position. Nil for a component that belongs to no tree: it may be
+	// placed in any of them and may contain none of their members.
 	Tree *StructDef `json:"-"`
+	// Treeless is the #[tree.none] mark: the declaration belongs to no family
+	// and says so. Nil Tree without it is a declaration that forgot to name
+	// one, which is an error, so the two states are told apart here rather
+	// than by the absence of a pointer.
+	Treeless bool `json:",omitempty"`
+	// TreeParam is the component's own type parameter written in the return
+	// position, for a wrapper whose family is whatever it was handed. Nil Tree
+	// and a TreeParam is a third state: tree-less at the declaration, and a
+	// member of whatever its children turn out to be at each call site.
+	TreeParam string `json:",omitempty"`
 	// Intrinsic is the id from #[intrinsic] on a component: this component is
 	// emitted by the platform codegen that answers to the id, not by
 	// inlining a body. It is what tells the inliner to leave the component

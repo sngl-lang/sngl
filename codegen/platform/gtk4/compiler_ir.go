@@ -118,7 +118,7 @@ func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
 		return wins[0].Body
 	}
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		return main.Body
 	}
 	return nil
@@ -133,7 +133,7 @@ func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 		}
 		return nil
 	}
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		return main.LocalRefs
 	}
 	return nil
@@ -385,7 +385,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
-	for _, cc := range c.ctx.NonMainComponents() {
+	for _, cc := range c.ctx.NonRootComponents() {
 		// A component the build renders as a live instance gets a record of
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.

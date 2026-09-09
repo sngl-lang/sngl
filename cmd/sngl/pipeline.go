@@ -92,10 +92,10 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		// A directory walk reaches a program's library packages too, and a
 		// library has nothing to emit -- generating one wrote a second
 		// index.html over the program's. A file named on the command line is
-		// generated whether or not it declares main, since naming it is the
+		// generated whether or not it opens a window, since naming it is the
 		// request.
-		if !u.solo && !hasMainComponent(pkg) {
-			slog.Info("skip: no component main", "unit", u.name)
+		if !u.solo && !pkg.IsProgram() {
+			slog.Info("skip: no window", "unit", u.name)
 			continue
 		}
 
@@ -104,20 +104,6 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		}
 	}
 	return nil
-}
-
-// hasMainComponent reports whether a package is a program rather than a
-// library.
-func hasMainComponent(pkg *ir.Package) bool {
-	if pkg == nil {
-		return false
-	}
-	for _, comp := range pkg.Components {
-		if comp.Name == "main" {
-			return true
-		}
-	}
-	return false
 }
 
 // Split out because a package addressed by `sngl:<uri>` arrives already

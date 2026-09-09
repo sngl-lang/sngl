@@ -15,13 +15,20 @@ type CodegenCtx struct {
 	ExprCtx  *ExprCtx
 	Namer    *Namer
 	Platform string
-	// RootComponent overrides which component is treated as "main"; empty
-	// means the literal "main" lookup. The test launcher sets it per-group so
-	// each test binary builds its Model from the component-under-test.
+	// RootComponent names the component a harness isolated as the whole
+	// program; empty for every ordinary build, where a window is the root.
+	// The test launcher sets it per-group so each test binary builds its
+	// Model from the component under test.
 	RootComponent string
 }
 
 func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
+	root := OptionString(req.Options, "rootComponent")
+	if root != "" && req.Pkg != nil {
+		// AnalyzeCommon runs from the package alone and asks the same
+		// question, so the option is stamped where it can read it.
+		req.Pkg.RootComponent = root
+	}
 	analysis := AnalyzeCommon(req.Pkg)
 	exprCtx := NewExprCtx(req.Pkg)
 	exprCtx.Platform = platform
@@ -34,7 +41,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 		ExprCtx:       exprCtx,
 		Namer:         NewNamer(),
 		Platform:      platform,
-		RootComponent: OptionString(req.Options, "rootComponent"),
+		RootComponent: root,
 	}
 }
 
@@ -49,16 +56,39 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 // window half, so a window's own state was a name none of them could resolve.
 func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	c := ctx.ExprCtx
-	if main := ctx.MainComponent(); main != nil {
-		c = c.ForComponent(main)
+	if root := ctx.RootDecl(); root != nil {
+		c = c.ForComponent(root)
 	}
-	// Only when there is exactly one, so that the window being scoped to is
-	// not a guess. A window statement inside the main component needs no entry
-	// here: it is already inside that component's scope.
-	if len(ctx.Pkg.Windows) == 1 {
-		c = c.ForWindow(ctx.Pkg.Windows[0])
+	if w := ctx.EntryWindow(); w != nil {
+		c = c.ForWindow(w)
 	}
 	return c
+}
+
+// EntryWindow is the window a single-model target scopes to, or nil where the
+// program has not said which.
+//
+// The single-window case is unambiguous and always has been. Past one, the
+// answer used to be nothing at all -- scoping to a guess was worse than
+// scoping to none -- and `output(entry = home)` is what lets the program
+// answer instead.
+func (ctx *CodegenCtx) EntryWindow() *ir.Window {
+	if ctx.Pkg == nil {
+		return nil
+	}
+	if name := ctx.Pkg.EntryWindow; name != "" {
+		for _, w := range ctx.Pkg.Windows {
+			if w.Name == name {
+				return w
+			}
+		}
+	}
+	// A window written inside a component is already in that component's
+	// scope, so only the root-level ones are counted here.
+	if len(ctx.Pkg.Windows) == 1 {
+		return ctx.Pkg.Windows[0]
+	}
+	return nil
 }
 
 // OwnedVar is one var a target puts in its Model, paired with the declaration
@@ -77,7 +107,7 @@ type OwnedVar struct {
 //
 // This is one answer to "which declarations own state", and it used to be four
 // -- one per target, each spelling the same literal `pkg.Vars` plus
-// `MainComponent().Vars`. Nothing made them agree, and #133 is what that cost:
+// `RootDecl().Vars`. Nothing made them agree, and #133 is what that cost:
 // a window is an owner none of them named, so a window-level `var` reached no
 // target at all. A target that does not want consts in its Model filters them
 // out; what it must not do is decide for itself who owns state.
@@ -85,7 +115,7 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 	if ctx.Pkg == nil {
 		return nil
 	}
-	root := ctx.MainComponent()
+	root := ctx.RootDecl()
 	var out []OwnedVar
 	for _, o := range ir.Owners(ctx.Pkg) {
 		// One Model holds one component's state: the root's. The others are
@@ -146,7 +176,7 @@ func (ctx *CodegenCtx) collectHandlers(stmts []ir.Stmt) []Handler {
 func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 	var timers []TimerHandler
 	allTimers := append([]*ir.Timer{}, ctx.Pkg.Timers...)
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		allTimers = append(allTimers, main.Timers...)
 	}
 	for i, t := range allTimers {

@@ -19,6 +19,7 @@ import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:macro"
 import . "sngl:internal/marks"
+import tree "sngl:tree"
 
 #[options]
 struct Options {
@@ -82,14 +83,14 @@ component Column(
     modifier ui.Style,
     chain list<string>,
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Box")]
 component Box(
     modifier ui.Style,
     chain list<string>,
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Row")]
 component Row(
@@ -97,13 +98,13 @@ component Row(
     chain list<string>,
     args list<string>,
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Spacer")]
 component Spacer(
     modifier ui.Style,
     chain list<string>,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Text")]
 component Text(
@@ -113,17 +114,17 @@ component Text(
     // the Style's font and colour fields.
     style ui.Style,
     args list<string>,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:HorizontalDivider")]
 component HorizontalDivider(
     modifier ui.Style,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:CircularProgressIndicator")]
 component CircularProgressIndicator(
     modifier ui.Style,
-) {}
+) ui.ui {}
 
 // `colors` is the same Style the modifier gets. A Button paints its own
 // surface, so a background in the modifier lands behind the pill rather than
@@ -135,43 +136,43 @@ component Button(
     colors ui.Style,
     shape ui.Style,
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Badge")]
 component Badge(
     modifier ui.Style,
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Card")]
 component Card(
     modifier ui.Style,
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Checkbox")]
 component Checkbox(
     checked bool,
     onCheckedChange func(bool),
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Switch")]
 component Switch(
     checked bool,
     onCheckedChange func(bool),
-) {}
+) ui.ui {}
 
 #[intrinsic("android:RadioButton")]
 component RadioButton(
     selected bool,
     onClick func(),
-) {}
+) ui.ui {}
 
 #[intrinsic("android:OutlinedTextField")]
 component OutlinedTextField(
@@ -181,19 +182,19 @@ component OutlinedTextField(
     // Compose passes the new text; the SNGL event a handler reads is built
     // from it at the boundary, which is what declaring the payload says.
     onValueChange func(e ui.InputEvent),
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Dialog")]
 component Dialog(
     onDismissRequest func(),
     children ...component,
-) {}
+) ui.ui {}
 
 #[intrinsic("android:Surface")]
 component Surface(
     args list<string>,
     children ...component,
-) {}
+) ui.ui {}
 
 // --- Core Layout ---
 
@@ -456,6 +457,7 @@ component ui.avatar[platform] {
 // variable name the analysis used to reduce it to. `enabled=true` produced
 // `LaunchedEffect() { while () {`, which is not Kotlin, and no golden covered
 // an android timer to say so.
+#[tree.none]
 #[intrinsic("android:Timer")]
 component Timer(
     interval time.duration,

@@ -95,7 +95,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	// child component's `count` is not the root model's `count`. The package
 	// and the windows are unambiguous and always do.
 	for _, o := range ir.Owners(pkg) {
-		if o.Comp != nil && o.Comp.Name != rootComponentName {
+		if o.Comp != nil && o.Comp.Name != pkg.RootComponent {
 			continue
 		}
 		for _, v := range o.Vars {
@@ -300,9 +300,3 @@ func parseNumber(raw string) float64 {
 	}
 	return n
 }
-
-// rootComponentName is the component a single-Model target builds from when
-// nothing overrides it. CodegenCtx.MainComponent is the authority -- it also
-// honours RootComponent -- but AnalyzeCommon runs from a package alone, before
-// there is a CodegenCtx to ask.
-const rootComponentName = "main"

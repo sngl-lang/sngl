@@ -37,7 +37,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl:internal/marks\"\n")
+	b.WriteString("import . \"sngl:internal/marks\"\nimport ui \"sngl:ui\"\n")
 	declared := map[string]bool{}
 	for _, name := range names {
 		info := reg.Classes[name]
@@ -82,7 +82,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// GIR does not say which widgets accept children, and declaring a
 		// bound would refuse either every container or every leaf. The
 		// emitter knows which parent types have a child-append API.
-		fmt.Fprintf(&b, "    %s ...component,\n) {}\n", restSlotName)
+		fmt.Fprintf(&b, "    %s ...component ui.ui,\n) ui.ui {}\n", restSlotName)
 	}
 	return []byte(b.String())
 }

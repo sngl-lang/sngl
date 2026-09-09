@@ -135,7 +135,7 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     @event,
     children ...component,
-) {}
+) ui.ui {}
 
 // --- Core Layout ---
 

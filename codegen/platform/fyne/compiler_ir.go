@@ -301,7 +301,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// Sub-component widget fields are collected before the template data is
 	// built, so the Model struct declares every field they reference.
 	var componentCodes []string
-	for _, cc := range ctx.NonMainComponents() {
+	for _, cc := range ctx.NonRootComponents() {
 		// A component the build renders as a live instance gets a record of
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
@@ -921,7 +921,7 @@ func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 		}
 		return nil
 	}
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		return main.LocalRefs
 	}
 	return nil
@@ -1031,7 +1031,7 @@ func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Fun
 		seen[fn] = true
 	}
 	var out []*ir.Func
-	for _, cc := range ctx.NonMainComponents() {
+	for _, cc := range ctx.NonRootComponents() {
 		for _, fn := range cc.Component.Funcs {
 			if fn == nil || fn.LoweredFromTag == "" || seen[fn] {
 				continue

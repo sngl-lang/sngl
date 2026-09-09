@@ -68,7 +68,7 @@ component canvas(
     style CanvasStyle,
     @click std.ClickEvent,
     shapes ...component shape,
-) {}
+) std.ui {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
 component rect(x float, y float, w float, h float, style CanvasStyle) shape {}

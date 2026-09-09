@@ -1,0 +1,12 @@
+import tree "sngl:tree"
+
+// The family the widgets form: a button, a label and a layout box are members
+// of it, and any of them goes anywhere another does. Every component in this
+// package names it, and so does every component an application writes for a
+// screen.
+//
+// It is an ordinary tree and not a catch-all. A `ui` slot takes `ui` members
+// and nothing else, which is what makes putting a `draw.shape` in a `vbox` an
+// error — the two are different families and were always meant to be.
+#[tree.kind]
+struct ui {}

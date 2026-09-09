@@ -1,4 +1,5 @@
-import . "sngl:internal/marks"
+import marks "sngl:internal/marks"
+import tree "sngl:tree"
 
 // Brackets a lifetime. `@mount` runs when the node enters the tree, `@unmount`
 // when it leaves, and the pair is what a component uses to hold something the
@@ -33,7 +34,11 @@ import . "sngl:internal/marks"
 // effect that should run again when a value changes says so in `on`; nothing is
 // inferred from the body. That is the whole difference from a computed, which is
 // re-evaluated precisely because of what it reads.
-#[builtin("effect")]
+// It belongs to no tree, which is what lets one bracket a lifetime inside a
+// drawing or a menu as readily as inside a layout: an effect renders nothing,
+// so it is no more a widget than it is a shape.
+#[tree.none]
+#[marks.builtin("effect")]
 component effect<T = struct {}>(
     on T,
     @mount T,

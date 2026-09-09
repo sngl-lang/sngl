@@ -287,7 +287,7 @@ func bindForVar(v *ir.Var) irAndroidBind {
 // what nothing declared.
 func componentOwnedFuncs(ctx *codegen.CodegenCtx) map[*ir.Func]bool {
 	owned := map[*ir.Func]bool{}
-	for _, cc := range ctx.NonMainComponents() {
+	for _, cc := range ctx.NonRootComponents() {
 		for _, fn := range cc.Funcs {
 			owned[fn] = true
 		}
@@ -338,7 +338,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// A component's own funcs, which belong inside the composable rather than
 	// beside it -- see the emission below.
 	mainOwnFuncs := map[*ir.Func]bool{}
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		for _, fn := range main.Funcs {
 			mainOwnFuncs[fn] = true
 		}
@@ -713,7 +713,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	body.WriteString("}\n")
 
 	// User component composables
-	for _, comp := range ctx.NonMainComponents() {
+	for _, comp := range ctx.NonRootComponents() {
 		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo())
 	}
 

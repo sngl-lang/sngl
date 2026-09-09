@@ -214,7 +214,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	c.info = analyzeIR(c.ctx)
 
 	var stmts []ir.Stmt
-	if main := c.ctx.MainComponent(); main != nil {
+	if main := c.ctx.RootDecl(); main != nil {
 		stmts = main.Body
 	}
 	return c.ctx.BuildMutation(stmts), nil

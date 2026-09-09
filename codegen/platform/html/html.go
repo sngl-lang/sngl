@@ -134,7 +134,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		}
 		if agentMode {
 			modelType := "main"
-			if main := codegen.NewCodegenCtx(req, "html").MainComponent(); main != nil {
+			if main := codegen.NewCodegenCtx(req, "html").RootDecl(); main != nil {
 				modelType = main.Name
 			}
 			if err := emitTestagentFiles(sink, req.Pkg, modelType); err != nil {
@@ -713,9 +713,9 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	g.outDir = ctx.ExprCtx.OutDir
 	// CodegenCtx is the one that knows about RootComponent, so its answer wins
 	// over the by-name lookup newHTMLGen had to fall back on.
-	g.rootComp = ctx.MainComponent()
+	g.rootComp = ctx.RootDecl()
 	g.currentComp = g.rootComp
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		g.irBodyStmts = main.Body
 		// ForComponent re-clones, replacing newHTMLGen's wiring with
 		// ctx.ExprCtx's own maps, so capture it first.

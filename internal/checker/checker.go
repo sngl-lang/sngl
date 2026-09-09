@@ -405,6 +405,15 @@ type checker struct {
 	// the mark rather than the word is what lets a program shadow `context`.
 	contextComp *ir.Component
 	windowType  *ir.Type
+	// entryName is the window id `output(entry = …)` named, and entryPos the
+	// directive it was written on. Held rather than resolved on the spot: the
+	// windows do not exist until pass2 has walked the bodies that declare them.
+	entryName string
+	entryPos  ast.Pos
+	// rootTree is the #[builtin("treeRoot")] tree, sngl:app's `root`. The
+	// package body is checked against it, which is the whole of what makes a
+	// window and an output directive top-level: no syntactic rule names them.
+	rootTree *ir.StructDef
 
 	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
 	// registered for phases that have no scope — see ir.DurationType.
@@ -2821,6 +2830,24 @@ func (c *checker) checkPackageBody() {
 			c.pkg.Body = append(c.pkg.Body, checked)
 		}
 	}
+	// The package body is a slot like any other, and the tree it accepts is
+	// what makes a window top-level: no rule names the construct, so a
+	// component whose own family is the root one renders windows
+	// conditionally and an `if` at the root goes on working.
+	if pos := firstStmtPos(c.pendingPkgBody); c.rootTree != nil {
+		c.checkTreeMembership(pos, c.pkg.Body, c.rootTree, "at the root of a file")
+	}
+}
+
+// firstStmtPos is where a block starts, for a diagnostic about the block
+// rather than about one statement in it.
+func firstStmtPos(stmts []ast.Stmt) ast.Pos {
+	for _, s := range stmts {
+		if p := stmtPos(s); p != nil {
+			return *p
+		}
+	}
+	return ast.Pos{}
 }
 
 // builtinNodeKind resolves name, through the current scope, to the #[builtin]
@@ -2905,6 +2932,7 @@ func visualNodeTarget(vn *ast.VisualNode) string {
 // and nested form: output { lang { platform(opts...) } }
 func (c *checker) buildOutputs(vn *ast.VisualNode) {
 	c.validateOutputArgs(vn)
+	c.readEntryOption(vn)
 
 	// Flat form: output node itself has lang/platform args.
 	if c.outputHasLangPlatform(vn) {
@@ -2920,7 +2948,7 @@ func (c *checker) buildOutputs(vn *ast.VisualNode) {
 			}
 		}
 		merged := c.mergedOptions(vn.Pos, out.Lang, out.Platform)
-		out.Options = c.buildOptionsStructLit(vn.Pos, filterOptionArgs(vn.Args, "lang", "platform"), merged)
+		out.Options = c.buildOptionsStructLit(vn.Pos, filterOptionArgs(vn.Args, "lang", "platform", entryOption), merged)
 		c.pkg.Outputs = append(c.pkg.Outputs, out)
 		return
 	}
@@ -3018,6 +3046,13 @@ func (c *checker) validateOutputArgs(vn *ast.VisualNode) {
 		case ast.EventHandler:
 			c.error(vn.Pos, "event handlers not permitted in output declarations")
 		case ast.Arg:
+			// entry names a window rather than holding a value, which is the
+			// point of it: a typo is a window nobody declared, reported with
+			// the other build-directive diagnostics, and not a string that
+			// silently matched nothing.
+			if a.Name == entryOption {
+				continue
+			}
 			if a.Value != nil {
 				if name := c.nonConstRef(a.Value); name != "" {
 					c.error(vn.Pos, "output option %q must be a constant expression (references %q)", a.Name, name)
@@ -3400,6 +3435,12 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		c.error(vn.Pos, "errorBoundary requires an @error handler")
 	}
 	eb.Children = c.checkBlockIR(&vn.Block)
+	// A boundary belongs to no family and hosts whatever it was handed --
+	// `component errorBoundary<T>(content ...component T) T`. Nothing at the
+	// call site names T, so the children bind it: the first one that belongs
+	// to a family says which, and the rest are held to that. An empty
+	// boundary binds nothing, and has nothing to check.
+	c.checkTreeMembership(vn.Pos, eb.Children, childrenTree(eb.Children), "in errorBoundary")
 	return eb
 }
 
@@ -3502,6 +3543,8 @@ func (c *checker) pass2() {
 	c.reportBodyComponentCapture()
 
 	c.checkPackageBody()
+	c.checkHasWindow()
+	c.resolveEntryWindow()
 
 	// Check timer handler bodies (component timers are checked inside
 	// checkComponentBody so they can see component vars in scope).
@@ -4120,6 +4163,8 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	for _, t := range comp.Timers {
 		c.checkTimerBody(t)
 	}
+
+	c.checkTreelessBody(comp)
 }
 
 func (c *checker) checkWindowBody(w *ir.Window) {
@@ -4144,6 +4189,11 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 
 	if w.AST != nil && w.AST.Block.IsDefined() {
 		w.Body = c.checkBlockIR(&w.AST.Block)
+		// A window is its own IR construct, so its children never reach the
+		// slot check every other node's go through. What it accepts is still
+		// the declaration's answer: `content ...component ui.ui`.
+		c.checkTreeMembership(w.AST.Pos, w.Body,
+			slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
 	}
 }
 

@@ -632,7 +632,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 
 	emitIRView(&b, info, ctx, gc, cfg)
 
-	for _, cc := range ctx.NonMainComponents() {
+	for _, cc := range ctx.NonRootComponents() {
 		emitIRComponentMethod(&b, cc, ctx, gc, cfg)
 	}
 
@@ -755,7 +755,7 @@ func modelMountFuncs(ctx *codegen.CodegenCtx) []*ir.Func {
 		return nil
 	}
 	owned := map[*ir.Func]bool{}
-	if root := ctx.MainComponent(); root != nil {
+	if root := ctx.RootDecl(); root != nil {
 		for _, fn := range root.Funcs {
 			owned[fn] = true
 		}
@@ -838,7 +838,7 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		}
 		// Emit @change handlers from IR vars
 		allVars := ctx.Pkg.Vars
-		if main := ctx.MainComponent(); main != nil {
+		if main := ctx.RootDecl(); main != nil {
 			allVars = append(allVars, main.Vars...)
 		}
 		for _, v := range allVars {

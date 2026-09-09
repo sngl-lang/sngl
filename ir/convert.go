@@ -285,8 +285,13 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 
 	// The return position is the tree the component is a member of. Its
 	// children type is derived from the default slot, which prints itself.
-	if comp.Tree != nil {
+	switch {
+	case comp.Tree != nil:
 		cd.ChildrenType = c.treeName(comp.Tree)
+	case comp.TreeParam != "":
+		// A wrapper's family is whatever it was handed, and the parameter is
+		// the component's own -- so it is spelled bare, never qualified.
+		cd.ChildrenType = &ast.NamedType{Name: comp.TreeParam}
 	}
 
 	// Build body: vars, consts, funcs, then body stmts.
@@ -655,10 +660,14 @@ func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 // whatever the count was read from.
 func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if s.Content == nil {
+		// A count with no tree of its own: bare `tree.one` is one of whatever
+		// the slot already accepts, which is its owner's family.
+		if s.Card == SlotOne {
+			return &ast.NamedType{Package: c.treePkg(), Name: "one"}
+		}
 		return nil
 	}
 	sd, _ := s.Content.Decl.(*StructDef)
-	isDefault := sd != nil && sd.Builtin == BuiltinTreeDefault
 	var elem ast.TypeExpr
 	if sd != nil {
 		// A tree is spelled through whatever this file imported its package as;
@@ -669,19 +678,9 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	}
 	switch s.Card {
 	case SlotOne:
-		nt := &ast.NamedType{Package: c.treePkg(), Name: "one"}
-		// tree.one's own parameter defaults to the default tree, so naming it
-		// would be spelling out what the declaration already says.
-		if !isDefault {
-			nt.TypeArgs = []ast.TypeExpr{elem}
-		}
-		return nt
+		return &ast.NamedType{Package: c.treePkg(), Name: "one", TypeArgs: []ast.TypeExpr{elem}}
 	case SlotOptional:
 		return &ast.NamedType{Name: "option", TypeArgs: []ast.TypeExpr{elem}}
-	}
-	if isDefault {
-		// A slot naming the default tree accepts what a bare one accepts.
-		return nil
 	}
 	return elem
 }
