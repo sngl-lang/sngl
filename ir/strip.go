@@ -32,11 +32,11 @@ func clearReachableTreeKinds(pkg *Package) {
 			return
 		}
 		switch v.Kind() {
-		case reflect.Ptr, reflect.Interface:
+		case reflect.Pointer, reflect.Interface:
 			if v.IsNil() {
 				return
 			}
-			if v.Kind() == reflect.Ptr {
+			if v.Kind() == reflect.Pointer {
 				if seen[v.Pointer()] {
 					return
 				}

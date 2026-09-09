@@ -580,7 +580,17 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		})
 	}
 
+	// One field per id, however many times the id was created: a loop the
+	// optimizer unrolled writes the same `__nN` once per iteration, and the
+	// sink is fed at each creation. Undeduped that is `__n5 redeclared` in the
+	// struct, which no program with an unrolled loop in the Model's own scope
+	// could compile.
+	seenField := make(map[string]bool, len(widgetFields))
 	for _, wf := range widgetFields {
+		if seenField[wf.name] {
+			continue
+		}
+		seenField[wf.name] = true
 		td.WidgetFields = append(td.WidgetFields, widgetFieldData{
 			Name:   wf.name,
 			GoType: wf.goType,

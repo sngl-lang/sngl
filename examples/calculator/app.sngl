@@ -7,8 +7,10 @@
 //	keypad/   the keys, as data, and the grid that lays them out
 //
 // What is left here is the wiring: one `Calc`, one handler that maps a key to
-// the method that answers it, and a window to hang them in. The tests are in
-// calc_test.sngl beside this file.
+// the method that answers it, and a window to hang it in. The window is at the
+// root of the file, because that is what the root tree accepts and a `ui`
+// component is not a place a window belongs. The tests are in calc_test.sngl
+// beside this file.
 
 import . "sngl:ui"
 import . "sngl:app"
@@ -58,10 +60,12 @@ component main ui {
         }
     }
 
-    window #calculator(title="Calculator", href="/") {
-        vbox(style={flex=1, background=#15171c}) {
-            readout.Readout(entry=state.entry, pending=state.pending())
-            keypad.Keypad(@press(k) { press(k) })
-        }
+    vbox(style={flex=1, background=#15171c}) {
+        readout.Readout(entry=state.entry, pending=state.pending())
+        keypad.Keypad(@press(k) { press(k) })
     }
+}
+
+window #calculator(title="Calculator", href="/") {
+    main
 }
