@@ -4,5 +4,5 @@ import . "sngl:ui"
 // HOVER(component) "Declares a UI component"
 // HOVER(struct) "Declares a record type"
 func ping() {}
-component Foo {}
+component Foo ui {}
 struct Bar {}

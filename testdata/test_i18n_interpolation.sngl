@@ -1,9 +1,10 @@
 import . "sngl:ui"
 import . "sngl:test"
 import "sngl:i18n"
+import app "sngl:app"
 
 // Simple identifier interpolation.
-component i18nInterp {
+component i18nInterp ui {
     var nm = "world"
     var greeting = $"Hello, {nm}!"
 
@@ -28,4 +29,7 @@ func testInterpolation(t Test, c i18nInterp) {
     t.assert(c.greeting == "Hello, world!")
     t.assert(c.welcome == "Welcome back, Alice!")
     t.assert(c.sum == "1 + 2 = 3")
+}
+
+app.window {
 }

@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Inner {
     value int = 0
@@ -10,7 +11,7 @@ struct Outer {
     label string = ""
 }
 
-component main {
+component main ui {
     var nested Outer = {inner={value=5}, label="hi"}
 
     text(value=string(nested.inner.value))
@@ -19,4 +20,8 @@ component main {
 func testNestedAnon(t Test, c main) {
     t.assert(c.nested.inner.value == 5)
     t.assert(c.nested.label == "hi")
+}
+
+app.window {
+    main
 }

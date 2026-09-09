@@ -1,7 +1,12 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count int = 0           //@ hover("count", "var count int")
     func doubled() => count * 2 //@ hover("doubled", "func doubled()")
     const label = "hi"          //@ hover("label", "const label")
+}
+
+app.window {
+    main
 }

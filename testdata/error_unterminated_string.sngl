@@ -4,6 +4,10 @@
 // written on that line, because the string would swallow it. Hence the
 // position on the directive.
 import . "sngl:ui"
+import app "sngl:app"
 
 // ERROR(parse:9:16) "unterminated string"
 var x string = "hello
+
+app.window {
+}

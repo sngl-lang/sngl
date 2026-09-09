@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Config {
     debug bool = false
@@ -6,8 +7,12 @@ struct Config {
 
 enum Status { active, inactive }
 
-component main {
+component main ui {
     var count int = 0
     func doubled() => count * 2
     const label = "hi"
+}
+
+app.window {
+    main
 }

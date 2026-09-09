@@ -4,9 +4,14 @@
 // a parse error rather than something the builder has to refuse.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     vbox {
         text(value string) // ERROR(parse) "unexpected identifier, expected \")\""
     }
+}
+
+app.window {
+    main
 }

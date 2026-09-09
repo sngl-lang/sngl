@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     // Named func-type variable: type carries param names, named calls OK.
     var f func(x int, y int) int = func(x int, y int) => x + y
 
@@ -14,4 +15,8 @@ component main {
 func testNamedThroughTypedVar(t Test, c main) {
     t.assert(c.callInOrder() == 7)
     t.assert(c.callReversed() == 7)
+}
+
+app.window {
+    main
 }

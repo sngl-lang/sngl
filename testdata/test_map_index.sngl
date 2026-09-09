@@ -2,8 +2,9 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component mapIndex {
+component mapIndex ui {
     var scores map<string, int> = {alice=10, bob=20}
     var aliceScore = scores["alice"]
     text(value="{aliceScore}")
@@ -17,4 +18,7 @@ func testMapIndexHit(t Test, c mapIndex) {
 func testMapIndexMissReturnsZero(t Test, c mapIndex) {
     // Missing key returns int's zero value.
     t.assert(c.scores["nobody"] == 0)
+}
+
+app.window {
 }

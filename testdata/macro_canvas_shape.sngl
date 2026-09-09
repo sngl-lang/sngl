@@ -1,3 +1,8 @@
 import "sngl:ui/draw"
-component rect(x int, y int, w int, h int) {}
-component circle(cx int, cy int, r int) {}
+import ui "sngl:ui"
+import app "sngl:app"
+component rect(x int, y int, w int, h int) ui.ui {}
+component circle(cx int, cy int, r int) ui.ui {}
+
+app.window {
+}

@@ -4,9 +4,13 @@
 // wanted next.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 func f() {
     var xs list<int> = [1]
     for x = xs { // ERROR(parse) "a loop variable is declared with var"
     }
+}
+
+app.window {
 }

@@ -1,10 +1,15 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // link: A-tier — href/target are static literals, no testable
 // state-binding contract.
-component main {
+component main ui {
     hbox {
         link(href="https://example.com", text="Example")
         link(href="https://example.com", text="New tab", target="blank")
     }
+}
+
+app.window {
+    main
 }

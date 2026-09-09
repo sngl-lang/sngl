@@ -1,9 +1,10 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // Sized signed-integer types: declaration, literal fit, and arithmetic.
 // Plain `int` stays unspecified-width; these are the opt-in fixed widths.
-component sizedints {
+component sizedints ui {
     var a int8 = 100
     var b int16 = 30000
     var c int32 = 2000000000
@@ -27,4 +28,7 @@ func testSameWidthArithmetic(t Test, c sizedints) {
     t.assert(c.b - 1 == 29999)
     t.assert(c.a / 4 == 25)
     t.assert(c.a % 7 == 2)
+}
+
+app.window {
 }

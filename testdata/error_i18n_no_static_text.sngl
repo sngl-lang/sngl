@@ -7,3 +7,6 @@ import "sngl:i18n"
 
 var n = 5
 var s = $"{n}" // ERROR(lint) "no static text"
+
+window {
+}

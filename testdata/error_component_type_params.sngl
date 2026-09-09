@@ -4,8 +4,9 @@
 // is never checked amounts to.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component pair<T>(a T, b T) {
+component pair<T>(a T, b T) ui {
     text(value="pair")
 }
 
@@ -14,11 +15,11 @@ component pair<T>(a T, b T) {
 // checker strips it before it matches a prop -- so a parameter has to be bound
 // from a binding exactly as it is from a plain arg. Matched raw, `:a=1` pinned
 // nothing, and `b` then accepted anything.
-component bound<T>(:a T, b T) {
+component bound<T>(:a T, b T) ui {
     text(value="bound")
 }
 
-component main {
+component main ui {
     var n = 1
 
     pair(a=1, b=2)
@@ -27,4 +28,8 @@ component main {
 
     bound(:a=n, b=2)
     bound(:a=n, b="two") // ERROR(check) "cannot use string as int for prop \"b\" on component bound"
+}
+
+app.window {
+    main
 }

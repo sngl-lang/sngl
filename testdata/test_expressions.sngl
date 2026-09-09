@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component exprs {
+component exprs ui {
     var a = 10
     var b = 3
     var s = "hello world"
@@ -29,4 +30,7 @@ func testEqualityOnDifferentTypes(t Test, c exprs) {
     t.assert(true == true)
     t.assert(10 != 20)
     t.assert("x" != "y")
+}
+
+app.window {
 }

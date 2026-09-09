@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component multi {
+component multi ui {
     var a = 0
     var b = 0
     var c = 0
@@ -26,4 +27,7 @@ func testMultipleAssignments(t Test, c multi) {
     c.b = 20
     c.c = c.a + c.b
     t.assert(c.c == 30)
+}
+
+app.window {
 }

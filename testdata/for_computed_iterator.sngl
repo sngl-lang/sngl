@@ -5,8 +5,9 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var word = "abc"
 
     func letters() => string.split(word, "")
@@ -23,4 +24,8 @@ component main {
 
 func testComputedIterator(t Test, c main) {
     t.assert(c.letters().length() == 3)
+}
+
+app.window {
+    main
 }

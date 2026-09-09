@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Point {
     x float = 0.0
@@ -7,7 +8,11 @@ struct Point {
 
 enum Direction { up, down, left, right }
 
-component main {
+component main ui {
     var dir Direction = Direction.up //@ hover("Direction", "enum Direction")
     //@ hover("Point", "struct Point")
+}
+
+app.window {
+    main
 }

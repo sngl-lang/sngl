@@ -3,12 +3,13 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 unit Len { mm, cm = 10mm }
 
 func Len.doubled(v Len) => v + v
 
-component main {
+component main ui {
     var five Len = 5mm
     var d Len = five.doubled()
     text(value=string(d))
@@ -16,4 +17,8 @@ component main {
 
 func testUnitMethodDispatches(t Test, c main) {
     t.assert(c.d == 10mm)
+}
+
+app.window {
+    main
 }

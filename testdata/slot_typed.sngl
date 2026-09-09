@@ -8,8 +8,9 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
+import app "sngl:app"
 
-component frame(body component tr.one, badge component option<tr.default>, rows component) {
+component frame(body component tr.one, badge component option<ui>, rows component) ui {
     vbox {
         body {}
         badge {}
@@ -19,13 +20,13 @@ component frame(body component tr.one, badge component option<tr.default>, rows 
 
 // The rest slot carries a type the same way: `...` is the count bound, and
 // what follows `component` is still the tree it accepts.
-component strip(children ...component tr.default) {
+component strip(children ...component ui) ui {
     vbox {
         children
     }
 }
 
-component main {
+component main ui {
     frame() {
         component body {
             text(value="one")
@@ -47,4 +48,8 @@ component main {
         text(value="a")
         text(value="b")
     }
+}
+
+app.window {
+    main
 }

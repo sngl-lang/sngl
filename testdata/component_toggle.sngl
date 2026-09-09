@@ -1,9 +1,10 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // toggle: state-binding fixture — flipping the bound `checked` var
 // propagates to the switch, and the label sits after the switch.
-component main {
+component main ui {
     var on = false
     toggle(checked=on, label="Notifications")
 }
@@ -14,4 +15,8 @@ func testToggleFlips(t Test, c main) {
     t.assert(c.on == true)
     c.on = false
     t.assert(c.on == false)
+}
+
+app.window {
+    main
 }

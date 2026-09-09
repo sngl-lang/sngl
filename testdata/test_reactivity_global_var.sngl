@@ -1,13 +1,14 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 var theme = "light"
 
-component card {
+component card ui {
     text #out(value=theme)
 }
 
-component main {
+component main ui {
     button #toggle(text="toggle", @click { theme = "dark" })
     card #cd()
 }
@@ -17,4 +18,8 @@ func testGlobalVarReactivity(t Test, c main) {
     t.assert(cd.out.value == "light")
     c.toggle.click()
     t.assert(cd.out.value == "dark")
+}
+
+app.window {
+    main
 }

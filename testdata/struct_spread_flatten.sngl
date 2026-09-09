@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Literal struct spread: `...{a=0, b=2}` splices its written fields onto the
 // target literal (last write wins), exercised through parse + check + lower by
@@ -9,7 +10,11 @@ struct S {
     b int = 0
 }
 
-component main {
+component main ui {
     var x S = {a=1, ...{a=0, b=2}}
     text(value=string(x.a) + "/" + string(x.b))
+}
+
+app.window {
+    main
 }

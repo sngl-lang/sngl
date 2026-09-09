@@ -1,16 +1,20 @@
-// A top-level body and declared windows coexist. The body is the root -- what
-// the program shows when it opens -- and the windows are what it navigates to,
-// which is why passRootWindow puts the body first rather than only supplying
-// one when nothing else does.
+// Several windows coexist at the top level, and `output(entry = …)` says
+// which one the program opens at. Without it a build scopes to a single
+// window and, past one, to none -- it refuses to guess, which is the gap the
+// option closes.
 
 import . "sngl:ui"
 import . "sngl:app"
 
+output(entry = home)
+
 var visits = 0
 
-vbox {
-    text(value="visits: {visits}")
-    link(href="/about", text="About")
+window #home(title="Home", href="/") {
+    vbox {
+        text(value="visits: {visits}")
+        link(href="/about", text="About")
+    }
 }
 
 window #about(title="About", href="/about") {

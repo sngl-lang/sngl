@@ -4,7 +4,7 @@ import . "sngl:test"
 
 enum Status { active, inactive, pending }
 
-component view {
+component view ui {
     var n = 42
     var f = 3.14
     var b = true
@@ -35,4 +35,7 @@ func testInterpOption(t Test, c view) {
 func testInterpZeroArgFuncCalls(t Test, c view) {
     var label = func() => "hi"
     t.assert("{label}" == "hi")
+}
+
+window {
 }

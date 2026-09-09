@@ -5,6 +5,7 @@
 // trailing comma comes from, since only the component form used to admit one.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 func add(
     a int,
@@ -19,17 +20,21 @@ component sums(
     :total int = 0,
     @done ClickEvent,
     children ...component,
-) {
+) ui {
     vbox {
         text(value=string(add(left, right)))
         children
     }
 }
 
-component main {
+component main ui {
     vbox {
         sums(left=1, right=2, @done {}) {
             text(value="child")
         }
     }
+}
+
+app.window {
+    main
 }

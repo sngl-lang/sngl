@@ -7,13 +7,17 @@
 // is what tells the two implementations apart.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct option<T> {
     v T
 }
 
-component frame(badge component option<int>) { // ERROR(check) "a slot accepts a tree, and option<int> is not one"
+component frame(badge component option<int>) ui { // ERROR(check) "a slot accepts a tree, and option<int> is not one"
     vbox {
         badge {}
     }
+}
+
+app.window {
 }

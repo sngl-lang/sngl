@@ -4,7 +4,7 @@ import . "sngl:ui"
 // HOVER(#ff0000) "#ff0000"
 // HOVER(#00ff00) "rgb(0, 255, 0)"
 // HOVER(#11223344) "rgb(17, 34, 51)"
-component App {
+component App ui {
     var red = #ff0000
     var green = #00ff00
     var rgba = #11223344

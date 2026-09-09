@@ -15,6 +15,7 @@
 
 import . "sngl:time"
 import . "sngl:ui"
+import app "sngl:app"
 
 struct box {
     n int
@@ -28,7 +29,7 @@ func bump() {
     shared += 1
 }
 
-component main {
+component main ui {
     var (
         n = 0
         other = 0
@@ -96,4 +97,8 @@ component main {
     })
 
     text #out(value=log.join(","))
+}
+
+app.window {
+    main
 }

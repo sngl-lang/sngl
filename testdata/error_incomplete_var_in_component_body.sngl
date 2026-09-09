@@ -3,10 +3,14 @@
 // missing initializer above it.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component outer() {
+component outer() ui {
     var x =
 
     component inner() { // ERROR(parse) "unexpected \"component\", expected"
     }
+}
+
+app.window {
 }

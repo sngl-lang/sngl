@@ -1,12 +1,13 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Pair {
     key string = ""
     val int = 0
 }
 
-component main {
+component main ui {
     const (
         MSG = "count: {string(10)}"
         ITEMS = [1, 2, 3]
@@ -44,4 +45,8 @@ func testBasic(t Test, c main) {
     t.assert(c.count == 0)
     t.assert(c.flag == true)
     t.assert(c.label == "hello")
+}
+
+app.window {
+    main
 }

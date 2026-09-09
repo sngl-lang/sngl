@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // A unit body holds comments the way a struct's and an enum's do, so one
 // written between the braces stays where it was written.
@@ -14,7 +15,7 @@ unit storage { // the base is the byte
     gb = 1000mb
 }
 
-component unitComments {
+component unitComments ui {
     var small storage = 4kb
     var large storage = 2gb
 
@@ -23,4 +24,7 @@ component unitComments {
 
 func testUnitComments(t Test, c unitComments) {
     t.assert(c.large > c.small)
+}
+
+app.window {
 }

@@ -2,9 +2,14 @@
 // checked, so one that states no return type is dyn and every use of the
 // result checks clean. These declare theirs off a block body.
 
+import app "sngl:app"
+
 func test() {
     var c int = color.rgb(1, 2, 3)                     // ERROR(check) "cannot initialize int with color"
     var b int = string.contains("ab", "a")             // ERROR(check) "cannot initialize int with bool"
     var s string = string.startsWith("ab", "a")        // ERROR(check) "cannot initialize string with bool"
     var o int = color.opacity(color.rgb(1, 2, 3), 128) // ERROR(check) "cannot initialize int with color"
+}
+
+app.window {
 }

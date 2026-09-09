@@ -10,8 +10,9 @@
 
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var (
         a int = 1
         b string = "x"
@@ -46,4 +47,8 @@ func testWritingTheSameValuesBackKeepsTheLifetime(t Test, c main) {
 func testChangingOneFieldIsANewLifetime(t Test, c main) {
     c.b = "y"
     t.assert(c.out.value == "m,u,m")
+}
+
+app.window {
+    main
 }

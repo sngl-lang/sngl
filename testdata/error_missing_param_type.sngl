@@ -1,7 +1,12 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value="x")
 }
 
 func add(x, y int) => x + y // ERROR(check) "type annotation required for parameter"
+
+app.window {
+    main
+}

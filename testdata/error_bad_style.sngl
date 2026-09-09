@@ -1,5 +1,10 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value="hello", style={nonexistent=5}) // ERROR(check) "unknown field"
+}
+
+app.window {
+    main
 }

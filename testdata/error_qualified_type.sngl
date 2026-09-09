@@ -1,7 +1,13 @@
 import . "sngl:test"
 import "widgets"
+import ui "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui.ui {
     widgets.Counter(label="Test")
     widgets.Counter(label="Missing", nonExistent="x") // ERROR(check) "unknown prop"
+}
+
+app.window {
+    main
 }

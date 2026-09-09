@@ -3,6 +3,7 @@
 // time: what the interpreter runs is the loop.
 
 import . "sngl:test"
+import app "sngl:app"
 
 func countTo(n int) int {
     var i int = 0
@@ -111,4 +112,7 @@ func testBreakMeansTheBodyRan(t Test) {
 func testEscapesActOnTheInnermostLoop(t Test) {
     t.assert(nested(3, 2) == 6)
     t.assert(nested(0, 2) == 0)
+}
+
+app.window {
 }

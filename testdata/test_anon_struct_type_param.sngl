@@ -1,12 +1,17 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 func sumPair(p struct {
     a int
     b int
 }) => p.a + p.b
 
-component main {
+component main ui {
     var total = sumPair({a=3, b=4})
 
     text(value=string(total))
+}
+
+app.window {
+    main
 }

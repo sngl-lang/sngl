@@ -7,18 +7,19 @@
 // body there is no view at all.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component holder(children ...component) {
+component holder(children ...component) ui {
     vbox {
         children
     }
 }
 
-component main {
+component main ui {
     var on = true
 
     // The legal position: the root of a component definition's body.
-    component ok() {
+    component ok() ui {
         text(value="ok")
     }
 
@@ -36,4 +37,8 @@ component main {
             }
         }
     }
+}
+
+app.window {
+    main
 }

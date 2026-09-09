@@ -1,9 +1,14 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component card(title string) {
+component card(title string) ui {
 }
 
-component main {
+component main ui {
     vbox() {
     } //@ complete("", "card", "main")
+}
+
+app.window {
+    main
 }

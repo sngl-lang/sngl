@@ -3,12 +3,13 @@
 // none of them names a position an insertion supplies.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(Row)) {
+component table(rows list<Row>, cell component(Row)) ui {
     vbox {
         for var r = rows {
             cell(r)
@@ -16,7 +17,7 @@ component table(rows list<Row>, cell component(Row)) {
     }
 }
 
-component main {
+component main ui {
     vbox {
         table(rows=[]) {
             component cell(row = Row{title="x"}) { // ERROR(check) "parameter \"row\" takes no default value"
@@ -34,4 +35,8 @@ component main {
             }
         }
     }
+}
+
+app.window {
+    main
 }

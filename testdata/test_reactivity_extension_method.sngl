@@ -1,16 +1,22 @@
 import . "sngl:test"
+import ui "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui.ui {
     var x = 5
 }
 
 func main.double(this main) => this.x * 2
 
-component root {
+component root ui.ui {
     main #m()
 }
 
 func testReactiveExtensionRead(t Test, c root) {
     var cm = c.m
     t.assert(cm.double() == 10)
+}
+
+app.window {
+    main
 }

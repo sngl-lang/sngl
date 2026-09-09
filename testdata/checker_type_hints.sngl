@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 enum Direction { up, down, left, right }
 
@@ -7,10 +8,14 @@ struct Point {
     y float = 0.0
 }
 
-component main {
+component main ui {
     var mode enum { light, dark } = light
     var dir Direction = up
     var pt Point = {x=1.0, y=2.0}
 
     text(value=string(mode))
+}
+
+app.window {
+    main
 }

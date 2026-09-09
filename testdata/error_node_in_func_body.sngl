@@ -13,6 +13,7 @@
 
 import . "sngl:ui"
 import . "sngl:time"
+import app "sngl:app"
 
 var n = 0
 
@@ -26,7 +27,7 @@ func placeWidget() {
     text(value="dropped") // ERROR(check) "visual node \"text\" cannot be written in a function body"
 }
 
-component main {
+component main ui {
     var touched = 0 @change {
         text(value="dropped") // ERROR(check) "cannot be written in a function body"
     }
@@ -51,4 +52,8 @@ component main {
         nested()
         touched = touched + 1
     })
+}
+
+app.window {
+    main
 }

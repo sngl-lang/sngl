@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component fold {
+component fold ui {
     var s = string(42)                 // FOLD "42"
     var i = int(3.14)                  // FOLD 3
     var f = float(1)                   // FOLD 1.0
@@ -24,4 +25,7 @@ func testConstantFolding(t Test, c fold) {
     t.assert(c.sw == true)
     t.assert(c.ew == true)
     t.assert(c.noc == false)
+}
+
+app.window {
 }

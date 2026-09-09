@@ -1,6 +1,10 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 func foo() {
     if 1 { // ERROR(check) "if condition must be bool"
     }
+}
+
+app.window {
 }

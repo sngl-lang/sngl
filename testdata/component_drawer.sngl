@@ -1,9 +1,10 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // drawer: state-binding fixture — toggling bound `open` slides the
 // drawer in/out.
-component main {
+component main ui {
     var open = false
     drawer(open=open, side="right", size="medium") {
         text(value="drawer content")
@@ -16,4 +17,8 @@ func testDrawerOpenToggles(t Test, c main) {
     t.assert(c.open == true)
     c.open = false
     t.assert(c.open == false)
+}
+
+app.window {
+    main
 }

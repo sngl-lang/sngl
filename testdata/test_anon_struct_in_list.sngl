@@ -1,12 +1,13 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Item {
     id int = 0
     name string = ""
 }
 
-component main {
+component main ui {
     var items list<Item> = [
         {id=1, name="a"},
         {id=2, name="b"},
@@ -25,4 +26,8 @@ func testAnonListLen(t Test, c main) {
 func testAnonListElem(t Test, c main) {
     t.assert(c.items[1].id == 2)
     t.assert(c.items[2].name == "c")
+}
+
+app.window {
+    main
 }

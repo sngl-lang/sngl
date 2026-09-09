@@ -1,9 +1,10 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // Every node form accepts key=, the list-diffing key: a visual node with a
 // body, a childless call, and an element ref carrying an #id.
-component keyed {
+component keyed ui {
     var items = ["a", "b"]
 
     vbox {
@@ -20,4 +21,7 @@ component keyed {
 func testKeyedRowsRender(t Test, c keyed) {
     t.assert(c.row[0].value == "a")
     t.assert(c.row[1].value == "b")
+}
+
+app.window {
 }

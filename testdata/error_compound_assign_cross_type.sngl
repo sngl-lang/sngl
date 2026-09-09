@@ -1,13 +1,18 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Bug: compound assignment `+=` of float into int passes typecheck.
 // Per audit (internal/checker/expr.go:1270-1278): compound assignment checks
 // numeric-or-string but never wraps in ir.Conversion. Result: a Binary IR node
 // with mixed kinds escapes into codegen, violating the explicit-conversion rule.
-component main {
+component main ui {
     var i int = 0
     button(@click {
         i += 1.5 // ERROR(check) "cannot"
     })
     text(value="{i}")
+}
+
+app.window {
+    main
 }

@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct S {
     x int
@@ -7,6 +8,10 @@ struct S {
 
 func S.foo(s S) => s.x + 1 // ERROR(check) "duplicate declaration"
 
-component main {
+component main ui {
     text(value="x")
+}
+
+app.window {
+    main
 }

@@ -1,10 +1,15 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // toolbar: A-tier — declaration only.
-component main {
+component main ui {
     toolbar {
         button(text="New")
         button(text="Open")
         button(text="Save")
     }
+}
+
+app.window {
+    main
 }

@@ -4,5 +4,9 @@
 
 import . "sngl:ui"
 import "sngl:ui/draw"
+import app "sngl:app"
 
 component badShape(x float, @click ClickEvent) draw.shape {} // ERROR(check) "a shape supports no event declarations"
+
+app.window {
+}

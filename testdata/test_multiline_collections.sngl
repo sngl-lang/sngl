@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Config {
     name string = ""
@@ -7,7 +8,7 @@ struct Config {
     enabled bool = false
 }
 
-component main {
+component main ui {
     var list1 = [
         1,
         2,
@@ -37,4 +38,8 @@ func testMultilineCommaList(t Test, c main) {
 func testMultilineStruct(t Test, c main) {
     t.assert(c.cfg.name == "test")
     t.assert(c.cfg2.count == 7)
+}
+
+app.window {
+    main
 }

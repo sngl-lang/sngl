@@ -2,11 +2,16 @@
 // stream: there is no iteration for an escape to cut short.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var xs list<int> = [1]
 
     for var x = xs {
         continue // ERROR(check) "cannot be written in a view body"
     }
+}
+
+app.window {
+    main
 }

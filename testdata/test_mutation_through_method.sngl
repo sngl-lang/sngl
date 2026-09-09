@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var x = 0
 
     func reset() { x = 0 }
@@ -19,4 +20,8 @@ func testMutationThroughMethod(t Test, c main) {
     t.assert(c.out.value == "2")
     c.zero.click()
     t.assert(c.out.value == "0")
+}
+
+app.window {
+    main
 }

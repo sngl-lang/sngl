@@ -13,7 +13,7 @@ func testWaitSettlesTimer(t Test, c main) {
     t.assert(c.count >= 3)
 }
 
-component main {
+component main ui {
     var count int = 0
 
     timer(interval=10ms, @tick {
@@ -21,4 +21,8 @@ component main {
     })
 
     text(value=string(count))
+}
+
+window {
+    main
 }

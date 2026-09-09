@@ -7,11 +7,12 @@
 // reached a backend as a call to a function nobody declared.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 func nothing() {
 }
 
-component main {
+component main ui {
     var n int = 0
 
     button(text="a", @click {
@@ -22,4 +23,8 @@ component main {
     })
 
     text(value=string(n))
+}
+
+app.window {
+    main
 }

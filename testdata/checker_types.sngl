@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Point {
     x float = 0.0
@@ -7,7 +8,7 @@ struct Point {
 
 enum Status { active, inactive, pending }
 
-component main {
+component main ui {
     const (
         MAX = 100
         LABEL = "items"
@@ -47,4 +48,8 @@ component main {
         }
         text(value=desc)
     }
+}
+
+app.window {
+    main
 }

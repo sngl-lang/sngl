@@ -3,12 +3,13 @@
 // would do that too -- so the claim worth pinning is that the payload is the
 // field's own type.
 import . "sngl:ui"
+import app "sngl:app"
 
 struct pageArgs {
     on int
 }
 
-component main {
+component main ui {
     var page = 3
     var a = pageArgs{on=page}
 
@@ -17,4 +18,8 @@ component main {
     })
 
     text(value="page=" + string(page))
+}
+
+app.window {
+    main
 }

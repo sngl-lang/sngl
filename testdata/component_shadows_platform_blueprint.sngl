@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // A user component may take a name that a platform's own source uses for a
 // blueprint component. `Widget` is bubbletea's textinput/viewport blueprint,
@@ -10,12 +11,16 @@ import . "sngl:ui"
 // own source. Resolving through the flat symtab map instead let this file break
 // the compiler's own platform source with `unknown prop "model" on component
 // Widget`.
-component Widget(title string, children ...component) {
+component Widget(title string, children ...component) ui {
     text(value=title)
 }
 
-component main {
+component main ui {
     var name = ""
     Widget(title="user widget")
     input(value=name)
+}
+
+app.window {
+    main
 }

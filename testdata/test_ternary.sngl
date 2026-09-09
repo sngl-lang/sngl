@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component choice {
+component choice ui {
     var x = 10
     var y = 5
     var label = ""
@@ -44,4 +45,7 @@ func testStringAppend(t Test, c choice) {
     c.label = "hello"
     c.label += " world"
     t.assert(c.label == "hello world")
+}
+
+app.window {
 }

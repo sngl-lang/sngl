@@ -2,9 +2,14 @@
 // not something about the declaration that follows it.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 var x =
 
-component main { // ERROR(parse) "unexpected \"component\", expected"
+component main ui { // ERROR(parse) "unexpected \"component\", expected"
     text(value="hi")
+}
+
+app.window {
+    main
 }

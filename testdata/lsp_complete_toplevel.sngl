@@ -1,6 +1,11 @@
 //@ complete("", "component", "struct", "enum", "import", "!var", "!param")
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
+}
+
+app.window {
+    main
 }

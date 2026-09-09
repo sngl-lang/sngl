@@ -23,7 +23,7 @@ func testUnfilledSlotRendersItsFallback(t Test, c bare) {
     t.assert(c.fallback.value == "nothing supplied")
 }
 
-component frame(children ...component, header component) {
+component frame(children ...component, header component) ui {
     vbox {
         header {}
         text #own(value="frame's own")
@@ -31,7 +31,7 @@ component frame(children ...component, header component) {
     }
 }
 
-component bare(children ...component) {
+component bare(children ...component) ui {
     vbox {
         children {
             text #fallback(value="nothing supplied")
@@ -39,7 +39,7 @@ component bare(children ...component) {
     }
 }
 
-component main {
+component main ui {
     var title = "Hello"
 
     frame {
@@ -48,4 +48,8 @@ component main {
             text #head(value=title)
         }
     }
+}
+
+window {
+    main
 }

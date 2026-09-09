@@ -13,7 +13,7 @@ func testTimerInFalseBranchNeverFires(t Test, c main) {
     t.assert(c.n == 0)
 }
 
-component main {
+component main ui {
     var (
         show = false
         n = 0
@@ -26,4 +26,8 @@ component main {
     }
 
     text(value=string(n))
+}
+
+window {
+    main
 }

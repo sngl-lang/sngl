@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var regular = "hello world"
     var withNewline = "line one
 line two"
@@ -32,4 +33,8 @@ func testTripleQuoteStripsIndent(t Test, c main) {
 
 func testRawStringNoEscape(t Test, c main) {
     t.assert(c.raw == `no \escapes and no {interpolation}`)
+}
+
+app.window {
+    main
 }

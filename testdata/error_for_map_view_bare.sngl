@@ -3,8 +3,9 @@
 // holds one copy of the body per entry in no defined order.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var scores map<string, int> = {alice=10}
 
     vbox {
@@ -12,4 +13,8 @@ component main {
             text(value="entry")
         }
     }
+}
+
+app.window {
+    main
 }

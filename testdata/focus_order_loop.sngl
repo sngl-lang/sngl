@@ -5,10 +5,11 @@
 // enabled and runs ir.Validate over the result.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 const labels list<string> = ["one", "two", "three"]
 
-component focusLoop {
+component focusLoop ui {
     vbox {
         button(text="before", focusable=true)
         for var l = labels {
@@ -16,4 +17,7 @@ component focusLoop {
         }
         button(text="after", focusable=true)
     }
+}
+
+app.window {
 }

@@ -1,12 +1,13 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // input: two-way state-binding fixture — the `:value` binding wires a
 // widget→state writeback handler in addition to the state→widget sync.
 // Every native platform must compile that synthesized writeback (regression
 // guard for the gtk4 `undefined: __value` build break and the fyne/android
 // dead-handler bugs); mutating the bound var still propagates as usual.
-component main {
+component main ui {
     var name = "World"
 
     vbox {
@@ -21,4 +22,8 @@ func testInputValueMutates(t Test, c main) {
     t.assert(c.name == "SNGL")
     c.name = c.name + "!"
     t.assert(c.name == "SNGL!")
+}
+
+app.window {
+    main
 }

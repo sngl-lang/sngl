@@ -6,13 +6,14 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Task {
     label string = ""
     done bool = false
 }
 
-component main {
+component main ui {
     var tasks list<Task> = [{label="a", done=false}, {label="b", done=true}]
     var nums list<int> = [1, 2, 3]
 
@@ -48,4 +49,8 @@ func testLoopRefScalarWriteThrough(t Test, c main) {
     // &n whole-element write (n = n + 10) updates the list element in place
     c.bump.click()
     t.assert(c.n0.value == "11")
+}
+
+app.window {
+    main
 }

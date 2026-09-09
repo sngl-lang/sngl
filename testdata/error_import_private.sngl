@@ -1,6 +1,11 @@
 import . "sngl:ui"
 import "widgets"
+import app "sngl:app"
 
-component main {
+component main ui {
     widgets._helper() // ERROR(check) "unexported"
+}
+
+app.window {
+    main
 }

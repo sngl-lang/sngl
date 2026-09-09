@@ -6,15 +6,16 @@
 // children, written once, with nothing to bind them to.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component card(caption string, children ...component) {
+component card(caption string, children ...component) ui {
     vbox {
         text(value=caption)
         children
     }
 }
 
-component panel(children ...component, header component) {
+component panel(children ...component, header component) ui {
     vbox {
         header {
             text(value="(untitled)")
@@ -23,7 +24,7 @@ component panel(children ...component, header component) {
     }
 }
 
-component main {
+component main ui {
     card(caption="hi") {
         text(value="child")
     }
@@ -33,4 +34,8 @@ component main {
         }
         text(value="body")
     }
+}
+
+app.window {
+    main
 }

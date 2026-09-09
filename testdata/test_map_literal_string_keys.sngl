@@ -3,8 +3,9 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component mapStringKeys {
+component mapStringKeys ui {
     var prices map<string, int> = {
         apple = 1,
         pear = 2,
@@ -36,4 +37,7 @@ func testMapStringLiteralKeys(t Test, c mapStringKeys) {
 
 func testMapEmpty(t Test, c mapStringKeys) {
     t.assert(c.empty.length() == 0)
+}
+
+app.window {
 }

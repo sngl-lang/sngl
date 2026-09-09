@@ -8,14 +8,15 @@
 
 import . "sngl:ui"
 import . "sngl:ui/draw"
+import app "sngl:app"
 
-component framed(header component) {
+component framed(header component) ui {
     vbox {
         header()
     }
 }
 
-component gallery {
+component gallery ui {
     framed {
         component header {
             text(value="titled")
@@ -25,4 +26,7 @@ component gallery {
     canvas(width=10px, height=10px) {
         circle(cx=5.0, cy=5.0, r=4.0)
     }
+}
+
+app.window {
 }

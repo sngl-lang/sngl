@@ -1,10 +1,15 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     // Anonymous func type: no param names in the type, named calls rejected.
     var f func(int, int) int = func(a int, b int) => a + b
 
     func call() => f(a=1, b=2) // ERROR(check) "no parameter name"
 
     text(value="anon func type")
+}
+
+app.window {
+    main
 }

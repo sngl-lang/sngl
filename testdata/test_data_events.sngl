@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 0
     var items = ["a", "b"]
 
@@ -20,4 +21,8 @@ func testDataFieldExists(t Test, c main) {
     t.assert(c.tracked == 0)
     c.inc.click()
     t.assert(c.tracked == 1)
+}
+
+app.window {
+    main
 }

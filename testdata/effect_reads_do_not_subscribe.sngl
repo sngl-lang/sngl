@@ -11,8 +11,9 @@
 
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var (
         n = 0
         runs = 0
@@ -35,4 +36,8 @@ func testBodyReadsAreNotADependency(t Test, c main) {
     c.bump.click()
     t.assert(c.n == 1)
     t.assert(c.out.value == "1:0")
+}
+
+app.window {
+    main
 }

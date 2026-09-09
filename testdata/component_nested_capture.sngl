@@ -13,12 +13,13 @@
 
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 2
     var seen = -1
 
-    component readout() {
+    component readout() ui {
         var renders = 0
 
         effect(@mount {
@@ -37,4 +38,8 @@ component main {
 func testNestedBodyReadsAndWritesTheOwnersVar(t Test, c main) {
     t.assert(c.seen == 2)
     t.assert(c.count == 3)
+}
+
+app.window {
+    main
 }

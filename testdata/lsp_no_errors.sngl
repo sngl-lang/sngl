@@ -1,9 +1,14 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component label(value string) {
+component label(value string) ui {
 }
 
-component main {
+component main ui {
     var count int = 0
     label(value="hello")
+}
+
+app.window {
+    main
 }

@@ -4,10 +4,11 @@
 // walk; the optimizer's inliner is what reaches this today.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 context #theme("light")
 
-component framed(children ...component, caption component) {
+component framed(children ...component, caption component) ui {
     theme("dark") {
         vbox {
             children
@@ -18,11 +19,15 @@ component framed(children ...component, caption component) {
     }
 }
 
-component main {
+component main ui {
     framed() {
         component caption {
             text(value="caption")
         }
         text(value="framed child")
     }
+}
+
+app.window {
+    main
 }

@@ -1,12 +1,17 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Bug: toggle (`!!`) accepts non-bool targets.
 // Per audit (internal/checker/expr.go ToggleStmt): no check that target is bool;
 // codegen would emit `!x` on whatever type slipped through.
-component main {
+component main ui {
     var i int = 0
     button(@click {
         i!! // ERROR(check) "bool"
     })
     text(value="{i}")
+}
+
+app.window {
+    main
 }

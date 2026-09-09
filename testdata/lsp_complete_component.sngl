@@ -1,5 +1,10 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     //@ complete("", "var", "const")
+}
+
+app.window {
+    main
 }

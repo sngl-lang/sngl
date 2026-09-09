@@ -6,8 +6,13 @@
 
 import . "sngl:ui"
 import . "sngl:time"
+import app "sngl:app"
 
-component main {
+component main ui {
     timer(interval=1s, @tick(x int) {})
     text(value="x")
+}
+
+app.window {
+    main
 }

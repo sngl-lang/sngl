@@ -8,6 +8,7 @@
 // would be the wrong thing to say.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 func takesString(f func(string)) {
     f("x")
@@ -21,26 +22,30 @@ func takesAnswer(f func() int) {
     f()
 }
 
-component mismatched(@fired int) {
+component mismatched(@fired int) ui {
     effect(@mount {
         takesString(fired) // ERROR(check) "cannot be used as"
     })
 }
 
-component tooMany(@fired int) {
+component tooMany(@fired int) ui {
     effect(@mount {
         takesTwo(fired) // ERROR(check) "cannot be used as"
     })
 }
 
-component wantsValue(@fired int) {
+component wantsValue(@fired int) ui {
     effect(@mount {
         takesAnswer(fired) // ERROR(check) "an event answers nothing"
     })
 }
 
-component main {
+component main ui {
     mismatched(@fired(v) {})
     tooMany(@fired(v) {})
     wantsValue(@fired(v) {})
+}
+
+app.window {
+    main
 }

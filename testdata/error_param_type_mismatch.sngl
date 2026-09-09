@@ -1,9 +1,14 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component Greeting(name string = 123) { // ERROR(check) "does not match"
+component Greeting(name string = 123) ui { // ERROR(check) "does not match"
     text(value=name)
 }
 
-component main {
+component main ui {
     Greeting
+}
+
+app.window {
+    main
 }

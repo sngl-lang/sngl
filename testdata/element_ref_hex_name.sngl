@@ -1,11 +1,16 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // A node may be named with a #id whose text is all hex digits. The lexer emits
 // a single #-token (HASH) and position decides: as a naming tag it is an
 // element reference, so #deadbeef / #cafe are valid node names rather than
 // being forced into color literals.
-component main {
+component main ui {
     var n int = 0
     button #deadbeef(text="+", @click { n = n + 1 })
     text #cafe(value=string(n))
+}
+
+app.window {
+    main
 }

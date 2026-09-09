@@ -1,9 +1,10 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // menu: state-binding fixture — toggling the bound `open` var
 // shows/hides the menu.
-component main {
+component main ui {
     var open = false
     menu(items=["Cut", "Copy", "Paste"], open=open)
 }
@@ -14,4 +15,8 @@ func testMenuOpenToggles(t Test, c main) {
     t.assert(c.open == true)
     c.open = false
     t.assert(c.open == false)
+}
+
+app.window {
+    main
 }

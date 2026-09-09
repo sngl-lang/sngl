@@ -3,8 +3,9 @@
 // at check time: there is no live element to write back to.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     const frozen list<int> = [1, 2, 3]
     var xs list<int> = [1, 2, 3]
     var m map<string, int> = {"a"=1}
@@ -21,4 +22,8 @@ component main {
     func c() {
         for var k, &v = m { v = 0 } // ERROR(check) "requires a list"
     }
+}
+
+app.window {
+    main
 }

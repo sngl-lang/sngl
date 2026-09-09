@@ -1,6 +1,7 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count int = 0
     var name string = "hello"
     var active bool = true
@@ -21,4 +22,8 @@ component main {
     func listLen() => items.length()
 
     text(value=greeting)
+}
+
+app.window {
+    main
 }

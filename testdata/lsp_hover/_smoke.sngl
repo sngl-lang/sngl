@@ -1,4 +1,4 @@
 import . "sngl:ui"
 
 // HOVER(Counter) "component Counter"
-component Counter(label string) { vbox {} }
+component Counter(label string) ui { vbox {} }

@@ -4,12 +4,17 @@
 // one.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var name = "world"
 
     input(:value="literal") // ERROR(check) "must be assignable"
     // A call, not a place. string(...) so the prop's own type check does not
     // preempt the one this fixture is about.
     input(:value=string(name.length())) // ERROR(check) "must be assignable"
+}
+
+app.window {
+    main
 }

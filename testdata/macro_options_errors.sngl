@@ -2,6 +2,7 @@
 // no fields to check an output() argument against refuses it.
 
 import . "sngl:macro"
+import app "sngl:app"
 
 #[options] // ERROR(check) "#[options] cannot mark"
 var bad = 5
@@ -16,4 +17,7 @@ enum Bad {
 #[options] // ERROR(check) "already marked"
 struct Twice {
     gadget string = ""
+}
+
+app.window {
 }

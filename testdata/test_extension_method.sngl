@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Vec2 {
     x, y int
@@ -7,7 +8,7 @@ struct Vec2 {
 
 func Vec2.dot(a Vec2, b Vec2) => a.x * b.x + a.y * b.y
 
-component main {
+component main ui {
     var u = Vec2{x=1, y=2}
     var v = Vec2{x=3, y=4}
     text(value=string(u.dot(v)))
@@ -16,4 +17,8 @@ component main {
 func testExtensionMethod(t Test, c main) {
     t.assert(c.u.dot(c.v) == 11)
     t.assert(Vec2.dot(c.u, c.v) == 11)
+}
+
+app.window {
+    main
 }

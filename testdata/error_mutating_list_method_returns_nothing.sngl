@@ -9,8 +9,9 @@
 // is what made two right answers possible.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var xs list<string> = ["a"]
     var ys list<string> = []
     var n int = 0
@@ -62,4 +63,8 @@ component main {
     text(value=string(xs.length()))
     text(value=string(ys.length()))
     text(value=string(n))
+}
+
+app.window {
+    main
 }

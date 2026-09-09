@@ -1,10 +1,15 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Bug: duplicate top-level var declaration silently overwrites.
 // Per audit (ir/scope.go:42-44 Scope.Declare): no duplicate-decl diagnostic
 // for vars/consts/funcs/types in the same scope.
 var x = 1
 var x = 2 // ERROR(check) "duplicate"
-component main {
+component main ui {
     text(value="{x}")
+}
+
+app.window {
+    main
 }

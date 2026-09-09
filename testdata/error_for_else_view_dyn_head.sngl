@@ -5,8 +5,9 @@
 // else no emitter reads, which is the silence the pass exists to remove.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component row(items dyn) {
+component row(items dyn) ui {
     for var it = items { // ERROR(check) "dyn says nothing about how to ask"
         text(value="x")
     } else {
@@ -14,10 +15,14 @@ component row(items dyn) {
     }
 }
 
-component main {
+component main ui {
     var rows list<string> = []
 
     vbox {
         row(items=rows)
     }
+}
+
+app.window {
+    main
 }

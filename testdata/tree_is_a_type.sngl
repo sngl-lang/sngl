@@ -8,6 +8,7 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
+import app "sngl:app"
 
 #[tr.kind]
 struct block {}
@@ -17,7 +18,7 @@ struct inline {}
 
 // A container that is not itself a member: its rest slot names the family
 // it hosts.
-component document(children ...component block) {}
+component document(children ...component block) ui {}
 
 // A member that hosts a different family — the rich-text case the mechanism
 // was generalised for.
@@ -29,11 +30,11 @@ component bold(weight int) inline {}
 // A member whose slot names no family hosts its own, so this holds inlines.
 component span(children ...component) inline {}
 
-// The default tree is the absence of one: naming it is the same as naming
-// nothing, and an ordinary component belongs to it.
-component plain(children ...component tr.default) {}
+// `ui` is a family like any other: naming it in a slot says the same thing as
+// naming nothing there, because that is the family this component belongs to.
+component plain(children ...component ui) ui {}
 
-component main {
+component main ui {
     document() {
         para() {
             bold(weight=700)
@@ -45,4 +46,8 @@ component main {
     plain() {
         text(value="anything goes here")
     }
+}
+
+app.window {
+    main
 }

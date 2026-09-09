@@ -1,11 +1,12 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // clamp is max(lo, min(x, hi)), so a malformed range answers lo. The three
 // backends disagreed: Go and JS composed it the other way round (hi wins) and
 // Kotlin's coerceIn throws. The declaration's own body is the contract, and
 // it is marked usable, so the emitters have to match it.
-component main { text(value="x") }
+component main ui { text(value="x") }
 
 func testClampMalformedRange(t Test, c main) {
     t.assert(int.clamp(5, 10, 0) == 10)
@@ -15,4 +16,8 @@ func testClampMalformedRange(t Test, c main) {
     t.assert(int.clamp(5, 0, 10) == 5)
     t.assert(int.clamp(-1, 0, 10) == 0)
     t.assert(int.clamp(99, 0, 10) == 10)
+}
+
+app.window {
+    main
 }

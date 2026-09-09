@@ -3,7 +3,7 @@ import . "sngl:ui"
 // HOVER(value) "text.value:"
 // HOVER(value) "string"
 // HOVER(value) "prop on `component text`"
-component App {
+component App ui {
     vbox {
         text(value="hi")
     }

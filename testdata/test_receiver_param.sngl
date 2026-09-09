@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // A method's first parameter is the receiver when its type is the type the
 // method is attached to, whatever the parameter is called. The convention used
@@ -12,7 +13,7 @@ struct Box<T> {
 func Box<T>.same(b Box<T>) Box<T> { return b }
 func int.twice(n int) int { return n * 2 }
 
-component main {
+component main ui {
     var b Box<int> = {value=1}
     text(value="{b.value}")
 }
@@ -28,4 +29,8 @@ func testReceiverIsTheFirstParam(t Test, c main) {
     // non-generic case: `Box.same(b)` reports "cannot pass Box as Box", a
     // generic-identity problem of its own that predates this.
     t.assert(int.twice(3) == 6)
+}
+
+app.window {
+    main
 }

@@ -1,11 +1,12 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 func double(n int) int {
     return n * 2
 }
 
-component main {
+component main ui {
     text(value="x")
 }
 
@@ -16,4 +17,8 @@ func writesTheNarrowedValue(t Test) {
         var d = double(maybe)
         t.assert(d == 0)
     }
+}
+
+app.window {
+    main
 }

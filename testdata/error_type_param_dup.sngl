@@ -1,6 +1,11 @@
 // A type parameter binds in the scope its declaration opens, so a repeat of the
 // name is the ordinary redeclaration rather than a silent win for one of them.
 
+import app "sngl:app"
+
 struct box<T, T> { // ERROR(check) "T is already declared in this scope"
     v T
+}
+
+app.window {
 }

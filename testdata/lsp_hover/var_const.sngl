@@ -12,7 +12,7 @@ const Greeting string = "hi"
 // HOVER(counter) "7"
 // HOVER(x) "var x"
 // HOVER(x) "42"
-component App {
+component App ui {
     var counter int = 7
     var x = 42
 }

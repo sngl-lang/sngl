@@ -3,17 +3,18 @@
 // top-level `card` while `main` is checked against its own.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component card(label = "") {
+component card(label = "") ui {
     text(value="top " + label)
 }
 
-component other() {
+component other() ui {
     card(label="y")
 }
 
-component main {
-    component card(label = "") {
+component main ui {
+    component card(label = "") ui {
         text(value="inner " + label)
     }
 
@@ -21,4 +22,8 @@ component main {
         card(label="x")
         other()
     }
+}
+
+app.window {
+    main
 }

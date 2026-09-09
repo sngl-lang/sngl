@@ -1,11 +1,16 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // spacer: A-tier — no testable state. Declaration validates
 // parse + check + lower.
-component main {
+component main ui {
     hbox {
         text(value="left")
         spacer(size="16")
         text(value="right")
     }
+}
+
+app.window {
+    main
 }

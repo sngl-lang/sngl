@@ -7,7 +7,7 @@ import . "sngl:app"
 import . "sngl:time"
 import . "sngl:ui"
 
-component main {
+component main ui {
     var n = 0
 
     timer(every=1s, @tick { // ERROR(check) "unknown prop \"every\" on component timer"
@@ -17,4 +17,8 @@ component main {
     errorBoundary(fallback="oops", @error(e) {}) { // ERROR(check) "unknown prop \"fallback\" on component errorBoundary"
         text(value="n=" + string(n))
     }
+}
+
+window {
+    main
 }

@@ -14,6 +14,10 @@ unit duration {
 
 var shadowed duration = 3ms // ERROR(check) "with duration (sngl:time)"
 
-component main {
+component main ui {
     text(value="{shadowed.string()}")
+}
+
+window {
+    main
 }

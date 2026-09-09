@@ -1,16 +1,21 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct box<T> {
     v T
     func get() => this.v
 }
 
-component main {
+component main ui {
     var b box<int> = {v=42}
     text(value=string(b.get()))
 }
 
 func testNestedGenericMethod(t Test, c main) {
     t.assert(c.b.get() == 42)
+}
+
+app.window {
+    main
 }

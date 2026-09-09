@@ -1,6 +1,7 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component Counter(label = "", start = 0) {
+component Counter(label = "", start = 0) ui {
     var count = start
 
     hbox {
@@ -9,8 +10,12 @@ component Counter(label = "", start = 0) {
     }
 }
 
-component main {
+component main ui {
     var count = 0
 
     Counter(label="Clicks", start=5)
+}
+
+app.window {
+    main
 }

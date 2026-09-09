@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 func add(a int, b int) => a + b
 func greet(prefix string, name string) => prefix + ", " + name + "!"
@@ -6,4 +7,7 @@ func greet(prefix string, name string) => prefix + ", " + name + "!"
 func test() {
     var x = add(b=2)            // ERROR(check) "missing required argument"
     var y = greet(name="World") // ERROR(check) "missing required argument"
+}
+
+app.window {
 }

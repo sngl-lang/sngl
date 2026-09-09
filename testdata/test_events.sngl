@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // The three places the `@` sigil is written, all in this one fixture: an event
 // declaration in a parameter list (`@save` on Counter), a handler supplied at a
@@ -8,7 +9,7 @@ import . "sngl:test"
 // the emit.
 // Test event declarations and bidirectional bindings
 // Component with an event in ()
-component Counter(label = "", @save) {
+component Counter(label = "", @save) ui {
     var count = 0
 
     button(text="+", @click { count += 1 })
@@ -17,13 +18,13 @@ component Counter(label = "", @save) {
 }
 
 // Component with bidirectional param
-component Stepper(:count = 0) {
+component Stepper(:count = 0) ui {
     button(text="+", @click { count += 1 })
     button(text="-", @click { count -= 1 })
     text(value=string(count))
 }
 
-component main {
+component main ui {
     var (
         score = 0
         steps = 0
@@ -41,4 +42,8 @@ component main {
     // Use bidirectional binding
     Stepper(:count=steps)
     text(value="Score: {score}, Steps: {steps}")
+}
+
+app.window {
+    main
 }

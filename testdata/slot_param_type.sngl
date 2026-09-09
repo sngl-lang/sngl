@@ -3,12 +3,13 @@
 // has to agree with the position it names.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(Row)) {
+component table(rows list<Row>, cell component(Row)) ui {
     vbox {
         for var r = rows {
             cell(r)
@@ -16,7 +17,7 @@ component table(rows list<Row>, cell component(Row)) {
     }
 }
 
-component grid(rows list<Row>, row component(Row, int)) {
+component grid(rows list<Row>, row component(Row, int)) ui {
     vbox {
         for var i, r = rows {
             row(r, i)
@@ -24,7 +25,7 @@ component grid(rows list<Row>, row component(Row, int)) {
     }
 }
 
-component main {
+component main ui {
     vbox {
         // Name only.
         table(rows=[]) {
@@ -49,4 +50,8 @@ component main {
             }
         }
     }
+}
+
+app.window {
+    main
 }

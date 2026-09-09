@@ -2,23 +2,28 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component Stepper(:count = 0) {
+component Stepper(:count = 0) ui {
     button(text="+", @click { count += 1 })
     button(text="-", @click { count -= 1 })
     text(value=string(count))
 }
 
-component NameEditor(:name string) {
+component NameEditor(:name string) ui {
     input(:value=name)
     text(value="editing: {name}")
 }
 
-component main {
+component main ui {
     var steps = 0
     var label = "world"
 
     Stepper(:count=steps)
     NameEditor(:name=label)
     text(value="steps={steps}, label={label}")
+}
+
+app.window {
+    main
 }

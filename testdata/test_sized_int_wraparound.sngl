@@ -1,9 +1,11 @@
 import . "sngl:test"
+import ui "sngl:ui"
+import app "sngl:app"
 
 // Runtime two's-complement wraparound at each signed width. The operands are
 // concrete-typed locals, so the arithmetic runs in the interpreter/opeval at
 // the declared width and the result wraps (no compile-time range check).
-component wrap {
+component wrap ui.ui {
     var dummy = 0
 }
 
@@ -31,4 +33,7 @@ func testNegationWraps(t Test, c wrap) {
     var min int8 = -128
     // -(-128) has no positive int8 representation; wraps back to -128.
     t.assert(-min == -128)
+}
+
+app.window {
 }

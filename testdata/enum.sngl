@@ -1,9 +1,14 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 enum Status { active, inactive, pending }
 
-component main {
+component main ui {
     var status Status = active
 
     text(value=string(status))
+}
+
+app.window {
+    main
 }

@@ -4,12 +4,13 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 var total = 10
 
 func packageTotal() => total
 
-component shadowed {
+component shadowed ui {
     var total = 1
 
     func localTotal() => total
@@ -28,4 +29,7 @@ func testWritingTheInnerVarLeavesTheOuterAlone(t Test, c shadowed) {
     t.assert(c.total == 7)
     t.assert(c.localTotal() == 7)
     t.assert(packageTotal() == 10)
+}
+
+app.window {
 }

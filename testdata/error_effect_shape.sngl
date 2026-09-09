@@ -4,8 +4,9 @@
 // to say something else.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     effect(@mount {}) { // ERROR(check) "component effect does not accept children"
         text(value="nowhere to put this")
     }
@@ -16,4 +17,8 @@ component main {
     // back, or a teardown for something the tree itself set up.
     effect(@mount {})
     effect(@unmount {})
+}
+
+app.window {
+    main
 }

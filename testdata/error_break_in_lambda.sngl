@@ -2,6 +2,7 @@
 // written inside may be over -- so the enclosing loop is not its to break.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 func f() int {
     for {
@@ -10,4 +11,7 @@ func f() int {
         }
         return 1
     }
+}
+
+app.window {
 }

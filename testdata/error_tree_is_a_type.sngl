@@ -2,6 +2,7 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
+import app "sngl:app"
 
 #[tr.kind]
 struct block {}
@@ -9,11 +10,11 @@ struct block {}
 #[tr.kind]
 struct inline {}
 
-component document(children ...component block) {}
+component document(children ...component block) ui {}
 component para(children ...component inline) block {}
 component bold(weight int) inline {}
 
-component main {
+component main ui {
     // A tree holds nothing and no value of it exists, which is what makes it
     // usable as a slot's type and not as a var's.
     var bad block = 0 // ERROR(check) "names a tree, which has no values"
@@ -31,4 +32,8 @@ component main {
             }
         }
     }
+}
+
+app.window {
+    main
 }

@@ -3,6 +3,8 @@
 // nothing for a component to carry the mark for.
 
 import tr "sngl:tree"
+import ui "sngl:ui"
+import app "sngl:app"
 
 #[tr.kind] // ERROR(check) "a tree struct holds nothing"
 struct sized {
@@ -10,4 +12,7 @@ struct sized {
 }
 
 #[tr.kind] // ERROR(check) "a tree is named by a struct"
-component marked() {}
+component marked() ui.ui {}
+
+app.window {
+}

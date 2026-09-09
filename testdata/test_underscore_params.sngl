@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     // _-prefix params: usable in body, not targetable by name at call site.
     func parse(_input string, _index int) => _input
     func offset(_base int, delta int) => _base + delta
@@ -17,4 +18,8 @@ func testMixedUnderscoreAndNamed(t Test, c main) {
     // _base must be positional; delta can be named
     t.assert(c.offset(10, delta=5) == 15)
     t.assert(c.offset(10, 5) == 15)
+}
+
+app.window {
+    main
 }

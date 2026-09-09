@@ -4,12 +4,16 @@ import tr "sngl:tree"
 
 // Component declares exactly one child (bare type T).
 // Zero children: error.
-component RequiresOne(content ...component tr.one) {
+component RequiresOne(content ...component tr.one) ui {
     vbox {
         content
     }
 }
 
-component main {
+component main ui {
     RequiresOne {} // ERROR(check) "requires exactly one child"
+}
+
+window {
+    main
 }

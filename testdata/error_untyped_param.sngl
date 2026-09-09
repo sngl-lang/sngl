@@ -1,9 +1,14 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component Foo(value) { // ERROR(check) "must have a type hint or a default value"
+component Foo(value) ui { // ERROR(check) "must have a type hint or a default value"
     text(value="test")
 }
 
-component main {
+component main ui {
     Foo(value="hello")
+}
+
+app.window {
+    main
 }

@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 const primary = Style{
     color = #0000ff,
@@ -11,9 +12,13 @@ const secondary = Style{
     fontStyle = "italic",
 }
 
-component main {
+component main ui {
     vbox {
         text(value="hello", style=primary)
         text(value="world", style=secondary)
     }
+}
+
+app.window {
+    main
 }

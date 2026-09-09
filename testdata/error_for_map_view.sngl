@@ -7,8 +7,9 @@
 // only on the other three targets -- which is why the loop is refused here.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var scores map<string, int> = {alice=10}
 
     vbox {
@@ -16,4 +17,8 @@ component main {
             text(value="{k} = {v}")
         }
     }
+}
+
+app.window {
+    main
 }

@@ -8,8 +8,9 @@
 import . "sngl:ui"
 import . "sngl:test"
 import "sngl:i18n"
+import app "sngl:app"
 
-component SetCtxGreeting {
+component SetCtxGreeting ui {
     func label() => $"Hello"
     text(value=label())
 }
@@ -31,4 +32,7 @@ func testSetContextLastWriteWins(t Test, c SetCtxGreeting) {
     t.setContext(i18n.locale, "fr-FR")
     t.setContext(i18n.locale, "en")
     t.assert(c.label() == "Hello")
+}
+
+app.window {
 }

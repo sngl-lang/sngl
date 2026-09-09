@@ -1,5 +1,9 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 func foo() int {
     return "hello" // ERROR(check) "cannot return string as int"
+}
+
+app.window {
 }

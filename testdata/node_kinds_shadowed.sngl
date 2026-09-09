@@ -10,15 +10,19 @@ import . "sngl:app"
 // A slot is absent on purpose: it is a parameter of the component being
 // checked, resolved before any component of that name, not a #[builtin] node —
 // so there is nothing for a user declaration to shadow.
-component timer(label string, children ...component) {
+component timer(label string, children ...component) ui {
     text(value=label)
 }
 
-component errorBoundary(label string, children ...component) {
+component errorBoundary(label string, children ...component) ui {
     text(value=label)
 }
 
-component main {
+component main ui {
     timer(label="ordinary")
     errorBoundary(label="ordinary")
+}
+
+window {
+    main
 }

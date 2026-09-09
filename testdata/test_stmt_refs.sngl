@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 func testCallExpressionAndCallStatementRefs(t Test, c main) {
     t.assert(c.count == 0)
@@ -16,7 +17,7 @@ func testSubtestCallRefs(t Test, c main) {
     })
 }
 
-component main {
+component main ui {
     var count = 0
 
     func increment(n int) {
@@ -27,4 +28,8 @@ component main {
     }
 
     text(value=string(count))
+}
+
+app.window {
+    main
 }

@@ -9,17 +9,18 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 func sumPair(p struct {
     a int
     b int
 }) => p.a + p.b
 
-component bracket<T = struct {}>(on T = struct {}{}) {
+component bracket<T = struct {}>(on T = struct {}{}) ui {
     text(value="held")
 }
 
-component main {
+component main ui {
     var (
         empty = struct {}{}
         written = struct {
@@ -45,4 +46,8 @@ func testTheWrittenTypeIsTheInferredOne(t Test, c main) {
 func testTheEmptyStructIsAValue(t Test, c main) {
     c.empty = struct {}{}
     t.assert(c.total == 6)
+}
+
+app.window {
+    main
 }

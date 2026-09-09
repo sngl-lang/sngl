@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct TreeNode {
     value int = 0
@@ -7,7 +8,7 @@ struct TreeNode {
     right option<TreeNode> = null
 }
 
-component tree_view(node TreeNode) {
+component tree_view(node TreeNode) ui {
     vbox {
         text #val(value=string(node.value))
         if node.left != null {
@@ -19,7 +20,7 @@ component tree_view(node TreeNode) {
     }
 }
 
-component main {
+component main ui {
     //       5
     //      / \
     //     3   8
@@ -47,4 +48,8 @@ func testRecursiveComponentMutation(t Test, c main) {
     c.node3.right = TreeNode{value=4}
     t.assert(c.val[3].value == "4")
     t.assert(c.val[4].value == "8")
+}
+
+app.window {
+    main
 }

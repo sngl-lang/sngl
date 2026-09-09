@@ -6,3 +6,6 @@ import "sngl:i18n"
 
 var name = "Alice"
 var bad = $"{name, plural, one{x} other{y}}" // ERROR(check) "numeric"
+
+window {
+}

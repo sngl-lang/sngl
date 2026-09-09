@@ -1,10 +1,15 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Bad {
     x int
     func x() => 1 // ERROR(check) "duplicate declaration"
 }
 
-component main {
+component main ui {
     text(value="x")
+}
+
+app.window {
+    main
 }

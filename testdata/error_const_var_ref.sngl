@@ -1,8 +1,13 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var x = "test"
     const xl = x.length() // ERROR(check) "non-const"
 
     text(value="test")
+}
+
+app.window {
+    main
 }

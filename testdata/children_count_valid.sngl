@@ -2,20 +2,21 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
+import app "sngl:app"
 
-component RequiresOne(content ...component tr.one) {
+component RequiresOne(content ...component tr.one) ui {
     vbox { content }
 }
 
-component OptionalOne(content ...component option<tr.default>) {
+component OptionalOne(content ...component option<ui>) ui {
     vbox { content }
 }
 
-component AnyChildren(children ...component) {
+component AnyChildren(children ...component) ui {
     vbox { children }
 }
 
-component main {
+component main ui {
     RequiresOne {
         text(value="exactly one")
     }
@@ -29,4 +30,8 @@ component main {
         text(value="two")
         text(value="three")
     }
+}
+
+app.window {
+    main
 }

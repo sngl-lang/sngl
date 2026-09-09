@@ -16,8 +16,9 @@
 // checks and the error is one line rather than one per use.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var pair = {a=1, b=2}
     var out = 0
 
@@ -28,4 +29,8 @@ component main {
         out = pair.a
     })
     text(value=string(out))
+}
+
+app.window {
+    main
 }

@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import "sngl:i18n"
+import app "sngl:app"
 
 // Nested placeholders inside case bodies.
 var name = "Alice"
@@ -18,3 +19,6 @@ var msg2 = $"{count, plural,
     one{1 reply from {gender, select, male{him} female{her} other{them}}}
     other{# replies}
 }"
+
+app.window {
+}

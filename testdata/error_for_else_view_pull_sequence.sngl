@@ -6,8 +6,9 @@
 // a test that eats an element.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var rows list<string> = []
     var pulled iter<string> = rows
 
@@ -18,4 +19,8 @@ component main {
             text(value="nothing yet")
         }
     }
+}
+
+app.window {
+    main
 }

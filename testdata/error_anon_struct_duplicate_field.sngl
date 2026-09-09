@@ -3,9 +3,14 @@
 // than typed `dyn`, which is what giving up here would mean.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var s = {a=1, a=2} // ERROR(check) "duplicate field \"a\" in struct literal"
 
     text(value=string(s.a))
+}
+
+app.window {
+    main
 }

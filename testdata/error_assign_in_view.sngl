@@ -3,11 +3,16 @@
 // html dropped it, silently, on a program that compiled clean.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 var n = 0
 
-component main {
+component main ui {
     n = 5 // ERROR(check) "not a statement in a view body"
 
     text(value="{n}")
+}
+
+app.window {
+    main
 }

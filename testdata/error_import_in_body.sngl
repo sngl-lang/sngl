@@ -1,6 +1,7 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component inComponent {
+component inComponent ui {
     import q "sngl:seq" // ERROR(check) "an import may only be written at the root of a file"
 
     for var i = q.count(3) {
@@ -18,7 +19,11 @@ func inFunc() int {
     return total
 }
 
-component main {
+component main ui {
     inComponent()
     text(value="${inFunc()}")
+}
+
+app.window {
+    main
 }

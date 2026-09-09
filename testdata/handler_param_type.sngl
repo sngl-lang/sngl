@@ -4,8 +4,9 @@
 // of it.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component form(:draft string) {
+component form(:draft string) ui {
     vbox {
         // Name only: the type comes from the declaration.
         input(value=draft, @change(e) {
@@ -22,9 +23,13 @@ component form(:draft string) {
     }
 }
 
-component main {
+component main ui {
     var draft = ""
     vbox {
         form(draft=draft)
     }
+}
+
+app.window {
+    main
 }

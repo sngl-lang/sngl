@@ -2,11 +2,16 @@
 // than changing it.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 var flag = false
 
-component main {
+component main ui {
     flag!! // ERROR(check) "not a statement in a view body"
 
     text(value="{flag}")
+}
+
+app.window {
+    main
 }

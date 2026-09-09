@@ -3,12 +3,17 @@
 // neither an annotation nor a default is unannotated -- see
 // error_untyped_param.sngl for that.
 import . "sngl:ui"
+import app "sngl:app"
 
-component Holder(value dyn) {
+component Holder(value dyn) ui {
     text(value="held")
 }
 
-component main {
+component main ui {
     Holder(value=1)
     Holder(value="two")
+}
+
+app.window {
+    main
 }

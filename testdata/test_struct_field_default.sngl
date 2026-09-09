@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // A field a literal omits takes its declared default. The checker installed a
 // placeholder at declaration time and nothing ever replaced it, so the default
@@ -11,7 +12,7 @@ struct P {
     tag string = "none"
 }
 
-component main { text(value="x") }
+component main ui { text(value="x") }
 
 func testOmittedFieldTakesItsDefault(t Test, c main) {
     var p P = {y=1}
@@ -20,4 +21,8 @@ func testOmittedFieldTakesItsDefault(t Test, c main) {
 
     // Writing the default out gives the same value.
     t.assert(p == P{x=7, y=1, tag="none"})
+}
+
+app.window {
+    main
 }

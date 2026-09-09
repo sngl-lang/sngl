@@ -1,11 +1,12 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Config {
     name string = ""
     value int = 0
 }
 
-component Widget(title = "default", count = 0, active = true, items list<int> = [], config Config) {
+component Widget(title = "default", count = 0, active = true, items list<int> = [], config Config) ui {
     func label() => title + ": " + string(count)
     func doubled() => count * 2
     func negated() => -count
@@ -27,7 +28,7 @@ component Widget(title = "default", count = 0, active = true, items list<int> = 
     }
 }
 
-component main {
+component main ui {
     var n = 10
     var active = true
     var things = [1, 2, 3]
@@ -35,4 +36,8 @@ component main {
 
     Widget(title="test", count=n, active=active, items=things, config=cfg)
     text(value=string(n))
+}
+
+app.window {
+    main
 }

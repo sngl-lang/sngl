@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Local {
     a int
@@ -18,6 +19,10 @@ func inner() int {
     return takesFileScoped(Local{a=1}) // ERROR(check) "cannot pass Local as Local"
 }
 
-component main {
+component main ui {
     text(value="${inner()}")
+}
+
+app.window {
+    main
 }

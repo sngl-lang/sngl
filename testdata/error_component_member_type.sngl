@@ -5,7 +5,7 @@ import . "sngl:test"
 // Component-instance member access is typed, not silently `dyn`: a wrong-typed
 // assignment or comparison through a component-typed value is caught. Before
 // members resolved through scope this degraded to `dyn` and slipped through.
-component counter {
+component counter ui {
     var count int = 0
     var label string = ""
     func doubled() => count * 2
@@ -24,4 +24,7 @@ func testTypedComputed(t Test, c counter) {
 func testMissingMember(t Test, c counter) {
     // No var, prop, method, or element ref named "nope": a hard error, not dyn.
     t.assert(c.nope == 0) // ERROR(check) "no member \"nope\" on component counter"
+}
+
+window {
 }

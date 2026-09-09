@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct User {
     name string = ""
@@ -6,7 +7,7 @@ struct User {
     loggedIn bool = false
 }
 
-component Counter(label = "") {
+component Counter(label = "") ui {
     var count = 0
 
     hbox {
@@ -16,7 +17,7 @@ component Counter(label = "") {
     }
 }
 
-component main {
+component main ui {
     var (
         user = User{name="World", age=25, loggedIn=false}
         count = 0
@@ -37,4 +38,8 @@ component main {
         Counter(label="Clicks")
         button(text=user.loggedIn ? "Logout" : "Login", @click { user.loggedIn!! })
     }
+}
+
+app.window {
+    main
 }

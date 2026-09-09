@@ -1,11 +1,16 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Opts {
     text string
 }
-component Button(text string) {}
+component Button(text string) ui {}
 
-component main {
+component main ui {
     var opts = Opts{text="hi"}
     Button(text="explicit", ...opts) // ERROR(check) "already provided"
+}
+
+app.window {
+    main
 }

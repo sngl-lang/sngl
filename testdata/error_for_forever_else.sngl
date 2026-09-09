@@ -2,6 +2,7 @@
 // body: the block is unreachable rather than an empty case.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 func f() int {
     for { // ERROR(check) "has no else case"
@@ -9,4 +10,7 @@ func f() int {
     } else {
         return 2
     }
+}
+
+app.window {
 }

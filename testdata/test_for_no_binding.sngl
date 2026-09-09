@@ -6,8 +6,9 @@
 import "sngl:seq"
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
-component tally {
+component tally ui {
     var labels = ["a", "b", "c"]
 
     vbox {
@@ -24,4 +25,7 @@ func testBindsNothingButStillRepeats(t Test, c tally) {
     t.assert(c.tick.length() == 2)
     t.assert(c.dash.length() == 3)
     t.assert(c.dash[2].value == "-")
+}
+
+app.window {
 }

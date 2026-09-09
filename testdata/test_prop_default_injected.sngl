@@ -1,16 +1,17 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // A prop the call omits is supplied by the checker, so every consumer reads
 // one list of arguments instead of evaluating the declaration's defaults for
 // itself. The interpreter used to bind every prop to its default and then
 // override; codegen never did, which is the same split struct field defaults
 // had.
-component badge(label string = "none", count int = 0) {
+component badge(label string = "none", count int = 0) ui {
     text(value=label + string(count))
 }
 
-component main {
+component main ui {
     var shown string = ""
     badge()
     badge(label="set")
@@ -20,4 +21,8 @@ component main {
 // The instance sees the declared default without the evaluator supplying it.
 func testOmittedPropTakesItsDefault(t Test, c main) {
     t.assert(c.shown == "")
+}
+
+app.window {
+    main
 }

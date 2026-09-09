@@ -6,10 +6,11 @@
 
 import . "sngl:ui"
 import "sngl:seq"
+import app "sngl:app"
 
 const by = 2
 
-component main {
+component main ui {
     var n = 0
 
     vbox {
@@ -19,4 +20,8 @@ component main {
             text(value="nothing yet")
         }
     }
+}
+
+app.window {
+    main
 }

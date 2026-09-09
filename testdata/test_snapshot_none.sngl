@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component counter {
+component counter ui {
     var count = 0
 
     vbox {
@@ -18,4 +19,7 @@ component counter {
 func testFoo(t Test, c counter) {
     c.count += 3
     t.snapshot("Foo")
+}
+
+app.window {
 }

@@ -3,11 +3,16 @@
 // renderer can express -- so it is refused here rather than rendered once.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var n int = 0
 
     for n < 3 { // ERROR(check) "cannot be written in a view body"
         text(value="x")
     }
+}
+
+app.window {
+    main
 }

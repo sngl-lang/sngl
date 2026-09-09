@@ -1,6 +1,7 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var n = 5
     var name = "hello"
 
@@ -15,4 +16,8 @@ component main {
     func nsNoop() => int.noop(7)
 
     text(value=string(doubled))
+}
+
+app.window {
+    main
 }

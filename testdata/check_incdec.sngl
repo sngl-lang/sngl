@@ -1,8 +1,12 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 var count int
 
-component Counter {
+component Counter ui {
     button(text="+", @click { count++ })
     button(text="-", @click { count-- })
+}
+
+app.window {
 }

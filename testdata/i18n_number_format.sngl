@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import "sngl:i18n"
+import app "sngl:app"
 
 // Number placeholder with style argument.
 var amount = 1234
@@ -10,3 +11,6 @@ var decimal = 9876
 var formatted = $"Score: {decimal, number, decimal}"
 var sci = 1234567.89
 var scientific = $"Distance: {sci, number, scientific}"
+
+app.window {
+}

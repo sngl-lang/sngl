@@ -3,12 +3,13 @@
 // names a position, and a written type is measured against it.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(Row)) {
+component table(rows list<Row>, cell component(Row)) ui {
     vbox {
         for var r = rows {
             cell(r)
@@ -16,10 +17,14 @@ component table(rows list<Row>, cell component(Row)) {
     }
 }
 
-component main {
+component main ui {
     table(rows=[]) {
         component cell(row string) { // ERROR(check) "cannot use string as Row for parameter \"row\" of slot \"cell\""
             text(value="x")
         }
     }
+}
+
+app.window {
+    main
 }

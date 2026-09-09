@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 var maybe option<int> = 3
 
@@ -18,6 +19,10 @@ func use() int {
     return 0
 }
 
-component main {
+component main ui {
     text(value=string(use()))
+}
+
+app.window {
+    main
 }

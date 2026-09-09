@@ -1,12 +1,13 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // Props print in the order they were written, which is the order the checker
 // recorded -- a positional arg is resolved to its name on the way in, so
 // `text({}, "x")` and `text(style={}, value="x")` are one thing by here.
 // Handlers print after them as bare `@name` markers: a snapshot records that a
 // handler is attached, never what it would do.
-component card {
+component card ui {
     var label = "hi"
 
     vbox {
@@ -26,4 +27,7 @@ func testWrittenOrder(t Test, c card) {
 func testReflectsCurrentState(t Test, c card) {
     c.label = "changed"
     t.snapshot("changed")
+}
+
+app.window {
 }

@@ -1,9 +1,14 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 component foo.bar { // ERROR(check) "extension namespace \"foo\" is not an imported library package"
     span() {}
 }
 
-component main {
+component main ui {
     text(value="hi")
+}
+
+app.window {
+    main
 }

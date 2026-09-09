@@ -8,7 +8,7 @@ window #home(title="Home", href="/index.html", favicon="/favicon.ico") {
     text(value="Home")
 }
 
-component main {
+component main ui {
     var h = home.href    // FOLD "/index.html"
     var t = home.title   // FOLD "Home"
     var f = home.favicon // FOLD "/favicon.ico"

@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var x = 5
 
     func double() => x * 2
@@ -14,4 +15,8 @@ func testReactiveMethodRead(t Test, c main) {
     t.assert(c.out.value == "10")
     c.bump.click()
     t.assert(c.out.value == "12")
+}
+
+app.window {
+    main
 }

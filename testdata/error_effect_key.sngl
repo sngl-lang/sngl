@@ -11,6 +11,7 @@
 // diagnostic for a list says so, because that is the mistake being made.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct pair {
     a int
@@ -21,7 +22,7 @@ struct hasList {
     tags list<string>
 }
 
-component main {
+component main ui {
     var (
         x = 0
         y = "s"
@@ -60,17 +61,21 @@ component main {
 // becomes a type is the call that binds it. Unchecked, the bracket reached
 // bubbletea as `m.__effect0_live[i] != k` over a []int, which Go does not
 // compile, and html as `!==` over an array, which is identity.
-component keyed<T>(k T) {
+component keyed<T>(k T) ui {
     effect(on=k, @mount {})
 
     text(value="keyed")
 }
 
-component keys {
+component keys ui {
     var n = 0
     var xs list<int> = [1]
 
     keyed(k=n)
 
     keyed(k=xs) // ERROR(check) "component keyed keys an effect on a value this call binds to list<int>"
+}
+
+app.window {
+    main
 }

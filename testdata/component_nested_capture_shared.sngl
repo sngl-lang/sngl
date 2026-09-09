@@ -10,11 +10,12 @@
 
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 0
 
-    component inner(step = 1) {
+    component inner(step = 1) ui {
         var runs = 0
 
         effect(@mount {
@@ -32,4 +33,8 @@ component main {
 
 func testTwoInstantiationsShareOneCapturedVar(t Test, c main) {
     t.assert(c.count == 11)
+}
+
+app.window {
+    main
 }

@@ -3,14 +3,19 @@
 // not a callback declared to return none.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component edit(onEdit func(s string)) {
+component edit(onEdit func(s string)) ui {
     text(value="x")
 }
 
-component main {
+component main ui {
     var log = ""
 
     edit(onEdit=func(s) => s)             // ERROR(check) "cannot use func(string) string as func(string)"
     edit(onEdit=func(s string, n int) {}) // ERROR(check) "cannot use func(string, int) as func(string)"
+}
+
+app.window {
+    main
 }

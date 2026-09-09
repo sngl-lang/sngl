@@ -5,6 +5,7 @@
 import . "sngl:ui"
 import . "sngl:time"
 import "sngl:i18n"
+import app "sngl:app"
 
 func test() {
     // Translation entry points.
@@ -49,4 +50,7 @@ func test() {
         female = "she",
         other = "they",
     })
+}
+
+app.window {
 }

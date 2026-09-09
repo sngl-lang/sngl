@@ -5,12 +5,13 @@
 // EnumMemberKeepsIdent asserts that half, which no FOLD directive can express.
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 enum Color { red, green, blue }
 
 const picked = Color.red
 
-component enumfold {
+component enumfold ui {
     var isRed = picked == Color.red    // FOLD true
     var isBlue = picked == Color.blue  // FOLD false
     var notBlue = picked != Color.blue // FOLD true
@@ -25,4 +26,7 @@ func testEnumFolding(t Test, c enumfold) {
     t.assert(c.isBlue == false)
     t.assert(c.notBlue == true)
     t.assert(c.current == Color.red)
+}
+
+app.window {
 }

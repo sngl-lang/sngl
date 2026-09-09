@@ -6,7 +6,7 @@ import . "sngl:ui"
 // INLAY(50vh) "(400px)"
 // INLAY-NOT(8px) ""
 // INLAY-NOT(20pct) ""
-component App {
+component App ui {
     var headerSize measurement = 16em
     var bodySize measurement = 1rem
     var halfWidth measurement = 50vw

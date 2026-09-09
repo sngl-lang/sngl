@@ -1,7 +1,12 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var mode enum { light, dark } = light
 
     text(value=string(mode))
+}
+
+app.window {
+    main
 }

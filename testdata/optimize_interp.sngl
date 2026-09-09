@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component interpfold {
+component interpfold ui {
     // Unary float negation
     var fneg = -3.14 // FOLD -3.14
     var fneg2 = -2.5 // FOLD -2.5
@@ -19,4 +20,7 @@ func testValues(t Test, c interpfold) {
     t.assert(c.fneg == -3.14)
     t.assert(c.bnot == false)
     t.assert(c.chain == 20)
+}
+
+app.window {
 }

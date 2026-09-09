@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var a int = 1
     var b int = 2
     var c int = 3
@@ -23,4 +24,8 @@ func testTernaryChain(t Test, c main) {
 
 func testTernaryDeep(t Test, c main) {
     t.assert(c.deep == "cMax")
+}
+
+app.window {
+    main
 }

@@ -4,8 +4,9 @@
 
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var (
         a = 0
         b = 0
@@ -36,4 +37,8 @@ func testOneKeyChangingLeavesTheOthersAlone(t Test, c main) {
     t.assert(c.out.value == "2:1:1")
     c.b = 1
     t.assert(c.out.value == "2:2:1")
+}
+
+app.window {
+    main
 }

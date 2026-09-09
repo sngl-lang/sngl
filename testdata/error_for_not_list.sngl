@@ -1,7 +1,11 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 func foo() {
     var x int
     for var item = x { // ERROR(check) "for iterator must be list"
     }
+}
+
+app.window {
 }

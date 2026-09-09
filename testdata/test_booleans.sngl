@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component flags {
+component flags ui {
     var active = true
     var hidden = false
     var count = 0
@@ -55,4 +56,7 @@ func testZeroAndEmptyChecks(t Test, c flags) {
     t.assert(c.count != 0)
     c.label = "x"
     t.assert(c.label != "")
+}
+
+app.window {
 }

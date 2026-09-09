@@ -1,4 +1,6 @@
 import . "sngl:test"
+import ui "sngl:ui"
+import app "sngl:app"
 
 struct Config {
     name string
@@ -17,9 +19,9 @@ struct ItemProps {
 func greet(name string, greeting string) string { return greeting + ", " + name }
 func addInts(x int, y int) int { return x + y }
 
-component Item(label string, count int) {}
+component Item(label string, count int) ui.ui {}
 
-component main {
+component main ui.ui {
     func greetLocal(name string, greeting string) string { return greeting + ", " + name }
 
     // Struct field order doesn't matter — spread binds by name.
@@ -35,7 +37,7 @@ component main {
     Item #it(...opts)
 }
 
-component root {
+component root ui.ui {
     main #m()
 }
 
@@ -55,4 +57,8 @@ func testStructSpreadComponentProps(t Test, c root) {
     var item = c.m.it
     t.assert(item.label == "hello")
     t.assert(item.count == 5)
+}
+
+app.window {
+    main
 }

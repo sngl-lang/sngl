@@ -1,12 +1,13 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Vec {
     x int = 0
     y int = 0
 }
 
-component geo {
+component geo ui {
     var pos = Vec{x=5, y=10}
     func sum() => pos.x + pos.y
 
@@ -23,4 +24,7 @@ func testComputedFromStruct(t Test, c geo) {
     t.assert(c.sum == 15)
     c.pos.x = 20
     t.assert(c.sum == 30)
+}
+
+app.window {
 }

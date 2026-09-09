@@ -26,6 +26,7 @@
 
 import . "sngl:test"
 import . "sngl:ui"
+import app "sngl:app"
 
 func run(f func()) {
     f()
@@ -33,7 +34,7 @@ func run(f func()) {
 
 func applied(f func() int) => f()
 
-component inner(@fired) {
+component inner(@fired) ui {
     var ran = 0
 
     func go() {
@@ -46,7 +47,7 @@ component inner(@fired) {
     text(value="{ran}")
 }
 
-component main {
+component main ui {
     var (
         viaMethod = 0
         emitted = 0
@@ -86,4 +87,8 @@ func testACallbackEmits(t Test, c main) {
     c.child.go()
     t.assert(c.child.ran == 1)
     t.assert(c.emitted == 1)
+}
+
+app.window {
+    main
 }

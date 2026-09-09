@@ -1,8 +1,13 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     text(value="hello") { // ERROR(check) "does not accept children"
         vbox {
         }
     }
+}
+
+app.window {
+    main
 }

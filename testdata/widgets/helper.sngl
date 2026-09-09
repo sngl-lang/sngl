@@ -1,5 +1,5 @@
 import . "sngl:ui"
 
-component _helper {
+component _helper ui {
     text(value="I am a private helper")
 }

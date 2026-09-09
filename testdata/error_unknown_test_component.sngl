@@ -1,11 +1,15 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component real {
+component real ui {
     var x = 0
     text(value="{x}")
 }
 
 func testTargetsUnknownComponent(t Test, c fake) { // ERROR(check) "unknown type"
     t.assert(c.x == 0)
+}
+
+app.window {
 }

@@ -1,11 +1,16 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 func pair<A, B>(a A, b B) A {
     return a
 }
 
-component main {
+component main ui {
     var bad = pair(1) // ERROR(check) "missing required argument"
 
     text(value="x")
+}
+
+app.window {
+    main
 }

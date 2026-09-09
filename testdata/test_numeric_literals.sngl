@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component main {
+component main ui {
     var hex = int.parse("FF", 16)
     var oct = int.parse("77", 8)
     var bin = int.parse("1010", 2)
@@ -31,4 +32,8 @@ func testUnderscoreSeparator(t Test, c main) {
 
 func testHexWithSeparator(t Test, c main) {
     t.assert(c.hexSep == 65535)
+}
+
+app.window {
+    main
 }

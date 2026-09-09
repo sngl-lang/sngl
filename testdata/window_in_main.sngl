@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:app"
 
-component main {
+component main ui {
     var count = 0
 
     window #home(title="Home", href="/") {

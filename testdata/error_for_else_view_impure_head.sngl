@@ -5,8 +5,9 @@
 // with no host language cannot hold.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var rows list<string> = []
     var seen = 0
 
@@ -22,4 +23,8 @@ component main {
             text(value="nothing yet")
         }
     }
+}
+
+app.window {
+    main
 }

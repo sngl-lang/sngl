@@ -7,16 +7,21 @@
 // count.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Point {
     x int = 0
     y int = 0
 }
 
-component main {
+component main ui {
     var base Point = {x=1, y=2}
     var over Point = {...base, x=9}
     var bad Point = {x=1, x=2, y=3} // ERROR(check) "duplicate field \"x\" in struct literal"
 
     text(value=string(over.x + bad.y))
+}
+
+app.window {
+    main
 }

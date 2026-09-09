@@ -1,6 +1,7 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var (
         handler func() = null
         callback func(string) int = null
@@ -8,4 +9,8 @@ component main {
         complex func(func(int) string) func() = null
         transform func(string) string = null
     )
+}
+
+app.window {
+    main
 }

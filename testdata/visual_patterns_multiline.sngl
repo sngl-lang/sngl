@@ -1,6 +1,7 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var count = 0
     var name = ""
 
@@ -27,4 +28,8 @@ component main {
     ) {
         text(value="inside")
     }
+}
+
+app.window {
+    main
 }

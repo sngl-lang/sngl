@@ -3,6 +3,7 @@
 // `select`. The parser must not panic.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct widget {}
 
@@ -20,4 +21,7 @@ func widget.time() string {
 
 func widget.datetime() string {
     return "now"
+}
+
+app.window {
 }

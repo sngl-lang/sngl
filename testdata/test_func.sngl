@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 func testPureExpressionFunctions(t Test, c main) {
     t.assert(c.add(2, 3) == 5)
@@ -34,7 +35,7 @@ func testVoidActionFunctions(t Test, c main) {
     t.assert(c.count == 8)
 }
 
-component main {
+component main ui {
     var count = 10
 
     func add(a int, b int) => a + b
@@ -55,4 +56,8 @@ component main {
     }
 
     text(value=label())
+}
+
+app.window {
+    main
 }

@@ -4,8 +4,10 @@
 
 import . "sngl:test"
 import "sngl:i18n"
+import ui "sngl:ui"
+import app "sngl:app"
 
-component Counter {
+component Counter ui.ui {
     var n = 1234
     func formatted() => i18n.numberInt(n, "decimal")
 }
@@ -24,4 +26,7 @@ func testLastWriteWins(t Test, c Counter) {
     t.setContext(i18n.locale, "de-DE")
     t.setContext(i18n.locale, "en-US")
     t.assert(c.formatted() == "1,234")
+}
+
+app.window {
 }

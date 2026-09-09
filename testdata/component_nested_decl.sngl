@@ -3,13 +3,14 @@
 // emitted namespace would break, so both are here and both are rendered.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component first() {
-    component row(label = "") {
+component first() ui {
+    component row(label = "") ui {
         text(value="row " + label)
     }
 
-    component labelled(label = "") {
+    component labelled(label = "") ui {
         vbox {
             row(label=label)
         }
@@ -21,17 +22,21 @@ component first() {
     }
 }
 
-component second() {
-    component cell(label = "") {
+component second() ui {
+    component cell(label = "") ui {
         text(value="cell " + label)
     }
 
     cell(label="c")
 }
 
-component main {
+component main ui {
     vbox {
         first()
         second()
     }
+}
+
+app.window {
+    main
 }

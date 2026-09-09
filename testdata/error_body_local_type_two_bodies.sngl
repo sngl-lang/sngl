@@ -1,10 +1,11 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Two bodies each declaring Local scope the name correctly, but both
 // declarations land in one package and no backend renames either, so the host
 // would get two types of that name. #198 hoists and renames per body and
 // removes this error.
-component first {
+component first ui {
     struct Local {
         a int
     }
@@ -14,7 +15,7 @@ component first {
     text(value="${here.a}")
 }
 
-component second {
+component second ui {
     struct Local { // ERROR(check) "is declared in another body of this package"
         b string
     }
@@ -24,7 +25,11 @@ component second {
     text(value=here.b)
 }
 
-component main {
+component main ui {
     first()
     second()
+}
+
+app.window {
+    main
 }

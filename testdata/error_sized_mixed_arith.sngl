@@ -1,10 +1,14 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Arithmetic between two different numeric types is rejected: the operands
 // must be brought to a common type with an explicit cast first. This keeps
 // opeval single-typed — it never has to reconcile a mixed operand pair.
-component mixed {
+component mixed ui {
     var a int8 = 10
     var b int16 = 20
     func bad() => a + b // ERROR(check) "operator + not defined for int8 and int16"
+}
+
+app.window {
 }

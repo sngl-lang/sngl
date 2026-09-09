@@ -6,11 +6,12 @@
 // into code that does not build.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component outer() {
+component outer() ui {
     var count = 0
 
-    component inner(depth = 0) { // ERROR(check) "recurses and reads the state of the body it is declared in"
+    component inner(depth = 0) ui { // ERROR(check) "recurses and reads the state of the body it is declared in"
         vbox {
             text(value="{count}")
             if depth < 2 {
@@ -22,6 +23,10 @@ component outer() {
     inner(depth=0)
 }
 
-component main {
+component main ui {
     outer()
+}
+
+app.window {
+    main
 }

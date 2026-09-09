@@ -1,8 +1,13 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     button(@click { foo() }, @click { bar() }) // ERROR(check) "duplicate event handler"
 }
 
 func foo() {}
 func bar() {}
+
+app.window {
+    main
+}

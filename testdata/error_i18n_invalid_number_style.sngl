@@ -2,6 +2,10 @@
 
 import . "sngl:ui"
 import "sngl:i18n"
+import app "sngl:app"
 
 var n int = 5
 var bad = $"Score: {n, number, frobble}" // ERROR(check) "invalid number style"
+
+app.window {
+}

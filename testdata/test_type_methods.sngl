@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 func testTypeQualifiedCalls(t Test, c main) {
     t.assert(int.double(5) == 10)
@@ -14,7 +15,7 @@ func testMethodSyntaxCalls(t Test, c main) {
     t.assert(c.name.exclaim() == "hello!")
 }
 
-component main {
+component main ui {
     var (
         n = 5
         name = "hello"
@@ -25,4 +26,8 @@ component main {
     func string.exclaim(s string) => "{s}!"
 
     text(value="test")
+}
+
+app.window {
+    main
 }

@@ -1,6 +1,7 @@
 import . "sngl:ui"
 import . "sngl:time"
 import "sngl:i18n"
+import app "sngl:app"
 
 // Date placeholder with style argument.
 // Demonstrates the {<expr>, <type>, <style>} 3-arg form where the third
@@ -18,3 +19,6 @@ var startedAt = $"Started at {t, time, short}"
 // dateTime placeholder.
 var dt datetime
 var stamp = $"Timestamp: {dt, dateTime, medium}"
+
+app.window {
+}

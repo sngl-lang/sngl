@@ -3,5 +3,9 @@
 // errors — there's no way to know K and V.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 var bad = {1="one", 2="two"} // ERROR(check) "expected type"
+
+app.window {
+}

@@ -13,6 +13,7 @@
 // compiler's bookkeeping and no program can write it.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Point {
     x int = 0
@@ -21,9 +22,13 @@ struct Point {
 
 func takePoint(p Point) => p.x + p.y
 
-component main {
+component main ui {
     var inline = {x=1, y=2}
     var a = takePoint(inline) // ERROR(check) "cannot pass struct { x int, y int } as Point"
 
     text(value=string(a))
+}
+
+app.window {
+    main
 }

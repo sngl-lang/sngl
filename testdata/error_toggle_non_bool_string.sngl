@@ -1,10 +1,15 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Bug: toggle (`!!`) on string passes typecheck.
-component main {
+component main ui {
     var s = "x"
     button(@click {
         s!! // ERROR(check) "bool"
     })
     text(value=s)
+}
+
+app.window {
+    main
 }

@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // A visual node at the top level is the package's own body, so an unresolvable
 // name here is the same error it would be anywhere else a node is written --
@@ -6,5 +7,9 @@ import . "sngl:ui"
 // only say the position was unexpected.
 foobar // ERROR(check) "unknown component \"foobar\""
 
-component main {
+component main ui {
+}
+
+app.window {
+    main
 }

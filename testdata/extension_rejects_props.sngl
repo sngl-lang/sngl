@@ -1,5 +1,6 @@
 import sngl "sngl:ui"
 import "sngl:platform/html"
+import app "sngl:app"
 
 // An override's prop list is a selection of what the declaration it overrides
 // declares, not a declaration of its own: the base owns the types, and a
@@ -8,6 +9,10 @@ component sngl.text[html.platform](extra string) { // ERROR(check) "its type bel
     span(textContent=value) {}
 }
 
-component main {
+component main sngl.ui {
     text(value="hi")
+}
+
+app.window {
+    main
 }

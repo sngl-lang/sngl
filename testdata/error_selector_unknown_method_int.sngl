@@ -1,11 +1,16 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // Bug: checker silently accepts unknown method calls on primitive types.
 // `int` has no method `bogusMethod`, but the selector resolution falls through
 // without producing a diagnostic (see internal/checker/expr.go inferIndex/select
 // — primitives miss the same "no method/field" check that struct/enum honor).
-component main {
+component main ui {
     var i = 5
     var bad = i.bogusMethod() // ERROR(check) "no method"
     text(value="x")
+}
+
+app.window {
+    main
 }

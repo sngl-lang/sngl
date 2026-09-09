@@ -1,7 +1,11 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 const x = 1
 
 func foo() {
     x = 2 // ERROR(check) "cannot assign to const"
+}
+
+app.window {
 }

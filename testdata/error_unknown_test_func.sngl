@@ -1,11 +1,15 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component real {
+component real ui {
     var x = 0
     text(value=string(x))
 }
 
 func testCallsUnknownFunction(t Test, c real) { // ERROR(test) "unsupported method \"bogus\""
     c.bogus()
+}
+
+app.window {
 }

@@ -1,12 +1,17 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component Button(variant = "primary", @click) {
+component Button(variant = "primary", @click) ui {
     button(text="Click me", @click { click(1) })
 }
 
-component main {
+component main ui {
     var count = 0
 
     Button(variant="primary", @click(e) { count += e })
     text(value=string(count))
+}
+
+app.window {
+    main
 }

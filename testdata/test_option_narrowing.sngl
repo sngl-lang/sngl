@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 struct Node {
     value int = 0
@@ -14,7 +15,7 @@ func valueOf(n Node) int {
     return n.value
 }
 
-component main {
+component main ui {
     var maybe option<int> = 3
     var absent option<int> = null
 
@@ -65,4 +66,8 @@ func testNegatedTestNarrowsTheElseArm(t Test) {
     var maybe option<int> = 5
     var got = maybe == null ? 0 : double(maybe)
     t.assert(got == 10)
+}
+
+app.window {
+    main
 }

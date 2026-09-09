@@ -1,5 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // int.parse is an intrinsic whose declared body is the placeholder `return 0`,
 // and the interpreter answers it from its own implementation instead.
@@ -10,7 +11,7 @@ import . "sngl:test"
 // The drop is asserted where it is observable —
 // cmd/sngl/testdata/generate_int_parse.txt, where the const folder had been
 // baking the placeholder's 0 into the output.
-component main {
+component main ui {
     const parsed = int.parse("FF", 16)
     text(value="{parsed}")
 }
@@ -18,4 +19,8 @@ component main {
 func testPlaceholderDoesNotFold(t Test, c main) {
     t.assert(c.parsed == 255)
     t.assert(int.parse("FF", 16) == 255)
+}
+
+app.window {
+    main
 }

@@ -4,7 +4,7 @@
 import . "sngl:ui"
 import . "sngl:app"
 
-component main {
+component main ui {
     window(width=320) { // ERROR(check) "unknown prop \"width\" on component window"
         text(value="hi")
     }

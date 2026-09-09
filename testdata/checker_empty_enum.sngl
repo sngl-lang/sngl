@@ -1,7 +1,12 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 enum Empty {}
 
-component main {
+component main ui {
     text(value="ok")
+}
+
+app.window {
+    main
 }

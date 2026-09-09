@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 func identity<T>(x T) => x
 
@@ -11,4 +12,7 @@ func test() {
     var b = identity("hello")
     var items list<int> = [1, 2]
     var c = first(items)
+}
+
+app.window {
 }

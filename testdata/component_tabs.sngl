@@ -1,9 +1,10 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // tabs: state-binding fixture — mutating the bound `selected`
 // index changes the active tab.
-component main {
+component main ui {
     var idx = 0
     tabs(items=["Overview", "Details", "Settings"], selected=idx) {
         text(value="Overview content")
@@ -18,4 +19,8 @@ func testTabsSelectedMutates(t Test, c main) {
     t.assert(c.idx == 2)
     c.idx = 1
     t.assert(c.idx == 1)
+}
+
+app.window {
+    main
 }

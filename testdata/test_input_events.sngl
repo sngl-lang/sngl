@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component editor {
+component editor ui {
     var name = ""
     var lastCommit = ""
 
@@ -29,4 +30,7 @@ func testInputUpdatesBoundText(t Test, c editor) {
 func testChangeFiresOnCommit(t Test, c editor) {
     c.field.change({value="committed"})
     t.assert(c.lastCommit == "committed")
+}
+
+app.window {
 }

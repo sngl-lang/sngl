@@ -19,7 +19,7 @@ func takes(d duration) => d
 
 func sum(d duration) => d + 5s
 
-component main {
+component main ui {
     var ticks = 0
     var iv duration = 250ms
 
@@ -27,4 +27,8 @@ component main {
         ticks = ticks + 1
     })
     text(value="{takes(annotated).string()} {sum(zero).string()} {inferred.string()} {ticks}")
+}
+
+window {
+    main
 }

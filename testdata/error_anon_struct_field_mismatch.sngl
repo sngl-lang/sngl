@@ -1,12 +1,17 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 struct Point {
     x int = 0
     y int = 0
 }
 
-component main {
+component main ui {
     var bad Point = {x=1, z=2} // ERROR(check) "unknown field"
 
     text(value=string(bad.x))
+}
+
+app.window {
+    main
 }

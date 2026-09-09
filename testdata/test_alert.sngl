@@ -3,7 +3,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main {
+component main ui {
     var (
         confirmed = false
         filePath = ""
@@ -41,4 +41,8 @@ func testPickReturnsMockPath(t Test, c main) {
 func testPickFolderReturnsMockPath(t Test, c main) {
     c.filePath = File.pickFolder()
     t.assert(string.length(c.filePath) > 0)
+}
+
+window {
+    main
 }

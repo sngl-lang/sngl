@@ -10,6 +10,7 @@
 
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 func caller() => twice(3) == 6
 
@@ -22,7 +23,7 @@ func middle() => inner() * 2
 
 func inner() => 7
 
-component main {
+component main ui {
     // Same question inside a component, and in the other direction.
     func shown() => label()
 
@@ -37,4 +38,8 @@ func testForwardReference(t Test, c main) {
     t.assert(caller())
     t.assert(outer() == 15)
     t.assert(c.out.value == "twice: 6")
+}
+
+app.window {
+    main
 }

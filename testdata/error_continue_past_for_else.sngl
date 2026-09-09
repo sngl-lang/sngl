@@ -3,6 +3,7 @@
 // else does not run then either, because the body did.
 
 import . "sngl:ui"
+import app "sngl:app"
 
 func g(xs list<int>) int { // ERROR(check) "missing return"
     for var x = xs {
@@ -13,4 +14,7 @@ func g(xs list<int>) int { // ERROR(check) "missing return"
     } else {
         return 2
     }
+}
+
+app.window {
 }

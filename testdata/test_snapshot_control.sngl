@@ -1,10 +1,11 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // A snapshot is the concrete tree for the state it was taken in: only the live
 // branch of an `if` appears, and a `for` appears once per element with no trace
 // of the loop itself.
-component board {
+component board ui {
     var (
         items = ["a", "b"]
         ready = false
@@ -37,4 +38,7 @@ func testTrueBranch(t Test, c board) {
 func testForElse(t Test, c board) {
     c.items = c.none
     t.snapshot("empty")
+}
+
+app.window {
 }

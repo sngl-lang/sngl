@@ -1,10 +1,11 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
 // A colour is its complete value, alpha included. hex() dropped alpha in
 // every backend while the interpreter kept it, so an assertion on a
 // translucent colour passed headless and failed in a real build.
-component main {
+component main ui {
     var opaque color = color{r=255, g=0, b=0}
     var faded color = color{r=255, g=0, b=0, a=128}
     text(value=opaque.hex() + faded.hex())
@@ -17,4 +18,8 @@ func testAlphaIsPartOfTheValue(t Test, c main) {
     // Two colours differing only in alpha are two colours.
     t.assert(c.opaque != c.faded)
     t.assert(c.opaque == color{r=255, g=0, b=0, a=255})
+}
+
+app.window {
+    main
 }

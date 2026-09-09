@@ -1,6 +1,8 @@
 // A declaration's type parameters bind in a scope of their own, so T names the
 // parameter inside box and the struct outside it.
 
+import app "sngl:app"
+
 struct T {
     n int
 }
@@ -12,3 +14,6 @@ struct box<T> {
 func unwrap(b box<int>) => b.v
 
 func size(t T) => t.n
+
+app.window {
+}

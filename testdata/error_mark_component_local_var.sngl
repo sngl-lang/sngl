@@ -4,7 +4,7 @@
 import . "sngl:ui"
 import . "sngl:app"
 
-component main {
+component main ui {
     #[nosuchmacro] // ERROR(check) "unknown macro \"nosuchmacro\""
     var x = 1
 
@@ -12,4 +12,8 @@ component main {
     const y = 2
 
     text(value=string(x) + string(y))
+}
+
+window {
+    main
 }

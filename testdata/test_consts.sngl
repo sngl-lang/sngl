@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component config {
+component config ui {
     const max = 100
     const label = "limit"
     var count = 0
@@ -20,4 +21,7 @@ func testComputedFromConst(t Test, c config) {
     c.count = 30
     t.assert(c.remaining == 70)
     t.assert(c.out.value == "70 remaining")
+}
+
+app.window {
 }

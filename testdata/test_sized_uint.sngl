@@ -1,10 +1,12 @@
 import . "sngl:test"
+import ui "sngl:ui"
+import app "sngl:app"
 
 // Unsigned integer types, including full-range uint64 fidelity in the
 // interpreter/const-folder (values above 2^63 are modeled exactly, not as
 // two's-complement Go int). Operands are concrete-typed locals so the
 // arithmetic runs at the declared width.
-component uints {
+component uints ui.ui {
     var dummy = 0
 }
 
@@ -37,4 +39,7 @@ func testUnsignedSubtractWrap(t Test, c uints) {
     var z uint8 = 0
     // 0 - 1 wraps to 255 at uint8 width.
     t.assert(z - 1 == 255)
+}
+
+app.window {
 }

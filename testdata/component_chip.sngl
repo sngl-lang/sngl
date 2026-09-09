@@ -1,10 +1,15 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // chip: A-tier — declaration + label binding.
-component main {
+component main ui {
     hbox {
         chip(label="Tag")
         chip(label="Removable", removable=true)
         chip(label="Success", variant="success")
     }
+}
+
+app.window {
+    main
 }

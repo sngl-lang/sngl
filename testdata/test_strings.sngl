@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component greeting {
+component greeting ui {
     var name = "world"
     var msg = "hello"
 
@@ -29,4 +30,7 @@ func testContains(t Test, c greeting) {
 func testStringConcatAssignment(t Test, c greeting) {
     c.msg += " world"
     t.assert(c.msg == "hello world")
+}
+
+app.window {
 }

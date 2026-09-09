@@ -1,7 +1,8 @@
 import . "sngl:ui"
 import . "sngl:test"
+import app "sngl:app"
 
-component indexed {
+component indexed ui {
     var items = ["a", "b", "c"]
     var rate = 0.0
     var empty list<string> = []
@@ -31,4 +32,7 @@ func testFloatComparisons(t Test, c indexed) {
 func testListComparisons(t Test, c indexed) {
     t.assert(c.items.length() > 0)
     t.assert(c.empty.length() == 0)
+}
+
+app.window {
 }

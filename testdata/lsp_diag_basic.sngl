@@ -1,5 +1,10 @@
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     unknown_widget(value="hi") // ERROR(check) "undefined" //@ diag("undefined")
+}
+
+app.window {
+    main
 }

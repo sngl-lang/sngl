@@ -3,22 +3,27 @@
 // silently dropped declaration, which is what #184 was.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component outer() {
-    component inner(label = "") {
+component outer() ui {
+    component inner(label = "") ui {
         text(value=label)
     }
 
     inner(label="hi")
 }
 
-component other() {
+component other() ui {
     inner(label="nope") // ERROR(check) "undefined: inner"
 }
 
-component main {
+component main ui {
     vbox {
         outer()
         other()
     }
+}
+
+app.window {
+    main
 }

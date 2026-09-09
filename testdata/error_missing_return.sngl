@@ -1,4 +1,5 @@
 import . "sngl:ui"
+import app "sngl:app"
 
 // A block body must return on every path. An empty `{}` used to be exempt,
 // so a signature stub type checked — and so did anyone's unfinished function.
@@ -9,6 +10,10 @@ func unfinished(x int) int {} // ERROR(check) "missing return: \"unfinished\" mu
 // A void function needs no return, empty or not.
 func fine(x int) {}
 
-component main {
+component main ui {
     text(value="{fine(1)}")
+}
+
+app.window {
+    main
 }

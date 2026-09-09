@@ -2,15 +2,20 @@
 // other duplicate in a scope is.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
-    component row(label = "") {
+component main ui {
+    component row(label = "") ui {
         text(value=label)
     }
 
-    component row(label = "") { // ERROR(check) "row is already declared in this scope"
+    component row(label = "") ui { // ERROR(check) "row is already declared in this scope"
         text(value="second " + label)
     }
 
     row(label="a")
+}
+
+app.window {
+    main
 }

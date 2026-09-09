@@ -3,8 +3,9 @@
 // so nothing there depends on the order the entries come back in.
 
 import . "sngl:ui"
+import app "sngl:app"
 
-component main {
+component main ui {
     var scores map<string, int> = {alice=10, bob=20}
     var total = 0
     var report = ""
@@ -27,4 +28,8 @@ component main {
             total = total + sum()
         })
     }
+}
+
+app.window {
+    main
 }
