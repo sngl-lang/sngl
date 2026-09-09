@@ -1,13 +1,13 @@
 package docs
 
 import (
-	"slices"
 	"sort"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/ir"
 
 	// Blank-import the aggregator packages so Targets() observes every
 	// registered platform and language, not just the subset the rest of
@@ -70,7 +70,7 @@ func Targets() TargetCatalog {
 	cat := TargetCatalog{
 		PlatformCapabilities: platformCapNames(),
 		LanguageCapabilities: languageCapNames(),
-		GlobalOptions:        optionsForPackage("std"),
+		GlobalOptions:        sharedOptions(),
 	}
 
 	plats := codegen.Platforms()
@@ -197,58 +197,49 @@ func languageCapNames() []string {
 	return out
 }
 
-// The #[options] mark is on the loaded IR, so the declaration is found there
-// and the parsed source is then read for the comments the IR does not carry.
-// Nil when the package declares no options schema.
+// optionsForPackage is the build options a target accepts: the props of the
+// build-directive node its package declares. Nil when the package declares no
+// node -- which is what a target that is not registered here looks like.
 func optionsForPackage(uri string) []OptionDoc {
-	sd := checker.OptionsStruct(uri)
-	if sd == nil || sd.AST == nil {
-		return nil
-	}
-	for _, doc := range checker.PackageSource(uri) {
-		if doc == nil {
-			continue
-		}
-		if slices.Contains(doc.Stmts, ast.Stmt(sd.AST)) {
-			return extractOptionsStruct(doc, sd.AST)
-		}
-	}
-	return nil
+	return optionsForNode(checker.TargetNode(uri))
 }
 
-func extractOptionsStruct(doc *ast.Document, target *ast.StructDef) []OptionDoc {
+// sharedOptions are the props on `output` itself: the ones every target
+// accepts, whatever it is.
+func sharedOptions() []OptionDoc {
+	return optionsForNode(checker.OutputNode())
+}
 
-	// Collect comments by line and look a field's up by position. A comment
-	// written inside the struct is one of its body items; one written above
-	// the declaration is a statement of the document.
-	commentByLine := map[int]string{}
-	record := func(c *ast.Comment) {
-		if c.Block {
-			return
-		}
-		text := strings.TrimPrefix(c.Text, "//")
-		commentByLine[c.Pos.Line] = strings.TrimPrefix(text, " ")
+func optionsForNode(comp *ir.Component) []OptionDoc {
+	if comp == nil || comp.AST == nil {
+		return nil
 	}
-	for _, s := range doc.Stmts {
-		if c, ok := s.(*ast.Comment); ok {
-			record(c)
-		}
-	}
-	for _, item := range target.Body {
-		if c, ok := item.(*ast.Comment); ok {
-			record(c)
-		}
-	}
+	return optionDocs(comp.AST)
+}
 
+// optionDocs reads a node's declared props, in declaration order. The doc is
+// the run of comments written above the prop, which the parser hangs off the
+// parameter itself -- a parameter is not a statement, so there is no statement
+// list a comment could otherwise live in.
+func optionDocs(decl *ast.ComponentDecl) []OptionDoc {
 	var out []OptionDoc
-	for _, f := range target.Fields() {
-		for _, name := range f.Names {
-			out = append(out, OptionDoc{
-				Name: name,
-				Type: formatType(f.Type),
-				Doc:  fieldDocString(f.Pos.Line, commentByLine),
-			})
+	for _, item := range decl.Props.Props {
+		prop, ok := item.(ast.Param)
+		if !ok {
+			continue
 		}
+		var lines []string
+		for _, c := range prop.Leading {
+			if c.Block {
+				continue
+			}
+			lines = append(lines, strings.TrimPrefix(strings.TrimPrefix(c.Text, "//"), " "))
+		}
+		doc := joinDocLines(lines)
+		if doc == "" && prop.Trailing != nil && !prop.Trailing.Block {
+			doc = strings.TrimPrefix(strings.TrimPrefix(prop.Trailing.Text, "//"), " ")
+		}
+		out = append(out, OptionDoc{Name: prop.Name, Type: formatType(prop.Type), Doc: doc})
 	}
 	return out
 }

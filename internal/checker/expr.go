@@ -2991,7 +2991,11 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// A named slot's insertion is written as an ordinary node, so a
 			// bodyless one (`cell(r)`) parses as a call like any other and has
 			// to come back through the node path to be recognised.
-			isRootish := c.builtinNodeKind(id.Name) != ir.BuiltinNone ||
+			// Inside a build directive every bare call is a target node:
+			// `bubbletea()` is the node, not a call to a function of that
+			// name, and nothing else may be written there.
+			isRootish := c.outputDepth > 0 ||
+				c.builtinNodeKind(id.Name) != ir.BuiltinNone ||
 				c.enclosingSlot(id.Name) != nil
 			if isRootish {
 				vn := &ast.VisualNode{
@@ -3406,8 +3410,12 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
 	// Declare the platform namespace with its package so qualified access
-	// (e.g., html.Options) works inside platform blocks.
-	c.bindLib(ast.Pos{}, scope, &ir.Namespace{Name: name, Pkg: pkg})
+	// (e.g., html.element) works inside platform blocks. Replace, not Declare:
+	// the package also declares a component under the target's own name -- its
+	// build-directive node -- and inside the package the bare name is the
+	// package. The node is reached from an output block, which resolves target
+	// nodes off the package rather than through this scope.
+	scope.Replace(&ir.Namespace{Name: name, Pkg: pkg})
 
 	if c.platformScopeCache == nil {
 		c.platformScopeCache = make(map[string]*ir.Scope)
@@ -3621,7 +3629,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// #[builtin] mark of whatever the target resolves to rather than on the
 	// literal name, so a user component of the same name shadows them (D3).
 	kind, builtinComp := c.builtinNode(name)
-	if kind == ir.BuiltinOutput {
+	if kind == ir.BuiltinOutput && vn != c.outputDecl {
 		c.error(vn.Pos, "output may only be written at the root of a file: it is the package's build directive, not a node")
 		return nil
 	}
@@ -3686,6 +3694,15 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 				}
 			}
 		}
+	} else if c.outputDepth > 0 {
+		// Inside a build directive a bare name is a target, resolved off the
+		// target's own package rather than through the scope: nothing imports
+		// `sngl:platform/html` to write `output { js { html() } }`.
+		comp = c.targetNode(name, c.outputDepth)
+		if comp == nil {
+			c.reportUnknownTarget(vn.Pos, name, c.outputDepth)
+			return nil
+		}
 	} else if sym, ok := c.lookupComponentInScope(vn.Pos, name); ok {
 		if c.rejectUnexported(vn.Pos, sym) {
 			return nil
@@ -3747,7 +3764,11 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		if c.rejectNodeInFuncBody(vn.Pos, name) {
 			return nil
 		}
-		c.validateVisualNodeProps(vn, comp)
+		// A stand-in for a target with no registry here declares no props and
+		// carries no declaration, so there is no schema to hold its options to.
+		if c.outputDepth == 0 || comp.AST != nil {
+			c.validateVisualNodeProps(vn, comp)
+		}
 	}
 
 	// The specialization is what the whole call site is checked against, so it
@@ -3763,7 +3784,12 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// than rendered. Peel those off before the children are checked, so the
 	// arity and tree-kind rules below see only what the anonymous slot gets.
 	slotContent, childBlock := c.checkSlotPopulations(vn, spec)
+	outerOutputDepth := c.outputDepth
+	if vn == c.outputDecl || outerOutputDepth > 0 {
+		c.outputDepth = outerOutputDepth + 1
+	}
 	children := c.checkBlockIR(&childBlock)
+	c.outputDepth = outerOutputDepth
 	if spec != nil && spec.AST != nil {
 		ct := spec.ChildrenType
 		n := len(children)

@@ -76,13 +76,12 @@ component PackagePageView(view lookup.PackageView, baseHref = "") {
         KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref)
         KindSection(title="Data", items=view.data, hrefPrefix=baseHref)
         KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref)
-        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref)
     }
 }
 
 // StdlibSections renders only the non-component groups (types, enums, funcs,
-// constants, data, overrides, platform types) for a package. Used by the
-// stdlib landing page, where Components are surfaced via the tier gallery.
+// constants, data, overrides) for a package. Used by the stdlib landing page,
+// where Components are surfaced via the tier gallery.
 component StdlibSections(path = "", baseHref = "") {
     StdlibSectionsView(view=lookup.PackageIndex(path), baseHref=baseHref)
 }
@@ -95,7 +94,6 @@ component StdlibSectionsView(view lookup.PackageView, baseHref = "") {
         KindSection(title="Constants", items=view.constants, hrefPrefix=baseHref)
         KindSection(title="Data", items=view.data, hrefPrefix=baseHref)
         KindSection(title="Platform Overrides", items=view.overrides, hrefPrefix=baseHref)
-        KindSection(title="Platform Types", items=view.platformTypes, hrefPrefix=baseHref)
     }
 }
 
@@ -157,12 +155,6 @@ component PackageIndexView(view lookup.PackageView, hrefPrefix = "", activeName 
             text(value="Platform Overrides", style={fontWeight="bold", paddingTop=8, color="#888"})
             for var o = view.overrides {
                 SummaryRow(name=o.name, doc=o.doc, href=hrefPrefix + o.name, active=o.name == activeName)
-            }
-        }
-        if view.platformTypes.length() > 0 {
-            text(value="Platform Types", style={fontWeight="bold", paddingTop=8, color="#888"})
-            for var t = view.platformTypes {
-                SummaryRow(name=t.name, doc=t.doc, href=hrefPrefix + t.name, active=t.name == activeName)
             }
         }
     }

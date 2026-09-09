@@ -675,12 +675,22 @@ type Timer struct {
 	Handler  *Func
 }
 
-// Output represents a resolved output directive. Only permitted in the main file.
+// Output is one language/platform pair a build directive names, with the
+// options it carries. Only permitted in the program's own package.
+//
+// It is a projection of the directive's component tree and not the tree
+// itself: Options is the three levels of that tree flattened into the one
+// record a build reads, which is what every consumer wants. LangComp and
+// PlatComp are the two nodes it came from, kept so ir.Convert can put each
+// option back at the level it was written -- a target's own props are the only
+// record of which level that is.
 type Output struct {
 	AST      *ast.VisualNode
 	Lang     string
 	Platform string
 	Options  *StructLit
+	LangComp *Component `json:"-"`
+	PlatComp *Component `json:"-"`
 }
 
 // ReceiverParam is the surface name of the implicit method receiver (SNGL's
@@ -735,10 +745,6 @@ type StructDef struct {
 	Pkg     string
 	Doc     string      // doc comment for scheme-imported decls; empty for SNGL-sourced
 	Builtin BuiltinKind // compiler built-in marker (string-repr value type or generic constructor); BuiltinNone otherwise
-	// Options is the #[options] mark: this struct is a target's build-option
-	// schema. Every lookup of an option schema keys on the mark, so the
-	// declaration's name carries no meaning.
-	Options bool `json:",omitempty"`
 	// Anon says the declaration was synthesized for an anonymous struct, one
 	// per canonical field signature. It is an ordinary declaration in every
 	// other respect — a backend emits it and a value names it — and this only

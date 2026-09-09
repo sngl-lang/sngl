@@ -60,20 +60,18 @@ type PackageView struct {
 	Data             []Summary
 	// Functions carries the package's macros too: the template has no macro
 	// section, and dropping them would lose them from the site entirely.
-	Functions     []Summary
-	Overrides     []Summary
-	PlatformTypes []Summary
+	Functions []Summary
+	Overrides []Summary
 	// Has* booleans precomputed for SNGL `if` guards — lets the optimizer
 	// fold the section wrapper without needing to evaluate `list.length(…) > 0`
 	// against a struct-field list.
-	HasComponents    bool
-	HasTypes         bool
-	HasEnums         bool
-	HasConstants     bool
-	HasData          bool
-	HasFunctions     bool
-	HasOverrides     bool
-	HasPlatformTypes bool
+	HasComponents bool
+	HasTypes      bool
+	HasEnums      bool
+	HasConstants  bool
+	HasData       bool
+	HasFunctions  bool
+	HasOverrides  bool
 }
 
 // PropView is a component prop or event in list form.
@@ -447,9 +445,6 @@ func AllDeclPages() []DeclPage {
 		for _, o := range idx.Overrides {
 			add("overrides", o.Name, "")
 		}
-		for _, t := range idx.PlatformTypes {
-			add("platform-types", t.Name, "")
-		}
 	}
 	return out
 }
@@ -564,17 +559,16 @@ func mapIndex(idx *DeclIndex) PackageView {
 		return PackageView{}
 	}
 	v := PackageView{
-		Found:         true,
-		Title:         idx.Title,
-		Description:   idx.Description,
-		Library:       idx.Library,
-		Components:    mapSummaries(idx.Components),
-		Enums:         mapSummaries(idx.Enums),
-		Constants:     mapSummaries(idx.Constants),
-		Data:          mapSummaries(idx.Data),
-		Functions:     mapSummaries(append(slices.Clone(idx.Functions), idx.Macros...)),
-		Overrides:     mapSummaries(idx.Overrides),
-		PlatformTypes: mapSummaries(idx.PlatformTypes),
+		Found:       true,
+		Title:       idx.Title,
+		Description: idx.Description,
+		Library:     idx.Library,
+		Components:  mapSummaries(idx.Components),
+		Enums:       mapSummaries(idx.Enums),
+		Constants:   mapSummaries(idx.Constants),
+		Data:        mapSummaries(idx.Data),
+		Functions:   mapSummaries(append(slices.Clone(idx.Functions), idx.Macros...)),
+		Overrides:   mapSummaries(idx.Overrides),
 	}
 	if idx.Native != nil {
 		v.IsNative = true
@@ -599,7 +593,6 @@ func mapIndex(idx *DeclIndex) PackageView {
 	v.HasData = len(v.Data) > 0
 	v.HasFunctions = len(v.Functions) > 0
 	v.HasOverrides = len(v.Overrides) > 0
-	v.HasPlatformTypes = len(v.PlatformTypes) > 0
 	return v
 }
 

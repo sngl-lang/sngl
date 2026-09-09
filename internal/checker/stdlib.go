@@ -535,7 +535,6 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// could refer to is registered. pass2 does this for a program; a library
 	// package does not get one, so it happens here.
 	c.checkStructFieldDefaults()
-	c.assertOptionsMarked(pkgName, stdlibPkg.Structs)
 
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
 	// emits it rather than the bare SNGL name. A #[foreign] mark cannot say
@@ -630,36 +629,52 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	return stdlibPkg
 }
 
-// assertOptionsMarked fails the build when a library package declares a
-// top-level struct called Options without the #[options] mark. Every options
-// lookup keys on the mark, so an unmarked one would silently contribute no
-// options at all; the name match here exists only to catch that omission, and
-// is the one place the name means anything.
-//
-// Embedded source only: a Config.LibSources substitution is test input, and one
-// of them plants an unmarked Options on purpose.
-func (c *checker) assertOptionsMarked(pkgName string, structs []*ir.StructDef) {
-	if c.cfg != nil && c.cfg.LibSources[pkgName] != nil {
-		return
+// TargetNode returns the build-directive node `sngl:<uri>` declares -- the
+// component an output block writes to name that target -- or nil when the
+// package declares none. A target package names its node after itself, which
+// is what an output block writes.
+func TargetNode(uri string) *ir.Component {
+	pkg := LibPackage(uri)
+	if pkg == nil || pkg.Symbols == nil {
+		return nil
 	}
-	for _, sd := range structs {
-		if sd.Name == "Options" && !sd.Options {
-			panic(fmt.Sprintf("sngl: sngl:%s: struct Options at %s needs #[options] (and import . %q)",
-				pkgName, sd.AST.Pos, "sngl:macro"))
+	name := uri
+	if i := strings.LastIndexByte(uri, '/'); i >= 0 {
+		name = uri[i+1:]
+	}
+	sym, ok := pkg.Symbols.LookupRootComponent(name)
+	if !ok {
+		return nil
+	}
+	comp, _ := sym.(*ir.Component)
+	return comp
+}
+
+// OutputNode is the #[builtin("output")] component of `sngl:builtin`: the root
+// of a build directive, whose props are the options every target accepts. Found
+// by its mark, like every other built-in.
+func OutputNode() *ir.Component {
+	pkg := LibPackage("builtin")
+	if pkg == nil {
+		return nil
+	}
+	for _, comp := range pkg.Components {
+		if comp.Builtin == ir.BuiltinOutput {
+			return comp
 		}
 	}
+	return nil
 }
 
 // i18nPkg declares the translation entry points, the locale-aware primitives
 // behind them, and the PluralKey those are keyed by.
 const i18nPkg = "i18n"
 
-// appPkg declares the application shell -- the node kinds a visual tree
-// dispatches on -- and, with them, the top-level Options schema.
+// appPkg declares the application shell: the node kinds a visual tree
+// dispatches on.
 const (
-	appPkg     = "app"
-	timePkg    = "time"
-	optionsPkg = appPkg
+	appPkg  = "app"
+	timePkg = "time"
 )
 
 // drawIntrinsicsPkg declares the primitives passCanvas emits. No SNGL source
@@ -881,6 +896,10 @@ func (c *checker) targetPackages() []string {
 // `sngl build` resolves them in. A caller that named nothing and a document
 // that declares nothing give none, and every registered target loads.
 //
+// The name match on `output` is a pre-scope heuristic and stays one: this runs
+// before pass1, so there is no scope to resolve the mark through, and reading
+// one name too many only loads a package.
+//
 // Read from the AST rather than from pkg.Outputs, which does not exist yet:
 // the overrides have to be spliced before anything reads a stdlib component's
 // body, and that is earlier than checking an output block.
@@ -902,57 +921,6 @@ func (c *checker) resolvedTargets() []ir.StaticTarget {
 		}
 	}
 	return declared
-}
-
-// declaredOutputTargets reads the lang/platform pairs an `output` node names,
-// in either form: `output(lang=..., platform=...)` and
-// `output { <lang> { <platform>(...) } }`. It reads only those two names --
-// options are the checker's business later, and getting them wrong here would
-// only mean loading a package that was going to load anyway.
-func declaredOutputTargets(vn *ast.VisualNode) []ir.StaticTarget {
-	var out []ir.StaticTarget
-	var flat ir.StaticTarget
-	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name == "" {
-			continue
-		}
-		switch arg.Name {
-		case "lang":
-			flat.Language = literalString(arg.Value)
-		case "platform":
-			flat.Platform = literalString(arg.Value)
-		}
-	}
-	if flat.Language != "" || flat.Platform != "" {
-		out = append(out, flat)
-	}
-	for _, stmt := range vn.Block.Stmts {
-		langNode, ok := stmt.(*ast.VisualNode)
-		if !ok {
-			continue
-		}
-		lang := visualNodeTarget(langNode)
-		if len(langNode.Block.Stmts) == 0 {
-			out = append(out, ir.StaticTarget{Language: lang})
-			continue
-		}
-		for _, langStmt := range langNode.Block.Stmts {
-			// A platform carrying options parses as a call, not a visual node
-			// -- the same two forms buildPlatformOutput accepts. Reading only
-			// the node form here dropped every optioned platform from the
-			// target set, so its overrides never merged.
-			switch s := langStmt.(type) {
-			case *ast.VisualNode:
-				out = append(out, ir.StaticTarget{Language: lang, Platform: visualNodeTarget(s)})
-			case *ast.CallStmt:
-				if ident, ok := s.Call.Func.(*ast.IdentExpr); ok {
-					out = append(out, ir.StaticTarget{Language: lang, Platform: ident.Name})
-				}
-			}
-		}
-	}
-	return out
 }
 
 // mergeTargetExtensions collects the overrides one target's package declares --
@@ -1009,7 +977,9 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 			for _, sym := range pkg.Symbols.Root.Symbols {
 				c.scope.Replace(sym)
 			}
-			c.bindLib(ast.Pos{}, c.scope, &ir.Namespace{Name: name, Pkg: pkg})
+			// Replace for the reason targetPkgScope gives: the package's own
+			// build-directive node shares the package's name.
+			c.scope.Replace(&ir.Namespace{Name: name, Pkg: pkg})
 		}
 		defer c.popScope()
 		for _, doc := range c.libDocs(pkgName) {
@@ -1549,20 +1519,4 @@ func Packages() []string {
 	}
 	slices.Sort(out)
 	return out
-}
-
-// OptionsStruct returns the #[options]-marked struct of `sngl:<name>`, or
-// nil when the package declares none. The mark, not the declaration's name, is
-// what a target's option schema is found by.
-func OptionsStruct(name string) *ir.StructDef {
-	pkg := LibPackage(name)
-	if pkg == nil {
-		return nil
-	}
-	for _, sd := range pkg.Structs {
-		if sd.Options {
-			return sd
-		}
-	}
-	return nil
 }

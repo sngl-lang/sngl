@@ -63,6 +63,9 @@ func Check(doc *ast.Document, cfg CheckConfig) (*ir.Package, error) {
 		Languages: langs,
 		Platforms: plats,
 		Targets:   cfg.Targets,
+		// RegisteredTargets is the whole registry: this binary links every
+		// plugin, so a name outside it is a name nobody serves.
+		TargetsComplete: true,
 	})
 	for _, d := range diags {
 		if d.Severity == ir.Error {

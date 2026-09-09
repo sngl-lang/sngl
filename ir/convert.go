@@ -405,9 +405,15 @@ func (c *converter) convertContextProvider(p *ContextProvider) *ast.VisualNode {
 	return vn
 }
 
-// convertOutputs groups outputs by language and emits the nested form:
+// convertOutputs rebuilds the directive's component tree from the outputs it
+// was projected into:
 //
-//	output { lang { platform(opts...) } }
+//	output(shared...) { lang(langopts...) { platform(opts...) } }
+//
+// Each option goes back to the level that declares it, which is what the two
+// component pointers on an Output are kept for: a merged record says what the
+// build reads and not where it was written, and a value re-emitted a level too
+// low is a prop the node does not declare.
 func (c *converter) convertOutputs(outputs []*Output) *ast.VisualNode {
 	// Group by language, preserving order.
 	type langGroup struct {
@@ -425,46 +431,68 @@ func (c *converter) convertOutputs(outputs []*Output) *ast.VisualNode {
 		}
 	}
 
+	var shared []ast.ArgOrEventHandler
+	seenShared := map[string]bool{}
 	var langNodes []ast.Stmt
 	for _, g := range groups {
-		langNode := &ast.VisualNode{
-			Target: &ast.IdentExpr{Name: g.lang},
+		langNode := &ast.VisualNode{Target: &ast.IdentExpr{Name: g.lang}}
+		var langArgs []ast.ArgOrEventHandler
+		seenLang := map[string]bool{}
+		var platStmts []ast.Stmt
+		for _, o := range g.outputs {
+			platNode := &ast.VisualNode{Target: &ast.IdentExpr{Name: o.Platform}}
+			var platArgs []ast.ArgOrEventHandler
+			if o.Options != nil {
+				for _, f := range o.Options.Fields {
+					arg := ast.Arg{Name: f.Name, Value: c.convertExpr(f.Value)}
+					switch {
+					case declaresProp(o.PlatComp, f.Name):
+						platArgs = append(platArgs, arg)
+					case declaresProp(o.LangComp, f.Name):
+						if !seenLang[f.Name] {
+							seenLang[f.Name] = true
+							langArgs = append(langArgs, arg)
+						}
+					case !seenShared[f.Name]:
+						seenShared[f.Name] = true
+						shared = append(shared, arg)
+					}
+				}
+			}
+			platNode.Args = ast.ArgList{IsMultiline: len(platArgs) > 3, Args: platArgs}
+			platStmts = append(platStmts, platNode)
 		}
-		if len(g.outputs) > 0 {
-			var platStmts []ast.Stmt
-			for _, o := range g.outputs {
-				platNode := &ast.VisualNode{
-					Target: &ast.IdentExpr{Name: o.Platform},
-				}
-				if o.Options != nil && len(o.Options.Fields) > 0 {
-					args := make([]ast.ArgOrEventHandler, 0, len(o.Options.Fields))
-					for _, f := range o.Options.Fields {
-						args = append(args, ast.Arg{Name: f.Name, Value: c.convertExpr(f.Value)})
-					}
-					platNode.Args = ast.ArgList{
-						IsMultiline: len(args) > 3,
-						Args:        args,
-					}
-				}
-				platStmts = append(platStmts, platNode)
-			}
-			langNode.Block = ast.StmtBlock{
-				Pos:         ast.Pos{Line: 1},
-				IsMultiline: len(platStmts) > 1,
-				Stmts:       platStmts,
-			}
+		langNode.Args = ast.ArgList{IsMultiline: len(langArgs) > 3, Args: langArgs}
+		langNode.Block = ast.StmtBlock{
+			Pos:         ast.Pos{Line: 1},
+			IsMultiline: len(platStmts) > 1,
+			Stmts:       platStmts,
 		}
 		langNodes = append(langNodes, langNode)
 	}
 
 	return &ast.VisualNode{
 		Target: &ast.IdentExpr{Name: "output"},
+		Args:   ast.ArgList{IsMultiline: len(shared) > 3, Args: shared},
 		Block: ast.StmtBlock{
 			Pos:         ast.Pos{Line: 1},
 			IsMultiline: len(langNodes) > 1,
 			Stmts:       langNodes,
 		},
 	}
+}
+
+// declaresProp reports whether a target node declares a prop of this name.
+func declaresProp(comp *Component, name string) bool {
+	if comp == nil {
+		return false
+	}
+	for _, p := range comp.Props {
+		if p.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // --- Statement conversion ---

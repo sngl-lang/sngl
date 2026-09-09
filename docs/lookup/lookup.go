@@ -57,19 +57,18 @@ type Result struct {
 }
 
 type DeclIndex struct {
-	Title         string
-	Description   string
-	Components    []DeclSummary
-	Types         []TypeEntry // structs + primitive receivers; methods inline
-	Enums         []DeclSummary
-	Constants     []DeclSummary
-	Data          []DeclSummary
-	Functions     []DeclSummary // free functions (no receiver)
-	Macros        []DeclSummary // `#[...]` marks: free funcs returning Macro
-	Overrides     []DeclSummary // sngl.* platform overrides
-	PlatformTypes []DeclSummary // "Options"-style platform structs
-	Library       bool
-	Native        *ir.NativeImport // non-nil for scheme-native packages
+	Title       string
+	Description string
+	Components  []DeclSummary
+	Types       []TypeEntry // structs + primitive receivers; methods inline
+	Enums       []DeclSummary
+	Constants   []DeclSummary
+	Data        []DeclSummary
+	Functions   []DeclSummary // free functions (no receiver)
+	Macros      []DeclSummary // `#[...]` marks: free funcs returning Macro
+	Overrides   []DeclSummary // sngl.* platform overrides
+	Library     bool
+	Native      *ir.NativeImport // non-nil for scheme-native packages
 	// Packages is set instead of the declaration sections when the target is
 	// the library itself: `sngl` names the tree, not a package with members.
 	Packages []PackageEntry
@@ -309,17 +308,6 @@ type target struct {
 	// tree marks the library root, `sngl`, which lists its packages rather
 	// than declaring anything itself.
 	tree bool
-	// optionsDecl is the target's #[options]-marked struct, if it declares
-	// one. The mark is on the loaded IR, so it is resolved once here and the
-	// declaration is then recognised by identity.
-	optionsDecl *ast.StructDef
-}
-
-func optionsDeclOf(uri string) *ast.StructDef {
-	if sd := checker.OptionsStruct(uri); sd != nil {
-		return sd.AST
-	}
-	return nil
 }
 
 func resolveTarget(cwd, path string) (*target, error) {
@@ -339,12 +327,11 @@ func resolveTarget(cwd, path string) (*target, error) {
 		}
 		pd, stmts := stdlibPackageDocs(uri)
 		return &target{
-			title:       "sngl:" + uri,
-			pkg:         uri,
-			pd:          pd,
-			stmts:       stmts,
-			library:     true,
-			optionsDecl: optionsDeclOf(uri),
+			title:   "sngl:" + uri,
+			pkg:     uri,
+			pd:      pd,
+			stmts:   stmts,
+			library: true,
 		}, nil
 	}
 
@@ -390,11 +377,6 @@ func resolveTarget(cwd, path string) (*target, error) {
 	// kotlin, ...) — resolve via the codegen registry so they share the same
 	// Lookup code paths as the stdlib and scheme imports.
 	//
-	// The source comes from PackageSource rather than from PlatformDocs, even
-	// though both read the same files: optionsDecl is a pointer into the parse
-	// the checker loaded, and the classification below compares pointers. Two
-	// parses of one file share none, so reading the source a second way here
-	// silently unclassifies the target's whole option schema.
 	for _, tier := range []string{"platform", "language"} {
 		uri := tier + "/" + path
 		if !isRegisteredTarget(tier, path) {
@@ -403,7 +385,6 @@ func resolveTarget(cwd, path string) (*target, error) {
 		if docs := checker.PackageSource(uri); len(docs) > 0 {
 			t := mergeDocsTarget(path, docs)
 			t.pkg = uri
-			t.optionsDecl = optionsDeclOf(uri)
 			return t, nil
 		}
 	}
@@ -500,14 +481,7 @@ func buildIndex(tgt *target) *DeclIndex {
 		}
 	}
 
-	var userStructs []checker.DeclInfo
-	for _, d := range tgt.pd.Structs {
-		if sd, ok := d.Decl.(*ast.StructDef); ok && tgt.optionsDecl != nil && sd == tgt.optionsDecl {
-			idx.PlatformTypes = append(idx.PlatformTypes, DeclSummary{Name: d.Name, Doc: d.Doc})
-			continue
-		}
-		userStructs = append(userStructs, d)
-	}
+	userStructs := tgt.pd.Structs
 
 	methods, free := groupFunctionsByReceiver(tgt.pd.Functions)
 	idx.Types = buildTypeEntries(userStructs, methods)
@@ -537,7 +511,6 @@ func buildIndex(tgt *target) *DeclIndex {
 	sortByName(idx.Functions)
 	sortByName(idx.Macros)
 	sortByName(idx.Overrides)
-	sortByName(idx.PlatformTypes)
 	return idx
 }
 
