@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 // The edges of list.slice and list.remove, which lib/builtin/methods.sngl

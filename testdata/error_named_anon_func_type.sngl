@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     // Anonymous func type: no param names in the type, named calls rejected.
@@ -10,6 +9,6 @@ component main node {
     text(value="anon func type")
 }
 
-app.window {
+window {
     main
 }

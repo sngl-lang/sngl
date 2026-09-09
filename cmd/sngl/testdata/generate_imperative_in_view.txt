@@ -17,7 +17,6 @@ grep 'm\.n = 5' out3/model.go
 
 -- ret.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     return
@@ -25,12 +24,11 @@ component main node {
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }
 -- assign.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 var n = 0
 
@@ -40,12 +38,11 @@ component main node {
     text(value="{n}")
 }
 
-app.window {
+window {
     main
 }
 -- effect.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 var n = 0
 
@@ -57,6 +54,6 @@ component main node {
     text(value="{n}")
 }
 
-app.window {
+window {
     main
 }

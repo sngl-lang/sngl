@@ -16,7 +16,6 @@ the Go package that performs the request.
 
 -- snap.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import http "sngl:remote/http"
 
 window(title="fetch") {

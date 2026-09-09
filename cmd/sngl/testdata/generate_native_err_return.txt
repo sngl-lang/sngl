@@ -26,7 +26,6 @@ package api
 func Fetch(q string) ([]string, error) { return []string{q}, nil }
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { fyne } }
 

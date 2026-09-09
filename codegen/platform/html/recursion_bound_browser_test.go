@@ -22,7 +22,6 @@ import (
 func TestRecursionBound_UnboundedRecursionReportsTheBound(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component chain(n int) node {
     text(value="[" + string(n) + "]")
     chain(n=n + 1)
@@ -58,7 +57,6 @@ window(title="H", href="/index.html") { App() }
 func TestRecursionBound_TerminatingRecursionIsUntouched(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component chain(n int) node {
     text(value="[" + string(n) + "]")
     if n > 0 {
@@ -101,7 +99,6 @@ window(title="H", href="/index.html") { App() }
 func TestRecursionBound_AnUnrolledRecursionCarriesNoInstanceRuntime(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component countdown(n int) node {
     text(value="[" + string(n) + "]")
     if n > 0 {

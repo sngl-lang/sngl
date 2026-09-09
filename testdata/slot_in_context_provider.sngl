@@ -4,7 +4,6 @@
 // walk; the optimizer's inliner is what reaches this today.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 context #theme("light")
 
@@ -28,6 +27,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

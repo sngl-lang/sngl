@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // int.parse is an intrinsic whose declared body is the placeholder `return 0`,
 // and the interpreter answers it from its own implementation instead.
@@ -21,6 +20,6 @@ func testPlaceholderDoesNotFold(t Test, c main) {
     t.assert(int.parse("FF", 16) == 255)
 }
 
-app.window {
+window {
     main
 }

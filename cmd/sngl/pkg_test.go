@@ -50,9 +50,9 @@ func TestPkgDownloadPopulatesCache(t *testing.T) {
 	workDir := t.TempDir()
 	host := strings.TrimPrefix(srv.URL, "http://")
 	mainSrc := fmt.Sprintf(`import "widgets" => "http://%s/widgets.tar.gz#%s"
-import app "sngl:app"
+import ui "sngl:ui"
 
-app.window {
+ui.window {
     widgets.Counter(label="x")
 }
 `, host, expectHash)

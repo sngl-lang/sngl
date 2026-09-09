@@ -5,7 +5,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var word = "abc"
@@ -26,6 +25,6 @@ func testComputedIterator(t Test, c main) {
     t.assert(c.letters().length() == 3)
 }
 
-app.window {
+window {
     main
 }

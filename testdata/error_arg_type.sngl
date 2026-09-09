@@ -4,7 +4,6 @@
 // a parse error rather than something the builder has to refuse.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     vbox {
@@ -12,6 +11,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

@@ -6,7 +6,6 @@
 // which is which: "cannot initialize duration with duration" named neither.
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 
 unit duration {
     tick

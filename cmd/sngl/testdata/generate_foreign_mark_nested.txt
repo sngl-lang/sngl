@@ -20,7 +20,6 @@ stdout 'ok'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 component main node {
     #[foreign("js:example.com/api", "Entry")]
@@ -33,13 +32,12 @@ component main node {
     text(value=e.title)
 }
 
-app.window {
+window {
     main
 }
 -- fn.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 component main node {
     #[foreign("js:./api", "compute", pure)]
@@ -48,6 +46,6 @@ component main node {
     text(value=string(compute(2, 3)))
 }
 
-app.window {
+window {
     main
 }

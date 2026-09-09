@@ -17,6 +17,12 @@
 //	nav        move the user somewhere else
 //	overlay    paint above the rest of the tree
 //
+// `node` is the family all five belong to, and `window` is the surface they
+// are placed on -- the one member of `root`, the family a package body
+// accepts. The two are here rather than in an application-shell package of
+// their own because a window is where widgets go: what it hosts is `node`,
+// so any package holding it would import this one and be imported back.
+//
 // `Style`, the style enums and the event payloads sit here rather than in a
 // package of their own because every component in every one of those
 // packages refers to them; they are the vocabulary, not a separate concern.

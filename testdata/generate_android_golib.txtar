@@ -17,7 +17,6 @@ The module exports it.
 The Kotlin calls it there, and imports it.
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -36,7 +35,7 @@ component main node {
     button(text="+", @click { k = k + 1 })
 }
 
-app.window {
+window {
     main
 }
 -- out/go/android/MainScreen.kt --

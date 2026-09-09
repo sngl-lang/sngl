@@ -5,7 +5,6 @@
 // trailing comma comes from, since only the component form used to admit one.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func add(
     a int,
@@ -35,6 +34,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

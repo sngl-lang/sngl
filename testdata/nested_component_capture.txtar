@@ -21,7 +21,6 @@ deny * `\bhit\b` -- `tap` captures nothing but `hit()`, so the method alone has 
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -90,7 +89,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

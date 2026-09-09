@@ -4,7 +4,6 @@
 // option closes.
 
 import . "sngl:ui"
-import . "sngl:app"
 
 output(entry=home)
 

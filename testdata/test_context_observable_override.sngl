@@ -5,7 +5,6 @@
 import . "sngl:test"
 import "sngl:i18n"
 import ui "sngl:ui"
-import app "sngl:app"
 
 component Counter ui.node {
     var n = 1234
@@ -28,5 +27,5 @@ func testLastWriteWins(t Test, c Counter) {
     t.assert(c.formatted() == "1,234")
 }
 
-app.window {
+ui.window {
 }

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func main_helper() => this // ERROR(check) "undefined: this"
 
@@ -7,6 +6,6 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

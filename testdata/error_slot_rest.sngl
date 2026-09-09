@@ -6,7 +6,6 @@
 // population by name supplies, so writing both populates the slot twice.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component twice(head ...component, tail ...component) node { // ERROR(check) "declares a second rest slot \"tail\""
     vbox {
@@ -38,6 +37,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

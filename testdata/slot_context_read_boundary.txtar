@@ -17,7 +17,6 @@ which cmd/sngl/testdata/errorboundary_unimplemented.txt is the assertion on
 (issue #112).
 -- boundary.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {
@@ -35,7 +34,7 @@ context #theme("light")
 
 component main node {
     var caught = ""
-    errorBoundary(@error(e) { caught = theme }) {
+    boundary(@error(e) { caught = theme }) {
         button #go(text="Go", @click { error.raise("boom", "") })
     }
     text(value=caught)

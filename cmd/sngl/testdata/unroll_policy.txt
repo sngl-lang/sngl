@@ -36,7 +36,6 @@ grep 'for range 200000 \{' bigtui/model.go
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     vbox {
@@ -46,13 +45,12 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- big.sngl --
 import "sngl:seq"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     vbox {
@@ -62,6 +60,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

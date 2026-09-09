@@ -6,7 +6,6 @@ unconditionally rather than decided at runtime.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
-import app "sngl:app"
 
 output {
     none {
@@ -26,7 +25,7 @@ component main node {
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }
 -- api/index.ts --

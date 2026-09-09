@@ -17,7 +17,6 @@ func TestCompileTxtarJSImport(t *testing.T) {
 import lib "js:./lib"
 
 import . "sngl:ui"
-import . "sngl:app"
 
 window {
     var n = 0.0
@@ -52,7 +51,7 @@ export function add(a: number, b: number): number {
 // the editor buffer is one SNGL file. Must still compile.
 func TestCompileBareSource(t *testing.T) {
 	const source = `import . "sngl:ui"
-import . "sngl:app"
+import . "sngl:ui"
 
 window {
     text(value="hello")

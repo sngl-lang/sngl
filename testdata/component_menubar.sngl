@@ -1,12 +1,11 @@
 import . "sngl:ui"
 import . "sngl:dialog"
-import app "sngl:app"
 
 // menubar: A-tier — declaration only.
 component main node {
     menubar(items=["File", "Edit", "View", "Help"])
 }
 
-app.window {
+window {
     main
 }

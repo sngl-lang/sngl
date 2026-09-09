@@ -28,7 +28,7 @@ import (
 const maxRenderDepth = lower.MaxRecursionDepth
 
 // recursionExhausted is the error a mount that hit the bound returns. A
-// RaisedError, so the nearest enclosing errorBoundary catches it the way it
+// RaisedError, so the nearest enclosing boundary catches it the way it
 // catches error.raise, and the kind matches the one the lowering pass writes.
 func recursionExhausted(name string) *RaisedError {
 	return &RaisedError{Event: map[string]any{

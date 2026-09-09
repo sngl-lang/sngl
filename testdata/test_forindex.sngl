@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component indexed node {
     var items = ["a", "b", "c"]
@@ -34,5 +33,5 @@ func testListComparisons(t Test, c indexed) {
     t.assert(c.empty.length() == 0)
 }
 
-app.window {
+window {
 }

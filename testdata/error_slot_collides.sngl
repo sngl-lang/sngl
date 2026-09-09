@@ -4,7 +4,6 @@
 // to go on, so a name repeated across them is a collision here.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component collides(header string, header component) node { // ERROR(check) "name is already declared as a prop"
     vbox {
@@ -12,5 +11,5 @@ component collides(header string, header component) node { // ERROR(check) "name
     }
 }
 
-app.window {
+window {
 }

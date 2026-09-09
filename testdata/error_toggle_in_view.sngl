@@ -2,7 +2,6 @@
 // than changing it.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 var flag = false
 
@@ -12,6 +11,6 @@ component main node {
     text(value="{flag}")
 }
 
-app.window {
+window {
     main
 }

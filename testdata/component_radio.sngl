@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // radio: state-binding fixture — mutating the bound `value` var
 // changes the selected radio option.
@@ -17,6 +16,6 @@ func testRadioValueMutates(t Test, c main) {
     t.assert(c.sel == "small")
 }
 
-app.window {
+window {
     main
 }

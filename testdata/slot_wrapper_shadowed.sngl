@@ -7,7 +7,6 @@
 // is what tells the two implementations apart.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 struct option<T> {
     v T
@@ -19,5 +18,5 @@ component frame(badge component option<int>) node { // ERROR(check) "a slot acce
     }
 }
 
-app.window {
+window {
 }

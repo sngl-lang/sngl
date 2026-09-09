@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // table: state-binding fixture — mutating the bound `selected`
 // index changes the chosen row.
@@ -15,6 +14,6 @@ func testTableSelectedMutates(t Test, c main) {
     t.assert(c.idx == 3)
 }
 
-app.window {
+window {
     main
 }

@@ -5,7 +5,9 @@ import ir "sngl:internal/ir"
 // The mark, rather than the declaration's name, is what the compiler keys on,
 // so every built-in is shadowable by a user declaration of the same name. A
 // type kind (`int`, `color`, `list`, …) marks a struct; a node kind (`window`,
-// `errorBoundary`, `effect`, `context`, `output`) marks a component. The kind
+// `errorBoundary`, `effect`, `context`, `output`) marks a component -- by the
+// role it plays and not by the name it is declared under, so the
+// `errorBoundary` kind is what `component boundary` carries. The kind
 // says which construct, never which tier: the built-in visual nodes are spread
 // across `sngl:app`, `sngl:builtin` and `sngl:ui`.
 //

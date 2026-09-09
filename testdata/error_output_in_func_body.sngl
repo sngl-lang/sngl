@@ -1,7 +1,6 @@
 // A function body checked clean here for as long as `output` was matched by
 // name: the name match ran before anything asked where the node was written.
 import . "sngl:ui"
-import app "sngl:app"
 
 func d() {
     output { // ERROR(check) "output may only be written at the root of a file"
@@ -15,6 +14,6 @@ component main node {
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }

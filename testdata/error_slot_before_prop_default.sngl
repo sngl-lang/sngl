@@ -5,7 +5,6 @@
 // declared after a slot, silently.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component framed(children ...component, n int = "oops") node { // ERROR(check) "default value type string does not match param type int"
     vbox {
@@ -22,6 +21,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

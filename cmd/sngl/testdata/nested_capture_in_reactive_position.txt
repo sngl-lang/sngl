@@ -33,7 +33,6 @@ sngl generate --lang go --platform bubbletea --out out4 static.sngl
 
 -- reactive.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component outer() node {
     var count = 0
@@ -61,12 +60,11 @@ component main node {
     outer()
 }
 
-app.window {
+window {
     main
 }
 -- reactive_if.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component outer() node {
     var count = 0
@@ -94,12 +92,11 @@ component main node {
     outer()
 }
 
-app.window {
+window {
     main
 }
 -- nocapture.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component outer() node {
     var items = [1, 2, 3]
@@ -121,12 +118,11 @@ component main node {
     outer()
 }
 
-app.window {
+window {
     main
 }
 -- static.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component outer() node {
     var count = 0
@@ -151,6 +147,6 @@ component main node {
     outer()
 }
 
-app.window {
+window {
     main
 }

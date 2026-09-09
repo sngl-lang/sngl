@@ -40,7 +40,6 @@ stdout 'element\(tag="div"\)'
 stderr 'undefined: someUndefinedIdentifier'
 
 -- spread.sngl --
-import std "sngl:app"
 import html "sngl:platform/html"
 import ui "sngl:ui"
 
@@ -50,23 +49,21 @@ struct tdAttrs {
 }
 
 component main() ui.node {
-    std.window {
+    ui.window {
         html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
     }
 }
 -- typo.sngl --
-import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
 component main() ui.node {
-    window {
+    ui.window {
         html.thisIsATypoNotATag(id = "x") { }
     }
 }
 -- unimported.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 component main() node {
     window {
@@ -74,18 +71,16 @@ component main() node {
     }
 }
 -- dotimport.sngl --
-import std "sngl:app"
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
 component main() ui.node {
-    std.window {
+    ui.window {
         div(id = "x") { }
     }
 }
 -- dotexpr.sngl --
 import std "sngl:ui"
-import app "sngl:app"
 import . "sngl:platform/html"
 
 func typoed() => someUndefinedIdentifier
@@ -96,12 +91,11 @@ component main() std.node {
     }
 }
 -- dotdecl.sngl --
-import std "sngl:app"
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
 component main() ui.node {
-    std.window {
+    ui.window {
         element(tag = "div") { }
     }
 }

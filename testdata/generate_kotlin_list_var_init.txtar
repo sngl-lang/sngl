@@ -7,7 +7,6 @@ cannot infer an element type from nothing. Scalars are untouched -- `idx` is an
 ordinary `mutableStateOf` over the same expression.
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { kotlin { android } }
 
@@ -20,7 +19,7 @@ component main node {
     text(value=string(rev.length()) + string(evens.length()) + string(empty.length()) + string(idx))
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/MainScreen.kt --

@@ -3,7 +3,6 @@
 // has to agree with the position it names.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Row {
     title string
@@ -52,6 +51,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

@@ -1,7 +1,6 @@
 import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:test"
-import app "sngl:app"
 
 // datepicker: state-binding fixture — mutating the bound `value`
 // (date) propagates to the picker.
@@ -16,6 +15,6 @@ func testDatepickerValueMutates(t Test, c main) {
     t.assert(true)
 }
 
-app.window {
+window {
     main
 }

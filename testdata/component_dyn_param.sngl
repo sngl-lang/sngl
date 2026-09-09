@@ -3,7 +3,6 @@
 // neither an annotation nor a default is unannotated -- see
 // error_untyped_param.sngl for that.
 import . "sngl:ui"
-import app "sngl:app"
 
 component Holder(value dyn) node {
     text(value="held")
@@ -14,6 +13,6 @@ component main node {
     Holder(value="two")
 }
 
-app.window {
+window {
     main
 }

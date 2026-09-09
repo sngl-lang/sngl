@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // A prop the call omits is supplied by the checker, so every consumer reads
 // one list of arguments instead of evaluating the declaration's defaults for
@@ -23,6 +22,6 @@ func testOmittedPropTakesItsDefault(t Test, c main) {
     t.assert(c.shown == "")
 }
 
-app.window {
+window {
     main
 }

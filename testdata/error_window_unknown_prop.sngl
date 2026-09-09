@@ -2,7 +2,6 @@
 // take whatever it was given -- the three props it reads were picked by name and
 // the rest ignored -- so `window(width=320)` named nothing and said nothing.
 import . "sngl:ui"
-import . "sngl:app"
 
 window(width=320) { // ERROR(check) "unknown prop \"width\" on component window"
     text(value="hi")

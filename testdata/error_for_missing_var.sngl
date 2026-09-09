@@ -4,7 +4,6 @@
 // wanted next.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func f() {
     var xs list<int> = [1]
@@ -12,5 +11,5 @@ func f() {
     }
 }
 
-app.window {
+window {
 }

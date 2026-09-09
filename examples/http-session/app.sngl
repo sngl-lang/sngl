@@ -1,5 +1,4 @@
 import ui "sngl:ui"
-import app "sngl:app"
 
 output {
     go {

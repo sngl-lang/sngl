@@ -30,7 +30,6 @@ sngl check nested/
 -- app.sngl --
 import . "sngl:ui"
 import "./pkg"
-import app "sngl:app"
 
 component main node {
     vbox {
@@ -40,11 +39,11 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- pkg/types.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 enum Op { none, add }
 
@@ -53,51 +52,48 @@ struct Pair {
     op Op = Op.add
 }
 
-app.window {
+ui.window {
 }
 -- pkg/consts.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 const LIMIT = 7
 
-app.window {
+ui.window {
 }
 -- pkg/funcs.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 func twice(n int) => n * 2
 
 // Names a type from types.sngl and a const from consts.sngl.
 func widened(p Pair) => p.x + LIMIT
 
-app.window {
+ui.window {
 }
 -- pkg/views.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component Badge(label = "") node {
     text(value=label)
 }
 
-app.window {
+window {
 }
 -- leak/app.sngl --
 import . "sngl:ui"
 import "./gfx"
-import app "sngl:app"
 
 component main node {
     gfx.Panel
 }
 
-app.window {
+window {
     main
 }
 -- leak/gfx/parts.sngl --
 import . "sngl:ui"
 import draw "sngl:ui/draw"
-import app "sngl:app"
 
 component Panel node {
     draw.canvas(width=10px, height=10px) {
@@ -105,71 +101,68 @@ component Panel node {
     }
 }
 
-app.window {
+window {
 }
 -- leak/gfx/types.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component Sneaky node {
     draw.canvas(width=10px, height=10px) {}
 }
 
-app.window {
+window {
 }
 -- twice/app.sngl --
 import . "sngl:ui"
 import "./shared"
 import "./user"
-import app "sngl:app"
 
 component main node {
     var op shared.Op = shared.Op.add
     text(value=user.describe(op))
 }
 
-app.window {
+window {
     main
 }
 -- twice/shared/shared.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 enum Op { none, add }
 
-app.window {
+ui.window {
 }
 -- twice/user/user.sngl --
 import "../shared"
-import app "sngl:app"
+import ui "sngl:ui"
 
 func describe(o shared.Op) => o == shared.Op.add ? "add" : "none"
 
-app.window {
+ui.window {
 }
 -- nested/app.sngl --
 import . "sngl:ui"
 import "./outer"
-import app "sngl:app"
 
 component main node {
     text(value=outer.label())
 }
 
-app.window {
+window {
     main
 }
 -- nested/outer/outer.sngl --
 import "../inner"
-import app "sngl:app"
+import ui "sngl:ui"
 
 func label() => inner.NAME
 
-app.window {
+ui.window {
 }
 -- nested/inner/inner.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 const NAME = "inner"
 
-app.window {
+ui.window {
 }

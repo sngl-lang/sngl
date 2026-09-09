@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Bug: toggle (`!!`) accepts non-bool targets.
 // Per audit (internal/checker/expr.go ToggleStmt): no check that target is bool;
@@ -12,6 +11,6 @@ component main node {
     text(value="{i}")
 }
 
-app.window {
+window {
     main
 }

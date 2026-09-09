@@ -3,11 +3,10 @@
 // is an ordinary prop, so the expression check resolves it like any other
 // name, and a string that matched nothing would have said nothing.
 
-import app "sngl:app"
 import ui "sngl:ui"
 
 output(entry=hoem) // ERROR(check) "undefined: hoem"
 
-app.window #home(title="Home") {
+ui.window #home(title="Home") {
     ui.text(value="hi")
 }

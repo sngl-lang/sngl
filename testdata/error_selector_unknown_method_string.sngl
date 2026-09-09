@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Bug: unknown method on string typechecks silently.
 // String has built-in methods (length, contains, etc.) but unknown ones
@@ -10,6 +9,6 @@ component main node {
     text(value=s)
 }
 
-app.window {
+window {
     main
 }

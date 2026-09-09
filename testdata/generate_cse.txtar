@@ -17,7 +17,6 @@ deny out/go/bubbletea/model.go `__cse2` -- the statement over the impure call bi
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -64,7 +63,7 @@ component main node {
     text(value=string(total) + string(log))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

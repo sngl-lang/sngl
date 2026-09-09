@@ -10,17 +10,16 @@ sngl check pkg
 stdout 'ok'
 
 ! sngl check twice
-stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*twice[/\\]a.sngl:4:1'
+stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*twice[/\\]a.sngl:3:1'
 
 -- pkg/app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }
 -- pkg/targets.sngl --
@@ -31,7 +30,6 @@ output {
 }
 -- twice/a.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -43,7 +41,7 @@ component main node {
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }
 -- twice/b.sngl --

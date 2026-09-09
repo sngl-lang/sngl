@@ -21,7 +21,6 @@ deny * `__ran0 = true;?\n\s*\}` -- the flag is the body's first statement, never
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -58,7 +57,7 @@ component main node {
     text(value=note)
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

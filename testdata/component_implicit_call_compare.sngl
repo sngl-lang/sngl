@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // Regression: a bare zero-arg computed used in an expression must be
 // implicitly called. `count > 0` previously failed typecheck with
@@ -16,6 +15,6 @@ func testImplicitCallCompare(t Test, c main) {
     t.assert(c.count == 3)
 }
 
-app.window {
+window {
     main
 }

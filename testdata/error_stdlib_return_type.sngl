@@ -2,7 +2,7 @@
 // checked, so one that states no return type is dyn and every use of the
 // result checks clean. These declare theirs off a block body.
 
-import app "sngl:app"
+import ui "sngl:ui"
 
 func test() {
     var c int = color.rgb(1, 2, 3)                     // ERROR(check) "cannot initialize int with color"
@@ -11,5 +11,5 @@ func test() {
     var o int = color.opacity(color.rgb(1, 2, 3), 128) // ERROR(check) "cannot initialize int with color"
 }
 
-app.window {
+ui.window {
 }

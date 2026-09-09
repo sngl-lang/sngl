@@ -15,7 +15,6 @@ deny out/go/fyne/model.go `m.greeting = func\(\) string` -- the answer is bound 
 -- app.sngl --
 import . "sngl:ui"
 import go "sngl:language/go"
-import app "sngl:app"
 
 #[go.native("time", "time.Sleep")]
 #[go.async]
@@ -46,7 +45,7 @@ output {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/fyne/model.go --

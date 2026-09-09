@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component emptylist node {
     var items list<string> = []
@@ -23,5 +22,5 @@ func testHidesElseWhenListHasItems(t Test, c emptylist) {
     t.assert(c.item.value == "hello")
 }
 
-app.window {
+window {
 }

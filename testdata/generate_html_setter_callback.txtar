@@ -10,7 +10,6 @@ deny out/none/html/index.html `\$u__n0_text` -- a bound prop has no updater func
 deny out/none/html/index.html `\$u__n1_text` -- the same for the second bound node, whose only writes are in `main_update` and `__sngl_init`
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -28,7 +27,7 @@ component main node {
     button(text="Update", @click { update("Hello", 5) })
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

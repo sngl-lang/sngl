@@ -38,8 +38,8 @@ func TestComputedBlockBodyEmitted(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			src := `import . "sngl:ui"
-import app "sngl:app"
-app.window {
+import ui "sngl:ui"
+ui.window {
     var n = 3
     var xs = [1, 2, 3]
     ` + tc.body + `

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component inComponent node {
     import q "sngl:seq" // ERROR(check) "an import may only be written at the root of a file"
@@ -24,6 +23,6 @@ component main node {
     text(value="${inFunc()}")
 }
 
-app.window {
+window {
     main
 }

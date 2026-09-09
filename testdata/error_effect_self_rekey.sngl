@@ -15,7 +15,6 @@
 
 import . "sngl:time"
 import . "sngl:ui"
-import app "sngl:app"
 
 struct box {
     n int
@@ -99,6 +98,6 @@ component main node {
     text #out(value=log.join(","))
 }
 
-app.window {
+window {
     main
 }

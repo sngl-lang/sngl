@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var hex = int.parse("FF", 16)
@@ -34,6 +33,6 @@ func testHexWithSeparator(t Test, c main) {
     t.assert(c.hexSep == 65535)
 }
 
-app.window {
+window {
     main
 }

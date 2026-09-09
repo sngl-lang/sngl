@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // A block body must return on every path. An empty `{}` used to be exempt,
 // so a signature stub type checked — and so did anyone's unfinished function.
@@ -14,6 +13,6 @@ component main node {
     text(value="{fine(1)}")
 }
 
-app.window {
+window {
     main
 }

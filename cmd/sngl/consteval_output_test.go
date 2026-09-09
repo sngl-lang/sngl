@@ -18,7 +18,7 @@ import (
 // empties its body and dead-code elimination takes the declaration with it.
 func TestDynConstKeepsItsDeclarationInEmittedGo(t *testing.T) {
 	const src = `import . "sngl:ui"
-import . "sngl:app"
+import . "sngl:ui"
 import lib "go:git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
 
 const items = lib.Anything()

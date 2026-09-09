@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 0
@@ -7,6 +6,6 @@ component main node {
     button(text="click", @click { count }) // ERROR(check) "must be a statement"
 }
 
-app.window {
+window {
     main
 }

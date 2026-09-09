@@ -11,9 +11,8 @@ import "testing"
 // it was placed to react to the ABSENCE of.
 const effectLoopElseSrc = `
 import . "sngl:ui"
-import app "sngl:app"
 
-app.window {
+window {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []

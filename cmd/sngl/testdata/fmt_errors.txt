@@ -14,44 +14,40 @@ cmp copy.sngl expected.sngl
 
 -- dir/messy.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component widget node {
     var   x  =  0
     text(value="{x}")
 }
 
-app.window {
+window {
 }
 -- dir/expected.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component widget node {
     var x = 0
     text(value="{x}")
 }
 
-app.window {
+window {
 }
 -- messy.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
 }
 
-app.window {
+window {
     main
 }
 -- expected.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
 }
 
-app.window {
+window {
     main
 }
 -- empty/.gitkeep --

@@ -15,13 +15,12 @@ stderr '--opt gir='
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var name = "world"
     text(value=name)
 }
 
-app.window {
+window {
     main
 }

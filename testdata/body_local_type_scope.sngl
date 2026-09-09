@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // A struct written in a component body is scoped to that body.
 component bodyLocalStruct node {
@@ -36,6 +35,6 @@ component main node {
     caller()
 }
 
-app.window {
+window {
     main
 }

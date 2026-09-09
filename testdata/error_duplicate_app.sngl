@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     text(value="first")
@@ -9,6 +8,6 @@ component main node { // ERROR(check) "redeclared in this file"
     text(value="second")
 }
 
-app.window {
+window {
     main
 }

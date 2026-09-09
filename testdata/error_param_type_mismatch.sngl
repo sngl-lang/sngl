@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component Greeting(name string = 123) node { // ERROR(check) "does not match"
     text(value=name)
@@ -9,6 +8,6 @@ component main node {
     Greeting
 }
 
-app.window {
+window {
     main
 }

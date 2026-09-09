@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component multi node {
     var a = 0
@@ -29,5 +28,5 @@ func testMultipleAssignments(t Test, c multi) {
     t.assert(c.c == 30)
 }
 
-app.window {
+window {
 }

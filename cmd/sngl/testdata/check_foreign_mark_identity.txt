@@ -20,7 +20,6 @@ stderr 'cannot pass Entry as'
 -- ok.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 #[foreign("js:example.com/api", "Entry")]
 struct A {
@@ -33,13 +32,12 @@ component main node {
     text(value=take(A{title="x"}))
 }
 
-app.window {
+window {
     main
 }
 -- twomarks.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 #[foreign("js:example.com/api", "Entry")]
 struct A {
@@ -57,14 +55,13 @@ component main node {
     text(value=take(A{title="x"}))
 }
 
-app.window {
+window {
     main
 }
 -- markvsimport.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
 import api "js:./api"
-import app "sngl:app"
 
 #[foreign("js:./api", "Entry")]
 struct Entry {
@@ -77,7 +74,7 @@ component main node {
     text(value=take(Entry{title="x"}))
 }
 
-app.window {
+window {
     main
 }
 -- api/index.ts --

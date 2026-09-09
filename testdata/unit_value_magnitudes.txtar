@@ -30,7 +30,6 @@ deny out/kotlin/android/MainScreen.kt `[0-9](px|pct|rem|em|ms)\b` -- Kotlin emit
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:time"
-import app "sngl:app"
 
 output {
     go {
@@ -61,7 +60,7 @@ component main node {
     text(value=string(total))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

@@ -4,11 +4,10 @@
 // value and checked clean even when the event was declared nowhere at all.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component card() node {
     button(@nosuchevent) // ERROR(parse) "unexpected \")\""
 }
 
-app.window {
+window {
 }

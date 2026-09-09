@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // Props print in the order they were written, which is the order the checker
 // recorded -- a positional arg is resolved to its name on the way in, so
@@ -29,5 +28,5 @@ func testReflectsCurrentState(t Test, c card) {
     t.snapshot("changed")
 }
 
-app.window {
+window {
 }

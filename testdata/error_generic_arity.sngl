@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func pair<A, B>(a A, b B) A {
     return a
@@ -11,6 +10,6 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

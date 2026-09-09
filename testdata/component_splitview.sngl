@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // splitview: A-tier — declaration validates parse + check.
 component main node {
@@ -9,6 +8,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

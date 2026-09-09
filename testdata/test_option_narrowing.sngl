@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Node {
     value int = 0
@@ -68,6 +67,6 @@ func testNegatedTestNarrowsTheElseArm(t Test) {
     t.assert(got == 10)
 }
 
-app.window {
+window {
     main
 }

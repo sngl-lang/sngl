@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // modal: state-binding fixture — toggling the bound `open` var
 // opens/closes the dialog.
@@ -19,6 +18,6 @@ func testModalOpenToggles(t Test, c main) {
     t.assert(c.open == false)
 }
 
-app.window {
+window {
     main
 }

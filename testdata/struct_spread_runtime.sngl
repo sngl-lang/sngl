@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Runtime (opaque) struct spread: `...base` where base is a variable cannot be
 // flattened at compile time, so flatten_struct_spread lowers it to a
@@ -15,6 +14,6 @@ component main node {
     text(value=string(merged.a) + "/" + string(merged.b))
 }
 
-app.window {
+window {
     main
 }

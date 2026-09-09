@@ -6,12 +6,11 @@
 //
 // Belonging to no family is still sayable — with the mark, not with silence.
 
-import app "sngl:app"
 import ui "sngl:ui"
 
 component card(label string) { // ERROR(check) "component card: name the tree it belongs to in the return position, or mark it #[tree.none]"
     ui.text(value=label)
 }
 
-app.window {
+ui.window {
 }

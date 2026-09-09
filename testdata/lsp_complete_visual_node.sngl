@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component card(title string) node {
 }
@@ -9,6 +8,6 @@ component main node {
     } //@ complete("", "card", "main")
 }
 
-app.window {
+window {
     main
 }

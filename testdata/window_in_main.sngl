@@ -8,7 +8,6 @@
 // that lifts the ones written at the top level, so nothing downstream sees a
 // window nested in a view.
 
-import . "sngl:app"
 import . "sngl:ui"
 
 var count = 0

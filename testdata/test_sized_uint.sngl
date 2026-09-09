@@ -1,6 +1,5 @@
 import . "sngl:test"
 import ui "sngl:ui"
-import app "sngl:app"
 
 // Unsigned integer types, including full-range uint64 fidelity in the
 // interpreter/const-folder (values above 2^63 are modeled exactly, not as
@@ -41,5 +40,5 @@ func testUnsignedSubtractWrap(t Test, c uints) {
     t.assert(z - 1 == 255)
 }
 
-app.window {
+ui.window {
 }

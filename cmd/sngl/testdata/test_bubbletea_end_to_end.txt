@@ -8,7 +8,6 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -27,5 +26,5 @@ func testIncrementWorks(t Test, c counter) {
     t.assert(c.count == 5)
 }
 
-app.window {
+window {
 }

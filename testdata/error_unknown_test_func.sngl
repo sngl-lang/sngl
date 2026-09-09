@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component real node {
     var x = 0
@@ -11,5 +10,5 @@ func testCallsUnknownFunction(t Test, c real) { // ERROR(test) "unsupported meth
     c.bogus()
 }
 
-app.window {
+window {
 }

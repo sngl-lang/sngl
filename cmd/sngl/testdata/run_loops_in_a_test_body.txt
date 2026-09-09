@@ -19,7 +19,6 @@ stdout 'PASS'
 import . "sngl:ui"
 import . "sngl:test"
 import "sngl:seq"
-import app "sngl:app"
 
 component main node {
     text(value="hi")
@@ -69,6 +68,6 @@ func testMapEntries(t Test) {
     t.assert(n == 6)
 }
 
-app.window {
+window {
     main
 }

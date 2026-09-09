@@ -21,7 +21,6 @@ import (
 func TestInstance_StatePerElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
@@ -72,7 +71,6 @@ window(title="H", href="/index.html") { App() }
 func TestInstance_PropUpdateReachesTheLeaf(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
@@ -117,7 +115,6 @@ window(title="H", href="/index.html") { App() }
 func TestInstance_Recursive(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component chain(depth int) node {
     text(value="<" + string(depth))
     if depth > 0 {
@@ -154,7 +151,6 @@ window(title="H", href="/index.html") { App() }
 func TestInstance_GrowingTheListKeepsTheOthers(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
@@ -209,7 +205,6 @@ window(title="H", href="/index.html") { App() }
 func TestInstance_KeyedInsertAtFront(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
@@ -261,7 +256,6 @@ window(title="H", href="/index.html") { App() }
 func TestInstance_DuplicateKeysAreDistinctInstances(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
@@ -318,7 +312,6 @@ window(title="H", href="/index.html") { App() }
 func TestInstance_BranchReentryResetsState(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component badge() node {
     var hits = 0
     text(value="[" + string(hits) + "]")

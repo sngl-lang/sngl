@@ -4,7 +4,6 @@ than a call; and `get()` with a default becomes a `.has()`/`.get()` ternary,
 since JS has no two-argument lookup.
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -20,7 +19,7 @@ component main node {
     text(value=string(size))
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

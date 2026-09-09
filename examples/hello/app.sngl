@@ -1,5 +1,4 @@
 import ui "sngl:ui"
-import app "sngl:app"
 
 output {
     none { html }
@@ -16,6 +15,6 @@ component main ui.node {
     }
 }
 
-app.window {
+ui.window {
     main
 }

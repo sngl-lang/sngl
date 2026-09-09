@@ -36,7 +36,6 @@ grep 'no pixels here' tui/model.go
 import . "sngl:ui"
 import "./gfx"
 import "sngl:platform/bubbletea"
-import app "sngl:app"
 
 component main node {
     var lit = true
@@ -44,14 +43,13 @@ component main node {
     button(text="t", @click { lit!! })
 }
 
-app.window {
+window {
     main
 }
 -- gfx/gfx.sngl --
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 import "sngl:platform/bubbletea"
-import app "sngl:app"
 
 // An aliased import: the shapes are named draw.rect, not rect.
 component Bar(on = false, x = 0.0) draw.shape {
@@ -84,5 +82,5 @@ component Panel(lit = false) node {
     }
 }
 
-app.window {
+window {
 }

@@ -7,7 +7,6 @@
 // body there is no view at all.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component holder(children ...component) node {
     vbox {
@@ -39,6 +38,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

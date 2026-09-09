@@ -19,7 +19,6 @@ grep 'user widget' out/model.go
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -33,6 +32,6 @@ component main node {
     input(value=name)
 }
 
-app.window {
+window {
     main
 }

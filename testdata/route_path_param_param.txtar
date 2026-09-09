@@ -11,7 +11,6 @@ same reason, each in its own archive: a ternary in route_path_param_ternary.txta
 and a list lambda in route_path_param_lambda.txtar.
 
 -- param.sngl --
-import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
@@ -22,7 +21,7 @@ output {
 }
 
 component main ui.node {
-    window #pkg(title="t", href="/p/{pkg}") {
+    ui.window #pkg(title="t", href="/p/{pkg}") {
         html.a(href="/p/" + pkg, innerText=pkg)
     }
 }

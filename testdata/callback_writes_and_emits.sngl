@@ -26,7 +26,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 func run(f func()) {
     f()
@@ -89,6 +88,6 @@ func testACallbackEmits(t Test, c main) {
     t.assert(c.emitted == 1)
 }
 
-app.window {
+window {
     main
 }

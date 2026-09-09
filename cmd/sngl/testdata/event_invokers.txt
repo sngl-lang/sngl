@@ -76,7 +76,6 @@ sngl generate --platform=html --lang=none --out=plain rooted.sngl
 -- click.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var n = 0
@@ -91,11 +90,10 @@ func testIncrement(t Test, c counter) {
     t.assert(c.n == 1)
 }
 
-app.window {
+window {
 }
 -- rooted.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component counter node {
     var n = 0
@@ -105,6 +103,6 @@ component counter node {
     }
 }
 
-app.window {
+window {
     counter()
 }

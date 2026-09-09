@@ -19,7 +19,6 @@ deny out/kotlin/android/MainScreen.kt `newValue ->` -- the injected callback tak
 deny out/kotlin/android/MainScreen.kt `onClick = \{\}` -- no RadioButton is left with an empty callback, which is what the write-back landing in the other branch looks like
 -- horizontal.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     kotlin {
@@ -33,7 +32,7 @@ component main node {
     text(value=pick)
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/MainScreen.kt --

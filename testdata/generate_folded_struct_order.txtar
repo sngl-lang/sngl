@@ -16,7 +16,6 @@ deny out/go/bubbletea/model.go `__type` -- the interpreter's type tag is not a f
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -38,7 +37,7 @@ component main node {
     text(value="{string(here.x)}")
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

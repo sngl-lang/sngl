@@ -10,7 +10,6 @@ This locks the end-to-end behaviour demonstrated by hand in 932834d.
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -22,7 +21,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

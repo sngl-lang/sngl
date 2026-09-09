@@ -1,11 +1,10 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var maybe option = null // ERROR(check) "option requires a type argument"
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

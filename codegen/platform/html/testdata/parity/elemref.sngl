@@ -1,7 +1,6 @@
 // elemref.sngl — exercises element-ref: value is read in an expression and
 // written inside a click handler.
 
-import . "sngl:app"
 import . "sngl:ui"
 
 window {

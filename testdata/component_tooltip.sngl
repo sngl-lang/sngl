@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // tooltip: state-binding fixture — driving the tooltip `text`
 // from a state var. The stdlib prop isn't two-way bound, so this
@@ -18,6 +17,6 @@ func testTooltipTextMutates(t Test, c main) {
     t.assert(c.msg == "goodbye")
 }
 
-app.window {
+window {
     main
 }

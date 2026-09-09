@@ -8,7 +8,6 @@ real parent-child one; a top-level widget is parented to __root by BuildUI and
 never reaches the append path at all.
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {

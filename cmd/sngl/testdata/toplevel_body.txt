@@ -42,7 +42,6 @@ grep 'state.n__inst0 = state.n__inst0 \+ 1' comp/index.html
 
 -- win.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 var n = 0
 
@@ -55,7 +54,6 @@ window {
 
 -- both.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 var visits = 0
 
@@ -75,7 +73,6 @@ window #about(title="About", href="/about") {
 
 -- compose.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 window {
     counter()

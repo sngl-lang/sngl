@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component editor node {
     var name = ""
@@ -32,5 +31,5 @@ func testChangeFiresOnCommit(t Test, c editor) {
     t.assert(c.lastCommit == "committed")
 }
 
-app.window {
+window {
 }

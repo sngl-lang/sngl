@@ -18,7 +18,6 @@ app/src/main/assets/, where the runtime loads it.
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 output { kotlin { android(main=true) } }
 
@@ -32,7 +31,7 @@ component main node {
     })
 }
 
-app.window {
+window {
     main
 }
 -- i18n.manifest.json --

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Documents that mixed numeric `==` typechecks AND folds correctly.
 // Earlier the optimizer (consteval.go) compared Go-native values with `==`,
@@ -11,6 +10,6 @@ component main node {
     text(value="{ok}")
 }
 
-app.window {
+window {
     main
 }

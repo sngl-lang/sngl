@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct S {
     x int
@@ -17,6 +16,6 @@ func testStaticOnUserType(t Test, c main) {
     t.assert(S.helper(5) == 10)
 }
 
-app.window {
+window {
     main
 }

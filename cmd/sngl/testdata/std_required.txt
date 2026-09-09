@@ -75,29 +75,26 @@ stdout 'draw_names_free.sngl: ok'
 
 -- nostd.sngl --
 import ui "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     text(value="x")
 }
 
-app.window {
+ui.window {
     main
 }
 -- withstd.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }
 -- builtins.sngl --
 import ui "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     var n int = int.max(1, 2)
@@ -106,24 +103,22 @@ component main ui.node {
     var c color = color.rgb(1, 2, 3)
 }
 
-app.window {
+ui.window {
     main
 }
 -- dateunimported.sngl --
 import ui "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     var d date = "2026-08-21"
 }
 
-app.window {
+ui.window {
     main
 }
 -- dateimported.sngl --
 import . "sngl:time"
 import ui "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     var d date = "2026-08-21"
@@ -131,26 +126,24 @@ component main ui.node {
     var dt datetime = "2026-08-21T09:30:00"
 }
 
-app.window {
+ui.window {
     main
 }
 -- importbuiltin.sngl --
 import . "sngl:builtin"
 import ui "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     var n int = 1
 }
 
-app.window {
+ui.window {
     main
 }
 -- rawelem.sngl --
 import "sngl:platform/html"
 import "sngl:platform/gtk4"
 import ui "sngl:ui"
-import app "sngl:app"
 
 component Foo() ui.node {
     html.marquee() {}
@@ -160,21 +153,19 @@ component Bar() ui.node {
     gtk4.GtkLabel(label="x") {}
 }
 
-app.window {
+ui.window {
 }
 -- rawelem_unimported.sngl --
 import ui "sngl:ui"
-import app "sngl:app"
 
 component Bar() ui.node {
     gtk4.GtkLabel(label="x") {}
 }
 
-app.window {
+ui.window {
 }
 -- aliased_expr.sngl --
 import ui "sngl:ui"
-import app "sngl:app"
 
 func render() => ui.text(value="x")
 
@@ -182,13 +173,12 @@ component main ui.node {
     ui.text(value="y")
 }
 
-app.window {
+ui.window {
     main
 }
 -- private.sngl --
 import . "sngl:ui"
 import w "widgets"
-import app "sngl:app"
 
 func render() => w.helper()
 
@@ -196,45 +186,41 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }
 -- widgets/widgets.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component helper() node {
     text(value="private")
 }
 
-app.window {
+window {
 }
 -- aliased.sngl --
 import ui "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     ui.text(value="x")
 }
 
-app.window {
+ui.window {
     main
 }
 -- draw_unimported.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     canvas(width=100px, height=100px) {}
 }
 
-app.window {
+window {
     main
 }
 -- draw_imported.sngl --
 import . "sngl:ui"
 import d "sngl:ui/draw"
-import app "sngl:app"
 
 component main node {
     d.canvas(width=100px, height=100px) {
@@ -242,13 +228,12 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- draw_both_dotted.sngl --
 import . "sngl:ui"
 import . "sngl:ui/draw"
-import app "sngl:app"
 
 component main node {
     canvas(width=100px, height=100px) {
@@ -256,12 +241,11 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- draw_names_free.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component rect(label string) node {
     text(value=label)
@@ -271,6 +255,6 @@ component main node {
     rect(label="mine")
 }
 
-app.window {
+window {
     main
 }

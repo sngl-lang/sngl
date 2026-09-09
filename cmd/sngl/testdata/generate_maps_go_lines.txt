@@ -30,7 +30,6 @@ exists out2/model.go
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -40,6 +39,6 @@ component main node {
     button(text="+", @click { count += 1 })
 }
 
-app.window {
+window {
     main
 }

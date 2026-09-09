@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Inner {
     value int = 0
@@ -22,6 +21,6 @@ func testNestedAnon(t Test, c main) {
     t.assert(c.nested.label == "hi")
 }
 
-app.window {
+window {
     main
 }

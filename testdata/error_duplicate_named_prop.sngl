@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component Card(title string, subtitle string = "") node {
     text(value=title)
@@ -9,6 +8,6 @@ component main node {
     Card(title="Hi", title="Duplicate") // ERROR(check) "already provided"
 }
 
-app.window {
+window {
     main
 }

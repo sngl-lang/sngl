@@ -67,7 +67,7 @@ func checkGtk4(t *testing.T, src string) []string {
 // gtk4Window wraps one platform-gtk4 body in the smallest program that
 // reaches the emitter.
 func gtk4Window(body string) string {
-	return "\nimport . \"sngl:ui\"\nimport . \"sngl:app\"\nimport \"sngl:platform/gtk4\"\n\nwindow(title=\"t\") {\n" + body + "\n}\n"
+	return "\nimport . \"sngl:ui\"\nimport \"sngl:platform/gtk4\"\n\nwindow(title=\"t\") {\n" + body + "\n}\n"
 }
 
 // setterlessSource sets four GTK properties GIR names no setter for — one of
@@ -78,7 +78,6 @@ func gtk4Window(body string) string {
 // path too.
 const setterlessSource = `
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/gtk4"
 
 window(title="t") {
@@ -148,7 +147,7 @@ func TestGObjectPropSet_EmitsGenericPath(t *testing.T) {
 func TestGObjectPropSet_HelperIsGatedOnUse(t *testing.T) {
 	skipWithoutGIR(t)
 	files, err := generateGtk4(t, `
-import . "sngl:app"
+import . "sngl:ui"
 import "sngl:platform/gtk4"
 
 window(title="t") {
@@ -174,7 +173,7 @@ window(title="t") {
 func TestUnsettableProp_FailsTheBuild(t *testing.T) {
 	skipWithoutGIR(t)
 	_, err := generateGtk4(t, `
-import . "sngl:app"
+import . "sngl:ui"
 import "sngl:platform/gtk4"
 
 window(title="t") {
@@ -196,7 +195,7 @@ window(title="t") {
 func TestEnumProp_RejectsUnknownMember(t *testing.T) {
 	skipWithoutGIR(t)
 	_, err := generateGtk4(t, `
-import . "sngl:app"
+import . "sngl:ui"
 import "sngl:platform/gtk4"
 
 window(title="t") {

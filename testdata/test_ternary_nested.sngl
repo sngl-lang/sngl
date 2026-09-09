@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var a int = 1
@@ -26,6 +25,6 @@ func testTernaryDeep(t Test, c main) {
     t.assert(c.deep == "cMax")
 }
 
-app.window {
+window {
     main
 }

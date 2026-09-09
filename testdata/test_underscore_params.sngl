@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     // _-prefix params: usable in body, not targetable by name at call site.
@@ -20,6 +19,6 @@ func testMixedUnderscoreAndNamed(t Test, c main) {
     t.assert(c.offset(10, 5) == 15)
 }
 
-app.window {
+window {
     main
 }

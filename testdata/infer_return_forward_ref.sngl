@@ -10,7 +10,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 func caller() => twice(3) == 6
 
@@ -40,6 +39,6 @@ func testForwardReference(t Test, c main) {
     t.assert(c.out.value == "twice: 6")
 }
 
-app.window {
+window {
     main
 }

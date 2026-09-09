@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     // Tail-recursive factorial with accumulator
@@ -54,6 +53,6 @@ func testRecursiveGcdBlockForm(t Test, c main) {
     t.assert(c.gcd(10946, 6765) == 1)
 }
 
-app.window {
+window {
     main
 }

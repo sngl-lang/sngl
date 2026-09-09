@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var bg color = 123 // ERROR(check) "cannot initialize color with int"
@@ -7,6 +6,6 @@ component main node {
     text(value="test")
 }
 
-app.window {
+window {
     main
 }

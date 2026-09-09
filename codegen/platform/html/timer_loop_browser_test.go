@@ -22,7 +22,6 @@ import (
 func TestTimer_ARowOfTimersKeepsOneScheduleEach(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:time"
 component App() node {
     var fast = 0

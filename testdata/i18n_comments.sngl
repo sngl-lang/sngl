@@ -2,7 +2,6 @@
 
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 var count = 5
 
@@ -25,5 +24,5 @@ var msg2 = $"{gender, select,
     other{they}
 }"
 
-app.window {
+window {
 }

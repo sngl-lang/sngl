@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component items node {
     var list = [1, 2, 3]
@@ -40,5 +39,5 @@ func testOutOfBounds(t Test, c items) { // ERROR(test) "out of range"
     t.assert(c.list[10] == 0)
 }
 
-app.window {
+window {
 }

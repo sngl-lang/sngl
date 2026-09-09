@@ -28,7 +28,6 @@ stdout 'ok'
 -- counter.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var n = 7
@@ -41,13 +40,12 @@ func testInitial(t Test, c main) {
     t.assert(c.n == 7)
 }
 
-app.window {
+window {
     main
 }
 -- renamed.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var n = 7
@@ -60,5 +58,5 @@ func testInitial(t Test, c counter) {
     t.assert(c.n == 7)
 }
 
-app.window {
+window {
 }

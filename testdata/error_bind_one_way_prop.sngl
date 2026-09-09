@@ -9,7 +9,6 @@
 // up where the write-back has to come from a platform event.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component OneWay(count int) node {
     text(value=string(count))
@@ -21,6 +20,6 @@ component main node {
     OneWay(:count=n) // ERROR(check) "one-way prop"
 }
 
-app.window {
+window {
     main
 }

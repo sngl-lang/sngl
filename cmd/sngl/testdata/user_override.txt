@@ -48,7 +48,6 @@ stdout 'noselection.sngl: ok'
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component Avatar(url string, size int) node {
@@ -65,7 +64,6 @@ window #w(title="t") {
 
 -- typo.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 component Avatar(url string) node {
     text(value=url)
@@ -81,7 +79,6 @@ window #w(title="t") {
 
 -- nottarget.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component Avatar(url string) node {
@@ -99,7 +96,6 @@ window #w(title="t") {
 -- duplicate.sngl --
 import sngl "sngl:ui"
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component sngl.badge[html.platform] {
@@ -114,7 +110,6 @@ component main sngl.node {
 
 -- declaresprops.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component Avatar(url string) node {
@@ -131,7 +126,6 @@ window #w(title="t") {
 
 -- selectsunknown.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component Avatar(url string) node {
@@ -148,7 +142,6 @@ window #w(title="t") {
 
 -- unselected.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component Avatar(url string, size int) node {
@@ -165,7 +158,6 @@ window #w(title="t") {
 
 -- noselection.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component Avatar(url string, size int) node {

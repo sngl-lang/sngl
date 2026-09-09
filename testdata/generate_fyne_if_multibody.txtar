@@ -16,7 +16,6 @@ function-local variables, which is what rules out the original collision.
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { fyne(main=true) } }
 

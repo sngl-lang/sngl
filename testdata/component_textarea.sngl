@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // textarea: state-binding fixture — mutating the bound `value`
 // var propagates to the textarea editor.
@@ -17,6 +16,6 @@ func testTextareaValueMutates(t Test, c main) {
     t.assert(c.text == "hello world")
 }
 
-app.window {
+window {
     main
 }

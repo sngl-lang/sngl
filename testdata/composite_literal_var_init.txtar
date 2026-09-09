@@ -28,7 +28,6 @@ deny out/go/bubbletea/model.go `map\[string\]int\{"one": "", "two": ""\}` -- the
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -64,7 +63,7 @@ component main node {
     text(value=string(tally.get("one", 0)))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

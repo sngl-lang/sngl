@@ -6,7 +6,6 @@ awaited in its body.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
-import app "sngl:app"
 
 output {
     none {
@@ -22,7 +21,7 @@ component main node {
     text(value=string(count))
 }
 
-app.window {
+window {
     main
 }
 -- api/index.ts --

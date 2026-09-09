@@ -34,7 +34,6 @@ import (
 // runs, which is also where the timer overrides put theirs.
 const nativeSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 import js "sngl:language/js"
 
 #[js.native("btoa")]

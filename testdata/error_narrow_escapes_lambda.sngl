@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 func double(n int) int {
     return n * 2
@@ -18,6 +17,6 @@ func narrowingEscapesIntoALambda(t Test) {
     }
 }
 
-app.window {
+window {
     main
 }

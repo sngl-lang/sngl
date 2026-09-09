@@ -13,7 +13,6 @@ import (
 const asyncOffloadSrc = `
 import . "sngl:ui"
 import go "sngl:language/go"
-import app "sngl:app"
 
 #[go.native("time", "time.Sleep")]
 #[go.async]
@@ -23,7 +22,7 @@ func sleep(ns int)
 #[go.async]
 func host() string
 
-app.window {
+window {
     var (
         greeting = "idle"
         busy = false
@@ -101,11 +100,10 @@ func TestABlockingCallDoesNotHoldTheClick(t *testing.T) {
 }
 
 // asyncOffloadWindowSrc writes the same handler inside a `window` a component
-// renders. A component that renders windows names `app.root`, the family a
+// renders. A component that renders windows names `root`, the family a
 // file's root accepts — a `ui` component is not a place a window belongs.
 const asyncOffloadWindowSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 import go "sngl:language/go"
 
 #[go.native("time", "time.Sleep")]
@@ -156,13 +154,12 @@ func TestAHandlerInsideAComponentsWindowOffloadsToo(t *testing.T) {
 const asyncFuncvarSrc = `
 import . "sngl:ui"
 import go "sngl:language/go"
-import app "sngl:app"
 
 #[go.native("os", "os.Hostname", fails)]
 #[go.async]
 func host() string
 
-app.window {
+window {
     var (
         handler func() string = host
         greeting = "idle"

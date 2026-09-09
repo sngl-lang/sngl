@@ -17,9 +17,8 @@ import (
 func TestDerivedFuncGatesReactiveSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
-app.window {
+window {
     var name = "world"
     func isLong() => name.length > 3
     vbox {
@@ -56,9 +55,8 @@ app.window {
 func TestDerivedFuncChainGatesReactiveSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
-app.window {
+window {
     var name = "world"
     func longish() => name.length > 3
     func isLong() => longish()
@@ -86,9 +84,8 @@ app.window {
 func TestToggleSplicesReactiveUpdaters(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
-app.window {
+window {
     var enabled = true
     button(text="Toggle", @click { enabled!! })
     text(value="enabled: {enabled}")
@@ -115,13 +112,12 @@ app.window {
 func TestStructFieldMutationSplicesUpdaters(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
 struct User {
     name string = "anon"
     score int = 0
 }
-app.window {
+window {
     var u User = User{name = "Ada", score = 42}
     text(value="Score: {u.score}")
     button(text="+10", @click { u.score += 10 })
@@ -148,12 +144,11 @@ app.window {
 func TestListPushSplicesUpdatersAndRefiresSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
 struct Task {
     label string = ""
 }
-app.window {
+window {
     var tasks list<Task> = [Task{label = "A"}]
     text(value="{tasks.length} tasks")
     for var t = tasks {
@@ -189,9 +184,8 @@ app.window {
 func TestStringIntrinsicEmitsNativeAfterInlining(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
-app.window {
+window {
     var s = "hi"
     text(value="{s.upper()} {s.length}")
     button(text="x", @click { s = s.upper() })

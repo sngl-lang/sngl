@@ -3,7 +3,7 @@
 // time: what the interpreter runs is the loop.
 
 import . "sngl:test"
-import app "sngl:app"
+import ui "sngl:ui"
 
 func countTo(n int) int {
     var i int = 0
@@ -114,5 +114,5 @@ func testEscapesActOnTheInnermostLoop(t Test) {
     t.assert(nested(0, 2) == 0)
 }
 
-app.window {
+ui.window {
 }

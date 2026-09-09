@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // A field a literal omits takes its declared default. The checker installed a
 // placeholder at declaration time and nothing ever replaced it, so the default
@@ -23,6 +22,6 @@ func testOmittedFieldTakesItsDefault(t Test, c main) {
     t.assert(p == P{x=7, y=1, tag="none"})
 }
 
-app.window {
+window {
     main
 }

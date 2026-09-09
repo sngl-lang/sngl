@@ -14,7 +14,6 @@ stderr 'unknown stdlib package'
 -- ok.sngl --
 import . "sngl:ui"
 import macro "sngl:macro"
-import app "sngl:app"
 
 #[macro.foreign("Knobs")]
 struct Knobs {
@@ -25,30 +24,28 @@ component main node {
     text(value="hello")
 }
 
-app.window {
+window {
     main
 }
 -- internal.sngl --
 import . "sngl:ui"
 import . "sngl:internal/marks"
-import app "sngl:app"
 
 component main node {
     text(value="hello")
 }
 
-app.window {
+window {
     main
 }
 -- nosuch.sngl --
 import . "sngl:ui"
 import . "sngl:nosuch"
-import app "sngl:app"
 
 component main node {
     text(value="hello")
 }
 
-app.window {
+window {
     main
 }

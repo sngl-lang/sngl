@@ -11,7 +11,6 @@
 // diagnostic for a list says so, because that is the mistake being made.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 struct pair {
     a int
@@ -76,6 +75,6 @@ component keys node {
     keyed(k=xs) // ERROR(check) "component keyed keys an effect on a value this call binds to list<int>"
 }
 
-app.window {
+window {
     main
 }

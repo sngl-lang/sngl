@@ -9,12 +9,11 @@ exists gen2/index.html
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

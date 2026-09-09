@@ -13,7 +13,6 @@
 // beside this file.
 
 import ui "sngl:ui"
-import app "sngl:app"
 import "./calc"
 import "./keypad"
 import "./readout"
@@ -66,6 +65,6 @@ component main ui.node {
     }
 }
 
-app.window #calculator(title="Calculator", href="/") {
+ui.window #calculator(title="Calculator", href="/") {
     main
 }

@@ -28,7 +28,6 @@ stderr 'cannot pass Style as Style'
 -- app.sngl --
 import . "sngl:ui"
 import sub "./sub"
-import app "sngl:app"
 
 struct Style {
     x int = 0
@@ -44,11 +43,11 @@ component main node {
     text(value=string(take(theirs)))
 }
 
-app.window {
+window {
     main
 }
 -- sub/lib.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 struct Style {
     y int = 0
@@ -58,12 +57,11 @@ func make() Style {
     return Style{y = 5}
 }
 
-app.window {
+ui.window {
 }
 -- direct/main.sngl --
 import . "sngl:ui"
 import sub "../sub"
-import app "sngl:app"
 
 struct Style {
     x int = 0
@@ -75,6 +73,6 @@ component main node {
     text(value=string(take(sub.make())))
 }
 
-app.window {
+window {
     main
 }

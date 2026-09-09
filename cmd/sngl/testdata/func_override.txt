@@ -37,7 +37,6 @@ stderr 'override names unknown function "nope"'
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 func label(n int) string {
@@ -54,7 +53,6 @@ window #w(title="t") {
 
 -- method.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 func int.describe(n int) string {
@@ -71,7 +69,6 @@ window #w(title="t") {
 
 -- params.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 func label(n int) string { return "base" }
@@ -84,7 +81,6 @@ window #w(title="t") {
 
 -- rettype.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 func label(n int) string { return "base" }
@@ -97,7 +93,6 @@ window #w(title="t") {
 
 -- duplicate.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 func label(n int) string { return "base" }
@@ -112,7 +107,6 @@ window #w(title="t") {
 
 -- unknown.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 func nope[html.platform] { return "x" }

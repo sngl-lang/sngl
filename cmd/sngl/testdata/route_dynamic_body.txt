@@ -36,7 +36,6 @@ func Bump(n int) int { return n + 1 }
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "go:dynbody/srv"
 import "sngl:platform/html"
 

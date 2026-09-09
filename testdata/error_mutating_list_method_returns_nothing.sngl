@@ -9,7 +9,6 @@
 // is what made two right answers possible.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var xs list<string> = ["a"]
@@ -65,6 +64,6 @@ component main node {
     text(value=string(n))
 }
 
-app.window {
+window {
     main
 }

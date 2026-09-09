@@ -23,7 +23,6 @@ stdout 'out.sngl: ok'
 -- slots.sngl --
 import . "sngl:ui"
 import tr "sngl:tree"
-import . "sngl:app"
 
 struct Row {
     title string

@@ -5,7 +5,6 @@ deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `coerceIn`
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     kotlin {
@@ -22,7 +21,7 @@ component main node {
     text(value="{v}")
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/app/build.gradle.kts --

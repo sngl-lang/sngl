@@ -31,7 +31,6 @@ grep 'function [a-z]\([a-z],[a-z]\)\{return [a-z]\+[a-z]\}' min/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
-import app "sngl:app"
 
 component main node {
     var n = 0.0
@@ -39,7 +38,7 @@ component main node {
     text(value=string(n))
 }
 
-app.window {
+window {
     main
 }
 -- lib/index.ts --

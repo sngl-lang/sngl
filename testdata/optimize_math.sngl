@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component mathfold node {
     // Trig functions
@@ -30,5 +29,5 @@ func testTrigAndConversions(t Test, c mathfold) {
     t.assert(c.si == 42)
 }
 
-app.window {
+window {
 }

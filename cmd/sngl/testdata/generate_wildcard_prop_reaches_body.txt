@@ -27,7 +27,6 @@ stdout 'tag="div"'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 component badge(
     label string = "",
@@ -45,6 +44,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

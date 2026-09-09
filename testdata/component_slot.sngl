@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // slot: A-tier — Wrapper uses slot{} to project children from main.
 component Wrapper(children ...component) node {
@@ -16,6 +15,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

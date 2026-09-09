@@ -2,7 +2,6 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
-import app "sngl:app"
 
 component frame(body component tr.one, badge component option<node>) node {
     vbox {
@@ -39,6 +38,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

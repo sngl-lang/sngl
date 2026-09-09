@@ -48,7 +48,6 @@ stderr 'unknown type "color" in namespace "html"'
 
 -- gate.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:language/go"
 
@@ -64,7 +63,6 @@ window #w(title="t") {
 
 -- string_compare.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 window #w(title="t") {
     if PLATFORM == "html" {
@@ -74,7 +72,6 @@ window #w(title="t") {
 
 -- unknown_target.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 window #w(title="t") {
     if PLATFORM == htlm.platform {
@@ -84,7 +81,6 @@ window #w(title="t") {
 
 -- misspelled_member.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/bubbletea"
 
 window #w(title="t") {
@@ -95,7 +91,6 @@ window #w(title="t") {
 
 -- html_wildcard.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 window #w(title="t") {
@@ -107,7 +102,6 @@ window #w(title="t") {
 -- ambient_leak.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
-import . "sngl:app"
 
 window #w(title="t") {
     var c html.color = #ff0000

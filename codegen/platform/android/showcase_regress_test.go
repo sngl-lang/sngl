@@ -55,7 +55,7 @@ func compileSrc(t *testing.T, src string, testMode bool) string {
 // rendered empty. Regression for the struct-default fix.
 func TestStructFieldDefaults(t *testing.T) {
 	src := `import . "sngl:ui"
-import app "sngl:app"
+import ui "sngl:ui"
 struct User {
     name string = ""
     age int = 0
@@ -66,7 +66,7 @@ struct TreeNode {
     left dyn = null
     right dyn = null
 }
-app.window {
+ui.window {
     var u = User{}
     var t = TreeNode{}
     vbox { text(value=u.name) text(value=string(t.value)) }
@@ -94,9 +94,9 @@ app.window {
 // null-state fix.
 func TestNullStateTyped(t *testing.T) {
 	src := `import . "sngl:ui"
-import app "sngl:app"
+import ui "sngl:ui"
 struct User { name string = "" }
-app.window {
+ui.window {
     var nickname option<string> = null
     var picked option<User> = null
     vbox { text(value="x") }
@@ -115,8 +115,8 @@ app.window {
 // a Color struct. Regression for the color-conversion fix.
 func TestColorToComposeColor(t *testing.T) {
 	src := `import . "sngl:ui"
-import app "sngl:app"
-app.window {
+import ui "sngl:ui"
+ui.window {
     vbox {
         text(value="hi", style={color="#216"})
     }
@@ -135,8 +135,8 @@ app.window {
 func TestAlertToast(t *testing.T) {
 	src := `import . "sngl:ui"
 import . "sngl:dialog"
-import app "sngl:app"
-app.window {
+import ui "sngl:ui"
+ui.window {
     vbox { button(text="go", @click { Alert.toast("done", "success") }) }
 }`
 	out := compileSrc(t, src, false)
@@ -155,8 +155,8 @@ app.window {
 // timer active-var references route through state.
 func TestTestModeStateHoisting(t *testing.T) {
 	src := `import . "sngl:ui"
-import app "sngl:app"
-app.window {
+import ui "sngl:ui"
+ui.window {
     var count = 0
     var nick option<string> = null
     func doubled() => count * 2
@@ -186,8 +186,8 @@ func TestSelectRadioDatepickerWidgets(t *testing.T) {
 	src := `import . "sngl:ui"
 import . "sngl:time"
 import . "sngl:dialog"
-import app "sngl:app"
-app.window {
+import ui "sngl:ui"
+ui.window {
     var fruit = ""
     var size = "medium"
     var dob date = date("2000-01-01")
@@ -223,8 +223,8 @@ app.window {
 // switch it replaced passed a literal 0, so a program could not select a tab.
 func TestFeedbackIntrinsicsFromDeclarations(t *testing.T) {
 	src := `import . "sngl:ui"
-import app "sngl:app"
-app.window {
+import ui "sngl:ui"
+ui.window {
     var idx = 0
     vbox {
         divider

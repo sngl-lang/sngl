@@ -9,7 +9,6 @@ literal, with no client JS behind them.
 
 -- site.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 output { none { html } }

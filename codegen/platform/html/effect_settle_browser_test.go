@@ -21,7 +21,6 @@ import (
 func TestEffect_TwoPositionsEndBothBeforeEitherBegins(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var (
         k = 0
@@ -54,7 +53,6 @@ window(title="H", href="/index.html") { App() }
 func TestEffect_PushMountsTheNewBracket(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var (
         items list<string> = ["a"]
@@ -88,7 +86,6 @@ window(title="H", href="/index.html") { App() }
 func TestEffect_FieldWriteRekeys(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 struct counter {
     n int
 }
@@ -123,7 +120,6 @@ window(title="H", href="/index.html") { App() }
 func TestEffect_ACalledKeyRekeys(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 var (
     n = 0
     log list<string> = []
@@ -170,7 +166,6 @@ window(title="H", href="/index.html") { App() }
 func TestEffect_MutuallyRekeyingBracketsStopAtTheBound(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 var (
     x = 0
     y = 0

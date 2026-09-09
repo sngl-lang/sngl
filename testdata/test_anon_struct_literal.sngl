@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Point {
     x int = 0
@@ -26,6 +25,6 @@ func testAnonLiteralInferred(t Test, c main) {
     t.assert(c.inline.x == 1)
 }
 
-app.window {
+window {
     main
 }

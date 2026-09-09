@@ -6,7 +6,6 @@
 import "sngl:seq"
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component tally node {
     var labels = ["a", "b", "c"]
@@ -27,5 +26,5 @@ func testBindsNothingButStillRepeats(t Test, c tally) {
     t.assert(c.dash[2].value == "-")
 }
 
-app.window {
+window {
 }

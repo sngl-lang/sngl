@@ -12,9 +12,8 @@ import (
 func TestStylesDedupeToThemes(t *testing.T) {
 	out := generateFyneModel(t, `
 import . "sngl:ui"
-import app "sngl:app"
 output { go { fyne } }
-app.window {
+window {
     hbox {
         button(text="a", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight="bold", borderRadius=8})
         button(text="b", style={background=#2c2f36, color=#f5f7fa, fontSize=22, fontWeight="bold", borderRadius=8})
@@ -50,9 +49,8 @@ app.window {
 func TestUnstyledWidgetsAreNotWrapped(t *testing.T) {
 	out := generateFyneModel(t, `
 import . "sngl:ui"
-import app "sngl:app"
 output { go { fyne } }
-app.window {
+window {
     hbox(style={gap=4}) {
         button(text="a")
         text(value="b")
@@ -73,9 +71,8 @@ app.window {
 func TestLayoutOnlyStyleDeclaresNoTheme(t *testing.T) {
 	out := generateFyneModel(t, `
 import . "sngl:ui"
-import app "sngl:app"
 output { go { fyne } }
-app.window {
+window {
     hbox(style={gap=4, padding=6}) {
         text(value="a", style={flex=1, margin=3})
     }

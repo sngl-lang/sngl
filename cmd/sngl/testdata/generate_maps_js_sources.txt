@@ -17,7 +17,6 @@ stdout 'map ok'
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 0
@@ -25,7 +24,7 @@ component main node {
     button(text="+", @click { count += 1 })
 }
 
-app.window {
+window {
     main
 }
 -- check_map.js --

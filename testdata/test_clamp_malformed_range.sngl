@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // clamp is max(lo, min(x, hi)), so a malformed range answers lo. The three
 // backends disagreed: Go and JS composed it the other way round (hi wins) and
@@ -18,6 +17,6 @@ func testClampMalformedRange(t Test, c main) {
     t.assert(int.clamp(99, 0, 10) == 10)
 }
 
-app.window {
+window {
     main
 }

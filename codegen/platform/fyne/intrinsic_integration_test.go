@@ -15,8 +15,7 @@ import (
 func TestIntegration_ReactiveIfEmitsRenderSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
-app.window {
+window {
     var visible bool = true
     button(text="toggle", @click { visible = !visible })
     if visible {

@@ -13,7 +13,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 2
@@ -40,6 +39,6 @@ func testNestedBodyReadsAndWritesTheOwnersVar(t Test, c main) {
     t.assert(c.count == 3)
 }
 
-app.window {
+window {
     main
 }

@@ -3,7 +3,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component iterLoop node {
     var nums list<int> = [1, 2, 3, 4, 5]
@@ -47,5 +46,5 @@ func testListImplicitlyConvertsToIter(t Test, c iterLoop) {
     t.assert(count(c.nums) == 5)
 }
 
-app.window {
+window {
 }

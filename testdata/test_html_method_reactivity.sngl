@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var x = 5
@@ -16,6 +15,6 @@ func testReactiveMethodDrivesUpdate(t Test, c main) {
     t.assert(c.out.value == "x")
 }
 
-app.window {
+window {
     main
 }

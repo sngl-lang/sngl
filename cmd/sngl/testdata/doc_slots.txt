@@ -44,7 +44,6 @@ stdout 'body +...component'
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Row {
     title string
@@ -67,6 +66,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

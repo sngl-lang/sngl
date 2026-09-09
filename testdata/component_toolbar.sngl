@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // toolbar: A-tier — declaration only.
 component main node {
@@ -10,6 +9,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

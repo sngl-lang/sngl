@@ -3,7 +3,6 @@
 // declaration with no instance behind it has nothing to rebuild.
 
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:macro"
 
 component seeded(

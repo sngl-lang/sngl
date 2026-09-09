@@ -3,7 +3,6 @@
 // names a position, and a written type is measured against it.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Row {
     title string
@@ -25,6 +24,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

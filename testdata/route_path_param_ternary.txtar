@@ -13,7 +13,6 @@ sits on is in route_path_param_param.txtar, and html's other withdrawal from
 the Go lowering, list lambdas, in route_path_param_lambda.txtar.
 
 -- ternary.sngl --
-import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
@@ -26,7 +25,7 @@ output {
     }
 }
 
-window #home(title="t", href="/") {
+ui.window #home(title="t", href="/") {
     var active = true
 
     html.a(class=active ? "on" : "off", innerText="x")

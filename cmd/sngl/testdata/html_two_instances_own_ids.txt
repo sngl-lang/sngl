@@ -26,7 +26,6 @@ grep '\$1.textContent = String\(state.n__inst1\)' out/index.html
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component counter node {
     var n = 0
@@ -39,6 +38,6 @@ component main node {
     counter()
 }
 
-app.window {
+window {
     main
 }

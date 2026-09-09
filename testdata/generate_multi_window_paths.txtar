@@ -6,7 +6,6 @@ compares the set both ways.
 
 -- site.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { none { html } }
 

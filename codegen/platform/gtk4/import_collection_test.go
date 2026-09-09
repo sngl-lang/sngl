@@ -21,8 +21,7 @@ func TestIntegration_ComputedBodyImportCollected(t *testing.T) {
 	skipWithoutGIR(t)
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
-app.window {
+window {
     var n = 3
     func double() => n * 2
     func summary() string {

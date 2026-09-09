@@ -2,7 +2,6 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
-import app "sngl:app"
 
 component RequiresOne(content ...component tr.one) node {
     vbox { content }
@@ -32,6 +31,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

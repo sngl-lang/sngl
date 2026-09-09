@@ -27,7 +27,6 @@ component card node {
 }
 -- window.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 component card node {
     text(value="hi")

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // divider: A-tier — only style/direction/label, no testable state.
 component main node {
@@ -12,6 +11,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

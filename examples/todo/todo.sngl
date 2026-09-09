@@ -1,5 +1,4 @@
 import ui "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -15,7 +14,7 @@ struct Todo {
     done bool = false
 }
 
-app.window {
+ui.window {
     var (
         newTodo = ""
         todos list<Todo> = [

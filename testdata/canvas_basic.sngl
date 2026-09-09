@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:ui/draw"
-import app "sngl:app"
 
 component myWidget node {
     canvas(width=400px, height=300px) {
@@ -10,5 +9,5 @@ component myWidget node {
     }
 }
 
-app.window {
+window {
 }

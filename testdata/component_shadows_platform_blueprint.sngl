@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // A user component may take a name that a platform's own source uses for a
 // blueprint component. `Widget` is bubbletea's textinput/viewport blueprint,
@@ -21,6 +20,6 @@ component main node {
     input(value=name)
 }
 
-app.window {
+window {
     main
 }

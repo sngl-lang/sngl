@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var words = ["hello", "world", "foo"]
@@ -19,6 +18,6 @@ func testMethodChainDeep(t Test, c main) {
     t.assert(c.deep == 6)
 }
 
-app.window {
+window {
     main
 }

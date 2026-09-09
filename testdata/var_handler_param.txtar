@@ -16,7 +16,6 @@ deny out/none/html/index.html `\bnv\b` -- same, and here nothing would have repo
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -43,7 +42,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

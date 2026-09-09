@@ -20,9 +20,8 @@ func TestUnitArithmetic_ADurationIsANumberOfMilliseconds(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import "sngl:time"
-import app "sngl:app"
 
-app.window {
+window {
     var short time.duration = 100ms
     var long time.duration = 1s
     vbox {
@@ -63,9 +62,8 @@ app.window {
 func TestUnitArithmetic_MeasurementsAreSpelledAsCSSLengths(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 
-app.window {
+window {
     vbox(style={width=50pct, padding=3px+4px, gap=1rem+2em}) {
         text(value="x")
     }

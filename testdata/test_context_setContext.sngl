@@ -8,7 +8,6 @@
 import . "sngl:ui"
 import . "sngl:test"
 import "sngl:i18n"
-import app "sngl:app"
 
 component SetCtxGreeting node {
     func label() => $"Hello"
@@ -34,5 +33,5 @@ func testSetContextLastWriteWins(t Test, c SetCtxGreeting) {
     t.assert(c.label() == "Hello")
 }
 
-app.window {
+window {
 }

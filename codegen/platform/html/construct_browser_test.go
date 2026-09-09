@@ -19,7 +19,6 @@ import (
 func TestConstruct_ChangedValueRebuildsTheInstance(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:macro"
 component badge(#[construct] start int, label string) node {
     var n = start
@@ -77,7 +76,6 @@ window(title="H", href="/index.html") { App() }
 func TestConstruct_UnchangedValueKeepsTheInstance(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:macro"
 component badge(#[construct] start int, label string) node {
     var n = start

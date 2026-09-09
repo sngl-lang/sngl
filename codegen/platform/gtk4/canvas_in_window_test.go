@@ -15,7 +15,6 @@ import "testing"
 func TestACanvasUnderAComponentDeclaredWindowEmitsItsDrawFunc(t *testing.T) {
 	files := generateGTK4FilesBuilt(t, `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:ui/draw"
 
 var radius = 50.0

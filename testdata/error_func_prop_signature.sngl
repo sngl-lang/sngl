@@ -3,7 +3,6 @@
 // not a callback declared to return none.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component edit(onEdit func(s string)) node {
     text(value="x")
@@ -16,6 +15,6 @@ component main node {
     edit(onEdit=func(s string, n int) {}) // ERROR(check) "cannot use func(string, int) as func(string)"
 }
 
-app.window {
+window {
     main
 }

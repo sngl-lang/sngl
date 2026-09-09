@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 // Component-instance member access is typed, not silently `dyn`: a wrong-typed

@@ -16,7 +16,6 @@ The `output` block declares which language and platform combinations the file ta
 
 <!-- SNGL-top
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -39,7 +38,6 @@ struct Widget { name string = "" }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "shared"
@@ -54,7 +52,6 @@ Scheme imports pull in types from host-language packages:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "go:go/ast"
@@ -138,7 +135,6 @@ A complete minimal file needs only a `component main`:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -150,7 +146,6 @@ A realistic minimal file looks like this:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -185,7 +180,6 @@ The standard library provides `color`, `date`, `time`, and `datetime`, which are
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var names list<string> = []
@@ -202,7 +196,6 @@ struct Todo { text string = ""; done bool = false }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var name option<string>
@@ -218,7 +211,6 @@ Structs are value types. They cannot be null. Fields have zero-value defaults wh
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -234,7 +226,6 @@ struct Todo { text string = ""; done bool = false }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var todo Todo
@@ -249,7 +240,6 @@ Named enums declare a fixed set of string values:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -262,7 +252,6 @@ Inline enums skip the top-level declaration when you need a one-off constraint:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var mode enum { light, dark } = light
@@ -276,7 +265,6 @@ Units declare named suffixes with optional conversion factors:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -297,7 +285,6 @@ enum Status { active, inactive, pending }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import . "sngl:time"
@@ -319,7 +306,6 @@ Function types use `func(ParamTypes) ReturnType` syntax. Omit the return type fo
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var handler func() = null
@@ -337,7 +323,6 @@ var callback func(string) int = null
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 func _a() => string(42)
@@ -400,7 +385,6 @@ Inside `"{expr}"`, a primitive, string-representable type, enum, unit, `null`, l
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 struct Point {
@@ -426,7 +410,6 @@ Removing the `Point.string` method makes the `{origin}` interpolation a compile 
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var (
@@ -444,7 +427,6 @@ var (
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 const (
@@ -465,7 +447,6 @@ Zero-arg functions serve as derived state -- they auto-update reactively and are
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -508,7 +489,6 @@ For single-expression pure functions, the body follows the parameter list direct
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -522,7 +502,6 @@ For multi-step logic, use a body with `return`:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -541,7 +520,6 @@ Functions with no return type are void. They can mutate component state and are 
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -561,7 +539,6 @@ Attach a function to a type with a dotted name. The first parameter is the recei
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -657,7 +634,6 @@ A component groups params, state, functions, and visual nodes:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -680,7 +656,6 @@ Params are the component's public API. They are declared in parentheses after th
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -813,7 +788,6 @@ Bidirectional bindings work with custom components too. Declare a parameter with
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -851,7 +825,6 @@ Use `if` blocks. `if` does not support `else` -- use two `if` blocks with opposi
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var active = true
@@ -869,7 +842,6 @@ if !active {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items = ["a", "b", "c"]
@@ -894,7 +866,6 @@ when the body never names the element:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "sngl:seq"
@@ -914,7 +885,6 @@ one — negative to count down. The end bound is exclusive in all three.
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "sngl:seq"
@@ -986,7 +956,6 @@ The `else` block renders when the list is empty. It works with both `for var ite
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items list<string> = []
@@ -1012,7 +981,6 @@ Tag a node with `#id` to reference it in tests:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -1030,7 +998,6 @@ text #display(value="Count: {count}")
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -1047,7 +1014,6 @@ button(text="tag", @click { label += " tagged" })
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var active = true
@@ -1062,7 +1028,6 @@ Method syntax mutates in place. Function syntax returns a new list:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items = [1, 2, 3]
@@ -1078,7 +1043,6 @@ Separate statements with semicolons inside event handlers:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var (
@@ -1098,7 +1062,6 @@ component with `@name`, and firing it is an ordinary call on that name:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1121,7 +1084,6 @@ Mutations are only allowed in event handlers and void functions. You cannot muta
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1171,7 +1133,6 @@ There is no `style` declaration and no `class` prop. A reusable style is a
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1206,7 +1167,6 @@ Tests target a specific component and get a fresh copy of its state:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1239,7 +1199,6 @@ Tag nodes with `#id`, then access props and fire events in tests:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -1265,7 +1224,6 @@ Subtests inherit parent state but get their own snapshot. Changes in the subtest
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1313,7 +1271,6 @@ Each platform maps stdlib components to native widgets. Core components (`vbox`,
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1350,7 +1307,6 @@ component main node {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1371,7 +1327,6 @@ component main node {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1391,7 +1346,6 @@ component main node {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1418,7 +1372,6 @@ component main node {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 

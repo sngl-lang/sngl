@@ -4,7 +4,6 @@
 // without that the values are accepted and then reach nothing.
 
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:macro"
 
 component attrs(

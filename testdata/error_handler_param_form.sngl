@@ -4,7 +4,6 @@
 // supplies.
 
 import . "sngl:ui"
-import . "sngl:app"
 
 component inner(@go) node {
     button(text="go", @click {
@@ -26,12 +25,12 @@ component main node {
         text(value="{count}")
         // An @error handler defaults its own parameter to ErrorEvent, and the
         // forms it may not write are the same.
-        errorBoundary(@error(#[nosuch.mark] e) { // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
+        boundary(@error(#[nosuch.mark] e) { // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
             count = 1
         }) {
             text(value="x")
         }
-        errorBoundary(@error(e = 1) { // ERROR(check) "parameter \"e\" of @error takes no default value: the error supplies what the name is bound to"
+        boundary(@error(e = 1) { // ERROR(check) "parameter \"e\" of @error takes no default value: the error supplies what the name is bound to"
             count = 1
         }) {
             text(value="x")

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component Foo(value) node { // ERROR(check) "must have a type hint or a default value"
     text(value="test")
@@ -9,6 +8,6 @@ component main node {
     Foo(value="hello")
 }
 
-app.window {
+window {
     main
 }

@@ -1,7 +1,6 @@
 // A condition loop walks nothing, so there is no element for `var` to bind.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func f(n int) int {
     for var i = n < 3 { // ERROR(check) "declares no variable"
@@ -10,5 +9,5 @@ func f(n int) int {
     return 0
 }
 
-app.window {
+window {
 }

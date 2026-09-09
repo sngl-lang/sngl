@@ -1460,7 +1460,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	method := call.Func.Name
 	receiverName := call.Func.Receiver
 
-	// ErrorRaise: construct an ErrorEvent payload and bubble a RaisedError
+	// ErrorRaise: construct an error payload and bubble a RaisedError
 	// up the Go error chain. The originating CallStmt's ErrorMode then
 	// routes it into the resolved handler (or propagates).
 	if call.Func.Intrinsic == "error.raise" {

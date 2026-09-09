@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // scroll: state-binding fixture — mutating bound scrollX/scrollY
 // propagates through the scroll viewport.
@@ -21,6 +20,6 @@ func testScrollOffsetsMutate(t Test, c main) {
     t.assert(c.y == 42.0)
 }
 
-app.window {
+window {
     main
 }

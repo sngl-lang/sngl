@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count int = 0           //@ hover("count", "var count int")
@@ -7,6 +6,6 @@ component main node {
     const label = "hi"          //@ hover("label", "const label")
 }
 
-app.window {
+window {
     main
 }

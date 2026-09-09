@@ -9,7 +9,7 @@ import (
 // every reference must be byte-identical every time. Resolving aliases out of
 // a Go map made this a coin flip.
 func TestRepeatedGenerationIsIdentical(t *testing.T) {
-	src := strings.Replace(versionedWidgetSrc, "app.window {", `
+	src := strings.Replace(versionedWidgetSrc, "window {", `
 component Gauge2(level int) node {
     fyne.Widget(
         spec=fyne.Spec{
@@ -20,7 +20,7 @@ component Gauge2(level int) node {
     ) {}
 }
 
-app.window {`, 1)
+window {`, 1)
 	if !strings.Contains(src, "Gauge2(level int)") {
 		t.Fatal("the second widget was not spliced in; the fixture asserts nothing")
 	}

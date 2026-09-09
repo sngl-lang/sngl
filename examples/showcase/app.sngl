@@ -15,7 +15,6 @@
 
 import ui "sngl:ui"
 import . "sngl:time"
-import app "sngl:app"
 import . "sngl:dialog"
 import test "sngl:test"
 import "sngl:i18n"

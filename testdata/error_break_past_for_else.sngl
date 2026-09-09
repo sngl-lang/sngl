@@ -4,7 +4,6 @@
 // function falls off the end.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func f(n int) int { // ERROR(check) "missing return"
     for n > 0 {
@@ -17,5 +16,5 @@ func f(n int) int { // ERROR(check) "missing return"
     }
 }
 
-app.window {
+window {
 }

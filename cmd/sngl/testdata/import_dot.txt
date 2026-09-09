@@ -73,7 +73,6 @@ stderr 'unknown stdlib package "widgets"'
 
 -- widgets/lib.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Card {
     title string = ""
@@ -83,12 +82,11 @@ func Greet(who string) => "hello " + who
 
 func _helper() => "internal"
 
-app.window {
+window {
 }
 -- main.sngl --
 import . "sngl:ui"
 import . "widgets"
-import app "sngl:app"
 
 component main node {
     var c Card = {title = "t"}
@@ -96,38 +94,35 @@ component main node {
     text(value=c.title + g)
 }
 
-app.window {
+window {
     main
 }
 -- plain.sngl --
 import . "sngl:ui"
 import "widgets"
-import app "sngl:app"
 
 component main node {
     var c Card = {title = "t"}
     text(value=c.title)
 }
 
-app.window {
+window {
     main
 }
 -- unexported.sngl --
 import . "sngl:ui"
 import . "widgets"
-import app "sngl:app"
 
 component main node {
     var h = _helper()
     text(value=h)
 }
 
-app.window {
+window {
     main
 }
 -- shadow.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { none { html } }
 
@@ -140,29 +135,26 @@ window #w(href="/index.html") {
 }
 -- std.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }
 -- stdbare.sngl --
 import "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     ui.text(value="x")
 }
 
-app.window {
+ui.window {
     main
 }
 -- stdalias.sngl --
 import lib "sngl:ui"
-import app "sngl:app"
 
 component text() lib.node {}
 
@@ -171,43 +163,39 @@ component main lib.node {
     text()
 }
 
-app.window {
+lib.window {
     main
 }
 -- stdunimported.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     sngl.text(value="x")
 }
 
-app.window {
+window {
     main
 }
 -- localstd.sngl --
 import . "sngl:ui"
 import "std"
-import app "sngl:app"
 
 component main node {
     text(value=std.greet())
 }
 
-app.window {
+window {
     main
 }
 -- std/helper.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 func greet() => "local package named std"
 
-app.window {
+window {
 }
 -- badext.sngl --
 import sngl "sngl:ui"
-import app "sngl:app"
 
 component notstd.text {
     span(textContent=value) {}
@@ -217,38 +205,35 @@ component main sngl.node {
     text(value="x")
 }
 
-app.window {
+sngl.window {
     main
 }
 -- other/lib.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Card {
     subtitle string = ""
 }
 
-app.window {
+window {
 }
 -- ambiguous.sngl --
 import . "sngl:ui"
 import . "widgets"
 import . "other"
-import app "sngl:app"
 
 component main node {
     var c Card = {title = "t"}
     text(value=c.title)
 }
 
-app.window {
+window {
     main
 }
 -- disambiguated.sngl --
 import . "sngl:ui"
 import . "widgets"
 import o "other"
-import app "sngl:app"
 
 component main node {
     var c Card = {title = "t"}
@@ -256,41 +241,38 @@ component main node {
     text(value=c.title + d.subtitle)
 }
 
-app.window {
+window {
     main
 }
 -- stdunknown.sngl --
 import . "sngl:ui"
 import "sngl:widgets"
-import app "sngl:app"
 
 component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }
 -- extdraw.sngl --
 import s "sngl:ui"
 import d "sngl:ui/draw"
 import "sngl:platform/html"
-import app "sngl:app"
 
 component d.canvas[html.platform] {
     s.text(value="styled")
 }
 
-app.window {
+s.window {
 }
 -- extdraw_untargeted.sngl --
 import s "sngl:ui"
 import d "sngl:ui/draw"
-import app "sngl:app"
 
 component d.canvas {
     s.text(value="styled")
 }
 
-app.window {
+s.window {
 }

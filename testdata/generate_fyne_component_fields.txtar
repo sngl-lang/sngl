@@ -8,7 +8,6 @@ deny out/go/fyne/model.go `renderDetailPanel` -- detailPanel is inlined, so no m
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { fyne } }
 

@@ -18,7 +18,6 @@ deny out/go/bubbletea/model.go `\*\(m\.h\.Inner\)\.Value` -- an unparenthesised 
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -53,7 +52,7 @@ component main node {
     text(value=string(seen))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

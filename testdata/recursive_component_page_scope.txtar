@@ -24,7 +24,6 @@ deny out/none/html/index.html `__cf_countdown` -- no factory is emitted for a de
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -43,7 +42,7 @@ component main node {
     countdown(n=3)
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

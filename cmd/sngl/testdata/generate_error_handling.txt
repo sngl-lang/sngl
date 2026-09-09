@@ -1,4 +1,4 @@
-# error.raise inside an @click handler under an errorBoundary lowers to an
+# error.raise inside an @click handler under a boundary lowers to an
 # inlined handler body in the bubbletea output; the ErrorEvent struct is
 # emitted because the package uses error handling.
 sngl generate --lang=go --platform=bubbletea --out=bb boundary.sngl
@@ -18,7 +18,6 @@ grep 'throw Object.assign' htmlout/index.html
 
 -- boundary.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go() {
@@ -30,7 +29,7 @@ var lastErr = ""
 
 component main node {
     vbox {
-        errorBoundary(@error(e) { lastErr = e.message }) {
+        boundary(@error(e) { lastErr = e.message }) {
             button(text="Go", @click { error.raise("boom", "") })
         }
         text(value=("Last: " + lastErr))
@@ -42,7 +41,6 @@ window {
 }
 -- unhandled.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go() {

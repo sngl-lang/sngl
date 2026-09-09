@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 // A subtest's effects stay in the subtest. Both the enclosing test and the

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 // Regression: a block-bodied computed that calls a sibling computed must

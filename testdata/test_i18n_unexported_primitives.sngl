@@ -1,7 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
 import "sngl:i18n"
-import app "sngl:app"
 
 // The formatting primitives live in sngl:i18n as unexported members, so a
 // program reaches them only through the entry points that thread the active
@@ -16,6 +15,6 @@ func testEntryPointsWork(t Test, c main) {
     t.assert(i18n.tr("hello", {}) == "hello")
 }
 
-app.window {
+window {
     main
 }

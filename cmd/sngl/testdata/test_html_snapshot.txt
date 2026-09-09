@@ -16,7 +16,6 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -29,6 +28,6 @@ func testInitial(t Test, c main) {
     t.snapshot("initial")
 }
 
-app.window {
+window {
     main
 }

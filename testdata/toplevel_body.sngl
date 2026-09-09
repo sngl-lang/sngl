@@ -8,13 +8,12 @@
 // body does not accept. See error_toplevel_ui_node.sngl.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 var count = 0
 
 var label = "clicks"
 
-app.window {
+window {
     vbox {
         text(value="{label}: {count}")
         button #inc(text="+", @click { count = count + 1 })

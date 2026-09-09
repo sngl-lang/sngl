@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Todo {
     text string = ""
@@ -33,6 +32,6 @@ component main node {
     text(value="test")
 }
 
-app.window {
+window {
     main
 }

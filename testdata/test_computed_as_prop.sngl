@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // A zero-argument function named where its result is expected is called.
 // It only worked when the return type already matched: `doubled` returns an
@@ -18,6 +17,6 @@ func testComputedPropIsCalled(t Test, c main) {
     t.assert(c.doubled() == 4)
 }
 
-app.window {
+window {
     main
 }

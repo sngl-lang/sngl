@@ -19,7 +19,6 @@ import (
 func TestInstanceMethod_HandlerCallsTheInstanceCopy(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App node {
     var n = 0
     func bump() {

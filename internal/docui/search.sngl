@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import "go:git.duckfam.us/jonathan/sngl/docs"
 import "sngl:platform/html"
 

@@ -4,7 +4,6 @@
 // one.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var name = "world"
@@ -15,6 +14,6 @@ component main node {
     input(:value=string(name.length())) // ERROR(check) "must be assignable"
 }
 
-app.window {
+window {
     main
 }

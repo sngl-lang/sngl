@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // The three places the `@` sigil is written, all in this one fixture: an event
 // declaration in a parameter list (`@save` on Counter), a handler supplied at a
@@ -44,6 +43,6 @@ component main node {
     text(value="Score: {score}, Steps: {steps}")
 }
 
-app.window {
+window {
     main
 }

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     // Named func-type variable: type carries param names, named calls OK.
@@ -17,6 +16,6 @@ func testNamedThroughTypedVar(t Test, c main) {
     t.assert(c.callReversed() == 7)
 }
 
-app.window {
+window {
     main
 }

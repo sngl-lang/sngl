@@ -1,6 +1,5 @@
 import . "sngl:test"
 import ui "sngl:ui"
-import app "sngl:app"
 
 // Compound assignment (+=, -=, *=) on sized integers wraps at the declared
 // width, not at 64 bits. The target's declared type drives the width.
@@ -32,5 +31,5 @@ func testUint32CompoundAdd(t Test, c compound) {
     t.assert(x == 3705032704)
 }
 
-app.window {
+ui.window {
 }

@@ -16,29 +16,26 @@ stdout 'dir/a.sngl: ok'
 
 -- good.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
 }
 
-app.window {
+window {
     main
 }
 -- bad.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 not valid sngl
 
-app.window {
+window {
 }
 -- dir/a.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
 }
 
-app.window {
+window {
     main
 }

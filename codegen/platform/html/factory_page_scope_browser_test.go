@@ -24,7 +24,6 @@ import (
 func TestFactory_AnEffectInsideAFactoryIsNotCalledFromThePage(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component Row(label string) node {
     var log list<string> = []
     effect(on=label, @mount { log.push("+") }, @unmount { log.push("-") })
@@ -69,7 +68,6 @@ window(title="H", href="/index.html") { App() }
 func TestFactory_AnInstanceAtAStaticPositionIsBuiltAndPlaced(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component chain(n int) node {
     text(value="[" + string(n) + "]")
     if n > 0 { chain(n=n - 1) }

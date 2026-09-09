@@ -64,7 +64,6 @@ stop 'see #124: a value-returning func prop emits Kotlin that does not compile'
 -- app.sngl --
 import . "sngl:ui"
 import android "sngl:platform/android"
-import app "sngl:app"
 
 component tapper(onTap func(), decorate func(s string) string) node {
     button(text=decorate("hi"), @click { onTap() })
@@ -73,7 +72,7 @@ component tapper(onTap func(), decorate func(s string) string) node {
 // The state is the window's, so the emitted Kotlin names it as written: a
 // component the window renders is inlined into it with its vars renamed per
 // instance, and every assertion below reads a var by name.
-app.window {
+window {
     var label = ""
     var notes = ""
     var flag = false

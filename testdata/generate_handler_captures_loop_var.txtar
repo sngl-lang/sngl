@@ -18,7 +18,6 @@ deny out/go/gtk4/model.go `_clicked_handler` -- gtk4 attaches the same closure t
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -39,7 +38,7 @@ component main node {
     text(value=picked)
 }
 
-app.window {
+window {
     main
 }
 -- out/go/fyne/model.go --

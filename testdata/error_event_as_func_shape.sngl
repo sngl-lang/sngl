@@ -8,7 +8,6 @@
 // would be the wrong thing to say.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func takesString(f func(string)) {
     f("x")
@@ -46,6 +45,6 @@ component main node {
     wantsValue(@fired(v) {})
 }
 
-app.window {
+window {
     main
 }

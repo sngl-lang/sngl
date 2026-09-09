@@ -154,9 +154,8 @@ func TestBrowser_AsyncHandlerUpdatesDOM(t *testing.T) {
 	const snglSrc = `
 import . "sngl:ui"
 import api "js:./api"
-import app "sngl:app"
 
-app.window {
+window {
     var greeting = "before"
     text(value=greeting)
     button(text="Go", @click {

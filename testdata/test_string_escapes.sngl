@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var newline = "line1\nline2"
@@ -31,6 +30,6 @@ func testBackslashEscape(t Test, c main) {
     t.assert(c.backslash == `path\to\file`)
 }
 
-app.window {
+window {
     main
 }

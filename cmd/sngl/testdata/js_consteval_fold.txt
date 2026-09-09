@@ -22,7 +22,6 @@ grep '>1e-07<' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
-import app "sngl:app"
 
 const greeting = lib.shout("hello world")
 const big = lib.big()
@@ -34,7 +33,7 @@ component main node {
     text(value=string(small))
 }
 
-app.window {
+window {
     main
 }
 -- lib/index.ts --

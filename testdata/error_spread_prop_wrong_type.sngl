@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component Button(text string) node {}
 
@@ -8,6 +7,6 @@ component main node {
     Button(...xs) // ERROR(check) "spread requires a struct type"
 }
 
-app.window {
+window {
     main
 }

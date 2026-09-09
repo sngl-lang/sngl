@@ -3,7 +3,6 @@
 // 0 on Go that does not compile.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     return // ERROR(check) "not a statement in a view body"
@@ -11,6 +10,6 @@ component main node {
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }

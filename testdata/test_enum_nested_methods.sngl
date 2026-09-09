@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 enum Status {
     ok
@@ -19,6 +18,6 @@ func testEnumNestedMethod(t Test, c main) {
     t.assert(!c.s.isOk())
 }
 
-app.window {
+window {
     main
 }

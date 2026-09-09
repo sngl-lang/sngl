@@ -21,7 +21,6 @@ deny out/none/html/index.html `= n \+ 1` -- the click handler assigns through st
 deny out/go/bubbletea/model.go `(?m)^\tn = ` -- the counter is a model field assigned as m.n, not a render-function local reset every frame
 -- win.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {

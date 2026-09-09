@@ -8,7 +8,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -39,6 +38,6 @@ func testMountDoesNotRerunOnUnrelatedState(t Test, c main) {
     t.assert(c.runs == 1)
 }
 
-app.window {
+window {
     main
 }

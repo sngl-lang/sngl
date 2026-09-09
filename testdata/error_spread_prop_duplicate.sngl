@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Opts {
     text string
@@ -11,6 +10,6 @@ component main node {
     Button(text="explicit", ...opts) // ERROR(check) "already provided"
 }
 
-app.window {
+window {
     main
 }

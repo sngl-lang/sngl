@@ -136,8 +136,8 @@ func parseStdlibDocs() []*ast.Document {
 // loadStdlib builds the packages every check needs up front: sngl:builtin,
 // which registers into the checker's scope and symbol table for unqualified
 // access everywhere, and sngl:ui, which the checker itself reads to find
-// the #[builtin]-marked window/timer/slot/errorBoundary components. Any other
-// library package loads on first import (libPkg).
+// the #[builtin]-marked window/slot components. Any other library package
+// loads on first import (libPkg).
 //
 // Being ambient is the only way sngl:builtin is special. sngl:ui is
 // eager rather than special: it is loaded here because the checker needs its
@@ -156,13 +156,11 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	builtinPkg = c.libPkg("builtin")
 	c.adoptAmbient(builtinPkg)
 	// Loaded but not bound: these carry node kinds the checker dispatches a
-	// visual node on (`window` and `errorBoundary` in sngl:app, `timer` in
-	// sngl:time) and type kinds a foreign importer hands out where it has no
-	// scope to resolve a name in (`duration`). A kind is registered when the
-	// marked declaration is, so the package has to load even when nothing
-	// imported it. Nothing here puts those names in scope -- a program still
-	// imports sngl:app to write a window, and sngl:time to write a timer.
-	c.libPkg(appPkg)
+	// visual node on (`timer` in sngl:time) and type kinds a foreign importer
+	// hands out where it has no scope to resolve a name in (`duration`). A
+	// kind is registered when the marked declaration is, so the package has to
+	// load even when nothing imported it. Nothing here puts those names in
+	// scope -- a program still imports sngl:time to write a timer.
 	c.libPkg(timePkg)
 	c.libPkg(drawIntrinsicsPkg)
 	return builtinPkg, c.libPkg("ui")
@@ -670,12 +668,9 @@ func OutputNode() *ir.Component {
 // behind them, and the PluralKey those are keyed by.
 const i18nPkg = "i18n"
 
-// appPkg declares the application shell: the node kinds a visual tree
-// dispatches on.
-const (
-	appPkg  = "app"
-	timePkg = "time"
-)
+// timePkg declares the clock: the `timer` node kind a visual tree dispatches
+// on, and the `duration` a foreign importer hands out.
+const timePkg = "time"
 
 // drawIntrinsicsPkg declares the primitives passCanvas emits. No SNGL source
 // imports it, so loadStdlib is the only thing that loads it -- and without the

@@ -16,7 +16,6 @@ stderr 'duplicate declaration of "shifted" on type Point'
 import . "sngl:ui"
 import . "sngl:test"
 import d "./geom"
-import app "sngl:app"
 
 component main node {
     var p d.Point = d.Point{x = 1}
@@ -27,7 +26,7 @@ func testCrossPackageMethod(t Test, c main) {
     t.assert(c.out.value == "2")
 }
 
-app.window {
+window {
     main
 }
 -- geom/geom.sngl --

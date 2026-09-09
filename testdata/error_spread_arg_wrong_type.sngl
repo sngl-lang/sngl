@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func f(x int, y int) int { return x + y }
 
@@ -8,6 +7,6 @@ component main node {
     var bad = f(...xs) // ERROR(check) "spread requires a struct type"
 }
 
-app.window {
+window {
     main
 }

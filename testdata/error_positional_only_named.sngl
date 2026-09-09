@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func parse(_input string, _index int) => _input
 
@@ -8,5 +7,5 @@ func test() {
     var y = parse("hello", _index=0) // ERROR(check) "parameter \"_index\" must be passed positionally"
 }
 
-app.window {
+window {
 }

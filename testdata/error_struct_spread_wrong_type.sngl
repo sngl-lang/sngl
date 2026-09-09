@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Bug: struct literal spread `...x` skips type compatibility check.
 // Per audit (internal/checker/expr.go:815-820): spread fields are added
@@ -18,6 +17,6 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

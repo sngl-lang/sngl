@@ -49,7 +49,6 @@ grep 'func \(m \*Model\) __remoteSettled\(\)' mainfy/model.go
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:remote/http"
-import app "sngl:app"
 
 const blank = http.Result{status=0, body="", headers={}}
 
@@ -59,7 +58,7 @@ output {
     }
 }
 
-app.window {
+window {
     var contents = http.fetch("https://example.com")
 
     vbox {

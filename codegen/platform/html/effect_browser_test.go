@@ -34,7 +34,6 @@ func effectLog(body string) string {
 func TestEffect_BranchIsTheLifetime(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var (
         shown = true
@@ -72,7 +71,6 @@ window(title="H", href="/index.html") { App() }
 func TestEffect_OneBracketPerElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var (
         items list<string> = ["a", "b"]
@@ -108,7 +106,6 @@ window(title="H", href="/index.html") { App() }
 func TestEffect_TwoEndingsRunNewestFirst(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var (
         items list<string> = ["a", "b", "c"]
@@ -138,7 +135,6 @@ window(title="H", href="/index.html") { App() }
 func TestEffect_UnchangedKeyDoesNothing(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var (
         n = 0

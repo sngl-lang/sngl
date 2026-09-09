@@ -12,7 +12,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -54,6 +53,6 @@ func testRefillingTheListUnmountsIt(t Test, c main) {
     t.assert(c.out.value == "+none,-none")
 }
 
-app.window {
+window {
     main
 }

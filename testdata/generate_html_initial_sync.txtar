@@ -11,7 +11,6 @@ deny out/none/html/index.html `\$u__n0_text` -- an init-only binding has no per-
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -20,7 +19,7 @@ component main node {
     text(value=name)
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

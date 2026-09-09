@@ -1,11 +1,10 @@
 import . "sngl:ui"
 import "widgets"
-import app "sngl:app"
 
 component main node {
     widgets.Counter(label="Clicks")
 }
 
-app.window {
+window {
     main
 }

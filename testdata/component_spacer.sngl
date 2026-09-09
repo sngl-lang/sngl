@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // spacer: A-tier — no testable state. Declaration validates
 // parse + check + lower.
@@ -11,6 +10,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

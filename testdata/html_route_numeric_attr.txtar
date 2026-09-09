@@ -10,7 +10,6 @@ one per output block; an archive declares both targets from the one source.
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 output {

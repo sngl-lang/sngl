@@ -6,7 +6,6 @@
 
 import . "sngl:ui"
 import "sngl:seq"
-import app "sngl:app"
 
 const by = 2
 
@@ -22,6 +21,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

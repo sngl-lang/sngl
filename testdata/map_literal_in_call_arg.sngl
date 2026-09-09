@@ -3,7 +3,6 @@
 // needed at the call site.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func takesMap(m map<string, int>) int {
     return m.length()
@@ -13,5 +12,5 @@ func test() {
     var n = takesMap({a=1, b=2})
 }
 
-app.window {
+window {
 }

@@ -3,7 +3,6 @@
 // top-level `card` while `main` is checked against its own.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component card(label = "") node {
     text(value="top " + label)
@@ -24,6 +23,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

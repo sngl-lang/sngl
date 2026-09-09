@@ -7,9 +7,8 @@ import "testing"
 // widget rebuilt to take new options would come back with nothing selected.
 const selectOptionsSrc = `
 import . "sngl:ui"
-import app "sngl:app"
 
-app.window {
+window {
     var opts list<string> = ["a", "b"]
     var pick = "b"
     vbox {

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func add(a int, b int) => a + b
 
@@ -7,5 +6,5 @@ func test() {
     var x = add(a=1, a=2) // ERROR(check) "already provided"
 }
 
-app.window {
+window {
 }

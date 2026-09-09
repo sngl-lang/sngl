@@ -36,7 +36,6 @@ func waitForText(t *testing.T, read func() string, want func(string) bool, what 
 func TestTimer_FiresInTheBrowser(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:time"
 component beat(label = "") node {
     var beats = 0
@@ -76,7 +75,6 @@ window(title="H", href="/index.html") { App() }
 func TestTimer_ABranchIsTheGate(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:time"
 component App() node {
     var (

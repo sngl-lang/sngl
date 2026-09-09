@@ -12,7 +12,6 @@ shows the loop was dropped and not the whole nav.
 
 deny out/go/html/server.go `class=[^>]*row` -- the loop runs no iterations, so its body is emitted zero times, not once with an unbound variable
 -- empty.sngl --
-import . "sngl:app"
 import "sngl:platform/html"
 import ui "sngl:ui"
 
@@ -25,7 +24,7 @@ output {
 const packages list<string> = []
 
 component main ui.node {
-    window #home(title="Docs", href="/") {
+    ui.window #home(title="Docs", href="/") {
         html.nav {
             html.span(innerText="still here")
             for var p = packages {

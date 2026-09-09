@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 var count int
 var name string = "hello"
@@ -30,5 +29,5 @@ func greet(name string) string {
 
 func int.double(x int) => x + x
 
-app.window {
+window {
 }

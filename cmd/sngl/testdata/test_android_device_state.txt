@@ -11,7 +11,6 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output { kotlin { android } }
 
@@ -24,5 +23,5 @@ func testStartsAtZero(t Test, c counter) {
     t.assert(c.count == 0)
 }
 
-app.window {
+window {
 }

@@ -14,7 +14,6 @@ are scaled on the way in. Resampling a small drawing up to a big one is what
 made a display of hard edges come out soft.
 
 -- stretch.sngl --
-import . "sngl:app"
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 

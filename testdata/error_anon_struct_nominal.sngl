@@ -13,7 +13,6 @@
 // compiler's bookkeeping and no program can write it.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Point {
     x int = 0
@@ -29,6 +28,6 @@ component main node {
     text(value=string(a))
 }
 
-app.window {
+window {
     main
 }

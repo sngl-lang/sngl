@@ -7,7 +7,6 @@
 // An `if` or a `for` is how the nodes under it got there rather than a node,
 // so the rule reaches through both.
 
-import app "sngl:app"
 import tree "sngl:tree"
 import ui "sngl:ui"
 
@@ -25,7 +24,7 @@ component branching(label string) {
     }
 }
 
-app.window {
+ui.window {
     logger(label="x")
     branching(label="y")
 }

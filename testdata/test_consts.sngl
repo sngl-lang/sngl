@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component config node {
     const max = 100
@@ -23,5 +22,5 @@ func testComputedFromConst(t Test, c config) {
     t.assert(c.out.value == "70 remaining")
 }
 
-app.window {
+window {
 }

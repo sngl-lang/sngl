@@ -1,5 +1,5 @@
 import . "sngl:ui"
-import app "sngl:app"
+import ui "sngl:ui"
 
 // Built-ins are shadowable (design doc D3). A user `component window`
 // resolves before the #[builtin("window")] declaration, so this
@@ -14,6 +14,6 @@ component main node {
     window(label="ordinary node")
 }
 
-app.window {
+ui.window {
     main
 }

@@ -16,7 +16,6 @@ cmp input.sngl groups.sngl
 
 -- groups.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 // Documents the group itself.
 const (
@@ -36,6 +35,6 @@ component main node {
     text(value="{WIDTH}x{ROWS}{total}")
 }
 
-app.window {
+window {
     main
 }

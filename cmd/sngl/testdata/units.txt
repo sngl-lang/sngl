@@ -40,14 +40,13 @@ stdout '2 tests, 0 failures'
 
 -- app/app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var n = 7
     text #out(value="twice: {twice(n)}")
 }
 
-app.window {
+window {
     main
 }
 -- app/helper.sngl --
@@ -66,7 +65,6 @@ func testComponent(t Test, c main) {
 -- corpus/one.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var a = 1
@@ -77,13 +75,12 @@ func testOne(t Test, c main) {
     t.assert(c.a == 1)
 }
 
-app.window {
+window {
     main
 }
 -- corpus/two.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var b = 2
@@ -94,6 +91,6 @@ func testTwo(t Test, c main) {
     t.assert(c.b == 2)
 }
 
-app.window {
+window {
     main
 }

@@ -34,7 +34,7 @@ output {
 }
 
 import here "file:."
-import app "sngl:app"
+import ui "sngl:ui"
 
 const logo = here.path("logo.svg")
 
@@ -42,7 +42,7 @@ component main node {
     image(src=logo)
 }
 
-app.window {
+ui.window {
     main
 }
 -- site.css --

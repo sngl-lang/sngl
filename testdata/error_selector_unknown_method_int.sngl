@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Bug: checker silently accepts unknown method calls on primitive types.
 // `int` has no method `bogusMethod`, but the selector resolution falls through
@@ -11,6 +10,6 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

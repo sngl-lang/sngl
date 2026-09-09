@@ -24,7 +24,6 @@ stderr 'already has an implementation for "go"'
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:language/go"
 
@@ -46,7 +45,6 @@ window #w(title="t") {
 
 -- dup_language.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:language/go"
 
 component Badge(value string) node {

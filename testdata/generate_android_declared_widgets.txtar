@@ -26,7 +26,6 @@ deny out/kotlin/android/MainScreen.kt `DropdownMenu` -- the menu-like components
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:dialog"
-import app "sngl:app"
 
 output {
     kotlin {
@@ -52,7 +51,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/MainScreen.kt --

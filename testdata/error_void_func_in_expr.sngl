@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     func noop() {}
@@ -7,6 +6,6 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

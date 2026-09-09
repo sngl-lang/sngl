@@ -1,7 +1,6 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 var x Nonexistent // ERROR(check) "unknown type"
 
-app.window {
+window {
 }

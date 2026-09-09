@@ -11,7 +11,6 @@ deny out/go/bubbletea/model.go `bump\(\).*bump\(\)` -- the effect happens once, 
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 func double(x int) => x + x
 

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Vec {
     x int = 0
@@ -26,5 +25,5 @@ func testComputedFromStruct(t Test, c geo) {
     t.assert(c.sum == 30)
 }
 
-app.window {
+window {
 }

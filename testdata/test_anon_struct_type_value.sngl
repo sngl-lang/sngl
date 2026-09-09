@@ -9,7 +9,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 func sumPair(p struct {
     a int
@@ -48,6 +47,6 @@ func testTheEmptyStructIsAValue(t Test, c main) {
     t.assert(c.total == 6)
 }
 
-app.window {
+window {
     main
 }

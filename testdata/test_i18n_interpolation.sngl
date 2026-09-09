@@ -1,7 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
 import "sngl:i18n"
-import app "sngl:app"
 
 // Simple identifier interpolation.
 component i18nInterp node {
@@ -31,5 +30,5 @@ func testInterpolation(t Test, c i18nInterp) {
     t.assert(c.sum == "1 + 2 = 3")
 }
 
-app.window {
+window {
 }

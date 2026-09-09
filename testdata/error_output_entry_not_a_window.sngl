@@ -2,7 +2,6 @@
 // a string — so what a program writes there is a name the compiler resolves.
 // A component is a declaration and resolves; it is just not a window.
 
-import app "sngl:app"
 import ui "sngl:ui"
 
 output(entry=greeting) // ERROR(check) "output entry names a window, and greeting is not one"
@@ -11,6 +10,6 @@ component greeting() ui.node {
     ui.text(value="hi")
 }
 
-app.window #home(title="Home") {
+ui.window #home(title="Home") {
     greeting()
 }

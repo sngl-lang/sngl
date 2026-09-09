@@ -28,7 +28,6 @@ deny out/go/gtk4/model.go `gtk_button_new_with_label` -- the GIR names gtk_butto
 import . "sngl:test"
 import "sngl:platform/gtk4"
 import ui "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -47,7 +46,7 @@ component main ui.node {
     }
 }
 
-app.window {
+ui.window {
     main
 }
 -- out/go/gtk4/callbacks.go --

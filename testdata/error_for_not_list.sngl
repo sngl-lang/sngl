@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func foo() {
     var x int
@@ -7,5 +6,5 @@ func foo() {
     }
 }
 
-app.window {
+window {
 }

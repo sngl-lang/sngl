@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     // Named args let callers skip intermediate defaults.
@@ -24,6 +23,6 @@ func testAllDefaults(t Test, c main) {
     t.assert(c.connect("example.com") == "example.com:8080")
 }
 
-app.window {
+window {
     main
 }

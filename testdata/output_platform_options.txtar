@@ -13,7 +13,6 @@ targets at all, and that falls back to loading every registered target --
 which is why the one-target case looked fine.
 
 -- app.sngl --
-import . "sngl:app"
 import . "sngl:ui"
 
 output {

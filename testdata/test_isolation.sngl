@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component state node {
     var count = 0
@@ -36,5 +35,5 @@ func testSubtestsGetSnapshots(t Test, c state) {
     })
 }
 
-app.window {
+window {
 }

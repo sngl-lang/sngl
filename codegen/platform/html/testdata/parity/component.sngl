@@ -1,7 +1,6 @@
 // component.sngl — exercises parent component instantiating a child component
 // and calling a user-defined method.
 
-import . "sngl:app"
 import . "sngl:ui"
 
 component Badge(label = "", count int = 0) node {

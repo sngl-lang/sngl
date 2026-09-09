@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // A method's first parameter is the receiver when its type is the type the
 // method is attached to, whatever the parameter is called. The convention used
@@ -31,6 +30,6 @@ func testReceiverIsTheFirstParam(t Test, c main) {
     t.assert(int.twice(3) == 6)
 }
 
-app.window {
+window {
     main
 }

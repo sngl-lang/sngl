@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 func testTypeQualifiedCalls(t Test, c main) {
     t.assert(int.double(5) == 10)
@@ -28,6 +27,6 @@ component main node {
     text(value="test")
 }
 
-app.window {
+window {
     main
 }

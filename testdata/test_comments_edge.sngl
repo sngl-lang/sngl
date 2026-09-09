@@ -2,7 +2,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 /* leading top-level block comment */
 
@@ -26,6 +25,6 @@ func testCommentParse(t Test, c main) {
     t.assert(c.calc == 6)
 }
 
-app.window {
+window {
     main
 }

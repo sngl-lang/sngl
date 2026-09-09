@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // A field whose type ends in `>` is terminated by the newline like any other.
 // It was not: `>` may continue a comparison, so it gets no ASI, and the struct
@@ -29,6 +28,6 @@ func testGenericFieldIsTerminatedByTheNewline(t Test, c main) {
     t.assert(cmd.name == "go")
 }
 
-app.window {
+window {
     main
 }

@@ -26,7 +26,6 @@ deny out/none/html/index.html `var handle__` -- the handle is a factory local, n
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 
 output {
     none {

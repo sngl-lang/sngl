@@ -5,7 +5,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 func wrap<T>(v T) => {item=v}
 
@@ -23,6 +22,6 @@ func testTheGenericLiteralCarriesItsValue(t Test, c main) {
     t.assert(c.s.item == "x")
 }
 
-app.window {
+window {
     main
 }

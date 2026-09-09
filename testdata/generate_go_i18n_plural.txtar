@@ -8,7 +8,6 @@ CLDR keywords become the i18n.PluralOne / PluralFew / PluralOther constants.
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -32,7 +31,7 @@ component main node {
     text(value=ordinal)
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

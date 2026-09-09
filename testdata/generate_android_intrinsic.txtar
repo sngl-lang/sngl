@@ -19,7 +19,6 @@ it is a Box and not a Column.
 -- app.sngl --
 import . "sngl:ui"
 import android "sngl:platform/android"
-import app "sngl:app"
 
 output {
     kotlin {
@@ -45,7 +44,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/MainScreen.kt --

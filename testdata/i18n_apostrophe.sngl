@@ -4,7 +4,6 @@
 
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 // Bare apostrophe in a literal run (no metachars after).
 var msg1 = $"It's a fine day"
@@ -19,5 +18,5 @@ var msg3 = $"Use '{'curly braces'}' to interpolate"
 var name = "Alice"
 var msg4 = $"It's {name}'s turn"
 
-app.window {
+window {
 }

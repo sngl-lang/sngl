@@ -21,7 +21,6 @@ deny * `emit\(` -- an emit is substituted away by lowering; one reaching a backe
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -54,7 +53,7 @@ component main node {
     text(value="picks=" + string(picks))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

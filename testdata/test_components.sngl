@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component badge(label = "default", count = 0) node {
     func display() => label
@@ -39,5 +38,5 @@ func testComponentReceivesProps(t Test, c dashboard) {
     t.assert(c.lbl[0].value == "test")
 }
 
-app.window {
+window {
 }

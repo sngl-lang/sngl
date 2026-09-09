@@ -12,7 +12,6 @@ stderr 'needs node on PATH'
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
-import app "sngl:app"
 
 const greeting = lib.shout("hello world")
 
@@ -20,7 +19,7 @@ component main node {
     text(value=greeting)
 }
 
-app.window {
+window {
     main
 }
 -- lib/index.ts --

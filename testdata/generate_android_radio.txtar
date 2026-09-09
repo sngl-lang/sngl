@@ -20,7 +20,6 @@ deny out/kotlin/android/MainScreen.kt `val e = SnglInputEvent` -- the handler re
 deny out/kotlin/android/MainScreen.kt `"horizontal" == "horizontal"` -- direction is compared at build time, so neither branch's test reaches the output
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     kotlin {
@@ -46,7 +45,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/MainScreen.kt --

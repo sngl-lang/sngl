@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 func isEven(n int) bool {
     return n == 0 ? true : isOdd(n - 1)
@@ -25,6 +24,6 @@ func testMutualOdd(t Test, c main) {
     t.assert(c.o == false)
 }
 
-app.window {
+window {
     main
 }

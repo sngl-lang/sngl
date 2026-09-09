@@ -16,7 +16,6 @@ deny out/kotlin/android/MainScreen.kt `Node\([^)\n]*= ""` -- same fallback, in t
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go { bubbletea }

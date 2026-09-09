@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 window #home(title="A", href="/a.html") {
     text(value="A")

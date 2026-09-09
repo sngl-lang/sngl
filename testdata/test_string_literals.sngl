@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var regular = "hello world"
@@ -35,6 +34,6 @@ func testRawStringNoEscape(t Test, c main) {
     t.assert(c.raw == `no \escapes and no {interpolation}`)
 }
 
-app.window {
+window {
     main
 }

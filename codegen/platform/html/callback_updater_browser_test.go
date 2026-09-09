@@ -34,7 +34,6 @@ import (
 // difference is whether the span moves.
 const callbackUpdaterSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 
 func run(f func()) int {
     f()

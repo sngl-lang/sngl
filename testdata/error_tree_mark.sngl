@@ -4,7 +4,6 @@
 
 import tr "sngl:tree"
 import ui "sngl:ui"
-import app "sngl:app"
 
 #[tr.kind] // ERROR(check) "a tree struct holds nothing"
 struct sized {
@@ -14,5 +13,5 @@ struct sized {
 #[tr.kind] // ERROR(check) "a tree is named by a struct"
 component marked() ui.node {}
 
-app.window {
+ui.window {
 }

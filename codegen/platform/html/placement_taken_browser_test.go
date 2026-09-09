@@ -28,7 +28,6 @@ import (
 func TestPlacement_FastPathIsTaken(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var rows list<string> = ["a", "b"]
     var picked string = ""

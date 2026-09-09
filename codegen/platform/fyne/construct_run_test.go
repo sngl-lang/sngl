@@ -17,14 +17,13 @@ import (
 const constructComponentSrc = `
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 component card(#[construct] seed int, name = "") node {
     var clicks = seed
     button(text="{name} ({clicks})", @click { clicks += 1 })
 }
 
-app.window {
+window {
     var (
         names list<string> = ["a", "b"]
         base = 0

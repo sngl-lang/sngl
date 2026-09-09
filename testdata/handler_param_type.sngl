@@ -4,7 +4,6 @@
 // of it.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component form(:draft string) node {
     vbox {
@@ -30,6 +29,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

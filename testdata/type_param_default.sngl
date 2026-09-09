@@ -4,7 +4,6 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
-import app "sngl:app"
 
 struct Pair<A, B = string> {
     left A
@@ -84,6 +83,6 @@ func Boxed<T>.replace(b Boxed<T>, other T) T {
     return previous
 }
 
-app.window {
+window {
     main
 }

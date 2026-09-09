@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Const initializers may forward-reference a const declared later in the file.
 // Pass1 registers every top-level const as a name shell before checking any
@@ -10,6 +9,6 @@ component main node {
     text(value="{A}")
 }
 
-app.window {
+window {
     main
 }

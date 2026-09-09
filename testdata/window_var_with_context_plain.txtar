@@ -15,7 +15,6 @@ declares one is window_var_with_context_ctx.txtar, and the two goldens have to
 agree about `name`.
 -- plain.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {

@@ -3,7 +3,6 @@
 // holds one copy of the body per entry in no defined order.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var scores map<string, int> = {alice=10}
@@ -15,6 +14,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

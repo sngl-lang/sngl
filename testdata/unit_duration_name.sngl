@@ -9,7 +9,6 @@
 // type is what says which.
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 
 var annotated duration = 5s
 var zero duration = 0

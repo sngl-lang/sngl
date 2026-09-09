@@ -16,7 +16,6 @@ stderr 'not a target identity'
 
 -- qualified.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import html "sngl:platform/html"
 
 component mybox[html.platform] {
@@ -32,7 +31,6 @@ window #home(title="t") {
 }
 -- bareuser.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import html "sngl:platform/html"
 
 component mybox[platform] {

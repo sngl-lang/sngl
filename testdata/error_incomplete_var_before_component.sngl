@@ -2,7 +2,6 @@
 // not something about the declaration that follows it.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 var x =
 
@@ -10,6 +9,6 @@ component main node { // ERROR(parse) "unexpected \"component\", expected"
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }

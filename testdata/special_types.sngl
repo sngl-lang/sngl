@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import app "sngl:app"
 
 component main node {
     var (
@@ -14,6 +13,6 @@ component main node {
     text(value=bg)
 }
 
-app.window {
+window {
     main
 }

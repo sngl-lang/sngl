@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Config {
     name string = ""
@@ -40,6 +39,6 @@ func testMultilineStruct(t Test, c main) {
     t.assert(c.cfg2.count == 7)
 }
 
-app.window {
+window {
     main
 }

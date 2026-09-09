@@ -2697,7 +2697,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 					result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: expr})
 				}
 			case ast.EventHandler:
-				// Per-call @error handlers are extracted (with proper ErrorEvent
+				// Per-call @error handlers are extracted (with the boundary payload
 				// defaulting on the param) by resolveCallStmt. Skip here.
 				if arg.Name == "error" {
 					continue
@@ -3593,8 +3593,9 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 }
 
 // extractCallErrorHandler finds an inline @error handler in a CallExpr's args
-// and returns it as a typed ir.EventHandler (param defaulted to ErrorEvent
-// when no annotation was given). Returns nil if no @error is attached.
+// and returns it as a typed ir.EventHandler (param defaulted to the boundary's
+// payload type when no annotation was given). Returns nil if no @error is
+// attached.
 func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 	for i := range call.Args.Args {
 		eh, ok := call.Args.Args[i].(ast.EventHandler)
@@ -3607,9 +3608,9 @@ func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 }
 
 // buildErrorHandler type-checks the body of an @error handler with the param
-// defaulted to the stdlib ErrorEvent struct when no explicit type was given.
-// Reports a diagnostic if the handler has more than one param or if the
-// declared type is not ErrorEvent.
+// defaulted to the boundary's own payload type when no explicit type was
+// given. Reports a diagnostic if the handler has more than one param or if the
+// declared type is not that one.
 func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	errEvtType := c.errorEventType()
 	c.refuseParamMarks(eh.Params.Params)
@@ -3625,10 +3626,10 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 		params[i] = &ir.Param{Name: p.Name, Type: typ}
 	}
 	if len(params) > 1 {
-		c.error(eh.Pos, "@error handler accepts at most one ErrorEvent parameter")
+		c.error(eh.Pos, "@error handler accepts at most one %s parameter", errorEventName(errEvtType))
 	}
 	if len(params) == 1 && errEvtType != nil && !params[0].Type.IsAssignableTo(errEvtType) {
-		c.error(eh.Pos, "@error handler parameter must be ErrorEvent, got %s", params[0].Type)
+		c.error(eh.Pos, "@error handler parameter must be %s, got %s", errorEventName(errEvtType), params[0].Type)
 	}
 	fn := &ir.Func{Params: params}
 	c.pushScope()
@@ -3642,9 +3643,23 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	return &ir.EventHandler{AST: eh, Name: eh.Name, Func: fn}
 }
 
+// errorEventType is the payload an @error handler is handed, read off the
+// #[builtin("errorBoundary")] component's own @error declaration.
+//
+// Read rather than looked up by name: the boundary is what defines the
+// channel, so its declaration is the one place the payload type is written,
+// and a lib rename does not need a matching edit here. It was
+// `structDecl(c.symtab, "ErrorEvent")` while the payload was a struct of that
+// name in sngl:ui, which is a name match of exactly the kind a #[builtin]
+// mark exists to remove.
 func (c *checker) errorEventType() *ir.Type {
-	if sd := structDecl(c.symtab, "ErrorEvent"); sd != nil {
-		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
+	if c.boundaryComp == nil {
+		return nil
+	}
+	for _, e := range c.boundaryComp.Events {
+		if e.Name == "error" {
+			return e.Type
+		}
 	}
 	return nil
 }
@@ -5307,4 +5322,14 @@ func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.S
 			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Component.Name)
 		}
 	}
+}
+
+// errorEventName spells the payload type for a diagnostic, falling back to the
+// word when the boundary declaration is out of reach -- a check with no
+// library loaded still has to say something.
+func errorEventName(t *ir.Type) string {
+	if t == nil {
+		return "error"
+	}
+	return t.String()
 }

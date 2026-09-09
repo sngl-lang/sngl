@@ -4,9 +4,8 @@
 // body either way.
 
 import . "sngl:ui"
-import app "sngl:app"
 
-app.window {
+window {
     counter()
 }
 

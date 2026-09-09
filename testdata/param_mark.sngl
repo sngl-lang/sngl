@@ -10,7 +10,6 @@
 import . "sngl:ui"
 import "sngl:ui/draw"
 import "sngl:macro"
-import app "sngl:app"
 
 func unknownPkg(#[nosuch.mark("x")] a string) => a // ERROR(check) "#[nosuch.mark] cannot mark a parameter"
 
@@ -28,5 +27,5 @@ component element(
     text(value=tag)
 }
 
-app.window {
+window {
 }

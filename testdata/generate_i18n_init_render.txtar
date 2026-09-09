@@ -13,7 +13,6 @@ deny out/none/html/index.html `state\.__ctx_locale` -- the synthesized locale co
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 output {
     none {
@@ -34,7 +33,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

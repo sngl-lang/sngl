@@ -12,7 +12,7 @@ import (
 // call, so the canvas redraws whenever the state changes.
 func TestCanvasReactiveRedraw(t *testing.T) {
 	src := `
-import . "sngl:app"
+import . "sngl:ui"
 import . "sngl:test"
 import . "sngl:ui/draw"
 output { none { html() } }
@@ -42,7 +42,7 @@ window(title="Canvas Reactive Test", href="/index.html") {
 // and the _snglColor color helper function.
 func TestCanvasIntegration(t *testing.T) {
 	src := `
-import . "sngl:app"
+import . "sngl:ui"
 import . "sngl:test"
 import . "sngl:ui/draw"
 output { none { html() } }

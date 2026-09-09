@@ -35,7 +35,6 @@ stderr 'which describes a call'
 -- pure.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 #[foreign("js:./api", "add", pure)]
 func add(a int, b int) => a + b
@@ -44,13 +43,12 @@ component main node {
     text(value=string(add(2, 3)))
 }
 
-app.window {
+window {
     main
 }
 -- stub.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 #[foreign("js:./api", "add")]
 func add(a int, b int) => 0
@@ -59,13 +57,12 @@ component main node {
     text(value=string(add(2, 3)))
 }
 
-app.window {
+window {
     main
 }
 -- async.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 #[foreign("js:./api", "fetchHello", async)]
 func fetchHello(name string) => "hi " + name
@@ -76,13 +73,12 @@ component main node {
     text(value=greeting())
 }
 
-app.window {
+window {
     main
 }
 -- typo.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 #[foreign("js:./api", "add", puer)]
 func add(a int, b int) => a + b
@@ -91,13 +87,12 @@ component main node {
     text(value=string(add(2, 3)))
 }
 
-app.window {
+window {
     main
 }
 -- onstruct.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 #[foreign("js:./api", "Entry", pure)]
 struct Entry {
@@ -108,6 +103,6 @@ component main node {
     text(value=Entry{title = "x"}.title)
 }
 
-app.window {
+window {
     main
 }

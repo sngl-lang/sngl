@@ -10,7 +10,6 @@ declaration deserves, because an import has no body here at all.
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import . "sngl:app"
 
 output {
     go {

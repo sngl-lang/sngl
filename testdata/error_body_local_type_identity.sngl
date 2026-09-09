@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Local {
     a int
@@ -23,6 +22,6 @@ component main node {
     text(value="${inner()}")
 }
 
-app.window {
+window {
     main
 }

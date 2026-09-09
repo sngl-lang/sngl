@@ -21,9 +21,7 @@ deny out/go/fyne/model.go `canvas.NewRaster` -- with nothing to scale the canvas
 deny out/go/gtk4/model.go `gtk_widget_set_hexpand` -- the drawing area takes its natural size, so it does not claim the extra room a scaled canvas needs
 
 -- center.sngl --
-import . "sngl:app"
 import . "sngl:ui"
-import . "sngl:app"
 import draw "sngl:ui/draw"
 
 output {

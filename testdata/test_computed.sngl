@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component pricing node {
     var price = 100
@@ -21,5 +20,5 @@ func testComputedUpdatesWithVar(t Test, c pricing) {
     t.assert(c.total == 250)
 }
 
-app.window {
+window {
 }

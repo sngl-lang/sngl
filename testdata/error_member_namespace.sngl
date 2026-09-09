@@ -7,7 +7,6 @@
 // but the slot is a tag anywhere in the body, so nothing else may take its name.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component idVsMethod node {
     var n = 0
@@ -33,5 +32,5 @@ component propVsVar(label string = "hi") node {
     text(value=label)
 }
 
-app.window {
+window {
 }

@@ -23,7 +23,6 @@ deny out/none/html/delta.html `addEventListener` -- delta declares no handler, s
 
 -- reversed.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { none { html } }
 

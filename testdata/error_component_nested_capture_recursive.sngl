@@ -6,7 +6,6 @@
 // into code that does not build.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component outer() node {
     var count = 0
@@ -27,6 +26,6 @@ component main node {
     outer()
 }
 
-app.window {
+window {
     main
 }

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // View components for SNGL documentation. Each takes a plain-struct prop from
 // the lookup façade and renders it across bubbletea/html — no data fetching

@@ -2,7 +2,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component mapIndex node {
     var scores map<string, int> = {alice=10, bob=20}
@@ -20,5 +19,5 @@ func testMapIndexMissReturnsZero(t Test, c mapIndex) {
     t.assert(c.scores["nobody"] == 0)
 }
 
-app.window {
+window {
 }

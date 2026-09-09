@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 var theme = "light"
 
@@ -20,6 +19,6 @@ func testGlobalVarReactivity(t Test, c main) {
     t.assert(cd.out.value == "dark")
 }
 
-app.window {
+window {
     main
 }

@@ -1,7 +1,6 @@
 // SKIP(codegen) "names sngl:platform/html, which a per-platform harness does not register; the html output is pinned by body_local_type_override.txtar"
 import ui "sngl:ui"
 import "sngl:platform/html"
-import app "sngl:app"
 
 // An override body is collected on its own, so its type declarations need
 // collecting there too -- pass1 only ever sees the parenless stub.
@@ -44,6 +43,6 @@ component main ui.node {
     tagged()
 }
 
-app.window {
+ui.window {
     main
 }

@@ -2,10 +2,9 @@
 
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 var n = 5
 var bad = $"{n, select, a{x} other{y}}" // ERROR(check) "string"
 
-app.window {
+window {
 }

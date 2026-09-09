@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // A window's readable members are the builtin-node component's props;
 // anything else is a hard error, not a silent dyn.

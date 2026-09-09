@@ -16,7 +16,6 @@ func TestPlatformOverrideDropsDefault(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import "sngl:platform/html"
-import app "sngl:app"
 component Layout(children ...component) node {
     if PLATFORM == html.platform {
         html.div(class="site") {
@@ -27,7 +26,7 @@ component Layout(children ...component) node {
         vbox { text(value="DEFAULT_BODY") }
     }
 }
-app.window {
+window {
     Layout() { text(value="CHILD") }
 }
 `

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var count = 0
@@ -11,5 +10,5 @@ func testCountStartsZero(t Test, c counter) {
     t.assert(c.count == 0)
 }
 
-app.window {
+window {
 }

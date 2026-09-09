@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 const LIMIT = 100
 
@@ -21,6 +20,6 @@ func testParamShadowsConst(t Test, c main) {
     t.assert(c.result == 10)
 }
 
-app.window {
+window {
     main
 }

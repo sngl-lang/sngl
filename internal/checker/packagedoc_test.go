@@ -39,7 +39,7 @@ func TestPackageDoc(t *testing.T) {
 // Every library package documents itself; the doc lookup reads these rather
 // than hardcoding a blurb for one of them.
 func TestLibraryPackagesHaveDocs(t *testing.T) {
-	for _, pkg := range []string{"builtin", "ui", "ui/draw", "app", "dialog", "test", "macro"} {
+	for _, pkg := range []string{"builtin", "ui", "ui/draw", "dialog", "test", "macro"} {
 		var found string
 		for _, d := range PackageDocsFor(pkg) {
 			if s := PackageDoc(d); s != "" {

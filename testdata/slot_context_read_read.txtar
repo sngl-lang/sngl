@@ -13,10 +13,9 @@ the panic was every platform's.
 
 The two other bodies the walks stopped short of have their own archives: a
 provider wrapping the call site is in slot_context_read_provided.txtar, and an
-errorBoundary's @error handler in slot_context_read_boundary.txtar.
+the boundary's @error handler in slot_context_read_boundary.txtar.
 -- read.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -46,7 +45,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

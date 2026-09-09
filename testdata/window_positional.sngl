@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 window #home("Home", "/") {
     text(value="Welcome")

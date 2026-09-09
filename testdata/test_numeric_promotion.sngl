@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component promo node {
     var i int = 3
@@ -42,5 +41,5 @@ func testExplicitCastRoundTrip(t Test, c promo) {
     t.assert(float(c.i) == 3.0)
 }
 
-app.window {
+window {
 }

@@ -8,7 +8,6 @@
 
 import . "sngl:ui"
 import . "sngl:ui/draw"
-import app "sngl:app"
 
 component framed(header component) node {
     vbox {
@@ -28,5 +27,5 @@ component gallery node {
     }
 }
 
-app.window {
+window {
 }

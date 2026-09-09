@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var count = 0
@@ -69,5 +68,5 @@ func testForLoopRendering(t Test, c listcomp) {
     t.assert(c.item[2].value == "c")
 }
 
-app.window {
+window {
 }

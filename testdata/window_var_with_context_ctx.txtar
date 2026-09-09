@@ -14,7 +14,6 @@ plus a context declaration and a read of it. The "alpha" initializer has to
 reach the generated model here exactly as it does there.
 -- ctx.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {

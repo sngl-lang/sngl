@@ -28,7 +28,6 @@ component alone, and `codegen.AnalyzeCommon` collects `pkg.Timers` plus
 ```sngl
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -79,7 +78,6 @@ component top level.
 ```sngl
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 output {

@@ -1,7 +1,6 @@
 // The directive names the whole package's targets, so a file's root is the
 // only place it means anything.
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     output { // ERROR(check) "output may only be written at the root of a file"
@@ -13,6 +12,6 @@ component main node {
     text(value="hi")
 }
 
-app.window {
+window {
     main
 }

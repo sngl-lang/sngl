@@ -55,9 +55,9 @@ func compileBubbletea(t *testing.T, src string) string {
 // called as text(value="HELLO") must render the caller's argument, not "".
 func TestNewFormTextBindsValue(t *testing.T) {
 	src := `import . "sngl:ui"
-import app "sngl:app"
+import ui "sngl:ui"
 output { go { bubbletea } }
-app.window {
+ui.window {
     text(value="HELLO")
 }`
 	out := compileBubbletea(t, src)

@@ -11,7 +11,6 @@ import (
 // over the iteration, which is what makes retaining the row a question at all.
 const slotChildSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var rows list<string> = ["a", "b", "c"]
     var picked string = ""
@@ -94,8 +93,7 @@ func TestSlotChildInstance_ARowReadingStateThroughACallRepaints(t *testing.T) {
 	// nothing and this leak's precondition never arises there.
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
-app.window {
+window {
     var items list<string> = ["a", "b"]
     var suffix string = "!"
     func decorate() => suffix

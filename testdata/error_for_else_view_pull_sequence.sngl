@@ -6,7 +6,6 @@
 // a test that eats an element.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var rows list<string> = []
@@ -21,6 +20,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

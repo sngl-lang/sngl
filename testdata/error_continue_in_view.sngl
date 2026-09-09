@@ -2,7 +2,6 @@
 // stream: there is no iteration for an escape to cut short.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var xs list<int> = [1]
@@ -12,6 +11,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

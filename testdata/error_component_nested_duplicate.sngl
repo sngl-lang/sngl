@@ -2,7 +2,6 @@
 // other duplicate in a scope is.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     component row(label = "") node {
@@ -16,6 +15,6 @@ component main node {
     row(label="a")
 }
 
-app.window {
+window {
     main
 }

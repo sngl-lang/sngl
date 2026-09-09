@@ -12,7 +12,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -50,6 +49,6 @@ func testRemovingAnItemUnmountsOnlyIt(t Test, c main) {
     t.assert(c.out.value == "+a,+b,-b")
 }
 
-app.window {
+window {
     main
 }

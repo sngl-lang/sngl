@@ -24,7 +24,6 @@ identically with the fix in or out.
 The map is unpacked into one attribute per name it collected.
 -- loop.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -42,7 +41,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

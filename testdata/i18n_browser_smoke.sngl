@@ -7,7 +7,6 @@
 
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 component main node {
     var count int = 1
@@ -19,6 +18,6 @@ component main node {
     })
 }
 
-app.window {
+window {
     main
 }

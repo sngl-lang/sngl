@@ -17,7 +17,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component box<T>(item T, label string) node {
     text #out(value=label)
@@ -117,6 +116,6 @@ func testAGenericComponentHoldsStateOfItsOwnParameter(t Test, c stateful) {
     t.assert(c.held.value == "7")
 }
 
-app.window {
+window {
     main
 }

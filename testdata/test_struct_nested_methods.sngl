@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Point {
     x, y int
@@ -32,6 +31,6 @@ func testNestedMethodBareSiblingCall(t Test, c main) {
     t.assert(c.p.describe() == "(3,4) m2=25")
 }
 
-app.window {
+window {
     main
 }

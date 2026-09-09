@@ -22,7 +22,6 @@ grep '_snglSplit\(' a/MainScreen.kt
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output {
     none { html }
@@ -53,6 +52,6 @@ func testOrdinarySeparatorIsUnchanged(t Test) {
     t.assert(chars("").length() == 0)
 }
 
-app.window {
+window {
     main
 }

@@ -6,7 +6,6 @@
 // and a count that does not match are each refused where they are written.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Row {
     title string
@@ -62,6 +61,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

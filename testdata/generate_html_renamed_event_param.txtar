@@ -7,7 +7,6 @@ it came from and the text beside it.
 deny out/none/html/index.html `myEvent` -- the event parameter is renamed to `e` on the way out, so the source's spelling reaches nothing
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -17,7 +16,7 @@ component main node {
     text(value=name)
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

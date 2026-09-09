@@ -25,7 +25,6 @@ deny out/none/html/index.html `settle2|__snglTeardown2` -- a name suffixed by th
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     none {

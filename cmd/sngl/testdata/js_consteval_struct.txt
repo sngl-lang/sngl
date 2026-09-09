@@ -26,7 +26,6 @@ grep '1\.5' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
-import app "sngl:app"
 
 const who = lib.profile("ada", "lovelace")
 
@@ -36,7 +35,7 @@ component main node {
     text(value=string(who.score))
 }
 
-app.window {
+window {
     main
 }
 -- lib/index.ts --

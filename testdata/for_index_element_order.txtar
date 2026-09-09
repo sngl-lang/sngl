@@ -19,7 +19,6 @@ deny out/none/html/index.html `\[name, i\]` -- entries() yields [index, element]
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -47,7 +46,7 @@ component main node {
     text(value=joined)
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

@@ -5,7 +5,6 @@
 // enabled and runs ir.Validate over the result.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 const labels list<string> = ["one", "two", "three"]
 
@@ -19,5 +18,5 @@ component focusLoop node {
     }
 }
 
-app.window {
+window {
 }

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     var x = 5
@@ -17,6 +16,6 @@ func testReactiveMethodRead(t Test, c main) {
     t.assert(c.out.value == "12")
 }
 
-app.window {
+window {
     main
 }

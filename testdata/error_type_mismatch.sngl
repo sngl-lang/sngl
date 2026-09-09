@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 var x int = "hello" // ERROR(check) "cannot initialize int with string"
 
@@ -8,5 +7,5 @@ func foo() {
     y = "hello" // ERROR(check) "cannot assign string to int"
 }
 
-app.window {
+window {
 }

@@ -6,7 +6,6 @@ stdout 'app.sngl: ok'
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -15,6 +14,6 @@ component main node {
     text(value=greeting)
 }
 
-app.window {
+window {
     main
 }

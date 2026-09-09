@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // reactive-ternary-context: a ternary whose condition reads a reactive var
 // (`dark`) is used as a context-provider value, consumed by 2+ children.
@@ -31,6 +30,6 @@ func testThemeToggles(t Test, c main) {
     t.assert(c.dark == true)
 }
 
-app.window {
+window {
     main
 }

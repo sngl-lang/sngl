@@ -4,11 +4,10 @@
 // accepted a shape. A `node` slot is a family like any other now, and a
 // `draw.shape` is not one of its members.
 
-import app "sngl:app"
 import d "sngl:ui/draw"
 import ui "sngl:ui"
 
-app.window {
+ui.window {
     ui.vbox {
         d.circle(cx=1.0, cy=1.0, r=4.0) // ERROR(check) "expected node component in vbox, got circle"
     }

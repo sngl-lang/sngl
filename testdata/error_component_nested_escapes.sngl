@@ -3,7 +3,6 @@
 // silently dropped declaration, which is what #184 was.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component outer() node {
     component inner(label = "") node {
@@ -24,6 +23,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

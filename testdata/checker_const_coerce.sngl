@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     const PROGRESS_VAL = 50
@@ -24,6 +23,6 @@ component main node {
     progress(value=int(50))
 }
 
-app.window {
+window {
     main
 }

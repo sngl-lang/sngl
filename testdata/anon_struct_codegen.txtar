@@ -30,7 +30,6 @@ deny out/go/bubbletea/model.go `struct\{\}\{` -- a literal names its declared ty
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -72,7 +71,7 @@ component main node {
     text(value=string(sumPair(pair) + emptyWidth(empty)))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

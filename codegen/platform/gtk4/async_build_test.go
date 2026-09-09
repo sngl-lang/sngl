@@ -11,7 +11,6 @@ import (
 const asyncOffloadSrc = `
 import . "sngl:ui"
 import go "sngl:language/go"
-import app "sngl:app"
 
 #[go.native("time", "time.Sleep")]
 #[go.async]
@@ -21,7 +20,7 @@ func sleep(ns int)
 #[go.async]
 func host() string
 
-app.window {
+window {
     var (
         greeting = "idle"
         busy = false

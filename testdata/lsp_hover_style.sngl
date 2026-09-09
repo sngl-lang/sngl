@@ -1,10 +1,9 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // TODO: restore style hover test when stdlib is available in v2
 component main node {
 }
 
-app.window {
+window {
     main
 }

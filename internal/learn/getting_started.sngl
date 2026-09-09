@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // GettingStarted is the "Your First App" tutorial. Built as a single SNGL
 // component (not markdown) so it renders on every platform website.sngl

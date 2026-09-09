@@ -7,7 +7,6 @@
 // count.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Point {
     x int = 0
@@ -22,6 +21,6 @@ component main node {
     text(value=string(over.x + bad.y))
 }
 
-app.window {
+window {
     main
 }

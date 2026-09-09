@@ -16,7 +16,6 @@ kind.
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -46,7 +45,7 @@ component main node {
     text(value="{n} {flag}")
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

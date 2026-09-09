@@ -8,7 +8,6 @@ deny out/go/bubbletea/model.go `range` -- there is no iterable in this program, 
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -45,7 +44,7 @@ component main node {
     text(value=string(total))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

@@ -11,7 +11,6 @@ import (
 // check, because constructing a widget needs a GTK display.
 const slotInstanceSrc = `
 import . "sngl:ui"
-import app "sngl:app"
 
 component card(name = "") node {
     var open = true
@@ -21,7 +20,7 @@ component card(name = "") node {
     }
 }
 
-app.window {
+window {
     var items list<string> = ["a", "b"]
     for var it = items {
         card(name=it)

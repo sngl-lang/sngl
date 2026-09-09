@@ -16,7 +16,6 @@
 // checks and the error is one line rather than one per use.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var pair = {a=1, b=2}
@@ -31,6 +30,6 @@ component main node {
     text(value=string(out))
 }
 
-app.window {
+window {
     main
 }

@@ -33,7 +33,6 @@ deny out/none/html/index.html `\bout\.textContent` -- the ref resolves to the em
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -56,7 +55,7 @@ component main node {
     text #out(value="{n}")
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

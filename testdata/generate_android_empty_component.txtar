@@ -12,7 +12,6 @@ deny out/kotlin/android/MainScreen.kt `hello` -- the eliminated component's prop
 deny out/kotlin/android/MainScreen.kt `unknown` -- an empty body emits nothing at all, not a placeholder naming the dropped component
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     kotlin {
@@ -34,7 +33,7 @@ component main node {
     shown(caption="x")
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/MainScreen.kt --

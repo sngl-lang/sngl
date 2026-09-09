@@ -12,7 +12,6 @@ kicker is called at startup, so the initial value is fetched.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
-import app "sngl:app"
 
 output {
     none {
@@ -26,7 +25,7 @@ component main node {
     text(value=greeting())
 }
 
-app.window {
+window {
     main
 }
 -- api/index.ts --

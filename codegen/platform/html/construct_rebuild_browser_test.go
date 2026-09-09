@@ -25,7 +25,6 @@ import (
 func TestConstruct_APropWrittenFromStateRebuildsTheInstance(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:macro"
 component seeded(#[construct] start int, more = 0) node {
     var n = start

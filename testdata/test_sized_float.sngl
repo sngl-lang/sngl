@@ -1,6 +1,5 @@
 import . "sngl:test"
 import ui "sngl:ui"
-import app "sngl:app"
 
 // Sized floating-point types. float64 behaves like the default float;
 // float32 carries single-precision rounding.
@@ -27,5 +26,5 @@ func testFloatConstFold(t Test, c floats) {
     t.assert(x == 4.0)
 }
 
-app.window {
+ui.window {
 }

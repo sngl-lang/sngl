@@ -46,7 +46,6 @@ grep 'heading component\(string\)' propargs.sngl
 
 -- table.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 struct Row {
     title string
@@ -79,7 +78,6 @@ window #w(href="/index.html") {
 output { none { html } }
 -- fallback.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 component card(heading component, children ...component) node {
     vbox {
@@ -99,7 +97,6 @@ window #w(href="/index.html") {
 output { none { html } }
 -- propargs.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 component card(caption string, heading component(string), children ...component) node {
     vbox {
@@ -120,7 +117,6 @@ window #w(href="/index.html") {
 output { none { html } }
 -- instances.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 component card(heading component, children ...component) node {
     var open = true

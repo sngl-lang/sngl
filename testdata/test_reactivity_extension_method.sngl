@@ -1,6 +1,5 @@
 import . "sngl:test"
 import ui "sngl:ui"
-import app "sngl:app"
 
 component main ui.node {
     var x = 5
@@ -17,6 +16,6 @@ func testReactiveExtensionRead(t Test, c root) {
     t.assert(cm.double() == 10)
 }
 
-app.window {
+ui.window {
     main
 }

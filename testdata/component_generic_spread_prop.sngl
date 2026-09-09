@@ -4,7 +4,6 @@
 // `@mount(v)` payload -- read as a positional argument instead, the spread
 // bound T to the struct and the handler was rejected.
 import . "sngl:ui"
-import app "sngl:app"
 
 struct pageArgs {
     on int
@@ -24,6 +23,6 @@ component main node {
     text(value="page=" + string(page))
 }
 
-app.window {
+window {
     main
 }

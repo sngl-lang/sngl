@@ -1,4 +1,4 @@
-# fyne and gtk4 have no errorBoundary emitter. Left to travel on, the boundary
+# fyne and gtk4 have no error-boundary emitter. Left to travel on, the boundary
 # reached the Go renderer, which walks the same IR from a different angle and
 # panics on a statement kind no platform was meant to hand it -- so what a user
 # saw was a Go stack trace naming irwalk, about a program it never mentioned.
@@ -8,11 +8,11 @@
 # as a skip for that platform rather than a failure.
 
 ! sngl generate --platform=fyne --lang=go --out=fy boundary.sngl
-stderr 'component "errorBoundary" has no fyne implementation'
+stderr 'component "boundary" has no fyne implementation'
 ! stderr 'panic'
 
 ! sngl generate --platform=gtk4 --lang=go --out=gt boundary.sngl
-stderr 'component "errorBoundary" has no gtk4 implementation'
+stderr 'component "boundary" has no gtk4 implementation'
 ! stderr 'panic'
 
 # The platforms that do implement one are unaffected.
@@ -22,11 +22,10 @@ sngl generate --platform=android --lang=kotlin --out=an boundary.sngl
 
 -- boundary.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 component main node {
     var caught = ""
-    errorBoundary(@error(e) { caught = e.message }) {
+    boundary(@error(e) { caught = e.message }) {
         button #go(text="Go", @click { error.raise("boom", "") })
     }
     text(value=caught)

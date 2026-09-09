@@ -22,7 +22,6 @@ only one that leaves value/max meaning what it says.
 2 of 10 is a fifth of the bar, not all of it.
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {

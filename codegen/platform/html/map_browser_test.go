@@ -20,7 +20,6 @@ import (
 func TestMapIndexWriteReachesTheMap(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component App() node {
     var counts map<string, int> = {}
     text(value="[" + string(counts.length()) + ":" + string(counts.get("a", 0)) + "]")

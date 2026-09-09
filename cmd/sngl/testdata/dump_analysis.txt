@@ -35,7 +35,6 @@ stdout 'component main'
 
 -- main.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 var count = 0
 
@@ -44,6 +43,6 @@ component main node {
     button(text="go", @click { count = count + 1 })
 }
 
-app.window {
+window {
     main
 }

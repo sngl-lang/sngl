@@ -1,11 +1,10 @@
 //@ complete("", "component", "struct", "enum", "import", "!var", "!param")
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
 }
 
-app.window {
+window {
     main
 }

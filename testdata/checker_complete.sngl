@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output {
     none { html }
@@ -66,6 +65,6 @@ func testConstUsage(t Test, c main) {
     t.assert(c.MIN == 0)
 }
 
-app.window {
+window {
     main
 }

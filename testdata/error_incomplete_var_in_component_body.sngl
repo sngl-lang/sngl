@@ -3,7 +3,6 @@
 // missing initializer above it.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component outer() node {
     var x =
@@ -12,5 +11,5 @@ component outer() node {
     }
 }
 
-app.window {
+window {
 }

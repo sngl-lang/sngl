@@ -4,7 +4,6 @@ field.
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -19,7 +18,7 @@ component main node {
     text(value=string(total))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

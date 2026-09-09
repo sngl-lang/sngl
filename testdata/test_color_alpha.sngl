@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // A colour is its complete value, alpha included. hex() dropped alpha in
 // every backend while the interpreter kept it, so an assertion on a
@@ -20,6 +19,6 @@ func testAlphaIsPartOfTheValue(t Test, c main) {
     t.assert(c.opaque == color{r=255, g=0, b=0, a=255})
 }
 
-app.window {
+window {
     main
 }

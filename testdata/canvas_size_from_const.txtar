@@ -4,7 +4,6 @@ fold to one literal. The folder's value model has no unit: parseLiteral
 answers nil for `1px`, so the whole product stayed an expression and every
 platform fell back to the 300x150 default.
 -- app.sngl --
-import . "sngl:app"
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 

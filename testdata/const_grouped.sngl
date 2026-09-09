@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     const (
@@ -22,6 +21,6 @@ func testConstants(t Test, c main) {
     t.assert(c.count == 100)
 }
 
-app.window {
+window {
     main
 }

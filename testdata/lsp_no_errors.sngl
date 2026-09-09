@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component label(value string) node {
 }
@@ -9,6 +8,6 @@ component main node {
     label(value="hello")
 }
 
-app.window {
+window {
     main
 }

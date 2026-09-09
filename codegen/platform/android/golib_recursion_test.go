@@ -18,12 +18,12 @@ import (
 // free function, so the latter produced Go that does not compile.
 func TestGoLibRecursiveFuncFreeCall(t *testing.T) {
 	src := `import . "sngl:ui"
-import app "sngl:app"
+import ui "sngl:ui"
 func fib(n int) int {
     if n < 2 { return n }
     return fib(n - 1) + fib(n - 2)
 }
-app.window {
+ui.window {
     var seed = 10
     text(value=string(fib(seed)))
 }`

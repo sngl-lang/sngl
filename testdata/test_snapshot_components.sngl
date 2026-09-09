@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // A user component is expanded: a snapshot is the rendered tree, not the
 // authored one, so `badge` never appears and what its body renders does.
@@ -40,5 +39,5 @@ func testExpansion(t Test, c page) {
     t.snapshot("page")
 }
 
-app.window {
+window {
 }

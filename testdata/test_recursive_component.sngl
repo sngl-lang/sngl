@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct TreeNode {
     value int = 0
@@ -50,6 +49,6 @@ func testRecursiveComponentMutation(t Test, c main) {
     t.assert(c.val[4].value == "8")
 }
 
-app.window {
+window {
     main
 }

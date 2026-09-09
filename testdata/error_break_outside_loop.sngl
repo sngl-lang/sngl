@@ -1,9 +1,8 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func f() {
     break // ERROR(check) "`break` outside a loop"
 }
 
-app.window {
+window {
 }

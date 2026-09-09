@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // Client-only HTTP route window: the @click handler mutates SNGL state only
 // (no go: native call), so it stays pure client-side JS. This fixture is the

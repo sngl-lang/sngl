@@ -10,7 +10,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 0
@@ -35,6 +34,6 @@ func testTwoInstantiationsShareOneCapturedVar(t Test, c main) {
     t.assert(c.count == 11)
 }
 
-app.window {
+window {
     main
 }

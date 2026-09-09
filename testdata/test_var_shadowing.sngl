@@ -4,7 +4,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 var total = 10
 
@@ -31,5 +30,5 @@ func testWritingTheInnerVarLeavesTheOuterAlone(t Test, c shadowed) {
     t.assert(packageTotal() == 10)
 }
 
-app.window {
+window {
 }

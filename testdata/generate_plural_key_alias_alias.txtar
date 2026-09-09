@@ -13,7 +13,6 @@ deny out/none/html/index.html `t\.one` -- the alias is a compile-time binding an
 -- alias.sngl --
 import . "sngl:ui"
 import t "sngl:i18n"
-import app "sngl:app"
 
 output {
     none {
@@ -26,7 +25,7 @@ component main node {
     text(value=t.plural(n, {t.one="one item", t.other="many items"}))
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

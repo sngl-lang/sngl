@@ -1,10 +1,9 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     text(foo="bar") // ERROR(check) "unknown prop"
 }
 
-app.window {
+window {
     main
 }

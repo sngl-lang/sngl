@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // chip: A-tier — declaration + label binding.
 component main node {
@@ -10,6 +9,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

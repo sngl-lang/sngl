@@ -2,7 +2,6 @@
 // is the signature it binds against.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 0 @change(nv int) {
@@ -16,6 +15,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

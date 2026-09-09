@@ -17,7 +17,6 @@ deny out/none/html/index.html `setInterval\(\(\) =>` -- the callback awaits, so 
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import api "js:./api"
 
 output {

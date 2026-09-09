@@ -23,9 +23,8 @@ func TestCanvas_EmitsGGDrawAndRedraw(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:ui/draw"
-import app "sngl:app"
 output { none { html } }
-app.window {
+window {
     var radius = 50.0
     canvas(width=400px, height=280px) {
         rect(x=0.0, y=0.0, w=400.0, h=280.0, style=CanvasStyle{fill=color{r=10, g=20, b=30, a=255}}) {}
@@ -133,9 +132,8 @@ func TestCanvas_RendersRealPixels(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:ui/draw"
-import app "sngl:app"
 output { none { html } }
-app.window {
+window {
     var radius = 60.0
     canvas(width=200px, height=200px) {
         rect(x=0.0, y=0.0, w=200.0, h=200.0, style=CanvasStyle{fill=color{r=240, g=240, b=240, a=255}}) {}

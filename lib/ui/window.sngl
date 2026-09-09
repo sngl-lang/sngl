@@ -1,0 +1,40 @@
+import marks "sngl:internal/marks"
+import tree "sngl:tree"
+
+// The family whose members are written at the root of a file: the windows a
+// program opens, and the build directive saying what it compiles to. Nothing
+// syntactic makes those top-level — the package body is a slot that accepts
+// this tree, and everything else it could accept belongs to another one.
+//
+// `root` because each member genuinely is one: a window roots a render tree,
+// and a build directive roots the targets. An `if` or a `for` at the root
+// still works, since neither is a node, and a component that names `root`
+// itself renders windows conditionally.
+//
+// It lives here rather than in a package of its own because `window` does,
+// and `window`'s rest slot accepts `node`. Split across two packages, the one
+// holding `root` would have to import this one and be imported by it.
+#[tree.kind]
+#[marks.builtin("treeRoot")]
+struct root {}
+
+// A top-level window — the entry point of a UI. `href` is the route the
+// window is served at (URL template params like `{name}` bind as string
+// vars in scope for the body); `title` names it; `favicon` is its icon.
+// `@error` is the window's outermost error boundary.
+//
+// Reading `name.href` / `name.title` off a `window #name` declaration
+// lets links survive a window's path change without copying the path
+// string. The #[builtin("window")] mark is how the checker recognises a
+// window declaration — by tag, not by matching the name "window".
+//
+// A program must declare at least one: the package body renders nothing on
+// its own, so a program with no window has nowhere to draw.
+#[marks.builtin("window")]
+component window(
+    title string,
+    href string,
+    favicon string,
+    @error error,
+    content ...component node,
+) root {}

@@ -37,7 +37,6 @@ deny out/none/html/index.html `row0=slow` -- likewise the first
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:time"
-import app "sngl:app"
 
 output {
     none {
@@ -53,7 +52,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

@@ -22,7 +22,6 @@ deny out/go/bubbletea/model.go `len\(\[\]string` -- the emptiness test over a co
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -52,7 +51,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

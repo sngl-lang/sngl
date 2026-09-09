@@ -1,6 +1,5 @@
 // asynclambda.sngl — exercises list .map() and .filter() with lambda expressions.
 
-import . "sngl:app"
 import . "sngl:ui"
 
 window {

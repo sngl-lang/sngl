@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     for { // ERROR(check) "cannot be written in a view body"
@@ -7,6 +6,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

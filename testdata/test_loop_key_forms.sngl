@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // Every node form accepts key=, the list-diffing key: a visual node with a
 // body, a childless call, and an element ref carrying an #id.
@@ -23,5 +22,5 @@ func testKeyedRowsRender(t Test, c keyed) {
     t.assert(c.row[1].value == "b")
 }
 
-app.window {
+window {
 }

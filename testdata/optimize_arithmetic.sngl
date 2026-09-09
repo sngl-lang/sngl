@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component arithfold node {
     // Integer arithmetic
@@ -72,5 +71,5 @@ func testFoldedValues(t Test, c arithfold) {
     t.assert(c.ternf == 2)
 }
 
-app.window {
+window {
 }

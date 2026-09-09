@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // checkbox: state-binding fixture — toggling the bound `checked`
 // var propagates to the checkbox.
@@ -17,6 +16,6 @@ func testCheckboxToggles(t Test, c main) {
     t.assert(c.on == false)
 }
 
-app.window {
+window {
     main
 }

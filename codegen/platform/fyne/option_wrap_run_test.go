@@ -12,7 +12,6 @@ import "testing"
 // spellings are indistinguishable.
 const optionWrapCopySrc = `
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Box {
     value int = 0
@@ -22,7 +21,7 @@ struct Holder {
     inner option<Box> = null
 }
 
-app.window {
+window {
     var b = Box{value=3}
     var h = Holder{inner=null}
     var seen = 0

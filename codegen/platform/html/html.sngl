@@ -116,7 +116,7 @@ component element(
     @submit ui.SubmitEvent,
     @scroll ui.ScrollEvent,
     @load ui.LoadEvent,
-    @error ui.ErrorEvent,
+    @error error,
     @close ui.DismissEvent,
     @select ui.SelectEvent,
 

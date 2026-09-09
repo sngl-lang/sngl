@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import tr "sngl:tree"
 
 // Component declares exactly one child (bare type T).

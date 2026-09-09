@@ -20,7 +20,6 @@ import (
 func TestNamedSlotInsideAReactiveIfRenders(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 
 component q(body component) node {
     var on = false
@@ -33,7 +32,7 @@ component q(body component) node {
     }
 }
 
-app.window {
+window {
     q {
         component body {
             text(value="SUPPLIED")
@@ -69,7 +68,6 @@ app.window {
 func TestScopedNamedSlotInsideAReactiveIfBindsItsArgument(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 
 component q(ready component(int)) node {
     var n = 0
@@ -82,7 +80,7 @@ component q(ready component(int)) node {
     }
 }
 
-app.window {
+window {
     q {
         component ready(v) {
             text(value="N=" + string(v))

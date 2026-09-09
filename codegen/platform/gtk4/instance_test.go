@@ -12,7 +12,6 @@ import (
 // component that holds its own `var clicks`, under a dynamic `for`.
 const loopComponentSrc = `
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Item {
     name string = ""
@@ -23,7 +22,7 @@ component card(name = "") node {
     button(text="{name} ({clicks})", @click { clicks += 1 })
 }
 
-app.window {
+window {
     var items list<Item> = [
         {name="a"},
         {name="b"},

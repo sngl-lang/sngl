@@ -28,7 +28,6 @@ grep 'folded-pure-hash' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
-import app "sngl:app"
 
 component main node {
     // Bound to state rather than used inline: an unfolded call is shipped as
@@ -51,7 +50,7 @@ component main node {
     text(value=g)
 }
 
-app.window {
+window {
     main
 }
 -- lib/index.ts --

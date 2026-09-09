@@ -2,7 +2,6 @@
 // has nowhere to run either.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 var n = 0
 
@@ -12,6 +11,6 @@ component main node {
     text(value="{n}")
 }
 
-app.window {
+window {
     main
 }

@@ -18,7 +18,6 @@ deny out/none/html/index.html `>base<` -- the override replaces the declaration'
 -- app.sngl --
 import ui "sngl:ui"
 import "sngl:platform/html"
-import app "sngl:app"
 
 output {
     none {
@@ -44,7 +43,7 @@ component main ui.node {
     thing()
 }
 
-app.window {
+ui.window {
     main
 }
 -- out/none/html/index.html --

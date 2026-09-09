@@ -19,7 +19,6 @@ deny out/go/bubbletea/model.go `m\.count = \(v \+ 1\)` -- same claim in Go: the 
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -54,7 +53,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

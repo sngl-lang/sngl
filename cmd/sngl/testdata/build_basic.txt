@@ -8,7 +8,6 @@ exists myapp
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -16,6 +15,6 @@ component main node {
     text(value="hello")
 }
 
-app.window {
+window {
     main
 }

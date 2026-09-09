@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Vec2 {
     x, y int
@@ -19,6 +18,6 @@ func testExtensionMethod(t Test, c main) {
     t.assert(Vec2.dot(c.u, c.v) == 11)
 }
 
-app.window {
+window {
     main
 }

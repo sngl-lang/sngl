@@ -2,13 +2,12 @@
 // import. i18n used to arrive with the standard library, which meant a program
 // got translation whether it asked for it or not.
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var n int = 1
     text(value=$"hi {n}") // ERROR(check) "is a call to i18n.tr, and sngl:i18n is not imported"
 }
 
-app.window {
+window {
     main
 }

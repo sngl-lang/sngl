@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count int = 0
@@ -24,6 +23,6 @@ component main node {
     text(value=greeting)
 }
 
-app.window {
+window {
     main
 }

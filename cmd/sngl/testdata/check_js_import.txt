@@ -9,7 +9,7 @@ import . "sngl:ui"
 output { js { html } }
 
 import lib "js:./lib"
-import app "sngl:app"
+import ui "sngl:ui"
 
 func wrap(a float, b float) => lib.add(a, b)
 
@@ -17,7 +17,7 @@ component main node {
     text(value=string(wrap(1, 2)))
 }
 
-app.window {
+ui.window {
     main
 }
 -- lib/index.ts --

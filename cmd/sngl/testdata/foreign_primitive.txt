@@ -14,7 +14,6 @@ exists out2/MainScreen.kt
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:platform/android"
-import app "sngl:app"
 
 component main node {
     vbox {
@@ -22,6 +21,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

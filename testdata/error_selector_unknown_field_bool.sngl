@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Bug: unknown field on bool typechecks silently.
 component main node {
@@ -8,6 +7,6 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

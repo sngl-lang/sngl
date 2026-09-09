@@ -2,7 +2,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component Stepper(:count = 0) node {
     button(text="+", @click { count += 1 })
@@ -24,6 +23,6 @@ component main node {
     text(value="steps={steps}, label={label}")
 }
 
-app.window {
+window {
     main
 }

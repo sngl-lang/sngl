@@ -508,7 +508,7 @@ func TestImportPathCompletionsHideTheInternalTier(t *testing.T) {
 			t.Errorf("offered %q, which only library source may import", it.Label)
 		}
 	}
-	for _, want := range []string{"sngl:ui", "sngl:app", "sngl:ui/draw"} {
+	for _, want := range []string{"sngl:ui", "sngl:time", "sngl:ui/draw"} {
 		if !have[want] {
 			t.Errorf("missing %q from import completions", want)
 		}

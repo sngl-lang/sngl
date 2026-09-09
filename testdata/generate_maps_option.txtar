@@ -9,7 +9,6 @@ at all. Both are why the golden here is the whole page.
 
 -- main.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output(maps=true) {
     none {
@@ -21,7 +20,7 @@ component main node {
     text(value="hello")
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

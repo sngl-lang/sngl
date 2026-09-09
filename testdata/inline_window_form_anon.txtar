@@ -14,7 +14,6 @@ dropped -- those two are in inline_window_form_lone.txtar.
 
 -- anon.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 struct Row {
     title string

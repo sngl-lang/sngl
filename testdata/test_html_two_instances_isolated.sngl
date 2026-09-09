@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var n = 0
@@ -17,6 +16,6 @@ func testTwoInstancesIsolated(t Test, c main) {
     t.assert(true)
 }
 
-app.window {
+window {
     main
 }

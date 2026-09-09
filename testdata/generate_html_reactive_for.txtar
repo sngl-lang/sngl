@@ -27,7 +27,6 @@ re-render walked a number. It is the bare call now; list_push_is_a_statement
 covers the rule across all three languages.
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -39,7 +38,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

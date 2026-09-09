@@ -1,7 +1,6 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 foobar // ERROR(check) "unknown component \"foobar\"" //@ diag("unknown component")
 
-app.window {
+window {
 }

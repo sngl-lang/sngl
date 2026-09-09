@@ -19,7 +19,6 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component box node {
     var xs list<int> = [1, 2]
@@ -58,5 +57,5 @@ func testContinueMeansTheBodyRan(t Test, c box) {
     t.assert(c.note == "2!")
 }
 
-app.window {
+window {
 }

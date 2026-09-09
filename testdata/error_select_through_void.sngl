@@ -7,7 +7,6 @@
 // reached a backend as a call to a function nobody declared.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func nothing() {
 }
@@ -25,6 +24,6 @@ component main node {
     text(value=string(n))
 }
 
-app.window {
+window {
     main
 }

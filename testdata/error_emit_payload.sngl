@@ -11,7 +11,6 @@
 // checked. The argument is checked against the payload, so an anonymous
 // literal is typed by the declaration and names nothing.
 import . "sngl:ui"
-import . "sngl:app"
 
 struct Payload {
     value string

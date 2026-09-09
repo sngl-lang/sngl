@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct box<T> {
     v T
@@ -16,6 +15,6 @@ func testNestedGenericMethod(t Test, c main) {
     t.assert(c.b.get() == 42)
 }
 
-app.window {
+window {
     main
 }

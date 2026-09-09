@@ -8,7 +8,6 @@ an int.
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -24,7 +23,7 @@ component main node {
     text(value=string(size))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

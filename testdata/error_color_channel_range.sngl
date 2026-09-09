@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // A colour channel is a uint8, so the range is the type's rather than four
 // backends' agreement. It was an int, nothing checked it, and the JS emitter
@@ -10,6 +9,6 @@ component main node {
     text(value=over.hex() + under.hex())
 }
 
-app.window {
+window {
     main
 }

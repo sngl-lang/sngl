@@ -17,7 +17,6 @@ stdout 'ok'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -30,6 +29,6 @@ func testHasAlice(t Test, c main) {
     t.assert(c.scores["alice"] == 10)
 }
 
-app.window {
+window {
     main
 }

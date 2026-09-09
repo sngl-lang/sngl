@@ -10,7 +10,6 @@ header and the title the window declares. That is the whole claim, so this
 archive builds html alone.
 -- comp.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -26,7 +25,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

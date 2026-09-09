@@ -1,6 +1,5 @@
 import . "sngl:test"
 import ui "sngl:ui"
-import app "sngl:app"
 
 // Component funcs use closure semantics (pre-T7), not desugared methods.
 // Bare field access works; explicit `this.` is reserved for struct/enum
@@ -21,6 +20,6 @@ func testComponentClosureBump(t Test, c main) {
     t.assert(true) // smoke test — checker should accept the component
 }
 
-app.window {
+ui.window {
     main
 }

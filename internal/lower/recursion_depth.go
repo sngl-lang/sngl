@@ -215,10 +215,9 @@ func (st *recursionState) here() ir.Expr {
 
 // raiseStmt is `error.raise(msg, kind)`, resolved against scope.
 //
-// The func is synthesized rather than looked up: `error.raise` is declared in
-// sngl:app, which a program bounded by this pass need not have imported, and
-// ir.IsErrorRaiseFunc identifies it by the receiver+name pair for exactly that
-// reason.
+// The func is synthesized rather than looked up: `error.raise` is ambient, and
+// a pass has no scope to resolve a name in even so -- ir.IsErrorRaiseFunc
+// identifies it by the receiver+name pair for exactly that reason.
 //
 // kind is a parameter because two passes report a bound they enforce, and an
 // @error handler that means to catch one of them should not have to catch the
@@ -228,7 +227,7 @@ func raiseStmt(msg, kind string, scope []*ir.EventHandler) ir.Stmt {
 		Type: ir.TypVoid,
 		Func: &ir.Func{
 			Name:     "raise",
-			Pkg:      "sngl:app",
+			Pkg:      "sngl:builtin",
 			Receiver: "error",
 			Params: []*ir.Param{
 				{Name: "message", Type: ir.TypString},

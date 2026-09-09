@@ -5,7 +5,6 @@ stderr 'window output path collision'
 
 -- site.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { none { html } }
 

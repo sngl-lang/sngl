@@ -24,43 +24,39 @@ sngl check good.sngl
 -- badprop.sngl --
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
-import app "sngl:app"
 
 component main node {
     bt.Styled(content = "hi", styl = {}) {}
 }
 
-app.window {
+window {
     main
 }
 -- badevent.sngl --
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
-import app "sngl:app"
 
 component main node {
     bt.Layout(join = bt.JoinDir.vertical, @bogus { }) {}
 }
 
-app.window {
+window {
     main
 }
 -- badtype.sngl --
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
-import app "sngl:app"
 
 component main node {
     bt.Layout(join = "vertical") {}
 }
 
-app.window {
+window {
     main
 }
 -- good.sngl --
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
-import app "sngl:app"
 
 component main node {
     bt.Layout(join = bt.JoinDir.vertical) {
@@ -68,6 +64,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

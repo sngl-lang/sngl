@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Pair {
     key string = ""
@@ -47,6 +46,6 @@ func testBasic(t Test, c main) {
     t.assert(c.label == "hello")
 }
 
-app.window {
+window {
     main
 }

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var c color = #ff0000
@@ -9,6 +8,6 @@ component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

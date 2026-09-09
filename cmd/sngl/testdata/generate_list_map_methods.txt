@@ -22,7 +22,6 @@ exists lm
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var xs list<int> = [3, 1, 2]
@@ -44,12 +43,11 @@ component main node {
     text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.join(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
 }
 
-app.window {
+window {
     main
 }
 -- bt.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -73,6 +71,6 @@ component main node {
     text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.join(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
 }
 
-app.window {
+window {
     main
 }

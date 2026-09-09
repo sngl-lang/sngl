@@ -24,7 +24,6 @@ deny * `__effect1_settle` -- likewise
 -- app.sngl --
 import . "sngl:time"
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -74,7 +73,7 @@ component main node {
     text(value=log.join(","))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

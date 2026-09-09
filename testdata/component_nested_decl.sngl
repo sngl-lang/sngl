@@ -3,7 +3,6 @@
 // emitted namespace would break, so both are here and both are rendered.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component first() node {
     component row(label = "") node {
@@ -37,6 +36,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

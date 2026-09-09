@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 var count int
 
@@ -8,5 +7,5 @@ component Counter node {
     button(text="-", @click { count-- })
 }
 
-app.window {
+window {
 }

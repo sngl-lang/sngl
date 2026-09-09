@@ -7,7 +7,6 @@ a real bubbletea Model for Go, neither carrying the other's leftovers.
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none { html }
@@ -20,7 +19,7 @@ component main node {
     text(value=string(count))
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

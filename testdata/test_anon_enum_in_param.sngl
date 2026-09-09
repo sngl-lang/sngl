@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component panel(mode enum { light, dark } = light) node {
     text(value=string(mode))
@@ -12,6 +11,6 @@ component main node {
     text(value=string(theme))
 }
 
-app.window {
+window {
     main
 }

@@ -5,7 +5,7 @@
 
 import "sngl:seq"
 import . "sngl:test"
-import app "sngl:app"
+import ui "sngl:ui"
 
 func counted(n int) string {
     var out list<int> = []
@@ -130,5 +130,5 @@ func testListThroughAnIterParameter(t Test) {
     t.assert(weighted(xs) == 11)
 }
 
-app.window {
+ui.window {
 }

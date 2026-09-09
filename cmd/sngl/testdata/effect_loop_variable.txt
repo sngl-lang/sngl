@@ -10,7 +10,7 @@
 
 ! sngl generate --platform=html --lang=none --out=ht reads_loop_var.sngl
 stderr 'reads the loop variable "it"'
-stderr 'reads_loop_var.sngl:11:'
+stderr 'reads_loop_var.sngl:10:'
 
 # The same bracket, written the way it is meant to be, lowers on every target
 # that lowers effects for itself.
@@ -24,7 +24,6 @@ sngl generate --platform=android --lang=kotlin --out=ok_an reads_loop_var.sngl
 
 -- reads_loop_var.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -39,12 +38,11 @@ component main node {
     text(value=log.join(","))
 }
 
-app.window {
+window {
     main
 }
 -- through_on.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -59,6 +57,6 @@ component main node {
     text(value=log.join(","))
 }
 
-app.window {
+window {
     main
 }

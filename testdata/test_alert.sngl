@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 

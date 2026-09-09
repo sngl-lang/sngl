@@ -5,7 +5,6 @@
 // `sngl generate` writes two `renderNode` methods into one Go file and exits 0.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component first() node {
     component node(depth = 0) node {
@@ -40,6 +39,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

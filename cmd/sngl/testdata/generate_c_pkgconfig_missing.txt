@@ -12,7 +12,6 @@ go 1.21
 
 -- main.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import lib "c:pkg:nonexistent-lib-xyz-9999"
 
 component main node {

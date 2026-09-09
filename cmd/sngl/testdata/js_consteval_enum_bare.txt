@@ -17,7 +17,6 @@ stderr 'is not the value of any member of Color'
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
-import app "sngl:app"
 
 const c = lib.pick()
 
@@ -27,7 +26,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- lib/index.d.ts --

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct TreeNode {
     value int = 0
@@ -68,6 +67,6 @@ func testTreeMutation(t Test, c main) {
     t.assert(c.treeContains(c.root, 7) == true)
 }
 
-app.window {
+window {
     main
 }

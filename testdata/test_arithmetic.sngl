@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component math node {
     var (
@@ -73,5 +72,5 @@ func testCompoundAssignmentMod(t Test, c math) {
     t.assert(c.x == 1)
 }
 
-app.window {
+window {
 }

@@ -29,9 +29,8 @@ func TestUserWrittenIntrinsicBuildsItsWidget(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import "sngl:platform/fyne"
-import app "sngl:app"
 
-app.window {
+window {
     vbox {
         fyne.Label(text="direct label")
         fyne.Button(text="direct button")

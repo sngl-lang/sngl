@@ -15,9 +15,8 @@ import (
 func TestNarrowedOptionCompilesAsGo(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 
-app.window {
+window {
     var maybe option<int>
 
     button(text="clear", @click {

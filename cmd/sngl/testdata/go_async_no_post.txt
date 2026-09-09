@@ -9,7 +9,7 @@
 # takes the same program.
 
 ! sngl generate --lang go --platform bubbletea --out out app.sngl
-stderr 'app\.sngl:14:\d+:'
+stderr 'app\.sngl:13:\d+:'
 stderr 'this call blocks'
 stderr 'bubbletea has no way to run anything back on the thread it draws on'
 ! exists out
@@ -21,7 +21,6 @@ grep 'gtk4rt\.Post\(func\(\) \{' out2/model.go
 -- app.sngl --
 import . "sngl:ui"
 import go "sngl:language/go"
-import app "sngl:app"
 
 #[go.native("time", "time.Sleep")]
 #[go.async]
@@ -37,6 +36,6 @@ component main node {
     })
 }
 
-app.window {
+window {
     main
 }

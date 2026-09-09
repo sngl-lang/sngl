@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // Two bodies each declaring Local scope the name correctly, but both
 // declarations land in one package and no backend renames either, so the host
@@ -30,6 +29,6 @@ component main node {
     second()
 }
 
-app.window {
+window {
     main
 }

@@ -7,7 +7,7 @@
 # The name goes to whichever file declared it first, and the error names both
 # positions. It is reported where the second declaration is written.
 ! sngl check dup
-stderr 'dup/b\.sngl:4:1: "Style" redeclared in this package \(previous declaration at .*dup/a\.sngl:3:1\)'
+stderr 'dup/b\.sngl:3:1: "Style" redeclared in this package \(previous declaration at .*dup/a\.sngl:3:1\)'
 
 # The declaration that lost used to overwrite the one that won, so the only
 # diagnostic was a field error against the file that was self-consistent.
@@ -32,7 +32,7 @@ sngl check override
 stdout 'override/b\.sngl: ok'
 
 -- dup/a.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 struct Style {
     x int
@@ -42,11 +42,10 @@ func widthOf(s Style) int {
     return s.x
 }
 
-app.window {
+ui.window {
 }
 -- dup/b.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Style {
     y int
@@ -56,12 +55,11 @@ component main node {
     text(value=string(widthOf(Style{y = 7})))
 }
 
-app.window {
+window {
     main
 }
 -- flip/a_main.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Style {
     y int
@@ -71,11 +69,11 @@ component main node {
     text(value=string(widthOf(Style{y = 7})))
 }
 
-app.window {
+window {
     main
 }
 -- flip/z_lib.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 struct Style {
     x int
@@ -85,20 +83,19 @@ func widthOf(s Style) int {
     return s.x
 }
 
-app.window {
+ui.window {
 }
 -- cross/a.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 struct Style {
     x int
 }
 
-app.window {
+ui.window {
 }
 -- cross/b.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 func widthOf(s Style) int {
     return s.x
@@ -108,12 +105,11 @@ component main node {
     text(value=string(widthOf(Style{x = 7})))
 }
 
-app.window {
+window {
     main
 }
 -- override/a.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component mybox(label string) node {
     text(value=label)
@@ -123,12 +119,11 @@ func caption(n int) string {
     return "n=" + string(n)
 }
 
-app.window {
+window {
 }
 -- override/b.sngl --
 import . "sngl:ui"
 import html "sngl:platform/html"
-import app "sngl:app"
 
 component mybox[html.platform] {
     button(text=label)
@@ -142,6 +137,6 @@ component main node {
     mybox(label=caption(1))
 }
 
-app.window {
+window {
     main
 }

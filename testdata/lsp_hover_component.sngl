@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component greeter(name string) node {
 }
@@ -8,6 +7,6 @@ component main node {
     greeter(name="world") //@ hover("greeter", "component greeter")
 }
 
-app.window {
+window {
     main
 }

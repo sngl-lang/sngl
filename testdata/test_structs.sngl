@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Point {
     x int = 0
@@ -24,5 +23,5 @@ func testStructFieldMutation(t Test, c shapes) {
     t.assert(c.p.y == 20)
 }
 
-app.window {
+window {
 }

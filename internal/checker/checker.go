@@ -419,12 +419,17 @@ type checker struct {
 	// contextComp is the declaration `context #name(default)` names. Matching
 	// the mark rather than the word is what lets a program shadow `context`.
 	contextComp *ir.Component
-	windowType  *ir.Type
+	// boundaryComp is the #[builtin("errorBoundary")] component. Held for the
+	// payload its @error declares, which is the type every @error handler in
+	// the program defaults its parameter to -- the boundary defines the
+	// channel, so its declaration is where the payload is written down.
+	boundaryComp *ir.Component
+	windowType   *ir.Type
 	// currentWindow is the window whose body is being checked, so a func or a
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
 	currentWindow *ir.Window
-	// rootTree is the #[builtin("treeRoot")] tree, sngl:app's `root`. The
+	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootTree *ir.StructDef
@@ -2896,7 +2901,7 @@ func firstStmtPos(stmts []ast.Stmt) ast.Pos {
 
 // builtinNodeKind resolves name, through the current scope, to the #[builtin]
 // node kind it denotes — i.e. whether a visual node with this target is one of
-// the compiler's own constructs (window/timer/slot/errorBoundary) rather than an
+// the compiler's own constructs (window/timer/slot/boundary) rather than an
 // ordinary node instance. Returns BuiltinNone for anything else.
 //
 // Going through the scope chain rather than comparing against literal names is
@@ -2956,20 +2961,7 @@ func (c *checker) isWindowNode(name string) bool {
 // visualNodeTarget extracts the target name from a VisualNode.
 // Returns "name" for bare identifiers and "pkg.Name" for qualified targets
 // (e.g. html.div, docui.Sidebar).
-func visualNodeTarget(vn *ast.VisualNode) string {
-	if vn.Target == nil {
-		return ""
-	}
-	switch t := vn.Target.(type) {
-	case *ast.IdentExpr:
-		return t.Name
-	case *ast.SelectExpr:
-		if id, ok := t.Operand.(*ast.IdentExpr); ok {
-			return id.Name + "." + t.Field
-		}
-	}
-	return ""
-}
+func visualNodeTarget(vn *ast.VisualNode) string { return vn.TargetName() }
 
 // pkgProvider is satisfied by both ir.Platform and ir.Language.
 type pkgProvider interface {
@@ -3152,7 +3144,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 }
 
 // buildErrorBoundary builds an ir.ErrorBoundary from an errorBoundary visual
-// node. The @error handler is required and is type-checked with ErrorEvent
+// node. The @error handler is required and is type-checked with the payload
 // defaulted on its parameter. Children are type-checked as a sub-block.
 func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir.ErrorBoundary {
 	eb := &ir.ErrorBoundary{AST: vn}
@@ -3165,15 +3157,15 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		eb.Handler = c.buildErrorHandler(&eh)
 	}
 	if eb.Handler == nil {
-		c.error(vn.Pos, "errorBoundary requires an @error handler")
+		c.error(vn.Pos, "%s requires an @error handler", visualNodeTarget(vn))
 	}
 	eb.Children = c.checkBlockIR(&vn.Block)
 	// A boundary belongs to no family and hosts whatever it was handed --
-	// `component errorBoundary<T>(content ...component T) T`. Nothing at the
+	// `component boundary<T>(content ...component T) T`. Nothing at the
 	// call site names T, so the children bind it: the first one that belongs
 	// to a family says which, and the rest are held to that. An empty
 	// boundary binds nothing, and has nothing to check.
-	c.checkTreeMembership(vn.Pos, eb.Children, childrenTree(eb.Children), "in errorBoundary")
+	c.checkTreeMembership(vn.Pos, eb.Children, childrenTree(eb.Children), "in "+visualNodeTarget(vn))
 	return eb
 }
 

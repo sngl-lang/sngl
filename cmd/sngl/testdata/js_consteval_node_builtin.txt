@@ -13,7 +13,6 @@ grep 'a/b/c.txt' out/index.html
 -- app.sngl --
 import . "sngl:ui"
 import lib "js:./lib"
-import app "sngl:app"
 
 const p = lib.joined()
 
@@ -21,7 +20,7 @@ component main node {
     text(value=p)
 }
 
-app.window {
+window {
     main
 }
 -- lib/index.ts --

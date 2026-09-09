@@ -12,7 +12,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -68,6 +67,6 @@ func testTwoPositionsEndBothBeforeEitherBegins(t Test, c main) {
     t.assert(c.pair.value == "+A,+B,-B,-A,+A,+B")
 }
 
-app.window {
+window {
     main
 }

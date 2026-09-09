@@ -11,7 +11,6 @@ import (
 // under a dynamic `for` calls back into the render that built it.
 const funcPropSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 component row(label string, onpick func(string)) node {
     var hits = 0
     button(text="pick " + label + ":" + string(hits), @click { onpick(label) })

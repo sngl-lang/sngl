@@ -9,7 +9,6 @@ generate_plural_key_alias_alias.txtar.
 -- plain.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 output {
     none {
@@ -22,7 +21,7 @@ component main node {
     text(value=i18n.plural(n, {i18n.one="one item", i18n.other="many items"}))
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

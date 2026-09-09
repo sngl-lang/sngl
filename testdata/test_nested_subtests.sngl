@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component nested node {
     var x = 0
@@ -42,5 +41,5 @@ func testSiblingSubtests(t Test, c nested) {
     })
 }
 
-app.window {
+window {
 }

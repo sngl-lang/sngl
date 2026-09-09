@@ -3,7 +3,6 @@
 
 import . "sngl:ui"
 import tr "sngl:tree"
-import app "sngl:app"
 
 component bare(children ...component int) node { // ERROR(check) "a slot accepts a tree, and int is not one"
     vbox {
@@ -24,5 +23,5 @@ component fine(ok component tr.one) node {
     }
 }
 
-app.window {
+window {
 }

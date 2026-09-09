@@ -13,7 +13,6 @@
 
 import . "sngl:ui"
 import uipkg "sngl:ui"
-import app "sngl:app"
 
 struct Style {
     x int = 0
@@ -30,6 +29,6 @@ component main node {
     text(value=string(n))
 }
 
-app.window {
+uipkg.window {
     main
 }

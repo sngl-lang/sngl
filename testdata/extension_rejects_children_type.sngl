@@ -1,6 +1,5 @@
 import sngl "sngl:ui"
 import "sngl:platform/html"
-import app "sngl:app"
 
 component sngl.text[html.platform] list<dyn> { // ERROR(check) "may not declare children type"
     span(textContent=value) {}
@@ -10,6 +9,6 @@ component main sngl.node {
     text(value="hi")
 }
 
-app.window {
+sngl.window {
     main
 }

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var bg color = "not-a-color" // ERROR(check) "invalid color literal"
@@ -7,6 +6,6 @@ component main node {
     text(value=bg)
 }
 
-app.window {
+window {
     main
 }

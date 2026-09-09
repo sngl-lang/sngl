@@ -12,7 +12,6 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output { kotlin { android } }
 
@@ -30,5 +29,5 @@ func testIncrement(t Test, c counter) {
     t.assert(c.count == 5)
 }
 
-app.window {
+window {
 }

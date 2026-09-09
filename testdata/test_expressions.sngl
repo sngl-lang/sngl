@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component exprs node {
     var a = 10
@@ -32,5 +31,5 @@ func testEqualityOnDifferentTypes(t Test, c exprs) {
     t.assert("x" != "y")
 }
 
-app.window {
+window {
 }

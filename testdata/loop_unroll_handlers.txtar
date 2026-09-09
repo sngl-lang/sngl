@@ -8,7 +8,6 @@ every later copy found nothing left to substitute. Twenty keys on a keypad,
 each reporting the press of the first.
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -33,7 +32,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

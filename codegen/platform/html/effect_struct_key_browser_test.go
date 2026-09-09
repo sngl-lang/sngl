@@ -17,7 +17,6 @@ import (
 func TestEffect_AStructKeyComparesFieldByField(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 struct pair {
     a int
     b string

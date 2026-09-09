@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component methodfold node {
     // int methods (qualified)
@@ -59,5 +58,5 @@ func testFoldedMethods(t Test, c methodfold) {
     t.assert(c.is == 3)
 }
 
-app.window {
+window {
 }

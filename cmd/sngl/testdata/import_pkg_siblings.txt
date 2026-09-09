@@ -13,29 +13,28 @@ stdout 'ok'
 -- app/main.sngl --
 import . "sngl:ui"
 import s "../sub"
-import app "sngl:app"
 
 component main node {
     text(value=string(s.dist(s.origin())))
 }
 
-app.window {
+window {
     main
 }
 -- sub/a.sngl --
-import app "sngl:app"
+import ui "sngl:ui"
 
 struct Pt {
     x int = 0
     y int = 0
 }
 
-app.window {
+ui.window {
 }
 -- sub/b.sngl --
 // Every one of these names Pt from a.sngl: a struct field's type, a
 // parameter's type, and a body expression.
-import app "sngl:app"
+import ui "sngl:ui"
 
 struct Line {
     from Pt
@@ -45,5 +44,5 @@ func dist(a Pt) => a.x
 
 func origin() => Pt{x = 0, y = 0}
 
-app.window {
+ui.window {
 }

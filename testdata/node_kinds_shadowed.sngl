@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 
 // The built-in visual nodes are shadowable (design doc D3). A user component
 // resolves before the #[builtin] declaration, so each of these instantiates as
@@ -14,13 +13,13 @@ component timer(label string, children ...component) node {
     text(value=label)
 }
 
-component errorBoundary(label string, children ...component) node {
+component boundary(label string, children ...component) node {
     text(value=label)
 }
 
 component main node {
     timer(label="ordinary")
-    errorBoundary(label="ordinary")
+    boundary(label="ordinary")
 }
 
 window {

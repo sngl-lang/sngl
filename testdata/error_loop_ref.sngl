@@ -3,7 +3,6 @@
 // at check time: there is no live element to write back to.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     const frozen list<int> = [1, 2, 3]
@@ -24,6 +23,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

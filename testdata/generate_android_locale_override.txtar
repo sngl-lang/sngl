@@ -8,7 +8,6 @@ path cannot regress while the Go one is kept working.
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:i18n"
-import app "sngl:app"
 
 output { kotlin { android(main=true) } }
 
@@ -20,7 +19,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/kotlin/android/app/build.gradle.kts --

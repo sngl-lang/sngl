@@ -14,9 +14,8 @@ import (
 func TestIndexedForBindsIndexAndElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
-app.window {
+window {
     for var i, x = ["A", "B", "C"] {
         text(value="i={i} x={x}")
     }
@@ -31,9 +30,8 @@ app.window {
 	// Single-var form must remain element-bound.
 	out2 := generateMainPage(t, `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
-app.window { for var x = ["P", "Q"] { text(value=x) } }
+window { for var x = ["P", "Q"] { text(value=x) } }
 `)
 	if !strings.Contains(out2, ">P<") || !strings.Contains(out2, ">Q<") {
 		t.Errorf("single-var for regressed:\n%s", out2)
@@ -44,9 +42,8 @@ app.window { for var x = ["P", "Q"] { text(value=x) } }
 	// not collapse `for i, x` into the single-var element binding).
 	out3 := generateMainPage(t, `
 import . "sngl:ui"
-import app "sngl:app"
 output { none { html() } }
-app.window { for var i, x = ["A", "B"] { text(value="n" + string(i)) } }
+window { for var i, x = ["A", "B"] { text(value="n" + string(i)) } }
 `)
 	if !strings.Contains(out3, ">n0<") || !strings.Contains(out3, ">n1<") {
 		t.Errorf("two-var with unused element var misbound the index:\n%s", out3)

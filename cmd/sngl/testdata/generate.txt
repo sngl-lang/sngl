@@ -39,7 +39,6 @@ exists out3/index.html
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 0
@@ -47,28 +46,26 @@ component main node {
     text(value="Count: {count}")
 }
 
-app.window {
+window {
     main
 }
 -- bad.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 not valid sngl
 
-app.window {
+window {
 }
 -- empty/.gitkeep --
 -- myapp/app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 0
     Counter(initial=count)
 }
 
-app.window {
+window {
     main
 }
 -- myapp/counter.sngl --
@@ -79,7 +76,6 @@ component Counter(initial = 0) node {
 }
 -- badoutput/app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output js html
 
@@ -87,6 +83,6 @@ component main node {
     text(value="hello")
 }
 
-app.window {
+window {
     main
 }

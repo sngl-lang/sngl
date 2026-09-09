@@ -5,12 +5,11 @@
 // carries no `at ident` alternative and the reference does not parse.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component card(@bump) node {
     var f = @bump // ERROR(parse) "unexpected \"@\""
     button(text="x")
 }
 
-app.window {
+window {
 }

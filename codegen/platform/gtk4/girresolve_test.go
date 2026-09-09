@@ -99,7 +99,7 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 // that fallback across every override, which needs no system GIR to check.
 func TestBundledGIRLosesNoSetter(t *testing.T) {
 	const src = `import . "sngl:ui"
-import . "sngl:app"
+import . "sngl:ui"
 window(title="t") {
     vbox {
         text(value="a")

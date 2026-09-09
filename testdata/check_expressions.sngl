@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 const a = 1 + 2
 const b = 1.0 + 2
@@ -25,5 +24,5 @@ func test() {
     }
 }
 
-app.window {
+window {
 }

@@ -21,7 +21,6 @@ import (
 const timerRunSrc = `
 import . "sngl:ui"
 import . "sngl:time"
-import app "sngl:app"
 
 component beat(label = "") node {
     var beats = 0
@@ -29,7 +28,7 @@ component beat(label = "") node {
     text(value="{label} {beats}")
 }
 
-app.window {
+window {
     var (
         seconds = 0
         running = true

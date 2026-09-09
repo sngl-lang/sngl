@@ -3,13 +3,12 @@
 // are measured against it. Without that, `T` would be satisfied by anything
 // and the boundary would be the hole the tree system exists to close.
 
-import app "sngl:app"
 import d "sngl:ui/draw"
 import ui "sngl:ui"
 
-app.window {
-    app.errorBoundary(@error(e) {}) {
+ui.window {
+    boundary(@error(e) {}) {
         ui.text(value="a widget")
-        d.circle(cx=1.0, cy=1.0, r=1.0) // ERROR(check) "expected node component in errorBoundary, got circle"
+        d.circle(cx=1.0, cy=1.0, r=1.0) // ERROR(check) "expected node component in boundary, got circle"
     }
 }

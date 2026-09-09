@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // docbrowser drives `sngl doc --tui` and `sngl doc --http`. Bubbletea
 // renders the top-level main body; html route mode compiles the window

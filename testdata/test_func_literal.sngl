@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var doubler = func(x int) => x * 2
@@ -8,6 +7,6 @@ component main node {
     text(value="literal")
 }
 
-app.window {
+window {
     main
 }

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component Card(title = "Card", subtitle = "", children ...component) node {
     vbox {
@@ -28,6 +27,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

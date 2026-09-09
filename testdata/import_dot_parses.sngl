@@ -2,12 +2,11 @@
 // identifier and the dot mutually exclusive there. Round-trips through the
 // formatter, including alongside a replace clause.
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     text(value="x")
 }
 
-app.window {
+window {
     main
 }

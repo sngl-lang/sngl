@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 context #s("hello")
 context #n(42)

@@ -64,7 +64,7 @@ func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
 	return raised
 }
 
-// invokeHandler executes the handler body with the ErrorEvent bound to the
+// invokeHandler executes the handler body with the error bound to the
 // handler's param. Propagates any error raised by the handler body itself to
 // the caller.
 func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) error {

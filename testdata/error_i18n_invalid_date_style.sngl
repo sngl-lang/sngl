@@ -3,10 +3,9 @@
 import . "sngl:ui"
 import . "sngl:time"
 import "sngl:i18n"
-import app "sngl:app"
 
 var d date
 var bad = $"Created on {d, date, frobble}" // ERROR(check) "invalid date/time style"
 
-app.window {
+window {
 }

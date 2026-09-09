@@ -1,6 +1,5 @@
 import . "sngl:test"
 import ui "sngl:ui"
-import app "sngl:app"
 
 // Runtime two's-complement wraparound at each signed width. The operands are
 // concrete-typed locals, so the arithmetic runs in the interpreter/opeval at
@@ -35,5 +34,5 @@ func testNegationWraps(t Test, c wrap) {
     t.assert(-min == -128)
 }
 
-app.window {
+ui.window {
 }

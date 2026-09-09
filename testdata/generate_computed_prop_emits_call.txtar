@@ -7,7 +7,6 @@ called.
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -21,7 +20,7 @@ component main node {
     text(value=string(doubled))
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

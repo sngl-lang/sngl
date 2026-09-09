@@ -13,7 +13,6 @@ exists sd
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 struct P {
     x int = 7
@@ -26,12 +25,11 @@ component main node {
     text(value="{p.x}{c.hex()}")
 }
 
-app.window {
+window {
     main
 }
 -- bt.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -46,6 +44,6 @@ component main node {
     text(value="{p.x}{c.hex()}")
 }
 
-app.window {
+window {
     main
 }

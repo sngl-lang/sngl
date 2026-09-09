@@ -15,7 +15,6 @@ still exits 0.
 
 -- main.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:ui/draw"
 
 output {

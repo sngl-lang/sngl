@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // popover: state-binding fixture — toggling bound `open` shows
 // or hides the popover panel.
@@ -19,6 +18,6 @@ func testPopoverOpenToggles(t Test, c main) {
     t.assert(c.visible == false)
 }
 
-app.window {
+window {
     main
 }

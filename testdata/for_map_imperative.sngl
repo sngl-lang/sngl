@@ -3,7 +3,6 @@
 // so nothing there depends on the order the entries come back in.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var scores map<string, int> = {alice=10, bob=20}
@@ -30,6 +29,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

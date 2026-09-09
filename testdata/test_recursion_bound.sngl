@@ -5,7 +5,6 @@
 // fixture can assert it at all.
 
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 // `more` defaults to false so this terminates when it is mounted on its own --
@@ -20,7 +19,7 @@ component endless(more = false, n = 0) node {
 
 component boundReachesTheBoundary node {
     var caught = ""
-    errorBoundary(@error(e) { caught = e.kind }) {
+    boundary(@error(e) { caught = e.kind }) {
         endless(more=true)
     }
 }
@@ -31,7 +30,7 @@ func testUnboundedRecursionReachesTheBoundary(t Test, c boundReachesTheBoundary)
 
 component terminatingRecursion node {
     var caught = ""
-    errorBoundary(@error(e) { caught = e.kind }) {
+    boundary(@error(e) { caught = e.kind }) {
         countdown(n=3)
     }
 }

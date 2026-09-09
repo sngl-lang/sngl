@@ -13,9 +13,8 @@ import (
 func TestFlexBuildsTheWeightedLayout(t *testing.T) {
 	out := generateFyneModel(t, `
 import . "sngl:ui"
-import app "sngl:app"
 output { go { fyne } }
-app.window {
+window {
     hbox(style={gap=4, padding=6}) {
         text(value="a", style={flex=1, margin=3})
         text(value="b", style={flex=2})
@@ -41,9 +40,8 @@ app.window {
 func TestNoFlexKeepsTheBoxConstructor(t *testing.T) {
 	out := generateFyneModel(t, `
 import . "sngl:ui"
-import app "sngl:app"
 output { go { fyne } }
-app.window {
+window {
     vbox(style={gap=4}) {
         text(value="a")
         text(value="b")

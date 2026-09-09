@@ -14,7 +14,6 @@ alone is enough to show it.
 deny out/none/html/index.html `light` -- the provider's "dark" is what reaches the slot; the context's default never appears
 -- provided.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -40,7 +39,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

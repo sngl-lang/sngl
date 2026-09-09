@@ -2,9 +2,8 @@
 // comparable and cannot be used as keys.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 var bad map<list<int>, string> // ERROR(check) "not comparable"
 
-app.window {
+window {
 }

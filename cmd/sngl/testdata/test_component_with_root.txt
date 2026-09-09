@@ -56,7 +56,6 @@ stdout 'ok'
 -- alone.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var n = 3
@@ -69,12 +68,11 @@ func testInitial(t Test, c counter) {
     t.assert(c.n == 3)
 }
 
-app.window {
+window {
 }
 -- composed.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var n = 3
@@ -87,13 +85,12 @@ func testInitial(t Test, c counter) {
     t.assert(c.n == 3)
 }
 
-app.window {
+window {
     counter()
 }
 -- rooted.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     counter()
@@ -110,13 +107,12 @@ func testInitial(t Test, c counter) {
     t.assert(c.n == 3)
 }
 
-app.window {
+window {
     main
 }
 -- two.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var n = 3
@@ -140,7 +136,7 @@ func testGreeter(t Test, g greeter) {
     t.assert(g.who == "world")
 }
 
-app.window {
+window {
     vbox {
         counter()
         greeter()

@@ -4,7 +4,6 @@
 // is never checked amounts to.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component pair<T>(a T, b T) node {
     text(value="pair")
@@ -30,6 +29,6 @@ component main node {
     bound(:a=n, b="two") // ERROR(check) "cannot use string as int for prop \"b\" on component bound"
 }
 
-app.window {
+window {
     main
 }

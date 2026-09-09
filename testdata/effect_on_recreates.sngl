@@ -8,7 +8,6 @@
 
 import . "sngl:test"
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -51,6 +50,6 @@ func testEveryChangeIsItsOwnLifetime(t Test, c main) {
     t.assert(c.out.value == "mount,unmount,mount,unmount,mount")
 }
 
-app.window {
+window {
     main
 }

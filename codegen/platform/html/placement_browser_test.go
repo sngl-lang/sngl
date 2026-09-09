@@ -29,7 +29,6 @@ import (
 func TestPlacement_AppendingTouchesOneNode(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 component row(label string) node {
     var hits = 0
     text(value="row " + label + ":" + string(hits))

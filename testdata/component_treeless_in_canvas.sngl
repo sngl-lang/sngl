@@ -8,14 +8,13 @@
 // `timer` is the same shape of declaration and is placed beside it, because
 // scheduling inside a drawing is what an animated canvas is made of.
 
-import app "sngl:app"
 import d "sngl:ui/draw"
 import time "sngl:time"
 import ui "sngl:ui"
 
 var frame = 0
 
-app.window(title="drawing") {
+ui.window(title="drawing") {
     ui.vbox {
         d.canvas(width=40px, height=40px) {
             d.circle(cx=20.0, cy=20.0, r=float(frame), style={fill=#3366FF})

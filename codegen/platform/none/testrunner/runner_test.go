@@ -87,7 +87,7 @@ func hasMatchingErrorDirective(msg string, dirs []testutil.ErrorDirective) bool 
 func TestChildrenLiveAcrossMutations(t *testing.T) {
 	src := `import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
+import ui "sngl:ui"
 component counter node {
 	var n = 0
 	button #b(text="+", @click { n += 1 })
@@ -97,7 +97,7 @@ component main node {
 	counter #l()
 	counter #r()
 }
-app.window {
+ui.window {
 	main
 }
 func testIsolation(t Test, c main) {

@@ -2,7 +2,6 @@
 // the compiler already holds.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var count = 0 @change(v string) { // ERROR(check) "cannot use string as int for parameter \"v\" of @change"
@@ -15,6 +14,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

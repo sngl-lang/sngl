@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component flags node {
     var active = true
@@ -58,5 +57,5 @@ func testZeroAndEmptyChecks(t Test, c flags) {
     t.assert(c.label != "")
 }
 
-app.window {
+window {
 }

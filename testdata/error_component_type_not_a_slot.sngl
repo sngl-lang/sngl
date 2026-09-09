@@ -4,7 +4,6 @@
 // stated where it is enforced.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 func take(c component) { // ERROR(check) "only a parameter of a component may have one"
 }
@@ -19,5 +18,5 @@ component counts(xs ...int) node { // ERROR(check) "only a slot's type may carry
     }
 }
 
-app.window {
+window {
 }

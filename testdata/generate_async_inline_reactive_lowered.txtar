@@ -7,7 +7,6 @@ fetchHello call, fired at startup to populate it.
 -- app.sngl --
 import . "sngl:ui"
 import api "js:./api"
-import app "sngl:app"
 
 output {
     none {
@@ -19,7 +18,7 @@ component main node {
     text(value="got " + api.fetchHello("world"))
 }
 
-app.window {
+window {
     main
 }
 -- api/index.ts --

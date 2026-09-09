@@ -14,7 +14,6 @@ import "testing"
 func TestInstanceCanvasDrawsAndRedraws(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:ui/draw"
 
 component gauge(level = 0.0) node {

@@ -12,7 +12,6 @@ deny out/none/html/index.html `setAttribute\("hidden"` -- the boolean is written
 
 -- reactive.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import html "sngl:platform/html"
 
 output { none { html() } }

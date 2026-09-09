@@ -3,7 +3,6 @@
 // renderer can express -- so it is refused here rather than rendered once.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var n int = 0
@@ -13,6 +12,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

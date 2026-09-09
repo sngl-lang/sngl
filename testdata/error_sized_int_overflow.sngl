@@ -1,4 +1,3 @@
-import . "sngl:app"
 import ui "sngl:ui"
 
 // A constant that does not fit its sized target is a compile-time error,
@@ -9,5 +8,5 @@ component overflows ui.node {
     var a int8 = 200 // ERROR(check) "overflows int8"
 }
 
-window {
+ui.window {
 }

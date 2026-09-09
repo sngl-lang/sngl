@@ -2,7 +2,6 @@
 
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component mapMethods node {
     var scores map<string, int> = {alice=10, bob=20, charlie=30}
@@ -44,5 +43,5 @@ func testMapValuesContainsAll(t Test, c mapMethods) {
     t.assert(vs.contains(30))
 }
 
-app.window {
+window {
 }

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component conv node {
     var count = 42
@@ -54,5 +53,5 @@ func testInterpolationPrimitives(t Test, c conv) {
     t.assert("{c.label}" == "hello")
 }
 
-app.window {
+window {
 }

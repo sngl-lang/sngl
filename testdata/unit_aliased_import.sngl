@@ -18,7 +18,6 @@
 import . "sngl:ui"
 import . "sngl:test"
 import time "sngl:time"
-import app "sngl:app"
 
 component main node {
     var oneMinute time.duration = 1m
@@ -37,6 +36,6 @@ func testAnAliasedUnitAddsByMagnitude(t Test, c main) {
     t.assert(c.oneMinute - 30s == 30s)
 }
 
-app.window {
+window {
     main
 }

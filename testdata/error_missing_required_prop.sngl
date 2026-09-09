@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component Card(title string, subtitle string) node {
     text(value=title)
@@ -9,6 +8,6 @@ component main node {
     Card(subtitle="Only subtitle") // ERROR(check) "missing required"
 }
 
-app.window {
+window {
     main
 }

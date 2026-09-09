@@ -10,7 +10,6 @@ deny out/go/bubbletea/model.go `example.com/api` -- the mark resolves no import,
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
-import app "sngl:app"
 
 output {
     go {
@@ -28,7 +27,7 @@ component main node {
     text(value=e.title)
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component counter node {
     var count = 0
@@ -21,5 +20,5 @@ func testFoo(t Test, c counter) {
     t.snapshot("Foo")
 }
 
-app.window {
+window {
 }

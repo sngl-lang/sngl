@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -11,6 +10,6 @@ component main node {
     )
 }
 
-app.window {
+window {
     main
 }

@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 // link: A-tier — href/target are static literals, no testable
 // state-binding contract.
@@ -10,6 +9,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

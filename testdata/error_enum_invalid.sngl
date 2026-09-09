@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 enum Status { active, inactive, pending }
 
@@ -9,6 +8,6 @@ component main node {
     text(value=status)
 }
 
-app.window {
+window {
     main
 }

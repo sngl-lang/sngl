@@ -5,7 +5,6 @@
 // registered platform.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     vbox(style={
@@ -65,6 +64,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

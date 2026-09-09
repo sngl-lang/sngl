@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 // input: two-way state-binding fixture — the `:value` binding wires a
 // widget→state writeback handler in addition to the state→widget sync.
@@ -24,6 +23,6 @@ func testInputValueMutates(t Test, c main) {
     t.assert(c.name == "SNGL!")
 }
 
-app.window {
+window {
     main
 }

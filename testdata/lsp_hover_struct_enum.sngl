@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 struct Point {
     x float = 0.0
@@ -13,6 +12,6 @@ component main node {
     //@ hover("Point", "struct Point")
 }
 
-app.window {
+window {
     main
 }

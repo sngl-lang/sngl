@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var (
@@ -14,6 +13,6 @@ component main node {
     func isActive() => active
 }
 
-app.window {
+window {
     main
 }

@@ -2,7 +2,6 @@
 // the html platform derives the output filename from the folded href.
 
 import . "sngl:ui"
-import . "sngl:app"
 
 window(title="A", href="/") {
     text(value="a")

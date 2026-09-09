@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 window #demo(title="Demo", href="/") {
     vbox(style={gap=8, padding=16}) {

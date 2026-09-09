@@ -29,7 +29,6 @@ deny out/go/gtk4/model.go `c.Root = c.__n0` -- same claim in gtk4's vocabulary: 
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -53,7 +52,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/fyne/model.go --

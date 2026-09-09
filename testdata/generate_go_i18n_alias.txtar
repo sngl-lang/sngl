@@ -10,7 +10,6 @@ generate_go_i18n.txtar.
 -- alias.sngl --
 import . "sngl:ui"
 import t "sngl:i18n"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -20,7 +19,7 @@ component main node {
     text(value=s)
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

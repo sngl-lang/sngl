@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // A prop value that is not assignable to a struct-typed prop is a type error,
 // not a cast. `text`'s first prop is `style Style`, so a positional string

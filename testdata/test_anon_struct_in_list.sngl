@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 struct Item {
     id int = 0
@@ -28,6 +27,6 @@ func testAnonListElem(t Test, c main) {
     t.assert(c.items[2].name == "c")
 }
 
-app.window {
+window {
     main
 }

@@ -6,7 +6,6 @@
 // children, written once, with nothing to bind them to.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component card(caption string, children ...component) node {
     vbox {
@@ -36,6 +35,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

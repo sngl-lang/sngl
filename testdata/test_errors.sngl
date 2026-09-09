@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component errs node {
     var count = 0
@@ -20,5 +19,5 @@ func testCannotAssignUndefined(t Test, c errs) { // ERROR(test) "undefined"
     nope = 42                                    // ERROR(check) "undefined"
 }
 
-app.window {
+window {
 }

@@ -6,10 +6,9 @@
 // A program's body used to be a render root of its own, which passRootWindow
 // wrapped in an implied window.
 
-import app "sngl:app"
 import ui "sngl:ui"
 
 ui.text(value="top level") // ERROR(check) "expected root component at the root of a file, got text"
 
-app.window {
+ui.window {
 }

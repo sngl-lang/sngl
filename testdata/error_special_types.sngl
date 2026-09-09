@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 
 component main node {
     var d date = "not-a-date"       // ERROR(check) "invalid date"

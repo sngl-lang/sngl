@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }

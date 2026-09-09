@@ -16,7 +16,6 @@ deny * `renderRow` -- nothing survives as a host component, so no target emits a
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -58,7 +57,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

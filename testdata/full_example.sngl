@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 struct User {
     name string = ""
@@ -40,6 +39,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

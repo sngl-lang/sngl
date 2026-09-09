@@ -20,7 +20,6 @@ deny out/go/bubbletea/model.go `&m\.url` -- a pointer into a model the platform 
 
 -- live.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import http "sngl:remote/http"
 
 window(title="fetch") {

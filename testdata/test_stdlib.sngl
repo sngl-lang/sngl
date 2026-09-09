@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 component main node {
     text(value="test")
@@ -141,6 +140,6 @@ func testListMethods(t Test, c main) {
     t.assert(![1, 2, 3].contains(5))
 }
 
-app.window {
+window {
     main
 }

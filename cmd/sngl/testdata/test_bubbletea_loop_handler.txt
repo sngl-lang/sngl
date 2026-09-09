@@ -22,7 +22,6 @@ stdout 'PASS'
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
-import app "sngl:app"
 
 output { go { bubbletea } }
 
@@ -53,6 +52,6 @@ func testStartsEmpty(t Test, c main) {
     t.assert(c.hits == 0)
 }
 
-app.window {
+window {
     main
 }

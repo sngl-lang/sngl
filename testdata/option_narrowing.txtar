@@ -18,7 +18,6 @@ deny * `maybe\.toInt\(\)` -- Kotlin's option<int> is Int?, and toInt() on one do
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -46,7 +45,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/go/bubbletea/model.go --

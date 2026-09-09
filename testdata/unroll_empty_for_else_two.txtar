@@ -12,7 +12,6 @@ deny out/none/html/index.html `nothing here` -- the else body is the no-iteratio
 
 -- two.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output {
     none {
@@ -32,7 +31,7 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --

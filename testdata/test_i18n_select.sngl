@@ -1,7 +1,6 @@
 import . "sngl:ui"
 import . "sngl:test"
 import "sngl:i18n"
-import app "sngl:app"
 
 // String-keyed selection.
 component i18nSelect node {
@@ -29,5 +28,5 @@ func testSelectFemale(t Test, c i18nSelect) {
     t.assert(c.indicator == "User is available now")
 }
 
-app.window {
+window {
 }

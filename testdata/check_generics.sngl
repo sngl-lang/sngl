@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import app "sngl:app"
 
 func identity<T>(x T) => x
 
@@ -14,5 +13,5 @@ func test() {
     var c = first(items)
 }
 
-app.window {
+window {
 }

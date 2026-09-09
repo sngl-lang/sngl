@@ -4,7 +4,6 @@
 // component reference moved from the package root onto the scope chain.
 
 import . "sngl:ui"
-import app "sngl:app"
 
 component main node {
     var progress float = 0.25
@@ -15,6 +14,6 @@ component main node {
     }
 }
 
-app.window {
+window {
     main
 }

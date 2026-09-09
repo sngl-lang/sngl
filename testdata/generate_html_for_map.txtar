@@ -3,7 +3,6 @@ two-variable loop becomes a destructuring for-of over its entries().
 
 -- app.sngl --
 import . "sngl:ui"
-import app "sngl:app"
 
 output { none { html } }
 
@@ -18,7 +17,7 @@ component main node {
     text(value=string(total))
 }
 
-app.window {
+window {
     main
 }
 -- out/none/html/index.html --
