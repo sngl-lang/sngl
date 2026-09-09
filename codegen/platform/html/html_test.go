@@ -155,7 +155,7 @@ func TestTodoApp(t *testing.T) {
 		"state = {",
 		"state.todos",
 		"state.newTodo",
-		`function main_status__inst0(`,
+		`function status(`,
 		`function Todo(`,
 		"function String(v)",
 		"document.",
