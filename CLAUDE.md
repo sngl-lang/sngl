@@ -205,7 +205,7 @@ because grouping by kind splits every subject in two.
 The tiers, and the split between them is the whole point of the system:
 
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`: the build directive is here rather than in a tier of its own because a package names its own targets without importing anything. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
-- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import . "sngl:ui"` (flattens) or `import <alias> "sngl:ui"` (qualifies).
+- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/tree/` → `sngl:tree`** — the tree vocabulary: the `kind` mark, the `default` tree an ordinary component belongs to, and `one<T>` for a slot that takes exactly one.
 - **`lib/app/` → `sngl:app`** — the application shell: `window`, `errorBoundary`, the `error` those boundaries catch, and the top-level `Options` schema. The checker loads it at startup without binding it, because its declarations carry node kinds a visual tree dispatches on; a program still imports it to write a `window`.
@@ -259,12 +259,19 @@ off the mark. The mark is declared in `lib/internal/marks` and implemented in
 `internal/checker/marks_impl.go`; kinds are `ir.BuiltinKind`.
 
 **Macros are not ambient.** A macro package is imported like any other:
-`#[tree.kind]` needs `import "sngl:tree"`, and the unqualified
-`#[builtin("...")]` and `#[intrinsic("...")]` need
-`import . "sngl:internal/marks"` — which is why every `lib/` file carrying a
-mark declares it. The alias is an
+`#[tree.kind]` needs `import "sngl:tree"`, and `#[marks.builtin("...")]` and
+`#[marks.intrinsic("...")]` need `import marks "sngl:internal/marks"` — which
+is why every `lib/` file carrying a mark declares it. The alias is an
 ordinary file-scope binding, so the mark follows it: `import t "sngl:tree"`
 means `#[t.kind]`.
+
+**Write the qualified form.** A dot import stays legal and supported — with
+`import . "sngl:internal/marks"` the mark is the bare `#[builtin("...")]` —
+but the repository's own source no longer uses one, so that what a reader
+learns from is the qualified form. The alias is the package's last path
+segment (`marks`, `ui`, `seq`, `draw` for `sngl:ui/draw`). `sngl:builtin` is
+unaffected: it is ambient rather than dot-imported, and it is how `int`,
+`string` and `color` are named.
 
 A lib package may carry macros alongside its declarations — `sngl:tree`
 ships the `kind` mark next to the default tree it applies to — so the
