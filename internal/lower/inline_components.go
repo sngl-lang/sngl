@@ -22,8 +22,9 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
-	// main may be nil: a program declaring its windows at top level has none,
-	// and its visual tree lives in pkg.Windows instead.
+	// main is nil for every ordinary build: a window is the root, and the
+	// visual tree lives in pkg.Windows. It is a component only where a
+	// harness made one the whole program.
 	main := rootComponent(pkg, opts)
 	if main == nil && len(pkg.Windows) == 0 {
 		// No root to inline into. Every component is its own entry point, so
@@ -223,19 +224,20 @@ func (st *inlineCompState) run() error {
 	return nil
 }
 
-// rootComponent returns the component lowering treats as the program's entry
-// point: the one opts names, and otherwise the one called "main".
+// rootComponent returns the component a harness has made the program's entry
+// point, or nil -- which is every ordinary build, where a window is the root.
 //
 // A test build names the component under test, because that is what the
-// harness renders. Left to find "main", the inliner flattens the component
-// under test into the program's own root and renames its state per instance.
+// harness renders: left to itself, the inliner would flatten it into the
+// program's own root and rename its state per instance. `main` used to be
+// that root by convention, and CodegenCtx.RootDecl is the same answer for
+// codegen.
 func rootComponent(pkg *ir.Package, opts Options) *ir.Component {
-	want := opts.RootComponent
-	if want == "" {
-		want = "main"
+	if opts.RootComponent == "" {
+		return nil
 	}
 	for _, c := range pkg.Components {
-		if c.Name == want {
+		if c.Name == opts.RootComponent {
 			return c
 		}
 	}
@@ -250,12 +252,18 @@ func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 		edges[c] = map[*ir.Component]bool{}
 		collectCalleeEdges(c, edges[c])
 	}
-	// Also scan pkg.Windows so components instantiated inside window bodies
-	// participate in cycle detection. Use a synthetic "main" edge set since
-	// windows are not independent cycle roots — they live in main's scope.
-	if main := rootComponent(pkg, opts); main != nil {
+	// A window is a root and not a node in the component graph, so its edges
+	// belong to no component: a cycle among components is found from the
+	// components alone. They used to be attributed to `main`, which was the
+	// root by convention -- and `window { main }` then read as main calling
+	// itself, so every such program elected a runtime instance instead of
+	// inlining the component into the window.
+	//
+	// A harness that made a component the root is the exception, and there the
+	// windows are gone.
+	if root := rootComponent(pkg, opts); root != nil {
 		for _, w := range pkg.Windows {
-			collectCalleeEdges(w, edges[main])
+			collectCalleeEdges(w, edges[root])
 		}
 	}
 	return tarjanCycles(edges)

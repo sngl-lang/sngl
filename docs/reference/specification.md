@@ -1401,7 +1401,7 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list<Row>, cell component(Row)) { vbox { for var r = rows { cell(r) } } }
+component table(rows list<Row>, cell component(Row)) ui { vbox { for var r = rows { cell(r) } } }
 var rs list<Row> = []
 -->
 

@@ -20,7 +20,7 @@ import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main { text(value="") }
+component main ui { text(value="") }
 -->
 
 ```sngl
@@ -692,7 +692,7 @@ component MyWidget(label = "default", count int, size enum { small, medium, larg
 Without a default, params use the type's zero value. Parents pass params as named arguments:
 
 <!-- SNGL-component
-component Counter(label = "", start = 0) { text(value=label) }
+component Counter(label = "", start = 0) ui { text(value=label) }
 -->
 
 ```sngl
@@ -705,7 +705,7 @@ Counter()
 Components can use other components:
 
 <!-- SNGL-component
-component Counter(label = "", start = 0) { text(value=label) }
+component Counter(label = "", start = 0) ui { text(value=label) }
 -->
 
 ```sngl
