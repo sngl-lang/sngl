@@ -72,12 +72,10 @@ func lowerTimerPrimitives(pkg *ir.Package, _ Caps, _ Options) error {
 type timerPrimState struct {
 	pkg *ir.Package
 	// comp and win are the declaration the statements being walked belong to;
-	// both nil for the package body. A schedule is recorded on its owner rather
-	// than all on the package, because the passes that walk an owner's
-	// imperative bodies -- reactivity's updater injection above all -- descend
-	// per owner: recorded on the package, a tick body that wrote state got no
-	// updater and the widget reading that state never changed. A window is such
-	// an owner, which is what the component-only field missed.
+	// both nil for the package body. A schedule is recorded on its owner
+	// because the passes that walk an owner's imperative bodies -- reactivity's
+	// updater injection above all -- descend per owner, and a window is such an
+	// owner.
 	comp *ir.Component
 	win  *ir.Window
 }

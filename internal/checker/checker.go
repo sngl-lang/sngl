@@ -338,9 +338,8 @@ type checker struct {
 	// still registering.
 	pendingPkgBody []ast.Stmt
 	// pkgBodyWindowIDs are the `list<window>` symbols a `for` at the root of a
-	// file declares, hoisted ahead of the window bodies that read them --
-	// hoistPkgBodyWindowIDs says why -- and kept so the ordinary hoist during
-	// the body check answers with the same symbol rather than a second one.
+	// file declares, kept so the hoist during the body check answers with the
+	// same symbol rather than declaring a second one.
 	pkgBodyWindowIDs map[string]*ir.Var
 
 	// Cached Options structs from platform/language packages, keyed by target
@@ -2857,17 +2856,11 @@ func (c *checker) checkPackageBody() {
 }
 
 // hoistPkgBodyWindowIDs declares the `#id` of every window a `for` at the root
-// of a file opens, before any window body is checked.
+// of a file opens.
 //
-// A loop's window id names the *list* of windows it unrolls to, and a sibling
-// window iterates it -- `for var p = page` walks the pages the first loop
-// declared. Root window bodies are checked ahead of the package body, so
-// without this the name is undefined wherever it is read: the two loops used
-// to sit in one `component main` body, where the ordinary hoist ran first.
-//
-// The symbols are recorded rather than only declared, because
-// collectForLoopWindowIDs skips a name the scope already holds and the
-// ir.For still needs its HoistedWindowIDs.
+// Ahead of the window bodies, because a sibling window iterates that id --
+// `for var p = page` walks the pages the loop declared -- and root window
+// bodies are checked before the package body.
 func (c *checker) hoistPkgBodyWindowIDs() {
 	for _, s := range c.pendingPkgBody {
 		f, ok := s.(*ast.ForStmt)
@@ -3609,8 +3602,8 @@ func (c *checker) pass2() {
 	}
 	// A window owns state the way the package and a component do (ir.Owners),
 	// and a func written in a window body is registered at package level -- so
-	// left out of this set, a write to a window var was recorded nowhere and
-	// the func read as pure. `double(bump())` then inlined and counted by two.
+	// left out of this set, a write to a window var is recorded nowhere and the
+	// func reads as pure -- which is const-foldable.
 	for _, w := range c.pkg.Windows {
 		for _, v := range windowStateVars(w) {
 			pkgVarSet[v] = struct{}{}
@@ -4256,12 +4249,9 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 }
 
 // windowStateVars is a window's own state: `w.Vars` plus the vars its body
-// declares.
-//
-// Both, because *when* this is asked decides which of the two holds them: the
-// checker sees a `var` at the top of a window body as an ir.LocalVar statement
-// carrying its symbol, and passHoistState is what moves those onto `w.Vars`
-// later. A caller in the checker that reads `w.Vars` alone finds nothing.
+// declares. Both, because the checker sees a body `var` as an ir.LocalVar
+// statement and passHoistState is what moves those onto `w.Vars` later -- so
+// reading `w.Vars` alone finds nothing here.
 func windowStateVars(w *ir.Window) []*ir.Var {
 	out := append([]*ir.Var{}, w.Vars...)
 	for _, s := range w.Body {
@@ -4273,13 +4263,9 @@ func windowStateVars(w *ir.Window) []*ir.Var {
 }
 
 // checkWindowVarHandlers checks the bodies of the handlers written on a
-// window's own vars.
-//
-// A component's are reached through comp.Vars, which pass1 filled; a window's
-// state is still a statement in its body at this point -- passHoistState is
-// what promotes it -- so the symbols are collected from there. They are
-// re-declared in a scope of their own because checkBlockIR has already popped
-// the one it bound them in, and a handler body reads its siblings.
+// window's own vars. They are re-declared in a scope of their own because
+// checkBlockIR has already popped the one it bound them in, and a handler body
+// reads its siblings.
 func (c *checker) checkWindowVarHandlers(w *ir.Window) {
 	state := windowStateVars(w)
 	var vars []*ir.Var

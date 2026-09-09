@@ -140,10 +140,9 @@ func RunComponentFixtures(t *testing.T, platform string) {
 }
 
 // componentUnderTest reports the component every `func test…` in the fixture
-// takes as its second parameter, or "" when they disagree or none does.
-// Native mode builds one program and so can serve only one; the empty answer
-// leaves a fixture testing two components building the program as written
-// rather than silently isolating one of them.
+// takes as its second parameter, or "" when they disagree or none does. Native
+// mode builds one program and so can serve only one; the empty answer leaves
+// such a fixture building the program as written.
 func componentUnderTest(path string) string {
 	src, err := os.ReadFile(path)
 	if err != nil {
@@ -236,10 +235,9 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 		fixture,
 	}
 	// The component under test is what the emitted test file is written
-	// against, so this build has to make it the root the way the agent path's
-	// launcher does. Left alone, the fixture's own window is the root, the
-	// component inlines into it, and the Model carries `x__inst0` where the
-	// test asks for `x`.
+	// against, so this build makes it the root the way the launcher does:
+	// otherwise it inlines into the fixture's own window and the Model carries
+	// `x__inst0` where the test asks for `x`.
 	if root := componentUnderTest(fixture); root != "" {
 		args = append(args, "--opt", "rootComponent="+root)
 	}

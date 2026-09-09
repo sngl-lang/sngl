@@ -236,14 +236,11 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 
 // IsolateRootComponent makes comp the program's only entry point, and is what
 // the "rootComponent" option means: a harness renders the component it names
-// rather than the program around it. Left in place, that program is a root the
-// inliner flattens the component under test into -- renaming its state per
-// instance, so the Model carries `n__inst0` where a test written against the
-// declaration asks for `n` (#136).
+// rather than the program around it. Left in place, the inliner flattens that
+// component into the program's own root and renames its state per instance, so
+// the Model carries `n__inst0` where a test asks for `n` (#136).
 //
-// A name no component answers to is left alone: the option is a request, and
-// refusing it here would turn every ordinary build that never set it into an
-// error case.
+// A name no component answers to is left alone: the option is a request.
 func IsolateRootComponent(pkg *ir.Package, comp string) {
 	if comp == "" || pkg == nil {
 		return

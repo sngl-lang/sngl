@@ -194,17 +194,11 @@ func cloneStructLit(src *ir.StructLit) *ir.StructLit {
 // ApplyCLIOpts overlays --opt values onto one target's options.
 func ApplyCLIOpts(opts *ir.StructLit, kv map[string]string) error { return applyCLIOpts(opts, kv) }
 
-// buildOnlyOpts are the options no *target* declares because they are not a
-// target's: the compiler reads them itself, whatever is being built for. So
-// the per-target scoping below does not apply to them -- a key a platform's
-// schema does not mention is normally another platform's, and these are
-// nobody's.
-//
-// `rootComponent` is the one that matters. It says a harness renders one
-// component as the whole program, `codegen.NewCodegenCtx` and
-// IsolateRootComponent are what read it, and a program whose `output` block
-// carries a schema had it dropped -- so the component fixture harness asked
-// for an isolated root and silently got the program.
+// buildOnlyOpts are the options no *target* declares, because the compiler
+// reads them itself whatever is being built for -- so the per-target scoping
+// below does not apply to them. A key a platform's schema does not mention is
+// normally another platform's; these are nobody's, and a program whose
+// `output` block carries a schema had them dropped.
 var buildOnlyOpts = map[string]bool{
 	"rootComponent": true,
 	"projectDir":    true,

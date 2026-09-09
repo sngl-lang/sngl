@@ -9,10 +9,9 @@ import "testing"
 // BuildUI calling m._canvasDraw0 against a method nothing declared:
 // examples/calculator, whose seven-segment readout is exactly that shape.
 //
-// A component that renders windows names the root family; the radius is the
-// package's, because a root component's own state has no route into the one
-// Model -- passRootWindow empties its body and dead-code elimination takes the
-// declaration with it.
+// The radius is the *package's*: a root component's own state has no route into
+// the one Model, since passRootWindow empties its body and dead-code
+// elimination takes the declaration with it.
 func TestACanvasUnderAComponentDeclaredWindowEmitsItsDrawFunc(t *testing.T) {
 	files := generateGTK4FilesBuilt(t, `
 import . "sngl:ui"

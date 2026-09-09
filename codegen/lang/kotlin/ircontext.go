@@ -411,10 +411,8 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		return kc.evalNamespaceCall(n)
 	}
 	// Before the receiver: the enclosing scope's own declaration wins over the
-	// name the receiver spells. A component's method that the inliner hoisted
-	// onto the window still carries `Receiver: "main"`, and that component is
-	// gone from the package by then -- so receiverIsComponent said no and the
-	// call came out as `/* unresolved method main.noisy */`.
+	// name the receiver spells, because a method the inliner hoisted onto the
+	// window still names a component that is gone from the package by then.
 	if n.Func != nil {
 		if name, ok := kc.scopeFuncName(n.Func); ok {
 			if codegen.IsComputed(n.Func) {
@@ -623,11 +621,6 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 // isScopeComputed reports whether a bare call names derived state of the
 // enclosing scope, which Compose emits as a `val <name> by remember {
 // derivedStateOf { … } }` and so reads by name rather than calling.
-//
-// A component's computed arrives as a method and evalTypeMethodCall answers
-// for it. A window's has no receiver -- the checker leaves it a plain func in
-// Window.Funcs -- so it reached the ordinary call path and was emitted as
-// `doubled()` against the property declared beside it.
 func (kc *KtIRContext) isScopeComputed(name string, fn *ir.Func) bool {
 	if fn == nil || !codegen.IsComputed(fn) || kc.Ctx == nil {
 		return false
@@ -636,8 +629,7 @@ func (kc *KtIRContext) isScopeComputed(name string, fn *ir.Func) bool {
 	return kind == codegen.NameComputed && sym == ir.Symbol(fn)
 }
 
-// scopeFuncName is the name a call reaches fn by when the enclosing scope --
-// the window or component this expression is being emitted for -- is what
+// scopeFuncName is the name a call reaches fn by when the enclosing scope
 // declares it. Compose puts such a declaration inside the composable, so the
 // call is by bare name and no receiver is involved.
 func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {

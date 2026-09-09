@@ -271,16 +271,10 @@ func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
 }
 
 // localVarSlotKey keys a LocalVar by the symbol an Ident referring to it
-// resolves to, and falls back to the statement only where there is none.
-//
-// A `var` in a window or component body is a LocalVar statement carrying a
-// Sym, and every read of it -- ir.CalleeSlotKey, slotKeyForAssignTarget --
-// asks for SlotVar. Binding the statement instead put the funcvar's
-// candidates under a key nothing looks up, so an async function stored in a
-// window's var reached a call site with no colour on it: no goroutine, no
-// diagnostic, and the drawing thread blocked. A component's var is bound a
-// second time through comp.Vars, whose Init the checker does fill in, which is
-// why the component spelling worked and the window one did not.
+// resolves to, and falls back to the statement only where there is none: every
+// *read* of a funcvar slot -- ir.CalleeSlotKey, slotKeyForAssignTarget -- asks
+// for SlotVar, so binding the statement would file the candidates under a key
+// nothing looks up.
 func localVarSlotKey(x *ir.LocalVar) ir.PointsToKey {
 	if x.Sym != nil {
 		return ir.SlotVarKey(x.Sym)

@@ -121,25 +121,18 @@ func walkMains(units []unit, resolver checker.ImportResolver, dir string) {
 // remote fetches on its own — whatever it imports, the program importing it
 // imports too.
 //
-// A program is a package that declares a window, which is the same rule
-// build.Emit applies. It used to be a package declaring `component main`,
-// matched as a substring; that convention is gone, so every program answered
-// no and `sngl pkg download` fetched nothing at all.
-//
-// Answered from the parse rather than the check: a type check to decide only
-// this would double the work, and the parse is what a following walkMains
-// needs anyway. So the window is recognised by the name written -- `window` or
-// some alias's -- rather than by the `#[builtin]` mark only the checker holds.
-// A package declaring its own `component window` and rendering one at a file's
-// root is read as a program here and is not one; the cost is a fetch nobody
-// needed.
+// A program is a package that declares a window, which is build.Emit's rule.
+// Answered from the parse rather than the check -- a type check for this alone
+// would double the work -- so the window is recognised by the name written and
+// not by the `#[builtin]` mark only the checker holds. A package declaring its
+// own `component window` is read as a program here and is not one; the cost is
+// a fetch nobody needed.
 func mainUnits(units []unit) ([]unit, error) {
 	var mains []unit
 	for _, u := range units {
 		doc, err := u.doc()
 		if err != nil {
-			// Not this command's error to report: a file that does not parse
-			// declares nothing, and check says so with a position.
+			// Not this command's to report: `check` says so with a position.
 			continue
 		}
 		if declaresWindow(doc) {
