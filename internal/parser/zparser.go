@@ -1883,7 +1883,12 @@ state1:
 //
 //	# ── Components ────────────────────────────────────────────────────────────────
 //
-//	ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
+//	# The block is optional, as a func's is: a component with no body is a
+//	# signature, and the checker requires the render to come from somewhere else --
+//	# an #[intrinsic] id a platform emits, or a per-target override. An empty `{}`
+//	# still says its own thing, that the component renders nothing, and is not the
+//	# same declaration as one with no body at all.
+//	ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
 //
 //	State 0
 //		on  kw_component
@@ -1892,6 +1897,7 @@ state1:
 //		on  ident
 //			shift and goto state 2
 //	State 2
+//		Accept
 //		on  dot
 //			shift and goto state 3
 //		on  lparen
@@ -1908,6 +1914,7 @@ state1:
 //		on  ident
 //			shift and goto state 4
 //	State 4
+//		Accept
 //		on  lparen
 //			shift and goto state 5
 //		on  lbracket
@@ -1924,6 +1931,7 @@ state1:
 //		on  at, attr_open, colon, ident
 //			call ParamList and goto state 9
 //	State 6
+//		Accept
 //		on  ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
 //			call Type and goto state 8
 //		on  lbrace
@@ -1931,12 +1939,14 @@ state1:
 //	State 7
 //		Accept
 //	State 8
+//		Accept
 //		on  lbrace
 //			call StmtBlock and goto state 7
 //	State 9
 //		on  rparen
 //			shift and goto state 6
 //	State 10
+//		Accept
 //		on  lparen
 //			shift and goto state 5
 //		on  ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
@@ -1944,6 +1954,7 @@ state1:
 //		on  lbrace
 //			call StmtBlock and goto state 7
 //	State 11
+//		Accept
 //		on  lparen
 //			shift and goto state 5
 //		on  lbracket
@@ -1974,7 +1985,7 @@ state1:
 	}
 	return p.stop(r, accept, errorSet)
 state2:
-	accept, errorSet = false, 147
+	accept, errorSet = true, 147
 	switch Symbol(p.tok.Ch) {
 	case dot:
 		r = append(r, p.shift())
@@ -2005,7 +2016,7 @@ state3:
 	}
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 37
+	accept, errorSet = true, 37
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
@@ -2036,7 +2047,7 @@ state5:
 	}
 	return p.stop(r, accept, errorSet)
 state6:
-	accept, errorSet = false, 40
+	accept, errorSet = true, 40
 	switch Symbol(p.tok.Ch) {
 	case ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit:
 		r = p.add(r, p.Type())
@@ -2050,7 +2061,7 @@ state7:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state8:
-	accept, errorSet = false, 119
+	accept, errorSet = true, 119
 	switch Symbol(p.tok.Ch) {
 	case lbrace:
 		r = p.add(r, p.StmtBlock())
@@ -2066,7 +2077,7 @@ state9:
 	}
 	return p.stop(r, accept, errorSet)
 state10:
-	accept, errorSet = false, 39
+	accept, errorSet = true, 39
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())
@@ -2080,7 +2091,7 @@ state10:
 	}
 	return p.stop(r, accept, errorSet)
 state11:
-	accept, errorSet = false, 38
+	accept, errorSet = true, 38
 	switch Symbol(p.tok.Ch) {
 	case lparen:
 		r = append(r, p.shift())

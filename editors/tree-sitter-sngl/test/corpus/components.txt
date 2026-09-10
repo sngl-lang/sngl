@@ -423,3 +423,21 @@ component App {
                 (named_arg
                   name: (identifier)
                   value: (string_literal))))))))))
+
+================
+Bodyless component is a signature
+================
+
+component gap(w int) node
+
+---
+
+(source_file
+  (component_declaration
+    name: (identifier)
+    (func_param
+      name: (identifier)
+      type: (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))))

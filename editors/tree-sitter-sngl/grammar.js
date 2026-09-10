@@ -170,14 +170,20 @@ module.exports = grammar({
       optional(seq("=", field("default", $._expression)))
     )),
 
+    // The block is right-associative: with it optional, a `{` after the
+    // declaration could open the body or a brace literal that follows it, and
+    // it is always the body -- the same choice the compiler's LL(1) grammar
+    // makes by taking the block greedily.
     component_declaration: ($) =>
-      seq(
+      prec.right(seq(
       "component",
       field("name", $.identifier),
       optional(seq("(", optional($._param_list), ")")),
       optional($.type_identifier),
-      $.statement_block
-    ),
+      // The block is optional: a component with no body is a signature, and
+      // the render comes from an #[intrinsic] id or a per-target override.
+      optional($.statement_block)
+    )),
 
     if_node: ($) =>
       seq(

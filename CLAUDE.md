@@ -23,6 +23,26 @@ Two valid forms — no third:
 
 `func name(params) -> Type` is **not valid syntax** (despite occasional appearances in old docs/specs). The arrow `->` is reserved for func *type* expressions only, and even that usage is being phased out.
 
+## Component syntax
+
+A component's block is optional, as a func's is, and the two spellings say
+different things:
+
+- `component name(params) [Tree] { ... }` — a body. `{}` is an *empty* body and
+  says the component renders nothing, which is a legitimate thing to say.
+- `component name(params) [Tree]` — no block at all is a **signature**, and the
+  render comes from somewhere the declaration names.
+
+`reportBodylessComponents` requires the second to be true rather than assuming
+it: a bodyless component needs an `#[intrinsic]` id a platform emits, a
+`#[builtin]` node kind the compiler dispatches on, or a per-target override —
+the counterpart of the rule `checkFuncBody` applies to a bodyless func, run
+after pass2 because an override's body is checked during it. Without it a
+bodyless declaration renders nothing, silently, on every target that has no
+override for it. An **override** may not be bodyless for the same reason from
+the other side: an override *is* the body a target renders, so one with no body
+would satisfy the base's rule while rendering nothing (`addOverrideBody`).
+
 ## Loop forms
 
 `for` has one head, and its *type* says what the loop does — the grammar does

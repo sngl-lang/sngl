@@ -1056,11 +1056,29 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 	}
 }
 
+// qualifiedComponentName is how an override names what it overrides: qualified
+// by the namespace it reached the declaration through, or bare for one this
+// package declares itself, where there is no namespace to name.
+func qualifiedComponentName(ns, local string) string {
+	if ns == "" {
+		return local
+	}
+	return ns + "." + local
+}
+
 // addPlatformBody records body as comp's implementation for platform, or
 // reports that one is already recorded. A duplicate is an error rather than a
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string) {
+	// An override is the body a target renders, so there is nothing left for
+	// one with no body to be -- and it would satisfy the base declaration's
+	// own no-body rule while rendering nothing, which is the silence that rule
+	// exists to refuse.
+	if !body.IsDefined() {
+		c.error(pos, "override %s for %q has no body: an override is the body the target renders", qualifiedComponentName(ns, local), target)
+		return
+	}
 	overrides := &comp.PlatformOverrides
 	if kind == ir.BuiltinLanguage {
 		overrides = &comp.LanguageOverrides
@@ -1069,7 +1087,7 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		*overrides = map[string]ir.Body{}
 	}
 	if _, dup := (*overrides)[target]; dup {
-		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, target)
+		c.error(pos, "component %s already has an implementation for %q", qualifiedComponentName(ns, local), target)
 		return
 	}
 	// Reserve the key first so duplicate detection works even when the body

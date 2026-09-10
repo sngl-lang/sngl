@@ -1342,7 +1342,7 @@ A **component** is a reusable, parameterized fragment of user interface.
 <!-- BEGIN GENERATED: grammar-components -->
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 
@@ -1357,6 +1357,15 @@ children type declares what the component may contain; the body is a sequence
 of statements, chiefly visual node instantiations. An optional `.Variant`
 suffix on the name (`component Name.Variant(…)`) is accepted by the grammar and
 reserved for platform-level specialization.
+
+The body is optional, as a function's is, and the two spellings say different
+things. An empty body — `component Spacer() { }` — says the component renders
+nothing. **No body at all** — `component Name(params) Tree` — is a
+*signature*: the render comes from somewhere the declaration names, and the
+checker requires that to be true. The three answers are an `#[intrinsic]` id a
+platform emits, a `#[builtin]` node kind the compiler dispatches on, and a
+per-target override. An override may not itself be bodyless, since an override
+*is* the body a target renders.
 
 ### Parameters
 
@@ -1709,7 +1718,7 @@ Param = { MacroAttr } ( ":" IDENT | "@" IDENT | IDENT ) [ Type ] [ "=" Expr ]
 ```
 
 ```ebnf
-ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] StmtBlock
+ComponentDecl = "component" IDENT [ "." IDENT ] [ TypeParamList ] [ TargetIndex ] [ "(" [ ParamList ] ")" ] [ Type ] [ StmtBlock ]
 
 ```
 

@@ -1,0 +1,21 @@
+// An override is the body a target renders, so there is nothing left for one
+// with no body to be. It would also satisfy the base declaration's own
+// no-body rule while rendering nothing, which is the silence that rule exists
+// to refuse.
+
+import ui "sngl:ui"
+import html "sngl:platform/html"
+
+component gap(w int) ui.node
+
+component gap[html.platform](w) // ERROR(check) "has no body"
+
+component card() ui.node {
+    ui.vbox {
+        gap(w=4)
+    }
+}
+
+ui.window {
+    card()
+}

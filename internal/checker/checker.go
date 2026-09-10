@@ -3359,6 +3359,7 @@ func (c *checker) pass2() {
 	c.checkComponentBodies()
 	c.reportBodyComponentCollisions()
 	c.reportBodyComponentCapture()
+	c.reportBodylessComponents()
 
 	c.checkPackageBody()
 	c.checkOutputTree()
