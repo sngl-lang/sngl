@@ -1,0 +1,20 @@
+// A window is written at the root of a file, where nothing owns it, or in a
+// component body, where a slot insertion inside it belongs to that component.
+// The deferred check has to carry the owner for the second case: read from the
+// checker at drain time there is none, and the slot's own family goes
+// unexamined.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+component pages(art ...component d.shape) ui.root {
+    // The slot insertion is a position rather than a node, so the window is
+    // where this is reported.
+    ui.window #home(title="Home", href="/") { // ERROR(check) "expected node component in window, got the shape slot art"
+        art
+    }
+}
+
+pages() {
+    d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000})
+}

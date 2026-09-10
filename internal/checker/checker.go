@@ -738,7 +738,10 @@ func (c *checker) ensureReturnType(fn *ir.Func) {
 	mark, deferred := len(c.diags), len(c.treeChecks)
 	c.checkFuncBody(fn)
 	c.diags = c.diags[:mark]
-	// A membership check this body deferred is one of the things it said.
+	// A membership check is one of the things a body says, so it is dropped
+	// with the rest. No func body reachable here holds a visual node today, so
+	// this drops nothing; it is here so that the rollback stays total if one
+	// ever does.
 	c.treeChecks = c.treeChecks[:deferred]
 }
 
@@ -2877,6 +2880,8 @@ func (c *checker) checkPackageBody() {
 	// component whose own family is the root one renders windows
 	// conditionally and an `if` at the root goes on working.
 	if pos := firstStmtPos(c.pendingPkgBody); c.rootTree != nil {
+		// No owner: the package body is the one position in a program that is
+		// not inside a component, so a slot insertion cannot be written there.
 		body := c.pkg.Body
 		c.deferTreeCheck(func() {
 			c.checkTreeMembership(nil, pos, body, c.rootTree, "at the root of a file")
@@ -3745,8 +3750,8 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		}
 	}
 	c.diags = c.diags[:diagMark]
-	// And so is a membership check one of them deferred: the authoritative
-	// pass records it again, and a check kept here would say it twice.
+	// The same, and here the pre-pass is followed by an authoritative one that
+	// would record the check again.
 	c.treeChecks = c.treeChecks[:deferred]
 }
 
@@ -3993,7 +3998,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.checkTimerBody(t)
 	}
 
-	c.deferTreeCheck(func() { c.checkTreelessBody(comp) })
+	// The body is captured rather than re-read: checkPendingExtensions swaps an
+	// override's statements onto the declaration for the length of one check
+	// and restores the base body after, so a drain-time read would check the
+	// base body once per override and the override's body never.
+	body := comp.Body
+	c.deferTreeCheck(func() { c.checkTreelessBody(comp, body) })
 }
 
 func (c *checker) checkWindowBody(w *ir.Window) {
@@ -4024,9 +4034,12 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		// A window is its own IR construct, so its children never reach the
 		// slot check every other node's go through. What it accepts is still
 		// the declaration's answer: `content ...component ui.node`.
-		body, at := w.Body, w.AST.Pos
+		// A window is written at the root of a file, where there is no owner,
+		// or in a component body, where a slot insertion in it is that
+		// component's -- and checkVisualNodeIR reaches this with one.
+		owner, body, at := c.currentComponent, w.Body, w.AST.Pos
 		c.deferTreeCheck(func() {
-			c.checkTreeMembership(nil, at, body,
+			c.checkTreeMembership(owner, at, body,
 				slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
 		})
 		c.checkWindowVarHandlers(w)

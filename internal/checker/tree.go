@@ -89,7 +89,7 @@ func (c *checker) treeOptional(decl *ast.ComponentDecl, comp *ir.Component) bool
 //
 // An `if` or a `for` is how the nodes under it got there rather than a node,
 // the same reading checkTreeMembership gives them.
-func (c *checker) checkTreelessBody(comp *ir.Component) {
+func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 	if comp == nil || !comp.Treeless || comp.AST == nil {
 		return
 	}
@@ -118,5 +118,5 @@ func (c *checker) checkTreelessBody(comp *ir.Component) {
 				comp.Name, ni.Component.Tree.Name, ni.Component.Name)
 		}
 	}
-	walk(comp.Body)
+	walk(body)
 }
