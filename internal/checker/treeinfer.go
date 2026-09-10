@@ -1,6 +1,10 @@
 package checker
 
-import "git.duckfam.us/jonathan/sngl/ir"
+import (
+	"slices"
+
+	"git.duckfam.us/jonathan/sngl/ir"
+)
 
 // inferComponentTrees settles the family of every declaration that named none,
 // reading it off what the body renders.
@@ -100,7 +104,7 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 		}
 	}
 	note := func(sd *ir.StructDef) {
-		if sd != nil && !containsTree(found, sd) {
+		if sd != nil && !slices.Contains(found, sd) {
 			found = append(found, sd)
 		}
 	}
@@ -127,15 +131,6 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 		}
 	}
 	return found, unsettled
-}
-
-func containsTree(trees []*ir.StructDef, sd *ir.StructDef) bool {
-	for _, t := range trees {
-		if t == sd {
-			return true
-		}
-	}
-	return false
 }
 
 // deferTreeCheck holds a membership check back until inferComponentTrees has
