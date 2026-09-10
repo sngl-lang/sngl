@@ -209,6 +209,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.analyzeAsyncWithPointsTo()
 	c.checkAsyncRules()
 	c.pkg.Symbols = c.symtab
+	// Last, because it needs every lib package loaded and every target's
+	// overrides merged.
+	c.reportBodylessLibComponents()
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
 }

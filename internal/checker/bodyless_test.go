@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -144,5 +145,98 @@ func TestBodylessSurvivesIntoIR(t *testing.T) {
 				t.Errorf("Bodyless = %v, want %v", comp.Bodyless, tc.want)
 			}
 		})
+	}
+}
+
+// A library declaration is asked the same question, and asked it per target:
+// the build's targets are resolved by then, so an override for one of them is
+// not an answer for the others. This is what makes a missing platform
+// implementation a build failure rather than a shape that renders nothing.
+//
+// Exercised through a stub platform package, because nothing in lib/ is
+// bodyless yet -- the conversion in #213 is what makes it load-bearing.
+func TestBodylessLibComponentNeedsAnImplementationPerTarget(t *testing.T) {
+	const extSource = `
+import sngl "sngl:ui"
+
+component blip(x int) sngl.node
+`
+	const userSource = `
+component main node {
+    text(value="hi")
+}
+`
+	doc, err := parser.Parse("main.sngl", []byte(withStd(userSource)))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	cfg := extStubConfig(t, extSource)
+	cfg.Targets = []ir.StaticTarget{{Platform: "extstub"}}
+	_, diags := checker.Check(doc, cfg)
+	var found string
+	for _, d := range diags {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, "no implementation for") {
+			found = d.Msg
+		}
+	}
+	if found == "" {
+		t.Fatalf("a bodyless lib component with no override for the target checked clean; diags: %v", diags)
+	}
+	if !strings.Contains(found, "extstub") {
+		t.Errorf("diagnostic does not name the target that lacks one: %s", found)
+	}
+}
+
+// And it is satisfied by an override from the platform's own package, which is
+// the shape the stdlib shapes take after the conversion: the declaration lives
+// in one library package and each target implements it in its own.
+//
+// Parenless, because mergeTargetExtensions skips an override that carries a
+// prop list -- a platform package's override reads every prop the base
+// declares, and the selection form is a program's.
+func TestBodylessLibComponentSatisfiedByAPlatformOverride(t *testing.T) {
+	const libSource = `
+import sngl "sngl:ui"
+
+component blip(x int) sngl.node
+`
+	const extSource = `
+import sngl "sngl:ui"
+import bk "sngl:blipkit"
+
+component bk.blip[extstub.platform] {
+    sngl.text(value="blip")
+}
+`
+	const userSource = `
+component main node {
+    text(value="hi")
+}
+`
+	libDoc, err := parser.Parse("blipkit.sngl", []byte(withStd(libSource)))
+	if err != nil {
+		t.Fatalf("lib parse: %v", err)
+	}
+	extDoc, err := parser.Parse("extstub.sngl", []byte(withStd(extSource)))
+	if err != nil {
+		t.Fatalf("ext parse: %v", err)
+	}
+	doc, err := parser.Parse("main.sngl", []byte(withStd(userSource)))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: []ir.Platform{extStubPlatform{}},
+		Targets:   []ir.StaticTarget{{Platform: "extstub"}},
+		LibSources: map[string][]*ast.Document{
+			"blipkit":          {libDoc},
+			"platform/extstub": {extDoc},
+		},
+	})
+	for _, d := range diags {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, "no implementation for") {
+			t.Errorf("an override for the target being built did not satisfy the rule: %s", d.Msg)
+		}
 	}
 }

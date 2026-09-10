@@ -44,19 +44,33 @@ is not reported a second time for a supplier that was written and rejected.
 
 Two limits on that rule, both deliberate and both load-bearing for #213:
 
-- **It is scoped to the program's own package.** A library package is loaded by
-  `loadStdlibPackage`, which runs `pass1` alone, so no `lib/` or
-  `sngl:platform/` declaration is ever asked. That is why the diagnostic names
-  only the override: a program can write neither `#[intrinsic]` nor
-  `#[builtin]`, both of which live in `sngl:internal/marks`. Making the `lib/`
-  shapes bodyless needs the sweep to run from that loader too, and needs a
-  fourth answer there — a `treeShape` member whose render comes from
-  `passCanvas`.
-- **One override satisfies it for every target**, because the checker does not
-  know which target a build picks. This is the func rule's existing semantics
-  rather than a new hole, and `testdata/bodyless_component_override.txtar`
-  pins what it costs: two targets, where the one with no override renders
-  nothing at all.
+- **One override satisfies it for every target**, because a program is checked
+  without knowing which target a build picks. This is the func rule's existing
+  semantics rather than a new hole, and
+  `testdata/bodyless_component_override.txtar` pins what it costs: two targets,
+  where the one with no override renders nothing at all.
+- The diagnostic names only the override, because a program can write neither
+  `#[intrinsic]` nor `#[builtin]` — both live in `sngl:internal/marks`.
+
+A **library** declaration is asked the same question by
+`reportBodylessLibComponents`, and asked it **per target**: by then the build's
+targets are resolved, so an override for one is not an answer for another.
+`hasOverrideFor` mirrors `ir.pick` — the platform's override answers first and
+the language's is the fallback, which is what lets one
+`sngl:language/go` implementation serve fyne and bubbletea while gtk4 and
+android override on the platform axis. It runs at the very end of
+`CheckPackage`, because a lib package loads on import *or* when
+`mergeTargetExtensions` resolves an override's base, and both can happen after
+`newChecker`.
+
+Two consequences worth knowing before touching `lib/`:
+
+- A bodyless `lib/` component with no implementation for the target being built
+  is a **build failure**, which is the mechanism that stops an implementation
+  gap being skipped in a switch.
+- A platform package's override must be **parenless**.
+  `mergeTargetExtensions` skips one carrying a prop list: the selection form is
+  a program's, and a platform override reads every prop the base declares.
 
 The distinction has to survive the checker, so it is `ir.Component.Bodyless`
 rather than `AST.Body.IsDefined()` — that reports whether a block came from
