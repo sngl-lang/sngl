@@ -9,7 +9,7 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         n = 0
         log list<string> = []
@@ -48,4 +48,8 @@ func testEveryChangeIsItsOwnLifetime(t Test, c main) {
     c.n = 1
     c.n = 2
     t.assert(c.out.value == "mount,unmount,mount,unmount,mount")
+}
+
+window {
+    main
 }

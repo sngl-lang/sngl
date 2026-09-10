@@ -25,7 +25,7 @@ import . "sngl:test"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     var items list<string> = ["a", "b"]
     var picked = ""
     var hits = 0
@@ -50,4 +50,8 @@ component main {
 func testStartsEmpty(t Test, c main) {
     t.assert(c.picked == "")
     t.assert(c.hits == 0)
+}
+
+window {
+    main
 }

@@ -30,52 +30,71 @@ type componentDOMCase struct {
 
 var componentDOMCases = []componentDOMCase{
 	{"text", `import . "sngl:ui"
-component main { text(value="HELLO") }`, []string{"<span", "HELLO"}},
+import ui "sngl:ui"
+ui.window { text(value="HELLO") }`, []string{"<span", "HELLO"}},
 	{"vbox", `import . "sngl:ui"
-component main { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
+import ui "sngl:ui"
+ui.window { vbox { text(value="A") text(value="B") } }`, []string{"flex-direction:column", ">A<", ">B<"}},
 	// Caller `style` on a stdlib wrapper must merge onto the wrapper's root
 	// element alongside its structural style (forwardStyle in lower), and a
 	// `#hex` color literal must render as a CSS color (colorStructToCSS).
 	{"vbox-style", `import . "sngl:ui"
-component main { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
+import ui "sngl:ui"
+ui.window { vbox(style={gap=8, background=#ff0000}) { text(value="A") } }`,
 		[]string{"flex-direction:column", "gap:8px", "background-color:#ff0000"}},
 	{"text-color", `import . "sngl:ui"
-component main { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
+import ui "sngl:ui"
+ui.window { text(value="A", style={color=#112233}) }`, []string{"color:#112233"}},
 	{"hbox", `import . "sngl:ui"
-component main { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
+import ui "sngl:ui"
+ui.window { hbox { text(value="A") } }`, []string{"flex-direction:row"}},
 	{"button", `import . "sngl:ui"
-component main { button(text="CLICK") }`, []string{"<button", "CLICK"}},
+import ui "sngl:ui"
+ui.window { button(text="CLICK") }`, []string{"<button", "CLICK"}},
 	{"input", `import . "sngl:ui"
-component main { var n = "Bob" input(:value=n) }`, []string{"<input"}},
+import ui "sngl:ui"
+ui.window { var n = "Bob" input(:value=n) }`, []string{"<input"}},
 	{"checkbox", `import . "sngl:ui"
-component main { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
+import ui "sngl:ui"
+ui.window { var c = true checkbox(label="ok", checked=c) }`, []string{`type="checkbox"`, "ok"}},
 	{"image", `import . "sngl:ui"
-component main { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
+import ui "sngl:ui"
+ui.window { image(src="/x.png", alt="pic") }`, []string{"<img", `src="/x.png"`, `alt="pic"`}},
 	{"link", `import . "sngl:ui"
-component main { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
+import ui "sngl:ui"
+ui.window { link(text="Home", href="/") }`, []string{"<a", `href="/"`, "Home"}},
 	{"select", `import . "sngl:ui"
-component main { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
+import ui "sngl:ui"
+ui.window { var f = "b" select(options=["a","b","c"], :value=f, placeholder="pick") }`,
 		[]string{"<select", "<option", ">a<", ">b<", ">c<", "pick"}},
 	{"radio", `import . "sngl:ui"
-component main { var r = "y" radio(options=["x","y"], :value=r) }`,
+import ui "sngl:ui"
+ui.window { var r = "y" radio(options=["x","y"], :value=r) }`,
 		[]string{"<fieldset", `type="radio"`, `value="x"`, `value="y"`}},
 	{"textarea", `import . "sngl:ui"
-component main { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
+import ui "sngl:ui"
+ui.window { var t = "hi" textarea(:value=t, rows=3) }`, []string{"<textarea", `rows="3"`}},
 	{"tabs", `import . "sngl:ui"
-component main { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
+import ui "sngl:ui"
+ui.window { var sel = 0 tabs(items=["One","Two"], selected=sel) { text(value="panel") } }`,
 		[]string{`role="tablist"`, "One", "Two", "panel"}},
 	{"table", `import . "sngl:ui"
-component main { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
+import ui "sngl:ui"
+ui.window { table(columns=["A","B"], rows=[["1","2"],["3","4"]]) }`,
 		[]string{"<table", "<thead", "<tbody", ">A<", ">B<", ">1<", ">4<"}},
 	{"tree", `import . "sngl:ui"
-component main { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
+import ui "sngl:ui"
+ui.window { tree(items=["root","child"]) }`, []string{"<ul", "<li", "root", "child"}},
 	{"modal", `import . "sngl:ui"
-component main { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
+import ui "sngl:ui"
+ui.window { var o = true modal(open=o, title="Dialog") { text(value="body") } }`,
 		[]string{"Dialog", "body"}},
 	{"divider", `import . "sngl:ui"
-component main { divider() }`, []string{"<hr"}},
+import ui "sngl:ui"
+ui.window { divider() }`, []string{"<hr"}},
 	{"badge", `import . "sngl:ui"
-component main { badge(value="3") }`, []string{"3"}},
+import ui "sngl:ui"
+ui.window { badge(value="3") }`, []string{"3"}},
 }
 
 func TestComponentDOM(t *testing.T) {

@@ -28,15 +28,23 @@ stdout 'ok'
 import . "sngl:ui"
 import . "sngl:internal/marks"
 
-component main {
+component main node {
     text(value="hi")
+}
+
+window {
+    main
 }
 -- draw.sngl --
 import . "sngl:ui"
 import "sngl:internal/draw"
 
-component main {
+component main node {
     text(value="hi")
+}
+
+window {
+    main
 }
 -- intrinsic.sngl --
 import . "sngl:ui"
@@ -45,16 +53,24 @@ import . "sngl:internal/marks"
 #[intrinsic("my.thing")]
 func evil(x int) int { return 0 }
 
-component main {
+component main node {
     var n int = 1
     text(value="{evil(n)}")
+}
+
+window {
+    main
 }
 -- user_draw.sngl --
 import . "sngl:ui"
 import "sngl:ui/draw"
 
-component main {
+component main node {
     draw.canvas(width=100px, height=100px) {
         draw.circle(cx=50, cy=50, r=20, style={fill=#f00})
     }
+}
+
+window {
+    main
 }

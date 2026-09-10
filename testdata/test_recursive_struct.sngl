@@ -7,7 +7,7 @@ struct TreeNode {
     right dyn = null
 }
 
-component main {
+component main node {
     // Build a small tree:
     //       5
     //      / \
@@ -65,4 +65,8 @@ func testTreeMutation(t Test, c main) {
     t.assert(c.treeSum(c.root) == 28)
     t.assert(c.treeDepth(c.root) == 3)
     t.assert(c.treeContains(c.root, 7) == true)
+}
+
+window {
+    main
 }

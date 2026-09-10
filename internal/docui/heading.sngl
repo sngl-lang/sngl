@@ -5,7 +5,7 @@
 import . "sngl:ui"
 import "sngl:platform/html"
 
-component Heading1(value = "") {
+component Heading1(value = "") node {
     if PLATFORM == html.platform {
         html.h1(innerText=value)
     } else {
@@ -13,7 +13,7 @@ component Heading1(value = "") {
     }
 }
 
-component Heading2(value = "") {
+component Heading2(value = "") node {
     if PLATFORM == html.platform {
         html.h2(innerText=value)
     } else {
@@ -21,7 +21,7 @@ component Heading2(value = "") {
     }
 }
 
-component Heading3(value = "") {
+component Heading3(value = "") node {
     if PLATFORM == html.platform {
         html.h3(innerText=value)
     } else {

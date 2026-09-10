@@ -27,7 +27,7 @@ func checkSource(t *testing.T, src string) *ir.Package {
 }
 
 func TestLookupStdlibSymbol_Component(t *testing.T) {
-	pkg := checkSource(t, `component App { vbox {} }`)
+	pkg := checkSource(t, `component App node { vbox {} }`)
 	md, ok := lookupStdlibSymbol(pkg, "vbox")
 	if !ok {
 		t.Fatal("vbox not found in stdlib")
@@ -41,7 +41,7 @@ func TestLookupStdlibSymbol_Component(t *testing.T) {
 }
 
 func TestLookupStdlibSymbol_Func(t *testing.T) {
-	pkg := checkSource(t, `component App {}`)
+	pkg := checkSource(t, `component App node {}`)
 	md, ok := lookupStdlibSymbol(pkg, "color.rgb")
 	if !ok {
 		t.Fatal("color.rgb not found")
@@ -52,7 +52,7 @@ func TestLookupStdlibSymbol_Func(t *testing.T) {
 }
 
 func TestLookupComponentProp(t *testing.T) {
-	pkg := checkSource(t, `component App { vbox {} }`)
+	pkg := checkSource(t, `component App node { vbox {} }`)
 	// Pick a prop that the vbox stdlib component exposes. Try
 	// common ones; skip the test if vbox isn't around.
 	comp := findComponent(pkg, "vbox")

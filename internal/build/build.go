@@ -48,6 +48,11 @@ type Options struct {
 	// them off disk relative to Name, which is what the CLI wants; the golden
 	// harness passes the fixture's own FS.
 	ProjectFS fs.FS
+	// Library says the input is a library package the caller named, so the
+	// window rule below does not apply to it: `sngl generate sngl:platform/gtk4`
+	// is a request for that package's declarations rather than a program to
+	// run, and a library has no window by construction.
+	Library bool
 }
 
 // Result is one target's build.
@@ -68,6 +73,14 @@ type Result struct {
 // works on pkg itself and leaves it optimized and lowered. A caller that
 // needs the checked IR afterwards has to clone before calling.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
+	// A build's rule and not the language's, which is why it is asked here
+	// rather than in the checker: `component c { … }` on its own is a
+	// perfectly good thing to type-check, and it is only as something to
+	// *run* that it has nowhere to draw. The package body is a slot for the
+	// root tree, and a window is that tree's one renderable member.
+	if !o.Library && !pkg.IsProgram() {
+		return nil, fmt.Errorf("%s: a program declares at least one window: the package body renders only what a window holds", o.Dir)
+	}
 	if err := ValidateOutputs(pkg); err != nil {
 		return nil, err
 	}
@@ -112,6 +125,10 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
 		codegen.SetOptionField(target.Options, "projectDir", o.Dir)
 	}
+	// Before optimize, not after: the root decides what the inliner flattens
+	// into what, so the isolation has to be in place before anything moves.
+	root := codegen.OptionString(target.Options, "rootComponent")
+	IsolateRootComponent(tpkg, root)
 
 	optCfg := &optimize.Config{
 		Platform:    target.Platform,
@@ -146,6 +163,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		icaps := lower.AllFeatures().ToLowerCaps()
 		if err := lower.Lower(tpkg, icaps, lower.Options{
 			Platform:        target.Platform,
+			RootComponent:   root,
 			ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
@@ -155,7 +173,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 
 	caps := plat.Capabilities(lang).ToLowerCaps()
 	start = time.Now()
-	if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
 	slog.Info("lower", "dir", o.Dir, "caps", caps.String(), "duration", time.Since(start))
@@ -214,4 +232,26 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 		return nil, fmt.Errorf("%s: %w", o.Name, err)
 	}
 	return mem.Files(), nil
+}
+
+// IsolateRootComponent makes comp the program's only entry point, and is what
+// the "rootComponent" option means: a harness renders the component it names
+// rather than the program around it. Left in place, the inliner flattens that
+// component into the program's own root and renames its state per instance, so
+// the Model carries `n__inst0` where a test asks for `n` (#136).
+//
+// A name no component answers to is left alone: the option is a request.
+func IsolateRootComponent(pkg *ir.Package, comp string) {
+	if comp == "" || pkg == nil {
+		return
+	}
+	if !slices.ContainsFunc(pkg.Components, func(c *ir.Component) bool { return c.Name == comp }) {
+		return
+	}
+	pkg.Body = nil
+	pkg.Windows = nil
+	// Recorded rather than left implicit: with the windows gone, this is the
+	// only thing left that says which declaration the program renders, and
+	// AnalyzeCommon runs from the package alone.
+	pkg.RootComponent = comp
 }

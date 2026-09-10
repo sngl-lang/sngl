@@ -1,8 +1,12 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="hello") { // ERROR(check) "does not accept children"
         vbox {
         }
     }
+}
+
+window {
+    main
 }

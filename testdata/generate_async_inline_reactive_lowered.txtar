@@ -14,8 +14,12 @@ output {
     }
 }
 
-component main {
+component main node {
     text(value="got " + api.fetchHello("world"))
+}
+
+window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(name: string): Promise<string> { return "hi " + name; }

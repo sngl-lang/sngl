@@ -8,7 +8,6 @@ deny out/go/fyne/model.go `renderDetailPanel` -- detailPanel is inlined, so no m
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { fyne } }
 
@@ -19,18 +18,16 @@ struct Issue {
     assignee string
 }
 
-component main {
+window #app(title="t") {
     var current = Issue{}
 
-    window #app(title="t") {
-        vbox {
-            text(value="header")
-            detailPanel(it=current)
-        }
+    vbox {
+        text(value="header")
+        detailPanel(it=current)
     }
 }
 
-component detailPanel(it Issue) {
+component detailPanel(it Issue) node {
     vbox {
         text(value=it.key)
         text(value=it.summary)

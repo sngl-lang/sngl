@@ -23,30 +23,27 @@ grep '<my-widget' out/index.html
 grep '<div' out/index.html
 
 -- badname.sngl --
-import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-component main {
-    window {
+component main ui.node {
+    ui.window {
         html.div(innerTxt = "x")
     }
 }
 -- badtype.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component main {
-    window {
-        html.button(style = "wide")
-    }
+window {
+    html.button(style = "wide")
 }
 -- custom.sngl --
-import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-component main {
-    window {
+component main ui.node {
+    ui.window {
         html.div {
             html.element(tag = "my-widget", innerText = "hi")
         }

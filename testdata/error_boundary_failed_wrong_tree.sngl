@@ -1,0 +1,15 @@
+// The fallback stands where the content stood, so it belongs to the family the
+// content bound. A boundary around widgets cannot fall back to a shape.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+ui.window(title="mixed") {
+    boundary(@error(e) {}) {
+        ui.text(value="body")
+
+        component failed {
+            d.circle(cx=1.0, cy=1.0, r=1.0) // ERROR(check) "expected node component in boundary, got circle"
+        }
+    }
+}

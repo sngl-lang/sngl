@@ -1,8 +1,9 @@
 import . "sngl:test"
+import ui "sngl:ui"
 
 // Sized floating-point types. float64 behaves like the default float;
 // float32 carries single-precision rounding.
-component floats {
+component floats ui.node {
     var f32 float32 = 0.1
     var f64 float64 = 0.1
 }
@@ -23,4 +24,7 @@ func testFloat32Rounding(t Test, c floats) {
 func testFloatConstFold(t Test, c floats) {
     var x = 1.5 + 2.5
     t.assert(x == 4.0)
+}
+
+ui.window {
 }

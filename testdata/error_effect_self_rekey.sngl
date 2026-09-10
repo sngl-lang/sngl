@@ -28,7 +28,7 @@ func bump() {
     shared += 1
 }
 
-component main {
+component main node {
     var (
         n = 0
         other = 0
@@ -96,4 +96,8 @@ component main {
     })
 
     text #out(value=log.join(","))
+}
+
+window {
+    main
 }

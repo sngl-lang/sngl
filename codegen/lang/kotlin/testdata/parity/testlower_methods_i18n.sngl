@@ -9,7 +9,7 @@ import "sngl:i18n"
 //   - zero-arg method calls (c.label() — a computed component func)
 //   - i18n $"..." strings, including a plural form, lowered to the i18n
 //     runtime call (mirrors translate_ir_test.go's i18n.tr/plural cases)
-component counter {
+component counter node {
     var count = 0
 
     func label() => $"You have {count, plural, one{# item} other{# items}}"

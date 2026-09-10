@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 // Regression: a block-bodied computed that calls a sibling computed must
@@ -9,7 +8,7 @@ import . "sngl:test"
 // reached codegen verbatim, so Go emitted `m.double(this)` (undefined →
 // gtk4/bubbletea/fyne compile error) and JS emitted `main_double(this)`
 // (wrong receiver → html runtime error).
-component main {
+component main node {
     var n = 3
     func double() => n * 2
     func summary() string {
@@ -21,4 +20,8 @@ component main {
 
 func testSiblingComputedCall(t Test, c main) {
     t.assert(c.summary == "d=6")
+}
+
+window {
+    main
 }

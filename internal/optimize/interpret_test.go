@@ -158,7 +158,7 @@ func TestInterpretFunc_MutationIsolation(t *testing.T) {
 func withR(c color, r int) => color{r=r, g=c.g, b=c.b, a=c.a}
 const A color = color{r=10, g=20, b=30, a=255}
 const B color = withR(A, 99)
-component main {
+component main node {
     text(value=string(A.r))
     text(value=string(B.r))
 }
@@ -190,7 +190,7 @@ func TestOptimize_FoldsColorLighten(t *testing.T) {
 	// red = {255, 0, 0, 255}: r stays 255; g/b → 0 + int(127.5) = 127.
 	src := `
 const C color = color.lighten(#ff0000, 0.5)
-component main {
+component main node {
 	text(value=string(C.r))
 	text(value=string(C.g))
 	text(value=string(C.b))
@@ -225,7 +225,7 @@ func TestOptimize_FoldsComposedColorExpression(t *testing.T) {
 	// flows through after lighten's r/g/b computation.
 	src := `
 const C color = color.opacity(color.lighten(#ff0000, 0.5), 128)
-component main {
+component main node {
 	text(value=string(C.r))
 	text(value=string(C.g))
 	text(value=string(C.b))
@@ -255,7 +255,7 @@ func TestOptimize_FoldsUserDefinedColorHelper(t *testing.T) {
 	src := `
 func tint(c color, n float) => color.lighten(c, n)
 const C color = tint(#ff0000, 0.5)
-component main {
+component main node {
 	text(value=string(C.r))
 	text(value=string(C.g))
 	text(value=string(C.b))

@@ -17,7 +17,7 @@ struct pair {
     b string
 }
 
-component main {
+component main node {
     var (
         key pair = pair{a=1, b="x"}
         log list<string> = []
@@ -50,4 +50,8 @@ func testWritingTheSameValuesBackKeepsTheLifetime(t Test, c main) {
 func testChangingOneFieldIsANewLifetime(t Test, c main) {
     c.key = pair{a=1, b="y"}
     t.assert(c.out.value == "m,u,m")
+}
+
+window {
+    main
 }

@@ -139,6 +139,27 @@ func RunComponentFixtures(t *testing.T, platform string) {
 	}
 }
 
+// componentUnderTest reports the component every `func test…` in the fixture
+// takes as its second parameter, or "" when they disagree or none does. Native
+// mode builds one program and so can serve only one; the empty answer leaves
+// such a fixture building the program as written.
+func componentUnderTest(path string) string {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	found := ""
+	for _, m := range testParamRe.FindAllStringSubmatch(string(src), -1) {
+		if found != "" && found != m[1] {
+			return ""
+		}
+		found = m[1]
+	}
+	return found
+}
+
+var testParamRe = regexp.MustCompile(`(?m)^func test[A-Za-z0-9_]*\([^,)]*,\s*[A-Za-z_][A-Za-z0-9_]*\s+([A-Za-z_][A-Za-z0-9_]*)\s*\)`)
+
 // Declaration-only fixtures still run through generate; this lets the agent
 // path short-circuit fixtures that have nothing to assert.
 func fixtureHasTestFunc(path string) bool {
@@ -212,6 +233,13 @@ func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
 		"--opt", "main=true",
 		"--out=" + tmp,
 		fixture,
+	}
+	// The component under test is what the emitted test file is written
+	// against, so this build makes it the root the way the launcher does:
+	// otherwise it inlines into the fixture's own window and the Model carries
+	// `x__inst0` where the test asks for `x`.
+	if root := componentUnderTest(fixture); root != "" {
+		args = append(args, "--opt", "rootComponent="+root)
 	}
 	cmd := exec.Command(snglBin, args...)
 	cmd.Env = snglEnv()

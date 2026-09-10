@@ -82,7 +82,7 @@ func (w *pointsToWalker) walkStmt(s ir.Stmt) {
 	switch x := s.(type) {
 	case *ir.LocalVar:
 		if isFuncType(x.Type) && x.Init != nil {
-			w.bindRHS(ir.SlotLocalKey(x), x.Init)
+			w.bindRHS(localVarSlotKey(x), x.Init)
 		}
 		w.walkExpr(x.Init)
 	case *ir.Assign:
@@ -268,6 +268,18 @@ func (w *pointsToWalker) bindRHS(dst ir.PointsToKey, rhs ir.Expr) {
 		}
 	}
 	// Other shapes: skip conservatively.
+}
+
+// localVarSlotKey keys a LocalVar by the symbol an Ident referring to it
+// resolves to, and falls back to the statement only where there is none: every
+// *read* of a funcvar slot -- ir.CalleeSlotKey, slotKeyForAssignTarget -- asks
+// for SlotVar, so binding the statement would file the candidates under a key
+// nothing looks up.
+func localVarSlotKey(x *ir.LocalVar) ir.PointsToKey {
+	if x.Sym != nil {
+		return ir.SlotVarKey(x.Sym)
+	}
+	return ir.SlotLocalKey(x)
 }
 
 func isFuncType(t *ir.Type) bool {

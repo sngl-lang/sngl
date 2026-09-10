@@ -18,7 +18,7 @@ func TestFynePackageTypeChecks(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/fyne"
 output { go { fyne() } }
-component main {
+window {
     text(value="hi")
 }
 `

@@ -45,7 +45,7 @@ struct Entry {
     title string
 }
 
-component main {
+component main node {
     text(value=Entry{title = "hi"}.title)
 }
 `

@@ -31,7 +31,7 @@ import (
 const effectListKeySrc = `
 import . "sngl:ui"
 
-component main {
+window {
     var (
         tags list<string> = ["a"]
         log list<string> = []

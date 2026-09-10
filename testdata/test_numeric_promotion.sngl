@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component promo {
+component promo node {
     var i int = 3
     var f float = 1.5
     text(value="hi")
@@ -39,4 +39,7 @@ func testMixedEquality(t Test, c promo) {
 func testExplicitCastRoundTrip(t Test, c promo) {
     t.assert(int(c.f) == 1)
     t.assert(float(c.i) == 3.0)
+}
+
+window {
 }

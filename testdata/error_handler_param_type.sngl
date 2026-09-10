@@ -3,7 +3,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var count = 0 @change(v string) { // ERROR(check) "cannot use string as int for parameter \"v\" of @change"
         count = 1
     }
@@ -12,4 +12,8 @@ component main {
             count = 1
         })
     }
+}
+
+window {
+    main
 }

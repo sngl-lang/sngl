@@ -47,7 +47,7 @@ func rows() list<list<Key>> {
 
 // One key. `flex` is what makes the grid fill the window: every key claims its
 // span of its row, and every row claims an equal share of the keypad.
-component KeyCap(entry Key, @press Key) {
+component KeyCap(entry Key, @press Key) ui.node {
     ui.button(
         text=entry.label,
         style={
@@ -63,7 +63,7 @@ component KeyCap(entry Key, @press Key) {
     )
 }
 
-component Keypad(@press Key) {
+component Keypad(@press Key) ui.node {
     ui.vbox(style={flex=1, gap=0, padding=6}) {
         for var row = rows() {
             ui.hbox(style={flex=1, gap=0}) {

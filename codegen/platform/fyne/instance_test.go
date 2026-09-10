@@ -21,12 +21,12 @@ struct Item {
     name string = ""
 }
 
-component card(name = "") {
+component card(name = "") node {
     var clicks = 0
     button(text="{name} ({clicks})", @click { clicks += 1 })
 }
 
-component main {
+window {
     var items list<Item> = [
         {name="a"},
         {name="b"},

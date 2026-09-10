@@ -1,9 +1,13 @@
 import . "sngl:ui"
 
-component Card(title string, subtitle string) {
+component Card(title string, subtitle string) node {
     text(value=title)
 }
 
-component main {
+component main node {
     Card(title="Hi", "oops") // ERROR(check) "positional argument after named"
+}
+
+window {
+    main
 }

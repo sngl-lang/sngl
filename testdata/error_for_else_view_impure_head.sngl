@@ -6,7 +6,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var rows list<string> = []
     var seen = 0
 
@@ -22,4 +22,8 @@ component main {
             text(value="nothing yet")
         }
     }
+}
+
+window {
+    main
 }

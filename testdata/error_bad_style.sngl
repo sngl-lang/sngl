@@ -1,5 +1,9 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="hello", style={nonexistent=5}) // ERROR(check) "unknown field"
+}
+
+window {
+    main
 }

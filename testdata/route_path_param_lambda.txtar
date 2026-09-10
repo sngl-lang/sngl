@@ -11,8 +11,8 @@ The ternary case is in route_path_param_ternary.txtar, and the path var the
 route mode rests on in route_path_param_param.txtar.
 
 -- lambda.sngl --
-import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
 output {
     go {
@@ -20,11 +20,10 @@ output {
     }
 }
 
-component main {
+ui.window #home(title="t", href="/") {
     var nums list<int> = [1, 2, 3]
-    window #home(title="t", href="/") {
-        html.span(innerText=string(nums.filter(func(n) => n > 1).length()))
-    }
+
+    html.span(innerText=string(nums.filter(func(n) => n > 1).length()))
 }
 -- out/go/html/server.go --
 package ui

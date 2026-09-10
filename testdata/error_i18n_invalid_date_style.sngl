@@ -6,3 +6,6 @@ import "sngl:i18n"
 
 var d date
 var bad = $"Created on {d, date, frobble}" // ERROR(check) "invalid date/time style"
+
+window {
+}

@@ -1,9 +1,13 @@
 import . "sngl:ui"
 
-component card(title string) {
+component card(title string) node {
 }
 
-component main {
+component main node {
     vbox() {
     } //@ complete("", "card", "main")
+}
+
+window {
+    main
 }

@@ -14,7 +14,7 @@ unit storage { // the base is the byte
     gb = 1000mb
 }
 
-component unitComments {
+component unitComments node {
     var small storage = 4kb
     var large storage = 2gb
 
@@ -23,4 +23,7 @@ component unitComments {
 
 func testUnitComments(t Test, c unitComments) {
     t.assert(c.large > c.small)
+}
+
+window {
 }

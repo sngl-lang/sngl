@@ -1,9 +1,13 @@
 import . "sngl:ui"
 
-component Card(title string, subtitle string = "") {
+component Card(title string, subtitle string = "") node {
     text(value=title)
 }
 
-component main {
+component main node {
     Card(title="Hi", title="Duplicate") // ERROR(check) "already provided"
+}
+
+window {
+    main
 }

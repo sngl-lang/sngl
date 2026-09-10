@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component conv {
+component conv node {
     var count = 42
     var rate = 3.14
     var label = "hello"
@@ -51,4 +51,7 @@ func testInterpolationPrimitives(t Test, c conv) {
     t.assert("{c.rate}" == "3.14")
     t.assert("{c.active}" == "true")
     t.assert("{c.label}" == "hello")
+}
+
+window {
 }

@@ -118,22 +118,26 @@ func mainBodyStmts(ctx *codegen.CodegenCtx) []ir.Stmt {
 	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
 		return wins[0].Body
 	}
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		return main.Body
 	}
 	return nil
 }
 
 // mainComponentLocalRefs is passNodeEscape's non-escaping widget-ref set for
-// the scope mainBodyStmts emits, so BuildUI can render those refs as locals.
+// the scope mainBodyStmts emits: a harness-isolated root component's body, and
+// nothing for a window's.
+//
+// Nil for the entry scope, and deliberately: locals are for a *recursive*
+// render method, where a frame must not clobber the temp of the frame that
+// called it. BuildUI has no frames, and everything emitted beside it may name
+// a ref it created -- only some of those sites go through a qualifier that
+// knows about locals.
 func mainComponentLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		if wins[0].Window != nil {
-			return wins[0].Window.LocalRefs
-		}
 		return nil
 	}
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		return main.LocalRefs
 	}
 	return nil
@@ -385,7 +389,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	}
 
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
-	for _, cc := range c.ctx.NonMainComponents() {
+	for _, cc := range c.ctx.NonRootComponents() {
 		// A component the build renders as a live instance gets a record of
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
@@ -420,7 +424,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	// Pre-rendered so gc.RequireImport calls from EvalExpr land before
 	// newTemplateData samples gc.Imports().
 	var buildUIBuf strings.Builder
-	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc))
+	emitBuildUI(&buildUIBuf, &buildBuf, topLevelRefs, topLevelCType, gc, c.wrapped, windowTitleGo(c.ctx, gc), widgetFieldNames(widgetFields))
 	// emitEventInvokers emits raw unsafe.Pointer strings; register the import
 	// structurally rather than by scanning the output.
 	if len(vc.eventInvokers) > 0 && !c.wrapped {
@@ -1024,6 +1028,14 @@ func gtk4ComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 			out[fn] = true
 		}
 	}
+	// A window owns funcs the way a component does, and its state is in the
+	// same Model -- so one of its funcs is a method too. This has to agree
+	// with golang.ModelFreeFuncs, which is what told the call sites.
+	for _, w := range pkg.Windows {
+		for _, fn := range w.Funcs {
+			out[fn] = true
+		}
+	}
 	return out
 }
 
@@ -1091,6 +1103,29 @@ func emitGTK4Func(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, pkg *
 	b.WriteByte('\n')
 }
 
+// buildRef spells a top-level widget ref the way the tree that created it did.
+// A ref the translator did not put in the Model is a local `__nN` in
+// buildWidgetTree, so parenting it as `m.__nN` names a field nothing declared
+// -- which the generated Go then refused to compile. The fields are the
+// authority rather than passNodeEscape's set, because the translator derives
+// refs of its own (`__nN__el` for a component instance's root) that no
+// lowering pass has heard of.
+func buildRef(name string, fields map[string]bool) *ir.Ident {
+	if !fields[name] {
+		return &ir.Ident{Name: name}
+	}
+	return &ir.Ident{Name: name, IsElementRef: true, Synthesized: true}
+}
+
+// widgetFieldNames is the widget refs that became Model fields.
+func widgetFieldNames(fields []widgetField) map[string]bool {
+	out := make(map[string]bool, len(fields))
+	for _, f := range fields {
+		out[f.name] = true
+	}
+	return out
+}
+
 // needsRootWrapper mirrors the conditions inside emitBuildUI that trigger the
 // synthetic m.__root wrapper, and must be kept in sync with them.
 func needsRootWrapper(buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string) bool {
@@ -1127,9 +1162,9 @@ func windowTitleGo(ctx *codegen.CodegenCtx, gc *golang.GoIRContext) string {
 // widget refs not consumed by an AppendChild are parented into m.__root,
 // except when the sole top-level ref is itself a window-class widget, which
 // BuildUI returns directly.
-func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string) {
+func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []string, topLevelCType map[string]string, gc *golang.GoIRContext, wrapped bool, title string, fields map[string]bool) {
 	if wrapped {
-		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title)
+		emitBuildUIWrapped(b, buildBuf, topLevelRefs, topLevelCType, title, fields)
 		return
 	}
 	if buildBuf.Len() == 0 && len(topLevelRefs) == 0 {
@@ -1149,7 +1184,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 		b.WriteString("// BuildUI constructs the widget tree and returns the top-level window.\n")
 		b.WriteString("func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {\n")
 		b.WriteString("\tm.buildWidgetTree()\n")
-		retIdent := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+		retIdent := buildRef(ref, fields)
 		retExpr := &ir.Conversion{Type: ir.NativePointerOf("GtkWidget"), Operand: retIdent}
 		fmt.Fprintf(b, "\treturn %s\n", gc.EvalExpr(retExpr))
 		b.WriteString("}\n\n")
@@ -1174,7 +1209,7 @@ func emitBuildUI(b *strings.Builder, buildBuf *strings.Builder, topLevelRefs []s
 	fmt.Fprintf(b, "\tm.__root = %s\n", gc.EvalExpr(rootInit))
 	b.WriteString(buildBuf.String())
 	for _, ref := range topLevelRefs {
-		childRef := &ir.Ident{Name: ref, IsElementRef: true, Synthesized: true}
+		childRef := buildRef(ref, fields)
 		appendCall := &ir.Call{
 			Type:     ir.TypVoid,
 			Receiver: &ir.Ident{Name: "C"},

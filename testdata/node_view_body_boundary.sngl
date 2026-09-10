@@ -9,13 +9,13 @@
 import . "sngl:ui"
 import . "sngl:ui/draw"
 
-component framed(header component) {
+component framed(header component) node {
     vbox {
         header()
     }
 }
 
-component gallery {
+component gallery node {
     framed {
         component header {
             text(value="titled")
@@ -25,4 +25,7 @@ component gallery {
     canvas(width=10px, height=10px) {
         circle(cx=5.0, cy=5.0, r=4.0)
     }
+}
+
+window {
 }

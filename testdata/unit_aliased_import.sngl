@@ -19,7 +19,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import time "sngl:time"
 
-component main {
+component main node {
     var oneMinute time.duration = 1m
     var half time.duration = 500ms
 
@@ -34,4 +34,8 @@ func testAnAliasedUnitComparesByMagnitude(t Test, c main) {
 func testAnAliasedUnitAddsByMagnitude(t Test, c main) {
     t.assert(c.half + 500ms == 1s)
     t.assert(c.oneMinute - 30s == 30s)
+}
+
+window {
+    main
 }

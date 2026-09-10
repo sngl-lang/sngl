@@ -4,7 +4,6 @@ fold to one literal. The folder's value model has no unit: parseLiteral
 answers nil for `1px`, so the whole product stayed an expression and every
 platform fell back to the 300x150 default.
 -- app.sngl --
-import . "sngl:app"
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 
@@ -17,11 +16,9 @@ output {
 const W = 200.0
 const H = 120.0
 
-component main {
-    window #w {
-        draw.canvas(width=W * 2 * 1px, height=H * 1px / 2) {
-            draw.rect(x=0.0, y=0.0, w=W, h=H, style=draw.CanvasStyle{fill=color{r=200, g=0, b=0, a=255}})
-        }
+window #w {
+    draw.canvas(width=W * 2 * 1px, height=H * 1px / 2) {
+        draw.rect(x=0.0, y=0.0, w=W, h=H, style=draw.CanvasStyle{fill=color{r=200, g=0, b=0, a=255}})
     }
 }
 -- out/none/html/index.html --

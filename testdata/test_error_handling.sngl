@@ -3,12 +3,11 @@
 // absorb inline. Tests drive the `none` interpreter.
 
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
-component boundaryCatches {
+component boundaryCatches node {
     var caught = ""
-    errorBoundary(@error(e) { caught = e.message }) {
+    boundary(@error(e) { caught = e.message }) {
         button #go(text="Go", @click { error.raise("boom", "") })
     }
 }
@@ -18,11 +17,11 @@ func testBoundaryCatchesBubblesUp(t Test, c boundaryCatches) {
     t.assert(c.caught == "boom")
 }
 
-component innerWinsOverOuter {
+component innerWinsOverOuter node {
     var innerCaught = ""
     var outerCaught = ""
-    errorBoundary(@error(e) { outerCaught = e.message }) {
-        errorBoundary(@error(e) { innerCaught = e.message }) {
+    boundary(@error(e) { outerCaught = e.message }) {
+        boundary(@error(e) { innerCaught = e.message }) {
             button #go(text="Go", @click { error.raise("pick-me", "classify") })
         }
     }
@@ -34,9 +33,9 @@ func testInnerBoundaryWins(t Test, c innerWinsOverOuter) {
     t.assert(c.outerCaught == "")
 }
 
-component kindPropagates {
+component kindPropagates node {
     var k = ""
-    errorBoundary(@error(e) { k = e.kind }) {
+    boundary(@error(e) { k = e.kind }) {
         button #go(text="Go", @click { error.raise("m", "validation") })
     }
 }
@@ -44,4 +43,7 @@ component kindPropagates {
 func testKindPropagates(t Test, c kindPropagates) {
     c.go.click()
     t.assert(c.k == "validation")
+}
+
+window {
 }

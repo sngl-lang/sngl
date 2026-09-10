@@ -11,7 +11,7 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         a int = 1
         b string = "x"
@@ -46,4 +46,8 @@ func testWritingTheSameValuesBackKeepsTheLifetime(t Test, c main) {
 func testChangingOneFieldIsANewLifetime(t Test, c main) {
     c.b = "y"
     t.assert(c.out.value == "m,u,m")
+}
+
+window {
+    main
 }

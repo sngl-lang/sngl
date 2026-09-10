@@ -7,7 +7,7 @@ struct Point {
 
 enum Status { active, inactive, pending }
 
-component main {
+component main node {
     const (
         MAX = 100
         LABEL = "items"
@@ -47,4 +47,8 @@ component main {
         }
         text(value=desc)
     }
+}
+
+window {
+    main
 }

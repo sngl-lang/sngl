@@ -23,6 +23,9 @@ component element(
     tag string,
     #[macro.foreign("go:example.com/api", "Attrs")] attributes map<string, string>, // ERROR(check) "#[macro.foreign] cannot mark a parameter"
     #[nosuch.mark] extra string = "",                                               // ERROR(check) "unknown macro package"
-) {
+) node {
     text(value=tag)
+}
+
+window {
 }

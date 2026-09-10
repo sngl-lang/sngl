@@ -2697,7 +2697,7 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 					result = append(result, ir.CallArg{Name: arg.Name, NamePos: arg.NamePos, Value: expr})
 				}
 			case ast.EventHandler:
-				// Per-call @error handlers are extracted (with proper ErrorEvent
+				// Per-call @error handlers are extracted (with the boundary payload
 				// defaulting on the param) by resolveCallStmt. Skip here.
 				if arg.Name == "error" {
 					continue
@@ -2823,6 +2823,18 @@ func (c *checker) checkLocalVarDecl(decl *ast.VarDecl) []ir.Stmt {
 				AST:  decl,
 				Name: name,
 				Type: typ,
+			}
+			// A `var` at the top of a window body is that window's state and
+			// this path is what builds it, so a handler written on one travels
+			// with the symbol -- the way collectComponentVarDecl does for a
+			// component's.
+			for i := range spec.Handlers {
+				h := &spec.Handlers[i]
+				sym.Handlers = append(sym.Handlers, &ir.EventHandler{
+					AST:  h,
+					Name: h.Name,
+					Func: &ir.Func{},
+				})
 			}
 			c.declare(decl.Pos, sym)
 			out = append(out, &ir.LocalVar{
@@ -3352,9 +3364,19 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// appended to any IR collection — leaving call sites referencing an
 		// undefined function. Lift to the enclosing component (analogous to
 		// the LocalVar→Var promotion done by passNoContext for vars).
-		if c.currentComponent != nil {
+		switch {
+		case c.currentComponent != nil:
 			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
-		} else if c.pkg != nil {
+		case c.currentWindow != nil:
+			// A window owns funcs the way a component does (ir.Owners), and
+			// its state is in the same model -- so a target that emits a
+			// component's funcs as methods has to emit these as methods too.
+			// Registered in both collections, the way a component's nested
+			// methods are, because pkg.Funcs is what a call site resolves
+			// through.
+			c.currentWindow.Funcs = append(c.currentWindow.Funcs, fn)
+			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
+		case c.pkg != nil:
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		}
 		return nil
@@ -3571,8 +3593,9 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 }
 
 // extractCallErrorHandler finds an inline @error handler in a CallExpr's args
-// and returns it as a typed ir.EventHandler (param defaulted to ErrorEvent
-// when no annotation was given). Returns nil if no @error is attached.
+// and returns it as a typed ir.EventHandler (param defaulted to the boundary's
+// payload type when no annotation was given). Returns nil if no @error is
+// attached.
 func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 	for i := range call.Args.Args {
 		eh, ok := call.Args.Args[i].(ast.EventHandler)
@@ -3585,9 +3608,9 @@ func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 }
 
 // buildErrorHandler type-checks the body of an @error handler with the param
-// defaulted to the stdlib ErrorEvent struct when no explicit type was given.
-// Reports a diagnostic if the handler has more than one param or if the
-// declared type is not ErrorEvent.
+// defaulted to the boundary's own payload type when no explicit type was
+// given. Reports a diagnostic if the handler has more than one param or if the
+// declared type is not that one.
 func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	errEvtType := c.errorEventType()
 	c.refuseParamMarks(eh.Params.Params)
@@ -3603,10 +3626,10 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 		params[i] = &ir.Param{Name: p.Name, Type: typ}
 	}
 	if len(params) > 1 {
-		c.error(eh.Pos, "@error handler accepts at most one ErrorEvent parameter")
+		c.error(eh.Pos, "@error handler accepts at most one %s parameter", errorEventName(errEvtType))
 	}
 	if len(params) == 1 && errEvtType != nil && !params[0].Type.IsAssignableTo(errEvtType) {
-		c.error(eh.Pos, "@error handler parameter must be ErrorEvent, got %s", params[0].Type)
+		c.error(eh.Pos, "@error handler parameter must be %s, got %s", errorEventName(errEvtType), params[0].Type)
 	}
 	fn := &ir.Func{Params: params}
 	c.pushScope()
@@ -3620,9 +3643,23 @@ func (c *checker) buildErrorHandler(eh *ast.EventHandler) *ir.EventHandler {
 	return &ir.EventHandler{AST: eh, Name: eh.Name, Func: fn}
 }
 
+// errorEventType is the payload an @error handler is handed, read off the
+// #[builtin("errorBoundary")] component's own @error declaration.
+//
+// Read rather than looked up by name: the boundary is what defines the
+// channel, so its declaration is the one place the payload type is written,
+// and a lib rename does not need a matching edit here. It was
+// `structDecl(c.symtab, "ErrorEvent")` while the payload was a struct of that
+// name in sngl:ui, which is a name match of exactly the kind a #[builtin]
+// mark exists to remove.
 func (c *checker) errorEventType() *ir.Type {
-	if sd := structDecl(c.symtab, "ErrorEvent"); sd != nil {
-		return &ir.Type{Kind: ir.TypeStruct, Decl: sd}
+	if c.boundaryComp == nil {
+		return nil
+	}
+	for _, e := range c.boundaryComp.Events {
+		if e.Name == "error" {
+			return e.Type
+		}
 	}
 	return nil
 }
@@ -3814,7 +3851,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
 			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
 		}
-		c.checkTreeMembership(vn.Pos, children, slotTree(spec, spec.RestSlot()), "in "+spec.Name)
+		owner, node, at := c.currentComponent, spec, vn.Pos
+		c.deferTreeCheck(func() {
+			c.checkTreeMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.Name)
+		})
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
 
@@ -4676,6 +4716,13 @@ func (c *checker) collectForLoopWindowIDsStmt(s ast.Stmt, seen map[string]bool, 
 		if c.isWindowNode(visualNodeTarget(n)) && n.ID != "" {
 			if !seen[n.ID] {
 				seen[n.ID] = true
+				// A name this checker already hoisted for the package body
+				// is the same list, so the loop reports it again rather than
+				// declaring a second symbol for it.
+				if v, ok := c.pkgBodyWindowIDs[n.ID]; ok {
+					*vars = append(*vars, v)
+					return
+				}
 				// Skip if a symbol with this name already exists in the
 				// enclosing scope (e.g., a package-level window with the
 				// same id — duplicate-id checking belongs elsewhere).
@@ -4952,6 +4999,23 @@ func (c *checker) enclosingSlot(name string) *ir.SlotDecl {
 	return nil
 }
 
+// ownerSlot is the slot of that name on owner, or nil. enclosingSlot is the
+// same lookup asked of the component being checked; this one is asked later,
+// of the component recorded when the check was deferred -- which is why it
+// carries no `funcDepth` guard: every caller runs from runTreeChecks, where
+// no body is being walked and the depth is zero.
+func ownerSlot(owner *ir.Component, name string) *ir.SlotDecl {
+	if owner == nil || name == "" {
+		return nil
+	}
+	for _, s := range owner.Slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
+}
+
 // checkSlotInsertion checks an insertion point: its arguments, positional
 // against the declaration's types, and the fallback block.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.Stmt {
@@ -5100,7 +5164,10 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 	sc.Body = c.checkBlockIR(&cd.Body)
 	c.popScope()
 	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
-	c.checkTreeMembership(cd.Pos, sc.Body, slotTree(owner, decl), "in slot \""+cd.Name+"\"")
+	written, at := c.currentComponent, cd.Pos
+	c.deferTreeCheck(func() {
+		c.checkTreeMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
+	})
 	return sc
 }
 
@@ -5133,8 +5200,8 @@ func (c *checker) checkSlotArity(pos ast.Pos, slot *ir.SlotDecl, n int, what str
 	}
 }
 
-// slotTree is the segmented tree a slot accepts, or nil for the default tree —
-// the one whose members are interchangeable.
+// slotTree is the segmented tree a slot accepts, or nil where nothing pins one
+// — a tree-less owner's bare slot, or a tree parameter no call site has bound.
 //
 // owner is the component the slot is declared on: a slot naming no tree accepts
 // the owner's.
@@ -5152,10 +5219,65 @@ func slotTree(owner *ir.Component, slot *ir.SlotDecl) *ir.StructDef {
 		return nil
 	}
 	sd, ok := slot.Content.Decl.(*ir.StructDef)
-	if !ok || sd.Builtin == ir.BuiltinTreeDefault || !sd.IsTree {
+	if !ok || !sd.IsTree {
 		return nil
 	}
 	return sd
+}
+
+// slotWant is the tree one population of a slot is held to: what the
+// declaration names, or -- for a slot typed by the tree parameter its owner
+// returns -- what the content supplied here turns out to be.
+//
+// owner is the specialization the call site produced, so a parameter a prop
+// pinned is already substituted and only an unpinned one reaches the second
+// case.
+func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.StructDef {
+	if sd := slotTree(owner, slot); sd != nil {
+		return sd
+	}
+	if owner == nil || owner.TreeParam == "" || slot == nil || slot.Content == nil {
+		return nil
+	}
+	if slot.Content.Kind != ir.TypeTypeParam || slot.Content.ParamName != owner.TreeParam {
+		return nil
+	}
+	return childrenTree(content)
+}
+
+// childrenTree is the tree the nodes written in a block belong to, for a slot
+// whose content type is the component's own tree parameter. Nothing at the
+// call site names a type argument, so the children are what binds it: the
+// first one that belongs to a family says which, and checkTreeMembership then
+// holds the rest to it.
+//
+// An empty body binds nothing and is left unbound. There is no content to
+// check, and a default would have to name a family the wrapper has no reason
+// to prefer.
+func childrenTree(content []ir.Stmt) *ir.StructDef {
+	for _, st := range content {
+		switch s := st.(type) {
+		case *ir.If:
+			if sd := childrenTree(s.Body); sd != nil {
+				return sd
+			}
+			if sd := childrenTree(s.Else); sd != nil {
+				return sd
+			}
+		case *ir.For:
+			if sd := childrenTree(s.Body); sd != nil {
+				return sd
+			}
+			if sd := childrenTree(s.Else); sd != nil {
+				return sd
+			}
+		case *ir.NodeInst:
+			if s.Component != nil && s.Component.Tree != nil {
+				return s.Component.Tree
+			}
+		}
+	}
+	return nil
 }
 
 // stmtPos is a statement's position, or nil for a synthesized node that has no
@@ -5170,50 +5292,72 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 // checkTreeMembership holds every supplied node to the tree the position
 // accepts. Compared by declaration, so two packages each declaring a tree of
 // the same name are two trees.
-func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
+//
+// owner is the component the content was written in, and is passed rather than
+// read from the checker because the call is deferred: every one of these runs
+// after the last body has been checked, so that a family read off a body is
+// settled before anything is held to it.
+//
+// A node reports its family or it reports none, and only a *different* family
+// is the error. Belonging to none is a claim a declaration makes with
+// #[tree.none], and it is honoured everywhere: an effect goes in a canvas as
+// readily as in a layout. The compiler's own constructs -- an error boundary,
+// a context override -- say the same thing by not being a node instance at
+// all, and each holds its own children to a family of their own.
+func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
 	if want == nil {
 		return
 	}
 	for _, st := range content {
+		switch s := st.(type) {
 		// An `if` or a `for` is not a node in the tree, it is how the nodes
 		// under it got there -- so the rule applies to its body. Reading only
 		// the direct children is what rejected a canvas whose shapes come
 		// from a list.
-		switch s := st.(type) {
 		case *ir.If:
-			c.checkTreeMembership(pos, s.Body, want, where)
-			c.checkTreeMembership(pos, s.Else, want, where)
-			continue
+			c.checkTreeMembership(owner, pos, s.Body, want, where)
+			c.checkTreeMembership(owner, pos, s.Else, want, where)
 		case *ir.For:
-			c.checkTreeMembership(pos, s.Body, want, where)
-			c.checkTreeMembership(pos, s.Else, want, where)
-			continue
-		}
+			c.checkTreeMembership(owner, pos, s.Body, want, where)
+			c.checkTreeMembership(owner, pos, s.Else, want, where)
 		// A slot insertion is a position rather than a node: what lands there
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
-		if si, isSlot := st.(*ir.SlotInst); isSlot {
-			if slotTree(c.currentComponent, c.enclosingSlot(si.Name)) == want {
-				continue
+		case *ir.SlotInst:
+			if got := slotTree(owner, ownerSlot(owner, s.Name)); got != nil && got != want {
+				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
-		}
-		ni, ok := st.(*ir.NodeInst)
-		if ok && ni.Component != nil && ni.Component.Tree == want {
-			continue
-		}
-		name := "unknown"
-		at := pos
-		if ok {
-			name = ni.Name
-			if ni.Component != nil {
-				name = ni.Component.Name
+		// A window is the checker's own IR and never a NodeInst, so its
+		// family is read off the declaration the mark bound.
+		case *ir.Window:
+			if c.windowComp != nil && c.windowComp.Tree != nil && c.windowComp.Tree != want {
+				at := pos
+				if s.AST != nil {
+					at = s.AST.Pos
+				}
+				c.error(at, "expected %s component %s, got window", want.Name, where)
+			}
+		case *ir.NodeInst:
+			if s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
+				continue
 			}
 			// The offending child is a better place to point than the position
 			// that hosts it.
-			if sp := stmtPos(ni.AST); sp != nil {
+			at := pos
+			if sp := stmtPos(s.AST); sp != nil {
 				at = *sp
 			}
+			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Component.Name)
 		}
-		c.error(at, "expected %s component %s, got %s", want.Name, where, name)
 	}
+}
+
+// errorEventName spells the payload type for a diagnostic, falling back to the
+// word when the boundary declaration is out of reach -- a check with no
+// library loaded still has to say something.
+func errorEventName(t *ir.Type) string {
+	if t == nil {
+		return "error"
+	}
+	return t.String()
 }

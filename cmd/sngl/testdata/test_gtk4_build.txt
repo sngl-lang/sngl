@@ -16,7 +16,10 @@ import . "sngl:ui"
 
 output { go { gtk4 } }
 
-component greeter {
+component greeter node {
     var name = "world"
     text(value=name)
+}
+
+window {
 }

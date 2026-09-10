@@ -2,7 +2,7 @@
 // `message` is for a human, `code` is the adapter's own.
 //
 // Deliberately not `app.error`: that one is raised and unwinds to the nearest
-// `errorBoundary`, whereas a failed fetch is a value a screen renders beside
+// `boundary`, whereas a failed fetch is a value a screen renders beside
 // the stale data it still has. A program that wants the boundary behaviour
 // raises an `app.error` from a `Failure` itself, which keeps the choice at the
 // call site instead of in the adapter.

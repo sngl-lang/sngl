@@ -10,3 +10,13 @@
 // type in its return position, and a slot says which one it accepts by naming
 // it as the slot's type. How many it accepts is the wrapper: bare is any
 // number, `tree.one<T>` is exactly one, `option<T>` is none or one.
+//
+// Naming nothing asks: a component whose return position is empty joins the
+// family its body renders, and one whose body renders members of two families
+// or of none is asked to say which. Belonging to no family is `#[tree.none]`,
+// and a component that says so may be placed in any tree — which is what lets
+// a lifetime bracket sit in a drawing as readily as in a layout — and may
+// contain a member of none. A wrapper that hosts whatever family it was
+// placed in says so with a type parameter, `component boundary<T>(content
+// ...component T) T`, and each call site binds T from the children it
+// supplies.

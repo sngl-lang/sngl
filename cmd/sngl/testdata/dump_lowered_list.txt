@@ -70,6 +70,10 @@ stdout '^caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSp
 -- main.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="hello")
+}
+
+window {
+    main
 }

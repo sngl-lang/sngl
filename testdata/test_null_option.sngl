@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component box {
+component box node {
     var maybe option<int> = null
     var set option<int> = 42
     text(value="hi")
@@ -18,4 +18,7 @@ func testSetOptionNotNull(t Test, c box) {
 func testAssignNullToOption(t Test, c box) {
     c.set = null
     t.assert(c.set == null)
+}
+
+window {
 }

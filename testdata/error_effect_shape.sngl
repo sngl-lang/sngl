@@ -5,7 +5,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     effect(@mount {}) { // ERROR(check) "component effect does not accept children"
         text(value="nowhere to put this")
     }
@@ -16,4 +16,8 @@ component main {
     // back, or a teardown for something the tree itself set up.
     effect(@mount {})
     effect(@unmount {})
+}
+
+window {
+    main
 }

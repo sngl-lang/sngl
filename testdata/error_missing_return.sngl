@@ -9,6 +9,10 @@ func unfinished(x int) int {} // ERROR(check) "missing return: \"unfinished\" mu
 // A void function needs no return, empty or not.
 func fine(x int) {}
 
-component main {
+component main node {
     text(value="{fine(1)}")
+}
+
+window {
+    main
 }

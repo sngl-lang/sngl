@@ -29,10 +29,14 @@ import lib "js:./lib"
 
 const who = lib.profile("ada", "lovelace")
 
-component main {
+component main node {
     text(value=who.name)
     text(value=string(who.id))
     text(value=string(who.score))
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 export interface Profile {

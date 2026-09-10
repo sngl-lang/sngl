@@ -690,14 +690,13 @@ chain like every other name, and a declaration of your own by one of those
 names shadows it — the grammar reserves none of them.
 
 Everything else the standard library provides is imported. The components,
-event payload types, style enums and `Style` belong to `sngl:ui`; `window`,
-`errorBoundary` and `error` to `sngl:app`; `date`, `time`, `datetime`, `duration` and `timer` to
+event payload types, style enums, `Style` and the `window` they are placed on
+belong to `sngl:ui`; `date`, `time`, `datetime`, `duration` and `timer` to
 `sngl:time`; `Alert` and `File` to `sngl:dialog`; `Test` to `sngl:test`; and
 the translation surface to `sngl:i18n`:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import sngl "sngl:ui"
 ```
 
@@ -1401,7 +1400,7 @@ directly in the instantiation's block:
 
 <!-- SNGL-component
 struct Row { title string }
-component table(rows list<Row>, cell component(Row)) { vbox { for var r = rows { cell(r) } } }
+component table(rows list<Row>, cell component(Row)) node { vbox { for var r = rows { cell(r) } } }
 var rs list<Row> = []
 -->
 
@@ -1424,7 +1423,7 @@ supply by name:
 ```sngl
 import . "sngl:ui"
 
-component card(header component, content ...component) {
+component card(header component, content ...component) node {
     vbox {
         header {}
         content

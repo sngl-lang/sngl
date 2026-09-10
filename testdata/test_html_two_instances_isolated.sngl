@@ -1,17 +1,21 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component counter {
+component counter node {
     var n = 0
     button #bump(text="+", @click { n += 1 })
     text #out(value=string(n))
 }
 
-component main {
+component main node {
     counter()
     counter()
 }
 
 func testTwoInstancesIsolated(t Test, c main) {
     t.assert(true)
+}
+
+window {
+    main
 }

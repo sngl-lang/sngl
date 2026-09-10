@@ -15,12 +15,12 @@ const constructInstanceSrc = `
 import . "sngl:ui"
 import . "sngl:macro"
 
-component card(#[construct] seed int, name = "") {
+component card(#[construct] seed int, name = "") node {
     var clicks = seed
     button(text="{name} ({clicks})", @click { clicks += 1 })
 }
 
-component main {
+component main node {
     var (
         names list<string> = ["a", "b"]
         base = 0
@@ -127,7 +127,7 @@ const constructStaticSrc = `
 import . "sngl:ui"
 import . "sngl:macro"
 
-component seeded(#[construct] start int, tail = "") {
+component seeded(#[construct] start int, tail = "") node {
     var n = start
     text(value="{tail}:{n}")
     if n > 3 {
@@ -135,7 +135,7 @@ component seeded(#[construct] start int, tail = "") {
     }
 }
 
-component main {
+component main node {
     var k = 0
     button(text="bump", @click { k = k + 1 })
     seeded(start=k, tail="solo")
@@ -160,7 +160,7 @@ func TestConstructPropAtAStaticPositionRebuildsTheInstance(t *testing.T) {
 	pkg := checkForLower(t, constructStaticSrc)
 	caps := staticConstructCaps
 	caps.InsertBefore = true
-	if err := Lower(pkg, caps, Options{Platform: "html"}); err != nil {
+	if err := Lower(pkg, caps, Options{Platform: "html", RootComponent: "main"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	// The click handler is what the rebuild was spliced into.
@@ -194,7 +194,7 @@ func TestConstructPropAtAStaticPositionRebuildsTheInstance(t *testing.T) {
 // the click.
 func TestConstructPropAtAStaticPositionNeedsInsertBefore(t *testing.T) {
 	pkg := checkForLower(t, constructStaticSrc)
-	err := Lower(pkg, staticConstructCaps, Options{Platform: "fyne"})
+	err := Lower(pkg, staticConstructCaps, Options{Platform: "fyne", RootComponent: "main"})
 	if err == nil {
 		t.Fatal("want a diagnostic for a rebuild the platform cannot place")
 	}

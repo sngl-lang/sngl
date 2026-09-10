@@ -20,22 +20,32 @@ struct Knobs {
     gadget string = ""
 }
 
-component main {
+component main node {
     text(value="hello")
 }
 
+window {
+    main
+}
 -- internal.sngl --
 import . "sngl:ui"
 import . "sngl:internal/marks"
 
-component main {
+component main node {
     text(value="hello")
 }
 
+window {
+    main
+}
 -- nosuch.sngl --
 import . "sngl:ui"
 import . "sngl:nosuch"
 
-component main {
+component main node {
     text(value="hello")
+}
+
+window {
+    main
 }

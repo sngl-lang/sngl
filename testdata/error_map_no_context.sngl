@@ -5,3 +5,6 @@
 import . "sngl:ui"
 
 var bad = {1="one", 2="two"} // ERROR(check) "expected type"
+
+window {
+}

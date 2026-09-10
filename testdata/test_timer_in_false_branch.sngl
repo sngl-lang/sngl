@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -13,7 +12,7 @@ func testTimerInFalseBranchNeverFires(t Test, c main) {
     t.assert(c.n == 0)
 }
 
-component main {
+component main node {
     var (
         show = false
         n = 0
@@ -26,4 +25,8 @@ component main {
     }
 
     text(value=string(n))
+}
+
+window {
+    main
 }

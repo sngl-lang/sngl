@@ -6,3 +6,6 @@ import . "sngl:ui/draw"
 func test() {
     var a = foreign("go:example.com/api", "Get") // ERROR(check) "foreign is a macro"
 }
+
+window {
+}

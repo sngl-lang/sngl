@@ -13,7 +13,7 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
@@ -47,4 +47,8 @@ func testAddingAnItemMountsOnlyIt(t Test, c main) {
 func testRemovingAnItemUnmountsOnlyIt(t Test, c main) {
     c.items = ["a"]
     t.assert(c.out.value == "+a,+b,-b")
+}
+
+window {
+    main
 }

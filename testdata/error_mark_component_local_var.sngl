@@ -2,9 +2,8 @@
 // var and const carry one just as a top-level one does, and an unknown macro
 // on either is the same error.
 import . "sngl:ui"
-import . "sngl:app"
 
-component main {
+component main node {
     #[nosuchmacro] // ERROR(check) "unknown macro \"nosuchmacro\""
     var x = 1
 
@@ -12,4 +11,8 @@ component main {
     const y = 2
 
     text(value=string(x) + string(y))
+}
+
+window {
+    main
 }

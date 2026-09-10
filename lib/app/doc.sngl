@@ -1,7 +1,0 @@
-// The application shell: the nodes that hold a program rather than draw it,
-// and the error channel that runs between them.
-//
-// `window` is the entry point and `errorBoundary` the catch. `error.raise`
-// is the throw those boundaries catch, which is why it sits here beside them
-// rather than with the widgets. The `timer` a program hangs periodic work off
-// is in `sngl:time`, with the `duration` that measures its interval.

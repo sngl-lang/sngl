@@ -25,6 +25,10 @@ func (c *checker) bindBuiltinRole(kind ir.BuiltinKind, sym ir.Symbol) {
 		bound = bindBuiltin(c, &c.windowComp, kind, sym) != nil
 	case ir.BuiltinContext:
 		bound = bindBuiltin(c, &c.contextComp, kind, sym) != nil
+	case ir.BuiltinErrorBoundary:
+		bound = bindBuiltin(c, &c.boundaryComp, kind, sym) != nil
+	case ir.BuiltinTreeRoot:
+		bound = bindBuiltin(c, &c.rootTree, kind, sym) != nil
 	case ir.BuiltinNull:
 		if v := bindBuiltin(c, &c.nullConst, kind, sym); v != nil {
 			// Neither the type nor the value can be spelled, so the written

@@ -20,7 +20,7 @@ stdout 'PASS'
 import . "sngl:ui"
 import . "sngl:test"
 
-component box {
+component box node {
     var xs list<int> = [1, 2]
     var note = ""
 
@@ -55,4 +55,7 @@ func testBreakMeansTheBodyRan(t Test, c box) {
 func testContinueMeansTheBodyRan(t Test, c box) {
     c.skip.click()
     t.assert(c.note == "2!")
+}
+
+window {
 }

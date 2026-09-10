@@ -14,3 +14,6 @@ func g(xs list<int>) int { // ERROR(check) "missing return"
         return 2
     }
 }
+
+window {
+}

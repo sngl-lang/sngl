@@ -14,9 +14,13 @@ output {
 
 var handler func() string = api.fetchHello
 
-component main {
+component main node {
     button(text="Run", @click { handler() })
     text(value="hi")
+}
+
+window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(): Promise<string> { return "hi"; }

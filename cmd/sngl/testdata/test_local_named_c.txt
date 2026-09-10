@@ -36,7 +36,7 @@ struct Counter {
     }
 }
 
-component main {
+component main node {
     var count Counter
 
     func tick() {
@@ -62,4 +62,8 @@ func testNoComponentParam(t Test) {
 func testComponentParamIsBound(t Test, screen main) {
     screen.tick()
     t.assert(screen.count.n == 1)
+}
+
+window {
+    main
 }

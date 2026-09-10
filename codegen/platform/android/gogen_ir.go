@@ -89,7 +89,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 // emitGoLibIR generates the Go source for the golib module using IR.
 func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	gc := golang.NewIRContext(ctx.ExprCtx)
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		gc = gc.ForComponent(main)
 	}
 	// go-lib funcs are emitted as free, exported package-level functions, so

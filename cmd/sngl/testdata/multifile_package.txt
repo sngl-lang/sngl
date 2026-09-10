@@ -31,80 +31,138 @@ sngl check nested/
 import . "sngl:ui"
 import "./pkg"
 
-component main {
+component main node {
     vbox {
         text(value="LIMIT is {pkg.LIMIT}")
         text(value="twice: {pkg.twice(pkg.LIMIT)}")
         pkg.Badge(label="Badge")
     }
 }
+
+window {
+    main
+}
 -- pkg/types.sngl --
+import ui "sngl:ui"
+
 enum Op { none, add }
 
 struct Pair {
     x int = 0
     op Op = Op.add
 }
+
+ui.window {
+}
 -- pkg/consts.sngl --
+import ui "sngl:ui"
+
 const LIMIT = 7
+
+ui.window {
+}
 -- pkg/funcs.sngl --
+import ui "sngl:ui"
+
 func twice(n int) => n * 2
 
 // Names a type from types.sngl and a const from consts.sngl.
 func widened(p Pair) => p.x + LIMIT
+
+ui.window {
+}
 -- pkg/views.sngl --
 import . "sngl:ui"
 
-component Badge(label = "") {
+component Badge(label = "") node {
     text(value=label)
+}
+
+window {
 }
 -- leak/app.sngl --
 import . "sngl:ui"
 import "./gfx"
 
-component main {
+component main node {
     gfx.Panel
+}
+
+window {
+    main
 }
 -- leak/gfx/parts.sngl --
 import . "sngl:ui"
 import draw "sngl:ui/draw"
 
-component Panel {
+component Panel node {
     draw.canvas(width=10px, height=10px) {
         draw.rect(x=0.0, y=0.0, w=10.0, h=10.0, style=draw.CanvasStyle{fill=#000000})
     }
 }
+
+window {
+}
 -- leak/gfx/types.sngl --
 import . "sngl:ui"
 
-component Sneaky {
+component Sneaky node {
     draw.canvas(width=10px, height=10px) {}
+}
+
+window {
 }
 -- twice/app.sngl --
 import . "sngl:ui"
 import "./shared"
 import "./user"
 
-component main {
+component main node {
     var op shared.Op = shared.Op.add
     text(value=user.describe(op))
 }
+
+window {
+    main
+}
 -- twice/shared/shared.sngl --
+import ui "sngl:ui"
+
 enum Op { none, add }
+
+ui.window {
+}
 -- twice/user/user.sngl --
 import "../shared"
+import ui "sngl:ui"
 
 func describe(o shared.Op) => o == shared.Op.add ? "add" : "none"
+
+ui.window {
+}
 -- nested/app.sngl --
 import . "sngl:ui"
 import "./outer"
 
-component main {
+component main node {
     text(value=outer.label())
+}
+
+window {
+    main
 }
 -- nested/outer/outer.sngl --
 import "../inner"
+import ui "sngl:ui"
 
 func label() => inner.NAME
+
+ui.window {
+}
 -- nested/inner/inner.sngl --
+import ui "sngl:ui"
+
 const NAME = "inner"
+
+ui.window {
+}

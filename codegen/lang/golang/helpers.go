@@ -27,6 +27,16 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 			componentFuncs[fn] = true
 		}
 	}
+	// A window owns funcs the way a component does, and its state is in the
+	// same Model -- so one of its funcs is a method too. Left out, a `press()`
+	// written in a window body was emitted free and named `m.c` with no
+	// receiver to read it from. A harness convention hid this: `component
+	// main` owned the state instead, and a window rarely had any.
+	for _, w := range pkg.Windows {
+		for _, fn := range w.Funcs {
+			componentFuncs[fn] = true
+		}
+	}
 	out := map[string]bool{}
 	for _, fn := range pkg.Funcs {
 		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] {

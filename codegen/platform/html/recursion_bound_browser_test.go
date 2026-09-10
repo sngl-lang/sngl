@@ -22,19 +22,18 @@ import (
 func TestRecursionBound_UnboundedRecursionReportsTheBound(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component chain(n int) {
+component chain(n int) node {
     text(value="[" + string(n) + "]")
     chain(n=n + 1)
 }
-component App() {
+component App() node {
     var on = true
     button(text="go", @click { on = !on })
     if on {
         chain(n=0)
     }
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()
@@ -58,21 +57,20 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestRecursionBound_TerminatingRecursionIsUntouched(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component chain(n int) {
+component chain(n int) node {
     text(value="[" + string(n) + "]")
     if n > 0 {
         chain(n=n - 1)
     }
 }
-component App() {
+component App() node {
     var d = 4
     button(text="go", @click { d = d + 1 })
     if d > 0 {
         chain(n=d)
     }
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()
@@ -101,19 +99,18 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestRecursionBound_AnUnrolledRecursionCarriesNoInstanceRuntime(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component countdown(n int) {
+component countdown(n int) node {
     text(value="[" + string(n) + "]")
     if n > 0 {
         countdown(n=n - 1)
     }
 }
-component App() {
+component App() node {
     var lbl = "go"
     button(text=lbl, @click { lbl = "went" })
     countdown(n=3)
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

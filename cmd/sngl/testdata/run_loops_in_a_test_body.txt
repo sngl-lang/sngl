@@ -20,7 +20,7 @@ import . "sngl:ui"
 import . "sngl:test"
 import "sngl:seq"
 
-component main {
+component main node {
     text(value="hi")
 }
 
@@ -66,4 +66,8 @@ func testMapEntries(t Test) {
         n = n + v + k.length() - 1
     }
     t.assert(n == 6)
+}
+
+window {
+    main
 }

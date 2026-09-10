@@ -4,7 +4,7 @@ import . "sngl:ui"
 // temporal conversion must be accepted. Previously nonConstCallRef hardcoded
 // only int/float/string/bool as const-safe cast names, so int32(..)/float32(..)
 // etc. wrongly errored "const initializer references non-const".
-component main {
+component main node {
     const A = int(5)
     const B = int32(5)
     const C = uint8(200)
@@ -14,4 +14,8 @@ component main {
     const G = float64(2.5)
 
     text(value="sized const casts")
+}
+
+window {
+    main
 }

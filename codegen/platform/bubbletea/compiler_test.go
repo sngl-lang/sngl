@@ -86,12 +86,13 @@ func TestFixtures(t *testing.T) {
 
 func TestGettersSetters(t *testing.T) {
 	src := `import . "sngl:ui"
+import ui "sngl:ui"
 struct Todo {
     text string
     done bool
 }
 
-component main {
+ui.window {
     var (
         count = 0
         todos list<Todo>
@@ -132,7 +133,8 @@ component main {
 // activation handlers stay unguarded.
 func TestOverlayFocusCapture(t *testing.T) {
 	src := `import . "sngl:ui"
-component main {
+import ui "sngl:ui"
+ui.window {
     var (
         showModal = false
         showDrawer = false

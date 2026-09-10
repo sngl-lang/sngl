@@ -18,7 +18,7 @@ func TestPlatformPackageDiagnosticsAreReported(t *testing.T) {
 	const platSource = `
 import sngl "sngl:ui"
 
-component Wrap() {
+component Wrap() sngl.node {
     sngl.text(value=nosuchthing)
 }
 `
@@ -26,7 +26,7 @@ component Wrap() {
 import . "sngl:ui"
 import "sngl:platform/extstub"
 
-component main {
+component main node {
     text(value="hi")
 }
 `
@@ -55,7 +55,7 @@ func TestPlatformPackageSharesStdlibIdentity(t *testing.T) {
 	const platSource = `
 import sngl "sngl:ui"
 
-component Wrap() {
+component Wrap() sngl.node {
     sngl.text(value="x")
 }
 `
@@ -63,7 +63,7 @@ component Wrap() {
 import . "sngl:ui"
 import "sngl:platform/extstub"
 
-component main {
+component main node {
     text(value="hi")
     extstub.Wrap {}
 }
@@ -158,7 +158,7 @@ func TestImportUnavailablePlatformIsAnError(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/unavailstub"
 
-component main {
+component main node {
     text(value="hi")
 }
 `

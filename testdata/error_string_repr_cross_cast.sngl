@@ -5,7 +5,6 @@
 // cast and `date(aColor)` type-checked.
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 
 window #home(title="Home", href="/") {
     const c = #ff8040

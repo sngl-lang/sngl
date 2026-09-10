@@ -4,13 +4,12 @@
 // without that the values are accepted and then reach nothing.
 
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:macro"
 
 component attrs(
     label string = "",
     #[wildcard("data[A-Za-z0-9]+")] data map<string, string>,
-) {
+) node {
     text(value=label)
     text(value="{data.length()}")
 }
@@ -22,7 +21,7 @@ component attrs(
 component surface(
     @click ClickEvent,
     #[wildcard("on[A-Z][A-Za-z]*")] @event,
-) {
+) node {
     text(value="x")
 }
 
@@ -31,7 +30,7 @@ component surface(
 // names stand in one position — a visual node's — which is the only place they
 // are looked for.
 #[wildcard("box[A-Za-z0-9]*", "which")]
-component anyBox(which string = "") {
+component anyBox(which string = "") node {
     text(value=which)
 }
 
@@ -39,21 +38,19 @@ struct rowAttrs {
     dataRole string = "row"
 }
 
-component main() {
-    window {
-        attrs(label="hi", dataRole="row", dataIndex7="3")
-        // A name the wildcard covers reaches the component it belongs to, and
-        // arrives in the prop `into` named.
-        boxRed()
-        // A spread field is a written prop name like any other, so one the
-        // wildcard covers is collected into it rather than becoming an arg
-        // named after a prop that does not exist — which every backend
-        // dropped.
-        attrs(...rowAttrs{})
-        // A declared event and two the wildcard covers, on one node.
-        surface(@click {}, @onHover {}, @onDragEnd {})
-        // The declared name still binds: a wildcard adds names, it does not
-        // take its own away.
-        attrs(data={dataRole="plain"})
-    }
+window {
+    attrs(label="hi", dataRole="row", dataIndex7="3")
+    // A name the wildcard covers reaches the component it belongs to, and
+    // arrives in the prop `into` named.
+    boxRed()
+    // A spread field is a written prop name like any other, so one the
+    // wildcard covers is collected into it rather than becoming an arg
+    // named after a prop that does not exist — which every backend
+    // dropped.
+    attrs(...rowAttrs{})
+    // A declared event and two the wildcard covers, on one node.
+    surface(@click {}, @onHover {}, @onDragEnd {})
+    // The declared name still binds: a wildcard adds names, it does not
+    // take its own away.
+    attrs(data={dataRole="plain"})
 }

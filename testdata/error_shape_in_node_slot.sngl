@@ -1,0 +1,14 @@
+// The asymmetry this change closes. Membership used to be enforced *into* a
+// named tree and never *out of* the unnamed one — `checkTreeMembership` opened
+// with `if want == nil { return }` — so a canvas rejected a widget and a vbox
+// accepted a shape. A `node` slot is a family like any other now, and a
+// `draw.shape` is not one of its members.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+ui.window {
+    ui.vbox {
+        d.circle(cx=1.0, cy=1.0, r=4.0) // ERROR(check) "expected node component in vbox, got circle"
+    }
+}

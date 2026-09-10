@@ -22,7 +22,6 @@ deny out/none/html/index.html `setAttribute\("style", \{` -- the style attribute
 
 -- style.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 output {
@@ -31,26 +30,24 @@ output {
     }
 }
 
-component main {
+window {
     var rows list<string> = ["a"]
 
-    window {
-        html.div(style={
-            display = Display.inlineBlock,
-            flexDirection = FlexDirection.rowReverse,
-            justifyContent = Justification.spaceBetween,
-            alignItems = Alignment.stretch,
-            minWidth = 120,
-            fontFamily = "Iosevka, monospace",
-            borderBottom = "1px solid #ccc",
-            borderLeft = "2px solid #000",
-            borderCollapse = "collapse",
-            borderStyle = BorderStyle.dashed,
-            cursor = "pointer",
-        })
-        for var r = rows {
-            html.span(textContent=r, style={display=Display.inlineBlock, cursor="pointer"})
-        }
+    html.div(style={
+        display = Display.inlineBlock,
+        flexDirection = FlexDirection.rowReverse,
+        justifyContent = Justification.spaceBetween,
+        alignItems = Alignment.stretch,
+        minWidth = 120,
+        fontFamily = "Iosevka, monospace",
+        borderBottom = "1px solid #ccc",
+        borderLeft = "2px solid #000",
+        borderCollapse = "collapse",
+        borderStyle = BorderStyle.dashed,
+        cursor = "pointer",
+    })
+    for var r = rows {
+        html.span(textContent=r, style={display=Display.inlineBlock, cursor="pointer"})
     }
 }
 -- out/none/html/index.html --

@@ -20,7 +20,7 @@ import (
 const effectRunSrc = `
 import . "sngl:ui"
 
-component main {
+window {
     var (
         n = 0
         log list<string> = []

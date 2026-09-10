@@ -15,10 +15,14 @@ output {
     }
 }
 
-component main {
+component main node {
     var raw int = 42
     var v int = int.clamp(raw, 0, 10)
     text(value="{v}")
+}
+
+window {
+    main
 }
 -- out/kotlin/android/app/build.gradle.kts --
 plugins {
@@ -142,10 +146,10 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var raw by remember { mutableStateOf(42) }
-    var v by remember { mutableStateOf(maxOf(0, minOf(raw, 10))) }
+    var raw__inst0 by remember { mutableStateOf(42) }
+    var v__inst0 by remember { mutableStateOf(maxOf(0, minOf(raw__inst0, 10))) }
 
-    Text(text = v.toString(), modifier = Modifier.safeDrawingPadding())
+    Text(text = v__inst0.toString(), modifier = Modifier.safeDrawingPadding())
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/ui/theme/Theme.kt --
 package test.sngl.app.ui.theme
@@ -255,14 +259,14 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { raw: 42, v: null };
-  state.v = Math.max(0, Math.min(state.raw, 10));
+  var state = { raw__inst0: 42, v__inst0: null };
+  state.v__inst0 = Math.max(0, Math.min(state.raw__inst0, 10));
   function String(v) {
     return "" + v;
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = String(state.v);
+    __n0.textContent = String(state.v__inst0);
   }
   __sngl_init();
 })();

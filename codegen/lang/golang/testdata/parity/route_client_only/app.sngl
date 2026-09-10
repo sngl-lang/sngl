@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // Client-only HTTP route window: the @click handler mutates SNGL state only
 // (no go: native call), so it stays pure client-side JS. This fixture is the
@@ -7,15 +6,13 @@ import . "sngl:app"
 // byte-identical as the front/back-end placement feature lands.
 output { go { html } }
 
-component main {
+window #app(title="t", href="/") {
     var count = 0
 
-    window #app(title="t", href="/") {
-        vbox {
-            button(text="Inc", @click {
-                count = count + 1
-            })
-            text(value="count {count}")
-        }
+    vbox {
+        button(text="Inc", @click {
+            count = count + 1
+        })
+        text(value="count {count}")
     }
 }

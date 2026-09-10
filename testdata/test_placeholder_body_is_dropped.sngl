@@ -10,7 +10,7 @@ import . "sngl:test"
 // The drop is asserted where it is observable —
 // cmd/sngl/testdata/generate_int_parse.txt, where the const folder had been
 // baking the placeholder's 0 into the output.
-component main {
+component main node {
     const parsed = int.parse("FF", 16)
     text(value="{parsed}")
 }
@@ -18,4 +18,8 @@ component main {
 func testPlaceholderDoesNotFold(t Test, c main) {
     t.assert(c.parsed == 255)
     t.assert(int.parse("FF", 16) == 255)
+}
+
+window {
+    main
 }

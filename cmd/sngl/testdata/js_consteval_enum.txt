@@ -46,7 +46,7 @@ const c = lib.pickColor()
 const l = lib.pickLevel()
 const s = lib.pickCode()
 
-component main {
+window {
     var col = c
     var lvl = l
     var code = s

@@ -1,6 +1,10 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     nonexistent { // ERROR(check) "unknown component"
     }
+}
+
+window {
+    main
 }

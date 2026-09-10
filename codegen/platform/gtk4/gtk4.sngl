@@ -22,6 +22,7 @@
 import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:macro"
+import tree "sngl:tree"
 import build "sngl:build"
 
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
@@ -179,6 +180,7 @@ component ui.popover[platform] {
 // one compiled clean and simply never ticked, because the analysis read a list
 // the checker had hoisted every timer onto and this platform never looked at
 // it.
+#[tree.none]
 #[intrinsic("gtk4:Timer")]
 component Timer(
     interval time.duration,

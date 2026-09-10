@@ -4,9 +4,12 @@
 
 import . "sngl:ui"
 
-component outer() {
+component outer() node {
     var x =
 
     component inner() { // ERROR(parse) "unexpected \"component\", expected"
     }
+}
+
+window {
 }

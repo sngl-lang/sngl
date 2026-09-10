@@ -15,8 +15,12 @@ import lib "js:./lib"
 
 const greeting = lib.shout("hello world")
 
-component main {
+component main node {
     text(value=greeting)
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 /** @sngl-pure */

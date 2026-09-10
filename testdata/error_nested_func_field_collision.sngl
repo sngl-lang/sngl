@@ -5,6 +5,10 @@ struct Bad {
     func x() => 1 // ERROR(check) "duplicate declaration"
 }
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }

@@ -20,7 +20,7 @@ func sleep(ns int)
 #[go.async]
 func host() string
 
-component main {
+window {
     var (
         greeting = "idle"
         busy = false

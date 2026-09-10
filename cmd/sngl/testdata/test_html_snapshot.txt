@@ -19,11 +19,15 @@ import . "sngl:test"
 
 output { none { html } }
 
-component main {
+component main node {
     var name = "world"
     text(value=name)
 }
 
 func testInitial(t Test, c main) {
     t.snapshot("initial")
+}
+
+window {
+    main
 }

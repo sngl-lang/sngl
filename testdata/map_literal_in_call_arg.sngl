@@ -11,3 +11,6 @@ func takesMap(m map<string, int>) int {
 func test() {
     var n = takesMap({a=1, b=2})
 }
+
+window {
+}

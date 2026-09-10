@@ -33,8 +33,12 @@ import . "sngl:ui"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     var count = 0
     text(value=string(count))
     button(text="+", @click { count += 1 })
+}
+
+window {
+    main
 }

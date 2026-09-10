@@ -1,0 +1,3 @@
+text(value="body")
+button(text="Go", @click)
+text(value="")

@@ -6,7 +6,7 @@ struct Pair {
     val int = 0
 }
 
-component main {
+component main node {
     const (
         MSG = "count: {string(10)}"
         ITEMS = [1, 2, 3]
@@ -44,4 +44,8 @@ func testBasic(t Test, c main) {
     t.assert(c.count == 0)
     t.assert(c.flag == true)
     t.assert(c.label == "hello")
+}
+
+window {
+    main
 }

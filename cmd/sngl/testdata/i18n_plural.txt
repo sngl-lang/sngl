@@ -9,8 +9,12 @@ import "sngl:i18n"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     var count = 5
     var msg = $"You have {count, plural, one{message} other{messages}}"
     text(value=msg)
+}
+
+window {
+    main
 }

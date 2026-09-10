@@ -1,9 +1,12 @@
 import . "sngl:ui"
 
-component Counter(label string, :count int, @click) {
+component Counter(label string, :count int, @click) node {
     var internal int
 
     func increment() {
         count += 1
     }
+}
+
+window {
 }

@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import "sngl:platform/html"
 
-component Markdown(src = "") {
+component Markdown(src = "") node {
     if PLATFORM == html.platform {
         html.div(innerHTML=src)
     } else {

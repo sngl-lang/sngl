@@ -3,5 +3,5 @@ import . "sngl:ui"
 // HOVER(Counter) "component Counter"
 // HOVER(Counter) "![Counter]("
 // HOVER(Counter) ".png)"
-component Counter(label string) { vbox {} }
-component example_Counter { Counter(label="3 clicks") }
+component Counter(label string) node { vbox {} }
+component example_Counter node { Counter(label="3 clicks") }

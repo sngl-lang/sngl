@@ -8,6 +8,10 @@ component sngl.text[html.platform](extra string) { // ERROR(check) "its type bel
     span(textContent=value) {}
 }
 
-component main {
+component main sngl.node {
     text(value="hi")
+}
+
+sngl.window {
+    main
 }

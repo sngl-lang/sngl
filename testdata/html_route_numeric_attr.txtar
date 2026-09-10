@@ -10,7 +10,6 @@ one per output block; an archive declares both targets from the one source.
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 output {
@@ -22,12 +21,11 @@ output {
     }
 }
 
-component main {
+window {
     var n string = ""
-    window {
-        textarea(:value=n, rows=4)
-        html.img(src="a.png", width="100", height="50") {}
-    }
+
+    textarea(:value=n, rows=4)
+    html.img(src="a.png", width="100", height="50") {}
 }
 -- out/go/html/server.go --
 package ui

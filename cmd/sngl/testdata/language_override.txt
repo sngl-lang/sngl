@@ -24,11 +24,10 @@ stderr 'already has an implementation for "go"'
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:language/go"
 
-component Badge(value string) {
+component Badge(value string) node {
     text(value="default " + value)
 }
 
@@ -40,18 +39,15 @@ component Badge[html.platform] {
     html.span(textContent="html " + value)
 }
 
-component main {
-    window #w(title="t") {
-        Badge(value="x")
-    }
+window #w(title="t") {
+    Badge(value="x")
 }
 
 -- dup_language.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:language/go"
 
-component Badge(value string) {
+component Badge(value string) node {
     text(value=value)
 }
 
@@ -63,8 +59,6 @@ component Badge[go.language] {
     text(value="b" + value)
 }
 
-component main {
-    window #w(title="t") {
-        Badge(value="x")
-    }
+window #w(title="t") {
+    Badge(value="x")
 }

@@ -2,18 +2,18 @@ caps: NoInlineComponents
 -- input.sngl --
 import . "sngl:ui"
 
-component Counter(start = 0) {
+component Counter(start = 0) node {
     var n = start
 
     text(value=string(n))
 }
 
-component main {
+component main node {
     Counter(start=5)
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main node {
     var n__inst0 int = 5
     text(value=string(n__inst0))
 }

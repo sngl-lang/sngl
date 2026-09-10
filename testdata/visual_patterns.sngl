@@ -1,13 +1,13 @@
 import . "sngl:ui"
 
-component Card(title = "Card", subtitle = "", children ...component) {
+component Card(title = "Card", subtitle = "", children ...component) node {
     vbox {
         text(value=title)
         text(value=subtitle)
     }
 }
 
-component main {
+component main node {
     var (
         items = ["a", "b", "c"]
         show = true
@@ -25,4 +25,8 @@ component main {
         }
         button(text="Click", @click { count += 1 })
     }
+}
+
+window {
+    main
 }

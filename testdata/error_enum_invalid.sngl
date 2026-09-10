@@ -2,8 +2,12 @@ import . "sngl:ui"
 
 enum Status { active, inactive, pending }
 
-component main {
+component main node {
     var status Status = unknown // ERROR(check) "undefined: unknown"
 
     text(value=status)
+}
+
+window {
+    main
 }

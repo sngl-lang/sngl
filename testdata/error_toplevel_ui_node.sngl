@@ -1,0 +1,14 @@
+// The package body is a slot for `app.root`, and that is the whole of what
+// makes a window top-level: no syntactic rule names the construct. A widget
+// written there belongs to another family, so it is the ordinary
+// tree-membership error rather than a rule about file structure.
+//
+// A program's body used to be a render root of its own, which passRootWindow
+// wrapped in an implied window.
+
+import ui "sngl:ui"
+
+ui.text(value="top level") // ERROR(check) "expected root component at the root of a file, got text"
+
+ui.window {
+}

@@ -28,8 +28,7 @@ import (
 func TestPlacement_FastPathIsTaken(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component App() {
+component App() node {
     var rows list<string> = ["a", "b"]
     var picked string = ""
     text(value="picked=" + picked)
@@ -38,7 +37,7 @@ component App() {
     }
     button(text="add", @click { rows = ["a", "b", "c"] })
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

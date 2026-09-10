@@ -3,11 +3,9 @@
 // prop is accepted only when the component declares a prop of that name, or an
 // event of exactly that name; matching the wildcard is not enough, or a
 // misspelled DOM property would satisfy "any event name" perfectly well.
-import . "sngl:app"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-component main {
-    window {
-        html.div(innerTxt="x") // ERROR(check) "unknown prop \"innerTxt\" on component element"
-    }
+ui.window {
+    html.div(innerTxt="x") // ERROR(check) "unknown prop \"innerTxt\" on component element"
 }

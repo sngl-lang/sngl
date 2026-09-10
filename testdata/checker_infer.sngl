@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     var count int = 0
     var name string = "hello"
     var active bool = true
@@ -21,4 +21,8 @@ component main {
     func listLen() => items.length()
 
     text(value=greeting)
+}
+
+window {
+    main
 }

@@ -14,10 +14,9 @@ import "testing"
 func TestInstanceCanvasDrawsAndRedraws(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:ui/draw"
 
-component gauge(level = 0.0) {
+component gauge(level = 0.0) node {
     var hits = 0.0
     button(text="hit", @click { hits += 20.0 })
     canvas(width=100px, height=100px) {
@@ -25,14 +24,14 @@ component gauge(level = 0.0) {
     }
 }
 
-component App() {
+component App() node {
     var levels list<float> = [10.0, 20.0]
     for var l = levels {
         gauge(level=l)
     }
 }
 
-component main { window(title="C", href="/index.html") { App() } }
+window(title="C", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

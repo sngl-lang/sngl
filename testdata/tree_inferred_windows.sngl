@@ -1,0 +1,20 @@
+// A body of windows is evidence too. A window is a member of the family the
+// package body accepts, so a component that renders them is one -- which is
+// what `component pages() root` says by hand in window_in_main.sngl, and what
+// this one is left to work out.
+
+import . "sngl:ui"
+
+var count = 0
+
+component pages() {
+    window #home(title="Home", href="/") {
+        text(value="Count: {count}")
+    }
+
+    window #settings(title="Settings", href="/settings.html") {
+        text(value="Config")
+    }
+}
+
+pages()

@@ -3,6 +3,10 @@
 // formatter, including alongside a replace clause.
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }

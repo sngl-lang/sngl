@@ -10,6 +10,7 @@ import ui "sngl:ui"
 import time "sngl:time"
 import . "sngl:macro"
 import . "sngl:internal/marks"
+import tree "sngl:tree"
 import build "sngl:build"
 
 // The `bubbletea` node of a build directive: `output { go { bubbletea() } }`.
@@ -79,7 +80,7 @@ component Layout(
     // Body text revealed, dim, under the focused trigger this Layout wraps.
     tooltip string,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("bubbletea:Styled")]
 component Styled(
@@ -87,7 +88,7 @@ component Styled(
     focus Focus,
     events list<Event>,
     style ui.Style,
-) {}
+) ui.node {}
 
 #[intrinsic("bubbletea:Widget")]
 component Widget(
@@ -106,7 +107,7 @@ component Widget(
     rows list<list<string>>,
     value float,
     max float,
-) {}
+) ui.node {}
 
 #[intrinsic("bubbletea:Overlay")]
 component Overlay(
@@ -114,7 +115,7 @@ component Overlay(
     dim bool,
     style ui.Style,
     children ...component,
-) {}
+) ui.node {}
 
 // --- Core Layout ---
 
@@ -426,6 +427,7 @@ component ui.avatar[platform] {
 //
 // The gate is a prop rather than the position the node is written at, because
 // arming happens in Init and Update, outside the view the position describes.
+#[tree.none]
 #[intrinsic("bubbletea:Timer")]
 component Timer(
     interval time.duration,

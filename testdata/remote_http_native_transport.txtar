@@ -14,15 +14,12 @@ deny out/go/bubbletea/model.go `httpGet` -- a native declaration *is* the foreig
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import http "sngl:remote/http"
 
-component main {
+window(title="get") {
     var url = "https://example.com/"
 
-    window(title="get") {
-        text(value=http.get(url).body)
-    }
+    text(value=http.get(url).body)
 }
 
 output {

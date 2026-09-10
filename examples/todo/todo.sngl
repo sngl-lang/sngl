@@ -14,13 +14,13 @@ struct Todo {
     done bool = false
 }
 
-component main {
+ui.window {
     var (
         newTodo = ""
         todos list<Todo> = [
-            {text = "Buy groceries", done = false},
-            {text = "Walk the dog", done = true},
-            {text = "Write SNGL docs", done = false},
+            {text="Buy groceries", done=false},
+            {text="Walk the dog", done=true},
+            {text="Write SNGL docs", done=false},
         ]
     )
 

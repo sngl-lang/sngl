@@ -2,20 +2,23 @@ package lower
 
 import "git.duckfam.us/jonathan/sngl/ir"
 
-// passRootWindow moves the package's own body into an implied root window.
+// passRootWindow lifts the windows a package body holds onto pkg.Windows.
 //
-// A program's top level is what it shows when it opens; the windows it
-// declares are the ones it navigates to from there. Both may be written, so
-// the root is not "the window when there are no others" -- it is first among
-// them.
+// The body is a slot for the root tree, and a window is that tree's one
+// renderable member -- so what a program writes at the top level is windows,
+// possibly through a component of its own that renders them. Downstream there
+// is one shape for a window and no second one for a body: two dozen lowering
+// passes and five platforms already walk pkg.Windows, and every bug in #133
+// and #135 came from a body being a second thing each of them had to know.
 //
-// Making it a real ir.Window rather than teaching every consumer about
-// ir.Package.Body is the whole point. Two dozen lowering passes and five
-// platforms already walk pkg.Windows; a second shape carrying a body is a
-// second thing each of them has to know, and every bug in #133 and #135 came
-// from exactly that. After this pass a package body is not a special case
-// anywhere downstream -- it is a window with no declaration behind it, which
-// is a shape codegen already had from a lone main component.
+// It used to wrap the body *in* a window instead, because a top-level `vbox`
+// was what a program rendered. That is now a checker error -- a `ui` node is
+// not a member of the root tree -- so there is nothing left to wrap.
+//
+// A window inside a root-level `if` or `for` is lifted too. The branch is a
+// build-time one by then: the optimizer has folded what it can, and a
+// condition that survives says which windows a build contains rather than
+// which one is open.
 //
 // The body's state stays in pkg.Vars, where the checker put it and where every
 // consumer already reads it: the window owns the body, the package owns the
@@ -27,11 +30,36 @@ var passRootWindow = pass{
 }
 
 func applyRootWindow(pkg *ir.Package, _ Caps, _ Options) error {
-	if pkg == nil || len(pkg.Body) == 0 {
+	if pkg == nil {
 		return nil
 	}
-	root := &ir.Window{Body: pkg.Body, Checked: true}
-	pkg.Windows = append([]*ir.Window{root}, pkg.Windows...)
+	lifted := liftWindows(pkg.Body)
 	pkg.Body = nil
+	// A component that names the root family renders windows rather than
+	// widgets, so its body is a second place they are written. Left there, a
+	// backend walking the component as a view meets a window in the middle of
+	// one -- which bubbletea panics on and the others mis-render.
+	for _, comp := range pkg.Components {
+		if !ir.IsAppRootTree(comp.Tree) {
+			continue
+		}
+		lifted = append(lifted, liftWindows(comp.Body)...)
+		comp.Body = nil
+	}
+	pkg.Windows = append(lifted, pkg.Windows...)
 	return nil
+}
+
+// liftWindows is every window a block holds, including those a build-time
+// branch put there.
+func liftWindows(stmts []ir.Stmt) []*ir.Window {
+	var out []*ir.Window
+	ir.WalkStmts(stmts, func(s ir.Stmt) error {
+		if w, ok := s.(*ir.Window); ok {
+			out = append(out, w)
+			return ir.SkipDir
+		}
+		return nil
+	})
+	return out
 }

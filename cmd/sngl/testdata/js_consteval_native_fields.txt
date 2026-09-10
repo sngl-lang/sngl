@@ -27,7 +27,7 @@ import lib "js:./lib"
 
 const total = lib.sum(lib.Point{x = 10.0, y = 20.0})
 
-component main {
+window {
     text(value=string(total))
     var p = lib.origin()
     text(value=string(p.x))

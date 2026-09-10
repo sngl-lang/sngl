@@ -2,6 +2,10 @@ import . "sngl:ui"
 
 func main_helper() => this // ERROR(check) "undefined: this"
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }

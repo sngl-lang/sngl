@@ -12,7 +12,7 @@ import "testing"
 const effectLoopElseSrc = `
 import . "sngl:ui"
 
-component main {
+window {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []

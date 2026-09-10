@@ -19,7 +19,7 @@ func lowerOne(t *testing.T, src string) *ir.Package {
 	if len(errs) > 0 {
 		t.Fatalf("check: %v", errs)
 	}
-	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{Platform: "html"}); err != nil {
+	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{Platform: "html", RootComponent: "main"}); err != nil {
 		t.Fatalf("inline: %v", err)
 	}
 	return pkg
@@ -44,7 +44,9 @@ func componentNamed(pkg *ir.Package, name string) *ir.Component {
 // an effect over setInterval rather than as a primitive of its own.
 func TestAnInvisibleComponentUnderAReactiveIfIsInlined(t *testing.T) {
 	pkg := lowerOne(t, `
-component held(period int) {
+import . "sngl:ui"
+
+component held(period int) node {
     var handle = 0
 
     effect(
@@ -54,7 +56,7 @@ component held(period int) {
     )
 }
 
-component main {
+component main node {
     var shown = false
 
     button(text="toggle", @click { shown = !shown })
@@ -85,7 +87,9 @@ component main {
 // stands.
 func TestAnInvisibleComponentUnderAReactiveForStaysAnInstance(t *testing.T) {
 	pkg := lowerOne(t, `
-component held(period int) {
+import . "sngl:ui"
+
+component held(period int) node {
     var handle = 0
 
     effect(
@@ -95,7 +99,7 @@ component held(period int) {
     )
 }
 
-component main {
+component main node {
     var periods = [10, 20]
 
     button(text="add", @click { periods.push(30) })
@@ -120,13 +124,13 @@ func TestAVisibleComponentUnderAReactiveIfStaysAnInstance(t *testing.T) {
 	pkg := lowerOne(t, `
 import . "sngl:ui"
 
-component held(label string) {
+component held(label string) node {
     var n = 0
 
     text(value=label + string(n))
 }
 
-component main {
+component main node {
     var shown = false
 
     button(text="toggle", @click { shown = !shown })

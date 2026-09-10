@@ -2,7 +2,7 @@
 // only place it means anything.
 import . "sngl:ui"
 
-component main {
+component main node {
     output { // ERROR(check) "output may only be written at the root of a file"
         go {
             bubbletea()
@@ -10,4 +10,8 @@ component main {
     }
 
     text(value="hi")
+}
+
+window {
+    main
 }

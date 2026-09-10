@@ -7,7 +7,11 @@
 import . "sngl:ui"
 import . "sngl:time"
 
-component main {
+component main node {
     timer(interval=1s, @tick(x int) {})
     text(value="x")
+}
+
+window {
+    main
 }

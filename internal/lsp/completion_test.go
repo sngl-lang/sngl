@@ -34,25 +34,25 @@ func TestCompletionContext(t *testing.T) {
 		},
 		{
 			"inside component",
-			"component main {\n    \n}",
+			"component main node {\n    \n}",
 			2, 5,
 			lspcore.CtxComponent,
 		},
 		{
 			"inside visual node",
-			"component main {\n    vbox {\n        \n    }\n}",
+			"component main node {\n    vbox {\n        \n    }\n}",
 			3, 9,
 			lspcore.CtxVisualNode,
 		},
 		{
 			"event handler",
-			"component main {\n    vbox {\n        @click\n    }\n}",
+			"component main node {\n    vbox {\n        @click\n    }\n}",
 			3, 9,
 			lspcore.CtxEventHandler,
 		},
 		{
 			"style context",
-			"component main {\n    vbox {\n        style={gap\n    }\n}",
+			"component main node {\n    vbox {\n        style={gap\n    }\n}",
 			3, 9,
 			lspcore.CtxStyleProp,
 		},
@@ -109,7 +109,7 @@ enum Status {
     inactive
 }
 
-component main {
+component main node {
     vbox {
     }
 }

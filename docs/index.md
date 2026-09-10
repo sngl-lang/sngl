@@ -29,7 +29,7 @@ struct Todo {
     done bool = false
 }
 
-component main {
+component main node {
     var (
         newTodo = ""
         todos list<Todo> = []

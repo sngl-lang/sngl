@@ -24,10 +24,13 @@ output(name="Demo", icon="favicon.png") {
     }
 }
 
-component main {
+component main ui.node {
     ui.text(value="hello")
 }
 
+ui.window {
+    main
+}
 -- platform_leak.sngl --
 import ui "sngl:ui"
 
@@ -37,10 +40,13 @@ output {
     }
 }
 
-component main {
+component main ui.node {
     ui.text(value="hello")
 }
 
+ui.window {
+    main
+}
 -- lang_leak.sngl --
 import ui "sngl:ui"
 
@@ -50,6 +56,10 @@ output {
     }
 }
 
-component main {
+component main ui.node {
     ui.text(value="hello")
+}
+
+ui.window {
+    main
 }

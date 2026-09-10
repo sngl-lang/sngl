@@ -48,11 +48,24 @@ const (
 	// how the most recent attempt failed, and whether one is in flight. See
 	// sngl:remote.
 	BuiltinRemote BuiltinKind = "remote"
-	// TreeDefault is the tree an ordinary component belongs to; naming it is
-	// the same as naming no tree.
-	BuiltinTreeDefault BuiltinKind = "treeDefault"
 	// TreeOne narrows a slot's content to exactly one member.
 	BuiltinTreeOne BuiltinKind = "treeOne"
+
+	// The three trees the compiler itself has to name, each marked on the
+	// struct that declares it so no phase spells a package and a name.
+	//
+	// TreeRoot is the tree a package body accepts: the windows a program opens
+	// and the build directive saying what it compiles to. It is what makes
+	// those top-level without a syntactic rule naming them.
+	BuiltinTreeRoot BuiltinKind = "treeRoot"
+	// TreeNode is the widget family. It is the one tree whose members are
+	// ordinary components -- a button composes away into its caller the way
+	// any wrapper does -- so the passes asking "is this rendered rather than
+	// composed" have to tell it from a specialised family.
+	BuiltinTreeNode BuiltinKind = "treeNode"
+	// TreeShape is the drawing tree. passCanvas emits that package's own
+	// primitives, so it is the one specialised tree there are rules about.
+	BuiltinTreeShape BuiltinKind = "treeShape"
 
 	// Built-in visual nodes. Unlike the type marks above, these annotate a
 	// component declaration: the checker dispatches a visual node to the
@@ -125,7 +138,19 @@ func (b BuiltinKind) IsUnit() bool {
 // is resolved rather than constructed as a type. Nothing builds an ir.Type from
 // one, which is why it is not IsGeneric.
 func (b BuiltinKind) IsSlotBound() bool {
-	return b == BuiltinTreeOne || b == BuiltinTreeDefault
+	return b == BuiltinTreeOne
+}
+
+// IsTreeRole reports whether the kind marks a tree the compiler itself has to
+// name. Three do -- the package body's, the widget family, and the drawing
+// tree -- because a phase asks after each by role rather than by declaration.
+// Every other tree is compared by declaration and never spelled.
+func (b BuiltinKind) IsTreeRole() bool {
+	switch b {
+	case BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape:
+		return true
+	}
+	return false
 }
 
 // IsGeneric reports whether the kind is a generic type constructor
@@ -170,7 +195,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
 		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption, BuiltinRemote,
-		BuiltinTreeOne, BuiltinTreeDefault,
+		BuiltinTreeOne, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinOutput,
 		BuiltinPlatform, BuiltinLanguage,
@@ -182,5 +207,5 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognised string).
 func (b BuiltinKind) Valid() bool {
 	return b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsNode() || b.IsDirective() || b.IsTargetID() || b.IsConst()
+		b.IsSlotBound() || b.IsTreeRole() || b.IsNode() || b.IsDirective() || b.IsTargetID() || b.IsConst()
 }

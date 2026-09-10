@@ -3,7 +3,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component mapIntKeys {
+component mapIntKeys node {
     var grades map<int, string> = {
         1 = "one",
         2 = "two",
@@ -29,4 +29,7 @@ func testMapBoolKeyedLookup(t Test, c mapIntKeys) {
     t.assert(c.flags.length() == 2)
     t.assert(c.flags[true] == "yes")
     t.assert(c.flags[false] == "no")
+}
+
+window {
 }

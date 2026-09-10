@@ -7,11 +7,12 @@
 //	keypad/   the keys, as data, and the grid that lays them out
 //
 // What is left here is the wiring: one `Calc`, one handler that maps a key to
-// the method that answers it, and a window to hang them in. The tests are in
-// calc_test.sngl beside this file.
+// the method that answers it, and a window to hang it in. The window is at the
+// root of the file, because that is what the root tree accepts and a `node`
+// component is not a place a window belongs. The tests are in calc_test.sngl
+// beside this file.
 
 import ui "sngl:ui"
-import app "sngl:app"
 import "./calc"
 import "./keypad"
 import "./readout"
@@ -25,7 +26,7 @@ output {
     kotlin { android }
 }
 
-component main {
+component main ui.node {
     var state calc.Calc
 
     // One key, one method. The calculator never edits itself: each method
@@ -58,10 +59,12 @@ component main {
         }
     }
 
-    app.window #calculator(title="Calculator", href="/") {
-        ui.vbox(style={flex=1, background=#15171c}) {
-            readout.Readout(entry=state.entry, pending=state.pending())
-            keypad.Keypad(@press(k) { press(k) })
-        }
+    ui.vbox(style={flex=1, background=#15171c}) {
+        readout.Readout(entry=state.entry, pending=state.pending())
+        keypad.Keypad(@press(k) { press(k) })
     }
+}
+
+ui.window #calculator(title="Calculator", href="/") {
+    main
 }

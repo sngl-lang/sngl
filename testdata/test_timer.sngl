@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -21,7 +20,7 @@ func testTickRespectsActiveVar(t Test, c main) {
     t.assert(c.progress == 0)
 }
 
-component main {
+component main node {
     var (
         progress float = 0
         running = true
@@ -32,4 +31,8 @@ component main {
     })
 
     text(value=string(progress))
+}
+
+window {
+    main
 }

@@ -15,9 +15,13 @@ grep 'toUpperCase' out/index.html
 import . "sngl:ui"
 import lib "js:./lib"
 
-component main {
+component main node {
     var greeting = lib.shout("hello world")
     text(value=greeting)
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 export function shout(s: string): string {

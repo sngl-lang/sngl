@@ -91,9 +91,24 @@ func (*SlotInst) stmtNode() {}
 // resolves each fallible call site beneath this node to Handler unless
 // an inner boundary or per-call handler takes precedence.
 type ErrorBoundary struct {
-	AST      *ast.VisualNode
-	Handler  *EventHandler // the @error handler; required
+	AST     *ast.VisualNode
+	Handler *EventHandler // the @error handler; nil when only Failed was written
+	// Children is what the boundary renders until it catches, and Failed what
+	// it renders after -- the `failed` slot's population, held to the same
+	// tree as Children.
+	//
+	// Only the checker and passBoundaryFailed see a non-empty Failed. That
+	// pass rewrites the pair into a reactive `if` over a flag its @error
+	// handler sets, so by codegen a boundary is the passthrough it has always
+	// been and no platform emitter grew a case.
 	Children []Stmt
+	Failed   []Stmt `json:",omitempty"`
+	// FailedSlot is what the declaration calls that slot, kept so Convert can
+	// write the population back out under the name the program wrote. The
+	// checker finds the slot by shape rather than by name -- it is the one
+	// non-rest slot the marked component declares -- so nothing in Go spells
+	// `failed`, and renaming it in the library needs no Go edit.
+	FailedSlot string `json:",omitempty"`
 }
 
 func (*ErrorBoundary) stmtNode() {}

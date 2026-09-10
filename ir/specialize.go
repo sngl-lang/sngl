@@ -165,6 +165,7 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 				walk(n.Children)
 			case *ErrorBoundary:
 				walk(n.Children)
+				walk(n.Failed)
 			}
 		}
 	}

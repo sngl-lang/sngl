@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -23,7 +22,7 @@ func testUnfilledSlotRendersItsFallback(t Test, c bare) {
     t.assert(c.fallback.value == "nothing supplied")
 }
 
-component frame(children ...component, header component) {
+component frame(children ...component, header component) node {
     vbox {
         header {}
         text #own(value="frame's own")
@@ -31,7 +30,7 @@ component frame(children ...component, header component) {
     }
 }
 
-component bare(children ...component) {
+component bare(children ...component) node {
     vbox {
         children {
             text #fallback(value="nothing supplied")
@@ -39,7 +38,7 @@ component bare(children ...component) {
     }
 }
 
-component main {
+component main node {
     var title = "Hello"
 
     frame {
@@ -48,4 +47,8 @@ component main {
             text #head(value=title)
         }
     }
+}
+
+window {
+    main
 }

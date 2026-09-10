@@ -424,6 +424,28 @@ type VisualNode struct {
 	HasParens bool
 }
 
+// TargetName is the node's target as written: a bare name, or a name
+// qualified by one namespace. Empty for anything else, which is what a
+// caller reads as "not a name" rather than as a spelling it could quote.
+//
+// It lives here rather than in the checker because a diagnostic raised after
+// the checker -- codegen declining a node kind it cannot emit -- has only the
+// AST left to say what the program wrote.
+func (vn *VisualNode) TargetName() string {
+	if vn == nil || vn.Target == nil {
+		return ""
+	}
+	switch t := vn.Target.(type) {
+	case *IdentExpr:
+		return t.Name
+	case *SelectExpr:
+		if id, ok := t.Operand.(*IdentExpr); ok {
+			return id.Name + "." + t.Field
+		}
+	}
+	return ""
+}
+
 // --- Control flow ---
 
 // IfStmt: if cond { body } [else { alt }].

@@ -16,10 +16,14 @@ struct Handler {
     run func() string
 }
 
-component main {
+component main node {
     var h = Handler{run=api.fetchHello}
     button(text="Go", @click { h.run() })
     text(value="hi")
+}
+
+window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(): Promise<string> { return "hi"; }
@@ -49,14 +53,14 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { h: null };
-  state.h = { run: fetchHello };
+  var state = { h__inst0: null };
+  state.h__inst0 = { run: fetchHello };
   function Handler(run) {
     return { run };
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", async function() {
-    await state.h.run();
+    await state.h__inst0.run();
   });
 })();
 </script>

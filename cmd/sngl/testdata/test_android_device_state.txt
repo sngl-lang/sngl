@@ -14,11 +14,14 @@ import . "sngl:test"
 
 output { kotlin { android } }
 
-component counter {
+component counter node {
     var count = 0
     text(value=string(count))
 }
 
 func testStartsAtZero(t Test, c counter) {
     t.assert(c.count == 0)
+}
+
+window {
 }

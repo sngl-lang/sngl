@@ -7,7 +7,11 @@ struct Point {
 
 enum Direction { up, down, left, right }
 
-component main {
+component main node {
     var dir Direction = Direction.up //@ hover("Direction", "enum Direction")
     //@ hover("Point", "struct Point")
+}
+
+window {
+    main
 }

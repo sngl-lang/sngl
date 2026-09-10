@@ -1,20 +1,25 @@
 import . "sngl:test"
+import ui "sngl:ui"
 
 // Component funcs use closure semantics (pre-T7), not desugared methods.
 // Bare field access works; explicit `this.` is reserved for struct/enum
 // nested methods. Calling a component func from outside the component is
 // out of scope for issue #75.
-component counter {
+component counter ui.node {
     var n = 0
     func bump() { n += 1 } // bare field write (closure)
     func value() => n      // bare field read
 }
 
-component main {
+component main ui.node {
     var label = ""
     counter()
 }
 
 func testComponentClosureBump(t Test, c main) {
     t.assert(true) // smoke test — checker should accept the component
+}
+
+ui.window {
+    main
 }

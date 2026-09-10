@@ -16,20 +16,17 @@ function-local variables, which is what rules out the original collision.
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { fyne(main=true) } }
 
-component main {
+window #app(title="t") {
     var visible = true
 
-    window #app(title="t") {
-        vbox {
-            if visible {
-                text(value="A")
-                text(value="B")
-                text(value="C")
-            }
+    vbox {
+        if visible {
+            text(value="A")
+            text(value="B")
+            text(value="C")
         }
     }
 }

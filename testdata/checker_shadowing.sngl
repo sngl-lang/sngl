@@ -8,7 +8,7 @@ func compute(LIMIT int) int {
     return inner
 }
 
-component main {
+component main node {
     var outer = LIMIT
     var result = compute(5)
 
@@ -18,4 +18,8 @@ component main {
 func testParamShadowsConst(t Test, c main) {
     t.assert(c.outer == 100)
     t.assert(c.result == 10)
+}
+
+window {
+    main
 }

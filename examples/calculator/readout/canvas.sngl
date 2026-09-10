@@ -42,7 +42,7 @@ component Cell(glyph Glyph, x = 0.0, y = 0.0) draw.shape {
     Bar(on=glyph.point, x=x + CELL_W + 1.0, y=y + CELL_H - THICK, w=THICK, h=THICK)
 }
 
-component SegmentReadout(entry = "0") {
+component SegmentReadout(entry = "0") ui.node {
     draw.canvas(
         width=WIDTH_PX * 1px,
         height=HEIGHT_PX * 1px,

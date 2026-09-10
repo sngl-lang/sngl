@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component math {
+component math node {
     var (
         a = 10
         b = 3
@@ -70,4 +70,7 @@ func testCompoundAssignmentMod(t Test, c math) {
     c.x = 10
     c.x %= 3
     t.assert(c.x == 1)
+}
+
+window {
 }

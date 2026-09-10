@@ -64,14 +64,14 @@ func errorsMentioning(diags []ir.Diagnostic, sub string) []string {
 func TestImportingASubdirectoryDoesNotWidenTheTargetSet(t *testing.T) {
 	const sub = `import . "sngl:ui"
 
-component Sub() {
+component Sub() node {
     text(value="sub")
 }
 `
 	const main = `import . "sngl:ui"
 import "./sub"
 
-component main {
+component main node {
     Sub()
 }
 `

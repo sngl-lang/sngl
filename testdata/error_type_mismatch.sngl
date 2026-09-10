@@ -6,3 +6,6 @@ func foo() {
     var y int
     y = "hello" // ERROR(check) "cannot assign string to int"
 }
+
+window {
+}

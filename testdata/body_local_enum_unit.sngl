@@ -15,6 +15,10 @@ func phase() int {
     return 0
 }
 
-component main {
+component main node {
     text(value="${phase()}")
+}
+
+window {
+    main
 }

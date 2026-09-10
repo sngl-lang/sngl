@@ -117,30 +117,52 @@ func walkMains(units []unit, resolver checker.ImportResolver, dir string) {
 	}
 }
 
-// pkg commands drive from mains only: a library package should not trigger
+// pkg commands drive from programs only: a library package should not trigger
 // remote fetches on its own — whatever it imports, the program importing it
 // imports too.
+//
+// A program is a package that declares a window, which is build.Emit's rule.
+// Answered from the parse rather than the check -- a type check for this alone
+// would double the work -- so the window is recognised by the name written and
+// not by the `#[builtin]` mark only the checker holds. A package declaring its
+// own `component window` is read as a program here and is not one; the cost is
+// a fetch nobody needed.
 func mainUnits(units []unit) ([]unit, error) {
 	var mains []unit
 	for _, u := range units {
-		declares := false
-		for _, filename := range u.files {
-			data, err := os.ReadFile(filename)
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", filename, err)
-			}
-			// Textual, because a type check to answer only "is this a main?"
-			// would double the work.
-			if strings.Contains(string(data), "component main") {
-				declares = true
-				break
-			}
+		doc, err := u.doc()
+		if err != nil {
+			// Not this command's to report: `check` says so with a position.
+			continue
 		}
-		if declares {
+		if declaresWindow(doc) {
 			mains = append(mains, u)
 		}
 	}
 	return mains, nil
+}
+
+func declaresWindow(doc *ast.Document) bool {
+	if doc == nil {
+		return false
+	}
+	for _, stmt := range doc.Stmts {
+		vn, ok := stmt.(*ast.VisualNode)
+		if !ok {
+			continue
+		}
+		switch t := vn.Target.(type) {
+		case *ast.IdentExpr:
+			if t.Name == "window" {
+				return true
+			}
+		case *ast.SelectExpr:
+			if t.Field == "window" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func runPkgDownload(cmd *cobra.Command, args []string) error {

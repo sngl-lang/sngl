@@ -2,7 +2,7 @@ caps: NoLambda, NoDeclarative, NoRef
 -- input.sngl --
 import . "sngl:ui"
 
-component counter {
+component counter node {
     var count int = 0
     button(@click {
         count = count + 1
@@ -19,7 +19,7 @@ struct __ref_int {
 func __lambda0(state __lambda0_caps) {
     state.count.value = state.count.value + 1
 }
-component counter {
+component counter node {
     var count __ref_int = __ref_int{value=0}
     var __n0 button = lower.CreateNode("button")
     lower.AttachHandler(__n0, "click", __closure(__lambda0, __lambda0_caps{count=count}))

@@ -3,8 +3,12 @@ import . "sngl:ui"
 // Bug: unknown method on string typechecks silently.
 // String has built-in methods (length, contains, etc.) but unknown ones
 // like `bogusMethod` produce no diagnostic.
-component main {
+component main node {
     var s = "hi"
     var bad = s.bogusMethod() // ERROR(check) "no method"
     text(value=s)
+}
+
+window {
+    main
 }

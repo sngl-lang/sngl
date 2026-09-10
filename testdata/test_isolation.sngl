@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component state {
+component state node {
     var count = 0
     var name = "init"
 
@@ -33,4 +33,7 @@ func testSubtestsGetSnapshots(t Test, c state) {
     t.test("another subtest also sees parent state", func(t, c) {
         t.assert(c.count == 10)
     })
+}
+
+window {
 }

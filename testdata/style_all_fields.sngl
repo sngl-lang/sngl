@@ -6,7 +6,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     vbox(style={
         padding = 1,
         paddingTop = 1,
@@ -62,4 +62,8 @@ component main {
     }) {
         text(value="styled")
     }
+}
+
+window {
+    main
 }

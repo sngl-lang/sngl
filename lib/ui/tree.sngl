@@ -1,0 +1,22 @@
+import tree "sngl:tree"
+import marks "sngl:internal/marks"
+
+// The family the widgets form: a button, a label and a layout box are members
+// of it, and any of them goes anywhere another does. Every component in this
+// package names it, and so does every component an application writes for a
+// screen.
+//
+// `node` names what a member *is*, the way a member of `draw.shape` is a
+// shape. It is an ordinary tree and not a catch-all: a `node` slot takes
+// `node` members and nothing else, which is what makes putting a `draw.shape`
+// in a `vbox` an error — the two are different families and were always meant
+// to be.
+//
+// The builtin mark is what the passes asking "is this rendered rather than
+// composed" read: this is the one family whose members are ordinary
+// components, and every other family answers yes by existing. It names the
+// tree by the mark and not by the pair "sngl:ui" and "node", so renaming
+// either leaves the role where it was written.
+#[tree.kind]
+#[marks.builtin("treeNode")]
+struct node {}

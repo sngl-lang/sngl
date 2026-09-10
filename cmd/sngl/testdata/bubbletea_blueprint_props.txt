@@ -25,29 +25,45 @@ sngl check good.sngl
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 
-component main {
+component main node {
     bt.Styled(content = "hi", styl = {}) {}
+}
+
+window {
+    main
 }
 -- badevent.sngl --
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 
-component main {
+component main node {
     bt.Layout(join = bt.JoinDir.vertical, @bogus { }) {}
+}
+
+window {
+    main
 }
 -- badtype.sngl --
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 
-component main {
+component main node {
     bt.Layout(join = "vertical") {}
+}
+
+window {
+    main
 }
 -- good.sngl --
 import . "sngl:ui"
 import bt "sngl:platform/bubbletea"
 
-component main {
+component main node {
     bt.Layout(join = bt.JoinDir.vertical) {
         bt.Styled(content = "hi") {}
     }
+}
+
+window {
+    main
 }

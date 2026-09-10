@@ -11,3 +11,6 @@ func f() int {
         return 1
     }
 }
+
+window {
+}

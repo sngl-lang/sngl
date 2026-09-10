@@ -39,25 +39,25 @@ component fine(
     #[construct] m mode,
     #[construct] w length,
     #[construct] p pair,
-) {
+) node {
     text(value=s)
 }
 
 component seededList(
     #[construct] xs list<int>, // ERROR(check) "list<int> does not"
-) {
+) node {
     text(value=string(xs.length()))
 }
 
 component seededMap(
     #[construct] m map<string, int>, // ERROR(check) "map<string, int> does not"
-) {
+) node {
     text(value=string(m.length()))
 }
 
 component seededOption(
     #[construct] o option<int>, // ERROR(check) "option<int> does not"
-) {
+) node {
     text(value="o")
 }
 
@@ -65,14 +65,14 @@ component seededOption(
 // walking the zero fields would answer "always equal" for two different days.
 component seededDate(
     #[construct] d date, // ERROR(check) "date does not"
-) {
+) node {
     text(value="d")
 }
 
 // The struct is comparable only if every field is, and this one names which.
 component seededStruct(
     #[construct] h hasMap, // ERROR(check) "map<string, int> (field counts of struct hasMap)"
-) {
+) node {
     text(value="h")
 }
 
@@ -82,11 +82,11 @@ component seededStruct(
 // type is the call. Unchecked, a list bound to one reached fyne's rebuild
 // comparison as `m.__inst0_was_seed[i] == m.xs` over a []any holding a []int,
 // which panics at runtime rather than reporting anything.
-component seeded<T>(#[construct] seed T) {
+component seeded<T>(#[construct] seed T) node {
     text(value="seeded")
 }
 
-component holder {
+component holder node {
     var n = 1
     var xs list<int> = [1]
 
@@ -101,15 +101,18 @@ component holder {
 // is a walk down the instances rather than a check on the call that writes the
 // prop. Unchecked, the marked prop reached html as
 // `__inst1_was_seed[__inst1_i] === seed` over an array, which is identity.
-component pass<T>(x T) {
+component pass<T>(x T) node {
     seeded(seed=x)
 }
 
-component passer {
+component passer node {
     var n = 1
     var xs list<int> = [1]
 
     pass(x=n)
 
     pass(x=xs) // ERROR(check) "bound to list<int> here"
+}
+
+window {
 }

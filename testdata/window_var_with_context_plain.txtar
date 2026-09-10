@@ -15,7 +15,6 @@ declares one is window_var_with_context_ctx.txtar, and the two goldens have to
 agree about `name`.
 -- plain.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {
@@ -128,6 +127,9 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	name string
+
+	__n1 *fyne.Container
+	__n0 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -147,11 +149,11 @@ func (m *Model) SetName(v string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	__n1 := container.NewVBox()
-	__n0 := widget.NewLabel("")
-	__n0.SetText(m.name)
-	__n1.Add(__n0)
-	content := fyne.CanvasObject(__n1)
+	m.__n1 = container.NewVBox()
+	m.__n0 = widget.NewLabel("")
+	m.__n0.SetText(m.name)
+	m.__n1.Add(m.__n0)
+	content := fyne.CanvasObject(m.__n1)
 	return content
 }
 -- out/go/gtk4/callbacks.go --
@@ -170,6 +172,8 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	name   string
+	__n1   gtk4rt.Handle
+	__n0   gtk4rt.Handle
 	__root gtk4rt.Handle
 }
 
@@ -194,12 +198,12 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n1, 6)
-	__n0 := gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(__n0, m.name)
-	gtk4rt.BoxAppend(__n1, __n0)
+	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n1, 6)
+	m.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n0, m.name)
+	gtk4rt.BoxAppend(m.__n1, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 }
 

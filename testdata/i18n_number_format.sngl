@@ -10,3 +10,6 @@ var decimal = 9876
 var formatted = $"Score: {decimal, number, decimal}"
 var sci = 1234567.89
 var scientific = $"Distance: {sci, number, scientific}"
+
+window {
+}

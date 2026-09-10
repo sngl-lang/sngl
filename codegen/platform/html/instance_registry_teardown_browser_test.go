@@ -12,7 +12,7 @@ import (
 // a registry of the instances it holds. Dropping a row destroys the outer one.
 const nestedRegistrySrc = `
 import . "sngl:ui"
-component nest(tag string, depth int, note func(string)) {
+component nest(tag string, depth int, note func(string)) node {
     var kids list<string> = depth > 0 ? [tag + "-"] : []
     effect(on=tag, @unmount { note(tag) })
     text(value="[" + tag + "]")
@@ -20,7 +20,7 @@ component nest(tag string, depth int, note func(string)) {
         nest(tag=k, depth=depth - 1, note=note)
     }
 }
-component main {
+window {
     var rows list<string> = ["a", "b"]
     var log string = ""
     button(text="drop", @click { rows = ["a"] })

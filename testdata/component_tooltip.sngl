@@ -4,7 +4,7 @@ import . "sngl:test"
 // tooltip: state-binding fixture — driving the tooltip `text`
 // from a state var. The stdlib prop isn't two-way bound, so this
 // asserts the var mutation alone (component reads from it).
-component main {
+component main node {
     var msg = "hello"
     tooltip(text=msg) {
         button(text="hover")
@@ -15,4 +15,8 @@ func testTooltipTextMutates(t Test, c main) {
     t.assert(c.msg == "hello")
     c.msg = "goodbye"
     t.assert(c.msg == "goodbye")
+}
+
+window {
+    main
 }

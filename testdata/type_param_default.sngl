@@ -44,7 +44,7 @@ component show(
     // tr.one's parameter defaults to the tree an ordinary component belongs
     // to, so the wrapper stands on its own.
     body component tr.one,
-) {
+) node {
     vbox {
         text(value=p.right)
         text(value="{q.right}")
@@ -64,7 +64,7 @@ func pick<T = string>(v T) T {
     return v
 }
 
-component main {
+component main node {
     var names list<string> = empty()
     var greeting = pick("hi")
 
@@ -81,4 +81,8 @@ component main {
 func Boxed<T>.replace(b Boxed<T>, other T) T {
     var previous T = b.v
     return previous
+}
+
+window {
+    main
 }

@@ -8,12 +8,12 @@ import (
 )
 
 func TestPromote_extractsBody(t *testing.T) {
-	src := `component Counter(start int = 0) {
+	src := `component Counter(start int = 0) node {
     var count = start
     text #lbl(value=string(count))
 }
 
-component Other { text(value="x") }
+component Other node { text(value="x") }
 `
 	doc, err := parser.Parse("test.sngl", []byte(src))
 	if err != nil {

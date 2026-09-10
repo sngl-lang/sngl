@@ -15,11 +15,11 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component bracket<T = struct {}>(on T = struct {}{}) {
+component bracket<T = struct {}>(on T = struct {}{}) node {
     text(value="held")
 }
 
-component main {
+component main node {
     var (
         empty = struct {}{}
         written = struct {
@@ -45,4 +45,8 @@ func testTheWrittenTypeIsTheInferredOne(t Test, c main) {
 func testTheEmptyStructIsAValue(t Test, c main) {
     c.empty = struct {}{}
     t.assert(c.total == 6)
+}
+
+window {
+    main
 }

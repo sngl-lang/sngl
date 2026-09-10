@@ -16,8 +16,12 @@ import lib "js:./lib"
 
 const p = lib.joined()
 
-component main {
+component main node {
     text(value=p)
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 import { join } from "node:path";

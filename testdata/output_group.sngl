@@ -9,6 +9,10 @@ output {
     }
 }
 
-component main {
+component main node {
     text(value="hello")
+}
+
+window {
+    main
 }

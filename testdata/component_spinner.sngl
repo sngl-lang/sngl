@@ -2,6 +2,10 @@ import . "sngl:ui"
 
 // spinner: A-tier — the real stdlib signature exposes only
 // label/variant/size (no `visible` prop). Declaration-only fixture.
-component main {
+component main node {
     spinner(label="Loading...", variant="circle", size="large")
+}
+
+window {
+    main
 }

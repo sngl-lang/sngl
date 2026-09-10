@@ -1,20 +1,23 @@
 // A built-in node's props are its declaration's, the same as any other
-// component's. The builders behind `timer` and `errorBoundary` read the props
+// component's. The builders behind `timer` and `boundary` read the props
 // they know by name and ignored the rest, so a misspelling was neither stored
 // nor reported: `timer(every=1s)` set no interval and compiled clean, and the
 // timer never fired.
-import . "sngl:app"
 import . "sngl:time"
 import . "sngl:ui"
 
-component main {
+component main node {
     var n = 0
 
     timer(every=1s, @tick { // ERROR(check) "unknown prop \"every\" on component timer"
         n = n + 1
     })
 
-    errorBoundary(fallback="oops", @error(e) {}) { // ERROR(check) "unknown prop \"fallback\" on component errorBoundary"
+    boundary(fallback="oops", @error(e) {}) { // ERROR(check) "unknown prop \"fallback\" on component boundary"
         text(value="n=" + string(n))
     }
+}
+
+window {
+    main
 }

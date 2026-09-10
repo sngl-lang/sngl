@@ -11,6 +11,10 @@ import . "sngl:ui"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     text(value="hello")
+}
+
+window {
+    main
 }

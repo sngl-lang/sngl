@@ -9,7 +9,7 @@ func isOdd(n int) bool {
     return n == 0 ? false : isEven(n - 1)
 }
 
-component main {
+component main node {
     var e = isEven(4)
     var o = isOdd(4)
 
@@ -22,4 +22,8 @@ func testMutualEven(t Test, c main) {
 
 func testMutualOdd(t Test, c main) {
     t.assert(c.o == false)
+}
+
+window {
+    main
 }

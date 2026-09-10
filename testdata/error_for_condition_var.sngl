@@ -8,3 +8,6 @@ func f(n int) int {
     }
     return 0
 }
+
+window {
+}

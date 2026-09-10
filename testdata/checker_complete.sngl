@@ -12,12 +12,12 @@ struct Config {
 
 enum Status { active, inactive }
 
-component Counter(label = "", count int) {
+component Counter(label = "", count int) node {
     text(value=label + ": " + string(count))
     button(text="+", @click { count = count + 1 })
 }
 
-component main {
+component main node {
     var (
         count = 0
         name = "World"
@@ -63,4 +63,8 @@ func testArithmetic(t Test, c main) {
 func testConstUsage(t Test, c main) {
     t.assert(c.MAX == 100)
     t.assert(c.MIN == 0)
+}
+
+window {
+    main
 }

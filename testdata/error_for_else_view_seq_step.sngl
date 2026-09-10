@@ -9,7 +9,7 @@ import "sngl:seq"
 
 const by = 2
 
-component main {
+component main node {
     var n = 0
 
     vbox {
@@ -19,4 +19,8 @@ component main {
             text(value="nothing yet")
         }
     }
+}
+
+window {
+    main
 }

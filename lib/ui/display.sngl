@@ -7,9 +7,9 @@ component text(
     value string,
     selectable bool,
     @click ClickEvent,
-) {}
+) node {}
 
-component _example_text {
+component _example_text node {
     vbox(style={gap=8, padding=16}) {
         text(value="Hello, World!", style={fontSize=24, fontWeight="bold"})
         text(value="Regular text")
@@ -20,8 +20,9 @@ component _example_text {
 // Displays an image from a URL or asset path. `fit` controls how the
 // image is scaled into its frame (see `ObjectFit`). `alt` provides the
 // accessibility label. `@load` fires once decoding completes; `@error`
-// fires on fetch/decode failure with an `ErrorEvent` describing the
-// failure.
+// fires on fetch/decode failure with the ambient `error` describing it --
+// the same value `error.raise` throws and a `boundary` catches, because a
+// failure is a failure whoever noticed it.
 component image(
     style Style,
     src string,
@@ -29,10 +30,10 @@ component image(
     fit ObjectFit,
     @click ClickEvent,
     @load LoadEvent,
-    @error ErrorEvent,
-) {}
+    @error error,
+) node {}
 
-component _example_image {
+component _example_image node {
     vbox(style={gap=8, padding=16}) {
         image(src="https://placehold.co/200x100", alt="Placeholder image", fit=ObjectFit.contain)
     }
@@ -46,9 +47,9 @@ component badge(
     value string,
     variant string,
     size string,
-) {}
+) node {}
 
-component _example_badge {
+component _example_badge node {
     hbox(style={gap=8, padding=16, alignItems="center"}) {
         badge(value="3", variant="primary")
         badge(value="New", variant="success")
@@ -70,9 +71,9 @@ component chip(
     focusable bool = true,
     @click ClickEvent,
     @remove DismissEvent,
-) {}
+) node {}
 
-component _example_chip {
+component _example_chip node {
     hbox(style={gap=8, padding=16}) {
         chip(label="Tag")
         chip(label="Removable", removable=true)
@@ -92,9 +93,9 @@ component avatar(
     size string,
     variant string,
     @click ClickEvent,
-) {}
+) node {}
 
-component _example_avatar {
+component _example_avatar node {
     hbox(style={gap=8, padding=16}) {
         avatar(initials="JD")
         avatar(initials="AB", variant="square")
@@ -117,9 +118,9 @@ component progress(
     label string,
     variant string,
     showValue bool,
-) {}
+) node {}
 
-component _example_progress {
+component _example_progress node {
     vbox(style={gap=8, padding=16}) {
         progress(value=0.7, max=1, label="70% complete", showValue=true)
         progress(value=3, max=10)
@@ -135,9 +136,9 @@ component spinner(
     label string,
     variant string,
     size string,
-) {}
+) node {}
 
-component _example_spinner {
+component _example_spinner node {
     hbox(style={gap=16, padding=16, alignItems="center"}) {
         spinner(label="Loading...")
         spinner(variant="circle", size="large")
@@ -164,9 +165,9 @@ component table(
     sortDirection string,
     @select SelectEvent,
     @sort ChangeEvent,
-) {}
+) node {}
 
-component _example_table {
+component _example_table node {
     vbox(style={padding=16}) {
         table(columns=["Name", "Role", "Status"])
     }
@@ -184,9 +185,9 @@ component tree(
     expanded list<int>,
     @select SelectEvent,
     @expand ExpandEvent,
-) {}
+) node {}
 
-component _example_tree {
+component _example_tree node {
     vbox(style={padding=16}) {
         tree(items=["Documents", "Photos", "Music", "Videos"])
     }

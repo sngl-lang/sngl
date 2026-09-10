@@ -3,3 +3,6 @@ import . "sngl:ui"
 func foo() int {
     return "hello" // ERROR(check) "cannot return string as int"
 }
+
+window {
+}

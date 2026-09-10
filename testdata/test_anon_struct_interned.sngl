@@ -15,7 +15,7 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component main {
+component main node {
     var (
         one = {a=1, b=2}
         two = {b=4, a=3}
@@ -43,4 +43,8 @@ func testTheWrittenTypeIsTheInferredOne(t Test, c main) {
 // up on.
 func testFieldsHaveTheirRealTypes(t Test, c main) {
     t.assert(c.one.a + 1 == 2)
+}
+
+window {
+    main
 }

@@ -9,7 +9,7 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         shown = true
         log list<string> = []
@@ -43,4 +43,8 @@ func testBranchReturningMountsAgain(t Test, c main) {
     c.shown = false
     c.shown = true
     t.assert(c.out.value == "in,out,in")
+}
+
+window {
+    main
 }

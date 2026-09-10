@@ -13,7 +13,7 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         items list<string> = ["a", "b", "c"]
         log list<string> = []
@@ -65,4 +65,8 @@ func testTwoPositionsEndBothBeforeEitherBegins(t Test, c main) {
     t.assert(c.pair.value == "+A,+B")
     c.k = 1
     t.assert(c.pair.value == "+A,+B,-B,-A,+A,+B")
+}
+
+window {
+    main
 }

@@ -6,7 +6,10 @@
 
 import . "sngl:ui"
 
-component card(@bump) {
+component card(@bump) node {
     var f = @bump // ERROR(parse) "unexpected \"@\""
     button(text="x")
+}
+
+window {
 }

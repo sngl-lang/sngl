@@ -45,7 +45,7 @@ func checkMainOK(t *testing.T, src string) *ir.Package {
 // effect. Purity must propagate over the call graph.
 func TestTransitivePurityWrapperOfImpure(t *testing.T) {
 	pkg := checkMainOK(t, `
-component main {
+component main node {
     var count = 0
     func bump() { count = count + 1 }
     func wrap() { bump() }
@@ -67,7 +67,7 @@ component main {
 // var by name and wrongly marked the function PurityMutates.
 func TestPurityLocalShadowingVarStaysPure(t *testing.T) {
 	pkg := checkMainOK(t, `
-component main {
+component main node {
     var count = 0
     func compute() int {
         var count = 5
@@ -92,7 +92,7 @@ component main {
 // seen and the wrapper stayed PurityPure (const-foldable).
 func TestTransitivePurityThroughIfBranch(t *testing.T) {
 	pkg := checkMainOK(t, `
-component main {
+component main node {
     var count = 0
     func bump() { count = count + 1 }
     func gated() { if count >= 0 { bump() } }
@@ -109,7 +109,7 @@ component main {
 // so propagation does not over-mark.
 func TestTransitivePurityWrapperOfPureStaysPure(t *testing.T) {
 	pkg := checkMainOK(t, `
-component main {
+component main node {
     func square(n int) => n * n
     func viaWrap(n int) => square(n)
     text(value="{viaWrap(3)}")

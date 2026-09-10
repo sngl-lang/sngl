@@ -2,7 +2,7 @@ caps: NoComputed
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var first string = "Hello"
     var last string = "World"
 
@@ -12,7 +12,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main node {
     var first string = "Hello"
     var last string = "World"
     text(value=first + " " + last)

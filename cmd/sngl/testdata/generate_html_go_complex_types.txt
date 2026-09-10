@@ -39,13 +39,12 @@ func Search(jql string, fields []string, max int) ([]string, error) {
 func List() ([]Result, error) { return []Result{{Title: "x", Score: 1}}, nil }
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { html } }
 
 import "go:example.com/wasm-complex/api"
 
-component main {
+component main node {
     var rows list<string> = []
 
     window #app(title="t") {

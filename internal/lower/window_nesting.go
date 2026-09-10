@@ -30,9 +30,19 @@ func lowerWindowNesting(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	var outer []*ir.Window
+	// pkg.Windows explicitly: ir.Walk descends into a package-level window's
+	// body but does not visit the window itself -- only one reached as a
+	// statement is stepped -- so the outer window of a program whose windows
+	// are at the root was in nobody's list and the nesting under it went
+	// unreported. It was a statement in `component main`'s body before.
+	outer := append([]*ir.Window{}, pkg.Windows...)
+	seen := make(map[*ir.Window]bool, len(outer))
+	for _, w := range outer {
+		seen[w] = true
+	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if w, ok := n.(*ir.Window); ok {
+		if w, ok := n.(*ir.Window); ok && !seen[w] {
+			seen[w] = true
 			outer = append(outer, w)
 		}
 		return nil

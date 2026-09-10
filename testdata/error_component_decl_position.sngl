@@ -8,17 +8,17 @@
 
 import . "sngl:ui"
 
-component holder(children ...component) {
+component holder(children ...component) node {
     vbox {
         children
     }
 }
 
-component main {
+component main node {
     var on = true
 
     // The legal position: the root of a component definition's body.
-    component ok() {
+    component ok() node {
         text(value="ok")
     }
 
@@ -36,4 +36,8 @@ component main {
             }
         }
     }
+}
+
+window {
+    main
 }

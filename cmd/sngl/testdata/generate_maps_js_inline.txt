@@ -18,8 +18,12 @@ exists out2/index.html
 -- app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var count = 0
     text(value=string(count))
     button(text="+", @click { count += 1 })
+}
+
+window {
+    main
 }

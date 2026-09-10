@@ -15,7 +15,7 @@ import . "sngl:test"
 
 output { kotlin { android } }
 
-component counter {
+component counter node {
     var count = 0
     text(value=string(count))
 }
@@ -27,4 +27,7 @@ func testStartsAtZero(t Test, c counter) {
 func testIncrement(t Test, c counter) {
     c.count = 5
     t.assert(c.count == 5)
+}
+
+window {
 }

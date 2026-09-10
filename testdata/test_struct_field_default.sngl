@@ -11,7 +11,7 @@ struct P {
     tag string = "none"
 }
 
-component main { text(value="x") }
+component main node { text(value="x") }
 
 func testOmittedFieldTakesItsDefault(t Test, c main) {
     var p P = {y=1}
@@ -20,4 +20,8 @@ func testOmittedFieldTakesItsDefault(t Test, c main) {
 
     // Writing the default out gives the same value.
     t.assert(p == P{x=7, y=1, tag="none"})
+}
+
+window {
+    main
 }

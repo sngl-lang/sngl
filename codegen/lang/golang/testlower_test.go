@@ -11,7 +11,7 @@ import (
 
 func TestLowerTestFile_agentModeEmitsRegisterInit(t *testing.T) {
 	src := `
-component box {
+component box node {
     var count = 0
     text(value="x")
 }
@@ -49,7 +49,7 @@ func testFoo(t Test, c box) {
 
 func TestLowerTestFile_handlesIfStmtInTestBody(t *testing.T) {
 	src := `
-component box {
+component box node {
     var count = 0
     text(value="x")
 }
@@ -89,7 +89,7 @@ func testWithIf(t Test, c box) {
 
 func TestLowerTestFile_nativeModeEmitsTestingImport(t *testing.T) {
 	src := `
-component box {
+component box node {
     var count = 0
     text(value="x")
 }

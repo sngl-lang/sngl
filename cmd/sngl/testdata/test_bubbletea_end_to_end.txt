@@ -11,7 +11,7 @@ import . "sngl:test"
 
 output { go { bubbletea } }
 
-component counter {
+component counter node {
     var count = 0
     button(text="+", @click { count += 1 })
     text(value=string(count))
@@ -24,4 +24,7 @@ func testStartsAtZero(t Test, c counter) {
 func testIncrementWorks(t Test, c counter) {
     c.count = 5
     t.assert(c.count == 5)
+}
+
+window {
 }

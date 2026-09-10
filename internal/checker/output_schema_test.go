@@ -47,7 +47,7 @@ component optlang(lever string, platforms ...component build.platform) build.lan
 // reads without being written at the call site. Merging a target's schema with
 // what the call site wrote by hand is what prop defaults replaced.
 func TestADeclaredDefaultReachesTheOptions(t *testing.T) {
-	src := withStd("output {\n    optlang {\n        optstub(gadget=\"g\")\n    }\n}\n\ncomponent main {\n    text(value=\"hi\")\n}\n")
+	src := withStd("output {\n    optlang {\n        optstub(gadget=\"g\")\n    }\n}\n\ncomponent main node {\n    text(value=\"hi\")\n}\n")
 	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -96,7 +96,7 @@ func optStubConfig(t *testing.T) *checker.Config {
 
 func checkOptStub(t *testing.T, output string) []string {
 	t.Helper()
-	src := withStd(output + "\ncomponent main {\n    text(value=\"hi\")\n}\n")
+	src := withStd(output + "\ncomponent main node {\n    text(value=\"hi\")\n}\n")
 	doc, err := parser.Parse("main.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse: %v", err)

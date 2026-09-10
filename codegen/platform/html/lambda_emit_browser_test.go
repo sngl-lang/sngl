@@ -23,13 +23,12 @@ import (
 // identifier and only running it says it is not there.
 const lambdaEmitSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 
 func run(f func()) {
     f()
 }
 
-component chooser(@picked) {
+component chooser(@picked) node {
     button(text="pick", @click {
         run(func() {
             picked()
@@ -37,13 +36,13 @@ component chooser(@picked) {
     })
 }
 
-component App() {
+component App() node {
     var picks = 0
 
     chooser(@picked { picks += 1 })
     text(value="picks=" + string(picks))
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 
 func TestEmitInsideALambdaReachesTheHandler(t *testing.T) {

@@ -5,3 +5,6 @@ func foo() {
     for var item = x { // ERROR(check) "for iterator must be list"
     }
 }
+
+window {
+}

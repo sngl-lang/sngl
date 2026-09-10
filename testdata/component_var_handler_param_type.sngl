@@ -3,7 +3,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var count = 0 @change(nv int) {
         count = nv
     }
@@ -13,4 +13,8 @@ component main {
         })
         text(value="{count}")
     }
+}
+
+window {
+    main
 }

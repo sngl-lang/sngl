@@ -11,21 +11,22 @@ import (
 // the const through an ident used to lose it in the interpreter's value model:
 // the emitted initializer came back as `[]any{struct{}{Name: "alpha"...}}`,
 // which is not compilable Go. Only the emitted source shows that, hence the
-// assertion on it — and the value is read into a component var so it survives
-// as an initializer rather than folding into the string measuring it.
+// assertion on it — and the value is read into a var so it survives as an
+// initializer rather than folding into the string measuring it. The var is the
+// package's: a component that renders a window names the root family, and a
+// root component's own state has no route into the Model, since passRootWindow
+// empties its body and dead-code elimination takes the declaration with it.
 func TestDynConstKeepsItsDeclarationInEmittedGo(t *testing.T) {
 	const src = `import . "sngl:ui"
-import . "sngl:app"
+import . "sngl:ui"
 import lib "go:git.duckfam.us/jonathan/sngl/internal/optimize/testdata/purepkg"
 
 const items = lib.Anything()
 
-component main {
-    var rows = items
+var rows = items
 
-    window #app(title="t") {
-        text(value="n {string(rows.length)}")
-    }
+window #app(title="t") {
+    text(value="n {string(rows.length)}")
 }
 `
 	// The evaluator program is generated beside the source and built against

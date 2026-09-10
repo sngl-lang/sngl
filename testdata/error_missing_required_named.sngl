@@ -7,3 +7,6 @@ func test() {
     var x = add(b=2)            // ERROR(check) "missing required argument"
     var y = greet(name="World") // ERROR(check) "missing required argument"
 }
+
+window {
+}

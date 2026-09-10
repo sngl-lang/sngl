@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         count = 0
         name = "World"
@@ -12,4 +12,8 @@ component main {
     func isActive() => active
 
     text(value=greeting)
+}
+
+window {
+    main
 }

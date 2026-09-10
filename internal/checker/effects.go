@@ -15,7 +15,7 @@ import "git.duckfam.us/jonathan/sngl/ir"
 //   - Call to any Func with CanError set.
 //
 // Handler resolution, innermost-first: per-call @error on the call,
-// nearest enclosing errorBoundary @error, window @error. No handler
+// nearest enclosing boundary @error, window @error. No handler
 // found ⇒ ErrorPropagateNative. Calls inside a function body (not an
 // event handler) default to ErrorBubble — the enclosing fallible
 // function threads the error back to its caller, which resolves.

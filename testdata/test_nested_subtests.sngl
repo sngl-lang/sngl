@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component nested {
+component nested node {
     var x = 0
     var y = 0
     text(value="{x}")
@@ -39,4 +39,7 @@ func testSiblingSubtests(t Test, c nested) {
         t.assert(c.y == 0)
         t.assert(c.x == 10)
     })
+}
+
+window {
 }

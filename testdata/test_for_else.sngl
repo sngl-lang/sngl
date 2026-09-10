@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component emptylist {
+component emptylist node {
     var items list<string> = []
 
     vbox {
@@ -20,4 +20,7 @@ func testShowsElseForEmptyList(t Test, c emptylist) {
 func testHidesElseWhenListHasItems(t Test, c emptylist) {
     c.items = ["hello"]
     t.assert(c.item.value == "hello")
+}
+
+window {
 }

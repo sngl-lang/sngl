@@ -7,7 +7,7 @@ struct Config {
     enabled bool = false
 }
 
-component main {
+component main node {
     var list1 = [
         1,
         2,
@@ -37,4 +37,8 @@ func testMultilineCommaList(t Test, c main) {
 func testMultilineStruct(t Test, c main) {
     t.assert(c.cfg.name == "test")
     t.assert(c.cfg2.count == 7)
+}
+
+window {
+    main
 }

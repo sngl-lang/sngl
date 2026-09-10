@@ -4,10 +4,14 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var n int = 0
 
     for n < 3 { // ERROR(check) "cannot be written in a view body"
         text(value="x")
     }
+}
+
+window {
+    main
 }

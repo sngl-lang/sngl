@@ -2,7 +2,7 @@
 
 import . "sngl:ui"
 
-component main {
+window {
     var a int = 10
     var b int = 3
 

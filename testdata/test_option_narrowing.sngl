@@ -14,7 +14,7 @@ func valueOf(n Node) int {
     return n.value
 }
 
-component main {
+component main node {
     var maybe option<int> = 3
     var absent option<int> = null
 
@@ -65,4 +65,8 @@ func testNegatedTestNarrowsTheElseArm(t Test) {
     var maybe option<int> = 5
     var got = maybe == null ? 0 : double(maybe)
     t.assert(got == 10)
+}
+
+window {
+    main
 }

@@ -8,7 +8,7 @@ import . "sngl:test"
 
 func wrap<T>(v T) => {item=v}
 
-component main {
+component main node {
     var (
         n = wrap(1)
         s = wrap("x")
@@ -20,4 +20,8 @@ component main {
 func testTheGenericLiteralCarriesItsValue(t Test, c main) {
     t.assert(c.n.item == 1)
     t.assert(c.s.item == "x")
+}
+
+window {
+    main
 }

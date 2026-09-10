@@ -3,19 +3,19 @@ import . "sngl:test"
 
 // Two components with the same-named var prove pointer-keyed deps
 // don't cross-subscribe.
-component left {
+component left node {
     var x = 0
     button #bump(text="L", @click { x += 1 })
     text #out(value=string(x))
 }
 
-component right {
+component right node {
     var x = 100
     button #bump(text="R", @click { x += 1 })
     text #out(value=string(x))
 }
 
-component main {
+component main node {
     left #l()
     right #r()
 }
@@ -28,4 +28,8 @@ func testTwoComponentsIsolated(t Test, c main) {
     l.bump.click()
     t.assert(l.out.value == "1")
     t.assert(r.out.value == "100")
+}
+
+window {
+    main
 }

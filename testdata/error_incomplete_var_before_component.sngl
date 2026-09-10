@@ -5,6 +5,10 @@ import . "sngl:ui"
 
 var x =
 
-component main { // ERROR(parse) "unexpected \"component\", expected"
+component main node { // ERROR(parse) "unexpected \"component\", expected"
     text(value="hi")
+}
+
+window {
+    main
 }

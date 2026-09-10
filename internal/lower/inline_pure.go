@@ -555,8 +555,11 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
+	// A *segmented* tree: the widget family is excluded, because its members
+	// are the ordinary components this pass exists to compose away. Every
+	// other family is rendered by a pass that names it.
 	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
-		comp.Tree != nil || hostsTree(comp)
+		ir.IsSegmentedTree(comp.Tree) || hostsTree(comp)
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the

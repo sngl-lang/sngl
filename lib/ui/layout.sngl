@@ -11,9 +11,9 @@ component vbox(
     refreshing bool,
     @refresh RefreshEvent,
     children ...component,
-) {}
+) node {}
 
-component _example_vbox {
+component _example_vbox node {
     vbox(style={gap=8, padding=16}) {
         text(value="First")
         text(value="Second")
@@ -29,9 +29,9 @@ component hbox(
     style Style,
     scroll bool,
     children ...component,
-) {}
+) node {}
 
-component _example_hbox {
+component _example_hbox node {
     hbox(style={gap=8, padding=16}) {
         text(value="Left")
         text(value="Center")
@@ -47,9 +47,9 @@ component _example_hbox {
 component stack(
     style Style,
     layers ...component,
-) {}
+) node {}
 
-component _example_stack {
+component _example_stack node {
     stack {
         text(value="Behind", style={padding=16})
         text(value="In front", style={padding=32, color=#FF0000})
@@ -71,9 +71,9 @@ component scroll(
     @scroll ScrollEvent,
     @scrollEnd ScrollEvent,
     content ...component tr.one,
-) {}
+) node {}
 
-component _example_scroll {
+component _example_scroll node {
     scroll(direction="vertical", style={height=120}) {
         vbox(style={gap=4, padding=8}) {
             text(value="Line 1")
@@ -95,9 +95,9 @@ component _example_scroll {
 component spacer(
     style Style,
     size string,
-) {}
+) node {}
 
-component _example_spacer {
+component _example_spacer node {
     hbox(style={padding=16}) {
         text(value="Left")
         spacer
@@ -112,9 +112,9 @@ component divider(
     style Style,
     direction string,
     label string,
-) {}
+) node {}
 
-component _example_divider {
+component _example_divider node {
     vbox(style={gap=8, padding=16}) {
         text(value="Section 1")
         divider
@@ -138,9 +138,9 @@ component splitview(
     resizable bool,
     @resize ResizeEvent,
     panes ...component,
-) {}
+) node {}
 
-component _example_splitview {
+component _example_splitview node {
     splitview(direction="horizontal", style={height=120}) {
         vbox(style={padding=12}) {
             text(value="Left pane")
@@ -161,9 +161,9 @@ component card(
     clickable bool,
     @click ClickEvent,
     content ...component,
-) {}
+) node {}
 
-component _example_card {
+component _example_card node {
     hbox(style={gap=16, padding=16}) {
         card(variant="outlined") {
             text(value="Outlined", style={fontWeight="bold"})

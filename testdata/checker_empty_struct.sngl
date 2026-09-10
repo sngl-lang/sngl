@@ -2,8 +2,12 @@ import . "sngl:ui"
 
 struct Empty {}
 
-component main {
+component main node {
     var e Empty = Empty{}
 
     text(value="ok")
+}
+
+window {
+    main
 }

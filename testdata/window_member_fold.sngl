@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // Window props are read off the window symbol and folded to their literals
 // by the optimizer. All three of the #[builtin("window")] component's
@@ -8,7 +7,7 @@ window #home(title="Home", href="/index.html", favicon="/favicon.ico") {
     text(value="Home")
 }
 
-component main {
+component main node {
     var h = home.href    // FOLD "/index.html"
     var t = home.title   // FOLD "Home"
     var f = home.favicon // FOLD "/favicon.ico"

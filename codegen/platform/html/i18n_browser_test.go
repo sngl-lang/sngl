@@ -100,7 +100,7 @@ func TestBrowser_I18nPluralRendering(t *testing.T) {
 	const snglSrc = `
 import . "sngl:ui"
 import "sngl:i18n"
-component main {
+window {
     var count int = 1
     var label string = "You have 1 item"
     text(value=label)

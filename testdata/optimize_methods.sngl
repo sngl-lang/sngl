@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component methodfold {
+component methodfold node {
     // int methods (qualified)
     var imin = int.min(3, 7) // FOLD 3
     var imax = int.max(3, 7) // FOLD 7
@@ -56,4 +56,7 @@ func testFoldedMethods(t Test, c methodfold) {
     t.assert(c.scon == true)
     t.assert(c.si == "100")
     t.assert(c.is == 3)
+}
+
+window {
 }

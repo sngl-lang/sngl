@@ -5,3 +5,6 @@ func add(a int, b int) => a + b
 func test() {
     var x = add(1) // ERROR(check) "missing required argument"
 }
+
+window {
+}

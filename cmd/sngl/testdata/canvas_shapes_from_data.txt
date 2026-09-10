@@ -37,10 +37,14 @@ import . "sngl:ui"
 import "./gfx"
 import "sngl:platform/bubbletea"
 
-component main {
+component main node {
     var lit = true
     gfx.Panel(lit=lit)
     button(text="t", @click { lit!! })
+}
+
+window {
+    main
 }
 -- gfx/gfx.sngl --
 import . "sngl:ui"
@@ -63,7 +67,7 @@ component Cell(on = false, x = 0.0) draw.shape {
 func columns() => [0.0, 30.0]
 
 // The canvas is one arm of a target test, and its shapes come from a loop.
-component Panel(lit = false) {
+component Panel(lit = false) node {
     vbox {
         if PLATFORM == bubbletea.platform {
             text(value="no pixels here")
@@ -76,4 +80,7 @@ component Panel(lit = false) {
             }
         }
     }
+}
+
+window {
 }

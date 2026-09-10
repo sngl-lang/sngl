@@ -12,7 +12,7 @@ import (
 
 func TestCollectSlotNotSetForNonReactiveIf(t *testing.T) {
 	src := `
-component main {
+component main node {
     if true {
         text(value="hi")
     }
@@ -39,7 +39,7 @@ component main {
 
 func TestSynthesizeSlotVar(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     if visible {
         text(value="hi")
@@ -78,7 +78,7 @@ func varSliceNames(vs []*ir.Var) []string {
 
 func TestSynthesizeRenderSlotFunc(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     if visible {
         text(value="hi")
@@ -120,7 +120,7 @@ func funcSliceNames(fs []*ir.Func) []string {
 
 func TestSynthesizeRenderSlotFunc_ForVariant(t *testing.T) {
 	src := `
-component main {
+component main node {
     var items list<int> = [1, 2, 3]
     for var item = items {
         text(value=string(item))
@@ -147,7 +147,7 @@ component main {
 
 func TestSynthesizeRenderSlotFunc_ElseBranch(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     if visible {
         text(value="on")
@@ -192,7 +192,7 @@ component main {
 // synthesized, and lowering does not panic.
 func TestNestedReactiveStructureSubsumedByOuterSlot(t *testing.T) {
 	src := `
-component main {
+component main node {
     var outer bool = true
     var inner bool = true
     if outer {
@@ -229,7 +229,7 @@ component main {
 
 func TestReactiveIfReplacedByCallStmt(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     if visible {
         text(value="hi")
@@ -261,7 +261,7 @@ component main {
 
 func TestReactiveForReplacedByCallStmt(t *testing.T) {
 	src := `
-component main {
+component main node {
     var items list<int> = [1, 2, 3]
     for var item = items {
         text(value=string(item))
@@ -284,7 +284,7 @@ component main {
 
 func TestSlotUpdaterSplicedAfterMutation(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     button(text="toggle", @click { visible = !visible })
     if visible {
@@ -327,7 +327,7 @@ component main {
 // early-return-on-empty-reverseDeps path doesn't skip slot deps.
 func TestSlotOnlyVarStillSplicesSlot(t *testing.T) {
 	src := `
-component main {
+component main node {
     var show bool = true
     button(@click { show = !show })
     if show {
@@ -365,7 +365,7 @@ component main {
 
 func TestSlotParentRefMatchesEnclosingNode(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     vbox(style={gap=4}) {
         button(@click { visible = !visible })
@@ -426,7 +426,7 @@ component main {
 
 func TestNonReactiveIfPreserved(t *testing.T) {
 	src := `
-component main {
+component main node {
     if true {
         text(value="hi")
     }
@@ -451,7 +451,7 @@ component main {
 
 func TestSlotIdentsAreSynthesized(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     button(@click { visible = !visible })
     if visible {
@@ -490,7 +490,7 @@ component main {
 
 func TestRootVarSynthesizedWhenSlotExists(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     if visible {
         text(value="hi")
@@ -520,7 +520,7 @@ component main {
 
 func TestRootVarOmittedWhenNoSlots(t *testing.T) {
 	src := `
-component main {
+component main node {
     var count int = 0
     button(text=string(count), @click { count = count + 1 })
 }
@@ -546,7 +546,7 @@ component main {
 // so this shape is handled, not a crash.
 func TestNestedReactiveCompilesCleanly(t *testing.T) {
 	src := `
-component main {
+component main node {
     var visible bool = true
     var items list<int> = [1, 2, 3]
     if visible {

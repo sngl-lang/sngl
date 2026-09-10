@@ -12,17 +12,29 @@ cmp input.sngl expected.sngl
 -- formatted.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
+}
+
+window {
+    main
 }
 -- unformatted.sngl --
 import . "sngl:ui"
 
-component   main   {
+component   main node {
     var   x   =   0
+}
+
+window {
+    main
 }
 -- expected.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var x = 0
+}
+
+window {
+    main
 }

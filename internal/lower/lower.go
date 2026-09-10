@@ -36,6 +36,7 @@ var passes = []pass{
 	passPropBindings,
 	passRefLoop,
 	passViewForElse,
+	passBoundaryFailed,
 	passUnit,
 	passEnum,
 	passQuery,

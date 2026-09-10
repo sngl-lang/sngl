@@ -5,11 +5,10 @@ stderr 'window output path collision'
 
 -- site.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { none { html } }
 
-component main {
+component main node {
     window #a(title="A", href="/dup.html") { text(value="a") }
     window #b(title="B", href="/dup.html") { text(value="b") }
 }

@@ -18,7 +18,7 @@ func TestDerivedFuncGatesReactiveSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+window {
     var name = "world"
     func isLong() => name.length > 3
     vbox {
@@ -34,8 +34,10 @@ component main {
 		t.Fatalf("derived-func `if` was not lowered to a reactive slot (likely const-folded):\n%s", out)
 	}
 	// The slot must re-evaluate the condition on each render (not bake the
-	// initial result).
-	if !strings.Contains(out, "if (main_isLong(state))") {
+	// initial result), so it is a call. The func reads a window var, which
+	// makes it readonly rather than pure -- and a pure one is exactly what
+	// gets folded, which is the first of the two bugs above.
+	if !strings.Contains(out, "if (isLong())") {
 		t.Errorf("slot body does not re-evaluate the derived func:\n%s", out)
 	}
 	// Mutating `name` in the input handler must re-fire the slot.
@@ -54,7 +56,7 @@ func TestDerivedFuncChainGatesReactiveSlot(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+window {
     var name = "world"
     func longish() => name.length > 3
     func isLong() => longish()
@@ -83,7 +85,7 @@ func TestToggleSplicesReactiveUpdaters(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+window {
     var enabled = true
     button(text="Toggle", @click { enabled!! })
     text(value="enabled: {enabled}")
@@ -115,7 +117,7 @@ struct User {
     name string = "anon"
     score int = 0
 }
-component main {
+window {
     var u User = User{name = "Ada", score = 42}
     text(value="Score: {u.score}")
     button(text="+10", @click { u.score += 10 })
@@ -146,7 +148,7 @@ output { none { html() } }
 struct Task {
     label string = ""
 }
-component main {
+window {
     var tasks list<Task> = [Task{label = "A"}]
     text(value="{tasks.length} tasks")
     for var t = tasks {
@@ -183,7 +185,7 @@ func TestStringIntrinsicEmitsNativeAfterInlining(t *testing.T) {
 	src := `
 import . "sngl:ui"
 output { none { html() } }
-component main {
+window {
     var s = "hi"
     text(value="{s.upper()} {s.length}")
     button(text="x", @click { s = s.upper() })

@@ -47,7 +47,7 @@ func TestRedeclaredAcrossFiles(t *testing.T) {
 		{"unit", "unit N { px }", "unit N { em }", ""},
 		{"func", "func N() => 1", "func N() => 2", ""},
 		{"const", "const N = 1", "const N = 2", ""},
-		{"component", "component N {\n    text(value=\"a\")\n}", "component N {\n    text(value=\"b\")\n}", ""},
+		{"component", "component N node {\n    text(value=\"a\")\n}", "component N node {\n    text(value=\"b\")\n}", ""},
 		// A top-level var is caught before claimTopLevel sees it, by the
 		// package-scope lookup registerVars does for the component-body case.
 		{"var", "var N int = 1", "var N int = 2", `duplicate declaration of "N"`},
@@ -78,7 +78,7 @@ func TestRedeclaredAcrossFiles(t *testing.T) {
 func TestCrossFileDeclarationsResolve(t *testing.T) {
 	errs := pkgCheckErrors(parsePkg(t,
 		"struct Style {\n    x int\n}\n",
-		"import . \"sngl:ui\"\n\nfunc widthOf(s Style) int {\n    return s.x\n}\n\ncomponent main {\n    text(value=string(widthOf(Style{x = 7})))\n}\n",
+		"import . \"sngl:ui\"\n\nfunc widthOf(s Style) int {\n    return s.x\n}\n\ncomponent main node {\n    text(value=string(widthOf(Style{x = 7})))\n}\n",
 	))
 	if len(errs) != 0 {
 		t.Fatalf("unexpected diagnostics: %v", errs)
@@ -89,8 +89,8 @@ func TestCrossFileDeclarationsResolve(t *testing.T) {
 // name is one declaration plus an import, in whichever file each is written.
 func TestShadowingSurvivesPackageScope(t *testing.T) {
 	errs := pkgCheckErrors(parsePkg(t,
-		"import . \"sngl:ui\"\n\ncomponent text(value string) {\n    button(text=value)\n}\n",
-		"import . \"sngl:ui\"\n\ncomponent main {\n    text(value=\"mine\")\n}\n",
+		"import . \"sngl:ui\"\n\ncomponent text(value string) node {\n    button(text=value)\n}\n",
+		"import . \"sngl:ui\"\n\ncomponent main node {\n    text(value=\"mine\")\n}\n",
 	))
 	if len(errs) != 0 {
 		t.Fatalf("unexpected diagnostics: %v", errs)

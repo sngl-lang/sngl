@@ -16,10 +16,14 @@ grep '"hi"' out/model.go
 -- app.sngl --
 import . "sngl:ui"
 
-component output(label string) {
+component output(label string) node {
     text(value=label)
 }
 
-component main {
+component main node {
     output(label="hi")
+}
+
+window {
+    main
 }

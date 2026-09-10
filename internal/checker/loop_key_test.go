@@ -13,7 +13,7 @@ import (
 func TestKeyOnEveryNodeForm(t *testing.T) {
 	src := `import . "sngl:ui"
 
-component main {
+component main node {
     var items list<int> = [1, 2]
     vbox() {
         for var item, i = items {

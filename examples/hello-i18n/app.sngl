@@ -24,7 +24,7 @@ output {
 
 enum Gender { female, male, other }
 
-component main {
+component main ui.node {
     var name = "Alice"
     var gender Gender = Gender.female
     var guests = 1
@@ -76,4 +76,8 @@ component main {
             style={fontSize=14, color="#555"},
         )
     }
+}
+
+ui.window {
+    main
 }

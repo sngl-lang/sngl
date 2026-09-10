@@ -8,7 +8,7 @@ import "sngl:platform/html"
 // The unit here is declared and not used: a bare unit literal needs an expected
 // type since 3c223a7e, and a body-local type does not resolve in an annotation
 // inside an override body (#204).
-component thing {
+component thing ui.node {
     ui.text(value="base")
 }
 
@@ -22,7 +22,7 @@ component thing[html.platform] {
     ui.text(value="${r.a}")
 }
 
-component tagged {
+component tagged ui.node {
     ui.text(value="base")
 }
 
@@ -38,7 +38,11 @@ component tagged[html.platform] {
     ui.text(value="${p}")
 }
 
-component main {
+component main ui.node {
     thing()
     tagged()
+}
+
+ui.window {
+    main
 }

@@ -67,14 +67,6 @@ struct MenuEvent {}
 // document) finishes loading.
 struct LoadEvent {}
 
-// Payload emitted by `@error` when an operation fails. `message` is
-// human-readable; `kind` tags the category so handlers can dispatch
-// programmatically (e.g. "network", "decode", "auth").
-struct ErrorEvent {
-    message string
-    kind string
-}
-
 // Payload emitted by `@change` from `datepicker` when the selected
 // date changes. Inspect the picker's `value` prop for the new date.
 struct DateEvent {}

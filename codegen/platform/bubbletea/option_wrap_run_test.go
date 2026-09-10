@@ -37,7 +37,7 @@ func nextBox() Box {
     return Box{value=made * 10}
 }
 
-component main {
+window {
     var b = Box{value=3}
     var h = Holder{inner=b}
     var fresh = Holder{inner=null}

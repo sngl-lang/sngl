@@ -1,8 +1,12 @@
 import . "sngl:ui"
 
 // Bug: unknown method on list typechecks silently.
-component main {
+component main node {
     var L = [1, 2, 3]
     var bad = L.notReal() // ERROR(check) "no method"
     text(value="x")
+}
+
+window {
+    main
 }

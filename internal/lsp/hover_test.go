@@ -43,21 +43,21 @@ func hoverOf(t *testing.T, src, word string) string {
 }
 
 func TestHoverInfo_Var(t *testing.T) {
-	info := hoverOf(t, `component main { var count = 0 }`, "count")
+	info := hoverOf(t, `component main node { var count = 0 }`, "count")
 	if !strings.Contains(info, "count") {
 		t.Errorf("expected var hover, got %q", info)
 	}
 }
 
 func TestHoverInfo_Computed(t *testing.T) {
-	info := hoverOf(t, `component main { func greeting() => "hi" }`, "greeting")
+	info := hoverOf(t, `component main node { func greeting() => "hi" }`, "greeting")
 	if !strings.Contains(info, "greeting") {
 		t.Errorf("expected func hover, got %q", info)
 	}
 }
 
 func TestHoverInfo_Component(t *testing.T) {
-	info := hoverOf(t, `component Counter(label = "", step int) { vbox {} }`, "Counter")
+	info := hoverOf(t, `component Counter(label = "", step int) node { vbox {} }`, "Counter")
 	if !strings.Contains(info, "Counter") {
 		t.Errorf("expected component hover, got %q", info)
 	}

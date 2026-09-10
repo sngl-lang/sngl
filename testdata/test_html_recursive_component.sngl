@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component tree(label = "", depth = 0) {
+component tree(label = "", depth = 0) node {
     text(value=label)
     if depth > 0 {
         tree(label="{label}.a", depth=depth - 1)
@@ -9,10 +9,14 @@ component tree(label = "", depth = 0) {
     }
 }
 
-component main {
+component main node {
     tree(label="root", depth=2)
 }
 
 func testRecursiveComponentCompiles(t Test, c main) {
     t.assert(true)
+}
+
+window {
+    main
 }

@@ -4,12 +4,12 @@
 
 import . "sngl:ui"
 
-component first() {
-    component row(label = "") {
+component first() node {
+    component row(label = "") node {
         text(value="row " + label)
     }
 
-    component labelled(label = "") {
+    component labelled(label = "") node {
         vbox {
             row(label=label)
         }
@@ -21,17 +21,21 @@ component first() {
     }
 }
 
-component second() {
-    component cell(label = "") {
+component second() node {
+    component cell(label = "") node {
         text(value="cell " + label)
     }
 
     cell(label="c")
 }
 
-component main {
+component main node {
     vbox {
         first()
         second()
     }
+}
+
+window {
+    main
 }

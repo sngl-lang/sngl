@@ -4,3 +4,6 @@
 import . "sngl:ui"
 
 var bad map<list<int>, string> // ERROR(check) "not comparable"
+
+window {
+}

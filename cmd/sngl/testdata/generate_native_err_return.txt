@@ -26,21 +26,18 @@ package api
 func Fetch(q string) ([]string, error) { return []string{q}, nil }
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { fyne } }
 
 import "go:example.com/native-err/api"
 
-component main {
+window #app(title="t") {
     var rows list<string> = []
 
-    window #app(title="t") {
-        vbox {
-            button(text="Load", @click {
-                rows = api.Fetch("hello")
-            })
-            text(value="rows {string(rows.length)}")
-        }
+    vbox {
+        button(text="Load", @click {
+            rows = api.Fetch("hello")
+        })
+        text(value="rows {string(rows.length)}")
     }
 }

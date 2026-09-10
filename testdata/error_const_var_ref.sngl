@@ -1,8 +1,12 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     var x = "test"
     const xl = x.length() // ERROR(check) "non-const"
 
     text(value="test")
+}
+
+window {
+    main
 }

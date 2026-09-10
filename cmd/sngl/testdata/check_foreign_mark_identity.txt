@@ -28,10 +28,13 @@ struct A {
 
 func take(a A) => a.title
 
-component main {
+component main node {
     text(value=take(A{title="x"}))
 }
 
+window {
+    main
+}
 -- twomarks.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
@@ -48,10 +51,13 @@ struct B {
 
 func take(b B) => b.title
 
-component main {
+component main node {
     text(value=take(A{title="x"}))
 }
 
+window {
+    main
+}
 -- markvsimport.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
@@ -64,8 +70,12 @@ struct Entry {
 
 func take(e api.Entry) => e.title
 
-component main {
+component main node {
     text(value=take(Entry{title="x"}))
+}
+
+window {
+    main
 }
 -- api/index.ts --
 export type Entry = { title: string };

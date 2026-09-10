@@ -1,18 +1,21 @@
 import . "sngl:ui"
-import . "sngl:app"
 import tr "sngl:tree"
 
 // Component declares optional child (option<T>).
 // Two children: error.
-component OptionalOne(content ...component option<tr.default>) {
+component OptionalOne(content ...component option<node>) node {
     vbox {
         content
     }
 }
 
-component main {
+component main node {
     OptionalOne { // ERROR(check) "accepts at most one child"
         text(value="a")
         text(value="b")
     }
+}
+
+window {
+    main
 }

@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component Counter(label = "") {
+component Counter(label = "") node {
     var count = 0
 
     hbox {
@@ -10,7 +10,7 @@ component Counter(label = "") {
     }
 }
 
-component main {
+component main node {
     var (
         count = 0
         name = "World"
@@ -29,4 +29,8 @@ component main {
         Counter(label="Clicks")
         button(text=active ? "Deactivate" : "Activate", @click { active!! })
     }
+}
+
+window {
+    main
 }

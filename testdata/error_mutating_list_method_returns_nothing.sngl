@@ -10,7 +10,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var xs list<string> = ["a"]
     var ys list<string> = []
     var n int = 0
@@ -62,4 +62,8 @@ component main {
     text(value=string(xs.length()))
     text(value=string(ys.length()))
     text(value=string(n))
+}
+
+window {
+    main
 }

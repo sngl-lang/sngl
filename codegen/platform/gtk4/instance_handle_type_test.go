@@ -1,6 +1,7 @@
 package gtk4
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -19,15 +20,18 @@ import (
 func TestAnInstanceHandleFieldIsTypedAsTheRecord(t *testing.T) {
 	model := generateGTK4ModelBuilt(t, fixtureSource(t, "test_recursive_component.sngl"))
 
+	// The field declaration is matched as a pattern because gofmt aligns a
+	// struct's types to its widest field name: a literal run of spaces asserts
+	// what else is in the Model rather than what this field's type is.
 	for _, want := range []string{
-		"__n0     *Tree_viewInstance",
-		"m.__n0 = newTree_viewInstance(",
+		`__n0\s+\*Tree_viewInstance`,
+		`m\.__n0 = newTree_viewInstance\(`,
 		// A record does carry a Root, so this is also the positive half of
 		// what OnComponentRoot decides.
-		"m.__n0__el = m.__n0.Root",
+		`m\.__n0__el = m\.__n0\.Root`,
 	} {
-		if !strings.Contains(model, want) {
-			t.Errorf("emitted Go missing %q\n--- model.go ---\n%s", want, model)
+		if !regexp.MustCompile(want).MatchString(model) {
+			t.Errorf("emitted Go missing %s\n--- model.go ---\n%s", want, model)
 		}
 	}
 	buildGeneratedGo(t, "gtk4-handle-type-", model)

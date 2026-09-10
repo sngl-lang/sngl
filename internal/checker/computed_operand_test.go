@@ -27,7 +27,7 @@ struct Point {
 // type, not the function type — which is the evidence the call was inserted.
 func TestComputedReceiverResolvesAgainstItsResult(t *testing.T) {
 	src := computedOperandPrelude + `
-component main() {
+component main() node {
     var key = "foo"
 
     func plain() => key + "!"
@@ -63,7 +63,7 @@ func TestComputedOperandPositionsResolve(t *testing.T) {
     text(value = "{pt.x}")`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			src := computedOperandPrelude + "\ncomponent main() {" + body + "\n}\n"
+			src := computedOperandPrelude + "\ncomponent main() node {" + body + "\n}\n"
 			if errs := checkSrc(t, src); len(errs) > 0 {
 				t.Errorf("%v", errs[0].Error())
 			}
@@ -89,7 +89,7 @@ func lookup(k string) string {
     return k
 }
 
-component main() {
+component main() node {
     text(value = "{lookup.bogusMethod()}")
 }
 `

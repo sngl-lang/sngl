@@ -24,14 +24,14 @@ struct Item {
     level float = 0.0
 }
 
-component gauge(level = 0.0) {
+component gauge(level = 0.0) node {
     var hits = 0
     canvas(width=100px, height=100px%s) {
         rect(x=0.0, y=0.0, w=level, h=10.0) {}
     }
 }
 
-component main {
+window {
     var items list<Item> = [
         {level=10.0},
         {level=20.0},

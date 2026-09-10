@@ -101,7 +101,7 @@ window("App") {
 func TestErrorRaiseCaughtByBoundary(t *testing.T) {
 	pkg := parse(t, `
 window("App") {
-    errorBoundary(@error(e) { })  {
+    boundary(@error(e) { })  {
         button(text="Go", @click {
             error.raise("boom", "")
         })
@@ -156,7 +156,7 @@ window("App", @error(e) { }) {
 func TestErrorBoundaryInnerWins(t *testing.T) {
 	pkg := parse(t, `
 window("App", @error(e) { }) {
-    errorBoundary(@error(e) { }) {
+    boundary(@error(e) { }) {
         button(text="Go", @click {
             error.raise("boom", "")
         })

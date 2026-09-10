@@ -1,5 +1,4 @@
 import ui "sngl:ui"
-import app "sngl:app"
 
 output {
     go {
@@ -9,7 +8,7 @@ output {
 
 import "go:git.duckfam.us/jonathan/sngl/examples/http-session/session"
 
-component main {
+component main ui.node {
     var sidebarOpen = false
 
     app.window #home(title="Dashboard", href="/") {

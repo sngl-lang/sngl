@@ -13,7 +13,7 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
@@ -51,4 +51,8 @@ func testRefillingTheListUnmountsIt(t Test, c main) {
     c.items = []
     c.items = ["a"]
     t.assert(c.out.value == "+none,-none")
+}
+
+window {
+    main
 }

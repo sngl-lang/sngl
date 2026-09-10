@@ -10,3 +10,6 @@ func f() {
     for x = xs { // ERROR(parse) "a loop variable is declared with var"
     }
 }
+
+window {
+}

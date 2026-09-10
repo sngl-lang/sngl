@@ -1,15 +1,19 @@
 import . "sngl:ui"
 
-component Pair(first string, second string) {
+component Pair(first string, second string) node {
     func both() => first + "+" + second
 
     text(value=both())
 }
 
-component main {
+component main node {
     Pair("alpha", "beta")            // all positional
     Pair("gamma", second="delta")    // positional then named
     Pair(second="zeta", first="eta") // out-of-order named
 
     text(value="named component props")
+}
+
+window {
+    main
 }

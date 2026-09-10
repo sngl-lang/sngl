@@ -40,14 +40,13 @@ package api
 func Bump(n int) int { return n + 1 }
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { html } }
 
 import "go:example.com/route-raw/api"
 import "sngl:platform/html"
 
-component main {
+component main node {
     var n int = 0
 
     window #app(title = "t", href = "/") {

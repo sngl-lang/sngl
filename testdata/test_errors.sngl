@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component errs {
+component errs node {
     var count = 0
     var items = [1, 2, 3]
     text(value="{count}")
@@ -17,4 +17,7 @@ func testIndexOutOfBounds(t Test, c errs) { // ERROR(test) "out of range"
 
 func testCannotAssignUndefined(t Test, c errs) { // ERROR(test) "undefined"
     nope = 42                                    // ERROR(check) "undefined"
+}
+
+window {
 }

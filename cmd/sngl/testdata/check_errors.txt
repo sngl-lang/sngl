@@ -17,14 +17,25 @@ stdout 'dir/a.sngl: ok'
 -- good.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
+}
+
+window {
+    main
 }
 -- bad.sngl --
 import . "sngl:ui"
 
 not valid sngl
+
+window {
+}
 -- dir/a.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
+}
+
+window {
+    main
 }

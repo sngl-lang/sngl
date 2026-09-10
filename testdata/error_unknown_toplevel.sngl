@@ -6,5 +6,9 @@ import . "sngl:ui"
 // only say the position was unexpected.
 foobar // ERROR(check) "unknown component \"foobar\""
 
-component main {
+component main node {
+}
+
+window {
+    main
 }

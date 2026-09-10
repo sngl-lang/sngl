@@ -48,80 +48,62 @@ stderr 'unknown type "color" in namespace "html"'
 
 -- gate.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 import "sngl:language/go"
 
-component main {
-    window #w(title="t") {
-        if PLATFORM == html.platform {
-            text(value="html-only")
-        }
-        if LANGUAGE == go.language {
-            text(value="go-only")
-        }
-        text(value="always")
+window #w(title="t") {
+    if PLATFORM == html.platform {
+        text(value="html-only")
     }
+    if LANGUAGE == go.language {
+        text(value="go-only")
+    }
+    text(value="always")
 }
 
 -- string_compare.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
-component main {
-    window #w(title="t") {
-        if PLATFORM == "html" {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == "html" {
+        text(value="x")
     }
 }
 
 -- unknown_target.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
-component main {
-    window #w(title="t") {
-        if PLATFORM == htlm.platform {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == htlm.platform {
+        text(value="x")
     }
 }
 
 -- misspelled_member.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/bubbletea"
 
-component main {
-    window #w(title="t") {
-        if PLATFORM == bubbletea.pltform {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == bubbletea.pltform {
+        text(value="x")
     }
 }
 
 -- html_wildcard.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component main {
-    window #w(title="t") {
-        if PLATFORM == html.marquee {
-            text(value="x")
-        }
+window #w(title="t") {
+    if PLATFORM == html.marquee {
+        text(value="x")
     }
 }
 
 -- ambient_leak.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
-import . "sngl:app"
 
-component main {
-    window #w(title="t") {
-        var c html.color = #ff0000
-        text(value="x")
-    }
+window #w(title="t") {
+    var c html.color = #ff0000
+    text(value="x")
 }

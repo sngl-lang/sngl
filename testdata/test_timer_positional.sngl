@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -19,14 +18,18 @@ func testMixedTimerProps(t Test, c main2) {
     t.assert(c.count == 1)
 }
 
-component main {
+component main node {
     var count = 0
     timer(100ms, true, @tick { count += 1 })
     text(value=string(count))
 }
 
-component main2 {
+component main2 node {
     var count = 0
     timer(100ms, enabled=true, @tick { count += 1 })
     text(value=string(count))
+}
+
+window {
+    main
 }

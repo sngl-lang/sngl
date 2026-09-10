@@ -6,8 +6,8 @@
 
 import . "sngl:ui"
 
-component first() {
-    component node(depth = 0) {
+component first() node {
+    component node(depth = 0) node {
         vbox {
             text(value="{depth}")
             if depth < 2 {
@@ -19,8 +19,8 @@ component first() {
     node(depth=0)
 }
 
-component second() {
-    component node(depth = 0) { // ERROR(check) "is declared twice in this package and both declarations recurse"
+component second() node {
+    component node(depth = 0) node { // ERROR(check) "is declared twice in this package and both declarations recurse"
         vbox {
             text(value="d{depth}")
             if depth < 2 {
@@ -32,9 +32,13 @@ component second() {
     node(depth=0)
 }
 
-component main {
+component main node {
     vbox {
         first()
         second()
     }
+}
+
+window {
+    main
 }

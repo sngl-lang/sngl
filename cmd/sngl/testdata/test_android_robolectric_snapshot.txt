@@ -19,11 +19,14 @@ import . "sngl:test"
 
 output { kotlin { android } }
 
-component greeter {
+component greeter node {
     var name = "world"
     text(value=name)
 }
 
 func testGreeterSnapshot(t Test, c greeter) {
     t.snapshot("initial")
+}
+
+window {
 }

@@ -10,6 +10,10 @@ import . "sngl:ui"
 // `text(value="hi")` must type-check without a registered platform
 // (stdlib text's body stays abstract; the call still resolves to a
 // known component with a known `value` prop).
-component main {
+component main node {
     text(value="hi")
+}
+
+window {
+    main
 }

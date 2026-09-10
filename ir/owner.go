@@ -27,6 +27,7 @@ type Owner struct {
 	Vars   []*Var
 	Consts []*Var
 	Funcs  []*Func
+	Timers []*Timer
 	Stmts  []Stmt
 }
 
@@ -58,12 +59,12 @@ func Owners(pkg *Package) []Owner {
 		return nil
 	}
 	out := make([]Owner, 0, 1+len(pkg.Components)+len(pkg.Windows))
-	out = append(out, Owner{Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Stmts: pkg.Body})
+	out = append(out, Owner{Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Timers: pkg.Timers, Stmts: pkg.Body})
 	for _, c := range pkg.Components {
-		out = append(out, Owner{Comp: c, Vars: c.Vars, Funcs: c.Funcs, Stmts: c.Body})
+		out = append(out, Owner{Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Stmts: c.Body})
 	}
 	for _, w := range pkg.Windows {
-		out = append(out, Owner{Win: w, Vars: w.Vars, Funcs: w.Funcs, Stmts: w.Body})
+		out = append(out, Owner{Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Stmts: w.Body})
 	}
 	return out
 }

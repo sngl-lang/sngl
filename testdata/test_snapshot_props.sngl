@@ -6,7 +6,7 @@ import . "sngl:test"
 // `text({}, "x")` and `text(style={}, value="x")` are one thing by here.
 // Handlers print after them as bare `@name` markers: a snapshot records that a
 // handler is attached, never what it would do.
-component card {
+component card node {
     var label = "hi"
 
     vbox {
@@ -26,4 +26,7 @@ func testWrittenOrder(t Test, c card) {
 func testReflectsCurrentState(t Test, c card) {
     c.label = "changed"
     t.snapshot("changed")
+}
+
+window {
 }

@@ -7,7 +7,7 @@ enum Mode {
     on
 }
 
-component main {
+component main node {
     var m Mode = Mode.off
     var ready bool = false
 
@@ -23,7 +23,7 @@ enum Mode {
     off
     on
 }
-component main {
+component main node {
     var m Mode = 0
     var ready bool = false
     func tick(this main) {

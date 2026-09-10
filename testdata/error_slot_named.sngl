@@ -11,7 +11,7 @@ struct Row {
     title string
 }
 
-component table(rows list<Row>, cell component(Row)) {
+component table(rows list<Row>, cell component(Row)) node {
     vbox {
         for var r = rows {
             cell(r)
@@ -28,7 +28,7 @@ component table(rows list<Row>, cell component(Row)) {
 // the same name is a collision the parameter list on its own cannot see. Left
 // unreported, the call in a handler became a slot insertion nothing renders and
 // codegen panicked on it.
-component collidesWithFunc(ping component, children ...component) {
+component collidesWithFunc(ping component, children ...component) node {
     func ping() {} // ERROR(check) "already declared as a slot"
     vbox {
         ping {
@@ -37,7 +37,7 @@ component collidesWithFunc(ping component, children ...component) {
     }
 }
 
-component main {
+component main node {
     table(rows=[]) {
         component cell(row) {
             text(value=row.title)
@@ -59,4 +59,8 @@ component main {
             text(value=row.title)
         }
     }
+}
+
+window {
+    main
 }

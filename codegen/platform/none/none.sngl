@@ -7,6 +7,7 @@
 import time "sngl:time"
 import build "sngl:build"
 import . "sngl:internal/marks"
+import tree "sngl:tree"
 
 // The `none` node of a build directive: the interpreter as a build target.
 component none() build.platform {}
@@ -19,6 +20,7 @@ component none() build.platform {}
 // scheduled because the child rendered it. That is the whole reason `timer`
 // stopped being a compiler concept -- a schedule hoisted onto the component had
 // neither.
+#[tree.none]
 #[intrinsic("none:Timer")]
 component Timer(
     interval time.duration,

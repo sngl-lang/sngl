@@ -12,16 +12,15 @@ import (
 // call, so the canvas redraws whenever the state changes.
 func TestCanvasReactiveRedraw(t *testing.T) {
 	src := `
-import . "sngl:app"
+import . "sngl:ui"
 import . "sngl:test"
 import . "sngl:ui/draw"
 output { none { html() } }
-component main {
-    var size float = 100.0
-    window(title="Canvas Reactive Test", href="/index.html") {
-        canvas(width=400px, height=300px) {
-            rect(x=10.0, y=10.0, w=size, h=50.0) {}
-        }
+var size float = 100.0
+
+window(title="Canvas Reactive Test", href="/index.html") {
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=size, h=50.0) {}
     }
 }
 `
@@ -43,15 +42,13 @@ component main {
 // and the _snglColor color helper function.
 func TestCanvasIntegration(t *testing.T) {
 	src := `
-import . "sngl:app"
+import . "sngl:ui"
 import . "sngl:test"
 import . "sngl:ui/draw"
 output { none { html() } }
-component main {
-    window(title="Canvas Test", href="/index.html") {
-        canvas(width=400px, height=300px) {
-            rect(x=10.0, y=10.0, w=100.0, h=50.0) {}
-        }
+window(title="Canvas Test", href="/index.html") {
+    canvas(width=400px, height=300px) {
+        rect(x=10.0, y=10.0, w=100.0, h=50.0) {}
     }
 }
 `

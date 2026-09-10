@@ -5,3 +5,6 @@ const x = 1
 func foo() {
     x = 2 // ERROR(check) "cannot assign to const"
 }
+
+window {
+}

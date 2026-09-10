@@ -1,7 +1,6 @@
 package ir
 
 import (
-	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -44,12 +43,21 @@ type Package struct {
 	// it is kept here rather than bound in scope. The declaration is what says
 	// a macro exists, what arguments it takes and what it does; the compiler
 	// adds only an implementation for the ones it implements.
-	Macros   []*Func
-	Windows  []*Window
-	Timers   []*Timer
-	Outputs  []*Output
-	Contexts []*Context
-	Symbols  *SymbolTable
+	Macros  []*Func
+	Windows []*Window
+	Timers  []*Timer
+	Outputs []*Output
+	// RootComponent is the component a test harness isolated as the whole
+	// program, having cleared the body and the windows around it. Empty for
+	// every ordinary build, where a window is the root and a component is
+	// only ever a component.
+	RootComponent string `json:",omitempty"`
+	// EntryWindow is the id `output(entry = home)` names: the window a build
+	// scopes to when the program opens more than one. Empty when the
+	// directive names none, which the single-window case does not need.
+	EntryWindow string `json:",omitempty"`
+	Contexts    []*Context
+	Symbols     *SymbolTable
 
 	// Body is what the package itself renders: visual nodes written at the top
 	// level, outside any component or window. The package is then a state
@@ -155,20 +163,46 @@ type AsyncKickerEntry struct {
 	Deps         []string // sorted names of reactive state vars whose mutation should re-fire the kicker
 }
 
-func (p *Package) IsMain() bool {
-	return slices.ContainsFunc(p.Components, func(c *Component) bool { return c.Name == "main" })
+// IsProgram reports whether the package is something to build rather than a
+// library to import. A window is what says so: it is the only renderable
+// member of the root tree, so a package without one has nothing to open.
+func (p *Package) IsProgram() bool {
+	if len(p.Windows) > 0 {
+		return true
+	}
+	found := false
+	WalkStmts(p.Body, func(s Stmt) error {
+		if _, ok := s.(*Window); ok {
+			found = true
+			return SkipDir
+		}
+		return nil
+	})
+	for _, c := range p.Components {
+		if found {
+			break
+		}
+		WalkStmts(c.Body, func(s Stmt) error {
+			if _, ok := s.(*Window); ok {
+				found = true
+				return SkipDir
+			}
+			return nil
+		})
+	}
+	return found
 }
 
-// UsesTree reports whether a member of the tree that pkg declares as name
-// reaches this package. Matched on the declaring package as well as the name,
-// because a tree is its declaration: a program's own `struct shape` is not the
-// one sngl:ui/draw paints.
-func (p *Package) usesTree(pkg, name string) bool {
+// usesTreeRole reports whether a member of the tree carrying kind reaches this
+// package. Matched on the mark rather than on a name, because a tree is its
+// declaration: a program's own `struct shape` is not the one sngl:ui/draw
+// paints, and carries no mark saying it is.
+func (p *Package) usesTreeRole(kind BuiltinKind) bool {
 	if p == nil {
 		return false
 	}
 	for sd := range p.TreeKinds {
-		if sd.Pkg == pkg && sd.Name == name {
+		if isTreeRole(sd, kind) {
 			return true
 		}
 	}
@@ -186,25 +220,29 @@ func (p *Package) NoteTreeKind(sd *StructDef) {
 	p.TreeKinds[sd] = true
 }
 
-// isTreeNamed reports whether sd is the tree that pkg declares as name.
-func isTreeNamed(sd *StructDef, pkg, name string) bool {
-	return sd != nil && sd.IsTree && sd.Pkg == pkg && sd.Name == name
+// isTreeRole reports whether sd is the tree carrying kind. The three roles a
+// phase asks after are marked on their declarations (#[marks.builtin]), so
+// nothing here spells a package and a name: a tree renamed or moved keeps its
+// role, and a program declaring `struct shape` of its own does not acquire one.
+func isTreeRole(sd *StructDef, kind BuiltinKind) bool {
+	return sd != nil && sd.IsTree && sd.Builtin == kind
 }
 
-// The drawing tree is sngl:ui/draw's `shape`, and this is the only place the
-// compiler spells it. passCanvas emits that package's own primitives, so it is
-// the one tree there are rules about; a tree that carried its own would need
-// none of this.
-const (
-	drawPkg   = "sngl:ui/draw"
-	shapeTree = "shape"
-)
-
 // IsDrawShapeTree reports whether sd is the drawing tree.
-func IsDrawShapeTree(sd *StructDef) bool { return isTreeNamed(sd, drawPkg, shapeTree) }
+func IsDrawShapeTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeShape) }
+
+// IsUITree reports whether sd is the widget family.
+func IsUITree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeNode) }
+
+// IsAppRootTree reports whether sd is the family a package body accepts.
+func IsAppRootTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeRoot) }
+
+// IsSegmentedTree reports whether sd is a tree with its own rendering rules --
+// any tree but the widget family.
+func IsSegmentedTree(sd *StructDef) bool { return sd != nil && sd.IsTree && !IsUITree(sd) }
 
 // UsesDrawShapes reports whether a member of the drawing tree reaches p.
-func (p *Package) UsesDrawShapes() bool { return p.usesTree(drawPkg, shapeTree) }
+func (p *Package) UsesDrawShapes() bool { return p.usesTreeRole(BuiltinTreeShape) }
 
 // Import records a resolved import.
 type Import struct {
@@ -486,9 +524,19 @@ type Component struct {
 	// by name. Copied from ComponentDecl.Builtin at registration.
 	Builtin BuiltinKind
 	// Tree is the segmented tree this component is a member of, named in its
-	// return position. Nil for a member of the default tree — an ordinary
-	// component, interchangeable with any other.
+	// return position. Nil for a component that belongs to no tree: it may be
+	// placed in any of them and may contain none of their members.
 	Tree *StructDef `json:"-"`
+	// Treeless is the #[tree.none] mark: the declaration belongs to no family
+	// and says so. Nil Tree without it is a declaration that forgot to name
+	// one, which is an error, so the two states are told apart here rather
+	// than by the absence of a pointer.
+	Treeless bool `json:",omitempty"`
+	// TreeParam is the component's own type parameter written in the return
+	// position, for a wrapper whose family is whatever it was handed. Nil Tree
+	// and a TreeParam is a third state: tree-less at the declaration, and a
+	// member of whatever its children turn out to be at each call site.
+	TreeParam string `json:",omitempty"`
 	// Intrinsic is the id from #[intrinsic] on a component: this component is
 	// emitted by the platform codegen that answers to the id, not by
 	// inlining a body. It is what tells the inliner to leave the component
@@ -671,6 +719,7 @@ type Window struct {
 	Favicon      Expr  // checked favicon expression
 	Vars         []*Var
 	Funcs        []*Func
+	Timers       []*Timer
 	Body         []Stmt        // type-checked body statements
 	Checked      bool          // true if body was already checked in context (e.g., inside a for-loop)
 	ErrorHandler *EventHandler // optional @error handler; outermost error boundary for this window

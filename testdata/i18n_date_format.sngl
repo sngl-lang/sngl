@@ -18,3 +18,6 @@ var startedAt = $"Started at {t, time, short}"
 // dateTime placeholder.
 var dt datetime
 var stamp = $"Timestamp: {dt, dateTime, medium}"
+
+window {
+}

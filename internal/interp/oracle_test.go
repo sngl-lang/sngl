@@ -26,7 +26,7 @@ func applyAndCompare(t *testing.T, step string, h *MemHost, s *Session, mutate f
 
 const oracleSrc = `import . "sngl:ui"
 
-component main {
+component main node {
     var items = ["a", "b", "c"]
     vbox {
         for var it = items {
@@ -88,7 +88,7 @@ func TestInsertionsAndRemovalsTrack(t *testing.T) {
 func TestReplacingAnElementTakesItsSubtreeWithIt(t *testing.T) {
 	before := `import . "sngl:ui"
 
-component main {
+component main node {
     vbox #box {
         text(value="kid")
     }
@@ -96,7 +96,7 @@ component main {
 `
 	after := `import . "sngl:ui"
 
-component main {
+component main node {
     hbox #box {
         text(value="kid")
     }

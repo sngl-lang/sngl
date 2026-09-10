@@ -20,11 +20,15 @@ import . "sngl:test"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     var scores map<string, int> = {alice = 10, bob = 20}
     text(value="x")
 }
 
 func testHasAlice(t Test, c main) {
     t.assert(c.scores["alice"] == 10)
+}
+
+window {
+    main
 }

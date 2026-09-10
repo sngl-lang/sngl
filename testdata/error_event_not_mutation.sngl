@@ -1,7 +1,11 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     var count = 0
 
     button(text="click", @click { count }) // ERROR(check) "must be a statement"
+}
+
+window {
+    main
 }

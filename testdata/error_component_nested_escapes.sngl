@@ -4,21 +4,25 @@
 
 import . "sngl:ui"
 
-component outer() {
-    component inner(label = "") {
+component outer() node {
+    component inner(label = "") node {
         text(value=label)
     }
 
     inner(label="hi")
 }
 
-component other() {
+component other() node {
     inner(label="nope") // ERROR(check) "undefined: inner"
 }
 
-component main {
+component main node {
     vbox {
         outer()
         other()
     }
+}
+
+window {
+    main
 }

@@ -10,12 +10,16 @@ import . "sngl:ui"
 // own source. Resolving through the flat symtab map instead let this file break
 // the compiler's own platform source with `unknown prop "model" on component
 // Widget`.
-component Widget(title string, children ...component) {
+component Widget(title string, children ...component) node {
     text(value=title)
 }
 
-component main {
+component main node {
     var name = ""
     Widget(title="user widget")
     input(value=name)
+}
+
+window {
+    main
 }

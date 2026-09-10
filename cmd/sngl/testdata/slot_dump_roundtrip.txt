@@ -30,10 +30,10 @@ struct Row {
 
 component table(
     rows list<Row>,
-    children ...component tr.default,
+    children ...component,
     header component tr.one,
     cell component(row Row),
-) {
+) node {
     vbox {
         header {
             text(value="(untitled)")
@@ -45,7 +45,7 @@ component table(
     }
 }
 
-component main {
+component main node {
     table(rows=[Row{title = "a"}]) {
         component header {
             text(value="Rows")
@@ -55,4 +55,8 @@ component main {
         }
         text(value="ordinary")
     }
+}
+
+window {
+    main
 }

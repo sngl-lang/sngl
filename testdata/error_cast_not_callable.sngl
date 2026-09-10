@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // A cast to a type that has no cast is an error, not a silent dyn. Casting is
 // one value to one type; the paren form here is the struct-literal syntax the
@@ -13,7 +12,7 @@ enum Mode { fast, slow }
 
 unit px { suffix = "px" }
 
-component main {
+component main node {
     var a = Point(1.0, 2.0) // ERROR(check) "cannot cast to struct Point"
     var b = Mode("fast")    // ERROR(check) "cannot cast to enum Mode"
     var c = px(5)           // ERROR(check) "cannot cast int to unit px"
@@ -21,4 +20,8 @@ component main {
     var n = 5
     var e = n() // ERROR(check) "int is not a function"
     text(value="x")
+}
+
+window {
+    main
 }

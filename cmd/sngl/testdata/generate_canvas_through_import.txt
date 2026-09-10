@@ -11,15 +11,22 @@ stdout 'CanvasDrawRect'
 import . "sngl:ui"
 import g "./geom"
 
-component main {
+component main node {
     g.Chart()
+}
+
+window {
+    main
 }
 -- geom/g.sngl --
 import . "sngl:ui"
 import . "sngl:ui/draw"
 
-component Chart() {
+component Chart() node {
     canvas(width=100px, height=100px) {
         rect(x=1.0, y=2.0, w=3.0, h=4.0)
     }
+}
+
+window {
 }

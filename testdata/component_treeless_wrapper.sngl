@@ -1,0 +1,32 @@
+// A wrapper whose family is whatever it was handed says so with a type
+// parameter:
+//
+//     component boundary<T>(@error error, content ...component T) T
+//
+// Nothing at a call site names a type argument, and nothing needs to: a
+// slot's content *is* an argument. The children bind T — the first one that
+// belongs to a family says which, and the rest are held to it — so a boundary
+// around shapes belongs in a canvas and one around widgets in a layout, with
+// no ambient state and no third declaration form.
+//
+// The empty body is deliberate. Nothing infers T there, and T is left
+// unbound: there is no content for a binding to have checked, and a default
+// would name a family the wrapper has no reason to prefer.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+ui.window(title="boundaries") {
+    boundary(@error(e) {}) {
+        ui.text(value="widgets")
+    }
+
+    boundary(@error(e) {}) {}
+
+    d.canvas(width=20px, height=20px) {
+        boundary(@error(e) {}) {
+            d.circle(cx=5.0, cy=5.0, r=4.0, style={fill=#FF0000})
+            d.rect(x=0.0, y=0.0, w=2.0, h=2.0, style={fill=#00FF00})
+        }
+    }
+}

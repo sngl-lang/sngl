@@ -5,7 +5,7 @@ func double(n int) int {
     return n * 2
 }
 
-component main {
+component main node {
     text(value="x")
 }
 
@@ -16,4 +16,8 @@ func writesTheNarrowedValue(t Test) {
         var d = double(maybe)
         t.assert(d == 0)
     }
+}
+
+window {
+    main
 }

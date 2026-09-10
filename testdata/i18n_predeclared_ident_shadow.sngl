@@ -21,3 +21,6 @@ func widget.time() string {
 func widget.datetime() string {
     return "now"
 }
+
+window {
+}

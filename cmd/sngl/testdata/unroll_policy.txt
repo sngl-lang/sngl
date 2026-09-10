@@ -37,7 +37,7 @@ grep 'for range 200000 \{' bigtui/model.go
 -- app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     vbox {
         for var row = ["a", "b", "c"] {
             text(value=row)
@@ -45,14 +45,21 @@ component main {
     }
 }
 
+window {
+    main
+}
 -- big.sngl --
 import "sngl:seq"
 import . "sngl:ui"
 
-component main {
+component main node {
     vbox {
         for seq.count(200000) {
             text(value="x")
         }
     }
+}
+
+window {
+    main
 }

@@ -23,3 +23,6 @@ func test() {
     if true {
     }
 }
+
+window {
+}

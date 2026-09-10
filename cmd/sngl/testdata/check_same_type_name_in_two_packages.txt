@@ -37,18 +37,27 @@ func take(v struct {
     s Style
 }) => v.s.x
 
-component main {
+component main node {
     var theirs = {s=sub.make()}
 
     text(value=string(take(theirs)))
 }
+
+window {
+    main
+}
 -- sub/lib.sngl --
+import ui "sngl:ui"
+
 struct Style {
     y int = 0
 }
 
 func make() Style {
     return Style{y = 5}
+}
+
+ui.window {
 }
 -- direct/main.sngl --
 import . "sngl:ui"
@@ -60,6 +69,10 @@ struct Style {
 
 func take(v Style) => v.x
 
-component main {
+component main node {
     text(value=string(take(sub.make())))
+}
+
+window {
+    main
 }

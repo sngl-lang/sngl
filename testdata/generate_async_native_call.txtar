@@ -17,8 +17,12 @@ func loadAll() {
     api.fetchHello("test")
 }
 
-component main {
+component main node {
     button(text="Go", @click { loadAll() })
+}
+
+window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(url: string): Promise<string> { return "hi"; }

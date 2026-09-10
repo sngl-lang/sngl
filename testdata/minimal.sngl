@@ -1,4 +1,8 @@
 import . "sngl:ui"
 
-component main {
+component main node {
+}
+
+window {
+    main
 }

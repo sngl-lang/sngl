@@ -4,13 +4,17 @@
 
 import . "sngl:ui"
 
-component edit(onEdit func(s string)) {
+component edit(onEdit func(s string)) node {
     text(value="x")
 }
 
-component main {
+component main node {
     var log = ""
 
     edit(onEdit=func(s) => s)             // ERROR(check) "cannot use func(string) string as func(string)"
     edit(onEdit=func(s string, n int) {}) // ERROR(check) "cannot use func(string, int) as func(string)"
+}
+
+window {
+    main
 }

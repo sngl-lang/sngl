@@ -10,6 +10,10 @@ exists gen2/index.html
 -- app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }

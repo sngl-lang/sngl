@@ -3,7 +3,10 @@
 // quote that opened it, not at the end of the input -- and a comment cannot be
 // written on that line, because the string would swallow it. Hence the
 // position on the directive.
+//
+// No window here: the string swallows everything after it, so anything
+// appended would be inside the literal.
 import . "sngl:ui"
 
-// ERROR(parse:9:16) "unterminated string"
+// ERROR(parse:12:16) "unterminated string"
 var x string = "hello

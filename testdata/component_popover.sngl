@@ -3,7 +3,7 @@ import . "sngl:test"
 
 // popover: state-binding fixture — toggling bound `open` shows
 // or hides the popover panel.
-component main {
+component main node {
     var visible = false
     popover(open=visible, position="bottom", openOn="click") {
         button(text="toggle")
@@ -16,4 +16,8 @@ func testPopoverOpenToggles(t Test, c main) {
     t.assert(c.visible == true)
     c.visible = false
     t.assert(c.visible == false)
+}
+
+window {
+    main
 }

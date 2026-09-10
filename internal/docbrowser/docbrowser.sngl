@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // docbrowser drives `sngl doc --tui` and `sngl doc --http`. Bubbletea
 // renders the top-level main body; html route mode compiles the window
@@ -16,57 +15,68 @@ import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "../docui"
 import "sngl:platform/html"
 
-component main {
-    var path = "sngl"
-    var ident1 = ""
-    var ident2 = ""
-    func entry() => lookup.Resolve(path, ident1, ident2)
-
-    if PLATFORM == html.platform {
-        window #home(title="SNGL Docs", href="/") {
-            hbox {
-                docui.Sidebar(homeHref="/") {
-                    for var p = lookup.Packages() {
-                        docui.NavItem(text=p.title, href="/p/" + p.path)
-                    }
-                }
-                vbox(style={padding=24, flex=1}) {
-                    text(value="SNGL Documentation",
-                         style={fontSize=28, fontWeight="bold"})
-                    docui.EntryView(path="sngl")
+var path = "sngl"
+var ident1 = ""
+var ident2 = ""
+func entry() => lookup.Resolve(path, ident1, ident2)
+if PLATFORM == html.platform {
+    window #home(title="SNGL Docs", href="/") {
+        hbox {
+            docui.Sidebar(homeHref="/") {
+                for var p = lookup.Packages() {
+                    docui.NavItem(text=p.title, href="/p/" + p.path)
                 }
             }
-        }
-
-        window #pkg(title="Package — SNGL Docs", href="/p/{pkg}") {
-            hbox {
-                docui.Sidebar(homeHref="/") {
-                    for var p = lookup.Packages() {
-                        docui.NavItem(text=p.title, href="/p/" + p.path,
-                                      active=p.path == pkg)
-                    }
-                }
-                vbox(style={padding=24, flex=1}) {
-                    docui.EntryView(path=pkg, hrefPrefix="/p/" + pkg + "/")
-                }
+            vbox(style={padding=24, flex=1}) {
+                text(
+                    value="SNGL Documentation",
+                    style={fontSize=28, fontWeight="bold"},
+                )
+                docui.EntryView(path="sngl")
             }
         }
+    }
 
-        window #decl(title="Decl — SNGL Docs", href="/p/{pkg}/{name}") {
-            hbox {
-                docui.Sidebar(homeHref="/") {
-                    for var p = lookup.Packages() {
-                        docui.NavItem(text=p.title, href="/p/" + p.path,
-                                      active=p.path == pkg)
-                    }
-                }
-                vbox(style={padding=24, flex=1}) {
-                    docui.EntryView(path=pkg, ident1=name,
-                                    hrefPrefix="/p/" + pkg + "/")
+    window #pkg(title="Package — SNGL Docs", href="/p/{pkg}") {
+        hbox {
+            docui.Sidebar(homeHref="/") {
+                for var p = lookup.Packages() {
+                    docui.NavItem(
+                        text=p.title,
+                        href="/p/" + p.path,
+                        active=p.path == pkg,
+                    )
                 }
             }
+            vbox(style={padding=24, flex=1}) {
+                docui.EntryView(path=pkg, hrefPrefix="/p/" + pkg + "/")
+            }
         }
-    } else {
+    }
+
+    window #decl(title="Decl — SNGL Docs", href="/p/{pkg}/{name}") {
+        hbox {
+            docui.Sidebar(homeHref="/") {
+                for var p = lookup.Packages() {
+                    docui.NavItem(
+                        text=p.title,
+                        href="/p/" + p.path,
+                        active=p.path == pkg,
+                    )
+                }
+            }
+            vbox(style={padding=24, flex=1}) {
+                docui.EntryView(
+                    path=pkg,
+                    ident1=name,
+                    hrefPrefix="/p/" + pkg + "/",
+                )
+            }
+        }
+    }
+} else {
+    // The TUI has one window, which is the whole terminal.
+    window(title="SNGL Docs") {
         // TUI body — single full-width page. The top row is the navigation bar
         // (three bound inputs); below it we render whatever the current Entry
         // resolves to. No sidebar.
@@ -89,8 +99,10 @@ component main {
                     text(value=entry().index.title, style={fontWeight="bold"})
                     text(value=entry().index.description, style={color="#aaa"})
                     if entry().index.isNative && entry().index.nativeImportPath != "" {
-                        text(value="Import: " + entry().index.nativeImportPath,
-                             style={color="#888", fontFamily="monospace"})
+                        text(
+                            value="Import: " + entry().index.nativeImportPath,
+                            style={color="#888", fontFamily="monospace"},
+                        )
                     }
                     text(value="")
 
@@ -193,8 +205,10 @@ component main {
 
             if entry().kind == "prop" {
                 vbox {
-                    text(value=entry().propDoc.componentName + "." + entry().propDoc.name,
-                         style={fontWeight="bold"})
+                    text(
+                        value=entry().propDoc.componentName + "." + entry().propDoc.name,
+                        style={fontWeight="bold"},
+                    )
                     text(value=entry().propDoc.type)
                     text(value=entry().propDoc.doc)
                 }
@@ -202,16 +216,20 @@ component main {
 
             if entry().kind == "field" {
                 vbox {
-                    text(value=entry().fieldDoc.type + "." + entry().fieldDoc.name,
-                         style={fontWeight="bold"})
+                    text(
+                        value=entry().fieldDoc.type + "." + entry().fieldDoc.name,
+                        style={fontWeight="bold"},
+                    )
                     text(value=entry().fieldDoc.expr)
                 }
             }
 
             if entry().kind == "member" {
                 vbox {
-                    text(value=entry().memberDoc.enumName + "." + entry().memberDoc.name,
-                         style={fontWeight="bold"})
+                    text(
+                        value=entry().memberDoc.enumName + "." + entry().memberDoc.name,
+                        style={fontWeight="bold"},
+                    )
                     text(value=entry().memberDoc.doc)
                 }
             }

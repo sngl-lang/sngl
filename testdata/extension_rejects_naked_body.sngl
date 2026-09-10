@@ -7,6 +7,10 @@ component sngl.text { // ERROR(check) "must name the target it implements"
     span(textContent=value) {}
 }
 
-component main {
+component main sngl.node {
     text(value="hi")
+}
+
+sngl.window {
+    main
 }

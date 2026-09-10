@@ -7,7 +7,7 @@ component GtkATContext(
     style dyn,
     @stateChange,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAboutDialog")]
 component GtkAboutDialog(
@@ -93,14 +93,14 @@ component GtkAboutDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAccessibleHyperlink")]
 component GtkAccessibleHyperlink(
     accessibleRole dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkActionBar")]
 component GtkActionBar(
@@ -144,13 +144,13 @@ component GtkActionBar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkActivateAction")]
 component GtkActivateAction(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAdjustment")]
 component GtkAdjustment(
@@ -164,7 +164,7 @@ component GtkAdjustment(
     @changed,
     @valueChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAlertDialog")]
 component GtkAlertDialog(
@@ -176,19 +176,19 @@ component GtkAlertDialog(
     modal bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAlternativeTrigger")]
 component GtkAlternativeTrigger(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAnyFilter")]
 component GtkAnyFilter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAppChooserButton")]
 component GtkAppChooserButton(
@@ -237,7 +237,7 @@ component GtkAppChooserButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAppChooserDialog")]
 component GtkAppChooserDialog(
@@ -309,7 +309,7 @@ component GtkAppChooserDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAppChooserWidget")]
 component GtkAppChooserWidget(
@@ -358,7 +358,7 @@ component GtkAppChooserWidget(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkApplication")]
 component GtkApplication(
@@ -367,7 +367,7 @@ component GtkApplication(
     style dyn,
     @queryEnd,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkApplicationWindow")]
 component GtkApplicationWindow(
@@ -438,7 +438,7 @@ component GtkApplicationWindow(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAspectFrame")]
 component GtkAspectFrame(
@@ -486,7 +486,7 @@ component GtkAspectFrame(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAssistant")]
 component GtkAssistant(
@@ -560,7 +560,7 @@ component GtkAssistant(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkAssistantPage")]
 component GtkAssistantPage(
@@ -569,13 +569,13 @@ component GtkAssistantPage(
     title string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBinLayout")]
 component GtkBinLayout(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBookmarkList")]
 component GtkBookmarkList(
@@ -583,7 +583,7 @@ component GtkBookmarkList(
     ioPriority int,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBoolFilter")]
 component GtkBoolFilter(
@@ -591,7 +591,7 @@ component GtkBoolFilter(
     invert bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBox")]
 component GtkBox(
@@ -639,7 +639,7 @@ component GtkBox(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBoxLayout")]
 component GtkBoxLayout(
@@ -650,7 +650,7 @@ component GtkBoxLayout(
     orientation dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBuilder")]
 component GtkBuilder(
@@ -659,19 +659,19 @@ component GtkBuilder(
     translationDomain string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBuilderCScope")]
 component GtkBuilderCScope(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkBuilderListItemFactory")]
 component GtkBuilderListItemFactory(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkButton")]
 component GtkButton(
@@ -724,13 +724,13 @@ component GtkButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCClosureExpression")]
 component GtkCClosureExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCalendar")]
 component GtkCalendar(
@@ -785,20 +785,20 @@ component GtkCalendar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCallbackAction")]
 component GtkCallbackAction(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellArea")]
 component GtkCellArea(
     focusCell dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellAreaBox")]
 component GtkCellAreaBox(
@@ -807,13 +807,13 @@ component GtkCellAreaBox(
     focusCell dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellAreaContext")]
 component GtkCellAreaContext(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRenderer")]
 component GtkCellRenderer(
@@ -834,7 +834,7 @@ component GtkCellRenderer(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererAccel")]
 component GtkCellRendererAccel(
@@ -904,7 +904,7 @@ component GtkCellRendererAccel(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererCombo")]
 component GtkCellRendererCombo(
@@ -973,7 +973,7 @@ component GtkCellRendererCombo(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererPixbuf")]
 component GtkCellRendererPixbuf(
@@ -1001,7 +1001,7 @@ component GtkCellRendererPixbuf(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererProgress")]
 component GtkCellRendererProgress(
@@ -1029,7 +1029,7 @@ component GtkCellRendererProgress(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererSpin")]
 component GtkCellRendererSpin(
@@ -1098,7 +1098,7 @@ component GtkCellRendererSpin(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererSpinner")]
 component GtkCellRendererSpinner(
@@ -1122,7 +1122,7 @@ component GtkCellRendererSpinner(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererText")]
 component GtkCellRendererText(
@@ -1188,7 +1188,7 @@ component GtkCellRendererText(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellRendererToggle")]
 component GtkCellRendererToggle(
@@ -1213,7 +1213,7 @@ component GtkCellRendererToggle(
     style dyn,
     @editingCanceled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCellView")]
 component GtkCellView(
@@ -1260,7 +1260,7 @@ component GtkCellView(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCenterBox")]
 component GtkCenterBox(
@@ -1309,14 +1309,14 @@ component GtkCenterBox(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCenterLayout")]
 component GtkCenterLayout(
     shrinkCenterLast bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCheckButton")]
 component GtkCheckButton(
@@ -1369,13 +1369,13 @@ component GtkCheckButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkClosureExpression")]
 component GtkClosureExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColorButton")]
 component GtkColorButton(
@@ -1425,7 +1425,7 @@ component GtkColorButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColorChooserDialog")]
 component GtkColorChooserDialog(
@@ -1499,7 +1499,7 @@ component GtkColorChooserDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColorChooserWidget")]
 component GtkColorChooserWidget(
@@ -1545,7 +1545,7 @@ component GtkColorChooserWidget(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColorDialog")]
 component GtkColorDialog(
@@ -1554,7 +1554,7 @@ component GtkColorDialog(
     withAlpha bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColorDialogButton")]
 component GtkColorDialogButton(
@@ -1600,7 +1600,7 @@ component GtkColorDialogButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColumnView")]
 component GtkColumnView(
@@ -1656,7 +1656,7 @@ component GtkColumnView(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColumnViewCell")]
 component GtkColumnViewCell(
@@ -1668,7 +1668,7 @@ component GtkColumnViewCell(
     selectable bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColumnViewColumn")]
 component GtkColumnViewColumn(
@@ -1683,7 +1683,7 @@ component GtkColumnViewColumn(
     visible bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColumnViewRow")]
 component GtkColumnViewRow(
@@ -1694,13 +1694,13 @@ component GtkColumnViewRow(
     selectable bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkColumnViewSorter")]
 component GtkColumnViewSorter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkComboBox")]
 component GtkComboBox(
@@ -1758,7 +1758,7 @@ component GtkComboBox(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkComboBoxText")]
 component GtkComboBoxText(
@@ -1816,19 +1816,19 @@ component GtkComboBoxText(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkConstantExpression")]
 component GtkConstantExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkConstraint")]
 component GtkConstraint(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkConstraintGuide")]
 component GtkConstraintGuide(
@@ -1842,19 +1842,19 @@ component GtkConstraintGuide(
     strength dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkConstraintLayout")]
 component GtkConstraintLayout(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkConstraintLayoutChild")]
 component GtkConstraintLayoutChild(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCssProvider")]
 component GtkCssProvider(
@@ -1864,25 +1864,25 @@ component GtkCssProvider(
     style dyn,
     @gtkPrivateChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCustomFilter")]
 component GtkCustomFilter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCustomLayout")]
 component GtkCustomLayout(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkCustomSorter")]
 component GtkCustomSorter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDialog")]
 component GtkDialog(
@@ -1953,7 +1953,7 @@ component GtkDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDirectoryList")]
 component GtkDirectoryList(
@@ -1963,7 +1963,7 @@ component GtkDirectoryList(
     monitored bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDragIcon")]
 component GtkDragIcon(
@@ -2007,7 +2007,7 @@ component GtkDragIcon(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDragSource")]
 component GtkDragSource(
@@ -2021,7 +2021,7 @@ component GtkDragSource(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDrawingArea")]
 component GtkDrawingArea(
@@ -2066,7 +2066,7 @@ component GtkDrawingArea(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDropControllerMotion")]
 component GtkDropControllerMotion(
@@ -2076,7 +2076,7 @@ component GtkDropControllerMotion(
     style dyn,
     @leave,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDropDown")]
 component GtkDropDown(
@@ -2129,7 +2129,7 @@ component GtkDropDown(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDropTarget")]
 component GtkDropTarget(
@@ -2141,7 +2141,7 @@ component GtkDropTarget(
     style dyn,
     @leave,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkDropTargetAsync")]
 component GtkDropTargetAsync(
@@ -2152,7 +2152,7 @@ component GtkDropTargetAsync(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEditableLabel")]
 component GtkEditableLabel(
@@ -2203,7 +2203,7 @@ component GtkEditableLabel(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEmojiChooser")]
 component GtkEmojiChooser(
@@ -2256,7 +2256,7 @@ component GtkEmojiChooser(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEntry")]
 component GtkEntry(
@@ -2347,7 +2347,7 @@ component GtkEntry(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEntryBuffer")]
 component GtkEntryBuffer(
@@ -2355,7 +2355,7 @@ component GtkEntryBuffer(
     text string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEntryCompletion")]
 component GtkEntryCompletion(
@@ -2370,7 +2370,7 @@ component GtkEntryCompletion(
     style dyn,
     @noMatches,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEventController")]
 component GtkEventController(
@@ -2379,7 +2379,7 @@ component GtkEventController(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEventControllerFocus")]
 component GtkEventControllerFocus(
@@ -2390,7 +2390,7 @@ component GtkEventControllerFocus(
     @enter,
     @leave,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEventControllerKey")]
 component GtkEventControllerKey(
@@ -2400,7 +2400,7 @@ component GtkEventControllerKey(
     style dyn,
     @imUpdate,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEventControllerLegacy")]
 component GtkEventControllerLegacy(
@@ -2409,7 +2409,7 @@ component GtkEventControllerLegacy(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEventControllerMotion")]
 component GtkEventControllerMotion(
@@ -2419,7 +2419,7 @@ component GtkEventControllerMotion(
     style dyn,
     @leave,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEventControllerScroll")]
 component GtkEventControllerScroll(
@@ -2431,13 +2431,13 @@ component GtkEventControllerScroll(
     @scrollBegin,
     @scrollEnd,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkEveryFilter")]
 component GtkEveryFilter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkExpander")]
 component GtkExpander(
@@ -2488,13 +2488,13 @@ component GtkExpander(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkExpression")]
 component GtkExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFileChooserDialog")]
 component GtkFileChooserDialog(
@@ -2569,7 +2569,7 @@ component GtkFileChooserDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFileChooserNative")]
 component GtkFileChooserNative(
@@ -2585,7 +2585,7 @@ component GtkFileChooserNative(
     visible bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFileChooserWidget")]
 component GtkFileChooserWidget(
@@ -2643,7 +2643,7 @@ component GtkFileChooserWidget(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFileDialog")]
 component GtkFileDialog(
@@ -2657,14 +2657,14 @@ component GtkFileDialog(
     title string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFileFilter")]
 component GtkFileFilter(
     name string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFileLauncher")]
 component GtkFileLauncher(
@@ -2673,13 +2673,13 @@ component GtkFileLauncher(
     writable bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFilter")]
 component GtkFilter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFilterListModel")]
 component GtkFilterListModel(
@@ -2689,7 +2689,7 @@ component GtkFilterListModel(
     watchItems bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFixed")]
 component GtkFixed(
@@ -2732,27 +2732,27 @@ component GtkFixed(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFixedLayout")]
 component GtkFixedLayout(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFixedLayoutChild")]
 component GtkFixedLayoutChild(
     transform dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFlattenListModel")]
 component GtkFlattenListModel(
     model dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFlowBox")]
 component GtkFlowBox(
@@ -2809,7 +2809,7 @@ component GtkFlowBox(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFlowBoxChild")]
 component GtkFlowBoxChild(
@@ -2854,7 +2854,7 @@ component GtkFlowBoxChild(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFontButton")]
 component GtkFontButton(
@@ -2909,7 +2909,7 @@ component GtkFontButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFontChooserDialog")]
 component GtkFontChooserDialog(
@@ -2986,7 +2986,7 @@ component GtkFontChooserDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFontChooserWidget")]
 component GtkFontChooserWidget(
@@ -3035,7 +3035,7 @@ component GtkFontChooserWidget(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFontDialog")]
 component GtkFontDialog(
@@ -3046,7 +3046,7 @@ component GtkFontDialog(
     title string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFontDialogButton")]
 component GtkFontDialogButton(
@@ -3097,7 +3097,7 @@ component GtkFontDialogButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkFrame")]
 component GtkFrame(
@@ -3144,7 +3144,7 @@ component GtkFrame(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGLArea")]
 component GtkGLArea(
@@ -3192,7 +3192,7 @@ component GtkGLArea(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGesture")]
 component GtkGesture(
@@ -3201,7 +3201,7 @@ component GtkGesture(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureClick")]
 component GtkGestureClick(
@@ -3214,7 +3214,7 @@ component GtkGestureClick(
     style dyn,
     @stopped,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureDrag")]
 component GtkGestureDrag(
@@ -3226,7 +3226,7 @@ component GtkGestureDrag(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureLongPress")]
 component GtkGestureLongPress(
@@ -3240,7 +3240,7 @@ component GtkGestureLongPress(
     style dyn,
     @cancelled,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGesturePan")]
 component GtkGesturePan(
@@ -3253,7 +3253,7 @@ component GtkGesturePan(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureRotate")]
 component GtkGestureRotate(
@@ -3262,7 +3262,7 @@ component GtkGestureRotate(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureSingle")]
 component GtkGestureSingle(
@@ -3274,7 +3274,7 @@ component GtkGestureSingle(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureStylus")]
 component GtkGestureStylus(
@@ -3287,7 +3287,7 @@ component GtkGestureStylus(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureSwipe")]
 component GtkGestureSwipe(
@@ -3299,7 +3299,7 @@ component GtkGestureSwipe(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGestureZoom")]
 component GtkGestureZoom(
@@ -3308,7 +3308,7 @@ component GtkGestureZoom(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGraphicsOffload")]
 component GtkGraphicsOffload(
@@ -3354,7 +3354,7 @@ component GtkGraphicsOffload(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGrid")]
 component GtkGrid(
@@ -3403,7 +3403,7 @@ component GtkGrid(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGridLayout")]
 component GtkGridLayout(
@@ -3414,7 +3414,7 @@ component GtkGridLayout(
     rowSpacing int,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGridLayoutChild")]
 component GtkGridLayoutChild(
@@ -3424,7 +3424,7 @@ component GtkGridLayoutChild(
     rowSpan int,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkGridView")]
 component GtkGridView(
@@ -3479,7 +3479,7 @@ component GtkGridView(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkHeaderBar")]
 component GtkHeaderBar(
@@ -3526,7 +3526,7 @@ component GtkHeaderBar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkIMContext")]
 component GtkIMContext(
@@ -3537,7 +3537,7 @@ component GtkIMContext(
     @preeditEnd,
     @preeditStart,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkIMContextSimple")]
 component GtkIMContextSimple(
@@ -3548,7 +3548,7 @@ component GtkIMContextSimple(
     @preeditEnd,
     @preeditStart,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkIMMulticontext")]
 component GtkIMMulticontext(
@@ -3559,7 +3559,7 @@ component GtkIMMulticontext(
     @preeditEnd,
     @preeditStart,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkIconPaintable")]
 component GtkIconPaintable(
@@ -3568,7 +3568,7 @@ component GtkIconPaintable(
     size int,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkIconTheme")]
 component GtkIconTheme(
@@ -3579,7 +3579,7 @@ component GtkIconTheme(
     style dyn,
     @changed,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkIconView")]
 component GtkIconView(
@@ -3647,7 +3647,7 @@ component GtkIconView(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkImage")]
 component GtkImage(
@@ -3698,7 +3698,7 @@ component GtkImage(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkInfoBar")]
 component GtkInfoBar(
@@ -3745,7 +3745,7 @@ component GtkInfoBar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkInscription")]
 component GtkInscription(
@@ -3799,13 +3799,13 @@ component GtkInscription(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkKeyvalTrigger")]
 component GtkKeyvalTrigger(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkLabel")]
 component GtkLabel(
@@ -3869,19 +3869,19 @@ component GtkLabel(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkLayoutChild")]
 component GtkLayoutChild(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkLayoutManager")]
 component GtkLayoutManager(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkLevelBar")]
 component GtkLevelBar(
@@ -3930,7 +3930,7 @@ component GtkLevelBar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkLinkButton")]
 component GtkLinkButton(
@@ -3985,7 +3985,7 @@ component GtkLinkButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListBase")]
 component GtkListBase(
@@ -4033,7 +4033,7 @@ component GtkListBase(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListBox")]
 component GtkListBox(
@@ -4086,7 +4086,7 @@ component GtkListBox(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListBoxRow")]
 component GtkListBoxRow(
@@ -4135,14 +4135,14 @@ component GtkListBoxRow(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListHeader")]
 component GtkListHeader(
     child dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListItem")]
 component GtkListItem(
@@ -4154,20 +4154,20 @@ component GtkListItem(
     selectable bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListItemFactory")]
 component GtkListItemFactory(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListStore")]
 component GtkListStore(
     style dyn,
     @sortColumnChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkListView")]
 component GtkListView(
@@ -4222,7 +4222,7 @@ component GtkListView(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkLockButton")]
 component GtkLockButton(
@@ -4281,14 +4281,14 @@ component GtkLockButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMapListModel")]
 component GtkMapListModel(
     model dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMediaControls")]
 component GtkMediaControls(
@@ -4332,7 +4332,7 @@ component GtkMediaControls(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMediaFile")]
 component GtkMediaFile(
@@ -4344,7 +4344,7 @@ component GtkMediaFile(
     volume float,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMediaStream")]
 component GtkMediaStream(
@@ -4354,7 +4354,7 @@ component GtkMediaStream(
     volume float,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMenuButton")]
 component GtkMenuButton(
@@ -4410,7 +4410,7 @@ component GtkMenuButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMessageDialog")]
 component GtkMessageDialog(
@@ -4486,19 +4486,19 @@ component GtkMessageDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMnemonicAction")]
 component GtkMnemonicAction(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMnemonicTrigger")]
 component GtkMnemonicTrigger(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMountOperation")]
 component GtkMountOperation(
@@ -4506,32 +4506,32 @@ component GtkMountOperation(
     parent dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMultiFilter")]
 component GtkMultiFilter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMultiSelection")]
 component GtkMultiSelection(
     model dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkMultiSorter")]
 component GtkMultiSorter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNamedAction")]
 component GtkNamedAction(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNativeDialog")]
 component GtkNativeDialog(
@@ -4541,20 +4541,20 @@ component GtkNativeDialog(
     visible bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNeverTrigger")]
 component GtkNeverTrigger(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNoSelection")]
 component GtkNoSelection(
     model dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNotebook")]
 component GtkNotebook(
@@ -4604,7 +4604,7 @@ component GtkNotebook(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNotebookPage")]
 component GtkNotebookPage(
@@ -4617,13 +4617,13 @@ component GtkNotebookPage(
     tabLabel string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNothingAction")]
 component GtkNothingAction(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkNumericSorter")]
 component GtkNumericSorter(
@@ -4631,13 +4631,13 @@ component GtkNumericSorter(
     sortOrder dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkObjectExpression")]
 component GtkObjectExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkOverlay")]
 component GtkOverlay(
@@ -4681,13 +4681,13 @@ component GtkOverlay(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkOverlayLayout")]
 component GtkOverlayLayout(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkOverlayLayoutChild")]
 component GtkOverlayLayoutChild(
@@ -4695,7 +4695,7 @@ component GtkOverlayLayoutChild(
     measure bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPadController")]
 component GtkPadController(
@@ -4704,13 +4704,13 @@ component GtkPadController(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPageSetup")]
 component GtkPageSetup(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPageSetupUnixDialog")]
 component GtkPageSetupUnixDialog(
@@ -4781,7 +4781,7 @@ component GtkPageSetupUnixDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPaned")]
 component GtkPaned(
@@ -4834,13 +4834,13 @@ component GtkPaned(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkParamSpecExpression")]
 component GtkParamSpecExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPasswordEntry")]
 component GtkPasswordEntry(
@@ -4895,7 +4895,7 @@ component GtkPasswordEntry(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPasswordEntryBuffer")]
 component GtkPasswordEntryBuffer(
@@ -4903,7 +4903,7 @@ component GtkPasswordEntryBuffer(
     text string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPicture")]
 component GtkPicture(
@@ -4953,7 +4953,7 @@ component GtkPicture(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPopover")]
 component GtkPopover(
@@ -5006,7 +5006,7 @@ component GtkPopover(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPopoverBin")]
 component GtkPopoverBin(
@@ -5053,7 +5053,7 @@ component GtkPopoverBin(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPopoverMenu")]
 component GtkPopoverMenu(
@@ -5109,7 +5109,7 @@ component GtkPopoverMenu(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPopoverMenuBar")]
 component GtkPopoverMenuBar(
@@ -5153,13 +5153,13 @@ component GtkPopoverMenuBar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPrintContext")]
 component GtkPrintContext(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPrintDialog")]
 component GtkPrintDialog(
@@ -5170,7 +5170,7 @@ component GtkPrintDialog(
     title string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPrintJob")]
 component GtkPrintJob(
@@ -5178,7 +5178,7 @@ component GtkPrintJob(
     style dyn,
     @statusChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPrintOperation")]
 component GtkPrintOperation(
@@ -5200,13 +5200,13 @@ component GtkPrintOperation(
     style dyn,
     @statusChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPrintSettings")]
 component GtkPrintSettings(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPrintUnixDialog")]
 component GtkPrintUnixDialog(
@@ -5284,13 +5284,13 @@ component GtkPrintUnixDialog(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPrinter")]
 component GtkPrinter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkProgressBar")]
 component GtkProgressBar(
@@ -5340,13 +5340,13 @@ component GtkProgressBar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkPropertyExpression")]
 component GtkPropertyExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkRange")]
 component GtkRange(
@@ -5397,14 +5397,14 @@ component GtkRange(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkRecentManager")]
 component GtkRecentManager(
     style dyn,
     @changed,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkRevealer")]
 component GtkRevealer(
@@ -5451,7 +5451,7 @@ component GtkRevealer(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkScale")]
 component GtkScale(
@@ -5506,7 +5506,7 @@ component GtkScale(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkScaleButton")]
 component GtkScaleButton(
@@ -5556,7 +5556,7 @@ component GtkScaleButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkScrollbar")]
 component GtkScrollbar(
@@ -5601,7 +5601,7 @@ component GtkScrollbar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkScrolledWindow")]
 component GtkScrolledWindow(
@@ -5659,7 +5659,7 @@ component GtkScrolledWindow(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSearchBar")]
 component GtkSearchBar(
@@ -5706,7 +5706,7 @@ component GtkSearchBar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSearchEntry")]
 component GtkSearchEntry(
@@ -5768,14 +5768,14 @@ component GtkSearchEntry(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSelectionFilterModel")]
 component GtkSelectionFilterModel(
     model dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSeparator")]
 component GtkSeparator(
@@ -5819,7 +5819,7 @@ component GtkSeparator(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSettings")]
 component GtkSettings(
@@ -5881,7 +5881,7 @@ component GtkSettings(
     style dyn,
     @gtkPrivateChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcut")]
 component GtkShortcut(
@@ -5890,13 +5890,13 @@ component GtkShortcut(
     trigger dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutAction")]
 component GtkShortcutAction(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutController")]
 component GtkShortcutController(
@@ -5907,7 +5907,7 @@ component GtkShortcutController(
     propagationPhase dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutLabel")]
 component GtkShortcutLabel(
@@ -5952,13 +5952,13 @@ component GtkShortcutLabel(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutTrigger")]
 component GtkShortcutTrigger(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutsGroup")]
 component GtkShortcutsGroup(
@@ -6010,7 +6010,7 @@ component GtkShortcutsGroup(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutsSection")]
 component GtkShortcutsSection(
@@ -6062,7 +6062,7 @@ component GtkShortcutsSection(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutsShortcut")]
 component GtkShortcutsShortcut(
@@ -6116,7 +6116,7 @@ component GtkShortcutsShortcut(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkShortcutsWindow")]
 component GtkShortcutsWindow(
@@ -6190,19 +6190,19 @@ component GtkShortcutsWindow(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSignalAction")]
 component GtkSignalAction(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSignalListItemFactory")]
 component GtkSignalListItemFactory(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSingleSelection")]
 component GtkSingleSelection(
@@ -6212,14 +6212,14 @@ component GtkSingleSelection(
     selected int,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSizeGroup")]
 component GtkSizeGroup(
     mode dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSliceListModel")]
 component GtkSliceListModel(
@@ -6228,7 +6228,7 @@ component GtkSliceListModel(
     size int,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSortListModel")]
 component GtkSortListModel(
@@ -6238,13 +6238,13 @@ component GtkSortListModel(
     sorter dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSorter")]
 component GtkSorter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSpinButton")]
 component GtkSpinButton(
@@ -6310,7 +6310,7 @@ component GtkSpinButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSpinner")]
 component GtkSpinner(
@@ -6354,7 +6354,7 @@ component GtkSpinner(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStack")]
 component GtkStack(
@@ -6404,7 +6404,7 @@ component GtkStack(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStackPage")]
 component GtkStackPage(
@@ -6417,7 +6417,7 @@ component GtkStackPage(
     accessibleRole dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStackSidebar")]
 component GtkStackSidebar(
@@ -6461,7 +6461,7 @@ component GtkStackSidebar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStackSwitcher")]
 component GtkStackSwitcher(
@@ -6506,7 +6506,7 @@ component GtkStackSwitcher(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStatusbar")]
 component GtkStatusbar(
@@ -6549,7 +6549,7 @@ component GtkStatusbar(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStringFilter")]
 component GtkStringFilter(
@@ -6559,19 +6559,19 @@ component GtkStringFilter(
     search string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStringList")]
 component GtkStringList(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStringObject")]
 component GtkStringObject(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStringSorter")]
 component GtkStringSorter(
@@ -6580,14 +6580,14 @@ component GtkStringSorter(
     ignoreCase bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkStyleContext")]
 component GtkStyleContext(
     display dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSvg")]
 component GtkSvg(
@@ -6598,7 +6598,7 @@ component GtkSvg(
     weight float,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkSwitch")]
 component GtkSwitch(
@@ -6646,7 +6646,7 @@ component GtkSwitch(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkText")]
 component GtkText(
@@ -6720,7 +6720,7 @@ component GtkText(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTextBuffer")]
 component GtkTextBuffer(
@@ -6734,19 +6734,19 @@ component GtkTextBuffer(
     @redo,
     @undo,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTextChildAnchor")]
 component GtkTextChildAnchor(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTextMark")]
 component GtkTextMark(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTextTag")]
 component GtkTextTag(
@@ -6839,13 +6839,13 @@ component GtkTextTag(
     wrapModeSet bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTextTagTable")]
 component GtkTextTagTable(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTextView")]
 component GtkTextView(
@@ -6921,7 +6921,7 @@ component GtkTextView(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkToggleButton")]
 component GtkToggleButton(
@@ -6977,13 +6977,13 @@ component GtkToggleButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTooltip")]
 component GtkTooltip(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeExpander")]
 component GtkTreeExpander(
@@ -7031,41 +7031,41 @@ component GtkTreeExpander(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeListModel")]
 component GtkTreeListModel(
     autoexpand bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeListRow")]
 component GtkTreeListRow(
     expanded bool,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeListRowSorter")]
 component GtkTreeListRowSorter(
     sorter dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeModelFilter")]
 component GtkTreeModelFilter(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeModelSort")]
 component GtkTreeModelSort(
     style dyn,
     @sortColumnChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeSelection")]
 component GtkTreeSelection(
@@ -7073,14 +7073,14 @@ component GtkTreeSelection(
     style dyn,
     @changed,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeStore")]
 component GtkTreeStore(
     style dyn,
     @sortColumnChanged,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeView")]
 component GtkTreeView(
@@ -7146,7 +7146,7 @@ component GtkTreeView(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTreeViewColumn")]
 component GtkTreeViewColumn(
@@ -7169,20 +7169,20 @@ component GtkTreeViewColumn(
     style dyn,
     @clicked,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkTryExpression")]
 component GtkTryExpression(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkUriLauncher")]
 component GtkUriLauncher(
     uri string,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkVideo")]
 component GtkVideo(
@@ -7230,7 +7230,7 @@ component GtkVideo(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkViewport")]
 component GtkViewport(
@@ -7279,7 +7279,7 @@ component GtkViewport(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkVolumeButton")]
 component GtkVolumeButton(
@@ -7330,7 +7330,7 @@ component GtkVolumeButton(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkWidget")]
 component GtkWidget(
@@ -7373,14 +7373,14 @@ component GtkWidget(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkWidgetPaintable")]
 component GtkWidgetPaintable(
     widget dyn,
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkWindow")]
 component GtkWindow(
@@ -7450,7 +7450,7 @@ component GtkWindow(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkWindowControls")]
 component GtkWindowControls(
@@ -7496,13 +7496,13 @@ component GtkWindowControls(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkWindowGroup")]
 component GtkWindowGroup(
     style dyn,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("gtk4:GtkWindowHandle")]
 component GtkWindowHandle(
@@ -7546,7 +7546,7 @@ component GtkWindowHandle(
     @unmap,
     @unrealize,
     children ...component,
-) {}
+) ui.node {}
 
 // GTK4 platform package.
 //

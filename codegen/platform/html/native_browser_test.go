@@ -34,7 +34,6 @@ import (
 // runs, which is also where the timer overrides put theirs.
 const nativeSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 import js "sngl:language/js"
 
 #[js.native("btoa")]
@@ -43,7 +42,7 @@ func btoa(s string) string
 #[js.native("btoa")]
 func base64(s string) string
 
-component App() {
+component App() node {
     var (
         same = "unset"
         renamed = "unset"
@@ -54,7 +53,7 @@ component App() {
     })
     text(value="same=" + same + " renamed=" + renamed)
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 
 func TestJSNative_CallsTheRealGlobal(t *testing.T) {

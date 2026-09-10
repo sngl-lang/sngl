@@ -28,7 +28,7 @@ import (
 const maxRenderDepth = lower.MaxRecursionDepth
 
 // recursionExhausted is the error a mount that hit the bound returns. A
-// RaisedError, so the nearest enclosing errorBoundary catches it the way it
+// RaisedError, so the nearest enclosing boundary catches it the way it
 // catches error.raise, and the kind matches the one the lowering pass writes.
 func recursionExhausted(name string) *RaisedError {
 	return &RaisedError{Event: map[string]any{
@@ -346,7 +346,18 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 			out = append(out, nodes...)
 
 		case *ir.ErrorBoundary:
-			nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("boundary@%d", next("boundary"))))
+			// The `failed` slot stands in place of the content once the
+			// boundary has caught. Registered on every render, because the
+			// scope has to be able to record a catch before one happens, and
+			// idempotently, because a re-render must not forget one.
+			body := n.Children
+			if len(n.Failed) > 0 {
+				env.registerBoundary(n.Handler)
+				if env.hasCaught(n.Handler) {
+					body = n.Failed
+				}
+			}
+			nodes, err := m.stmts(env, body, join(fmt.Sprintf("boundary@%d", next("boundary"))))
 			if raised, ok := err.(*RaisedError); ok && n.Handler != nil {
 				// A raise from *mounting* a child, which is the recursion
 				// bound and nothing else today: an ordinary error.raise is

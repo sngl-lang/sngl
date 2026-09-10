@@ -36,7 +36,7 @@ func add(a int) int => a + 1
 
 func TestParseHoverDirectives_HexLiteral(t *testing.T) {
 	src := `// HOVER(#ff0000) "rgb(255, 0, 0)"
-component App { var c = #ff0000 }
+component App node { var c = #ff0000 }
 `
 	path := writeTemp(t, "color.sngl", src)
 	dirs, err := ParseHoverDirectives(path)
@@ -58,7 +58,7 @@ component App { var c = #ff0000 }
 func TestParseHoverDirectives_ExplicitPosition(t *testing.T) {
 	src := `// HOVER(@3:7) "something"
 //
-component Foo {}
+component Foo node {}
 `
 	path := writeTemp(t, "explicit.sngl", src)
 	dirs, err := ParseHoverDirectives(path)

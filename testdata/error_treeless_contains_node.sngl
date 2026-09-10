@@ -1,0 +1,30 @@
+// The tightening that keeps "a tree-less component goes anywhere" from being
+// a hole. A component marked `#[tree.none]` may be placed in a canvas as
+// readily as in a layout — so if its body could render a widget, it would be
+// a `ui` member without saying so, and putting it in a canvas would put a
+// widget there.
+//
+// An `if` or a `for` is how the nodes under it got there rather than a node,
+// so the rule reaches through both.
+
+import tree "sngl:tree"
+import ui "sngl:ui"
+
+var loud = true
+
+#[tree.none]
+component logger(label string) {
+    ui.text(value=label) // ERROR(check) "component logger names no tree, so it may not contain the node component text"
+}
+
+#[tree.none]
+component branching(label string) {
+    if loud {
+        ui.text(value=label) // ERROR(check) "component branching names no tree, so it may not contain the node component text"
+    }
+}
+
+ui.window {
+    logger(label="x")
+    branching(label="y")
+}

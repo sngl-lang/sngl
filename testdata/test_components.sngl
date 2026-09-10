@@ -1,13 +1,13 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component badge(label = "default", count = 0) {
+component badge(label = "default", count = 0) node {
     func display() => label
 
     text #lbl(value=display)
 }
 
-component dashboard {
+component dashboard node {
     var name = "test"
     var total = 5
 
@@ -36,4 +36,7 @@ func testRendersChildComponent(t Test, c dashboard) {
 
 func testComponentReceivesProps(t Test, c dashboard) {
     t.assert(c.lbl[0].value == "test")
+}
+
+window {
 }

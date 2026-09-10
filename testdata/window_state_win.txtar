@@ -21,7 +21,6 @@ deny out/none/html/index.html `= n \+ 1` -- the click handler assigns through st
 deny out/go/bubbletea/model.go `(?m)^\tn = ` -- the counter is a model field assigned as m.n, not a render-function local reset every frame
 -- win.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {
@@ -177,6 +176,7 @@ import (
 type Model struct {
 	n int
 
+	__n1 *fyne.Container
 	__n0 *widget.Label
 	inc  *widget.Button
 }
@@ -210,15 +210,15 @@ func (m *Model) SetN(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	__n1 := container.NewVBox()
+	m.__n1 = container.NewVBox()
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(m.n))
-	__n1.Add(m.__n0)
+	m.__n1.Add(m.__n0)
 	m.inc = widget.NewButton("", nil)
 	m.inc.SetText("+")
 	m.inc.OnTapped = m.inc_click_handler
-	__n1.Add(m.inc)
-	content := fyne.CanvasObject(__n1)
+	m.__n1.Add(m.inc)
+	content := fyne.CanvasObject(m.__n1)
 	return content
 }
 -- out/go/gtk4/callbacks.go --
@@ -238,6 +238,7 @@ import (
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	n      int
+	__n1   gtk4rt.Handle
 	__n0   gtk4rt.Handle
 	inc    gtk4rt.Handle
 	__root gtk4rt.Handle
@@ -269,16 +270,16 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n1 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n1, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(__n1, 6)
+	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n1, 6)
 	m.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.n))
-	gtk4rt.BoxAppend(__n1, m.__n0)
+	gtk4rt.BoxAppend(m.__n1, m.__n0)
 	m.inc = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.inc, "+")
 	gtk4rt.Connect(m.inc, "clicked", m.inc_clicked_handler)
-	gtk4rt.BoxAppend(__n1, m.inc)
+	gtk4rt.BoxAppend(m.__n1, m.inc)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 }
 

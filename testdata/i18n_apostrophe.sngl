@@ -17,3 +17,6 @@ var msg3 = $"Use '{'curly braces'}' to interpolate"
 // Apostrophe with interpolation nearby.
 var name = "Alice"
 var msg4 = $"It's {name}'s turn"
+
+window {
+}

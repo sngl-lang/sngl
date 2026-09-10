@@ -5,11 +5,15 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var name = "world"
 
     input(:value="literal") // ERROR(check) "must be assignable"
     // A call, not a place. string(...) so the prop's own type check does not
     // preempt the one this fixture is about.
     input(:value=string(name.length())) // ERROR(check) "must be assignable"
+}
+
+window {
+    main
 }

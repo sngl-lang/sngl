@@ -4,7 +4,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var scores map<string, int> = {alice=10}
 
     vbox {
@@ -12,4 +12,8 @@ component main {
             text(value="entry")
         }
     }
+}
+
+window {
+    main
 }

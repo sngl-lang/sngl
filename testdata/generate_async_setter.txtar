@@ -13,12 +13,16 @@ output {
     }
 }
 
-component main {
+component main node {
     var count = 0 @change {
         api.fetchHello("updated")
     }
     button(text="Go", @click { count = count + 1 })
     text(value=string(count))
+}
+
+window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(msg: string): Promise<string> { return msg; }
@@ -49,9 +53,9 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { count: 0 };
-  async function $set_count(v) {
-    state.count = v;
+  var state = { count__inst0: 0 };
+  async function $set_count__inst0(v) {
+    state.count__inst0 = v;
     await fetchHello("updated");
   }
   function String(v) {
@@ -60,11 +64,11 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.count = state.count + 1;
-    __n0.textContent = String(state.count);
+    state.count__inst0 = state.count__inst0 + 1;
+    __n0.textContent = String(state.count__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.count);
+    __n0.textContent = String(state.count__inst0);
   }
   __sngl_init();
 })();

@@ -1,3 +1,6 @@
 import . "sngl:ui"
 
 var x Nonexistent // ERROR(check) "unknown type"
+
+window {
+}

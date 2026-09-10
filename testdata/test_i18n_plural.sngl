@@ -3,7 +3,7 @@ import . "sngl:test"
 import "sngl:i18n"
 
 // Plural form with =N exact match, CLDR keyword, and # for the bound count.
-component i18nPlural {
+component i18nPlural node {
     var count = 5
     var unread = $"You have {count, plural,
         =0{no messages}
@@ -35,4 +35,7 @@ func testPluralOther(t Test, c i18nPlural) {
     t.assert(c.status == "3 files selected")
     // place=21: English ordinal rule gives "one" (21st)
     t.assert(c.ranking == "You finished 21st")
+}
+
+window {
 }

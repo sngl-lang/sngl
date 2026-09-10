@@ -410,6 +410,17 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	if n.Receiver != nil {
 		return kc.evalNamespaceCall(n)
 	}
+	// Before the receiver: the enclosing scope's own declaration wins over the
+	// name the receiver spells, because a method the inliner hoisted onto the
+	// window still names a component that is gone from the package by then.
+	if n.Func != nil {
+		if name, ok := kc.scopeFuncName(n.Func); ok {
+			if codegen.IsComputed(n.Func) {
+				return name
+			}
+			return name + "(" + strings.Join(kc.evalCallArgs(n.Args), ", ") + ")"
+		}
+	}
 	if n.Func != nil && n.Func.Receiver != "" {
 		return kc.evalTypeMethodCall(n)
 	}
@@ -424,8 +435,14 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		// `state.label()` in Android test mode).
 		if kc.IdentRewrites != nil {
 			if rewritten, ok := kc.IdentRewrites[fname]; ok {
+				if kc.isScopeComputed(fname, n.Func) {
+					return rewritten
+				}
 				return rewritten + "(" + strings.Join(args, ", ") + ")"
 			}
+		}
+		if kc.isScopeComputed(fname, n.Func) {
+			return fname
 		}
 		codegen.RequireIntrinsicFallback(langKt, n.Func)
 		return fname + "(" + strings.Join(args, ", ") + ")"
@@ -599,6 +616,37 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// isScopeComputed reports whether a bare call names derived state of the
+// enclosing scope, which Compose emits as a `val <name> by remember {
+// derivedStateOf { … } }` and so reads by name rather than calling.
+func (kc *KtIRContext) isScopeComputed(name string, fn *ir.Func) bool {
+	if fn == nil || !codegen.IsComputed(fn) || kc.Ctx == nil {
+		return false
+	}
+	sym, kind := kc.Ctx.Resolve(name)
+	return kind == codegen.NameComputed && sym == ir.Symbol(fn)
+}
+
+// scopeFuncName is the name a call reaches fn by when the enclosing scope
+// declares it. Compose puts such a declaration inside the composable, so the
+// call is by bare name and no receiver is involved.
+func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
+	if fn == nil || kc.Ctx == nil {
+		return "", false
+	}
+	sym, kind := kc.Ctx.Resolve(fn.Name)
+	if sym != ir.Symbol(fn) || (kind != codegen.NameComputed && kind != codegen.NameFunc) {
+		return "", false
+	}
+	name := fn.Name
+	if kc.IdentRewrites != nil {
+		if rw, ok := kc.IdentRewrites[name]; ok {
+			name = rw
+		}
+	}
+	return name, true
 }
 
 // receiverIsComponent reports whether name matches a component declared in the

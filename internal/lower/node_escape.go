@@ -105,6 +105,11 @@ func lowerNodeEscape(pkg *ir.Package, _ Caps, _ Options) error {
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			addScope(w.ErrorHandler.Func.Block, &w.ErrorHandler.Func.LocalRefs)
 		}
+		for _, tm := range w.Timers {
+			if tm.Handler != nil {
+				addScope(tm.Handler.Block, &tm.Handler.LocalRefs)
+			}
+		}
 	}
 	for _, v := range pkg.Vars {
 		addVarHandlerScopes(v, &scopes)

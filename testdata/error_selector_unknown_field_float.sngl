@@ -1,8 +1,12 @@
 import . "sngl:ui"
 
 // Bug: unknown field on float typechecks silently.
-component main {
+component main node {
     var f = 3.14
     var bad = f.junkField // ERROR(check) "no field"
     text(value="x")
+}
+
+window {
+    main
 }

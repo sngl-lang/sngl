@@ -3,14 +3,18 @@
 
 import . "sngl:ui"
 
-component main {
-    component row(label = "") {
+component main node {
+    component row(label = "") node {
         text(value=label)
     }
 
-    component row(label = "") { // ERROR(check) "row is already declared in this scope"
+    component row(label = "") node { // ERROR(check) "row is already declared in this scope"
         text(value="second " + label)
     }
 
     row(label="a")
+}
+
+window {
+    main
 }

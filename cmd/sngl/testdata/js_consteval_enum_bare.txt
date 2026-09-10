@@ -20,10 +20,14 @@ import lib "js:./lib"
 
 const c = lib.pick()
 
-component main {
+component main node {
     if c == lib.Color.Red {
         text(value="red")
     }
+}
+
+window {
+    main
 }
 -- lib/index.d.ts --
 export declare enum Color {

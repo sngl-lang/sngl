@@ -1,7 +1,7 @@
 import . "sngl:ui"
 
 // A void method referenced bare types void, not dyn -- the same as calling it.
-component main {
+component main node {
     var n = 0
 
     func bump() {
@@ -14,4 +14,8 @@ component main {
     }
 
     text(value=string(n))
+}
+
+window {
+    main
 }

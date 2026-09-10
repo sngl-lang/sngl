@@ -18,6 +18,10 @@ func inner() int {
     return takesFileScoped(Local{a=1}) // ERROR(check) "cannot pass Local as Local"
 }
 
-component main {
+component main node {
     text(value="${inner()}")
+}
+
+window {
+    main
 }

@@ -20,8 +20,12 @@ import lib "js:./lib"
 
 const padded = lib.pad("x")
 
-component main {
+component main node {
     text(value=padded)
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 import leftPad from "left-pad";

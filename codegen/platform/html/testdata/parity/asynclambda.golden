@@ -24,14 +24,14 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { xs: [1, 2, 3, 4, 5] };
-  function main_evens(state2) {
-    return state2.xs.filter((x) => x % 2 === 0);
+  function evens() {
+    return state.xs.filter((x) => x % 2 === 0);
   }
-  function main_doubled(state2) {
-    return state2.xs.map((x) => x * 2);
+  function doubled() {
+    return state.xs.map((x) => x * 2);
   }
-  function main_total(state2) {
-    return state2.xs.length;
+  function total() {
+    return state.xs.length;
   }
   function String(v) {
     return "" + v;
@@ -42,14 +42,14 @@ body { font-family: system-ui, sans-serif; }
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   $1.addEventListener("click", function() {
     state.xs.push(state.xs.length + 1);
-    __n0.textContent = "count: " + String(main_total(state));
-    __n1.textContent = "evens: " + String(main_evens(state).length);
-    __n2.textContent = "first doubled: " + String(main_doubled(state)[0]);
+    __n0.textContent = "count: " + String(total());
+    __n1.textContent = "evens: " + String(evens().length);
+    __n2.textContent = "first doubled: " + String(doubled()[0]);
   });
   function __sngl_init() {
-    __n0.textContent = "count: " + String(main_total(state));
-    __n1.textContent = "evens: " + String(main_evens(state).length);
-    __n2.textContent = "first doubled: " + String(main_doubled(state)[0]);
+    __n0.textContent = "count: " + String(total());
+    __n1.textContent = "evens: " + String(evens().length);
+    __n2.textContent = "first doubled: " + String(doubled()[0]);
   }
   __sngl_init();
 })();

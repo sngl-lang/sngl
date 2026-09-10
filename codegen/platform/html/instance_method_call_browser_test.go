@@ -19,8 +19,7 @@ import (
 func TestInstanceMethod_HandlerCallsTheInstanceCopy(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component App {
+component App node {
     var n = 0
     func bump() {
         n = n + 1
@@ -30,7 +29,7 @@ component App {
         button(text="bump", @click { bump() })
     }
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

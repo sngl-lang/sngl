@@ -21,7 +21,7 @@ func testOptionAcceptsConcreteValues(t Test, c main) {
     t.assert(c.count == 42)
 }
 
-component main {
+component main node {
     var (
         name option<string>
         count option<int> = 5
@@ -30,4 +30,8 @@ component main {
     )
 
     text(value="test")
+}
+
+window {
+    main
 }

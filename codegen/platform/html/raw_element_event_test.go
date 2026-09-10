@@ -18,7 +18,7 @@ import . "sngl:ui"
 import "sngl:platform/html"
 import "sngl:platform/html"
 output { none { html() } }
-component main {
+window {
     var hits = 0
     vbox {
         html.div(textContent="hover me", @mouseover { hits = hits + 1 })
@@ -49,7 +49,7 @@ import . "sngl:ui"
 import "sngl:platform/html"
 import "sngl:platform/html"
 output { none { html() } }
-component main {
+window {
     var hits = 0
     vbox {
         html.input(` + tt.sngl + ` { hits = hits + 1 })

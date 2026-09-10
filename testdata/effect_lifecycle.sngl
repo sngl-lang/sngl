@@ -9,7 +9,7 @@
 import . "sngl:test"
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         runs = 0
         other = 0
@@ -36,4 +36,8 @@ func testMountDoesNotRerunOnUnrelatedState(t Test, c main) {
     c.bump.click()
     t.assert(c.other == 2)
     t.assert(c.runs == 1)
+}
+
+window {
+    main
 }

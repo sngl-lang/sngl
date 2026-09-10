@@ -4,6 +4,6 @@ import . "sngl:ui"
 
 import "sngl:platform/teststub"
 
-component main {
+component main node {
     teststub.Statefulwrap()
 }

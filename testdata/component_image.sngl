@@ -3,7 +3,7 @@ import . "sngl:test"
 
 // image: state-binding fixture — mutating the bound `src` var
 // propagates to the image component.
-component main {
+component main node {
     var src = "https://example.com/a.png"
     image(src=src, alt="test")
 }
@@ -12,4 +12,8 @@ func testImageSrcMutates(t Test, c main) {
     t.assert(c.src == "https://example.com/a.png")
     c.src = "https://example.com/b.png"
     t.assert(c.src == "https://example.com/b.png")
+}
+
+window {
+    main
 }

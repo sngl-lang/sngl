@@ -5,7 +5,7 @@ import . "sngl:test"
 // implicitly called. `count > 0` previously failed typecheck with
 // "operator > not defined for func and int" instead of calling count()
 // and comparing the int result.
-component main {
+component main node {
     var n = 3
     func count() => n
     text(value=count > 0 ? "some" : "none")
@@ -13,4 +13,8 @@ component main {
 
 func testImplicitCallCompare(t Test, c main) {
     t.assert(c.count == 3)
+}
+
+window {
+    main
 }

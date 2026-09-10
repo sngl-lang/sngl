@@ -15,8 +15,12 @@ stderr 'twice[/\\]b.sngl:1:1: output is already declared for this package at .*t
 -- pkg/app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="hi")
+}
+
+window {
+    main
 }
 -- pkg/targets.sngl --
 output {
@@ -33,8 +37,12 @@ output {
     }
 }
 
-component main {
+component main node {
     text(value="hi")
+}
+
+window {
+    main
 }
 -- twice/b.sngl --
 output {

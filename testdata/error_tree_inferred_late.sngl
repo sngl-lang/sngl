@@ -1,0 +1,21 @@
+// Membership is checked against a family, and an inferred one is not settled
+// until every body has been read -- so the check waits for it. `art` is
+// written above the `badge` whose family answers it, and reading the answer
+// where the canvas is checked would find nothing there and pass in silence.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+component art() ui.node {
+    d.canvas(width=10px, height=10px) {
+        badge(label="x") // ERROR(check) "expected shape component in canvas, got badge"
+    }
+}
+
+component badge(label string) {
+    ui.text(value=label)
+}
+
+ui.window {
+    art()
+}

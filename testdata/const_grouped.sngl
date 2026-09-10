@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     const (
         MAX_ITEMS = 100
         DEFAULT_NAME = "unnamed"
@@ -19,4 +19,8 @@ component main {
 
 func testConstants(t Test, c main) {
     t.assert(c.count == 100)
+}
+
+window {
+    main
 }

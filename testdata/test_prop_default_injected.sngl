@@ -6,11 +6,11 @@ import . "sngl:test"
 // itself. The interpreter used to bind every prop to its default and then
 // override; codegen never did, which is the same split struct field defaults
 // had.
-component badge(label string = "none", count int = 0) {
+component badge(label string = "none", count int = 0) node {
     text(value=label + string(count))
 }
 
-component main {
+component main node {
     var shown string = ""
     badge()
     badge(label="set")
@@ -20,4 +20,8 @@ component main {
 // The instance sees the declared default without the evaluator supplying it.
 func testOmittedPropTakesItsDefault(t Test, c main) {
     t.assert(c.shown == "")
+}
+
+window {
+    main
 }

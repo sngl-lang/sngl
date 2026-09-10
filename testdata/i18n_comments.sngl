@@ -23,3 +23,6 @@ var msg2 = $"{gender, select,
     /* default */
     other{they}
 }"
+
+window {
+}

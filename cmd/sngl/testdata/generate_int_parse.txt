@@ -20,16 +20,24 @@ exists np
 -- app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var hex = int.parse("FF", 16)
     text(value=string(hex))
+}
+
+window {
+    main
 }
 -- bt.sngl --
 import . "sngl:ui"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     var hex = int.parse("FF", 16)
     text(value=string(hex))
+}
+
+window {
+    main
 }

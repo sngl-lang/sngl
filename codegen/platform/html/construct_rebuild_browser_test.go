@@ -25,9 +25,8 @@ import (
 func TestConstruct_APropWrittenFromStateRebuildsTheInstance(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:macro"
-component seeded(#[construct] start int, more = 0) {
+component seeded(#[construct] start int, more = 0) node {
     var n = start
     button(text="bump inner", @click { n = n + 5 })
     text(value="s:" + string(n))
@@ -35,14 +34,14 @@ component seeded(#[construct] start int, more = 0) {
         seeded(start=start, more=more - 1)
     }
 }
-component App() {
+component App() node {
     var k = 10
     text(value="before")
     button(text="bump", @click { k = k + 1 })
     seeded(start=k, more=0)
     text(value="after")
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startTrapped(t, src)
 	defer b.Close()

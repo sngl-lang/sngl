@@ -26,7 +26,7 @@ import go "sngl:language/go"
 #[go.async]
 func sleep(ns int)
 
-component main {
+component main node {
     var greeting = "idle"
 
     text #out(value=greeting)
@@ -34,4 +34,8 @@ component main {
         sleep(300000000)
         greeting = "done"
     })
+}
+
+window {
+    main
 }

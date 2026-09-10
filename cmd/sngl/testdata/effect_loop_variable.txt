@@ -25,7 +25,7 @@ sngl generate --platform=android --lang=kotlin --out=ok_an reads_loop_var.sngl
 -- reads_loop_var.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
@@ -37,10 +37,14 @@ component main {
 
     text(value=log.join(","))
 }
+
+window {
+    main
+}
 -- through_on.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
@@ -51,4 +55,8 @@ component main {
     }
 
     text(value=log.join(","))
+}
+
+window {
+    main
 }

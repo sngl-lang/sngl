@@ -11,12 +11,11 @@ import (
 // under a dynamic `for` calls back into the render that built it.
 const funcPropSrc = `
 import . "sngl:ui"
-import . "sngl:app"
-component row(label string, onpick func(string)) {
+component row(label string, onpick func(string)) node {
     var hits = 0
     button(text="pick " + label + ":" + string(hits), @click { onpick(label) })
 }
-component App() {
+component App() node {
     var items list<string> = ["a", "b"]
     var picked string = ""
     text(value="picked=" + picked)
@@ -24,7 +23,7 @@ component App() {
         row(label=item, onpick=func(s string) { picked = s })
     }
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 
 // The page builds at all.

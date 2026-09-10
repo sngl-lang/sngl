@@ -4,7 +4,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     const frozen list<int> = [1, 2, 3]
     var xs list<int> = [1, 2, 3]
     var m map<string, int> = {"a"=1}
@@ -21,4 +21,8 @@ component main {
     func c() {
         for var k, &v = m { v = 0 } // ERROR(check) "requires a list"
     }
+}
+
+window {
+    main
 }

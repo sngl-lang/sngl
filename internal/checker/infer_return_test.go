@@ -16,7 +16,7 @@ func TestReturnOnlyTypeParamBindsFromContext(t *testing.T) {
     return []
 }
 
-component c() {
+component c() node {
     var xs list<int> = empty()
     var ys list<string> = empty()
 }
@@ -36,7 +36,7 @@ func TestArgumentsBindBeforeTheContext(t *testing.T) {
     return [a]
 }
 
-component c() {
+component c() node {
     var xs list<string> = pair(1)
 }
 `
@@ -56,7 +56,7 @@ func TestReturnOnlyTypeParamWithNoContextIsReported(t *testing.T) {
     return []
 }
 
-component c() {
+component c() node {
     var xs list<int> = [1]
     xs.push(empty().length())
 }

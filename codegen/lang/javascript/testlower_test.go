@@ -11,7 +11,7 @@ import (
 
 func TestJSLowerTestFile_agentModeEmitsRegisterAll(t *testing.T) {
 	src := `
-component box {
+component box node {
     var count = 0
     text(value="x")
 }

@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:time"
 
-component main {
+component main node {
     var (
         bg = #ff0000
         timeout duration = 5s
@@ -11,4 +11,8 @@ component main {
     )
 
     text(value=bg)
+}
+
+window {
+    main
 }

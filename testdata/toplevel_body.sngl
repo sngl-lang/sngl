@@ -1,8 +1,11 @@
-// A program's top level is its body: visual nodes written outside any
-// component or window are what it renders, with the package's own vars as the
-// state they read. The package is a state owner like the other two
-// (ir.Owners), and passRootWindow turns the body into the window a program
-// opens at, so nothing downstream needs a third shape.
+// A program's top level is a slot for the root tree, and a window is that
+// tree's renderable member — so what a program writes there is the window it
+// opens at, with the package's own vars as the state its body reads. The
+// package is a state owner like the other two (ir.Owners), and passRootWindow
+// lifts the window onto pkg.Windows so nothing downstream needs a third shape.
+//
+// A `node` written here is an error: it belongs to a family the package
+// body does not accept. See error_toplevel_ui_node.sngl.
 
 import . "sngl:ui"
 
@@ -10,7 +13,9 @@ var count = 0
 
 var label = "clicks"
 
-vbox {
-    text(value="{label}: {count}")
-    button #inc(text="+", @click { count = count + 1 })
+window {
+    vbox {
+        text(value="{label}: {count}")
+        button #inc(text="+", @click { count = count + 1 })
+    }
 }

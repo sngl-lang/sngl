@@ -12,7 +12,7 @@ struct Point {
     func describe() => "({x},{y}) m2={magnitude2()}"
 }
 
-component main {
+component main node {
     var p = Point{x=3, y=4}
     text(value=p.describe())
 }
@@ -29,4 +29,8 @@ func testNestedMethodMutation(t Test, c main) {
 
 func testNestedMethodBareSiblingCall(t Test, c main) {
     t.assert(c.p.describe() == "(3,4) m2=25")
+}
+
+window {
+    main
 }

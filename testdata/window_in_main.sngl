@@ -1,9 +1,18 @@
+// A component may render windows, and naming `app.root` in its return
+// position is what says so: it is a member of the family the package body
+// accepts, so writing it there is writing windows there. This is what "you can
+// still do dynamic stuff with them" means — a `root` component's body is
+// ordinary, so an `if` in it decides which windows a build contains.
+//
+// The windows are lifted onto pkg.Windows by passRootWindow, the same lowering
+// that lifts the ones written at the top level, so nothing downstream sees a
+// window nested in a view.
+
 import . "sngl:ui"
-import . "sngl:app"
 
-component main {
-    var count = 0
+var count = 0
 
+component pages() root {
     window #home(title="Home", href="/") {
         text(value="Count: {count}")
         button(text="+", @click { count += 1 })
@@ -13,3 +22,5 @@ component main {
         text(value="Config")
     }
 }
+
+pages()

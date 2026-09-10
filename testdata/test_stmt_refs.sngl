@@ -16,7 +16,7 @@ func testSubtestCallRefs(t Test, c main) {
     })
 }
 
-component main {
+component main node {
     var count = 0
 
     func increment(n int) {
@@ -27,4 +27,8 @@ component main {
     }
 
     text(value=string(count))
+}
+
+window {
+    main
 }

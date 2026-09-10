@@ -8,7 +8,6 @@ real parent-child one; a top-level widget is parented to __root by BuildUI and
 never reaches the append path at all.
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go {
@@ -16,13 +15,12 @@ output {
     }
 }
 
-component main {
+window(title="Counter") {
     var count int = 0
-    window(title="Counter") {
-        vbox {
-            text(value=string(count))
-            button(text="+", @click { count = count + 1 })
-        }
+
+    vbox {
+        text(value=string(count))
+        button(text="+", @click { count = count + 1 })
     }
 }
 -- out/go/gtk4/callbacks.go --
@@ -82,7 +80,7 @@ func (m *Model) buildWidgetTree() {
 	gtk4rt.BoxAppend(m.__n1, m.__n0)
 	m.__n2 = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.__n2, "+")
-	gtk4rt.Connect(m.__n2, "clicked", __n2_clicked_handler)
+	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
 	gtk4rt.BoxAppend(m.__n1, m.__n2)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 }

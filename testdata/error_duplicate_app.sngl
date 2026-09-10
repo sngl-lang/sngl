@@ -1,9 +1,13 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="first")
 }
 
-component main { // ERROR(check) "redeclared in this file"
+component main node { // ERROR(check) "redeclared in this file"
     text(value="second")
+}
+
+window {
+    main
 }

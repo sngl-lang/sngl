@@ -29,7 +29,7 @@ stdout 'ok'
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     var n = 7
     vbox {
         text(value="{n}")
@@ -40,11 +40,14 @@ func testInitial(t Test, c main) {
     t.assert(c.n == 7)
 }
 
+window {
+    main
+}
 -- renamed.sngl --
 import . "sngl:ui"
 import . "sngl:test"
 
-component counter {
+component counter node {
     var n = 7
     vbox {
         text(value="{n}")
@@ -53,4 +56,7 @@ component counter {
 
 func testInitial(t Test, c counter) {
     t.assert(c.n == 7)
+}
+
+window {
 }

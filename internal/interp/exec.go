@@ -64,13 +64,17 @@ func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
 	return raised
 }
 
-// invokeHandler executes the handler body with the ErrorEvent bound to the
+// invokeHandler executes the handler body with the error bound to the
 // handler's param. Propagates any error raised by the handler body itself to
 // the caller.
 func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) error {
 	if handler == nil || handler.Func == nil {
 		return nil
 	}
+	// Before the body, so a handler that raises again leaves the fallback
+	// showing rather than the content that failed. passBoundaryFailed orders
+	// its flag the same way, for the same reason.
+	env.markCaught(handler)
 	// A handler with no declared parameter has nothing that can name the
 	// event, so there is nothing to bind.
 	if len(handler.Func.Params) > 0 {

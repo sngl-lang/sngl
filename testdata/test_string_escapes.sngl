@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     var newline = "line1\nline2"
     var tab = "col1\tcol2"
     var quote = "she said \"hi\""
@@ -28,4 +28,8 @@ func testQuoteEscape(t Test, c main) {
 
 func testBackslashEscape(t Test, c main) {
     t.assert(c.backslash == `path\to\file`)
+}
+
+window {
+    main
 }

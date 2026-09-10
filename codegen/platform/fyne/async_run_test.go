@@ -22,7 +22,7 @@ func sleep(ns int)
 #[go.async]
 func host() string
 
-component main {
+window {
     var (
         greeting = "idle"
         busy = false
@@ -99,18 +99,18 @@ func TestABlockingCallDoesNotHoldTheClick(t *testing.T) {
 	runEmitted(t, "fyne-async-offload-", []byte(generateFyneModelBuilt(t, asyncOffloadSrc)), asyncOffloadDriver)
 }
 
-// asyncOffloadWindowSrc writes the same handler inside a `window` written
-// inside the component, which is where a real fyne program puts one.
+// asyncOffloadWindowSrc writes the same handler inside a `window` a component
+// renders. A component that renders windows names `root`, the family a
+// file's root accepts — a `ui` component is not a place a window belongs.
 const asyncOffloadWindowSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 import go "sngl:language/go"
 
 #[go.native("time", "time.Sleep")]
 #[go.async]
 func sleep(ns int)
 
-component main {
+component pages() root {
     var busy = false
 
     window(title="probe") {
@@ -123,17 +123,20 @@ component main {
 }
 `
 
-// A window written inside a component owns funcs of its own, and that is where
-// the flattened handler lands -- not in pkg.Windows, which is only the
-// top-level form. Reading pkg.Windows alone offloaded the handler in one
-// spelling and left the other blocking on the drawing thread, with no
+// A window a component renders owns funcs of its own, and that is where the
+// flattened handler lands. Reading pkg.Windows alone offloaded the handler in
+// one spelling and left the other blocking on the drawing thread, with no
 // diagnostic either way: the program compiled and the window froze.
+//
+// passRootWindow lifts a root component's windows onto pkg.Windows, so the two
+// spellings are one list by the time a backend sees them -- which is why this
+// asserts the outcome and not the route to it.
 //
 // The claim stops at the shape rather than a compile, because this spelling
 // does not compile for a reason of its own: fyne emits the handler as
 // `m.load.OnTapped = load_click_handler`, a method value with no receiver, for
-// any handler on a widget inside a component-nested window -- with or without
-// a blocking call in it.
+// any handler on a widget inside a component-rendered window -- with or
+// without a blocking call in it.
 func TestAHandlerInsideAComponentsWindowOffloadsToo(t *testing.T) {
 	model := generateFyneModelBuilt(t, asyncOffloadWindowSrc)
 	if !strings.Contains(model, "go func() {") || !strings.Contains(model, "fyne.Do(func() {") {
@@ -156,7 +159,7 @@ import go "sngl:language/go"
 #[go.async]
 func host() string
 
-component main {
+window {
     var (
         handler func() string = host
         greeting = "idle"

@@ -21,19 +21,18 @@ import (
 func TestInstance_StatePerElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component badge(label string) {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit " + label, @click { hits = hits + 1 })
 }
-component App() {
+component App() node {
     var names list<string> = ["a", "b"]
     for var n = names {
         badge(label=n)
     }
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -72,13 +71,12 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestInstance_PropUpdateReachesTheLeaf(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component badge(label string) {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit", @click { hits = hits + 1 })
 }
-component App() {
+component App() node {
     var (
         names list<string> = ["a"]
         tag = "x"
@@ -88,7 +86,7 @@ component App() {
     }
     button(text="rename", @click { tag = "y" })
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -117,17 +115,16 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestInstance_Recursive(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component chain(depth int) {
+component chain(depth int) node {
     text(value="<" + string(depth))
     if depth > 0 {
         chain(depth=depth - 1)
     }
 }
-component App() {
+component App() node {
     chain(depth=3)
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -154,20 +151,19 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestInstance_GrowingTheListKeepsTheOthers(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component badge(label string) {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit " + label, @click { hits = hits + 1 })
 }
-component App() {
+component App() node {
     var names list<string> = ["a", "b"]
     for var n = names {
         badge(label=n)
     }
     button(text="grow", @click { names = ["a", "b", "c"] })
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -209,20 +205,19 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestInstance_KeyedInsertAtFront(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component badge(label string) {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit " + label, @click { hits = hits + 1 })
 }
-component App() {
+component App() node {
     var names list<string> = ["a", "b"]
     for var n = names {
         badge(label=n, key=n)
     }
     button(text="prepend", @click { names = ["z", "a", "b"] })
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -261,20 +256,19 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestInstance_DuplicateKeysAreDistinctInstances(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component badge(label string) {
+component badge(label string) node {
     var hits = 0
     text(value="[" + label + ":" + string(hits) + "]")
     button(text="hit", @click { hits = hits + 1 })
 }
-component App() {
+component App() node {
     var names list<string> = ["a", "a"]
     for var n = names {
         badge(label=n, key=n)
     }
     button(text="churn", @click { names = ["a", "a"] })
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -318,20 +312,19 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestInstance_BranchReentryResetsState(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component badge() {
+component badge() node {
     var hits = 0
     text(value="[" + string(hits) + "]")
     button(text="hit", @click { hits = hits + 1 })
 }
-component App() {
+component App() node {
     var shown = true
     button(text="toggle", @click { shown = !shown })
     if shown {
         badge()
     }
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

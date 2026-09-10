@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // HTTP route window whose @click calls a go: native func (api.Persist),
 // exercising html route mode (--lang go) end-to-end through the golang
@@ -13,15 +12,13 @@ output { go { html } }
 
 import "go:example.com/route-post/api"
 
-component main {
+window #app(title="t", href="/") {
     var count = 0
 
-    window #app(title="t", href="/") {
-        vbox {
-            button(text="Save", @click {
-                count = api.Persist(count + 1)
-            })
-            text(value="count {count}")
-        }
+    vbox {
+        button(text="Save", @click {
+            count = api.Persist(count + 1)
+        })
+        text(value="count {count}")
     }
 }

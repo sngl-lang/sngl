@@ -23,15 +23,13 @@ import (
 // the sidebar but lost every page body, which lived inside <main>.
 func TestMainElementNotSwallowedByMainComponent(t *testing.T) {
 	src := `
-import . "sngl:app"
+import . "sngl:ui"
 import "sngl:platform/html"
 output { none { html() } }
-component main {
-    window(title="Home", href="/index.html") {
-        html.div {
-            html.main {
-                html.p(innerText="BODY CONTENT")
-            }
+window(title="Home", href="/index.html") {
+    html.div {
+        html.main {
+            html.p(innerText="BODY CONTENT")
         }
     }
 }

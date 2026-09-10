@@ -1,0 +1,21 @@
+// The tree-less rule reads an inferred family too, and has to wait for one:
+// `badge` is a widget because its body renders one, so a component marked
+// #[tree.none] may no more contain it than it may contain the `text` inside
+// it. Asked while the family was still unsettled, the question has no answer
+// and the rule lets it through.
+
+import tree "sngl:tree"
+import ui "sngl:ui"
+
+#[tree.none]
+component logger(label string) {
+    badge(label=label) // ERROR(check) "component logger names no tree, so it may not contain the node component badge"
+}
+
+component badge(label string) {
+    ui.text(value=label)
+}
+
+ui.window {
+    logger(label="x")
+}

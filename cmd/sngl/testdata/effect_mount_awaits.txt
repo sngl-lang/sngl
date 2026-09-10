@@ -20,7 +20,7 @@ import api "js:./api"
 
 output { none { html } }
 
-component main {
+component main node {
     var url = "a"
     var greeting = ""
     effect(on=url, @mount(k) {
@@ -29,5 +29,8 @@ component main {
     text(value=greeting)
 }
 
+window {
+    main
+}
 -- api/index.ts --
 export async function fetchHello(name: string): Promise<string> { return "hi " + name; }

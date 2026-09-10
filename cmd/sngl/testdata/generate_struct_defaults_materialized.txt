@@ -19,10 +19,14 @@ struct P {
     y int = 0
 }
 
-component main {
+component main node {
     var p P = {y = 1}
     var c color = color{r = 255, g = 0, b = 0}
     text(value="{p.x}{c.hex()}")
+}
+
+window {
+    main
 }
 -- bt.sngl --
 import . "sngl:ui"
@@ -34,8 +38,12 @@ struct P {
     y int = 0
 }
 
-component main {
+component main node {
     var p P = {y = 1}
     var c color = color{r = 255, g = 0, b = 0}
     text(value="{p.x}{c.hex()}")
+}
+
+window {
+    main
 }

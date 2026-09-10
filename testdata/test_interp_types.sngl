@@ -1,10 +1,9 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 enum Status { active, inactive, pending }
 
-component view {
+component view node {
     var n = 42
     var f = 3.14
     var b = true
@@ -35,4 +34,7 @@ func testInterpOption(t Test, c view) {
 func testInterpZeroArgFuncCalls(t Test, c view) {
     var label = func() => "hi"
     t.assert("{label}" == "hi")
+}
+
+window {
 }

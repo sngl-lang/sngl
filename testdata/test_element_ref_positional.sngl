@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -15,7 +14,11 @@ func testPositionalPropsOnAnElementRef(t Test, c main) {
     t.assert(c.named.value == "named")
 }
 
-component main {
+component main node {
     text #pos({}, "positional")
     text #named(value="named")
+}
+
+window {
+    main
 }

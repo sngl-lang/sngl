@@ -7,7 +7,7 @@ struct TreeNode {
     right option<TreeNode> = null
 }
 
-component tree_view(node TreeNode) {
+component tree_view(node TreeNode) node {
     vbox {
         text #val(value=string(node.value))
         if node.left != null {
@@ -19,7 +19,7 @@ component tree_view(node TreeNode) {
     }
 }
 
-component main {
+component main node {
     //       5
     //      / \
     //     3   8
@@ -47,4 +47,8 @@ func testRecursiveComponentMutation(t Test, c main) {
     c.node3.right = TreeNode{value=4}
     t.assert(c.val[3].value == "4")
     t.assert(c.val[4].value == "8")
+}
+
+window {
+    main
 }

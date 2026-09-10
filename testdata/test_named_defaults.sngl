@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     // Named args let callers skip intermediate defaults.
     func connect(host string, port int = 8080, debug bool = false) => host + ":" + string(port)
     func tag(text string, bold bool = false, italic bool = false) => text
@@ -21,4 +21,8 @@ func testOnlyNamedOptional(t Test, c main) {
 
 func testAllDefaults(t Test, c main) {
     t.assert(c.connect("example.com") == "example.com:8080")
+}
+
+window {
+    main
 }

@@ -99,29 +99,27 @@ func TestGIRResolutionIsSingleSourced(t *testing.T) {
 // that fallback across every override, which needs no system GIR to check.
 func TestBundledGIRLosesNoSetter(t *testing.T) {
 	const src = `import . "sngl:ui"
-import . "sngl:app"
-component main() {
-    window(title="t") {
-        vbox {
-            text(value="a")
-            button(text="b")
-            input(value="c")
-            checkbox(label="d", checked=true)
-            image(src="e")
-            progress(value=0.5, showValue=true)
-            spinner(label="f")
-            divider()
-            toggle(checked=true)
-            datepicker()
-            link(href="g", text="h")
-            card {}
-            stack {}
-            popover(open=true)
-            tooltip(text="i") { text(value="j") }
-            spacer()
-            scroll { text(value="s") }
-            textarea(value="k")
-        }
+import . "sngl:ui"
+window(title="t") {
+    vbox {
+        text(value="a")
+        button(text="b")
+        input(value="c")
+        checkbox(label="d", checked=true)
+        image(src="e")
+        progress(value=0.5, showValue=true)
+        spinner(label="f")
+        divider()
+        toggle(checked=true)
+        datepicker()
+        link(href="g", text="h")
+        card {}
+        stack {}
+        popover(open=true)
+        tooltip(text="i") { text(value="j") }
+        spacer()
+        scroll { text(value="s") }
+        textarea(value="k")
     }
 }
 `

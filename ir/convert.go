@@ -35,6 +35,9 @@ type converter struct {
 	// aliases maps a library package's URI to what this file imported it as,
 	// so a name from one is spelled the way the source spells it.
 	aliases map[string]string
+	// dotted is the packages this file dot-imported. A name from one is
+	// spelled bare, and qualifying it with the package would not resolve.
+	dotted map[string]bool
 }
 
 // --- Package → Document ---
@@ -43,8 +46,16 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 	var stmts []ast.Stmt
 
 	c.aliases = map[string]string{}
+	c.dotted = map[string]bool{}
 	for _, imp := range pkg.Imports {
-		if uri, ok := strings.CutPrefix(imp.Path, "sngl:"); ok && imp.Alias != "" && imp.Alias != "." {
+		uri, ok := strings.CutPrefix(imp.Path, "sngl:")
+		if !ok {
+			continue
+		}
+		switch {
+		case imp.Alias == ".":
+			c.dotted[uri] = true
+		case imp.Alias != "":
 			c.aliases[uri] = imp.Alias
 		}
 	}
@@ -285,8 +296,13 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 
 	// The return position is the tree the component is a member of. Its
 	// children type is derived from the default slot, which prints itself.
-	if comp.Tree != nil {
+	switch {
+	case comp.Tree != nil:
 		cd.ChildrenType = c.treeName(comp.Tree)
+	case comp.TreeParam != "":
+		// A wrapper's family is whatever it was handed, and the parameter is
+		// the component's own -- so it is spelled bare, never qualified.
+		cd.ChildrenType = &ast.NamedType{Name: comp.TreeParam}
 	}
 
 	// Build body: vars, consts, funcs, then body stmts.
@@ -510,6 +526,8 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		return c.convertCallStmt(s)
 	case *SlotInst:
 		return c.convertSlotInst(s)
+	case *ErrorBoundary:
+		return c.convertErrorBoundary(s)
 	case *Assign:
 		return &ast.AssignStmt{
 			Target: c.convertExpr(s.Target).(ast.TargetExpr),
@@ -679,14 +697,49 @@ func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
 	return out
 }
 
+// convertErrorBoundary writes a boundary back out as the node it was written
+// as: the @error handler in the argument list, the content bare in the block,
+// and the fallback as a `component failed` population beside it.
+//
+// The node's name is the AST's, because the boundary is reached by the
+// #[builtin] mark rather than by a name -- a program that shadowed the
+// ambient `boundary` and reached the built-in through a qualified alias must
+// print back as what it wrote. Without the AST there is nothing left to read
+// it off, and the mark's own kind is what is left to say.
+//
+// Convert had no case at all for a boundary, so `sngl dump --stage checked`
+// panicked on every program that wrote one.
+func (c *converter) convertErrorBoundary(n *ErrorBoundary) ast.Stmt {
+	name := n.AST.TargetName()
+	if name == "" {
+		name = string(BuiltinErrorBoundary)
+	}
+	vn := &ast.VisualNode{Target: &ast.IdentExpr{Name: name}}
+	if n.Handler != nil {
+		vn.Args = ast.ArgList{Args: []ast.ArgOrEventHandler{c.convertEventHandler(n.Handler)}}
+	}
+	vn.Block = c.convertStmtBlock(n.Children)
+	vn.Block.IsMultiline = true
+	if len(n.Failed) > 0 {
+		cd := &ast.ComponentDecl{Name: n.FailedSlot, Body: c.convertStmtBlock(n.Failed)}
+		cd.Body.IsMultiline = true
+		vn.Block.Stmts = append([]ast.Stmt{cd}, vn.Block.Stmts...)
+	}
+	return vn
+}
+
 // convertSlotContent is a slot's declared type: the element type, rewrapped in
 // whatever the count was read from.
 func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	if s.Content == nil {
+		// A count with no tree of its own: bare `tree.one` is one of whatever
+		// the slot already accepts, which is its owner's family.
+		if s.Card == SlotOne {
+			return &ast.NamedType{Package: c.treePkg(), Name: "one"}
+		}
 		return nil
 	}
 	sd, _ := s.Content.Decl.(*StructDef)
-	isDefault := sd != nil && sd.Builtin == BuiltinTreeDefault
 	var elem ast.TypeExpr
 	if sd != nil {
 		// A tree is spelled through whatever this file imported its package as;
@@ -697,19 +750,9 @@ func (c *converter) convertSlotContent(s *SlotDecl) ast.TypeExpr {
 	}
 	switch s.Card {
 	case SlotOne:
-		nt := &ast.NamedType{Package: c.treePkg(), Name: "one"}
-		// tree.one's own parameter defaults to the default tree, so naming it
-		// would be spelling out what the declaration already says.
-		if !isDefault {
-			nt.TypeArgs = []ast.TypeExpr{elem}
-		}
-		return nt
+		return &ast.NamedType{Package: c.treePkg(), Name: "one", TypeArgs: []ast.TypeExpr{elem}}
 	case SlotOptional:
 		return &ast.NamedType{Name: "option", TypeArgs: []ast.TypeExpr{elem}}
-	}
-	if isDefault {
-		// A slot naming the default tree accepts what a bare one accepts.
-		return nil
 	}
 	return elem
 }
@@ -720,6 +763,10 @@ func (c *converter) treePkg() string { return c.aliasFor("tree") }
 // aliasFor is what this file imported a library package as, defaulting to the
 // last segment of its URI — which is the alias an unaliased import binds.
 func (c *converter) aliasFor(uri string) string {
+	uri = strings.TrimPrefix(uri, "sngl:")
+	if c.dotted[uri] {
+		return ""
+	}
 	if a := c.aliases[uri]; a != "" {
 		return a
 	}

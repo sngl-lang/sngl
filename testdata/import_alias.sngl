@@ -1,6 +1,10 @@
 import . "sngl:ui"
 import w "widgets"
 
-component main {
+component main node {
     w.Counter(label="Clicks")
+}
+
+window {
+    main
 }

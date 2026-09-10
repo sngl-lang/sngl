@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component arithfold {
+component arithfold node {
     // Integer arithmetic
     var add = 3 + 4  // FOLD 7
     var sub = 10 - 3 // FOLD 7
@@ -69,4 +69,7 @@ func testFoldedValues(t Test, c arithfold) {
     t.assert(c.cat == "hello world")
     t.assert(c.tern == 1)
     t.assert(c.ternf == 2)
+}
+
+window {
 }

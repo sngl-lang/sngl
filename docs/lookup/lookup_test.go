@@ -223,11 +223,11 @@ func TestIndexInTempDir(t *testing.T) {
 	if err := os.Mkdir(sub, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(sub, "w.sngl"), []byte(`component Counter(count int) { text { value = "x" } }`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(sub, "w.sngl"), []byte(`component Counter(count int) node { text { value = "x" } }`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "app.sngl"), []byte(`import w "./widgets"
-component main { w.Counter(count = 1) }
+component main node { w.Counter(count = 1) }
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestLookupInDir(t *testing.T) {
     x int
     y int
 }
-component main {
+component main node {
     text { value = "x" }
 }
 `), 0o644); err != nil {

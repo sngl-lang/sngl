@@ -34,8 +34,7 @@ func effectLog(body string) string {
 func TestEffect_BranchIsTheLifetime(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component App() {
+component App() node {
     var (
         shown = true
         log list<string> = []
@@ -46,7 +45,7 @@ component App() {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -72,8 +71,7 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestEffect_OneBracketPerElement(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component App() {
+component App() node {
     var (
         items list<string> = ["a", "b"]
         log list<string> = []
@@ -84,7 +82,7 @@ component App() {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -108,8 +106,7 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestEffect_TwoEndingsRunNewestFirst(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component App() {
+component App() node {
     var (
         items list<string> = ["a", "b", "c"]
         log list<string> = []
@@ -120,7 +117,7 @@ component App() {
     }
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()
@@ -138,8 +135,7 @@ component main { window(title="H", href="/index.html") { App() } }
 func TestEffect_UnchangedKeyDoesNothing(t *testing.T) {
 	src := `
 import . "sngl:ui"
-import . "sngl:app"
-component App() {
+component App() node {
     var (
         n = 0
         log list<string> = []
@@ -149,7 +145,7 @@ component App() {
     effect(on=n, @mount { log.push("m") }, @unmount { log.push("u") })
     text(value="[" + log.join(",") + "]")
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 	b := startComponent(t, src)
 	defer b.Close()

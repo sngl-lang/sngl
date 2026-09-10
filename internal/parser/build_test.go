@@ -287,7 +287,7 @@ func TestParseForStmtTwoVars(t *testing.T) {
 }
 
 func TestParseComponent(t *testing.T) {
-	doc := mustParse(t, `component Button(label string) {
+	doc := mustParse(t, `component Button(label string) node {
 		Text(label)
 	}`)
 	cd, ok := doc.Stmts[0].(*ast.ComponentDecl)
@@ -303,7 +303,7 @@ func TestParseComponent(t *testing.T) {
 }
 
 func TestParseVisualNode(t *testing.T) {
-	doc := mustParse(t, `component App {
+	doc := mustParse(t, `component App node {
 		Button(label="Click") {
 			Text("hello")
 		}
@@ -532,7 +532,7 @@ func TestParseDisabledDecl(t *testing.T) {
 
 func TestParseMarkedDecl(t *testing.T) {
 	src := `#[canvas.shape]
-component rect() {}`
+component rect() node {}`
 	doc, err := Parse("test.sngl", []byte(src))
 	if err != nil {
 		t.Fatalf("parse error: %v", err)

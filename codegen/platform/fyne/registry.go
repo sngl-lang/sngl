@@ -15,7 +15,7 @@ const WidgetProbeSource = `
 import . "sngl:ui"
 import "sngl:platform/fyne"
 output { go { fyne() } }
-component main {}
+component main node {}
 `
 
 // OverriddenComponents lists the stdlib components this platform gives a body

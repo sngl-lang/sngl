@@ -48,10 +48,9 @@ stdout 'noselection.sngl: ok'
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string, size int) {
+component Avatar(url string, size int) node {
     text(value="avatar fallback: " + url)
 }
 
@@ -59,17 +58,14 @@ component Avatar[html.platform] {
     html.img(src=url, alt="avatar")
 }
 
-component main {
-    window #w(title="t") {
-        Avatar(url="/a.png", size=32)
-    }
+window #w(title="t") {
+    Avatar(url="/a.png", size=32)
 }
 
 -- typo.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
-component Avatar(url string) {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -77,18 +73,15 @@ component Avatar[htlm.platform] {
     text(value=url)
 }
 
-component main {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- nottarget.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string) {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -96,23 +89,20 @@ component Avatar[html.element] {
     text(value=url)
 }
 
-component main {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- duplicate.sngl --
 import sngl "sngl:ui"
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 component sngl.badge[html.platform] {
     html.span(textContent=value)
 }
 
-component main {
+component main sngl.node {
     window #w(title="t") {
         badge(value="7")
     }
@@ -120,10 +110,9 @@ component main {
 
 -- declaresprops.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string) {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -131,18 +120,15 @@ component Avatar[html.platform](url string) {
     text(value=url)
 }
 
-component main {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- selectsunknown.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string) {
+component Avatar(url string) node {
     text(value=url)
 }
 
@@ -150,18 +136,15 @@ component Avatar[html.platform](url, bogus) {
     html.img(src=url)
 }
 
-component main {
-    window #w(title="t") {
-        Avatar(url="/a.png")
-    }
+window #w(title="t") {
+    Avatar(url="/a.png")
 }
 
 -- unselected.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string, size int) {
+component Avatar(url string, size int) node {
     text(value=url)
 }
 
@@ -169,18 +152,15 @@ component Avatar[html.platform](url) {
     html.img(src=url, width=size)
 }
 
-component main {
-    window #w(title="t") {
-        Avatar(url="/a.png", size=1)
-    }
+window #w(title="t") {
+    Avatar(url="/a.png", size=1)
 }
 
 -- noselection.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
-component Avatar(url string, size int) {
+component Avatar(url string, size int) node {
     text(value=url)
 }
 
@@ -188,8 +168,6 @@ component Avatar[html.platform] {
     html.img(src=url, alt=string(size))
 }
 
-component main {
-    window #w(title="t") {
-        Avatar(url="/a.png", size=1)
-    }
+window #w(title="t") {
+    Avatar(url="/a.png", size=1)
 }

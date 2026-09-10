@@ -58,7 +58,7 @@ func check(t *testing.T, src string) *ir.Package {
 
 const src = `import . "sngl:ui"
 
-component main {
+component main node {
     var (
         count = 0
         label = "hello"
@@ -204,7 +204,7 @@ func TestAWrapperGetsItsChild(t *testing.T) {
 
 	src := `import . "sngl:ui"
 
-component main {
+component main node {
     scroll #s {
         text #inner(value="scrolled")
     }
@@ -243,7 +243,7 @@ func TestAnUnsupportedElementSwallowsItsSubtree(t *testing.T) {
 
 	src := `import . "sngl:ui"
 
-component main {
+component main node {
     vbox {
         hbox #unknown {
             text #buried(value="should not surface")
@@ -282,7 +282,7 @@ func TestTwoWayBindingWritesBack(t *testing.T) {
 
 	src := `import . "sngl:ui"
 
-component main {
+component main node {
     var name = "World"
 
     vbox {
@@ -338,7 +338,7 @@ func TestAContainerCarriesItsChildrensFlex(t *testing.T) {
 
 	src := `import . "sngl:ui"
 
-component main {
+component main node {
     hbox #row(style={gap=4, padding=6}) {
         button(text="a", style={flex=1, margin=3})
         button(text="b", style={flex=2})
@@ -389,7 +389,7 @@ func TestPaintStylesReachATheme(t *testing.T) {
 
 	src := `import . "sngl:ui"
 
-component main {
+component main node {
     vbox {
         button #plain(text="plain")
         button #painted(text="painted", style={background=#f59e0b, color=#ffffff, fontSize=22})

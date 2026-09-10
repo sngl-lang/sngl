@@ -3,19 +3,19 @@ caps:
 import . "sngl:ui"
 import "sngl:i18n"
 
-component greet(name string) {
+component greet(name string) node {
     text(value=$"Hello, {name}!")
 }
 
-component main {
+component main node {
     greet(name="Alice")
 }
 -- expected.sngl --
 import . "sngl:ui"
 import i18n "sngl:i18n"
-component greet(name string = "") {
+component greet(name string = "") node {
     text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name"=name}))
 }
-component main {
+component main node {
     text(value=i18n.trInline("Hello, \{name\}!", "Hello, \{name\}!", {"name"="Alice"}))
 }

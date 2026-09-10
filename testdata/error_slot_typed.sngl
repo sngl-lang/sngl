@@ -3,7 +3,7 @@
 import . "sngl:ui"
 import tr "sngl:tree"
 
-component frame(body component tr.one, badge component option<tr.default>) {
+component frame(body component tr.one, badge component option<node>) node {
     vbox {
         body {}
         badge {}
@@ -13,13 +13,13 @@ component frame(body component tr.one, badge component option<tr.default>) {
 // The rest slot's count binds a bodyless call too: that path builds its
 // NodeInst without going through the visual-node one, where a children count is
 // what gets read.
-component one(content ...component tr.one) {
+component one(content ...component tr.one) node {
     vbox {
         content
     }
 }
 
-component main {
+component main node {
     one() // ERROR(check) "takes exactly one node, got 0"
 
     // Exactly one has no spelling for being absent — option<T> and a bare type
@@ -36,4 +36,8 @@ component main {
             text(value="b")
         }
     }
+}
+
+window {
+    main
 }

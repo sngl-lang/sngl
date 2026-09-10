@@ -10,12 +10,16 @@
 
 import . "sngl:ui"
 
-component OneWay(count int) {
+component OneWay(count int) node {
     text(value=string(count))
 }
 
-component main {
+component main node {
     var n = 0
 
     OneWay(:count=n) // ERROR(check) "one-way prop"
+}
+
+window {
+    main
 }

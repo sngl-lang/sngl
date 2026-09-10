@@ -3,3 +3,6 @@ import . "sngl:ui"
 func f() {
     break // ERROR(check) "`break` outside a loop"
 }
+
+window {
+}

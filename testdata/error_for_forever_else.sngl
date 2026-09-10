@@ -10,3 +10,6 @@ func f() int {
         return 2
     }
 }
+
+window {
+}

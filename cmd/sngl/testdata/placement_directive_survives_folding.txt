@@ -14,11 +14,10 @@ stderr 'not yet implemented'
 -- backend_const.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
-import . "sngl:app"
 
 var v int = html.backend(42)
 
-component App {
+component App node {
     vbox {
         text(value="{v}")
     }

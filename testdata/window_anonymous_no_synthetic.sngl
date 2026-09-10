@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 // An anonymous window must not get a "window_L<line>" name. The checker
 // should leave Name empty; the platform decides what to do.

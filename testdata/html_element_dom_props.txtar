@@ -18,7 +18,6 @@ deny out/none/html/index.html `setAttribute\("tag"` -- same on the JS-built path
 
 -- dom.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 output {
@@ -27,19 +26,17 @@ output {
     }
 }
 
-component main {
+window {
     var shown bool = false
     var locked bool = true
     var rows list<string> = ["a"]
 
-    window {
-        html.details(open=shown) {
-            html.input(readonly=locked)
-        }
-        html.element(tag="my-widget", role="main")
-        for var r = rows {
-            html.li(textContent=r, hidden=shown)
-        }
+    html.details(open=shown) {
+        html.input(readonly=locked)
+    }
+    html.element(tag="my-widget", role="main")
+    for var r = rows {
+        html.li(textContent=r, hidden=shown)
     }
 }
 -- out/none/html/index.html --
@@ -55,8 +52,8 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<details id="__n0" data-sngl-id="__n0">
-  <input id="__n1" data-sngl-id="__n1"/>
+<details id="__n1" data-sngl-id="__n1">
+  <input id="__n2" data-sngl-id="__n2"/>
 </details>
 <my-widget role="main">
 </my-widget>
@@ -76,16 +73,16 @@ body { font-family: system-ui, sans-serif; }
     let __slot02 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __n2.textContent = __prop___p0;
+      __n0.textContent = __prop___p0;
     }
     function __set___p1(__v) {
       __prop___p1 = __v;
-      __n2.hidden = __prop___p1;
+      __n0.hidden = __prop___p1;
     }
-    let __n2 = document.createElement("li");
-    __n2.textContent = __prop___p0;
-    __n2.hidden = __prop___p1;
-    __root.appendChild(__n2);
+    let __n0 = document.createElement("li");
+    __n0.textContent = __prop___p0;
+    __n0.hidden = __prop___p1;
+    __root.appendChild(__n0);
     return {
       __root,
       __destroy() {
@@ -144,11 +141,11 @@ body { font-family: system-ui, sans-serif; }
   }
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   function __sngl_init() {
-    __n1.readOnly = state.locked;
-    __n0.open = state.shown;
+    __n2.readOnly = state.locked;
+    __n1.open = state.shown;
   }
   __sngl_init();
 })();

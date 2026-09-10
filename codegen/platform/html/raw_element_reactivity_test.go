@@ -22,7 +22,7 @@ import . "sngl:ui"
 import "sngl:platform/html"
 import "sngl:platform/html"
 output { none { html() } }
-component main {
+window {
     var volume = 60
     vbox {
         html.progress(value=string(volume), max="100")

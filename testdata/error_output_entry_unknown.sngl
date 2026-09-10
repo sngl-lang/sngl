@@ -1,0 +1,12 @@
+// A misspelled entry is a name nobody declared, reported where it is written.
+// That is the reason it is an element reference rather than a string: `entry`
+// is an ordinary prop, so the expression check resolves it like any other
+// name, and a string that matched nothing would have said nothing.
+
+import ui "sngl:ui"
+
+output(entry=hoem) // ERROR(check) "undefined: hoem"
+
+ui.window #home(title="Home") {
+    ui.text(value="hi")
+}

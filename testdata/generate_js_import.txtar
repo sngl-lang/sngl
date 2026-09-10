@@ -13,10 +13,14 @@ output {
     }
 }
 
-component main {
+component main node {
     var n = 0.0
     button(text="add", @click { n = lib.add(2.0, 3.0) })
     text(value=string(n))
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 export function add(a: number, b: number): number {
@@ -49,18 +53,18 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { n: 0 };
+  var state = { n__inst0: 0 };
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.n = add(2, 3);
-    __n0.textContent = String(state.n);
+    state.n__inst0 = add(2, 3);
+    __n0.textContent = String(state.n__inst0);
   });
   function __sngl_init() {
-    __n0.textContent = String(state.n);
+    __n0.textContent = String(state.n__inst0);
   }
   __sngl_init();
 })();

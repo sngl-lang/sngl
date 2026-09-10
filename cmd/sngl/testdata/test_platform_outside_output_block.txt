@@ -20,7 +20,7 @@ import . "sngl:test"
 
 output { none { html } }
 
-component greeter {
+component greeter node {
     var name = "world"
     vbox {
         text(value=name)
@@ -29,4 +29,7 @@ component greeter {
 
 func testGreeterRenders(t Test, c greeter) {
     t.assert(c.name == "world")
+}
+
+window {
 }

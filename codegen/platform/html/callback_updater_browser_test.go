@@ -34,14 +34,13 @@ import (
 // difference is whether the span moves.
 const callbackUpdaterSrc = `
 import . "sngl:ui"
-import . "sngl:app"
 
 func run(f func()) int {
     f()
     return 7
 }
 
-component App() {
+component App() node {
     var n = 0
     var handle = 0
 
@@ -52,7 +51,7 @@ component App() {
     })
     text(value="n=" + string(n))
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 
 func TestAWriteInsideACallbackUpdatesWhatReadsIt(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness"
 	"git.duckfam.us/jonathan/sngl/codegen/testharness/snapshot"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/internal/testrpc"
@@ -302,21 +303,12 @@ func handleSnapshotAssert(w *testrpc.Writer, store *snapshot.Store, m *testrpc.M
 
 // rootForTests makes comp the program's only entry point.
 //
-// A test renders the component it names, not the program around it. Left in
-// place, that program is a root the inliner flattens the component under test
-// into -- renaming its state per instance, so the Model carries `n__inst0`
-// where the agent, written against the declaration, asks for `n`. The symptom
-// was that a component test passed only while nothing else in the program
-// rendered (#136).
-//
 // A group naming no component tests plain functions; there is nothing to make
-// a root of, and the program is left as it is.
+// a root of, and the program is left as it is. What isolation means is
+// build.IsolateRootComponent's, shared with `generate --opt rootComponent=`
+// so the two harness paths render the same program.
 func rootForTests(pkg *ir.Package, comp string) {
-	if comp == "" {
-		return
-	}
-	pkg.Body = nil
-	pkg.Windows = nil
+	build.IsolateRootComponent(pkg, comp)
 }
 
 // prepareForLaunch runs the generate pipeline's full optimize→lower→optimize

@@ -5,8 +5,12 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component main {
+component main node {
     var total = sumPair({a=3, b=4})
 
     text(value=string(total))
+}
+
+window {
+    main
 }

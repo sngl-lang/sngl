@@ -34,7 +34,7 @@ func testVoidActionFunctions(t Test, c main) {
     t.assert(c.count == 8)
 }
 
-component main {
+component main node {
     var count = 10
 
     func add(a int, b int) => a + b
@@ -55,4 +55,8 @@ component main {
     }
 
     text(value=label())
+}
+
+window {
+    main
 }

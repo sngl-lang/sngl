@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 // A subtest's effects stay in the subtest. Both the enclosing test and the
@@ -9,7 +8,7 @@ import . "sngl:test"
 // used to be one — so the runner picked between them by ranging a map and got
 // the enclosing test's roughly half the time, writing the subtest's timer tick
 // into it.
-component main {
+component main node {
     var p = 0
     const LIMIT = 5
     timer(interval=100ms, enabled=true, @tick { p += 1 })
@@ -28,4 +27,8 @@ func testSubtestTickDoesNotLeak(t Test, c main) {
 // it names, and a const declaration reaches that lookup like any other.
 func testConstIsNotAssignable(t Test, c main) {
     t.assert(c.LIMIT == 5)
+}
+
+window {
+    main
 }

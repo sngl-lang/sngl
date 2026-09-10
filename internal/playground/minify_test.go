@@ -11,7 +11,7 @@ const minifySource = `output {
     }
 }
 
-component main {
+component main node {
     var name = "World"
 
     vbox(style={gap=12, padding=16}) {

@@ -1,6 +1,5 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -15,7 +14,7 @@ func testChildTimerFires(t Test, c main) {
     t.assert(childTicks == 1)
 }
 
-component ticker(n int) {
+component ticker(n int) node {
     timer(interval=100ms, enabled=true, @tick {
         childTicks += 1
     })
@@ -23,7 +22,7 @@ component ticker(n int) {
     text(value=string(n))
 }
 
-component main {
+component main node {
     var outer = 0
 
     timer(interval=100ms, enabled=true, @tick {
@@ -32,4 +31,8 @@ component main {
 
     ticker(n=1)
     text(value=string(outer))
+}
+
+window {
+    main
 }

@@ -8,7 +8,6 @@ by hand, with a boolean attribute bound to state -- is
 html_element_decl_reactive.txtar.
 -- stdlib.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { none { html() } }
 

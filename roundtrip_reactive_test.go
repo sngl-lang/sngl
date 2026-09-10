@@ -18,7 +18,7 @@ import (
 // NoDeclarative, which turns every node into a declared `var __nN`), this uses
 // NoReactivity alone so the named-node-tag + bare-reference shape is exercised.
 func TestReactiveLoweredRoundTrip(t *testing.T) {
-	const src = `component main {
+	const src = `component main node {
     var n int = 0
     text(value=string(n))
     button(text="+", @click { n = n + 1 })

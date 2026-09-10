@@ -1,7 +1,11 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     var count int = 0           //@ hover("count", "var count int")
     func doubled() => count * 2 //@ hover("doubled", "func doubled()")
     const label = "hi"          //@ hover("label", "const label")
+}
+
+window {
+    main
 }

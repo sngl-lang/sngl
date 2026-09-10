@@ -12,6 +12,6 @@ output {
     }
 }
 
-component main {
+component main ui.node {
     text(value="hi")
 }

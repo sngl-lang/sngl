@@ -1,12 +1,11 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 // The edges of list.slice and list.remove, which lib/builtin/methods.sngl
 // documents and the interpreter implements but no backend agreed with: Go
 // sliced the backing array and panicked out of range, Kotlin handed back a
 // live subList view that threw, and both blew up on an out-of-range remove.
-component main { text(value="x") }
+component main node { text(value="x") }
 
 func testSliceClampsBothBounds(t Test, c main) {
     var xs list<int> = [1, 2, 3]
@@ -53,4 +52,8 @@ func testJoinCoercesNonStringElements(t Test, c main) {
 
     var ss list<string> = ["a", "b"]
     t.assert(ss.join("-") == "a-b")
+}
+
+window {
+    main
 }

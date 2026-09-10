@@ -4,7 +4,7 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var scores map<string, int> = {alice=10, bob=20}
     var total = 0
     var report = ""
@@ -27,4 +27,8 @@ component main {
             total = total + sum()
         })
     }
+}
+
+window {
+    main
 }

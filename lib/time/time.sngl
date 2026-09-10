@@ -1,5 +1,6 @@
 import marks "sngl:internal/marks"
 import macro "sngl:macro"
+import tree "sngl:tree"
 
 // Calendar date in canonical "YYYY-MM-DD" form.
 #[marks.builtin("date")]
@@ -36,6 +37,10 @@ unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 // platform schedules with, which is why a timer's branch, its component
 // boundary and its interval are answered by the tree it renders into rather
 // than by a list the checker hoisted it onto.
+//
+// A timer belongs to no tree: it schedules and renders nothing, so it sits
+// wherever the work it drives belongs.
+#[tree.none]
 component timer(
     #[macro.construct] interval duration,
     #[macro.construct] enabled bool = true,

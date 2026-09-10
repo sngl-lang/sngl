@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     const PROGRESS_VAL = 50
     const DERIVED = PROGRESS_VAL + 25
 
@@ -21,4 +21,8 @@ component main {
 
     // Call expr where float expected
     progress(value=int(50))
+}
+
+window {
+    main
 }

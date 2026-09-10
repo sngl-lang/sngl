@@ -6,7 +6,7 @@ struct User {
     loggedIn bool = false
 }
 
-component Counter(label = "") {
+component Counter(label = "") node {
     var count = 0
 
     hbox {
@@ -16,7 +16,7 @@ component Counter(label = "") {
     }
 }
 
-component main {
+component main node {
     var (
         user = User{name="World", age=25, loggedIn=false}
         count = 0
@@ -37,4 +37,8 @@ component main {
         Counter(label="Clicks")
         button(text=user.loggedIn ? "Logout" : "Login", @click { user.loggedIn!! })
     }
+}
+
+window {
+    main
 }

@@ -26,7 +26,6 @@ deny out/none/html/index.html `addEventListener\("error", function\(\)` -- @erro
 
 -- events.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import "sngl:platform/html"
 
 output {
@@ -35,20 +34,18 @@ output {
     }
 }
 
-component main {
+window {
     var msg string = ""
     var txt string = ""
     var hits int = 0
     var rows list<string> = ["a"]
 
-    window {
-        html.img(src="x.png", @error(e) { msg = e.message })
-        html.input(@input(e) { txt = e.value })
-        html.button(@click { hits = hits + 1 })
-        html.div(@mouseover { hits = hits + 1 })
-        for var r = rows {
-            html.li(textContent=r, @mouseover { hits = hits + 1 })
-        }
+    html.img(src="x.png", @error(e) { msg = e.message })
+    html.input(@input(e) { txt = e.value })
+    html.button(@click { hits = hits + 1 })
+    html.div(@mouseover { hits = hits + 1 })
+    for var r = rows {
+        html.li(textContent=r, @mouseover { hits = hits + 1 })
     }
 }
 -- out/none/html/index.html --

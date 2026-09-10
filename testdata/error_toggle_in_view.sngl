@@ -5,8 +5,12 @@ import . "sngl:ui"
 
 var flag = false
 
-component main {
+component main node {
     flag!! // ERROR(check) "not a statement in a view body"
 
     text(value="{flag}")
+}
+
+window {
+    main
 }

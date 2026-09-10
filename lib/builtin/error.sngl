@@ -1,0 +1,45 @@
+import marks "sngl:internal/marks"
+
+// A failure, and the receiver the program raises one through. `message` is
+// human-readable; `kind` tags the category so a handler can dispatch on it
+// programmatically ("network", "decode", "validation").
+//
+// One type does both jobs: `error.raise(message, kind)` throws one, and an
+// `@error` handler is handed one. It used to be two — `sngl:app`'s empty
+// `error` receiver and `sngl:ui`'s `ErrorEvent` payload with these two
+// fields — which meant the thing raised and the thing caught were unrelated
+// declarations that happened to line up.
+struct error {
+    message string
+    kind string
+}
+
+// Raises a runtime error. The error propagates to the nearest enclosing
+// `boundary`, whose `@error` handler receives it. Without a boundary the
+// error terminates the containing evaluation with a platform-default
+// handler.
+#[marks.intrinsic("error.raise")]
+func error.raise(message string, kind string)
+
+// Catches errors raised in its children's event handlers and expressions.
+// When a descendant calls `error.raise` or throws during evaluation, the
+// boundary swallows the error and invokes `@error` with it; `failed` is what
+// it renders in place of `content` from then on. Without a surrounding
+// boundary, errors propagate to the platform's default handler.
+//
+// Either half is enough on its own: `@error` alone reports and keeps
+// rendering `content`, `failed` alone swaps the subtree with nothing to run.
+// One of the two is required, since a boundary that neither reports nor
+// replaces catches an error and does nothing with it.
+//
+// It belongs to no family of its own and takes T from whatever it was given:
+// a boundary around shapes is a shape's parent, one around widgets a widget's,
+// and it is placeable in either. `failed` is held to the same T, because it
+// stands where `content` stood. An empty boundary binds nothing, which is
+// harmless — there is no content for the binding to have checked.
+#[marks.builtin("errorBoundary")]
+component boundary<T>(
+    @error error,
+    content ...component T,
+    failed component T,
+) T {}

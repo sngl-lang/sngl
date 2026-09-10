@@ -74,62 +74,107 @@ sngl check draw_names_free.sngl
 stdout 'draw_names_free.sngl: ok'
 
 -- nostd.sngl --
-component main {
+import ui "sngl:ui"
+
+component main ui.node {
     text(value="x")
+}
+
+ui.window {
+    main
 }
 -- withstd.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="x")
 }
+
+window {
+    main
+}
 -- builtins.sngl --
-component main {
+import ui "sngl:ui"
+
+component main ui.node {
     var n int = int.max(1, 2)
     var f float = float.sqrt(2.0)
     var s string = string.upper("hi")
     var c color = color.rgb(1, 2, 3)
 }
+
+ui.window {
+    main
+}
 -- dateunimported.sngl --
-component main {
+import ui "sngl:ui"
+
+component main ui.node {
     var d date = "2026-08-21"
+}
+
+ui.window {
+    main
 }
 -- dateimported.sngl --
 import . "sngl:time"
+import ui "sngl:ui"
 
-component main {
+component main ui.node {
     var d date = "2026-08-21"
     var t time = "09:30"
     var dt datetime = "2026-08-21T09:30:00"
 }
+
+ui.window {
+    main
+}
 -- importbuiltin.sngl --
 import . "sngl:builtin"
+import ui "sngl:ui"
 
-component main {
+component main ui.node {
     var n int = 1
+}
+
+ui.window {
+    main
 }
 -- rawelem.sngl --
 import "sngl:platform/html"
 import "sngl:platform/gtk4"
+import ui "sngl:ui"
 
-component Foo() {
+component Foo() ui.node {
     html.marquee() {}
 }
 
-component Bar() {
+component Bar() ui.node {
     gtk4.GtkLabel(label="x") {}
 }
+
+ui.window {
+}
 -- rawelem_unimported.sngl --
-component Bar() {
+import ui "sngl:ui"
+
+component Bar() ui.node {
     gtk4.GtkLabel(label="x") {}
+}
+
+ui.window {
 }
 -- aliased_expr.sngl --
 import ui "sngl:ui"
 
 func render() => ui.text(value="x")
 
-component main {
+component main ui.node {
     ui.text(value="y")
+}
+
+ui.window {
+    main
 }
 -- private.sngl --
 import . "sngl:ui"
@@ -137,52 +182,79 @@ import w "widgets"
 
 func render() => w.helper()
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- widgets/widgets.sngl --
 import . "sngl:ui"
 
-component helper() {
+component helper() node {
     text(value="private")
+}
+
+window {
 }
 -- aliased.sngl --
 import ui "sngl:ui"
 
-component main {
+component main ui.node {
     ui.text(value="x")
+}
+
+ui.window {
+    main
 }
 -- draw_unimported.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     canvas(width=100px, height=100px) {}
+}
+
+window {
+    main
 }
 -- draw_imported.sngl --
 import . "sngl:ui"
 import d "sngl:ui/draw"
 
-component main {
+component main node {
     d.canvas(width=100px, height=100px) {
         d.circle(cx=5.0, cy=5.0, r=2.0)
     }
+}
+
+window {
+    main
 }
 -- draw_both_dotted.sngl --
 import . "sngl:ui"
 import . "sngl:ui/draw"
 
-component main {
+component main node {
     canvas(width=100px, height=100px) {
         circle(cx=5.0, cy=5.0, r=2.0)
     }
 }
+
+window {
+    main
+}
 -- draw_names_free.sngl --
 import . "sngl:ui"
 
-component rect(label string) {
+component rect(label string) node {
     text(value=label)
 }
 
-component main {
+component main node {
     rect(label="mine")
+}
+
+window {
+    main
 }

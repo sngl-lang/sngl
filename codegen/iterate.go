@@ -29,10 +29,14 @@ type ComponentCtx struct {
 	Handlers  []*ir.EventHandler // var-level event handlers
 }
 
-// Windows returns a WindowCtx for each window in the package.
-// Collects from pkg.Windows (root-level) and from Window statements
-// in the main component body (including those expanded from for-loops).
-// If no windows are found, synthesizes one from the main component.
+// Windows returns a WindowCtx for each window in the package: those at the
+// root of a file, and those a component body renders (including the ones a
+// for-loop expanded).
+//
+// A program declares at least one, which the checker holds it to. The
+// synthesis below is for the one caller that deliberately removes them: a
+// test harness isolating a component, which clears the body and the windows
+// so the component under test is the whole program.
 func (ctx *CodegenCtx) Windows() []*WindowCtx {
 	var out []*WindowCtx
 
@@ -47,10 +51,10 @@ func (ctx *CodegenCtx) Windows() []*WindowCtx {
 		})
 	}
 
-	// Window statements in main component body.
-	main := ctx.MainComponent()
-	if main != nil {
-		for _, w := range collectWindows(main.Body) {
+	// Window statements in a component body.
+	root := ctx.RootDecl()
+	for _, comp := range ctx.Pkg.Components {
+		for _, w := range collectWindows(comp.Body) {
 			out = append(out, &WindowCtx{
 				Window: w,
 				Vars:   w.Vars,
@@ -61,21 +65,17 @@ func (ctx *CodegenCtx) Windows() []*WindowCtx {
 		}
 	}
 
-	if len(out) > 0 {
+	if len(out) > 0 || root == nil {
 		return out
 	}
 
-	// No explicit windows — synthesize from main component.
-	if main == nil {
-		return nil
-	}
-	vars := append(append([]*ir.Var{}, ctx.Pkg.Vars...), main.Vars...)
-	funcs := append(append([]*ir.Func{}, ctx.Pkg.Funcs...), main.Funcs...)
+	vars := append(append([]*ir.Var{}, ctx.Pkg.Vars...), root.Vars...)
+	funcs := append(append([]*ir.Func{}, ctx.Pkg.Funcs...), root.Funcs...)
 	return []*WindowCtx{{
-		Body:  main.Body,
+		Body:  root.Body,
 		Vars:  vars,
 		Funcs: funcs,
-		Name:  "main",
+		Name:  root.Name,
 	}}
 }
 
@@ -125,21 +125,19 @@ func componentsFor(comps []*ir.Component) []*ComponentCtx {
 	return out
 }
 
-// MainComponent returns the component that codegen should treat as the
-// app's root. By default that's the component literally named "main";
-// when RootComponent is set (e.g. by the test launcher to isolate a
-// component-under-test), it's the component with that name. If the
-// override target is missing, falls back to "main".
-func (ctx *CodegenCtx) MainComponent() *ir.Component {
-	if ctx.RootComponent != "" {
-		for _, c := range ctx.Pkg.Components {
-			if c.Name == ctx.RootComponent {
-				return c
-			}
-		}
+// RootDecl returns the component a harness has made the program's root, or
+// nil -- which is every ordinary build.
+//
+// A component named "main" used to be that root by convention, which is what
+// let a fixture render without declaring a window. It only ever worked
+// because every such program is in this repository; a window is what a
+// program renders now, and `main` is an ordinary component.
+func (ctx *CodegenCtx) RootDecl() *ir.Component {
+	if ctx.RootComponent == "" {
+		return nil
 	}
 	for _, c := range ctx.Pkg.Components {
-		if c.Name == "main" {
+		if c.Name == ctx.RootComponent {
 			return c
 		}
 	}
@@ -166,7 +164,7 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 		}
 	}
 	add(pkgFuncs)
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		add(main.Funcs)
 	}
 	// A window owns funcs the way a component does, and they are all
@@ -183,12 +181,12 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 	return out
 }
 
-// NonMainComponents returns all components except the one MainComponent
-// designates as the app root. Under test/agent mode RootComponent overrides
-// the default "main" lookup, so this filter follows the same selection to
-// avoid emitting the root component a second time as a sub-component.
-func (ctx *CodegenCtx) NonMainComponents() []*ComponentCtx {
-	main := ctx.MainComponent()
+// NonRootComponents returns every component except the one a harness made the
+// root, which its target emits as the Model rather than a second time as a
+// sub-component. With no harness there is no such component, and this is all
+// of them.
+func (ctx *CodegenCtx) NonRootComponents() []*ComponentCtx {
+	main := ctx.RootDecl()
 	var out []*ComponentCtx
 	for _, cc := range ctx.Components() {
 		if cc.Component != main {

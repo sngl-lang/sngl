@@ -17,13 +17,17 @@ import . "sngl:ui"
 import . "sngl:test"
 import d "./geom"
 
-component main {
+component main node {
     var p d.Point = d.Point{x = 1}
     text #out(value=string(p.shifted()))
 }
 
 func testCrossPackageMethod(t Test, c main) {
     t.assert(c.out.value == "2")
+}
+
+window {
+    main
 }
 -- geom/geom.sngl --
 import . "sngl:ui"
@@ -39,6 +43,6 @@ import . "./geom"
 
 func Point.shifted(p Point) => p.x + 99
 
-component main {
+component main node {
     text(value="x")
 }

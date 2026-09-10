@@ -1,5 +1,9 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     //@ complete("", "var", "const")
+}
+
+window {
+    main
 }

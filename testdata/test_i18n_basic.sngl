@@ -3,7 +3,7 @@ import . "sngl:test"
 import "sngl:i18n"
 
 // Plain translatable string with no interpolation.
-component i18nBasic {
+component i18nBasic node {
     var label = $"Login"
 
     // Triple-quoted form (whitespace-trimmed by ICU template lowering).
@@ -18,4 +18,7 @@ func testBasicEnglish(t Test, c i18nBasic) {
     t.setLocale("en")
     t.assert(c.label == "Login")
     t.assert(c.paragraph == "Welcome back. Please sign in to continue.")
+}
+
+window {
 }

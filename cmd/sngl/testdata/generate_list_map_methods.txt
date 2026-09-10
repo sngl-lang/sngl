@@ -23,7 +23,7 @@ exists lm
 -- app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var xs list<int> = [3, 1, 2]
     var m map<string, int> = {"a" = 1}
 
@@ -42,12 +42,16 @@ component main {
 
     text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.join(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
 }
+
+window {
+    main
+}
 -- bt.sngl --
 import . "sngl:ui"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     var xs list<int> = [3, 1, 2]
     var m map<string, int> = {"a" = 1}
 
@@ -65,4 +69,8 @@ component main {
     var hx string = c.hex()
 
     text(value=string(idx) + string(rev.length()) + string(sl.length()) + string(ev.length()) + ss.join(",") + string(n) + string(ks.length()) + string(vs.length()) + string(has) + string(got) + hx)
+}
+
+window {
+    main
 }

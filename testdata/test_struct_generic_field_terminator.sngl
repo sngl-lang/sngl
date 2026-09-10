@@ -13,7 +13,7 @@ struct Cmd {
     name string
 }
 
-component main { text(value="x") }
+component main node { text(value="x") }
 
 func testGenericFieldIsTerminatedByTheNewline(t Test, c main) {
     var cmd Cmd = {
@@ -26,4 +26,8 @@ func testGenericFieldIsTerminatedByTheNewline(t Test, c main) {
     t.assert(cmd.env.length() == 1)
     t.assert(cmd.nested[0][1] == 2)
     t.assert(cmd.name == "go")
+}
+
+window {
+    main
 }

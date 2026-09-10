@@ -34,11 +34,14 @@ struct Entry {
     title string
 }
 
-component main {
+component main node {
     var e = Entry{title = "hello"}
     text(value=e.title)
 }
 
+window {
+    main
+}
 -- goapp.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
@@ -49,15 +52,22 @@ struct Entry {
     title string
 }
 
-component main {
+component main node {
     var e = Entry{title = "hello"}
     text(value=e.title)
 }
 
+window {
+    main
+}
 -- needsimport.sngl --
 import . "sngl:ui"
 import api "js:example.com/api"
 
-component main {
+component main node {
     text(value=string(api.anything()))
+}
+
+window {
+    main
 }

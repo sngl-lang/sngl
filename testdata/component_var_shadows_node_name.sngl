@@ -5,11 +5,15 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var progress float = 0.25
 
     vbox {
         progress(value=progress, max=1.0)
         text(value="{progress}")
     }
+}
+
+window {
+    main
 }

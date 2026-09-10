@@ -53,7 +53,7 @@ func (h *clickable) SetOnEvent(fn func(snglhost.Key, string, []any)) { h.emit = 
 // unsatisfiable and burned its whole deadline.
 const clickSrc = `import . "sngl:ui"
 
-component main {
+component main node {
     var count = 0
     vbox {
         text #out(value="count {count}")
@@ -66,7 +66,7 @@ component main {
 const tickSrc = `import . "sngl:ui"
 import . "sngl:time"
 
-component main {
+component main node {
     var count = 0
     vbox {
         text #out(value="count {count}")

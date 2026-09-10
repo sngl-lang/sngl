@@ -11,8 +11,7 @@ import (
 // over the iteration, which is what makes retaining the row a question at all.
 const slotChildSrc = `
 import . "sngl:ui"
-import . "sngl:app"
-component App() {
+component App() node {
     var rows list<string> = ["a", "b", "c"]
     var picked string = ""
     text(value="picked=" + picked)
@@ -21,7 +20,7 @@ component App() {
     }
     button(text="unshift", @click { rows = ["z", "a", "b", "c"] })
 }
-component main { window(title="H", href="/index.html") { App() } }
+window(title="H", href="/index.html") { App() }
 `
 
 // A retained plain-node row reports the value it now renders.
@@ -94,7 +93,7 @@ func TestSlotChildInstance_ARowReadingStateThroughACallRepaints(t *testing.T) {
 	// nothing and this leak's precondition never arises there.
 	src := `
 import . "sngl:ui"
-component main {
+window {
     var items list<string> = ["a", "b"]
     var suffix string = "!"
     func decorate() => suffix

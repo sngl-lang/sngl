@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     var words = ["hello", "world", "foo"]
 
     func chain() => words[0].upper().length()
@@ -16,4 +16,8 @@ func testMethodChainLen(t Test, c main) {
 
 func testMethodChainDeep(t Test, c main) {
     t.assert(c.deep == 6)
+}
+
+window {
+    main
 }

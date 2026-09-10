@@ -3,7 +3,7 @@ import . "sngl:test"
 import "sngl:i18n"
 
 // String-keyed selection.
-component i18nSelect {
+component i18nSelect node {
     var gender = "female"
     var pronoun = $"{gender, select,
         male{he}
@@ -26,4 +26,7 @@ func testSelectFemale(t Test, c i18nSelect) {
     t.setLocale("en")
     t.assert(c.pronoun == "she")
     t.assert(c.indicator == "User is available now")
+}
+
+window {
 }

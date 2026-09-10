@@ -8,7 +8,7 @@ import . "sngl:test"
 // the emit.
 // Test event declarations and bidirectional bindings
 // Component with an event in ()
-component Counter(label = "", @save) {
+component Counter(label = "", @save) node {
     var count = 0
 
     button(text="+", @click { count += 1 })
@@ -17,13 +17,13 @@ component Counter(label = "", @save) {
 }
 
 // Component with bidirectional param
-component Stepper(:count = 0) {
+component Stepper(:count = 0) node {
     button(text="+", @click { count += 1 })
     button(text="-", @click { count -= 1 })
     text(value=string(count))
 }
 
-component main {
+component main node {
     var (
         score = 0
         steps = 0
@@ -41,4 +41,8 @@ component main {
     // Use bidirectional binding
     Stepper(:count=steps)
     text(value="Score: {score}, Steps: {steps}")
+}
+
+window {
+    main
 }

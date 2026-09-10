@@ -10,14 +10,22 @@ exists tapp
 -- app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     text(value="hi")
+}
+
+window {
+    main
 }
 -- bt.sngl --
 import . "sngl:ui"
 
 output { go { bubbletea } }
 
-component main {
+component main node {
     text(value="hi")
+}
+
+window {
+    main
 }

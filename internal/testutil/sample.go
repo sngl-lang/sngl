@@ -199,9 +199,9 @@ func DocSamples(t testing.TB) iter.Seq[Sample] {
 
 				switch block.Annotation {
 				case "component":
-					src += "component main {\n" + body + "\n}"
+					src += "component main node {\n" + body + "\n}"
 				case "expression":
-					src += "component main {\n  computed _x = " + strings.TrimSpace(body) + "\n}"
+					src += "component main node {\n  computed _x = " + strings.TrimSpace(body) + "\n}"
 				default:
 					src += body
 				}
@@ -332,7 +332,7 @@ func libImports(src string) string {
 	if strings.Contains(src, "sngl:") {
 		return ""
 	}
-	return "import . \"sngl:ui\"\nimport . \"sngl:app\"\nimport . \"sngl:time\"\nimport . \"sngl:dialog\"\nimport . \"sngl:macro\"\nimport . \"sngl:ui/draw\"\n"
+	return "import . \"sngl:ui\"\nimport . \"sngl:time\"\nimport . \"sngl:dialog\"\nimport . \"sngl:macro\"\nimport . \"sngl:ui/draw\"\n"
 }
 
 // Splits the leading run of import declarations off a block body.

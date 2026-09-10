@@ -1,7 +1,11 @@
 import . "sngl:ui"
 import "widgets"
 
-component main {
+component main node {
     widgets.Badge(label="test") // ERROR(check) "unknown component"
     text(value="hello")
+}
+
+window {
+    main
 }

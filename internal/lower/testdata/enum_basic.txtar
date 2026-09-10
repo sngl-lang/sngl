@@ -8,7 +8,7 @@ enum Status {
     archived
 }
 
-component main {
+component main node {
     var s Status = Status.inactive
     text(value=string(s))
 }
@@ -19,7 +19,7 @@ enum Status {
     inactive
     archived
 }
-component main {
+component main node {
     var s Status = 1
     text(value=string(s))
 }

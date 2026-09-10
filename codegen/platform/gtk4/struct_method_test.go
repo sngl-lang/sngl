@@ -27,7 +27,7 @@ struct Counter {
 
 }
 
-component main {
+window {
     var c Counter
 
     func press() {

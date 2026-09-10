@@ -1,6 +1,6 @@
 import . "sngl:ui"
 
-component holder {
+component holder node {
     struct Local {
         a int
     }
@@ -16,7 +16,11 @@ func outside() int {
     return v.a
 }
 
-component main {
+component main node {
     holder()
     text(value="${outside()}")
+}
+
+window {
+    main
 }

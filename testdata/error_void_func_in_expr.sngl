@@ -1,7 +1,11 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     func noop() {}
     var x = noop() // ERROR(check) "expression yields no value"
     text(value="x")
+}
+
+window {
+    main
 }

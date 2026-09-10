@@ -1,12 +1,11 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
-component units {
+component units node {
     var t1 duration = 1s + 500ms
     var t2 duration = 1h + 30m
     var m1 measurement = 16px + 2em
@@ -57,4 +56,7 @@ func testACastNamesTheUnit(t Test, c units) {
     t.assert(duration(1m) == 60s)
     t.assert(duration(1s) + 500ms == 1500ms)
     t.assert(measurement(3px) + 2px == 5px)
+}
+
+window {
 }

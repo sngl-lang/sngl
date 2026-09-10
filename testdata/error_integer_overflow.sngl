@@ -1,3 +1,6 @@
 import . "sngl:ui"
 
 var x int = 99999999999999999999 // ERROR(check) "overflows"
+
+window {
+}

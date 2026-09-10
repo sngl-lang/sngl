@@ -6,7 +6,7 @@
 
 import . "sngl:ui"
 
-component row(items dyn) {
+component row(items dyn) node {
     for var it = items { // ERROR(check) "dyn says nothing about how to ask"
         text(value="x")
     } else {
@@ -14,10 +14,14 @@ component row(items dyn) {
     }
 }
 
-component main {
+component main node {
     var rows list<string> = []
 
     vbox {
         row(items=rows)
     }
+}
+
+window {
+    main
 }

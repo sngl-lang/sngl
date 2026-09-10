@@ -26,40 +26,66 @@ stderr 'takes no type arguments'
 stderr 'operator < not defined'
 
 -- box/box.sngl --
+import ui "sngl:ui"
+
 struct Holder<T> {
     item T
+}
+
+ui.window {
 }
 -- main.sngl --
 import . "sngl:ui"
 import b "box"
 
-component show(h b.Holder<int>) {
+component show(h b.Holder<int>) node {
     text(value="holding {h.item}")
 }
 
-component main {
+component main node {
     text(value="x")
 }
+
+window {
+    main
+}
 -- lit/box/box.sngl --
+import ui "sngl:ui"
+
 struct Holder<T> {
     item T
+}
+
+ui.window {
 }
 -- lit/main.sngl --
 import . "sngl:ui"
 import b "box"
 
-component main {
+component main node {
     var h b.Holder<int> = b.Holder<int>{item = 3}
     text(value="{h.item}")
 }
+
+window {
+    main
+}
 -- arity/box/box.sngl --
+import ui "sngl:ui"
+
 struct Plain {
     n int
+}
+
+ui.window {
 }
 -- arity/main.sngl --
 import . "sngl:ui"
 import b "box"
 
-component show(p b.Plain<int>) {
+component show(p b.Plain<int>) node {
     text(value="{p.n}")
+}
+
+window {
 }

@@ -7,7 +7,7 @@ import . "sngl:ui"
 
 context #theme("light")
 
-component framed(children ...component, caption component) {
+component framed(children ...component, caption component) node {
     theme("dark") {
         vbox {
             children
@@ -18,11 +18,15 @@ component framed(children ...component, caption component) {
     }
 }
 
-component main {
+component main node {
     framed() {
         component caption {
             text(value="caption")
         }
         text(value="framed child")
     }
+}
+
+window {
+    main
 }

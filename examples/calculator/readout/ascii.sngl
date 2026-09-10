@@ -53,7 +53,7 @@ func boxBottom() => BOX_BL + rule() + BOX_BR
 
 func boxLine(entry string, row int) => BOX_V + " " + rowOf(cells(entry), row) + " " + BOX_V
 
-component AsciiReadout(entry = "0") {
+component AsciiReadout(entry = "0") ui.node {
     ui.vbox(style={gap=0}) {
         ui.text(value=boxTop)
         ui.text(value=boxLine(entry, 0))

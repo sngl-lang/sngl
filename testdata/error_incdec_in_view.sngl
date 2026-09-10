@@ -5,8 +5,12 @@ import . "sngl:ui"
 
 var n = 0
 
-component main {
+component main node {
     n++ // ERROR(check) "not a statement in a view body"
 
     text(value="{n}")
+}
+
+window {
+    main
 }

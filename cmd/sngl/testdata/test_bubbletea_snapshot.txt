@@ -20,11 +20,14 @@ import . "sngl:test"
 
 output { go { bubbletea } }
 
-component counter {
+component counter node {
     var count = 0
     text(value=string(count))
 }
 
 func testInitialSnapshotMatches(t Test, c counter) {
     t.snapshot("initial")
+}
+
+window {
 }

@@ -116,7 +116,7 @@ component element(
     @submit ui.SubmitEvent,
     @scroll ui.ScrollEvent,
     @load ui.LoadEvent,
-    @error ui.ErrorEvent,
+    @error error,
     @close ui.DismissEvent,
     @select ui.SelectEvent,
 
@@ -137,7 +137,7 @@ component element(
     #[wildcard("[a-z][a-z0-9]*")]
     @event,
     children ...component,
-) {}
+) ui.node {}
 
 // --- Core Layout ---
 

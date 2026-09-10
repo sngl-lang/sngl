@@ -154,7 +154,7 @@ component Widget(
     @click ui.ClickEvent,
     @change ui.ChangeEvent,
     @input ui.InputEvent,
-) {}
+) ui.node {}
 
 #[intrinsic("fyne:Container")]
 component Container(
@@ -169,7 +169,7 @@ component Container(
     @change ui.ChangeEvent,
     @input ui.InputEvent,
     children ...component,
-) {}
+) ui.node {}
 
 #[intrinsic("fyne:Wrapper")]
 component Wrapper(
@@ -184,7 +184,7 @@ component Wrapper(
     @change ui.ChangeEvent,
     @input ui.InputEvent,
     content ...component tr.one,
-) {}
+) ui.node {}
 
 // --- The Fyne widgets ---
 //
@@ -194,7 +194,7 @@ component Wrapper(
 // are the vocabulary user code reaches for as `fyne.Label(...)`, and they are
 // written the same way a user would write a thirteenth.
 
-component Label(text string, style ui.Style) {
+component Label(text string, style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
@@ -207,7 +207,7 @@ component Label(text string, style ui.Style) {
     ) {}
 }
 
-component Button(text string, style ui.Style, @click ui.ClickEvent) {
+component Button(text string, style ui.Style, @click ui.ClickEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewButton"},
@@ -222,7 +222,7 @@ component Button(text string, style ui.Style, @click ui.ClickEvent) {
     ) {}
 }
 
-component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent) {
+component Entry(text string, placeholder string, style ui.Style, @input ui.InputEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewEntry"},
@@ -240,7 +240,7 @@ component Entry(text string, placeholder string, style ui.Style, @input ui.Input
     ) {}
 }
 
-component MultiLineEntry(text string, placeholder string, rows int, style ui.Style, @input ui.InputEvent) {
+component MultiLineEntry(text string, placeholder string, rows int, style ui.Style, @input ui.InputEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewMultiLineEntry"},
@@ -260,7 +260,7 @@ component MultiLineEntry(text string, placeholder string, rows int, style ui.Sty
     ) {}
 }
 
-component Check(text string, checked bool, style ui.Style, @change ui.ChangeEvent) {
+component Check(text string, checked bool, style ui.Style, @change ui.ChangeEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},
@@ -288,7 +288,7 @@ component Select(
     options list<string>,
     style ui.Style,
     @change ui.ChangeEvent,
-) {
+) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewSelect"},
@@ -310,7 +310,7 @@ component Select(
 // `widget.Hyperlink` exposes its text and its URL as struct fields rather than
 // as setters, and a URL is a `*url.Parse` result rather than an expression this
 // package can spell, so the link renders empty.
-component Hyperlink(style ui.Style) {
+component Hyperlink(style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewHyperlink"},
@@ -325,7 +325,7 @@ component Hyperlink(style ui.Style) {
 // expression to build, so the image is empty. From a resource rather than a
 // URI because NewImageFromURI dereferences what it is given and a nil URI is
 // the only one available here.
-component Image(style ui.Style) {
+component Image(style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/canvas", name="NewImageFromResource"},
@@ -336,7 +336,7 @@ component Image(style ui.Style) {
     ) {}
 }
 
-component Spacer(style ui.Style) {
+component Spacer(style ui.Style) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/layout", name="NewSpacer"},
@@ -346,7 +346,7 @@ component Spacer(style ui.Style) {
     ) {}
 }
 
-component VBox(style ui.Style, children ...component) {
+component VBox(style ui.Style, children ...component) ui.node {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVBox"},
@@ -360,7 +360,7 @@ component VBox(style ui.Style, children ...component) {
     }
 }
 
-component HBox(style ui.Style, children ...component) {
+component HBox(style ui.Style, children ...component) ui.node {
     Container(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewHBox"},
@@ -374,7 +374,7 @@ component HBox(style ui.Style, children ...component) {
     }
 }
 
-component VScroll(style ui.Style, content ...component tr.one) {
+component VScroll(style ui.Style, content ...component tr.one) ui.node {
     Wrapper(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/container", name="NewVScroll"},
@@ -600,6 +600,7 @@ component ui.textarea[platform] {
 //
 // The gate is a prop rather than the position the node is written at, because
 // the schedule is started and stopped outside the tree the position describes.
+#[tr.none]
 #[intrinsic("fyne:Timer")]
 component Timer(
     interval time.duration,

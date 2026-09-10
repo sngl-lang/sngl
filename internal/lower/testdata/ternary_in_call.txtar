@@ -2,14 +2,14 @@ caps: NoTernary
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var on bool = true
 
     text(value=on ? "ON" : "OFF")
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main node {
     var on bool = true
     var __lt0 string
     if on {

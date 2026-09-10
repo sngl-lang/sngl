@@ -17,12 +17,12 @@ import (
 const instanceEventSrc = `
 import . "sngl:ui"
 
-component row(label = "", @pick) {
+component row(label = "", @pick) node {
     var seen = 0
     button(text=label, @click { seen = seen + 1 pick() })
 }
 
-component main {
+window {
     var items list<string> = ["a", "b"]
     var picked = ""
 

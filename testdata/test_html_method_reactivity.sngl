@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     var x = 5
     var y = 3
 
@@ -13,4 +13,8 @@ component main {
 
 func testReactiveMethodDrivesUpdate(t Test, c main) {
     t.assert(c.out.value == "x")
+}
+
+window {
+    main
 }

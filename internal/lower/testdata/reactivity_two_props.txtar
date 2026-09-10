@@ -2,7 +2,7 @@ caps: NoReactivity
 -- input.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var n int = 0
     text(value=string(n))
     text(value=string(n + 1))
@@ -10,7 +10,7 @@ component main {
 }
 -- expected.sngl --
 import . "sngl:ui"
-component main {
+component main node {
     var n int = 0
     text #__n0(value=string(n))
     text #__n1(value=string(n + 1))

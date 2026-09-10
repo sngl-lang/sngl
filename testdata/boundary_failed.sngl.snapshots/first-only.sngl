@@ -1,0 +1,5 @@
+text(value="fallback")
+text(value="boom")
+text(value="body")
+button(text="Go", @click)
+text(value="")

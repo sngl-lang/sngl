@@ -9,11 +9,11 @@ import . "sngl:test"
 // the consumers carry a reactive dep on `dark`.
 context #theme("light")
 
-component ThemedBox(label = "") {
+component ThemedBox(label = "") node {
     text(value="{label}: {theme}")
 }
 
-component main {
+component main node {
     var dark = false
     vbox {
         button(text="toggle", @click { dark = !dark })
@@ -28,4 +28,8 @@ func testThemeToggles(t Test, c main) {
     t.assert(c.dark == false)
     c.dark = true
     t.assert(c.dark == true)
+}
+
+window {
+    main
 }

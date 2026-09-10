@@ -9,16 +9,20 @@ import marks "sngl:internal/marks"
 // unresolved name at the declaration rather than a family nobody joins.
 func kind() ir.Macro
 
-// The tree an ordinary component belongs to: the one whose members are
-// interchangeable, where a container hosts anything. A component that names no
-// tree is a member of this one, and a slot that names no type accepts it.
-#[marks.builtin("treeDefault")]
-struct default {}
+// Marks a component as belonging to no tree. It may be placed in any of them
+// and may contain a member of none, which is what a component that renders
+// nothing wants: a lifetime bracket, a scheduler, a context override.
+//
+// Written rather than left out. An omitted return position is a declaration
+// that has not said which family it joins, and the compiler reports it as
+// one — so tree-lessness is a claim the declaration makes.
+func none() ir.Macro
 
 // Exactly one member of the tree T, as a slot's content type. Bare `T` accepts
 // any number, so this is what narrows it; `option<T>` is the other narrowing.
 //
-// T defaults to the tree an ordinary component belongs to, so `tree.one` on its
-// own says "exactly one child, of whatever family the slot already accepts".
+// Written bare, `tree.one` is a count and no family: "exactly one child, of
+// whatever this slot already accepts", which is the tree the component
+// declaring it belongs to.
 #[marks.builtin("treeOne")]
-struct one<T = default> {}
+struct one<T> {}

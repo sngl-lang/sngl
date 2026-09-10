@@ -2,8 +2,12 @@ import . "sngl:ui"
 
 enum Status { active, inactive, pending }
 
-component main {
+component main node {
     var status Status = active
 
     text(value=string(status))
+}
+
+window {
+    main
 }

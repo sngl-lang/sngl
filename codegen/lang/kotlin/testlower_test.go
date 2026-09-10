@@ -13,7 +13,7 @@ func TestKotlinLowerTestFile_agentModeEmitsRegisterAll(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:test"
-component box {
+component box node {
     var count = 0
     text(value="x")
 }
@@ -64,7 +64,7 @@ func TestKotlinLowerTestFile_nativeModeEmitsJUnitClass(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:test"
-component box {
+component box node {
     var count = 0
     text(value="x")
 }
@@ -113,7 +113,7 @@ func TestKotlinLowerTestFile_nativeDeviceUsesAndroidJUnit4(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:test"
-component box {
+component box node {
     var count = 0
     text(value="x")
 }

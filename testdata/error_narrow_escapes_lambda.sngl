@@ -5,7 +5,7 @@ func double(n int) int {
     return n * 2
 }
 
-component main {
+component main node {
     text(value="x")
 }
 
@@ -15,4 +15,8 @@ func narrowingEscapesIntoALambda(t Test) {
         var later = func() => double(maybe) // ERROR(check) "cannot pass option<int> as int"
         t.assert(later() == 6)
     }
+}
+
+window {
+    main
 }

@@ -31,15 +31,19 @@ import . "sngl:macro"
 component badge(
     label string = "",
     #[wildcard("data[A-Za-z0-9]*")] data map<string, string>,
-) {
+) node {
     text(value = label)
     for var v = data.values() {
         text(value = v)
     }
 }
 
-component main {
+component main node {
     vbox {
         badge(label = "plain", dataRole = "row-7")
     }
+}
+
+window {
+    main
 }

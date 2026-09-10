@@ -8,6 +8,7 @@
 // program called something is not something the program can observe.
 
 import . "sngl:test"
+import ui "sngl:ui"
 
 // A block body, so the call survives inlining: an expression-bodied pure func
 // is substituted into its call sites and leaves no call to eliminate.
@@ -35,4 +36,7 @@ func testRepeatedCallKeepsItsValue(t Test) {
 func testDifferentArgumentsStayDifferent(t Test) {
     t.assert(mixed(4, 3) == 1300 + 10 + 13)
     t.assert(mixed(1, 4) == 13)
+}
+
+ui.window {
 }

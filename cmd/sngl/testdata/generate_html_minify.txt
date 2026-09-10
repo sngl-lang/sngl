@@ -32,10 +32,14 @@ grep 'function [a-z]\([a-z],[a-z]\)\{return [a-z]\+[a-z]\}' min/index.html
 import . "sngl:ui"
 import lib "js:./lib"
 
-component main {
+component main node {
     var n = 0.0
     button(text="add", @click { n = lib.add(2.0, 3.0) })
     text(value=string(n))
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 export function add(a: number, b: number): number {

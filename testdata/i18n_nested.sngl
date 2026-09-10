@@ -18,3 +18,6 @@ var msg2 = $"{count, plural,
     one{1 reply from {gender, select, male{him} female{her} other{them}}}
     other{# replies}
 }"
+
+window {
+}

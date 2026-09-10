@@ -15,9 +15,13 @@ func takeAnon(p struct {
     y int
 }) => p.x + p.y
 
-component main {
+component main node {
     var named Point = {x=1, y=2}
     var b = takeAnon(named) // ERROR(check) "cannot pass Point as struct { x int, y int }"
 
     text(value=string(b))
+}
+
+window {
+    main
 }

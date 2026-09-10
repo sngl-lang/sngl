@@ -216,7 +216,7 @@ component para() blcok {}
 // program can write for itself.
 func checkForeign(t *testing.T, body string) (*ir.Package, []string) {
 	t.Helper()
-	doc, err := parser.Parse("main.sngl", []byte("import std \"sngl:macro\"\n"+body))
+	doc, err := parser.Parse("main.sngl", []byte("import std \"sngl:macro\"\nimport ui \"sngl:ui\"\n"+body))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -274,7 +274,7 @@ struct Row {
     n int = 0
 }
 
-component App {
+component App ui.node {
     #[std.foreign("js:example.com/api", "Double", pure)]
     func Row.double(x int) => x * 2
 }

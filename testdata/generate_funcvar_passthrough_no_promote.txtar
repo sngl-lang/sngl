@@ -21,10 +21,14 @@ func run(f func() string) {
     f()
 }
 
-component main {
+component main node {
     button(text="RunSync", @click { run(syncHello) })
     button(text="RunAsync", @click { run(api.fetchHello) })
     text(value="hi")
+}
+
+window {
+    main
 }
 -- api/index.ts --
 export async function fetchHello(): Promise<string> { return "hi"; }

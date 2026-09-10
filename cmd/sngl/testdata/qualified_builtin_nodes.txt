@@ -1,9 +1,11 @@
-# The built-in nodes (window, timer, errorBoundary) dispatch on the #[builtin]
-# mark of whatever the target resolves to. That resolution has to follow a
-# qualified target too: under `import s "sngl:app"` the node is written
-# `s.window`, and resolving it by bare name silently produced an ordinary empty
-# component that dropped its children. The three sit in different packages, so
-# each is qualified by the alias of the one that declares it.
+# The built-in nodes (window, timer, boundary) dispatch on the #[builtin] mark
+# of whatever the target resolves to. That resolution has to follow a qualified
+# target too: under `import s "sngl:ui"` the node is written `s.window`, and
+# resolving it by bare name silently produced an ordinary empty component that
+# dropped its children. Each is qualified by the alias of the package that
+# declares it -- except `boundary`, which is ambient and so has no qualifier to
+# follow. It is here anyway, because "bare name" is the case that used to work
+# by accident.
 #
 # A slot is not in this family: it is a parameter of the component being
 # checked, not a declaration reached through a package, so `s.children` names
@@ -37,15 +39,14 @@ grep 'from widgets' shadowout/index.html
 
 -- slot.sngl --
 import s "sngl:ui"
-import app "sngl:app"
 
-component Card(children ...component) {
+component Card(children ...component) s.node {
     s.vbox {
         children
     }
 }
 
-component main {
+component main s.node {
     s.window #w(href="/index.html") {
         Card {
             s.text(value="inner")
@@ -57,16 +58,18 @@ output { none { html } }
 -- qualslot.sngl --
 import s "sngl:ui"
 
-component Card(children ...component) {
+component Card(children ...component) s.node {
     s.vbox {
         s.children
     }
 }
+
+s.window {
+}
 -- window.sngl --
 import s "sngl:ui"
-import app "sngl:app"
 
-component main {
+component main s.node {
     s.window #home(href="/index.html") {
         s.text(value="Hello")
     }
@@ -77,36 +80,45 @@ output { none { html } }
 import s "sngl:ui"
 import t "sngl:time"
 
-component main {
+component main s.node {
     var n int = 0
     t.timer(interval=1s, @tick {
         n = n + 1
     })
     s.text(value="tick")
 }
+
+s.window {
+    main
+}
 -- boundary.sngl --
 import s "sngl:ui"
-import app "sngl:app"
 
-component main {
-    s.errorBoundary(@error(e) {}) {
+component main s.node {
+    boundary(@error(e) {}) {
         s.text(value="body")
     }
+}
+
+s.window {
+    main
 }
 -- widgets/lib.sngl --
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 
-component timer() {
+component timer() node {
     text(value="from widgets")
 }
--- shadowed.sngl --
-import s "sngl:app"
-import w "widgets"
 
-component main {
-    s.window #w2(href="/index.html") {
+window {
+}
+-- shadowed.sngl --
+import w "widgets"
+import ui "sngl:ui"
+
+component main ui.node {
+    ui.window #w2(href="/index.html") {
         w.timer
     }
 }

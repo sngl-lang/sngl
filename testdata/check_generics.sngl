@@ -12,3 +12,6 @@ func test() {
     var items list<int> = [1, 2]
     var c = first(items)
 }
+
+window {
+}

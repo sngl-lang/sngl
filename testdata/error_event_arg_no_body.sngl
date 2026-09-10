@@ -5,6 +5,9 @@
 
 import . "sngl:ui"
 
-component card() {
+component card() node {
     button(@nosuchevent) // ERROR(parse) "unexpected \")\""
+}
+
+window {
 }

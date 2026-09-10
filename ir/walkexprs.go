@@ -301,6 +301,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 			w.fn(n.Handler.Func)
 		}
 		n.Children = w.stmts(n.Children)
+		n.Failed = w.stmts(n.Failed)
 	case *Window:
 		w.window(n)
 	case *ContextProvider:
@@ -376,6 +377,9 @@ func (w *rewriter) window(win *Window) {
 	}
 	if win.ErrorHandler != nil {
 		w.fn(win.ErrorHandler.Func)
+	}
+	for _, t := range win.Timers {
+		w.timer(t)
 	}
 	win.Body = w.stmts(win.Body)
 }

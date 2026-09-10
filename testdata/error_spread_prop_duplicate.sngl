@@ -3,9 +3,13 @@ import . "sngl:ui"
 struct Opts {
     text string
 }
-component Button(text string) {}
+component Button(text string) node {}
 
-component main {
+component main node {
     var opts = Opts{text="hi"}
     Button(text="explicit", ...opts) // ERROR(check) "already provided"
+}
+
+window {
+    main
 }

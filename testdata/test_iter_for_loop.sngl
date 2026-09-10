@@ -4,7 +4,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component iterLoop {
+component iterLoop node {
     var nums list<int> = [1, 2, 3, 4, 5]
     var scores map<string, int> = {alice=10, bob=20}
     text(value="{nums.length()}")
@@ -44,4 +44,7 @@ func count(xs iter<int>) int {
 
 func testListImplicitlyConvertsToIter(t Test, c iterLoop) {
     t.assert(count(c.nums) == 5)
+}
+
+window {
 }

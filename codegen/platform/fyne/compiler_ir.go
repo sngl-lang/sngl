@@ -301,7 +301,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// Sub-component widget fields are collected before the template data is
 	// built, so the Model struct declares every field they reference.
 	var componentCodes []string
-	for _, cc := range ctx.NonMainComponents() {
+	for _, cc := range ctx.NonRootComponents() {
 		// A component the build renders as a live instance gets a record of
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
@@ -580,7 +580,15 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		})
 	}
 
+	// One field per id, however many times the id was created: an unrolled loop
+	// writes the same `__nN` per iteration and the sink is fed at each, which
+	// undeduped is `__n5 redeclared` in the struct.
+	seenField := make(map[string]bool, len(widgetFields))
 	for _, wf := range widgetFields {
+		if seenField[wf.name] {
+			continue
+		}
+		seenField[wf.name] = true
 		td.WidgetFields = append(td.WidgetFields, widgetFieldData{
 			Name:   wf.name,
 			GoType: wf.goType,
@@ -638,6 +646,13 @@ func fyneComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	}
 	for _, comp := range pkg.Components {
 		for _, fn := range comp.Funcs {
+			out[fn] = true
+		}
+	}
+	// A window owns funcs the way a component does and its state is in the
+	// same Model, so one of its funcs is a Model method too.
+	for _, w := range pkg.Windows {
+		for _, fn := range w.Funcs {
 			out[fn] = true
 		}
 	}
@@ -912,16 +927,19 @@ func topRef(tr *fyneTranslator, name string) ir.Expr {
 }
 
 // mainScopeLocalRefs returns the non-escaping widget-ref set passNodeEscape
-// recorded for the scope the BuildUI emission walks (the first window's body
-// if present, else the main component body).
+// recorded for the scope the BuildUI emission walks: a harness-isolated root
+// component's body, and nothing for a window's.
+//
+// Nil for the entry scope, and deliberately: locals are for a *recursive*
+// render method, where a frame must not clobber the temp of the frame that
+// called it. BuildUI has no frames, and everything emitted beside it may name
+// a ref it created -- only some of those sites go through a qualifier that
+// knows about locals.
 func mainScopeLocalRefs(ctx *codegen.CodegenCtx) map[string]bool {
 	if wins := ctx.Windows(); len(wins) > 0 && len(wins[0].Body) > 0 {
-		if wins[0].Window != nil {
-			return wins[0].Window.LocalRefs
-		}
 		return nil
 	}
-	if main := ctx.MainComponent(); main != nil {
+	if main := ctx.RootDecl(); main != nil {
 		return main.LocalRefs
 	}
 	return nil
@@ -1031,7 +1049,7 @@ func promotedHandlersInNonMainComponents(ctx *codegen.CodegenCtx, have []*ir.Fun
 		seen[fn] = true
 	}
 	var out []*ir.Func
-	for _, cc := range ctx.NonMainComponents() {
+	for _, cc := range ctx.NonRootComponents() {
 		for _, fn := range cc.Component.Funcs {
 			if fn == nil || fn.LoweredFromTag == "" || seen[fn] {
 				continue

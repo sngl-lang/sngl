@@ -30,7 +30,7 @@ func TestUserWrittenIntrinsicBuildsItsWidget(t *testing.T) {
 import . "sngl:ui"
 import "sngl:platform/fyne"
 
-component main {
+window {
     vbox {
         fyne.Label(text="direct label")
         fyne.Button(text="direct button")

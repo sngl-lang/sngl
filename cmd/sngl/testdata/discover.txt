@@ -9,10 +9,18 @@ stdout 'app.sngl: ok'
 -- app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
+}
+
+window {
+    main
 }
 -- single/app.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
+}
+
+window {
+    main
 }

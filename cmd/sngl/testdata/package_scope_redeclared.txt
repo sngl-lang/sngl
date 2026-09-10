@@ -7,7 +7,7 @@
 # The name goes to whichever file declared it first, and the error names both
 # positions. It is reported where the second declaration is written.
 ! sngl check dup
-stderr 'dup/b\.sngl:3:1: "Style" redeclared in this package \(previous declaration at .*dup/a\.sngl:1:1\)'
+stderr 'dup/b\.sngl:3:1: "Style" redeclared in this package \(previous declaration at .*dup/a\.sngl:3:1\)'
 
 # The declaration that lost used to overwrite the one that won, so the only
 # diagnostic was a field error against the file that was self-consistent.
@@ -32,12 +32,17 @@ sngl check override
 stdout 'override/b\.sngl: ok'
 
 -- dup/a.sngl --
+import ui "sngl:ui"
+
 struct Style {
     x int
 }
 
 func widthOf(s Style) int {
     return s.x
+}
+
+ui.window {
 }
 -- dup/b.sngl --
 import . "sngl:ui"
@@ -46,8 +51,12 @@ struct Style {
     y int
 }
 
-component main {
+component main node {
     text(value=string(widthOf(Style{y = 7})))
+}
+
+window {
+    main
 }
 -- flip/a_main.sngl --
 import . "sngl:ui"
@@ -56,10 +65,16 @@ struct Style {
     y int
 }
 
-component main {
+component main node {
     text(value=string(widthOf(Style{y = 7})))
 }
+
+window {
+    main
+}
 -- flip/z_lib.sngl --
+import ui "sngl:ui"
+
 struct Style {
     x int
 }
@@ -67,9 +82,17 @@ struct Style {
 func widthOf(s Style) int {
     return s.x
 }
+
+ui.window {
+}
 -- cross/a.sngl --
+import ui "sngl:ui"
+
 struct Style {
     x int
+}
+
+ui.window {
 }
 -- cross/b.sngl --
 import . "sngl:ui"
@@ -78,18 +101,25 @@ func widthOf(s Style) int {
     return s.x
 }
 
-component main {
+component main node {
     text(value=string(widthOf(Style{x = 7})))
+}
+
+window {
+    main
 }
 -- override/a.sngl --
 import . "sngl:ui"
 
-component mybox(label string) {
+component mybox(label string) node {
     text(value=label)
 }
 
 func caption(n int) string {
     return "n=" + string(n)
+}
+
+window {
 }
 -- override/b.sngl --
 import . "sngl:ui"
@@ -103,6 +133,10 @@ func caption[html.platform] {
     return "html n=" + string(n)
 }
 
-component main {
+component main node {
     mybox(label=caption(1))
+}
+
+window {
+    main
 }

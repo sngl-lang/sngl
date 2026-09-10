@@ -1,4 +1,4 @@
-Regression test for #36: several `window` blocks in one component, plus link
+Regression test for #36: several `window` blocks in one package, plus link
 navigation. Every window is emitted as its own buildWindow<Name> method with a
 container field on the Model, BuildUI hides the inactive one at startup, and
 navigate() shows and hides those containers.
@@ -12,21 +12,19 @@ on link.
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { go { fyne(main=true) } }
 
-component main {
-    window #app(title="App") {
-        vbox {
-            text(value="App page")
-            link(href="settings", text="Go to Settings")
-        }
+window #app(title="App") {
+    vbox {
+        text(value="App page")
+        link(href="settings", text="Go to Settings")
     }
-    window #settings(title="Settings") {
-        vbox {
-            text(value="Settings page")
-        }
+}
+
+window #settings(title="Settings") {
+    vbox {
+        text(value="Settings page")
     }
 }
 -- out/go/fyne/model.go --
@@ -47,11 +45,6 @@ type Model struct {
 	activeWindow      string
 	windowAppBox      *fyne.Container
 	windowSettingsBox *fyne.Container
-	__n0              *fyne.Container
-	__n1              *widget.Label
-	__n2              *widget.Hyperlink
-	__n3              *fyne.Container
-	__n4              *widget.Label
 }
 
 // New creates a Model with default values.
@@ -92,21 +85,21 @@ func (m *Model) navigate(name string) {
 }
 
 func (m *Model) buildWindowApp() fyne.CanvasObject {
-	m.__n0 = container.NewVBox()
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText("App page")
-	m.__n0.Add(m.__n1)
-	m.__n2 = widget.NewHyperlink("", nil)
-	m.__n0.Add(m.__n2)
-	return m.__n0
+	__n0 := container.NewVBox()
+	__n1 := widget.NewLabel("")
+	__n1.SetText("App page")
+	__n0.Add(__n1)
+	__n2 := widget.NewHyperlink("", nil)
+	__n0.Add(__n2)
+	return __n0
 }
 
 func (m *Model) buildWindowSettings() fyne.CanvasObject {
-	m.__n3 = container.NewVBox()
-	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText("Settings page")
-	m.__n3.Add(m.__n4)
-	return m.__n3
+	__n3 := container.NewVBox()
+	__n4 := widget.NewLabel("")
+	__n4.SetText("Settings page")
+	__n3.Add(__n4)
+	return __n3
 }
 
 func main() {

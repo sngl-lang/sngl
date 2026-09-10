@@ -5,7 +5,11 @@ import . "sngl:ui"
 // so `1 == 1.0` folded to false (int vs float64 mismatch) and the wrong
 // branch survived dead-code elimination. The fix promotes both sides to
 // float for the comparison, matching the language's mixed-numeric semantics.
-component main {
+component main node {
     var ok = 1 == 1.0
     text(value="{ok}")
+}
+
+window {
+    main
 }

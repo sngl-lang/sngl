@@ -4,8 +4,12 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     return // ERROR(check) "not a statement in a view body"
 
     text(value="hi")
+}
+
+window {
+    main
 }

@@ -15,7 +15,7 @@ import (
 // their state dependency.
 func TestComponentMethodSeesComponentVars(t *testing.T) {
 	src := `
-component main {
+component main node {
     var name = "world"
     func isLong() => name.length > 3
     text(value="{isLong}")

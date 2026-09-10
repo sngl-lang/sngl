@@ -5,7 +5,7 @@ import . "sngl:test"
 
 /* leading top-level block comment */
 
-component main {
+component main node {
     // before decl
     var count int = 0
     var sum = 1 + 2 + count // trailing line
@@ -23,4 +23,8 @@ func testCommentParse(t Test, c main) {
     t.assert(c.count == 0)
     t.assert(c.sum == 3)
     t.assert(c.calc == 6)
+}
+
+window {
+    main
 }

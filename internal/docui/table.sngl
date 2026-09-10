@@ -3,7 +3,7 @@ import "sngl:platform/html"
 
 // Simple table layout — uses platform bodies for cross-platform rendering.
 // Children should be Row components.
-component Table(rows ...component) {
+component Table(rows ...component) node {
     if PLATFORM == html.platform {
         html.table {
             rows
@@ -16,7 +16,7 @@ component Table(rows ...component) {
 }
 
 // Table header row.
-component HeaderRow(cells ...component) {
+component HeaderRow(cells ...component) node {
     if PLATFORM == html.platform {
         html.thead {
             html.tr {
@@ -31,7 +31,7 @@ component HeaderRow(cells ...component) {
 }
 
 // Table body row.
-component Row(cells ...component) {
+component Row(cells ...component) node {
     if PLATFORM == html.platform {
         html.tr {
             cells
@@ -44,7 +44,7 @@ component Row(cells ...component) {
 }
 
 // Table cell.
-component Cell(value = "") {
+component Cell(value = "") node {
     if PLATFORM == html.platform {
         html.td(innerText=value)
     } else {
@@ -53,7 +53,7 @@ component Cell(value = "") {
 }
 
 // Table header cell.
-component HeaderCell(value = "") {
+component HeaderCell(value = "") node {
     if PLATFORM == html.platform {
         html.th(innerText=value)
     } else {
@@ -62,7 +62,7 @@ component HeaderCell(value = "") {
 }
 
 // Code-styled table cell (for property names etc.)
-component CodeCell(value = "") {
+component CodeCell(value = "") node {
     if PLATFORM == html.platform {
         html.td {
             html.code(innerText=value)

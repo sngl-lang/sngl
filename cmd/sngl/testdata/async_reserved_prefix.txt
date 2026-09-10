@@ -8,3 +8,6 @@ stderr 'uses reserved prefix'
 import . "sngl:ui"
 
 func __async_foo() => "hello"
+
+window {
+}

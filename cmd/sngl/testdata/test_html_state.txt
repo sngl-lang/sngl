@@ -11,11 +11,15 @@ import . "sngl:test"
 
 output { none { html } }
 
-component main {
+component main node {
     var count = 0
     text(value=string(count))
 }
 
 func testInitial(t Test, c main) {
     t.assert(c.count == 0)
+}
+
+window {
+    main
 }

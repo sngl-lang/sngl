@@ -11,7 +11,7 @@ import . "sngl:ui"
 func nothing() {
 }
 
-component main {
+component main node {
     var n int = 0
 
     button(text="a", @click {
@@ -22,4 +22,8 @@ component main {
     })
 
     text(value=string(n))
+}
+
+window {
+    main
 }

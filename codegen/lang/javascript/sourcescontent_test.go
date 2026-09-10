@@ -14,7 +14,7 @@ import (
 func TestRenderJSSourceMap_EmbedsSourcesContent(t *testing.T) {
 	dir := t.TempDir()
 	srcPath := filepath.Join(dir, "app.sngl")
-	const text = "component main {\n    text(value=\"hi\")\n}\n"
+	const text = "component main node {\n    text(value=\"hi\")\n}\n"
 	if err := os.WriteFile(srcPath, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}

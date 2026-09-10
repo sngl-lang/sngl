@@ -19,17 +19,21 @@ component sums(
     :total int = 0,
     @done ClickEvent,
     children ...component,
-) {
+) node {
     vbox {
         text(value=string(add(left, right)))
         children
     }
 }
 
-component main {
+component main node {
     vbox {
         sums(left=1, right=2, @done {}) {
             text(value="child")
         }
     }
+}
+
+window {
+    main
 }

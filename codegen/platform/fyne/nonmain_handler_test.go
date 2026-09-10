@@ -19,13 +19,13 @@ import (
 // no method of that name emitted, the file does not compile. testdata's
 // focus_order_loop.sngl is exactly this shape.
 func TestNonMainComponentPromotedHandlersAreEmitted(t *testing.T) {
-	// No `component main`: MainComponent() then finds none, so this component
+	// No `component main`: RootDecl() then finds none, so this component
 	// is emitted through renderIRComponentMethod and its own Funcs slice is
 	// the only place its promoted handlers live. That is the arrangement
 	// testdata/focus_order_loop.sngl has.
 	src := `
 import . "sngl:ui"
-component focusLoop {
+component focusLoop node {
     vbox {
         button(text="before", focusable=true)
         button(text="after", focusable=true)

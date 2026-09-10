@@ -20,17 +20,14 @@ deny out/go/bubbletea/model.go `&m\.url` -- a pointer into a model the platform 
 
 -- live.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 import http "sngl:remote/http"
 
-component main {
+window(title="fetch") {
     var url = "https://example.com/"
     var res = http.fetch(&url)
 
-    window(title="fetch") {
-        text(value=res.or(blank).body)
-        button(text="go", @click { url = "https://other/" })
-    }
+    text(value=res.or(blank).body)
+    button(text="go", @click { url = "https://other/" })
 }
 
 const blank = http.Result{status=0, body="", headers={}}

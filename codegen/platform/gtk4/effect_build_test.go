@@ -13,7 +13,7 @@ import (
 const effectModelSrc = `
 import . "sngl:ui"
 
-component main {
+window {
     var (
         n = 0
         log list<string> = []
@@ -33,7 +33,7 @@ component main {
 const effectInstanceSrc = `
 import . "sngl:ui"
 
-component row(name = "") {
+component row(name = "") node {
     var (
         n = 0
         log list<string> = []
@@ -48,7 +48,7 @@ component row(name = "") {
     button(text=name, @click { n += 1 })
 }
 
-component main {
+window {
     var names list<string> = ["a", "b"]
     for var nm = names {
         row(name=nm)

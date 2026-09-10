@@ -1,6 +1,10 @@
 import . "sngl:ui"
 
-component main {
+component main node {
     var items list = [] // ERROR(check) "list requires a type argument"
     text(value="x")
+}
+
+window {
+    main
 }

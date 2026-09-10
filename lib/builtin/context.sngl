@@ -1,9 +1,11 @@
 import marks "sngl:internal/marks"
+import tree "sngl:tree"
 
 // Declares a reactive context: `context #name(default)` binds `name`, and
 // `name(value) { ... }` overrides it for a subtree. A context is ambient
 // because the form that declares one has to be available wherever a package
 // declares state, and the mark is what the checker matches — the name
 // `context` is shadowable like any other.
+#[tree.none]
 #[marks.builtin("context")]
 component context(default dyn) {}

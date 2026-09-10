@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     text(value="test")
 }
 
@@ -138,4 +138,8 @@ func testListMethods(t Test, c main) {
     t.assert(["a", "b", "c"].join(", ") == "a, b, c")
     t.assert([1, 2, 3].contains(2))
     t.assert(![1, 2, 3].contains(5))
+}
+
+window {
+    main
 }

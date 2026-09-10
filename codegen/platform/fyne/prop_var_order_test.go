@@ -7,12 +7,12 @@ import "testing"
 const propInitComponentSrc = `
 import . "sngl:ui"
 
-component greeter(name = "") {
+component greeter(name = "") node {
     var greeting = "hi " + name
     text(value=greeting)
 }
 
-component main {
+window {
     var names list<string> = ["ann", "bob"]
     for var n = names {
         greeter(name=n)

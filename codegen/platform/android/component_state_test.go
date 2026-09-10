@@ -15,12 +15,13 @@ import (
 // MainScreen (where the vars they read do not exist), and its funcs were
 // emitted as top-level `fun`s writing bare names. None of it compiled.
 const surviverSrc = `import . "sngl:ui"
+import ui "sngl:ui"
 
 struct Item {
     name string = ""
 }
 
-component card(name = "") {
+component card(name = "") node {
     var clicks = 0
     var tags list<string> = ["a"]
     func label() => "{name}:{clicks}:{tags.length()}"
@@ -30,7 +31,7 @@ component card(name = "") {
     }
 }
 
-component main {
+ui.window {
     var items list<Item> = [{name = "a"}, {name = "b"}]
     for var item = items {
         card(name = item.name)

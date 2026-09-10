@@ -344,6 +344,10 @@ type checker struct {
 	// they are found: they read vars and instantiate components that pass1 is
 	// still registering.
 	pendingPkgBody []ast.Stmt
+	// pkgBodyWindowIDs are the `list<window>` symbols a `for` at the root of a
+	// file declares, kept so the hoist during the body check answers with the
+	// same symbol rather than declaring a second one.
+	pkgBodyWindowIDs map[string]*ir.Var
 
 	// outputDepth is where in the build directive's tree the checker is: 0
 	// outside it, 1 among the languages `output` hosts, 2 among a language's
@@ -415,7 +419,32 @@ type checker struct {
 	// contextComp is the declaration `context #name(default)` names. Matching
 	// the mark rather than the word is what lets a program shadow `context`.
 	contextComp *ir.Component
-	windowType  *ir.Type
+	// boundaryComp is the #[builtin("errorBoundary")] component. Held for the
+	// payload its @error declares, which is the type every @error handler in
+	// the program defaults its parameter to -- the boundary defines the
+	// channel, so its declaration is where the payload is written down.
+	boundaryComp *ir.Component
+	windowType   *ir.Type
+	// currentWindow is the window whose body is being checked, so a func or a
+	// var written there is attached to it rather than to the package. nil
+	// outside a window body.
+	currentWindow *ir.Window
+	// inferTrees are the declarations that named no family in their return
+	// position, awaiting the fixed point that reads one off their bodies.
+	// treeChecks are the membership checks that wait for it: a family a
+	// declaration has not settled on yet reads as none, and a check against
+	// none passes in silence.
+	inferTrees []*ir.Component
+	treeChecks []func()
+	// specOrigin is the declaration each call-site specialization was copied
+	// from. A copy taken before the fixed point ran holds no family, so the
+	// answer is carried across to it once there is one.
+	specOrigin map[*ir.Component]*ir.Component
+
+	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
+	// package body is checked against it, which is the whole of what makes a
+	// window and an output directive top-level: no syntactic rule names them.
+	rootTree *ir.StructDef
 
 	// durationUnit is the #[builtin("duration")] unit. Held so the type can be
 	// registered for phases that have no scope — see ir.DurationType.
@@ -706,9 +735,14 @@ func (c *checker) ensureReturnType(fn *ir.Func) {
 	// own order — that pass is the authoritative one, and it is where the
 	// diagnostics belong, so anything said here is dropped rather than said
 	// twice.
-	mark := len(c.diags)
+	mark, deferred := len(c.diags), len(c.treeChecks)
 	c.checkFuncBody(fn)
 	c.diags = c.diags[:mark]
+	// A membership check is one of the things a body says, so it is dropped
+	// with the rest. No func body reachable here holds a visual node today, so
+	// this drops nothing; it is here so that the rollback stays total if one
+	// ever does.
+	c.treeChecks = c.treeChecks[:deferred]
 }
 
 // fileOf brings the imports of the file pos names into scope and returns the
@@ -1186,10 +1220,18 @@ func (c *checker) pass1() {
 				} else {
 					c.pendingPkgBody = append(c.pendingPkgBody, s)
 				}
+			case *ast.IfStmt, *ast.ForStmt:
+				// Part of the package body: an `if` or a `for` is not a node,
+				// it is how the nodes under it got there, and the root tree is
+				// what makes that the shape a program's windows are written in
+				// -- `if PLATFORM == html.platform { window … }`. Held for
+				// pass2 with the rest of the body, which is where a window
+				// inside one is built. Dropped here, a root-level branch
+				// reached nothing at all and the program rendered none of it.
+				c.pendingPkgBody = append(c.pendingPkgBody, stmt)
 			case *ast.DisabledDecl:
 			case *ast.Comment:
 			default:
-				// IfStmt, ForStmt at top level are checked in pass2.
 			}
 		}
 	}
@@ -2833,11 +2875,55 @@ func (c *checker) checkPackageBody() {
 			c.pkg.Body = append(c.pkg.Body, checked)
 		}
 	}
+	// The package body is a slot like any other, and the tree it accepts is
+	// what makes a window top-level: no rule names the construct, so a
+	// component whose own family is the root one renders windows
+	// conditionally and an `if` at the root goes on working.
+	if pos := firstStmtPos(c.pendingPkgBody); c.rootTree != nil {
+		// No owner: the package body is the one position in a program that is
+		// not inside a component, so a slot insertion cannot be written there.
+		body := c.pkg.Body
+		c.deferTreeCheck(func() {
+			c.checkTreeMembership(nil, pos, body, c.rootTree, "at the root of a file")
+		})
+	}
+}
+
+// hoistPkgBodyWindowIDs declares the `#id` of every window a `for` at the root
+// of a file opens.
+//
+// Ahead of the window bodies, because a sibling window iterates that id --
+// `for var p = page` walks the pages the loop declared -- and root window
+// bodies are checked before the package body.
+func (c *checker) hoistPkgBodyWindowIDs() {
+	for _, s := range c.pendingPkgBody {
+		f, ok := s.(*ast.ForStmt)
+		if !ok {
+			continue
+		}
+		for _, v := range c.hoistForLoopWindowIDs(&f.Body) {
+			if c.pkgBodyWindowIDs == nil {
+				c.pkgBodyWindowIDs = map[string]*ir.Var{}
+			}
+			c.pkgBodyWindowIDs[v.Name] = v
+		}
+	}
+}
+
+// firstStmtPos is where a block starts, for a diagnostic about the block
+// rather than about one statement in it.
+func firstStmtPos(stmts []ast.Stmt) ast.Pos {
+	for _, s := range stmts {
+		if p := stmtPos(s); p != nil {
+			return *p
+		}
+	}
+	return ast.Pos{}
 }
 
 // builtinNodeKind resolves name, through the current scope, to the #[builtin]
 // node kind it denotes — i.e. whether a visual node with this target is one of
-// the compiler's own constructs (window/timer/slot/errorBoundary) rather than an
+// the compiler's own constructs (window/timer/slot/boundary) rather than an
 // ordinary node instance. Returns BuiltinNone for anything else.
 //
 // Going through the scope chain rather than comparing against literal names is
@@ -2897,20 +2983,7 @@ func (c *checker) isWindowNode(name string) bool {
 // visualNodeTarget extracts the target name from a VisualNode.
 // Returns "name" for bare identifiers and "pkg.Name" for qualified targets
 // (e.g. html.div, docui.Sidebar).
-func visualNodeTarget(vn *ast.VisualNode) string {
-	if vn.Target == nil {
-		return ""
-	}
-	switch t := vn.Target.(type) {
-	case *ast.IdentExpr:
-		return t.Name
-	case *ast.SelectExpr:
-		if id, ok := t.Operand.(*ast.IdentExpr); ok {
-			return id.Name + "." + t.Field
-		}
-	}
-	return ""
-}
+func visualNodeTarget(vn *ast.VisualNode) string { return vn.TargetName() }
 
 // pkgProvider is satisfied by both ir.Platform and ir.Language.
 type pkgProvider interface {
@@ -3093,7 +3166,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 }
 
 // buildErrorBoundary builds an ir.ErrorBoundary from an errorBoundary visual
-// node. The @error handler is required and is type-checked with ErrorEvent
+// node. The @error handler is required and is type-checked with the payload
 // defaulted on its parameter. Children are type-checked as a sub-block.
 func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir.ErrorBoundary {
 	eb := &ir.ErrorBoundary{AST: vn}
@@ -3105,11 +3178,86 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 		}
 		eb.Handler = c.buildErrorHandler(&eh)
 	}
-	if eb.Handler == nil {
-		c.error(vn.Pos, "errorBoundary requires an @error handler")
+	// The fallback population is peeled off before the children are checked,
+	// the way checkSlotPopulations does it for an ordinary node: what is left
+	// in the block is the rest slot's content.
+	//
+	// Which slot the fallback is comes from the declaration's shape and not
+	// from its name: the marked component declares one rest slot for the
+	// content and one named slot for the fallback, so the named one is it.
+	// The library is free to call it something else.
+	slots, rest := c.checkSlotPopulations(vn, comp)
+	eb.FailedSlot = fallbackSlotName(comp)
+	if sc := slots[eb.FailedSlot]; sc != nil {
+		eb.Failed = sc.Body
 	}
-	eb.Children = c.checkBlockIR(&vn.Block)
+	// The content may also be populated by name, like any rest slot. Read it
+	// here rather than only reading what was left bare: checkSlotPopulations
+	// peels a named population out of the block, so a boundary written that
+	// way checked clean and rendered nothing at all.
+	var named []ir.Stmt
+	if r := comp.RestSlot(); r != nil {
+		if sc := slots[r.Name]; sc != nil {
+			named = sc.Body
+		}
+	}
+	switch {
+	case eb.Handler == nil && len(eb.Failed) == 0:
+		// Either half is enough, and neither is not: a boundary that does not
+		// report and does not replace catches the error and does nothing with
+		// it, which is a silent swallow written as if it handled something.
+		c.error(vn.Pos, "%s requires an @error handler, a %s slot, or both", visualNodeTarget(vn), eb.FailedSlot)
+	case eb.Handler == nil:
+		// A fallback with nothing to run still needs a handler, and needs one
+		// here rather than at the lowering that fills it in: analyzeErrors
+		// resolves every raise beneath this node to the nearest boundary that
+		// has one, and it runs at the end of this check. Synthesized later,
+		// the raise had already resolved past the boundary to the platform's
+		// default and the fallback never showed.
+		eb.Handler = &ir.EventHandler{Name: "error", Func: &ir.Func{}}
+	}
+	eb.Children = c.checkBlockIR(&rest)
+	if len(named) > 0 {
+		// Both is the double population checkSlotPopulations already reported.
+		eb.Children = append(eb.Children, named...)
+	}
+	// A boundary belongs to no family and hosts whatever it was handed --
+	// `component boundary<T>(content ...component T, failed component T) T`.
+	// Nothing at the call site names T, so the content binds it: the first
+	// child that belongs to a family says which, and the rest are held to
+	// that. An empty boundary binds nothing, and has nothing to check.
+	//
+	// `failed` is held to the same T, since it stands where the content
+	// stood -- and to the content's answer rather than to its own, so a
+	// boundary around widgets cannot fall back to a shape. A boundary with no
+	// content takes T from the fallback instead, which is the only thing left
+	// to take it from.
+	where := "in " + visualNodeTarget(vn)
+	owner, at := c.currentComponent, vn.Pos
+	c.deferTreeCheck(func() {
+		want := childrenTree(eb.Children)
+		if want == nil {
+			want = childrenTree(eb.Failed)
+		}
+		c.checkTreeMembership(owner, at, eb.Children, want, where)
+		c.checkTreeMembership(owner, at, eb.Failed, want, where)
+	})
 	return eb
+}
+
+// fallbackSlotName is the boundary's one non-rest slot: what it renders in
+// place of its content once it has caught. Empty when the declaration has no
+// such slot, which is a boundary that can only report.
+func fallbackSlotName(comp *ir.Component) string {
+	if comp == nil {
+		return ""
+	}
+	for _, s := range comp.Slots {
+		if !s.Rest {
+			return s.Name
+		}
+	}
+	return ""
 }
 
 func literalString(e ast.Expr) string {
@@ -3199,6 +3347,8 @@ func (c *checker) pass2() {
 
 	c.checkComponentBodies()
 
+	c.hoistPkgBodyWindowIDs()
+
 	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
 	for _, w := range c.pkg.Windows {
 		if !w.Checked {
@@ -3222,12 +3372,26 @@ func (c *checker) pass2() {
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
 
+	// Every body has now been read, which is what a family read off one waits
+	// for -- and every membership check waits for that in turn.
+	c.inferComponentTrees()
+	c.runTreeChecks()
+
 	// Purity + access analysis, over the checked IR with resolved symbols.
 	// The var *set* is by pointer identity, so a local that shadows a package
 	// var is correctly excluded (fixes the name-collision false positive).
 	pkgVarSet := make(map[*ir.Var]struct{}, len(c.pkg.Vars))
 	for _, v := range c.pkg.Vars {
 		pkgVarSet[v] = struct{}{}
+	}
+	// A window owns state the way the package and a component do (ir.Owners),
+	// and a func written in a window body is registered at package level -- so
+	// left out of this set, a write to a window var is recorded nowhere and the
+	// func reads as pure -- which is const-foldable.
+	for _, w := range c.pkg.Windows {
+		for _, v := range windowStateVars(w) {
+			pkgVarSet[v] = struct{}{}
+		}
 	}
 	// Every reactive var in the package, which is what a callee could reach.
 	narrowVarSet := make(map[*ir.Var]struct{}, len(pkgVarSet))
@@ -3579,13 +3743,16 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 
 	// Snapshot diagnostics; discard whatever the pre-pass produces. The
 	// authoritative method-body check runs again in checkComponentBody.
-	diagMark := len(c.diags)
+	diagMark, deferred := len(c.diags), len(c.treeChecks)
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == comp.Name {
 			c.checkFuncBody(fn)
 		}
 	}
 	c.diags = c.diags[:diagMark]
+	// The same, and here the pre-pass is followed by an authoritative one that
+	// would record the check again.
+	c.treeChecks = c.treeChecks[:deferred]
 }
 
 // propParam returns the Param a prop is declared as inside its component's
@@ -3830,12 +3997,22 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	for _, t := range comp.Timers {
 		c.checkTimerBody(t)
 	}
+
+	// The body is captured rather than re-read: checkPendingExtensions swaps an
+	// override's statements onto the declaration for the length of one check
+	// and restores the base body after, so a drain-time read would check the
+	// base body once per override and the override's body never.
+	body := comp.Body
+	c.deferTreeCheck(func() { c.checkTreelessBody(comp, body) })
 }
 
 func (c *checker) checkWindowBody(w *ir.Window) {
 	if w.AST != nil {
 		defer c.fileOf(w.AST.Pos)()
 	}
+	prevWindow := c.currentWindow
+	c.currentWindow = w
+	defer func() { c.currentWindow = prevWindow }()
 	c.pushScope()
 	defer c.popScope()
 
@@ -3854,7 +4031,56 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 
 	if w.AST != nil && w.AST.Block.IsDefined() {
 		w.Body = c.checkBlockIR(&w.AST.Block)
+		// A window is its own IR construct, so its children never reach the
+		// slot check every other node's go through. What it accepts is still
+		// the declaration's answer: `content ...component ui.node`.
+		// A window is written at the root of a file, where there is no owner,
+		// or in a component body, where a slot insertion in it is that
+		// component's -- and checkVisualNodeIR reaches this with one.
+		owner, body, at := c.currentComponent, w.Body, w.AST.Pos
+		c.deferTreeCheck(func() {
+			c.checkTreeMembership(owner, at, body,
+				slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
+		})
+		c.checkWindowVarHandlers(w)
 	}
+}
+
+// windowStateVars is a window's own state: `w.Vars` plus the vars its body
+// declares. Both, because the checker sees a body `var` as an ir.LocalVar
+// statement and passHoistState is what moves those onto `w.Vars` later -- so
+// reading `w.Vars` alone finds nothing here.
+func windowStateVars(w *ir.Window) []*ir.Var {
+	out := append([]*ir.Var{}, w.Vars...)
+	for _, s := range w.Body {
+		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
+			out = append(out, lv.Sym)
+		}
+	}
+	return out
+}
+
+// checkWindowVarHandlers checks the bodies of the handlers written on a
+// window's own vars. They are re-declared in a scope of their own because
+// checkBlockIR has already popped the one it bound them in, and a handler body
+// reads its siblings.
+func (c *checker) checkWindowVarHandlers(w *ir.Window) {
+	state := windowStateVars(w)
+	var vars []*ir.Var
+	for _, v := range state {
+		if len(v.Handlers) > 0 {
+			vars = append(vars, v)
+		}
+	}
+	if len(vars) == 0 {
+		return
+	}
+	c.pushScope()
+	defer c.popScope()
+	for _, v := range state {
+		c.declare(varPos(v), v)
+	}
+	c.checkVarHandlerBodies(vars)
 }
 
 // declareNodeIDs declares every named visual node's #id within block as a

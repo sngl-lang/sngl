@@ -18,6 +18,10 @@ func use() int {
     return 0
 }
 
-component main {
+component main node {
     text(value=string(use()))
+}
+
+window {
+    main
 }

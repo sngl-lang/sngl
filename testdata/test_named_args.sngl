@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component main {
+component main node {
     func add(a int, b int) => a + b
     func sub(a int, b int) => a - b
     func clamp(val int, lo int, hi int) int {
@@ -27,4 +27,8 @@ func testMixedPositionalThenNamed(t Test, c main) {
     t.assert(c.clamp(5, lo=0, hi=10) == 5)
     t.assert(c.clamp(15, lo=0, hi=10) == 10)
     t.assert(c.clamp(-1, lo=0, hi=10) == 0)
+}
+
+window {
+    main
 }

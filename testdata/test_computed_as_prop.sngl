@@ -7,7 +7,7 @@ import . "sngl:test"
 // wrapped in a conversion from func to string instead — which the html
 // backend emitted as an empty span. The emission is covered by
 // cmd/sngl/testdata; what this pins is that the call happens at all.
-component main {
+component main node {
     var count = 2
     func doubled() => count * 2
     text(value=string(doubled))
@@ -15,4 +15,8 @@ component main {
 
 func testComputedPropIsCalled(t Test, c main) {
     t.assert(c.doubled() == 4)
+}
+
+window {
+    main
 }

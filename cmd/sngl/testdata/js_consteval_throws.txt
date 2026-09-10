@@ -24,9 +24,13 @@ import lib "js:./lib"
 const bad = lib.boom()
 const good = lib.fine()
 
-component main {
+component main node {
     text(value=bad)
     text(value=good)
+}
+
+window {
+    main
 }
 -- lib/index.ts --
 /** @sngl-pure */

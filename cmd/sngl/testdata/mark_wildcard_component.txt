@@ -23,42 +23,42 @@ stderr 'unknown prop "nope" on component element'
 stderr 'unknown component "Widget" in package w'
 
 -- app.sngl --
-import . "sngl:app"
 import "./widgets"
+import ui "sngl:ui"
 
-component main() {
-    window {
+component main() ui.node {
+    ui.window {
         widgets.marquee(tag = "marquee")
         widgets.blink(tag = "blink")
     }
 }
 
 -- declared.sngl --
-import . "sngl:app"
 import "./widgets"
+import ui "sngl:ui"
 
-component main() {
-    window {
+component main() ui.node {
+    ui.window {
         widgets.box(label = "declared")
     }
 }
 
 -- badprop.sngl --
-import . "sngl:app"
 import "./widgets"
+import ui "sngl:ui"
 
-component main() {
-    window {
+component main() ui.node {
+    ui.window {
         widgets.marquee(tag = "marquee", nope = 1)
     }
 }
 
 -- nomatch.sngl --
-import . "sngl:app"
 import w "./widgets"
+import ui "sngl:ui"
 
-component main() {
-    window {
+component main() ui.node {
+    ui.window {
         w.Widget(tag = "x")
     }
 }
@@ -68,10 +68,13 @@ import . "sngl:ui"
 import . "sngl:macro"
 
 #[wildcard("[a-z][a-z0-9]*")]
-component element(tag string) {
+component element(tag string) node {
     text(value = tag)
 }
 
-component box(label string) {
+component box(label string) node {
     text(value = label)
+}
+
+window {
 }

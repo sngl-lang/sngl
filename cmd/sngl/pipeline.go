@@ -23,6 +23,9 @@ type pipelineOpts struct {
 	outDir  string
 	main    bool
 	quiet   bool
+	// library marks the input a library package the command line named, which
+	// is exempt from the window rule -- see build.Options.Library.
+	library bool
 	// onTarget runs after generation, per target. Nil = generate-only.
 	// For an interpreted target it runs instead of generation, against the
 	// checked package.
@@ -55,7 +58,9 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		// The package has no project directory of its own — its source is
 		// embedded, or the target synthesized it — so "." means generating into
 		// the working directory.
-		if err := emitPackage(in.Pkg, in.Path, ".", cliLang, cliPlat, p); err != nil {
+		libOpts := p
+		libOpts.library = true
+		if err := emitPackage(in.Pkg, in.Path, ".", cliLang, cliPlat, libOpts); err != nil {
 			return err
 		}
 	}
@@ -92,10 +97,10 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		// A directory walk reaches a program's library packages too, and a
 		// library has nothing to emit -- generating one wrote a second
 		// index.html over the program's. A file named on the command line is
-		// generated whether or not it declares main, since naming it is the
+		// generated whether or not it opens a window, since naming it is the
 		// request.
-		if !u.solo && !hasMainComponent(pkg) {
-			slog.Info("skip: no component main", "unit", u.name)
+		if !u.solo && !pkg.IsProgram() {
+			slog.Info("skip: no window", "unit", u.name)
 			continue
 		}
 
@@ -104,20 +109,6 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		}
 	}
 	return nil
-}
-
-// hasMainComponent reports whether a package is a program rather than a
-// library.
-func hasMainComponent(pkg *ir.Package) bool {
-	if pkg == nil {
-		return false
-	}
-	for _, comp := range pkg.Components {
-		if comp.Name == "main" {
-			return true
-		}
-	}
-	return false
 }
 
 // Split out because a package addressed by `sngl:<uri>` arrives already
@@ -140,6 +131,7 @@ func emitPackage(pkg *ir.Package, name, dir, cliLang, cliPlat string, p pipeline
 		Opts:     p.cliOpts,
 		Main:     p.main,
 		OutDir:   p.outDir,
+		Library:  p.library,
 	})
 	if err != nil {
 		return err

@@ -16,7 +16,6 @@ deny out/kotlin/android/MainScreen.kt `Node\([^)\n]*= ""` -- same fallback, in t
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go { bubbletea }
@@ -28,18 +27,16 @@ struct Node {
     label string = ""
 }
 
-component main {
+window {
     var (
         first = Node{value=1, label="one"}
         second = Node{value=first.value, label=first.label}
         pair = [first.value, second.value]
     )
 
-    window {
-        vbox {
-            text(value=second.label)
-            text(value=string(pair.length()))
-        }
+    vbox {
+        text(value=second.label)
+        text(value=string(pair.length()))
     }
 }
 -- out/go/bubbletea/model.go --

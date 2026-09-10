@@ -7,7 +7,7 @@ import "sngl:i18n"
 // built-in works that way; this one was matched by name.
 context #theme("light")
 
-component main {
+component main node {
     text(value=theme)
 }
 
@@ -18,4 +18,8 @@ func testContextReads(t Test, c main) {
 func testContextOverride(t Test, c main) {
     t.setContext(theme, "dark")
     t.assert(theme == "dark")
+}
+
+window {
+    main
 }

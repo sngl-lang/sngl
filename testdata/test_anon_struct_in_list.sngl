@@ -6,7 +6,7 @@ struct Item {
     name string = ""
 }
 
-component main {
+component main node {
     var items list<Item> = [
         {id=1, name="a"},
         {id=2, name="b"},
@@ -25,4 +25,8 @@ func testAnonListLen(t Test, c main) {
 func testAnonListElem(t Test, c main) {
     t.assert(c.items[1].id == 2)
     t.assert(c.items[2].name == "c")
+}
+
+window {
+    main
 }

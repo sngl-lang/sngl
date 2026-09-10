@@ -7,26 +7,26 @@
 
 import . "sngl:ui"
 
-component twice(head ...component, tail ...component) { // ERROR(check) "declares a second rest slot \"tail\""
+component twice(head ...component, tail ...component) node { // ERROR(check) "declares a second rest slot \"tail\""
     vbox {
         head
         tail
     }
 }
 
-component scoped(children ...component(string)) { // ERROR(check) "rest slot \"children\" takes no parameters"
+component scoped(children ...component(string)) node { // ERROR(check) "rest slot \"children\" takes no parameters"
     vbox {
         children
     }
 }
 
-component card(children ...component) {
+component card(children ...component) node {
     vbox {
         children
     }
 }
 
-component main {
+component main node {
     vbox {
         card() { // ERROR(check) "slot \"children\" is populated by name and by the children written bare"
             component children {
@@ -35,4 +35,8 @@ component main {
             text(value="bare")
         }
     }
+}
+
+window {
+    main
 }

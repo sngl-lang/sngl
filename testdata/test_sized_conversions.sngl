@@ -1,10 +1,11 @@
 import . "sngl:test"
+import ui "sngl:ui"
 
 // Explicit conversions between numeric types. Every cross-type numeric
 // conversion is written explicitly as T(x); the checker materializes each as
 // an ir.Conversion. There is no implicit widening, narrowing, or signedness
 // change between numeric types.
-component conv {
+component conv ui.node {
     var small int8 = 10
     var big int64 = 5000000000
     var f float32 = 1.5
@@ -38,4 +39,7 @@ func testIntFloatBridge(t Test, c conv) {
 func testDefaultToSized(t Test, c conv) {
     // A plain int value converts to a sized type only via an explicit cast.
     t.assert(int16(c.plain) == 7)
+}
+
+ui.window {
 }

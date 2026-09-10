@@ -28,3 +28,6 @@ func greet(name string) string {
 }
 
 func int.double(x int) => x + x
+
+window {
+}

@@ -1,10 +1,14 @@
 import . "sngl:ui"
 
 // avatar: A-tier — declaration + src/initials fallback.
-component main {
+component main node {
     hbox {
         avatar(initials="JD")
         avatar(src="https://example.com/a.png", initials="AB", variant="square")
         avatar(initials="XY", size="large")
     }
+}
+
+window {
+    main
 }

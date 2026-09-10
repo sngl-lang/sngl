@@ -11,7 +11,7 @@ func sumPair(p struct {
     b int
 }) => p.a + p.b
 
-component main {
+component main node {
     var (
         a = 3
         b = 4
@@ -40,4 +40,8 @@ func testShorthandMixesWithWrittenFields(t Test, c main) {
     t.assert(c.mixed.a == 3)
     t.assert(c.mixed.b == 9)
     t.assert(c.total == 7 + 7 + 12)
+}
+
+window {
+    main
 }

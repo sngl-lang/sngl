@@ -4,11 +4,15 @@
 // error_untyped_param.sngl for that.
 import . "sngl:ui"
 
-component Holder(value dyn) {
+component Holder(value dyn) node {
     text(value="held")
 }
 
-component main {
+component main node {
     Holder(value=1)
     Holder(value="two")
+}
+
+window {
+    main
 }

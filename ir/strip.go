@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"reflect"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -12,6 +13,56 @@ import (
 func StripForCompare(pkg *Package) {
 	s := &stripper{}
 	s.stripPackage(pkg)
+	clearReachableTreeKinds(pkg)
+}
+
+// clearReachableTreeKinds nils TreeKinds on every package the graph reaches,
+// not only the one being stripped.
+//
+// It is a derived index keyed by declaration, and DeepEqual compares map keys
+// by pointer, so a clone's own declarations can never match the original's.
+// Imports are cut above, but a *library* package is still reachable through
+// the scope chain a symbol carries -- and every program reaches sngl:ui that
+// way now that its window names a tree.
+func clearReachableTreeKinds(pkg *Package) {
+	seen := map[uintptr]bool{}
+	var walk func(v reflect.Value, depth int)
+	walk = func(v reflect.Value, depth int) {
+		if depth > 64 || !v.IsValid() {
+			return
+		}
+		switch v.Kind() {
+		case reflect.Pointer, reflect.Interface:
+			if v.IsNil() {
+				return
+			}
+			if v.Kind() == reflect.Pointer {
+				if seen[v.Pointer()] {
+					return
+				}
+				seen[v.Pointer()] = true
+				if p, ok := v.Interface().(*Package); ok {
+					p.TreeKinds = nil
+				}
+			}
+			walk(v.Elem(), depth+1)
+		case reflect.Struct:
+			for i := range v.NumField() {
+				if v.Type().Field(i).PkgPath == "" {
+					walk(v.Field(i), depth+1)
+				}
+			}
+		case reflect.Slice, reflect.Array:
+			for i := range v.Len() {
+				walk(v.Index(i), depth+1)
+			}
+		case reflect.Map:
+			for _, k := range v.MapKeys() {
+				walk(v.MapIndex(k), depth+1)
+			}
+		}
+	}
+	walk(reflect.ValueOf(pkg), 0)
 }
 
 type stripper struct{}

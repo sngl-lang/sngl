@@ -1,8 +1,11 @@
 // Plural selectors must be one of the CLDR keywords (zero/one/two/few/many/other)
 // or an explicit =N form. Anything else is a check error.
 
-import . "sngl:app"
+import . "sngl:ui"
 import "sngl:i18n"
 
 var n = 5
 var bad = $"{n, plural, frobble{x} other{y}}" // ERROR(check) "invalid plural selector"
+
+window {
+}

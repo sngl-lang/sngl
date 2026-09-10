@@ -130,15 +130,26 @@ struct Box {
 func Box._secret() => 42
 
 func Box.Shown() => 1
+
+window {
+}
 -- other/lib.sngl --
 import . "sngl:ui"
 
 struct Box {
     other int = 0
 }
+
+window {
+}
 -- mycolor/lib.sngl --
+import ui "sngl:ui"
+
 struct color {
     tag string = "mine"
+}
+
+ui.window {
 }
 -- private_field.sngl --
 import . "sngl:ui"
@@ -146,8 +157,12 @@ import w "w"
 
 func f(b w.Box) => b._hidden
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- private_method.sngl --
 import . "sngl:ui"
@@ -155,8 +170,12 @@ import w "w"
 
 func f(b w.Box) => b._secret()
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- exported_ok.sngl --
 import . "sngl:ui"
@@ -166,8 +185,12 @@ func f(b w.Box) => b.Shown()
 
 func g(b w.Box) => b.v
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- own_package.sngl --
 import . "sngl:ui"
@@ -180,8 +203,12 @@ func Local._m() => 1
 
 func use(l Local) => l._m() + l._p
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- redeclared.sngl --
 import . "sngl:ui"
@@ -190,37 +217,53 @@ func dup() => 1
 
 func dup() => 2
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- dup_alias.sngl --
 import . "sngl:ui"
 import x "w"
 import x "other"
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- decl_vs_alias.sngl --
 import . "sngl:ui"
 import helper "w"
 
-component helper() {
+component helper() node {
     text(value="x")
 }
 
-component main {
+component main node {
     text(value="y")
+}
+
+window {
+    main
 }
 -- shadows_dot.sngl --
 import . "sngl:ui"
 
-component text(value string) {
+component text(value string) node {
     button(text=value)
 }
 
-component main {
+component main node {
     text(value="mine")
+}
+
+window {
+    main
 }
 -- shadows_builtin.sngl --
 import . "sngl:ui"
@@ -228,8 +271,12 @@ import . "mycolor"
 
 func f() => color{tag="x"}.tag
 
-component main {
+component main node {
     text(value=f())
+}
+
+window {
+    main
 }
 -- shadowers/lib.sngl --
 import . "sngl:ui"
@@ -239,14 +286,21 @@ struct int {
 }
 
 enum option { first, second }
+
+window {
+}
 -- shadows_builtin_scalar.sngl --
 import . "sngl:ui"
 import . "shadowers"
 
 func f() => int{n = "mine"}.n
 
-component main {
+component main node {
     text(value=f())
+}
+
+window {
+    main
 }
 -- shadows_builtin_generic.sngl --
 import . "sngl:ui"
@@ -254,40 +308,64 @@ import . "shadowers"
 
 var picked option = first
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- pa/lib.sngl --
 import . "sngl:ui"
 
 func Greet() => "from A"
+
+window {
+}
 -- pb/lib.sngl --
 import . "sngl:ui"
 
 func Greet() => "from B"
+
+window {
+}
 -- pc/lib.sngl --
 import . "sngl:ui"
 
 const LIMIT = 1
+
+window {
+}
 -- pd/lib.sngl --
 import . "sngl:ui"
 
 const LIMIT = 2
+
+window {
+}
 -- dup_dot_func.sngl --
 import . "sngl:ui"
 import . "pa"
 import . "pb"
 
-component main {
+component main node {
     text(value=Greet())
+}
+
+window {
+    main
 }
 -- dup_dot_const.sngl --
 import . "sngl:ui"
 import . "pc"
 import . "pd"
 
-component main {
+component main node {
     text(value="{LIMIT}")
+}
+
+window {
+    main
 }
 -- dup_const.sngl --
 import . "sngl:ui"
@@ -295,44 +373,62 @@ import . "sngl:ui"
 const K = 1
 const K = 2
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- dup_component_var.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var y int = 1
     var y int = 2
     text(value="x")
 }
+
+window {
+    main
+}
 -- dup_loop_var.sngl --
 import . "sngl:ui"
 
-component main {
+component main node {
     var xs list<string> = []
     for var k, k = xs {
         text(value=k)
     }
+}
+
+window {
+    main
 }
 -- restate_import.sngl --
 import . "sngl:ui"
 import "sngl:ui/draw"
 import draw "sngl:ui/draw"
 
-component main {
+component main node {
     text(value="x")
 }
 
+window {
+    main
+}
 -- ambiguous_alias.sngl --
 import . "sngl:ui"
 import x "sngl:ui/draw"
 import x "sngl:i18n"
 
-component main {
+component main node {
     text(value="x")
 }
 
+window {
+    main
+}
 -- boxes/lib.sngl --
 import . "sngl:ui"
 
@@ -343,31 +439,49 @@ struct Box {
 }
 
 enum Mode { A, _B }
+
+window {
+}
 -- private_literal.sngl --
 import . "sngl:ui"
 import b "boxes"
 
 func f() => b.Box{v = 1, _hidden = 2}.v
+
+window {
+}
 -- private_enum_member.sngl --
 import . "sngl:ui"
 import b "boxes"
 
 func f() => b.Mode._B
+
+window {
+}
 -- private_enum_bare.sngl --
 import . "sngl:ui"
 import b "boxes"
 
 var m b.Mode = _B
+
+window {
+}
 -- private_field_call.sngl --
 import . "sngl:ui"
 import b "boxes"
 
 func f(x b.Box) => x._run()
+
+window {
+}
 -- unknown_field.sngl --
 import . "sngl:ui"
 import b "boxes"
 
 func f() => b.Box{nope = 1}.v
+
+window {
+}
 -- private_same_package.sngl --
 import . "sngl:ui"
 
@@ -384,40 +498,49 @@ func g() => Mode._B
 
 var m Mode = _B
 
-component main {
+component main node {
     text(value="x")
+}
+
+window {
+    main
 }
 -- shadows_true.sngl --
 import . "sngl:ui"
 
 const true = 0 != 0
 
-component main {
+component main node {
     text(value="{true}")
+}
+
+window {
+    main
 }
 -- shadows_null.sngl --
 import . "sngl:ui"
 
 const null = "nothing"
 
-component main {
+component main node {
     text(value=null)
+}
+
+window {
+    main
 }
 -- shadow_platform.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output { none { html } }
 
 const PLATFORM = "zzz"
 
-component main {
-    window #w(href="/index.html") {
-        if PLATFORM == "html" {
-            text(value="TARGET")
-        }
-        if PLATFORM == "zzz" {
-            text(value="SHADOWED")
-        }
+window #w(href="/index.html") {
+    if PLATFORM == "html" {
+        text(value="TARGET")
+    }
+    if PLATFORM == "zzz" {
+        text(value="SHADOWED")
     }
 }

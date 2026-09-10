@@ -4,16 +4,16 @@
 
 import . "sngl:ui"
 
-component card(label = "") {
+component card(label = "") node {
     text(value="top " + label)
 }
 
-component other() {
+component other() node {
     card(label="y")
 }
 
-component main {
-    component card(label = "") {
+component main node {
+    component card(label = "") node {
         text(value="inner " + label)
     }
 
@@ -21,4 +21,8 @@ component main {
         card(label="x")
         other()
     }
+}
+
+window {
+    main
 }

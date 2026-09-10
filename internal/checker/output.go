@@ -147,6 +147,7 @@ func (c *checker) checkOutputTree() {
 	}
 	c.requireConstOutputTree(root)
 	c.collectOutputs(root)
+	c.resolveEntryWindow(root)
 }
 
 // requireConstOutputTree holds every value in the directive to what the build
@@ -160,7 +161,10 @@ func (c *checker) checkOutputTree() {
 // rejects is a read of anything the program can write.
 func (c *checker) requireConstOutputTree(n *ir.NodeInst) {
 	for _, p := range n.Props {
-		if ir.IsConst(p.Value) {
+		// `entry` names a declaration rather than holding a value, so there is
+		// nothing for the build to evaluate: resolveEntryWindow reads the
+		// reference itself.
+		if p.Name == entryOption || ir.IsConst(p.Value) {
 			continue
 		}
 		at := p.NamePos

@@ -23,8 +23,8 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { n: 5 };
-  function main_display(state2) {
-    return "clamped: " + String(clamp(state2.n, 0, 10));
+  function display() {
+    return "clamped: " + String(clamp(state.n, 0, 10));
   }
   function clamp(x, lo, hi) {
     let result = x;
@@ -48,14 +48,14 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
     state.n = state.n + 3;
-    __n0.textContent = main_display(state);
+    __n0.textContent = display();
   });
   $2.addEventListener("click", function() {
     state.n = state.n - 3;
-    __n0.textContent = main_display(state);
+    __n0.textContent = display();
   });
   function __sngl_init() {
-    __n0.textContent = main_display(state);
+    __n0.textContent = display();
   }
   __sngl_init();
 })();

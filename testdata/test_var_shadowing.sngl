@@ -9,7 +9,7 @@ var total = 10
 
 func packageTotal() => total
 
-component shadowed {
+component shadowed node {
     var total = 1
 
     func localTotal() => total
@@ -28,4 +28,7 @@ func testWritingTheInnerVarLeavesTheOuterAlone(t Test, c shadowed) {
     t.assert(c.total == 7)
     t.assert(c.localTotal() == 7)
     t.assert(packageTotal() == 10)
+}
+
+window {
 }

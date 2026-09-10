@@ -16,11 +16,10 @@ The `output` block declares which language and platform combinations the file ta
 
 <!-- SNGL-top
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main { text(value="") }
+component main node { text(value="") }
 -->
 
 ```sngl
@@ -39,12 +38,11 @@ struct Widget { name string = "" }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "shared"
 
-component main {
+component main node {
     var w shared.Widget
     text(value=w.name)
 }
@@ -54,12 +52,11 @@ Scheme imports pull in types from host-language packages:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "go:go/ast"
 
-component main {
+component main node {
     var file ast.File
     text(value=string(file))
 }
@@ -138,11 +135,10 @@ A complete minimal file needs only a `component main`:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main {
+component main node {
 }
 ```
 
@@ -150,7 +146,6 @@ A realistic minimal file looks like this:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -158,7 +153,7 @@ output {
     js { html }
 }
 
-component main {
+component main node {
     text(value="Hello, SNGL")
 }
 ```
@@ -185,7 +180,6 @@ The standard library provides `color`, `date`, `time`, and `datetime`, which are
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var names list<string> = []
@@ -202,7 +196,6 @@ struct Todo { text string = ""; done bool = false }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var name option<string>
@@ -218,7 +211,6 @@ Structs are value types. They cannot be null. Fields have zero-value defaults wh
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -234,7 +226,6 @@ struct Todo { text string = ""; done bool = false }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var todo Todo
@@ -249,7 +240,6 @@ Named enums declare a fixed set of string values:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -262,7 +252,6 @@ Inline enums skip the top-level declaration when you need a one-off constraint:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var mode enum { light, dark } = light
@@ -276,7 +265,6 @@ Units declare named suffixes with optional conversion factors:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -297,7 +285,6 @@ enum Status { active, inactive, pending }
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import . "sngl:time"
@@ -319,7 +306,6 @@ Function types use `func(ParamTypes) ReturnType` syntax. Omit the return type fo
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var handler func() = null
@@ -337,7 +323,6 @@ var callback func(string) int = null
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 func _a() => string(42)
@@ -400,7 +385,6 @@ Inside `"{expr}"`, a primitive, string-representable type, enum, unit, `null`, l
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 struct Point {
@@ -426,7 +410,6 @@ Removing the `Point.string` method makes the `{origin}` interpolation a compile 
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var (
@@ -444,7 +427,6 @@ var (
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 const (
@@ -465,7 +447,6 @@ Zero-arg functions serve as derived state -- they auto-update reactively and are
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -508,7 +489,6 @@ For single-expression pure functions, the body follows the parameter list direct
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -522,7 +502,6 @@ For multi-step logic, use a body with `return`:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -541,7 +520,6 @@ Functions with no return type are void. They can mutate component state and are 
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -561,7 +539,6 @@ Attach a function to a type with a dotted name. The first parameter is the recei
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -657,11 +634,10 @@ A component groups params, state, functions, and visual nodes:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component Counter(label = "", start = 0) {
+component Counter(label = "", start = 0) node {
     var count = start
     hbox {
         text(value="{label}: {count}")
@@ -680,11 +656,10 @@ Params are the component's public API. They are declared in parentheses after th
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component MyWidget(label = "default", count int, size enum { small, medium, large } = medium) {
+component MyWidget(label = "default", count int, size enum { small, medium, large } = medium) node {
     text(value=label)
 }
 ```
@@ -692,7 +667,7 @@ component MyWidget(label = "default", count int, size enum { small, medium, larg
 Without a default, params use the type's zero value. Parents pass params as named arguments:
 
 <!-- SNGL-component
-component Counter(label = "", start = 0) { text(value=label) }
+component Counter(label = "", start = 0) node { text(value=label) }
 -->
 
 ```sngl
@@ -705,7 +680,7 @@ Counter()
 Components can use other components:
 
 <!-- SNGL-component
-component Counter(label = "", start = 0) { text(value=label) }
+component Counter(label = "", start = 0) node { text(value=label) }
 -->
 
 ```sngl
@@ -813,16 +788,15 @@ Bidirectional bindings work with custom components too. Declare a parameter with
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component Stepper(:count = 0) {
+component Stepper(:count = 0) node {
     button(text="+", @click { count += 1 })
     text(value=string(count))
 }
 
-component main {
+component main node {
     var steps = 0
     Stepper(:count=steps)
     text(value="Steps: {steps}")
@@ -851,7 +825,6 @@ Use `if` blocks. `if` does not support `else` -- use two `if` blocks with opposi
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var active = true
@@ -869,7 +842,6 @@ if !active {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items = ["a", "b", "c"]
@@ -894,7 +866,6 @@ when the body never names the element:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "sngl:seq"
@@ -914,7 +885,6 @@ one — negative to count down. The end bound is exclusive in all three.
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 import "sngl:seq"
@@ -986,7 +956,6 @@ The `else` block renders when the list is empty. It works with both `for var ite
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items list<string> = []
@@ -1012,7 +981,6 @@ Tag a node with `#id` to reference it in tests:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -1030,7 +998,6 @@ text #display(value="Count: {count}")
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -1047,7 +1014,6 @@ button(text="tag", @click { label += " tagged" })
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var active = true
@@ -1062,7 +1028,6 @@ Method syntax mutates in place. Function syntax returns a new list:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var items = [1, 2, 3]
@@ -1078,7 +1043,6 @@ Separate statements with semicolons inside event handlers:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var (
@@ -1098,15 +1062,14 @@ component with `@name`, and firing it is an ordinary call on that name:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component SaveButton(label = "Save", @save) {
+component SaveButton(label = "Save", @save) node {
     button(text=label, @click { save() })
 }
 
-component main {
+component main node {
     var status = ""
     SaveButton(@save { status = "saved" })
     text(value=status)
@@ -1121,11 +1084,10 @@ Mutations are only allowed in event handlers and void functions. You cannot muta
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main {
+component main node {
     var (
         progress float = 0
         running = true
@@ -1171,14 +1133,13 @@ There is no `style` declaration and no `class` prop. A reusable style is a
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
 const primary Style = Style{color=#0000ff, fontWeight="bold", fontSize=16}
 const secondary Style = Style{color=#777777, fontStyle="italic"}
 
-component main {
+component main node {
     vbox {
         text(value="hello", style=primary)
         text(value="world", style=secondary)
@@ -1206,11 +1167,10 @@ Tests target a specific component and get a fresh copy of its state:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component counter {
+component counter node {
     var count = 0
     button #inc(text="+", @click { count += 1 })
     text #display(value="Count: {count}")
@@ -1239,7 +1199,6 @@ Tag nodes with `#id`, then access props and fire events in tests:
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 var count = 0
@@ -1265,11 +1224,10 @@ Subtests inherit parent state but get their own snapshot. Changes in the subtest
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component app {
+component app node {
     var x = 0
     text(value="{x}")
 }
@@ -1313,7 +1271,6 @@ Each platform maps stdlib components to native widgets. Core components (`vbox`,
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1322,7 +1279,7 @@ struct Todo {
     done bool = false
 }
 
-component main {
+component main node {
     var (
         newTodo = ""
         todos list<Todo> = []
@@ -1350,11 +1307,10 @@ component main {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main {
+component main node {
     var email = ""
     func valid() => string.contains(email, "@") && string.length(email) > 3
     vbox(style={padding=16, gap=8}) {
@@ -1371,11 +1327,10 @@ component main {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main {
+component main node {
     var showModal = false
     vbox(style={padding=16}) {
         button(text="Open", @click { showModal = true })
@@ -1391,11 +1346,10 @@ component main {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
-component main {
+component main node {
     var (
         progress float = 0.0
         running = false
@@ -1418,7 +1372,6 @@ component main {
 
 ```sngl
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:dialog"
 import . "sngl:test"
 
@@ -1427,7 +1380,7 @@ struct Todo {
     done bool = false
 }
 
-component main {
+component main node {
     var todos = [Todo{text="Write docs", done=true}, Todo{text="Fix bug", done=false}]
     func active() => todos.filter(func(t) => !t.done)
     func activeCount() => active().length()

@@ -36,7 +36,7 @@ func checkedType(t *testing.T, src, name string) *ir.Type {
 // which reached users as `cannot initialize duration with duration` once the
 // Go importer started handing out a type registered by a different check.
 func TestLibraryTypeSurvivesASecondLoad(t *testing.T) {
-	const src = `component main { text(value="x") }`
+	const src = `component main node { text(value="x") }`
 	for _, name := range []string{"duration", "datetime", "Style"} {
 		a := checkedType(t, src, name)
 		b := checkedType(t, src, name)
@@ -56,14 +56,14 @@ func TestLibraryTypeSurvivesASecondLoad(t *testing.T) {
 // the same answer: `pure.Wait() + 5ms` mixes a unit type registered by whatever
 // check ran first with one the current check declared.
 func TestLibraryUnitArithmeticSurvivesASecondLoad(t *testing.T) {
-	const src = `component main { text(value="x") }`
+	const src = `component main node { text(value="x") }`
 	a := checkedType(t, src, "duration")
 	b := checkedType(t, src, "duration")
 	if !a.SameUnitType(b) {
 		t.Error("duration from two checks is not the same unit")
 	}
 	mine := checkedType(t, `unit duration { tick }
-component main { text(value="x") }`, "duration")
+component main node { text(value="x") }`, "duration")
 	if mine.SameUnitType(a) {
 		t.Error("a program's own unit duration is the same unit as the library's")
 	}
@@ -74,9 +74,9 @@ component main { text(value="x") }`, "duration")
 // (package, name) could be made too broad and quietly unify.
 func TestShadowingDeclarationIsADifferentType(t *testing.T) {
 	const shadow = `unit duration { tick }
-component main { text(value="x") }`
+component main node { text(value="x") }`
 	mine := checkedType(t, shadow, "duration")
-	theirs := checkedType(t, `component main { text(value="x") }`, "duration")
+	theirs := checkedType(t, `component main node { text(value="x") }`, "duration")
 	if mine.Equal(theirs) {
 		t.Error("a program's own unit duration is equal to the library's")
 	}
@@ -96,7 +96,7 @@ component main { text(value="x") }`
 func TestShadowedTypeDiagnosticNamesBoth(t *testing.T) {
 	doc, err := parser.Parse("test.sngl", []byte(withStd(`unit duration { tick }
 var shadowed duration = 3ms
-component main { text(value="x") }`)))
+component main node { text(value="x") }`)))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -122,7 +122,7 @@ component main { text(value="x") }`)))
 // scope -- a fallback meant for stdlib bootstrap that also swallowed a missing
 // import in user source, typing the declaration as dyn and building anyway.
 func TestUnimportedTimeIsAnErrorNotDyn(t *testing.T) {
-	doc, err := parser.Parse("test.sngl", []byte("component main {\n    var x time\n}\n"))
+	doc, err := parser.Parse("test.sngl", []byte("import tree \"sngl:tree\"\n\n#[tree.none]\ncomponent main {\n    var x time\n}\n"))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

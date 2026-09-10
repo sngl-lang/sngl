@@ -14,20 +14,17 @@ Widget ids are the lowered __nN scheme: textarea __n0, vbox __n1, button __n2.
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 output {
     go { fyne(main=true) }
 }
 
-component main {
+window #app(title="t") {
     var content = "initial value"
 
-    window #app(title="t") {
-        vbox {
-            textarea(value=content, rows=4)
-            button(text="set", @click { content = "after click" })
-        }
+    vbox {
+        textarea(value=content, rows=4)
+        button(text="set", @click { content = "after click" })
     }
 }
 -- out/go/fyne/model.go --

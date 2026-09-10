@@ -7,10 +7,14 @@ struct Point {
     y float = 0.0
 }
 
-component main {
+component main node {
     var mode enum { light, dark } = light
     var dir Direction = up
     var pt Point = {x=1.0, y=2.0}
 
     text(value=string(mode))
+}
+
+window {
+    main
 }

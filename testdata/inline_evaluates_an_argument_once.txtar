@@ -11,11 +11,10 @@ deny out/go/bubbletea/model.go `bump\(\).*bump\(\)` -- the effect happens once, 
 
 -- app.sngl --
 import . "sngl:ui"
-import . "sngl:app"
 
 func double(x int) => x + x
 
-component main {
+window(title="once") {
     var n = 0
 
     func bump() int {
@@ -23,9 +22,7 @@ component main {
         return n
     }
 
-    window(title="once") {
-        text(value=string(double(bump())))
-    }
+    text(value=string(double(bump())))
 }
 
 output {

@@ -3,10 +3,14 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     var xs list<int> = [1]
 
     for var x = xs {
         continue // ERROR(check) "cannot be written in a view body"
     }
+}
+
+window {
+    main
 }

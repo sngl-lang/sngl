@@ -1,7 +1,7 @@
 import . "sngl:ui"
 import . "sngl:test"
 
-component counter {
+component counter node {
     var count = 0
 
     button #inc(text="+", @click { count += 1 })
@@ -9,7 +9,7 @@ component counter {
     text #display(value="Count: {count}")
 }
 
-component wrapper {
+component wrapper node {
     var visible = true
 
     vbox {
@@ -20,7 +20,7 @@ component wrapper {
     }
 }
 
-component listcomp {
+component listcomp node {
     var items = ["a", "b", "c"]
 
     vbox {
@@ -66,4 +66,7 @@ func testNestedFind(t Test, c wrapper) {
 func testForLoopRendering(t Test, c listcomp) {
     t.assert(c.item[0].value == "a")
     t.assert(c.item[2].value == "c")
+}
+
+window {
 }

@@ -1,9 +1,8 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 context #theme("light")
 
-component Inner {
+component Inner node {
     text(value="static")
 }
 

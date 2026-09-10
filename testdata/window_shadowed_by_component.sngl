@@ -1,14 +1,19 @@
 import . "sngl:ui"
-import . "sngl:app"
+import ui "sngl:ui"
 
 // Built-ins are shadowable (design doc D3). A user `component window`
 // resolves before the #[builtin("window")] declaration, so this
 // instantiates as an ordinary node instance rather than registering a
-// package window.
-component window(label string, children ...component) {
+// package window — which is why the program still has to open a real one,
+// reached through the qualified name the shadowing left standing.
+component window(label string, children ...component) node {
     text(value=label)
 }
 
-component main {
+component main node {
     window(label="ordinary node")
+}
+
+ui.window {
+    main
 }

@@ -1,6 +1,9 @@
 // Indexing a string-keyed map with an int should be a check error.
 
-import . "sngl:app"
+import . "sngl:ui"
 
 var m map<string, int> = {a=1}
 var x = m[42] // ERROR(check) "key type"
+
+window {
+}

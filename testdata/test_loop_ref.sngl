@@ -12,7 +12,7 @@ struct Task {
     done bool = false
 }
 
-component main {
+component main node {
     var tasks list<Task> = [{label="a", done=false}, {label="b", done=true}]
     var nums list<int> = [1, 2, 3]
 
@@ -48,4 +48,8 @@ func testLoopRefScalarWriteThrough(t Test, c main) {
     // &n whole-element write (n = n + 10) updates the list element in place
     c.bump.click()
     t.assert(c.n0.value == "11")
+}
+
+window {
+    main
 }

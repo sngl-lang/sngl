@@ -22,7 +22,7 @@ component table(
     header component,
     cell component(Row),
     children ...component,
-) {
+) node {
     vbox {
         header {
             text(value="(untitled)")
@@ -37,14 +37,14 @@ component table(
 // A slot may be declared alongside props and events without colliding: the
 // three are read differently (a slot is a tag, a prop a value, an event a
 // handler) and only share the one list they are written in.
-component labelled(caption string, body component, @click ClickEvent) {
+component labelled(caption string, body component, @click ClickEvent) node {
     vbox {
         text(value=caption)
         body {}
     }
 }
 
-component main {
+component main node {
     table(rows=[Row{title="alpha"}, Row{title="beta"}]) {
         component header {
             text(value="Rows")
@@ -68,4 +68,8 @@ component main {
             text(value="supplied")
         }
     }
+}
+
+window {
+    main
 }

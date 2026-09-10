@@ -33,7 +33,7 @@ func run(f func()) {
 
 func applied(f func() int) => f()
 
-component inner(@fired) {
+component inner(@fired) node {
     var ran = 0
 
     func go() {
@@ -46,7 +46,7 @@ component inner(@fired) {
     text(value="{ran}")
 }
 
-component main {
+component main node {
     var (
         viaMethod = 0
         emitted = 0
@@ -86,4 +86,8 @@ func testACallbackEmits(t Test, c main) {
     c.child.go()
     t.assert(c.child.ran == 1)
     t.assert(c.emitted == 1)
+}
+
+window {
+    main
 }

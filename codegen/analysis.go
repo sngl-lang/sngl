@@ -95,19 +95,20 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	// child component's `count` is not the root model's `count`. The package
 	// and the windows are unambiguous and always do.
 	for _, o := range ir.Owners(pkg) {
-		if o.Comp != nil && o.Comp.Name != rootComponentName {
+		if o.Comp != nil && o.Comp.Name != pkg.RootComponent {
 			continue
 		}
 		for _, v := range o.Vars {
 			a.ModelFields[v.Name] = true
 		}
-		// A window's funcs are synthesized and reached through
-		// CodegenCtx.AllFuncs, not by name from an expression, so they do not
-		// join FuncNames.
-		if o.Win != nil {
-			continue
-		}
 		for _, f := range o.Funcs {
+			// A window's *synthesized* funcs -- a canvas draw, the focus
+			// order's __focusNext -- are reached through CodegenCtx.AllFuncs
+			// and never named by an expression. A `func` written in a window
+			// body is named by one.
+			if o.Win != nil && f.Synthesized {
+				continue
+			}
 			a.FuncNames[f.Name] = true
 			if f.Receiver != "" {
 				a.FuncNames[f.Receiver+"."+f.Name] = true
@@ -178,6 +179,11 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	for _, comp := range pkg.Components {
 		if comp != nil {
 			schedules = append(schedules, comp.Timers...)
+		}
+	}
+	for _, win := range pkg.Windows {
+		if win != nil {
+			schedules = append(schedules, win.Timers...)
 		}
 	}
 	for i, t := range schedules {
@@ -300,9 +306,3 @@ func parseNumber(raw string) float64 {
 	}
 	return n
 }
-
-// rootComponentName is the component a single-Model target builds from when
-// nothing overrides it. CodegenCtx.MainComponent is the authority -- it also
-// honours RootComponent -- but AnalyzeCommon runs from a package alone, before
-// there is a CodegenCtx to ask.
-const rootComponentName = "main"

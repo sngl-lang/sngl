@@ -153,7 +153,7 @@ func validateCLIOptsAcrossTargets(kv map[string]string, targets []Target) error 
 		return nil
 	}
 	for k := range kv {
-		matched := false
+		matched := buildOnlyOpts[k]
 		for _, t := range targets {
 			if t.Options != nil && optionFieldType(t.Options, k) != nil {
 				matched = true
@@ -194,6 +194,16 @@ func cloneStructLit(src *ir.StructLit) *ir.StructLit {
 // ApplyCLIOpts overlays --opt values onto one target's options.
 func ApplyCLIOpts(opts *ir.StructLit, kv map[string]string) error { return applyCLIOpts(opts, kv) }
 
+// buildOnlyOpts are the options no *target* declares, because the compiler
+// reads them itself whatever is being built for -- so the per-target scoping
+// below does not apply to them. A key a platform's schema does not mention is
+// normally another platform's; these are nobody's, and a program whose
+// `output` block carries a schema had them dropped.
+var buildOnlyOpts = map[string]bool{
+	"rootComponent": true,
+	"projectDir":    true,
+}
+
 // A non-string field's value is parsed as a SNGL const expression and checked
 // against the declared type. An unknown type (no Def, or the field absent from
 // it) is wrapped as a raw string literal, so simple cases work with no checker
@@ -207,7 +217,7 @@ func applyCLIOpts(opts *ir.StructLit, kv map[string]string) error {
 		// A key this target does not declare is left to the cross-target
 		// validation in ResolveTargets, so one --opt can be scoped to
 		// whichever output declares it.
-		if opts != nil && opts.Def != nil && ft == nil {
+		if opts != nil && opts.Def != nil && ft == nil && !buildOnlyOpts[k] {
 			continue
 		}
 		if ft != nil && ft.Kind != ir.TypeString {

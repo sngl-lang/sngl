@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 import . "sngl:test"
 
 output {
@@ -32,7 +31,7 @@ func testAnEmitFromADefaultedChildArrives(t Test, c main) {
     t.assert(c.defaulted == 1)
 }
 
-component relay(on bool = true, @fired ChangeEvent) {
+component relay(on bool = true, @fired ChangeEvent) node {
     var seen = 0
 
     if on {
@@ -45,7 +44,7 @@ component relay(on bool = true, @fired ChangeEvent) {
     text(value=string(seen))
 }
 
-component main {
+component main node {
     var (
         pressed = 0
         quiet = 0
@@ -67,4 +66,8 @@ component main {
     })
 
     text(value="{pressed} {quiet} {defaulted}")
+}
+
+window {
+    main
 }

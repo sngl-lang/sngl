@@ -1,0 +1,11 @@
+// A boundary has to do one of the two things a boundary does: report, or
+// replace. One that declares neither catches the error and drops it, which
+// reads as handling something and is not.
+
+import ui "sngl:ui"
+
+ui.window(title="silent") {
+    boundary { // ERROR(check) "requires an @error handler, a failed slot, or both"
+        ui.text(value="body")
+    }
+}

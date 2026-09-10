@@ -5,8 +5,12 @@
 
 import . "sngl:ui"
 
-component main {
+component main node {
     vbox {
         text(value string) // ERROR(parse) "unexpected identifier, expected \")\""
     }
+}
+
+window {
+    main
 }

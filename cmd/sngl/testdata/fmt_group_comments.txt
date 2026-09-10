@@ -31,6 +31,10 @@ var (
     total = 0
 )
 
-component main {
+component main node {
     text(value="{WIDTH}x{ROWS}{total}")
+}
+
+window {
+    main
 }

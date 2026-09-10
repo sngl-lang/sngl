@@ -6,8 +6,12 @@ struct Config {
 
 enum Status { active, inactive }
 
-component main {
+component main node {
     var count int = 0
     func doubled() => count * 2
     const label = "hi"
+}
+
+window {
+    main
 }

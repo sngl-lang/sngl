@@ -165,6 +165,22 @@ type Env struct {
 	// can read (and assignments can mutate) package-level vars defined in the
 	// root env.
 	parent *Env
+	// caught records, for each boundary rendered in this scope that declared a
+	// fallback, whether it has caught yet. A boundary's `failed` slot is what
+	// it renders from then on, and nothing static can answer "has it": the
+	// question is about the run.
+	//
+	// Keyed by the boundary's @error handler, because that is what a raise
+	// reaches (Call.ResolvedHandler) and so what invokeHandler has in hand.
+	// Held per scope rather than per program, so two instantiations of one
+	// component catch separately; registered by the render, which is the only
+	// thing that knows a boundary is in this scope at all.
+	//
+	// The compiled targets get this from passBoundaryFailed, which desugars
+	// the pair into a flag and a conditional. `sngl test` on the `none`
+	// platform runs the checked IR without lowering, the same reason the
+	// interpreter honours For.Else itself, so it answers the question here.
+	caught map[*ir.EventHandler]bool
 	// inst is the instantiation this component scope was entered through, or
 	// nil at the root and for the children-less call form. It is what an emit
 	// needs: the handlers a call site supplied are written there, and the scope
@@ -308,7 +324,10 @@ func (env *Env) Snapshot() *Env {
 		maxIterations: env.maxIterations,
 		Locale:        env.Locale,
 		ContextVals:   env.ContextVals, // shared reference — overrides visible in child envs
-		childEnvs:     childEnvs,       // shared reference — cached child envs persist through scope changes
+		// Shared reference: a click handler runs against a snapshot, and the
+		// boundary it trips is the one the original scope renders.
+		caught:        env.caught,
+		childEnvs:     childEnvs, // shared reference — cached child envs persist through scope changes
 		callChildEnvs: env.callChildEnvs,
 		parent:        env.parent,
 		// The instantiation this scope belongs to. A snapshot of a frame is
@@ -950,6 +969,45 @@ func (env *Env) findVarOwner(sym ir.Symbol) *Env {
 	return nil
 }
 
+// registerBoundary notes that a boundary with a fallback renders in this
+// scope, so a raise reaching its handler has somewhere to record that it did.
+// Idempotent: a re-render must not forget that the boundary already caught.
+func (env *Env) registerBoundary(h *ir.EventHandler) {
+	if h == nil {
+		return
+	}
+	if env.caught == nil {
+		env.caught = map[*ir.EventHandler]bool{}
+	}
+	if _, ok := env.caught[h]; !ok {
+		env.caught[h] = false
+	}
+}
+
+// markCaught records that h's boundary caught, in the scope that rendered it.
+// The raise runs in that scope or one nested inside it, so the walk is up.
+func (env *Env) markCaught(h *ir.EventHandler) {
+	if h == nil {
+		return
+	}
+	for e := env; e != nil; e = e.parent {
+		if _, ok := e.caught[h]; ok {
+			e.caught[h] = true
+			return
+		}
+	}
+}
+
+// hasCaught reports whether h's boundary has caught in this scope.
+func (env *Env) hasCaught(h *ir.EventHandler) bool {
+	for e := env; e != nil; e = e.parent {
+		if v, ok := e.caught[h]; ok {
+			return v
+		}
+	}
+	return false
+}
+
 // varInScope reports whether sym is bound in this env or an enclosing one.
 // Unlike lookup it never auto-invokes a zero-arg function, so callers can
 // distinguish a func-typed variable from a named function.
@@ -1460,7 +1518,7 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 	method := call.Func.Name
 	receiverName := call.Func.Receiver
 
-	// ErrorRaise: construct an ErrorEvent payload and bubble a RaisedError
+	// ErrorRaise: construct an error payload and bubble a RaisedError
 	// up the Go error chain. The originating CallStmt's ErrorMode then
 	// routes it into the resolved handler (or propagates).
 	if call.Func.Intrinsic == "error.raise" {

@@ -1,12 +1,11 @@
 import . "sngl:ui"
 import . "sngl:time"
-import . "sngl:app"
 import . "sngl:test"
 
 unit duration { ms, s = 1000ms, m = 60s, h = 60m }
 unit measurement { px, em, rem = 16em, vw, vh, pct }
 
-component unitTypes {
+component unitTypes node {
     var t1 duration = 1s
     var t2 duration = 500ms
     var m1 measurement = 10px
@@ -39,4 +38,7 @@ func testZeroUnitLiteral(t Test, c unitTypes) {
 
     t.assert(zeroMs == 0s)
     t.assert(zeroPx == 0em)
+}
+
+window {
 }

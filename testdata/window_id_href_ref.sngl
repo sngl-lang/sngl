@@ -1,5 +1,4 @@
 import . "sngl:ui"
-import . "sngl:app"
 
 window #home(title="Home", href="/index.html", favicon="/favicon.ico") {
     text(value="Home")
