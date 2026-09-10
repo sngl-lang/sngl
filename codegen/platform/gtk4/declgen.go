@@ -107,6 +107,12 @@ func widgetCType(comp *ir.Component) string {
 	if !ok {
 		return ""
 	}
+	// A nested namespace is not a widget: `gtk4:draw:arc` names this
+	// platform's drawing op, and read as a C type it resolves to no GIR class
+	// and fails the build.
+	if strings.Contains(cType, ":") {
+		return ""
+	}
 	return cType
 }
 
