@@ -363,9 +363,9 @@ the body it was asked about instead of re-reading `comp.Body`, because
 `checkPendingExtensions` swaps an override's statements onto the declaration
 and restores the base body after: read late, it checks the base body once per
 registered override and the override's body never. And `CheckLibPackage` has no
-pass2, so it drains the checks itself — without that, `sngl check
-sngl:platform/fyne`, `sngl doc` and the LSP's lib path check no library body's
-membership at all, silently.
+pass2, so it drains the checks itself — without that, nothing checks a library
+body's membership at all, silently: `sngl doc`, the LSP's lib path and
+`sngl check sngl:platform/fyne` alike.
 
 A **library** declaration names its family and is not inferred. Only the
 target tiers have their bodies checked at load, so for most of `lib/` there is
