@@ -14,10 +14,9 @@ import (
 // it was handed; naming something that is not a tree is an error rather than a
 // children contract — a slot is what declares those.
 //
-// Naming nothing is an error too. An omitted tree used to mean the default
-// family, which was the absence of a check rather than a family; it now means
-// no family at all, and inferring which one was meant from the body needs a
-// fixpoint over mutually recursive declarations that nothing here has.
+// Naming nothing hands the question to inferComponentTrees, which reads the
+// answer off the body once every body has been read. Belonging to no family is
+// a claim the mark makes, and silence is no longer how it is spelled.
 func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, pkg *ir.Package) {
 	if decl == nil || comp == nil {
 		return
@@ -29,8 +28,15 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		if comp.Treeless || c.treeOptional(decl, comp) {
 			return
 		}
-		c.error(decl.Pos, "component %s: name the tree it belongs to in the return position, or mark it #[tree.none]",
-			comp.Name)
+		if c.inLibSource() {
+			// A library's declarations are a published contract, and only the
+			// target tiers have their bodies checked at all -- so there is
+			// nothing here to read an answer off, and every tier says it.
+			c.error(decl.Pos, "component %s: name the tree it belongs to in the return position, or mark it #[tree.none]",
+				comp.Name)
+			return
+		}
+		c.inferTrees = append(c.inferTrees, comp)
 		return
 	}
 	if comp.Treeless {
@@ -77,10 +83,14 @@ func (c *checker) treeOptional(decl *ast.ComponentDecl, comp *ir.Component) bool
 // body that renders a `ui` node has joined that family without saying so, and
 // would then be placeable in a canvas.
 //
+// The mark is what makes a declaration tree-less. A body that named no family
+// is not one: inference is reading that same body to give it one, and holding
+// it to this rule would refuse every case inference is there to answer.
+//
 // An `if` or a `for` is how the nodes under it got there rather than a node,
 // the same reading checkTreeMembership gives them.
-func (c *checker) checkTreelessBody(comp *ir.Component) {
-	if comp == nil || comp.Tree != nil || comp.AST == nil {
+func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
+	if comp == nil || !comp.Treeless || comp.AST == nil {
 		return
 	}
 	var walk func(stmts []ir.Stmt)
@@ -108,5 +118,5 @@ func (c *checker) checkTreelessBody(comp *ir.Component) {
 				comp.Name, ni.Component.Tree.Name, ni.Component.Name)
 		}
 	}
-	walk(comp.Body)
+	walk(body)
 }

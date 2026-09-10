@@ -429,6 +429,18 @@ type checker struct {
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
 	currentWindow *ir.Window
+	// inferTrees are the declarations that named no family in their return
+	// position, awaiting the fixed point that reads one off their bodies.
+	// treeChecks are the membership checks that wait for it: a family a
+	// declaration has not settled on yet reads as none, and a check against
+	// none passes in silence.
+	inferTrees []*ir.Component
+	treeChecks []func()
+	// specOrigin is the declaration each call-site specialization was copied
+	// from. A copy taken before the fixed point ran holds no family, so the
+	// answer is carried across to it once there is one.
+	specOrigin map[*ir.Component]*ir.Component
+
 	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
@@ -723,9 +735,14 @@ func (c *checker) ensureReturnType(fn *ir.Func) {
 	// own order — that pass is the authoritative one, and it is where the
 	// diagnostics belong, so anything said here is dropped rather than said
 	// twice.
-	mark := len(c.diags)
+	mark, deferred := len(c.diags), len(c.treeChecks)
 	c.checkFuncBody(fn)
 	c.diags = c.diags[:mark]
+	// A membership check is one of the things a body says, so it is dropped
+	// with the rest. No func body reachable here holds a visual node today, so
+	// this drops nothing; it is here so that the rollback stays total if one
+	// ever does.
+	c.treeChecks = c.treeChecks[:deferred]
 }
 
 // fileOf brings the imports of the file pos names into scope and returns the
@@ -2863,7 +2880,12 @@ func (c *checker) checkPackageBody() {
 	// component whose own family is the root one renders windows
 	// conditionally and an `if` at the root goes on working.
 	if pos := firstStmtPos(c.pendingPkgBody); c.rootTree != nil {
-		c.checkTreeMembership(pos, c.pkg.Body, c.rootTree, "at the root of a file")
+		// No owner: the package body is the one position in a program that is
+		// not inside a component, so a slot insertion cannot be written there.
+		body := c.pkg.Body
+		c.deferTreeCheck(func() {
+			c.checkTreeMembership(nil, pos, body, c.rootTree, "at the root of a file")
+		})
 	}
 }
 
@@ -3211,12 +3233,15 @@ func (c *checker) buildErrorBoundary(vn *ast.VisualNode, comp *ir.Component) *ir
 	// content takes T from the fallback instead, which is the only thing left
 	// to take it from.
 	where := "in " + visualNodeTarget(vn)
-	want := childrenTree(eb.Children)
-	if want == nil {
-		want = childrenTree(eb.Failed)
-	}
-	c.checkTreeMembership(vn.Pos, eb.Children, want, where)
-	c.checkTreeMembership(vn.Pos, eb.Failed, want, where)
+	owner, at := c.currentComponent, vn.Pos
+	c.deferTreeCheck(func() {
+		want := childrenTree(eb.Children)
+		if want == nil {
+			want = childrenTree(eb.Failed)
+		}
+		c.checkTreeMembership(owner, at, eb.Children, want, where)
+		c.checkTreeMembership(owner, at, eb.Failed, want, where)
+	})
 	return eb
 }
 
@@ -3346,6 +3371,11 @@ func (c *checker) pass2() {
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
+
+	// Every body has now been read, which is what a family read off one waits
+	// for -- and every membership check waits for that in turn.
+	c.inferComponentTrees()
+	c.runTreeChecks()
 
 	// Purity + access analysis, over the checked IR with resolved symbols.
 	// The var *set* is by pointer identity, so a local that shadows a package
@@ -3713,13 +3743,16 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 
 	// Snapshot diagnostics; discard whatever the pre-pass produces. The
 	// authoritative method-body check runs again in checkComponentBody.
-	diagMark := len(c.diags)
+	diagMark, deferred := len(c.diags), len(c.treeChecks)
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == comp.Name {
 			c.checkFuncBody(fn)
 		}
 	}
 	c.diags = c.diags[:diagMark]
+	// The same, and here the pre-pass is followed by an authoritative one that
+	// would record the check again.
+	c.treeChecks = c.treeChecks[:deferred]
 }
 
 // propParam returns the Param a prop is declared as inside its component's
@@ -3965,7 +3998,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		c.checkTimerBody(t)
 	}
 
-	c.checkTreelessBody(comp)
+	// The body is captured rather than re-read: checkPendingExtensions swaps an
+	// override's statements onto the declaration for the length of one check
+	// and restores the base body after, so a drain-time read would check the
+	// base body once per override and the override's body never.
+	body := comp.Body
+	c.deferTreeCheck(func() { c.checkTreelessBody(comp, body) })
 }
 
 func (c *checker) checkWindowBody(w *ir.Window) {
@@ -3996,8 +4034,14 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		// A window is its own IR construct, so its children never reach the
 		// slot check every other node's go through. What it accepts is still
 		// the declaration's answer: `content ...component ui.node`.
-		c.checkTreeMembership(w.AST.Pos, w.Body,
-			slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
+		// A window is written at the root of a file, where there is no owner,
+		// or in a component body, where a slot insertion in it is that
+		// component's -- and checkVisualNodeIR reaches this with one.
+		owner, body, at := c.currentComponent, w.Body, w.AST.Pos
+		c.deferTreeCheck(func() {
+			c.checkTreeMembership(owner, at, body,
+				slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
+		})
 		c.checkWindowVarHandlers(w)
 	}
 }

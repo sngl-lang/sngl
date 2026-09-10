@@ -325,12 +325,52 @@ tree was not a family at all — `checkTreeMembership` opened with `if want == n
 of* the unnamed one. `sngl:tree` keeps the `kind` mark, the `none` mark and
 the count wrappers; the families live where their members do.
 
-**Naming nothing is not a family, and it is an error.** A component's return
-position says which family it joins, so leaving it out is a declaration that
-has not said. Inference from the body comes later: it is bottom-up from what a
-body contains while membership is checked *against* the tree, and components
-can be mutually recursive, so it needs a fixpoint rather than one ordered
-pass.
+**Naming nothing asks the compiler which family it joins**, and the body is
+what answers: a declaration that renders a widget is one. The evidence is the
+*root* of the body — what the component puts in the tree, not what those nodes
+host — and an `if`, a `for` and a boundary are how the nodes under them got
+there rather than nodes, so the walk reaches through all three. A slot
+insertion is not evidence: what a slot naming no family accepts is the family
+of the component declaring it, so reading one reads the answer off the
+question. Two bodies have no answer, and both are positioned errors:
+one that renders members of two families, and one that renders members of
+none — a cycle of declarations taking their evidence from each other being the
+second case spread over several declarations.
+
+`inferComponentTrees` is that, and it is a **fixed point** rather than one
+ordered pass, because the evidence may be a declaration whose own family is
+unsettled and two declarations may be mutually recursive. It runs in two
+rounds: settle everyone whose evidence is complete, repeatedly; then settle
+what is left — necessarily a cycle — from the evidence that did resolve, so
+`a` renders a widget and the `b` that renders an `a` is one too.
+
+**Every membership check waits for it.** `checkTreeMembership` opens with
+`if want == nil { return }`, so a check that ran while its subject was still
+unsettled would compare against no family and pass in *silence* — the same
+nothing an unrestricted position reports. So the five call sites record a
+closure (`deferTreeCheck`) and `runTreeChecks` drains them once every body has
+been read, which is why the function takes the component the content was
+written in rather than reading `c.currentComponent`.
+One fixture per position holds that, each naming a declaration written *below*
+it: `error_tree_inferred_late.sngl` for a node's bare children,
+`error_tree_inferred_positions.sngl` for the other four, and
+`error_tree_inferred_treeless_contains.sngl` for the tree-less rule, which
+reads an inferred family too. Move the matching check back inline and the
+fixture passes clean rather than failing — which is how each was confirmed.
+
+Two of those deferrals are subtler than the rest. The tree-less check captures
+the body it was asked about instead of re-reading `comp.Body`, because
+`checkPendingExtensions` swaps an override's statements onto the declaration
+and restores the base body after: read late, it checks the base body once per
+registered override and the override's body never. And `CheckLibPackage` has no
+pass2, so it drains the checks itself — without that, nothing checks a library
+body's membership at all, silently: `sngl doc`, the LSP's lib path and
+`sngl check sngl:platform/fyne` alike.
+
+A **library** declaration names its family and is not inferred. Only the
+target tiers have their bodies checked at load, so for most of `lib/` there is
+nothing to read an answer off — and a package's declarations are a published
+contract, which a body should not be quietly restating.
 
 **`#[tree.none]` says a component belongs to no family**, which is what a
 component that renders nothing wants — `effect`, `timer`, `context`, and each

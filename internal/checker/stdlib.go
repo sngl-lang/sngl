@@ -1493,6 +1493,10 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
 	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
+	// A membership check a library body deferred is drained by the pass2 of
+	// the program that loaded the package, and this entry point has no
+	// program. Nothing to infer first: a library declaration names its family.
+	c.runTreeChecks()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
 }

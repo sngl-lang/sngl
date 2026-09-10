@@ -3851,7 +3851,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		case ct != nil && ct.Kind == ir.TypeOption && n > 1:
 			c.error(vn.Pos, "component %s accepts at most one child", spec.Name)
 		}
-		c.checkTreeMembership(vn.Pos, children, slotWant(spec, spec.RestSlot(), children), "in "+spec.Name)
+		owner, node, at := c.currentComponent, spec, vn.Pos
+		c.deferTreeCheck(func() {
+			c.checkTreeMembership(owner, at, children, slotWant(node, node.RestSlot(), children), "in "+node.Name)
+		})
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
 
@@ -4996,6 +4999,23 @@ func (c *checker) enclosingSlot(name string) *ir.SlotDecl {
 	return nil
 }
 
+// ownerSlot is the slot of that name on owner, or nil. enclosingSlot is the
+// same lookup asked of the component being checked; this one is asked later,
+// of the component recorded when the check was deferred -- which is why it
+// carries no `funcDepth` guard: every caller runs from runTreeChecks, where
+// no body is being walked and the depth is zero.
+func ownerSlot(owner *ir.Component, name string) *ir.SlotDecl {
+	if owner == nil || name == "" {
+		return nil
+	}
+	for _, s := range owner.Slots {
+		if s.Name == name {
+			return s
+		}
+	}
+	return nil
+}
+
 // checkSlotInsertion checks an insertion point: its arguments, positional
 // against the declaration's types, and the fallback block.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.Stmt {
@@ -5144,7 +5164,10 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 	sc.Body = c.checkBlockIR(&cd.Body)
 	c.popScope()
 	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
-	c.checkTreeMembership(cd.Pos, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
+	written, at := c.currentComponent, cd.Pos
+	c.deferTreeCheck(func() {
+		c.checkTreeMembership(written, at, sc.Body, slotWant(owner, decl, sc.Body), "in slot \""+cd.Name+"\"")
+	})
 	return sc
 }
 
@@ -5270,13 +5293,18 @@ func stmtPos(s ast.Stmt) *ast.Pos {
 // accepts. Compared by declaration, so two packages each declaring a tree of
 // the same name are two trees.
 //
+// owner is the component the content was written in, and is passed rather than
+// read from the checker because the call is deferred: every one of these runs
+// after the last body has been checked, so that a family read off a body is
+// settled before anything is held to it.
+//
 // A node reports its family or it reports none, and only a *different* family
 // is the error. Belonging to none is a claim a declaration makes with
 // #[tree.none], and it is honoured everywhere: an effect goes in a canvas as
 // readily as in a layout. The compiler's own constructs -- an error boundary,
 // a context override -- say the same thing by not being a node instance at
 // all, and each holds its own children to a family of their own.
-func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
+func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content []ir.Stmt, want *ir.StructDef, where string) {
 	if want == nil {
 		return
 	}
@@ -5287,16 +5315,16 @@ func (c *checker) checkTreeMembership(pos ast.Pos, content []ir.Stmt, want *ir.S
 		// the direct children is what rejected a canvas whose shapes come
 		// from a list.
 		case *ir.If:
-			c.checkTreeMembership(pos, s.Body, want, where)
-			c.checkTreeMembership(pos, s.Else, want, where)
+			c.checkTreeMembership(owner, pos, s.Body, want, where)
+			c.checkTreeMembership(owner, pos, s.Else, want, where)
 		case *ir.For:
-			c.checkTreeMembership(pos, s.Body, want, where)
-			c.checkTreeMembership(pos, s.Else, want, where)
+			c.checkTreeMembership(owner, pos, s.Body, want, where)
+			c.checkTreeMembership(owner, pos, s.Else, want, where)
 		// A slot insertion is a position rather than a node: what lands there
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
 		case *ir.SlotInst:
-			if got := slotTree(c.currentComponent, c.enclosingSlot(s.Name)); got != nil && got != want {
+			if got := slotTree(owner, ownerSlot(owner, s.Name)); got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
 		// A window is the checker's own IR and never a NodeInst, so its

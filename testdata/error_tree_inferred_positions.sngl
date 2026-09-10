@@ -1,0 +1,40 @@
+// Every position that holds nodes waits for the fixed point, and this is one
+// error per position: the root of a file, a window, a boundary, and a named
+// slot's population. Each names a component declared *below* it whose family
+// its body settles, so a check asked where it is written finds no family and
+// passes -- and `checkTreeMembership` returns on no family in silence, which
+// is the same nothing an unrestricted position reports.
+//
+// error_tree_inferred_late.sngl is the fifth, a node's bare children.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+component holder(art component d.shape, content ...component) ui.node {
+    content
+}
+
+ui.window {
+    blob() // ERROR(check) "expected node component in window, got blob"
+
+    boundary(@error(e) {}) {
+        widget()
+        blob() // ERROR(check) "expected node component in boundary, got blob"
+    }
+
+    holder {
+        component art {
+            widget() // ERROR(check) "expected shape component in slot \"art\", got widget"
+        }
+    }
+}
+
+widget() // ERROR(check) "expected root component at the root of a file, got widget"
+
+component widget() {
+    ui.text(value="x")
+}
+
+component blob() {
+    d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000})
+}
