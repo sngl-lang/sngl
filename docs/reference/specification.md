@@ -1362,9 +1362,9 @@ The body is optional, as a function's is, and the two spellings say different
 things. An empty body — `component Spacer() { }` — says the component renders
 nothing. **No body at all** — `component Name(params) Tree` — is a
 *signature*: the render comes from somewhere the declaration names, and the
-checker requires that to be true. The three answers are an `#[intrinsic]` id a
-platform emits, a `#[builtin]` node kind the compiler dispatches on, and a
-per-target override. An override may not itself be bodyless, since an override
+checker requires that to be true. The answer a program can write is a
+per-target override; `#[intrinsic]` and `#[builtin]` are the library's own, and
+are accepted for it. An override may not itself be bodyless, since an override
 *is* the body a target renders.
 
 ### Parameters

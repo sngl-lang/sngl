@@ -34,14 +34,35 @@ different things:
   render comes from somewhere the declaration names.
 
 `reportBodylessComponents` requires the second to be true rather than assuming
-it: a bodyless component needs an `#[intrinsic]` id a platform emits, a
-`#[builtin]` node kind the compiler dispatches on, or a per-target override —
-the counterpart of the rule `checkFuncBody` applies to a bodyless func, run
-after pass2 because an override's body is checked during it. Without it a
-bodyless declaration renders nothing, silently, on every target that has no
-override for it. An **override** may not be bodyless for the same reason from
-the other side: an override *is* the body a target renders, so one with no body
-would satisfy the base's rule while rendering nothing (`addOverrideBody`).
+it — the counterpart of the rule `checkFuncBody` applies to a bodyless func.
+Without it a bodyless declaration renders nothing, silently, on every target
+that has no override for it. An **override** may not be bodyless for the same
+reason from the other side: an override *is* the body a target renders, so one
+with no body would satisfy the base's rule while rendering nothing. It is
+refused in `addOverrideBody` *after* the override key is reserved, so the base
+is not reported a second time for a supplier that was written and rejected.
+
+Two limits on that rule, both deliberate and both load-bearing for #213:
+
+- **It is scoped to the program's own package.** A library package is loaded by
+  `loadStdlibPackage`, which runs `pass1` alone, so no `lib/` or
+  `sngl:platform/` declaration is ever asked. That is why the diagnostic names
+  only the override: a program can write neither `#[intrinsic]` nor
+  `#[builtin]`, both of which live in `sngl:internal/marks`. Making the `lib/`
+  shapes bodyless needs the sweep to run from that loader too, and needs a
+  fourth answer there — a `treeShape` member whose render comes from
+  `passCanvas`.
+- **One override satisfies it for every target**, because the checker does not
+  know which target a build picks. This is the func rule's existing semantics
+  rather than a new hole, and `testdata/bodyless_component_override.txtar`
+  pins what it costs: two targets, where the one with no override renders
+  nothing at all.
+
+The distinction has to survive the checker, so it is `ir.Component.Bodyless`
+rather than `AST.Body.IsDefined()` — that reports whether a block came from
+*source*, so everything `ir.Convert` rebuilds looks bodyless, and reading it
+as "has a body" made `sngl dump --stage checked` print every empty-bodied
+component back as a signature.
 
 ## Loop forms
 

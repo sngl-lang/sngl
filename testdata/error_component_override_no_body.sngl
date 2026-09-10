@@ -2,6 +2,10 @@
 // with no body to be. It would also satisfy the base declaration's own
 // no-body rule while rendering nothing, which is the silence that rule exists
 // to refuse.
+//
+// One diagnostic, not two: the override key is reserved before the body is
+// refused, so `gap` below is not also reported for a supplier that was
+// written. Reporting both blamed the base for the override's mistake.
 
 import ui "sngl:ui"
 import html "sngl:platform/html"

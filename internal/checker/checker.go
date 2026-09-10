@@ -2645,6 +2645,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		Name:       comp.Name,
 		Stdlib:     c.inLibSource(),
 		Pkg:        c.libPkgName,
+		Bodyless:   !comp.Body.IsDefined(),
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
 	}
 	c.applyMarks(comp, irComp)

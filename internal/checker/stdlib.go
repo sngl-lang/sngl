@@ -1071,14 +1071,6 @@ func qualifiedComponentName(ns, local string) string {
 // silent overwrite: two implementations of one component for one target are
 // two answers to a question with one.
 func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.BuiltinKind, target, ns, local string, body ast.StmtBlock, user bool, selection []string) {
-	// An override is the body a target renders, so there is nothing left for
-	// one with no body to be -- and it would satisfy the base declaration's
-	// own no-body rule while rendering nothing, which is the silence that rule
-	// exists to refuse.
-	if !body.IsDefined() {
-		c.error(pos, "override %s for %q has no body: an override is the body the target renders", qualifiedComponentName(ns, local), target)
-		return
-	}
 	overrides := &comp.PlatformOverrides
 	if kind == ir.BuiltinLanguage {
 		overrides = &comp.LanguageOverrides
@@ -1093,6 +1085,15 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 	// Reserve the key first so duplicate detection works even when the body
 	// check appends nothing (an empty body).
 	(*overrides)[target] = ir.Body{}
+	// An override is the body a target renders, so there is nothing left for
+	// one with no body to be -- and it would satisfy the base declaration's
+	// own no-body rule while rendering nothing, which is the silence that rule
+	// exists to refuse. Reported after the key is reserved, so the base is not
+	// reported too: a supplier was written, and this is the one thing wrong.
+	if !body.IsDefined() {
+		c.error(pos, "override %s for %q has no body: an override is the body the target renders", qualifiedComponentName(ns, local), target)
+		return
+	}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:      comp,
 		platform:  target,

@@ -1883,11 +1883,8 @@ state1:
 //
 //	# ── Components ────────────────────────────────────────────────────────────────
 //
-//	# The block is optional, as a func's is: a component with no body is a
-//	# signature, and the checker requires the render to come from somewhere else --
-//	# an #[intrinsic] id a platform emits, or a per-target override. An empty `{}`
-//	# still says its own thing, that the component renders nothing, and is not the
-//	# same declaration as one with no body at all.
+//	# The block is optional, as FuncBodyTail's is. `{}` and no block at all are
+//	# different declarations, so the formatter must not print one for the other.
 //	ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
 //
 //	State 0
