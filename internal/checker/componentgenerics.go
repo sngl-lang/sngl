@@ -56,7 +56,15 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 	if len(bindings) == 0 {
 		return comp
 	}
-	return specializeComponent(comp, bindings)
+	spec := specializeComponent(comp, bindings)
+	// The copy carries whatever family the declaration had when it was taken,
+	// which is none while one is still being inferred. inferComponentTrees
+	// finishes the job here.
+	if c.specOrigin == nil {
+		c.specOrigin = map[*ir.Component]*ir.Component{}
+	}
+	c.specOrigin[spec] = comp
+	return spec
 }
 
 // propArgType is the type of the value a call site supplied for prop p, or nil

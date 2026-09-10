@@ -1,0 +1,43 @@
+// A component that names no family in its return position joins the one its
+// body renders. The evidence is the root of the body -- what the component
+// puts in the tree, not what those nodes host -- and an `if` or a `for` is how
+// the nodes under it got there rather than a node, so the answer reaches
+// through both.
+//
+// It is a fixed point and not a walk in source order: the evidence may be
+// another declaration whose own family is still unsettled, and `header` is
+// written above the `badge` it takes its answer from.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+var on = true
+
+component header() {
+    badge(label="hi")
+}
+
+component badge(label string) {
+    ui.text(value=label)
+}
+
+component dot(x float) {
+    d.circle(cx=x, cy=x, r=2.0, style={fill=#FF0000})
+}
+
+component maybe() {
+    if on {
+        ui.text(value="on")
+    }
+}
+
+ui.window(title="inferred") {
+    ui.vbox {
+        header()
+        badge(label="x")
+        maybe()
+        d.canvas(width=10px, height=10px) {
+            dot(x=5.0)
+        }
+    }
+}

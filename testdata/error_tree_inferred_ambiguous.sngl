@@ -1,0 +1,23 @@
+// The two answers inference does not have. A body that renders members of two
+// families does not say which of them the component joins, and a body that
+// renders no member of any says nothing at all -- a slot insertion least of
+// all, since what a slot with no declared family accepts is the family being
+// inferred.
+//
+// Belonging to no family is still sayable, with the mark rather than with
+// silence, which is what the second diagnostic offers.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+component mixed() { // ERROR(check) "component mixed: the body renders both node and shape, so name the tree it belongs to in the return position"
+    ui.text(value="a")
+    d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000})
+}
+
+component wrap(children ...component) { // ERROR(check) "component wrap: the body names no tree, so name the tree it belongs to in the return position, or mark it #[tree.none]"
+    children
+}
+
+ui.window {
+}
