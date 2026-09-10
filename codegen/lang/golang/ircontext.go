@@ -795,7 +795,25 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 		}
 		args = append([]string{ctxVar}, args...)
 	}
+	// `method` says the identifier is invoked on its first argument rather
+	// than handed it: `c.Circle(1, 2)` where the default is
+	// `canvas.Context.Circle(c, 1, 2)`. Both are valid Go for the same
+	// method, and which one a host API wants is the API's to say.
+	if n.Func.NativeMethod && len(args) > 0 {
+		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
+	}
 	return name + "(" + strings.Join(args, ", ") + ")", true
+}
+
+// methodTail is the last segment of a qualified native name, which is the
+// method to call on the receiver: `canvas.Context.Circle` invoked on a
+// receiver is `.Circle`, since the package and type come from the receiver's
+// own type rather than from the call.
+func methodTail(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
 }
 
 func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {

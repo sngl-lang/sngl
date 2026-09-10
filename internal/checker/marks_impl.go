@@ -77,6 +77,7 @@ func markGoNative(m *mark) error {
 		// declaration here has no signature to read, so the mark is where it
 		// is said.
 		d.HasErrorReturn = slices.Contains(flags, flagFails)
+		d.NativeMethod = slices.Contains(flags, flagMethod)
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -117,6 +118,7 @@ func markJSNative(m *mark) error {
 		// return. A declaration here has no signature to read, so the mark is
 		// where it is said, and the emitter awaits the call.
 		d.IsAsync = slices.Contains(flags, flagAsync)
+		d.NativeMethod = slices.Contains(flags, flagMethod)
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -231,6 +233,11 @@ const (
 
 // The flag #[native] accepts after the name, declared as go.NativeFlag.
 const flagFails = "fails"
+
+// flagMethod says the native identifier is called on its first argument, not
+// handed it. Both languages accept it: the choice is the host API's, not the
+// language's.
+const flagMethod = "method"
 
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //

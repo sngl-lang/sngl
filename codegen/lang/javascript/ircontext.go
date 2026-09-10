@@ -557,15 +557,30 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	}
 	args := jc.evalCallArgs(n.Args)
 	var call string
-	if bundled {
+	switch {
+	// `method` says the identifier is a method of its first argument, which is
+	// the only shape a DOM API has: `ctx.arc(x, y, r)`, never `arc(ctx, …)`.
+	case n.Func.NativeMethod && len(args) > 0:
+		call = args[0] + "." + jsMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")"
+	case bundled:
 		call = codegen.NativeAlias(mod) + "." + name + "(" + strings.Join(args, ", ") + ")"
-	} else {
+	default:
 		call = name + "(" + strings.Join(args, ", ") + ")"
 	}
 	if n.Func.IsAsync {
 		call = "await " + call
 	}
 	return call
+}
+
+// jsMethodTail is the last segment of a dotted native name: the method to
+// invoke on the receiver, with any type or namespace prefix dropped because
+// the receiver supplies it.
+func jsMethodTail(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
 }
 
 func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {

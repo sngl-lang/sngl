@@ -60,7 +60,11 @@ func async() ir.Macro
 // here has no signature to read, so the mark is where it is said.
 //
 // It describes a call, so a struct refuses it.
-enum NativeFlag { fails }
+// `method` says the identifier is invoked on its first argument rather than
+// handed it, which is what a Go method wants: `c.Circle(1, 2)` rather than the
+// method-expression spelling `canvas.Context.Circle(c, 1, 2)`. Both are valid;
+// only the API knows which it is.
+enum NativeFlag { fails, method }
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result

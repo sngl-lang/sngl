@@ -603,6 +603,23 @@ language.
 `isPlatformStdlibComponent` is a different question: whether a component came
 from a `sngl:platform/` package the program imports.
 
+A **native** mark — `#[go.native(path, name, flags)]`, `#[js.native(name, module, flags)]` — is the other half: the declaration *is* that host
+identifier, so a call becomes a call to it and nothing is emitted for the
+declaration itself. Two things about the name that are easy to get wrong:
+
+- **It carries its own qualifier.** `#[go.native("strings", "strings.ToUpper")]`,
+  not `("strings", "ToUpper")` — a Go package's name is not a function of its
+  import path (`gopkg.in/yaml.v3` is package `yaml`), so the path cannot supply
+  it. The path is what `RequireImport` adds.
+- **`method` says the identifier is invoked *on* its first argument** rather
+  than handed it: `c.Circle(1, 2)` where the default is
+  `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
+  which one a host API wants is the API's to say — cairo takes its context
+  first and wants the default. JavaScript has no receiver-first spelling at
+  all, so describing a DOM API needs the flag: `ctx.arc(x, y, r)` is the only
+  thing that runs. Only the last dotted segment is emitted, because the
+  receiver supplies the package and type.
+
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and
 because its users are outside the compiler: a language plugin generating marked
