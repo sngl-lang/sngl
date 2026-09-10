@@ -1,0 +1,18 @@
+// A slot's fallback is the component's own content -- what it renders when the
+// caller supplies none -- so it is evidence, where the insertion around it is
+// not. The insertion stands for whatever the caller writes, and what a slot
+// naming no family accepts is the family being inferred.
+
+import ui "sngl:ui"
+
+component card(content ...component) {
+    content {
+        ui.text(value="empty")
+    }
+}
+
+ui.window {
+    card {
+        ui.text(value="x")
+    }
+}

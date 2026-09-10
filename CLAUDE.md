@@ -351,9 +351,21 @@ nothing an unrestricted position reports. So the five call sites record a
 closure (`deferTreeCheck`) and `runTreeChecks` drains them once every body has
 been read, which is why the function takes the component the content was
 written in rather than reading `c.currentComponent`.
-`testdata/error_tree_inferred_late.sngl` is the fixture: a canvas written
-*above* the declaration whose inferred family makes it an error, which passes
-clean if any one of those checks is moved back inline.
+One fixture per position holds that, each naming a declaration written *below*
+it: `error_tree_inferred_late.sngl` for a node's bare children,
+`error_tree_inferred_positions.sngl` for the other four, and
+`error_tree_inferred_treeless_contains.sngl` for the tree-less rule, which
+reads an inferred family too. Move the matching check back inline and the
+fixture passes clean rather than failing — which is how each was confirmed.
+
+Two of those deferrals are subtler than the rest. The tree-less check captures
+the body it was asked about instead of re-reading `comp.Body`, because
+`checkPendingExtensions` swaps an override's statements onto the declaration
+and restores the base body after: read late, it checks the base body once per
+registered override and the override's body never. And `CheckLibPackage` has no
+pass2, so it drains the checks itself — without that, `sngl check
+sngl:platform/fyne`, `sngl doc` and the LSP's lib path check no library body's
+membership at all, silently.
 
 A **library** declaration names its family and is not inferred. Only the
 target tiers have their bodies checked at load, so for most of `lib/` there is

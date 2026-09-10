@@ -4,8 +4,10 @@
 // all, since what a slot with no declared family accepts is the family being
 // inferred.
 //
-// Belonging to no family is still sayable, with the mark rather than with
-// silence, which is what the second diagnostic offers.
+// The second is the wrapper, and it is the shape this lands on most often, so
+// it is told what a wrapper wants: to be handed a family by its call site,
+// which is the type parameter -- not the mark, which is for a component that
+// renders nothing at all.
 
 import d "sngl:ui/draw"
 import ui "sngl:ui"
@@ -15,7 +17,7 @@ component mixed() { // ERROR(check) "component mixed: the body renders both node
     d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000})
 }
 
-component wrap(children ...component) { // ERROR(check) "component wrap: the body names no tree, so name the tree it belongs to in the return position, or mark it #[tree.none]"
+component wrap(children ...component) { // ERROR(check) "component wrap: the body renders only what a caller supplies, so name the tree it belongs to in the return position -- or a type parameter, for a wrapper whose family is whatever it was handed"
     children
 }
 

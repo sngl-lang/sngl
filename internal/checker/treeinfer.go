@@ -7,23 +7,14 @@ import (
 )
 
 // inferComponentTrees settles the family of every declaration that named none,
-// reading it off what the body renders.
+// reading it off what the body renders. Two rounds, and the order is the
+// point:
 //
-// The evidence is the root of the body: what the component puts in the tree,
-// not what those nodes host, which is the same reading childrenTree gives a
-// slot's content. An `if`, a `for` and a boundary are how the nodes under them
-// got there rather than nodes, so the walk reaches through all three.
-//
-// It is a fixed point rather than one ordered pass because the evidence may be
-// another declaration whose own family is unsettled, and two declarations may
-// be mutually recursive. Two rounds, in this order:
-//
-//  1. Settle whoever has complete evidence, repeatedly. A body with a mixture
-//     is reported here, where the mixture is known to be the whole of it.
-//  2. Whatever is left is in a cycle. Settle those from the evidence that did
-//     resolve, so `a` renders a widget and a `b` that renders an `a` is one
-//     too. What that still leaves is a cycle with no ground truth anywhere in
-//     it, which is a body that names no tree.
+//  1. Settle whoever has complete evidence, repeatedly. A mixture is reported
+//     here, where it is known to be the whole of the evidence rather than the
+//     part that has arrived so far.
+//  2. What is left is in a cycle, so waiting for it to settle is waiting
+//     forever. Settle those from the evidence that did resolve.
 func (c *checker) inferComponentTrees() {
 	pending := make(map[*ir.Component]bool, len(c.inferTrees))
 	for _, comp := range c.inferTrees {
@@ -42,18 +33,29 @@ func (c *checker) inferComponentTrees() {
 		}
 	}
 	for _, comp := range c.inferTrees {
-		if pending[comp] {
-			c.error(compDeclPos(comp),
-				"component %s: the body names no tree, so name the tree it belongs to in the return position, or mark it #[tree.none]",
-				comp.Name)
+		if !pending[comp] {
+			continue
 		}
+		// The wrapper is the shape this lands on most, and the mark is the
+		// wrong answer for it: it renders its caller's nodes rather than none,
+		// so what it wants is to be handed a family rather than to disclaim
+		// one.
+		if insertsSlot(comp.Body) {
+			c.error(compDeclPos(comp),
+				"component %s: the body renders only what a caller supplies, so name the tree it belongs to in the return position -- or a type parameter, for a wrapper whose family is whatever it was handed",
+				comp.Name)
+			continue
+		}
+		c.error(compDeclPos(comp),
+			"component %s: the body names no tree, so name the tree it belongs to in the return position, or mark it #[tree.none]",
+			comp.Name)
 	}
 	// A call site's specialization is a copy of the declaration, and one taken
 	// before the fixed point ran holds the family the declaration had then.
 	for spec, decl := range c.specOrigin {
 		spec.Tree = decl.Tree
 	}
-	c.inferTrees = nil
+	c.inferTrees, c.specOrigin = nil, nil
 }
 
 // settleTree gives comp the family its body renders, and reports whether the
@@ -93,7 +95,9 @@ func (c *checker) settleTree(comp *ir.Component, pending map[*ir.Component]bool,
 //
 // A slot insertion is no evidence: what a slot with no declared family accepts
 // is the family of the component declaring it, so reading one would be reading
-// the answer off the question.
+// the answer off the question. Its *fallback* is evidence, and the distinction
+// is who wrote the nodes: the insertion stands for the caller's, the fallback
+// is this component's own, rendered when the caller supplies none.
 func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, found []*ir.StructDef) ([]*ir.StructDef, bool) {
 	var unsettled bool
 	nested := func(blocks ...[]ir.Stmt) {
@@ -116,6 +120,8 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 			nested(s.Body, s.Else)
 		case *ir.ErrorBoundary:
 			nested(s.Children, s.Failed)
+		case *ir.SlotInst:
+			nested(s.Children)
 		case *ir.Window:
 			if c.windowComp != nil {
 				note(c.windowComp.Tree)
@@ -133,6 +139,30 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 	return found, unsettled
 }
 
+// insertsSlot reports whether the body renders a slot's content, which is the
+// one thing treeEvidence deliberately does not read.
+func insertsSlot(stmts []ir.Stmt) bool {
+	for _, st := range stmts {
+		switch s := st.(type) {
+		case *ir.SlotInst:
+			return true
+		case *ir.If:
+			if insertsSlot(s.Body) || insertsSlot(s.Else) {
+				return true
+			}
+		case *ir.For:
+			if insertsSlot(s.Body) || insertsSlot(s.Else) {
+				return true
+			}
+		case *ir.ErrorBoundary:
+			if insertsSlot(s.Children) || insertsSlot(s.Failed) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // deferTreeCheck holds a membership check back until inferComponentTrees has
 // settled every family. Run where it is written, a check whose subject is a
 // declaration that has not been read yet would compare against no family and
@@ -142,7 +172,7 @@ func (c *checker) deferTreeCheck(check func()) {
 	c.treeChecks = append(c.treeChecks, check)
 }
 
-// runTreeChecks drains them, in the order they were recorded.
+// runTreeChecks drains them.
 func (c *checker) runTreeChecks() {
 	checks := c.treeChecks
 	c.treeChecks = nil

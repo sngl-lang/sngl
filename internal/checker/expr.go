@@ -5001,7 +5001,9 @@ func (c *checker) enclosingSlot(name string) *ir.SlotDecl {
 
 // ownerSlot is the slot of that name on owner, or nil. enclosingSlot is the
 // same lookup asked of the component being checked; this one is asked later,
-// of the component recorded when the check was deferred.
+// of the component recorded when the check was deferred -- which is why it
+// carries no `funcDepth` guard: every caller runs from runTreeChecks, where
+// no body is being walked and the depth is zero.
 func ownerSlot(owner *ir.Component, name string) *ir.SlotDecl {
 	if owner == nil || name == "" {
 		return nil

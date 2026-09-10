@@ -1,0 +1,19 @@
+// A call site specializes a generic declaration by copying it, and the copy is
+// taken while the family is still unsettled -- so the copy is what holds the
+// slot when its content is checked, and holds no family unless the answer is
+// carried across to it. Without that, a shape in a widget's children is
+// accepted.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+component tagged<T>(value T, content ...component) {
+    ui.text(value="x")
+    content
+}
+
+ui.window {
+    tagged(value=3) {
+        d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000}) // ERROR(check) "expected node component in tagged, got circle"
+    }
+}

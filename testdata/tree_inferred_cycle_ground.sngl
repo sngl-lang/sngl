@@ -1,0 +1,19 @@
+// A cycle with ground truth in it. `a` renders a widget and calls `b`, `b`
+// calls `a`: neither has complete evidence, because each is waiting on the
+// other, so the first round settles neither. The second round is what reads
+// `a`'s widget and settles both -- waiting on a cycle is waiting forever.
+
+import ui "sngl:ui"
+
+component a() {
+    ui.text(value="x")
+    b()
+}
+
+component b() {
+    a()
+}
+
+ui.window {
+    a()
+}
