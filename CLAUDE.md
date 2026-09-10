@@ -68,9 +68,10 @@ Two consequences worth knowing before touching `lib/`:
 - A bodyless `lib/` component with no implementation for the target being built
   is a **build failure**, which is the mechanism that stops an implementation
   gap being skipped in a switch.
-- A platform package's override must be **parenless**.
-  `mergeTargetExtensions` skips one carrying a prop list: the selection form is
-  a program's, and a platform override reads every prop the base declares.
+- A platform package's override may carry a **prop selection**, read by the
+  same `overrideSelection` a program's override gets. Only
+  parens-with-nothing-in-them is skipped, and that form is android's marker for
+  a component its own codegen reads by name.
 
 The distinction has to survive the checker, so it is `ir.Component.Bodyless`
 rather than `AST.Body.IsDefined()` — that reports whether a block came from

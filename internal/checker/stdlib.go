@@ -999,8 +999,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				if !ok {
 					continue
 				}
-				if decl.HasParens {
-					// Parens form: the platform reads this body itself.
+				// Parens with nothing in them are the marker for a
+				// component the platform's own codegen reads by name rather
+				// than from an override body -- android's `component ui.input()`
+				// and its three siblings, which #213 is deleting.
+				//
+				// A parens form that *names* props is a prop selection, and
+				// testing HasParens alone dropped one here with no override
+				// registered and no diagnostic: the body simply vanished.
+				if decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
 					continue
 				}
 				dot := strings.IndexByte(decl.Name, '.')
@@ -1050,7 +1057,14 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 					c.error(decl.Pos, "package for %q may not declare an override for %q", name, plat)
 					continue
 				}
-				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, nil)
+				// A selection is read the same way a program's override has
+				// it read: the base owns the prop types, and an entry names
+				// one of them.
+				selection, ok := c.overrideSelection(decl, stdComp)
+				if !ok {
+					continue
+				}
+				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection)
 			}
 		}
 	}

@@ -191,9 +191,8 @@ component main node {
 // the shape the stdlib shapes take after the conversion: the declaration lives
 // in one library package and each target implements it in its own.
 //
-// Parenless, because mergeTargetExtensions skips an override that carries a
-// prop list -- a platform package's override reads every prop the base
-// declares, and the selection form is a program's.
+// Written with a prop selection on purpose: a platform package's override may
+// carry one, and testing HasParens alone used to drop it here silently.
 func TestBodylessLibComponentSatisfiedByAPlatformOverride(t *testing.T) {
 	const libSource = `
 import sngl "sngl:ui"
@@ -204,8 +203,8 @@ component blip(x int) sngl.node
 import sngl "sngl:ui"
 import bk "sngl:blipkit"
 
-component bk.blip[extstub.platform] {
-    sngl.text(value="blip")
+component bk.blip[extstub.platform](x) {
+    sngl.text(value="blip {x}")
 }
 `
 	const userSource = `
@@ -238,5 +237,55 @@ component main node {
 		if d.Severity == ir.Error && strings.Contains(d.Msg, "no implementation for") {
 			t.Errorf("an override for the target being built did not satisfy the rule: %s", d.Msg)
 		}
+	}
+}
+
+// A bad selection on a platform package's override is now reported. Testing
+// HasParens alone dropped the whole declaration before the selection was ever
+// read, so a misspelled prop produced no override and no diagnostic -- the
+// build succeeded with the base's body on every target.
+func TestPlatformOverrideSelectionIsChecked(t *testing.T) {
+	const libSource = `
+import sngl "sngl:ui"
+
+component blip(x int) sngl.node
+`
+	const extSource = `
+import sngl "sngl:ui"
+import bk "sngl:blipkit"
+
+component bk.blip[extstub.platform](bogus) {
+    sngl.text(value="blip")
+}
+`
+	libDoc, err := parser.Parse("blipkit.sngl", []byte(withStd(libSource)))
+	if err != nil {
+		t.Fatalf("lib parse: %v", err)
+	}
+	extDoc, err := parser.Parse("extstub.sngl", []byte(withStd(extSource)))
+	if err != nil {
+		t.Fatalf("ext parse: %v", err)
+	}
+	doc, err := parser.Parse("main.sngl", []byte(withStd("component main node {\n    text(value=\"hi\")\n}\n")))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	_, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: []ir.Platform{extStubPlatform{}},
+		Targets:   []ir.StaticTarget{{Platform: "extstub"}},
+		LibSources: map[string][]*ast.Document{
+			"blipkit":          {libDoc},
+			"platform/extstub": {extDoc},
+		},
+	})
+	var found bool
+	for _, d := range diags {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, "bogus") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("a platform override selecting a prop the base does not declare was not reported; diags: %v", diags)
 	}
 }
