@@ -1,13 +1,23 @@
-// A cycle with ground truth in it. `a` renders a widget and calls `b`, `b`
-// calls `a`: neither has complete evidence, because each is waiting on the
-// other, so the first round settles neither. The second round is what reads
-// `a`'s widget and settles both -- waiting on a cycle is waiting forever.
+// SKIP(codegen) "a recursive component cycle has no lowering: NoReactivity rejects the __depth prop, with the families written out by hand too"
+// A cycle with ground truth in it. `a` renders a widget and, conditionally,
+// `b`; `b` renders `a`. Neither has complete evidence, because each is waiting
+// on the other, so the first round settles neither. The second round is what
+// reads `a`'s widget and settles both -- waiting on a cycle is waiting
+// forever.
+//
+// The condition keeps the recursion finite once the program runs, and is
+// beside the point here: the evidence graph is the source's, so the edge under
+// the `if` is an edge whether or not it is taken.
 
 import ui "sngl:ui"
 
+var deep = false
+
 component a() {
     ui.text(value="x")
-    b()
+    if deep {
+        b()
+    }
 }
 
 component b() {
