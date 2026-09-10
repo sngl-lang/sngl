@@ -207,6 +207,34 @@ func primitiveShapeName(ni *ir.NodeInst) string {
 	return ni.Component.Name
 }
 
+// primitiveDrawBody is the statements a platform drawing primitive paints,
+// taken from the handlers its call site supplied and rebound to ctx.
+//
+// The handler's own parameter is the context it was written against, so the
+// substitution is that name to the draw function's ctx. A primitive with no
+// handler paints nothing and says so by returning true with no statements --
+// which is different from not being a primitive at all.
+func primitiveDrawBody(ni *ir.NodeInst, ctx *ir.Param) ([]ir.Stmt, bool) {
+	if ni.Component == nil || ni.Component.Intrinsic == "" {
+		return nil, false
+	}
+	if !ir.IsSegmentedTree(ni.Component.Tree) {
+		return nil, false
+	}
+	var out []ir.Stmt
+	for _, h := range ni.Handlers {
+		if h.Func == nil {
+			continue
+		}
+		bindings := map[string]ir.Expr{}
+		for _, p := range h.Func.Params {
+			bindings[p.Name] = ctxExpr(ctx)
+		}
+		out = append(out, substituteParams(deepCloneStmts(h.Func.Block), bindings)...)
+	}
+	return out, true
+}
+
 // shapeBody is a composed shape's declaration body with the call site's
 // arguments substituted for its props, ready to be emitted where the call
 // stands. A prop the call site leaves out takes its declared default.
@@ -231,10 +259,47 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 
 // emitShape emits save / applyStyle / primitive-draw / recurse / restore for one shape.
 func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Param) {
-	*body = append(*body, canvasCall(ctx, "CanvasSave"))
+	// A shape the target implemented itself brackets its own drawing: the
+	// override is the body, and what it saves, styles and restores is its
+	// business. Emitting a bracket around it too gave every overridden shape
+	// two nested saves and applied the style twice -- and it is the bracket a
+	// hand-written override has to be able to leave out to match native
+	// performance.
+	//
+	// A composed shape still gets one, because its style is what its children
+	// inherit; that is what makes `group(style=…) { … }` work.
+	// A platform primitive never gets one either, and for the same reason from
+	// the other side: it *is* the drawing, and every save, style and restore
+	// around it was written in the override that called it.
+	isPrimitive := ni.Component != nil && ni.Component.Intrinsic != "" &&
+		ir.IsSegmentedTree(ni.Component.Tree)
+	bracket := !isPrimitive && (ni.Component == nil || ni.Component.SpecializedFor == "")
+	if bracket {
+		*body = append(*body, canvasCall(ctx, "CanvasSave"))
+		if hasArg(ni, "style") {
+			*body = append(*body, canvasCall(ctx, "CanvasApplyStyle", argVal(ni, "style")))
+		}
+	}
 
-	if hasArg(ni, "style") {
-		*body = append(*body, canvasCall(ctx, "CanvasApplyStyle", argVal(ni, "style")))
+	// A platform primitive carries the drawing itself: its handler body is
+	// what the target paints, written against the context the handler binds.
+	// Spliced here with that parameter rebound to the draw function's own
+	// ctx, which is the whole of what makes an override's `@draw` reach the
+	// output.
+	//
+	// Recognised by the marks rather than by a name: an #[intrinsic]
+	// declaration that is a member of a segmented tree is a rendered
+	// primitive, and any handler it declares is the render. The same shape
+	// serves a markup or menu tree with no change here.
+	if drawn, ok := primitiveDrawBody(ni, ctx); ok {
+		*body = append(*body, drawn...)
+		if len(ni.Children) > 0 {
+			emitShapes(ni.Children, body, funcs, ctx)
+		}
+		if bracket {
+			*body = append(*body, canvasCall(ctx, "CanvasRestore"))
+		}
+		return
 	}
 
 	switch primitiveShapeName(ni) {
@@ -272,5 +337,7 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 		emitShapes(ni.Children, body, funcs, ctx)
 	}
 
-	*body = append(*body, canvasCall(ctx, "CanvasRestore"))
+	if bracket {
+		*body = append(*body, canvasCall(ctx, "CanvasRestore"))
+	}
 }

@@ -5,6 +5,8 @@ import . "sngl:macro"
 import ir "sngl:internal/ir"
 import http "sngl:remote/http"
 import build "sngl:build"
+import marks "sngl:internal/marks"
+import shapes "sngl:ui/draw"
 
 // The `go` node of a build directive: `output { go { bubbletea() } }`. Its
 // props are the build options every Go target accepts, and its slot is the
@@ -75,3 +77,69 @@ func httpGet(url string) http.Result
 func http.get[language]() {
     return httpGet(url)
 }
+
+// --- Drawing ---
+//
+// `pkg/go/canvas.Context` is the raster surface every Go target that draws
+// with pixels shares — fyne rasterises it into an image, bubbletea hands it to
+// the terminal renderer. Its methods are the drawing vocabulary, so they are
+// declared here rather than translated in Go: an override below calls them,
+// and the emitted code is the call it wrote.
+//
+// On the *language* axis, so a platform inherits it by not overriding. gtk4
+// and android do override, because cairo and Compose are not this surface.
+// Unmarked, deliberately. The Go type of the draw function's parameter is
+// supplied by the platform that builds the surface (fyne's
+// `*snglcanvas.Context`, bubbletea's the same), so this declaration exists
+// only to give the handler's parameter a type to check against. A native mark
+// here would not resolve anyway: struct declarations register before a
+// package's own macros do.
+struct DrawContext {}
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Save", method)]
+func DrawContext.save()
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Restore", method)]
+func DrawContext.restore()
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetFill", method)]
+func DrawContext.setFill(r uint8, g uint8, b uint8, a uint8)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetStroke", method)]
+func DrawContext.setStroke(r uint8, g uint8, b uint8, a uint8)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetStrokeWidth", method)]
+func DrawContext.setStrokeWidth(w float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetFont", method)]
+func DrawContext.setFont(size float, family string)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetLineStyle", method)]
+func DrawContext.setLineStyle(cap string, join string)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Circle", method)]
+func DrawContext.circle(cx float, cy float, r float)
+
+// The primitive an override paints through. Its only job is to bind the
+// context: `@draw` is the target calling in, and the handler body is what the
+// draw function emits. Bodyless because the render is the handler's, not the
+// declaration's.
+#[marks.intrinsic("go:draw")]
+component draw(@draw DrawContext) shapes.shape
+
+// The style setters, written once rather than per shape. The context keeps a
+// pending style that the next primitive consumes, so this is the whole of
+// "apply a style" and it is a plain call sequence an override can skip.
+func applyStyle(ctx DrawContext, style shapes.CanvasStyle) {
+    ctx.setFill(style.fill.r, style.fill.g, style.fill.b, style.fill.a)
+    ctx.setStroke(style.stroke.r, style.stroke.g, style.stroke.b, style.stroke.a)
+    ctx.setStrokeWidth(style.strokeWidth)
+    ctx.setFont(style.fontSize, style.fontFamily)
+    ctx.setLineStyle(style.lineCap, style.lineJoin)
+}
+
+// The shapes themselves are not overridden here yet. gtk4 and android are both
+// `--lang go` and neither draws through this surface -- cairo and Compose are
+// their own -- so a language override lands only once both answer on the
+// platform axis, or they inherit a raster body and emit `ctx.Circle` against a
+// `*C.cairo_t`. Verified, which is why it is not here.

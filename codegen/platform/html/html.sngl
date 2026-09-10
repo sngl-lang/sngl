@@ -18,6 +18,7 @@ import js "sngl:language/js"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
+import shapes "sngl:ui/draw"
 
 // The `html` node of a build directive: `output { js { html() } }`. Its props
 // are the build options this platform accepts.
@@ -433,3 +434,43 @@ component time.timer[platform] {
         )
     }
 }
+
+// --- Drawing ---
+//
+// A canvas draws through a CanvasRenderingContext2D, and its methods are the
+// drawing vocabulary. Declared here rather than translated in Go: a shape
+// override below calls them, and the emitted JavaScript is the call it wrote.
+//
+// `method` on each is what makes that possible -- a DOM method is a property
+// of the context, and a native call is otherwise emitted with the receiver as
+// its first argument.
+#[js.native("CanvasRenderingContext2D")]
+struct DrawContext {}
+
+#[js.native("save", "", method)]
+func DrawContext.save()
+
+#[js.native("restore", "", method)]
+func DrawContext.restore()
+
+#[js.native("beginPath", "", method)]
+func DrawContext.beginPath()
+
+#[js.native("arc", "", method)]
+func DrawContext.arc(x float, y float, r float, start float, end float)
+
+#[js.native("fill", "", method)]
+func DrawContext.fill()
+
+#[js.native("stroke", "", method)]
+func DrawContext.stroke()
+
+// The primitive an override paints through: `@draw` is the target calling in
+// with the context, and the handler body is what the draw function emits.
+//
+// No shape overrides here yet. Canvas2D sets style by *property assignment* --
+// `ctx.fillStyle = …` -- which a native method cannot express, so the style
+// half of an override needs a native struct *field* before html can convert.
+// The geometry half works today.
+#[intrinsic("html:draw")]
+component draw(@draw DrawContext) shapes.shape
