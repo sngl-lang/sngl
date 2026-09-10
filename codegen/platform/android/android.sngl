@@ -85,14 +85,14 @@ component Column(
     modifier ui.Style,
     chain list<string>,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Box")]
 component Box(
     modifier ui.Style,
     chain list<string>,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Row")]
 component Row(
@@ -100,13 +100,13 @@ component Row(
     chain list<string>,
     args list<string>,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Spacer")]
 component Spacer(
     modifier ui.Style,
     chain list<string>,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Text")]
 component Text(
@@ -116,17 +116,17 @@ component Text(
     // the Style's font and colour fields.
     style ui.Style,
     args list<string>,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:HorizontalDivider")]
 component HorizontalDivider(
     modifier ui.Style,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:CircularProgressIndicator")]
 component CircularProgressIndicator(
     modifier ui.Style,
-) ui.node {}
+) ui.node
 
 // `colors` is the same Style the modifier gets. A Button paints its own
 // surface, so a background in the modifier lands behind the pill rather than
@@ -138,43 +138,43 @@ component Button(
     colors ui.Style,
     shape ui.Style,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Badge")]
 component Badge(
     modifier ui.Style,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Card")]
 component Card(
     modifier ui.Style,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Checkbox")]
 component Checkbox(
     checked bool,
     onCheckedChange func(bool),
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Switch")]
 component Switch(
     checked bool,
     onCheckedChange func(bool),
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:RadioButton")]
 component RadioButton(
     selected bool,
     onClick func(),
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:OutlinedTextField")]
 component OutlinedTextField(
@@ -184,19 +184,19 @@ component OutlinedTextField(
     // Compose passes the new text; the SNGL event a handler reads is built
     // from it at the boundary, which is what declaring the payload says.
     onValueChange func(e ui.InputEvent),
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Dialog")]
 component Dialog(
     onDismissRequest func(),
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("android:Surface")]
 component Surface(
     args list<string>,
     children ...component,
-) ui.node {}
+) ui.node
 
 // --- Core Layout ---
 
@@ -465,7 +465,7 @@ component Timer(
     interval time.duration,
     enabled bool,
     @tick,
-) {}
+)
 
 component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}

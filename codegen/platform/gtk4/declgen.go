@@ -82,7 +82,10 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		// GIR does not say which widgets accept children, and declaring a
 		// bound would refuse either every container or every leaf. The
 		// emitter knows which parent types have a child-append API.
-		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node {}\n", restSlotName)
+		// No block: the declaration is what this platform renders the widget
+	// from, so a body would be emitted by nobody. The checker refuses one on
+	// an #[intrinsic] component.
+	fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
 	}
 	return []byte(b.String())
 }

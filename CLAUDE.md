@@ -578,6 +578,15 @@ intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
 the two forms to opposite rules: a function id must be in the registry, a
 component id must not be, and must carry its namespace.
 
+An `#[intrinsic]` component may **not** have a body, which is the same claim
+from the other side: the mark says where the render comes from, so a body
+beside one is emitted by nobody and read by nobody -- `isPrimitiveComponent`
+exempts the declaration from inlining precisely so the platform can render it
+from the declaration itself. `{}` is refused with the rest, because it says the
+component renders nothing, which is the one thing an intrinsic never does. The
+rule is at registration, so gtk4's GIR-synthesized declarations are held to it
+too.
+
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides

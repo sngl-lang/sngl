@@ -186,7 +186,7 @@ component Timer(
     interval time.duration,
     enabled bool,
     @tick,
-) {}
+)
 
 component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}

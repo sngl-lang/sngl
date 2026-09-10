@@ -289,3 +289,43 @@ component bk.blip[extstub.platform](bogus) {
 		t.Fatalf("a platform override selecting a prop the base does not declare was not reported; diags: %v", diags)
 	}
 }
+
+// The converse of the bodyless rule: #[intrinsic] answers where a component's
+// render comes from, so a body beside one is emitted by nobody and read by
+// nobody. `{}` is refused with the rest, because it says the component renders
+// nothing -- the one thing an intrinsic never does.
+//
+// A program cannot write the mark, so this is exercised through a platform
+// package, which is also where every intrinsic component actually lives.
+func TestIntrinsicComponentMayNotHaveABody(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+		wantErr    bool
+	}{
+		{"empty body", "{}", true},
+		{"real body", "{ sngl.text(value=\"x\") }", true},
+		{"no body", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ext := "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\n\n" +
+				"#[marks.intrinsic(\"extstub:Thing\")]\ncomponent Thing(x int) sngl.node " + tc.body + "\n"
+			doc, err := parser.Parse("main.sngl", []byte(withStd("component main node {\n    text(value=\"hi\")\n}\n")))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			_, diags := checker.Check(doc, extStubConfig(t, ext))
+			var got string
+			for _, d := range diags {
+				if d.Severity == ir.Error && strings.Contains(d.Msg, "has a body") {
+					got = d.Msg
+				}
+			}
+			if tc.wantErr && got == "" {
+				t.Fatalf("an #[intrinsic] component with a body was accepted; diags: %v", diags)
+			}
+			if !tc.wantErr && got != "" {
+				t.Fatalf("a bodyless #[intrinsic] component was reported: %s", got)
+			}
+		})
+	}
+}

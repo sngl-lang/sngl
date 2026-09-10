@@ -2652,6 +2652,17 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
 	}
 	c.applyMarks(comp, irComp)
+	// The converse of the rule reportBodylessComponents applies: #[intrinsic]
+	// answers where a bodyless component's render comes from, so a body
+	// beside one is emitted by nobody and read by nobody -- the platform
+	// renders the declaration, and isPrimitiveComponent exempts it from
+	// inlining precisely so that can happen. `{}` is refused along with the
+	// rest, because it says the component renders nothing, which is the one
+	// thing an intrinsic never does.
+	if irComp.Intrinsic != "" && !irComp.Bodyless {
+		c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
+			comp.Name, irComp.Intrinsic)
+	}
 
 	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
