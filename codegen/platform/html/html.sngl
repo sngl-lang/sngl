@@ -445,7 +445,17 @@ component time.timer[platform] {
 // of the context, and a native call is otherwise emitted with the receiver as
 // its first argument.
 #[js.native("CanvasRenderingContext2D")]
-struct DrawContext {}
+struct DrawContext {
+    // Canvas2D sets style by property assignment rather than by method, so
+    // these are fields. The SNGL names are the DOM names, so nothing has to
+    // map them.
+    fillStyle string
+    strokeStyle string
+    lineWidth float
+    lineCap string
+    lineJoin string
+    font string
+}
 
 #[js.native("save", "", method)]
 func DrawContext.save()
@@ -468,9 +478,33 @@ func DrawContext.stroke()
 // The primitive an override paints through: `@draw` is the target calling in
 // with the context, and the handler body is what the draw function emits.
 //
-// No shape overrides here yet. Canvas2D sets style by *property assignment* --
-// `ctx.fillStyle = …` -- which a native method cannot express, so the style
-// half of an override needs a native struct *field* before html can convert.
-// The geometry half works today.
+// A shape override paints through it below.
 #[intrinsic("html:draw")]
 component draw(@draw DrawContext) shapes.shape
+
+// `rgba(...)` as the DOM spells it. The alpha channel is 0-255 in SNGL and
+// 0-1 here, which is the whole reason this is a function rather than an
+// interpolation at each use.
+func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
+
+// Fill and stroke are gated on alpha, which every other backend does and this
+// one did not: the old translation tested the colour *object* for truthiness,
+// and a JS object is always truthy, so a fill-only shape also painted an
+// invisible stroke (#225).
+component shapes.circle[platform] {
+    html.draw(@draw(ctx) {
+        ctx.save()
+        ctx.fillStyle = cssColor(style.fill)
+        ctx.strokeStyle = cssColor(style.stroke)
+        ctx.lineWidth = style.strokeWidth
+        ctx.beginPath()
+        ctx.arc(cx, cy, r, 0.0, 6.283185307179586)
+        if style.fill.a > 0 {
+            ctx.fill()
+        }
+        if style.stroke.a > 0 {
+            ctx.stroke()
+        }
+        ctx.restore()
+    })
+}

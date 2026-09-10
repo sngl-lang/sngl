@@ -13,6 +13,15 @@ So this fixture is a golden rather than a script test: the assertion is the
 shape of the emitted draw function, per target, with the conditional intact
 around translated calls.
 
+It now also shows the two paths side by side. `circle` has an html override
+written in SNGL, so the html output is that override's own statements; `rect`
+does not, so it is still the name-matched translation. The contrast is the
+point of #213: the override's three property assignments replace twelve lines
+of guarded object literals, `cssColor` folds to a string at build time, and
+`ctx.stroke()` is absent because `style.stroke.a > 0` folded to false --
+where the old path emitted an invisible stroke on every fill-only shape
+(#225).
+
 deny out/go/bubbletea/model.go `\b(CanvasSave|CanvasDraw|CanvasApplyStyle)\(` -- an untranslated canvas intrinsic names a Go function nobody emits; \b keeps the runtime helper _snglCanvasDraw out of it
 deny out/none/html/index.html `\b(CanvasSave|CanvasDraw|CanvasApplyStyle)\(` -- same, for the JS translation
 
@@ -236,22 +245,12 @@ body { font-family: system-ui, sans-serif; }
       ctx.restore();
     } else {
       ctx.save();
-      if ({ fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fill) {
-        ctx.fillStyle = _snglColor({ fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fill);
-      }
-      if ({ fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.stroke) {
-        ctx.strokeStyle = _snglColor({ fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.stroke);
-      }
-      ctx.lineWidth = { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.strokeWidth || 1;
-      ctx.lineCap = { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.lineCap || "butt";
-      ctx.lineJoin = { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.lineJoin || "miter";
-      if ({ fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fontSize) {
-        ctx.font = { fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fontSize + "px " + ({ fill: { b: 255, r: 0, g: 0, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fontFamily || "sans-serif");
-      }
+      ctx.fillStyle = "rgba(0,0,255,1)";
+      ctx.strokeStyle = "rgba(0,0,0,0)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(5, 5, 2, 0, Math.PI * 2);
+      ctx.arc(5, 5, 2, 0, 6.283185307179586);
       ctx.fill();
-      ctx.stroke();
       ctx.restore();
     }
   }
