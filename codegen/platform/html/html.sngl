@@ -573,6 +573,10 @@ component shapes.rect[platform] {
         if style.stroke.a > 0 {
             e.ctx.strokeStyle = cssColor(style.stroke)
             e.ctx.lineWidth = style.strokeWidth
+            // A rectangle has corners, so lineJoin is its to honour. No
+            // lineCap: the path closes, so there are no ends for one to shape
+            // -- which is also why circle and ellipse set neither.
+            e.ctx.lineJoin = style.lineJoin
             e.ctx.strokeRect(x, y, w, h)
         }
         e.ctx.restore()

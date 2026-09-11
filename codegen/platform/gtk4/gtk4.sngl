@@ -284,6 +284,28 @@ func CairoContext.stroke()
 #[cnative("cairo_set_font_size")]
 func CairoContext.setFontSize(size float)
 
+// The slant and the weight are typedef'd enums like the line cap and join, so
+// they are cast the same way rather than passed as `C.int` -- cgo refuses an
+// int where a `cairo_font_slant_t` belongs.
+//
+// `CanvasStyle` exposes neither, so both are always the normal value. Declared
+// anyway, because the alternative is a native that lies about its signature.
+#[cnative("C.cairo_font_slant_t")]
+struct FontSlant {}
+
+#[cnative("C.cairo_font_weight_t")]
+struct FontWeight {}
+
+#[cnative("C.cairo_font_slant_t")]
+func toFontSlant(v int) FontSlant
+
+#[cnative("C.cairo_font_weight_t")]
+func toFontWeight(v int) FontWeight
+
+// The family is a string cairo copies.
+#[cnative("cairo_select_font_face")]
+func CairoContext.selectFontFace(family string, slant FontSlant, weight FontWeight)
+
 #[cnative("cairo_show_text")]
 func CairoContext.showText(text string)
 
@@ -407,55 +429,23 @@ component shapes.line[platform] {
     })
 }
 
-// The tangent arc `PathCmd{op = "arcTo"}` asks for: round off the corner at
-// `corner` with radius `r`, tangent to the segment arriving from `from` and to
-// the one leaving toward `to`.
-//
-// Cairo has no such primitive -- `cairo_arc` takes a centre and two angles --
-// so the corner is solved here. Canvas2D and `pkg/go/canvas` both have one, so
-// before this a path carrying an `arcTo` drew a rounded corner on three
-// targets and a missing one on gtk4, silently (#223).
-//
-// Returns the point the path is left at, which is the second tangent point and
-// not `to` -- the same place Canvas2D leaves it, and what a following command
-// has to measure from.
+// The corner is solved by `sngl:ui/draw`, which two targets need and neither
+// host has: cairo takes a centre and two angles where the command gives three
+// points and a radius. What is left here is the cairo half -- the line in, the
+// arc, and the point the path is left at.
 func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.Point, r float) shapes.Point {
-    var a1 = shapes.Point.angle(corner, from)
-    var a2 = shapes.Point.angle(corner, to)
-    var turn = a2 - a1
-
-    // The signed turn, brought into (-pi, pi]: which way the corner bends is
-    // what picks the sweep direction below.
-    if turn > math.pi {
-        turn = turn - math.tau
-    }
-    if turn < -math.pi {
-        turn = turn + math.tau
-    }
-    var half = float.abs(turn) / 2.0
-
-    // A zero radius, or a corner that does not turn, or one that doubles back:
-    // there is no arc to draw and the line goes to the corner itself. Without
-    // this, `tan(half)` is zero or unbounded and the arc is NaN.
-    if r <= 0.0 || half < 0.0001 || half > 1.5706 {
+    var a = shapes.tangentArc(from, corner, to, r)
+    if a.degenerate {
         ctx.lineTo(corner.x, corner.y)
         return corner
     }
-
-    // Tangent points sit `r / tan(half)` along each ray from the corner, and
-    // the centre `r / sin(half)` along the bisector.
-    var reach = r / float.tan(half)
-    var t1 = shapes.Point.polar(corner, reach, a1)
-    var t2 = shapes.Point.polar(corner, reach, a2)
-    var center = shapes.Point.polar(corner, r / float.sin(half), a1 + turn / 2.0)
-
-    ctx.lineTo(t1.x, t1.y)
-    if turn > 0.0 {
-        ctx.arcNegative(center.x, center.y, r, shapes.Point.angle(center, t1), shapes.Point.angle(center, t2))
+    ctx.lineTo(a.tangent1.x, a.tangent1.y)
+    if a.sweep < 0.0 {
+        ctx.arcNegative(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
     } else {
-        ctx.arc(center.x, center.y, r, shapes.Point.angle(center, t1), shapes.Point.angle(center, t2))
+        ctx.arc(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
     }
-    return t2
+    return a.tangent2
 }
 
 component shapes.path[platform] {
@@ -494,6 +484,10 @@ component shapes.path[platform] {
 component shapes.canvasText[platform] {
     draw(@draw(e) {
         e.ctx.save()
+        // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
+        // fontFamily nowhere before this, so a program's font choice was
+        // honoured on three targets and dropped here (#223).
+        e.ctx.selectFontFace(style.fontFamily, toFontSlant(0), toFontWeight(0))
         e.ctx.setFontSize(style.fontSize)
         source(e.ctx, style.fill)
         e.ctx.moveTo(x, y)

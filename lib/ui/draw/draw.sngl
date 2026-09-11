@@ -7,6 +7,7 @@ import std "sngl:ui"
 // `#[tree.kind]` is what marks the shape struct below as naming a tree, and
 // `#[marks.builtin("treeShape")]` is how the compiler names that one tree.
 import tree "sngl:tree"
+import math "sngl:math"
 import marks "sngl:internal/marks"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
@@ -170,3 +171,68 @@ func Point.angle(a Point, b Point) => float.atan2(b.y - a.y, b.x - a.x)
 func Size.fitScale(inner Size, outer Size) => float.min(outer.width / inner.width, outer.height / inner.height)
 
 func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inner.width, outer.height / inner.height)
+
+// --- The tangent arc ---
+
+// Arc is the corner `PathCmd{op = "arcTo"}` asks for, solved: round off
+// the corner at `corner` with radius `r`, tangent to the segment arriving from
+// `from` and to the one leaving toward `to`.
+//
+// Here rather than in a platform package because two targets need it and
+// neither host has the primitive. Canvas2D and `pkg/go/canvas` take the
+// tangent form directly; cairo takes a centre and two angles, and Compose's
+// `Path.arcTo` takes a bounding box and two degrees. Both are the same three
+// numbers this carries, so the trigonometry is written once.
+struct Arc {
+    // No arc to draw: a zero radius, a corner that does not turn, or one that
+    // doubles back. The path goes to the corner itself, which is also what
+    // `tan(half)` being zero or unbounded would otherwise make NaN.
+    degenerate bool = false
+    // Where the incoming line stops and where the outgoing one starts. The
+    // path is left at `tangent2` -- not at `to`, which is the same place
+    // Canvas2D leaves it and what a following command measures from.
+    tangent1 Point = Point{}
+    tangent2 Point = Point{}
+    center Point = Point{}
+    // The arc's start angle in radians and its signed sweep. A negative sweep
+    // turns the other way, which is `cairo_arc_negative` on one target and a
+    // negative `sweepAngleDegrees` on the other.
+    start float = 0.0
+    sweep float = 0.0
+}
+
+// Named for what it solves, and the struct for what it is: SNGL tells a
+// function from a struct by case and Go's export rule erases that, so
+// `tangentArc` returning a `TangentArc` collided as one name in the emitted
+// package and did not compile.
+func tangentArc(from Point, corner Point, to Point, r float) Arc {
+    var a1 = Point.angle(corner, from)
+    var a2 = Point.angle(corner, to)
+    var turn = a2 - a1
+
+    // The signed turn brought into (-pi, pi]: which way the corner bends is
+    // what picks the sweep direction.
+    if turn > math.pi {
+        turn = turn - math.tau
+    }
+    if turn < -math.pi {
+        turn = turn + math.tau
+    }
+    var half = float.abs(turn) / 2.0
+    if r <= 0.0 || half < 0.0001 || half > 1.5706 {
+        return Arc{degenerate = true, tangent1 = corner, tangent2 = corner, center = corner}
+    }
+
+    // Tangent points sit `r / tan(half)` along each ray from the corner, and
+    // the centre `r / sin(half)` along the bisector. The arc between them
+    // subtends `pi - |turn|`, turning against the corner's own bend.
+    var reach = r / float.tan(half)
+    var t1 = Point.polar(corner, reach, a1)
+    var t2 = Point.polar(corner, reach, a2)
+    var c = Point.polar(corner, r / float.sin(half), a1 + turn / 2.0)
+    var sweep = math.pi - float.abs(turn)
+    if turn > 0.0 {
+        sweep = -sweep
+    }
+    return Arc{tangent1 = t1, tangent2 = t2, center = c, start = Point.angle(c, t1), sweep = sweep}
+}

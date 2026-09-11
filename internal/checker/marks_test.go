@@ -350,3 +350,70 @@ unit length { px }
 `)
 	wantMarkErr(t, errs, `#[foreign("Px")] cannot mark`)
 }
+
+// A mark argument may name a constant, which is what lets a target package
+// state its runtime's import path once instead of on every declaration that
+// crosses into it -- `sngl:language/go` spells it twenty times otherwise.
+//
+// Read from the declarations rather than a scope: the marks on a struct shell
+// are applied in pass1's first half and consts are not registered until its
+// second, which is the same reason `ast.EvalString` never consults scope.
+func TestForeignTakesAConstArgument(t *testing.T) {
+	pkg, errs := checkForeign(t, `
+const apiPkg = "go:example.com/api"
+
+#[std.foreign(apiPkg, "api.Entry")]
+struct Entry {
+    title string = ""
+}
+`)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Name != "Entry" {
+			continue
+		}
+		if sd.Foreign.Path != "example.com/api" {
+			t.Fatalf("the const did not reach the mark: Foreign = %+v", sd.Foreign)
+		}
+		return
+	}
+	t.Fatal("no Entry struct registered")
+}
+
+// It composes with concatenation, because substituting the value leaves an
+// ordinary constant string expression behind.
+func TestForeignConcatenatesAConstArgument(t *testing.T) {
+	pkg, errs := checkForeign(t, `
+const base = "go:example.com"
+
+#[std.foreign(base + "/api", "api.Entry")]
+struct Entry {
+    title string = ""
+}
+`)
+	if len(errs) > 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Name == "Entry" && sd.Foreign.Path != "example.com/api" {
+			t.Fatalf("the const did not compose: Foreign = %+v", sd.Foreign)
+		}
+	}
+}
+
+// A flag is an identifier whose spelling *is* the value, so a const of that
+// name must not be substituted for it -- `pure` stays the flag `pure` even
+// where something declares `const pure`.
+func TestForeignFlagIsNotAConstLookup(t *testing.T) {
+	_, errs := checkForeign(t, `
+const pure = "not a flag"
+
+#[std.foreign("js:x", "add", pure)]
+func add(a int) => a
+`)
+	if len(errs) > 0 {
+		t.Fatalf("a flag was resolved as a const: %v", errs)
+	}
+}

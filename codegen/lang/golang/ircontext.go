@@ -857,12 +857,24 @@ func cTypeFor(t *ir.Type) string {
 		// and a text run outlive the call, and the alternative is a defer this
 		// has no statement to put one in.
 		return "C.CString"
+	case ir.TypeBool:
+		// C spells a boolean as 1 or 0 and Go will not convert one to the
+		// other: `C.int(true)` does not compile, and passing the bool through
+		// unconverted does not either. There is no inline Go expression for it
+		// -- it needs a helper or an `if` -- so the declaration has to say what
+		// it means, `#[cnative]` on a parameter typed `int` with the override
+		// choosing the value. Loud, because silently returning "" here emitted
+		// a call that failed in the user's own `go build` with no hint of
+		// where it came from.
+		panic(fmt.Sprintf("cnative: a bool parameter has no C spelling; declare it as int and convert in the override (parameter type %s)", t))
 	default:
-		// Only where the conversion is a representation detail and nothing
-		// else: `C.double(x)` says how a float64 crosses into C and loses
-		// nothing. A bool has no C counterpart -- `C.int(true)` is not even
-		// valid Go -- and a float reaching an int parameter is a decision
-		// about rounding, so both are the override's to write in SNGL.
+		// Everything else passes through, which is what an opaque handle
+		// wants: a `#[cnative("*C.cairo_t")]` struct, a nullable pointer, an
+		// enum already converted by a native of its own. A conversion is only
+		// written where it is a representation detail and nothing else --
+		// `C.double(x)` says how a float64 crosses and loses nothing, whereas
+		// a float reaching an int parameter is a decision about rounding and
+		// so is the override's to write in SNGL.
 		return ""
 	}
 }

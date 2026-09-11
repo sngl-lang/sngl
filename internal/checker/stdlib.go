@@ -119,7 +119,13 @@ func parseStdlibDocs() []*ast.Document {
 				if err != nil {
 					panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", name, err))
 				}
-				doc, err := parser.Parse(e.Name(), data)
+				// Named by its path within lib/, not by its base name. A
+				// position's file is what `fileScopesByName` keys a pass2 body
+				// back to its imports by, so a library file sharing a base
+				// name with one of the program's own resolved through the
+				// program's scope: a user file called draw.sngl made
+				// `math.pi` in lib/ui/draw/draw.sngl undefined.
+				doc, err := parser.Parse(name, data)
 				if err != nil {
 					panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", name, err))
 				}
@@ -371,6 +377,15 @@ func ProvidedDocs(t any) []*ast.Document {
 	// the fs.FS behind them can be shared between checks. Callers that want
 	// one parse memoize at their own scope: PackageSource for the readers
 	// outside a check, checker.providedDocs for the length of one.
+	// The package a file's name is qualified by, from the target's own
+	// identity: `ProvidedDocs` is handed the target and not its URI.
+	prefix := "target"
+	switch id := t.(type) {
+	case ir.Platform:
+		prefix = "platform/" + id.PlatformIdentifier()
+	case ir.Language:
+		prefix = "language/" + id.LanguageIdentifier()
+	}
 	fsys := p.PackageFS()
 	if fsys == nil {
 		return nil
@@ -388,7 +403,9 @@ func ProvidedDocs(t any) []*ast.Document {
 		if err != nil {
 			panic(fmt.Sprintf("sngl: reading target-provided file %q: %v", e.Name(), err))
 		}
-		doc, err := parser.Parse(e.Name(), data)
+		// Qualified for the reason the embedded tiers are: a target's own
+		// source must not share a file name with the program's.
+		doc, err := parser.Parse(prefix+"/"+e.Name(), data)
 		if err != nil {
 			panic(fmt.Sprintf("sngl: parsing target-provided file %q: %v", e.Name(), err))
 		}

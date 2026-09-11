@@ -417,10 +417,15 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 
 // snglDrawShims are the DrawScope extensions a shape override calls for the
 // two drawings a native declaration cannot describe. See emitCanvasStructs.
-const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float) {
+const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
     drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
         color = c.toArgb()
         textSize = size
+        // The three CSS generic families Typeface names, and Typeface.create
+        // falls back to the system default for anything else -- which is the
+        // right answer for a family this device does not have. android read
+        // fontFamily nowhere before this (#223).
+        typeface = android.graphics.Typeface.create(family, android.graphics.Typeface.NORMAL)
     })
 }
 

@@ -88,67 +88,72 @@ func http.get[language]() {
 //
 // On the *language* axis, so a platform inherits it by not overriding. gtk4
 // and android do override, because cairo and Compose are not this surface.
+// The runtime package the drawing surface lives in, named once: a mark
+// argument may be a const, so the twenty declarations below do not each spell
+// the import path.
+const _canvasPkg = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
+
 // The Go type of the draw handler's context parameter. Named through this
 // package's own `native`, which is the point of registering a package's macros
 // ahead of the marks that name them.
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "*snglcanvas.Context")]
+#[native(_canvasPkg, "*snglcanvas.Context")]
 struct DrawContext {}
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Save", method)]
+#[native(_canvasPkg, "canvas.Context.Save", method)]
 func DrawContext.save()
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Restore", method)]
+#[native(_canvasPkg, "canvas.Context.Restore", method)]
 func DrawContext.restore()
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetFill", method)]
+#[native(_canvasPkg, "canvas.Context.SetFill", method)]
 func DrawContext.setFill(r uint8, g uint8, b uint8, a uint8)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetStroke", method)]
+#[native(_canvasPkg, "canvas.Context.SetStroke", method)]
 func DrawContext.setStroke(r uint8, g uint8, b uint8, a uint8)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetStrokeWidth", method)]
+#[native(_canvasPkg, "canvas.Context.SetStrokeWidth", method)]
 func DrawContext.setStrokeWidth(w float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetFont", method)]
+#[native(_canvasPkg, "canvas.Context.SetFont", method)]
 func DrawContext.setFont(size float, family string)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.SetLineStyle", method)]
+#[native(_canvasPkg, "canvas.Context.SetLineStyle", method)]
 func DrawContext.setLineStyle(cap string, join string)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Circle", method)]
+#[native(_canvasPkg, "canvas.Context.Circle", method)]
 func DrawContext.circle(cx float, cy float, r float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Rect", method)]
+#[native(_canvasPkg, "canvas.Context.Rect", method)]
 func DrawContext.rect(x float, y float, w float, h float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Ellipse", method)]
+#[native(_canvasPkg, "canvas.Context.Ellipse", method)]
 func DrawContext.ellipse(cx float, cy float, rx float, ry float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Line", method)]
+#[native(_canvasPkg, "canvas.Context.Line", method)]
 func DrawContext.line(x1 float, y1 float, x2 float, y2 float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.MoveTo", method)]
+#[native(_canvasPkg, "canvas.Context.MoveTo", method)]
 func DrawContext.moveTo(x float, y float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.LineTo", method)]
+#[native(_canvasPkg, "canvas.Context.LineTo", method)]
 func DrawContext.lineTo(x float, y float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.CubicTo", method)]
+#[native(_canvasPkg, "canvas.Context.CubicTo", method)]
 func DrawContext.cubicTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.ArcTo", method)]
+#[native(_canvasPkg, "canvas.Context.ArcTo", method)]
 func DrawContext.arcTo(x1 float, y1 float, x2 float, y2 float, r float)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.ClosePath", method)]
+#[native(_canvasPkg, "canvas.Context.ClosePath", method)]
 func DrawContext.closePath()
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.PaintPath", method)]
+#[native(_canvasPkg, "canvas.Context.PaintPath", method)]
 func DrawContext.paintPath()
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Text", method)]
+#[native(_canvasPkg, "canvas.Context.Text", method)]
 func DrawContext.text(x float, y float, content string)
 
-#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Image", method)]
+#[native(_canvasPkg, "canvas.Context.Image", method)]
 func DrawContext.image(x float, y float, w float, h float, src string)
 
 // The primitive an override paints through. Its only job is to bind the
