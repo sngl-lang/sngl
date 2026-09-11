@@ -1,0 +1,10 @@
+// Mathematical constants.
+//
+// A package of its own rather than methods on `float`: a constant has no
+// receiver and no arguments, and a zero-parameter static method has neither a
+// value to resolve against nor anything to fold, so one survived only where
+// the optimizer ran.
+//
+// The functions in `sngl:builtin`'s `float` — `sin`, `atan2`, `sqrt` and the
+// rest — belong here too and will move. They are intrinsics with per-language
+// emitters, so moving them is its own change.

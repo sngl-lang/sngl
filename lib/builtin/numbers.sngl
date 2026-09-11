@@ -79,15 +79,6 @@ func float.round(x float) float { return x < 0.0 ? -float(int(-x + 0.5)) : float
 #[marks.intrinsic("float.pow")]
 func float.pow(base float, exp float) float
 
-// The ratio of a circle's circumference to its diameter, and twice it.
-//
-// Static methods rather than ambient consts: `pi` is a name a program is
-// entitled to use for something else, and every drawing that sweeps a full
-// circle was otherwise writing 6.283185307179586 out by hand.
-func float.pi() => 3.141592653589793
-
-func float.tau() => 6.283185307179586
-
 // Non-negative square root of x. Returns NaN for negative x.
 #[marks.intrinsic("float.sqrt")]
 func float.sqrt(x float) float

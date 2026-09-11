@@ -2048,6 +2048,17 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 				}
 			}
 		}
+		// A name that resolved to nothing used to fall through to the
+		// anonymous-struct path, and an anonymous struct is *structurally*
+		// assignable -- so `pkg.Point{x = 1.0, y = 2.0}` reaching a
+		// `pkg.Point` parameter checked clean while carrying a different
+		// declaration, and type identity here is per-declaration. Reported
+		// instead, because a silent stand-in is the one outcome that cannot
+		// be right.
+		if sd == nil {
+			c.error(x.Pos, "undefined: %s.%s", x.Package, x.Name)
+			return &ir.Literal{Type: TypDyn}
+		}
 	} else if x.Name != "" {
 		if sym, ok := c.scope.Lookup(x.Name); ok {
 			if s, ok := sym.(*ir.StructDef); ok {
@@ -3475,6 +3486,26 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	scope := NewScope(nil)
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
+	// The package's own import aliases, which its root chains to and which
+	// this scope would otherwise drop: it is built with no parent and the
+	// caller reassigns one, so the link to them is lost by construction.
+	//
+	// A target package's source is compiler-internal, and so are its imports
+	// -- `import math "sngl:math"` at the top of gtk4.sngl is as much part of
+	// that file as its declarations. Without them a body could name the
+	// package's own declarations and the stdlib's, but nothing it imported:
+	// `math.tau` and `shapes.Point` were "undefined" inside an override while
+	// resolving fine in the same file's signatures, which are read at
+	// registration.
+	//
+	// The package's own symbols win, so an alias cannot shadow a declaration.
+	if imports := pkg.Symbols.Root.Parent; imports != nil {
+		for name, sym := range imports.Symbols {
+			if _, taken := scope.Symbols[name]; !taken {
+				scope.Symbols[name] = sym
+			}
+		}
+	}
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.element) works inside platform blocks. Replace, not Declare:
 	// the package also declares a component under the target's own name -- its

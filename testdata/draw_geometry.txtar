@@ -7,16 +7,17 @@ six tick marks below are laid out by angle and each arrives as a pair of
 literals, and the hand's own `radius * cos(angle)` folds to a constant with
 only the runtime centre left.
 
-`float.tau()` is here for the same reason. Every override that sweeps a full
+`math.tau` is here for the same reason. Every override that sweeps a full
 circle was writing 6.283185307179586 out by hand.
 
 deny out/none/html/index.html `Math\.(cos|sin)\(` -- a constant angle is resolved at build time, not by the page
-deny out/none/html/index.html `float\.tau|Point\.polar` -- the helpers are SNGL, not something the output calls
+deny out/none/html/index.html `math\.tau|Point\.polar` -- the helpers are SNGL, not something the output calls
 
 -- app.sngl --
 import ui "sngl:ui"
 import draw "sngl:ui/draw"
 import seq "sngl:seq"
+import math "sngl:math"
 
 output {
     none {
@@ -37,8 +38,8 @@ component dial(angle float) ui.node {
         )
         for var i = seq.count(6) {
             draw.circle(
-                cx=draw.Point.polar(c, 45.0, float(i) * float.tau() / 6.0).x,
-                cy=draw.Point.polar(c, 45.0, float(i) * float.tau() / 6.0).y,
+                cx=draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).x,
+                cy=draw.Point.polar(c, 45.0, float(i) * math.tau / 6.0).y,
                 r=2.0,
                 style=draw.CanvasStyle{fill=color{b=255}},
             )

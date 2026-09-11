@@ -78,6 +78,43 @@ func ZeroExpr(t *Type) Expr {
 
 // zeroFuncExpr synthesizes a dummy lambda matching t's function signature:
 // ignores all parameters and returns the zero value of the declared return type.
+// DeclaredDefault is the value a declaration means by omitting one.
+//
+// The same as ZeroExpr except for a struct, where it carries the fields' own
+// declared defaults. An empty struct literal reads as every field's zero, and
+// a declaration that says `strokeWidth float = 1.0` and `fontSize float = 16.0`
+// means those -- so a platform override reading a prop the call site left out
+// gets what the stdlib documents rather than a transparent hairline in a
+// zero-point font.
+//
+// Normalize has already given every field a Default (its own, or its type's
+// zero), so this reads them rather than recomputing.
+func DeclaredDefault(t *Type) Expr {
+	if t == nil || t.Kind != TypeStruct {
+		return ZeroExpr(t)
+	}
+	// A string-representable stdlib struct has a canonical zero of its own.
+	if IsDateStruct(t) || IsTimeStruct(t) || IsDateTimeStruct(t) {
+		return ZeroExpr(t)
+	}
+	sd, _ := t.Decl.(*StructDef)
+	if sd == nil || len(sd.Fields) == 0 {
+		return ZeroExpr(t)
+	}
+	lit := &StructLit{Type: t, Def: sd}
+	for _, f := range sd.Fields {
+		v := f.Default
+		if v == nil {
+			v = ZeroExpr(f.Type)
+		}
+		if v == nil {
+			continue
+		}
+		lit.Fields = append(lit.Fields, FieldInit{Name: f.Name, Value: v})
+	}
+	return lit
+}
+
 func zeroFuncExpr(t *Type) Expr {
 	if t.Sig == nil {
 		return nil

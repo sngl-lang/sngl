@@ -21,6 +21,7 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
+	{"macro", "cnative"}:            markCNative,
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
 	{"language/go", "async"}:        markGoAsync,
@@ -85,6 +86,30 @@ func markGoNative(m *mark) error {
 		d.Foreign = fm
 	default:
 		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
+	}
+	return nil
+}
+
+// markCNative implements #[cnative("name")]: the declaration is that C
+// identifier.
+//
+// The scheme is "c" rather than a language's, because C is an ABI and not a
+// SNGL target: a platform wrapping a C library describes it once and any
+// backend that can call C reads the same declarations. The path is "C", which
+// is what the Go renderer already keys its cgo spelling on.
+func markCNative(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[cnative]: a C identifier is required")
+	}
+	fm := ir.Foreign{Scheme: "c", Path: "C", Name: name}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		d.Foreign = fm
+	case *ir.StructDef:
+		d.Foreign = fm
+	default:
+		return fmt.Errorf("#[cnative] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }

@@ -24,6 +24,9 @@ import time "sngl:time"
 import . "sngl:macro"
 import tree "sngl:tree"
 import build "sngl:build"
+import marks "sngl:internal/marks"
+import shapes "sngl:ui/draw"
+import math "sngl:math"
 
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
 component gtk4(
@@ -190,4 +193,246 @@ component Timer(
 
 component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+}
+
+// --- Drawing ---
+//
+// A canvas here is a GtkDrawingArea and its draw callback is handed a
+// `cairo_t*`, so cairo's own functions are the drawing vocabulary. Declared
+// with `#[cnative(…)]`, which names a C identifier and no language: each is a
+// free function taking the context first, which is the shape a native gets by
+// default. The backend that can call C supplies the conversions its own ABI
+// needs from the declared parameter types -- for the Go one that is
+// `C.double`/`C.int`. Nothing here is Go's.
+//
+// Named as the cgo pointer it is, so a helper that takes the context has the
+// right type in its own signature -- the draw function's own parameter type
+// comes from this platform, but `paint(ctx, style)` is an ordinary func and
+// carries whatever this declaration says.
+#[cnative("*C.cairo_t")]
+struct CairoContext {}
+
+#[cnative("cairo_save")]
+func CairoContext.save()
+
+#[cnative("cairo_restore")]
+func CairoContext.restore()
+
+#[cnative("cairo_set_source_rgba")]
+func CairoContext.setSourceRgba(r float, g float, b float, a float)
+
+#[cnative("cairo_set_line_width")]
+func CairoContext.setLineWidth(w float)
+
+// cairo's cap and join are typedef'd enums, not plain ints, so the
+// declarations name those types and a conversion is written where the value is
+// produced. An `int` parameter would emit `C.int(...)` and not compile --
+// which the emitted-cgo build test says, loudly.
+#[cnative("C.cairo_line_cap_t")]
+struct LineCapValue {}
+
+#[cnative("C.cairo_line_join_t")]
+struct LineJoinValue {}
+
+#[cnative("C.cairo_line_cap_t")]
+func toLineCap(v int) LineCapValue
+
+#[cnative("C.cairo_line_join_t")]
+func toLineJoin(v int) LineJoinValue
+
+#[cnative("cairo_set_line_cap")]
+func CairoContext.setLineCap(cap LineCapValue)
+
+#[cnative("cairo_set_line_join")]
+func CairoContext.setLineJoin(join LineJoinValue)
+
+#[cnative("cairo_rectangle")]
+func CairoContext.rectangle(x float, y float, w float, h float)
+
+#[cnative("cairo_new_sub_path")]
+func CairoContext.newSubPath()
+
+// The angle form, so a partial sweep is writable -- a gauge or a pie wedge,
+// which no stdlib shape expresses yet.
+#[cnative("cairo_arc")]
+func CairoContext.arc(cx float, cy float, r float, start float, end float)
+
+#[cnative("cairo_move_to")]
+func CairoContext.moveTo(x float, y float)
+
+#[cnative("cairo_line_to")]
+func CairoContext.lineTo(x float, y float)
+
+#[cnative("cairo_curve_to")]
+func CairoContext.curveTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
+
+#[cnative("cairo_close_path")]
+func CairoContext.closePath()
+
+#[cnative("cairo_fill")]
+func CairoContext.fill()
+
+#[cnative("cairo_fill_preserve")]
+func CairoContext.fillPreserve()
+
+#[cnative("cairo_stroke")]
+func CairoContext.stroke()
+
+#[cnative("cairo_set_font_size")]
+func CairoContext.setFontSize(size float)
+
+#[cnative("cairo_show_text")]
+func CairoContext.showText(text string)
+
+// What a `@draw` handler is handed: the context, and the coordinate space the
+// shapes were placed in.
+struct DrawEvent {
+    ctx CairoContext
+    width int
+    height int
+}
+
+#[marks.intrinsic("gtk4:draw:cairo")]
+component draw(@draw DrawEvent) shapes.shape
+
+// cairo takes its line cap and join as enum values. The names are SNGL's, the
+// numbers are `CAIRO_LINE_CAP_*` and `CAIRO_LINE_JOIN_*`, and mapping them
+// here is what makes `lineCap` and `lineJoin` reach this target at all --
+// before the overrides, gtk4 read neither (#223).
+func lineCap(name string) LineCapValue {
+    if name == "round" {
+        return toLineCap(1)
+    }
+    if name == "square" {
+        return toLineCap(2)
+    }
+    return toLineCap(0)
+}
+
+func lineJoin(name string) LineJoinValue {
+    if name == "round" {
+        return toLineJoin(1)
+    }
+    if name == "bevel" {
+        return toLineJoin(2)
+    }
+    return toLineJoin(0)
+}
+
+// cairo wants each channel as 0..1 where SNGL carries 0..255.
+func source(ctx CairoContext, c color) {
+    ctx.setSourceRgba(float(c.r) / 255.0, float(c.g) / 255.0, float(c.b) / 255.0, float(c.a) / 255.0)
+}
+
+// Fill then stroke the current path, preserving it between the two when both
+// apply. This is `_snglCairoPaint` written in SNGL rather than spliced in as
+// Go text.
+func paint(ctx CairoContext, style shapes.CanvasStyle) {
+    if style.fill.a > 0 {
+        source(ctx, style.fill)
+        if style.stroke.a > 0 {
+            ctx.fillPreserve()
+        } else {
+            ctx.fill()
+        }
+    }
+    if style.stroke.a > 0 {
+        ctx.setLineWidth(style.strokeWidth)
+        ctx.setLineCap(lineCap(style.lineCap))
+        ctx.setLineJoin(lineJoin(style.lineJoin))
+        source(ctx, style.stroke)
+        ctx.stroke()
+    }
+}
+
+component shapes.rect[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.rectangle(x, y, w, h)
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+component shapes.circle[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.newSubPath()
+        e.ctx.arc(cx, cy, r, 0.0, math.tau)
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+// An ellipse as four cubic segments rather than a scaled circle: `cairo_scale`
+// would scale the *stroke* with the axes, so a 2px outline on a wide ellipse
+// comes out thicker horizontally than vertically. kappa is the control-point
+// offset that makes a cubic match a quarter arc to within a thousandth.
+component shapes.ellipse[platform] {
+    draw(@draw(e) {
+        var k = 0.5522847498307936
+        var ox = rx * k
+        var oy = ry * k
+
+        e.ctx.save()
+        e.ctx.newSubPath()
+        e.ctx.moveTo(cx, cy - ry)
+        e.ctx.curveTo(cx + ox, cy - ry, cx + rx, cy - oy, cx + rx, cy)
+        e.ctx.curveTo(cx + rx, cy + oy, cx + ox, cy + ry, cx, cy + ry)
+        e.ctx.curveTo(cx - ox, cy + ry, cx - rx, cy + oy, cx - rx, cy)
+        e.ctx.curveTo(cx - rx, cy - oy, cx - ox, cy - ry, cx, cy - ry)
+        e.ctx.closePath()
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+// A line has no interior, so `fill` is not read: the declaration says a fill
+// on a line is ignored, and here that is the absence of a call rather than a
+// special case in the emitter.
+component shapes.line[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.moveTo(x1, y1)
+        e.ctx.lineTo(x2, y2)
+        e.ctx.setLineWidth(style.strokeWidth)
+        e.ctx.setLineCap(lineCap(style.lineCap))
+        e.ctx.setLineJoin(lineJoin(style.lineJoin))
+        source(e.ctx, style.stroke)
+        e.ctx.stroke()
+        e.ctx.restore()
+    })
+}
+
+component shapes.path[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        for var c = cmds {
+            if c.op == "moveTo" {
+                e.ctx.moveTo(c.x, c.y)
+            }
+            if c.op == "lineTo" {
+                e.ctx.lineTo(c.x, c.y)
+            }
+            if c.op == "bezierTo" {
+                e.ctx.curveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
+            }
+            if c.op == "close" {
+                e.ctx.closePath()
+            }
+        }
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+component shapes.canvasText[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.setFontSize(style.fontSize)
+        source(e.ctx, style.fill)
+        e.ctx.moveTo(x, y)
+        e.ctx.showText(content)
+        e.ctx.restore()
+    })
 }

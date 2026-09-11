@@ -350,8 +350,19 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 	}
 	bindings := map[string]ir.Expr{}
 	for _, p := range ni.Component.Props {
-		if p.Default != nil {
+		switch {
+		case p.Default != nil:
 			bindings[p.Name] = p.Default
+		default:
+			// A stdlib prop with no declared default renders as its type's
+			// zero value, which is what the declaration means by leaving one
+			// out. Binding nothing left the name standing in the spliced body,
+			// so an override reading a prop the call site omitted -- `style`
+			// on a `rect(x, y, w, h)` -- emitted an identifier nothing
+			// declares and the generated code did not compile.
+			if z := ir.DeclaredDefault(p.Type); z != nil {
+				bindings[p.Name] = z
+			}
 		}
 	}
 	for i := range ni.Props {

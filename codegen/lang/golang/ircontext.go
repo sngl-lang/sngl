@@ -850,6 +850,13 @@ func cTypeFor(t *ir.Type) string {
 		return "C.double"
 	case ir.TypeInt:
 		return "C.int"
+	case ir.TypeString:
+		// C.CString allocates and the caller owns the result. Nothing here
+		// frees it, which is the same trade every hand-written call in the
+		// gtk4 emitter already makes (`C.CString("label")`): a widget label
+		// and a text run outlive the call, and the alternative is a defer this
+		// has no statement to put one in.
+		return "C.CString"
 	default:
 		// Only where the conversion is a representation detail and nothing
 		// else: `C.double(x)` says how a float64 crosses into C and loses

@@ -76,5 +76,101 @@ func lowerLibFuncs(pkg *ir.Package, _ Caps, _ Options) error {
 		})
 	}
 	pkg.Funcs = append(pkg.Funcs, added...)
+	inlineLibConsts(pkg)
 	return nil
+}
+
+// foreignConst is the value behind a reference to a const another package
+// declares, or nil for anything else.
+//
+// Both spellings: a bare name lifted by a dot import, and `math.tau` through
+// an alias -- which is an ir.Select over the namespace and was the one that
+// mattered, since a target package qualifies its imports by convention.
+func foreignConst(n ir.Node, own map[*ir.Var]bool) ir.Expr {
+	value := func(sym ir.Symbol) ir.Expr {
+		v, ok := sym.(*ir.Var)
+		if !ok || !v.IsConst || own[v] || v.Init == nil {
+			return nil
+		}
+		// A literal only. `true` is a const of `sngl:builtin` whose
+		// initializer is `0 == 0`, and substituting that emitted
+		// `boolToInt((0 == 0))` where the backend already writes `true`
+		// perfectly well. A literal is the case this exists for -- a number
+		// or a string another package declares, which nothing in the output
+		// names -- and it is the only one where the substitution is plainly
+		// an improvement.
+		if _, isLit := v.Init.(*ir.Literal); !isLit {
+			return nil
+		}
+		return v.Init
+	}
+	switch e := n.(type) {
+	case *ir.Ident:
+		return value(e.Sym)
+	case *ir.Select:
+		id, ok := e.Operand.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		ns, ok := id.Sym.(*ir.Namespace)
+		if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
+			return nil
+		}
+		sym, ok := ns.Pkg.Symbols.LookupMember(e.Field)
+		if !ok {
+			return nil
+		}
+		return value(sym)
+	}
+	return nil
+}
+
+// inlineLibConsts replaces a reference to another package's const with its
+// value.
+//
+// A const is a compile-time value, and nothing declares a `sngl:` package's
+// in the output -- the same gap the func promotion above closes, except that a
+// value needs no declaration at all. `math.tau` reached the generated Go as
+// the identifier `math.tau`, which is undefined there; the optimizer folded it
+// wherever it ran, so only a pipeline that lowers without optimizing saw it,
+// and the gtk4 snapshot harness is one.
+//
+// A const this package declares is left alone: the backend emits it.
+func inlineLibConsts(pkg *ir.Package) {
+	own := map[*ir.Var]bool{}
+	note := func(vars []*ir.Var) {
+		for _, v := range vars {
+			own[v] = true
+		}
+	}
+	note(pkg.Vars)
+	for _, c := range pkg.Components {
+		note(c.Vars)
+	}
+	for _, w := range pkg.Windows {
+		note(w.Vars)
+	}
+	rewrite := func(root any) {
+		_ = ir.Rewrite(root, func(n ir.Node) (ir.Node, error) {
+			if v := foreignConst(n, own); v != nil {
+				return v, ir.SkipDir
+			}
+			return n, nil
+		})
+	}
+	for _, c := range pkg.Components {
+		rewrite(c.Body)
+		for _, fn := range c.Funcs {
+			rewrite(fn.Block)
+		}
+	}
+	for _, w := range pkg.Windows {
+		rewrite(w.Body)
+		for _, fn := range w.Funcs {
+			rewrite(fn.Block)
+		}
+	}
+	for _, fn := range pkg.Funcs {
+		rewrite(fn.Block)
+	}
 }
