@@ -210,6 +210,13 @@ func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
 	if ir.StringReprStruct(t) {
 		return rendered
 	}
+	// A native struct names a Kotlin class this build does not emit, so there
+	// is no generated data class and no `copy()` to call -- Compose's `Path`
+	// has none. It is a reference the host owns, which is also why copying it
+	// would be wrong even if the method existed.
+	if sd, ok := t.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" {
+		return rendered
+	}
 	switch init.(type) {
 	case *ir.StructLit, *ir.Literal, nil:
 		return rendered

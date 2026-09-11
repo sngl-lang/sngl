@@ -259,9 +259,23 @@ func (cc *irComposeContext) emitDrawStmts(stmts []ir.Stmt, ds *canvasDrawState) 
 	for _, stmt := range stmts {
 		switch s := stmt.(type) {
 		case *ir.CallStmt:
-			if s.Call != nil && s.Call.Func != nil {
-				cc.emitCanvasIntrinsic(s.Call, ds)
+			if s.Call == nil || s.Call.Func == nil {
+				continue
 			}
+			// A call that is not one of this package's canvas intrinsics is
+			// an ordinary statement of the draw body -- a Compose scope
+			// function a shape override named, or a helper. Dropping it is
+			// what left an override's `if` with an empty body.
+			if s.Call.Func.Intrinsic == "" {
+				cc.line("%s", cc.kc.EvalExpr(s.Call))
+				continue
+			}
+			cc.emitCanvasIntrinsic(s.Call, ds)
+		case *ir.LocalVar:
+			// A shape override binds one -- a Path it fills before drawing --
+			// and dropping it left the draw call naming a value nothing
+			// declared.
+			cc.line("%s", cc.kc.LocalVarText(s, cc.kc.EvalExpr(s.Init)))
 		case *ir.For:
 			cc.emitDrawFor(s, ds)
 		case *ir.If:

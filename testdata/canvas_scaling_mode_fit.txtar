@@ -542,13 +542,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(200f / 100f)) {
         scale(scale = minOf(size.width / 200f, size.height / 100f), pivot = Offset.Zero) {
-            val _style1 = CanvasStyle(fill = Color(r = 51, g = 102, b = 204, a = 255), stroke = Color(a = 0, r = 0, g = 0, b = 0), strokeWidth = 1.0, lineCap = "butt", lineJoin = "miter", fontSize = 16.0, fontFamily = "sans-serif")
-            if (_style1.fill.a > 0) {
-                drawRect(color = _snglComposeColor(_style1.fill), topLeft = Offset((0.0).toFloat(), (0.0).toFloat()), size = Size((200.0).toFloat(), (100.0).toFloat()), style = Fill)
-            }
-            if (_style1.stroke.a > 0) {
-                drawRect(color = _snglComposeColor(_style1.stroke), topLeft = Offset((0.0).toFloat(), (0.0).toFloat()), size = Size((200.0).toFloat(), (100.0).toFloat()), style = Stroke(width = (_style1.strokeWidth).toFloat()))
-            }
+            drawRect(color = null, topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
         }
     }
 }

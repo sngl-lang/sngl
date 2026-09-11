@@ -19,7 +19,7 @@ func compileCanvasSrc(t *testing.T, src string) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Languages: androidLangs(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}
@@ -78,8 +78,7 @@ func TestCanvasComposeEmission(t *testing.T) {
 	// DrawScope primitives for rect + circle.
 	mustContain("drawRect(")
 	mustContain("drawCircle(")
-	// Color helper + stdlib data classes for the canvas structs.
-	mustContain("fun _snglComposeColor(")
+	// The stdlib data classes for the canvas structs.
 	mustContain("data class CanvasStyle(")
 	mustContain("data class Color(")
 	// The circle radius must read the reactive state var inside the draw
@@ -93,9 +92,13 @@ func TestCanvasComposeEmission(t *testing.T) {
 	if strings.Contains(code, "unresolved method") {
 		t.Errorf("style call left unresolved\n---\n%s", code)
 	}
-	// The active style binds to a local and the fill draw is alpha-gated.
-	mustContain("val _style1 = circleStyle")
-	mustContain("_snglComposeColor(")
+	// The style reaches the draw call, and the paint is alpha-gated. `circle`
+	// draws from this platform's override now, which sets the colour inline
+	// from the style it was given -- the `_style1` local and the
+	// `_snglComposeColor` helper both belonged to the CanvasApplyStyle
+	// expansion the override replaces.
+	mustContain("circleStyle.fill")
+	mustContain("circleStyle.fill.a > 0")
 
 	// Balanced braces sanity.
 	if o, c := strings.Count(code, "{"), strings.Count(code, "}"); o != c {
