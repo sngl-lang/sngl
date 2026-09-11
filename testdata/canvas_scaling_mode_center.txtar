@@ -260,16 +260,6 @@ import (
 	"unsafe"
 )
 
-type CanvasStyle struct {
-	Fill        snglcolor.Color
-	Stroke      snglcolor.Color
-	StrokeWidth float64
-	LineCap     string
-	LineJoin    string
-	FontSize    float64
-	FontFamily  string
-}
-
 type PathCmd struct {
 	Op  string
 	X   float64
@@ -343,6 +333,23 @@ type Measurement struct {
 	Vw  float64
 	Vh  float64
 	Pct float64
+}
+
+type CanvasStyle struct {
+	Fill        snglcolor.Color
+	Stroke      snglcolor.Color
+	StrokeWidth float64
+	LineCap     string
+	LineJoin    string
+	FontSize    float64
+	FontFamily  string
+}
+
+type Color struct {
+	R uint8
+	G uint8
+	B uint8
+	A uint8
 }
 
 // Model holds the state and widget references for this SNGL UI.
@@ -543,6 +550,9 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
+  function color(r, g, b, a) {
+    return { r, g, b, a };
+  }
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(51,102,204,1)";

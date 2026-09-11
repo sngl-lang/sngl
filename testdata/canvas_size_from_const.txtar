@@ -41,6 +41,9 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
+  function color(r, g, b, a) {
+    return { r, g, b, a };
+  }
   function _canvasDraw0(ctx) {
     ctx.save();
     ctx.fillStyle = "rgba(200,0,0,1)";
