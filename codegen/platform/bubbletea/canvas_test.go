@@ -24,7 +24,7 @@ ui.window {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Targets: []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}}})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check: %s", d.Msg)
@@ -32,7 +32,7 @@ ui.window {
 	}
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
-	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "bubbletea"}); err != nil {
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
 		t.Fatal(err)
 	}
 	mem := codegen.NewMemSink()

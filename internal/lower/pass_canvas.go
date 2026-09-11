@@ -284,27 +284,6 @@ func hasArg(ni *ir.NodeInst, name string) bool {
 	return false
 }
 
-// primitiveShapeName is the shape a NodeInst draws, or "" when it is a shape
-// composed of other shapes.
-//
-// It reads the declaration's name rather than the spelling at the call site,
-// which is what the node's own Name carries: under `import draw "sngl:ui/draw"`
-// that is "draw.rect", it matched nothing, and the canvas emitted a save and a
-// restore with no drawing in between. A shape declared with a body is composed
-// of the shapes in it, so only a body-less one is a primitive -- that is also
-// what keeps a program's own `component rect` from being mistaken for this
-// package's.
-//
-// Reached only for a body-less component now: emitShape decides the
-// body-bearing case before the switch, rather than relying on a call-site name
-// not to match one of these.
-func primitiveShapeName(ni *ir.NodeInst) string {
-	if ni.Component == nil {
-		return ni.Name
-	}
-	return ni.Component.Name
-}
-
 // primitiveDrawBody is the statements a platform drawing primitive paints,
 // taken from the handlers its call site supplied and rebound to ctx.
 //
@@ -424,50 +403,17 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, env drawEnv)
 	}
 
 	// A component with a body renders from it -- a composed shape, or the
-	// override a target supplied. Decided before the name switch and not by
-	// falling through it: primitiveShapeName returned the *call-site* name to
-	// force that fallthrough, and under `import . "sngl:ui/draw"` the bare
-	// "rect" matched the case it was trying to miss, so an override applied or
-	// not depending on how the program spelled its import.
+	// override a target supplied. It is exempt from component inlining, since
+	// a tree kind marks a declaration as rendered rather than composed away,
+	// so its body is expanded here with the call site's arguments substituted
+	// for its props.
+	//
+	// A shape with no body and no override for this target draws nothing, and
+	// says so where it is declared: that is what the bodyless-component rule
+	// reports. What used to stand here was a switch over the seven stdlib
+	// shape names, which rendered any shape it did not recognise as nothing at
+	// all, silently.
 	if ni.Component != nil && len(ni.Component.Body) > 0 {
-		emitShapes(shapeBody(ni), body, funcs, env)
-		if len(ni.Children) > 0 {
-			emitShapes(ni.Children, body, funcs, env)
-		}
-		if bracket {
-			*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
-		}
-		return
-	}
-
-	switch primitiveShapeName(ni) {
-	case "rect":
-		*body = append(*body, canvasCall(env.ctx, "CanvasDrawRect",
-			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h")))
-	case "circle":
-		*body = append(*body, canvasCall(env.ctx, "CanvasDrawCircle",
-			argVal(ni, "cx"), argVal(ni, "cy"), argVal(ni, "r")))
-	case "ellipse":
-		*body = append(*body, canvasCall(env.ctx, "CanvasDrawEllipse",
-			argVal(ni, "cx"), argVal(ni, "cy"), argVal(ni, "rx"), argVal(ni, "ry")))
-	case "line":
-		*body = append(*body, canvasCall(env.ctx, "CanvasDrawLine",
-			argVal(ni, "x1"), argVal(ni, "y1"), argVal(ni, "x2"), argVal(ni, "y2")))
-	case "path":
-		*body = append(*body, canvasCall(env.ctx, "CanvasDrawPath", argVal(ni, "cmds")))
-	case "canvasText":
-		*body = append(*body, canvasCall(env.ctx, "CanvasDrawText",
-			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "content")))
-	case "canvasImage":
-		*body = append(*body, canvasCall(env.ctx, "CanvasDrawImage",
-			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h"), argVal(ni, "src")))
-	default:
-		// A shape composed of other shapes. It is exempt from component
-		// inlining -- a tree kind marks a declaration as rendered rather than
-		// composed away -- so its body is expanded here instead, with the call
-		// site's arguments substituted for its props. Emitting only the
-		// save/restore around it is what made a program's own shape draw
-		// nothing at all.
 		emitShapes(shapeBody(ni), body, funcs, env)
 	}
 

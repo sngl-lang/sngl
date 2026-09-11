@@ -3,7 +3,6 @@ package canvasutil
 import (
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -77,50 +76,8 @@ func GoContextStmts(cs *ir.CallStmt, st *GoCanvasState) []ir.Stmt {
 			ctxCall(ctx, "SetFont", selTyped(styleRef, "fontSize", fieldType(styleType, "fontSize")), selTyped(styleRef, "fontFamily", fieldType(styleType, "fontFamily"))),
 			ctxCall(ctx, "SetLineStyle", selTyped(styleRef, "lineCap", fieldType(styleType, "lineCap")), selTyped(styleRef, "lineJoin", fieldType(styleType, "lineJoin"))),
 		}
-	case "CanvasDrawRect":
-		return []ir.Stmt{ctxCall(ctx, "Rect", arg(0), arg(1), arg(2), arg(3))}
-	case "CanvasDrawCircle":
-		return []ir.Stmt{ctxCall(ctx, "Circle", arg(0), arg(1), arg(2))}
-	case "CanvasDrawEllipse":
-		return []ir.Stmt{ctxCall(ctx, "Ellipse", arg(0), arg(1), arg(2), arg(3))}
-	case "CanvasDrawLine":
-		return []ir.Stmt{ctxCall(ctx, "Line", arg(0), arg(1), arg(2), arg(3))}
-	case "CanvasDrawPath":
-		return pathStmts(ctx, arg(0))
-	case "CanvasDrawText":
-		return []ir.Stmt{ctxCall(ctx, "Text", arg(0), arg(1), arg(2))}
-	case "CanvasDrawImage":
-		return []ir.Stmt{ctxCall(ctx, "Image", arg(0), arg(1), arg(2), arg(3), arg(4))}
 	}
 	return nil
-}
-
-// pathStmts builds a range loop over the SNGL PathCmd list (cmds), emitting
-// ctx.MoveTo/LineTo/CubicTo/ClosePath per command op, followed by
-// ctx.PaintPath() to fill+stroke the built path under the pending style.
-func pathStmts(ctx, cmds ir.Expr) []ir.Stmt {
-	loopVar := &ir.Ident{Name: "_cmd", Type: ir.TypDyn}
-	opSel := &ir.Select{Operand: loopVar, Field: "op", Type: ir.TypString}
-	field := func(name string) ir.Expr {
-		return &ir.Select{Operand: loopVar, Field: name, Type: ir.TypFloat}
-	}
-	cmdIf := func(op string, then ir.Stmt) *ir.If {
-		return &ir.If{
-			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Value: op}},
-			Body: []ir.Stmt{then},
-		}
-	}
-	body := []ir.Stmt{
-		cmdIf("moveTo", ctxCall(ctx, "MoveTo", field("x"), field("y"))),
-		cmdIf("lineTo", ctxCall(ctx, "LineTo", field("x"), field("y"))),
-		cmdIf("bezierTo", ctxCall(ctx, "CubicTo", field("cx1"), field("cy1"), field("cx2"), field("cy2"), field("x"), field("y"))),
-		cmdIf("arcTo", ctxCall(ctx, "ArcTo", field("cx1"), field("cy1"), field("x"), field("y"), field("r"))),
-		cmdIf("close", ctxCall(ctx, "ClosePath")),
-	}
-	return []ir.Stmt{
-		&ir.For{Key: "_cmd", Iter: cmds, Body: body},
-		ctxCall(ctx, "PaintPath"),
-	}
 }
 
 // ctxCall builds `ctx.Method(args...)` as a void CallStmt.

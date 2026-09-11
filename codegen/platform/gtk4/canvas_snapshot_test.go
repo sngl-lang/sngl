@@ -73,7 +73,7 @@ window {
 		t.Fatal("go lang not registered")
 	}
 	caps := g.Capabilities(lang).ToLowerCaps()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4"}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 

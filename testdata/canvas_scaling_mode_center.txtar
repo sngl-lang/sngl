@@ -298,38 +298,6 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
 
-func _snglCairoSource(cr *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(cr, C.double(float64(c.R)/255.0), C.double(float64(c.G)/255.0), C.double(float64(c.B)/255.0), C.double(float64(c.A)/255.0))
-}
-
-// _snglCairoPaint fills (when fill.a>0) and strokes (when stroke.a>0) the
-// current path. cairo_fill_preserve keeps the path so a following stroke
-// applies to the same geometry.
-func _snglCairoPaint(cr *C.cairo_t, s CanvasStyle) {
-	if s.Fill.A > 0 {
-		_snglCairoSource(cr, s.Fill)
-		if s.Stroke.A > 0 {
-			C.cairo_fill_preserve(cr)
-		} else {
-			C.cairo_fill(cr)
-		}
-	}
-	if s.Stroke.A > 0 {
-		C.cairo_set_line_width(cr, C.double(s.StrokeWidth))
-		_snglCairoSource(cr, s.Stroke)
-		C.cairo_stroke(cr)
-	}
-}
-
-// _snglCairoStroke strokes the current path (line primitives have no fill).
-func _snglCairoStroke(cr *C.cairo_t, s CanvasStyle) {
-	if s.Stroke.A > 0 {
-		C.cairo_set_line_width(cr, C.double(s.StrokeWidth))
-		_snglCairoSource(cr, s.Stroke)
-	}
-	C.cairo_stroke(cr)
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64

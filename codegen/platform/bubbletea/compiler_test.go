@@ -47,7 +47,7 @@ func compileAndVerify(t *testing.T, doc *ast.Document, pkg ...*ir.Package) []byt
 		}
 		gen := &Generator{}
 		goLang := codegen.LookupLang("go")
-		if err := lower.Lower(p, gen.Capabilities(goLang).ToLowerCaps(), lower.Options{Platform: "bubbletea"}); err != nil {
+		if err := lower.Lower(p, gen.Capabilities(goLang).ToLowerCaps(), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
 			t.Fatalf("lower: %v", err)
 		}
 	}

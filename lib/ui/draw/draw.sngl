@@ -80,28 +80,28 @@ component canvas(
 ) std.node {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
-component rect(x float, y float, w float, h float, style CanvasStyle) shape {}
+component rect(x float, y float, w float, h float, style CanvasStyle) shape
 
 // Circle of radius r centred at cx, cy.
-component circle(cx float, cy float, r float, style CanvasStyle) shape {}
+component circle(cx float, cy float, r float, style CanvasStyle) shape
 
 // Ellipse centred at cx, cy with radii rx and ry.
-component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) shape {}
+component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) shape
 
 // Straight segment from x1, y1 to x2, y2. Uses `stroke`; a `fill` is
 // meaningless on a line and is ignored.
-component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) shape {}
+component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) shape
 
 // Arbitrary shape built from a list of PathCmd steps.
-component path(cmds list<PathCmd>, style CanvasStyle) shape {}
+component path(cmds list<PathCmd>, style CanvasStyle) shape
 
 // Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
 // a program can import this package alongside `sngl:ui`.
-component canvasText(x float, y float, content string, style CanvasStyle) shape {}
+component canvasText(x float, y float, content string, style CanvasStyle) shape
 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
 // or asset path as `std.image`.
-component canvasImage(x float, y float, w float, h float, src string) shape {}
+component canvasImage(x float, y float, w float, h float, src string) shape
 
 // --- Geometry ---
 //

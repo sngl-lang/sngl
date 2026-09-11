@@ -71,37 +71,6 @@ func _snglCairoScale(cr *C.cairo_t, pw, ph, w, h int, mode string) {
 	C.cairo_scale(cr, C.double(sx), C.double(sy))
 }
 
-func _snglCairoSource(cr *C.cairo_t, c ` + canvasutil.ColorGoType + `) {
-	C.cairo_set_source_rgba(cr, C.double(float64(c.R)/255.0), C.double(float64(c.G)/255.0), C.double(float64(c.B)/255.0), C.double(float64(c.A)/255.0))
-}
-
-// _snglCairoPaint fills (when fill.a>0) and strokes (when stroke.a>0) the
-// current path. cairo_fill_preserve keeps the path so a following stroke
-// applies to the same geometry.
-func _snglCairoPaint(cr *C.cairo_t, s CanvasStyle) {
-	if s.Fill.A > 0 {
-		_snglCairoSource(cr, s.Fill)
-		if s.Stroke.A > 0 {
-			C.cairo_fill_preserve(cr)
-		} else {
-			C.cairo_fill(cr)
-		}
-	}
-	if s.Stroke.A > 0 {
-		C.cairo_set_line_width(cr, C.double(s.StrokeWidth))
-		_snglCairoSource(cr, s.Stroke)
-		C.cairo_stroke(cr)
-	}
-}
-
-// _snglCairoStroke strokes the current path (line primitives have no fill).
-func _snglCairoStroke(cr *C.cairo_t, s CanvasStyle) {
-	if s.Stroke.A > 0 {
-		C.cairo_set_line_width(cr, C.double(s.StrokeWidth))
-		_snglCairoSource(cr, s.Stroke)
-	}
-	C.cairo_stroke(cr)
-}
 `
 
 // canvasStdlibDeclsExcluding returns the canvas stdlib struct decls (from the
@@ -144,40 +113,14 @@ func goHelperCall(helper string, args ...ir.Expr) *ir.Call {
 	return &ir.Call{Type: ir.TypVoid, Func: &ir.Func{Name: helper}, Args: callArgs}
 }
 
-// styleHelperCall builds `<helper>(cr, _styleN)` where the second arg is the
-// pending CanvasStyle local (or a zero CanvasStyle{} when none was applied).
-func (t *gtk4Translator) styleHelperCall(helper string, cr ir.Expr) ir.Stmt {
-	style := t.takeCanvasStyle()
-	return &ir.CallStmt{Call: goHelperCall(helper, cr, style)}
-}
-
-// takeCanvasStyle returns the pending style (set by the preceding
-// CanvasApplyStyle) and clears it. When no style was applied it yields a
-// zero CanvasStyle{} literal so the painter no-ops (fill.a==0, stroke.a==0).
-//
-// INVARIANT: every draw-primitive case in translateCanvasIntrinsic must
-// consume the pending style exactly once (here or via styleHelperCall). A
-// primitive that skipped it would leak the previous shape's style onto the
-// next — which is why CanvasDrawImage calls it despite emitting nothing.
-func (t *gtk4Translator) takeCanvasStyle() ir.Expr {
-	s := t.pendingCanvasStyle
-	t.pendingCanvasStyle = nil
-	if s == nil {
-		return &ir.Ident{Name: "CanvasStyle{}", Type: ir.TypDyn}
-	}
-	return s
-}
-
 // translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt (inside a
-// draw func body) into native cairo calls. passCanvas emits a fixed per-shape
-// structure: Save, [ApplyStyle], DrawPrimitive, Restore. ApplyStyle binds a
-// `_styleN` local that the following primitive's fill/stroke reference.
+// draw func body) into native cairo calls. What reaches here is the bracket
+// passCanvas puts around a composed shape -- Save and Restore -- since the
+// drawing itself is the shape's own override by the time this runs.
 func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 	call := cs.Call
 	id := call.Func.Intrinsic
 	cr := call.Args[0].Value
-	rest := call.Args[1:]
-	arg := func(i int) ir.Expr { return rest[i].Value }
 
 	switch id {
 	case "CanvasSave":
@@ -185,116 +128,15 @@ func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 	case "CanvasRestore":
 		return []ir.Stmt{cairoCall("cairo_restore", cr)}
 	case "CanvasApplyStyle":
-		// Bind the style to a fresh local so the following draw's fill/stroke
-		// don't re-evaluate the (possibly large) style expression repeatedly.
-		t.canvasStyleCounter++
-		name := fmt.Sprintf("_style%d", t.canvasStyleCounter)
-		t.pendingCanvasStyle = &ir.Ident{Name: name, Type: ir.TypDyn}
-		return []ir.Stmt{&ir.LocalVar{Name: name, Init: arg(0)}}
-	case "CanvasDrawRect":
-		return []ir.Stmt{
-			cairoCall("cairo_rectangle", cr, dbl(arg(0)), dbl(arg(1)), dbl(arg(2)), dbl(arg(3))),
-			t.styleHelperCall("_snglCairoPaint", cr),
-		}
-	case "CanvasDrawCircle":
-		// new_sub_path so the arc starts a fresh subpath (avoids a stray line
-		// from the current point to the arc start).
-		return []ir.Stmt{
-			cairoCall("cairo_new_sub_path", cr),
-			cairoCall("cairo_arc", cr, dbl(arg(0)), dbl(arg(1)), dbl(arg(2)), zeroF(), twoPi()),
-			t.styleHelperCall("_snglCairoPaint", cr),
-		}
-	case "CanvasDrawEllipse":
-		// cairo has no native ellipse. The CTM-scale trick (translate+scale+arc)
-		// distorts the stroke: cairo applies the CTM at paint time, so scaling by
-		// (rx, ry) scales the pen too, rendering a hugely thick, anisotropic
-		// outline (~2x the intended size vs other platforms). Instead build the
-		// ellipse as an explicit cubic-Bézier path at real coordinates so the
-		// stroke runs in screen space with a uniform width. kappa is the standard
-		// circle-to-Bézier control-point ratio.
-		n := t.canvasStyleCounter
-		mk := func(suffix string, init ir.Expr) (string, ir.Stmt) {
-			name := fmt.Sprintf("_e%s%d", suffix, n)
-			return name, &ir.LocalVar{Name: name, Init: init}
-		}
-		const kappa = "0.5522847498307936"
-		cxN, cxV := mk("cx", arg(0))
-		cyN, cyV := mk("cy", arg(1))
-		rxN, rxV := mk("rx", arg(2))
-		ryN, ryV := mk("ry", arg(3))
-		oxN, oxV := mk("ox", &ir.Binary{Op: ast.BinMul, Type: ir.TypFloat,
-			Left: &ir.Ident{Name: rxN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Value: kappa}})
-		oyN, oyV := mk("oy", &ir.Binary{Op: ast.BinMul, Type: ir.TypFloat,
-			Left: &ir.Ident{Name: ryN, Type: ir.TypFloat}, Right: &ir.Literal{Type: ir.TypFloat, Value: kappa}})
-		f := func(name string) ir.Expr { return &ir.Ident{Name: name, Type: ir.TypFloat} }
-		add := func(a, b string) ir.Expr {
-			return &ir.Binary{Op: ast.BinAdd, Type: ir.TypFloat, Left: f(a), Right: f(b)}
-		}
-		sub := func(a, b string) ir.Expr {
-			return &ir.Binary{Op: ast.BinSub, Type: ir.TypFloat, Left: f(a), Right: f(b)}
-		}
-		return []ir.Stmt{
-			cxV, cyV, rxV, ryV, oxV, oyV,
-			cairoCall("cairo_new_sub_path", cr),
-			cairoCall("cairo_move_to", cr, dbl(sub(cxN, rxN)), dbl(f(cyN))),
-			cairoCall("cairo_curve_to", cr, dbl(sub(cxN, rxN)), dbl(sub(cyN, oyN)), dbl(sub(cxN, oxN)), dbl(sub(cyN, ryN)), dbl(f(cxN)), dbl(sub(cyN, ryN))),
-			cairoCall("cairo_curve_to", cr, dbl(add(cxN, oxN)), dbl(sub(cyN, ryN)), dbl(add(cxN, rxN)), dbl(sub(cyN, oyN)), dbl(add(cxN, rxN)), dbl(f(cyN))),
-			cairoCall("cairo_curve_to", cr, dbl(add(cxN, rxN)), dbl(add(cyN, oyN)), dbl(add(cxN, oxN)), dbl(add(cyN, ryN)), dbl(f(cxN)), dbl(add(cyN, ryN))),
-			cairoCall("cairo_curve_to", cr, dbl(sub(cxN, oxN)), dbl(add(cyN, ryN)), dbl(sub(cxN, rxN)), dbl(add(cyN, oyN)), dbl(sub(cxN, rxN)), dbl(f(cyN))),
-			cairoCall("cairo_close_path", cr),
-			t.styleHelperCall("_snglCairoPaint", cr),
-		}
-	case "CanvasDrawLine":
-		return []ir.Stmt{
-			cairoCall("cairo_move_to", cr, dbl(arg(0)), dbl(arg(1))),
-			cairoCall("cairo_line_to", cr, dbl(arg(2)), dbl(arg(3))),
-			t.styleHelperCall("_snglCairoStroke", cr),
-		}
-	case "CanvasDrawText":
-		style := t.takeCanvasStyle()
-		var stmts []ir.Stmt
-		// Apply font size + fill colour, then show the text at (x, y).
-		stmts = append(stmts,
-			cairoCall("cairo_set_font_size", cr, dbl(&ir.Select{Operand: style, Field: "fontSize", Type: ir.TypFloat})),
-			&ir.CallStmt{Call: goHelperCall("_snglCairoSource", cr, &ir.Select{Operand: style, Field: "fill", Type: ir.TypDyn})},
-			cairoCall("cairo_move_to", cr, dbl(arg(0)), dbl(arg(1))),
-			cairoCall("cairo_show_text", cr, nativeCall("CString", arg(2))),
-		)
-		return stmts
-	case "CanvasDrawPath":
-		return t.translatePath(cr, arg(0))
-	case "CanvasDrawImage":
-		// Drawing an external image src needs async decode; unsupported in the
-		// cairo path (consistent with fyne). Consume the pending style so it
-		// doesn't leak onto the next shape, then emit nothing.
-		t.takeCanvasStyle()
+		// Nothing. cairo's state is never where a style lived here: this bound
+		// a local that the following draw primitive read, and the primitives
+		// are gone -- every shape is a platform override now, and each sets
+		// its own source before it paints. A composed shape's bracket still
+		// reaches this, and binding a local nothing reads would be an unused
+		// variable in the emitted Go.
 		return nil
 	}
 	return []ir.Stmt{cs}
-}
-
-// translatePath rewrites CanvasDrawPath(cr, cmds) into a range loop over the
-// PathCmd list emitting cairo move_to/line_to/curve_to/close_path, then paint.
-func (t *gtk4Translator) translatePath(cr, cmds ir.Expr) []ir.Stmt {
-	loopVar := &ir.Ident{Name: "_cmd", Type: ir.TypDyn}
-	opSel := &ir.Select{Operand: loopVar, Field: "op", Type: ir.TypString}
-	field := func(name string) ir.Expr {
-		return dbl(&ir.Select{Operand: loopVar, Field: name, Type: ir.TypFloat})
-	}
-	cmdIf := func(op string, then ir.Stmt) *ir.If {
-		return &ir.If{
-			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Value: op}},
-			Body: []ir.Stmt{then},
-		}
-	}
-	body := []ir.Stmt{
-		cmdIf("moveTo", cairoCall("cairo_move_to", cr, field("x"), field("y"))),
-		cmdIf("lineTo", cairoCall("cairo_line_to", cr, field("x"), field("y"))),
-		cmdIf("bezierTo", cairoCall("cairo_curve_to", cr, field("cx1"), field("cy1"), field("cx2"), field("cy2"), field("x"), field("y"))),
-		cmdIf("close", cairoCall("cairo_close_path", cr)),
-	}
-	loop := &ir.For{Key: "_cmd", Iter: cmds, Body: body}
-	return []ir.Stmt{loop, t.styleHelperCall("_snglCairoPaint", cr)}
 }
 
 // translateCanvasRedraw rewrites a CanvasRedrawStmt into a

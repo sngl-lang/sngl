@@ -1596,6 +1596,9 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 // A canvas accepts shapes because its default slot names that tree.
 func TestCheckShapeType(t *testing.T) {
 	expectNoErrors(t, `
+import . "sngl:ui"
+import . "sngl:ui/draw"
+
 component myWidget() node {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0)
@@ -1610,6 +1613,9 @@ component myWidget() node {
 // that does declare one, and names no tree on it, hosts its own family.
 func TestCheckShapeHostsOnlyThroughASlot(t *testing.T) {
 	expectError(t, `
+import . "sngl:ui"
+import . "sngl:ui/draw"
+
 component myWidget() node {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0) {
@@ -1620,6 +1626,9 @@ component myWidget() node {
 `, "does not accept children")
 
 	expectNoErrors(t, `
+import . "sngl:ui"
+import . "sngl:ui/draw"
+
 component group(children ...component) shape {}
 
 component myWidget() node {
@@ -1634,6 +1643,9 @@ component myWidget() node {
 
 func TestCheckShapeTypeRejectsNonShape(t *testing.T) {
 	expectError(t, `
+import . "sngl:ui"
+import . "sngl:ui/draw"
+
 component notAShape() node {}
 component myWidget() node {
     canvas(width=400px, height=300px) {
@@ -1648,6 +1660,9 @@ component myWidget() node {
 // as a var's.
 func TestCheckShape_IsNotAValueType(t *testing.T) {
 	expectError(t, `
+import . "sngl:ui"
+import . "sngl:ui/draw"
+
 component myWidget() node {
     var bad shape = 0
 }
@@ -1655,7 +1670,12 @@ component myWidget() node {
 }
 
 func TestCheckCanvasStdlib(t *testing.T) {
+	// Its own imports, because writing any leaves withStd's alone: the drawing
+	// surface is imported by a program that draws, not by every program.
 	expectNoErrors(t, `
+import . "sngl:ui"
+import . "sngl:ui/draw"
+
 component myWidget() node {
     canvas(width=400px, height=300px) {
         rect(x=10.0, y=10.0, w=100.0, h=50.0, style=CanvasStyle{}) {}
