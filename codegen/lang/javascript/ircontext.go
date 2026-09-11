@@ -564,6 +564,13 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	if bundled {
 		jc.registerNativeImport(mod, name)
 	}
+	// A platform may have to emit something alongside a native it declared:
+	// html's canvas image shim is a function on the page rather than a host
+	// API, and only a call reaching it says the page needs it. The name is
+	// recorded so the platform can ask; nothing here knows which names matter.
+	if jc.Ctx != nil && jc.Ctx.Helpers != nil {
+		jc.Ctx.Helpers["native:"+name] = true
+	}
 	args := jc.evalCallArgs(n.Args)
 	var call string
 	switch {

@@ -27,6 +27,15 @@ stdout 'sngl:ui: ok'
 sngl check sngl:platform/gtk4
 stdout 'sngl:platform/gtk4: ok'
 
+# A target package importing another target package: html's source imports
+# sngl:language/js. Resolving that import is what says the language exists, so
+# checking one package this way has to know the registered targets -- it did
+# not, and reported `unknown language "js"` about html's own import while the
+# same package checked clean inside a build. gtk4 above imports no target
+# package, which is why it never showed this.
+sngl check sngl:platform/html
+stdout 'sngl:platform/html: ok'
+
 # A package argument is the whole input: naming one does not also walk the
 # current directory.
 sngl check sngl:ui

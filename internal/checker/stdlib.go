@@ -327,6 +327,26 @@ func RegisterTargetPackage(uri string, t any) {
 	targetPkgs[uri] = t
 }
 
+// registeredTargets is the language and platform lists a Config carries,
+// recovered from the packages the codegen registry recorded. The registry hands
+// this package the target itself, so which of the two a target is, is the
+// question its own interface answers.
+func registeredTargets() ([]ir.Language, []ir.Platform) {
+	targetPkgMu.RLock()
+	defer targetPkgMu.RUnlock()
+	var langs []ir.Language
+	var plats []ir.Platform
+	for _, t := range targetPkgs {
+		if l, ok := t.(ir.Language); ok {
+			langs = append(langs, l)
+		}
+		if p, ok := t.(ir.Platform); ok {
+			plats = append(plats, p)
+		}
+	}
+	return langs, plats
+}
+
 func registeredTarget(uri string) any {
 	targetPkgMu.RLock()
 	defer targetPkgMu.RUnlock()
@@ -1523,7 +1543,17 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	// Through LibSources so the IR is built from the same documents
 	// PackageSource hands back: a mark is read off the IR and its declaration
 	// then looked up in the source by pointer.
-	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
+	// The registered targets, because a target package imports other target
+	// packages -- html's source imports sngl:language/js -- and resolving one
+	// is what says the language exists. Without them `sngl check
+	// sngl:platform/html` reported `unknown language "js"` about the platform's
+	// own import, while the same package checked clean inside a build.
+	langs, plats := registeredTargets()
+	cfg := &Config{
+		LibSources: map[string][]*ast.Document{name: PackageSource(name)},
+		Languages:  langs,
+		Platforms:  plats,
+	}
 	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
 	// A membership check a library body deferred is drained by the pass2 of

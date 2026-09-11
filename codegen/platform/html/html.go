@@ -2378,6 +2378,9 @@ func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 	if g.Helpers["snglColor"] {
 		b.WriteString(snglColorHelper)
 	}
+	if g.ctx.Helpers["native:_snglDrawImage"] {
+		b.WriteString(snglDrawImageHelper)
+	}
 	b.WriteString(snglCanvasHelper)
 }
 

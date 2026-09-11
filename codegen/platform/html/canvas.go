@@ -194,6 +194,34 @@ func canvasWatchStmt(m *canvasutil.Meta) ir.Stmt {
 // Emitted once in the JS bundle whenever canvas is present.
 const snglColorHelper = "function _snglColor(c){return c?\"rgba(\"+c.r+\",\"+c.g+\",\"+c.b+\",\"+(c.a/255)+\")\":\"rgba(0,0,0,0)\"}\n"
 
+// snglDrawImageHelper paints a file-backed image, caching the decode.
+//
+// A shim rather than a mark, for the reason android's image shim is one: the
+// drawing is asynchronous, and neither `new Image()` nor an event listener is
+// something a native mark can spell. Written only for a page that draws an
+// image: `_snglColor` is keyed to the intrinsic expansion that calls it, and
+// this is keyed to the native the override calls, which the JS translator
+// records as it emits one.
+//
+// The cache is the part that matters. A canvas redraws on every state change,
+// and the element this replaces was built fresh each time -- so a drawing with
+// an image in it re-entered the network stack on every frame, and the image
+// blinked as each new decode landed. Keyed by src, which is all a file-backed
+// source has to distinguish it.
+//
+// The listener stays for the first paint: a draw that happens before the
+// decode finishes has nothing to put down, so it paints when the decode
+// arrives instead. Once the image is complete, every later draw takes the
+// synchronous path and no listener is added.
+const snglDrawImageHelper = `const _snglImgs=new Map();
+function _snglDrawImage(ctx,src,x,y,w,h){
+  let img=_snglImgs.get(src);
+  if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x,y,w,h);return}
+  if(!img){img=new Image();_snglImgs.set(src,img);img.src=src}
+  img.addEventListener("load",function(){ctx.drawImage(img,x,y,w,h)},{once:true})
+}
+`
+
 // snglCanvasHelper draws one canvas, scaling the geometry rather than the
 // picture.
 //

@@ -646,6 +646,19 @@ component shapes.path[platform] {
     })
 }
 
+// The page's own image shim, which carries the decode cache and the wait for
+// a source that has not arrived yet. Receiver-first: `method` would make this
+// `ctx._snglDrawImage(...)`, and the context is an argument here, not the
+// thing the call is made on.
+#[js.native("_snglDrawImage")]
+func drawImage(ctx DrawContext, src string, x float, y float, w float, h float)
+
+component shapes.canvasImage[platform] {
+    html.draw(@draw(e) {
+        drawImage(e.ctx, src, x, y, w, h)
+    })
+}
+
 component shapes.canvasText[platform] {
     html.draw(@draw(e) {
         e.ctx.save()
