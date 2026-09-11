@@ -436,3 +436,55 @@ component shapes.canvasText[platform] {
         e.ctx.restore()
     })
 }
+
+// --- Images ---
+//
+// GdkPixbuf rather than cairo's own PNG loader: it is already linked into any
+// GTK application, it reads JPEG and SVG as well as PNG, and it scales in the
+// loader so no `cairo_scale` is needed -- which would scale the stroke of
+// anything drawn after it.
+//
+// A nullable C pointer is `option<T>`: both `option` and `ref` render as `*T`,
+// so `option<Pixbuf>` is the `GdkPixbuf*` the loader answers and a null test
+// is the NULL check. The `GError**` out-parameter is the one place the extra
+// indirection is right, and `option<ref<GError>>` is it.
+//
+// The functions that consume the pointer declare `option<Pixbuf>` as well,
+// even inside the null test: narrowing an option yields the *referent*, so a
+// parameter typed `Pixbuf` is handed `(*pb)` -- the struct, where the C
+// function wants the pointer.
+#[cnative("C.GdkPixbuf")]
+struct Pixbuf {}
+
+#[cnative("C.GError")]
+struct GError {}
+
+#[cnative("gdk_pixbuf_new_from_file_at_scale")]
+func loadPixbuf(path string, w int, h int, keepAspect int, err option<ref<GError>>) option<Pixbuf>
+
+#[cnative("gdk_cairo_set_source_pixbuf")]
+func CairoContext.setSourcePixbuf(pb option<Pixbuf>, x float, y float)
+
+#[cnative("cairo_paint")]
+func CairoContext.paintSource()
+
+#[cnative("sngl_unref_pixbuf")]
+func unrefPixbuf(pb option<Pixbuf>)
+
+// A missing or unreadable file draws nothing rather than failing the render:
+// the loader answers NULL and the null test is what reads it. This is the gap
+// #223 recorded -- gtk4 emitted nothing at all for canvasImage, where every
+// other target loads a local path.
+component shapes.canvasImage[platform] {
+    draw(@draw(e) {
+        var pb = loadPixbuf(src, int(w), int(h), 0, null)
+
+        if pb != null {
+            e.ctx.save()
+            e.ctx.setSourcePixbuf(pb, x, y)
+            e.ctx.paintSource()
+            e.ctx.restore()
+            unrefPixbuf(pb)
+        }
+    })
+}

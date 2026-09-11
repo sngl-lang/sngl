@@ -25,6 +25,7 @@ component art(rad float) node {
         ellipse(cx=8.0, cy=8.0, rx=3.0, ry=2.0, style=CanvasStyle{stroke=#ff00ff, lineCap="round", lineJoin="bevel"}) {}
         line(x1=0.0, y1=0.0, x2=9.0, y2=9.0, style=CanvasStyle{stroke=#000000, strokeWidth=1.5}) {}
         canvasText(x=1.0, y=9.0, content="hi", style=CanvasStyle{fill=#111111, fontSize=12.0}) {}
+        canvasImage(x=1.0, y=1.0, w=8.0, h=8.0, src="logo.png") {}
         path(cmds=[PathCmd{op="moveTo", x=0.0, y=0.0}, PathCmd{op="lineTo", x=4.0, y=4.0}, PathCmd{op="bezierTo", cx1=1.0, cy1=1.0, cx2=2.0, cy2=2.0, x=3.0, y=3.0}, PathCmd{op="close"}], style=CanvasStyle{fill=#222222, stroke=#333333}) {}
     }
 }
