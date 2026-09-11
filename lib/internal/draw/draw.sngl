@@ -6,9 +6,6 @@ func CanvasSave(ctx dyn)
 #[marks.intrinsic("CanvasRestore", mutates)]
 func CanvasRestore(ctx dyn)
 
-#[marks.intrinsic("CanvasApplyStyle", mutates)]
-func CanvasApplyStyle(ctx dyn, style dyn)
-
 #[marks.intrinsic("CanvasDrawRect", mutates)]
 func CanvasDrawRect(ctx dyn, x float, y float, w float, h float)
 

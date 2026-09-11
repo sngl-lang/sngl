@@ -340,27 +340,27 @@ func emitCanvasDrawFuncs(b *strings.Builder, pkg *ir.Package, gc *golang.GoIRCon
 // Matched on the "Canvas" prefix rather than on carrying any intrinsic at all:
 // GoContextStmts answers for this package's ids and returns nil for anything
 // else, so handing it another intrinsic deleted the statement.
-func translateCanvasBody(stmts []ir.Stmt, st *canvasutil.GoCanvasState) []ir.Stmt {
+func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 	var out []ir.Stmt
 	for _, stmt := range stmts {
 		switch n := stmt.(type) {
 		case *ir.CallStmt:
 			if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
-				out = append(out, canvasutil.GoContextStmts(n, st)...)
+				out = append(out, canvasutil.GoContextStmts(n)...)
 				continue
 			}
 		case *ir.If:
 			out = append(out, &ir.If{
 				AST:  n.AST,
 				Cond: n.Cond,
-				Body: translateCanvasBody(n.Body, st),
-				Else: translateCanvasBody(n.Else, st),
+				Body: translateCanvasBody(n.Body),
+				Else: translateCanvasBody(n.Else),
 			})
 			continue
 		case *ir.For:
 			cp := *n
-			cp.Body = translateCanvasBody(n.Body, st)
-			cp.Else = translateCanvasBody(n.Else, st)
+			cp.Body = translateCanvasBody(n.Body)
+			cp.Else = translateCanvasBody(n.Else)
 			out = append(out, &cp)
 			continue
 		}
@@ -372,8 +372,7 @@ func translateCanvasBody(stmts []ir.Stmt, st *canvasutil.GoCanvasState) []ir.Stm
 // emitCanvasDrawFunc emits a single draw func as a Model method, translating
 // each canvas-intrinsic body CallStmt into Context method calls.
 func emitCanvasDrawFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	st := &canvasutil.GoCanvasState{}
-	body := translateCanvasBody(fn.Block, st)
+	body := translateCanvasBody(fn.Block)
 	synthesized := &ir.Func{
 		Name:     fn.Name,
 		Receiver: "Model",

@@ -402,9 +402,6 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, env drawEnv)
 	bracket := !isPrimitive && !selfBrackets
 	if bracket {
 		*body = append(*body, canvasCall(env.ctx, "CanvasSave"))
-		if hasArg(ni, "style") {
-			*body = append(*body, canvasCall(env.ctx, "CanvasApplyStyle", argVal(ni, "style")))
-		}
 	}
 
 	// A platform primitive carries the drawing itself: its handler body is

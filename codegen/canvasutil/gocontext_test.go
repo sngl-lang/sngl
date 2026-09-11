@@ -29,28 +29,10 @@ func intrinsicCall(name string, args ...ir.Expr) *ir.CallStmt {
 	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: &ir.Func{Intrinsic: name}, Args: cargs}}
 }
 
-func TestApplyStyleEmitsSetters(t *testing.T) {
-	ctx := &ir.Ident{Name: "ctx", Type: ir.TypDyn}
-	style := &ir.Ident{Name: "style", Type: ir.TypDyn}
-	got := renderStmts(t, GoContextStmts(intrinsicCall("CanvasApplyStyle", ctx, style), nil))
-	// Style is bound once to a local, then the setters read its fields — so the
-	// (possibly composite-literal/method-call) style expr is not repeated 20x.
-	for _, want := range []string{"_cstyle1 := style", "ctx.SetFill(", "ctx.SetStroke(", "ctx.SetStrokeWidth(", "_cstyle1.Fill.R"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("ApplyStyle missing %q, got:\n%s", want, got)
-		}
-	}
-	if strings.Count(got, "style") > strings.Count(got, "_cstyle")+1 {
-		// The bare style expr should appear only in the binding; everything else
-		// reads _cstyleN.
-		t.Errorf("style expression appears more than once outside the binding:\n%s", got)
-	}
-}
-
 func TestSaveRestore(t *testing.T) {
 	ctx := &ir.Ident{Name: "ctx", Type: ir.TypDyn}
-	got := renderStmts(t, GoContextStmts(intrinsicCall("CanvasSave", ctx), nil))
-	got += renderStmts(t, GoContextStmts(intrinsicCall("CanvasRestore", ctx), nil))
+	got := renderStmts(t, GoContextStmts(intrinsicCall("CanvasSave", ctx)))
+	got += renderStmts(t, GoContextStmts(intrinsicCall("CanvasRestore", ctx)))
 	for _, want := range []string{"ctx.Save(", "ctx.Restore("} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q, got:\n%s", want, got)
@@ -60,7 +42,7 @@ func TestSaveRestore(t *testing.T) {
 
 func TestUnknownIntrinsicReturnsNil(t *testing.T) {
 	ctx := &ir.Ident{Name: "ctx", Type: ir.TypDyn}
-	if got := GoContextStmts(intrinsicCall("CanvasBogus", ctx), nil); got != nil {
+	if got := GoContextStmts(intrinsicCall("CanvasBogus", ctx)); got != nil {
 		t.Errorf("unknown intrinsic = %v, want nil", got)
 	}
 }

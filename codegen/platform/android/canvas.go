@@ -357,11 +357,6 @@ func (cc *irComposeContext) emitCanvasIntrinsic(call *ir.Call) {
 		// save/restore brackets passCanvas emits have no DrawScope analog
 		// (each draw* is independent). No-op.
 	case "CanvasRestore":
-	case "CanvasApplyStyle":
-		// Nothing. This bound a local the following draw primitive read for
-		// its fill and stroke, and the primitives are gone -- every shape is a
-		// platform override now, and each builds its own Brush and DrawStyle.
-		// A composed shape's bracket still reaches this.
 	}
 }
 

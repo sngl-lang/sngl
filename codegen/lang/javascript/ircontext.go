@@ -508,9 +508,6 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 		// call was emitted: html used to write the helper beside every canvas
 		// whether anything called it, which left it dead the moment a shape
 		// drew from an override instead.
-		if n.Func != nil && n.Func.Intrinsic == "CanvasApplyStyle" && jc.Ctx.Helpers != nil {
-			jc.Ctx.Helpers["snglColor"] = true
-		}
 		return out
 	}
 	// Native scheme-import call (e.g. js:): emit through the bundler

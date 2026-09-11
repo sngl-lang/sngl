@@ -86,15 +86,12 @@ func canvasByIDFor(byFunc map[*ir.Func]*canvasMeta) map[string]*canvasMeta {
 	return canvasutil.ByIDFor(byFunc)
 }
 
-// translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt (inside a
-// draw func body) into pkg/go/canvas Context method calls via the shared
-// canvasutil helper. canvasState (per-translator, i.e. per draw func) gives
-// each ApplyStyle a uniquely-named style local.
+// translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt -- the save
+// and restore bracketing a composed shape -- into pkg/go/canvas Context calls.
+// The drawing itself is `sngl:language/go`'s overrides, written in SNGL against
+// the same runtime.
 func (t *fyneTranslator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
-	if t.canvasState == nil {
-		t.canvasState = &canvasutil.GoCanvasState{}
-	}
-	return canvasutil.GoContextStmts(cs, t.canvasState)
+	return canvasutil.GoContextStmts(cs)
 }
 
 // methodStmt builds `receiver.Method(args...)` as a CallStmt.

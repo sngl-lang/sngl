@@ -130,10 +130,6 @@ func canvasWatchStmt(m *canvasutil.Meta) ir.Stmt {
 	}}
 }
 
-// snglColorHelper converts a SNGL color struct {r,g,b,a} to CSS rgba().
-// Emitted once in the JS bundle whenever canvas is present.
-const snglColorHelper = "function _snglColor(c){return c?\"rgba(\"+c.r+\",\"+c.g+\",\"+c.b+\",\"+(c.a/255)+\")\":\"rgba(0,0,0,0)\"}\n"
-
 // snglDrawImageHelper paints a file-backed image, caching the decode.
 //
 // A shim rather than a mark, for the reason android's image shim is one: the
@@ -158,8 +154,8 @@ const snglColorHelper = "function _snglColor(c){return c?\"rgba(\"+c.r+\",\"+c.g
 // because only the function declaration is hoisted: a synthesized slot runs
 // its own render inline, above where these helpers are written, so a canvas
 // image inside one reached the map before the `const` initialised and threw.
-// `snglColorHelper` and `snglCanvasHelper` are immune for the same reason this
-// now is -- both are function declarations.
+// `snglCanvasHelper` is immune for the same reason this now is -- it is a
+// function declaration.
 const snglDrawImageHelper = `function _snglDrawImage(ctx,src,x,y,w,h){
   const cache=_snglDrawImage.cache||(_snglDrawImage.cache=new Map());
   let img=cache.get(src);
