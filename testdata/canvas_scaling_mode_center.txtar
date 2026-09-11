@@ -497,24 +497,9 @@ body { font-family: system-ui, sans-serif; }
   var state = {};
   function _canvasDraw0(ctx) {
     ctx.save();
-    if ({ fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fill) {
-      ctx.fillStyle = _snglColor({ fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fill);
-    }
-    if ({ fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.stroke) {
-      ctx.strokeStyle = _snglColor({ fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.stroke);
-    }
-    ctx.lineWidth = { fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.strokeWidth || 1;
-    ctx.lineCap = { fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.lineCap || "butt";
-    ctx.lineJoin = { fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.lineJoin || "miter";
-    if ({ fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fontSize) {
-      ctx.font = { fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fontSize + "px " + ({ fill: { r: 51, g: 102, b: 204, a: 255 }, stroke: { a: 0, r: 0, g: 0, b: 0 }, strokeWidth: 1, lineCap: "butt", lineJoin: "miter", fontSize: 16, fontFamily: "sans-serif" }.fontFamily || "sans-serif");
-    }
+    ctx.fillStyle = "rgba(51,102,204,1)";
     ctx.fillRect(0, 0, 200, 100);
-    ctx.strokeRect(0, 0, 200, 100);
     ctx.restore();
-  }
-  function _snglColor(c) {
-    return c ? "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")" : "rgba(0,0,0,0)";
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
     const ctx = el.getContext("2d");

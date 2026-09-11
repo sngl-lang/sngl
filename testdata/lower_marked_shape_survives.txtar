@@ -56,9 +56,6 @@ body { font-family: system-ui, sans-serif; }
     ctx.save();
     ctx.restore();
   }
-  function _snglColor(c) {
-    return c ? "rgba(" + c.r + "," + c.g + "," + c.b + "," + c.a / 255 + ")" : "rgba(0,0,0,0)";
-  }
   function _snglCanvasDraw(el, w, h, mode, draw) {
     const ctx = el.getContext("2d");
     if (!mode) {

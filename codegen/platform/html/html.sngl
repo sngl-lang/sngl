@@ -475,6 +475,38 @@ func DrawContext.fill()
 #[js.native("stroke", "", method)]
 func DrawContext.stroke()
 
+#[js.native("fillRect", "", method)]
+func DrawContext.fillRect(x float, y float, w float, h float)
+
+#[js.native("strokeRect", "", method)]
+func DrawContext.strokeRect(x float, y float, w float, h float)
+
+// The DOM's `ellipse` takes a rotation and a sweep; a shape that wants a
+// partial arc writes them itself rather than waiting for a stdlib shape.
+#[js.native("ellipse", "", method)]
+func DrawContext.ellipse(x float, y float, rx float, ry float, rotation float, start float, end float)
+
+#[js.native("moveTo", "", method)]
+func DrawContext.moveTo(x float, y float)
+
+#[js.native("lineTo", "", method)]
+func DrawContext.lineTo(x float, y float)
+
+#[js.native("bezierCurveTo", "", method)]
+func DrawContext.bezierCurveTo(cx1 float, cy1 float, cx2 float, cy2 float, x float, y float)
+
+#[js.native("arcTo", "", method)]
+func DrawContext.arcTo(x1 float, y1 float, x2 float, y2 float, r float)
+
+#[js.native("closePath", "", method)]
+func DrawContext.closePath()
+
+#[js.native("fillText", "", method)]
+func DrawContext.fillText(text string, x float, y float)
+
+#[js.native("strokeText", "", method)]
+func DrawContext.strokeText(text string, x float, y float)
+
 // The primitive an override paints through: `@draw` is the target calling in
 // with the context, and the handler body is what the draw function emits.
 //
@@ -482,21 +514,30 @@ func DrawContext.stroke()
 #[intrinsic("html:draw")]
 component draw(@draw DrawContext) shapes.shape
 
-// `rgba(...)` as the DOM spells it. The alpha channel is 0-255 in SNGL and
-// 0-1 here, which is the whole reason this is a function rather than an
-// interpolation at each use.
+// `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
+// page's `_snglColor` helper, because being pure is what lets a constant style
+// fold: a literal colour becomes the string `"rgba(51,102,204,1)"` at build
+// time, where a native call stays a call forever. The alpha channel is 0-255
+// in SNGL and 0-1 here, which is the whole reason it is a function.
 func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
 
 // Fill and stroke are gated on alpha, which every other backend does and this
 // one did not: the old translation tested the colour *object* for truthiness,
 // and a JS object is always truthy, so a fill-only shape also painted an
 // invisible stroke (#225).
+// The style a shape shares, as a helper rather than repeated per shape. A
+// shape that needs only part of it sets that part itself instead of calling
+// this -- `rect` and `line` below do.
+func paintStyle(ctx DrawContext, style shapes.CanvasStyle) {
+    ctx.fillStyle = cssColor(style.fill)
+    ctx.strokeStyle = cssColor(style.stroke)
+    ctx.lineWidth = style.strokeWidth
+}
+
 component shapes.circle[platform] {
     html.draw(@draw(ctx) {
         ctx.save()
-        ctx.fillStyle = cssColor(style.fill)
-        ctx.strokeStyle = cssColor(style.stroke)
-        ctx.lineWidth = style.strokeWidth
+        paintStyle(ctx, style)
         ctx.beginPath()
         ctx.arc(cx, cy, r, 0.0, 6.283185307179586)
         if style.fill.a > 0 {
@@ -504,6 +545,109 @@ component shapes.circle[platform] {
         }
         if style.stroke.a > 0 {
             ctx.stroke()
+        }
+        ctx.restore()
+    })
+}
+
+// Each shape sets only the style it uses, which is the point of writing these
+// in SNGL: the translation they replace applied all six properties to every
+// shape, including a font to a rectangle.
+component shapes.rect[platform] {
+    html.draw(@draw(ctx) {
+        ctx.save()
+        if style.fill.a > 0 {
+            ctx.fillStyle = cssColor(style.fill)
+            ctx.fillRect(x, y, w, h)
+        }
+        if style.stroke.a > 0 {
+            ctx.strokeStyle = cssColor(style.stroke)
+            ctx.lineWidth = style.strokeWidth
+            ctx.strokeRect(x, y, w, h)
+        }
+        ctx.restore()
+    })
+}
+
+component shapes.ellipse[platform] {
+    html.draw(@draw(ctx) {
+        ctx.save()
+        paintStyle(ctx, style)
+        ctx.beginPath()
+        ctx.ellipse(cx, cy, rx, ry, 0.0, 0.0, 6.283185307179586)
+        if style.fill.a > 0 {
+            ctx.fill()
+        }
+        if style.stroke.a > 0 {
+            ctx.stroke()
+        }
+        ctx.restore()
+    })
+}
+
+// A line has no interior, so `fill` is not read here at all rather than being
+// set and ignored. That is the declaration's documented behaviour, stated once
+// in the override instead of as a special case in five emitters.
+component shapes.line[platform] {
+    html.draw(@draw(ctx) {
+        ctx.save()
+        ctx.strokeStyle = cssColor(style.stroke)
+        ctx.lineWidth = style.strokeWidth
+        ctx.lineCap = style.lineCap
+        ctx.lineJoin = style.lineJoin
+        ctx.beginPath()
+        ctx.moveTo(x1, y1)
+        ctx.lineTo(x2, y2)
+        ctx.stroke()
+        ctx.restore()
+    })
+}
+
+component shapes.path[platform] {
+    html.draw(@draw(ctx) {
+        ctx.save()
+        paintStyle(ctx, style)
+        ctx.lineCap = style.lineCap
+        ctx.lineJoin = style.lineJoin
+        ctx.beginPath()
+        for var c = cmds {
+            if c.op == "moveTo" {
+                ctx.moveTo(c.x, c.y)
+            }
+            if c.op == "lineTo" {
+                ctx.lineTo(c.x, c.y)
+            }
+            if c.op == "bezierTo" {
+                ctx.bezierCurveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
+            }
+            if c.op == "arcTo" {
+                ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
+            }
+            if c.op == "close" {
+                ctx.closePath()
+            }
+        }
+        if style.fill.a > 0 {
+            ctx.fill()
+        }
+        if style.stroke.a > 0 {
+            ctx.stroke()
+        }
+        ctx.restore()
+    })
+}
+
+component shapes.canvasText[platform] {
+    html.draw(@draw(ctx) {
+        ctx.save()
+        ctx.font = "{style.fontSize}px {style.fontFamily}"
+        if style.fill.a > 0 {
+            ctx.fillStyle = cssColor(style.fill)
+            ctx.fillText(content, x, y)
+        }
+        if style.stroke.a > 0 {
+            ctx.strokeStyle = cssColor(style.stroke)
+            ctx.strokeText(content, x, y)
         }
         ctx.restore()
     })

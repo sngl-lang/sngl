@@ -502,6 +502,15 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	// intrinsic call. Must precede every other branch so e.g. an inlined
 	// `stdlib.StrUpper(s)` is emitted as `s.toUpperCase()`, not a bare call.
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, jc.Ctx.Platform, n, jc.EvalExpr); ok {
+		// The style intrinsic's expansion names a page helper. Recorded here
+		// because the expansion is a package-level registration with no access
+		// to the per-build Emission, and this is the one place that knows the
+		// call was emitted: html used to write the helper beside every canvas
+		// whether anything called it, which left it dead the moment a shape
+		// drew from an override instead.
+		if n.Func != nil && n.Func.Intrinsic == "CanvasApplyStyle" && jc.Ctx.Helpers != nil {
+			jc.Ctx.Helpers["snglColor"] = true
+		}
 		return out
 	}
 	// Native scheme-import call (e.g. js:): emit through the bundler

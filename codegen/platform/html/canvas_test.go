@@ -32,14 +32,18 @@ window(title="Canvas Reactive Test", href="/index.html") {
 	if !strings.Contains(out, "_canvasDraw0") {
 		t.Errorf("expected _canvasDraw0 call in output\n--- generated ---\n%s", out)
 	}
-	if !strings.Contains(out, "_snglColor") {
-		t.Errorf("expected _snglColor helper in JS output\n--- generated ---\n%s", out)
+	// The style reaches the output, which is what the helper used to stand in
+	// for. `rect` draws from this platform's own override now and sets
+	// fillStyle itself, so _snglColor is emitted only for a shape that still
+	// goes through the CanvasApplyStyle expansion.
+	if !strings.Contains(out, "fillStyle") {
+		t.Errorf("expected the fill style to reach the draw function\n--- generated ---\n%s", out)
 	}
 }
 
 // TestCanvasIntegration verifies the end-to-end HTML canvas pipeline:
 // the generated output must contain a <canvas> element, a fillRect draw call,
-// and the _snglColor color helper function.
+// and the fill style the shape was given.
 func TestCanvasIntegration(t *testing.T) {
 	src := `
 import . "sngl:ui"
@@ -60,7 +64,7 @@ window(title="Canvas Test", href="/index.html") {
 	if !strings.Contains(out, "fillRect") {
 		t.Errorf("expected fillRect draw call in JS output\n--- generated ---\n%s", out)
 	}
-	if !strings.Contains(out, "_snglColor") {
-		t.Errorf("expected _snglColor helper in JS output\n--- generated ---\n%s", out)
+	if !strings.Contains(out, "fillStyle") {
+		t.Errorf("expected the fill style to reach the draw function\n--- generated ---\n%s", out)
 	}
 }
