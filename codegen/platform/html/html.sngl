@@ -511,8 +511,17 @@ func DrawContext.strokeText(text string, x float, y float)
 // with the context, and the handler body is what the draw function emits.
 //
 // A shape override paints through it below.
+// What a `@draw` handler is handed: the context to paint through, and the
+// coordinate space the shapes were placed in. The size is the canvas's own
+// declared width and height, so it arrives as a literal.
+struct DrawEvent {
+    ctx DrawContext
+    width int
+    height int
+}
+
 #[intrinsic("html:draw")]
-component draw(@draw DrawContext) shapes.shape
+component draw(@draw DrawEvent) shapes.shape
 
 // `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
 // page's `_snglColor` helper, because being pure is what lets a constant style
@@ -535,18 +544,18 @@ func paintStyle(ctx DrawContext, style shapes.CanvasStyle) {
 }
 
 component shapes.circle[platform] {
-    html.draw(@draw(ctx) {
-        ctx.save()
-        paintStyle(ctx, style)
-        ctx.beginPath()
-        ctx.arc(cx, cy, r, 0.0, 6.283185307179586)
+    html.draw(@draw(e) {
+        e.ctx.save()
+        paintStyle(e.ctx, style)
+        e.ctx.beginPath()
+        e.ctx.arc(cx, cy, r, 0.0, 6.283185307179586)
         if style.fill.a > 0 {
-            ctx.fill()
+            e.ctx.fill()
         }
         if style.stroke.a > 0 {
-            ctx.stroke()
+            e.ctx.stroke()
         }
-        ctx.restore()
+        e.ctx.restore()
     })
 }
 
@@ -554,34 +563,34 @@ component shapes.circle[platform] {
 // in SNGL: the translation they replace applied all six properties to every
 // shape, including a font to a rectangle.
 component shapes.rect[platform] {
-    html.draw(@draw(ctx) {
-        ctx.save()
+    html.draw(@draw(e) {
+        e.ctx.save()
         if style.fill.a > 0 {
-            ctx.fillStyle = cssColor(style.fill)
-            ctx.fillRect(x, y, w, h)
+            e.ctx.fillStyle = cssColor(style.fill)
+            e.ctx.fillRect(x, y, w, h)
         }
         if style.stroke.a > 0 {
-            ctx.strokeStyle = cssColor(style.stroke)
-            ctx.lineWidth = style.strokeWidth
-            ctx.strokeRect(x, y, w, h)
+            e.ctx.strokeStyle = cssColor(style.stroke)
+            e.ctx.lineWidth = style.strokeWidth
+            e.ctx.strokeRect(x, y, w, h)
         }
-        ctx.restore()
+        e.ctx.restore()
     })
 }
 
 component shapes.ellipse[platform] {
-    html.draw(@draw(ctx) {
-        ctx.save()
-        paintStyle(ctx, style)
-        ctx.beginPath()
-        ctx.ellipse(cx, cy, rx, ry, 0.0, 0.0, 6.283185307179586)
+    html.draw(@draw(e) {
+        e.ctx.save()
+        paintStyle(e.ctx, style)
+        e.ctx.beginPath()
+        e.ctx.ellipse(cx, cy, rx, ry, 0.0, 0.0, 6.283185307179586)
         if style.fill.a > 0 {
-            ctx.fill()
+            e.ctx.fill()
         }
         if style.stroke.a > 0 {
-            ctx.stroke()
+            e.ctx.stroke()
         }
-        ctx.restore()
+        e.ctx.restore()
     })
 }
 
@@ -589,66 +598,66 @@ component shapes.ellipse[platform] {
 // set and ignored. That is the declaration's documented behaviour, stated once
 // in the override instead of as a special case in five emitters.
 component shapes.line[platform] {
-    html.draw(@draw(ctx) {
-        ctx.save()
-        ctx.strokeStyle = cssColor(style.stroke)
-        ctx.lineWidth = style.strokeWidth
-        ctx.lineCap = style.lineCap
-        ctx.lineJoin = style.lineJoin
-        ctx.beginPath()
-        ctx.moveTo(x1, y1)
-        ctx.lineTo(x2, y2)
-        ctx.stroke()
-        ctx.restore()
+    html.draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.strokeStyle = cssColor(style.stroke)
+        e.ctx.lineWidth = style.strokeWidth
+        e.ctx.lineCap = style.lineCap
+        e.ctx.lineJoin = style.lineJoin
+        e.ctx.beginPath()
+        e.ctx.moveTo(x1, y1)
+        e.ctx.lineTo(x2, y2)
+        e.ctx.stroke()
+        e.ctx.restore()
     })
 }
 
 component shapes.path[platform] {
-    html.draw(@draw(ctx) {
-        ctx.save()
-        paintStyle(ctx, style)
-        ctx.lineCap = style.lineCap
-        ctx.lineJoin = style.lineJoin
-        ctx.beginPath()
+    html.draw(@draw(e) {
+        e.ctx.save()
+        paintStyle(e.ctx, style)
+        e.ctx.lineCap = style.lineCap
+        e.ctx.lineJoin = style.lineJoin
+        e.ctx.beginPath()
         for var c = cmds {
             if c.op == "moveTo" {
-                ctx.moveTo(c.x, c.y)
+                e.ctx.moveTo(c.x, c.y)
             }
             if c.op == "lineTo" {
-                ctx.lineTo(c.x, c.y)
+                e.ctx.lineTo(c.x, c.y)
             }
             if c.op == "bezierTo" {
-                ctx.bezierCurveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
+                e.ctx.bezierCurveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
             }
             if c.op == "arcTo" {
-                ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
+                e.ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
             }
             if c.op == "close" {
-                ctx.closePath()
+                e.ctx.closePath()
             }
         }
         if style.fill.a > 0 {
-            ctx.fill()
+            e.ctx.fill()
         }
         if style.stroke.a > 0 {
-            ctx.stroke()
+            e.ctx.stroke()
         }
-        ctx.restore()
+        e.ctx.restore()
     })
 }
 
 component shapes.canvasText[platform] {
-    html.draw(@draw(ctx) {
-        ctx.save()
-        ctx.font = "{style.fontSize}px {style.fontFamily}"
+    html.draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.font = "{style.fontSize}px {style.fontFamily}"
         if style.fill.a > 0 {
-            ctx.fillStyle = cssColor(style.fill)
-            ctx.fillText(content, x, y)
+            e.ctx.fillStyle = cssColor(style.fill)
+            e.ctx.fillText(content, x, y)
         }
         if style.stroke.a > 0 {
-            ctx.strokeStyle = cssColor(style.stroke)
-            ctx.strokeText(content, x, y)
+            e.ctx.strokeStyle = cssColor(style.stroke)
+            e.ctx.strokeText(content, x, y)
         }
-        ctx.restore()
+        e.ctx.restore()
     })
 }

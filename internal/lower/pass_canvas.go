@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -37,7 +38,7 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 			if isShapeContainer(v) {
 				name := fmt.Sprintf("_canvasDraw%d", *counter)
 				*counter++
-				drawFunc := buildDrawFunc(v.Children, funcs, name)
+				drawFunc := buildDrawFunc(v, funcs, name)
 				*funcs = append(*funcs, drawFunc)
 				v.CanvasDraw = drawFunc
 				v.Children = nil
@@ -91,11 +92,15 @@ func hostsTree(comp *ir.Component) bool {
 	return treeHosted(comp) != nil
 }
 
-// buildDrawFunc generates a draw function for a set of shape children.
-func buildDrawFunc(children []ir.Stmt, funcs *[]*ir.Func, name string) *ir.Func {
+// buildDrawFunc generates a draw function for a canvas node's shape children.
+func buildDrawFunc(canvas *ir.NodeInst, funcs *[]*ir.Func, name string) *ir.Func {
 	ctx := &ir.Param{Name: "ctx", Type: ir.TypDyn}
 	var body []ir.Stmt
-	emitShapes(children, &body, funcs, ctx)
+	emitShapes(canvas.Children, &body, funcs, drawEnv{
+		ctx:    ctx,
+		width:  nodeIntProp(canvas, "width"),
+		height: nodeIntProp(canvas, "height"),
+	})
 	return &ir.Func{
 		Name:        name,
 		Params:      []*ir.Param{ctx},
@@ -106,24 +111,34 @@ func buildDrawFunc(children []ir.Stmt, funcs *[]*ir.Func, name string) *ir.Func 
 }
 
 // emitShapes emits draw calls for each shape child.
-func emitShapes(children []ir.Stmt, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Param) {
+// drawEnv is what a draw body is written against: the context, and the size of
+// the coordinate space the shapes are placed in. The size is the node's own
+// declared width and height, which is a compile-time property -- so a handler
+// that asks for it gets a literal and no platform's draw-function signature
+// has to grow.
+type drawEnv struct {
+	ctx           *ir.Param
+	width, height int
+}
+
+func emitShapes(children []ir.Stmt, body *[]ir.Stmt, funcs *[]*ir.Func, env drawEnv) {
 	for _, s := range children {
 		switch v := s.(type) {
 		case *ir.NodeInst:
-			emitShape(v, body, funcs, ctx)
+			emitShape(v, body, funcs, env)
 		case *ir.If:
 			// The draw function is imperative, so the conditional and the loop
 			// a canvas body was written with survive into it. Skipping them --
 			// which is what reading only NodeInsts did -- silently dropped
 			// every shape a program drew from data.
 			var then, otherwise []ir.Stmt
-			emitShapes(v.Body, &then, funcs, ctx)
-			emitShapes(v.Else, &otherwise, funcs, ctx)
+			emitShapes(v.Body, &then, funcs, env)
+			emitShapes(v.Else, &otherwise, funcs, env)
 			*body = append(*body, &ir.If{AST: v.AST, Cond: v.Cond, Body: then, Else: otherwise})
 		case *ir.For:
 			var loop, empty []ir.Stmt
-			emitShapes(v.Body, &loop, funcs, ctx)
-			emitShapes(v.Else, &empty, funcs, ctx)
+			emitShapes(v.Body, &loop, funcs, env)
+			emitShapes(v.Else, &empty, funcs, env)
 			*body = append(*body, &ir.For{
 				AST:      v.AST,
 				Key:      v.Key,
@@ -137,6 +152,85 @@ func emitShapes(children []ir.Stmt, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.
 			})
 		}
 	}
+}
+
+// foldPayloadReads replaces a read of the payload's field with the field's
+// own value, so `e.ctx.save()` becomes a call on the context rather than one
+// on a struct literal.
+//
+// Substituting the parameter puts the whole literal at every use, which is
+// wrong twice over: it allocates a record per read, and in JavaScript a
+// statement opening with `{` is a block, so `{ctx: …}.ctx.save()` does not
+// parse. Folding here rather than leaving it to the optimizer, which has
+// already run by the time this pass does.
+func foldPayloadReads(stmts []ir.Stmt) []ir.Stmt {
+	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		sel, ok := e.(*ir.Select)
+		if !ok {
+			return e
+		}
+		lit, ok := sel.Operand.(*ir.StructLit)
+		if !ok {
+			return e
+		}
+		for _, f := range lit.Fields {
+			if f.Name == sel.Field {
+				return f.Value
+			}
+		}
+		return e
+	})
+	return w.stmts(stmts)
+}
+
+// drawPayload is what a draw handler's parameter binds to.
+//
+// A struct payload is built field by field from the declaration: a field whose
+// type is not a dimension gets the context, and `width`/`height` get the
+// canvas's own declared size -- a compile-time property, so they arrive as
+// literals and no platform's draw-function signature has to grow.
+func drawPayload(t *ir.Type, env drawEnv) ir.Expr {
+	sd := payloadStruct(t)
+	if sd == nil {
+		return ctxExpr(env.ctx)
+	}
+	lit := &ir.StructLit{Type: t, Def: sd}
+	for _, f := range sd.Fields {
+		var v ir.Expr
+		switch f.Name {
+		case "width":
+			v = dimLit(env.width)
+		case "height":
+			v = dimLit(env.height)
+		default:
+			v = ctxExpr(env.ctx)
+		}
+		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: v})
+	}
+	return lit
+}
+
+// payloadStruct is the struct a payload type names, or nil when the payload is
+// the context itself.
+func payloadStruct(t *ir.Type) *ir.StructDef {
+	if t == nil || t.Decl == nil {
+		return nil
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	if !ok || len(sd.Fields) == 0 {
+		return nil
+	}
+	// A context described with native fields is not a payload record: its
+	// fields are host properties, not values to fill in.
+	if sd.Foreign.Name != "" {
+		return nil
+	}
+	return sd
+}
+
+// dimLit is a canvas dimension as the literal a handler parameter binds to.
+func dimLit(v int) ir.Expr {
+	return &ir.Literal{Type: ir.TypInt, Value: strconv.Itoa(v)}
 }
 
 // ctxExpr returns an Ident for the ctx draw-function parameter.
@@ -218,7 +312,7 @@ func primitiveShapeName(ni *ir.NodeInst) string {
 // substitution is that name to the draw function's ctx. A primitive with no
 // handler paints nothing and says so by returning true with no statements --
 // which is different from not being a primitive at all.
-func primitiveDrawBody(ni *ir.NodeInst, ctx *ir.Param) ([]ir.Stmt, bool) {
+func primitiveDrawBody(ni *ir.NodeInst, env drawEnv) ([]ir.Stmt, bool) {
 	if ni.Component == nil || ni.Component.Intrinsic == "" {
 		return nil, false
 	}
@@ -230,11 +324,16 @@ func primitiveDrawBody(ni *ir.NodeInst, ctx *ir.Param) ([]ir.Stmt, bool) {
 		if h.Func == nil {
 			continue
 		}
+		// One parameter, the event payload, as every other handler has. A
+		// primitive whose payload is a struct gets the context and the
+		// coordinate space in its fields; one whose payload is the context
+		// itself gets that. Which it is comes from the declaration, so the
+		// binding reads the parameter's own type rather than counting.
 		bindings := map[string]ir.Expr{}
 		for _, p := range h.Func.Params {
-			bindings[p.Name] = ctxExpr(ctx)
+			bindings[p.Name] = drawPayload(p.Type, env)
 		}
-		out = append(out, substituteParams(deepCloneStmts(h.Func.Block), bindings)...)
+		out = append(out, foldPayloadReads(substituteParams(deepCloneStmts(h.Func.Block), bindings))...)
 	}
 	return out, true
 }
@@ -262,7 +361,7 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 }
 
 // emitShape emits save / applyStyle / primitive-draw / recurse / restore for one shape.
-func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Param) {
+func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, env drawEnv) {
 	// A shape the target implemented itself brackets its own drawing: the
 	// override is the body, and what it saves, styles and restores is its
 	// business. Emitting a bracket around it too gave every overridden shape
@@ -286,9 +385,9 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 	selfBrackets := ni.Component != nil && ni.Component.SpecializedFor != "" && len(ni.Component.Body) > 0
 	bracket := !isPrimitive && !selfBrackets
 	if bracket {
-		*body = append(*body, canvasCall(ctx, "CanvasSave"))
+		*body = append(*body, canvasCall(env.ctx, "CanvasSave"))
 		if hasArg(ni, "style") {
-			*body = append(*body, canvasCall(ctx, "CanvasApplyStyle", argVal(ni, "style")))
+			*body = append(*body, canvasCall(env.ctx, "CanvasApplyStyle", argVal(ni, "style")))
 		}
 	}
 
@@ -302,13 +401,13 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 	// declaration that is a member of a segmented tree is a rendered
 	// primitive, and any handler it declares is the render. The same shape
 	// serves a markup or menu tree with no change here.
-	if drawn, ok := primitiveDrawBody(ni, ctx); ok {
+	if drawn, ok := primitiveDrawBody(ni, env); ok {
 		*body = append(*body, drawn...)
 		if len(ni.Children) > 0 {
-			emitShapes(ni.Children, body, funcs, ctx)
+			emitShapes(ni.Children, body, funcs, env)
 		}
 		if bracket {
-			*body = append(*body, canvasCall(ctx, "CanvasRestore"))
+			*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
 		}
 		return
 	}
@@ -320,36 +419,36 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 	// "rect" matched the case it was trying to miss, so an override applied or
 	// not depending on how the program spelled its import.
 	if ni.Component != nil && len(ni.Component.Body) > 0 {
-		emitShapes(shapeBody(ni), body, funcs, ctx)
+		emitShapes(shapeBody(ni), body, funcs, env)
 		if len(ni.Children) > 0 {
-			emitShapes(ni.Children, body, funcs, ctx)
+			emitShapes(ni.Children, body, funcs, env)
 		}
 		if bracket {
-			*body = append(*body, canvasCall(ctx, "CanvasRestore"))
+			*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
 		}
 		return
 	}
 
 	switch primitiveShapeName(ni) {
 	case "rect":
-		*body = append(*body, canvasCall(ctx, "CanvasDrawRect",
+		*body = append(*body, canvasCall(env.ctx, "CanvasDrawRect",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h")))
 	case "circle":
-		*body = append(*body, canvasCall(ctx, "CanvasDrawCircle",
+		*body = append(*body, canvasCall(env.ctx, "CanvasDrawCircle",
 			argVal(ni, "cx"), argVal(ni, "cy"), argVal(ni, "r")))
 	case "ellipse":
-		*body = append(*body, canvasCall(ctx, "CanvasDrawEllipse",
+		*body = append(*body, canvasCall(env.ctx, "CanvasDrawEllipse",
 			argVal(ni, "cx"), argVal(ni, "cy"), argVal(ni, "rx"), argVal(ni, "ry")))
 	case "line":
-		*body = append(*body, canvasCall(ctx, "CanvasDrawLine",
+		*body = append(*body, canvasCall(env.ctx, "CanvasDrawLine",
 			argVal(ni, "x1"), argVal(ni, "y1"), argVal(ni, "x2"), argVal(ni, "y2")))
 	case "path":
-		*body = append(*body, canvasCall(ctx, "CanvasDrawPath", argVal(ni, "cmds")))
+		*body = append(*body, canvasCall(env.ctx, "CanvasDrawPath", argVal(ni, "cmds")))
 	case "canvasText":
-		*body = append(*body, canvasCall(ctx, "CanvasDrawText",
+		*body = append(*body, canvasCall(env.ctx, "CanvasDrawText",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "content")))
 	case "canvasImage":
-		*body = append(*body, canvasCall(ctx, "CanvasDrawImage",
+		*body = append(*body, canvasCall(env.ctx, "CanvasDrawImage",
 			argVal(ni, "x"), argVal(ni, "y"), argVal(ni, "w"), argVal(ni, "h"), argVal(ni, "src")))
 	default:
 		// A shape composed of other shapes. It is exempt from component
@@ -358,14 +457,14 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 		// site's arguments substituted for its props. Emitting only the
 		// save/restore around it is what made a program's own shape draw
 		// nothing at all.
-		emitShapes(shapeBody(ni), body, funcs, ctx)
+		emitShapes(shapeBody(ni), body, funcs, env)
 	}
 
 	if len(ni.Children) > 0 {
-		emitShapes(ni.Children, body, funcs, ctx)
+		emitShapes(ni.Children, body, funcs, env)
 	}
 
 	if bracket {
-		*body = append(*body, canvasCall(ctx, "CanvasRestore"))
+		*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
 	}
 }
