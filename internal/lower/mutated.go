@@ -80,28 +80,14 @@ func lowerMutatedVars(pkg *ir.Package, _ Caps, _ Options) error {
 			return nil
 		})
 	}
-	for _, c := range pkg.Components {
-		visit(c.Body)
-		for _, fn := range c.Funcs {
-			visit(fn.Block)
-		}
-		for _, v := range c.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					visit(h.Func.Block)
-				}
-			}
-		}
-	}
-	for _, w := range pkg.Windows {
-		visit(w.Body)
-		for _, fn := range w.Funcs {
-			visit(fn.Block)
-		}
-	}
-	for _, fn := range pkg.Funcs {
-		visit(fn.Block)
-	}
-	visit(pkg.Body)
+	// The package, not a list of roots assembled here. The list this replaces
+	// named component bodies, their funcs and their var handlers, window
+	// bodies and funcs, package funcs and the package body -- and so missed
+	// every `Timers` entry and a window's error handler. A timer handler that
+	// wrote through a struct binding was read as writing nothing, Kotlin then
+	// skipped the copy, and the in-place write left Compose's structural
+	// equality saying nothing had changed: exactly the bug the copy exists to
+	// prevent, in the one place nothing tested.
+	visit(pkg)
 	return nil
 }

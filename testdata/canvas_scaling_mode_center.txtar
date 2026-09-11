@@ -19,6 +19,7 @@ deny out/none/html/index.html `aspect-ratio` -- the element keeps the drawing's 
 deny out/none/html/index.html `_snglCanvasWatch\(\$0,` -- an unscaled canvas is drawn once; nothing follows the layout box, so a resize has nothing to redraw
 deny out/go/fyne/model.go `canvas.NewRaster` -- with nothing to scale the canvas stays the cheaper Image, rasterised once rather than regenerated per redraw
 deny out/go/gtk4/model.go `gtk_widget_set_hexpand` -- the drawing area takes its natural size, so it does not claim the extra room a scaled canvas needs
+deny out/kotlin/android/MainScreen.kt `= null` -- a native has no body this compiler can run, so a constant colour reaches Compose as a Color(...) call; folding the call instead yields its return type's zero, and `null` is no Color at all
 
 -- center.sngl --
 import . "sngl:ui"
@@ -512,7 +513,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @Composable
 fun MainScreen() {
     Canvas(modifier = Modifier.size(200.dp, 100.dp)) {
-        drawRect(color = null, topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
+        drawRect(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
     }
 }
 -- out/none/html/index.html --

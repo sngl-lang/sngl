@@ -164,6 +164,7 @@ ui.window {
 func TestOnlyAMutatedBindingIsCopied(t *testing.T) {
 	code := compileSrc(t, `
 import . "sngl:ui"
+import time "sngl:time"
 
 struct Item {
     label string = ""
@@ -173,6 +174,18 @@ struct Item {
 component main node {
     var src = Item{label="a", count=1}
     var out = 0
+
+    // A timer handler as well as a click one. The pass that answers this used
+    // to walk a list of roots written out by hand, which named component
+    // bodies and their funcs and missed Timers entirely -- so a binding
+    // written here was read as written nowhere, the copy was skipped, and the
+    // in-place write left Compose's structural equality saying nothing had
+    // changed. Exactly the bug the copy exists to prevent.
+    time.timer(interval=1s, @tick {
+        var ticked = src
+        ticked.count = 9
+        out = ticked.count
+    })
 
     button(text="go", @click {
         var readOnly = src
@@ -192,6 +205,7 @@ window(title="t", href="/index.html") { main() }
 	for _, want := range []string{
 		"var written = src__inst0.copy()",
 		"var viaLambda = src__inst0.copy()",
+		"var ticked = src__inst0.copy()",
 	} {
 		if !strings.Contains(code, want) {
 			t.Errorf("a written binding must be copied, missing %q\n---\n%s", want, code)

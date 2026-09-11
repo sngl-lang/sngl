@@ -533,7 +533,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     Canvas(modifier = Modifier.fillMaxWidth().aspectRatio(200f / 100f)) {
         scale(scale = minOf(size.width / 200f, size.height / 100f), pivot = Offset.Zero) {
-            drawRect(color = null, topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
+            drawRect(color = androidx.compose.ui.graphics.Color(red = 51, green = 102, blue = 204, alpha = 255), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(200.0.toFloat(), 100.0.toFloat()))
         }
     }
 }

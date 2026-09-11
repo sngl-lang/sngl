@@ -249,9 +249,15 @@ component bk.blip[extstub.platform](x) {
     sngl.text(value="blip {x}")
 }
 `
+	// Renders it, which the rule requires before it asks anything: this
+	// asserted the override satisfies the rule while the program named the
+	// declaration nowhere, so it passed with the override deleted too.
 	const userSource = `
+import . "sngl:ui"
+import bk "sngl:blipkit"
+
 component main node {
-    text(value="hi")
+    bk.blip(x=1)
 }
 `
 	libDoc, err := parser.Parse("blipkit.sngl", []byte(withStd(libSource)))

@@ -11,7 +11,7 @@ only the runtime centre left.
 circle was writing 6.283185307179586 out by hand.
 
 deny out/none/html/index.html `Math\.(cos|sin)\(` -- a constant angle is resolved at build time, not by the page
-deny out/none/html/index.html `math\.tau|Point\.polar` -- the helpers are SNGL, not something the output calls
+deny out/none/html/index.html `\b(polar|tau)\b` -- a method is never promoted and a lib const is inlined, so either name surviving is a call to something the page does not declare
 
 -- app.sngl --
 import ui "sngl:ui"

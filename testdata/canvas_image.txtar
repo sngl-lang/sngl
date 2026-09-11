@@ -177,16 +177,16 @@ body { font-family: system-ui, sans-serif; }
   function _canvasDraw0(ctx) {
     _snglDrawImage(ctx, "logo.png", 1, 2, 8, 4);
   }
-  var _snglImgs = /* @__PURE__ */ new Map();
   function _snglDrawImage(ctx, src, x, y, w, h) {
-    let img = _snglImgs.get(src);
+    const cache = _snglDrawImage.cache || (_snglDrawImage.cache = /* @__PURE__ */ new Map());
+    let img = cache.get(src);
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.drawImage(img, x, y, w, h);
       return;
     }
     if (!img) {
       img = new Image();
-      _snglImgs.set(src, img);
+      cache.set(src, img);
       img.src = src;
     }
     img.addEventListener("load", function() {

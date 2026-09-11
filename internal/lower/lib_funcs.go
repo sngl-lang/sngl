@@ -42,23 +42,13 @@ func lowerLibFuncs(pkg *ir.Package, _ Caps, _ Options) error {
 			fn.Receiver == "" && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
 			fn.Pkg != ""
 	}
+	// The package, rather than a list of roots assembled here: that list named
+	// component and window bodies and their funcs, so a helper called only
+	// from a timer handler, a var initializer or a prop default was never
+	// promoted and reached the backend undeclared.
 	var roots []any
 	push := func(v any) { roots = append(roots, v) }
-	for _, c := range pkg.Components {
-		push(c.Body)
-		for _, fn := range c.Funcs {
-			push(fn.Block)
-		}
-	}
-	for _, w := range pkg.Windows {
-		push(w.Body)
-		for _, fn := range w.Funcs {
-			push(fn.Block)
-		}
-	}
-	for _, fn := range pkg.Funcs {
-		push(fn.Block)
-	}
+	push(pkg)
 	var added []*ir.Func
 	for len(roots) > 0 {
 		root := roots[0]
@@ -161,19 +151,8 @@ func inlineLibConsts(pkg *ir.Package) {
 			return n, nil
 		})
 	}
-	for _, c := range pkg.Components {
-		rewrite(c.Body)
-		for _, fn := range c.Funcs {
-			rewrite(fn.Block)
-		}
-	}
-	for _, w := range pkg.Windows {
-		rewrite(w.Body)
-		for _, fn := range w.Funcs {
-			rewrite(fn.Block)
-		}
-	}
-	for _, fn := range pkg.Funcs {
-		rewrite(fn.Block)
-	}
+	// Same reason as above: a const named only from a timer handler or a
+	// declaration default is as undefined in the output as one named from a
+	// component body.
+	rewrite(pkg)
 }

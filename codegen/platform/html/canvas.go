@@ -153,11 +153,18 @@ const snglColorHelper = "function _snglColor(c){return c?\"rgba(\"+c.r+\",\"+c.g
 // decode finishes has nothing to put down, so it paints when the decode
 // arrives instead. Once the image is complete, every later draw takes the
 // synchronous path and no listener is added.
-const snglDrawImageHelper = `const _snglImgs=new Map();
-function _snglDrawImage(ctx,src,x,y,w,h){
-  let img=_snglImgs.get(src);
+//
+// The cache hangs off the function rather than sitting beside it as a `const`,
+// because only the function declaration is hoisted: a synthesized slot runs
+// its own render inline, above where these helpers are written, so a canvas
+// image inside one reached the map before the `const` initialised and threw.
+// `snglColorHelper` and `snglCanvasHelper` are immune for the same reason this
+// now is -- both are function declarations.
+const snglDrawImageHelper = `function _snglDrawImage(ctx,src,x,y,w,h){
+  const cache=_snglDrawImage.cache||(_snglDrawImage.cache=new Map());
+  let img=cache.get(src);
   if(img&&img.complete&&img.naturalWidth>0){ctx.drawImage(img,x,y,w,h);return}
-  if(!img){img=new Image();_snglImgs.set(src,img);img.src=src}
+  if(!img){img=new Image();cache.set(src,img);img.src=src}
   img.addEventListener("load",function(){ctx.drawImage(img,x,y,w,h)},{once:true})
 }
 `

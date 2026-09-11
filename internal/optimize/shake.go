@@ -9,7 +9,7 @@ import (
 
 // shakeUnused removes consts, vars, functions, structs, and enums that are
 // not reachable from roots (components, windows, timers, outputs, tests).
-func shakeUnused(pkg *ir.Package) {
+func shakeUnused(pkg *ir.Package) error {
 	used := collectUsedSymbols(pkg)
 
 	pkg.Consts = filterVars(pkg.Consts, used)
@@ -17,7 +17,7 @@ func shakeUnused(pkg *ir.Package) {
 	pkg.Funcs = filterFuncs(pkg.Funcs, used)
 	pkg.Structs = filterStructs(pkg.Structs, used)
 	pkg.Enums = filterEnums(pkg.Enums, used)
-	promoteForeignStructs(pkg)
+	return promoteForeignStructs(pkg)
 }
 
 // promoteForeignStructs adds a library package's struct to this package's list
@@ -39,10 +39,12 @@ func shakeUnused(pkg *ir.Package) {
 //
 // A foreign struct is skipped: it *is* a host type, and a declaration for it
 // would shadow the thing it names.
-func promoteForeignStructs(pkg *ir.Package) {
+func promoteForeignStructs(pkg *ir.Package) error {
 	have := map[*ir.StructDef]bool{}
+	byName := map[string]*ir.StructDef{}
 	for _, sd := range pkg.Structs {
 		have[sd] = true
+		byName[sd.Name] = sd
 	}
 	var added []*ir.StructDef
 	want := func(t *ir.Type) {
@@ -65,7 +67,37 @@ func promoteForeignStructs(pkg *ir.Package) {
 		}
 		want(fn.Return)
 	}
+	// Promotion is keyed by declaration and every backend emits by name, so a
+	// promoted library struct whose name the program also declares would be a
+	// second `type Point struct` in one file -- Go refuses it, and JS takes
+	// whichever came last. Renaming is the fix this wants, and it is not a
+	// rename this pass can make: the declaration is shared with the memoized
+	// library package, so writing to it would reach every other build in the
+	// process, and the types that point at it are shared too.
+	//
+	// So it is reported. A build that stops naming both declarations is worth
+	// more than emitted code that does not compile, or silently uses the wrong
+	// type.
+	for _, sd := range added {
+		if other, clash := byName[sd.Name]; clash {
+			return fmt.Errorf("%s declares struct %q and so does %s, which a function this build emits names in its signature; "+
+				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
+				pkgLabel(other.Pkg), sd.Name, pkgLabel(sd.Pkg))
+		}
+		byName[sd.Name] = sd
+	}
 	pkg.Structs = append(pkg.Structs, added...)
+	return nil
+}
+
+// pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries
+// the `sngl:` prefix for a library declaration and is empty for the program's
+// own.
+func pkgLabel(pkg string) string {
+	if pkg == "" {
+		return "this program"
+	}
+	return pkg
 }
 
 func filterVars(vars []*ir.Var, used map[ir.Symbol]bool) []*ir.Var {
