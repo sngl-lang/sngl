@@ -611,6 +611,17 @@ declaration itself. Two things about the name that are easy to get wrong:
   not `("strings", "ToUpper")` — a Go package's name is not a function of its
   import path (`gopkg.in/yaml.v3` is package `yaml`), so the path cannot supply
   it. The path is what `RequireImport` adds.
+- **Every language has one.** `go.native` and `js.native` were joined by
+  `kotlin.native`, which android needs to describe Compose, and by
+  **`#[cnative]` in `sngl:macro`** — C is an ABI rather than a target, so a
+  platform built on a C library (gtk4 on cairo) names C identifiers and no
+  language at all. The Go backend renders those as cgo and supplies the
+  `C.double`/`C.int` conversions from the declared parameter types.
+- **A native is never emitted.** Every call became a call to the host
+  identifier, so a declaration would be read by nobody — and it is written as
+  a stub over the zero value, which reads exactly like a real implementation.
+  JavaScript got that rule first; Kotlin had the bug until a `deny` caught
+  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call.
 - **`method` says the identifier is invoked *on* its first argument** rather
   than handed it: `c.Circle(1, 2)` where the default is
   `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
@@ -619,6 +630,10 @@ declaration itself. Two things about the name that are easy to get wrong:
   all, so describing a DOM API needs the flag: `ctx.arc(x, y, r)` is the only
   thing that runs. Only the last dotted segment is emitted, because the
   receiver supplies the package and type.
+- **`named` (Kotlin) passes the arguments by the declaration's own parameter
+  names**, which is what reaching a host parameter after one with a default
+  requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
+  reached past `alpha` positionally.
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and

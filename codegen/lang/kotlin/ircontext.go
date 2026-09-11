@@ -398,6 +398,59 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	}
 }
 
+// nativeCall emits a call to the Kotlin identifier a #[kotlin.native]
+// declaration names.
+//
+// Three shapes, as the Go and JavaScript backends have: the name as written
+// with the arguments handed to it, the same with the receiver first, and
+// `method` for a call *on* the first argument. Compose's drawing functions
+// take the first -- inside a `DrawScope` the receiver is the scope and the
+// call names none.
+func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
+	if n.Func == nil || n.Func.Foreign.Name == "" || n.Func.Foreign.Scheme != "kotlin" {
+		return "", false
+	}
+	if n.Func.Foreign.Path != "" {
+		kc.RequireImport(n.Func.Foreign.Path)
+	}
+	name := n.Func.Foreign.Name
+	args := kc.evalCallArgs(n.Args)
+	if n.Func.NativeMethod && len(args) > 0 {
+		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
+	}
+	if n.Func.NativeNamedArgs {
+		args = ktNameArgs(n.Func.Params, args)
+	}
+	return name + "(" + strings.Join(args, ", ") + ")", true
+}
+
+// ktNameArgs prefixes each argument with the parameter it fills, which is what
+// lets a call reach a host parameter that sits after one with a default.
+//
+// An argument with no parameter to name -- there should be none -- is left
+// positional rather than dropped.
+func ktNameArgs(params []*ir.Param, args []string) []string {
+	out := make([]string, len(args))
+	copy(out, args)
+	for i, p := range params {
+		if i >= len(out) || p.Name == "" {
+			continue
+		}
+		out[i] = p.Name + " = " + out[i]
+	}
+	return out
+}
+
+// ktMethodTail is the last segment of a dotted native name: the method to
+// invoke on the receiver, with the type or namespace prefix dropped because
+// the receiver supplies it.
+func ktMethodTail(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
+}
+
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
@@ -405,6 +458,13 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		for _, p := range imports {
 			kc.RequireImport(p)
 		}
+		return out
+	}
+	// A declaration that *is* a Kotlin identifier: the call becomes a call to
+	// it and nothing is emitted for the declaration. Before the receiver and
+	// the scope lookups, because those answer for a function this build emits
+	// and a native is not one.
+	if out, ok := kc.nativeCall(n); ok {
 		return out
 	}
 	if n.Receiver != nil {

@@ -968,6 +968,14 @@ func emitIRKtMethod(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 }
 
 func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
+	// A declaration that *is* a Kotlin identifier is not emitted: every call
+	// to it became a call to that identifier, so a declaration here would be
+	// read by nobody -- and it is written as a stub over the zero value, which
+	// reads exactly like a real implementation. The same rule JavaScript got
+	// for `#[js.native]`.
+	if fn.Foreign.Name != "" && !fn.Foreign.Marked {
+		return
+	}
 	// passNoImplicitRecv puts the receiver in front of the parameters as
 	// `this`, which is a Kotlin keyword and never what the call site passes:
 	// an extension takes it as the receiver, and a component's func is called

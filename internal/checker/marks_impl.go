@@ -22,6 +22,7 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "cnative"}:            markCNative,
+	{"language/kotlin", "native"}:   markKotlinNative,
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
 	{"language/go", "async"}:        markGoAsync,
@@ -86,6 +87,37 @@ func markGoNative(m *mark) error {
 		d.Foreign = fm
 	default:
 		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
+	}
+	return nil
+}
+
+// markKotlinNative implements #[kotlin.native("name")] and the module form.
+//
+// The same shape as the other two. A receiverless declaration is what a
+// Compose `DrawScope` function needs: the scope is the receiver and the call
+// carries none.
+func markKotlinNative(m *mark) error {
+	name, module := m.args.String("name"), m.args.String("module")
+	if name == "" {
+		return fmt.Errorf("#[kotlin.native]: an identifier is required")
+	}
+	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[native(%q)]", name))
+	if err != nil {
+		return err
+	}
+	fm := ir.Foreign{Scheme: "kotlin", Path: module, Name: name}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		d.Foreign = fm
+		d.NativeMethod = slices.Contains(flags, flagMethod)
+		d.NativeNamedArgs = slices.Contains(flags, flagNamed)
+	case *ir.StructDef:
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
+		}
+		d.Foreign = fm
+	default:
+		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a function or a struct names a Kotlin identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
@@ -263,6 +295,10 @@ const flagFails = "fails"
 // handed it. Both languages accept it: the choice is the host API's, not the
 // language's.
 const flagMethod = "method"
+
+// flagNamed says a native call passes its arguments by name, using the
+// declaration's own parameter names.
+const flagNamed = "named"
 
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //
