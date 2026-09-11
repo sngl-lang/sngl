@@ -13,14 +13,11 @@ So this fixture is a golden rather than a script test: the assertion is the
 shape of the emitted draw function, per target, with the conditional intact
 around translated calls.
 
-It now also shows the two paths side by side. `circle` has an html override
-written in SNGL, so the html output is that override's own statements; `rect`
-does not, so it is still the name-matched translation. The contrast is the
-point of #213: the override's three property assignments replace twelve lines
-of guarded object literals, `cssColor` folds to a string at build time, and
-`ctx.stroke()` is absent because `style.stroke.a > 0` folded to false --
-where the old path emitted an invisible stroke on every fill-only shape
-(#225).
+Both shapes now draw from their target's own override, which is what #213
+finished: the html output is the override's own statements, `cssColor` folds to
+a string at build time, and `ctx.stroke()` is absent because
+`style.stroke.a > 0` folded to false -- where the name-matched translation this
+replaced emitted an invisible stroke on every fill-only shape (#225).
 
 deny out/go/bubbletea/model.go `\b(CanvasSave|CanvasDraw|CanvasApplyStyle)\(` -- an untranslated canvas intrinsic names a Go function nobody emits; \b keeps the runtime helper _snglCanvasDraw out of it
 deny out/none/html/index.html `\b(CanvasSave|CanvasDraw|CanvasApplyStyle)\(` -- same, for the JS translation

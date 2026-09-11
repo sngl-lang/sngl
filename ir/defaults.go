@@ -76,8 +76,6 @@ func ZeroExpr(t *Type) Expr {
 	return nil
 }
 
-// zeroFuncExpr synthesizes a dummy lambda matching t's function signature:
-// ignores all parameters and returns the zero value of the declared return type.
 // DeclaredDefault is the value a declaration means by omitting one.
 //
 // The same as ZeroExpr except for a struct, where it carries the fields' own
@@ -115,6 +113,8 @@ func DeclaredDefault(t *Type) Expr {
 	return lit
 }
 
+// zeroFuncExpr synthesizes a dummy lambda matching t's function signature: it
+// ignores every parameter and returns the zero of the declared return type.
 func zeroFuncExpr(t *Type) Expr {
 	if t.Sig == nil {
 		return nil

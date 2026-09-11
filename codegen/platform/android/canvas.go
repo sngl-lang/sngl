@@ -45,7 +45,8 @@ var canvasComposeImports = []string{
 	"androidx.compose.ui.geometry.Offset",
 	"androidx.compose.ui.geometry.Size",
 	"androidx.compose.ui.graphics.Path",
-	"androidx.compose.ui.graphics.drawscope.Fill",
+	// No Fill: the fill variants in android.sngl omit `style` entirely and
+	// take Compose's own default, so nothing the overrides emit names it.
 	"androidx.compose.ui.graphics.drawscope.Stroke",
 	"androidx.compose.ui.graphics.nativeCanvas",
 	"androidx.compose.ui.graphics.asImageBitmap",
@@ -399,7 +400,6 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 	}
 	// SNGL color{r,g,b,a} 0..255 → Compose ComposeColor(red,green,blue,alpha)
 	// (the Int overload takes 0..255 channels).
-	b.WriteString("fun _snglComposeColor(c: Color): ComposeColor = ComposeColor(c.r, c.g, c.b, c.a)\n\n")
 
 	// Two DrawScope extensions the shape overrides call, for the drawing this
 	// platform cannot describe with a native declaration: text goes through a

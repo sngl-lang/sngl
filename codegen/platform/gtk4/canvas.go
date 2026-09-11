@@ -93,26 +93,6 @@ func cairoCall(name string, cr ir.Expr, args ...ir.Expr) ir.Stmt {
 	return &ir.CallStmt{Call: nativeCall(name, all...)}
 }
 
-// dbl wraps an expr in C.double(...) so cairo's double params type-check.
-func dbl(e ir.Expr) ir.Expr { return nativeCall("double", e) }
-
-// twoPi is the literal 2*math.Pi as a Go float, used for full-circle arcs.
-// Spelled out so no "math" import is needed in the cgo file.
-const twoPiLit = "6.283185307179586"
-
-func twoPi() ir.Expr { return &ir.Literal{Type: ir.TypFloat, Value: twoPiLit} }
-func zeroF() ir.Expr { return &ir.Literal{Type: ir.TypFloat, Value: "0"} }
-
-// goHelperCall builds `<helper>(args...)` as a plain Go function call (not a
-// cgo C call) — used for the _snglCairo* runtime helpers emitted in model.go.
-func goHelperCall(helper string, args ...ir.Expr) *ir.Call {
-	callArgs := make([]ir.CallArg, len(args))
-	for i, a := range args {
-		callArgs[i] = ir.CallArg{Value: a}
-	}
-	return &ir.Call{Type: ir.TypVoid, Func: &ir.Func{Name: helper}, Args: callArgs}
-}
-
 // translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt (inside a
 // draw func body) into native cairo calls. What reaches here is the bracket
 // passCanvas puts around a composed shape -- Save and Restore -- since the

@@ -19,6 +19,7 @@ import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
 import shapes "sngl:ui/draw"
+import math "sngl:math"
 
 // The `html` node of a build directive: `output { js { html() } }`. Its props
 // are the build options this platform accepts.
@@ -548,7 +549,7 @@ component shapes.circle[platform] {
         e.ctx.save()
         paintStyle(e.ctx, style)
         e.ctx.beginPath()
-        e.ctx.arc(cx, cy, r, 0.0, 6.283185307179586)
+        e.ctx.arc(cx, cy, r, 0.0, math.tau)
         if style.fill.a > 0 {
             e.ctx.fill()
         }
@@ -583,7 +584,7 @@ component shapes.ellipse[platform] {
         e.ctx.save()
         paintStyle(e.ctx, style)
         e.ctx.beginPath()
-        e.ctx.ellipse(cx, cy, rx, ry, 0.0, 0.0, 6.283185307179586)
+        e.ctx.ellipse(cx, cy, rx, ry, 0.0, 0.0, math.tau)
         if style.fill.a > 0 {
             e.ctx.fill()
         }
