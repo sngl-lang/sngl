@@ -77,50 +77,10 @@ func lowerLibFuncs(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	pkg.Funcs = append(pkg.Funcs, added...)
 	inlineLibConsts(pkg)
-	promoteLibStructs(pkg, added)
+	// The structs those helpers' signatures name are promoted by the shake
+	// instead: only there is it known which of them survive, and a struct
+	// belonging to one that does not is a declaration nothing writes.
 	return nil
-}
-
-// promoteLibStructs adds a library package's struct to this package's list
-// when emitted code names it as a type.
-//
-// The third of the same shape: every backend emits its type declarations from
-// `pkg.Structs`, which holds the program's own, so a struct another package
-// declares had no declaration in the output -- `shapes.Point` reached the
-// generated Go as the undefined type `Point`. A platform override is the first
-// thing to name one, because it is the first library body a build emits.
-//
-// A foreign struct is skipped: `#[cnative("C.GdkPixbuf")]` *is* a host type
-// and emitting a declaration for it would shadow the thing it names.
-func promoteLibStructs(pkg *ir.Package, promoted []*ir.Func) {
-	have := map[*ir.StructDef]bool{}
-	for _, sd := range pkg.Structs {
-		have[sd] = true
-	}
-	var added []*ir.StructDef
-	want := func(t *ir.Type) {
-		if t == nil || t.Kind != ir.TypeStruct {
-			return
-		}
-		sd, ok := t.Decl.(*ir.StructDef)
-		if !ok || sd == nil || have[sd] || sd.Pkg == "" || sd.Foreign.Name != "" {
-			return
-		}
-		have[sd] = true
-		added = append(added, sd)
-	}
-	// Only the promoted helpers' own signatures. A struct a body merely
-	// *builds* needs no declaration of its own in a language whose literals
-	// carry none, and reaching wider pulled in `ui.Style` -- referenced by
-	// every program -- which html then emitted a constructor for. A signature
-	// is different: it writes the type's name, so the name has to exist.
-	for _, fn := range promoted {
-		for _, p := range fn.Params {
-			want(p.Type)
-		}
-		want(fn.Return)
-	}
-	pkg.Structs = append(pkg.Structs, added...)
 }
 
 // foreignConst is the value behind a reference to a const another package

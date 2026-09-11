@@ -225,9 +225,6 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { big__inst0: true };
-  function color(r, g, b, a) {
-    return { r, g, b, a };
-  }
   function CanvasStyle(fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily) {
     return { fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily };
   }

@@ -71,9 +71,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { c__inst0: null };
   state.c__inst0 = { x: 50, y: 50 };
-  function color(r, g, b, a) {
-    return { r, g, b, a };
-  }
   function CanvasStyle(fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily) {
     return { fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily };
   }

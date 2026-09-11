@@ -39,12 +39,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/remote/http"
 )
 
-type Result struct {
-	Status  int
-	Body    string
-	Headers map[string]string
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	url string
