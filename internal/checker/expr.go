@@ -1129,17 +1129,54 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 	return &ir.Conversion{AST: x, Type: target}
 }
 
-func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
-	// Determine if operand is a type name (static call) vs a value (instance call).
-	isStatic := false
-	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			switch sym.(type) {
-			case *ir.TypeSym, *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
-				isStatic = true
-			}
+// staticReceiverSym is the declaration a method call's operand names, when it
+// names one rather than being a value.
+//
+// Both spellings, because a type reached through a package is the same type:
+// `Point.polar(…)` under a dot import, and `draw.Point.polar(…)` under an
+// alias. Only the first was recognised, so the second was evaluated as a
+// *value* and every argument bound one parameter late -- `Point.polar(c, r, a)`
+// reported "cannot pass Point as float", which names the symptom and not the
+// cause.
+func (c *checker) staticReceiverSym(operand ast.Expr) ir.Symbol {
+	switch op := operand.(type) {
+	case *ast.IdentExpr:
+		if sym, ok := c.scope.Lookup(op.Name); ok {
+			return sym
+		}
+	case *ast.SelectExpr:
+		ident, ok := op.Operand.(*ast.IdentExpr)
+		if !ok {
+			return nil
+		}
+		sym, ok := c.scope.Lookup(ident.Name)
+		if !ok {
+			return nil
+		}
+		ns, ok := sym.(*ir.Namespace)
+		if !ok || ns.Pkg == nil {
+			return nil
+		}
+		if member, ok := ns.Pkg.Symbols.LookupMember(op.Field); ok {
+			return member
 		}
 	}
+	return nil
+}
+
+// isTypeSym reports whether sym is a declaration that names a type, which is
+// what makes a method call on it static.
+func isTypeSym(sym ir.Symbol) bool {
+	switch sym.(type) {
+	case *ir.TypeSym, *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
+		return true
+	}
+	return false
+}
+
+func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
+	// Determine if operand is a type name (static call) vs a value (instance call).
+	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
 
 	receiverExpr := c.checkExpr(sel.Operand)
 	receiver := exprType(receiverExpr)

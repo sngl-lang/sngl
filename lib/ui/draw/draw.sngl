@@ -102,3 +102,71 @@ component canvasText(x float, y float, content string, style CanvasStyle) shape 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
 // or asset path as `std.image`.
 component canvasImage(x float, y float, w float, h float, src string) shape {}
+
+// --- Geometry ---
+//
+// The vocabulary a shape's own coordinates are written in, and what an
+// override reaches for when it has to compute them: a dial hand, a polygon
+// corner, the control points of a curve. All of it is plain SNGL over
+// `sngl:builtin`'s trig, so it folds away wherever the inputs are constant.
+
+// A position in the canvas's coordinate space.
+struct Point {
+    x float = 0.0
+    y float = 0.0
+}
+
+// An extent in the same space. Named for its fields rather than `w`/`h` so a
+// call site reads as the prop it fills.
+struct Size {
+    width float = 0.0
+    height float = 0.0
+}
+
+// The point at `angle` radians and `radius` from `center`, measuring
+// clockwise from the positive x axis -- the direction screen coordinates run,
+// where y grows downward.
+//
+// This is the one that makes an arc, a dial or a regular polygon writable: the
+// alternative is trigonometry at every call site.
+// Block bodies with the return type written out, not `=>`: in library source
+// an unannotated expression body is inferred only when it answers a
+// *primitive* -- `color.rgb() => color{…}` would otherwise shadow the `color`
+// primitive in callers -- so a struct-returning helper stays `dyn`, and an
+// expression body cannot carry an annotation to say otherwise.
+func Point.polar(center Point, radius float, angle float) Point {
+    return Point{
+        x = center.x + radius * float.cos(angle),
+        y = center.y + radius * float.sin(angle),
+    }
+}
+
+// `p` moved by dx, dy.
+func Point.offset(p Point, dx float, dy float) Point {
+    return Point{x=p.x + dx, y=p.y + dy}
+}
+
+// The point `t` of the way from a to b, with t = 0 at a and t = 1 at b.
+// Values outside that range extrapolate, which is deliberate: a control point
+// often sits beyond the segment it belongs to.
+func Point.lerp(a Point, b Point, t float) Point {
+    return Point{
+        x = a.x + (b.x - a.x) * t,
+        y = a.y + (b.y - a.y) * t,
+    }
+}
+
+// The distance between two points.
+func Point.distance(a Point, b Point) => float.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+
+// The angle from a to b, in radians, as `Point.polar` measures it.
+func Point.angle(a Point, b Point) => float.atan2(b.y - a.y, b.x - a.x)
+
+// The even scale that puts all of `inner` inside `outer`, and the one that
+// leaves none of `outer` uncovered. These are `ScalingMode.fit` and
+// `ScalingMode.fill` as a number, which is what a target's own scaling does to
+// a canvas -- so an override that scales part of a drawing can ask the same
+// question the platform does.
+func Size.fitScale(inner Size, outer Size) => float.min(outer.width / inner.width, outer.height / inner.height)
+
+func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inner.width, outer.height / inner.height)
