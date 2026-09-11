@@ -200,8 +200,12 @@ func hasArg(ni *ir.NodeInst, name string) bool {
 // of the shapes in it, so only a body-less one is a primitive -- that is also
 // what keeps a program's own `component rect` from being mistaken for this
 // package's.
+//
+// Reached only for a body-less component now: emitShape decides the
+// body-bearing case before the switch, rather than relying on a call-site name
+// not to match one of these.
 func primitiveShapeName(ni *ir.NodeInst) string {
-	if ni.Component == nil || len(ni.Component.Body) > 0 {
+	if ni.Component == nil {
 		return ni.Name
 	}
 	return ni.Component.Name
@@ -273,7 +277,14 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 	// around it was written in the override that called it.
 	isPrimitive := ni.Component != nil && ni.Component.Intrinsic != "" &&
 		ir.IsSegmentedTree(ni.Component.Tree)
-	bracket := !isPrimitive && (ni.Component == nil || ni.Component.SpecializedFor == "")
+	// `len(Body) == 0` matters as much as the specialization: a component can
+	// be specialized for this target and still have nothing in it -- a harness
+	// that checks without merging this platform's extensions leaves the
+	// override empty -- and such a shape falls through to the name-matched
+	// translation, which needs the bracket. Reading SpecializedFor alone gave
+	// it neither, and the shape drew with no style at all.
+	selfBrackets := ni.Component != nil && ni.Component.SpecializedFor != "" && len(ni.Component.Body) > 0
+	bracket := !isPrimitive && !selfBrackets
 	if bracket {
 		*body = append(*body, canvasCall(ctx, "CanvasSave"))
 		if hasArg(ni, "style") {
@@ -293,6 +304,23 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, ctx *ir.Para
 	// serves a markup or menu tree with no change here.
 	if drawn, ok := primitiveDrawBody(ni, ctx); ok {
 		*body = append(*body, drawn...)
+		if len(ni.Children) > 0 {
+			emitShapes(ni.Children, body, funcs, ctx)
+		}
+		if bracket {
+			*body = append(*body, canvasCall(ctx, "CanvasRestore"))
+		}
+		return
+	}
+
+	// A component with a body renders from it -- a composed shape, or the
+	// override a target supplied. Decided before the name switch and not by
+	// falling through it: primitiveShapeName returned the *call-site* name to
+	// force that fallthrough, and under `import . "sngl:ui/draw"` the bare
+	// "rect" matched the case it was trying to miss, so an override applied or
+	// not depending on how the program spelled its import.
+	if ni.Component != nil && len(ni.Component.Body) > 0 {
+		emitShapes(shapeBody(ni), body, funcs, ctx)
 		if len(ni.Children) > 0 {
 			emitShapes(ni.Children, body, funcs, ctx)
 		}

@@ -65,6 +65,10 @@ var alwaysOn = []string{
 	"IndexedIter",
 	"InlinePure",
 	"IterKind",
+	// A helper a `sngl:` package declares and an emitted body calls has to be
+	// in pkg.Funcs for any target, because that is what every backend emits
+	// from.
+	"LibFuncs",
 	"PlatformExtensionBody",
 	"PropBindings",
 	"Query",
