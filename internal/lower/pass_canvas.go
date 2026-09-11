@@ -57,6 +57,20 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 		case *ir.For:
 			walkCanvasStmts(v.Body, funcs, counter)
 			walkCanvasStmts(v.Else, funcs, counter)
+		case *ir.ErrorBoundary:
+			// A boundary and a context provider are how the nodes under them
+			// got there rather than nodes, exactly as the `if` above is. A
+			// canvas written under either was left unlowered and rendered
+			// nothing at all -- on bubbletea the whole drawing was absent from
+			// the model, with no diagnostic anywhere.
+			//
+			// Children alone: passBoundaryFailed runs well before this and has
+			// already rewritten the pair into a reactive `if` over its flag,
+			// so Failed is empty by now and walking it would emit the fallback
+			// a second time.
+			walkCanvasStmts(v.Children, funcs, counter)
+		case *ir.ContextProvider:
+			walkCanvasStmts(v.Children, funcs, counter)
 		}
 	}
 }
@@ -150,6 +164,18 @@ func emitShapes(children []ir.Stmt, body *[]ir.Stmt, funcs *[]*ir.Func, env draw
 				KeySym:   v.KeySym,
 				ValueSym: v.ValueSym,
 			})
+		case *ir.ErrorBoundary:
+			// Flattened rather than kept: a draw function paints, and a
+			// boundary has nothing to paint of its own. What it wrapped is
+			// what the canvas draws, and dropping it here is what made a shape
+			// under one disappear from every target's draw function while its
+			// siblings drew normally.
+			//
+			// Children alone, for the reason walkCanvasStmts gives: the
+			// fallback is already an `if` inside them by the time this runs.
+			emitShapes(v.Children, body, funcs, env)
+		case *ir.ContextProvider:
+			emitShapes(v.Children, body, funcs, env)
 		}
 	}
 }
