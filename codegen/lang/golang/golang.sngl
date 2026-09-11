@@ -88,11 +88,10 @@ func http.get[language]() {
 //
 // On the *language* axis, so a platform inherits it by not overriding. gtk4
 // and android do override, because cairo and Compose are not this surface.
-// `#[foreign(..., native)]` rather than this package's own `native` macro: a
-// mark arrives through an import, and a package's own macro cannot mark that
-// package's own struct, because struct shells register before functions do.
-// The flag is what `native` is a thin spelling of, and it is reachable here.
-#[foreign("go:git.duckfam.us/jonathan/sngl/pkg/go/canvas", "*snglcanvas.Context", native)]
+// The Go type of the draw handler's context parameter. Named through this
+// package's own `native`, which is the point of registering a package's macros
+// ahead of the marks that name them.
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "*snglcanvas.Context")]
 struct DrawContext {}
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Save", method)]
