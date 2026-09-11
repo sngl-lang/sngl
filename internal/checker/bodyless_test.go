@@ -3,6 +3,10 @@ package checker_test
 import (
 	"strings"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
+	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // A function body is optional, and the checker requires the answer to come from
@@ -80,5 +84,65 @@ func length(s string) int {
 		if strings.Contains(e.Error(), "body") {
 			t.Fatalf("a body on an intrinsic was reported: %s", e.Error())
 		}
+	}
+}
+
+// A component's body is optional too, and `{}` is not the same declaration as
+// no braces: the first renders nothing, the second says the render comes from
+// elsewhere.
+func TestBodylessComponentNeedsASource(t *testing.T) {
+	errs := checkSrc(t, "component gap(w int) node\n")
+	if len(errs) == 0 {
+		t.Fatal("a bodyless component with no override checked clean")
+	}
+	if got := errs[0].Error(); !strings.Contains(got, "no body") {
+		t.Errorf("unexpected diagnostic: %s", got)
+	}
+}
+
+// The empty body is the other half of the pair and stays legal: a component
+// that renders nothing is a thing a declaration may say.
+func TestEmptyBodiedComponentIsNotBodyless(t *testing.T) {
+	if errs := checkSrc(t, "component gap(w int) node {}\n"); len(errs) != 0 {
+		t.Fatalf("an empty-bodied component was reported: %v", errs)
+	}
+}
+
+// ir.Component.Bodyless is what carries the distinction past the checker.
+// ast.StmtBlock.IsDefined() cannot: it reports whether a block came from
+// source, so everything ir.Convert rebuilt looked bodyless and every
+// empty-bodied component printed back as a signature -- which then failed to
+// re-check, because the rule above is exactly what it tripped.
+//
+// The flag is stamped at registration, so it is read here from a package that
+// also carries the diagnostic; what is under test is the fact, not the rule.
+func TestBodylessSurvivesIntoIR(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want bool
+	}{
+		{"no braces", "component gap(w int) node\n", true},
+		{"empty body", "component gap(w int) node {}\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := parser.Parse("test.sngl", []byte(withStd(tc.src)))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
+			var comp *ir.Component
+			for _, c := range pkg.Components {
+				if c.Name == "gap" {
+					comp = c
+				}
+			}
+			if comp == nil {
+				t.Fatal("component gap was not registered")
+			}
+			if comp.Bodyless != tc.want {
+				t.Errorf("Bodyless = %v, want %v", comp.Bodyless, tc.want)
+			}
+		})
 	}
 }

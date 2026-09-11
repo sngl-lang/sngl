@@ -537,6 +537,13 @@ type Component struct {
 	// and a TreeParam is a third state: tree-less at the declaration, and a
 	// member of whatever its children turn out to be at each call site.
 	TreeParam string `json:",omitempty"`
+	// Bodyless is a declaration written with no block at all, as against one
+	// written `{}`, which renders nothing. The two are different declarations
+	// and only this says which: ast.StmtBlock.IsDefined() reports whether a
+	// block came from source, so a component Convert rebuilt has none either
+	// way, and reading it as "has a body" printed every empty-bodied component
+	// back as a signature.
+	Bodyless bool `json:",omitempty"`
 	// Intrinsic is the id from #[intrinsic] on a component: this component is
 	// emitted by the platform codegen that answers to the id, not by
 	// inlining a body. It is what tells the inliner to leave the component

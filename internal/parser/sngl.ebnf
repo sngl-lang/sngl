@@ -374,7 +374,9 @@ Param = { MacroAttr } ( colon ident | at ident | ident ) [ Type ] [ assign Expr 
 
 # ── Components ────────────────────────────────────────────────────────────────
 
-ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] StmtBlock .
+# The block is optional, as FuncBodyTail's is. `{}` and no block at all are
+# different declarations, so the formatter must not print one for the other.
+ComponentDecl = kw_component ident [ dot ident ] [ TypeParamList ] [ TargetIndex ] [ lparen [ ParamList ] rparen ] [ Type ] [ StmtBlock ] .
 
 # ── Visual nodes + expression statements ──────────────────────────────────────
 #

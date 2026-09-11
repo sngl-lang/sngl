@@ -331,9 +331,11 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		bodyBlock := c.convertStmtBlock(comp.Body)
 		bodyStmts = append(bodyStmts, bodyBlock.Stmts...)
 	}
-	if len(bodyStmts) > 0 {
+	// A signature keeps no block; anything else gets one even when it is
+	// empty, since `{}` and no braces are different declarations.
+	if !comp.Bodyless {
 		cd.Body = ast.StmtBlock{
-			IsMultiline: true,
+			IsMultiline: len(bodyStmts) > 0,
 			Stmts:       bodyStmts,
 			Pos:         ast.Pos{Line: 1},
 		}

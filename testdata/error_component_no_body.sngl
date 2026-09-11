@@ -1,0 +1,18 @@
+// `{}` and no braces at all are different declarations: the first says the
+// component renders nothing, the second says the render comes from elsewhere.
+// Nothing supplies one here, so the declaration is refused rather than
+// rendering nothing silently on every target.
+
+import ui "sngl:ui"
+
+component gap(w int) ui.node // ERROR(check) "has no body"
+
+component card() ui.node {
+    ui.vbox {
+        gap(w=4)
+    }
+}
+
+ui.window {
+    card()
+}

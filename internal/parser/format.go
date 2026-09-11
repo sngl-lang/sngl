@@ -747,8 +747,12 @@ func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
 		f.write(" ")
 		f.writeType(c.ChildrenType)
 	}
-	f.write(" ")
-	f.writeBlock(&c.Body)
+	// No block at all is a signature, and printing `{}` for it would rewrite
+	// the declaration into one that renders nothing.
+	if c.Body.IsDefined() {
+		f.write(" ")
+		f.writeBlock(&c.Body)
+	}
 }
 
 // --- visual node ---
