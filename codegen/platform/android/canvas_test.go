@@ -147,3 +147,52 @@ ui.window {
 		}
 	}
 }
+
+// A struct binding is copied so a mutation cannot reach whoever else holds the
+// value -- Compose decides whether to recompose by structural equality, and a
+// handler that mutated one in place left the screen unchanged. A binding
+// nothing writes has no mutation to contain, and `passMutatedVars` is what
+// tells the two apart.
+//
+// Both directions, because the failure modes are opposite: a missing copy
+// aliases two names silently, and a spurious one is only waste.
+func TestOnlyAMutatedBindingIsCopied(t *testing.T) {
+	code := compileSrc(t, `
+import . "sngl:ui"
+
+struct Item {
+    label string = ""
+    count int = 0
+}
+
+component main node {
+    var src = Item{label="a", count=1}
+    var out = 0
+
+    button(text="go", @click {
+        var readOnly = src
+        var written = src
+        var viaLambda = src
+
+        var bump = func() { viaLambda.count = 7 }
+        bump()
+        written.count = 3
+        out = readOnly.count + written.count + viaLambda.count
+    })
+}
+
+window(title="t", href="/index.html") { main() }
+`, false)
+
+	for _, want := range []string{
+		"var written = src__inst0.copy()",
+		"var viaLambda = src__inst0.copy()",
+	} {
+		if !strings.Contains(code, want) {
+			t.Errorf("a written binding must be copied, missing %q\n---\n%s", want, code)
+		}
+	}
+	if !strings.Contains(code, "var readOnly = src__inst0\n") {
+		t.Errorf("a binding nothing writes needs no copy\n---\n%s", code)
+	}
+}

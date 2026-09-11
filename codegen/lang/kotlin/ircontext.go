@@ -203,6 +203,23 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 // assignment -- copying on binding is what makes every mutable name one this
 // scope owns, and copying again on the way out would only defeat the
 // structural-equality check Compose uses to decide whether to recompose.
+// valueCopyFor is valueCopy for a local binding, skipping the copy when
+// nothing writes the binding.
+//
+// The copy exists so a mutation cannot reach whoever else holds the value; a
+// binding that is only read has no mutation to contain, and `passMutatedVars`
+// is what says which is which. Absent the annotation -- a pipeline that did
+// not lower -- every struct is copied, which is the old behaviour and the safe
+// direction.
+func (kc *KtIRContext) valueCopyFor(n *ir.LocalVar, rendered string) string {
+	if n.Sym != nil && kc.Ctx != nil && kc.Ctx.Pkg != nil && kc.Ctx.Pkg.MutatedVars != nil {
+		if !kc.Ctx.Pkg.MutatedVars[n.Sym] {
+			return rendered
+		}
+	}
+	return valueCopy(n.Init, n.Type, rendered)
+}
+
 func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
 	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
 		return rendered
@@ -262,7 +279,7 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 				}
 			}
 		}
-		return "var " + n.Name + " = " + valueCopy(n.Init, n.Type, initStr)
+		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
 	}
 	goType := "Any"
 	if n.Type != nil {

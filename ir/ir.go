@@ -90,6 +90,20 @@ type Package struct {
 	// package — by user code via `&v`, or by NoLambda's lifter when emitting
 	// mutable-capture init. NoRef reads this set to decide which Vars to box.
 	AddressedVars map[*Var]bool
+	// MutatedVars records every Var that is written after it is bound --
+	// assigned to, assigned through (a field or an element of it), had its
+	// address taken, or handed to a call that writes through its argument.
+	//
+	// What reads it is a backend with value semantics to preserve: Kotlin
+	// copies a struct on binding so a mutation cannot reach whoever else holds
+	// it, and a binding nothing writes needs no copy. Conservative by
+	// construction -- anything that might write marks it -- because a missing
+	// copy aliases two names and a spurious one only costs a shallow clone.
+	//
+	// Filled in lowering, like AddressedVars, and late: a pass that rewrites a
+	// body can introduce an assignment, and an answer computed before that
+	// would be stale.
+	MutatedVars map[*Var]bool
 
 	// AsyncKickers is populated by the NoAsyncReactive lowering pass. Each
 	// entry records a synthetic async kicker func and the original computed

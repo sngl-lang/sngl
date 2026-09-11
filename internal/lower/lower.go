@@ -76,6 +76,8 @@ var passes = []pass{
 	passAsyncOffload,
 	passIndexedIter,
 	passForElse,
+	// Last: it reads every body the passes above finished rewriting.
+	passMutatedVars,
 	passCSE,
 	passIterKind,
 	passStampUsage,
