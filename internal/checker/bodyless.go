@@ -51,6 +51,7 @@ func (c *checker) reportBodylessLibComponents() {
 	if len(c.targets) == 0 || c.libs == nil {
 		return
 	}
+	used := c.reachedLibComponents()
 	for _, path := range slices.Sorted(maps.Keys(c.libs.pkgs)) {
 		pkg := c.libs.pkgs[path]
 		if pkg == nil {
@@ -61,6 +62,9 @@ func (c *checker) reportBodylessLibComponents() {
 				continue
 			}
 			if comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone {
+				continue
+			}
+			if !used[comp] {
 				continue
 			}
 			for _, t := range c.targets {
@@ -108,4 +112,79 @@ func describeTarget(t ir.StaticTarget) string {
 func renderSuppliedElsewhere(comp *ir.Component) bool {
 	return comp.Intrinsic != "" || comp.Builtin != ir.BuiltinNone ||
 		len(comp.PlatformOverrides) > 0 || len(comp.LanguageOverrides) > 0
+}
+
+// reachedLibComponents is the set of library components this program actually
+// renders, which is what the rule above is asked about.
+//
+// A gap matters where it is reached. Importing a package is not reaching every
+// declaration in it -- a program that imports sngl:ui/draw for `Point` and
+// draws nothing needs no shape from its target, and a new platform should have
+// to implement what its users write rather than the whole of lib/ before the
+// first program builds. It is also what let a stub platform in an unrelated
+// test be asked for seven shapes.
+//
+// Transitive, and by a fixed point rather than one pass: what a reached
+// component renders is reached too, and the body to read for that is the one
+// this target will build -- an override's, where it has one. A cycle settles
+// because a component is walked once.
+func (c *checker) reachedLibComponents() map[*ir.Component]bool {
+	used := map[*ir.Component]bool{}
+	var queue []*ir.Component
+
+	reach := func(root any) {
+		ir.Walk(root, func(n ir.Node) error { //nolint:errcheck // the visit never fails
+			ni, ok := n.(*ir.NodeInst)
+			if !ok || ni.Component == nil || used[ni.Component] {
+				return nil
+			}
+			used[ni.Component] = true
+			queue = append(queue, ni.Component)
+			return nil
+		})
+	}
+
+	// The program's own roots. A user component is not in `used` -- the rule
+	// only reads library declarations -- but what it renders is.
+	if c.pkg != nil {
+		for _, comp := range c.pkg.Components {
+			reach(comp.Body)
+		}
+		reach(c.pkg.Body)
+		for _, w := range c.pkg.Windows {
+			reach(w.Body)
+		}
+	}
+
+	for len(queue) > 0 {
+		comp := queue[0]
+		queue = queue[1:]
+		for _, b := range bodiesBuiltFor(comp, c.targets) {
+			reach(b)
+		}
+	}
+	return used
+}
+
+// bodiesBuiltFor is the statements a target will render for a component: its
+// override's where one applies, and the declaration's own otherwise. It
+// mirrors hasOverrideFor, which is the same choice asked as a yes or no.
+//
+// Every target, not the first: a build checks one pair, but c.targets may hold
+// several, and a component reached only through one target's override is
+// reached.
+func bodiesBuiltFor(comp *ir.Component, targets []ir.StaticTarget) [][]ir.Stmt {
+	var out [][]ir.Stmt
+	if len(comp.Body) > 0 {
+		out = append(out, comp.Body)
+	}
+	for _, t := range targets {
+		if b, ok := comp.PlatformOverrides[t.Platform]; ok {
+			out = append(out, b.Stmts)
+		}
+		if b, ok := comp.LanguageOverrides[t.Language]; ok {
+			out = append(out, b.Stmts)
+		}
+	}
+	return out
 }

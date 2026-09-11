@@ -161,9 +161,15 @@ import sngl "sngl:ui"
 
 component blip(x int) sngl.node
 `
+	// The program renders it, which is what the rule is asked about: a gap
+	// matters where it is reached, and a program that imports a package
+	// without naming this declaration needs no implementation of it.
 	const userSource = `
+import . "sngl:ui"
+import bk "sngl:platform/extstub"
+
 component main node {
-    text(value="hi")
+    bk.blip(x=1)
 }
 `
 	doc, err := parser.Parse("main.sngl", []byte(withStd(userSource)))
@@ -184,6 +190,42 @@ component main node {
 	}
 	if !strings.Contains(found, "extstub") {
 		t.Errorf("diagnostic does not name the target that lacks one: %s", found)
+	}
+}
+
+// The other half, and the one that decides how much a new target has to
+// implement before anything builds: a declaration the program never renders is
+// not a gap. A gap matters where it is reached, and importing a package is not
+// reaching every declaration in it -- a program that imports sngl:ui/draw for
+// its geometry helpers and draws nothing asks its target for no shapes.
+//
+// Same package, same missing override as the test above; only the program
+// differs.
+func TestBodylessLibComponentUnusedNeedsNoImplementation(t *testing.T) {
+	const extSource = `
+import sngl "sngl:ui"
+
+component blip(x int) sngl.node
+`
+	const userSource = `
+import . "sngl:ui"
+import bk "sngl:platform/extstub"
+
+component main node {
+    text(value="hi")
+}
+`
+	doc, err := parser.Parse("main.sngl", []byte(withStd(userSource)))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	cfg := extStubConfig(t, extSource)
+	cfg.Targets = []ir.StaticTarget{{Platform: "extstub"}}
+	_, diags := checker.Check(doc, cfg)
+	for _, d := range diags {
+		if d.Severity == ir.Error && strings.Contains(d.Msg, "no implementation for") {
+			t.Errorf("a bodyless lib component the program never renders was reported: %s", d.Msg)
+		}
 	}
 }
 

@@ -63,11 +63,21 @@ android override on the platform axis. It runs at the very end of
 `mergeTargetExtensions` resolves an override's base, and both can happen after
 `newChecker`.
 
+It is also asked **only of what the program renders**. A gap matters where it
+is reached, and importing a package is not reaching every declaration in it: a
+program that imports `sngl:ui/draw` for `Point` and draws nothing asks its
+target for no shapes, and a new platform implements what its users write rather
+than the whole of `lib/` before the first program builds.
+`reachedLibComponents` is that set — seeded from the program's own bodies and
+closed to a fixed point through the body each target will actually build, an
+override's where it has one. Ungated, a stub platform in a test about output
+props was asked for seven shapes.
+
 Two consequences worth knowing before touching `lib/`:
 
-- A bodyless `lib/` component with no implementation for the target being built
-  is a **build failure**, which is the mechanism that stops an implementation
-  gap being skipped in a switch.
+- A bodyless `lib/` component the program renders, with no implementation for
+  the target being built, is a **build failure**, which is the mechanism that
+  stops an implementation gap being skipped in a switch.
 - A platform package's override may carry a **prop selection**, read by the
   same `overrideSelection` a program's override gets. Only
   parens-with-nothing-in-them is skipped, and that form is android's marker for
