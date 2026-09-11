@@ -284,8 +284,9 @@ func markIntrinsic(m *mark) error {
 
 // The flags #[foreign] accepts after the name, declared as ir.ForeignFlag.
 const (
-	flagPure  = "pure"
-	flagAsync = "async"
+	flagPure   = "pure"
+	flagAsync  = "async"
+	flagNative = "native"
 )
 
 // The flag #[native] accepts after the name, declared as go.NativeFlag.
@@ -325,14 +326,21 @@ func markForeign(m *mark) error {
 	if err != nil {
 		return err
 	}
-	if _, isFunc := m.sym.(*ir.Func); len(flags) > 0 && !isFunc {
-		return fmt.Errorf("#[foreign(%q)] carries %s, which describes a call; %s has none", name, flags[0], ast.DeclFormName(m.decl))
+	// `pure` and `async` describe a call, so only a function carries them.
+	// `native` describes the declaration itself -- it says the host already
+	// has this, and a struct can say that as readily as a function.
+	if _, isFunc := m.sym.(*ir.Func); !isFunc {
+		for _, f := range flags {
+			if f != flagNative {
+				return fmt.Errorf("#[foreign(%q)] carries %s, which describes a call; %s has none", name, f, ast.DeclFormName(m.decl))
+			}
+		}
 	}
 	if n := markedNames(m.decl); n > 1 {
 		return fmt.Errorf("#[foreign(%q)] marks %d names at once; one foreign name cannot stand for several declarations", name, n)
 	}
 	scheme, pkgPath := imports.ParseScheme(path)
-	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: true}
+	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: !slices.Contains(flags, flagNative)}
 	switch d := m.sym.(type) {
 	case *ir.StructDef:
 		if d.Foreign.Marked {

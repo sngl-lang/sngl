@@ -126,6 +126,12 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	}
 
 	for _, s := range pkg.Structs {
+		// An unmarked foreign struct is the host's own type, so a backend has
+		// nothing to declare for it -- emitting one leaves two names for one
+		// type, and the reference path already resolves to the host name.
+		if s.Foreign.Name != "" && !s.Foreign.Marked {
+			continue
+		}
 		fields := make([]string, len(s.Fields))
 		for i, f := range s.Fields {
 			fields[i] = f.Name

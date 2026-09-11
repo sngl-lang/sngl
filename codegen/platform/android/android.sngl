@@ -651,3 +651,28 @@ component shapes.path[platform] {
         }
     })
 }
+
+// The two drawings a native declaration cannot describe: text reaches a
+// `Paint` by chained property access and an image goes through a safe-call
+// chain ending in a `let`. Both are Kotlin the mark cannot spell, so the
+// platform emits a `DrawScope` extension for each and these name them --
+// receiverless, like every other scope function.
+#[kt.native("snglDrawText", "", named)]
+func drawTextShim(content string, x float, y float, c ComposeColor, size float)
+
+#[kt.native("snglDrawImage", "", named)]
+func drawImageShim(src string, x float, y float, w float, h float)
+
+component shapes.canvasText[platform] {
+    draw(@draw(e) {
+        if style.fill.a > 0 {
+            drawTextShim(content, f32(x), f32(y), composeOf(style.fill), f32(style.fontSize))
+        }
+    })
+}
+
+component shapes.canvasImage[platform] {
+    draw(@draw(e) {
+        drawImageShim(src, f32(x), f32(y), f32(w), f32(h))
+    })
+}

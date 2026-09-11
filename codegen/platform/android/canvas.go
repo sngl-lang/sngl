@@ -51,6 +51,10 @@ var canvasComposeImports = []string{
 	"androidx.compose.ui.graphics.asImageBitmap",
 	"androidx.compose.ui.unit.IntOffset",
 	"androidx.compose.ui.unit.IntSize",
+	// The two shims' own needs: the receiver they extend, and the ARGB int a
+	// `Paint` colour is.
+	"androidx.compose.ui.graphics.drawscope.DrawScope",
+	"androidx.compose.ui.graphics.toArgb",
 }
 
 // packageHasCanvas reports whether any component/window func is a synthesized
@@ -570,5 +574,39 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 	// SNGL color{r,g,b,a} 0..255 → Compose ComposeColor(red,green,blue,alpha)
 	// (the Int overload takes 0..255 channels).
 	b.WriteString("fun _snglComposeColor(c: Color): ComposeColor = ComposeColor(c.r, c.g, c.b, c.a)\n\n")
+
+	// Two DrawScope extensions the shape overrides call, for the drawing this
+	// platform cannot describe with a native declaration: text goes through a
+	// `Paint` built by an `apply` block and reached by chained property
+	// access, and an image through a safe-call chain ending in a `let`. Both
+	// are Kotlin the mark cannot spell, and a shim is where that belongs --
+	// the same trade gtk4 makes for `g_object_unref`, whose `gpointer` cast an
+	// override cannot write either.
+	//
+	// Extensions on DrawScope, so an override calls them the way it calls
+	// `drawRect`: receiverless, with the scope supplying the receiver.
+	b.WriteString(snglDrawShims)
 	return b.String()
 }
+
+// snglDrawShims are the DrawScope extensions a shape override calls for the
+// two drawings a native declaration cannot describe. See emitCanvasStructs.
+const snglDrawShims = `fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float) {
+    drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
+        color = c.toArgb()
+        textSize = size
+    })
+}
+
+// A file that will not decode draws nothing rather than failing the frame,
+// which is what every other target does with an unreadable source.
+fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
+    val bmp = android.graphics.BitmapFactory.decodeFile(src) ?: return
+    drawImage(
+        image = bmp.asImageBitmap(),
+        dstOffset = IntOffset(x.toInt(), y.toInt()),
+        dstSize = IntSize(w.toInt(), h.toInt()),
+    )
+}
+
+`

@@ -121,22 +121,12 @@ var _canvasSurface0 snglcanvas.Surface
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	if m.big__inst0 {
 		ctx.Save()
-		_cstyle1 := CanvasStyle{Fill: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"}
-		ctx.SetFill(_cstyle1.Fill.R, _cstyle1.Fill.G, _cstyle1.Fill.B, _cstyle1.Fill.A)
-		ctx.SetStroke(_cstyle1.Stroke.R, _cstyle1.Stroke.G, _cstyle1.Stroke.B, _cstyle1.Stroke.A)
-		ctx.SetStrokeWidth(_cstyle1.StrokeWidth)
-		ctx.SetFont(_cstyle1.FontSize, _cstyle1.FontFamily)
-		ctx.SetLineStyle(_cstyle1.LineCap, _cstyle1.LineJoin)
+		ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 255, G: 0, B: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"})
 		ctx.Rect(0, 0, 10, 5)
 		ctx.Restore()
 	} else {
 		ctx.Save()
-		_cstyle2 := CanvasStyle{Fill: snglcolor.Color{B: 255, R: 0, G: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"}
-		ctx.SetFill(_cstyle2.Fill.R, _cstyle2.Fill.G, _cstyle2.Fill.B, _cstyle2.Fill.A)
-		ctx.SetStroke(_cstyle2.Stroke.R, _cstyle2.Stroke.G, _cstyle2.Stroke.B, _cstyle2.Stroke.A)
-		ctx.SetStrokeWidth(_cstyle2.StrokeWidth)
-		ctx.SetFont(_cstyle2.FontSize, _cstyle2.FontFamily)
-		ctx.SetLineStyle(_cstyle2.LineCap, _cstyle2.LineJoin)
+		ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{B: 255, R: 0, G: 0, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"})
 		ctx.Circle(5, 5, 2)
 		ctx.Restore()
 	}
@@ -153,6 +143,14 @@ func (m Model) __canvasTransmit() tea.Cmd {
 		return nil
 	}
 	return tea.Raw(__ctb.String())
+}
+
+func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
+	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
+	ctx.SetStrokeWidth(style.StrokeWidth)
+	ctx.SetFont(style.FontSize, style.FontFamily)
+	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
 func (m Model) Big__inst0() bool {

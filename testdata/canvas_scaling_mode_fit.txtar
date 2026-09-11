@@ -68,16 +68,6 @@ import (
 	"image"
 )
 
-type CanvasStyle struct {
-	Fill        snglcolor.Color
-	Stroke      snglcolor.Color
-	StrokeWidth float64
-	LineCap     string
-	LineJoin    string
-	FontSize    float64
-	FontFamily  string
-}
-
 type PathCmd struct {
 	Op  string
 	X   float64
@@ -97,6 +87,16 @@ type Measurement struct {
 	Pct float64
 }
 
+type CanvasStyle struct {
+	Fill        snglcolor.Color
+	Stroke      snglcolor.Color
+	StrokeWidth float64
+	LineCap     string
+	LineJoin    string
+	FontSize    float64
+	FontFamily  string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
 	__n0        *canvas.Raster
@@ -109,14 +109,17 @@ func New() *Model {
 	return m
 }
 
+func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
+	ctx.SetFill(style.Fill.R, style.Fill.G, style.Fill.B, style.Fill.A)
+	ctx.SetStroke(style.Stroke.R, style.Stroke.G, style.Stroke.B, style.Stroke.A)
+	ctx.SetStrokeWidth(style.StrokeWidth)
+	ctx.SetFont(style.FontSize, style.FontFamily)
+	ctx.SetLineStyle(style.LineCap, style.LineJoin)
+}
+
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	_cstyle1 := CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"}
-	ctx.SetFill(_cstyle1.Fill.R, _cstyle1.Fill.G, _cstyle1.Fill.B, _cstyle1.Fill.A)
-	ctx.SetStroke(_cstyle1.Stroke.R, _cstyle1.Stroke.G, _cstyle1.Stroke.B, _cstyle1.Stroke.A)
-	ctx.SetStrokeWidth(_cstyle1.StrokeWidth)
-	ctx.SetFont(_cstyle1.FontSize, _cstyle1.FontFamily)
-	ctx.SetLineStyle(_cstyle1.LineCap, _cstyle1.LineJoin)
+	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"})
 	ctx.Rect(0, 0, 200, 100)
 	ctx.Restore()
 }
@@ -487,6 +490,8 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.foundation.layout.aspectRatio
@@ -528,6 +533,24 @@ data class PathCmd(
 )
 
 fun _snglComposeColor(c: Color): ComposeColor = ComposeColor(c.r, c.g, c.b, c.a)
+
+fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float) {
+    drawContext.canvas.nativeCanvas.drawText(content, x, y, android.graphics.Paint().apply {
+        color = c.toArgb()
+        textSize = size
+    })
+}
+
+// A file that will not decode draws nothing rather than failing the frame,
+// which is what every other target does with an unreadable source.
+fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float) {
+    val bmp = android.graphics.BitmapFactory.decodeFile(src) ?: return
+    drawImage(
+        image = bmp.asImageBitmap(),
+        dstOffset = IntOffset(x.toInt(), y.toInt()),
+        dstSize = IntSize(w.toInt(), h.toInt()),
+    )
+}
 
 data class SnglInputEvent(val value: String)
 

@@ -63,9 +63,6 @@ import (
 	"fmt"
 )
 
-type Ctx struct {
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	n__inst0  int

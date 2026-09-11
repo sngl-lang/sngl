@@ -141,7 +141,12 @@ ui.window {
     }
 }`
 	out := compileCanvasSrc(t, src)
-	for _, want := range []string{"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(image ="} {
+	// The call site first: the shim is emitted for any canvas, so asserting
+	// its body alone would pass with no image in the program at all.
+	for _, want := range []string{
+		`snglDrawImage(src = "/tmp/p.png"`,
+		"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(",
+	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("canvasImage missing %q:\n%s", want, out)
 		}

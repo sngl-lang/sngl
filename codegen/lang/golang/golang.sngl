@@ -88,12 +88,11 @@ func http.get[language]() {
 //
 // On the *language* axis, so a platform inherits it by not overriding. gtk4
 // and android do override, because cairo and Compose are not this surface.
-// Unmarked, deliberately. The Go type of the draw function's parameter is
-// supplied by the platform that builds the surface (fyne's
-// `*snglcanvas.Context`, bubbletea's the same), so this declaration exists
-// only to give the handler's parameter a type to check against. A native mark
-// here would not resolve anyway: struct declarations register before a
-// package's own macros do.
+// `#[foreign(..., native)]` rather than this package's own `native` macro: a
+// mark arrives through an import, and a package's own macro cannot mark that
+// package's own struct, because struct shells register before functions do.
+// The flag is what `native` is a thin spelling of, and it is reachable here.
+#[foreign("go:git.duckfam.us/jonathan/sngl/pkg/go/canvas", "*snglcanvas.Context", native)]
 struct DrawContext {}
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Save", method)]
@@ -120,12 +119,53 @@ func DrawContext.setLineStyle(cap string, join string)
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Circle", method)]
 func DrawContext.circle(cx float, cy float, r float)
 
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Rect", method)]
+func DrawContext.rect(x float, y float, w float, h float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Ellipse", method)]
+func DrawContext.ellipse(cx float, cy float, rx float, ry float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Line", method)]
+func DrawContext.line(x1 float, y1 float, x2 float, y2 float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.MoveTo", method)]
+func DrawContext.moveTo(x float, y float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.LineTo", method)]
+func DrawContext.lineTo(x float, y float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.CubicTo", method)]
+func DrawContext.cubicTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.ArcTo", method)]
+func DrawContext.arcTo(x1 float, y1 float, x2 float, y2 float, r float)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.ClosePath", method)]
+func DrawContext.closePath()
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.PaintPath", method)]
+func DrawContext.paintPath()
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Text", method)]
+func DrawContext.text(x float, y float, content string)
+
+#[native("git.duckfam.us/jonathan/sngl/pkg/go/canvas", "canvas.Context.Image", method)]
+func DrawContext.image(x float, y float, w float, h float, src string)
+
 // The primitive an override paints through. Its only job is to bind the
 // context: `@draw` is the target calling in, and the handler body is what the
 // draw function emits. Bodyless because the render is the handler's, not the
 // declaration's.
+// What a `@draw` handler is handed: the context to paint through, and the
+// coordinate space the shapes were placed in.
+struct DrawEvent {
+    ctx DrawContext
+    width int
+    height int
+}
+
 #[marks.intrinsic("go:draw")]
-component draw(@draw DrawContext) shapes.shape
+component draw(@draw DrawEvent) shapes.shape
 
 // The style setters, written once rather than per shape. The context keeps a
 // pending style that the next primitive consumes, so this is the whole of
@@ -138,8 +178,91 @@ func applyStyle(ctx DrawContext, style shapes.CanvasStyle) {
     ctx.setLineStyle(style.lineCap, style.lineJoin)
 }
 
-// The shapes themselves are not overridden here yet. gtk4 and android are both
-// `--lang go` and neither draws through this surface -- cairo and Compose are
-// their own -- so a language override lands only once both answer on the
-// platform axis, or they inherit a raster body and emit `ctx.Circle` against a
-// `*C.cairo_t`. Verified, which is why it is not here.
+// The shapes, on the language axis: every Go target that draws with pixels
+// shares this surface, so fyne and bubbletea inherit these by not overriding
+// them. gtk4 and android are `--lang go` too and do override -- cairo and
+// Compose are their own -- and a platform override wins, which is what makes
+// one implementation serve the two that want it.
+//
+// Each shape sets only the style it uses and gates each paint on its own
+// alpha, so a fill-only shape does not stroke and a line does not read `fill`
+// at all.
+
+component shapes.rect[language] {
+    draw(@draw(e) {
+        e.ctx.save()
+        applyStyle(e.ctx, style)
+        e.ctx.rect(x, y, w, h)
+        e.ctx.restore()
+    })
+}
+
+component shapes.circle[language] {
+    draw(@draw(e) {
+        e.ctx.save()
+        applyStyle(e.ctx, style)
+        e.ctx.circle(cx, cy, r)
+        e.ctx.restore()
+    })
+}
+
+component shapes.ellipse[language] {
+    draw(@draw(e) {
+        e.ctx.save()
+        applyStyle(e.ctx, style)
+        e.ctx.ellipse(cx, cy, rx, ry)
+        e.ctx.restore()
+    })
+}
+
+component shapes.line[language] {
+    draw(@draw(e) {
+        e.ctx.save()
+        applyStyle(e.ctx, style)
+        e.ctx.line(x1, y1, x2, y2)
+        e.ctx.restore()
+    })
+}
+
+component shapes.path[language] {
+    draw(@draw(e) {
+        e.ctx.save()
+        applyStyle(e.ctx, style)
+        for var c = cmds {
+            if c.op == "moveTo" {
+                e.ctx.moveTo(c.x, c.y)
+            }
+            if c.op == "lineTo" {
+                e.ctx.lineTo(c.x, c.y)
+            }
+            if c.op == "bezierTo" {
+                e.ctx.cubicTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
+            }
+            if c.op == "arcTo" {
+                e.ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
+            }
+            if c.op == "close" {
+                e.ctx.closePath()
+            }
+        }
+        e.ctx.paintPath()
+        e.ctx.restore()
+    })
+}
+
+component shapes.canvasText[language] {
+    draw(@draw(e) {
+        e.ctx.save()
+        applyStyle(e.ctx, style)
+        e.ctx.text(x, y, content)
+        e.ctx.restore()
+    })
+}
+
+component shapes.canvasImage[language] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.image(x, y, w, h, src)
+        e.ctx.restore()
+    })
+}

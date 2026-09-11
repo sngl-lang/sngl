@@ -35,4 +35,13 @@ enum IntrinsicFlag { mutates, readonly, mutatesReceiver }
 //
 // Both describe a call, so a declaration with no call to describe — a struct,
 // a field — refuses them.
-enum ForeignFlag { pure, async }
+// `native` says the declaration *is* the thing it names rather than
+// corresponding to it: nothing is emitted for it, and a reference resolves to
+// the host name. Without it a marked declaration is still the program's own
+// and a backend emits it, which is the difference `Foreign.Marked` records.
+//
+// It is what the language-specific marks are a thin spelling of, and it is
+// reachable where they are not: a mark arrives through an import, and a
+// package's own macro cannot mark that package's own struct -- struct shells
+// register before functions do.
+enum ForeignFlag { pure, async, native }
