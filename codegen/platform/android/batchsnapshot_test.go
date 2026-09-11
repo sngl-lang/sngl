@@ -79,7 +79,7 @@ output { android }
 		if err != nil {
 			t.Fatalf("parse %s: %v", name, err)
 		}
-		pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
+		pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Languages: androidLangs(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
 		for _, d := range diags {
 			if d.Error() != "" && d.Error()[0] != ' ' {
 				// only inspect on actual error

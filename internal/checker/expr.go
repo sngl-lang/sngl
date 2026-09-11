@@ -1129,17 +1129,54 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 	return &ir.Conversion{AST: x, Type: target}
 }
 
-func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
-	// Determine if operand is a type name (static call) vs a value (instance call).
-	isStatic := false
-	if ident, ok := sel.Operand.(*ast.IdentExpr); ok {
-		if sym, ok := c.scope.Lookup(ident.Name); ok {
-			switch sym.(type) {
-			case *ir.TypeSym, *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
-				isStatic = true
-			}
+// staticReceiverSym is the declaration a method call's operand names, when it
+// names one rather than being a value.
+//
+// Both spellings, because a type reached through a package is the same type:
+// `Point.polar(…)` under a dot import, and `draw.Point.polar(…)` under an
+// alias. Only the first was recognised, so the second was evaluated as a
+// *value* and every argument bound one parameter late -- `Point.polar(c, r, a)`
+// reported "cannot pass Point as float", which names the symptom and not the
+// cause.
+func (c *checker) staticReceiverSym(operand ast.Expr) ir.Symbol {
+	switch op := operand.(type) {
+	case *ast.IdentExpr:
+		if sym, ok := c.scope.Lookup(op.Name); ok {
+			return sym
+		}
+	case *ast.SelectExpr:
+		ident, ok := op.Operand.(*ast.IdentExpr)
+		if !ok {
+			return nil
+		}
+		sym, ok := c.scope.Lookup(ident.Name)
+		if !ok {
+			return nil
+		}
+		ns, ok := sym.(*ir.Namespace)
+		if !ok || ns.Pkg == nil {
+			return nil
+		}
+		if member, ok := ns.Pkg.Symbols.LookupMember(op.Field); ok {
+			return member
 		}
 	}
+	return nil
+}
+
+// isTypeSym reports whether sym is a declaration that names a type, which is
+// what makes a method call on it static.
+func isTypeSym(sym ir.Symbol) bool {
+	switch sym.(type) {
+	case *ir.TypeSym, *ir.StructDef, *ir.EnumDef, *ir.UnitDef:
+		return true
+	}
+	return false
+}
+
+func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Expr {
+	// Determine if operand is a type name (static call) vs a value (instance call).
+	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
 
 	receiverExpr := c.checkExpr(sel.Operand)
 	receiver := exprType(receiverExpr)
@@ -2010,6 +2047,17 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 					}
 				}
 			}
+		}
+		// A name that resolved to nothing used to fall through to the
+		// anonymous-struct path, and an anonymous struct is *structurally*
+		// assignable -- so `pkg.Point{x = 1.0, y = 2.0}` reaching a
+		// `pkg.Point` parameter checked clean while carrying a different
+		// declaration, and type identity here is per-declaration. Reported
+		// instead, because a silent stand-in is the one outcome that cannot
+		// be right.
+		if sd == nil {
+			c.error(x.Pos, "undefined: %s.%s", x.Package, x.Name)
+			return &ir.Literal{Type: TypDyn}
 		}
 	} else if x.Name != "" {
 		if sym, ok := c.scope.Lookup(x.Name); ok {
@@ -3438,6 +3486,26 @@ func (c *checker) targetPkgScope(uri string) *ir.Scope {
 	scope := NewScope(nil)
 	maps.Copy(scope.Symbols, pkg.Symbols.Root.Symbols)
 	scope.Wildcards = slices.Clone(pkg.Symbols.Root.Wildcards)
+	// The package's own import aliases, which its root chains to and which
+	// this scope would otherwise drop: it is built with no parent and the
+	// caller reassigns one, so the link to them is lost by construction.
+	//
+	// A target package's source is compiler-internal, and so are its imports
+	// -- `import math "sngl:math"` at the top of gtk4.sngl is as much part of
+	// that file as its declarations. Without them a body could name the
+	// package's own declarations and the stdlib's, but nothing it imported:
+	// `math.tau` and `shapes.Point` were "undefined" inside an override while
+	// resolving fine in the same file's signatures, which are read at
+	// registration.
+	//
+	// The package's own symbols win, so an alias cannot shadow a declaration.
+	if imports := pkg.Symbols.Root.Parent; imports != nil {
+		for name, sym := range imports.Symbols {
+			if _, taken := scope.Symbols[name]; !taken {
+				scope.Symbols[name] = sym
+			}
+		}
+	}
 	// Declare the platform namespace with its package so qualified access
 	// (e.g., html.element) works inside platform blocks. Replace, not Declare:
 	// the package also declares a component under the target's own name -- its

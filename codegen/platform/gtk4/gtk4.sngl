@@ -24,6 +24,9 @@ import time "sngl:time"
 import . "sngl:macro"
 import tree "sngl:tree"
 import build "sngl:build"
+import marks "sngl:internal/marks"
+import shapes "sngl:ui/draw"
+import math "sngl:math"
 
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
 component gtk4(
@@ -186,8 +189,361 @@ component Timer(
     interval time.duration,
     enabled bool,
     @tick,
-) {}
+)
 
 component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+}
+
+// --- Drawing ---
+//
+// A canvas here is a GtkDrawingArea and its draw callback is handed a
+// `cairo_t*`, so cairo's own functions are the drawing vocabulary. Declared
+// with `#[cnative(…)]`, which names a C identifier and no language: each is a
+// free function taking the context first, which is the shape a native gets by
+// default. The backend that can call C supplies the conversions its own ABI
+// needs from the declared parameter types -- for the Go one that is
+// `C.double`/`C.int`. Nothing here is Go's.
+//
+// Named as the cgo pointer it is, so a helper that takes the context has the
+// right type in its own signature -- the draw function's own parameter type
+// comes from this platform, but `paint(ctx, style)` is an ordinary func and
+// carries whatever this declaration says.
+#[cnative("*C.cairo_t")]
+struct CairoContext {}
+
+#[cnative("cairo_save")]
+func CairoContext.save()
+
+#[cnative("cairo_restore")]
+func CairoContext.restore()
+
+#[cnative("cairo_set_source_rgba")]
+func CairoContext.setSourceRgba(r float, g float, b float, a float)
+
+#[cnative("cairo_set_line_width")]
+func CairoContext.setLineWidth(w float)
+
+// cairo's cap and join are typedef'd enums, not plain ints, so the
+// declarations name those types and a conversion is written where the value is
+// produced. An `int` parameter would emit `C.int(...)` and not compile --
+// which the emitted-cgo build test says, loudly.
+#[cnative("C.cairo_line_cap_t")]
+struct LineCapValue {}
+
+#[cnative("C.cairo_line_join_t")]
+struct LineJoinValue {}
+
+#[cnative("C.cairo_line_cap_t")]
+func toLineCap(v int) LineCapValue
+
+#[cnative("C.cairo_line_join_t")]
+func toLineJoin(v int) LineJoinValue
+
+#[cnative("cairo_set_line_cap")]
+func CairoContext.setLineCap(cap LineCapValue)
+
+#[cnative("cairo_set_line_join")]
+func CairoContext.setLineJoin(join LineJoinValue)
+
+#[cnative("cairo_rectangle")]
+func CairoContext.rectangle(x float, y float, w float, h float)
+
+#[cnative("cairo_new_sub_path")]
+func CairoContext.newSubPath()
+
+// The angle form, so a partial sweep is writable -- a gauge or a pie wedge,
+// which no stdlib shape expresses yet.
+#[cnative("cairo_arc")]
+func CairoContext.arc(cx float, cy float, r float, start float, end float)
+
+#[cnative("cairo_move_to")]
+func CairoContext.moveTo(x float, y float)
+
+#[cnative("cairo_line_to")]
+func CairoContext.lineTo(x float, y float)
+
+#[cnative("cairo_curve_to")]
+func CairoContext.curveTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
+
+#[cnative("cairo_arc_negative")]
+func CairoContext.arcNegative(cx float, cy float, r float, start float, end float)
+
+#[cnative("cairo_close_path")]
+func CairoContext.closePath()
+
+#[cnative("cairo_fill")]
+func CairoContext.fill()
+
+#[cnative("cairo_fill_preserve")]
+func CairoContext.fillPreserve()
+
+#[cnative("cairo_stroke")]
+func CairoContext.stroke()
+
+#[cnative("cairo_set_font_size")]
+func CairoContext.setFontSize(size float)
+
+// The slant and the weight are typedef'd enums like the line cap and join, so
+// they are cast the same way rather than passed as `C.int` -- cgo refuses an
+// int where a `cairo_font_slant_t` belongs.
+//
+// `CanvasStyle` exposes neither, so both are always the normal value. Declared
+// anyway, because the alternative is a native that lies about its signature.
+#[cnative("C.cairo_font_slant_t")]
+struct FontSlant {}
+
+#[cnative("C.cairo_font_weight_t")]
+struct FontWeight {}
+
+#[cnative("C.cairo_font_slant_t")]
+func toFontSlant(v int) FontSlant
+
+#[cnative("C.cairo_font_weight_t")]
+func toFontWeight(v int) FontWeight
+
+// The family is a string cairo copies.
+#[cnative("cairo_select_font_face")]
+func CairoContext.selectFontFace(family string, slant FontSlant, weight FontWeight)
+
+#[cnative("cairo_show_text")]
+func CairoContext.showText(text string)
+
+// What a `@draw` handler is handed: the context, and the coordinate space the
+// shapes were placed in.
+struct DrawEvent {
+    ctx CairoContext
+    width int
+    height int
+}
+
+#[marks.intrinsic("gtk4:draw:cairo")]
+component draw(@draw DrawEvent) shapes.shape
+
+// cairo takes its line cap and join as enum values. The names are SNGL's, the
+// numbers are `CAIRO_LINE_CAP_*` and `CAIRO_LINE_JOIN_*`, and mapping them
+// here is what makes `lineCap` and `lineJoin` reach this target at all --
+// before the overrides, gtk4 read neither (#223).
+func lineCap(name string) LineCapValue {
+    if name == "round" {
+        return toLineCap(1)
+    }
+    if name == "square" {
+        return toLineCap(2)
+    }
+    return toLineCap(0)
+}
+
+func lineJoin(name string) LineJoinValue {
+    if name == "round" {
+        return toLineJoin(1)
+    }
+    if name == "bevel" {
+        return toLineJoin(2)
+    }
+    return toLineJoin(0)
+}
+
+// cairo wants each channel as 0..1 where SNGL carries 0..255.
+func source(ctx CairoContext, c color) {
+    ctx.setSourceRgba(float(c.r) / 255.0, float(c.g) / 255.0, float(c.b) / 255.0, float(c.a) / 255.0)
+}
+
+// Fill then stroke the current path, preserving it between the two when both
+// apply. This is `_snglCairoPaint` written in SNGL rather than spliced in as
+// Go text.
+func paint(ctx CairoContext, style shapes.CanvasStyle) {
+    if style.fill.a > 0 {
+        source(ctx, style.fill)
+        if style.stroke.a > 0 {
+            ctx.fillPreserve()
+        } else {
+            ctx.fill()
+        }
+    }
+    if style.stroke.a > 0 {
+        ctx.setLineWidth(style.strokeWidth)
+        ctx.setLineCap(lineCap(style.lineCap))
+        ctx.setLineJoin(lineJoin(style.lineJoin))
+        source(ctx, style.stroke)
+        ctx.stroke()
+    }
+}
+
+component shapes.rect[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.rectangle(x, y, w, h)
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+component shapes.circle[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.newSubPath()
+        e.ctx.arc(cx, cy, r, 0.0, math.tau)
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+// An ellipse as four cubic segments rather than a scaled circle: `cairo_scale`
+// would scale the *stroke* with the axes, so a 2px outline on a wide ellipse
+// comes out thicker horizontally than vertically. kappa is the control-point
+// offset that makes a cubic match a quarter arc to within a thousandth.
+component shapes.ellipse[platform] {
+    draw(@draw(e) {
+        var k = 0.5522847498307936
+        var ox = rx * k
+        var oy = ry * k
+
+        e.ctx.save()
+        e.ctx.newSubPath()
+        e.ctx.moveTo(cx, cy - ry)
+        e.ctx.curveTo(cx + ox, cy - ry, cx + rx, cy - oy, cx + rx, cy)
+        e.ctx.curveTo(cx + rx, cy + oy, cx + ox, cy + ry, cx, cy + ry)
+        e.ctx.curveTo(cx - ox, cy + ry, cx - rx, cy + oy, cx - rx, cy)
+        e.ctx.curveTo(cx - rx, cy - oy, cx - ox, cy - ry, cx, cy - ry)
+        e.ctx.closePath()
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+// A line has no interior, so `fill` is not read: the declaration says a fill
+// on a line is ignored, and here that is the absence of a call rather than a
+// special case in the emitter.
+component shapes.line[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.moveTo(x1, y1)
+        e.ctx.lineTo(x2, y2)
+        e.ctx.setLineWidth(style.strokeWidth)
+        e.ctx.setLineCap(lineCap(style.lineCap))
+        e.ctx.setLineJoin(lineJoin(style.lineJoin))
+        source(e.ctx, style.stroke)
+        e.ctx.stroke()
+        e.ctx.restore()
+    })
+}
+
+// The corner is solved by `sngl:ui/draw`, which two targets need and neither
+// host has: cairo takes a centre and two angles where the command gives three
+// points and a radius. What is left here is the cairo half -- the line in, the
+// arc, and the point the path is left at.
+func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.Point, r float) shapes.Point {
+    var a = shapes.tangentArc(from, corner, to, r)
+    if a.degenerate {
+        ctx.lineTo(corner.x, corner.y)
+        return corner
+    }
+    ctx.lineTo(a.tangent1.x, a.tangent1.y)
+    if a.sweep < 0.0 {
+        ctx.arcNegative(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
+    } else {
+        ctx.arc(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
+    }
+    return a.tangent2
+}
+
+component shapes.path[platform] {
+    draw(@draw(e) {
+        // Where the path is, which `arcTo` needs and cairo will not hand back
+        // without an out-parameter. Every other command ends at its own point,
+        // so tracking it here costs one assignment each.
+        var at = shapes.Point{x = 0.0, y = 0.0}
+
+        e.ctx.save()
+        for var c = cmds {
+            if c.op == "moveTo" {
+                e.ctx.moveTo(c.x, c.y)
+                at = shapes.Point{x = c.x, y = c.y}
+            }
+            if c.op == "lineTo" {
+                e.ctx.lineTo(c.x, c.y)
+                at = shapes.Point{x = c.x, y = c.y}
+            }
+            if c.op == "bezierTo" {
+                e.ctx.curveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
+                at = shapes.Point{x = c.x, y = c.y}
+            }
+            if c.op == "arcTo" {
+                at = arcTo(e.ctx, at, shapes.Point{x = c.cx1, y = c.cy1}, shapes.Point{x = c.x, y = c.y}, c.r)
+            }
+            if c.op == "close" {
+                e.ctx.closePath()
+            }
+        }
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+component shapes.canvasText[platform] {
+    draw(@draw(e) {
+        e.ctx.save()
+        // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
+        // fontFamily nowhere before this, so a program's font choice was
+        // honoured on three targets and dropped here (#223).
+        e.ctx.selectFontFace(style.fontFamily, toFontSlant(0), toFontWeight(0))
+        e.ctx.setFontSize(style.fontSize)
+        source(e.ctx, style.fill)
+        e.ctx.moveTo(x, y)
+        e.ctx.showText(content)
+        e.ctx.restore()
+    })
+}
+
+// --- Images ---
+//
+// GdkPixbuf rather than cairo's own PNG loader: it is already linked into any
+// GTK application, it reads JPEG and SVG as well as PNG, and it scales in the
+// loader so no `cairo_scale` is needed -- which would scale the stroke of
+// anything drawn after it.
+//
+// A nullable C pointer is `option<T>`: both `option` and `ref` render as `*T`,
+// so `option<Pixbuf>` is the `GdkPixbuf*` the loader answers and a null test
+// is the NULL check. The `GError**` out-parameter is the one place the extra
+// indirection is right, and `option<ref<GError>>` is it.
+//
+// The functions that consume the pointer declare `option<Pixbuf>` as well,
+// even inside the null test: narrowing an option yields the *referent*, so a
+// parameter typed `Pixbuf` is handed `(*pb)` -- the struct, where the C
+// function wants the pointer.
+#[cnative("C.GdkPixbuf")]
+struct Pixbuf {}
+
+#[cnative("C.GError")]
+struct GError {}
+
+#[cnative("gdk_pixbuf_new_from_file_at_scale")]
+func loadPixbuf(path string, w int, h int, keepAspect int, err option<ref<GError>>) option<Pixbuf>
+
+#[cnative("gdk_cairo_set_source_pixbuf")]
+func CairoContext.setSourcePixbuf(pb option<Pixbuf>, x float, y float)
+
+#[cnative("cairo_paint")]
+func CairoContext.paintSource()
+
+#[cnative("sngl_unref_pixbuf")]
+func unrefPixbuf(pb option<Pixbuf>)
+
+// A missing or unreadable file draws nothing rather than failing the render:
+// the loader answers NULL and the null test is what reads it. This is the gap
+// #223 recorded -- gtk4 emitted nothing at all for canvasImage, where every
+// other target loads a local path.
+component shapes.canvasImage[platform] {
+    draw(@draw(e) {
+        var pb = loadPixbuf(src, int(w), int(h), 0, null)
+
+        if pb != null {
+            e.ctx.save()
+            e.ctx.setSourcePixbuf(pb, x, y)
+            e.ctx.paintSource()
+            e.ctx.restore()
+            unrefPixbuf(pb)
+        }
+    })
 }

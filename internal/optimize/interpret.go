@@ -150,7 +150,16 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 		}
 		switch x := e.(type) {
 		case *ir.Call:
-			if x.Func == nil || x.Func.Foreign.Path != "" {
+			// Whatever declared it: an unresolved scheme import (no Func), a
+			// foreign path, or a native mark. The path test alone missed the
+			// last of those whenever the mark carries no module --
+			// `#[kt.native("androidx.compose.ui.graphics.Color", "")]` names a
+			// class the emitter already imports -- so this folder ran the body
+			// anyway, got nothing back from the native, and folded the call to
+			// its return type's zero. That is how every constant-coloured
+			// Compose shape became `drawRect(color = null, ...)`, which is no
+			// Kotlin that compiles.
+			if x.Func == nil || x.Func.Foreign.Path != "" || isUnfoldableNative(x.Func) {
 				hasNative = true
 				return
 			}

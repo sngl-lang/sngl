@@ -21,3 +21,20 @@ import ir "sngl:internal/ir"
 // function are the forms that carry it; the others refuse it. The flags that
 // may follow the name are `ir.ForeignFlag`.
 func foreign(path string, name string = "", flags list<ir.ForeignFlag> = []) ir.Macro
+
+// Names the C identifier a declaration *is*: a function to call, or a type to
+// spell. The declaration itself is emitted by nobody.
+//
+// Language-neutral on purpose. C is the one ABI several targets can reach, and
+// a platform built on a C library has no business naming a SNGL language --
+// `sngl:platform/gtk4` describes cairo with this and nothing Go-specific, so
+// any backend that can call C can serve it. Today that is the Go one, which
+// renders a call as cgo and supplies the `C.double`/`C.int` conversions from
+// the declared parameter types.
+//
+// The name is spelled as the emitting language reaches it, prefix included
+// where one is needed -- `C.cairo_line_cap_t` for a type, `cairo_arc` for a
+// function the renderer prefixes itself.
+//
+// Struct and function are the forms that carry it, as `#[foreign]`'s are.
+func cnative(name string) ir.Macro

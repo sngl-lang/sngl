@@ -154,7 +154,7 @@ component Widget(
     @click ui.ClickEvent,
     @change ui.ChangeEvent,
     @input ui.InputEvent,
-) ui.node {}
+) ui.node
 
 #[intrinsic("fyne:Container")]
 component Container(
@@ -169,7 +169,7 @@ component Container(
     @change ui.ChangeEvent,
     @input ui.InputEvent,
     children ...component,
-) ui.node {}
+) ui.node
 
 #[intrinsic("fyne:Wrapper")]
 component Wrapper(
@@ -184,7 +184,7 @@ component Wrapper(
     @change ui.ChangeEvent,
     @input ui.InputEvent,
     content ...component tr.one,
-) ui.node {}
+) ui.node
 
 // --- The Fyne widgets ---
 //
@@ -606,7 +606,7 @@ component Timer(
     interval time.duration,
     enabled bool,
     @tick,
-) {}
+)
 
 component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}

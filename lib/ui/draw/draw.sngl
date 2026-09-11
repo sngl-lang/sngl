@@ -7,6 +7,7 @@ import std "sngl:ui"
 // `#[tree.kind]` is what marks the shape struct below as naming a tree, and
 // `#[marks.builtin("treeShape")]` is how the compiler names that one tree.
 import tree "sngl:tree"
+import math "sngl:math"
 import marks "sngl:internal/marks"
 
 // How a shape is painted. `fill` and `stroke` default to fully transparent,
@@ -80,25 +81,158 @@ component canvas(
 ) std.node {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
-component rect(x float, y float, w float, h float, style CanvasStyle) shape {}
+component rect(x float, y float, w float, h float, style CanvasStyle) shape
 
 // Circle of radius r centred at cx, cy.
-component circle(cx float, cy float, r float, style CanvasStyle) shape {}
+component circle(cx float, cy float, r float, style CanvasStyle) shape
 
 // Ellipse centred at cx, cy with radii rx and ry.
-component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) shape {}
+component ellipse(cx float, cy float, rx float, ry float, style CanvasStyle) shape
 
 // Straight segment from x1, y1 to x2, y2. Uses `stroke`; a `fill` is
 // meaningless on a line and is ignored.
-component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) shape {}
+component line(x1 float, y1 float, x2 float, y2 float, style CanvasStyle) shape
 
 // Arbitrary shape built from a list of PathCmd steps.
-component path(cmds list<PathCmd>, style CanvasStyle) shape {}
+component path(cmds list<PathCmd>, style CanvasStyle) shape
 
 // Text baseline-anchored at x, y. Named `canvasText` rather than `text` so
 // a program can import this package alongside `sngl:ui`.
-component canvasText(x float, y float, content string, style CanvasStyle) shape {}
+component canvasText(x float, y float, content string, style CanvasStyle) shape
 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
 // or asset path as `std.image`.
-component canvasImage(x float, y float, w float, h float, src string) shape {}
+component canvasImage(x float, y float, w float, h float, src string) shape
+
+// --- Geometry ---
+//
+// The vocabulary a shape's own coordinates are written in, and what an
+// override reaches for when it has to compute them: a dial hand, a polygon
+// corner, the control points of a curve. All of it is plain SNGL over
+// `sngl:builtin`'s trig, so it folds away wherever the inputs are constant.
+
+// A position in the canvas's coordinate space.
+struct Point {
+    x float = 0.0
+    y float = 0.0
+}
+
+// An extent in the same space. Named for its fields rather than `w`/`h` so a
+// call site reads as the prop it fills.
+struct Size {
+    width float = 0.0
+    height float = 0.0
+}
+
+// The point at `angle` radians and `radius` from `center`, measuring
+// clockwise from the positive x axis -- the direction screen coordinates run,
+// where y grows downward.
+//
+// This is the one that makes an arc, a dial or a regular polygon writable: the
+// alternative is trigonometry at every call site.
+// Block bodies with the return type written out, not `=>`: in library source
+// an unannotated expression body is inferred only when it answers a
+// *primitive* -- `color.rgb() => color{…}` would otherwise shadow the `color`
+// primitive in callers -- so a struct-returning helper stays `dyn`, and an
+// expression body cannot carry an annotation to say otherwise.
+func Point.polar(center Point, radius float, angle float) Point {
+    return Point{
+        x = center.x + radius * float.cos(angle),
+        y = center.y + radius * float.sin(angle),
+    }
+}
+
+// `p` moved by dx, dy.
+func Point.offset(p Point, dx float, dy float) Point {
+    return Point{x=p.x + dx, y=p.y + dy}
+}
+
+// The point `t` of the way from a to b, with t = 0 at a and t = 1 at b.
+// Values outside that range extrapolate, which is deliberate: a control point
+// often sits beyond the segment it belongs to.
+func Point.lerp(a Point, b Point, t float) Point {
+    return Point{
+        x = a.x + (b.x - a.x) * t,
+        y = a.y + (b.y - a.y) * t,
+    }
+}
+
+// The distance between two points.
+func Point.distance(a Point, b Point) => float.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+
+// The angle from a to b, in radians, as `Point.polar` measures it.
+func Point.angle(a Point, b Point) => float.atan2(b.y - a.y, b.x - a.x)
+
+// The even scale that puts all of `inner` inside `outer`, and the one that
+// leaves none of `outer` uncovered. These are `ScalingMode.fit` and
+// `ScalingMode.fill` as a number, which is what a target's own scaling does to
+// a canvas -- so an override that scales part of a drawing can ask the same
+// question the platform does.
+func Size.fitScale(inner Size, outer Size) => float.min(outer.width / inner.width, outer.height / inner.height)
+
+func Size.fillScale(inner Size, outer Size) => float.max(outer.width / inner.width, outer.height / inner.height)
+
+// --- The tangent arc ---
+
+// Arc is the corner `PathCmd{op = "arcTo"}` asks for, solved: round off
+// the corner at `corner` with radius `r`, tangent to the segment arriving from
+// `from` and to the one leaving toward `to`.
+//
+// Here rather than in a platform package because two targets need it and
+// neither host has the primitive. Canvas2D and `pkg/go/canvas` take the
+// tangent form directly; cairo takes a centre and two angles, and Compose's
+// `Path.arcTo` takes a bounding box and two degrees. Both are the same three
+// numbers this carries, so the trigonometry is written once.
+struct Arc {
+    // No arc to draw: a zero radius, a corner that does not turn, or one that
+    // doubles back. The path goes to the corner itself, which is also what
+    // `tan(half)` being zero or unbounded would otherwise make NaN.
+    degenerate bool = false
+    // Where the incoming line stops and where the outgoing one starts. The
+    // path is left at `tangent2` -- not at `to`, which is the same place
+    // Canvas2D leaves it and what a following command measures from.
+    tangent1 Point = Point{}
+    tangent2 Point = Point{}
+    center Point = Point{}
+    // The arc's start angle in radians and its signed sweep. A negative sweep
+    // turns the other way, which is `cairo_arc_negative` on one target and a
+    // negative `sweepAngleDegrees` on the other.
+    start float = 0.0
+    sweep float = 0.0
+}
+
+// Named for what it solves, and the struct for what it is: SNGL tells a
+// function from a struct by case and Go's export rule erases that, so
+// `tangentArc` returning a `TangentArc` collided as one name in the emitted
+// package and did not compile.
+func tangentArc(from Point, corner Point, to Point, r float) Arc {
+    var a1 = Point.angle(corner, from)
+    var a2 = Point.angle(corner, to)
+    var turn = a2 - a1
+
+    // The signed turn brought into (-pi, pi]: which way the corner bends is
+    // what picks the sweep direction.
+    if turn > math.pi {
+        turn = turn - math.tau
+    }
+    if turn < -math.pi {
+        turn = turn + math.tau
+    }
+    var half = float.abs(turn) / 2.0
+    if r <= 0.0 || half < 0.0001 || half > 1.5706 {
+        return Arc{degenerate = true, tangent1 = corner, tangent2 = corner, center = corner}
+    }
+
+    // Tangent points sit `r / tan(half)` along each ray from the corner, and
+    // the centre `r / sin(half)` along the bisector. The arc between them
+    // subtends `pi - |turn|`, turning against the corner's own bend.
+    var reach = r / float.tan(half)
+    var t1 = Point.polar(corner, reach, a1)
+    var t2 = Point.polar(corner, reach, a2)
+    var c = Point.polar(corner, r / float.sin(half), a1 + turn / 2.0)
+    var sweep = math.pi - float.abs(turn)
+    if turn > 0.0 {
+        sweep = -sweep
+    }
+    return Arc{tangent1 = t1, tangent2 = t2, center = c, start = Point.angle(c, t1), sweep = sweep}
+}

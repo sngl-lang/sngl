@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
@@ -194,7 +195,7 @@ func TestPackageFS_LoadsAsAPackage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{Platforms: []ir.Platform{g}, Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
+	pkg, diags := checker.Check(doc, &checker.Config{Platforms: []ir.Platform{g}, Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
 	for _, d := range diags {
 		t.Errorf("checking against the gtk4 package: %s: %s", d.Pos, d.Msg)
 	}
@@ -558,7 +559,9 @@ func componentDecl(t *testing.T, src, name string) string {
 		t.Fatalf("generated source declares no %s", name)
 	}
 	rest := src[i:]
-	before, _, ok := strings.Cut(rest, "    children ...component ui.node,\n) ui.node {}")
+	// No block: an #[intrinsic] component is refused one, since the platform
+	// renders it from the declaration.
+	before, _, ok := strings.Cut(rest, "    children ...component ui.node,\n) ui.node\n")
 	if !ok {
 		t.Fatalf("the %s declaration does not end", name)
 	}

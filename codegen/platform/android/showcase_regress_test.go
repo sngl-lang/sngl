@@ -19,6 +19,12 @@ import (
 // this internal test package is part of.)
 func androidTarget() []ir.Platform { return []ir.Platform{&Generator{}} }
 
+// androidLangs is what a config naming `Language: "kotlin"` has to provide.
+// This platform's own source imports `sngl:language/kotlin` to describe
+// Compose, and that resolves against this list whatever language the build is
+// for -- see codegen.CollectLangs.
+func androidLangs() []ir.Language { return codegen.CollectLangs() }
+
 // compileSrc compiles a program to Kotlin via CompileIR (non-test mode) or
 // CompileTestIR (test mode), returning the generated MainScreen.kt source.
 func compileSrc(t *testing.T, src string, testMode bool) string {
@@ -27,7 +33,7 @@ func compileSrc(t *testing.T, src string, testMode bool) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Languages: androidLangs(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}

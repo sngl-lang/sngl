@@ -21,6 +21,8 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "wildcard"}:           markWildcard,
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
+	{"macro", "cnative"}:            markCNative,
+	{"language/kotlin", "native"}:   markKotlinNative,
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
 	{"language/go", "async"}:        markGoAsync,
@@ -77,6 +79,7 @@ func markGoNative(m *mark) error {
 		// declaration here has no signature to read, so the mark is where it
 		// is said.
 		d.HasErrorReturn = slices.Contains(flags, flagFails)
+		d.NativeMethod = slices.Contains(flags, flagMethod)
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -84,6 +87,61 @@ func markGoNative(m *mark) error {
 		d.Foreign = fm
 	default:
 		return fmt.Errorf("#[go.native] cannot mark %s; only a function or a struct names a Go identifier", ast.DeclFormName(m.decl))
+	}
+	return nil
+}
+
+// markKotlinNative implements #[kotlin.native("name")] and the module form.
+//
+// The same shape as the other two. A receiverless declaration is what a
+// Compose `DrawScope` function needs: the scope is the receiver and the call
+// carries none.
+func markKotlinNative(m *mark) error {
+	name, module := m.args.String("name"), m.args.String("module")
+	if name == "" {
+		return fmt.Errorf("#[kotlin.native]: an identifier is required")
+	}
+	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[native(%q)]", name))
+	if err != nil {
+		return err
+	}
+	fm := ir.Foreign{Scheme: "kotlin", Path: module, Name: name}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		d.Foreign = fm
+		d.NativeMethod = slices.Contains(flags, flagMethod)
+		d.NativeNamedArgs = slices.Contains(flags, flagNamed)
+	case *ir.StructDef:
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
+		}
+		d.Foreign = fm
+	default:
+		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a function or a struct names a Kotlin identifier", ast.DeclFormName(m.decl))
+	}
+	return nil
+}
+
+// markCNative implements #[cnative("name")]: the declaration is that C
+// identifier.
+//
+// The scheme is "c" rather than a language's, because C is an ABI and not a
+// SNGL target: a platform wrapping a C library describes it once and any
+// backend that can call C reads the same declarations. The path is "C", which
+// is what the Go renderer already keys its cgo spelling on.
+func markCNative(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[cnative]: a C identifier is required")
+	}
+	fm := ir.Foreign{Scheme: "c", Path: "C", Name: name}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		d.Foreign = fm
+	case *ir.StructDef:
+		d.Foreign = fm
+	default:
+		return fmt.Errorf("#[cnative] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
@@ -117,6 +175,7 @@ func markJSNative(m *mark) error {
 		// return. A declaration here has no signature to read, so the mark is
 		// where it is said, and the emitter awaits the call.
 		d.IsAsync = slices.Contains(flags, flagAsync)
+		d.NativeMethod = slices.Contains(flags, flagMethod)
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -225,12 +284,22 @@ func markIntrinsic(m *mark) error {
 
 // The flags #[foreign] accepts after the name, declared as ir.ForeignFlag.
 const (
-	flagPure  = "pure"
-	flagAsync = "async"
+	flagPure   = "pure"
+	flagAsync  = "async"
+	flagNative = "native"
 )
 
 // The flag #[native] accepts after the name, declared as go.NativeFlag.
 const flagFails = "fails"
+
+// flagMethod says the native identifier is called on its first argument, not
+// handed it. Both languages accept it: the choice is the host API's, not the
+// language's.
+const flagMethod = "method"
+
+// flagNamed says a native call passes its arguments by name, using the
+// declaration's own parameter names.
+const flagNamed = "named"
 
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //
@@ -257,14 +326,21 @@ func markForeign(m *mark) error {
 	if err != nil {
 		return err
 	}
-	if _, isFunc := m.sym.(*ir.Func); len(flags) > 0 && !isFunc {
-		return fmt.Errorf("#[foreign(%q)] carries %s, which describes a call; %s has none", name, flags[0], ast.DeclFormName(m.decl))
+	// `pure` and `async` describe a call, so only a function carries them.
+	// `native` describes the declaration itself -- it says the host already
+	// has this, and a struct can say that as readily as a function.
+	if _, isFunc := m.sym.(*ir.Func); !isFunc {
+		for _, f := range flags {
+			if f != flagNative {
+				return fmt.Errorf("#[foreign(%q)] carries %s, which describes a call; %s has none", name, f, ast.DeclFormName(m.decl))
+			}
+		}
 	}
 	if n := markedNames(m.decl); n > 1 {
 		return fmt.Errorf("#[foreign(%q)] marks %d names at once; one foreign name cannot stand for several declarations", name, n)
 	}
 	scheme, pkgPath := imports.ParseScheme(path)
-	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: true}
+	fm := ir.Foreign{Scheme: scheme, Path: pkgPath, Name: name, Marked: !slices.Contains(flags, flagNative)}
 	switch d := m.sym.(type) {
 	case *ir.StructDef:
 		if d.Foreign.Marked {

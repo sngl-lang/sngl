@@ -47,7 +47,7 @@ func generateGTK4Model(t *testing.T, src string) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: codegen.CollectPlatforms(), Languages: codegen.CollectLangs(), Targets: []ir.StaticTarget{{Platform: "gtk4", Language: "go"}}})
 	for _, d := range diags {
 		if d.Severity == ir.Error {
 			t.Fatalf("check diag: %s", d.Msg)
@@ -58,7 +58,7 @@ func generateGTK4Model(t *testing.T, src string) string {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "gtk4"}); err != nil {
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()

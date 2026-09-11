@@ -321,7 +321,9 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 	// that is what makes a native call's argument const in the first place.
 	if native == nil {
 		start = time.Now()
-		shakeUnused(pkg)
+		if err := shakeUnused(pkg); err != nil {
+			return err
+		}
 		slog.Debug("optimize: shake", "duration", time.Since(start))
 	}
 

@@ -2364,14 +2364,16 @@ func canvasScalingMode(n *ir.NodeInst) string {
 	return ""
 }
 
-// emitCanvasSetups emits the _snglColor helper once when any canvas element is
+// emitCanvasSetups emits the canvas helpers once when any canvas element is
 // present. The per-canvas draw call comes from the updaters registered in
 // initWrites, so no per-canvas IIFE is emitted here.
 func (g *htmlGen) emitCanvasSetups(b *strings.Builder) {
 	if len(g.canvasSetups) == 0 && !g.usesLoweredCanvas {
 		return
 	}
-	b.WriteString(snglColorHelper)
+	if g.ctx.Helpers["native:_snglDrawImage"] {
+		b.WriteString(snglDrawImageHelper)
+	}
 	b.WriteString(snglCanvasHelper)
 }
 

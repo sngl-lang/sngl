@@ -1,0 +1,54 @@
+# A library struct a build emits reaches the output under its own bare name,
+# because every backend emits a struct by name. gtk4's `arcTo` takes a
+# `draw.Point`, so a drawing with an arc in it promotes that declaration into
+# the package -- and a program that declares its own `Point` would then get two
+# `type Point struct` in one file, which Go refuses and JS resolves to
+# whichever came last.
+#
+# Renaming is what this wants and is not a rename the promoting pass can make:
+# the declaration is shared with the memoized library package, so writing to it
+# would reach every other build in the process. So it is reported.
+! sngl generate --lang=go --platform=gtk4 --out=out clash.sngl
+stderr 'declares struct "Point"'
+stderr 'sngl:ui/draw'
+stderr 'rename the local one'
+
+# The same program without the local declaration builds, which is what says the
+# diagnostic is about the collision and not about drawing an arc.
+sngl generate --lang=go --platform=gtk4 --out=ok fine.sngl
+exists ok/model.go
+grep 'type Point struct' ok/model.go
+
+-- clash.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+struct Point {
+    label string = ""
+}
+
+component main() ui.node {
+    var p = Point{label = "x"}
+
+    draw.canvas(width=40px, height=20px) {
+        draw.path(cmds=[draw.PathCmd{op = "arcTo", cx1 = 1.0, cy1 = 1.0, x = 2.0, y = 2.0, r = 1.0}], style=draw.CanvasStyle{stroke=color{r=255}})
+        draw.canvasText(x=0.0, y=0.0, content=p.label, style=draw.CanvasStyle{fill=color{b=255}})
+    }
+}
+
+ui.window {
+    main()
+}
+-- fine.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+component main() ui.node {
+    draw.canvas(width=40px, height=20px) {
+        draw.path(cmds=[draw.PathCmd{op = "arcTo", cx1 = 1.0, cy1 = 1.0, x = 2.0, y = 2.0, r = 1.0}], style=draw.CanvasStyle{stroke=color{r=255}})
+    }
+}
+
+ui.window {
+    main()
+}

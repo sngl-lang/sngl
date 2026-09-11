@@ -8,6 +8,7 @@ import time "sngl:time"
 import build "sngl:build"
 import . "sngl:internal/marks"
 import tree "sngl:tree"
+import shapes "sngl:ui/draw"
 
 // The `none` node of a build directive: the interpreter as a build target.
 component none() build.platform {}
@@ -26,10 +27,34 @@ component Timer(
     interval time.duration,
     enabled bool,
     @tick,
-) {}
+)
 
 component time.timer[platform] {
     if enabled {
         Timer(interval=interval, enabled=true, @tick { tick() })
     }
 }
+
+// The drawing tree renders nothing here, which is a thing to say rather than a
+// gap to leave: the interpreter has no surface to paint on, so a shape it is
+// handed is a node in the tree and nothing more. `sngl test` asserts on that
+// tree, so the shapes have to reach it, and an empty body is exactly what
+// leaves the node in place and draws none of it.
+//
+// Written out rather than omitted because omitting them is indistinguishable
+// from an implementation nobody got to: every other target answers this
+// question per shape, and `reportBodylessLibComponents` asks it of this one
+// too.
+component shapes.rect[platform] {}
+
+component shapes.circle[platform] {}
+
+component shapes.ellipse[platform] {}
+
+component shapes.line[platform] {}
+
+component shapes.path[platform] {}
+
+component shapes.canvasText[platform] {}
+
+component shapes.canvasImage[platform] {}

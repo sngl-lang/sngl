@@ -1,0 +1,301 @@
+// The drawing surface, implemented for this platform.
+//
+// Split from android.sngl for the reason widgets.sngl is: one topic per file.
+// A shape override here is written against the Compose vocabulary declared
+// below and nothing in the widget half.
+
+import ui "sngl:ui"
+import . "sngl:macro"
+import . "sngl:internal/marks"
+import tree "sngl:tree"
+import shapes "sngl:ui/draw"
+import math "sngl:math"
+import kt "sngl:language/kotlin"
+
+// --- Drawing ---
+//
+// A canvas here is a Compose `Canvas` composable and its body is a
+// `DrawScope`, so the drawing functions are the scope's own. They are declared
+// receiverless, which is what a scope function is: inside the lambda the
+// receiver is implicit and the call names none.
+//
+// `named` on each, because Compose puts defaults in the middle of its
+// parameter lists -- `drawCircle(color, radius, center, alpha, style, …)`
+// cannot be reached past `alpha` positionally -- and because the fill variants
+// below rely on `style` defaulting to `Fill` when it is simply not passed.
+
+// Compose's own types, opaque here: they are constructed and handed straight
+// to a draw call, so nothing needs to read inside one.
+#[kt.native("androidx.compose.ui.geometry.Offset")]
+struct Offset {}
+
+#[kt.native("androidx.compose.ui.geometry.Size")]
+struct Size {}
+
+#[kt.native("androidx.compose.ui.graphics.Color")]
+struct ComposeColor {}
+
+#[kt.native("androidx.compose.ui.graphics.drawscope.DrawStyle")]
+struct DrawStyle {}
+
+#[kt.native("androidx.compose.ui.graphics.Path")]
+struct Path {}
+
+#[kt.native("Offset", "androidx.compose.ui.geometry.Offset")]
+func offset(x float, y float) Offset
+
+#[kt.native("Size", "androidx.compose.ui.geometry.Size")]
+func size(width float, height float) Size
+
+// Fully qualified rather than imported: this platform's own emitter already
+// writes `import androidx.compose.ui.graphics.Color as ComposeColor`, so the
+// bare name is not bound and an import of it would collide with that alias.
+#[kt.native("androidx.compose.ui.graphics.Color", "", named)]
+func composeColor(red int, green int, blue int, alpha int) ComposeColor
+
+// Compose's `Stroke` carries the cap and the join, so `strokeStyle` takes the
+// whole style rather than just the width -- android read `lineCap` and
+// `lineJoin` nowhere before this and the two reached its `CanvasStyle` data
+// class to be ignored (#223).
+#[kt.native("Stroke", "androidx.compose.ui.graphics.drawscope.Stroke", named)]
+func strokeOf(width float, cap StrokeCap, join StrokeJoin) DrawStyle
+
+#[foreign("kotlin:androidx.compose.ui.graphics", "StrokeCap", native)]
+struct StrokeCap {}
+
+#[foreign("kotlin:androidx.compose.ui.graphics", "StrokeJoin", native)]
+struct StrokeJoin {}
+
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Butt")]
+func capButt() StrokeCap
+
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Round")]
+func capRound() StrokeCap
+
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Square")]
+func capSquare() StrokeCap
+
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Miter")]
+func joinMiter() StrokeJoin
+
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Round")]
+func joinRound() StrokeJoin
+
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Bevel")]
+func joinBevel() StrokeJoin
+
+// The names are SNGL's and the values Compose's, the same mapping gtk4 writes
+// for cairo's enums.
+func strokeCap(name string) StrokeCap {
+    if name == "round" {
+        return capRound()
+    }
+    if name == "square" {
+        return capSquare()
+    }
+    return capButt()
+}
+
+func strokeJoin(name string) StrokeJoin {
+    if name == "round" {
+        return joinRound()
+    }
+    if name == "bevel" {
+        return joinBevel()
+    }
+    return joinMiter()
+}
+
+func strokeStyle(style shapes.CanvasStyle) DrawStyle {
+    return strokeOf(f32(style.strokeWidth), strokeCap(style.lineCap), strokeJoin(style.lineJoin))
+}
+
+// SNGL's `float` is a Kotlin `Double` and Compose's geometry is `Float`, so
+// the conversion is written where the value crosses. A method native, which
+// is exactly what `.toFloat()` is.
+#[kt.native("toFloat", "", method)]
+func f32(v float) float
+
+// The colour as Compose spells it. SNGL carries 0-255 channels and so does
+// this overload, so it is a rename rather than a conversion.
+func composeOf(c color) ComposeColor {
+    return composeColor(int(c.r), int(c.g), int(c.b), int(c.a))
+}
+
+// Each shape below draws at most twice, once per paint that is visible: a
+// transparent fill or stroke is not painted at all rather than painted with
+// nothing, which is what the alpha tests say. The fill call omits `style`
+// entirely and takes Compose's own `Fill` default.
+#[kt.native("drawRect", "", named)]
+func drawRectFill(color ComposeColor, topLeft Offset, size Size)
+
+#[kt.native("drawRect", "", named)]
+func drawRectStroke(color ComposeColor, topLeft Offset, size Size, style DrawStyle)
+
+#[kt.native("drawCircle", "", named)]
+func drawCircleFill(color ComposeColor, radius float, center Offset)
+
+#[kt.native("drawCircle", "", named)]
+func drawCircleStroke(color ComposeColor, radius float, center Offset, style DrawStyle)
+
+#[kt.native("drawOval", "", named)]
+func drawOvalFill(color ComposeColor, topLeft Offset, size Size)
+
+#[kt.native("drawOval", "", named)]
+func drawOvalStroke(color ComposeColor, topLeft Offset, size Size, style DrawStyle)
+
+#[kt.native("drawLine", "", named)]
+func drawLine(color ComposeColor, start Offset, end Offset, strokeWidth float)
+
+#[kt.native("drawPath", "", named)]
+func drawPathFill(path Path, color ComposeColor)
+
+#[kt.native("drawPath", "", named)]
+func drawPathStroke(path Path, color ComposeColor, style DrawStyle)
+
+#[kt.native("Path", "androidx.compose.ui.graphics.Path")]
+func newPath() Path
+
+#[kt.native("moveTo", "", method)]
+func pathMoveTo(p Path, x float, y float)
+
+#[kt.native("lineTo", "", method)]
+func pathLineTo(p Path, x float, y float)
+
+#[kt.native("cubicTo", "", method)]
+func pathCubicTo(p Path, x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
+
+#[kt.native("close", "", method)]
+func pathClose(p Path)
+
+// Compose's `Path.arcTo` takes a bounding box and two angles in *degrees*,
+// where the command gives three points and a radius -- so the corner is solved
+// by `sngl:ui/draw` and only the box and the degrees are built here.
+#[kt.native("Rect", "androidx.compose.ui.geometry.Rect", named)]
+func rect(left float, top float, right float, bottom float) ComposeRect
+
+#[kt.native("arcTo", "", method, named)]
+func pathArcTo(p Path, rect ComposeRect, startAngleDegrees float, sweepAngleDegrees float, forceMoveTo bool)
+
+#[foreign("kotlin:androidx.compose.ui.geometry", "Rect", native)]
+struct ComposeRect {}
+
+func degrees(radians float) => radians * 180.0 / math.pi
+
+#[intrinsic("android:draw")]
+component draw(@draw DrawEvent) shapes.shape
+
+struct DrawEvent {
+    width int
+    height int
+}
+
+component shapes.rect[platform] {
+    draw(@draw(e) {
+        if style.fill.a > 0 {
+            drawRectFill(composeOf(style.fill), offset(f32(x), f32(y)), size(f32(w), f32(h)))
+        }
+        if style.stroke.a > 0 {
+            drawRectStroke(composeOf(style.stroke), offset(f32(x), f32(y)), size(f32(w), f32(h)), strokeStyle(style))
+        }
+    })
+}
+
+component shapes.circle[platform] {
+    draw(@draw(e) {
+        if style.fill.a > 0 {
+            drawCircleFill(composeOf(style.fill), f32(r), offset(f32(cx), f32(cy)))
+        }
+        if style.stroke.a > 0 {
+            drawCircleStroke(composeOf(style.stroke), f32(r), offset(f32(cx), f32(cy)), strokeStyle(style))
+        }
+    })
+}
+
+// Compose has no ellipse: `drawOval` takes the bounding box, so the centre and
+// radii become a top-left and a size.
+component shapes.ellipse[platform] {
+    draw(@draw(e) {
+        if style.fill.a > 0 {
+            drawOvalFill(composeOf(style.fill), offset(f32(cx - rx), f32(cy - ry)), size(f32(rx * 2.0), f32(ry * 2.0)))
+        }
+        if style.stroke.a > 0 {
+            drawOvalStroke(composeOf(style.stroke), offset(f32(cx - rx), f32(cy - ry)), size(f32(rx * 2.0), f32(ry * 2.0)), strokeStyle(style))
+        }
+    })
+}
+
+// A line has no interior, so `fill` is not read.
+component shapes.line[platform] {
+    draw(@draw(e) {
+        drawLine(composeOf(style.stroke), offset(f32(x1), f32(y1)), offset(f32(x2), f32(y2)), f32(style.strokeWidth))
+    })
+}
+
+component shapes.path[platform] {
+    draw(@draw(e) {
+        var p = newPath()
+        // Where the path is, which the tangent arc measures from and Compose
+        // will not hand back.
+        var at = shapes.Point{x = 0.0, y = 0.0}
+
+        for var c = cmds {
+            if c.op == "moveTo" {
+                pathMoveTo(p, f32(c.x), f32(c.y))
+                at = shapes.Point{x = c.x, y = c.y}
+            }
+            if c.op == "lineTo" {
+                pathLineTo(p, f32(c.x), f32(c.y))
+                at = shapes.Point{x = c.x, y = c.y}
+            }
+            if c.op == "bezierTo" {
+                pathCubicTo(p, f32(c.cx1), f32(c.cy1), f32(c.cx2), f32(c.cy2), f32(c.x), f32(c.y))
+                at = shapes.Point{x = c.x, y = c.y}
+            }
+            if c.op == "arcTo" {
+                var a = shapes.tangentArc(at, shapes.Point{x = c.cx1, y = c.cy1}, shapes.Point{x = c.x, y = c.y}, c.r)
+                if a.degenerate {
+                    pathLineTo(p, f32(c.cx1), f32(c.cy1))
+                } else {
+                    pathLineTo(p, f32(a.tangent1.x), f32(a.tangent1.y))
+                    pathArcTo(p, rect(f32(a.center.x - c.r), f32(a.center.y - c.r), f32(a.center.x + c.r), f32(a.center.y + c.r)), f32(degrees(a.start)), f32(degrees(a.sweep)), false)
+                }
+                at = a.tangent2
+            }
+            if c.op == "close" {
+                pathClose(p)
+            }
+        }
+        if style.fill.a > 0 {
+            drawPathFill(p, composeOf(style.fill))
+        }
+        if style.stroke.a > 0 {
+            drawPathStroke(p, composeOf(style.stroke), strokeStyle(style))
+        }
+    })
+}
+
+// The two drawings a native declaration cannot describe: text reaches a
+// `Paint` by chained property access and an image goes through a safe-call
+// chain ending in a `let`. Both are Kotlin the mark cannot spell, so the
+// platform emits a `DrawScope` extension for each and these name them --
+// receiverless, like every other scope function.
+#[kt.native("snglDrawText", "", named)]
+func drawTextShim(content string, x float, y float, c ComposeColor, size float, family string)
+
+#[kt.native("snglDrawImage", "", named)]
+func drawImageShim(src string, x float, y float, w float, h float)
+
+component shapes.canvasText[platform] {
+    draw(@draw(e) {
+        if style.fill.a > 0 {
+            drawTextShim(content, f32(x), f32(y), composeOf(style.fill), f32(style.fontSize), style.fontFamily)
+        }
+    })
+}
+
+component shapes.canvasImage[platform] {
+    draw(@draw(e) {
+        drawImageShim(src, f32(x), f32(y), f32(w), f32(h))
+    })
+}

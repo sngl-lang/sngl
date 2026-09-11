@@ -9,7 +9,7 @@ import (
 
 // shakeUnused removes consts, vars, functions, structs, and enums that are
 // not reachable from roots (components, windows, timers, outputs, tests).
-func shakeUnused(pkg *ir.Package) {
+func shakeUnused(pkg *ir.Package) error {
 	used := collectUsedSymbols(pkg)
 
 	pkg.Consts = filterVars(pkg.Consts, used)
@@ -17,6 +17,87 @@ func shakeUnused(pkg *ir.Package) {
 	pkg.Funcs = filterFuncs(pkg.Funcs, used)
 	pkg.Structs = filterStructs(pkg.Structs, used)
 	pkg.Enums = filterEnums(pkg.Enums, used)
+	return promoteForeignStructs(pkg)
+}
+
+// promoteForeignStructs adds a library package's struct to this package's list
+// when a surviving function's signature names it.
+//
+// Every backend emits its type declarations from pkg.Structs, which holds the
+// program's own -- so a struct another package declares has no declaration in
+// the output, and `shapes.Point` in a promoted helper's signature arrived in
+// the generated Go as the undefined type `Point`.
+//
+// Here rather than in the lowering that promotes the functions, because only
+// after the filters above is it known which of them survive: a helper that was
+// inlined into its caller and then shaken leaves a signature nobody writes,
+// and promoting its types added a declaration nothing referenced.
+//
+// Signatures only. A struct a body merely *builds* needs no declaration in a
+// language whose literals carry none, and reaching wider pulled in `ui.Style`
+// -- named by every program -- which html then emitted a constructor for.
+//
+// A foreign struct is skipped: it *is* a host type, and a declaration for it
+// would shadow the thing it names.
+func promoteForeignStructs(pkg *ir.Package) error {
+	have := map[*ir.StructDef]bool{}
+	byName := map[string]*ir.StructDef{}
+	for _, sd := range pkg.Structs {
+		have[sd] = true
+		byName[sd.Name] = sd
+	}
+	var added []*ir.StructDef
+	want := func(t *ir.Type) {
+		if t == nil || t.Kind != ir.TypeStruct {
+			return
+		}
+		sd, ok := t.Decl.(*ir.StructDef)
+		if !ok || sd == nil || have[sd] || sd.Pkg == "" || sd.Foreign.Name != "" {
+			return
+		}
+		have[sd] = true
+		added = append(added, sd)
+	}
+	for _, fn := range pkg.Funcs {
+		if fn == nil || fn.Pkg == "" {
+			continue
+		}
+		for _, p := range fn.Params {
+			want(p.Type)
+		}
+		want(fn.Return)
+	}
+	// Promotion is keyed by declaration and every backend emits by name, so a
+	// promoted library struct whose name the program also declares would be a
+	// second `type Point struct` in one file -- Go refuses it, and JS takes
+	// whichever came last. Renaming is the fix this wants, and it is not a
+	// rename this pass can make: the declaration is shared with the memoized
+	// library package, so writing to it would reach every other build in the
+	// process, and the types that point at it are shared too.
+	//
+	// So it is reported. A build that stops naming both declarations is worth
+	// more than emitted code that does not compile, or silently uses the wrong
+	// type.
+	for _, sd := range added {
+		if other, clash := byName[sd.Name]; clash {
+			return fmt.Errorf("%s declares struct %q and so does %s, which a function this build emits names in its signature; "+
+				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
+				pkgLabel(other.Pkg), sd.Name, pkgLabel(sd.Pkg))
+		}
+		byName[sd.Name] = sd
+	}
+	pkg.Structs = append(pkg.Structs, added...)
+	return nil
+}
+
+// pkgLabel names a package in a diagnostic. `StructDef.Pkg` already carries
+// the `sngl:` prefix for a library declaration and is empty for the program's
+// own.
+func pkgLabel(pkg string) string {
+	if pkg == "" {
+		return "this program"
+	}
+	return pkg
 }
 
 func filterVars(vars []*ir.Var, used map[ir.Symbol]bool) []*ir.Var {

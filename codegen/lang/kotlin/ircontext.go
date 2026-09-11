@@ -203,11 +203,35 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 // assignment -- copying on binding is what makes every mutable name one this
 // scope owns, and copying again on the way out would only defeat the
 // structural-equality check Compose uses to decide whether to recompose.
+// valueCopyFor is valueCopy for a local binding, skipping the copy when
+// nothing writes the binding.
+//
+// The copy exists so a mutation cannot reach whoever else holds the value; a
+// binding that is only read has no mutation to contain, and `passMutatedVars`
+// is what says which is which. Absent the annotation -- a pipeline that did
+// not lower -- every struct is copied, which is the old behaviour and the safe
+// direction.
+func (kc *KtIRContext) valueCopyFor(n *ir.LocalVar, rendered string) string {
+	if n.Sym != nil && kc.Ctx != nil && kc.Ctx.Pkg != nil && kc.Ctx.Pkg.MutatedVars != nil {
+		if !kc.Ctx.Pkg.MutatedVars[n.Sym] {
+			return rendered
+		}
+	}
+	return valueCopy(n.Init, n.Type, rendered)
+}
+
 func valueCopy(init ir.Expr, t *ir.Type, rendered string) string {
 	if t == nil || t.Kind != ir.TypeStruct || t.Decl == nil {
 		return rendered
 	}
 	if ir.StringReprStruct(t) {
+		return rendered
+	}
+	// A native struct names a Kotlin class this build does not emit, so there
+	// is no generated data class and no `copy()` to call -- Compose's `Path`
+	// has none. It is a reference the host owns, which is also why copying it
+	// would be wrong even if the method existed.
+	if sd, ok := t.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" {
 		return rendered
 	}
 	switch init.(type) {
@@ -255,7 +279,7 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 				}
 			}
 		}
-		return "var " + n.Name + " = " + valueCopy(n.Init, n.Type, initStr)
+		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
 	}
 	goType := "Any"
 	if n.Type != nil {
@@ -398,6 +422,59 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	}
 }
 
+// nativeCall emits a call to the Kotlin identifier a #[kotlin.native]
+// declaration names.
+//
+// Three shapes, as the Go and JavaScript backends have: the name as written
+// with the arguments handed to it, the same with the receiver first, and
+// `method` for a call *on* the first argument. Compose's drawing functions
+// take the first -- inside a `DrawScope` the receiver is the scope and the
+// call names none.
+func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
+	if n.Func == nil || n.Func.Foreign.Name == "" || n.Func.Foreign.Scheme != "kotlin" {
+		return "", false
+	}
+	if n.Func.Foreign.Path != "" {
+		kc.RequireImport(n.Func.Foreign.Path)
+	}
+	name := n.Func.Foreign.Name
+	args := kc.evalCallArgs(n.Args)
+	if n.Func.NativeMethod && len(args) > 0 {
+		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
+	}
+	if n.Func.NativeNamedArgs {
+		args = ktNameArgs(n.Func.Params, args)
+	}
+	return name + "(" + strings.Join(args, ", ") + ")", true
+}
+
+// ktNameArgs prefixes each argument with the parameter it fills, which is what
+// lets a call reach a host parameter that sits after one with a default.
+//
+// An argument with no parameter to name -- there should be none -- is left
+// positional rather than dropped.
+func ktNameArgs(params []*ir.Param, args []string) []string {
+	out := make([]string, len(args))
+	copy(out, args)
+	for i, p := range params {
+		if i >= len(out) || p.Name == "" {
+			continue
+		}
+		out[i] = p.Name + " = " + out[i]
+	}
+	return out
+}
+
+// ktMethodTail is the last segment of a dotted native name: the method to
+// invoke on the receiver, with the type or namespace prefix dropped because
+// the receiver supplies it.
+func ktMethodTail(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
+}
+
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	// Intrinsic dispatch by ID — never by method name. Backends register only
 	// the intrinsics they emit; unregistered IDs fall through.
@@ -405,6 +482,13 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		for _, p := range imports {
 			kc.RequireImport(p)
 		}
+		return out
+	}
+	// A declaration that *is* a Kotlin identifier: the call becomes a call to
+	// it and nothing is emitted for the declaration. Before the receiver and
+	// the scope lookups, because those answer for a function this build emits
+	// and a native is not one.
+	if out, ok := kc.nativeCall(n); ok {
 		return out
 	}
 	if n.Receiver != nil {

@@ -51,7 +51,12 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 		// A painted shape has nothing to raise an event from. This is drawing's
 		// rule rather than one about trees, and it sits here because membership
 		// is conferred here -- until a tree can carry rules of its own.
-		if ir.IsDrawShapeTree(sd) && len(comp.Events) > 0 {
+		//
+		// A platform primitive is exempt, and in the opposite direction: its
+		// event is not the shape raising anything, it is the target calling in
+		// with the drawing context, which is how an override says what to
+		// paint. Only an #[intrinsic] declaration can be one.
+		if ir.IsDrawShapeTree(sd) && len(comp.Events) > 0 && comp.Intrinsic == "" {
 			c.error(decl.Pos, "component %s: a shape supports no event declarations", comp.Name)
 		}
 		return

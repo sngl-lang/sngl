@@ -780,6 +780,9 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	} else if n.Func.Foreign.Path != "C" {
 		gc.RequireImport(n.Func.Foreign.Path)
 	}
+	if n.Func.Foreign.Path == "C" {
+		args = wrapCArgs(n.Func.Params, args)
+	}
 	// Context-taking native call: inject the context expression as the first
 	// argument. When the importer flagged HasContextArg, supply
 	// gc.Ctx.ContextVar (e.g. "r.Context()"), defaulting to
@@ -795,7 +798,96 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 		}
 		args = append([]string{ctxVar}, args...)
 	}
+	// `method` says the identifier is invoked on its first argument rather
+	// than handed it: `c.Circle(1, 2)` where the default is
+	// `canvas.Context.Circle(c, 1, 2)`. Both are valid Go for the same
+	// method, and which one a host API wants is the API's to say.
+	if n.Func.NativeMethod && len(args) > 0 {
+		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
+	}
 	return name + "(" + strings.Join(args, ", ") + ")", true
+}
+
+// wrapCArgs converts each argument to the C type of the parameter it fills.
+//
+// cgo gives every C numeric type a defined Go type, so a `float64` is not
+// assignable to a `C.double` and a call to a C function needs the conversion
+// written out. A hand-written emitter does this itself -- gtk4's `dbl` helper
+// wraps every cairo coordinate -- and a native declaration has no way to say
+// it, so the backend that knows cgo does it from the declared parameter types.
+//
+// Aligned from the end: a native written in the receiver-first shape is called
+// with the receiver as argument zero and no parameter declares it.
+//
+// A type with no C counterpart here is left alone, which makes the mismatch a
+// Go compile error rather than a silent conversion -- `string` in particular,
+// where the C type is a `char*` somebody has to allocate and free.
+func wrapCArgs(params []*ir.Param, args []string) []string {
+	off := len(args) - len(params)
+	if off < 0 {
+		return args
+	}
+	out := make([]string, len(args))
+	copy(out, args)
+	for i, p := range params {
+		ct := cTypeFor(p.Type)
+		if ct == "" {
+			continue
+		}
+		out[off+i] = ct + "(" + out[off+i] + ")"
+	}
+	return out
+}
+
+// cTypeFor is the cgo type a SNGL type crosses as, or "" for one that has no
+// single answer.
+func cTypeFor(t *ir.Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ir.TypeFloat:
+		return "C.double"
+	case ir.TypeInt:
+		return "C.int"
+	case ir.TypeString:
+		// C.CString allocates and the caller owns the result. Nothing here
+		// frees it, which is the same trade every hand-written call in the
+		// gtk4 emitter already makes (`C.CString("label")`): a widget label
+		// and a text run outlive the call, and the alternative is a defer this
+		// has no statement to put one in.
+		return "C.CString"
+	case ir.TypeBool:
+		// C spells a boolean as 1 or 0 and Go will not convert one to the
+		// other: `C.int(true)` does not compile, and passing the bool through
+		// unconverted does not either. There is no inline Go expression for it
+		// -- it needs a helper or an `if` -- so the declaration has to say what
+		// it means, `#[cnative]` on a parameter typed `int` with the override
+		// choosing the value. Loud, because silently returning "" here emitted
+		// a call that failed in the user's own `go build` with no hint of
+		// where it came from.
+		panic(fmt.Sprintf("cnative: a bool parameter has no C spelling; declare it as int and convert in the override (parameter type %s)", t))
+	default:
+		// Everything else passes through, which is what an opaque handle
+		// wants: a `#[cnative("*C.cairo_t")]` struct, a nullable pointer, an
+		// enum already converted by a native of its own. A conversion is only
+		// written where it is a representation detail and nothing else --
+		// `C.double(x)` says how a float64 crosses and loses nothing, whereas
+		// a float reaching an int parameter is a decision about rounding and
+		// so is the override's to write in SNGL.
+		return ""
+	}
+}
+
+// methodTail is the last segment of a qualified native name, which is the
+// method to call on the receiver: `canvas.Context.Circle` invoked on a
+// receiver is `.Circle`, since the package and type come from the receiver's
+// own type rather than from the call.
+func methodTail(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
 }
 
 func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {

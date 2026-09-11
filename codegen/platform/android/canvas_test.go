@@ -19,7 +19,7 @@ func compileCanvasSrc(t *testing.T, src string) string {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
+	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true, Platforms: androidTarget(), Languages: androidLangs(), Targets: []ir.StaticTarget{{Platform: "android", Language: "kotlin"}}})
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}
@@ -78,8 +78,7 @@ func TestCanvasComposeEmission(t *testing.T) {
 	// DrawScope primitives for rect + circle.
 	mustContain("drawRect(")
 	mustContain("drawCircle(")
-	// Color helper + stdlib data classes for the canvas structs.
-	mustContain("fun _snglComposeColor(")
+	// The stdlib data classes for the canvas structs.
 	mustContain("data class CanvasStyle(")
 	mustContain("data class Color(")
 	// The circle radius must read the reactive state var inside the draw
@@ -93,9 +92,13 @@ func TestCanvasComposeEmission(t *testing.T) {
 	if strings.Contains(code, "unresolved method") {
 		t.Errorf("style call left unresolved\n---\n%s", code)
 	}
-	// The active style binds to a local and the fill draw is alpha-gated.
-	mustContain("val _style1 = circleStyle")
-	mustContain("_snglComposeColor(")
+	// The style reaches the draw call, and the paint is alpha-gated. `circle`
+	// draws from this platform's override now, which sets the colour inline
+	// from the style it was given -- the `_style1` local and the
+	// `_snglComposeColor` helper both belonged to the CanvasApplyStyle
+	// expansion the override replaces.
+	mustContain("circleStyle.fill")
+	mustContain("circleStyle.fill.a > 0")
 
 	// Balanced braces sanity.
 	if o, c := strings.Count(code, "{"), strings.Count(code, "}"); o != c {
@@ -138,9 +141,77 @@ ui.window {
     }
 }`
 	out := compileCanvasSrc(t, src)
-	for _, want := range []string{"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(image ="} {
+	// The call site first: the shim is emitted for any canvas, so asserting
+	// its body alone would pass with no image in the program at all.
+	for _, want := range []string{
+		`snglDrawImage(src = "/tmp/p.png"`,
+		"BitmapFactory.decodeFile(", "asImageBitmap()", "drawImage(",
+	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("canvasImage missing %q:\n%s", want, out)
 		}
+	}
+}
+
+// A struct binding is copied so a mutation cannot reach whoever else holds the
+// value -- Compose decides whether to recompose by structural equality, and a
+// handler that mutated one in place left the screen unchanged. A binding
+// nothing writes has no mutation to contain, and `passMutatedVars` is what
+// tells the two apart.
+//
+// Both directions, because the failure modes are opposite: a missing copy
+// aliases two names silently, and a spurious one is only waste.
+func TestOnlyAMutatedBindingIsCopied(t *testing.T) {
+	code := compileSrc(t, `
+import . "sngl:ui"
+import time "sngl:time"
+
+struct Item {
+    label string = ""
+    count int = 0
+}
+
+component main node {
+    var src = Item{label="a", count=1}
+    var out = 0
+
+    // A timer handler as well as a click one. The pass that answers this used
+    // to walk a list of roots written out by hand, which named component
+    // bodies and their funcs and missed Timers entirely -- so a binding
+    // written here was read as written nowhere, the copy was skipped, and the
+    // in-place write left Compose's structural equality saying nothing had
+    // changed. Exactly the bug the copy exists to prevent.
+    time.timer(interval=1s, @tick {
+        var ticked = src
+        ticked.count = 9
+        out = ticked.count
+    })
+
+    button(text="go", @click {
+        var readOnly = src
+        var written = src
+        var viaLambda = src
+
+        var bump = func() { viaLambda.count = 7 }
+        bump()
+        written.count = 3
+        out = readOnly.count + written.count + viaLambda.count
+    })
+}
+
+window(title="t", href="/index.html") { main() }
+`, false)
+
+	for _, want := range []string{
+		"var written = src__inst0.copy()",
+		"var viaLambda = src__inst0.copy()",
+		"var ticked = src__inst0.copy()",
+	} {
+		if !strings.Contains(code, want) {
+			t.Errorf("a written binding must be copied, missing %q\n---\n%s", want, code)
+		}
+	}
+	if !strings.Contains(code, "var readOnly = src__inst0\n") {
+		t.Errorf("a binding nothing writes needs no copy\n---\n%s", code)
 	}
 }

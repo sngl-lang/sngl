@@ -18,6 +18,8 @@ import js "sngl:language/js"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
+import shapes "sngl:ui/draw"
+import math "sngl:math"
 
 // The `html` node of a build directive: `output { js { html() } }`. Its props
 // are the build options this platform accepts.
@@ -432,4 +434,248 @@ component time.timer[platform] {
             },
         )
     }
+}
+
+// --- Drawing ---
+//
+// A canvas draws through a CanvasRenderingContext2D, and its methods are the
+// drawing vocabulary. Declared here rather than translated in Go: a shape
+// override below calls them, and the emitted JavaScript is the call it wrote.
+//
+// `method` on each is what makes that possible -- a DOM method is a property
+// of the context, and a native call is otherwise emitted with the receiver as
+// its first argument.
+#[js.native("CanvasRenderingContext2D")]
+struct DrawContext {
+    // Canvas2D sets style by property assignment rather than by method, so
+    // these are fields. The SNGL names are the DOM names, so nothing has to
+    // map them.
+    fillStyle string
+    strokeStyle string
+    lineWidth float
+    lineCap string
+    lineJoin string
+    font string
+}
+
+#[js.native("save", "", method)]
+func DrawContext.save()
+
+#[js.native("restore", "", method)]
+func DrawContext.restore()
+
+#[js.native("beginPath", "", method)]
+func DrawContext.beginPath()
+
+#[js.native("arc", "", method)]
+func DrawContext.arc(x float, y float, r float, start float, end float)
+
+#[js.native("fill", "", method)]
+func DrawContext.fill()
+
+#[js.native("stroke", "", method)]
+func DrawContext.stroke()
+
+#[js.native("fillRect", "", method)]
+func DrawContext.fillRect(x float, y float, w float, h float)
+
+#[js.native("strokeRect", "", method)]
+func DrawContext.strokeRect(x float, y float, w float, h float)
+
+// The DOM's `ellipse` takes a rotation and a sweep; a shape that wants a
+// partial arc writes them itself rather than waiting for a stdlib shape.
+#[js.native("ellipse", "", method)]
+func DrawContext.ellipse(x float, y float, rx float, ry float, rotation float, start float, end float)
+
+#[js.native("moveTo", "", method)]
+func DrawContext.moveTo(x float, y float)
+
+#[js.native("lineTo", "", method)]
+func DrawContext.lineTo(x float, y float)
+
+#[js.native("bezierCurveTo", "", method)]
+func DrawContext.bezierCurveTo(cx1 float, cy1 float, cx2 float, cy2 float, x float, y float)
+
+#[js.native("arcTo", "", method)]
+func DrawContext.arcTo(x1 float, y1 float, x2 float, y2 float, r float)
+
+#[js.native("closePath", "", method)]
+func DrawContext.closePath()
+
+#[js.native("fillText", "", method)]
+func DrawContext.fillText(text string, x float, y float)
+
+#[js.native("strokeText", "", method)]
+func DrawContext.strokeText(text string, x float, y float)
+
+// The primitive an override paints through: `@draw` is the target calling in
+// with the context, and the handler body is what the draw function emits.
+//
+// A shape override paints through it below.
+// What a `@draw` handler is handed: the context to paint through, and the
+// coordinate space the shapes were placed in. The size is the canvas's own
+// declared width and height, so it arrives as a literal.
+struct DrawEvent {
+    ctx DrawContext
+    width int
+    height int
+}
+
+#[intrinsic("html:draw")]
+component draw(@draw DrawEvent) shapes.shape
+
+// `rgba(...)` as the DOM spells it. Written in SNGL rather than pointed at the
+// page's `_snglColor` helper, because being pure is what lets a constant style
+// fold: a literal colour becomes the string `"rgba(51,102,204,1)"` at build
+// time, where a native call stays a call forever. The alpha channel is 0-255
+// in SNGL and 0-1 here, which is the whole reason it is a function.
+func cssColor(c color) => "rgba({c.r},{c.g},{c.b},{float(c.a) / 255.0})"
+
+// Fill and stroke are gated on alpha, which every other backend does and this
+// one did not: the old translation tested the colour *object* for truthiness,
+// and a JS object is always truthy, so a fill-only shape also painted an
+// invisible stroke (#225).
+// The style a shape shares, as a helper rather than repeated per shape. A
+// shape that needs only part of it sets that part itself instead of calling
+// this -- `rect` and `line` below do.
+func paintStyle(ctx DrawContext, style shapes.CanvasStyle) {
+    ctx.fillStyle = cssColor(style.fill)
+    ctx.strokeStyle = cssColor(style.stroke)
+    ctx.lineWidth = style.strokeWidth
+}
+
+component shapes.circle[platform] {
+    html.draw(@draw(e) {
+        e.ctx.save()
+        paintStyle(e.ctx, style)
+        e.ctx.beginPath()
+        e.ctx.arc(cx, cy, r, 0.0, math.tau)
+        if style.fill.a > 0 {
+            e.ctx.fill()
+        }
+        if style.stroke.a > 0 {
+            e.ctx.stroke()
+        }
+        e.ctx.restore()
+    })
+}
+
+// Each shape sets only the style it uses, which is the point of writing these
+// in SNGL: the translation they replace applied all six properties to every
+// shape, including a font to a rectangle.
+component shapes.rect[platform] {
+    html.draw(@draw(e) {
+        e.ctx.save()
+        if style.fill.a > 0 {
+            e.ctx.fillStyle = cssColor(style.fill)
+            e.ctx.fillRect(x, y, w, h)
+        }
+        if style.stroke.a > 0 {
+            e.ctx.strokeStyle = cssColor(style.stroke)
+            e.ctx.lineWidth = style.strokeWidth
+            // A rectangle has corners, so lineJoin is its to honour. No
+            // lineCap: the path closes, so there are no ends for one to shape
+            // -- which is also why circle and ellipse set neither.
+            e.ctx.lineJoin = style.lineJoin
+            e.ctx.strokeRect(x, y, w, h)
+        }
+        e.ctx.restore()
+    })
+}
+
+component shapes.ellipse[platform] {
+    html.draw(@draw(e) {
+        e.ctx.save()
+        paintStyle(e.ctx, style)
+        e.ctx.beginPath()
+        e.ctx.ellipse(cx, cy, rx, ry, 0.0, 0.0, math.tau)
+        if style.fill.a > 0 {
+            e.ctx.fill()
+        }
+        if style.stroke.a > 0 {
+            e.ctx.stroke()
+        }
+        e.ctx.restore()
+    })
+}
+
+// A line has no interior, so `fill` is not read here at all rather than being
+// set and ignored. That is the declaration's documented behaviour, stated once
+// in the override instead of as a special case in five emitters.
+component shapes.line[platform] {
+    html.draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.strokeStyle = cssColor(style.stroke)
+        e.ctx.lineWidth = style.strokeWidth
+        e.ctx.lineCap = style.lineCap
+        e.ctx.lineJoin = style.lineJoin
+        e.ctx.beginPath()
+        e.ctx.moveTo(x1, y1)
+        e.ctx.lineTo(x2, y2)
+        e.ctx.stroke()
+        e.ctx.restore()
+    })
+}
+
+component shapes.path[platform] {
+    html.draw(@draw(e) {
+        e.ctx.save()
+        paintStyle(e.ctx, style)
+        e.ctx.lineCap = style.lineCap
+        e.ctx.lineJoin = style.lineJoin
+        e.ctx.beginPath()
+        for var c = cmds {
+            if c.op == "moveTo" {
+                e.ctx.moveTo(c.x, c.y)
+            }
+            if c.op == "lineTo" {
+                e.ctx.lineTo(c.x, c.y)
+            }
+            if c.op == "bezierTo" {
+                e.ctx.bezierCurveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
+            }
+            if c.op == "arcTo" {
+                e.ctx.arcTo(c.cx1, c.cy1, c.x, c.y, c.r)
+            }
+            if c.op == "close" {
+                e.ctx.closePath()
+            }
+        }
+        if style.fill.a > 0 {
+            e.ctx.fill()
+        }
+        if style.stroke.a > 0 {
+            e.ctx.stroke()
+        }
+        e.ctx.restore()
+    })
+}
+
+// The page's own image shim, which carries the decode cache and the wait for
+// a source that has not arrived yet. Receiver-first: `method` would make this
+// `ctx._snglDrawImage(...)`, and the context is an argument here, not the
+// thing the call is made on.
+#[js.native("_snglDrawImage")]
+func drawImage(ctx DrawContext, src string, x float, y float, w float, h float)
+
+component shapes.canvasImage[platform] {
+    html.draw(@draw(e) {
+        drawImage(e.ctx, src, x, y, w, h)
+    })
+}
+
+component shapes.canvasText[platform] {
+    html.draw(@draw(e) {
+        e.ctx.save()
+        e.ctx.font = "{style.fontSize}px {style.fontFamily}"
+        if style.fill.a > 0 {
+            e.ctx.fillStyle = cssColor(style.fill)
+            e.ctx.fillText(content, x, y)
+        }
+        if style.stroke.a > 0 {
+            e.ctx.strokeStyle = cssColor(style.stroke)
+            e.ctx.strokeText(content, x, y)
+        }
+        e.ctx.restore()
+    })
 }

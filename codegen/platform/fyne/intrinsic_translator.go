@@ -8,7 +8,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -75,9 +74,6 @@ type fyneTranslator struct {
 
 	canvasByID   map[string]*canvasMeta
 	canvasByFunc map[*ir.Func]*canvasMeta
-	// canvasState threads per-draw-func style-local naming for
-	// canvasutil.GoContextStmts; lazily created on first canvas intrinsic.
-	canvasState *canvasutil.GoCanvasState
 }
 
 func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {

@@ -209,6 +209,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.analyzeAsyncWithPointsTo()
 	c.checkAsyncRules()
 	c.pkg.Symbols = c.symtab
+	// Last, because it needs every lib package loaded and every target's
+	// overrides merged.
+	c.reportBodylessLibComponents()
 	ir.Normalize(c.pkg)
 	return c.pkg, c.diags
 }
@@ -231,6 +234,11 @@ type checker struct {
 	// the work is driven by the package's declarations rather than by its
 	// files.
 	fileScopesByName map[string]*ir.Scope
+	// shellMarks queues the marks on a struct shell, enum or unit while pass1
+	// is still registering declarations, so a package's own macro is in scope
+	// by the time one that names it runs. Non-nil only for that window.
+	shellMarks *[]pendingMark
+
 	// curFileScope is the file whose imports are in scope, or nil outside any
 	// file (loading a library, checking synthesized IR).
 	curFileScope *ir.Scope
@@ -1093,6 +1101,10 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	savedDocs, savedTopLevel := c.docs, c.topLevel
 	savedReplaces, savedPending := c.replaces, c.pendingPkgBody
 	savedPkgDecls := c.pkgDecls
+	// The queue pass1 holds its shell marks in. A lib package's own pass1 arms
+	// a fresh one, so the program's -- still filling, since the load happened
+	// from inside it -- has to come back.
+	savedShellMarks := c.shellMarks
 	restoreFile := c.saveFile()
 	c.docs = docs
 	// A library package is its own declaration set: a name the program already
@@ -1108,6 +1120,7 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		c.docs, c.topLevel = savedDocs, savedTopLevel
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
 		c.pkgDecls = savedPkgDecls
+		c.shellMarks = savedShellMarks
 	}
 }
 
@@ -1166,6 +1179,7 @@ func (c *checker) pass1() {
 	}
 	var structShells []pendingShell
 	var pendingComponents []pendingComp
+	c.shellMarks = &[]pendingMark{}
 	for _, d := range c.docs {
 		c.resumeFile(d)
 		for _, stmt := range d.Stmts {
@@ -1181,6 +1195,32 @@ func (c *checker) pass1() {
 			}
 		}
 	}
+	// A package's own macros, ahead of every mark that could name one. A mark
+	// resolves its macro through the scope, and a macro is an ordinary func,
+	// so one declared in this package would not be registered until long after
+	// the marks on this package's structs had already run -- which is why a
+	// language package could not write its own `native` on its own struct.
+	//
+	// Registered here rather than with the other funcs because this is the
+	// earliest point where a macro's signature resolves: the shells above
+	// cover the structs, enums and units its parameters name, and its return
+	// type comes from the package declaring `ir.Macro`, which is imported.
+	// Nothing else about a macro is special, so what makes one is still
+	// `macroFrom` asking the registered func what it returns.
+	macroDecls := map[*ast.FuncDef]bool{}
+	for _, d := range c.docs {
+		c.resumeFile(d)
+		for _, stmt := range d.Stmts {
+			f, ok := stmt.(*ast.FuncDef)
+			if !ok || !looksLikeMacroDecl(f) {
+				continue
+			}
+			macroDecls[f] = true
+			c.registerFunc(f)
+		}
+	}
+	c.runShellMarks()
+
 	for _, p := range pendingComponents {
 		c.resumeFile(p.doc)
 		c.registerComponent(p.decl)
@@ -1204,6 +1244,9 @@ func (c *checker) pass1() {
 			case *ast.VarDecl:
 				c.registerVars(s)
 			case *ast.FuncDef:
+				if macroDecls[s] {
+					continue // registered above, ahead of the marks naming it
+				}
 				c.registerFunc(s)
 			case *ast.VisualNode:
 				c.registerRootVisualNode(s)
@@ -1609,7 +1652,7 @@ func (c *checker) mergePkgInto(dst, src *ir.Package) {
 func (c *checker) registerEnum(e *ast.EnumDef) {
 	claimed := c.claimTopLevel(e.Name, e.Pos, bindDecl, "")
 	ed := c.buildEnumDef(e)
-	c.applyMarks(e, ed)
+	c.applyMarksOnShell(e, ed)
 	c.declPkg().Enums = append(c.declPkg().Enums, ed)
 	c.bindDeclared(claimed, ed)
 	c.registerNestedMethods(ed.Name, nil, e.Funcs())
@@ -1622,10 +1665,9 @@ func (c *checker) registerEnum(e *ast.EnumDef) {
 func (c *checker) registerStructShell(s *ast.StructDef) *ir.StructDef {
 	claimed := c.claimTopLevel(s.Name, s.Pos, bindDecl, "")
 	sd := &ir.StructDef{AST: s, Name: s.Name, TypeParams: typeParamShells(s.TypeParams), Pkg: c.libPkgName}
-	c.applyMarks(s, sd)
+	c.applyMarksOnShell(s, sd)
 	c.declPkg().Structs = append(c.declPkg().Structs, sd)
 	c.bindDeclared(claimed, sd)
-	c.publishBuiltinStruct(sd)
 	return sd
 }
 
@@ -1746,7 +1788,7 @@ func (c *checker) registerBodyDecl(stmt ast.Stmt) ir.Symbol {
 func (c *checker) registerUnit(u *ast.UnitDef) {
 	claimed := c.claimTopLevel(u.Name, u.Pos, bindDecl, "")
 	ud := c.buildUnitDef(u)
-	c.applyMarks(u, ud)
+	c.applyMarksOnShell(u, ud)
 	c.declPkg().Units = append(c.declPkg().Units, ud)
 	c.bindDeclared(claimed, ud)
 }
@@ -2649,6 +2691,17 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
 	}
 	c.applyMarks(comp, irComp)
+	// The converse of the rule reportBodylessComponents applies: #[intrinsic]
+	// answers where a bodyless component's render comes from, so a body
+	// beside one is emitted by nobody and read by nobody -- the platform
+	// renders the declaration, and isPrimitiveComponent exempts it from
+	// inlining precisely so that can happen. `{}` is refused along with the
+	// rest, because it says the component renders nothing, which is the one
+	// thing an intrinsic never does.
+	if irComp.Intrinsic != "" && !irComp.Bodyless {
+		c.error(comp.Pos, "component %q is #[intrinsic(%q)] and has a body: the platform renders it from the declaration, so the body would be emitted by nobody and read by nobody",
+			comp.Name, irComp.Intrinsic)
+	}
 
 	var restSlot *ast.Param
 	for _, p := range comp.Props.Props {
@@ -4432,4 +4485,68 @@ func (c *checker) finishRestSlot(comp *ir.Component) {
 	if slot := comp.RestSlot(); slot != nil {
 		comp.ChildrenType = childrenTypeFor(slot)
 	}
+}
+
+// pendingMark is one declaration's marks, held until the package's own macros
+// are registered.
+type pendingMark struct {
+	doc  *ast.Document
+	decl ast.Stmt
+	sym  any
+}
+
+// applyMarksOnShell is applyMarks for the three declaration kinds pass1
+// registers before a package's own macros: a struct shell, an enum and a unit.
+// Their marks are queued rather than run, because one of them may name a macro
+// this package declares and nothing has registered it yet. Outside that window
+// -- a body declaration, a sub-checker -- the queue is nil and marks run at
+// once.
+func (c *checker) applyMarksOnShell(decl ast.Stmt, sym any) {
+	if c.shellMarks == nil {
+		c.runShellMark(pendingMark{c.doc, decl, sym})
+		return
+	}
+	*c.shellMarks = append(*c.shellMarks, pendingMark{c.doc, decl, sym})
+}
+
+// runShellMark applies one queued declaration's marks and then hands it to the
+// phases that read the result. Publishing is tied to the mark rather than to
+// registration because it is the mark that decides it: `publishBuiltinStruct`
+// dispatches on `sd.Builtin`, which until the mark runs is empty.
+func (c *checker) runShellMark(m pendingMark) {
+	c.applyMarks(m.decl, m.sym)
+	if sd, ok := m.sym.(*ir.StructDef); ok {
+		c.publishBuiltinStruct(sd)
+	}
+}
+
+// runShellMarks applies what applyMarksOnShell queued and closes the queue, so
+// every later registrar marks as it goes. The file is restored per mark: a
+// mark resolves through the scope of the file it was written in, and the queue
+// spans every file of the package.
+func (c *checker) runShellMarks() {
+	q := c.shellMarks
+	c.shellMarks = nil
+	if q == nil {
+		return
+	}
+	for _, m := range *q {
+		if m.doc != nil {
+			c.resumeFile(m.doc)
+		}
+		c.runShellMark(m)
+	}
+}
+
+// looksLikeMacroDecl is the cheap syntactic gate on registering a func early,
+// before the declarations an ordinary signature may name are in place. It
+// answers on the written return type alone; whether that name resolves to
+// sngl:internal/ir's Macro is `macroFrom`'s question, asked when a mark
+// actually names the declaration.
+func looksLikeMacroDecl(f *ast.FuncDef) bool {
+	if f.Target != nil {
+		return false
+	}
+	nt, ok := f.ReturnType.(*ast.NamedType)
+	return ok && nt.Name == "Macro"
 }

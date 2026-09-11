@@ -16,7 +16,38 @@ import (
 // here in one place and can be extended (substrings, an analogous EvalInt, …)
 // as pre-check needs arise. It never consults scope, so it only ever sees
 // syntactic constants.
-func EvalString(e Expr) (string, error) {
+func EvalString(e Expr) (string, error) { return evalString(e, nil, 0) }
+
+// EvalStringWith is EvalString with a way to resolve a name, for the one caller
+// that has declarations in hand before the checker does: a mark's arguments,
+// where naming the import path once and concatenating onto it beats spelling
+// it on every declaration. lookup returns the expression a name stands for.
+//
+// Separate from EvalString rather than a parameter on it, so the scope-free
+// guarantee above still holds for everyone else.
+func EvalStringWith(e Expr, lookup func(string) (Expr, bool)) (string, error) {
+	return evalString(e, lookup, 0)
+}
+
+// maxConstDepth bounds a const that names a const. A cycle is a real thing to
+// write and there is no scope here to have rejected it earlier.
+const maxConstDepth = 32
+
+func evalString(e Expr, lookup func(string) (Expr, bool), depth int) (string, error) {
+	switch x := e.(type) {
+	case *IdentExpr:
+		if lookup == nil {
+			return "", fmt.Errorf("not a constant string expression (%T)", e)
+		}
+		if depth >= maxConstDepth {
+			return "", fmt.Errorf("constant %q refers to itself", x.Name)
+		}
+		v, ok := lookup(x.Name)
+		if !ok {
+			return "", fmt.Errorf("%q is not a constant declared in this package", x.Name)
+		}
+		return evalString(v, lookup, depth+1)
+	}
 	switch x := e.(type) {
 	case *LiteralExpr:
 		switch x.Kind {
@@ -30,11 +61,11 @@ func EvalString(e Expr) (string, error) {
 		if x.Op != BinAdd {
 			return "", fmt.Errorf("%s is not a constant string operation", x.Op)
 		}
-		l, err := EvalString(x.Left)
+		l, err := evalString(x.Left, lookup, depth)
 		if err != nil {
 			return "", err
 		}
-		r, err := EvalString(x.Right)
+		r, err := evalString(x.Right, lookup, depth)
 		if err != nil {
 			return "", err
 		}

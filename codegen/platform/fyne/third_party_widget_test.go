@@ -108,7 +108,7 @@ func generateFyneGo(t *testing.T, src string) string {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne"}); err != nil {
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()
@@ -137,7 +137,7 @@ window {
 	pkg := checkForFyne(t, src)
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
-	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne"}); err != nil {
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	err := g.Generate(&codegen.Request{Pkg: pkg, Lang: lang, Source: "t.sngl"}, codegen.NewMemSink())
@@ -294,7 +294,7 @@ func generateFyneGoErr(t *testing.T, src string) (string, error) {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne"}); err != nil {
+	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()

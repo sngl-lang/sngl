@@ -53,6 +53,9 @@ var passes = []pass{
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passCanvas,
+	// After passCanvas: the call it promotes may be inside a draw function
+	// synthesized from an override's handler body.
+	passLibFuncs,
 	passEffect,
 	passTimerPrimitive,
 	passSlotChildInstances,
@@ -73,6 +76,8 @@ var passes = []pass{
 	passAsyncOffload,
 	passIndexedIter,
 	passForElse,
+	// Last: it reads every body the passes above finished rewriting.
+	passMutatedVars,
 	passCSE,
 	passIterKind,
 	passStampUsage,

@@ -421,6 +421,23 @@ func evalIntrinsic(id string, args []any, unbounded bool) (any, bool) {
 	return nil, false
 }
 
+// isUnfoldableNative reports whether f is a declaration the host implements,
+// leaving this folder nothing to run.
+//
+// Purity says a call has no effects. It does not say the folder can produce
+// the call's value, and for a native it cannot: the declaration *is* the host
+// identifier, and its SNGL signature describes it rather than implementing it.
+// Treating one as constant and then failing to evaluate it yields the return
+// type's zero -- which is how every constant-coloured Compose shape became
+// `drawRect(color = null, ...)`, `null` being no `Color` at all and no Kotlin
+// that compiles.
+//
+// A `#[foreign(..., pure)]` declaration is the deliberate opposite and keeps
+// folding: it is marked rather than native, and its body is what runs.
+func isUnfoldableNative(f *ir.Func) bool {
+	return f.Foreign.Name != "" && !f.Foreign.Marked && len(f.Block) == 0
+}
+
 // canFoldBody reports whether f has a SNGL body the folder may run.
 func canFoldBody(f *ir.Func) bool {
 	return f != nil && len(f.Block) > 0 && f.Purity == ir.PurityPure
