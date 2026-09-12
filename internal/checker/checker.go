@@ -3384,18 +3384,25 @@ func (c *checker) pass2() {
 	// comp.Funcs too, but they don't need component scope; we check them
 	// here so their return type is inferred BEFORE any top-level test func
 	// (which may call them) is checked.
-	// ir.BodyFuncs rather than comp.Funcs, because a func an override body
-	// declares is owned by that component too -- and by the time this runs,
-	// checkPendingExtensions has restored the base declaration, so the live
-	// list no longer names it. Checked here it would resolve at package
-	// scope and report the component's own vars as undefined (#230).
+	// ir.BodyFuncs rather than comp.Funcs: checkPendingExtensions has restored
+	// the base by now, so a func an override body declared is no longer on the
+	// live list, and checking it here resolves it at package scope where the
+	// component's own vars are undefined (#230).
 	compOwnedFuncs := map[*ir.Func]bool{}
-	for _, comp := range c.pkg.Components {
+	noteOwned := func(comp *ir.Component) {
 		for _, fn := range ir.BodyFuncs(comp) {
 			if fn.Receiver == "" || fn.Receiver == comp.Name {
 				compOwnedFuncs[fn] = true
 			}
 		}
+	}
+	for _, comp := range c.pkg.Components {
+		noteOwned(comp)
+	}
+	// An override's base need not be this package's: every stdlib and
+	// target-package one is declared elsewhere, so pkg.Components omits it.
+	for _, pe := range c.pendingExtensions {
+		noteOwned(pe.comp)
 	}
 	for _, fn := range c.pkg.Funcs {
 		if compOwnedFuncs[fn] {
