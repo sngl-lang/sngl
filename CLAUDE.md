@@ -720,8 +720,9 @@ and the two answers differ in kind because the collisions do.
   them. `ir.Func.Receiver` is the exception, being the receiver type's name
   written out as a string; renaming it is what keeps Go's `Local__secondShout`,
   Kotlin's `fun Local__second.shout` and JS's `Local__second_shout` off a type
-  that holds someone else's fields. It ran as an interim checker error
-  (`claimBodyType`) for as long as #198 was open.
+  that holds someone else's fields. A checker error (`claimBodyType`) stood in
+  the gap for as long as #198 was open, so that no program could reach the
+  output while it was.
 - A **component** collides only inside a recursion cycle, which is why that
   check is narrower and is still a **codegen limitation surfaced in the
   checker**. Every platform sets `InlineComponents=false`, so
