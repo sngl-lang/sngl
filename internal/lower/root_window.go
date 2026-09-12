@@ -1,7 +1,6 @@
 package lower
 
 import (
-	"fmt"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -53,9 +52,7 @@ func applyRootWindow(pkg *ir.Package, _ Caps, _ Options) error {
 			continue
 		}
 		own := liftWindows(comp.Body)
-		if err := hoistRootState(comp, own); err != nil {
-			return err
-		}
+		hoistRootState(comp, own)
 		lifted = append(lifted, own...)
 		comp.Body = nil
 	}
@@ -75,39 +72,42 @@ func applyRootWindow(pkg *ir.Package, _ Caps, _ Options) error {
 // pointers move rather than being copied, which is what keeps the references
 // the body already holds pointing at them.
 //
-// Several windows is refused rather than guessed. One declaration mounted in
-// two places is two answers: aliasing the pointer emits the field twice, and
-// copying it turns one binding into two cells that diverge silently -- and
-// which of those is wrong depends on the target, since two html windows are
-// two pages with their own state while two fyne windows share one Model. So
-// the author is asked, the way a body rendering two families is asked to name
-// the one it belongs to. A component that declares nothing is unaffected,
-// which is every multi-window root component in this repository.
-func hoistRootState(comp *ir.Component, windows []*ir.Window) error {
-	if comp == nil || (len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0) {
-		return nil
+// Several windows each get it, and what that *means* is the platform's answer
+// rather than the language's. The same *ir.Var is mounted on both, so a target
+// whose windows are one process shares one cell (bubbletea, fyne and gtk4 put
+// it in one Model) and a target whose windows are separate pages or screens
+// copies it (html writes a `state` per page, android a `remember` per screen).
+// That is what those targets *are*, and forcing either way round in the
+// lowering would be the language overriding the platform it compiled to. The
+// author picks a target knowing this; top-level state shared across windows is
+// mainly a performance tool, not the default way to write an application.
+//
+// Aliasing one pointer into two owners is the thing to watch: a Model built
+// from both windows must emit one field, not two. ir.Owners and every
+// ModelState builder dedupe by the *ir.Var pointer, which is why the pointer is
+// shared rather than the declaration copied per window.
+func hoistRootState(comp *ir.Component, windows []*ir.Window) {
+	if comp == nil || len(windows) == 0 {
+		return
 	}
-	// No window at all means nothing is mounted and nothing renders the
-	// declarations either, so there is nothing to report and nowhere to move.
-	if len(windows) == 0 {
-		return nil
+	if len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+		return
 	}
-	if len(windows) > 1 {
-		return fmt.Errorf("%s: component %s declares state and renders %d windows, so there is no one window to mount it on; declare it in the window that uses it",
-			rootStatePos(comp), comp.Name, len(windows))
+	// Once, before the loop: stripping a receiver is a mutation of the shared
+	// *ir.Func, so asking again for the second window finds nothing to strip
+	// and leaves that window's call sites still naming the component.
+	moved := stripComponentReceivers(comp)
+	for _, w := range windows {
+		w.Vars = append(w.Vars, comp.Vars...)
+		w.Funcs = append(w.Funcs, comp.Funcs...)
+		w.Timers = append(w.Timers, comp.Timers...)
+		clearCallReceivers(w, moved)
 	}
-	w := windows[0]
-	w.Vars = append(w.Vars, comp.Vars...)
-	w.Funcs = append(w.Funcs, comp.Funcs...)
-	w.Timers = append(w.Timers, comp.Timers...)
-	dropComponentReceiver(w, comp)
 	comp.Vars, comp.Funcs, comp.Timers = nil, nil, nil
-	return nil
 }
 
-// dropComponentReceiver makes the moved funcs window funcs rather than methods
-// of a component that no longer exists: the receiver param goes, and so does
-// the receiver at every call site that named it.
+// stripComponentReceivers makes the moved funcs window funcs rather than
+// methods of a component that no longer exists, and reports which they were.
 //
 // A component-body `func` is a method (`Receiver == comp.Name`, an implicit
 // `this`), and a window-body one is an ordinary func -- the two spellings a
@@ -116,7 +116,7 @@ func hoistRootState(comp *ir.Component, windows []*ir.Window) error {
 // it had also emitted, because the receiver still named the shell. The body
 // needs no rewriting: it reaches the owner's state through the emitter's scope
 // and never through `this`.
-func dropComponentReceiver(w *ir.Window, comp *ir.Component) {
+func stripComponentReceivers(comp *ir.Component) map[*ir.Func]bool {
 	moved := make(map[*ir.Func]bool, len(comp.Funcs))
 	for _, fn := range comp.Funcs {
 		if fn == nil || fn.Receiver != comp.Name {
@@ -131,6 +131,12 @@ func dropComponentReceiver(w *ir.Window, comp *ir.Component) {
 			return p != nil && p.Receiver
 		})
 	}
+	return moved
+}
+
+// clearCallReceivers drops the receiver at every call site in w that named one
+// of the funcs stripComponentReceivers just made receiverless.
+func clearCallReceivers(w *ir.Window, moved map[*ir.Func]bool) {
 	if len(moved) == 0 {
 		return
 	}
@@ -140,28 +146,6 @@ func dropComponentReceiver(w *ir.Window, comp *ir.Component) {
 		}
 		return nil
 	})
-}
-
-// rootStatePos points at the first declaration that has nowhere to go, which
-// is a better place than the component header for an author to look.
-func rootStatePos(comp *ir.Component) string {
-	for _, v := range comp.Vars {
-		if v.AST == nil {
-			continue
-		}
-		if p := v.AST.StmtPos(); p != nil && p.IsValid() {
-			return p.String()
-		}
-	}
-	for _, fn := range comp.Funcs {
-		if fn.AST != nil && fn.AST.Pos.IsValid() {
-			return fn.AST.Pos.String()
-		}
-	}
-	if comp.AST != nil && comp.AST.Pos.IsValid() {
-		return comp.AST.Pos.String()
-	}
-	return comp.Name
 }
 
 // liftWindows is every window a block holds, including those a build-time

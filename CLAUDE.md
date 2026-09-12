@@ -547,14 +547,31 @@ a component-body `func` is a method and a window-body one is not, and left as a
 method `biggest()` came out of the route emitter as a free `MainBiggest(s)`
 beside the `s.Biggest()` it had also emitted.
 
-**Several windows is refused rather than guessed.** One declaration mounted in
-two places is two answers — aliasing the `*ir.Var` emits the field twice, and
-copying it turns one binding into two cells that diverge silently — and which
-of those is wrong depends on the target, since two html windows are two pages
-with their own state while two fyne windows share one Model. So the author is
-asked, positioned at the declaration rather than the component header. A
-component that declares nothing is unaffected, which is every multi-window root
-component in this repository.
+**Several windows each get it, and the platform says what that means.** The
+same `*ir.Var` is mounted on every window the component lifts, so a target
+whose windows are one process shares one cell — bubbletea, fyne and gtk4 each
+put it in one Model — and a target whose windows are separate documents copies
+it, html writing its own `state` into each page. That divergence is the point
+rather than a gap: two pages *are* two states and one process *is* one, and
+forcing either way round in the lowering would be the language overriding the
+platform it compiled to. The author picks a target knowing it. Shared top-level
+state is mainly a performance tool, not the default way to write an
+application — a declaration belongs in the window that uses it unless there is
+a reason it does not.
+
+Two things that follow. **One Model, one cell:** the shared pointer reaches a
+Model through two owners, so `CodegenCtx.ModelState` dedupes by the `*ir.Var`
+— emitted per owner instead, the Go targets declared `hits int` twice and did
+not compile. And **reading it needs a scope**: `EntryWindow` declines to say
+which window a multi-window program's single Model is scoped to, rightly, since
+two windows' `count` are two names — but a declaration owned by *all* of them
+is one var reachable from each, so `sharedWindowScope` scopes to those without
+choosing between windows. Without it every such read rendered as a bare
+identifier the emitted Go never declared, beside the Model field it should have
+projected onto.
+
+`testdata/root_component_state_two_windows.txtar` is the fixture, and it is
+where the per-platform table is written down.
 
 **A program declares at least one window**, checked by `internal/build.Emit`
 rather than by the checker: `component c { … }` on its own is a perfectly good
