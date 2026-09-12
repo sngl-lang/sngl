@@ -46,7 +46,7 @@ component Card(children ...component) s.node {
     }
 }
 
-component main s.node {
+component main s.root {
     s.window #w(href="/index.html") {
         Card {
             s.text(value="inner")
@@ -69,7 +69,7 @@ s.window {
 -- window.sngl --
 import s "sngl:ui"
 
-component main s.node {
+component main s.root {
     s.window #home(href="/index.html") {
         s.text(value="Hello")
     }
@@ -117,7 +117,7 @@ window {
 import w "widgets"
 import ui "sngl:ui"
 
-component main ui.node {
+component main ui.root {
     ui.window #w2(href="/index.html") {
         w.timer
     }

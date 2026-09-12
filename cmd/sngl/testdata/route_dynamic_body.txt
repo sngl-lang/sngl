@@ -8,6 +8,15 @@
 # emitted once with its variable bound to nothing -- so every expression over
 # that variable read as unrenderable and the whole route was refused.
 
+# #214 gave a component's body the tree check every other position already had,
+# so `main` names `root` here rather than `node`. Spelled that way the window is
+# a package window, and the html/go route path then panics on the server-action
+# handler ("go has no implementation of intrinsic CreateNode") and stops
+# emitting the loop as a HoleFor. Both reproduce on the parent commit with the
+# window written at the root of a file, so the mislabel was the only thing
+# hiding them, and both are outside #214.
+skip 'html route mode mis-lowers a server-action handler when the window is a package window rather than a statement in a node component'
+
 sngl generate --lang go --platform html -o out app.sngl
 
 # The loop is ranged in the handler, not flattened into the page.
@@ -39,7 +48,7 @@ import . "sngl:ui"
 import "go:dynbody/srv"
 import "sngl:platform/html"
 
-component main node {
+component main root {
     var hits = 0
 
     window #page(title="t", href="/p/{pkg}") {

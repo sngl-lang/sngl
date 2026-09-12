@@ -46,7 +46,7 @@ output { go { html } }
 import "go:example.com/route-raw/api"
 import "sngl:platform/html"
 
-component main node {
+component main root {
     var n int = 0
 
     window #app(title = "t", href = "/") {

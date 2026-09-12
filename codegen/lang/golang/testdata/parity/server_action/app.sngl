@@ -10,9 +10,12 @@ output { go { html } }
 
 import "go:example.com/route-post/api"
 
-component main node {
-    var count = 0
+// `count` is package state rather than the component's: passRootWindow lifts a
+// root component's windows and clears its body, so a var declared there reaches
+// no route state (and nor does one declared in the window's own body).
+var count = 0
 
+component main root {
     window #app(title="t", href="/") {
         vbox {
             button(text="Save", @click {

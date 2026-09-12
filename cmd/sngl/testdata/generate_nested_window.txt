@@ -11,11 +11,13 @@ stderr 'direct.sngl:10:8: expected node component in window, got window'
 ! sngl generate --lang=none --platform=html --out=out3 direct.sngl
 stderr 'expected node component in window, got window'
 
-# Inlining is the other route, and the only one that reaches the lowering
-# guard: a `node` component may declare a window -- its own body is not checked
-# against its own tree -- so nothing has said no until it is spliced into one.
+# Inlining is the other route, and it is now refused a phase earlier: #214 gave
+# a component's body the same tree question every other position was already
+# asked, so `component inner node { window … }` is reported where it is written
+# rather than where it is spliced. passWindowNesting is what caught it before,
+# and is left in place for the shapes a lowering pass can still synthesize.
 ! sngl generate --lang=go --platform=fyne --out=out2 viacomponent.sngl
-stderr 'viacomponent.sngl:10:8: a window cannot be nested inside another window'
+stderr 'viacomponent.sngl:10:8: expected node component in the body of inner, got window'
 
 # A component that declares a window is fine where the window itself would be,
 # which is the root of a file -- so it names the root family.

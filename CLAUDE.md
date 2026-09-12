@@ -414,16 +414,34 @@ what is left — necessarily a cycle — from the evidence that did resolve, so
 **Every membership check waits for it.** `checkTreeMembership` opens with
 `if want == nil { return }`, so a check that ran while its subject was still
 unsettled would compare against no family and pass in *silence* — the same
-nothing an unrestricted position reports. So the five call sites record a
+nothing an unrestricted position reports. So the six call sites record a
 closure (`deferTreeCheck`) and `runTreeChecks` drains them once every body has
 been read, which is why the function takes the component the content was
 written in rather than reading `c.currentComponent`.
 One fixture per position holds that, each naming a declaration written *below*
 it: `error_tree_inferred_late.sngl` for a node's bare children,
-`error_tree_inferred_positions.sngl` for the other four, and
+`error_tree_inferred_positions.sngl` for four more,
 `error_tree_inferred_treeless_contains.sngl` for the tree-less rule, which
-reads an inferred family too. Move the matching check back inline and the
-fixture passes clean rather than failing — which is how each was confirmed.
+reads an inferred family too, and `error_tree_component_body.sngl` for the
+body. Move the matching check back inline and the fixture passes clean rather
+than failing — which is how each was confirmed.
+
+**A component's own body is the sixth position**, and it is the one nothing
+else asks about: the other five are a container asking after its children,
+which leaves what a declaration itself puts in the tree unmeasured. So
+`component c ui.node { window … }` type-checked, and every backend then
+swallowed the window *and its siblings* without a word (#214) — five golden
+archives in this repository were written that way. The check is
+`checkTreeMembership` against `comp.Tree` at the end of `checkComponentBody`,
+which makes `output` and a `#[tree.none]` component exempt for free: both carry
+a nil `Tree`, so the first is never asked and the second is left to
+`checkTreelessBody` rather than reported twice.
+
+An `ir.ErrorBoundary` is reached through there like an `if` and a `for`, and
+for the same reason. Its own check binds `T` off its content and holds the rest
+to that; reaching through it is what holds the `T` it settled on to the family
+the surrounding *position* accepts, without which a boundary around a shape
+passed a widget position in silence.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because

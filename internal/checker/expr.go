@@ -5388,6 +5388,14 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		case *ir.For:
 			c.checkTreeMembership(owner, pos, s.Body, want, where)
 			c.checkTreeMembership(owner, pos, s.Else, want, where)
+		// A boundary reads the same way: it is how the nodes under it got
+		// there. Its own deferred check binds T off its content, so reaching
+		// through it here is what holds that T to the family the *position*
+		// accepts -- without this a boundary around a shape passed a widget
+		// position in silence.
+		case *ir.ErrorBoundary:
+			c.checkTreeMembership(owner, pos, s.Children, want, where)
+			c.checkTreeMembership(owner, pos, s.Failed, want, where)
 		// A slot insertion is a position rather than a node: what lands there
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
