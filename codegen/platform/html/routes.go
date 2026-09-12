@@ -30,8 +30,6 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 	ctx := codegen.NewCodegenCtx(req, "html")
 	windows := ctx.Windows()
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
-	// StateVars are package-global (not per-window), so compute once and reuse.
-	stateVars := routeStateVars(req.Pkg)
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
 	for i, win := range windows {
 		var hrefExpr, titleExpr ir.Expr
@@ -53,6 +51,9 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 		// handler to that same index. buildRenderModel uses the map so a form's
 		// hidden _action value is guaranteed to match the switch case that runs
 		// the handler's mutations — the two no longer count independently.
+		// Per route rather than once: a route's State carries the vars its own
+		// window owns, which is where a root component's state now lives.
+		stateVars := routeStateVars(req.Pkg, win)
 		actions, actionIdx := collectActions(req.Pkg, win, targets)
 		render, err := buildRenderModel(req.Pkg, win, path, actionIdx)
 		if err != nil {
@@ -64,6 +65,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 			Title:     title,
 			Params:    extractRouteParams(path),
 			WindowIdx: i,
+			Window:    win.Window,
 			Actions:   actions,
 			Render:    render,
 			StateVars: stateVars,

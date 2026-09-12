@@ -380,7 +380,7 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 // neither a literal nor state-dependent, and the route was refused.
 func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
-	for _, v := range routeStateVars(pkg) {
+	for _, v := range routeStateVars(pkg, win) {
 		out[v.Name] = true
 	}
 	if win != nil {
@@ -393,11 +393,22 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	return out
 }
 
-// routeStateVars returns the component state fields surfaced to the server
-// State struct: the package-level and main-component non-synthesized,
-// non-const vars. Mirrors htmlGen.stateVars but yields the language-agnostic
-// codegen.StateVar (name + IR type).
-func routeStateVars(pkg *ir.Package) []codegen.StateVar {
+// routeStateVars returns the state fields surfaced to a route's server State
+// struct: the package-level vars, the main component's, and the ones the
+// route's own window owns. Mirrors htmlGen.stateVars but yields the
+// language-agnostic codegen.StateVar (name + IR type).
+//
+// The window is what #215 added, and it is now the usual owner rather than the
+// unusual one: passRootWindow hoists a root component's declarations into the
+// window it lifts, so `component main root { var total = 0; window … }` has its
+// state there and nowhere else. Left out, the markup rendered `total` as a hole
+// -- stateVarNames below has always counted a window's vars -- while the State
+// struct it was a hole in came out empty, and the handler assigned to a name Go
+// had no binding for. This is golang.ModelFreeFuncs' fix applied to vars: a
+// window owns state the way a component does.
+//
+// win may be nil, which is every caller that asks the package-wide question.
+func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar {
 	var out []codegen.StateVar
 	seen := map[string]bool{}
 	add := func(vars []*ir.Var) {
@@ -414,6 +425,9 @@ func routeStateVars(pkg *ir.Package) []codegen.StateVar {
 		if main := mainIRComponent(pkg); main != nil {
 			add(main.Vars)
 		}
+	}
+	if win != nil {
+		add(win.Vars)
 	}
 	return out
 }

@@ -8,14 +8,14 @@
 # emitted once with its variable bound to nothing -- so every expression over
 # that variable read as unrenderable and the whole route was refused.
 
-# #214 gave a component's body the tree check every other position already had,
-# so `main` names `root` here rather than `node`. Spelled that way the window is
-# a package window, and the html/go route path then panics on the server-action
-# handler ("go has no implementation of intrinsic CreateNode") and stops
-# emitting the loop as a HoleFor. Both reproduce on the parent commit with the
-# window written at the root of a file, so the mislabel was the only thing
-# hiding them, and both are outside #214.
-skip 'html route mode mis-lowers a server-action handler when the window is a package window rather than a statement in a node component'
+# Skipped for a defect that is not what it asserts. #214 made `main` name `root`
+# here, so its window is a package window, and the html/go route path then
+# panics on the server-action handler -- "go has no implementation of intrinsic
+# CreateNode" -- and stops emitting the loop as a HoleFor. It reproduces on the
+# parent of #214 with the window written at the root of a file, so the mislabel
+# was the only thing hiding it, and #215's hoist does not reach it.
+# fix/html-route-server-action is on it; unskip there.
+skip 'html route mode mis-lowers a server-action handler for a package window'
 
 sngl generate --lang go --platform html -o out app.sngl
 

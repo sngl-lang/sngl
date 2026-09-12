@@ -534,6 +534,28 @@ node), and a component that names `root` itself renders windows, which
 build directive before any tree question is asked, and `sngl:builtin` cannot
 import `sngl:ui`, where the root tree lives.
 
+**A root component's own state is hoisted into the window it lifts**, because
+that is where it is mounted — the component is an empty shell once the lift is
+done, and a `var`, `func` or `timer` left on one reached no backend at all
+(#215: `component main root { var n = 0; window … }` emitted `var state = {}`).
+A window is a state owner every consumer already reads, so nothing downstream
+grew a case; what did have to change is the two places that still asked `main`
+for it, `html`'s `routeStateVars` and `golang`'s `newRouteGC`, which now ask the
+route's own window — the same fix `golang.ModelFreeFuncs` already carries for a
+window's funcs. The hoist drops the receiver with them (`dropComponentReceiver`):
+a component-body `func` is a method and a window-body one is not, and left as a
+method `biggest()` came out of the route emitter as a free `MainBiggest(s)`
+beside the `s.Biggest()` it had also emitted.
+
+**Several windows is refused rather than guessed.** One declaration mounted in
+two places is two answers — aliasing the `*ir.Var` emits the field twice, and
+copying it turns one binding into two cells that diverge silently — and which
+of those is wrong depends on the target, since two html windows are two pages
+with their own state while two fyne windows share one Model. So the author is
+asked, positioned at the declaration rather than the component header. A
+component that declares nothing is unaffected, which is every multi-window root
+component in this repository.
+
 **A program declares at least one window**, checked by `internal/build.Emit`
 rather than by the checker: `component c { … }` on its own is a perfectly good
 thing to type-check, and it is only as something to *run* that it has nowhere

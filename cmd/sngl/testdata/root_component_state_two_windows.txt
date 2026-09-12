@@ -1,0 +1,78 @@
+# A root component's declarations are hoisted into the window it lifts, because
+# that is where they are mounted (#215). Two windows is two answers and the
+# author is asked, the way a body rendering two families is asked to name one:
+# aliasing the var into both emits the field twice, and copying it turns one
+# binding into two cells that diverge in silence -- and which of those is wrong
+# depends on the target, since two html windows are two pages with their own
+# state while two fyne windows share one Model.
+#
+# The position is the declaration that has nowhere to go, not the component
+# header, because that is the line the author has to move.
+
+! sngl generate --lang none --platform html -o out two.sngl
+stderr 'two.sngl:10:5: component main declares state and renders 2 windows'
+stderr 'declare it in the window that uses it'
+
+# One window is the ordinary case and is not refused.
+sngl generate --lang none --platform html -o out1 one.sngl
+exists out1/index.html
+
+# Neither is a component that renders two windows and declares nothing: the
+# rule is about a declaration with nowhere to go, not about window count.
+sngl generate --lang none --platform html -o out2 bare.sngl
+exists out2/index.html
+
+-- two.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+component main ui.root {
+    var hits = 0
+
+    ui.window #a(title="a", href="/") {
+        ui.text(value="{hits}")
+    }
+
+    ui.window #b(title="b", href="/b.html") {
+        ui.text(value="{hits}")
+    }
+}
+-- one.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+component main ui.root {
+    var hits = 0
+
+    ui.window #a(title="a", href="/") {
+        ui.text(value="{hits}")
+    }
+}
+-- bare.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+component main ui.root {
+    ui.window #a(title="a", href="/") {
+        ui.text(value="x")
+    }
+
+    ui.window #b(title="b", href="/b.html") {
+        ui.text(value="y")
+    }
+}

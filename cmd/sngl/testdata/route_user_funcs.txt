@@ -6,14 +6,6 @@
 # They are emitted as methods on the route's State, so they dispatch through
 # the same `s` the state fields do.
 
-# #214 gave a component's body the tree check every other position already had,
-# so `main` names `root` here rather than `node`. passRootWindow then lifts its
-# windows and clears its body, and the vars and funcs the component declared go
-# with it -- `component main root { var n = 0; window … }` renders `state = {}`
-# on the parent commit too, so this is pre-existing and outside #214. The
-# mislabel was the only thing keeping this component's declarations alive.
-skip 'passRootWindow drops the vars and funcs a root component declares when it lifts its windows'
-
 sngl generate --lang go --platform html -o out app.sngl
 
 # The function is there, as a State method, under the name the call uses.

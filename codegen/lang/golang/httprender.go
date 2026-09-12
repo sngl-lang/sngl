@@ -31,7 +31,7 @@ func routeStateType(r codegen.HTTPRoute) string {
 // newRouteGC builds a GoIRContext whose state idents project onto the `s`
 // receiver (the per-session State struct), used by both renderRoute and the
 // POST action body so a state read/write renders `s.<Field>`.
-func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext) *GoIRContext {
+func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRContext) *GoIRContext {
 	ctx := codegen.NewExprCtx(req.Pkg)
 	ctx.ContextVar = "r.Context()"
 	ctx.StateReceiver = routeStateReceiver
@@ -41,6 +41,15 @@ func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext) *GoIRContext {
 	// on the main component (and/or package-level), matching routeStateVars.
 	if main := mainComponent(req.Pkg); main != nil {
 		ctx = ctx.ForComponent(main)
+	}
+	// And to the route's own window, which is where a root component's state
+	// is by the time a backend sees it (#215 hoists it there). Without this
+	// scope an assignment to it rendered as a bare `total = …` -- a name the
+	// emitted Go declares nowhere -- while the State struct beside it carried
+	// the field the read should have projected onto. ForWindow keeps the
+	// component scope rather than replacing it.
+	if r.Window != nil {
+		ctx = ctx.ForWindow(r.Window)
 	}
 	gc := &GoIRContext{Ctx: ctx, imports: shared.imports}
 	return gc

@@ -103,7 +103,7 @@ func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRo
 	if len(fns) == 0 {
 		return
 	}
-	gc := newRouteGC(req, shared)
+	gc := newRouteGC(req, r, shared)
 	gc.MethodRecvType = routeStateType(r)
 	for _, fn := range fns {
 		fnCopy := *fn
@@ -176,7 +176,7 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 		return
 	}
 
-	gc := newRouteGC(req, shared)
+	gc := newRouteGC(req, r, shared)
 
 	emitState(b, r)
 	writeRouteFuncs(b, req, r, shared)
