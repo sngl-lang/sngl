@@ -1,41 +1,24 @@
 What the three Go platforms emit for a method on a user type that touches a
 package var, and how the Model reaches it.
 
-Go has no receiver to hang one of these on -- the user type is emitted into the
-same package as the Model, and a type method calling a Model method would have
-no Model to call it through -- so it is lifted to a free
-`CalcPending(k Calc)`, the receiver arriving as an ordinary first parameter.
-A package var is a field of that Model, and EvalIdent spells a state var
-`m.log` in every scope it is read from, so the lifted body named an `m` its own
-signature did not declare. None of the three compiled.
-
-The Model arrives as a **trailing parameter**: the receiver slot is already
-spent on the value, so `m` cannot be one. `ExprCtx.ModelParamFuncs` is the one
-map, read by the signature (`EmitTypeMethodDef`) and by the call site
-(`evalTypeMethodCall`) alike. Two answers to that question is what
-`CalcPending(m.c__inst0)` against `func CalcPending()` was, and the three
-emitters that each re-derived it by hand are now one.
+A type method is lifted to a free function, and the Model arrives as a
+**trailing parameter**: the receiver slot is already spent on the value.
 
 `doubled` and `viaCalc` are the two transitive legs, and neither touches a var
 of its own: a method reaching one through a method, and a top-level func
-reaching one through a method. Each has to take the Model as well, or it passes
-an argument the callee has no parameter for -- the arity failing one call
-further out rather than being fixed.
+reaching one through a method.
 
 `plain` is the control. It touches nothing, so it stays the two-argument free
-function it was, and its call site passes two arguments; the third deny below
-is what says so if the predicate ever widens to every type method. It recurses
-because passInlinePure substitutes a pure one away otherwise, and a golden with
-no plain lifted method in it would leave that deny asserting nothing.
+function it was, and the `CalcPlain` deny below is what says so if the
+predicate ever widens to every type method. It recurses because passInlinePure
+substitutes a pure one away otherwise, and a golden with no plain lifted method
+in it would leave that deny asserting nothing.
 
 Note the spelling of the argument differs by platform and must. bubbletea's
 hand-written receivers are `func (m Model)` -- Update mutates the copy and
 hands it back -- so a call from one of those passes `&m`, which is what the
 click handler is here to show, a bubbletea handler body being emitted into
-Update; fyne and gtk4
-hold a `*Model` throughout and pass `m`. Both directions are a Go compile
-error rather than a silent wrong result, which is why the flag saying which is
-set in one place and cleared in one place.
+Update; fyne and gtk4 hold a `*Model` throughout and pass `m`.
 
 deny * `(?m)^func CalcPending\(k Calc\) int` -- the lifted form takes the Model; without it the body names an undefined m
 deny * `(?m)^func CalcDoubled\(k Calc\) int` -- a method reaching a var through a method takes it too

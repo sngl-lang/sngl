@@ -1,23 +1,10 @@
 Which top-level funcs a Model-receiver target emits free, and which it does
 not.
 
-The three Go platforms put a package-level var on the Model, and EvalIdent
-spells a state var `m.log` in every scope it is read from -- the branch has no
-"outside a method" case, the way the const branch does. So the premise a free
-function rested on ("a top-level func has no component in scope, so it reads no
-state") is false for exactly the funcs that touch one, and those came out as
-package-level Go functions whose bodies named an `m` their own signature did
-not declare. None of the three compiled.
-
-`golang.ModelStateFuncs` is that set, and the three emitters and
-`ModelFreeFuncs` read the one answer: one classifier deciding, rather than each
-platform re-deriving it from a predicate meant to mirror the others.
-
 `viaBump` is the transitive half. It touches no var of its own and reaches
 `log` only through the call, so by its own body it is free -- and a free
-`ViaBump` calling the Model method `bump` spells `m.bump(…)`, which is the same
-undefined `m` one function further out. The closure is what makes the fix hold
-rather than move.
+`ViaBump` calling the Model method `bump` would spell `m.bump(…)`, one
+function further out.
 
 `countdown` is the control: a top-level func that touches nothing is still free,
 under its exported name, in all three. It recurses because passInlinePure

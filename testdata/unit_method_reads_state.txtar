@@ -1,16 +1,10 @@
 What the three Go platforms emit for a method on a unit and on a primitive
 that touches a package var.
 
-It is the same lift as a struct method -- Go has no receiver to hang either on,
-so both come out as free functions taking the Model as a trailing parameter --
-but the emitters used to answer "is this lifted?" with a list of structs and
-enums, while the call site lifted a method on any type the package declares.
-A unit or primitive receiver fell through to the Model-method path, and
-`func (m *Model) doubled() Len` was emitted against a call to
-`LenDoubled(m.five, &m)`.
-
-golang.LiftsToFreeFunc is now the single answer, read by the three emit loops
-and by ModelParamFuncs, which is what the call site consults.
+The same lift as a struct method -- Go has no receiver to hang either on, so
+both come out as free functions taking the Model as a trailing parameter. The
+unit receiver and the primitive receiver are both here, and the four denies
+below name both.
 
 deny * `(?m)^func \(m \*Model\) doubled\(` -- a unit method is lifted, never a Model method
 deny * `(?m)^func \(m \*Model\) twice\(` -- and so is a method on a primitive

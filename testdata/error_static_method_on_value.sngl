@@ -4,8 +4,7 @@ struct S {
     x int
 }
 
-// No S-typed first parameter, so this is static in S's namespace and reached
-// as `S.helper(5)`. A value has nothing to hand it.
+// No S-typed first parameter, so this is reached as `S.helper(5)`.
 func S.helper(n int) => n * 2
 
 component main node {

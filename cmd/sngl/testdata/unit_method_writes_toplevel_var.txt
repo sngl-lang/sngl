@@ -1,11 +1,9 @@
 # A method on a unit or on a primitive that writes a top-level var compiles,
 # and the write lands.
 #
-# Same lift as a struct method -- Go has no receiver for either, so both are
-# free `LenDoubled(v Len, m *Model)` functions taking the Model as a trailing
-# parameter -- but the three platform emit loops asked a narrower question than
-# the call site did (structs and enums only), so the definition came out as
-# `func (m *Model) doubled() Len` against a call to `LenDoubled`.
+# The CLI's harness rather than a golden because the claim is that the
+# generated Go *compiles and runs*; testdata/unit_method_reads_state.txtar
+# holds the shape it comes out in.
 
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'PASS'

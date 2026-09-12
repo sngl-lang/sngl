@@ -1,14 +1,5 @@
 # A top-level func that writes a top-level var compiles, and the write lands.
 #
-# bubbletea puts a package var on the Model, and EvalIdent spells a state var
-# `m.log` in every scope it is read from. A top-level func emitted free is a
-# package-level Go function with no receiver, so the body named an `m` its own
-# signature did not declare and `go build` aborted with `undefined: m`.
-#
-# `viaBump` is the transitive half and is why this is not one classifier
-# reading one body: it touches no var itself and reaches one only through the
-# call, so left free it would have spelled `m.bump(…)` instead.
-#
 # This is the CLI's harness rather than a golden because the claim is that the
 # generated Go *compiles and runs*; testdata/toplevel_func_reads_state.txtar
 # holds the shape it comes out in.
