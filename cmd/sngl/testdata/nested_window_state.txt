@@ -10,6 +10,11 @@
 # (collectReactiveVars never reached it). The page shipped `var state = {}`,
 # an event handler assigning an undeclared name, and markup for the `if` baked
 # in whichever way it happened to start.
+#
+# `component main root` and not `node`: what this body renders is a window, and
+# #214 now asks a component's own body which family it renders into. The
+# assertions below are unchanged by that -- the window is still written inside a
+# component body, which is the half of the pair this fixture is about.
 
 sngl generate --platform html -o out_nested nested.sngl
 sngl generate --platform html -o out_root root.sngl
@@ -27,7 +32,7 @@ grep -count=1 'function __renderSlot0' out_nested/index.html
 import . "sngl:ui"
 import "sngl:platform/html"
 
-component main node {
+component main root {
     window #page(title="t") {
         var hits = 0
 
