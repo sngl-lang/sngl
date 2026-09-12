@@ -5,10 +5,10 @@ import marks "sngl:internal/marks"
 // programmatically ("network", "decode", "validation").
 //
 // One type does both jobs: `error.raise(message, kind)` throws one, and an
-// `@error` handler is handed one. It used to be two — `sngl:app`'s empty
-// `error` receiver and `sngl:ui`'s `ErrorEvent` payload with these two
-// fields — which meant the thing raised and the thing caught were unrelated
-// declarations that happened to line up.
+// `@error` handler is handed one. It used to be two — an empty `error`
+// receiver and an `ErrorEvent` payload carrying these two fields — which
+// meant the thing raised and the thing caught were unrelated declarations
+// that happened to line up.
 struct error {
     message string
     kind string
