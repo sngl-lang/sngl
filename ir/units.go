@@ -90,11 +90,8 @@ func FormatUnitMagnitude(v float64) string {
 }
 
 // Fielded is a declaration whose members include named fields. Struct and unit
-// are the two: a struct's fields are written down and a unit's are its bases,
-// and a member lookup should not have to know which it is holding. It is the
-// field half of what methodTable already does for methods -- before it, a
-// unit had no member table at all, so `m.px` typed dyn exactly as `m.value`
-// did and each backend spelled whichever it was handed.
+// are the two -- a struct's fields are written down and a unit's are its bases
+// -- so a member lookup need not know which it is holding.
 type Fielded interface {
 	Symbol
 	FieldList() []*StructField

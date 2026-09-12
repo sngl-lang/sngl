@@ -12,27 +12,16 @@ import (
 //	component first  { struct Local { a int } … }
 //	component second { struct Local { b string } … }  ->  Local__second
 //
-// The two are distinct types and the checker scopes both correctly, but a
-// body-local declaration still joins ir.Package.Structs -- that is what every
-// backend emits type declarations from -- and no host has a body to scope one
-// to. A component body is not a function scope on any target, so Go and Kotlin
-// need this as much as JavaScript does even though both can declare a type
-// inside a function; there is no capability to gate it on and it runs always.
-// Before it, two bodies each declaring Local emitted `type Local struct` twice
-// and `sngl generate` exited 0 on Go that does not compile.
-//
-// Only a name already claimed moves. The first claimant keeps its spelling so
-// that what a body compiles to depends on that body, rather than on whether
-// some unrelated component happens to reuse the name; and the reservation pass
-// runs over the whole package first so a top-level declaration always wins,
+// Only a name already claimed moves, and the first claimant keeps its
+// spelling, so what a body compiles to depends on that body rather than on
+// whether some unrelated component reuses the name. The reservation pass runs
+// over the whole package first, so a top-level declaration always wins
 // whatever order registration put the two in.
 //
-// Every reference rides on the declaration pointer -- a literal's Def, a
-// type annotation's Decl, a field type, the element of a list<Local>, and the
-// host spelling each backend derives from Name -- so setting Name reaches all
-// of them. The one exception is ir.Func.Receiver, which is the receiver type's
-// name as a string; the declaration's own member table is what says which
-// funcs those are.
+// Setting Name reaches every reference, which all ride on the declaration
+// pointer. The one exception is ir.Func.Receiver, a type name held as a
+// string; the declaration's own member table is what says which funcs those
+// are.
 var passHoistBodyTypes = pass{
 	name:    "HoistBodyTypes",
 	enabled: func(Caps) bool { return true },

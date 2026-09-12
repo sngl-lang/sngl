@@ -908,6 +908,13 @@ value would be a `time.Duration` in the first place, so the two cannot
 disagree. `float` divides as floats, since an integer division converted
 afterwards truncates a sub-millisecond duration to zero.
 
+**Only the cast.** A *bare* read of a duration still answers three ways —
+`"{d}"` of `500ms` is `500ms` on Go and the interpreter, `500` on JavaScript
+and `500.0` on Kotlin — because what a unit value renders as with no cast
+around it is each platform's, the same division of labour that lets html spell
+a measurement `7px` for CSS. Unifying that is a decision about bare display on
+every target rather than a second place to divide, and has not been made.
+
 The interpreter is a fourth implementation of all of this and has to be checked
 with the three backends: `interp.ToInt` needs its `unitValue` case (without it
 every `int(<unit>)` was 0 on `--platform=none`), `evalSelect` needs one to read
@@ -916,11 +923,31 @@ reduces to, so `2rem` counts in em. `cmd/sngl/testdata/unit_magnitude_compiles.t
 runs one program under both `--platform=bubbletea --language=go` and
 `--platform=none` for exactly that reason.
 
-The interpreter still models a unit as one `BaseAmount` plus a suffix, which is
-the pre-`ea7b2f84` "a unit reduces to one number" model: `1px + 2pct` adds to 3
-there rather than keeping both magnitudes, where every compiled target holds
-the record. Making it a record is a change to `unitValue`, its arithmetic, its
-comparison and its display, and has not been done.
+`interp.unitValue` **is** that record — `Amounts`, a magnitude per base, plus
+the suffix the value was written with for display. It was one `BaseAmount` and
+a suffix, the pre-`ea7b2f84` "a unit reduces to one number" model, and the
+member table is what made that visible: `1px + 2em` added to 3 and then
+answered 3 for `px` and 0 for `em`, so a per-base read off a value *arithmetic
+built* was quietly wrong where the same read off a literal was right. Both
+fixtures had only literals, which is why neither caught it.
+
+Four things follow, and the first three are the record restated:
+
+- **Arithmetic is per base.** `Add`/`Sub` combine base by base and `Scale`
+  scales each; a base whose magnitude is zero is absent rather than stored.
+- **Equality is per base**, and **ordering is refused** for a multi-base unit
+  (`orderable`): `3px` and `2em` are each the larger on their own base, so
+  there is no answer to invent. The checker already refuses the pair
+  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for the
+  `dyn` operand that reached a comparison untyped.
+- **A cast reads `magnitude()`** — the one base of a single-base unit, which is
+  every cast the checker's ordering rule leaves meaningful.
+- **Display sums the bases it carries**: `3px + 2em`, and an untouched `3px`
+  or `1rem` for the single-suffix values, which is what a program that never
+  mixes bases sees.
+
+The timer is unaffected: `durationFromMs` goes through `toFloat`, and a
+duration is single-base.
 
 `hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
 still accepts any member name silently: `list`, `map`, `option`, `iter`,

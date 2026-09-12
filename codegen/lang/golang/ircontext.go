@@ -1299,25 +1299,14 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	return goType + "(" + operand + ")"
 }
 
-// durationToNumber converts a duration out of Go's representation of one. The
-// value is a time.Duration, whose unit is nanoseconds, while `duration`
-// declares its base as ms -- so `int(500ms)` is 500000000 here and 500 on
-// every other target, which holds a duration as a plain number of ms already.
-// Dividing at the cast is enough because a cast is the only place a duration
-// leaves the representation: `d + 100ms` and `d * 2` are time.Duration
-// arithmetic and stay correct in ns until one of them reaches here.
-//
-// Returns "" for a conversion that is not this one.
-//
-// The operand is not parenthesised: EvalExpr already brackets a binary, which
-// testdata/unit_duration_cast.txtar pins on both shapes.
+// durationToNumber converts a duration out of Go's representation of one, or
+// returns "" for any other conversion. A time.Duration counts nanoseconds
+// while `duration` declares its base as ms, so a cast here divides where every
+// other target, holding a plain number of ms, does not.
 func (gc *GoIRContext) durationToNumber(n *ir.Conversion, goType, operand string) string {
 	if n.Type == nil || n.Operand == nil {
 		return ""
 	}
-	// ClassifyUnit rather than a second notion of what a duration is: it is
-	// what decided the value would be a time.Duration in the first place, so
-	// asking it here cannot disagree with the representation.
 	if ClassifyUnit(unitDeclOf(n.Operand.ExprType())) != UnitDuration {
 		return ""
 	}
