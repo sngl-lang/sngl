@@ -946,19 +946,10 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		if b, ok := ir.LookupBuiltinScalar(ident.Name); ok && b.Convertible {
 			return c.inferBuiltinConversion(x, b.Type, ident.Name)
 		}
-		switch ident.Name {
-		case "color", "date", "time", "datetime":
-			// These are stdlib StructDef-backed types, not primitives, so the
-			// cast form is just convert-to-struct. Look up the StructDef type
-			// from scope; if absent (pre-stdlib), fall back to dyn so the
-			// diagnostic comes from the regular path.
-			structTyp := ir.TypDyn
-			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if t := c.symType(sym); t != nil {
-					structTyp = t
-				}
+		if sym, ok := c.scope.Lookup(ident.Name); ok {
+			if target, ok := stringReprCast(sym); ok {
+				return c.inferBuiltinConversion(x, target, ident.Name)
 			}
-			return c.inferBuiltinConversion(x, structTyp, ident.Name)
 		}
 	}
 
@@ -1090,6 +1081,26 @@ func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr 
 	return argExpr
 }
 
+// stringReprCast reports the cast target when sym is one of the string-repr
+// structs — color, date, time, datetime — which are stdlib StructDef-backed
+// rather than scalar primitives, so LookupBuiltinScalar does not answer for
+// them.
+//
+// The #[builtin] mark on the resolved declaration is what answers, never the
+// name written at the call site: `date(…)` and `time.date(…)` reach one
+// StructDef and must build the one ir.Conversion.
+func stringReprCast(sym ir.Symbol) (*ir.Type, bool) {
+	sd, ok := sym.(*ir.StructDef)
+	if !ok || !sd.Builtin.IsStringRepr() {
+		return nil, false
+	}
+	t := sd.SymType()
+	if t == nil {
+		return nil, false
+	}
+	return t, true
+}
+
 // inferBuiltinConversion type-checks `T(x)` where T is a builtin primitive
 // target (int/float/string/bool). The operand must be a primitive whose kind
 // appears in the allow-list for the target; other types surface a diagnostic.
@@ -1212,6 +1223,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						// expected-type provider the bare `duration(1m)` is.
 						if ud, ok := fsym.(*ir.UnitDef); ok {
 							return c.inferUnitConversion(call, ud.SymType())
+						}
+						// An ir.Call is not what the optimizer folds.
+						if target, ok := stringReprCast(fsym); ok {
+							return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
 						}
 						t := c.symType(fsym)
 						var sig *ir.FuncSig
