@@ -3861,6 +3861,29 @@ func (c *checker) checkBodyOnce(comp *ir.Component) {
 	c.checkComponentBody(comp)
 }
 
+// checkOverrideNestedBodies checks the bodies of the components an override
+// body declared, and records them as checked so pass2 does not check them
+// again with the base declaration restored.
+//
+// This is checkBodyOnce's owner-first ordering done from the other end: the
+// owner is an override body, which pass2 never reaches, so the caller has
+// checked it already and the descent carries on from there for a body nested
+// deeper still.
+func (c *checker) checkOverrideNestedBodies(decls []ir.Symbol) {
+	for _, sym := range decls {
+		nested, ok := sym.(*ir.Component)
+		if !ok || c.bodyChecked[nested] {
+			continue
+		}
+		if c.bodyChecked == nil {
+			c.bodyChecked = map[*ir.Component]bool{}
+		}
+		c.bodyChecked[nested] = true
+		c.checkComponentBody(nested)
+		c.checkOverrideNestedBodies(nested.BodyDecls)
+	}
+}
+
 // declareBodyDecls rebinds what comp's body declares: a scope cannot span the
 // two passes, so pass2 declares them again from the symbols.
 func (c *checker) declareBodyDecls(comp *ir.Component) {

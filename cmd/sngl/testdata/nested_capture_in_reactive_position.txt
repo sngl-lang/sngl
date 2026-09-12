@@ -31,6 +31,13 @@ grep 'func \(m Model\) renderRow' out3/model.go
 # Capture under a loop that depends on nothing reactive stays allowed.
 sngl generate --lang go --platform bubbletea --out out4 static.sngl
 
+# The same rule reaches a component nested in a platform override body, which
+# is a body like any other (#230). The report is unreachable there until the
+# owner link travels in the override's own ir.Body -- without it the program
+# does not check at all, and with the link but no report it emits bare names.
+! sngl generate --lang go --platform bubbletea --out out5 reactive_override.sngl
+stderr 'reads the state of the body it is declared in and is instantiated inside a reactive if or for'
+
 -- reactive.sngl --
 import . "sngl:ui"
 
@@ -137,6 +144,43 @@ component outer() node {
     }
 
     for var i = [1, 2, 3] {
+        row(n=i)
+    }
+
+    text(value="{count}")
+}
+
+component main node {
+    outer()
+}
+
+window {
+    main
+}
+-- reactive_override.sngl --
+import . "sngl:ui"
+import "sngl:platform/bubbletea"
+
+component outer() node {
+    text(value="base")
+}
+
+component outer[bubbletea.platform] {
+    var count = 0
+    var items = [1, 2, 3]
+
+    component row(n = 0) node {
+        var picked = false
+
+        button(text="{n} {picked}", @click {
+            picked = !picked
+            count = count + 1
+        })
+    }
+
+    button(text="grow", @click { items = [1, 2, 3, 4] })
+
+    for var i = items {
         row(n=i)
     }
 

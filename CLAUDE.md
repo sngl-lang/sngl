@@ -735,6 +735,27 @@ two calls of a nested func share the model. Its own state is unaffected and
 stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
 that, because it is the surprising half.
 
+**A platform override body is a body like any other** (#230): an override *is*
+the body its target renders, so "the body it was written in" is well defined
+there and every word above applies unchanged. Two things make it work, and both
+are about *when* the override is installed. `checkPendingExtensions` swaps the
+override's vars, props and body decls onto the declaration and restores the
+base after, so the nested bodies are checked while it still holds
+(`checkOverrideNestedBodies`) rather than in pass2, which runs after the
+restore. And the owner link has to survive to lowering, so `ir.Body` carries
+`BodyDecls` beside `Vars` and `specializeComp` swaps all three — without it
+every backend emitted the captured names bare, which
+`testdata/component_override_body_capture.txtar` denies on both of its targets.
+`ir.BodyOwners` and `ir.CapturesEnclosingState` read the overrides too, because
+the checker asks its questions with no target picked; that is what lets the
+recursion-cycle report reach an override body, and a `limit` var in
+`error_component_override_nested_capture_recursive.sngl` keeps the cycle from
+being folded away before it is asked.
+
+A `func` written in an override body is still not registered at all — the
+override's own body cannot call one either — so the only method a nested body
+reaches is the base declaration's.
+
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested
 declaration first, so read in package order an unannotated `var count = 0` was

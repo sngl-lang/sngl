@@ -241,5 +241,7 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	comp.SpecializedFor = t.key()
 	// The vars travel with the statements: the body reads them, and a var
 	// belonging to a target that is not this one must never reach codegen.
-	comp.Body, comp.Vars = body.Stmts, body.Vars
+	// So do the body-scoped declarations, which is what links a component
+	// nested in this override body back to the body that declared it.
+	comp.Body, comp.Vars, comp.BodyDecls = body.Stmts, body.Vars, body.BodyDecls
 }

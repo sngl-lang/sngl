@@ -1,5 +1,20 @@
 package ir
 
+// eachBody calls yield with the state of comp's live body and of every
+// override it carries. The overrides are needed because the checker asks these
+// questions with no target picked and the live slots then hold the base
+// declaration's body; after specialization the active override is the live one
+// too, and both callers build sets, so seeing it twice costs nothing.
+func eachBody(comp *Component, yield func(vars []*Var, decls []Symbol)) {
+	yield(comp.Vars, comp.BodyDecls)
+	for _, b := range comp.PlatformOverrides {
+		yield(b.Vars, b.BodyDecls)
+	}
+	for _, b := range comp.LanguageOverrides {
+		yield(b.Vars, b.BodyDecls)
+	}
+}
+
 // BodyOwners maps each component a body declared to the component that
 // declared it, read from BodyDecls so it answers after the checker too. Nil
 // when the package has no body-local component.
@@ -9,16 +24,18 @@ func BodyOwners(pkg *Package) map[*Component]*Component {
 	}
 	var owners map[*Component]*Component
 	for _, owner := range pkg.Components {
-		for _, sym := range owner.BodyDecls {
-			nested, ok := sym.(*Component)
-			if !ok {
-				continue
+		eachBody(owner, func(_ []*Var, decls []Symbol) {
+			for _, sym := range decls {
+				nested, ok := sym.(*Component)
+				if !ok {
+					continue
+				}
+				if owners == nil {
+					owners = map[*Component]*Component{}
+				}
+				owners[nested] = owner
 			}
-			if owners == nil {
-				owners = map[*Component]*Component{}
-			}
-			owners[nested] = owner
-		}
+		})
 	}
 	return owners
 }
@@ -28,9 +45,11 @@ func BodyOwners(pkg *Package) map[*Component]*Component {
 func CapturesEnclosingState(nested *Component, owners map[*Component]*Component) bool {
 	enclosing := map[Symbol]bool{}
 	for owner := owners[nested]; owner != nil; owner = owners[owner] {
-		for _, v := range owner.Vars {
-			enclosing[v] = true
-		}
+		eachBody(owner, func(vars []*Var, _ []Symbol) {
+			for _, v := range vars {
+				enclosing[v] = true
+			}
+		})
 		for _, p := range owner.Props {
 			// Sym is minted on the first reference, so a prop nothing names
 			// has none.

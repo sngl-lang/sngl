@@ -1183,11 +1183,15 @@ func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.Even
 // does for an ordinary component body. A func in an extension body is out of
 // scope here and stays unbound.
 //
+// owner is the component the override implements, recorded as the body a
+// nested component was written in: an override *is* the body its target
+// renders, so #202's capture applies to it unchanged (#230).
+//
 // One walk in source order, and it has to stay one: collectComponentVarDecl
 // resolves an annotation eagerly, so a body-local type is a name only if its
 // registration already happened. The caller's scope is what registerBodyDecl
 // binds into and what resolveType then reads.
-func (c *checker) collectExtensionDecls(body ast.StmtBlock) ([]*ir.Var, []ir.Symbol) {
+func (c *checker) collectExtensionDecls(owner *ir.Component, body ast.StmtBlock) ([]*ir.Var, []ir.Symbol) {
 	var vars []*ir.Var
 	var decls []ir.Symbol
 	for _, stmt := range body.Stmts {
@@ -1195,6 +1199,7 @@ func (c *checker) collectExtensionDecls(body ast.StmtBlock) ([]*ir.Var, []ir.Sym
 		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
 			if sym := c.registerBodyDecl(stmt); sym != nil {
 				decls = append(decls, sym)
+				c.noteBodyOwner(owner, sym)
 			}
 		default:
 			vars = append(vars, c.collectComponentVarDecl(stmt)...)
@@ -1306,12 +1311,18 @@ func (c *checker) checkPendingExtensions() {
 			// a var annotation resolves against in the meantime, which is why
 			// the two are collected under one.
 			c.pushScope()
-			vars, bodyDecls := c.collectExtensionDecls(pe.body)
+			vars, bodyDecls := c.collectExtensionDecls(pe.comp, pe.body)
 			c.popScope()
 			pe.comp.Vars = append(slices.Clip(savedVars), vars...)
 			pe.comp.BodyDecls = append(slices.Clip(savedBodyDecls), bodyDecls...)
 			c.checkComponentBody(pe.comp)
-			checked := ir.Body{Vars: pe.comp.Vars, Stmts: pe.comp.Body}
+			// While the override's state is still installed, because that is
+			// the body a component nested in it was written in. Left to
+			// pass2's checkComponentBodies it runs after the restore below,
+			// where the owner is the base declaration again and the names the
+			// nested body captured are declared by nobody.
+			c.checkOverrideNestedBodies(bodyDecls)
+			checked := ir.Body{Vars: pe.comp.Vars, Stmts: pe.comp.Body, BodyDecls: pe.comp.BodyDecls}
 			if pe.kind == ir.BuiltinLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
 			} else {

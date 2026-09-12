@@ -1,0 +1,40 @@
+// error_component_nested_capture_recursive.sngl from the other side: the body
+// the nested component was written in is an override rather than the
+// declaration's own. The report has to reach it, because the capture does --
+// unreported, `inner` reached the html backend rendering a bare `count` and a
+// bare `limit`, names the emitted page declares nowhere.
+//
+// `limit` is a var rather than a literal so the recursion survives folding:
+// with a constant bound the optimizer unrolls the cycle away and the emitted
+// page happens to be correct.
+
+import ui "sngl:ui"
+import "sngl:platform/html"
+
+component outer() ui.node {
+    ui.text(value="base")
+}
+
+component outer[html.platform] {
+    var count = 0
+    var limit = 2
+
+    component inner(depth = 0) ui.node { // ERROR(check) "recurses and reads the state of the body it is declared in"
+        ui.vbox {
+            ui.text(value="{count}")
+            if depth < limit {
+                inner(depth=depth + 1)
+            }
+        }
+    }
+
+    inner(depth=0)
+}
+
+component main ui.node {
+    outer()
+}
+
+ui.window {
+    main
+}

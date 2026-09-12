@@ -532,6 +532,12 @@ func (v *Var) IsExported() bool { return isExportedName(v.Name) }
 type Body struct {
 	Vars  []*Var
 	Stmts []Stmt
+	// BodyDecls is Component.BodyDecls as this body saw it -- the declaring
+	// component's own plus whatever the override body added. It travels for
+	// the same reason Vars does: a component nested in an override body is
+	// linked to its owner through this list (ir.BodyOwners), and without it
+	// the link exists only while the checker has the override installed.
+	BodyDecls []Symbol `json:"-"`
 }
 
 // Component represents a resolved component declaration.
