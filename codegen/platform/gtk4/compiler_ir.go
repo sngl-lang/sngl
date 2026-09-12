@@ -149,6 +149,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// golang.ModelFreeFuncs -- a user type's method is emitted free, and one
 	// calling a top-level func has no Model to reach a Model method through.
 	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
+	ctx.ExprCtx.ModelParamFuncs = golang.ModelParamFuncs(ctx.Pkg)
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc
@@ -1064,10 +1065,7 @@ func emitGTK4TypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 	if len(fn.Block) == 0 {
 		return
 	}
-	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
-	fnCopy.Receiver = ""
-	for _, line := range gc.EmitFuncDef(&fnCopy) {
+	for _, line := range gc.EmitTypeMethodDef(fn) {
 		b.WriteString(line)
 		b.WriteByte('\n')
 	}

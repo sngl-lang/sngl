@@ -1,0 +1,20 @@
+import . "sngl:ui"
+
+struct S {
+    x int
+}
+
+// No S-typed first parameter, so this is static in S's namespace and reached
+// as `S.helper(5)`. A value has nothing to hand it.
+func S.helper(n int) => n * 2
+
+component main node {
+    var s S = {x=1}
+    var k = 2
+
+    text(value="{s.helper(k)}") // ERROR(check) "S.helper is static"
+}
+
+window {
+    main
+}

@@ -63,9 +63,9 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 // own signature does not declare — which is the same undefined `m` this set
 // exists to remove from the callee.
 //
-// A method on a user type is out of scope and stays free: Go has no receiver
-// to hang one on. One that reaches a package var still emits an undefined `m`,
-// which this does not fix and cannot -- there is nowhere to put the receiver.
+// A method on a user type is in the set too, and is answered differently: Go
+// has no receiver to hang one on, so it stays a free function and the Model
+// reaches it as a parameter instead. ModelParamFuncs narrows to those.
 func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	if pkg == nil {
 		return nil
@@ -115,6 +115,61 @@ func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 		}
 	}
 	return touches
+}
+
+// ModelParamFuncs names the methods on a user type that a Model-receiver
+// platform lifts to a free function and that touch package state, for
+// ExprCtx.ModelParamFuncs. Each takes the Model as a trailing parameter.
+//
+// The receiver is not available to carry it: Go has no methods to attach to
+// some of these types, so the lifted form is `CalcPending(k Calc)` and the
+// Model has to arrive as an argument.
+//
+// One map answers for the signature (EmitTypeMethodDef) and for the call site
+// (evalTypeMethodCall), because two answers is what `CalcPending(m.c)` against
+// `func CalcPending()` was.
+func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	out := map[*ir.Func]bool{}
+	for fn := range ModelStateFuncs(pkg) {
+		if fn.Receiver != "" && liftsToFreeFunc(pkg, fn.Receiver) {
+			out[fn] = true
+		}
+	}
+	return out
+}
+
+// liftsToFreeFunc reports whether a method on this receiver is emitted as a
+// free `ReceiverMethod(recv, …)` function rather than dispatched through the
+// Model. A component's method is the other case and stays a Model method, so
+// it has a receiver to read state from already.
+func liftsToFreeFunc(pkg *ir.Package, receiver string) bool {
+	if pkg == nil || receiver == "" {
+		return false
+	}
+	for _, c := range pkg.Components {
+		if c.Name == receiver {
+			return false
+		}
+	}
+	if isPrimitiveTypeName(receiver) {
+		return true
+	}
+	for _, s := range pkg.Structs {
+		if s.Name == receiver {
+			return true
+		}
+	}
+	for _, e := range pkg.Enums {
+		if e.Name == receiver {
+			return true
+		}
+	}
+	for _, u := range pkg.Units {
+		if u.Name == receiver {
+			return true
+		}
+	}
+	return false
 }
 
 // isComputedSig mirrors codegen.IsComputed without the import: a zero-arg

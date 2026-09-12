@@ -192,8 +192,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// these renders, and before ScopedExprCtx clones it. Clones inherit it:
 	// ForComponent and WithLocal copy the map reference along.
 	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
+	ctx.ExprCtx.ModelParamFuncs = golang.ModelParamFuncs(ctx.Pkg)
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
+	// This platform's hand-written receivers are `func (m Model)` -- Update
+	// mutates the copy and hands it back -- so passing the Model to something
+	// that takes a *Model needs its address here. Every body EmitFuncDef
+	// writes clears it again, those being pointer receivers.
+	gc.ModelIsValue = true
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
@@ -704,17 +710,13 @@ func userTypeName(pkg *ir.Package, name string) bool {
 	return false
 }
 
-// emitIRTypeMethod emits a method on a user type as the free function its call
-// sites name: `func GlyphRow(gl Glyph, row int) string`, with the receiver as
-// the first parameter (passNoImplicitRecv already put it there).
+// emitIRTypeMethod emits a method on a user type through the shared Go
+// emitter, which is also what decides whether it takes the Model.
 func emitIRTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	if len(fn.Block) == 0 {
 		return
 	}
-	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
-	fnCopy.Receiver = ""
-	for _, line := range gc.EmitFuncDef(&fnCopy) {
+	for _, line := range gc.EmitTypeMethodDef(fn) {
 		b.WriteString(line)
 		b.WriteByte('\n')
 	}

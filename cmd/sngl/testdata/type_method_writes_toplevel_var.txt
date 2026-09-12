@@ -1,0 +1,62 @@
+# A method on a user type that writes a top-level var compiles, and the write
+# lands.
+#
+# Go has no receiver to hang one of these on -- the type is emitted into the
+# same package as the Model -- so it is lifted to a free
+# `CalcPending(k Calc)`. A package var is a field of that Model, and EvalIdent
+# spells a state var `m.log` in every scope, so the lifted body named an `m`
+# nothing in its signature declared: `undefined: m`.
+#
+# The Model arrives as a trailing parameter instead. One map decides both the
+# signature and the argument, because a definition and a call site that each
+# worked it out separately is the other half of what was wrong here.
+#
+# The two transitive legs are both present and neither touches a var of its
+# own: `doubled` is a method reaching one through a method, `viaCalc` a
+# top-level func reaching one through a method. Emitted without the Model,
+# each would pass an argument the callee's signature has no room for.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+var log string = ""
+
+struct Calc {
+    base int
+}
+
+func Calc.pending(k Calc) int {
+    log = log + "!"
+    return k.base * 2
+}
+
+func Calc.doubled(k Calc) => k.pending() * 2
+
+func viaCalc(k Calc) => k.doubled() + 1
+
+component main node {
+    var calc Calc = {base=3}
+    var out = 0
+    var note = ""
+
+    effect(@mount {
+        out = viaCalc(calc)
+        note = log
+    })
+
+    text(value="{out}{note}")
+}
+
+func testTypeMethodWritesTopLevelVar(t Test, c main) {
+    t.assert(c.out == 13)
+    t.assert(c.note == "!")
+}
+
+window {
+    main
+}

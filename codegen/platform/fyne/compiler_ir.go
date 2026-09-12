@@ -45,6 +45,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// these renders, and before ScopedExprCtx clones it. See
 	// golang.ModelFreeFuncs.
 	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
+	ctx.ExprCtx.ModelParamFuncs = golang.ModelParamFuncs(ctx.Pkg)
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
@@ -669,10 +670,7 @@ func emitIRFyneTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContex
 	if len(fn.Block) == 0 {
 		return
 	}
-	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
-	fnCopy.Receiver = ""
-	for _, line := range gc.EmitFuncDef(&fnCopy) {
+	for _, line := range gc.EmitTypeMethodDef(fn) {
 		b.WriteString(line)
 		b.WriteByte('\n')
 	}
