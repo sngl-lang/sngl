@@ -963,6 +963,23 @@ Four things follow, and the first three are the record restated:
 The timer is unaffected: `durationFromMs` goes through `toFloat`, and a
 duration is single-base.
 
+**Equality is per base on all four**, and the three compiled targets get there
+differently: Go compares its `Measurement` struct field-wise and Kotlin its
+`data class` component-wise, both without being asked, while JavaScript has no
+such operator for an object. `===` there is reference identity, so `a == b` for
+two equal measurements was false on every pair — `multiBaseUnitEqualJS` emits
+the conjunction over the bases instead, with `!=` its negation rather than a
+second walk. A single-base unit is a plain number in JS and keeps the bare
+operator; routing one through the walk is what `testdata/unit_equality.txtar`
+denies. `cmd/sngl/testdata/unit_equality_runs.txt` runs the comparisons under
+bubbletea, the interpreter and a real Chromium, because a golden shows the
+emitted text and only executing it shows the answer.
+
+The case that separates two plausible implementations is a base that cancelled
+to zero: the interpreter's map holds no key for it where the JS and Go records
+hold a zero, so a comparison written over *the bases a value carries* rather
+than over the unit's declared bases disagrees with the other three.
+
 `hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
 still accepts any member name silently: `list`, `map`, `option`, `iter`,
 `string` beyond `.length`, and a struct type carrying no `Decl`. That is not
