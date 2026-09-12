@@ -781,7 +781,20 @@ so (`error_component_override_body_func_shadows.sngl`).
 `ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because by then the
 base declaration is restored and the live `Component.Funcs` no longer names the
 override's helper — checked at package scope instead, it reported the
-component's own vars as undefined.
+component's own vars as undefined. That set is asked of `c.pendingExtensions`
+as well as `pkg.Components`: an override's base is usually *not* this package's
+declaration, and every override in `lib/` and in a target package has a stdlib
+one.
+
+**A helper needs the base reachable by its bare name**, which an override
+written through a qualified alias does not have: a component-body func is a
+method, and the synthesised receiver type, `AttachMethod` and `lookupBodyMethod`
+all resolve the receiver as a bare name. So `component draw.circle[…]` may
+declare vars and types but not funcs, and `reportOverrideFuncUnreachableReceiver`
+says so where the helper is written. Binding the bare name for the body's
+duration is what supporting it would take, and that shadows a same-named
+declaration of the program's own for as long as it lasts — carrying a qualified
+`ir.Func.Receiver` instead is the real fix and touches every `fn.Receiver == comp.Name` comparison in the checker.
 
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested

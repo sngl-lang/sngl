@@ -1249,6 +1249,36 @@ func (c *checker) reportOverrideFuncShadows(pe pendingExtension, base map[string
 	return out
 }
 
+// reportOverrideFuncUnreachableReceiver refuses an override-body func whose
+// component this scope does not bind by its bare name, and returns the ones
+// that stand.
+//
+// Every route to a component-body method -- the synthesised receiver type,
+// AttachMethod, lookupBodyMethod -- resolves the receiver as a bare name, and
+// an override written against a qualified import (`component draw.circle[...]`)
+// binds only the alias. Binding the bare name for the body's duration is what
+// supporting it would take, and that shadows a same-named declaration of the
+// program's own for as long as it lasts.
+func (c *checker) reportOverrideFuncUnreachableReceiver(pe pendingExtension, defs []*ast.FuncDef) []*ast.FuncDef {
+	if len(defs) == 0 {
+		return defs
+	}
+	if sym, ok := c.scope.Lookup(pe.comp.Name); ok && sym == ir.Symbol(pe.comp) {
+		return defs
+	}
+	out := make([]*ast.FuncDef, 0, len(defs))
+	for _, fd := range defs {
+		// An explicit receiver names its own type and does not go through the
+		// component at all.
+		if _, _, isMethod := ast.SplitMethodName(fd.Name); isMethod {
+			out = append(out, fd)
+			continue
+		}
+		c.error(fd.Pos, "func %q cannot be declared in this override of %q: a component method attaches to its receiver by bare name, and %q names no component here -- dot-import the package, or lift the helper to a top-level func", fd.Name, pe.comp.Name, pe.comp.Name)
+	}
+	return out
+}
+
 // pendingExtension records a single `platform <name> { ... }` body that
 // needs to be checked into IR and stashed under stdComp.PlatformOverrides.
 // Body-checking is deferred until after user pass1 so user-declared symbols
@@ -1367,6 +1397,7 @@ func (c *checker) checkPendingExtensions() {
 			// the override body declared, which is bound there and nowhere
 			// else.
 			funcDefs = c.reportOverrideFuncShadows(pe, savedMethods, funcDefs)
+			funcDefs = c.reportOverrideFuncUnreachableReceiver(pe, funcDefs)
 			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
 			pe.comp.Funcs = append(slices.Clip(savedFuncs), overrideFuncs...)
 			c.popScope()
