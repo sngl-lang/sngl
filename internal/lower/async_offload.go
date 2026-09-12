@@ -241,6 +241,9 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 				add(h.Func)
 			}
 		}
+		for _, t := range w.Timers {
+			add(t.Handler)
+		}
 		if w.ErrorHandler != nil {
 			add(w.ErrorHandler.Func)
 		}

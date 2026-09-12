@@ -286,7 +286,7 @@ component main ui.node {
 
     // --- Timer drives the animated progress bar ------------------
     timer(interval=50ms, enabled=animating, @tick {
-        if sliderVal >= 1 { sliderVal = 0 } else { sliderVal += 0.01 }
+        sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
     })
 
     // --- A sample tree for the recursive component (§10) ---------

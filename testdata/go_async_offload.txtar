@@ -78,10 +78,6 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) host() string {
-	return ""
-}
-
 func (m *Model) load_click_handler() {
 	m.busy__inst0 = true
 	go func() {

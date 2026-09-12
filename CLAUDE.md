@@ -174,6 +174,24 @@ descent through the view finds nothing there, which is why a pure call made
 twice in an android click handler went unshared until both passes were put on
 the one walk.
 
+`blocks.go` is not the only such enumeration, and a pass picks one of three
+depending on what it needs a handle to. A pass rewriting a *statement list in
+place* takes `blocks.go`'s pointers; a pass rewriting statements and leaf
+expressions together takes `walk.go`'s `walkPackage` (`passTernary`,
+`passIndexedIter`, `passNoRef`, `NoDeclarative`'s id scan); a pass wanting the
+*functions* a target may enter takes `async_offload.go`'s `offloadableFuncs`.
+The three enumerate the same owners and each says so in its own code, which is
+what let one of them forget a case the other two had. **A window owns timers**
+— `passTimerPrimitive` records a schedule on whichever owner held the node, and
+the inliner has by then put a top-level component's timer in the window — and
+`walkWindow` and `offloadableFuncs` both walked a window's vars, funcs and body
+and not its timers. Nothing in source puts a timer there, so both gaps opened
+only after that pass ran and were invisible to every fixture written before it:
+a ternary in a `@tick` panicked the Go emitter, a two-variable `sngl:seq` loop
+there emitted `for i, x := range` over a pull sequence, and a `#[go.async]` call
+there ran on fyne's drawing thread. `testdata/timer_tick_lowered.txtar` and
+`testdata/timer_tick_async_offload.txtar` pin the three.
+
 ## Build & Test Commands
 
 ```bash
@@ -632,7 +650,15 @@ declaration itself. Two things about the name that are easy to get wrong:
   identifier, so a declaration would be read by nobody — and it is written as
   a stub over the zero value, which reads exactly like a real implementation.
   JavaScript got that rule first; Kotlin had the bug until a `deny` caught
-  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call.
+  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call; Go was
+  the third and is `testdata/native_decl_not_emitted.txtar`. The test is
+  `Foreign.Name != "" && !Foreign.Marked` and it is applied **once**, in
+  `CodegenCtx.AllFuncs` — not at the emitter, because fyne and bubbletea
+  rebuild a component's func into a fresh `ir.Func` to give it a Model
+  receiver and the copy carries no `Foreign`. Only a native with a *return
+  type* ever showed: the checker synthesizes `return <zero>` for a bodyless
+  func, and a void one got an empty block that every Go emitter's
+  `len(fn.Block) == 0` guard already skipped.
 - **`method` says the identifier is invoked *on* its first argument** rather
   than handed it: `c.Circle(1, 2)` where the default is
   `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
