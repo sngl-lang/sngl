@@ -159,6 +159,16 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 			if seen[f] {
 				continue
 			}
+			// A declaration that *is* a host identifier is not emitted: every
+			// call to it became a call to that identifier. The checker gives a
+			// bodyless one a `return <zero>`, so nothing downstream can tell it
+			// from an implementation by looking. Filtered here rather than at
+			// the emitter because fyne and bubbletea rebuild a component func
+			// into a fresh ir.Func to give it a Model receiver, and that copy
+			// carries no Foreign for an emitter to test.
+			if f.Foreign.Name != "" && !f.Foreign.Marked {
+				continue
+			}
 			seen[f] = true
 			out = append(out, f)
 		}

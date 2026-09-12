@@ -78,10 +78,6 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) host() string {
-	return ""
-}
-
 func (m *Model) Name__inst0() string {
 	return m.name__inst0
 }

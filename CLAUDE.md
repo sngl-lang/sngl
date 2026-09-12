@@ -650,7 +650,15 @@ declaration itself. Two things about the name that are easy to get wrong:
   identifier, so a declaration would be read by nobody — and it is written as
   a stub over the zero value, which reads exactly like a real implementation.
   JavaScript got that rule first; Kotlin had the bug until a `deny` caught
-  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call.
+  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call; Go was
+  the third and is `testdata/native_decl_not_emitted.txtar`. The test is
+  `Foreign.Name != "" && !Foreign.Marked` and it is applied **once**, in
+  `CodegenCtx.AllFuncs` — not at the emitter, because fyne and bubbletea
+  rebuild a component's func into a fresh `ir.Func` to give it a Model
+  receiver and the copy carries no `Foreign`. Only a native with a *return
+  type* ever showed: the checker synthesizes `return <zero>` for a bodyless
+  func, and a void one got an empty block that every Go emitter's
+  `len(fn.Block) == 0` guard already skipped.
 - **`method` says the identifier is invoked *on* its first argument** rather
   than handed it: `c.Circle(1, 2)` where the default is
   `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
