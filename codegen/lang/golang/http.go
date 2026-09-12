@@ -261,7 +261,7 @@ func routePathExpr(r codegen.HTTPRoute, gc *GoIRContext) string {
 			lit.Reset()
 		}
 	}
-	for _, seg := range strings.Split(strings.TrimPrefix(r.Path, "/"), "/") {
+	for seg := range strings.SplitSeq(strings.TrimPrefix(r.Path, "/"), "/") {
 		lit.WriteByte('/')
 		if len(seg) > 2 && strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
 			flush()

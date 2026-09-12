@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -186,11 +187,12 @@ func emitRenderRoute(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRo
 	fnName := "render" + ExportName(r.Name)
 	gc.RequireImport("strings")
 
-	sig := routeStateReceiver + " *" + stateType
+	var sig strings.Builder
+	sig.WriteString(routeStateReceiver + " *" + stateType)
 	for _, p := range r.Params {
-		sig += ", " + p + " string"
+		sig.WriteString(", " + p + " string")
 	}
-	fmt.Fprintf(b, "func %s(%s) string {\n", fnName, sig)
+	fmt.Fprintf(b, "func %s(%s) string {\n", fnName, sig.String())
 	for _, p := range r.Params {
 		fmt.Fprintf(b, "\t_ = %s\n", p)
 	}
