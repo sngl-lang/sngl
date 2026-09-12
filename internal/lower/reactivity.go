@@ -502,9 +502,8 @@ func collectReactiveVars(pkg *ir.Package) map[*ir.Var]bool {
 	out := make(map[*ir.Var]bool)
 	add := func(vars []*ir.Var) {
 		for _, v := range vars {
-			// A route parameter is bound from the URL the request arrived
-			// on, so nothing running in the page can ever re-fire a slot
-			// keyed on one.
+			// A route parameter is bound from the URL the request arrived on,
+			// so nothing the page runs can re-fire a slot keyed on one.
 			if v != nil && !v.IsConst && !v.RouteParam {
 				out[v] = true
 			}
@@ -514,9 +513,8 @@ func collectReactiveVars(pkg *ir.Package) map[*ir.Var]bool {
 	for _, comp := range pkg.Components {
 		add(comp.Vars)
 	}
-	// allWindows and not pkg.Windows: a window a component body renders is as
-	// mutable as one at the root of a file, and reading only the second left
-	// its vars out of every reverse-dep map, so nothing they fed re-rendered.
+	// allWindows and not pkg.Windows: a window a component body renders owns
+	// mutable state too.
 	for _, w := range allWindows(pkg) {
 		add(w.Vars)
 	}
@@ -562,11 +560,8 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 	case *ir.ErrorBoundary:
 		st.collectFromStmts(n.Children)
 	case *ir.Window:
-		// Not walked from here. A window owns state whether it was written at
-		// the root of a file or in a component body, and lowerReactivity walks
-		// every one of them with itself as the owner -- descending from the
-		// component instead put the window's __slotN and __renderSlotN on the
-		// component, where a page's top-level bindings do not look.
+		// Not walked from here: lowerReactivity walks every window with itself
+		// as the owner, wherever it was written.
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:
 		// Non-visual stmts — no reactive props/slots to collect from.
@@ -1676,8 +1671,7 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Children)
 			case *ir.Window:
 				// Its own block; lowerReactivity builds that slot's Func with
-				// the window as the owner. Descending here built a second copy
-				// under the component and the page declared __renderSlotN twice.
+				// the window as the owner.
 			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 				*ir.Break, *ir.Continue:
 				// Leaf/non-structural stmts cannot host an If/For with a

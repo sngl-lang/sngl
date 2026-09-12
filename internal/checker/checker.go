@@ -452,9 +452,7 @@ type checker struct {
 	currentFunc    *ir.Func
 	funcOuterScope *ir.Scope
 	// nestedScope holds the funcs the body being checked has hoisted so far,
-	// chained on funcOuterScope. It is what a nested func's own body is
-	// checked against: a sibling and itself are hoisted into the same flat
-	// namespace and so are reachable, where an enclosing param is not.
+	// chained on funcOuterScope. See checkNestedFunc.
 	nestedScope *ir.Scope
 	// nestedHidden is the scope a nested func body is being checked *instead*
 	// of, so captureHint can tell a name the enclosing function declared from

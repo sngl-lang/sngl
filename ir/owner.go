@@ -50,12 +50,12 @@ func (o Owner) Name() string {
 // component body renders, which are statements in that body rather than
 // entries in pkg.Windows.
 //
-// It reports all of them. Which subset a consumer wants is that consumer's
-// question, and the answers genuinely differ -- a name-keyed set can hold only
-// the root component's vars, because a child component's `count` is not the
-// root model's `count`, while a pointer-keyed set wants every owner and cannot
-// confuse two. What no consumer should decide for itself is *which
-// declarations are able to own state*, which is the part that was wrong.
+// It reports all of them, deduped by window pointer and by nothing else.
+// Which subset a consumer wants is that consumer's question, and the answers
+// genuinely differ -- a name-keyed set can hold only the root component's
+// vars, because a child component's `count` is not the root model's `count`,
+// while a pointer-keyed set wants every owner and cannot confuse two. What no
+// consumer decides for itself is *which declarations are able to own state*.
 func Owners(pkg *Package) []Owner {
 	if pkg == nil {
 		return nil
@@ -77,9 +77,7 @@ func Owners(pkg *Package) []Owner {
 		addWin(w)
 	}
 	// A window a component body renders is an *ir.Window statement in that
-	// body and never reaches pkg.Windows, so reading that list alone made it
-	// the owner nothing knew about one level down: its `var` stayed a local of
-	// its own body, unhoisted, and no target emitted state for it.
+	// body and never reaches pkg.Windows.
 	for _, c := range pkg.Components {
 		if c == nil {
 			continue

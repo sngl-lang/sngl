@@ -48,12 +48,8 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 		case c.currentComponent != nil:
 			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
 		case c.currentWindow != nil:
-			// A window owns funcs the way a component does (ir.Owners), and
-			// its state is in the same model -- so a target that emits a
-			// component's funcs as methods has to emit these as methods too.
 			// Registered in both collections, the way a component's nested
-			// methods are, because pkg.Funcs is what a call site resolves
-			// through.
+			// methods are: pkg.Funcs is what a call site resolves through.
 			c.currentWindow.Funcs = append(c.currentWindow.Funcs, fn)
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		case c.pkg != nil:
@@ -65,15 +61,10 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	// two in one body are that scope's duplicate.
 	c.declare(x.Pos, fn)
 
-	// Checked in the scope the enclosing function was *entered* from rather
-	// than the one in force here. In force, an enclosing param resolves and
-	// then reaches the backend as a bare name nothing declared -- and the
-	// binding it would have named belongs to a call that has returned.
-	//
-	// What that scope carries on top is the hoisted funcs, this one included:
-	// they end up in the same flat namespace, so calling a sibling or
-	// recursing is a call the backend can emit, and only the enclosing values
-	// are out of reach.
+	// The scope the enclosing function was *entered* from, plus the funcs
+	// hoisted out of it, this one included: they share the flat namespace a
+	// backend emits into, so a sibling call and recursion resolve while the
+	// enclosing params and locals stay out of reach.
 	if outer := c.funcOuterScope; fn.Nested && outer != nil {
 		if c.nestedScope == nil {
 			c.nestedScope = ir.NewScope(outer)
@@ -107,9 +98,8 @@ func (c *checker) captureHint(name string) string {
 // The name one is *written* under is scoped to a single body, so two bodies may
 // each declare `helper` and mean two functions; the namespace every backend
 // emits into is flat, and takes the second as a redeclaration of the first.
-// A body-local type is hoisted under the same rule (#198); a func can be,
-// because a call site holds the declaration (ir.Call.Func) rather than the
-// name.
+// Renaming is available here because a call site holds the declaration
+// (ir.Call.Func) rather than the name.
 //
 // Runs at the end of the check, once every body has resolved: the scopes hold
 // the written name, so renaming earlier would leave a body unable to find what
@@ -122,15 +112,14 @@ func (c *checker) renameNestedFuncs() {
 	for _, n := range c.nestedOrder {
 		renaming[n.fn] = true
 	}
-	// The names to avoid are the ones nothing here is about to change. A
-	// declaration counted against itself took a disambiguating suffix for
-	// colliding with nobody.
+	// The names to avoid are the ones nothing here is about to change: a
+	// declaration counted against itself would take a suffix for colliding
+	// with nobody.
 	//
 	// One registry for every kind, because the namespace being avoided is the
-	// one every backend has to satisfy at once: Go's package scope holds a type
-	// and a func together, and html emits a component's funcs as free
-	// functions. Reserved from slices throughout, never from a map, so two
-	// runs allocate the same names.
+	// one every backend has to satisfy at once -- Go's package scope holds a
+	// type and a func together. Reserved from slices and never from a map, so
+	// two runs allocate the same names.
 	reg := &names.Registry{}
 	if c.pkg != nil {
 		for _, s := range c.pkg.Structs {
@@ -181,9 +170,7 @@ func (c *checker) orderNestedFuncs() {
 	reorder := func(fns []*ir.Func) {
 		// A collection holds some of the chain and not the rest -- a component
 		// method is in pkg.Funcs while the funcs it wrote are only in
-		// comp.Funcs -- so membership is what bounds the walk. Without it a
-		// parent pulled its children in from the other collection and the
-		// copy below rewrote this one with names it does not own.
+		// comp.Funcs -- so membership is what bounds the walk.
 		in := make(map[*ir.Func]bool, len(fns))
 		for _, fn := range fns {
 			in[fn] = true

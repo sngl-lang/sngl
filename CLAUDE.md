@@ -791,9 +791,9 @@ was written under is the body's, which leaves two things to reconcile
 - **An emitted name of its own.** Two bodies may each write `func helper` and
   mean two functions, into a flat namespace. `renameNestedFuncs` gives each
   `<body>__<name>` at the end of the check, once no scope holds a written
-  name; three levels compose because it runs in declaration order. A body-local
-  *type* is hoisted under the same rule (#198); a func can be, because a call
-  site holds the declaration, `ir.Call.Func`, and not the name. The names it
+  name; three levels compose because it runs in declaration order. Renaming is
+  available to a func because a call site holds the declaration,
+  `ir.Call.Func`, and not the name. The names it
   avoids are every kind that shares the emitted namespace — structs, enums,
   units, components and funcs — because `struct step__mark` beside a `mark`
   nested in `step` is Go's `Step__mark redeclared in this block`, and a

@@ -428,10 +428,9 @@ type lifter struct {
 	enclosing []scopeFrame
 }
 
-// newLifter seeds the name registry from the package as it stands. A lifter
-// lives for exactly one pass, and within that pass it is the only thing adding
-// to pkg.Structs or pkg.Funcs -- which is what makes a seed-once registry the
-// same answer the live rescan it replaced gave.
+// newLifter seeds the name registry from the package as it stands. Seeding
+// once is enough because a lifter lives for one pass and is the only thing
+// adding to pkg.Structs or pkg.Funcs within it.
 func newLifter(pkg *ir.Package) *lifter {
 	l := &lifter{pkg: pkg, names: &names.Registry{}}
 	for _, s := range pkg.Structs {
