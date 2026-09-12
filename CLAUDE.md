@@ -174,6 +174,24 @@ descent through the view finds nothing there, which is why a pure call made
 twice in an android click handler went unshared until both passes were put on
 the one walk.
 
+`blocks.go` is not the only such enumeration, and a pass picks one of three
+depending on what it needs a handle to. A pass rewriting a *statement list in
+place* takes `blocks.go`'s pointers; a pass rewriting statements and leaf
+expressions together takes `walk.go`'s `walkPackage` (`passTernary`,
+`passIndexedIter`, `passNoRef`, `NoDeclarative`'s id scan); a pass wanting the
+*functions* a target may enter takes `async_offload.go`'s `offloadableFuncs`.
+The three enumerate the same owners and each says so in its own code, which is
+what let one of them forget a case the other two had. **A window owns timers**
+— `passTimerPrimitive` records a schedule on whichever owner held the node, and
+the inliner has by then put a top-level component's timer in the window — and
+`walkWindow` and `offloadableFuncs` both walked a window's vars, funcs and body
+and not its timers. Nothing in source puts a timer there, so both gaps opened
+only after that pass ran and were invisible to every fixture written before it:
+a ternary in a `@tick` panicked the Go emitter, a two-variable `sngl:seq` loop
+there emitted `for i, x := range` over a pull sequence, and a `#[go.async]` call
+there ran on fyne's drawing thread. `testdata/timer_tick_lowered.txtar` and
+`testdata/timer_tick_async_offload.txtar` pin the three.
+
 ## Build & Test Commands
 
 ```bash
