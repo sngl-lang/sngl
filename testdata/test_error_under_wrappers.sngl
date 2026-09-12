@@ -1,0 +1,51 @@
+// A raise still reaches its boundary from under a wrapper. `walkVisualErrors`
+// is the walk that resolves one to the nearest handler, and it was the sixth
+// copy of "an `if`, a `for`, a boundary and a context override are how the
+// nodes under them got there" -- missing the context provider entirely, and
+// walking a boundary's content but not its fallback.
+//
+// The first cost was a silently uncaught error: delete the `theme("dark")`
+// wrapper from `underProvider` and the identical test passed, because the
+// handler under a provider resolved past every boundary it was written inside.
+// The second is the fallback's own handlers, which sit where the content sat
+// once passBoundaryFailed has lowered them and so are under the same handler.
+
+import . "sngl:ui"
+import . "sngl:test"
+
+context #theme("light")
+
+component underProvider node {
+    var caught = ""
+    boundary(@error(e) { caught = e.message }) {
+        theme("dark") {
+            button #go(text="Go", @click { error.raise("boom", "") })
+        }
+    }
+}
+
+func testRaiseUnderProviderIsCaught(t Test, c underProvider) {
+    c.go.click()
+    t.assert(c.caught == "boom")
+}
+
+component underFallback node {
+    var caught = ""
+    boundary(@error(e) { caught = e.message }) {
+        component failed {
+            button #retry(text="Retry", @click { error.raise("again", "") })
+        }
+
+        button #go(text="Go", @click { error.raise("first", "") })
+    }
+}
+
+func testRaiseInFallbackIsCaught(t Test, c underFallback) {
+    c.go.click()
+    t.assert(c.caught == "first")
+    c.retry.click()
+    t.assert(c.caught == "again")
+}
+
+window {
+}
