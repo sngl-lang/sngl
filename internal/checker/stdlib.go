@@ -1177,29 +1177,27 @@ func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.Even
 	return props, events
 }
 
-// collectExtensionVars pre-registers the vars and consts a platform extension
-// body declares, the way pass1 does for an ordinary component body. A func in
-// an extension body is out of scope here and stays unbound; the type
-// declarations are collectExtensionBodyDecls'.
-func (c *checker) collectExtensionVars(body ast.StmtBlock) []*ir.Var {
-	var out []*ir.Var
-	for _, stmt := range body.Stmts {
-		out = append(out, c.collectComponentVarDecl(stmt)...)
-	}
-	return out
-}
-
-func (c *checker) collectExtensionBodyDecls(body ast.StmtBlock) []ir.Symbol {
-	var out []ir.Symbol
+// collectExtensionDecls pre-registers what a platform extension body declares,
+// the way pass1's collectComponentDecls does for an ordinary component body. A
+// func in an extension body is out of scope here and stays unbound.
+//
+// One walk in source order, and it has to stay one: collectComponentVarDecl
+// resolves an annotation eagerly, so a body-local type is a name only if its
+// registration already happened.
+func (c *checker) collectExtensionDecls(body ast.StmtBlock) ([]*ir.Var, []ir.Symbol) {
+	var vars []*ir.Var
+	var decls []ir.Symbol
 	for _, stmt := range body.Stmts {
 		switch stmt.(type) {
 		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
 			if sym := c.registerBodyDecl(stmt); sym != nil {
-				out = append(out, sym)
+				decls = append(decls, sym)
 			}
+		default:
+			vars = append(vars, c.collectComponentVarDecl(stmt)...)
 		}
 	}
-	return out
+	return vars, decls
 }
 
 // pendingExtension records a single `platform <name> { ... }` body that
@@ -1300,11 +1298,12 @@ func (c *checker) checkPendingExtensions() {
 			// the component's parenless stub. The list starts from the
 			// component's own vars so a var the stdlib declaration made stays
 			// visible to the override.
-			vars := append(slices.Clip(savedVars), c.collectExtensionVars(pe.body)...)
-			pe.comp.Vars = vars
+			// The scope is thrown away: the symbols travel on BodyDecls and
+			// declareBodyDecls rebinds them for the body check.
 			c.pushScope()
-			bodyDecls := c.collectExtensionBodyDecls(pe.body)
+			vars, bodyDecls := c.collectExtensionDecls(pe.body)
 			c.popScope()
+			pe.comp.Vars = append(slices.Clip(savedVars), vars...)
 			pe.comp.BodyDecls = append(slices.Clip(savedBodyDecls), bodyDecls...)
 			c.checkComponentBody(pe.comp)
 			checked := ir.Body{Vars: pe.comp.Vars, Stmts: pe.comp.Body}
