@@ -31,6 +31,14 @@ import (
 // A *component's* is a different question, and the answer is hoistRootState
 // below: it has no pkg.Vars to have been left in, and the component it was
 // declared on is an empty shell once its windows are lifted out of it (#215).
+//
+// Known gap: a *statement* that is not a window is dropped with the body it was
+// written in, on both paths. A `time.timer(…)` at the root of a file or of a
+// root component reaches no backend, in silence. Every timer fixture puts one
+// in a `node` component rendered inside a window, which is why nothing caught
+// it; fixing it means answering what N windows do with one timer, which is the
+// question hoistRootState's per-platform answer settles for state and not for
+// effects.
 var passRootWindow = pass{
 	name:    "RootWindow",
 	enabled: func(Caps) bool { return true },
@@ -60,37 +68,27 @@ func applyRootWindow(pkg *ir.Package, _ Caps, _ Options) error {
 	return nil
 }
 
-// hoistRootState moves the vars, funcs and timers a root component declared
-// into the window it lifts, because that is where they are mounted: the
-// component is an empty shell by the end of this pass, and a declaration left
-// on one reaches no backend -- `component main root { var n = 0; window … }`
-// emitted `var state = {}` and rendered nothing for `n`.
+// hoistRootState moves the vars and funcs a root component declared into every
+// window it lifts, because that is where they are mounted: the component is an
+// empty shell by the end of this pass, and a declaration left on one reaches no
+// backend. Which of copy-or-share that means is the platform's answer, and
+// CLAUDE.md is where it is written down.
 //
-// A window is a state owner every consumer already reads (ir.Owners,
-// ModelState, ModelFreeFuncs, fyneComponentFuncs), and its funcs are already
-// Model methods, so nothing downstream grows a case. The *ir.Var and *ir.Func
-// pointers move rather than being copied, which is what keeps the references
-// the body already holds pointing at them.
+// Pointers move rather than being copied, so the references the body already
+// holds keep pointing at them. Nothing here dedupes -- ir.Owners reports one
+// Owner per window with the same *ir.Var, deliberately -- so a consumer that
+// folds several owners into one Model is the one that has to
+// (CodegenCtx.ModelState), and a consumer that walks per owner has to inject
+// once (passReactivity's `injected`).
 //
-// Several windows each get it, and what that *means* is the platform's answer
-// rather than the language's. The same *ir.Var is mounted on both, so a target
-// whose windows are one process shares one cell (bubbletea, fyne and gtk4 put
-// it in one Model) and a target whose windows are separate pages or screens
-// copies it (html writes a `state` per page, android a `remember` per screen).
-// That is what those targets *are*, and forcing either way round in the
-// lowering would be the language overriding the platform it compiled to. The
-// author picks a target knowing this; top-level state shared across windows is
-// mainly a performance tool, not the default way to write an application.
-//
-// Aliasing one pointer into two owners is the thing to watch: a Model built
-// from both windows must emit one field, not two. ir.Owners and every
-// ModelState builder dedupe by the *ir.Var pointer, which is why the pointer is
-// shared rather than the declaration copied per window.
+// comp.Timers is not moved: only passTimerPrimitive populates it, ~30 passes
+// later, so it is always empty here. A timer written in the body is an ordinary
+// statement in comp.Body, and applyRootWindow drops those -- see its own note.
 func hoistRootState(comp *ir.Component, windows []*ir.Window) {
 	if comp == nil || len(windows) == 0 {
 		return
 	}
-	if len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+	if len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return
 	}
 	// Once, before the loop: stripping a receiver is a mutation of the shared
@@ -100,10 +98,9 @@ func hoistRootState(comp *ir.Component, windows []*ir.Window) {
 	for _, w := range windows {
 		w.Vars = append(w.Vars, comp.Vars...)
 		w.Funcs = append(w.Funcs, comp.Funcs...)
-		w.Timers = append(w.Timers, comp.Timers...)
 		clearCallReceivers(w, moved)
 	}
-	comp.Vars, comp.Funcs, comp.Timers = nil, nil, nil
+	comp.Vars, comp.Funcs = nil, nil
 }
 
 // stripComponentReceivers makes the moved funcs window funcs rather than

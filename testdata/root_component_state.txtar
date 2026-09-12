@@ -1,10 +1,16 @@
 A root component's own state, on every target.
 
 `component main root { … }` renders windows rather than widgets, and
-passRootWindow lifts those windows out of it -- which used to leave the vars,
-funcs and timers it declared on a shell nothing renders. `var hits = 0` reached
-no backend at all: html emitted `var state = {}`, and the read of it rendered
-against a binding the page never declared (#215).
+passRootWindow lifts those windows out of it -- which used to leave the vars and
+funcs it declared on a shell nothing renders. `var hits = 0` reached no backend
+at all: html emitted `var state = {}`, and the read of it rendered against a
+binding the page never declared (#215).
+
+A *timer* is not hoisted and is not covered here. It is an ordinary statement in
+the body rather than a declaration on the component, and the body is cleared --
+so a `time.timer(…)` written in a root component, or at the root of a file, is
+dropped in silence. That is pre-existing on both paths and outside #215; see
+applyRootWindow's note.
 
 They are hoisted into the window the component lifts, because that is where
 they are mounted. A window is a state owner every consumer already reads, and
