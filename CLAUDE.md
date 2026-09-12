@@ -735,6 +735,67 @@ two calls of a nested func share the model. Its own state is unaffected and
 stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
 that, because it is the surprising half.
 
+**A platform override body is a body like any other** (#230): an override *is*
+the body its target renders, so "the body it was written in" is well defined
+there and every word above applies unchanged. Two things make it work, and both
+are about *when* the override is installed. `checkPendingExtensions` swaps the
+override's vars, props and body decls onto the declaration and restores the
+base after, so the nested bodies are checked while it still holds
+(`checkOverrideNestedBodies`) rather than in pass2, which runs after the
+restore. And the owner link has to survive to lowering, so `ir.Body` carries
+`BodyDecls` beside `Vars` and `specializeComp` swaps all three — without it
+every backend emitted the captured names bare, which
+`testdata/component_override_body_capture.txtar` denies on both of its targets.
+`ir.BodyOwners` and `ir.CapturesEnclosingState` read the overrides too, because
+the checker asks its questions with no target picked; that is what lets the
+recursion-cycle report reach an override body, and a `limit` var in
+`error_component_override_nested_capture_recursive.sngl` keeps the cycle from
+being folded away before it is asked.
+
+A `func` written there is the third slot of the same shape. It is registered
+by `collectExtensionDecls` and desugared onto the component by the same
+`registerNestedMethods` an ordinary body uses, so the override's body calls its
+own helper and a nested body reaches it through `lookupBodyMethod` — the route
+a method takes, since a component-body func is a method on its owner rather
+than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, swapped
+by `specializeComp` with the rest; without that swap bubbletea emitted
+`func (m *outer) Bump()` against a type it never declares, which
+`component_override_body_func.txtar` denies.
+
+A method is attached by **receiver**, so the base declaration's table is where
+an override's helper would otherwise land and stay — visible to the base body
+and to every other target's. Each override body therefore gets its own
+`maps.Clone` of that table. It starts from the base's, so a helper the
+declaration wrote stays callable from an override that did not rewrite it, and
+two *overrides* may each write a `func bump` without one being a redeclaration
+of the other: two platform packages implementing one component must not have to
+agree on their helpers' names.
+
+What is refused is an override helper **shadowing** one the base body wrote
+(`reportOverrideFuncShadows`). That is a codegen limitation surfaced in the
+checker, on `claimBodyType`'s terms rather than as a language rule: nothing
+renames a component method per body, so both would be emitted under one host
+identifier. #198's hoist-and-rename is where it lifts, and the diagnostic says
+so (`error_component_override_body_func_shadows.sngl`).
+
+`ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because by then the
+base declaration is restored and the live `Component.Funcs` no longer names the
+override's helper — checked at package scope instead, it reported the
+component's own vars as undefined. That set is asked of `c.pendingExtensions`
+as well as `pkg.Components`: an override's base is usually *not* this package's
+declaration, and every override in `lib/` and in a target package has a stdlib
+one.
+
+**A helper needs the base reachable by its bare name**, which an override
+written through a qualified alias does not have: a component-body func is a
+method, and the synthesised receiver type, `AttachMethod` and `lookupBodyMethod`
+all resolve the receiver as a bare name. So `component draw.circle[…]` may
+declare vars and types but not funcs, and `reportOverrideFuncUnreachableReceiver`
+says so where the helper is written. Binding the bare name for the body's
+duration is what supporting it would take, and that shadows a same-named
+declaration of the program's own for as long as it lasts — carrying a qualified
+`ir.Func.Receiver` instead is the real fix and touches every `fn.Receiver == comp.Name` comparison in the checker.
+
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested
 declaration first, so read in package order an unannotated `var count = 0` was

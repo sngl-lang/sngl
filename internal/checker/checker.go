@@ -3405,13 +3405,25 @@ func (c *checker) pass2() {
 	// comp.Funcs too, but they don't need component scope; we check them
 	// here so their return type is inferred BEFORE any top-level test func
 	// (which may call them) is checked.
+	// ir.BodyFuncs rather than comp.Funcs: checkPendingExtensions has restored
+	// the base by now, so a func an override body declared is no longer on the
+	// live list, and checking it here resolves it at package scope where the
+	// component's own vars are undefined (#230).
 	compOwnedFuncs := map[*ir.Func]bool{}
-	for _, comp := range c.pkg.Components {
-		for _, fn := range comp.Funcs {
+	noteOwned := func(comp *ir.Component) {
+		for _, fn := range ir.BodyFuncs(comp) {
 			if fn.Receiver == "" || fn.Receiver == comp.Name {
 				compOwnedFuncs[fn] = true
 			}
 		}
+	}
+	for _, comp := range c.pkg.Components {
+		noteOwned(comp)
+	}
+	// An override's base need not be this package's: every stdlib and
+	// target-package one is declared elsewhere, so pkg.Components omits it.
+	for _, pe := range c.pendingExtensions {
+		noteOwned(pe.comp)
 	}
 	for _, fn := range c.pkg.Funcs {
 		if compOwnedFuncs[fn] || fn.Nested {
@@ -3892,6 +3904,26 @@ func (c *checker) checkBodyOnce(comp *ir.Component) {
 		c.checkBodyOnce(owner)
 	}
 	c.checkComponentBody(comp)
+}
+
+// checkOverrideNestedBodies checks the bodies of the components an override
+// body declared, and records them as checked so pass2 does not check them
+// again with the base declaration restored. checkBodyOnce's owner-first
+// ordering from the other end: the caller has checked the owner already,
+// because pass2 never reaches an override body.
+func (c *checker) checkOverrideNestedBodies(decls []ir.Symbol) {
+	for _, sym := range decls {
+		nested, ok := sym.(*ir.Component)
+		if !ok || c.bodyChecked[nested] {
+			continue
+		}
+		if c.bodyChecked == nil {
+			c.bodyChecked = map[*ir.Component]bool{}
+		}
+		c.bodyChecked[nested] = true
+		c.checkComponentBody(nested)
+		c.checkOverrideNestedBodies(nested.BodyDecls)
+	}
 }
 
 // declareBodyDecls rebinds what comp's body declares: a scope cannot span the

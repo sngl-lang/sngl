@@ -540,6 +540,13 @@ func (v *Var) IsExported() bool { return isExportedName(v.Name) }
 type Body struct {
 	Vars  []*Var
 	Stmts []Stmt
+	// The three below travel for the same reason Vars does. BodyDecls is what
+	// links a component nested in this body to its owner (ir.BodyOwners).
+	BodyDecls []Symbol `json:"-"`
+	Funcs     []*Func  `json:"-"`
+	// Methods is the receiver's member table, per body rather than merged, so
+	// two targets may each write a `func helper`.
+	Methods map[string]*Func `json:"-"`
 }
 
 // Component represents a resolved component declaration.

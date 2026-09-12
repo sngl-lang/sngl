@@ -1,0 +1,40 @@
+// SKIP(codegen) "names sngl:platform/html, which a per-platform harness does not register; the html output is pinned by component_override_body_func.txtar"
+import ui "sngl:ui"
+import "sngl:platform/html"
+
+// An override body declares funcs the way it declares vars and types (#230):
+// `scaled` is the override's own, `fromBase` is the one the declaration wrote
+// and the override inherits, and `inner` -- nested in the override body --
+// reaches both through lookupBodyMethod's owner chain, the route a method
+// takes because a component-body func is a method on its owner rather than a
+// name in scope.
+component thing(label string) ui.node {
+    var n = 7
+
+    func fromBase() => n * 2
+
+    ui.text(value="base {label} {fromBase()}")
+}
+
+component thing[html.platform] {
+    var m = 3
+
+    func scaled() => m * fromBase()
+
+    component inner ui.node {
+        ui.text(value="{label} {m} {scaled()} {fromBase()}")
+    }
+
+    ui.vbox {
+        inner()
+        ui.text(value="{scaled()}")
+    }
+}
+
+component main ui.node {
+    thing(label="x")
+}
+
+ui.window {
+    main
+}

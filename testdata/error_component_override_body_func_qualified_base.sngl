@@ -1,0 +1,19 @@
+// SKIP(codegen) "names sngl:platform/bubbletea, which a per-platform harness does not register"
+import draw "sngl:ui/draw"
+import "sngl:platform/bubbletea"
+
+// A component-body func is a method, and every route to one resolves the
+// receiver as a bare name -- so an override written through a qualified alias
+// has nowhere to attach a helper. Refused where the helper is written, rather
+// than reported as the unknown type "circle" that the synthesised receiver
+// used to produce: that named a type the author had not written.
+//
+// The var is the counterpart: state in a qualified override is unaffected,
+// because a var is a binding rather than a member of the receiver.
+component draw.circle[bubbletea.platform] {
+    var m = 3.0
+
+    func scaled() => m * 2.0 // ERROR(check) "cannot be declared in this override"
+
+    draw.rect(x=0.0, y=0.0, w=m, h=m)
+}

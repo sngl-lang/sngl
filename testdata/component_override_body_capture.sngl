@@ -1,0 +1,39 @@
+// SKIP(codegen) "names sngl:platform/html, which a per-platform harness does not register; the html output is pinned by component_override_body_capture.txtar"
+import ui "sngl:ui"
+import "sngl:platform/html"
+
+// An override is the body its target renders, so a component nested in one
+// sees that body the way a component nested in an ordinary body does (#230,
+// #202). All four routes are here: the override's own var, the base
+// declaration's var and method -- the only place an override body can get a
+// func, since one written in an override body is not registered -- the
+// component's prop, and a sibling declared by the override body itself.
+component thing(label string) ui.node {
+    var n = 7
+
+    func doubled() => n * 2
+
+    ui.text(value="base {label} {n} {doubled()}")
+}
+
+component thing[html.platform] {
+    var m = 3
+
+    struct Pair {
+        a int
+    }
+
+    component inner ui.node {
+        ui.text(value="{label} {n} {m} {doubled()} {Pair{a=1}.a}")
+    }
+
+    inner()
+}
+
+component main ui.node {
+    thing(label="x")
+}
+
+ui.window {
+    main
+}

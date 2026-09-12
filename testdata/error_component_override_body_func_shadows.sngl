@@ -1,0 +1,48 @@
+// An override body may declare funcs (#230), but not one whose name the base
+// declaration's body already gave a method. The two bodies are separate and a
+// body-scoped name is keyed by nothing, so this is a codegen limitation
+// surfaced in the checker rather than a language rule -- the answer
+// claimBodyType gives for a body-local type, for the same reason: a component
+// method is emitted under one name per component and nothing renames it per
+// body. #198's hoist-and-rename is where it is lifted.
+//
+// The bubbletea override is the other half of the rule: a name the base did
+// not take is the override's to use, and it may still call the base's method.
+// Two *overrides* each writing `bump` is fine too and is pinned by
+// component_override_body_func.txtar, which needs both emitted to show it.
+
+import ui "sngl:ui"
+import "sngl:platform/html"
+import "sngl:platform/bubbletea"
+
+component thing(label string) ui.node {
+    var n = 1
+
+    func helper() => n + 100
+
+    ui.text(value="base {helper()}")
+}
+
+component thing[html.platform] {
+    var m = 2
+
+    func helper() => m + 200 // ERROR(check) "is declared in component thing and again in its override"
+
+    ui.text(value="html {helper()}")
+}
+
+component thing[bubbletea.platform] {
+    var k = 3
+
+    func other() => k + 300
+
+    ui.text(value="bt {other()} {helper()}")
+}
+
+component main ui.node {
+    thing(label="x")
+}
+
+ui.window {
+    main
+}
