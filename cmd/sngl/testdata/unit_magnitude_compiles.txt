@@ -23,6 +23,11 @@
 # interpreter rather than generated code, and its ToInt had no case for a unit
 # -- so every `int(<unit>)` was 0 there, which is neither answer. Two runners
 # over one program is what states that they agree.
+#
+# `sum` is the case that needs both runners the most. Every other read here is
+# off a literal, which is the one shape where one magnitude and a suffix agree
+# with the record -- so a member read off a value arithmetic built is what
+# separates the two models, and the interpreter was on the wrong one.
 
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'PASS'
@@ -44,11 +49,14 @@ unit tick {
 component main ui.node {
     var m ui.measurement = 3px
     var r ui.measurement = 2rem
+    var sum ui.measurement = m + r
     var t tick = 4tk
     var d time.duration = 500ms
     var widePx = 0.0
     var remEm = 0.0
     var remPx = 0.0
+    var sumPx = 0.0
+    var sumEm = 0.0
     var ticks = 0.0
     var wholeTicks = 0
     var millis = 0
@@ -58,6 +66,8 @@ component main ui.node {
         widePx = m.px
         remEm = r.em
         remPx = r.px
+        sumPx = sum.px
+        sumEm = sum.em
         ticks = float(t)
         wholeTicks = int(t)
         millis = int(d)
@@ -79,6 +89,16 @@ func testAPerBaseFieldIsANumber(t Test, c main) {
 func testAReducedSuffixCountsInItsBase(t Test, c main) {
     t.assert(c.remEm == 32.0)
     t.assert(c.remPx == 0.0)
+}
+
+// Addition is per base and keeps every one of them: 3px + 32em is not 35 of
+// anything. Both reads are off a value arithmetic built rather than off a
+// literal, which is the one shape a single magnitude and a suffix can hold --
+// the interpreter answered 35 for px and 0 for em while both compiled targets
+// answered 3 and 32, and only a two-runner assertion says so.
+func testAdditionKeepsEveryBase(t Test, c main) {
+    t.assert(c.sumPx == 3.0)
+    t.assert(c.sumEm == 32.0)
 }
 
 func testASingleBaseUnitConverts(t Test, c main) {

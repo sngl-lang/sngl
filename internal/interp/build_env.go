@@ -173,6 +173,9 @@ func buildUnitTableFromDef(u *ir.UnitDef) *unitTable {
 		t.Conversions[s.Name] = s.Factor
 		t.BaseOf[s.Name] = s.BaseName
 	}
+	for _, b := range u.Bases() {
+		t.Bases = append(t.Bases, b.Name)
+	}
 	return t
 }
 
