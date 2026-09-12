@@ -368,9 +368,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			emitIRFyneTypeMethod(&funcBuf, fn, gc)
 			continue
 		}
-		// A top-level func that touches a package var reads a Model field, so
-		// it is a Model method like a component's own; stateFuncs is the same
-		// set ModelFreeFuncs kept from the call sites.
+		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
+		// its doc for what a package var costs a free function.
 		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue

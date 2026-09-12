@@ -557,13 +557,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			emitIRTypeMethod(&b, fn, gc)
 			continue
 		}
-		// A top-level func that touches no package var needs no receiver.
-		// Emitted free, it is callable from a Model method and from a type
-		// method alike -- as a Model method it was reachable only from the
-		// first, and `Calc.pending` calling `format` rendered `m.format(…)` in
-		// a function with no `m`. A package var is a field of this Model, so
-		// one that reads it is a method after all; stateFuncs is the same set
-		// ModelFreeFuncs kept from the call sites.
+		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
+		// its doc for what a package var costs a free function.
 		if !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue

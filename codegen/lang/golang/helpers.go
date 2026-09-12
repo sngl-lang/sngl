@@ -12,12 +12,12 @@ import (
 // (bubbletea, fyne, gtk4) emits as free package-level functions rather than as
 // methods on its Model, for ExprCtx.FreeFuncs.
 //
-// A top-level function is emitted free where it can be, because a *method* on
-// a user type is free too — Go has no receiver to hang one of those on — and a
-// type method calling a Model method has no Model to call it through. What it
+// A top-level function is emitted free where it can be, so that a lifted type
+// method — which has no Model to dispatch through — can call it. What it
 // cannot be is free while it touches a package-level var: those are fields of
-// the same Model, and `NameStateVar` spells one `m.x` in every scope.
-// ModelStateFuncs is that exception.
+// the same Model, and `NameStateVar` spells one `m.x` in every scope, with no
+// "outside a method" case. ModelStateFuncs is that exception, and it is the
+// one set the three platform emit loops read for this.
 func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	if pkg == nil {
 		return nil
@@ -57,15 +57,11 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 // read or write a package-level var, and everything that reaches one through a
 // call.
 //
-// The transitive half is not defensive. A caller emitted free spells a call to
-// a Model method `m.callee(…)`, so one state-touching func drags every
-// top-level caller of it onto the receiver or the call site names an `m` its
-// own signature does not declare — which is the same undefined `m` this set
-// exists to remove from the callee.
+// The transitive half is load-bearing: a caller left free spells a call to a
+// Model method, which is the same undefined `m` one function further out.
 //
-// A method on a user type is in the set too, and is answered differently: Go
-// has no receiver to hang one on, so it stays a free function and the Model
-// reaches it as a parameter instead. ModelParamFuncs narrows to those.
+// A method on a user type is in the set too and is answered differently, the
+// receiver slot being spent: ModelParamFuncs narrows to those.
 func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	if pkg == nil {
 		return nil
@@ -126,8 +122,7 @@ func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 // Model has to arrive as an argument.
 //
 // One map answers for the signature (EmitTypeMethodDef) and for the call site
-// (evalTypeMethodCall), because two answers is what `CalcPending(m.c)` against
-// `func CalcPending()` was.
+// (evalTypeMethodCall), which cannot then disagree about the arity.
 func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for fn := range ModelStateFuncs(pkg) {

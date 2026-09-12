@@ -56,8 +56,7 @@ type GoIRContext struct {
 	// a `*Model` needs its address. bubbletea's hand-written receivers are
 	// `func (m Model)` -- Update returns the mutated copy -- while everything
 	// EmitFuncDef writes takes a pointer, which is why it clears this for the
-	// bodies it emits. Both directions are a Go compile error rather than a
-	// silent wrong result.
+	// bodies it emits.
 	ModelIsValue bool
 
 	// ExtraParam is appended verbatim to the signature EmitFuncDef writes, for
@@ -1835,11 +1834,6 @@ func (gc *GoIRContext) ModelArg() string {
 // EmitTypeMethodDef emits a method on a user type as the free function its
 // call sites name: `func GlyphRow(gl Glyph, row int) string`, with the
 // receiver as the first parameter (passNoImplicitRecv already put it there).
-//
-// One implementation for bubbletea, fyne and gtk4 rather than the three
-// identical copies it replaces -- the Model parameter has to appear here and
-// at the call site together, and three emitters mirroring a fourth decision by
-// hand is how they came apart the first time.
 func (gc *GoIRContext) EmitTypeMethodDef(fn *ir.Func) []string {
 	fnCopy := *fn
 	fnCopy.Name = ExportName(fn.Receiver) + ExportName(fn.Name)
@@ -1905,10 +1899,8 @@ func appendParam(params []string, extra string) string {
 
 // emitFuncBody appends a function's statements and its closing brace.
 func (gc *GoIRContext) emitFuncBody(lines []string, fn *ir.Func, _ []string) []string {
-	// Nothing EmitFuncDef writes holds the Model by value: every receiver it
-	// emits is a pointer, and a free function has no `m` at all. Only the
-	// platform's own hand-written `func (m Model)` scopes do, so the body
-	// starts from the pointer answer rather than inheriting the caller's.
+	// Nothing EmitFuncDef writes holds the Model by value, so the body starts
+	// from the pointer answer rather than inheriting the caller's.
 	inner := *gc
 	inner.ModelIsValue = false
 	inner.ExtraParam = ""

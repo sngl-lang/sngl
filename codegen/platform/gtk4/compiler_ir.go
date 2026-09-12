@@ -355,10 +355,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			emitGTK4TypeMethod(&funcBuf, fn, gc)
 			continue
 		}
-		// A top-level func that touches no package var is emitted free -- that
-		// is what ModelFreeFuncs told the call sites above, and it is the only
-		// form a type method can call. One that does touch a var reads a Model
-		// field and falls through to the method path below.
+		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
+		// its doc for what a package var costs a free function.
 		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && c.shared.canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitGTK4FreeFunc(&funcBuf, fn, gc)
 			continue

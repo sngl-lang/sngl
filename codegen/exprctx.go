@@ -80,13 +80,9 @@ type ExprCtx struct {
 	// as a method anyway is what left a type method — which is free, having no
 	// receiver to be a method on — calling `m.format(…)` with no `m` in sight.
 	FreeFuncs map[string]bool
-	// ModelParamFuncs names the methods on a user type that touch package
-	// state. Go has no receiver to hang one of those on, so it is lifted to a
-	// free function -- and package state is a field of the Model, so the
-	// lifted form takes the Model as a trailing parameter and every call site
-	// passes it. One map answers for both the signature and the call, because
-	// the definition and the call site drifting apart is the bug this exists
-	// to close.
+	// ModelParamFuncs names the methods on a user type that are lifted to a
+	// free function and touch package state: those take the Model as a
+	// trailing parameter. golang.ModelParamFuncs builds it and says why.
 	ModelParamFuncs map[*ir.Func]bool
 	// StateReceiver, when non-empty, names a struct receiver onto which
 	// component/package state vars are projected as EXPORTED fields. Set by

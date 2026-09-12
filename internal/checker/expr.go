@@ -1404,22 +1404,16 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 		} else {
 			// The receiver-as-param form with no parameter the receiver fits:
 			// the method is static in its type's namespace (`S.helper(5)`),
-			// and a value has nothing to hand it. Prepending the receiver
-			// regardless shifted every argument by one -- the definition kept
-			// its own arity while the call site passed one more, and the
-			// inliner bound the receiver to the first declared parameter.
+			// and a value has nothing to hand it.
 			//
-			// Pkg is empty for every declaration a program writes, its own and
-			// one it imported from a sibling directory alike, so what this
-			// excludes is a `sngl:` method: those write no receiver parameter
-			// at all -- `func Test.assert(b bool)` takes its receiver through
-			// Call.Receiver -- and the same shape there is the ordinary
-			// instance form.
+			// Pkg is empty for every declaration a program writes, an imported
+			// sibling directory's included, so what the gate excludes is a
+			// `sngl:` method: one takes its receiver through Call.Receiver, so
+			// the same shape there is the ordinary instance form.
 			//
-			// A native declaration is excluded for the other half of that
-			// reason: it *is* a host identifier, so its parameters are the
-			// host's and the receiver arrives the way the host takes it --
-			// before the dot under `method`, as argument zero without it.
+			// A native is excluded because it *is* a host identifier: its
+			// parameters are the host's, and the receiver arrives before the
+			// dot under `method` and as argument zero without it.
 			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
 				if len(sig.Params) == 0 {
 					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
