@@ -286,7 +286,7 @@ component main ui.node {
 
     // --- Timer drives the animated progress bar ------------------
     timer(interval=50ms, enabled=animating, @tick {
-        sliderVal = sliderVal >= 1 ? 0 : sliderVal + 0.01
+        if sliderVal >= 1 { sliderVal = 0 } else { sliderVal += 0.01 }
     })
 
     // --- A sample tree for the recursive component (§10) ---------
@@ -573,7 +573,15 @@ component main ui.node {
     }
 }
 
-// ----- 14. Tests (kept minimal) -------------------------------------
+// ----- 14. Window ----------------------------------------------------
+// A window at the root of the file is what a build renders; a component
+// is not one. `href` is the route the html target serves it at.
+
+ui.window #tour(title=APP_NAME, href="/") {
+    main
+}
+
+// ----- 15. Tests (kept minimal) -------------------------------------
 // Any platform that implements the TestRunner interface can execute
 // these. `go tool verify` runs them via the `none` interpreter; other
 // platforms wire them into their own runners. See `internal/testutil`
