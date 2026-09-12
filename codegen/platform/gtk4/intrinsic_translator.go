@@ -116,12 +116,6 @@ type gtk4Translator struct {
 	// no test surface -- a slot func, a canvas draw -- which is also why this
 	// is a sink rather than a field read back off the translator.
 	invokerSink func(gtkEventInvoker)
-
-	// pendingCanvasStyle holds the CanvasStyle local a CanvasApplyStyle bound,
-	// while the following draw primitive is translated. The canvas maps
-	// themselves are on emitShared -- see canvasMetaForID.
-	pendingCanvasStyle ir.Expr
-	canvasStyleCounter int
 }
 
 func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string)) *gtk4Translator {

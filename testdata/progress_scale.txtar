@@ -129,6 +129,13 @@ static void sngl_emit(gpointer instance, const char *signal) {
 // through any change handler that wrote the mutating var and re-applies
 // reactivity, blowing the stack. Skip the call when the value already
 // matches.
+// g_object_unref takes a gpointer, and a declaration that names it directly
+// would need a cast a SNGL override has no way to write. The shim is where the
+// cast belongs -- it is C, which is what this preamble is.
+static void sngl_unref_pixbuf(GdkPixbuf *p) {
+    if (p != NULL) g_object_unref(p);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";

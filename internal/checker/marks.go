@@ -81,7 +81,7 @@ func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, inPara
 		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MacroName())
 		return
 	}
-	args, err := markArgsFor(fn, attr.Args)
+	args, err := markArgsFor(fn, attr.Args, c.markConstValue)
 	if err != nil {
 		c.error(attr.Pos, "macro %s: %s", attr.MacroName(), err)
 		return
@@ -280,7 +280,7 @@ func enumMemberNames(t *ir.Type) []string {
 // parameters and reads each to its form. Arguments are positional; a parameter
 // with a default may be omitted from the tail, and a trailing list parameter
 // takes however many remain.
-func markArgsFor(fn *ir.Func, raw []ast.Expr) (markArgs, error) {
+func markArgsFor(fn *ir.Func, raw []ast.Expr, constVal func(string) (ast.Expr, bool)) (markArgs, error) {
 	params := fn.Params
 	required, variadic := 0, false
 	for i, p := range params {
@@ -303,7 +303,7 @@ func markArgsFor(fn *ir.Func, raw []ast.Expr) (markArgs, error) {
 			rest := raw[min(i, len(raw)):]
 			idents := make([]string, 0, len(rest))
 			for _, e := range rest {
-				v, err := readMarkArg(argIdent, enum, e)
+				v, err := readMarkArg(argIdent, enum, e, constVal)
 				if err != nil {
 					return markArgs{}, fmt.Errorf("argument %q: %w", p.Name, err)
 				}
@@ -315,7 +315,7 @@ func markArgsFor(fn *ir.Func, raw []ast.Expr) (markArgs, error) {
 		if i >= len(raw) {
 			break // the rest have defaults and were omitted
 		}
-		v, err := readMarkArg(kind, enum, raw[i])
+		v, err := readMarkArg(kind, enum, raw[i], constVal)
 		if err != nil {
 			return markArgs{}, fmt.Errorf("argument %q: %w", p.Name, err)
 		}
@@ -324,10 +324,19 @@ func markArgsFor(fn *ir.Func, raw []ast.Expr) (markArgs, error) {
 	return markArgs{params: params, vals: vals}, nil
 }
 
-func readMarkArg(kind argKind, enum []string, e ast.Expr) (markVal, error) {
+func readMarkArg(kind argKind, enum []string, e ast.Expr, constVal func(string) (ast.Expr, bool)) (markVal, error) {
 	switch kind {
 	case argString:
-		s, err := ast.EvalString(e)
+		// Resolving names, which is what lets twenty declarations share one
+		// import path instead of spelling it: `_canvasPkg` alone, or
+		// `base + "/api"`, since the value substitutes into an ordinary
+		// constant string expression.
+		//
+		// An `argIdent` parameter below is deliberately not given the resolver:
+		// there the identifier *is* the value -- a flag name -- and resolving
+		// it would turn a flag that happened to share a const's name into that
+		// const's value.
+		s, err := ast.EvalStringWith(e, constVal)
 		if err != nil {
 			return markVal{}, err
 		}
@@ -415,4 +424,32 @@ func (c *checker) macroHome(fn *ir.Func) *ir.Package {
 		return c.declPkg()
 	}
 	return c.libPkg(strings.TrimPrefix(fn.Pkg, "sngl:"))
+}
+
+// markConstValue resolves a package-level `const NAME = <expr>` for a mark
+// argument.
+//
+// From the declarations rather than from a scope, because a mark runs before
+// there is one to ask: the marks on a struct shell are applied in pass1's
+// first half, and consts are not registered until its second. The same reason
+// `ast.EvalString` never consults scope.
+//
+// Package-level only, and the first spec of that name wins. A duplicate is
+// `claimTopLevel`'s to report, and reporting it here as well would name the
+// mark rather than the declaration.
+func (c *checker) markConstValue(name string) (ast.Expr, bool) {
+	for _, d := range c.docs {
+		for _, stmt := range d.Stmts {
+			cd, ok := stmt.(*ast.ConstDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range cd.Specs {
+				if slices.Contains(spec.Names, name) && spec.Default != nil {
+					return spec.Default, true
+				}
+			}
+		}
+	}
+	return nil, false
 }

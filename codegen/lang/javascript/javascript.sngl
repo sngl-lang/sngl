@@ -41,4 +41,7 @@ func native(name string, module string = "", flags list<NativeFlag> = []) ir.Mac
 // JavaScript function that fails throws.
 //
 // It describes a call, so a struct refuses it.
-enum NativeFlag { async }
+// `method` says the identifier is a method of its first argument. A DOM API
+// has no other shape -- `ctx.arc(x, y, r)` and never `arc(ctx, x, y, r)` --
+// so describing one needs this.
+enum NativeFlag { async, method }

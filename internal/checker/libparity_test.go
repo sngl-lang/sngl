@@ -125,3 +125,34 @@ func broken(x int) int {
 		t.Errorf("a library function that does not return on all paths was accepted; diagnostics: %v", errs)
 	}
 }
+
+// A package may mark its own declarations with a macro it declares itself.
+// Nothing about a macro is special -- it is a func returning ir.Macro -- so the
+// only thing standing in the way was registration order: pass1 registered
+// struct shells, and applied their marks, long before it reached any func. A
+// package that wrote its own mark on its own struct got "unknown macro", and
+// the workaround was to reach for an equivalent mark from an imported tier.
+//
+// Asserted on sngl:language/go rather than a stub, because a mark's
+// implementation is keyed by the package that declares it: the compiler
+// implements the marks, so a stub package cannot invent one to be marked with.
+// `native` is that package's own macro, and DrawContext its own struct.
+func TestPackageMarksWithItsOwnMacro(t *testing.T) {
+	pkg, diags := checker.CheckLibPackage("language/go")
+	if pkg == nil {
+		t.Fatal("sngl:language/go did not load")
+	}
+	if errs := libParityErrors(t, diags); len(errs) > 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Name != "DrawContext" {
+			continue
+		}
+		if sd.Foreign.Name != "*snglcanvas.Context" {
+			t.Fatalf("DrawContext was not marked by the package's own `native`: Foreign = %+v", sd.Foreign)
+		}
+		return
+	}
+	t.Fatal("sngl:language/go declares no DrawContext")
+}

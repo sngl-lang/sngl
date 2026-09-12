@@ -41,7 +41,7 @@ window {
 		t.Fatal("go lang not registered")
 	}
 	caps := g.Capabilities(lang).ToLowerCaps()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne"}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()
@@ -145,7 +145,7 @@ window {
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
 	caps := g.Capabilities(lang).ToLowerCaps()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne"}); err != nil {
+	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 

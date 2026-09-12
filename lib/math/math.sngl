@@ -1,0 +1,6 @@
+// The ratio of a circle's circumference to its diameter.
+const pi = 3.141592653589793
+
+// Twice pi: one full turn in radians, which is what a shape sweeping a whole
+// circle needs and what every override was writing out by hand.
+const tau = 6.283185307179586

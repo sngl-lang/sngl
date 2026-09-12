@@ -1,126 +1,28 @@
 package canvasutil
 
 import (
-	"strconv"
-
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// GoCanvasState carries per-draw-func state for GoContextStmts — currently a
-// counter so each CanvasApplyStyle binds a uniquely-named style local. Callers
-// create one per draw func and pass it to every GoContextStmts call for that
-// func. A nil state is treated as a fresh one (fine for one-off translations).
-type GoCanvasState struct {
-	styleSeq int
-}
-
-// GoContextStmts translates one canvas-intrinsic CallStmt into method-call
-// statements against the pkg/go/canvas Context runtime. The Context is stateful
-// (SetFill/SetStroke/... mutate a pending style; a draw primitive consumes it).
-// CanvasApplyStyle binds the style to a uniquely-named local (via st) so the
-// setters don't re-evaluate the style expression repeatedly.
+// GoContextStmts translates one canvas-intrinsic CallStmt into a method call
+// on the pkg/go/canvas Context runtime.
 //
-// call.Args[0] is the ctx receiver; the remaining args are positional. Style
-// fields are addressed by their lowercase SNGL names (fill, r, strokeWidth);
-// the Go renderer ExportNames them to Fill/R/StrokeWidth, matching the
-// generated Color/CanvasStyle struct fields.
+// Two ids reach here: the save and restore that bracket a composed shape.
+// The drawing itself is `sngl:language/go`'s overrides now, written in SNGL
+// against that same runtime, so what is left is the bracket a draw function
+// cannot express as a shape.
 //
-// CanvasDrawPath emits a range loop over the SNGL cmds list, dispatching on each
-// command's op to ctx.MoveTo/LineTo/CubicTo/ClosePath, then ctx.PaintPath()
-// after the loop. The SNGL PathCmd slice never crosses into the runtime — the
-// generated code reads its fields and calls the Context path-builder methods —
-// so the generated PathCmd Go type and the (removed) runtime type need not
-// match.
-//
-// An unknown intrinsic returns nil.
-func GoContextStmts(cs *ir.CallStmt, st *GoCanvasState) []ir.Stmt {
-	if st == nil {
-		st = &GoCanvasState{}
-	}
+// call.Args[0] is the ctx receiver. An unknown intrinsic returns nil.
+func GoContextStmts(cs *ir.CallStmt) []ir.Stmt {
 	call := cs.Call
-	id := call.Func.Intrinsic
 	ctx := call.Args[0].Value
-	rest := call.Args[1:]
-	arg := func(i int) ir.Expr { return rest[i].Value }
-
-	switch id {
+	switch call.Func.Intrinsic {
 	case "CanvasSave":
 		return []ir.Stmt{ctxCall(ctx, "Save")}
 	case "CanvasRestore":
 		return []ir.Stmt{ctxCall(ctx, "Restore")}
-	case "CanvasApplyStyle":
-		// Bind the style to a local once so the five setters (each reading
-		// several fields) don't re-evaluate the (possibly composite-literal or
-		// method-call) style expression ~20 times per shape.
-		st.styleSeq++
-		name := "_cstyle" + strconv.Itoa(st.styleSeq)
-		// Typed from the style expression rather than left dyn. A dyn field
-		// read is a field on nothing, and the Go backend answers it by
-		// asserting to whichever single struct declares that name — which,
-		// for `.g`, is as likely to be a program's own Glyph as it is a
-		// colour.
-		styleType := exprType(arg(0))
-		styleRef := &ir.Ident{Name: name, Type: styleType}
-		col := func(field string) []ir.Expr {
-			c := selTyped(styleRef, field, fieldType(styleType, field))
-			return []ir.Expr{
-				selTyped(c, "r", ir.TypInt), selTyped(c, "g", ir.TypInt),
-				selTyped(c, "b", ir.TypInt), selTyped(c, "a", ir.TypInt),
-			}
-		}
-		return []ir.Stmt{
-			&ir.LocalVar{Name: name, Init: arg(0), Type: styleType},
-			ctxCall(ctx, "SetFill", col("fill")...),
-			ctxCall(ctx, "SetStroke", col("stroke")...),
-			ctxCall(ctx, "SetStrokeWidth", selTyped(styleRef, "strokeWidth", fieldType(styleType, "strokeWidth"))),
-			ctxCall(ctx, "SetFont", selTyped(styleRef, "fontSize", fieldType(styleType, "fontSize")), selTyped(styleRef, "fontFamily", fieldType(styleType, "fontFamily"))),
-			ctxCall(ctx, "SetLineStyle", selTyped(styleRef, "lineCap", fieldType(styleType, "lineCap")), selTyped(styleRef, "lineJoin", fieldType(styleType, "lineJoin"))),
-		}
-	case "CanvasDrawRect":
-		return []ir.Stmt{ctxCall(ctx, "Rect", arg(0), arg(1), arg(2), arg(3))}
-	case "CanvasDrawCircle":
-		return []ir.Stmt{ctxCall(ctx, "Circle", arg(0), arg(1), arg(2))}
-	case "CanvasDrawEllipse":
-		return []ir.Stmt{ctxCall(ctx, "Ellipse", arg(0), arg(1), arg(2), arg(3))}
-	case "CanvasDrawLine":
-		return []ir.Stmt{ctxCall(ctx, "Line", arg(0), arg(1), arg(2), arg(3))}
-	case "CanvasDrawPath":
-		return pathStmts(ctx, arg(0))
-	case "CanvasDrawText":
-		return []ir.Stmt{ctxCall(ctx, "Text", arg(0), arg(1), arg(2))}
-	case "CanvasDrawImage":
-		return []ir.Stmt{ctxCall(ctx, "Image", arg(0), arg(1), arg(2), arg(3), arg(4))}
 	}
 	return nil
-}
-
-// pathStmts builds a range loop over the SNGL PathCmd list (cmds), emitting
-// ctx.MoveTo/LineTo/CubicTo/ClosePath per command op, followed by
-// ctx.PaintPath() to fill+stroke the built path under the pending style.
-func pathStmts(ctx, cmds ir.Expr) []ir.Stmt {
-	loopVar := &ir.Ident{Name: "_cmd", Type: ir.TypDyn}
-	opSel := &ir.Select{Operand: loopVar, Field: "op", Type: ir.TypString}
-	field := func(name string) ir.Expr {
-		return &ir.Select{Operand: loopVar, Field: name, Type: ir.TypFloat}
-	}
-	cmdIf := func(op string, then ir.Stmt) *ir.If {
-		return &ir.If{
-			Cond: &ir.Binary{Op: ast.BinEq, Left: opSel, Right: &ir.Literal{Type: ir.TypString, Value: op}},
-			Body: []ir.Stmt{then},
-		}
-	}
-	body := []ir.Stmt{
-		cmdIf("moveTo", ctxCall(ctx, "MoveTo", field("x"), field("y"))),
-		cmdIf("lineTo", ctxCall(ctx, "LineTo", field("x"), field("y"))),
-		cmdIf("bezierTo", ctxCall(ctx, "CubicTo", field("cx1"), field("cy1"), field("cx2"), field("cy2"), field("x"), field("y"))),
-		cmdIf("arcTo", ctxCall(ctx, "ArcTo", field("cx1"), field("cy1"), field("x"), field("y"), field("r"))),
-		cmdIf("close", ctxCall(ctx, "ClosePath")),
-	}
-	return []ir.Stmt{
-		&ir.For{Key: "_cmd", Iter: cmds, Body: body},
-		ctxCall(ctx, "PaintPath"),
-	}
 }
 
 // ctxCall builds `ctx.Method(args...)` as a void CallStmt.

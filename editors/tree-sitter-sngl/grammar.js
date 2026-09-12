@@ -170,14 +170,17 @@ module.exports = grammar({
       optional(seq("=", field("default", $._expression)))
     )),
 
+    // prec.right resolves the shift/reduce conflict the optional block creates
+    // at `component X • {` in favour of the shift; without it
+    // `tree-sitter generate` fails outright.
     component_declaration: ($) =>
-      seq(
+      prec.right(seq(
       "component",
       field("name", $.identifier),
       optional(seq("(", optional($._param_list), ")")),
       optional($.type_identifier),
-      $.statement_block
-    ),
+      optional($.statement_block)
+    )),
 
     if_node: ($) =>
       seq(

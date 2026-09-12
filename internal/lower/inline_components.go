@@ -833,6 +833,15 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		if val == nil {
 			val = p.Default
 		}
+		if val == nil {
+			// A stdlib prop with no declared default renders as its type's
+			// zero value, which is what leaving one out means. Binding nothing
+			// left the parameter's name standing in the inlined body, which
+			// only ever mattered for a body that *reads* a prop the call site
+			// omitted -- a platform override does, so `style` on a
+			// `rect(x, y, w, h)` emitted an identifier nothing declares.
+			val = ir.DeclaredDefault(p.Type)
+		}
 		if val != nil {
 			bindings[p.Name] = val
 		}

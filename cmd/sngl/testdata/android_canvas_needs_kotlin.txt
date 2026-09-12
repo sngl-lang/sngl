@@ -1,0 +1,40 @@
+# android draws a canvas through its Compose overrides, which are Kotlin. Under
+# `--lang go` the synthesized draw function is emitted into golib, where
+# `drawRect` and `Offset` are undefined and the Compose import path is not a Go
+# package at all -- so the generated project fails at `go build` rather than
+# here.
+#
+# Before the shapes became overrides this combination panicked in the Go
+# backend on an untranslated canvas intrinsic. The report is that loud failure
+# staying loud.
+! sngl generate --lang=go --platform=android --out=bad app.sngl
+stderr 'Compose, which is Kotlin'
+stderr 'build this program with --lang kotlin'
+
+# The Kotlin half is unaffected.
+sngl generate --lang=kotlin --platform=android --out=ok app.sngl
+exists ok/MainScreen.kt
+grep 'drawRect' ok/MainScreen.kt
+
+# And a program with no canvas still builds under --lang go, which is what says
+# the refusal is about the drawing and not about the language.
+sngl generate --lang=go --platform=android --out=plain plain.sngl
+exists plain/golib/golib.go
+
+-- app.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window {
+    draw.canvas(width=40px, height=20px) {
+        draw.rect(x=0.0, y=0.0, w=8.0, h=4.0, style=draw.CanvasStyle{fill=color{r=255}})
+    }
+}
+-- plain.sngl --
+import ui "sngl:ui"
+
+func label() string { return "hi" }
+
+ui.window {
+    ui.text(value=label())
+}

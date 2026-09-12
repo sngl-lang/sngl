@@ -250,10 +250,17 @@ func applyDocEdits(t *testing.T, path string, edits []edit) {
 	os.WriteFile(path, []byte(out.String()), 0o644)
 }
 
-// TestPlatformSourcesPassChecker verifies that each platform's
-// lib/platform/<name>/ source passes the type checker (no bare expression
-// statements, etc.).
+// TestPlatformSourcesPassChecker verifies that each platform's own source
+// passes the type checker (no bare expression statements, etc.).
+//
+// With the registered targets, which is what makes it check anything: a Config
+// without them resolves no platform package, so the overrides the test is
+// named for were never loaded and the bodies never checked. It passed for as
+// long as it did because the stdlib components it would have measured all had
+// bodies of their own; the first bodyless one reported every target as having
+// no implementation, while the same program built fine.
 func TestPlatformSourcesPassChecker(t *testing.T) {
+	langs, plats := testtargets.Targets()
 	tests := []struct {
 		lang, platform string
 	}{
@@ -270,7 +277,8 @@ func TestPlatformSourcesPassChecker(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			if _, diags := checker.Check(doc, &checker.Config{FS: os.DirFS("."), Dir: ".", IsMain: true}); hasErrorDiags(diags) {
+			cfg := &checker.Config{FS: os.DirFS("."), Dir: ".", IsMain: true, Languages: langs, Platforms: plats}
+			if _, diags := checker.Check(doc, cfg); hasErrorDiags(diags) {
 				t.Errorf("checker error: %v", diags)
 			}
 		})

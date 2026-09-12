@@ -119,7 +119,13 @@ func parseStdlibDocs() []*ast.Document {
 				if err != nil {
 					panic(fmt.Sprintf("sngl: reading embedded stdlib file %q: %v", name, err))
 				}
-				doc, err := parser.Parse(e.Name(), data)
+				// Named by its path within lib/, not by its base name. A
+				// position's file is what `fileScopesByName` keys a pass2 body
+				// back to its imports by, so a library file sharing a base
+				// name with one of the program's own resolved through the
+				// program's scope: a user file called draw.sngl made
+				// `math.pi` in lib/ui/draw/draw.sngl undefined.
+				doc, err := parser.Parse(name, data)
 				if err != nil {
 					panic(fmt.Sprintf("sngl: parsing stdlib file %q: %v", name, err))
 				}
@@ -327,6 +333,26 @@ func RegisterTargetPackage(uri string, t any) {
 	targetPkgs[uri] = t
 }
 
+// registeredTargets is the language and platform lists a Config carries,
+// recovered from the packages the codegen registry recorded. The registry hands
+// this package the target itself, so which of the two a target is, is the
+// question its own interface answers.
+func registeredTargets() ([]ir.Language, []ir.Platform) {
+	targetPkgMu.RLock()
+	defer targetPkgMu.RUnlock()
+	var langs []ir.Language
+	var plats []ir.Platform
+	for _, t := range targetPkgs {
+		if l, ok := t.(ir.Language); ok {
+			langs = append(langs, l)
+		}
+		if p, ok := t.(ir.Platform); ok {
+			plats = append(plats, p)
+		}
+	}
+	return langs, plats
+}
+
 func registeredTarget(uri string) any {
 	targetPkgMu.RLock()
 	defer targetPkgMu.RUnlock()
@@ -351,6 +377,15 @@ func ProvidedDocs(t any) []*ast.Document {
 	// the fs.FS behind them can be shared between checks. Callers that want
 	// one parse memoize at their own scope: PackageSource for the readers
 	// outside a check, checker.providedDocs for the length of one.
+	// The package a file's name is qualified by, from the target's own
+	// identity: `ProvidedDocs` is handed the target and not its URI.
+	prefix := "target"
+	switch id := t.(type) {
+	case ir.Platform:
+		prefix = "platform/" + id.PlatformIdentifier()
+	case ir.Language:
+		prefix = "language/" + id.LanguageIdentifier()
+	}
 	fsys := p.PackageFS()
 	if fsys == nil {
 		return nil
@@ -368,7 +403,9 @@ func ProvidedDocs(t any) []*ast.Document {
 		if err != nil {
 			panic(fmt.Sprintf("sngl: reading target-provided file %q: %v", e.Name(), err))
 		}
-		doc, err := parser.Parse(e.Name(), data)
+		// Qualified for the reason the embedded tiers are: a target's own
+		// source must not share a file name with the program's.
+		doc, err := parser.Parse(prefix+"/"+e.Name(), data)
 		if err != nil {
 			panic(fmt.Sprintf("sngl: parsing target-provided file %q: %v", e.Name(), err))
 		}
@@ -999,8 +1036,15 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 				if !ok {
 					continue
 				}
-				if decl.HasParens {
-					// Parens form: the platform reads this body itself.
+				// Parens with nothing in them are the marker for a
+				// component the platform's own codegen reads by name rather
+				// than from an override body -- android's `component ui.input()`
+				// and its three siblings, which #213 is deleting.
+				//
+				// A parens form that *names* props is a prop selection, and
+				// testing HasParens alone dropped one here with no override
+				// registered and no diagnostic: the body simply vanished.
+				if decl.HasParens && len(decl.Props.Props) == 0 && decl.ChildrenType == nil {
 					continue
 				}
 				dot := strings.IndexByte(decl.Name, '.')
@@ -1050,10 +1094,27 @@ func (c *checker) mergeTargetExtensions(pkgName string) {
 					c.error(decl.Pos, "package for %q may not declare an override for %q", name, plat)
 					continue
 				}
-				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, nil)
+				// A selection is read the same way a program's override has
+				// it read: the base owns the prop types, and an entry names
+				// one of them.
+				selection, ok := c.overrideSelection(decl, stdComp)
+				if !ok {
+					continue
+				}
+				c.addOverrideBody(decl.Pos, stdComp, kind, plat, ns, local, decl.Body, false, selection)
 			}
 		}
 	}
+}
+
+// qualifiedComponentName is how an override names what it overrides: qualified
+// by the namespace it reached the declaration through, or bare for one this
+// package declares itself, where there is no namespace to name.
+func qualifiedComponentName(ns, local string) string {
+	if ns == "" {
+		return local
+	}
+	return ns + "." + local
 }
 
 // addPlatformBody records body as comp's implementation for platform, or
@@ -1069,12 +1130,21 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 		*overrides = map[string]ir.Body{}
 	}
 	if _, dup := (*overrides)[target]; dup {
-		c.error(pos, "component %s.%s already has an implementation for %q", ns, local, target)
+		c.error(pos, "component %s already has an implementation for %q", qualifiedComponentName(ns, local), target)
 		return
 	}
 	// Reserve the key first so duplicate detection works even when the body
 	// check appends nothing (an empty body).
 	(*overrides)[target] = ir.Body{}
+	// An override is the body a target renders, so there is nothing left for
+	// one with no body to be -- and it would satisfy the base declaration's
+	// own no-body rule while rendering nothing, which is the silence that rule
+	// exists to refuse. Reported after the key is reserved, so the base is not
+	// reported too: a supplier was written, and this is the one thing wrong.
+	if !body.IsDefined() {
+		c.error(pos, "override %s for %q has no body: an override is the body the target renders", qualifiedComponentName(ns, local), target)
+		return
+	}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:      comp,
 		platform:  target,
@@ -1490,7 +1560,17 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	// Through LibSources so the IR is built from the same documents
 	// PackageSource hands back: a mark is read off the IR and its declaration
 	// then looked up in the source by pointer.
-	cfg := &Config{LibSources: map[string][]*ast.Document{name: PackageSource(name)}}
+	// The registered targets, because a target package imports other target
+	// packages -- html's source imports sngl:language/js -- and resolving one
+	// is what says the language exists. Without them `sngl check
+	// sngl:platform/html` reported `unknown language "js"` about the platform's
+	// own import, while the same package checked clean inside a build.
+	langs, plats := registeredTargets()
+	cfg := &Config{
+		LibSources: map[string][]*ast.Document{name: PackageSource(name)},
+		Languages:  langs,
+		Platforms:  plats,
+	}
 	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
 	// A membership check a library body deferred is drained by the pass2 of

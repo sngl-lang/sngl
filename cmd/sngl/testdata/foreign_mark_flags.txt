@@ -32,6 +32,16 @@ stderr 'pure, async'
 ! sngl check onstruct.sngl
 stderr 'which describes a call'
 
+# native is the exception, because it describes the declaration rather than a
+# call: it says the host already has this, so nothing is emitted for it and a
+# reference resolves to the host name. A struct says that as readily as a
+# function does.
+# Asserted on Go, because a type name is where the difference shows: the
+# reference resolves to the host's own name and nothing declares a second one.
+sngl generate --lang=go --platform=bubbletea --out=native native.sngl
+grep 'api\.Entry' native/model.go
+! grep 'type Entry struct' native/model.go
+
 -- pure.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
@@ -101,6 +111,25 @@ struct Entry {
 
 component main node {
     text(value=Entry{title = "x"}.title)
+}
+
+window {
+    main
+}
+-- native.sngl --
+import . "sngl:ui"
+import . "sngl:macro"
+
+#[foreign("go:example.com/api", "api.Entry", native)]
+struct Entry {
+    title string
+}
+
+#[foreign("go:example.com/api", "api.Load")]
+func load() Entry { return Entry{title = "x"} }
+
+component main node {
+    text(value=load().title)
 }
 
 window {

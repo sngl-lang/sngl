@@ -502,6 +502,12 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	// intrinsic call. Must precede every other branch so e.g. an inlined
 	// `stdlib.StrUpper(s)` is emitted as `s.toUpperCase()`, not a bare call.
 	if out, _, ok := codegen.EmitIntrinsicCall(langJS, jc.Ctx.Platform, n, jc.EvalExpr); ok {
+		// The style intrinsic's expansion names a page helper. Recorded here
+		// because the expansion is a package-level registration with no access
+		// to the per-build Emission, and this is the one place that knows the
+		// call was emitted: html used to write the helper beside every canvas
+		// whether anything called it, which left it dead the moment a shape
+		// drew from an override instead.
 		return out
 	}
 	// Native scheme-import call (e.g. js:): emit through the bundler
@@ -555,17 +561,39 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	if bundled {
 		jc.registerNativeImport(mod, name)
 	}
+	// A platform may have to emit something alongside a native it declared:
+	// html's canvas image shim is a function on the page rather than a host
+	// API, and only a call reaching it says the page needs it. The name is
+	// recorded so the platform can ask; nothing here knows which names matter.
+	if jc.Ctx != nil && jc.Ctx.Helpers != nil {
+		jc.Ctx.Helpers["native:"+name] = true
+	}
 	args := jc.evalCallArgs(n.Args)
 	var call string
-	if bundled {
+	switch {
+	// `method` says the identifier is a method of its first argument, which is
+	// the only shape a DOM API has: `ctx.arc(x, y, r)`, never `arc(ctx, …)`.
+	case n.Func.NativeMethod && len(args) > 0:
+		call = args[0] + "." + jsMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")"
+	case bundled:
 		call = codegen.NativeAlias(mod) + "." + name + "(" + strings.Join(args, ", ") + ")"
-	} else {
+	default:
 		call = name + "(" + strings.Join(args, ", ") + ")"
 	}
 	if n.Func.IsAsync {
 		call = "await " + call
 	}
 	return call
+}
+
+// jsMethodTail is the last segment of a dotted native name: the method to
+// invoke on the receiver, with any type or namespace prefix dropped because
+// the receiver supplies it.
+func jsMethodTail(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
 }
 
 func (jc *JsIRContext) evalFuncvarCall(n *ir.Call) string {

@@ -23,6 +23,72 @@ Two valid forms — no third:
 
 `func name(params) -> Type` is **not valid syntax** (despite occasional appearances in old docs/specs). The arrow `->` is reserved for func *type* expressions only, and even that usage is being phased out.
 
+## Component syntax
+
+A component's block is optional, as a func's is, and the two spellings say
+different things:
+
+- `component name(params) [Tree] { ... }` — a body. `{}` is an *empty* body and
+  says the component renders nothing, which is a legitimate thing to say.
+- `component name(params) [Tree]` — no block at all is a **signature**, and the
+  render comes from somewhere the declaration names.
+
+`reportBodylessComponents` requires the second to be true rather than assuming
+it — the counterpart of the rule `checkFuncBody` applies to a bodyless func.
+Without it a bodyless declaration renders nothing, silently, on every target
+that has no override for it. An **override** may not be bodyless for the same
+reason from the other side: an override *is* the body a target renders, so one
+with no body would satisfy the base's rule while rendering nothing. It is
+refused in `addOverrideBody` *after* the override key is reserved, so the base
+is not reported a second time for a supplier that was written and rejected.
+
+Two limits on that rule, both deliberate and both load-bearing for #213:
+
+- **One override satisfies it for every target**, because a program is checked
+  without knowing which target a build picks. This is the func rule's existing
+  semantics rather than a new hole, and
+  `testdata/bodyless_component_override.txtar` pins what it costs: two targets,
+  where the one with no override renders nothing at all.
+- The diagnostic names only the override, because a program can write neither
+  `#[intrinsic]` nor `#[builtin]` — both live in `sngl:internal/marks`.
+
+A **library** declaration is asked the same question by
+`reportBodylessLibComponents`, and asked it **per target**: by then the build's
+targets are resolved, so an override for one is not an answer for another.
+`hasOverrideFor` mirrors `ir.pick` — the platform's override answers first and
+the language's is the fallback, which is what lets one
+`sngl:language/go` implementation serve fyne and bubbletea while gtk4 and
+android override on the platform axis. It runs at the very end of
+`CheckPackage`, because a lib package loads on import *or* when
+`mergeTargetExtensions` resolves an override's base, and both can happen after
+`newChecker`.
+
+It is also asked **only of what the program renders**. A gap matters where it
+is reached, and importing a package is not reaching every declaration in it: a
+program that imports `sngl:ui/draw` for `Point` and draws nothing asks its
+target for no shapes, and a new platform implements what its users write rather
+than the whole of `lib/` before the first program builds.
+`reachedLibComponents` is that set — seeded from the program's own bodies and
+closed to a fixed point through the body each target will actually build, an
+override's where it has one. Ungated, a stub platform in a test about output
+props was asked for seven shapes.
+
+Two consequences worth knowing before touching `lib/`:
+
+- A bodyless `lib/` component the program renders, with no implementation for
+  the target being built, is a **build failure**, which is the mechanism that
+  stops an implementation gap being skipped in a switch.
+- A platform package's override may carry a **prop selection**, read by the
+  same `overrideSelection` a program's override gets. Only
+  parens-with-nothing-in-them is skipped, and that form is android's marker for
+  a component its own codegen reads by name.
+
+The distinction has to survive the checker, so it is `ir.Component.Bodyless`
+rather than `AST.Body.IsDefined()` — that reports whether a block came from
+*source*, so everything `ir.Convert` rebuilds looks bodyless, and reading it
+as "has a body" made `sngl dump --stage checked` print every empty-bodied
+component back as a signature.
+
 ## Loop forms
 
 `for` has one head, and its *type* says what the loop does — the grammar does
@@ -210,6 +276,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component that lowers to an effect, not a builtin node, which is why it carries no `#[builtin]` mark. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
+- **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
@@ -522,6 +589,15 @@ intrinsic or with another platform's. `lib/internal_intrinsics_test.go` holds
 the two forms to opposite rules: a function id must be in the registry, a
 component id must not be, and must carry its namespace.
 
+An `#[intrinsic]` component may **not** have a body, which is the same claim
+from the other side: the mark says where the render comes from, so a body
+beside one is emitted by nobody and read by nobody -- `isPrimitiveComponent`
+exempts the declaration from inlining precisely so the platform can render it
+from the declaration itself. `{}` is refused with the rest, because it says the
+component renders nothing, which is the one thing an intrinsic never does. The
+rule is at registration, so gtk4's GIR-synthesized declarations are held to it
+too.
+
 The mark's other job is to stop the inliner. A platform's extension override
 inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides
@@ -537,6 +613,38 @@ not a tree, and reading it after the change exempted every wrapper in the
 language.
 `isPlatformStdlibComponent` is a different question: whether a component came
 from a `sngl:platform/` package the program imports.
+
+A **native** mark — `#[go.native(path, name, flags)]`, `#[js.native(name, module, flags)]` — is the other half: the declaration *is* that host
+identifier, so a call becomes a call to it and nothing is emitted for the
+declaration itself. Two things about the name that are easy to get wrong:
+
+- **It carries its own qualifier.** `#[go.native("strings", "strings.ToUpper")]`,
+  not `("strings", "ToUpper")` — a Go package's name is not a function of its
+  import path (`gopkg.in/yaml.v3` is package `yaml`), so the path cannot supply
+  it. The path is what `RequireImport` adds.
+- **Every language has one.** `go.native` and `js.native` were joined by
+  `kotlin.native`, which android needs to describe Compose, and by
+  **`#[cnative]` in `sngl:macro`** — C is an ABI rather than a target, so a
+  platform built on a C library (gtk4 on cairo) names C identifiers and no
+  language at all. The Go backend renders those as cgo and supplies the
+  `C.double`/`C.int` conversions from the declared parameter types.
+- **A native is never emitted.** Every call became a call to the host
+  identifier, so a declaration would be read by nobody — and it is written as
+  a stub over the zero value, which reads exactly like a real implementation.
+  JavaScript got that rule first; Kotlin had the bug until a `deny` caught
+  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call.
+- **`method` says the identifier is invoked *on* its first argument** rather
+  than handed it: `c.Circle(1, 2)` where the default is
+  `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
+  which one a host API wants is the API's to say — cairo takes its context
+  first and wants the default. JavaScript has no receiver-first spelling at
+  all, so describing a DOM API needs the flag: `ctx.arc(x, y, r)` is the only
+  thing that runs. Only the last dotted segment is emitted, because the
+  receiver supplies the package and type.
+- **`named` (Kotlin) passes the arguments by the declaration's own parameter
+  names**, which is what reaching a host parameter after one with a default
+  requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
+  reached past `alpha` positionally.
 
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and

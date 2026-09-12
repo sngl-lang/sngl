@@ -1,0 +1,281 @@
+// The portable components, implemented for this platform.
+//
+// Split from android.sngl rather than living in it: the package is embedded as
+// `*.sngl`, so a file is a topic and not a compilation unit. The intrinsics
+// these are written in terms of are declared there.
+
+import ui "sngl:ui"
+import time "sngl:time"
+import . "sngl:internal/marks"
+// --- Core Layout ---
+
+component ui.vbox[platform] {
+    Column(modifier={...style}) {
+        children
+    }
+}
+
+component ui.hbox[platform] {
+    Row(modifier={...style}) {
+        children
+    }
+}
+
+component ui.stack[platform] {
+    Box(modifier={...style}) {
+        layers
+    }
+}
+
+component ui.spacer[platform] {
+    Spacer(modifier={...style}) {}
+}
+
+component ui.scroll[platform] {
+    Column(
+        modifier={...style},
+        chain=["verticalScroll(rememberScrollState())"],
+    ) {
+        content
+    }
+}
+
+// --- Core Text & Media ---
+
+component ui.text[platform] {
+    Text(text=value, modifier={...style}, style={...style}) {}
+}
+
+component ui.button[platform] {
+    Button(onClick=func() { click() }, modifier={...style}, colors={...style}, shape={...style}) {
+        Text(text=text) {}
+    }
+}
+
+// Compose has no image loader in the box: an `Image` needs a painter, and
+// every source SNGL accepts (a URL, an asset path) needs a different one, so
+// android draws no image yet. The emitter used to render a TODO comment,
+// which draws nothing; an unsized Spacer is the declared spelling of that.
+component ui.image[platform] {
+    Spacer(modifier={...style}) {}
+}
+
+// Not converted. The placeholder becomes Compose's `label`, which takes a
+// composable lambda — `label = { Text("...") }`. An intrinsic prop can carry a
+// value or a statement lambda, but nothing declares a *composable* lambda
+// argument, so the label cannot be written here.
+component ui.input() {
+    OutlinedTextField(value=value) {}
+}
+
+component ui.checkbox[platform] {
+    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+        Checkbox(checked=checked, onCheckedChange=func(on) { change() }) {}
+        if label != "" {
+            Text(text=label) {}
+        }
+    }
+}
+
+// --- Tier 1: Core Input ---
+
+// Compose's RadioButton is one option, so the group is the loop: the
+// container is the direction the prop asks for and each option is a button
+// beside its label. onClick is passed nothing, so the override builds the
+// ChangeEvent itself from the option it looped over.
+component ui.radio[platform] {
+    if direction == "horizontal" {
+        Row(modifier={...style}) {
+            for var opt = options {
+                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
+                    Text(text=opt) {}
+                }
+            }
+        }
+    } else {
+        Column(modifier={...style}) {
+            for var opt = options {
+                Row(args=["verticalAlignment = Alignment.CenterVertically"]) {
+                    RadioButton(selected=(value == opt), onClick=func() { change({value=opt}) }) {}
+                    Text(text=opt) {}
+                }
+            }
+        }
+    }
+}
+
+component ui.toggle[platform] {
+    Row(modifier={...style}, args=["verticalAlignment = Alignment.CenterVertically"]) {
+        Switch(checked=checked, onCheckedChange=func(on) { change() }) {}
+        if label != "" {
+            Text(text=label) {}
+        }
+    }
+}
+
+// Not converted, for three reasons. The menu needs per-call-site state
+// (`var expanded by remember`), and expandCall hoists an override's vars into
+// the enclosing composable, so a select inside a `for` would share one
+// `expanded` across every row. DropdownMenuItem's `text` is a composable
+// lambda (see input). And the placeholder fallback needs Kotlin's
+// `isNotEmpty()`, which SNGL has no spelling for on a bound prop.
+component ui.select() {
+    OutlinedTextField(value=value, readOnly=true) {}
+}
+
+component ui.textarea[platform] {
+    OutlinedTextField(
+        value=value,
+        minLines=3,
+        modifier={...style},
+        onValueChange=func(e) {
+            input(e)
+            change({value=e.value})
+        },
+    ) {}
+    // @input carries the InputEvent Compose's text is built into;
+    // @change carries a ChangeEvent, a different declaration, so it
+    // takes the value rather than the other event.
+}
+
+// Not converted. Same composable-lambda `label` as input.
+component ui.datepicker() {
+    OutlinedTextField(value=value, readOnly=true) {}
+}
+
+// --- Tier 2: Feedback & Navigation ---
+
+// Not converted. Compose's determinate/indeterminate split is by *presence* of
+// the `progress` argument, and the emitter picks by whether the call site gave
+// `value` at all — a distinction an override body cannot draw, since a prop it
+// reads is always there. `progress` is also a `() -> Float` lambda, and a
+// func-typed prop's body is emitted as statements, not as an expression.
+component ui.progress() {
+    LinearProgressIndicator {}
+}
+
+component ui.spinner[platform] {
+    CircularProgressIndicator(modifier={...style}) {}
+}
+
+component ui.badge[platform] {
+    Badge(modifier={...style}) {
+        Text(text=value) {}
+    }
+}
+
+component ui.divider[platform] {
+    HorizontalDivider(modifier={...style}) {}
+}
+
+component ui.card[platform] {
+    Card(modifier={...style}) {
+        content
+    }
+}
+
+component ui.chip[platform] {
+    Text(text=label) {}
+}
+
+component ui.link[platform] {
+    Text(
+        text=text,
+        style={...style},
+        args=["color = MaterialTheme.colorScheme.primary"],
+    ) {}
+}
+
+component ui.tabs[platform] {
+    TabRow(selectedTabIndex=selected) {
+        panels
+    }
+}
+
+component ui.modal[platform] {
+    if open {
+        Dialog(onDismissRequest=func() { close() }) {
+            Surface(args=["shape = MaterialTheme.shapes.medium"]) {
+                Column(modifier={padding=16}) {
+                    if title != "" {
+                        Text(text=title) {}
+                    }
+                    content
+                }
+            }
+        }
+    }
+}
+
+component ui.drawer[platform] {
+    Column(modifier={...style}) {
+        content
+    }
+}
+
+component ui.tooltip[platform] {
+    Column(modifier={...style}) {
+        trigger
+    }
+}
+
+component ui.popover[platform] {
+    Column(modifier={...style}) {
+        content
+    }
+}
+
+component ui.splitview[platform] {
+    Column(modifier={...style}) {
+        panes
+    }
+}
+
+component ui.table[platform] {
+    Text(text="") {}
+}
+
+component ui.tree[platform] {
+    Text(text="") {}
+}
+
+component ui.menu[platform] {
+    Text(text="") {}
+}
+
+component ui.menubar[platform] {
+    Text(text="") {}
+}
+
+component ui.toolbar[platform] {
+    Column(modifier={...style}) {
+        controls
+    }
+}
+
+component ui.avatar[platform] {
+    Text(text="") {}
+}
+
+// --- The timer ---
+//
+// A recurring deadline. Compose has a shape for it -- LaunchedEffect keyed on
+// the gate, with a delay loop inside -- so the primitive is that, and the
+// emitter builds it from the declaration.
+//
+// The gate reaches the emitter as an expression rather than as the bare
+// variable name the analysis used to reduce it to. `enabled=true` produced
+// `LaunchedEffect() { while () {`, which is not Kotlin, and no golden covered
+// an android timer to say so.
+#[tree.none]
+#[intrinsic("android:Timer")]
+component Timer(
+    interval time.duration,
+    enabled bool,
+    @tick,
+)
+
+component time.timer[platform] {
+    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+}

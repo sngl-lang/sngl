@@ -65,6 +65,14 @@ var alwaysOn = []string{
 	"IndexedIter",
 	"InlinePure",
 	"IterKind",
+	// A helper a `sngl:` package declares and an emitted body calls has to be
+	// in pkg.Funcs for any target, because that is what every backend emits
+	// from.
+	"LibFuncs",
+	// Which bindings are written is a fact about the finished bodies, and
+	// every target has a backend that may care -- Kotlin copies on binding
+	// unless this says the binding is never written.
+	"MutatedVars",
 	"PlatformExtensionBody",
 	"PropBindings",
 	"Query",
