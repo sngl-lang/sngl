@@ -20,8 +20,8 @@ override's helper survives to lowering only by travelling in the override's own
 ir.Body and being swapped back by specializeComp. Without that swap the call
 reaches each backend with no declaration emitted for it.
 
-deny out/go/bubbletea/model.go `htmlTally` -- the html override's var belongs to the target that declared it and no other
-deny out/none/html/index.html `btTally` -- and the bubbletea override's likewise
+deny out/go/bubbletea/model.go `htmlTally` -- guards specializeComp's pre-existing Vars swap, not this fixture's subject: it holds if that swap ever becomes a merge, and the Funcs/Methods swap can be removed without either of these two firing
+deny out/none/html/index.html `btTally` -- the same claim from the other target
 deny out/go/bubbletea/model.go `\(m \*outer\)` -- the helper is cloned onto the model, so no method is emitted on the component's own name; without the ir.Body swap bubbletea wrote `func (m *outer) Bump()` against a type it never declares
 deny out/none/html/index.html `outer_bump\(` -- the same from html's side: only the per-instance clone is emitted, so the un-instanced name appears in neither the declaration nor a call
 deny * `\blabel\b` -- the captured prop is substituted by the instantiation's argument, so no target emits its name
