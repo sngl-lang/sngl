@@ -5396,6 +5396,10 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		case *ir.ErrorBoundary:
 			c.checkTreeMembership(owner, pos, s.Children, want, where)
 			c.checkTreeMembership(owner, pos, s.Failed, want, where)
+		// A context override is the third of them: it sets a value for the
+		// nodes under it and puts nothing in the tree itself.
+		case *ir.ContextProvider:
+			c.checkTreeMembership(owner, pos, s.Children, want, where)
 		// A slot insertion is a position rather than a node: what lands there
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.

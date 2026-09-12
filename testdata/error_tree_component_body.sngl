@@ -25,6 +25,17 @@ component guarded ui.node {
     }
 }
 
+// A context override is the third construct the walk reaches through, beside
+// an `if` and a `for`: it sets a value for the nodes under it and puts nothing
+// in the tree itself. `scoped` renders a shape, which a widget body may not.
+context #theme("light")
+
+component scoped ui.node {
+    theme("dark") {
+        d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000}) // ERROR(check) "expected node component in the body of scoped, got circle"
+    }
+}
+
 // A slot insertion is a position rather than a node, so the declaration is
 // where this is reported -- the same reading error_tree_inferred_window_owner
 // gets for a window.

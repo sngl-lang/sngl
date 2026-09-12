@@ -120,6 +120,8 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 			nested(s.Body, s.Else)
 		case *ir.ErrorBoundary:
 			nested(s.Children, s.Failed)
+		case *ir.ContextProvider:
+			nested(s.Children)
 		case *ir.SlotInst:
 			nested(s.Children)
 		case *ir.Window:
@@ -156,6 +158,10 @@ func insertsSlot(stmts []ir.Stmt) bool {
 			}
 		case *ir.ErrorBoundary:
 			if insertsSlot(s.Children) || insertsSlot(s.Failed) {
+				return true
+			}
+		case *ir.ContextProvider:
+			if insertsSlot(s.Children) {
 				return true
 			}
 		}

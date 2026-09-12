@@ -1,0 +1,19 @@
+// A context override is evidence the walk has to reach through, the way an
+// `if`, a `for` and a boundary are: it sets a value for the nodes under it and
+// puts nothing in the tree itself. Read as opaque, `scoped` renders nothing the
+// inference can see and is refused as a body that names no tree -- which is
+// what it did before #214 put the case in `treeEvidence`.
+
+import ui "sngl:ui"
+
+context #theme("light")
+
+component scoped {
+    theme("dark") {
+        ui.text(value="x")
+    }
+}
+
+ui.window #home(title="h") {
+    scoped()
+}

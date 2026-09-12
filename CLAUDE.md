@@ -395,8 +395,9 @@ the count wrappers; the families live where their members do.
 **Naming nothing asks the compiler which family it joins**, and the body is
 what answers: a declaration that renders a widget is one. The evidence is the
 *root* of the body — what the component puts in the tree, not what those nodes
-host — and an `if`, a `for` and a boundary are how the nodes under them got
-there rather than nodes, so the walk reaches through all three. A slot
+host — and an `if`, a `for`, a boundary and a context override are how the
+nodes under them got there rather than nodes, so the walk reaches through all
+four. A slot
 insertion is not evidence: what a slot naming no family accepts is the family
 of the component declaring it, so reading one reads the answer off the
 question. Two bodies have no answer, and both are positioned errors:
@@ -437,11 +438,24 @@ which makes `output` and a `#[tree.none]` component exempt for free: both carry
 a nil `Tree`, so the first is never asked and the second is left to
 `checkTreelessBody` rather than reported twice.
 
-An `ir.ErrorBoundary` is reached through there like an `if` and a `for`, and
-for the same reason. Its own check binds `T` off its content and holds the rest
-to that; reaching through it is what holds the `T` it settled on to the family
-the surrounding *position* accepts, without which a boundary around a shape
-passed a widget position in silence.
+**Four constructs are reached through, not four minus one.** `checkTreeMembership`
+walked an `if` and a `for`; an `ir.ErrorBoundary` and an `ir.ContextProvider`
+say the same thing in their own vocabulary and were walked past. The boundary
+is the subtler of the two: its own check binds `T` off its content and holds
+the rest to that, and reaching through it is what holds the `T` it settled on
+to the family the surrounding *position* accepts — without which a boundary
+around a shape passed a widget position in silence. A context override sets a
+value for the nodes under it and puts nothing in the tree itself, so it reads
+the same way.
+
+`treeEvidence` is the same list from the other side and was missing the same
+case: a component with no return position whose body was
+`theme("dark") { ui.text(…) }` rendered nothing the inference could see and was
+refused as a body that names no tree. `insertsSlot` rides along, since it picks
+which of the two diagnostics that refusal gets.
+`testdata/tree_inferred_context.sngl` is the inference half and
+`error_tree_component_body.sngl`'s `scoped` the membership half; each fails
+when its own arm alone is removed.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because
