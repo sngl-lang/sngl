@@ -1217,18 +1217,10 @@ func (c *checker) collectExtensionDecls(owner *ir.Component, body ast.StmtBlock)
 
 // reportOverrideFuncShadows refuses an override-body func whose bare name the
 // base declaration's body already gave a method, and returns the ones that
-// stand.
-//
-// The two bodies are separate and a body-scoped name is keyed by nothing, so
-// this is a *codegen* limitation rather than a language rule -- the same
-// answer claimBodyType gives for a body-local type, and for the same reason:
-// nothing renames a component method per body, so both would be emitted as
-// one host identifier. #198's hoist-and-rename is where this is lifted; the
-// diagnostic says so rather than reading as a redeclaration.
-//
-// Two *overrides* each writing one is fine and stays so: each gets its own
-// clone of the method table, and specializeComp swaps the whole list, so a
-// build only ever holds the target's own.
+// stand. A component method is emitted under one name per component and
+// nothing renames it per body, so both would reach a backend as one host
+// identifier. Two *overrides* each writing one is fine: each gets its own
+// clone of the method table.
 func (c *checker) reportOverrideFuncShadows(pe pendingExtension, base map[string]*ir.Func, defs []*ast.FuncDef) []*ast.FuncDef {
 	if len(base) == 0 || len(defs) == 0 {
 		return defs
@@ -1253,12 +1245,8 @@ func (c *checker) reportOverrideFuncShadows(pe pendingExtension, base map[string
 // component this scope does not bind by its bare name, and returns the ones
 // that stand.
 //
-// Every route to a component-body method -- the synthesised receiver type,
-// AttachMethod, lookupBodyMethod -- resolves the receiver as a bare name, and
-// an override written against a qualified import (`component draw.circle[...]`)
-// binds only the alias. Binding the bare name for the body's duration is what
-// supporting it would take, and that shadows a same-named declaration of the
-// program's own for as long as it lasts.
+// Every route to a component-body method resolves the receiver as a bare name,
+// and an override written against a qualified import binds only the alias.
 func (c *checker) reportOverrideFuncUnreachableReceiver(pe pendingExtension, defs []*ast.FuncDef) []*ast.FuncDef {
 	if len(defs) == 0 {
 		return defs
@@ -1371,17 +1359,10 @@ func (c *checker) checkPendingExtensions() {
 			}
 			pe.comp.AST.Body = pe.body
 			pe.comp.Body = nil
-			// checkComponentBody declares comp.Vars into the body scope and
-			// checkComponentVars looks the pre-registered var up there by
-			// name, so the body's own state has to be collected before the
-			// body is checked — pass1's collectComponentDecls only ever saw
-			// the component's parenless stub. The list starts from the
-			// component's own vars so a var the stdlib declaration made stays
-			// visible to the override.
-			// The scope is thrown away again: the symbols travel on BodyDecls
-			// and declareBodyDecls rebinds them for the body check. It is what
-			// a var annotation resolves against in the meantime, which is why
-			// the two are collected under one.
+			// pass1 only ever saw the component's parenless stub, so the
+			// override's own state has to be collected before the body check
+			// that declares it. Starting from the component's own keeps a var
+			// the stdlib declaration made visible to the override.
 			c.pushScope()
 			vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
 			pe.comp.Vars = append(slices.Clip(savedVars), vars...)

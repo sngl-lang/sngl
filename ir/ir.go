@@ -532,20 +532,12 @@ func (v *Var) IsExported() bool { return isExportedName(v.Name) }
 type Body struct {
 	Vars  []*Var
 	Stmts []Stmt
-	// BodyDecls is Component.BodyDecls as this body saw it -- the declaring
-	// component's own plus whatever the override body added. It travels for
-	// the same reason Vars does: a component nested in an override body is
-	// linked to its owner through this list (ir.BodyOwners), and without it
-	// the link exists only while the checker has the override installed.
+	// The three below travel for the same reason Vars does. BodyDecls is what
+	// links a component nested in this body to its owner (ir.BodyOwners).
 	BodyDecls []Symbol `json:"-"`
-	// Funcs is Component.Funcs as this body saw it, on the same terms: the
-	// declaring component's methods plus the ones the override body wrote.
-	// A method is reached by receiver rather than by name, so the two bodies'
-	// helpers are distinguishable only by which list is installed.
-	Funcs []*Func `json:"-"`
-	// Methods is the receiver's member table as this body saw it. Held per
-	// body, not merged, so two targets may each write a `func helper` without
-	// one of them being a redeclaration of the other.
+	Funcs     []*Func  `json:"-"`
+	// Methods is the receiver's member table, per body rather than merged, so
+	// two targets may each write a `func helper`.
 	Methods map[string]*Func `json:"-"`
 }
 

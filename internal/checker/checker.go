@@ -3875,12 +3875,9 @@ func (c *checker) checkBodyOnce(comp *ir.Component) {
 
 // checkOverrideNestedBodies checks the bodies of the components an override
 // body declared, and records them as checked so pass2 does not check them
-// again with the base declaration restored.
-//
-// This is checkBodyOnce's owner-first ordering done from the other end: the
-// owner is an override body, which pass2 never reaches, so the caller has
-// checked it already and the descent carries on from there for a body nested
-// deeper still.
+// again with the base declaration restored. checkBodyOnce's owner-first
+// ordering from the other end: the caller has checked the owner already,
+// because pass2 never reaches an override body.
 func (c *checker) checkOverrideNestedBodies(decls []ir.Symbol) {
 	for _, sym := range decls {
 		nested, ok := sym.(*ir.Component)
