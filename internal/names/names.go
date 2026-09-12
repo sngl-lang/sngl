@@ -1,17 +1,11 @@
-// Package names allocates identifiers into one flat namespace.
+// Package names allocates identifiers into one flat namespace: reserve the
+// spellings that are fixed, then request a preferred name and get back one
+// that does not collide.
 //
-// Two compiler phases need the same thing from opposite directions. A hoist
-// has many candidates competing for one namespace and each may bend
-// (renameNestedFuncs); an emitter has a handful of locals it writes itself and
-// has to admit user-chosen names beside them (the Go route handler). Both are
-// "these spellings are fixed, now give me one that does not collide", which is
-// what a Registry is.
-//
-// It knows nothing about what a namespace holds. Go's package scope holds
-// types, funcs, vars and consts together while a method set is separate, and
-// Kotlin and JavaScript divide them differently again — so a caller with two
-// namespaces builds two registries rather than asking this one to model the
-// distinction.
+// It models no namespace of its own. Go's package scope holds types, funcs,
+// vars and consts together while a method set is separate, and Kotlin and
+// JavaScript divide them differently again — so a caller holding two
+// namespaces builds two registries.
 package names
 
 import "strconv"
@@ -20,9 +14,8 @@ import "strconv"
 // names that are not.
 //
 // Reserve is order-independent, Unique is not, so a caller must reserve
-// everything it knows about before the first Unique. Doing it the other way
-// round lets a fixed spelling arrive after a generated name has already taken
-// it, and there is nothing left to bend.
+// everything it knows about before the first Unique — a fixed spelling
+// arriving after a generated name has taken it has nothing left to bend.
 type Registry struct {
 	taken map[string]bool
 }
@@ -52,8 +45,7 @@ func (r *Registry) Free(name string) bool {
 }
 
 // Unique reserves and returns preferred, or the first of preferred2,
-// preferred3, ... that is free. The suffix matches the one import aliases
-// take, so one build's generated names read the same way throughout.
+// preferred3, ... that is free. The suffix is the one import aliases take.
 func (r *Registry) Unique(preferred string) string {
 	name := preferred
 	for i := 2; r.taken[name]; i++ {

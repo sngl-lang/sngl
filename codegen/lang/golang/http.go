@@ -229,8 +229,8 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 	fmt.Fprintln(b)
 }
 
-// The spellings the handler and render emitters would rather use. Each is a
-// preference, not a guarantee -- see routeLocals.
+// The spellings the handler and render emitters prefer; routeLocals decides
+// what they actually get.
 const (
 	routeWriterVar    = "__w"
 	routeRequestVar   = "__r"
@@ -244,17 +244,10 @@ const (
 // routeLocals is what one route's GET handler, POST handler and render
 // function call the bindings they declare for themselves.
 //
-// A route parameter is emitted under the name the window gave it -- the href
-// writes `{id}` and the IR that reads it renders the bare `id` -- so the
-// program's name is the fixed one and the emitter's bend around it. Prefixing
-// the emitter's names instead is what `__w` and `__r` already were, and it
-// covers only the names someone thought to prefix: `id`, `ok`, `sess` and `s`
-// were not, and `/p/{id}` emitted `id := __r.PathValue("id")` under the
-// session id of the same name. `{s}` was worse, because it rewrote a
-// signature: `func renderHandlePage(s *handlePageState, s string) string`.
-//
-// Allocating all of them through the registry means the next local added here
-// is covered by having been allocated, rather than by being remembered.
+// A route parameter reaches the generated code verbatim -- the href writes
+// `{id}` and the IR that reads it renders the bare `id`, with no substitution
+// to rename it through -- so the program's name is the fixed one here and
+// every name below bends around it.
 type routeLocals struct {
 	writer, request       string
 	sessionID, sessionOK  string
