@@ -513,7 +513,10 @@ func collectReactiveVars(pkg *ir.Package) map[*ir.Var]bool {
 	}
 	for _, w := range pkg.Windows {
 		for _, v := range w.Vars {
-			if !v.IsConst {
+			// A route parameter is bound from the URL the request arrived
+			// on, so nothing running in the page can ever re-fire a slot
+			// keyed on one.
+			if !v.IsConst && !v.RouteParam {
 				out[v] = true
 			}
 		}

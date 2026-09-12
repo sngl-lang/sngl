@@ -3189,7 +3189,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body.
 	for _, name := range hrefPathParams(vn) {
-		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString})
+		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString, RouteParam: true})
 	}
 	c.pushScope()
 	defer c.popScope()

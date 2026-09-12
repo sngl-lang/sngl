@@ -1,0 +1,63 @@
+# The same route as route_dynamic_body, written as a package window -- a
+# `window` at the root of a file rather than one a component body renders.
+#
+# A window's `{pkg}` href placeholder becomes a var on the window, and the
+# reactivity lowering counted every window var as mutable state. So the `if`
+# and the `for` over that placeholder became client-side render slots: the
+# declarative tree the route's markup is built from was gone, the loop stopped
+# coming out as a HoleFor, and the __renderSlotN the lowering left behind
+# reached the Go translator as a user function -- which panicked on
+# `lower.CreateNode`, an op no language implements.
+#
+# A route parameter is bound from the URL the request arrived on and nothing
+# running in the page can assign it, so it is not reactive and the tree stays
+# declarative.
+
+sngl generate --lang go --platform html -o out app.sngl
+
+# The conditional is a branch in the handler, not both arms concatenated.
+grep 'if \(pkg != ""\)' out/server.go
+grep 'named' out/server.go
+grep 'unnamed' out/server.go
+
+# The loop is ranged in the handler, not flattened into the page.
+grep 'for _, row := range' out/server.go
+
+# No DOM patching reached the server: the page is written, not mutated.
+! grep 'CreateNode' out/server.go
+! grep '__renderSlot' out/server.go
+
+-- go.mod --
+module pkgwin
+
+go 1.24
+
+-- srv/srv.go --
+package srv
+
+type Row struct {
+	Name string
+}
+
+func Rows(pkg string) []Row { return []Row{{Name: pkg}} }
+
+func Bump(n int) int { return n + 1 }
+
+-- app.sngl --
+import . "sngl:ui"
+import "go:pkgwin/srv"
+import "sngl:platform/html"
+
+var hits = 0
+
+window #page(title="t", href="/p/{pkg}") {
+    html.button(innerText="go", @click { hits = srv.Bump(hits) })
+    if pkg != "" {
+        html.span(innerText="named")
+    } else {
+        html.span(innerText="unnamed")
+    }
+    for var row = srv.Rows(pkg) {
+        html.a(href="/r/" + row.name, innerText=row.name)
+    }
+}
