@@ -3,6 +3,7 @@ package golang
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"sort"
 	"strconv"
 
@@ -86,7 +87,14 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 		fmt.Fprintln(&body, `}`)
 	}
 
-	return []*codegen.OutputFile{codegen.BytesFile("server.go", body.Bytes())}, nil
+	// The route path assembles bytes by hand rather than through fileEmitter,
+	// and each handler writes a trailing blank gofmt would otherwise strip.
+	formatted, err := format.Source(body.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("golang: format server.go: %w\n%s", err, body.Bytes())
+	}
+
+	return []*codegen.OutputFile{codegen.BytesFile("server.go", formatted)}, nil
 }
 
 // writeRouteFuncs emits the user functions a route's markup or actions call,

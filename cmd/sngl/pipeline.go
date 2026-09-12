@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -79,6 +80,11 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		return fmt.Errorf("no .sngl files found")
 	}
 
+	// A named library package is output the caller asked for, so it settles the
+	// question below before the units are walked at all.
+	emitted := len(libs) > 0
+	var skipped []string
+
 	for _, u := range units {
 		start := time.Now()
 		doc, err := u.doc()
@@ -101,12 +107,20 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		// request.
 		if !u.solo && !pkg.IsProgram() {
 			slog.Info("skip: no window", "unit", u.name)
+			skipped = append(skipped, u.name)
 			continue
 		}
 
 		if err := emitPackage(pkg, u.headline(), u.dir, cliLang, cliPlat, p); err != nil {
 			return err
 		}
+		emitted = true
+	}
+
+	// Only a command line holds the whole set of units, which is why
+	// internal/build, seeing one package at a time, cannot ask this.
+	if !emitted && len(skipped) > 0 {
+		return fmt.Errorf("nothing to generate: no window declared in %s: a program declares at least one window, since the package body renders only what a window holds", strings.Join(skipped, ", "))
 	}
 	return nil
 }
