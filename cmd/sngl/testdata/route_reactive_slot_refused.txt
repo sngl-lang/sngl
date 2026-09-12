@@ -1,0 +1,40 @@
+# A server action re-renders the whole page on the next GET, so a route's
+# markup is written into the response and never patched. A conditional over
+# mutable state asks for the opposite: the reactivity lowering turns it into a
+# __renderSlotN that patches the DOM from the client.
+#
+# One package gets one lowering, so a build that needs both for the same window
+# cannot have them. That is a gap, and what it used to do was panic inside the
+# Go translator on `lower.CreateNode` -- an op no language registers an emitter
+# for, and a stack trace rather than a diagnostic. It is refused by name now,
+# and the refusal is what a fixture can hold until route mode can render such a
+# window itself.
+
+! sngl generate --lang go --platform html -o out app.sngl
+stderr 'route /p has a server-side action'
+stderr 'cannot emit both for one window'
+! exists out/server.go
+
+-- go.mod --
+module reactiveslot
+
+go 1.24
+
+-- srv/srv.go --
+package srv
+
+func Bump(n int) int { return n + 1 }
+
+-- app.sngl --
+import . "sngl:ui"
+import "go:reactiveslot/srv"
+import "sngl:platform/html"
+
+var hits = 0
+
+window #page(title="t", href="/p") {
+    html.button(innerText="go", @click { hits = srv.Bump(hits) })
+    if hits > 0 {
+        html.span(innerText="hit")
+    }
+}

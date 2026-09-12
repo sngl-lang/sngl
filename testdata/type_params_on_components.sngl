@@ -11,7 +11,7 @@
 //
 // A parameter no prop pins falls back to its default, which is how a prop can
 // be left out entirely — `bracket()` states no key and needs no type argument.
-// `sngl:app`'s `effect` defaults to `struct {}` for that reason; a user
+// `sngl:builtin`'s `effect` defaults to `struct {}` for that reason; a user
 // component needs a type whose values it can also write, since a prop with no
 // default is required of it.
 

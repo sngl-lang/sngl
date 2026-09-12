@@ -51,6 +51,20 @@ type GoIRContext struct {
 	// target's answer (see lower.hasInstanceRuntime).
 	InstanceRecords bool
 
+	// ModelIsValue says the Go scope this context emits into holds the Model
+	// as a value rather than a pointer, so handing it to something that takes
+	// a `*Model` needs its address. bubbletea's hand-written receivers are
+	// `func (m Model)` -- Update returns the mutated copy -- while everything
+	// EmitFuncDef writes takes a pointer, which is why it clears this for the
+	// bodies it emits.
+	ModelIsValue bool
+
+	// ExtraParam is appended verbatim to the signature EmitFuncDef writes, for
+	// a parameter whose Go type no ir.Type spells -- today the `m *Model` a
+	// lifted type method takes. Cleared for the body, which is a scope of its
+	// own.
+	ExtraParam string
+
 	// EmitLineDirectives prepends `//line file:line` at statement boundaries,
 	// so the Go compiler attributes errors back to the SNGL source.
 	EmitLineDirectives bool
@@ -1037,7 +1051,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// on one lifts to a free `TypeNameMethodName` function.
 	if isPrimitiveTypeName(receiverName) && resolved {
 		goName := ExportName(receiverName) + ExportName(method)
-		return goName + "(" + strings.Join(args, ", ") + ")"
+		return goName + "(" + strings.Join(gc.withModelArg(n.Func, args), ", ") + ")"
 	}
 
 	// Bubbletea/Fyne emit an owner's funcs as methods on their Model, so a
@@ -1071,7 +1085,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// where args[0] is the first explicit arg rather than a receiver.
 	if resolved {
 		goName := ExportName(receiverName) + ExportName(method)
-		return goName + "(" + strings.Join(args, ", ") + ")"
+		return goName + "(" + strings.Join(gc.withModelArg(n.Func, args), ", ") + ")"
 	}
 
 	codegen.RequireIntrinsicFallback(langGo, n.Func)
@@ -1079,6 +1093,16 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return "/* unresolved method " + qualName + " */"
 	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// withModelArg appends the Model to a lifted type method's arguments when its
+// signature declares the parameter. EmitTypeMethodDef reads the same map, so
+// the two cannot disagree about the arity.
+func (gc *GoIRContext) withModelArg(fn *ir.Func, args []string) []string {
+	if gc.Ctx == nil || !gc.Ctx.ModelParamFuncs[fn] {
+		return args
+	}
+	return append(append([]string{}, args...), gc.ModelArg())
 }
 
 // rawFieldAccess reports whether e is an ident flagged in gc.Ctx.RawFieldAccess
@@ -1481,6 +1505,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
+		ModelIsValue:       gc.ModelIsValue,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -1501,6 +1526,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
+		ModelIsValue:       gc.ModelIsValue,
 		imports:            gc.imports, // shared so child writes propagate
 	}
 }
@@ -1829,6 +1855,29 @@ func (gc *GoIRContext) RecvName() string {
 	return codegen.ModelReceiver
 }
 
+// ModelArg spells the Model where a call hands it to something taking a
+// `*Model`. See ModelIsValue for why the two spellings exist.
+func (gc *GoIRContext) ModelArg() string {
+	if gc.ModelIsValue {
+		return "&" + gc.RecvName()
+	}
+	return gc.RecvName()
+}
+
+// EmitTypeMethodDef emits a method on a user type as the free function its
+// call sites name: `func GlyphRow(gl Glyph, row int) string`, with the
+// receiver as the first parameter (passNoImplicitRecv already put it there).
+func (gc *GoIRContext) EmitTypeMethodDef(fn *ir.Func) []string {
+	fnCopy := *fn
+	fnCopy.Name = ExportName(fn.Receiver) + ExportName(fn.Name)
+	fnCopy.Receiver = ""
+	sub := *gc
+	if gc.Ctx != nil && gc.Ctx.ModelParamFuncs[fn] {
+		sub.ExtraParam = gc.RecvName() + " *" + codegen.ModelTypeName
+	}
+	return sub.EmitFuncDef(&fnCopy)
+}
+
 func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 	var lines []string
 
@@ -1836,6 +1885,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 	for i, p := range fn.Params {
 		params[i] = p.Name + " " + IRTypeToGo(p.Type)
 	}
+	extra := gc.ExtraParam
 	retType := goReturnType(fn.Return)
 
 	sig := "func "
@@ -1852,7 +1902,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 			// is not also an argument.
 			params = params[1:]
 		}
-		sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
+		sig += fn.Name + "(" + appendParam(params, extra) + ")" + retType + " {"
 		lines = append(lines, sig)
 		return gc.emitFuncBody(lines, fn, params)
 	case fn.Receiver != "":
@@ -1865,15 +1915,29 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 			params = params[1:]
 		}
 	}
-	sig += fn.Name + "(" + strings.Join(params, ", ") + ")" + retType + " {"
+	sig += fn.Name + "(" + appendParam(params, extra) + ")" + retType + " {"
 	lines = append(lines, sig)
 
 	return gc.emitFuncBody(lines, fn, params)
 }
 
+// appendParam renders a parameter list with one extra entry whose Go type no
+// ir.Type spells. Empty extra leaves the list as it was.
+func appendParam(params []string, extra string) string {
+	if extra == "" {
+		return strings.Join(params, ", ")
+	}
+	return strings.Join(append(append([]string{}, params...), extra), ", ")
+}
+
 // emitFuncBody appends a function's statements and its closing brace.
 func (gc *GoIRContext) emitFuncBody(lines []string, fn *ir.Func, _ []string) []string {
-	bodyGC := gc
+	// Nothing EmitFuncDef writes holds the Model by value, so the body starts
+	// from the pointer answer rather than inheriting the caller's.
+	inner := *gc
+	inner.ModelIsValue = false
+	inner.ExtraParam = ""
+	bodyGC := &inner
 	for _, p := range fn.Params {
 		bodyGC = bodyGC.WithLocal(p.Name)
 	}

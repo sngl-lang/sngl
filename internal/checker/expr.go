@@ -488,7 +488,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				return &ir.Ident{AST: x, Type: funcType, Name: x.Name, Sym: fn}
 			}
 		}
-		c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
+		c.error(x.Pos, "undefined: %s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name))
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
@@ -946,19 +946,10 @@ func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
 		if b, ok := ir.LookupBuiltinScalar(ident.Name); ok && b.Convertible {
 			return c.inferBuiltinConversion(x, b.Type, ident.Name)
 		}
-		switch ident.Name {
-		case "color", "date", "time", "datetime":
-			// These are stdlib StructDef-backed types, not primitives, so the
-			// cast form is just convert-to-struct. Look up the StructDef type
-			// from scope; if absent (pre-stdlib), fall back to dyn so the
-			// diagnostic comes from the regular path.
-			structTyp := ir.TypDyn
-			if sym, ok := c.scope.Lookup(ident.Name); ok {
-				if t := c.symType(sym); t != nil {
-					structTyp = t
-				}
+		if sym, ok := c.scope.Lookup(ident.Name); ok {
+			if target, ok := stringReprCast(sym); ok {
+				return c.inferBuiltinConversion(x, target, ident.Name)
 			}
-			return c.inferBuiltinConversion(x, structTyp, ident.Name)
 		}
 	}
 
@@ -1090,6 +1081,26 @@ func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr 
 	return argExpr
 }
 
+// stringReprCast reports the cast target when sym is one of the string-repr
+// structs — color, date, time, datetime — which are stdlib StructDef-backed
+// rather than scalar primitives, so LookupBuiltinScalar does not answer for
+// them.
+//
+// The #[builtin] mark on the resolved declaration is what answers, never the
+// name written at the call site: `date(…)` and `time.date(…)` reach one
+// StructDef and must build the one ir.Conversion.
+func stringReprCast(sym ir.Symbol) (*ir.Type, bool) {
+	sd, ok := sym.(*ir.StructDef)
+	if !ok || !sd.Builtin.IsStringRepr() {
+		return nil, false
+	}
+	t := sd.SymType()
+	if t == nil {
+		return nil, false
+	}
+	return t, true
+}
+
 // inferBuiltinConversion type-checks `T(x)` where T is a builtin primitive
 // target (int/float/string/bool). The operand must be a primitive whose kind
 // appears in the allow-list for the target; other types surface a diagnostic.
@@ -1215,6 +1226,10 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						// expected-type provider the bare `duration(1m)` is.
 						if ud, ok := fsym.(*ir.UnitDef); ok {
 							return c.inferUnitConversion(call, ud.SymType())
+						}
+						// An ir.Call is not what the optimizer folds.
+						if target, ok := stringReprCast(fsym); ok {
+							return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
 						}
 						t := c.symType(fsym)
 						var sig *ir.FuncSig
@@ -1405,6 +1420,27 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		} else {
+			// The receiver-as-param form with no parameter the receiver fits:
+			// the method is static in its type's namespace (`S.helper(5)`),
+			// and a value has nothing to hand it.
+			//
+			// Pkg is empty for every declaration a program writes, an imported
+			// sibling directory's included, so what the gate excludes is a
+			// `sngl:` method: one takes its receiver through Call.Receiver, so
+			// the same shape there is the ordinary instance form.
+			//
+			// A native is excluded because it *is* a host identifier: its
+			// parameters are the host's, and the receiver arrives before the
+			// dot under `method` and as argument zero without it.
+			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+				if len(sig.Params) == 0 {
+					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
+						fn.Receiver, fn.Name, fn.Receiver, fn.Name)
+				} else {
+					c.error(sel.Pos, "%s.%s is static: its first parameter is not %s, so call it as %s.%s(…)",
+						fn.Receiver, fn.Name, fn.Receiver, fn.Receiver, fn.Name)
+				}
+			}
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		}
@@ -3434,29 +3470,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		c.registerVars(x)
 		return nil
 	case *ast.FuncDef:
-		fn := c.buildFunc(x)
-		c.declare(x.Pos, fn)
-		c.checkFuncBody(fn)
-		// When a `func` is declared inside a nested block (provider children,
-		// if/for body), it would otherwise be built and scoped but never
-		// appended to any IR collection — leaving call sites referencing an
-		// undefined function. Lift to the enclosing component (analogous to
-		// the LocalVar→Var promotion done by passNoContext for vars).
-		switch {
-		case c.currentComponent != nil:
-			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
-		case c.currentWindow != nil:
-			// A window owns funcs the way a component does (ir.Owners), and
-			// its state is in the same model -- so a target that emits a
-			// component's funcs as methods has to emit these as methods too.
-			// Registered in both collections, the way a component's nested
-			// methods are, because pkg.Funcs is what a call site resolves
-			// through.
-			c.currentWindow.Funcs = append(c.currentWindow.Funcs, fn)
-			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
-		case c.pkg != nil:
-			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
-		}
+		c.checkNestedFunc(x)
 		return nil
 	case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
 		// One at the top of a component body was registered in pass1

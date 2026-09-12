@@ -1,12 +1,18 @@
 A type declared in a platform override body reaches that platform's output.
 
 An override body is collected on its own: pass1 only ever sees the parenless
-stub, so `collectExtensionBodyTypes` is what puts its struct, enum and unit
-declarations on `ir.Component.BodyTypes` before `checkComponentBody` runs.
+stub, so `collectExtensionDecls` is what puts its struct, enum and unit
+declarations on `ir.Component.BodyDecls` before `checkComponentBody` runs.
 Without it the declaration was dropped and the literal typed `dyn`, which the
 html output hid completely -- JS declares no types, so nothing was missing from
 it and the page worked. This golden is the assertion that survives that: the
 state field, its initializer and the read all name the declaration.
+
+It registers them in the same walk that resolves a var annotation, which is the
+other half (#204): a body-local type had to be reachable from a literal alone,
+and a bare unit literal is not one -- `3tk` resolves against the type its
+position expects, so `var elapsed tick = 3tk` was the only spelling and it was
+the one that did not resolve.
 
 The `.sngl` fixture of the same name carries the checker-level assertion and a
 `SKIP(codegen)`, because a per-platform harness registers only its own platform
@@ -33,10 +39,18 @@ component thing[html.platform] {
     struct Row {
         a int
     }
+    enum Phase {
+        start
+        done
+    }
+    unit tick { tk, kt = 10tk }
 
     var r = Row{a=1}
+    var r2 Row = Row{a=2}
+    var p Phase = Phase.done
+    var elapsed tick = 3tk
 
-    ui.text(value="${r.a}")
+    ui.text(value="${r.a}${r2.a}${p}${elapsed}")
 }
 
 component main ui.node {
@@ -65,8 +79,10 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { r__inst0: null };
+  var state = { r__inst0: null, r2__inst0: null, p__inst0: null, elapsed__inst0: 3 };
   state.r__inst0 = { a: 1 };
+  state.r2__inst0 = { a: 2 };
+  state.p__inst0 = "done";
   function Row(a) {
     return { a };
   }
@@ -75,7 +91,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = "$" + String(state.r__inst0.a);
+    __n0.textContent = "$" + String(state.r__inst0.a) + "$" + String(state.r2__inst0.a) + "$" + String(state.p__inst0) + "$" + (String(state.elapsed__inst0) + "tk");
   }
   __sngl_init();
 })();

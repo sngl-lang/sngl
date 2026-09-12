@@ -1,4 +1,4 @@
-// The package body is a slot for `app.root`, and that is the whole of what
+// The package body is a slot for `ui.root`, and that is the whole of what
 // makes a window top-level: no syntactic rule names the construct. A widget
 // written there belongs to another family, so it is the ordinary
 // tree-membership error rather than a rule about file structure.

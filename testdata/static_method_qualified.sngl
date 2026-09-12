@@ -1,8 +1,5 @@
 // A type reached through a package is the same type, so a static method on it
-// is called the same way. Both spellings, because only the bare one was
-// recognised: a qualified operand was evaluated as a *value*, so every
-// argument bound one parameter late and `Point.polar(c, r, a)` reported
-// "cannot pass Point as float" -- the symptom, not the cause.
+// is called the same way. Both spellings are here.
 
 import ui "sngl:ui"
 import draw "sngl:ui/draw"
@@ -13,7 +10,7 @@ component m(angle float) ui.node {
 
     // Qualified through the alias.
     var a = draw.Point.polar(c, 40.0, angle)
-    // And bare, through the dot import, which always worked.
+    // And bare, through the dot import.
     var b = Point.polar(c, 40.0, angle)
 
     ui.text(value="{a.x} {b.y} {draw.Point.distance(a, b)}")

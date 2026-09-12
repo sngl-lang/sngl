@@ -3,10 +3,13 @@ package golang
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"sort"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/names"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -41,7 +44,7 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 	// build the import block. Per-route contexts (newRouteGC) share this
 	// import set so their writes propagate here.
 	ctx := codegen.NewExprCtx(req.Pkg)
-	ctx.ContextVar = "r.Context()"
+	ctx.ContextVar = routeRequestVar + ".Context()"
 	gc := NewIRContext(ctx)
 
 	// Render the route bodies first so the GoIRContext accumulates its imports
@@ -86,7 +89,14 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 		fmt.Fprintln(&body, `}`)
 	}
 
-	return []*codegen.OutputFile{codegen.BytesFile("server.go", body.Bytes())}, nil
+	// The route path assembles bytes by hand rather than through fileEmitter,
+	// and each handler writes a trailing blank gofmt would otherwise strip.
+	formatted, err := format.Source(body.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("golang: format server.go: %w\n%s", err, body.Bytes())
+	}
+
+	return []*codegen.OutputFile{codegen.BytesFile("server.go", formatted)}, nil
 }
 
 // writeRouteFuncs emits the user functions a route's markup or actions call,
@@ -98,12 +108,12 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 // it never wrote. As State methods they dispatch through the same `s` the
 // state fields do, and one named as a value (`xs.filter(keep)`) is a Go method
 // value, which already carries its receiver and matches the callback type.
-func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRContext) {
+func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRContext, loc routeLocals) {
 	fns := routeEmittableFuncs(req.Pkg)
 	if len(fns) == 0 {
 		return
 	}
-	gc := newRouteGC(req, shared)
+	gc := newRouteGC(req, shared, loc)
 	gc.MethodRecvType = routeStateType(r)
 	for _, fn := range fns {
 		fnCopy := *fn
@@ -176,38 +186,42 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 		return
 	}
 
-	gc := newRouteGC(req, shared)
+	loc := newRouteLocals(r)
+	gc := newRouteGC(req, shared, loc)
 
 	emitState(b, r)
-	writeRouteFuncs(b, req, r, shared)
-	renderFn := emitRenderRoute(b, req, r, gc)
+	writeRouteFuncs(b, req, r, shared, loc)
+	renderFn := emitRenderRoute(b, req, r, gc, loc)
 
 	loader := "load" + ExportName(r.Name) + "State"
 
-	// GET handler: load session (locking it across the render) → write page.
-	fmt.Fprintf(b, "func %s(w http.ResponseWriter, r *http.Request) {\n", r.Name)
-	fmt.Fprintln(b, `	w.Header().Set("Content-Type", "text/html; charset=utf-8")`)
-	fmt.Fprintln(b, "\tid, ok := snglSessionID(w, r)")
-	fmt.Fprintln(b, "\tif !ok {")
+	// GET handler: load session (locking it across the render), write page.
+	fmt.Fprintf(b, "func %s(%s http.ResponseWriter, %s *http.Request) {\n", r.Name, loc.writer, loc.request)
+	fmt.Fprintf(b, "\t%s.Header().Set(\"Content-Type\", \"text/html; charset=utf-8\")\n", loc.writer)
+	fmt.Fprintf(b, "\t%s, %s := snglSessionID(%s, %s)\n", loc.sessionID, loc.sessionOK, loc.writer, loc.request)
+	fmt.Fprintf(b, "\tif !%s {\n", loc.sessionOK)
 	fmt.Fprintln(b, "\t\treturn")
 	fmt.Fprintln(b, "\t}")
-	fmt.Fprintf(b, "\tsess, %s := %s(id)\n", routeStateReceiver, loader)
-	fmt.Fprintln(b, "\tdefer sess.mu.Unlock()")
-	fmt.Fprintf(b, "\tw.Write([]byte(%s(%s)))\n", renderFn, routeStateReceiver)
+	fmt.Fprintf(b, "\t%s, %s := %s(%s)\n", loc.session, loc.state, loader, loc.sessionID)
+	fmt.Fprintf(b, "\tdefer %s.mu.Unlock()\n", loc.session)
+	writeRouteParamBindings(b, r, loc)
+	fmt.Fprintf(b, "\t%s.Write([]byte(%s(%s)))\n", loc.writer, renderFn,
+		strings.Join(append([]string{loc.state}, r.Params...), ", "))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
 
-	// POST handler (PRG): load session (locking it across the mutation) →
-	// dispatch on _action → run the action's logical mutations against s →
+	// POST handler (PRG): load session (locking it across the mutation), then
+	// dispatch on _action, run the action's logical mutations against s, and
 	// 303 redirect.
-	fmt.Fprintf(b, "func %sAction(w http.ResponseWriter, r *http.Request) {\n", r.Name)
-	fmt.Fprintln(b, "\tid, ok := snglSessionID(w, r)")
-	fmt.Fprintln(b, "\tif !ok {")
+	fmt.Fprintf(b, "func %sAction(%s http.ResponseWriter, %s *http.Request) {\n", r.Name, loc.writer, loc.request)
+	fmt.Fprintf(b, "\t%s, %s := snglSessionID(%s, %s)\n", loc.sessionID, loc.sessionOK, loc.writer, loc.request)
+	fmt.Fprintf(b, "\tif !%s {\n", loc.sessionOK)
 	fmt.Fprintln(b, "\t\treturn")
 	fmt.Fprintln(b, "\t}")
-	fmt.Fprintf(b, "\tsess, %s := %s(id)\n", routeStateReceiver, loader)
-	fmt.Fprintln(b, "\tdefer sess.mu.Unlock()")
-	fmt.Fprintln(b, `	switch r.FormValue("_action") {`)
+	fmt.Fprintf(b, "\t%s, %s := %s(%s)\n", loc.session, loc.state, loader, loc.sessionID)
+	fmt.Fprintf(b, "\tdefer %s.mu.Unlock()\n", loc.session)
+	writeRouteParamBindings(b, r, loc)
+	fmt.Fprintf(b, "\tswitch %s.FormValue(\"_action\") {\n", loc.request)
 	for i, act := range r.Actions {
 		fmt.Fprintf(b, "\tcase %q:\n", fmt.Sprintf("%d", i))
 		for _, s := range act.LogicalMutations {
@@ -217,9 +231,87 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 		}
 	}
 	fmt.Fprintln(b, `	}`)
-	fmt.Fprintf(b, "\thttp.Redirect(w, r, %q, http.StatusSeeOther)\n", r.Path)
+	fmt.Fprintf(b, "\thttp.Redirect(%s, %s, %s, http.StatusSeeOther)\n",
+		loc.writer, loc.request, routePathExpr(r, gc))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
+}
+
+// The spellings the handler and render emitters prefer; routeLocals decides
+// what they actually get.
+const (
+	routeWriterVar    = "__w"
+	routeRequestVar   = "__r"
+	routeSessionIDVar = "id"
+	routeSessionOKVar = "ok"
+	routeSessionVar   = "sess"
+	routeStateVar     = "s"
+	routeBuilderVar   = "__b"
+)
+
+// routeLocals is what one route's GET handler, POST handler and render
+// function call the bindings they declare for themselves.
+//
+// A route parameter reaches the generated code verbatim -- the href writes
+// `{id}` and the IR that reads it renders the bare `id`, with no substitution
+// to rename it through -- so the program's name is the fixed one here and
+// every name below bends around it.
+type routeLocals struct {
+	writer, request       string
+	sessionID, sessionOK  string
+	session, state, build string
+}
+
+func newRouteLocals(r codegen.HTTPRoute) routeLocals {
+	reg := names.New(r.Params...)
+	return routeLocals{
+		writer:    reg.Unique(routeWriterVar),
+		request:   reg.Unique(routeRequestVar),
+		sessionID: reg.Unique(routeSessionIDVar),
+		sessionOK: reg.Unique(routeSessionOKVar),
+		session:   reg.Unique(routeSessionVar),
+		state:     reg.Unique(routeStateVar),
+		build:     reg.Unique(routeBuilderVar),
+	}
+}
+
+// writeRouteParamBindings binds each of the route's path parameters from the
+// request. Per-request input rather than per-session state, which is why they
+// are locals here and not fields on State.
+func writeRouteParamBindings(b *bytes.Buffer, r codegen.HTTPRoute, loc routeLocals) {
+	for _, p := range r.Params {
+		fmt.Fprintf(b, "\t%s := %s.PathValue(%q)\n", p, loc.request, p)
+		fmt.Fprintf(b, "\t_ = %s\n", p)
+	}
+}
+
+// routePathExpr is the route's path with each parameter's value substituted in.
+// The mux pattern spells `{pkg}`, and a redirect has to name the page the
+// browser should ask for next rather than the pattern that matched it.
+func routePathExpr(r codegen.HTTPRoute, gc *GoIRContext) string {
+	if len(r.Params) == 0 {
+		return strconv.Quote(r.Path)
+	}
+	gc.RequireImport("net/url")
+	var parts []string
+	var lit strings.Builder
+	flush := func() {
+		if lit.Len() > 0 {
+			parts = append(parts, strconv.Quote(lit.String()))
+			lit.Reset()
+		}
+	}
+	for seg := range strings.SplitSeq(strings.TrimPrefix(r.Path, "/"), "/") {
+		lit.WriteByte('/')
+		if len(seg) > 2 && strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
+			flush()
+			parts = append(parts, fmt.Sprintf("url.PathEscape(%s)", seg[1:len(seg)-1]))
+			continue
+		}
+		lit.WriteString(seg)
+	}
+	flush()
+	return strings.Join(parts, " + ")
 }
 
 // writeClientRouteHandler emits the legacy baked static-page GET handler for a
@@ -231,9 +323,9 @@ func writeClientRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codege
 	if req.RenderHTML != nil {
 		page = req.RenderHTML(r.WindowIdx)
 	}
-	fmt.Fprintf(b, "func %s(w http.ResponseWriter, r *http.Request) {\n", r.Name)
-	fmt.Fprintln(b, `	w.Header().Set("Content-Type", "text/html; charset=utf-8")`)
-	fmt.Fprintf(b, "\tw.Write([]byte(%s))\n", strconv.Quote(page))
+	fmt.Fprintf(b, "func %s(%s http.ResponseWriter, _ *http.Request) {\n", r.Name, routeWriterVar)
+	fmt.Fprintf(b, "\t%s.Header().Set(\"Content-Type\", \"text/html; charset=utf-8\")\n", routeWriterVar)
+	fmt.Fprintf(b, "\t%s.Write([]byte(%s))\n", routeWriterVar, strconv.Quote(page))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
 }

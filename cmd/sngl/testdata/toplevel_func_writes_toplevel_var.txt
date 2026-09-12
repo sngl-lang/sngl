@@ -1,0 +1,43 @@
+# A top-level func that writes a top-level var compiles, and the write lands.
+#
+# This is the CLI's harness rather than a golden because the claim is that the
+# generated Go *compiles and runs*; testdata/toplevel_func_reads_state.txtar
+# holds the shape it comes out in.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+var log string = ""
+
+func bump(k int) int {
+    log = log + "!"
+    return k * 2
+}
+
+func viaBump(a int) => bump(a) + 1
+
+component main node {
+    var out = 0
+    var note = ""
+
+    effect(@mount {
+        out = viaBump(3)
+        note = log
+    })
+
+    text(value="{out}{note}")
+}
+
+func testTopLevelFuncWritesTopLevelVar(t Test, c main) {
+    t.assert(c.out == 7)
+    t.assert(c.note == "!")
+}
+
+window {
+    main
+}

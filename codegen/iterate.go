@@ -159,6 +159,13 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 			if seen[f] {
 				continue
 			}
+			// A host identifier is filtered here rather than at the emitter
+			// because fyne and bubbletea rebuild a component func into a fresh
+			// ir.Func to give it a Model receiver, and that copy carries no
+			// Foreign for an emitter to test.
+			if f.Foreign.Name != "" && !f.Foreign.Marked {
+				continue
+			}
 			seen[f] = true
 			out = append(out, f)
 		}

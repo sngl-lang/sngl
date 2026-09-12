@@ -1,0 +1,54 @@
+# A window owns state whether it was written at the root of a file or inside a
+# component body, and the two spellings are the same program -- so they must
+# generate the same page.
+#
+# They did not. Every collection that asks which declarations own state read
+# pkg.Windows, which holds only the root-level ones: a window a component body
+# renders is an *ir.Window statement in that body. So its `var` stayed a local
+# of its own body (passHoistState never saw it), it was in no model
+# (ir.Owners never reported it), and it was in no reverse-dep map
+# (collectReactiveVars never reached it). The page shipped `var state = {}`,
+# an event handler assigning an undeclared name, and markup for the `if` baked
+# in whichever way it happened to start.
+
+sngl generate --platform html -o out_nested nested.sngl
+sngl generate --platform html -o out_root root.sngl
+cmpgen out_nested/index.html out_root/index.html
+
+# The window's own var is the page's state, and the handler writes it there.
+grep 'var state = \{ hits: 0 \}' out_nested/index.html
+grep 'state.hits = state.hits \+ 1' out_nested/index.html
+
+# The reactive slot is declared before it is read, and re-fired by the write.
+grep 'var __slot0 = \[\]' out_nested/index.html
+grep -count=1 'function __renderSlot0' out_nested/index.html
+
+-- nested.sngl --
+import . "sngl:ui"
+import "sngl:platform/html"
+
+component main node {
+    window #page(title="t") {
+        var hits = 0
+
+        html.button(innerText="go", @click { hits = hits + 1 })
+        html.span(innerText="{hits}")
+        if hits > 0 {
+            html.span(innerText="seen")
+        }
+    }
+}
+
+-- root.sngl --
+import . "sngl:ui"
+import "sngl:platform/html"
+
+window #page(title="t") {
+    var hits = 0
+
+    html.button(innerText="go", @click { hits = hits + 1 })
+    html.span(innerText="{hits}")
+    if hits > 0 {
+        html.span(innerText="seen")
+    }
+}
