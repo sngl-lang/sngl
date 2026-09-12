@@ -895,6 +895,33 @@ silence and spelled blindly by each backend — `Measurement.Value` and
 numeric operand gets was skipped and Go emitted `"px is " + m.m.Px`. Typing the
 select fixed the second everywhere at once; no backend grew a case.
 
+**A cast reads the magnitude, and it reads it in the unit's base.** `int(x)`
+and `float(x)` are the whole of how a single-base unit's value is got at, so
+every target has to answer them the same. `duration` is the one that did not:
+Go carries a duration as a `time.Duration`, whose unit is nanoseconds, while
+the declared base is ms — so `GoIRContext.durationToNumber` divides at the
+cast. Only at the cast, because arithmetic stays inside the representation:
+`d + 100ms` and `d * 2` are `time.Duration` arithmetic and are correct in ns
+right up to the cast that divides them out. `ClassifyUnit` is what gates it,
+rather than a second notion of what a duration is — it is what decided the
+value would be a `time.Duration` in the first place, so the two cannot
+disagree. `float` divides as floats, since an integer division converted
+afterwards truncates a sub-millisecond duration to zero.
+
+The interpreter is a fourth implementation of all of this and has to be checked
+with the three backends: `interp.ToInt` needs its `unitValue` case (without it
+every `int(<unit>)` was 0 on `--platform=none`), `evalSelect` needs one to read
+a per-base member, and `unitTable.BaseOf` is what says which base a suffix
+reduces to, so `2rem` counts in em. `cmd/sngl/testdata/unit_magnitude_compiles.txt`
+runs one program under both `--platform=bubbletea --language=go` and
+`--platform=none` for exactly that reason.
+
+The interpreter still models a unit as one `BaseAmount` plus a suffix, which is
+the pre-`ea7b2f84` "a unit reduces to one number" model: `1px + 2pct` adds to 3
+there rather than keeping both magnitudes, where every compiled target holds
+the record. Making it a record is a change to `unitValue`, its arithmetic, its
+comparison and its display, and has not been done.
+
 `hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
 still accepts any member name silently: `list`, `map`, `option`, `iter`,
 `string` beyond `.length`, and a struct type carrying no `Decl`. That is not
