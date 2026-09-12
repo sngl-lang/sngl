@@ -175,9 +175,23 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 
 	// Package-level funcs (e.g. lifted lambdas) are not owned by a
 	// component or window; process them without an owner.
+	//
+	// An owned one is in pkg.Funcs *as well*: the checker registers a body
+	// func in both. Injected here and again by its owner's loop below, the
+	// updaters landed in one Block twice -- and once per window for a func
+	// passRootWindow mounted on several.
+	owned := ownedFuncs(pkg)
 	for _, f := range pkg.Funcs {
+		if owned[f] {
+			continue
+		}
 		f.Block = st.injectIntoStmts(f.Block)
 	}
+	// One injection per func, whoever reaches it first. A func mounted on
+	// several windows is one body, and the updaters a walk adds are the whole
+	// package's rather than that owner's -- so a second pass over it appends a
+	// second copy of the same patches.
+	injected := map[*ir.Func]bool{}
 	for _, v := range pkg.Vars {
 		for _, h := range v.Handlers {
 			if h.Func != nil {
@@ -202,6 +216,10 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		st.owner = compOwner{comp}
 		comp.Body = st.rewriteAndInject(comp.Body)
 		for _, f := range comp.Funcs {
+			if injected[f] {
+				continue
+			}
+			injected[f] = true
 			f.Block = st.rewriteAndInject(f.Block)
 		}
 		for _, v := range comp.Vars {
@@ -221,6 +239,10 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		st.owner = windowOwner{w}
 		w.Body = st.rewriteAndInject(w.Body)
 		for _, f := range w.Funcs {
+			if injected[f] {
+				continue
+			}
+			injected[f] = true
 			f.Block = st.rewriteAndInject(f.Block)
 		}
 		for _, v := range w.Vars {
@@ -243,6 +265,22 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 	// that opened it has been built.
 	st.destroyHeld()
 	return st.err
+}
+
+// ownedFuncs is every func a component or window owns, by pointer. The same
+// *ir.Func may be owned twice over (passRootWindow mounts a root component's
+// on every window it lifts) and is one entry either way.
+func ownedFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	out := map[*ir.Func]bool{}
+	for _, o := range ir.Owners(pkg) {
+		if o.Comp == nil && o.Win == nil {
+			continue
+		}
+		for _, f := range o.Funcs {
+			out[f] = true
+		}
+	}
+	return out
 }
 
 // rewriteAndInject is the unified pass-2 walk. Synthesizes slot Vars for
