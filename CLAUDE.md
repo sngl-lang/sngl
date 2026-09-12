@@ -897,16 +897,30 @@ select fixed the second everywhere at once; no backend grew a case.
 
 **A cast reads the magnitude, and it reads it in the unit's base.** `int(x)`
 and `float(x)` are the whole of how a single-base unit's value is got at, so
-every target has to answer them the same. `duration` is the one that did not:
-Go carries a duration as a `time.Duration`, whose unit is nanoseconds, while
-the declared base is ms — so `GoIRContext.durationToNumber` divides at the
-cast. Only at the cast, because arithmetic stays inside the representation:
+every target has to answer them the same. A **multi-base** unit is refused
+there (`multiBaseUnitCast`): a value of one is a magnitude per base, so there
+is no single number to produce, and the diagnostic points at the per-base read
+that replaces the cast — `m.px`. That is the same premise the checker already
+applied to ordering two of them, extended to the one other place it decides
+anything. `string(m)` is untouched, being display rather than a magnitude.
+`duration` is the one that did not agree: Go carries one as a `time.Duration`,
+whose unit is nanoseconds, while the declared base is ms — so
+`GoIRContext.durationToNumber` divides at the cast. Only at the cast, because
+arithmetic stays inside the representation:
 `d + 100ms` and `d * 2` are `time.Duration` arithmetic and are correct in ns
-right up to the cast that divides them out. `ClassifyUnit` is what gates it,
-rather than a second notion of what a duration is — it is what decided the
-value would be a `time.Duration` in the first place, so the two cannot
-disagree. `float` divides as floats, since an integer division converted
-afterwards truncates a sub-millisecond duration to zero.
+right up to the cast that divides them out. `float` divides as floats, since an
+integer division converted afterwards truncates a sub-millisecond duration to
+zero.
+
+`ClassifyUnit` is what gates it, and it reads `UnitDef.Builtin` —
+`ir.BuiltinDuration`, the kind `lib/time/time.sngl` marks — rather than the
+name `duration`. It asked the name in four places, which made the one built-in
+with a host representation the one built-in that was *not* shadowable: a
+program's own `unit duration { blip }` got `time.Duration(3) * time.Millisecond`
+for `3blip`, the `time` import, the `mustParseDuration` helper and a Kotlin
+`Long`. `testdata/unit_duration_shadowed.txtar` pins that it no longer does.
+`golang/helpers.go`'s `case "duration":` stays, switching on a scheme type
+*hint* beside `"color"` and `"date"` rather than on a declaration.
 
 **Only the cast.** A *bare* read of a duration still answers three ways —
 `"{d}"` of `500ms` is `500ms` on Go and the interpreter, `500` on JavaScript
