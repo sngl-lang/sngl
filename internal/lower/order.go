@@ -35,6 +35,8 @@ func (c orderConstraint) String() string {
 
 // orderConstraints is every ordering the pipeline actually depends on.
 var orderConstraints = []orderConstraint{
+	{"HoistBodyTypes", "NoRef",
+		"NoRef synthesizes a box struct per element type and deduplicates them by the element's type *name*, so two body-local types still sharing one name are handed one __ref_ box between them"},
 	{"PlatformExtensionBody", "InlinePure",
 		"until the active platform's override is swapped into Component.Body, a stdlib component is an empty stub, and inlining an empty stub inlines nothing"},
 	{"PlatformExtensionBody", "PropBindings",

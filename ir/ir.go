@@ -850,6 +850,12 @@ type StructDef struct {
 	// says the program never wrote the Name: a diagnostic and `sngl dump`
 	// spell the type structurally rather than leaking the synthesized name.
 	Anon bool `json:",omitempty"`
+	// BodyOwner names the component or function whose body declared this type,
+	// empty for a top-level one. Two bodies may each declare "Local" and the
+	// two are distinct types, but both land in this one Package and the host
+	// namespace is flat -- so passHoistBodyTypes renames the later one after
+	// its owner.
+	BodyOwner string `json:",omitempty"`
 	// A declaration's members are looked up on the declaration, so this is
 	// where every type's methods live — struct, enum, unit and component
 	// alike.
@@ -882,13 +888,14 @@ type StructField struct {
 
 // EnumDef is a resolved enum type declaration.
 type EnumDef struct {
-	AST     *ast.EnumDef
-	Name    string
-	Members []*EnumMember
-	Foreign `json:"Foreign,omitzero"`
-	Pkg     string           // declaring package URI; see StructDef.Pkg
-	Doc     string           // doc comment for scheme-imported decls
-	Methods map[string]*Func `json:"-"`
+	AST       *ast.EnumDef
+	Name      string
+	Members   []*EnumMember
+	Foreign   `json:"Foreign,omitzero"`
+	Pkg       string           // declaring package URI; see StructDef.Pkg
+	Doc       string           // doc comment for scheme-imported decls
+	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
+	Methods   map[string]*Func `json:"-"`
 }
 
 func (e *EnumDef) SymName() string { return e.Name }
@@ -905,12 +912,13 @@ type EnumMember struct {
 
 // UnitDef is a resolved unit type declaration with conversion table.
 type UnitDef struct {
-	AST      *ast.UnitDef
-	Name     string
-	Suffixes []*UnitSuffix
-	Pkg      string           // declaring package URI; see StructDef.Pkg
-	Builtin  BuiltinKind      // compiler built-in marker; BuiltinNone otherwise
-	Methods  map[string]*Func `json:"-"`
+	AST       *ast.UnitDef
+	Name      string
+	Suffixes  []*UnitSuffix
+	Pkg       string           // declaring package URI; see StructDef.Pkg
+	Builtin   BuiltinKind      // compiler built-in marker; BuiltinNone otherwise
+	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
+	Methods   map[string]*Func `json:"-"`
 }
 
 func (u *UnitDef) SymName() string { return u.Name }

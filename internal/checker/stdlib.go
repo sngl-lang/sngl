@@ -1189,12 +1189,12 @@ func (c *checker) collectExtensionVars(body ast.StmtBlock) []*ir.Var {
 	return out
 }
 
-func (c *checker) collectExtensionBodyDecls(body ast.StmtBlock) []ir.Symbol {
+func (c *checker) collectExtensionBodyDecls(body ast.StmtBlock, owner string) []ir.Symbol {
 	var out []ir.Symbol
 	for _, stmt := range body.Stmts {
 		switch stmt.(type) {
 		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
-			if sym := c.registerBodyDecl(stmt); sym != nil {
+			if sym := c.registerBodyDecl(stmt, owner); sym != nil {
 				out = append(out, sym)
 			}
 		}
@@ -1303,7 +1303,7 @@ func (c *checker) checkPendingExtensions() {
 			vars := append(slices.Clip(savedVars), c.collectExtensionVars(pe.body)...)
 			pe.comp.Vars = vars
 			c.pushScope()
-			bodyDecls := c.collectExtensionBodyDecls(pe.body)
+			bodyDecls := c.collectExtensionBodyDecls(pe.body, pe.comp.Name)
 			c.popScope()
 			pe.comp.BodyDecls = append(slices.Clip(savedBodyDecls), bodyDecls...)
 			c.checkComponentBody(pe.comp)

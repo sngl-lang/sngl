@@ -258,10 +258,6 @@ type checker struct {
 
 	// Unit suffix reverse lookup.
 
-	// bodyTypeDecls is where each body-local type name was first declared, per
-	// package it lands in. Interim, for the #198 collision error only.
-	bodyTypeDecls map[*ir.Package]map[string]ast.Pos
-
 	// bodyComps is every component declared inside a body, in registration
 	// order. Interim, for the #198 collision report only.
 	bodyComps []*ir.Component
@@ -330,6 +326,9 @@ type checker struct {
 
 	// Current component (for event validation).
 	currentComponent *ir.Component
+	// currentFunc is the function whose body is being checked, so a type
+	// declared in one can name the body it is scoped to (bodyOwnerName).
+	currentFunc *ir.Func
 	// funcDepth is non-zero while a function or handler body is being checked.
 	// A slot insertion renders where it is written, so one reaching a func body
 	// has nowhere to project and is reported rather than built. It is also
@@ -1698,87 +1697,41 @@ func (c *checker) resolveStructBody(sd *ir.StructDef) {
 	c.registerNestedMethods(sd.Name, sd.AST.TypeParams, sd.AST.Funcs())
 }
 
-// claimBodyType reports a body-local type name something else in this package
-// already declared -- another body, or a top-level declaration. Both names are
-// correctly scoped and stay so; the collision is that both declarations land in
-// one ir.Package and every backend emits a type declaration straight from it,
-// so the host would get two of that name. #198 renames per body and removes
-// this.
-//
-// Which of two bodies is called second follows registration order, and so for a
-// multi-file package follows document order; the message names both positions
-// for that reason.
-func (c *checker) claimBodyType(name string, pos ast.Pos) {
-	if name == "" || name == "_" {
-		return
-	}
-	// Two in one body is one scope's duplicate, which c.declare reports in its
-	// own words; recording it here would report the interim message instead and
-	// re-point the name at the second of the two.
-	if _, local := c.scope.LookupDeclaredLocal(name); local {
-		return
-	}
-	pkg := c.declPkg()
-	if pkg == nil {
-		return
-	}
-	if c.bodyTypeDecls == nil {
-		c.bodyTypeDecls = map[*ir.Package]map[string]ast.Pos{}
-	}
-	seen := c.bodyTypeDecls[pkg]
-	if seen == nil {
-		seen = map[string]ast.Pos{}
-		c.bodyTypeDecls[pkg] = seen
-	}
-	if prev, dup := seen[name]; dup {
-		c.reportBodyTypeCollision(name, pos, prev, "another body of this package")
-		return
-	}
-	// A top-level declaration of the name is the same collision: it lands in
-	// the same slice, and a body-local type correctly shadows it in scope, so
-	// nothing else reports the pair.
-	if prev, dup := c.pkgDecls[name]; dup {
-		c.reportBodyTypeCollision(name, pos, prev, "this package")
-		return
-	}
-	seen[name] = pos
-}
-
-func (c *checker) reportBodyTypeCollision(name string, pos, prev ast.Pos, where string) {
-	c.error(pos, "%q is declared in %s; a body-local type is not yet renamed per body, so the two would emit one host type (see #198) (previous declaration at %s)", name, where, prev)
-}
-
 // registerBodyDecl registers one declaration written inside a body: the name
 // binds in the scope collectComponentDecls pushed rather than at file scope,
 // and nothing else about the declaration differs. Returns the symbol pass2
 // rebinds, or nil for a statement that is not one of these four kinds.
-func (c *checker) registerBodyDecl(stmt ast.Stmt) ir.Symbol {
+//
+// owner names the body, which is what passHoistBodyTypes renames after when
+// two bodies claim one name; "" for a body the caller cannot name.
+func (c *checker) registerBodyDecl(stmt ast.Stmt, owner string) ir.Symbol {
 	switch s := stmt.(type) {
 	case *ast.ComponentDecl:
-		// No claimBodyType: a component collides only inside a recursion
-		// cycle, which reportBodyComponentCollisions asks after pass2.
+		// A component's flat-namespace collision is narrower -- only a
+		// recursion cycle survives inlining under its declared name -- and is
+		// reportBodyComponentCollisions' after pass2.
 		return c.registerComponentDecl(s, true)
 	case *ast.StructDef:
 		sd := c.buildStructDef(s)
+		sd.BodyOwner = owner
 		c.applyMarks(s, sd)
 		c.declPkg().Structs = append(c.declPkg().Structs, sd)
-		c.claimBodyType(s.Name, s.Pos)
 		c.declare(s.Pos, sd)
 		c.registerNestedMethods(sd.Name, s.TypeParams, s.Funcs())
 		return sd
 	case *ast.EnumDef:
 		ed := c.buildEnumDef(s)
+		ed.BodyOwner = owner
 		c.applyMarks(s, ed)
 		c.declPkg().Enums = append(c.declPkg().Enums, ed)
-		c.claimBodyType(s.Name, s.Pos)
 		c.declare(s.Pos, ed)
 		c.registerNestedMethods(ed.Name, nil, s.Funcs())
 		return ed
 	case *ast.UnitDef:
 		ud := c.buildUnitDef(s)
+		ud.BodyOwner = owner
 		c.applyMarks(s, ud)
 		c.declPkg().Units = append(c.declPkg().Units, ud)
-		c.claimBodyType(s.Name, s.Pos)
 		c.declare(s.Pos, ud)
 		return ud
 	}
@@ -2796,7 +2749,7 @@ func (c *checker) collectComponentDecls(comp *ast.ComponentDecl, irComp *ir.Comp
 	for _, stmt := range comp.Body.Stmts {
 		switch s := stmt.(type) {
 		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
-			if sym := c.registerBodyDecl(s); sym != nil {
+			if sym := c.registerBodyDecl(s, irComp.Name); sym != nil {
 				irComp.BodyDecls = append(irComp.BodyDecls, sym)
 				c.noteBodyOwner(irComp, sym)
 			}
@@ -3547,6 +3500,9 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 	c.pushScope()
 	defer c.popScope()
 	defer c.enterFuncBody()()
+	prevFunc := c.currentFunc
+	c.currentFunc = fn
+	defer func() { c.currentFunc = prevFunc }()
 
 	// Declare params and fill in their checked IR defaults now that scope is ready.
 	astParams := map[string]ast.Param{}
@@ -3821,6 +3777,21 @@ func propParam(p *ir.Prop) *ir.Param {
 	}
 	p.Sym.Type = p.Type
 	return p.Sym
+}
+
+// bodyOwnerName names the body a declaration written mid-statement belongs to.
+// A function's body wins over the component it sits in: that is the nearer
+// scope, and it is the name a reader of the generated code will recognise.
+func (c *checker) bodyOwnerName() string {
+	switch {
+	case c.currentFunc != nil && c.currentFunc.Name != "":
+		return c.currentFunc.Name
+	case c.currentComponent != nil:
+		return c.currentComponent.Name
+	case c.currentWindow != nil:
+		return c.currentWindow.Name
+	}
+	return ""
 }
 
 // noteBodyOwner records that owner's body declared sym, for the kinds that

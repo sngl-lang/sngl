@@ -61,6 +61,7 @@ var alwaysOn = []string{
 	"CSE",
 	"ForElse",
 	"ForeignPrimitive",
+	"HoistBodyTypes",
 	"HoistState",
 	"IndexedIter",
 	"InlinePure",

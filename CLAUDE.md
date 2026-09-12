@@ -255,7 +255,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Five run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Six run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice) and `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -702,25 +702,37 @@ body-scoped for one to land on.
 
 Two in *one* body is that scope's duplicate and `c.declare` says so. Two in
 *different* bodies is correct and the language allows it, but the emitted
-namespace is flat — so each kind is asked, in its own terms, whether the two
-would collide there, and both answers are a **codegen limitation surfaced in
-the checker** rather than a language rule. #198 renames per body and deletes
-both, along with the fixtures that pin them.
+namespace is flat — so each kind is asked, in its own terms, what that costs,
+and the two answers differ in kind because the collisions do.
 
 - A **type** collides always: every backend emits a type declaration straight
-  from `ir.Package.Structs` and none renames. `claimBodyType` reports the pair
-  at registration, and reports a body-local type against a *top-level* one of
-  the same name for the same reason
-  (`error_body_local_type_two_bodies.sngl`).
-- A **component** collides only inside a recursion cycle, which is why the two
-  checks differ in breadth. Every platform sets `InlineComponents=false`, so
+  from `ir.Package.Structs` and none renamed. `passHoistBodyTypes`
+  (`internal/lower/body_types.go`) is the answer — the first claimant keeps its
+  spelling and the rest become `Local__second`, named for the body they were
+  written in. It reserves every top-level name over the whole package first, so
+  a top-level declaration wins whatever order registration put the two in, and
+  a body-local type is measured against funcs and components too because Go
+  gets `type Local struct` beside `func Local()`. Which body a declaration
+  belongs to is `BodyOwner` on the three decls, stamped by `registerBodyDecl`.
+  Every reference rides on the declaration pointer — a literal's `Def`, an
+  annotation's `Decl`, a field type, the element of a `list<Local>`, the host
+  spelling each backend derives from `Name` — so setting `Name` reaches all of
+  them. `ir.Func.Receiver` is the exception, being the receiver type's name
+  written out as a string; renaming it is what keeps Go's `Local__secondShout`,
+  Kotlin's `fun Local__second.shout` and JS's `Local__second_shout` off a type
+  that holds someone else's fields. It ran as an interim checker error
+  (`claimBodyType`) for as long as #198 was open.
+- A **component** collides only inside a recursion cycle, which is why that
+  check is narrower and is still a **codegen limitation surfaced in the
+  checker**. Every platform sets `InlineComponents=false`, so
   `passNoInlineComponents` substitutes a component that is not in a cycle into
   its caller with its state renamed per call site (`__instN`) and it never
   reaches a backend under its declared name. What survives is a cycle, and two
   surviving declarations of one name emit one host component twice.
   `reportBodyComponentCollisions` asks that after pass2 and of the cycles only
   (`error_component_nested_recursive_collision.sngl`), which is what lets the
-  ordinary shadowing and two-bodies cases through.
+  ordinary shadowing and two-bodies cases through. Renaming it the way a type
+  is renamed is the remaining half of #198.
 
 What a nested *component* body sees is the body it was written in: its sibling
 declarations, and that body's props, vars and funcs. **Capture is lowered as

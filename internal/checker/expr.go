@@ -3432,7 +3432,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// One at the top of a component body was registered in pass1
 		// (collectComponentDecls); what reaches here is one in a nested block
 		// or a function body, which pass1 does not walk.
-		c.registerBodyDecl(x)
+		c.registerBodyDecl(x, c.bodyOwnerName())
 		return nil
 	case *ast.ComponentDecl:
 		// Position says what a `component` in a body means: at the root of a
