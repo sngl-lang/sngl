@@ -353,6 +353,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	componentFuncs := fyneComponentFuncs(ctx.Pkg)
+	stateFuncs := golang.ModelStateFuncs(ctx.Pkg)
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || codegen.IsComputed(fn) {
@@ -369,7 +370,10 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			emitIRFyneTypeMethod(&funcBuf, fn, gc)
 			continue
 		}
-		if fn.Receiver == "" && !componentFuncs[fn] && canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+		// A top-level func that touches a package var reads a Model field, so
+		// it is a Model method like a component's own; stateFuncs is the same
+		// set ModelFreeFuncs kept from the call sites.
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}

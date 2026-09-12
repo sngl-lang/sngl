@@ -338,6 +338,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	allFuncs := c.ctx.AllFuncs()
 	componentFuncs := gtk4ComponentFuncs(c.ctx.Pkg)
+	stateFuncs := golang.ModelStateFuncs(c.ctx.Pkg)
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || codegen.IsComputed(fn) {
@@ -358,10 +359,11 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			emitGTK4TypeMethod(&funcBuf, fn, gc)
 			continue
 		}
-		// A top-level func reads no component state, so it is emitted free --
-		// that is what ModelFreeFuncs told the call sites above, and it is the
-		// only form a type method can call.
-		if fn.Receiver == "" && !componentFuncs[fn] && c.shared.canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+		// A top-level func that touches no package var is emitted free -- that
+		// is what ModelFreeFuncs told the call sites above, and it is the only
+		// form a type method can call. One that does touch a var reads a Model
+		// field and falls through to the method path below.
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && c.shared.canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitGTK4FreeFunc(&funcBuf, fn, gc)
 			continue
 		}

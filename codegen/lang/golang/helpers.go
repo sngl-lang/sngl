@@ -12,11 +12,12 @@ import (
 // (bubbletea, fyne, gtk4) emits as free package-level functions rather than as
 // methods on its Model, for ExprCtx.FreeFuncs.
 //
-// A top-level function has no component in scope, so it reads no component
-// state and there is nothing for a receiver to carry. It is emitted free
-// because a *method* on a user type is free too — Go has no receiver to hang
-// one of those on — and a type method calling a Model method has no Model to
-// call it through.
+// A top-level function is emitted free where it can be, because a *method* on
+// a user type is free too — Go has no receiver to hang one of those on — and a
+// type method calling a Model method has no Model to call it through. What it
+// cannot be is free while it touches a package-level var: those are fields of
+// the same Model, and `NameStateVar` spells one `m.x` in every scope.
+// ModelStateFuncs is that exception.
 func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	if pkg == nil {
 		return nil
@@ -37,17 +38,83 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 			componentFuncs[fn] = true
 		}
 	}
+	stateFuncs := ModelStateFuncs(pkg)
 	out := map[string]bool{}
 	for _, fn := range pkg.Funcs {
 		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] {
 			continue
 		}
-		if isComputedSig(fn) {
+		if isComputedSig(fn) || stateFuncs[fn] {
 			continue
 		}
 		out[fn.Name] = true
 	}
 	return out
+}
+
+// ModelStateFuncs names the top-level funcs a Model-receiver platform must
+// emit as Model methods even though they belong to no component: the ones that
+// read or write a package-level var, and everything that reaches one through a
+// call.
+//
+// The transitive half is not defensive. A caller emitted free spells a call to
+// a Model method `m.callee(…)`, so one state-touching func drags every
+// top-level caller of it onto the receiver or the call site names an `m` its
+// own signature does not declare — which is the same undefined `m` this set
+// exists to remove from the callee.
+//
+// A method on a user type is out of scope and stays free: Go has no receiver
+// to hang one on. One that reaches a package var still emits an undefined `m`,
+// which this does not fix and cannot -- there is nowhere to put the receiver.
+func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	if pkg == nil {
+		return nil
+	}
+	// Consts are excluded because EvalIdent already asks the scope about one
+	// (NameConst) and spells it bare outside a Model method; a state var
+	// (NameStateVar) is `m.x` unconditionally.
+	state := map[ir.Symbol]bool{}
+	for _, v := range pkg.Vars {
+		state[v] = true
+	}
+
+	touches := map[*ir.Func]bool{}
+	calls := map[*ir.Func][]*ir.Func{}
+	for _, fn := range pkg.Funcs {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			switch e := n.(type) {
+			case *ir.Ident:
+				if state[e.Sym] {
+					touches[fn] = true
+				}
+				if callee, ok := e.Sym.(*ir.Func); ok {
+					calls[fn] = append(calls[fn], callee)
+				}
+			case *ir.Call:
+				if e.Func != nil {
+					calls[fn] = append(calls[fn], e.Func)
+				}
+			}
+			return nil
+		})
+	}
+
+	for changed := true; changed; {
+		changed = false
+		for fn, callees := range calls {
+			if touches[fn] {
+				continue
+			}
+			for _, callee := range callees {
+				if touches[callee] {
+					touches[fn] = true
+					changed = true
+					break
+				}
+			}
+		}
+	}
+	return touches
 }
 
 // isComputedSig mirrors codegen.IsComputed without the import: a zero-arg
