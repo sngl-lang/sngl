@@ -18,8 +18,10 @@ the defect was the missing member table and not three emitters.
 
 `float(t)` and `int(d)` are the single-base half. A single-base unit is a plain
 number on every target and carries no field at all, so a conversion is how its
-magnitude is read; those two lines were already correct and are here because a
-reader reaching for `t.tk` should be able to see what to write instead.
+magnitude is read, and a reader reaching for `t.tk` should be able to see that
+here. What `int(d)` *emits* is a separate subject with its own golden
+(`unit_duration_cast.txtar`): a duration is a `time.Duration` in Go, so the
+cast divides the nanoseconds out.
 
 deny out/go/bubbletea/model.go `"px is " \+ m\.` -- a float64 concatenated onto a string is not Go; the per-base read has to arrive through fmt.Sprint like any other number
 deny out/kotlin/android/MainScreen.kt `"px is " \+ m__inst0\.px` -- Kotlin would compile this and format it unlike every other float on the page
@@ -221,7 +223,7 @@ func (m Model) View() tea.View {
 	part3 = lipgloss.NewStyle().Render(fmt.Sprint(("tk is " + fmt.Sprint(float64(m.t__inst0)))))
 	parts = append(parts, part3)
 	var part4 string
-	part4 = lipgloss.NewStyle().Render(fmt.Sprint(("ms is " + fmt.Sprint(int(m.d__inst0)))))
+	part4 = lipgloss.NewStyle().Render(fmt.Sprint(("ms is " + fmt.Sprint(int(m.d__inst0/time.Millisecond)))))
 	parts = append(parts, part4)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)

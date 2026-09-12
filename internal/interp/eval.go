@@ -90,6 +90,39 @@ func (u unitValue) Scale(factor float64) unitValue {
 	return unitValue{BaseAmount: u.BaseAmount * factor, Suffix: u.Suffix, Table: u.Table}
 }
 
+// baseAmount reads one of the unit's per-base members -- the ones
+// ir.UnitFields registers and the checker types as a float. A value here
+// carries one magnitude and the base it counts in, so it answers for that base
+// and zero for the others, which is the shape every backend emits: a literal
+// written in one base leaves the rest of the record at zero.
+func (u unitValue) baseAmount(base string) (any, error) {
+	if u.Table == nil {
+		return nil, fmt.Errorf("no unit table for %q", base)
+	}
+	if u.Table.BaseOf[base] != base {
+		// The checker registers a field per base and refuses anything else, so
+		// this is a value whose table was built without one rather than a
+		// program that asked for it.
+		return nil, fmt.Errorf("no base %q on this unit", base)
+	}
+	if base == u.countedIn() {
+		return u.BaseAmount, nil
+	}
+	return float64(0), nil
+}
+
+// countedIn is the base this value's magnitude is expressed in: the suffix it
+// was written with, reduced.
+func (u unitValue) countedIn() string {
+	if u.Table == nil {
+		return u.Suffix
+	}
+	if b, ok := u.Table.BaseOf[u.Suffix]; ok {
+		return b
+	}
+	return u.Suffix
+}
+
 func (u unitValue) displayAmount() float64 {
 	if u.Table != nil {
 		if factor, ok := u.Table.Conversions[u.Suffix]; ok && factor != 0 {
@@ -115,6 +148,10 @@ func (u unitValue) sameFamily(other unitValue) bool {
 type unitTable struct {
 	Base        string
 	Conversions map[string]float64
+	// BaseOf is the base each suffix reduces to (a base reduces to itself),
+	// from ir.UnitSuffix.BaseName. Needed to read a per-base member off a
+	// value: `3rem` counts in em, not in whichever suffix was declared first.
+	BaseOf map[string]string
 }
 
 // Env holds the mutable state for test execution.
@@ -1071,6 +1108,9 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	}
 	if m, ok := obj.(map[string]any); ok {
 		return m[e.Field], nil
+	}
+	if u, ok := obj.(unitValue); ok {
+		return u.baseAmount(e.Field)
 	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
 }
@@ -2479,6 +2519,12 @@ func ToInt(v any) int {
 		return int(val)
 	case float64:
 		return int(val)
+	case unitValue:
+		// The magnitude in the unit's base, which is what toFloat already
+		// answers and what every backend's cast produces. Without this case a
+		// unit fell through to the zero below, so `int(500ms)` was 0 here and
+		// 500 everywhere else.
+		return int(val.BaseAmount)
 	case bool:
 		if val {
 			return 1
