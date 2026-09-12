@@ -1,0 +1,58 @@
+# A method on a unit or on a primitive that writes a top-level var compiles,
+# and the write lands.
+#
+# Same lift as a struct method -- Go has no receiver for either, so both are
+# free `LenDoubled(v Len, m *Model)` functions taking the Model as a trailing
+# parameter -- but the three platform emit loops asked a narrower question than
+# the call site did (structs and enums only), so the definition came out as
+# `func (m *Model) doubled() Len` against a call to `LenDoubled`.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+unit Len {
+    mm
+    cm = 10mm
+}
+
+var log string = ""
+
+func Len.doubled(v Len) Len {
+    log = log + "!"
+    return v + v
+}
+
+func int.twice(n int) int {
+    log = log + "?"
+    return n * 2
+}
+
+component main node {
+    var five Len = 5mm
+    var d Len = 0mm
+    var t2 = 0
+    var note = ""
+
+    effect(@mount {
+        d = five.doubled()
+        t2 = 3.twice()
+        note = log
+    })
+
+    text(value="{d}{t2}{note}")
+}
+
+func testUnitAndPrimitiveMethodsWriteTopLevelVar(t Test, c main) {
+    t.assert(c.d == 10mm)
+    t.assert(c.t2 == 6)
+    t.assert(c.note == "!?")
+}
+
+window {
+    main
+}

@@ -552,12 +552,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		if fn.IsTest || codegen.IsComputed(fn) || canvasDraws[fn] {
 			continue
 		}
-		// A method on a user struct or enum is not a Model method: Go has no
-		// methods to attach to some of those types and the call site lifts it
-		// to a free `ReceiverMethod(recv, …)` either way. Skipping every func
-		// with a receiver skipped these entirely, and left the call to a name
-		// nothing declared.
-		if fn.Receiver != "" && userTypeName(ctx.Pkg, fn.Receiver) {
+		// golang.LiftsToFreeFunc is the one answer the call site uses too.
+		if fn.Receiver != "" && golang.LiftsToFreeFunc(ctx.Pkg, fn.Receiver) {
 			emitIRTypeMethod(&b, fn, gc)
 			continue
 		}
@@ -689,25 +685,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 
 	return body, gc.Imports()
-}
-
-// userTypeName reports whether name is a struct or enum the package declares,
-// as opposed to a component (whose methods are the Model's).
-func userTypeName(pkg *ir.Package, name string) bool {
-	if pkg == nil {
-		return false
-	}
-	for _, s := range pkg.Structs {
-		if s.Name == name {
-			return true
-		}
-	}
-	for _, e := range pkg.Enums {
-		if e.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // emitIRTypeMethod emits a method on a user type through the shared Go

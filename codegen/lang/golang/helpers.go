@@ -131,18 +131,23 @@ func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
 func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for fn := range ModelStateFuncs(pkg) {
-		if fn.Receiver != "" && liftsToFreeFunc(pkg, fn.Receiver) {
+		if fn.Receiver != "" && LiftsToFreeFunc(pkg, fn.Receiver) {
 			out[fn] = true
 		}
 	}
 	return out
 }
 
-// liftsToFreeFunc reports whether a method on this receiver is emitted as a
+// LiftsToFreeFunc reports whether a method on this receiver is emitted as a
 // free `ReceiverMethod(recv, …)` function rather than dispatched through the
 // Model. A component's method is the other case and stays a Model method, so
 // it has a receiver to read state from already.
-func liftsToFreeFunc(pkg *ir.Package, receiver string) bool {
+//
+// bubbletea, fyne and gtk4 each route their emit loop through this rather than
+// asking again: the call site (evalTypeMethodCall) lifts a method on any type
+// the package declares, and a narrower emitter answer emits a definition in a
+// form no call site names.
+func LiftsToFreeFunc(pkg *ir.Package, receiver string) bool {
 	if pkg == nil || receiver == "" {
 		return false
 	}

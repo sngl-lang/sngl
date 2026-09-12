@@ -350,13 +350,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		if instanceOwnsFunc(c.ctx.Pkg, fn) {
 			continue
 		}
-		// A method on a user struct or enum is a free `ReceiverMethod(this, …)`
-		// -- the type is emitted into this package beside the Model, so Go has
-		// no receiver to hang one of those on, and that is the name the Go
-		// translator spells at the call site. Skipping every func with a
-		// receiver left both these and a component's own funcs undefined where
-		// they were called from.
-		if fn.Receiver != "" && gtk4UserTypeName(c.ctx.Pkg, fn.Receiver) {
+		// golang.LiftsToFreeFunc is the one answer the call site uses too.
+		if fn.Receiver != "" && golang.LiftsToFreeFunc(c.ctx.Pkg, fn.Receiver) {
 			emitGTK4TypeMethod(&funcBuf, fn, gc)
 			continue
 		}
@@ -993,26 +988,6 @@ func isSetterOn(call *ir.Call, selfNode string) bool {
 	}
 	if sel, ok := first.(*ir.Select); ok {
 		if op, ok := sel.Operand.(*ir.Ident); ok && op.Name == "m" && sel.Field == selfNode {
-			return true
-		}
-	}
-	return false
-}
-
-// gtk4UserTypeName reports whether a receiver names a struct or enum this
-// package declares, which is what separates a type's method from a
-// component's own func -- the latter names its component.
-func gtk4UserTypeName(pkg *ir.Package, name string) bool {
-	if pkg == nil {
-		return false
-	}
-	for _, s := range pkg.Structs {
-		if s.Name == name {
-			return true
-		}
-	}
-	for _, e := range pkg.Enums {
-		if e.Name == name {
 			return true
 		}
 	}
