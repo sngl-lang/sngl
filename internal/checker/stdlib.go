@@ -1177,16 +1177,13 @@ func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.Even
 	return props, events
 }
 
-// collectExtensionDecls pre-registers what a platform extension body declares
-// -- its vars and consts, and the struct, enum, unit and component
-// declarations that are body-scoped -- the way pass1's collectComponentDecls
-// does for an ordinary component body. A func in an extension body is out of
-// scope here and stays unbound.
+// collectExtensionDecls pre-registers what a platform extension body declares,
+// the way pass1's collectComponentDecls does for an ordinary component body. A
+// func in an extension body is out of scope here and stays unbound.
 //
 // One walk in source order, and it has to stay one: collectComponentVarDecl
 // resolves an annotation eagerly, so a body-local type is a name only if its
-// registration already happened. The caller's scope is what registerBodyDecl
-// binds into and what resolveType then reads.
+// registration already happened.
 func (c *checker) collectExtensionDecls(body ast.StmtBlock) ([]*ir.Var, []ir.Symbol) {
 	var vars []*ir.Var
 	var decls []ir.Symbol
@@ -1301,10 +1298,8 @@ func (c *checker) checkPendingExtensions() {
 			// the component's parenless stub. The list starts from the
 			// component's own vars so a var the stdlib declaration made stays
 			// visible to the override.
-			// The scope is thrown away again: the symbols travel on BodyDecls
-			// and declareBodyDecls rebinds them for the body check. It is what
-			// a var annotation resolves against in the meantime, which is why
-			// the two are collected under one.
+			// The scope is thrown away: the symbols travel on BodyDecls and
+			// declareBodyDecls rebinds them for the body check.
 			c.pushScope()
 			vars, bodyDecls := c.collectExtensionDecls(pe.body)
 			c.popScope()
