@@ -871,8 +871,7 @@ When adding a new stdlib package that needs runtime support:
 - **`iter<T>`** — opaque generic iterator type. `list<T>` implicitly converts to `iter<T>`; `map<K, V>` does not, so a map cannot reach an `iter` position with its map-ness erased. For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
 
 **A unit's members are its bases, and they are registered like any other
-declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit
-measurement { px, em, rem = 16em, vw, vh, pct }` declares five bases, so a
+declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem = 16em, vw, vh, pct }` declares five bases, so a
 value carries five numbers and every backend emits it as a record of them.
 `ir.UnitDef.Fields` is that record's member table — `ir.UnitFields`, one
 `float` per base, built at registration — and `ir.Fielded` is what a struct and
@@ -880,8 +879,7 @@ a unit answer it through, the field half of what `ir.methodTable` already does
 for methods across four kinds. `checker.selectDeclaredMember` is the one lookup
 both use.
 
-A **single-base** unit has no members at all. `unit tick { tk }` is `type Tick
-float64` in Go, a `Double` in Kotlin and a number in JavaScript: there is
+A **single-base** unit has no members at all. `unit tick { tk }` is `type Tick float64` in Go, a `Double` in Kotlin and a number in JavaScript: there is
 nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
 `t.tk` is an unknown member like any other, and a *reduced* suffix is one too —
 `rem` is 16em and no value carries a magnitude for it.
