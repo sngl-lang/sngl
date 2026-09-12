@@ -1083,12 +1083,12 @@ func (c *checker) inferUnitConversion(x *ast.CallExpr, target *ir.Type) ir.Expr 
 
 // stringReprCast reports the cast target when sym is one of the string-repr
 // structs — color, date, time, datetime — which are stdlib StructDef-backed
-// rather than scalar primitives and so are not in ir's scalar registry.
+// rather than scalar primitives, so LookupBuiltinScalar does not answer for
+// them.
 //
 // The #[builtin] mark on the resolved declaration is what answers, never the
 // name written at the call site: `date(…)` and `time.date(…)` reach one
-// StructDef and must build the one ir.Conversion. Reading the mark is also
-// what makes the cast shadowable, the rule isBuiltinTypeName already follows.
+// StructDef and must build the one ir.Conversion.
 func stringReprCast(sym ir.Symbol) (*ir.Type, bool) {
 	sd, ok := sym.(*ir.StructDef)
 	if !ok || !sd.Builtin.IsStringRepr() {
@@ -1224,10 +1224,7 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 						if ud, ok := fsym.(*ir.UnitDef); ok {
 							return c.inferUnitConversion(call, ud.SymType())
 						}
-						// And the same for the struct-backed casts, which the
-						// unit case was given ahead of them: an ir.Call is not
-						// what the optimizer folds, so without this a qualified
-						// `time.date("…")` costs the program its constant.
+						// An ir.Call is not what the optimizer folds.
 						if target, ok := stringReprCast(fsym); ok {
 							return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
 						}
