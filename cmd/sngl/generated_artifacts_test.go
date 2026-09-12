@@ -87,7 +87,7 @@ func compareArtifact(t *testing.T, path, rel string, got []byte) {
 // can be the whole document. The identity of the line is what a reader needs.
 func clipLines(diff string) string {
 	var out []string
-	for _, line := range strings.Split(diff, "\n") {
+	for line := range strings.SplitSeq(diff, "\n") {
 		if len(line) > 160 {
 			line = line[:160] + "… (clipped)"
 		}
