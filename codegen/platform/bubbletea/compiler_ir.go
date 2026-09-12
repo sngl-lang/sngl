@@ -192,8 +192,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// these renders, and before ScopedExprCtx clones it. Clones inherit it:
 	// ForComponent and WithLocal copy the map reference along.
 	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
+	ctx.ExprCtx.ModelParamFuncs = golang.ModelParamFuncs(ctx.Pkg)
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
+	// This platform's hand-written receivers are `func (m Model)` -- Update
+	// mutates the copy and hands it back -- so passing the Model to something
+	// that takes a *Model needs its address here. Every body EmitFuncDef
+	// writes clears it again, those being pointer receivers.
+	gc.ModelIsValue = true
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
 		gc:             gc,
@@ -536,6 +542,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		allFuncs = append(allFuncs, comp.Funcs...)
 	}
 	componentFuncs := componentFuncSet(ctx.Pkg)
+	stateFuncs := golang.ModelStateFuncs(ctx.Pkg)
 	seenUserFn := make(map[*ir.Func]bool, len(allFuncs))
 	for _, fn := range allFuncs {
 		if seenUserFn[fn] {
@@ -545,21 +552,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		if fn.IsTest || codegen.IsComputed(fn) || canvasDraws[fn] {
 			continue
 		}
-		// A method on a user struct or enum is not a Model method: Go has no
-		// methods to attach to some of those types and the call site lifts it
-		// to a free `ReceiverMethod(recv, …)` either way. Skipping every func
-		// with a receiver skipped these entirely, and left the call to a name
-		// nothing declared.
-		if fn.Receiver != "" && userTypeName(ctx.Pkg, fn.Receiver) {
+		// golang.LiftsToFreeFunc is the one answer the call site uses too.
+		if fn.Receiver != "" && golang.LiftsToFreeFunc(ctx.Pkg, fn.Receiver) {
 			emitIRTypeMethod(&b, fn, gc)
 			continue
 		}
-		// A top-level func has no component in scope, so it reads no state and
-		// needs no receiver. Emitted free, it is callable from a Model method
-		// and from a type method alike -- as a Model method it was reachable
-		// only from the first, and `Calc.pending` calling `format` rendered
-		// `m.format(…)` in a function with no `m`.
-		if !componentFuncs[fn] {
+		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
+		// its doc for what a package var costs a free function.
+		if !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}
@@ -682,36 +682,13 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	return body, gc.Imports()
 }
 
-// userTypeName reports whether name is a struct or enum the package declares,
-// as opposed to a component (whose methods are the Model's).
-func userTypeName(pkg *ir.Package, name string) bool {
-	if pkg == nil {
-		return false
-	}
-	for _, s := range pkg.Structs {
-		if s.Name == name {
-			return true
-		}
-	}
-	for _, e := range pkg.Enums {
-		if e.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-// emitIRTypeMethod emits a method on a user type as the free function its call
-// sites name: `func GlyphRow(gl Glyph, row int) string`, with the receiver as
-// the first parameter (passNoImplicitRecv already put it there).
+// emitIRTypeMethod emits a method on a user type through the shared Go
+// emitter, which is also what decides whether it takes the Model.
 func emitIRTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	if len(fn.Block) == 0 {
 		return
 	}
-	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
-	fnCopy.Receiver = ""
-	for _, line := range gc.EmitFuncDef(&fnCopy) {
+	for _, line := range gc.EmitTypeMethodDef(fn) {
 		b.WriteString(line)
 		b.WriteByte('\n')
 	}

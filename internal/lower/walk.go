@@ -190,6 +190,10 @@ func walkWindow(w *ir.Window, fns walkFuncs) {
 			f.Block = fns.stmts(f.Block)
 		}
 	}
+	// Only passTimerPrimitive puts a timer on a window; nothing in source does.
+	for _, t := range w.Timers {
+		walkTimer(t, fns)
+	}
 	if fns.stmts != nil {
 		w.Body = fns.stmts(w.Body)
 	}

@@ -1,0 +1,18 @@
+import . "sngl:ui"
+
+struct S {
+    x int
+}
+
+// The same rule with no parameters at all, so there is nothing to shift.
+func S.zero() => 5
+
+component main node {
+    var s S = {x=1}
+
+    text(value="{s.zero()}") // ERROR(check) "S.zero is static: it declares no parameters"
+}
+
+window {
+    main
+}

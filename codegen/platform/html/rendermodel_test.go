@@ -93,7 +93,7 @@ func TestBuildRenderModel(t *testing.T) {
 	pkg, win := routeFixture()
 
 	_, actionIdx := collectActions(pkg, win, buildNativeFuncMap(pkg, "go"))
-	rr, err := buildRenderModel(pkg, win, "/", actionIdx)
+	rr, err := buildRenderModel(pkg, win, actionIdx)
 	if err != nil {
 		t.Fatalf("buildRenderModel: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestBuildRenderModel(t *testing.T) {
 	}
 
 	joined := strings.Join(rr.Chunks, "")
-	if !strings.Contains(joined, `<form method="post" action="/"`) {
+	if !strings.Contains(joined, `<form method="post">`) {
 		t.Fatalf("chunks missing form wrapper:\n%s", joined)
 	}
 	if !strings.Contains(joined, `name="_action"`) {
@@ -228,7 +228,7 @@ func TestActionIndexSingleSourceOfTruth(t *testing.T) {
 		t.Fatalf("node handler action index: want 1, got %d", got)
 	}
 
-	rr, err := buildRenderModel(pkg, win, "/", actionIdx)
+	rr, err := buildRenderModel(pkg, win, actionIdx)
 	if err != nil {
 		t.Fatalf("buildRenderModel: %v", err)
 	}

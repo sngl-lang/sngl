@@ -55,7 +55,12 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 		// window owns, which is where a root component's state now lives.
 		stateVars := routeStateVars(req.Pkg, win)
 		actions, actionIdx := collectActions(req.Pkg, win, targets)
-		render, err := buildRenderModel(req.Pkg, win, path, actionIdx)
+		if len(actions) > 0 {
+			if fn := reactiveSlotFunc(req.Pkg); fn != nil {
+				return fmt.Errorf("html: route %s has a server-side action, so window %q is rendered per request — but a conditional or loop in it re-renders on the client (%s), and route mode cannot emit both for one window; make the condition depend on the request (a route parameter) rather than on mutable state", path, win.Name, fn.Name)
+			}
+		}
+		render, err := buildRenderModel(req.Pkg, win, actionIdx)
 		if err != nil {
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
@@ -123,6 +128,37 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 	for _, f := range c.assetFiles {
 		if err := writeSinkFile(sink, f.name, f.bytes); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// reactiveSlotFunc returns the first __renderSlotN the reactivity lowering
+// synthesized anywhere in the package, or nil when it synthesized none.
+//
+// Package-wide because that is the set a route emits its funcs from: one such
+// func anywhere reaches the language translator carrying `lower.CreateNode`.
+func reactiveSlotFunc(pkg *ir.Package) *ir.Func {
+	if pkg == nil {
+		return nil
+	}
+	for _, fn := range pkg.Funcs {
+		if fn != nil && fn.SlotRender {
+			return fn
+		}
+	}
+	for _, c := range pkg.Components {
+		for _, fn := range c.Funcs {
+			if fn != nil && fn.SlotRender {
+				return fn
+			}
+		}
+	}
+	for _, w := range pkg.Windows {
+		for _, fn := range w.Funcs {
+			if fn != nil && fn.SlotRender {
+				return fn
+			}
 		}
 	}
 	return nil

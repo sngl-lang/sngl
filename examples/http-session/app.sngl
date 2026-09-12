@@ -11,30 +11,32 @@ import "go:git.duckfam.us/jonathan/sngl/examples/http-session/session"
 component main ui.root {
     var sidebarOpen = false
 
-    app.window #home(title="Dashboard", href="/") {
-        ui.hbox {
-            if sidebarOpen {
-                ui.vbox(style={padding=16, gap=8, background="#f0f0f0", width=200}) {
-                    ui.text(value="Navigation", style={fontWeight="bold"})
-                    ui.link(text="Dashboard", href="/")
-                    ui.link(text="About", href="/about")
-                }
+    ui.hbox {
+        if sidebarOpen {
+            ui.vbox(style={padding=16, gap=8, background="#f0f0f0", width=200}) {
+                ui.text(value="Navigation", style={fontWeight="bold"})
+                ui.link(text="Dashboard", href="/")
+                ui.link(text="About", href="/about")
             }
-            ui.vbox(style={padding=24, gap=16, flex=1}) {
-                ui.hbox(style={gap=12, alignItems="center"}) {
-                    ui.button(text=sidebarOpen ? "Close Menu" : "Open Menu", @click { sidebarOpen!! })
-                    ui.text(value=session.Greeting("World"), style={fontSize=20, fontWeight="bold"})
-                }
-                ui.text(value="Welcome to the dashboard!")
+        }
+        ui.vbox(style={padding=24, gap=16, flex=1}) {
+            ui.hbox(style={gap=12, alignItems="center"}) {
+                ui.button(text=sidebarOpen ? "Close Menu" : "Open Menu", @click { sidebarOpen!! })
+                ui.text(value=session.Greeting("World"), style={fontSize=20, fontWeight="bold"})
             }
+            ui.text(value="Welcome to the dashboard!")
         }
     }
+}
 
-    app.window #about(title="About", href="/about") {
-        ui.vbox(style={padding=24, gap=12}) {
-            ui.text(value="About", style={fontSize=24, fontWeight="bold"})
-            ui.text(value="This is a server-rendered SNGL app.")
-            ui.link(text="Back to Dashboard", href="/")
-        }
+ui.window #home(title="Dashboard", href="/") {
+    main
+}
+
+ui.window #about(title="About", href="/about") {
+    ui.vbox(style={padding=24, gap=12}) {
+        ui.text(value="About", style={fontSize=24, fontWeight="bold"})
+        ui.text(value="This is a server-rendered SNGL app.")
+        ui.link(text="Back to Dashboard", href="/")
     }
 }

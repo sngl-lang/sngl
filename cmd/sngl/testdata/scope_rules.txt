@@ -127,9 +127,12 @@ struct Box {
     _hidden int = 0
 }
 
-func Box._secret() => 42
+// Both take the receiver as their first parameter. A method that does not is
+// static in Box's namespace and is not reached through a value at all; this
+// file is about who may name a member, not about which form declares one.
+func Box._secret(b Box) => 42
 
-func Box.Shown() => 1
+func Box.Shown(b Box) => 1
 
 window {
 }
@@ -199,7 +202,7 @@ struct Local {
     _p int = 0
 }
 
-func Local._m() => 1
+func Local._m(l Local) => 1
 
 func use(l Local) => l._m() + l._p
 

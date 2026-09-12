@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/names"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -242,7 +243,7 @@ func lowerLambda(pkg *ir.Package, _ Caps, _ Options) error {
 		pkg.LiftedCaptures = map[*ir.Func]map[ir.Symbol]string{}
 	}
 
-	l := &lifter{pkg: pkg}
+	l := newLifter(pkg)
 
 	rewrite := func(e ir.Expr) ir.Expr {
 		return liftLambdas(e, l)
@@ -420,10 +421,25 @@ func assertNoLambdaSurvives(pkg *ir.Package) error {
 type lifter struct {
 	pkg     *ir.Package
 	counter int
+	names   *names.Registry
 	// enclosing tracks ancestor lift frames so a nested lambda capturing
 	// the same Sym as its enclosing lambda re-uses the outer's ref-typed
 	// state field instead of taking a fresh address.
 	enclosing []scopeFrame
+}
+
+// newLifter seeds the name registry from the package as it stands. Seeding
+// once is enough because a lifter lives for one pass and is the only thing
+// adding to pkg.Structs or pkg.Funcs within it.
+func newLifter(pkg *ir.Package) *lifter {
+	l := &lifter{pkg: pkg, names: &names.Registry{}}
+	for _, s := range pkg.Structs {
+		l.names.Reserve(s.Name)
+	}
+	for _, f := range pkg.Funcs {
+		l.names.Reserve(f.Name)
+	}
+	return l
 }
 
 type scopeFrame struct {
@@ -573,29 +589,20 @@ func (l *lifter) outerCaptureAccess(sym ir.Symbol) ir.Expr {
 
 // freshNames returns (capsName, funcName) skipping past any existing names
 // in pkg.Structs / pkg.Funcs.
+//
+// It asks the registry rather than allocating from it, because the two names
+// have to carry the same N: taken one at a time they would drift apart under
+// the first collision and `__lambda3_caps` would belong to `__lambda4`.
 func (l *lifter) freshNames() (string, string) {
 	for {
 		capsName := "__lambda" + itoa(l.counter) + "_caps"
 		funcName := "__lambda" + itoa(l.counter)
 		l.counter++
-		if !l.nameExists(capsName) && !l.nameExists(funcName) {
+		if l.names.Free(capsName) && l.names.Free(funcName) {
+			l.names.Reserve(capsName, funcName)
 			return capsName, funcName
 		}
 	}
-}
-
-func (l *lifter) nameExists(name string) bool {
-	for _, s := range l.pkg.Structs {
-		if s.Name == name {
-			return true
-		}
-	}
-	for _, f := range l.pkg.Funcs {
-		if f.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 func itoa(n int) string {

@@ -12,11 +12,12 @@ import (
 // (bubbletea, fyne, gtk4) emits as free package-level functions rather than as
 // methods on its Model, for ExprCtx.FreeFuncs.
 //
-// A top-level function has no component in scope, so it reads no component
-// state and there is nothing for a receiver to carry. It is emitted free
-// because a *method* on a user type is free too — Go has no receiver to hang
-// one of those on — and a type method calling a Model method has no Model to
-// call it through.
+// A top-level function is emitted free where it can be, so that a lifted type
+// method — which has no Model to dispatch through — can call it. What it
+// cannot be is free while it touches a package-level var: those are fields of
+// the same Model, and `NameStateVar` spells one `m.x` in every scope, with no
+// "outside a method" case. ModelStateFuncs is that exception, and it is the
+// one set the three platform emit loops read for this.
 func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 	if pkg == nil {
 		return nil
@@ -37,17 +38,138 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 			componentFuncs[fn] = true
 		}
 	}
+	stateFuncs := ModelStateFuncs(pkg)
 	out := map[string]bool{}
 	for _, fn := range pkg.Funcs {
 		if fn.IsTest || fn.Receiver != "" || fn.Synthesized || componentFuncs[fn] {
 			continue
 		}
-		if isComputedSig(fn) {
+		if isComputedSig(fn) || stateFuncs[fn] {
 			continue
 		}
 		out[fn.Name] = true
 	}
 	return out
+}
+
+// ModelStateFuncs names the top-level funcs a Model-receiver platform must
+// emit as Model methods even though they belong to no component: the ones that
+// read or write a package-level var, and everything that reaches one through a
+// call.
+//
+// The transitive half is load-bearing: a caller left free spells a call to a
+// Model method, which is the same undefined `m` one function further out.
+//
+// A method on a user type is in the set too and is answered differently, the
+// receiver slot being spent: ModelParamFuncs narrows to those.
+func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	if pkg == nil {
+		return nil
+	}
+	// Consts are excluded because EvalIdent already asks the scope about one
+	// (NameConst) and spells it bare outside a Model method; a state var
+	// (NameStateVar) is `m.x` unconditionally.
+	state := map[ir.Symbol]bool{}
+	for _, v := range pkg.Vars {
+		state[v] = true
+	}
+
+	touches := map[*ir.Func]bool{}
+	calls := map[*ir.Func][]*ir.Func{}
+	for _, fn := range pkg.Funcs {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			switch e := n.(type) {
+			case *ir.Ident:
+				if state[e.Sym] {
+					touches[fn] = true
+				}
+				if callee, ok := e.Sym.(*ir.Func); ok {
+					calls[fn] = append(calls[fn], callee)
+				}
+			case *ir.Call:
+				if e.Func != nil {
+					calls[fn] = append(calls[fn], e.Func)
+				}
+			}
+			return nil
+		})
+	}
+
+	for changed := true; changed; {
+		changed = false
+		for fn, callees := range calls {
+			if touches[fn] {
+				continue
+			}
+			for _, callee := range callees {
+				if touches[callee] {
+					touches[fn] = true
+					changed = true
+					break
+				}
+			}
+		}
+	}
+	return touches
+}
+
+// ModelParamFuncs names the methods on a user type that a Model-receiver
+// platform lifts to a free function and that touch package state, for
+// ExprCtx.ModelParamFuncs. Each takes the Model as a trailing parameter.
+//
+// The receiver is not available to carry it: Go has no methods to attach to
+// some of these types, so the lifted form is `CalcPending(k Calc)` and the
+// Model has to arrive as an argument.
+//
+// One map answers for the signature (EmitTypeMethodDef) and for the call site
+// (evalTypeMethodCall), which cannot then disagree about the arity.
+func ModelParamFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	out := map[*ir.Func]bool{}
+	for fn := range ModelStateFuncs(pkg) {
+		if fn.Receiver != "" && LiftsToFreeFunc(pkg, fn.Receiver) {
+			out[fn] = true
+		}
+	}
+	return out
+}
+
+// LiftsToFreeFunc reports whether a method on this receiver is emitted as a
+// free `ReceiverMethod(recv, …)` function rather than dispatched through the
+// Model. A component's method is the other case and stays a Model method, so
+// it has a receiver to read state from already.
+//
+// bubbletea, fyne and gtk4 each route their emit loop through this rather than
+// asking again: the call site (evalTypeMethodCall) lifts a method on any type
+// the package declares, and a narrower emitter answer emits a definition in a
+// form no call site names.
+func LiftsToFreeFunc(pkg *ir.Package, receiver string) bool {
+	if pkg == nil || receiver == "" {
+		return false
+	}
+	for _, c := range pkg.Components {
+		if c.Name == receiver {
+			return false
+		}
+	}
+	if isPrimitiveTypeName(receiver) {
+		return true
+	}
+	for _, s := range pkg.Structs {
+		if s.Name == receiver {
+			return true
+		}
+	}
+	for _, e := range pkg.Enums {
+		if e.Name == receiver {
+			return true
+		}
+	}
+	for _, u := range pkg.Units {
+		if u.Name == receiver {
+			return true
+		}
+	}
+	return false
 }
 
 // isComputedSig mirrors codegen.IsComputed without the import: a zero-arg

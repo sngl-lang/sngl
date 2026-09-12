@@ -174,6 +174,24 @@ descent through the view finds nothing there, which is why a pure call made
 twice in an android click handler went unshared until both passes were put on
 the one walk.
 
+`blocks.go` is not the only such enumeration, and a pass picks one of three
+depending on what it needs a handle to. A pass rewriting a *statement list in
+place* takes `blocks.go`'s pointers; a pass rewriting statements and leaf
+expressions together takes `walk.go`'s `walkPackage` (`passTernary`,
+`passIndexedIter`, `passNoRef`, `NoDeclarative`'s id scan); a pass wanting the
+*functions* a target may enter takes `async_offload.go`'s `offloadableFuncs`.
+The three enumerate the same owners and each says so in its own code, which is
+what let one of them forget a case the other two had. **A window owns timers**
+— `passTimerPrimitive` records a schedule on whichever owner held the node, and
+the inliner has by then put a top-level component's timer in the window — and
+`walkWindow` and `offloadableFuncs` both walked a window's vars, funcs and body
+and not its timers. Nothing in source puts a timer there, so both gaps opened
+only after that pass ran and were invisible to every fixture written before it:
+a ternary in a `@tick` panicked the Go emitter, a two-variable `sngl:seq` loop
+there emitted `for i, x := range` over a pull sequence, and a `#[go.async]` call
+there ran on fyne's drawing thread. `testdata/timer_tick_lowered.txtar` and
+`testdata/timer_tick_async_offload.txtar` pin the three.
+
 ## Build & Test Commands
 
 ```bash
@@ -295,7 +313,7 @@ blank-line separated, in load order. That order is not guaranteed, so prose
 that has to read in sequence belongs in a single file — `lib/<pkg>/doc.sngl`
 by convention, as `lib/ui/doc.sngl` does.
 
-Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/app` against both `lib/ui` and `sngl:internal/marks` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
+Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:tree` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `window` in `ui`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
@@ -739,7 +757,15 @@ declaration itself. Two things about the name that are easy to get wrong:
   identifier, so a declaration would be read by nobody — and it is written as
   a stub over the zero value, which reads exactly like a real implementation.
   JavaScript got that rule first; Kotlin had the bug until a `deny` caught
-  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call.
+  `fun hyp(a: Double, b: Double): Double = 0.0` beside a working call; Go was
+  the third and is `testdata/native_decl_not_emitted.txtar`. The test is
+  `Foreign.Name != "" && !Foreign.Marked` and it is applied **once**, in
+  `CodegenCtx.AllFuncs` — not at the emitter, because fyne and bubbletea
+  rebuild a component's func into a fresh `ir.Func` to give it a Model
+  receiver and the copy carries no `Foreign`. Only a native with a *return
+  type* ever showed: the checker synthesizes `return <zero>` for a bodyless
+  func, and a void one got an empty block that every Go emitter's
+  `len(fn.Block) == 0` guard already skipped.
 - **`method` says the identifier is invoked *on* its first argument** rather
   than handed it: `c.Circle(1, 2)` where the default is
   `gfx.Context.Circle(c, 1, 2)`. Both are valid Go for the same method, and
@@ -842,6 +868,67 @@ two calls of a nested func share the model. Its own state is unaffected and
 stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
 that, because it is the surprising half.
 
+**A platform override body is a body like any other** (#230): an override *is*
+the body its target renders, so "the body it was written in" is well defined
+there and every word above applies unchanged. Two things make it work, and both
+are about *when* the override is installed. `checkPendingExtensions` swaps the
+override's vars, props and body decls onto the declaration and restores the
+base after, so the nested bodies are checked while it still holds
+(`checkOverrideNestedBodies`) rather than in pass2, which runs after the
+restore. And the owner link has to survive to lowering, so `ir.Body` carries
+`BodyDecls` beside `Vars` and `specializeComp` swaps all three — without it
+every backend emitted the captured names bare, which
+`testdata/component_override_body_capture.txtar` denies on both of its targets.
+`ir.BodyOwners` and `ir.CapturesEnclosingState` read the overrides too, because
+the checker asks its questions with no target picked; that is what lets the
+recursion-cycle report reach an override body, and a `limit` var in
+`error_component_override_nested_capture_recursive.sngl` keeps the cycle from
+being folded away before it is asked.
+
+A `func` written there is the third slot of the same shape. It is registered
+by `collectExtensionDecls` and desugared onto the component by the same
+`registerNestedMethods` an ordinary body uses, so the override's body calls its
+own helper and a nested body reaches it through `lookupBodyMethod` — the route
+a method takes, since a component-body func is a method on its owner rather
+than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, swapped
+by `specializeComp` with the rest; without that swap bubbletea emitted
+`func (m *outer) Bump()` against a type it never declares, which
+`component_override_body_func.txtar` denies.
+
+A method is attached by **receiver**, so the base declaration's table is where
+an override's helper would otherwise land and stay — visible to the base body
+and to every other target's. Each override body therefore gets its own
+`maps.Clone` of that table. It starts from the base's, so a helper the
+declaration wrote stays callable from an override that did not rewrite it, and
+two *overrides* may each write a `func bump` without one being a redeclaration
+of the other: two platform packages implementing one component must not have to
+agree on their helpers' names.
+
+What is refused is an override helper **shadowing** one the base body wrote
+(`reportOverrideFuncShadows`). That is a codegen limitation surfaced in the
+checker, on `claimBodyType`'s terms rather than as a language rule: nothing
+renames a component method per body, so both would be emitted under one host
+identifier. #198's hoist-and-rename is where it lifts, and the diagnostic says
+so (`error_component_override_body_func_shadows.sngl`).
+
+`ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because by then the
+base declaration is restored and the live `Component.Funcs` no longer names the
+override's helper — checked at package scope instead, it reported the
+component's own vars as undefined. That set is asked of `c.pendingExtensions`
+as well as `pkg.Components`: an override's base is usually *not* this package's
+declaration, and every override in `lib/` and in a target package has a stdlib
+one.
+
+**A helper needs the base reachable by its bare name**, which an override
+written through a qualified alias does not have: a component-body func is a
+method, and the synthesised receiver type, `AttachMethod` and `lookupBodyMethod`
+all resolve the receiver as a bare name. So `component draw.circle[…]` may
+declare vars and types but not funcs, and `reportOverrideFuncUnreachableReceiver`
+says so where the helper is written. Binding the bare name for the body's
+duration is what supporting it would take, and that shadows a same-named
+declaration of the program's own for as long as it lasts — carrying a qualified
+`ir.Func.Receiver` instead is the real fix and touches every `fn.Receiver == comp.Name` comparison in the checker.
+
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested
 declaration first, so read in package order an unannotated `var count = 0` was
@@ -879,6 +966,52 @@ repoints `Call.Func`, so the owner's per-instance clone is what the spliced
 body calls. `CapturesEnclosingState` counts every func for that reason, while
 `declareEnclosingBody` still declares only the receiverless ones: declaring a
 method by bare name would shadow it.
+
+**A `func` written inside another function body is hoisted, not closed over,
+and `ir.Func.Nested` says which declarations that is.** It joins the enclosing
+component, window or package — what a backend emits from — while the name it
+was written under is the body's, which leaves two things to reconcile
+(`internal/checker/nested_funcs.go`).
+
+- **One declaration, whatever a body is read.** `preCheckComponentMethods`
+  reads a component method's signature and `checkComponentBody` then checks it
+  authoritatively, so `checkStmt` sees the same `*ast.FuncDef` twice and used
+  to hoist an `ir.Func` each time: `method Model.innerF already declared` on
+  bubbletea, two `fun innerF` in one android file, and on html a second
+  `function innerF` that silently won. `checker.nestedFuncs` keys the
+  declaration by its AST node. Every loop that checks or declares an owner's
+  funcs a second time in that owner's scope skips one, because that is not the
+  scope its source sits in.
+- **An emitted name of its own.** Two bodies may each write `func helper` and
+  mean two functions, into a flat namespace. `renameNestedFuncs` gives each
+  `<body>__<name>` at the end of the check, once no scope holds a written
+  name; three levels compose because it runs in declaration order. Renaming is
+  available to a func because a call site holds the declaration,
+  `ir.Call.Func`, and not the name. The names it
+  avoids are every kind that shares the emitted namespace — structs, enums,
+  units, components and funcs — because `struct step__mark` beside a `mark`
+  nested in `step` is Go's `Step__mark redeclared in this block`, and a
+  redeclaration parses, so `format.Source` passed it through.
+  `orderNestedFuncs` then puts each ahead of the body that declared it — the
+  hoist appends, and android emits an owner's funcs as local `fun`s inside one
+  composable, where a local function may not be referenced above its
+  declaration.
+
+What one may **reach** follows from the hoist rather than from where it is
+written. Its siblings and itself are hoisted into the same namespace, so a
+sibling call and recursion are ordinary calls (`checker.nestedScope`, one per
+body, chained on that body's outer scope). The enclosing function's params and
+locals are not: the call that held them has returned, and nothing about a hoist
+captures them. So the body is checked against the scope its enclosing function
+was *entered* from, and naming one is a positioned error carrying `captureHint`
+rather than a bare `undefined` — closing over them is a closure conversion and
+is not what this is. Two of one name in one body is that body's duplicate, from
+`c.declare` like any other binding.
+
+A func at the root of a **window** body reaches the same code and is none of
+this: it is the window's own, the way a component-body func is the component's,
+and it keeps the name it was written under. Reading `Nested` as "hoisted" is
+what renamed `examples/todo`'s `status`.
 
 Bare component resolution is `checker.lookupComponentInScope` — the lexical
 chain, like every other identifier. `ir.SymbolTable.LookupRootComponent` is

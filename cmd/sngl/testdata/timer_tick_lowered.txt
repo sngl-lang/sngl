@@ -1,0 +1,70 @@
+# A ternary in a timer's @tick does not take the build down.
+#
+# The goldens in testdata/timer_tick_lowered.txtar pin the shape this lowers
+# to. What they cannot say is how it failed: `ir.Ternary reached Go codegen`
+# is a panic in the Go emitter, not a diagnostic, so the build died with a
+# stack trace and no position. Only a harness that runs the CLI can assert an
+# exit status and the absence of that text.
+#
+# The @click control is here because it is what isolated the position: the
+# identical body in a click handler always lowered, so the constructs were
+# never the problem.
+
+sngl generate --lang go --platform bubbletea --out tick tick.sngl
+! stderr 'reached Go codegen'
+! stderr 'goroutine 1 \[running\]'
+exists tick/model.go
+
+sngl generate --lang go --platform bubbletea --out click click.sngl
+exists click/model.go
+
+# The dump printed a window's vars, funcs and body and dropped its timers, so
+# the stage after the one that puts a timer there showed no timer at all.
+sngl dump --stage lowered --after TimerPrimitive --lang go --platform bubbletea tick.sngl
+stdout 'timer\(50ms\) \{'
+
+-- tick.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+output {
+    go {
+        bubbletea
+    }
+}
+
+component ticker ui.node {
+    var level = 0.0
+
+    time.timer(interval=50ms, @tick {
+        level = level >= 1 ? 0.0 : level + 0.01
+    })
+
+    ui.text(value="{level}")
+}
+
+ui.window #main(title="tick") {
+    ticker()
+}
+-- click.sngl --
+import ui "sngl:ui"
+
+output {
+    go {
+        bubbletea
+    }
+}
+
+component clicker ui.node {
+    var level = 0.0
+
+    ui.button(text="step", @click {
+        level = level >= 1 ? 0.0 : level + 0.01
+    })
+
+    ui.text(value="{level}")
+}
+
+ui.window #main(title="click") {
+    clicker()
+}

@@ -360,6 +360,11 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	for _, f := range w.Funcs {
 		bodyStmts = append(bodyStmts, c.convertFuncDef(f))
 	}
+	// Only passTimerPrimitive puts a timer on a window, so this prints in
+	// `dump --stage lowered` and nowhere else.
+	for _, t := range w.Timers {
+		bodyStmts = append(bodyStmts, c.convertTimer(t))
+	}
 	for _, s := range w.Body {
 		bodyStmts = append(bodyStmts, c.convertStmt(s))
 	}

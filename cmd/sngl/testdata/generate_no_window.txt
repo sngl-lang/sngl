@@ -1,0 +1,40 @@
+# A build that generated nothing at all fails, rather than exiting 0 in silence
+# (#232). The per-unit skip stays at INFO; it is the whole invocation that has
+# to say so.
+! sngl generate --lang=none --platform=html --out=out nowindow/
+stderr 'nothing to generate: no window declared in nowindow'
+! exists out/index.html
+
+# Naming the file rather than the directory is the same failure from the other
+# side: naming it is the request, so it is emitted and internal/build reports it.
+! sngl generate --lang=none --platform=html --out=out2 nowindow/lib.sngl
+stderr 'a program declares at least one window'
+
+# One unit emitting is a successful build even though a sibling package skipped
+# -- which is examples/calculator, and what the rule above must not break.
+sngl generate --lang=none --platform=html --out=out3 app/
+stdout 'out3/index.html'
+exists out3/index.html
+
+-- nowindow/lib.sngl --
+import . "sngl:ui"
+
+component card(label = "") node {
+    text(value=label)
+}
+-- app/app.sngl --
+import . "sngl:ui"
+
+component main node {
+    text(value="hi")
+}
+
+window {
+    main
+}
+-- app/widgets/card.sngl --
+import . "sngl:ui"
+
+component card(label = "") node {
+    text(value=label)
+}

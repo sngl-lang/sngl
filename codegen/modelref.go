@@ -20,6 +20,11 @@ func ModelFieldRef(name string) ir.Expr { return RecvFieldRef(ModelReceiver, nam
 // its ctor and setters reach the same fields through the record.
 const ModelReceiver = "m"
 
+// ModelTypeName is the Go struct the three model platforms generate. Named
+// here beside the receiver because a lifted type method takes the Model as a
+// parameter and has to spell its type, which nothing in the IR can.
+const ModelTypeName = "Model"
+
 // RecvFieldRef builds a `<recv>.<name>` selector. recv is the receiver the
 // scope being emitted dispatches through -- the model in a model method, the
 // instance record inside a component's ctor -- so a node field written by a
