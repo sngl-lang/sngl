@@ -92,22 +92,27 @@ func (c *checker) treeOptional(decl *ast.ComponentDecl, comp *ir.Component) bool
 // anything in the tree itself, so every question asked of a block is asked of
 // theirs.
 //
-// One list, because there were three -- checkTreeMembership, treeEvidence and
-// checkTreelessBody each walked their own -- and each of the three was missing
-// a different one of the four. Two of those gaps were silent acceptances found
-// one at a time; a fourth caller would have been a fourth chance to miss one.
-func treeTransparent(st ir.Stmt) ([][]ir.Stmt, bool) {
+// `all` is every block; `binds` is the ones that may *supply* a family rather
+// than merely be held to one. They differ by a boundary's fallback alone: it
+// stands where the content stood and is held to the content's answer, so a
+// caller asking "what family is this?" must not read it. The boundary's own
+// check takes the fallback as a last resort once the content has given nothing
+// (checkVisualNodeIR), which is where that rule belongs.
+func treeTransparent(st ir.Stmt) (all, binds [][]ir.Stmt, ok bool) {
 	switch s := st.(type) {
 	case *ir.If:
-		return [][]ir.Stmt{s.Body, s.Else}, true
+		b := [][]ir.Stmt{s.Body, s.Else}
+		return b, b, true
 	case *ir.For:
-		return [][]ir.Stmt{s.Body, s.Else}, true
+		b := [][]ir.Stmt{s.Body, s.Else}
+		return b, b, true
 	case *ir.ErrorBoundary:
-		return [][]ir.Stmt{s.Children, s.Failed}, true
+		return [][]ir.Stmt{s.Children, s.Failed}, [][]ir.Stmt{s.Children}, true
 	case *ir.ContextProvider:
-		return [][]ir.Stmt{s.Children}, true
+		b := [][]ir.Stmt{s.Children}
+		return b, b, true
 	}
-	return nil, false
+	return nil, nil, false
 }
 
 // checkTreelessBody holds a tree-less component to containing no member of any
@@ -130,7 +135,7 @@ func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 	var walk func(stmts []ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, st := range stmts {
-			if blocks, ok := treeTransparent(st); ok {
+			if blocks, _, ok := treeTransparent(st); ok {
 				for _, b := range blocks {
 					walk(b)
 				}

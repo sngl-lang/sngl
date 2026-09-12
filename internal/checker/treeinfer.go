@@ -115,7 +115,7 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 	for _, st := range stmts {
 		// An `if`, a `for`, a boundary and a context override put nothing in
 		// the tree themselves, so the evidence is whatever is under them.
-		if blocks, ok := treeTransparent(st); ok {
+		if blocks, _, ok := treeTransparent(st); ok {
 			nested(blocks...)
 			continue
 		}
@@ -143,7 +143,7 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 // one thing treeEvidence deliberately does not read.
 func insertsSlot(stmts []ir.Stmt) bool {
 	for _, st := range stmts {
-		if blocks, ok := treeTransparent(st); ok {
+		if blocks, _, ok := treeTransparent(st); ok {
 			if slices.ContainsFunc(blocks, insertsSlot) {
 				return true
 			}

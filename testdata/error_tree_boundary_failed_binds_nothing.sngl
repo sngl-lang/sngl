@@ -1,0 +1,45 @@
+// A boundary's fallback stands where the content stood, so it is held to the
+// content's answer rather than giving one. `childrenTree` is where a slot
+// typed by its component's own tree parameter reads that answer off, and
+// reaching a boundary's `failed` there let an *empty* boundary bind T.
+//
+// The two orderings below are the same program. Reading `failed` as evidence,
+// the first bound T to `shape` off the fallback and blamed the text, and the
+// second bound it to `node` off the text and blamed the fallback: one program,
+// two diagnostics, decided by which child was written first. Both now say the
+// second, which is the one the language specifies -- a boundary around widgets
+// cannot fall back to a shape.
+//
+// `treeTransparent` returns two lists for this: every block, for the callers
+// that hold content to a family, and the binding ones, which are every block
+// but this. A boundary with no content still takes T from its fallback, as a
+// last resort and in the boundary's own check rather than here.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+component gbox<T>(content ...component T) T {
+    content
+}
+
+ui.window #first(title="t") {
+    gbox {
+        boundary(@error(e) {}) {
+            component failed {
+                d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000}) // ERROR(check) "expected node component in gbox, got circle"
+            }
+        }
+        ui.text(value="x")
+    }
+}
+
+ui.window #second(title="t") {
+    gbox {
+        ui.text(value="x")
+        boundary(@error(e) {}) {
+            component failed {
+                d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000}) // ERROR(check) "expected node component in gbox, got circle"
+            }
+        }
+    }
+}

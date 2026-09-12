@@ -5323,12 +5323,13 @@ func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Str
 // check, and a default would have to name a family the wrapper has no reason
 // to prefer.
 //
-// treeTransparent is the same list the rest of the tree questions use: a
-// boundary's content binds T like anything else written there.
+// treeTransparent's *binding* blocks, which is every block but a boundary's
+// fallback: that one stands where the content stood and is held to the
+// content's answer rather than supplying one.
 func childrenTree(content []ir.Stmt) *ir.StructDef {
 	for _, st := range content {
-		if blocks, ok := treeTransparent(st); ok {
-			for _, b := range blocks {
+		if _, binds, ok := treeTransparent(st); ok {
+			for _, b := range binds {
 				if sd := childrenTree(b); sd != nil {
 					return sd
 				}
@@ -5377,7 +5378,7 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// the subtle one: its own check binds T off its content, and reaching
 		// through it here is what holds that T to the family this position
 		// accepts.
-		if blocks, ok := treeTransparent(st); ok {
+		if blocks, _, ok := treeTransparent(st); ok {
 			for _, b := range blocks {
 				c.checkTreeMembership(owner, pos, b, want, where)
 			}
