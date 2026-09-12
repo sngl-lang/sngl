@@ -71,9 +71,20 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	// than the one in force here. In force, an enclosing param resolves and
 	// then reaches the backend as a bare name nothing declared -- and the
 	// binding it would have named belongs to a call that has returned.
+	//
+	// What that scope carries on top is the hoisted funcs, this one included:
+	// they end up in the same flat namespace, so calling a sibling or
+	// recursing is a call the backend can emit, and only the enclosing values
+	// are out of reach.
 	if outer := c.funcOuterScope; fn.Nested && outer != nil {
+		if c.nestedScope == nil {
+			c.nestedScope = ir.NewScope(outer)
+		}
+		// The duplicate was already reported against the body's own scope by
+		// the declare above; here it is the same symbol arriving twice.
+		_ = c.nestedScope.Declare(fn)
 		hidden, scope := c.nestedHidden, c.scope
-		c.nestedHidden, c.scope = scope, outer
+		c.nestedHidden, c.scope = scope, c.nestedScope
 		defer func() { c.nestedHidden, c.scope = hidden, scope }()
 	}
 	c.checkFuncBody(fn)

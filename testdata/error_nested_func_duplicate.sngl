@@ -1,0 +1,23 @@
+// Two `func`s of one name in one body is that body's duplicate, the rule
+// `c.declare` states for every kind of binding. Two in *different* bodies is
+// correct and renameNestedFuncs is what keeps the emitted names apart, which
+// is why the error is scoped to one body rather than to the component.
+import . "sngl:ui"
+
+component main node {
+    var log string = ""
+
+    func step(a int) int {
+        func mark(k int) int {
+            log = log + "!"
+            return k
+        }
+        func mark(k int) int { // ERROR(check) "mark is already declared in this scope"
+            log = log + "?"
+            return k
+        }
+        return mark(a)
+    }
+
+    text(value="{log}{step(2)}")
+}
