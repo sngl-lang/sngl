@@ -437,6 +437,25 @@ type checker struct {
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
 	currentWindow *ir.Window
+	// nestedFuncs is the ir.Func built for each `func` written inside another
+	// body, keyed by its declaration. An enclosing body is checked more than
+	// once (preCheckComponentMethods, then checkComponentBody), and without
+	// the key each pass built and hoisted a second ir.Func -- two host
+	// functions of one name.
+	nestedFuncs map[*ast.FuncDef]*ir.Func
+	// nestedOrder is the same set in declaration order, so renameNestedFuncs
+	// mangles deterministically.
+	nestedOrder []nestedFunc
+	// currentFunc is the function body being checked, and funcOuterScope the
+	// scope it was entered from. A nested func is checked against the latter:
+	// the hoist gives it no closure, so the enclosing params and locals must
+	// not resolve from inside it.
+	currentFunc    *ir.Func
+	funcOuterScope *ir.Scope
+	// nestedHidden is the scope a nested func body is being checked *instead*
+	// of, so captureHint can tell a name the enclosing function declared from
+	// one nobody did.
+	nestedHidden *ir.Scope
 	// inferTrees are the declarations that named no family in their return
 	// position, awaiting the fixed point that reads one off their bodies.
 	// treeChecks are the membership checks that wait for it: a family a
@@ -3393,7 +3412,7 @@ func (c *checker) pass2() {
 		}
 	}
 	for _, fn := range c.pkg.Funcs {
-		if compOwnedFuncs[fn] {
+		if compOwnedFuncs[fn] || fn.Nested {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -3426,6 +3445,10 @@ func (c *checker) pass2() {
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
+
+	// Every body has now been read, so no scope holds a written name any more
+	// and a hoisted func can take the name it is emitted under.
+	c.renameNestedFuncs()
 
 	// Every body has now been read, which is what a family read off one waits
 	// for -- and every membership check waits for that in turn.
@@ -3544,6 +3567,9 @@ func (c *checker) enterFuncBody() func() {
 
 func (c *checker) checkFuncBody(fn *ir.Func) {
 	defer c.fileOf(funcDeclPos(fn))()
+	prevFunc, prevOuter := c.currentFunc, c.funcOuterScope
+	c.currentFunc, c.funcOuterScope = fn, c.scope
+	defer func() { c.currentFunc, c.funcOuterScope = prevFunc, prevOuter }()
 	c.pushScope()
 	defer c.popScope()
 	defer c.enterFuncBody()()
@@ -3791,7 +3817,10 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == "" {
+		// A nested func's name belongs to the body that wrote it, not to the
+		// component it was hoisted onto, so it is bound by checkNestedFunc
+		// alone.
+		if fn.Receiver == "" && !fn.Nested {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -3890,7 +3919,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range owner.Funcs {
-		if fn.Receiver == "" {
+		if fn.Receiver == "" && !fn.Nested {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -3969,6 +3998,12 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
+			// A hoisted func's name is the body that wrote it -- two bodies
+			// may each have written one, and only checkNestedFunc knows which
+			// scope each belongs in.
+			if fn.Nested {
+				continue
+			}
 			c.declare(funcDeclPos(fn), fn)
 		} else {
 			// Type-attached method registered on the symbol table so method
@@ -4013,6 +4048,13 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		// `func int.double` inside `component main`) don't need component
 		// scope and are checked by pass2's pkg.Funcs loop.
 		if fn.Receiver != "" && fn.Receiver != comp.Name {
+			continue
+		}
+		// A hoisted func is checked where it was written -- in the enclosing
+		// body, against the scope that body was entered from. Checked again
+		// here it would be measured against the component's scope instead,
+		// which is not the scope its source sits in.
+		if fn.Nested {
 			continue
 		}
 		if fn.Receiver == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
@@ -4075,12 +4117,20 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range w.Funcs {
+		if fn.Nested {
+			continue
+		}
 		c.declare(funcDeclPos(fn), fn)
 	}
 	if w.AST != nil {
 		c.declareNodeIDs(&w.AST.Block)
 	}
 	for _, fn := range w.Funcs {
+		// See checkComponentBody: a hoisted func is checked where it was
+		// written, and this loop's scope is not that one.
+		if fn.Nested {
+			continue
+		}
 		c.checkFuncBody(fn)
 	}
 
