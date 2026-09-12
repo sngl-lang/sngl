@@ -16,7 +16,7 @@
 sngl generate --lang go --platform html -o out app.sngl
 
 # The conditional is a branch in the handler, not both arms concatenated.
-grep 'if \(pkg != ""\)' out/server.go
+grep 'if pkg != ""' out/server.go
 grep 'named' out/server.go
 grep 'unnamed' out/server.go
 
@@ -27,7 +27,7 @@ grep 'for _, row := range' out/server.go
 # redirect, and the whole thing compiles -- which is what a grep over the
 # generated Go was never going to say.
 grep 'pkg := __r.PathValue\("pkg"\)' out/server.go
-grep 'http.Redirect\(__w, __r, "/p/" \+ url.PathEscape\(pkg\)' out/server.go
+grep 'http.Redirect\(__w, __r, "/p/"\+url.PathEscape\(pkg\)' out/server.go
 exec go build ./...
 
 # No DOM patching reached the server: the page is written, not mutated.
