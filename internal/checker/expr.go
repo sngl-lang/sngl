@@ -1121,7 +1121,10 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		// and datetime are all TypeStruct, so the kinds alone cannot say which
 		// one, and an identity cast has to be told apart from a cast between
 		// two different string-repr types.
-		if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
+		if ud := multiBaseUnitCast(from, target); ud != nil {
+			c.error(x.Pos, "%s(): %s carries a magnitude per base, so it has no single number; read one with %s",
+				name, from, baseNameList(ud))
+		} else if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}

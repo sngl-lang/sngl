@@ -1607,12 +1607,14 @@ func IRTypeToGo(t *ir.Type) string {
 	case ir.TypeEnum:
 		return "string"
 	case ir.TypeUnit:
-		if t.Decl != nil {
-			name := t.Decl.SymName()
-			if name == "duration" {
+		if ud := ir.UnitDeclOf(t); ud != nil {
+			if ud.Builtin == ir.BuiltinDuration {
 				return "time.Duration"
 			}
-			return ExportName(name)
+			return ExportName(ud.Name)
+		}
+		if t.Decl != nil {
+			return ExportName(t.Decl.SymName())
 		}
 		return "any"
 	case ir.TypeFunc:

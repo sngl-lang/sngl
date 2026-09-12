@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -104,10 +105,16 @@ func multiBaseUnitBinaryJS(n *ir.Binary, left, right string) (string, bool) {
 	leftIsRec := isMultiBaseUnitJS(n.Left.ExprType())
 	rightIsRec := isMultiBaseUnitJS(n.Right.ExprType())
 
-	// Comparison yields a bool, not a measurement, so there are no keys to
-	// build. Equality over records is left to the caller's default, which is
-	// reference equality -- wrong, but no more wrong than it was, and out of
-	// scope here.
+	// Equality yields a bool, so there are no keys to build: it is the
+	// conjunction over the bases instead. `===` on two records is JS reference
+	// identity, false for every pair the language calls equal, where a Go
+	// struct compares field-wise and a Kotlin data class component-wise.
+	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
+		if !leftIsRec || !rightIsRec {
+			return "", false
+		}
+		return multiBaseUnitEqualJS(ud, n.Op, left, right), true
+	}
 	if !n.Type.IsNumericOrUnit() {
 		return "", false
 	}
@@ -124,4 +131,19 @@ func multiBaseUnitBinaryJS(n *ir.Binary, left, right string) (string, bool) {
 		parts = append(parts, fmt.Sprintf("%s: %s %s %s", b.Name, lhs, op, rhs))
 	}
 	return "{ " + strings.Join(parts, ", ") + " }", true
+}
+
+// multiBaseUnitEqualJS renders == or != over every base of a multi-base unit.
+// Every base is present on both sides because unitLiteralJS writes them all,
+// so an absent one cannot read undefined here.
+func multiBaseUnitEqualJS(ud *ir.UnitDef, op ast.BinaryOp, left, right string) string {
+	parts := make([]string, 0, len(ud.Bases()))
+	for _, b := range ud.Bases() {
+		parts = append(parts, fmt.Sprintf("(%s).%s === (%s).%s", left, b.Name, right, b.Name))
+	}
+	eq := "(" + strings.Join(parts, " && ") + ")"
+	if op == ast.BinNeq {
+		return "!" + eq
+	}
+	return eq
 }
