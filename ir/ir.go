@@ -441,11 +441,12 @@ type Func struct {
 	// (lib/*.sngl). A user declaration may shadow a stdlib method of the same
 	// name on the same receiver; two user declarations of it may not.
 	Stdlib bool
-	// Nested says the declaration was written inside another body and hoisted
-	// out of it. Its name is the enclosing body's to see, so the checker
-	// alone binds it: the loops that check an owner's funcs a second time in
-	// that owner's scope must skip one, or an enclosing param resolves where
-	// the hoist left none.
+	// Nested says the declaration was written inside another *function* body
+	// and hoisted out of it. A func at the root of a window body is hoisted
+	// too and is not this: it is the window's own. The distinction is what
+	// renameNestedFuncs renames and what every loop that would check an
+	// owner's funcs a second time skips -- checked in the owner's scope, an
+	// enclosing param resolves where the hoist left none.
 	Nested bool `json:"-"`
 	// MutatesReceiver says a call writes through its first argument in place,
 	// so reactivity treats a statement-level call as a write to the receiver's

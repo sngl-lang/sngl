@@ -437,14 +437,15 @@ type checker struct {
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
 	currentWindow *ir.Window
-	// nestedFuncs is the ir.Func built for each `func` written inside another
-	// body, keyed by its declaration. An enclosing body is checked more than
-	// once (preCheckComponentMethods, then checkComponentBody), and without
-	// the key each pass built and hoisted a second ir.Func -- two host
-	// functions of one name.
+	// nestedFuncs is the ir.Func built for each `func` written as a statement,
+	// keyed by its declaration. An enclosing body is checked more than once
+	// (preCheckComponentMethods, then checkComponentBody), and without the key
+	// each pass built and hoisted a second ir.Func -- two host functions of
+	// one name.
 	nestedFuncs map[*ast.FuncDef]*ir.Func
-	// nestedOrder is the same set in declaration order, so renameNestedFuncs
-	// mangles deterministically.
+	// nestedOrder is the ir.Func.Nested subset in declaration order, so
+	// renameNestedFuncs reads an enclosing name that is already renamed and
+	// two bodies never swap suffixes between runs.
 	nestedOrder []nestedFunc
 	// currentFunc is the function body being checked, and funcOuterScope the
 	// scope it was entered from. A nested func is checked against the latter:
