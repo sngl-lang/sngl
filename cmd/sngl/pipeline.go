@@ -117,12 +117,8 @@ func runPipeline(cmd *cobra.Command, args []string, p pipelineOpts) error {
 		emitted = true
 	}
 
-	// The skip above is per unit and correct there — a multi-package program's
-	// library packages have no window by construction. It is the *invocation*
-	// that cannot be silent: every unit skipped means nothing was built, and an
-	// exit status of 0 with no output reads as a successful build (#232).
-	// Only a command line holds the whole set, which is why internal/build,
-	// seeing one package at a time, cannot ask this.
+	// Only a command line holds the whole set of units, which is why
+	// internal/build, seeing one package at a time, cannot ask this.
 	if !emitted && len(skipped) > 0 {
 		return fmt.Errorf("nothing to generate: no window declared in %s: a program declares at least one window, since the package body renders only what a window holds", strings.Join(skipped, ", "))
 	}
