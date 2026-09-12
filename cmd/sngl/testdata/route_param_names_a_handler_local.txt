@@ -1,0 +1,43 @@
+# route_package_window with its parameter renamed `id`, which is what the GET
+# handler already called the session id. `sess`, `ok` and `s` are three more of
+# the same: an href may claim any of them, and only `w` and `r` had been
+# prefixed out of the way.
+#
+# `{s}` was the worst of them, because it rewrote a signature rather than a
+# statement -- `func renderHandlePage(s *handlePageState, s string) string`.
+#
+# The handler's own bindings are allocated around the program's name now, so
+# the parameter keeps `id` and the session id becomes `id2`.
+#
+# This has to compile, not parse: a redeclaration is valid Go syntax, so
+# `format.Source` accepted it and `sngl generate` exited 0.
+
+sngl generate --lang go --platform html -o out app.sngl
+
+exec go build ./...
+
+grep 'id := __r.PathValue\("id"\)' out/server.go
+grep 'id2, ok := snglSessionID' out/server.go
+grep 'renderHandlePage\(s, id\)' out/server.go
+
+-- go.mod --
+module paramname
+
+go 1.24
+
+-- srv/srv.go --
+package srv
+
+func Bump(n int) int { return n + 1 }
+
+-- app.sngl --
+import . "sngl:ui"
+import "go:paramname/srv"
+import "sngl:platform/html"
+
+var hits = 0
+
+window #page(title="t", href="/p/{id}") {
+    html.button(innerText="go", @click { hits = srv.Bump(hits) })
+    html.span(innerText="{id}{hits}")
+}

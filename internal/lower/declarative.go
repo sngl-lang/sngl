@@ -68,7 +68,7 @@ func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
 	if st.liftHandlers {
-		st.lifter = &lifter{pkg: pkg}
+		st.lifter = newLifter(pkg)
 	}
 	return st
 }

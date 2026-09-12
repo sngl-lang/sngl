@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/names"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -99,12 +100,12 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 // it never wrote. As State methods they dispatch through the same `s` the
 // state fields do, and one named as a value (`xs.filter(keep)`) is a Go method
 // value, which already carries its receiver and matches the callback type.
-func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRContext) {
+func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRContext, loc routeLocals) {
 	fns := routeEmittableFuncs(req.Pkg)
 	if len(fns) == 0 {
 		return
 	}
-	gc := newRouteGC(req, shared)
+	gc := newRouteGC(req, shared, loc)
 	gc.MethodRecvType = routeStateType(r)
 	for _, fn := range fns {
 		fnCopy := *fn
@@ -177,41 +178,42 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 		return
 	}
 
-	gc := newRouteGC(req, shared)
+	loc := newRouteLocals(r)
+	gc := newRouteGC(req, shared, loc)
 
 	emitState(b, r)
-	writeRouteFuncs(b, req, r, shared)
-	renderFn := emitRenderRoute(b, req, r, gc)
+	writeRouteFuncs(b, req, r, shared, loc)
+	renderFn := emitRenderRoute(b, req, r, gc, loc)
 
 	loader := "load" + ExportName(r.Name) + "State"
 
 	// GET handler: load session (locking it across the render), write page.
-	fmt.Fprintf(b, "func %s(%s http.ResponseWriter, %s *http.Request) {\n", r.Name, routeWriterVar, routeRequestVar)
-	fmt.Fprintf(b, "\t%s.Header().Set(\"Content-Type\", \"text/html; charset=utf-8\")\n", routeWriterVar)
-	fmt.Fprintf(b, "\tid, ok := snglSessionID(%s, %s)\n", routeWriterVar, routeRequestVar)
-	fmt.Fprintln(b, "\tif !ok {")
+	fmt.Fprintf(b, "func %s(%s http.ResponseWriter, %s *http.Request) {\n", r.Name, loc.writer, loc.request)
+	fmt.Fprintf(b, "\t%s.Header().Set(\"Content-Type\", \"text/html; charset=utf-8\")\n", loc.writer)
+	fmt.Fprintf(b, "\t%s, %s := snglSessionID(%s, %s)\n", loc.sessionID, loc.sessionOK, loc.writer, loc.request)
+	fmt.Fprintf(b, "\tif !%s {\n", loc.sessionOK)
 	fmt.Fprintln(b, "\t\treturn")
 	fmt.Fprintln(b, "\t}")
-	fmt.Fprintf(b, "\tsess, %s := %s(id)\n", routeStateReceiver, loader)
-	fmt.Fprintln(b, "\tdefer sess.mu.Unlock()")
-	writeRouteParamBindings(b, r)
-	fmt.Fprintf(b, "\t%s.Write([]byte(%s(%s)))\n", routeWriterVar, renderFn,
-		strings.Join(append([]string{routeStateReceiver}, r.Params...), ", "))
+	fmt.Fprintf(b, "\t%s, %s := %s(%s)\n", loc.session, loc.state, loader, loc.sessionID)
+	fmt.Fprintf(b, "\tdefer %s.mu.Unlock()\n", loc.session)
+	writeRouteParamBindings(b, r, loc)
+	fmt.Fprintf(b, "\t%s.Write([]byte(%s(%s)))\n", loc.writer, renderFn,
+		strings.Join(append([]string{loc.state}, r.Params...), ", "))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
 
 	// POST handler (PRG): load session (locking it across the mutation), then
 	// dispatch on _action, run the action's logical mutations against s, and
 	// 303 redirect.
-	fmt.Fprintf(b, "func %sAction(%s http.ResponseWriter, %s *http.Request) {\n", r.Name, routeWriterVar, routeRequestVar)
-	fmt.Fprintf(b, "\tid, ok := snglSessionID(%s, %s)\n", routeWriterVar, routeRequestVar)
-	fmt.Fprintln(b, "\tif !ok {")
+	fmt.Fprintf(b, "func %sAction(%s http.ResponseWriter, %s *http.Request) {\n", r.Name, loc.writer, loc.request)
+	fmt.Fprintf(b, "\t%s, %s := snglSessionID(%s, %s)\n", loc.sessionID, loc.sessionOK, loc.writer, loc.request)
+	fmt.Fprintf(b, "\tif !%s {\n", loc.sessionOK)
 	fmt.Fprintln(b, "\t\treturn")
 	fmt.Fprintln(b, "\t}")
-	fmt.Fprintf(b, "\tsess, %s := %s(id)\n", routeStateReceiver, loader)
-	fmt.Fprintln(b, "\tdefer sess.mu.Unlock()")
-	writeRouteParamBindings(b, r)
-	fmt.Fprintf(b, "\tswitch %s.FormValue(\"_action\") {\n", routeRequestVar)
+	fmt.Fprintf(b, "\t%s, %s := %s(%s)\n", loc.session, loc.state, loader, loc.sessionID)
+	fmt.Fprintf(b, "\tdefer %s.mu.Unlock()\n", loc.session)
+	writeRouteParamBindings(b, r, loc)
+	fmt.Fprintf(b, "\tswitch %s.FormValue(\"_action\") {\n", loc.request)
 	for i, act := range r.Actions {
 		fmt.Fprintf(b, "\tcase %q:\n", fmt.Sprintf("%d", i))
 		for _, s := range act.LogicalMutations {
@@ -222,25 +224,62 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 	}
 	fmt.Fprintln(b, `	}`)
 	fmt.Fprintf(b, "\thttp.Redirect(%s, %s, %s, http.StatusSeeOther)\n",
-		routeWriterVar, routeRequestVar, routePathExpr(r, gc))
+		loc.writer, loc.request, routePathExpr(r, gc))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
 }
 
-// A route parameter is emitted into the handler body under the name the window
-// gave it, so the handler's own two variables carry the compiler's prefix: `w`
-// and `r` are names an href is free to claim.
+// The spellings the handler and render emitters would rather use. Each is a
+// preference, not a guarantee -- see routeLocals.
 const (
-	routeWriterVar  = "__w"
-	routeRequestVar = "__r"
+	routeWriterVar    = "__w"
+	routeRequestVar   = "__r"
+	routeSessionIDVar = "id"
+	routeSessionOKVar = "ok"
+	routeSessionVar   = "sess"
+	routeStateVar     = "s"
+	routeBuilderVar   = "__b"
 )
+
+// routeLocals is what one route's GET handler, POST handler and render
+// function call the bindings they declare for themselves.
+//
+// A route parameter is emitted under the name the window gave it -- the href
+// writes `{id}` and the IR that reads it renders the bare `id` -- so the
+// program's name is the fixed one and the emitter's bend around it. Prefixing
+// the emitter's names instead is what `__w` and `__r` already were, and it
+// covers only the names someone thought to prefix: `id`, `ok`, `sess` and `s`
+// were not, and `/p/{id}` emitted `id := __r.PathValue("id")` under the
+// session id of the same name. `{s}` was worse, because it rewrote a
+// signature: `func renderHandlePage(s *handlePageState, s string) string`.
+//
+// Allocating all of them through the registry means the next local added here
+// is covered by having been allocated, rather than by being remembered.
+type routeLocals struct {
+	writer, request       string
+	sessionID, sessionOK  string
+	session, state, build string
+}
+
+func newRouteLocals(r codegen.HTTPRoute) routeLocals {
+	reg := names.New(r.Params...)
+	return routeLocals{
+		writer:    reg.Unique(routeWriterVar),
+		request:   reg.Unique(routeRequestVar),
+		sessionID: reg.Unique(routeSessionIDVar),
+		sessionOK: reg.Unique(routeSessionOKVar),
+		session:   reg.Unique(routeSessionVar),
+		state:     reg.Unique(routeStateVar),
+		build:     reg.Unique(routeBuilderVar),
+	}
+}
 
 // writeRouteParamBindings binds each of the route's path parameters from the
 // request. Per-request input rather than per-session state, which is why they
 // are locals here and not fields on State.
-func writeRouteParamBindings(b *bytes.Buffer, r codegen.HTTPRoute) {
+func writeRouteParamBindings(b *bytes.Buffer, r codegen.HTTPRoute, loc routeLocals) {
 	for _, p := range r.Params {
-		fmt.Fprintf(b, "\t%s := %s.PathValue(%q)\n", p, routeRequestVar, p)
+		fmt.Fprintf(b, "\t%s := %s.PathValue(%q)\n", p, loc.request, p)
 		fmt.Fprintf(b, "\t_ = %s\n", p)
 	}
 }

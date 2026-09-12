@@ -791,9 +791,13 @@ was written under is the body's, which leaves two things to reconcile
 - **An emitted name of its own.** Two bodies may each write `func helper` and
   mean two functions, into a flat namespace. `renameNestedFuncs` gives each
   `<body>__<name>` at the end of the check, once no scope holds a written
-  name; three levels compose because it runs in declaration order. A func can
-  have the rename a body-local *type* is still waiting on (#198) because a
-  call site holds the declaration, `ir.Call.Func`, and not the name.
+  name; three levels compose because it runs in declaration order. A body-local
+  *type* is hoisted under the same rule (#198); a func can be, because a call
+  site holds the declaration, `ir.Call.Func`, and not the name. The names it
+  avoids are every kind that shares the emitted namespace — structs, enums,
+  units, components and funcs — because `struct step__mark` beside a `mark`
+  nested in `step` is Go's `Step__mark redeclared in this block`, and a
+  redeclaration parses, so `format.Source` passed it through.
   `orderNestedFuncs` then puts each ahead of the body that declared it — the
   hoist appends, and android emits an owner's funcs as local `fun`s inside one
   composable, where a local function may not be referenced above its

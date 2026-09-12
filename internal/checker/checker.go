@@ -439,9 +439,7 @@ type checker struct {
 	currentWindow *ir.Window
 	// nestedFuncs is the ir.Func built for each `func` written as a statement,
 	// keyed by its declaration. An enclosing body is checked more than once
-	// (preCheckComponentMethods, then checkComponentBody), and without the key
-	// each pass built and hoisted a second ir.Func -- two host functions of
-	// one name.
+	// (preCheckComponentMethods, then checkComponentBody).
 	nestedFuncs map[*ast.FuncDef]*ir.Func
 	// nestedOrder is the ir.Func.Nested subset in declaration order, so
 	// renameNestedFuncs reads an enclosing name that is already renamed and
@@ -4006,9 +4004,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
-			// A hoisted func's name is the body that wrote it -- two bodies
-			// may each have written one, and only checkNestedFunc knows which
-			// scope each belongs in.
 			if fn.Nested {
 				continue
 			}
@@ -4058,10 +4053,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		if fn.Receiver != "" && fn.Receiver != comp.Name {
 			continue
 		}
-		// A hoisted func is checked where it was written -- in the enclosing
-		// body, against the scope that body was entered from. Checked again
-		// here it would be measured against the component's scope instead,
-		// which is not the scope its source sits in.
 		if fn.Nested {
 			continue
 		}
@@ -4134,8 +4125,6 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		c.declareNodeIDs(&w.AST.Block)
 	}
 	for _, fn := range w.Funcs {
-		// See checkComponentBody: a hoisted func is checked where it was
-		// written, and this loop's scope is not that one.
 		if fn.Nested {
 			continue
 		}

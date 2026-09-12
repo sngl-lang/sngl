@@ -1,9 +1,8 @@
 package checker
 
 import (
-	"strconv"
-
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/names"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -108,9 +107,9 @@ func (c *checker) captureHint(name string) string {
 // The name one is *written* under is scoped to a single body, so two bodies may
 // each declare `helper` and mean two functions; the namespace every backend
 // emits into is flat, and takes the second as a redeclaration of the first.
-// Renaming is what a body-local type is still waiting on (#198) and what
-// claimBodyType reports in the meantime; a func can have it now because a call
-// site holds the declaration (ir.Call.Func) rather than the name.
+// A body-local type is hoisted under the same rule (#198); a func can be,
+// because a call site holds the declaration (ir.Call.Func) rather than the
+// name.
 //
 // Runs at the end of the check, once every body has resolved: the scopes hold
 // the written name, so renaming earlier would leave a body unable to find what
@@ -126,11 +125,31 @@ func (c *checker) renameNestedFuncs() {
 	// The names to avoid are the ones nothing here is about to change. A
 	// declaration counted against itself took a disambiguating suffix for
 	// colliding with nobody.
-	taken := map[string]bool{}
+	//
+	// One registry for every kind, because the namespace being avoided is the
+	// one every backend has to satisfy at once: Go's package scope holds a type
+	// and a func together, and html emits a component's funcs as free
+	// functions. Reserved from slices throughout, never from a map, so two
+	// runs allocate the same names.
+	reg := &names.Registry{}
+	if c.pkg != nil {
+		for _, s := range c.pkg.Structs {
+			reg.Reserve(s.Name)
+		}
+		for _, e := range c.pkg.Enums {
+			reg.Reserve(e.Name)
+		}
+		for _, u := range c.pkg.Units {
+			reg.Reserve(u.Name)
+		}
+		for _, comp := range c.pkg.Components {
+			reg.Reserve(comp.Name)
+		}
+	}
 	for _, o := range ir.Owners(c.pkg) {
 		for _, f := range o.Funcs {
 			if !renaming[f] {
-				taken[f.Name] = true
+				reg.Reserve(f.Name)
 			}
 		}
 	}
@@ -138,13 +157,7 @@ func (c *checker) renameNestedFuncs() {
 		// The enclosing name is already renamed where that body was itself
 		// nested, because nestedOrder is in declaration order: three levels
 		// compose rather than collide.
-		base := n.in.Name + "__" + n.fn.Name
-		name := base
-		for i := 2; taken[name]; i++ {
-			name = base + strconv.Itoa(i)
-		}
-		taken[name] = true
-		n.fn.Name = name
+		n.fn.Name = reg.Unique(n.in.Name + "__" + n.fn.Name)
 	}
 	c.orderNestedFuncs()
 }
