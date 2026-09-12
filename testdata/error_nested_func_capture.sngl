@@ -1,8 +1,8 @@
-// A `func` written inside another body is hoisted out of it rather than closed
-// over, so the enclosing function's params and locals are not in scope inside
-// one. Read as an ordinary "undefined" that says nothing about why a name
-// written two lines up is missing, which is why the diagnostic carries the
-// reason.
+// A `func` written inside another function body is hoisted out of it rather
+// than closed over, so the enclosing function's params and locals are not in
+// scope inside one. Its own siblings are (they are hoisted too); read as an
+// ordinary "undefined", the difference says nothing about why a name written
+// two lines up is missing, which is why the diagnostic carries the reason.
 import . "sngl:ui"
 
 component main node {
