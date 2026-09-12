@@ -46,7 +46,9 @@ func (o Owner) Name() string {
 }
 
 // Owners returns every declaration in pkg that owns state, outermost first:
-// the package, then each component, then each window.
+// the package, then each component, then each window -- including the windows a
+// component body renders, which are statements in that body rather than
+// entries in pkg.Windows.
 //
 // It reports all of them. Which subset a consumer wants is that consumer's
 // question, and the answers genuinely differ -- a name-keyed set can hold only
@@ -63,8 +65,31 @@ func Owners(pkg *Package) []Owner {
 	for _, c := range pkg.Components {
 		out = append(out, Owner{Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Stmts: c.Body})
 	}
-	for _, w := range pkg.Windows {
+	seen := make(map[*Window]bool, len(pkg.Windows))
+	addWin := func(w *Window) {
+		if w == nil || seen[w] {
+			return
+		}
+		seen[w] = true
 		out = append(out, Owner{Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Stmts: w.Body})
+	}
+	for _, w := range pkg.Windows {
+		addWin(w)
+	}
+	// A window a component body renders is an *ir.Window statement in that
+	// body and never reaches pkg.Windows, so reading that list alone made it
+	// the owner nothing knew about one level down: its `var` stayed a local of
+	// its own body, unhoisted, and no target emitted state for it.
+	for _, c := range pkg.Components {
+		if c == nil {
+			continue
+		}
+		_ = WalkStmts(c.Body, func(s Stmt) error {
+			if w, ok := s.(*Window); ok {
+				addWin(w)
+			}
+			return nil
+		})
 	}
 	return out
 }
