@@ -438,24 +438,35 @@ which makes `output` and a `#[tree.none]` component exempt for free: both carry
 a nil `Tree`, so the first is never asked and the second is left to
 `checkTreelessBody` rather than reported twice.
 
-**Four constructs are reached through, not four minus one.** `checkTreeMembership`
-walked an `if` and a `for`; an `ir.ErrorBoundary` and an `ir.ContextProvider`
-say the same thing in their own vocabulary and were walked past. The boundary
-is the subtler of the two: its own check binds `T` off its content and holds
-the rest to that, and reaching through it is what holds the `T` it settled on
-to the family the surrounding *position* accepts — without which a boundary
-around a shape passed a widget position in silence. A context override sets a
-value for the nodes under it and puts nothing in the tree itself, so it reads
-the same way.
+**Four constructs are reached through, and `treeTransparent` is the one list
+of them.** An `if` and a `for` say when and how many; an `ir.ErrorBoundary`
+says what happens when a raise reaches it; an `ir.ContextProvider` sets a value
+for what is under it. None puts anything in the tree itself, so every tree
+question asked of a block is asked of theirs.
 
-`treeEvidence` is the same list from the other side and was missing the same
-case: a component with no return position whose body was
-`theme("dark") { ui.text(…) }` rendered nothing the inference could see and was
-refused as a body that names no tree. `insertsSlot` rides along, since it picks
-which of the two diagnostics that refusal gets.
-`testdata/tree_inferred_context.sngl` is the inference half and
-`error_tree_component_body.sngl`'s `scoped` the membership half; each fails
-when its own arm alone is removed.
+There were **five** copies of that walk and each was missing a different
+member, which is why the list is now a function rather than a `switch` per
+caller:
+
+- `checkTreeMembership` walked `if`/`for`. A boundary is the subtle one — its
+  own check binds `T` off its content and holds the rest to that, so reaching
+  through it is what holds the `T` it settled on to the family the surrounding
+  *position* accepts. Without it, `vbox { boundary { circle(…) } }` passed in
+  silence.
+- `treeEvidence` is the same question from the other side, and missed the
+  provider: a component with no return position whose body was
+  `theme("dark") { ui.text(…) }` rendered nothing the inference could see and
+  was refused as a body that names no tree — a correct program refused.
+- `checkTreelessBody` walked `if`/`for`, so a `#[tree.none]` component rendered
+  a widget under either wrapper and passed.
+- `childrenTree` and `insertsSlot` each had their own partial copy.
+
+Two of those gaps were found one at a time, each as a silent acceptance; the
+third is what made the list shared rather than corrected a third time. Fixtures:
+`tree_inferred_context.sngl` (inference), `error_tree_component_body.sngl`'s
+`scoped` (membership) and `error_tree_treeless_wrapped.sngl` (tree-less, both
+wrappers). Deleting the `ContextProvider` case from `treeTransparent` fails all
+three, which is the unification doing its job.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because
@@ -480,9 +491,9 @@ halves:
   as readily as in a layout (`checkTreeMembership`);
 - it may contain a member of **none**, because a body that rendered a widget
   would have joined that family without saying so, and would then be
-  placeable in a canvas (`checkTreelessBody`). An `if` or a `for` is how the
-  nodes under it got there rather than a node, so the rule reaches through
-  both.
+  placeable in a canvas (`checkTreelessBody`). The rule reaches through
+  everything `treeTransparent` lists, so a widget wrapped in a boundary or a
+  context override is still a widget this component renders.
 
 **A wrapper whose family is whatever it was handed says so with a type
 parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing

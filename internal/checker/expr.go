@@ -5322,27 +5322,21 @@ func slotWant(owner *ir.Component, slot *ir.SlotDecl, content []ir.Stmt) *ir.Str
 // An empty body binds nothing and is left unbound. There is no content to
 // check, and a default would have to name a family the wrapper has no reason
 // to prefer.
+//
+// treeTransparent is the same list the rest of the tree questions use: a
+// boundary's content binds T like anything else written there.
 func childrenTree(content []ir.Stmt) *ir.StructDef {
 	for _, st := range content {
-		switch s := st.(type) {
-		case *ir.If:
-			if sd := childrenTree(s.Body); sd != nil {
-				return sd
+		if blocks, ok := treeTransparent(st); ok {
+			for _, b := range blocks {
+				if sd := childrenTree(b); sd != nil {
+					return sd
+				}
 			}
-			if sd := childrenTree(s.Else); sd != nil {
-				return sd
-			}
-		case *ir.For:
-			if sd := childrenTree(s.Body); sd != nil {
-				return sd
-			}
-			if sd := childrenTree(s.Else); sd != nil {
-				return sd
-			}
-		case *ir.NodeInst:
-			if s.Component != nil && s.Component.Tree != nil {
-				return s.Component.Tree
-			}
+			continue
+		}
+		if ni, ok := st.(*ir.NodeInst); ok && ni.Component != nil && ni.Component.Tree != nil {
+			return ni.Component.Tree
 		}
 	}
 	return nil
@@ -5377,29 +5371,19 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		return
 	}
 	for _, st := range content {
+		// Not a node in the tree, but how the nodes under it got there -- so
+		// the rule applies to its blocks. Reading only the direct children is
+		// what rejected a canvas whose shapes come from a list. A boundary is
+		// the subtle one: its own check binds T off its content, and reaching
+		// through it here is what holds that T to the family this position
+		// accepts.
+		if blocks, ok := treeTransparent(st); ok {
+			for _, b := range blocks {
+				c.checkTreeMembership(owner, pos, b, want, where)
+			}
+			continue
+		}
 		switch s := st.(type) {
-		// An `if` or a `for` is not a node in the tree, it is how the nodes
-		// under it got there -- so the rule applies to its body. Reading only
-		// the direct children is what rejected a canvas whose shapes come
-		// from a list.
-		case *ir.If:
-			c.checkTreeMembership(owner, pos, s.Body, want, where)
-			c.checkTreeMembership(owner, pos, s.Else, want, where)
-		case *ir.For:
-			c.checkTreeMembership(owner, pos, s.Body, want, where)
-			c.checkTreeMembership(owner, pos, s.Else, want, where)
-		// A boundary reads the same way: it is how the nodes under it got
-		// there. Its own deferred check binds T off its content, so reaching
-		// through it here is what holds that T to the family the *position*
-		// accepts -- without this a boundary around a shape passed a widget
-		// position in silence.
-		case *ir.ErrorBoundary:
-			c.checkTreeMembership(owner, pos, s.Children, want, where)
-			c.checkTreeMembership(owner, pos, s.Failed, want, where)
-		// A context override is the third of them: it sets a value for the
-		// nodes under it and puts nothing in the tree itself.
-		case *ir.ContextProvider:
-			c.checkTreeMembership(owner, pos, s.Children, want, where)
 		// A slot insertion is a position rather than a node: what lands there
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.

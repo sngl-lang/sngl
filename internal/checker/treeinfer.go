@@ -113,15 +113,13 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 		}
 	}
 	for _, st := range stmts {
+		// An `if`, a `for`, a boundary and a context override put nothing in
+		// the tree themselves, so the evidence is whatever is under them.
+		if blocks, ok := treeTransparent(st); ok {
+			nested(blocks...)
+			continue
+		}
 		switch s := st.(type) {
-		case *ir.If:
-			nested(s.Body, s.Else)
-		case *ir.For:
-			nested(s.Body, s.Else)
-		case *ir.ErrorBoundary:
-			nested(s.Children, s.Failed)
-		case *ir.ContextProvider:
-			nested(s.Children)
 		case *ir.SlotInst:
 			nested(s.Children)
 		case *ir.Window:
@@ -145,25 +143,14 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 // one thing treeEvidence deliberately does not read.
 func insertsSlot(stmts []ir.Stmt) bool {
 	for _, st := range stmts {
-		switch s := st.(type) {
-		case *ir.SlotInst:
+		if blocks, ok := treeTransparent(st); ok {
+			if slices.ContainsFunc(blocks, insertsSlot) {
+				return true
+			}
+			continue
+		}
+		if _, ok := st.(*ir.SlotInst); ok {
 			return true
-		case *ir.If:
-			if insertsSlot(s.Body) || insertsSlot(s.Else) {
-				return true
-			}
-		case *ir.For:
-			if insertsSlot(s.Body) || insertsSlot(s.Else) {
-				return true
-			}
-		case *ir.ErrorBoundary:
-			if insertsSlot(s.Children) || insertsSlot(s.Failed) {
-				return true
-			}
-		case *ir.ContextProvider:
-			if insertsSlot(s.Children) {
-				return true
-			}
 		}
 	}
 	return false
