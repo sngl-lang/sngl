@@ -5,14 +5,32 @@ package ir
 // questions with no target picked and the live slots then hold the base
 // declaration's body; after specialization the active override is the live one
 // too, and both callers build sets, so seeing it twice costs nothing.
-func eachBody(comp *Component, yield func(vars []*Var, decls []Symbol)) {
-	yield(comp.Vars, comp.BodyDecls)
+func eachBody(comp *Component, yield func(b Body)) {
+	yield(Body{Vars: comp.Vars, BodyDecls: comp.BodyDecls, Funcs: comp.Funcs})
 	for _, b := range comp.PlatformOverrides {
-		yield(b.Vars, b.BodyDecls)
+		yield(b)
 	}
 	for _, b := range comp.LanguageOverrides {
-		yield(b.Vars, b.BodyDecls)
+		yield(b)
 	}
+}
+
+// BodyFuncs is every func any of comp's bodies declares -- its own and each
+// override's. The checker needs it because a func written in an override body
+// is owned by that component and has to be checked in its scope, while
+// Component.Funcs holds only the live body's by the time pass2 asks.
+func BodyFuncs(comp *Component) []*Func {
+	var out []*Func
+	seen := map[*Func]bool{}
+	eachBody(comp, func(b Body) {
+		for _, fn := range b.Funcs {
+			if !seen[fn] {
+				seen[fn] = true
+				out = append(out, fn)
+			}
+		}
+	})
+	return out
 }
 
 // BodyOwners maps each component a body declared to the component that
@@ -24,8 +42,8 @@ func BodyOwners(pkg *Package) map[*Component]*Component {
 	}
 	var owners map[*Component]*Component
 	for _, owner := range pkg.Components {
-		eachBody(owner, func(_ []*Var, decls []Symbol) {
-			for _, sym := range decls {
+		eachBody(owner, func(b Body) {
+			for _, sym := range b.BodyDecls {
 				nested, ok := sym.(*Component)
 				if !ok {
 					continue
@@ -45,9 +63,15 @@ func BodyOwners(pkg *Package) map[*Component]*Component {
 func CapturesEnclosingState(nested *Component, owners map[*Component]*Component) bool {
 	enclosing := map[Symbol]bool{}
 	for owner := owners[nested]; owner != nil; owner = owners[owner] {
-		eachBody(owner, func(vars []*Var, _ []Symbol) {
-			for _, v := range vars {
+		eachBody(owner, func(b Body) {
+			for _, v := range b.Vars {
 				enclosing[v] = true
+			}
+			// A method is reached by receiver rather than by name, and a
+			// nested body reaches its owner's through lookupBodyMethod -- so
+			// an override's helpers are captured exactly as the base's are.
+			for _, fn := range b.Funcs {
+				enclosing[fn] = true
 			}
 		})
 		for _, p := range owner.Props {

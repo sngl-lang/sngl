@@ -1178,10 +1178,9 @@ func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.Even
 }
 
 // collectExtensionDecls pre-registers what a platform extension body declares
-// -- its vars and consts, and the struct, enum, unit and component
-// declarations that are body-scoped -- the way pass1's collectComponentDecls
-// does for an ordinary component body. A func in an extension body is out of
-// scope here and stays unbound.
+// -- its vars and consts, the struct, enum, unit and component declarations
+// that are body-scoped, and its funcs -- the way pass1's collectComponentDecls
+// does for an ordinary component body.
 //
 // owner is the component the override implements, recorded as the body a
 // nested component was written in: an override *is* the body its target
@@ -1191,21 +1190,63 @@ func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.Even
 // resolves an annotation eagerly, so a body-local type is a name only if its
 // registration already happened. The caller's scope is what registerBodyDecl
 // binds into and what resolveType then reads.
-func (c *checker) collectExtensionDecls(owner *ir.Component, body ast.StmtBlock) ([]*ir.Var, []ir.Symbol) {
+//
+// The funcs are returned rather than registered, on collectComponentDecls'
+// terms: the caller decides what receiver they get, and registering one
+// resolves its signature, which has to happen with the body-local types in
+// scope and the override's method table installed.
+func (c *checker) collectExtensionDecls(owner *ir.Component, body ast.StmtBlock) ([]*ir.Var, []ir.Symbol, []*ast.FuncDef) {
 	var vars []*ir.Var
 	var decls []ir.Symbol
+	var funcs []*ast.FuncDef
 	for _, stmt := range body.Stmts {
-		switch stmt.(type) {
+		switch s := stmt.(type) {
 		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
 			if sym := c.registerBodyDecl(stmt); sym != nil {
 				decls = append(decls, sym)
 				c.noteBodyOwner(owner, sym)
 			}
+		case *ast.FuncDef:
+			funcs = append(funcs, s)
 		default:
 			vars = append(vars, c.collectComponentVarDecl(stmt)...)
 		}
 	}
-	return vars, decls
+	return vars, decls, funcs
+}
+
+// reportOverrideFuncShadows refuses an override-body func whose bare name the
+// base declaration's body already gave a method, and returns the ones that
+// stand.
+//
+// The two bodies are separate and a body-scoped name is keyed by nothing, so
+// this is a *codegen* limitation rather than a language rule -- the same
+// answer claimBodyType gives for a body-local type, and for the same reason:
+// nothing renames a component method per body, so both would be emitted as
+// one host identifier. #198's hoist-and-rename is where this is lifted; the
+// diagnostic says so rather than reading as a redeclaration.
+//
+// Two *overrides* each writing one is fine and stays so: each gets its own
+// clone of the method table, and specializeComp swaps the whole list, so a
+// build only ever holds the target's own.
+func (c *checker) reportOverrideFuncShadows(pe pendingExtension, base map[string]*ir.Func, defs []*ast.FuncDef) []*ast.FuncDef {
+	if len(base) == 0 || len(defs) == 0 {
+		return defs
+	}
+	out := make([]*ast.FuncDef, 0, len(defs))
+	for _, fd := range defs {
+		// An explicit receiver (`func int.double`) is a method on the type it
+		// names, not on the component, so the component's table says nothing
+		// about it.
+		if _, _, isMethod := ast.SplitMethodName(fd.Name); !isMethod {
+			if _, clash := base[fd.Name]; clash {
+				c.error(fd.Pos, "func %q is declared in component %s and again in its override for %q: the two bodies are separate, but a component method is emitted under one name per component and nothing renames it per body -- rename one", fd.Name, pe.comp.Name, pe.platform)
+				continue
+			}
+		}
+		out = append(out, fd)
+	}
+	return out
 }
 
 // pendingExtension records a single `platform <name> { ... }` body that
@@ -1289,6 +1330,7 @@ func (c *checker) checkPendingExtensions() {
 			savedBody := pe.comp.Body
 			savedVars := pe.comp.Vars
 			savedBodyDecls := pe.comp.BodyDecls
+			savedFuncs, savedMethods := pe.comp.Funcs, pe.comp.Methods
 			savedProps, savedEvents := pe.comp.Props, pe.comp.Events
 			// An override that listed the props it consumes reads those and no
 			// others: the list is what makes the names in its body traceable
@@ -1311,10 +1353,26 @@ func (c *checker) checkPendingExtensions() {
 			// a var annotation resolves against in the meantime, which is why
 			// the two are collected under one.
 			c.pushScope()
-			vars, bodyDecls := c.collectExtensionDecls(pe.comp, pe.body)
-			c.popScope()
+			vars, bodyDecls, funcDefs := c.collectExtensionDecls(pe.comp, pe.body)
 			pe.comp.Vars = append(slices.Clip(savedVars), vars...)
 			pe.comp.BodyDecls = append(slices.Clip(savedBodyDecls), bodyDecls...)
+			// A method is attached by receiver, so the base's table is where
+			// an override's helper would land and stay -- visible to the base
+			// body and to every other target's override, and a redeclaration
+			// of the next target's helper of the same name. The clone is what
+			// keeps each override's helpers to itself; it starts from the
+			// base's so a method the declaration made stays callable.
+			pe.comp.Methods = maps.Clone(savedMethods)
+			// Registered inside the collect scope: a signature may name a type
+			// the override body declared, which is bound there and nowhere
+			// else.
+			funcDefs = c.reportOverrideFuncShadows(pe, savedMethods, funcDefs)
+			overrideFuncs := c.registerNestedMethods(pe.comp.Name, pe.comp.AST.TypeParams, funcDefs)
+			pe.comp.Funcs = append(slices.Clip(savedFuncs), overrideFuncs...)
+			c.popScope()
+			// checkComponentBody checks comp.Funcs in the component's own
+			// scope, so the override's are checked with its vars and props
+			// visible by having been appended above.
 			c.checkComponentBody(pe.comp)
 			// While the override's state is still installed, because that is
 			// the body a component nested in it was written in. Left to
@@ -1322,7 +1380,13 @@ func (c *checker) checkPendingExtensions() {
 			// where the owner is the base declaration again and the names the
 			// nested body captured are declared by nobody.
 			c.checkOverrideNestedBodies(bodyDecls)
-			checked := ir.Body{Vars: pe.comp.Vars, Stmts: pe.comp.Body, BodyDecls: pe.comp.BodyDecls}
+			checked := ir.Body{
+				Vars:      pe.comp.Vars,
+				Stmts:     pe.comp.Body,
+				BodyDecls: pe.comp.BodyDecls,
+				Funcs:     pe.comp.Funcs,
+				Methods:   pe.comp.Methods,
+			}
 			if pe.kind == ir.BuiltinLanguage {
 				pe.comp.LanguageOverrides[pe.platform] = checked
 			} else {
@@ -1332,6 +1396,7 @@ func (c *checker) checkPendingExtensions() {
 			pe.comp.Body = savedBody
 			pe.comp.Vars = savedVars
 			pe.comp.BodyDecls = savedBodyDecls
+			pe.comp.Funcs, pe.comp.Methods = savedFuncs, savedMethods
 			pe.comp.Props, pe.comp.Events = savedProps, savedEvents
 			if pe.user {
 				c.popScope()

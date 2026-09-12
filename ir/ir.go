@@ -538,6 +538,15 @@ type Body struct {
 	// linked to its owner through this list (ir.BodyOwners), and without it
 	// the link exists only while the checker has the override installed.
 	BodyDecls []Symbol `json:"-"`
+	// Funcs is Component.Funcs as this body saw it, on the same terms: the
+	// declaring component's methods plus the ones the override body wrote.
+	// A method is reached by receiver rather than by name, so the two bodies'
+	// helpers are distinguishable only by which list is installed.
+	Funcs []*Func `json:"-"`
+	// Methods is the receiver's member table as this body saw it. Held per
+	// body, not merged, so two targets may each write a `func helper` without
+	// one of them being a redeclaration of the other.
+	Methods map[string]*Func `json:"-"`
 }
 
 // Component represents a resolved component declaration.

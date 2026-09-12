@@ -752,9 +752,36 @@ recursion-cycle report reach an override body, and a `limit` var in
 `error_component_override_nested_capture_recursive.sngl` keeps the cycle from
 being folded away before it is asked.
 
-A `func` written in an override body is still not registered at all — the
-override's own body cannot call one either — so the only method a nested body
-reaches is the base declaration's.
+A `func` written there is the third slot of the same shape. It is registered
+by `collectExtensionDecls` and desugared onto the component by the same
+`registerNestedMethods` an ordinary body uses, so the override's body calls its
+own helper and a nested body reaches it through `lookupBodyMethod` — the route
+a method takes, since a component-body func is a method on its owner rather
+than a name in scope. `ir.Body` carries `Funcs` and `Methods` for it, swapped
+by `specializeComp` with the rest; without that swap bubbletea emitted
+`func (m *outer) Bump()` against a type it never declares, which
+`component_override_body_func.txtar` denies.
+
+A method is attached by **receiver**, so the base declaration's table is where
+an override's helper would otherwise land and stay — visible to the base body
+and to every other target's. Each override body therefore gets its own
+`maps.Clone` of that table. It starts from the base's, so a helper the
+declaration wrote stays callable from an override that did not rewrite it, and
+two *overrides* may each write a `func bump` without one being a redeclaration
+of the other: two platform packages implementing one component must not have to
+agree on their helpers' names.
+
+What is refused is an override helper **shadowing** one the base body wrote
+(`reportOverrideFuncShadows`). That is a codegen limitation surfaced in the
+checker, on `claimBodyType`'s terms rather than as a language rule: nothing
+renames a component method per body, so both would be emitted under one host
+identifier. #198's hoist-and-rename is where it lifts, and the diagnostic says
+so (`error_component_override_body_func_shadows.sngl`).
+
+`ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because by then the
+base declaration is restored and the live `Component.Funcs` no longer names the
+override's helper — checked at package scope instead, it reported the
+component's own vars as undefined.
 
 `declareEnclosingBody` is the scope half, and `checkBodyOnce` orders an owner's
 body check ahead of the bodies it declared — pass1 registers a nested

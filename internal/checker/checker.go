@@ -3384,9 +3384,14 @@ func (c *checker) pass2() {
 	// comp.Funcs too, but they don't need component scope; we check them
 	// here so their return type is inferred BEFORE any top-level test func
 	// (which may call them) is checked.
+	// ir.BodyFuncs rather than comp.Funcs, because a func an override body
+	// declares is owned by that component too -- and by the time this runs,
+	// checkPendingExtensions has restored the base declaration, so the live
+	// list no longer names it. Checked here it would resolve at package
+	// scope and report the component's own vars as undefined (#230).
 	compOwnedFuncs := map[*ir.Func]bool{}
 	for _, comp := range c.pkg.Components {
-		for _, fn := range comp.Funcs {
+		for _, fn := range ir.BodyFuncs(comp) {
 			if fn.Receiver == "" || fn.Receiver == comp.Name {
 				compOwnedFuncs[fn] = true
 			}
