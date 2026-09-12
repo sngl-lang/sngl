@@ -1,4 +1,4 @@
-// A component may render windows, and naming `app.root` in its return
+// A component may render windows, and naming `root` in its return
 // position is what says so: it is a member of the family the package body
 // accepts, so writing it there is writing windows there. This is what "you can
 // still do dynamic stuff with them" means — a `root` component's body is
