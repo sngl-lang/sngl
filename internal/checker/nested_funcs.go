@@ -1,7 +1,6 @@
 package checker
 
 import (
-	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -167,11 +166,20 @@ func (c *checker) orderNestedFuncs() {
 		children[n.in] = append(children[n.in], n.fn)
 	}
 	reorder := func(fns []*ir.Func) {
+		// A collection holds some of the chain and not the rest -- a component
+		// method is in pkg.Funcs while the funcs it wrote are only in
+		// comp.Funcs -- so membership is what bounds the walk. Without it a
+		// parent pulled its children in from the other collection and the
+		// copy below rewrote this one with names it does not own.
+		in := make(map[*ir.Func]bool, len(fns))
+		for _, fn := range fns {
+			in[fn] = true
+		}
 		out := make([]*ir.Func, 0, len(fns))
 		emitted := make(map[*ir.Func]bool, len(fns))
 		var emit func(fn *ir.Func)
 		emit = func(fn *ir.Func) {
-			if emitted[fn] {
+			if emitted[fn] || !in[fn] {
 				return
 			}
 			emitted[fn] = true
@@ -183,7 +191,7 @@ func (c *checker) orderNestedFuncs() {
 		for _, fn := range fns {
 			// A child is emitted by its parent, and reached here only when the
 			// parent is in some other collection.
-			if owner, nested := declaredIn[fn]; nested && slices.Contains(fns, owner) {
+			if owner, nested := declaredIn[fn]; nested && in[owner] {
 				continue
 			}
 			emit(fn)
