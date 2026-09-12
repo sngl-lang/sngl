@@ -59,7 +59,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 				return fmt.Errorf("html: route %s has a server-side action, so window %q is rendered per request — but a conditional or loop in it re-renders on the client (%s), and route mode cannot emit both for one window; make the condition depend on the request (a route parameter) rather than on mutable state", path, win.Name, fn.Name)
 			}
 		}
-		render, err := buildRenderModel(req.Pkg, win, path, actionIdx)
+		render, err := buildRenderModel(req.Pkg, win, actionIdx)
 		if err != nil {
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
