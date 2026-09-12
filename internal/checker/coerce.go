@@ -1,6 +1,8 @@
 package checker
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -141,4 +143,35 @@ func isConvertiblePrimitive(k ir.TypeKind) bool {
 		return true
 	}
 	return false
+}
+
+// multiBaseUnitCast reports the UnitDef behind a numeric cast of a multi-base
+// unit, or nil for any other conversion. There is no one number to produce:
+// the value is a magnitude per base, which is what the checker already says
+// about ordering two of them (Type.IsSingleBaseUnit gates <, <=, >, >=) and
+// says here about int() and float().
+func multiBaseUnitCast(from, target *ir.Type) *ir.UnitDef {
+	if from == nil || target == nil || from.Kind != ir.TypeUnit {
+		return nil
+	}
+	if target.Kind != ir.TypeInt && target.Kind != ir.TypeFloat {
+		return nil
+	}
+	if from.IsSingleBaseUnit() {
+		return nil
+	}
+	return ir.UnitDeclOf(from)
+}
+
+// baseNameList spells a unit's bases as the member reads that replace a cast.
+func baseNameList(u *ir.UnitDef) string {
+	bases := u.Bases()
+	names := make([]string, len(bases))
+	for i, b := range bases {
+		names[i] = "." + b.Name
+	}
+	if len(names) < 2 {
+		return strings.Join(names, "")
+	}
+	return strings.Join(names[:len(names)-1], ", ") + " or " + names[len(names)-1]
 }
