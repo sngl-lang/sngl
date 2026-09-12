@@ -3,11 +3,10 @@ import ui "sngl:ui"
 import "sngl:platform/html"
 
 // An override body is collected on its own, so its type declarations need
-// collecting there too -- pass1 only ever sees the parenless stub.
-//
-// The unit here is declared and not used: a bare unit literal needs an expected
-// type since 3c223a7e, and a body-local type does not resolve in an annotation
-// inside an override body (#204).
+// collecting there too -- pass1 only ever sees the parenless stub. The
+// annotated vars are the half that needs them registered before the var walk
+// reaches them, and a bare unit literal has no other spelling: 3tk resolves
+// against the type its position expects.
 component thing ui.node {
     ui.text(value="base")
 }
@@ -18,8 +17,9 @@ component thing[html.platform] {
     }
 
     var r = Row{a=1}
+    var r2 Row = Row{a=2}
 
-    ui.text(value="${r.a}")
+    ui.text(value="${r.a}${r2.a}")
 }
 
 component tagged ui.node {
@@ -34,8 +34,10 @@ component tagged[html.platform] {
     unit tick { tk, kt = 10tk }
 
     var p = Phase.done
+    var p2 Phase = Phase.start
+    var elapsed tick = 3tk
 
-    ui.text(value="${p}")
+    ui.text(value="${p}${p2}${elapsed}")
 }
 
 component main ui.node {
