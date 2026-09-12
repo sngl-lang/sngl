@@ -54,6 +54,35 @@ func unitLiteralJS(n *ir.Literal) (string, bool) {
 	return "{ " + strings.Join(parts, ", ") + " }", true
 }
 
+// UnitToString renders a unit-typed operand the way every target displays
+// one -- its magnitude per base, `3px + 2em`. Reports false when the operand
+// is not a unit, leaving String() in charge.
+//
+// An arrow call rather than an emitted helper because the operand is read
+// once per base and may have side effects; JavaScript has no other place to
+// bind it, this being an expression position.
+func UnitToString(n *ir.Conversion, operand string) (string, bool) {
+	if n == nil || n.Operand == nil {
+		return "", false
+	}
+	ud := ir.UnitDeclOf(n.Operand.ExprType())
+	if ud == nil {
+		return "", false
+	}
+	bases := ud.Bases()
+	if ud.IsSingleBase() {
+		// A single-base value is the number itself, so there is nothing to
+		// read a key off and nothing to join.
+		return fmt.Sprintf("(String(%s) + %q)", operand, bases[0].Name), true
+	}
+	terms := make([]string, 0, len(bases))
+	for _, b := range bases {
+		terms = append(terms, fmt.Sprintf("[__u.%s, %q]", b.Name, b.Name))
+	}
+	return fmt.Sprintf("((__u) => [%s].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(%q) || %q)(%s)",
+		strings.Join(terms, ", "), ir.UnitTermSep, ir.FormatUnitZero(ud), operand), true
+}
+
 // isMultiBaseUnitJS reports whether t is represented as a per-base object.
 func isMultiBaseUnitJS(t *ir.Type) bool {
 	ud := ir.UnitDeclOf(t)

@@ -908,12 +908,47 @@ value would be a `time.Duration` in the first place, so the two cannot
 disagree. `float` divides as floats, since an integer division converted
 afterwards truncates a sub-millisecond duration to zero.
 
-**Only the cast.** A *bare* read of a duration still answers three ways —
-`"{d}"` of `500ms` is `500ms` on Go and the interpreter, `500` on JavaScript
-and `500.0` on Kotlin — because what a unit value renders as with no cast
-around it is each platform's, the same division of labour that lets html spell
-a measurement `7px` for CSS. Unifying that is a decision about bare display on
-every target rather than a second place to divide, and has not been made.
+**And the display, which is the same claim made without a cast.** A unit
+interpolated bare renders as its magnitude per base on every target: `"{d}"`
+of `500ms` is `500ms`, `"{m}"` of `3px + 2em` is `3px + 2em`. The rule is the
+representation restated rather than a second decision on top of it, and
+`ir.FormatUnitTerm`, `ir.UnitTermSep` and `ir.FormatUnitZero` are the one
+place it is written down — the interpreter and the optimizer call them, and
+each backend emits a runtime helper saying the same thing about values no
+compile-time caller can see.
+
+It was **five** answers, not one per target. A var-held `500ms` printed
+`500ms` on Go, `500` on JavaScript, `500.0` on Kotlin and `500ms` on the
+interpreter; a `const` one printed `500` on all four, because
+`optimize.evalConversion` folded a unit to the bare float64 its magnitude is
+and spelled that back with `%v`. Go's apparent agreement was a coincidence of
+the value: `time.Duration.String` normalises across units, so 1100ms prints
+`1.1s` for a unit whose declared base is ms. And a multi-base value had no
+chosen spelling anywhere — `{3 2 0 0 0}` on Go, `[object Object]` on
+JavaScript, `Measurement(px=3.0, …)` on Kotlin — because nothing had ever
+asked the question; those are three host defaults leaking.
+
+Two consequences, and each is the representation asserting itself. **The
+written suffix is gone from display**: `2rem` shows `32em`, because the record
+is the whole of what a compiled target holds and a spelling to prefer was a
+memory only `interp.unitValue.Suffix` had. And an **all-zero value prints in
+the first declared base**, so `0rem` and `0px` both print `0px` — they are the
+same value under per-base equality, and equal values have to print equally.
+
+Go needs a helper per unit (`HelperSet.UnitStrings`, emitted by
+`EmitUnitStringFuncs`) because it has no expression form for the join;
+JavaScript and Kotlin inline an arrow and a `let`, which is also what binds
+the operand so it is not re-evaluated once per base. Each helper spells its
+magnitude with whatever that target already spells a bare float with —
+`fmt.Sprint`, `String`, `_snglFloatStr` — so unit display inherits the float
+agreement instead of restating it and drifting from it.
+
+**The CSS path is not this path**, which is what made unifying it cheap rather
+than a trade against html. A style prop is spelled by `internal/htmlutil`:
+`UnitLiteralToCSS` off an `ir.Literal`, with its own rename table where the
+base `pct` is written `%`. It shares `ir.UnitMagnitude` with the above and
+nothing else, reaches `interpolateStringify` nowhere, and `7px` in a
+stylesheet is unchanged by any of this.
 
 The interpreter is a fourth implementation of all of this and has to be checked
 with the three backends: `interp.ToInt` needs its `unitValue` case (without it
@@ -942,9 +977,9 @@ Four things follow, and the first three are the record restated:
   `dyn` operand that reached a comparison untyped.
 - **A cast reads `magnitude()`** — the one base of a single-base unit, which is
   every cast the checker's ordering rule leaves meaningful.
-- **Display sums the bases it carries**: `3px + 2em`, and an untouched `3px`
-  or `1rem` for the single-suffix values, which is what a program that never
-  mixes bases sees.
+- **Display sums the bases it carries**: `3px + 2em`, and a bare `3px` for a
+  value that only ever names one, which is what a program that never mixes
+  bases sees. In the bases, not in the spelling — `1rem` displays `16em`.
 
 The timer is unaffected: `durationFromMs` goes through `toFloat`, and a
 duration is single-base.

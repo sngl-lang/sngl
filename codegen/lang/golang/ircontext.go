@@ -1281,6 +1281,9 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
+		if ud := UnitStringConversion(n); ud != nil {
+			return UnitStringFn(ud) + "(" + operand + ")"
+		}
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
 	}

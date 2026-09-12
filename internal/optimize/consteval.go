@@ -525,6 +525,12 @@ func evalConversion(conv *ir.Conversion, ctx *evalCtx) (any, bool) {
 	}
 	switch conv.Type.Kind {
 	case ir.TypeString:
+		// A folded unit arrives as the bare float64 its magnitude is, so
+		// without this the constant `"{500ms}"` was "500" on every target
+		// while the same read off a var was the target's own spelling.
+		if s, ok := unitConversionString(conv, operand); ok {
+			return s, true
+		}
 		return fmt.Sprintf("%v", operand), true
 	case ir.TypeInt:
 		// Numeric operands go through the shared width-aware converter so a
@@ -1138,4 +1144,27 @@ func nsConst(x *ir.Select) (*ir.Var, bool) {
 		return nil, false
 	}
 	return v, true
+}
+
+// unitConversionString spells a folded unit value the way every target
+// displays one. Only a single-base unit reaches it: evalLiteral declines to
+// reduce a multi-base value to a number at all, so one never folds.
+func unitConversionString(conv *ir.Conversion, operand any) (string, bool) {
+	if conv.Operand == nil {
+		return "", false
+	}
+	ud := ir.UnitDeclOf(conv.Operand.ExprType())
+	if ud == nil || !ud.IsSingleBase() {
+		return "", false
+	}
+	var mag float64
+	switch v := operand.(type) {
+	case float64:
+		mag = v
+	case int:
+		mag = float64(v)
+	default:
+		return "", false
+	}
+	return ir.FormatUnitTerm(mag, ud.Bases()[0].Name), true
 }
