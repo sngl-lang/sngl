@@ -773,6 +773,48 @@ body calls. `CapturesEnclosingState` counts every func for that reason, while
 `declareEnclosingBody` still declares only the receiverless ones: declaring a
 method by bare name would shadow it.
 
+**A `func` written inside another function body is hoisted, not closed over,
+and `ir.Func.Nested` says which declarations that is.** It joins the enclosing
+component, window or package — what a backend emits from — while the name it
+was written under is the body's, which leaves two things to reconcile
+(`internal/checker/nested_funcs.go`).
+
+- **One declaration, whatever a body is read.** `preCheckComponentMethods`
+  reads a component method's signature and `checkComponentBody` then checks it
+  authoritatively, so `checkStmt` sees the same `*ast.FuncDef` twice and used
+  to hoist an `ir.Func` each time: `method Model.innerF already declared` on
+  bubbletea, two `fun innerF` in one android file, and on html a second
+  `function innerF` that silently won. `checker.nestedFuncs` keys the
+  declaration by its AST node. Every loop that checks or declares an owner's
+  funcs a second time in that owner's scope skips one, because that is not the
+  scope its source sits in.
+- **An emitted name of its own.** Two bodies may each write `func helper` and
+  mean two functions, into a flat namespace. `renameNestedFuncs` gives each
+  `<body>__<name>` at the end of the check, once no scope holds a written
+  name; three levels compose because it runs in declaration order. A func can
+  have the rename a body-local *type* is still waiting on (#198) because a
+  call site holds the declaration, `ir.Call.Func`, and not the name.
+  `orderNestedFuncs` then puts each ahead of the body that declared it — the
+  hoist appends, and android emits an owner's funcs as local `fun`s inside one
+  composable, where a local function may not be referenced above its
+  declaration.
+
+What one may **reach** follows from the hoist rather than from where it is
+written. Its siblings and itself are hoisted into the same namespace, so a
+sibling call and recursion are ordinary calls (`checker.nestedScope`, one per
+body, chained on that body's outer scope). The enclosing function's params and
+locals are not: the call that held them has returned, and nothing about a hoist
+captures them. So the body is checked against the scope its enclosing function
+was *entered* from, and naming one is a positioned error carrying `captureHint`
+rather than a bare `undefined` — closing over them is a closure conversion and
+is not what this is. Two of one name in one body is that body's duplicate, from
+`c.declare` like any other binding.
+
+A func at the root of a **window** body reaches the same code and is none of
+this: it is the window's own, the way a component-body func is the component's,
+and it keeps the name it was written under. Reading `Nested` as "hoisted" is
+what renamed `examples/todo`'s `status`.
+
 Bare component resolution is `checker.lookupComponentInScope` — the lexical
 chain, like every other identifier. `ir.SymbolTable.LookupRootComponent` is
 the other question: a name qualified by a package, and an override's target.
