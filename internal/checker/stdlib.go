@@ -1188,8 +1188,7 @@ func selectProps(comp *ir.Component, selection []string) ([]*ir.Prop, []*ir.Even
 //
 // One walk in source order, and it has to stay one: collectComponentVarDecl
 // resolves an annotation eagerly, so a body-local type is a name only if its
-// registration already happened. The caller's scope is what registerBodyDecl
-// binds into and what resolveType then reads.
+// registration already happened.
 //
 // The funcs are returned rather than registered, on collectComponentDecls'
 // terms: the caller decides what receiver they get, and registering one
