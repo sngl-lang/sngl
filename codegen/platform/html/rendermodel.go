@@ -398,14 +398,10 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 // route's own window owns. Mirrors htmlGen.stateVars but yields the
 // language-agnostic codegen.StateVar (name + IR type).
 //
-// The window is what #215 added, and it is now the usual owner rather than the
-// unusual one: passRootWindow hoists a root component's declarations into the
-// window it lifts, so `component main root { var total = 0; window … }` has its
-// state there and nowhere else. Left out, the markup rendered `total` as a hole
-// -- stateVarNames below has always counted a window's vars -- while the State
-// struct it was a hole in came out empty, and the handler assigned to a name Go
-// had no binding for. This is golang.ModelFreeFuncs' fix applied to vars: a
-// window owns state the way a component does.
+// The window is the usual owner rather than the unusual one: passRootWindow
+// hoists a root component's declarations there (#215). stateVarNames below has
+// always counted a window's vars, so leaving them out here rendered the markup
+// as a hole into a State struct that had no such field.
 //
 // win may be nil, which is every caller that asks the package-wide question.
 func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar {

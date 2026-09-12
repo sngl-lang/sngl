@@ -42,12 +42,9 @@ func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRConte
 	if main := mainComponent(req.Pkg); main != nil {
 		ctx = ctx.ForComponent(main)
 	}
-	// And to the route's own window, which is where a root component's state
-	// is by the time a backend sees it (#215 hoists it there). Without this
-	// scope an assignment to it rendered as a bare `total = …` -- a name the
-	// emitted Go declares nowhere -- while the State struct beside it carried
-	// the field the read should have projected onto. ForWindow keeps the
-	// component scope rather than replacing it.
+	// And to the route's own window, which is where a root component's state is
+	// by the time a backend sees it (#215). ForWindow keeps the component scope
+	// rather than replacing it.
 	if r.Window != nil {
 		ctx = ctx.ForWindow(r.Window)
 	}

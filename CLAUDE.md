@@ -444,6 +444,17 @@ says what happens when a raise reaches it; an `ir.ContextProvider` sets a value
 for what is under it. None puts anything in the tree itself, so every tree
 question asked of a block is asked of theirs.
 
+It returns **two** lists. `all` is every block, for the callers that ask whether
+content belongs to a family. `binds` is the blocks that may *supply* one, which
+is every block but a boundary's fallback: that stands where the content stood
+and is held to the content's answer rather than giving one. `childrenTree` is
+the only caller of `binds`, and handing it `all` made a diagnostic depend on
+source order — `T` bound to `shape` off the fallback of a boundary whose content
+was empty, and the widget beside it was blamed
+(`error_tree_boundary_failed_binds_nothing.sngl` is both orderings). A boundary
+with no content still takes `T` from its fallback as a last resort, in the
+boundary's own check where that rule belongs.
+
 There were **five** copies of that walk and each was missing a different
 member, which is why the list is now a function rather than a `switch` per
 caller:
@@ -467,6 +478,16 @@ third is what made the list shared rather than corrected a third time. Fixtures:
 `scoped` (membership) and `error_tree_treeless_wrapped.sngl` (tree-less, both
 wrappers). Deleting the `ContextProvider` case from `treeTransparent` fails all
 three, which is the unification doing its job.
+
+A **sixth** copy was `internal/checker/effects.go`'s `walkVisualErrors`, which
+resolves a raise to the nearest boundary. It had no provider case at all, so a
+handler written under one resolved past every boundary around it and the error
+came out uncaught — `sngl test` reporting `raised: boom` for a program that
+wrote a boundary. It keeps its own boundary case, because a boundary is the one
+transparent statement that is not: it pushes its handler onto the scope, which
+is the whole of what it does. Its fallback is walked under that same handler,
+since `passBoundaryFailed` puts the fallback exactly where the content was.
+`test_error_under_wrappers.sngl` covers both halves.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because
@@ -547,8 +568,12 @@ import `sngl:ui`, where the root tree lives.
 
 **A root component's own state is hoisted into the window it lifts**, because
 that is where it is mounted — the component is an empty shell once the lift is
-done, and a `var`, `func` or `timer` left on one reached no backend at all
+done, and a `var` or `func` left on one reached no backend at all
 (#215: `component main root { var n = 0; window … }` emitted `var state = {}`).
+A *timer* is not a declaration on the component but a statement in its body, and
+the body is cleared — so one written there, or at the root of a file, is dropped
+in silence. Pre-existing on both paths, not fixed, and noted at
+`applyRootWindow`.
 A window is a state owner every consumer already reads, so nothing downstream
 grew a case; what did have to change is the two places that still asked `main`
 for it, `html`'s `routeStateVars` and `golang`'s `newRouteGC`, which now ask the

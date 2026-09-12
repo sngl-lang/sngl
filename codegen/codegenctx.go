@@ -71,16 +71,10 @@ func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 // sharedWindowScope is the declarations *every* window owns, as a stand-in
 // window to resolve names against. Nil when there are none.
 //
-// EntryWindow declines to guess which window a multi-window program's single
-// Model is scoped to, and it is right to: two windows' `count` are two names.
-// A declaration owned by all of them is not that case -- it is one *ir.Var
-// reachable from every window, which passRootWindow mounts there when a root
-// component declares state (#215). Scoping to it is not a choice between
-// windows, so the ambiguity EntryWindow guards against does not arise.
-//
-// Without it those reads fell out of scope resolution and rendered as bare
-// identifiers that the emitted Go never declared, beside the Model field they
-// should have projected onto.
+// A declaration owned by all of them is one *ir.Var reachable from every window
+// (passRootWindow mounts a root component's state there, #215), so scoping to
+// it chooses between no windows -- which is what EntryWindow returning nil past
+// one is guarding against.
 //
 // The stand-in is never rendered and carries no body: ExprCtx reads Vars and
 // Funcs off it and nothing else does.
