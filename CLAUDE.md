@@ -487,7 +487,7 @@ wrote a boundary. It keeps its own boundary case, because a boundary is the one
 transparent statement that is not: it pushes its handler onto the scope, which
 is the whole of what it does. Its fallback is walked under that same handler,
 since `passBoundaryFailed` puts the fallback exactly where the content was.
-`test_error_under_wrappers.sngl` covers both halves.
+`cmd/sngl/testdata/error_under_wrappers.txt` covers both halves — a CLI script, because nothing executes the test functions in a `testdata/test_*.sngl`: `sngl test ./...` does not walk `testdata/`, and no Go harness drives them. Those files are checked and their assertions never run.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because

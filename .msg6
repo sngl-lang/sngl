@@ -1,0 +1,22 @@
+move the wrapper fixture to the harness that runs it
+
+The commit that fixed walkVisualErrors put its fixture in
+testdata/test_error_under_wrappers.sngl, and nothing in the suite executes the
+test functions there. `sngl test ./...` -- which is what `go tool verify` runs
+-- does not walk testdata/, and no Go harness drives those files either: they
+are type-checked by TestCheckTestdata and their assertions never run. The count
+`go tool verify` prints did not move when the fixture was added, which is how
+this was caught.
+
+So it is a CLI script now, which is where CLAUDE.md puts anything that
+*executes* a program. Both revert probes were redone against it: removing the
+context-provider reach fails testRaiseUnderProviderIsCaught and not the other,
+and removing the boundary's Failed walk fails testRaiseInFallbackIsCaught and
+not the other.
+
+Worth knowing beyond this fixture: every `testdata/test_*.sngl` in the
+repository is in the same position. test_error_handling.sngl,
+test_interp_types.sngl and the rest are checked and never run.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01G3PEWGUC6mAifjEdDW5HDP
