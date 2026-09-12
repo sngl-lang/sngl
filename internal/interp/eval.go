@@ -3,7 +3,6 @@ package interp
 import (
 	"fmt"
 	"maps"
-	"math"
 	"regexp"
 	"slices"
 	"sort"
@@ -65,8 +64,9 @@ func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 // rather than stored as zero.
 type unitValue struct {
 	Amounts map[string]float64
-	// Suffix is the spelling the value was written with. Display only: `2rem`
-	// counts in em and prints back as 2rem.
+	// Suffix is the spelling the value was written with. It says which base a
+	// multi-base value's cast reads and nothing else -- display normalises to
+	// the bases, since no compiled target carries a spelling to prefer.
 	Suffix string
 	Table  *unitTable
 }
@@ -187,35 +187,35 @@ func (u unitValue) magnitude() float64 {
 	return u.amountIn(u.countedIn())
 }
 
-// displayIn renders one base's magnitude. The written suffix wins for the base
-// it reduces to, so `2rem` prints as 2rem rather than as the 32em it counts.
-func (u unitValue) displayIn(base string) string {
-	amt, suffix := u.amountIn(base), base
-	if base == u.countedIn() && u.Table != nil {
-		if factor, ok := u.Table.Conversions[u.Suffix]; ok && factor != 0 {
-			amt, suffix = amt/factor, u.Suffix
-		}
-	}
-	if amt == math.Trunc(amt) && !math.IsInf(amt, 0) && !math.IsNaN(amt) {
-		return fmt.Sprintf("%d%s", int(amt), suffix)
-	}
-	return fmt.Sprintf("%g%s", amt, suffix)
-}
-
 // String prints every base the value carries a magnitude for, summed the way
 // the source would have written it: `3px + 2em`. A value carrying none prints
-// a zero in the suffix it was written with rather than nothing at all.
+// a zero rather than nothing at all.
+//
+// The written suffix is not consulted, so `2rem` prints as 32em. A compiled
+// target holds the record and nothing else, so preferring the spelling here
+// is a memory only the interpreter has -- and this is the one renderer every
+// target has to match.
 func (u unitValue) String() string {
 	var parts []string
 	u.eachBase(nil, func(b string) {
-		if u.amountIn(b) != 0 {
-			parts = append(parts, u.displayIn(b))
+		if amt := u.amountIn(b); amt != 0 {
+			parts = append(parts, ir.FormatUnitTerm(amt, b))
 		}
 	})
 	if len(parts) == 0 {
-		return u.displayIn(u.countedIn())
+		return ir.FormatUnitTerm(0, u.firstBase())
 	}
-	return strings.Join(parts, " + ")
+	return strings.Join(parts, ir.UnitTermSep)
+}
+
+// firstBase is the base a value carrying no magnitude at all prints in. It is
+// the declared first rather than the one the suffix reduces to, because
+// `0rem` and `0px` are the same value and must print the same.
+func (u unitValue) firstBase() string {
+	if u.Table != nil && len(u.Table.Bases) > 0 {
+		return u.Table.Bases[0]
+	}
+	return u.countedIn()
 }
 
 func (u unitValue) sameFamily(other unitValue) bool {

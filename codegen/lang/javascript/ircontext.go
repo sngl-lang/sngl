@@ -829,6 +829,9 @@ func (jc *JsIRContext) evalConversion(n *ir.Conversion) string {
 			// translateIRConversion. The plain-call string(x) path flags it
 			// too; without this, an ir.Conversion-to-string would drop the
 			// `function String(v)` helper once emitJSFunc/exprToJS migrate.
+			if s, ok := UnitToString(n, operand); ok {
+				return s
+			}
 			if jc.Ctx != nil && jc.Ctx.Helpers != nil {
 				jc.Ctx.Helpers["String"] = true
 			}

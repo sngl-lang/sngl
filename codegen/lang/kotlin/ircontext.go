@@ -799,6 +799,9 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 			// Kotlin's Double.toString always writes a fraction, so a
 			// calculator that Go and JS both spell `24` came out as `24.0`.
 			// string(float) has to mean the same thing on every target.
+			if s, ok := UnitToStringKt(n, operand); ok {
+				return s
+			}
 			if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeFloat {
 				return FloatStringFn + "(" + operand + ")"
 			}
