@@ -19,6 +19,10 @@ grep 's\.Biggest\(\)' out/server.go
 # And nothing dispatches through a Model that route mode does not have.
 ! grep 'm\.' out/server.go
 
+# And it compiles. A grep over generated Go cannot say that, which is how an
+# unbound route parameter survived in this file's own output.
+exec go build ./...
+
 -- go.mod --
 module routefuncs
 

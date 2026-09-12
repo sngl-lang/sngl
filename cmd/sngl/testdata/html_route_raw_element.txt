@@ -30,6 +30,9 @@ grep '<button>go</button>' out/server.go
 # A false boolean attribute is absent, not `open="false"`.
 ! grep 'open=' out/server.go
 
+# All of the above is a claim about a Go file, so compile it.
+exec go build ./...
+
 -- go.mod --
 module example.com/route-raw
 

@@ -33,8 +33,21 @@ func applyHoistState(pkg *ir.Package, _ Caps, _ Options) error {
 	// same rule, and a pass that knows two of the three owners is how the
 	// window case went missing in the first place.
 	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
-	for _, w := range pkg.Windows {
+	for _, w := range allWindows(pkg) {
 		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
 	}
 	return nil
+}
+
+// allWindows is every window the package holds, in ir.Owners' order: those at
+// the root of a file and those a component body renders. Derived from Owners
+// so the two answers to "which declarations own state" cannot drift apart.
+func allWindows(pkg *ir.Package) []*ir.Window {
+	var out []*ir.Window
+	for _, o := range ir.Owners(pkg) {
+		if o.Win != nil {
+			out = append(out, o.Win)
+		}
+	}
+	return out
 }

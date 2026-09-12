@@ -1,0 +1,23 @@
+// A `func` written inside another function body is hoisted out of it rather
+// than closed over, so the enclosing function's params and locals are not in
+// scope inside one. Its own siblings are (they are hoisted too); read as an
+// ordinary "undefined", the difference says nothing about why a name written
+// two lines up is missing, which is why the diagnostic carries the reason.
+import . "sngl:ui"
+
+component main node {
+    var log string = ""
+
+    func step(a int) int {
+        var scale = 3
+        func mark(k int) int {
+            log = log + "!"         // the component's own var is state, and stays in scope
+            var byParam = k * a     // ERROR(check) "nested func is hoisted rather than closed over"
+            var byLocal = k * scale // ERROR(check) "nested func is hoisted rather than closed over"
+            return byParam + byLocal
+        }
+        return mark(1)
+    }
+
+    text(value="{log}{step(2)}")
+}

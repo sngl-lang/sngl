@@ -8,8 +8,8 @@ import (
 
 func intLit(n string) *ir.Literal { return &ir.Literal{Type: ir.TypInt, Value: n} }
 
-// names returns the field names of a flat struct literal in order.
-func names(sl *ir.StructLit) []string {
+// fieldNames returns the field names of a flat struct literal in order.
+func fieldNames(sl *ir.StructLit) []string {
 	var out []string
 	for _, f := range sl.Fields {
 		out = append(out, f.Name)
@@ -27,7 +27,7 @@ func TestFlattenStructLitLiteralSpread(t *testing.T) {
 		}}},
 	}}
 	out := flattenSpreadExprCtx(in, &ir.Package{}).(*ir.StructLit)
-	got := names(out)
+	got := fieldNames(out)
 	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatalf("field names: got %v want [a b]", got)
 	}

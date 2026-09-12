@@ -95,7 +95,7 @@ func TestLifterBasicReadOnlyCapture(t *testing.T) {
 	body := []ir.Stmt{
 		&ir.Return{Value: &ir.Ident{Name: "n", Sym: outerN, Type: ir.TypInt}},
 	}
-	l := &lifter{pkg: pkg}
+	l := newLifter(pkg)
 	cl := l.Lift(body, nil, ir.TypInt, nil)
 
 	if cl == nil || cl.Func == nil || cl.State == nil {
@@ -137,7 +137,7 @@ func TestLifterMutableCaptureUsesRefType(t *testing.T) {
 			Value:  &ir.Literal{Type: ir.TypInt, Value: "1"},
 		},
 	}
-	l := &lifter{pkg: pkg}
+	l := newLifter(pkg)
 	cl := l.Lift(body, nil, nil, nil)
 
 	field := cl.State.Def.Fields[0]
@@ -165,7 +165,7 @@ func TestLifterFreshNameCollision(t *testing.T) {
 		},
 	}
 	body := []ir.Stmt{}
-	l := &lifter{pkg: pkg}
+	l := newLifter(pkg)
 	cl := l.Lift(body, nil, nil, nil)
 	if cl.State.Def.Name == "__lambda0_caps" {
 		t.Errorf("lifter did not skip existing name")
@@ -241,7 +241,7 @@ func TestLifterNestedClosureSharesRef(t *testing.T) {
 		&ir.Return{Value: innerLambda},
 	}
 
-	l := &lifter{pkg: pkg}
+	l := newLifter(pkg)
 	outerCl := l.Lift(outerBody, nil, nil, nil)
 
 	// Outer's caps: must have one field, n, of type ref<int>.

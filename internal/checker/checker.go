@@ -437,6 +437,27 @@ type checker struct {
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
 	currentWindow *ir.Window
+	// nestedFuncs is the ir.Func built for each `func` written as a statement,
+	// keyed by its declaration. An enclosing body is checked more than once
+	// (preCheckComponentMethods, then checkComponentBody).
+	nestedFuncs map[*ast.FuncDef]*ir.Func
+	// nestedOrder is the ir.Func.Nested subset in declaration order, so
+	// renameNestedFuncs reads an enclosing name that is already renamed and
+	// two bodies never swap suffixes between runs.
+	nestedOrder []nestedFunc
+	// currentFunc is the function body being checked, and funcOuterScope the
+	// scope it was entered from. A nested func is checked against the latter:
+	// the hoist gives it no closure, so the enclosing params and locals must
+	// not resolve from inside it.
+	currentFunc    *ir.Func
+	funcOuterScope *ir.Scope
+	// nestedScope holds the funcs the body being checked has hoisted so far,
+	// chained on funcOuterScope. See checkNestedFunc.
+	nestedScope *ir.Scope
+	// nestedHidden is the scope a nested func body is being checked *instead*
+	// of, so captureHint can tell a name the enclosing function declared from
+	// one nobody did.
+	nestedHidden *ir.Scope
 	// inferTrees are the declarations that named no family in their return
 	// position, awaiting the fixed point that reads one off their bodies.
 	// treeChecks are the membership checks that wait for it: a family a
@@ -3189,7 +3210,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body.
 	for _, name := range hrefPathParams(vn) {
-		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString})
+		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString, RouteParam: true})
 	}
 	c.pushScope()
 	defer c.popScope()
@@ -3393,7 +3414,7 @@ func (c *checker) pass2() {
 		}
 	}
 	for _, fn := range c.pkg.Funcs {
-		if compOwnedFuncs[fn] {
+		if compOwnedFuncs[fn] || fn.Nested {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -3426,6 +3447,10 @@ func (c *checker) pass2() {
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
+
+	// Every body has now been read, so no scope holds a written name any more
+	// and a hoisted func can take the name it is emitted under.
+	c.renameNestedFuncs()
 
 	// Every body has now been read, which is what a family read off one waits
 	// for -- and every membership check waits for that in turn.
@@ -3544,6 +3569,11 @@ func (c *checker) enterFuncBody() func() {
 
 func (c *checker) checkFuncBody(fn *ir.Func) {
 	defer c.fileOf(funcDeclPos(fn))()
+	prevFunc, prevOuter, prevNested := c.currentFunc, c.funcOuterScope, c.nestedScope
+	c.currentFunc, c.funcOuterScope, c.nestedScope = fn, c.scope, nil
+	defer func() {
+		c.currentFunc, c.funcOuterScope, c.nestedScope = prevFunc, prevOuter, prevNested
+	}()
 	c.pushScope()
 	defer c.popScope()
 	defer c.enterFuncBody()()
@@ -3791,7 +3821,10 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range comp.Funcs {
-		if fn.Receiver == "" {
+		// A nested func's name belongs to the body that wrote it, not to the
+		// component it was hoisted onto, so it is bound by checkNestedFunc
+		// alone.
+		if fn.Receiver == "" && !fn.Nested {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -3890,7 +3923,7 @@ func (c *checker) declareEnclosingBody(comp *ir.Component) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range owner.Funcs {
-		if fn.Receiver == "" {
+		if fn.Receiver == "" && !fn.Nested {
 			c.declare(funcDeclPos(fn), fn)
 		}
 	}
@@ -3969,6 +4002,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	}
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == "" {
+			if fn.Nested {
+				continue
+			}
 			c.declare(funcDeclPos(fn), fn)
 		} else {
 			// Type-attached method registered on the symbol table so method
@@ -4013,6 +4049,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		// `func int.double` inside `component main`) don't need component
 		// scope and are checked by pass2's pkg.Funcs loop.
 		if fn.Receiver != "" && fn.Receiver != comp.Name {
+			continue
+		}
+		if fn.Nested {
 			continue
 		}
 		if fn.Receiver == comp.Name && fn.AST != nil && fn.AST.ReturnType == nil {
@@ -4075,12 +4114,18 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		c.declare(varPos(v), v)
 	}
 	for _, fn := range w.Funcs {
+		if fn.Nested {
+			continue
+		}
 		c.declare(funcDeclPos(fn), fn)
 	}
 	if w.AST != nil {
 		c.declareNodeIDs(&w.AST.Block)
 	}
 	for _, fn := range w.Funcs {
+		if fn.Nested {
+			continue
+		}
 		c.checkFuncBody(fn)
 	}
 

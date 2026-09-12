@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -18,10 +19,8 @@ import (
 // the seam.
 //
 // State idents resolve to `s.<ExportedField>` because the handler/render
-// GoIRContext sets ExprCtx.StateReceiver = "s" (see newRouteCtx); evalIdent and
-// MutTargetIdent honor that for NameStateVar.
-
-const routeStateReceiver = "s"
+// GoIRContext sets ExprCtx.StateReceiver to the route's state local (see
+// newRouteGC); evalIdent and MutTargetIdent honor that for NameStateVar.
 
 // routeStateType returns the Go type name of a route's per-session State struct.
 func routeStateType(r codegen.HTTPRoute) string {
@@ -31,10 +30,10 @@ func routeStateType(r codegen.HTTPRoute) string {
 // newRouteGC builds a GoIRContext whose state idents project onto the `s`
 // receiver (the per-session State struct), used by both renderRoute and the
 // POST action body so a state read/write renders `s.<Field>`.
-func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext) *GoIRContext {
+func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext, loc routeLocals) *GoIRContext {
 	ctx := codegen.NewExprCtx(req.Pkg)
-	ctx.ContextVar = "r.Context()"
-	ctx.StateReceiver = routeStateReceiver
+	ctx.ContextVar = loc.request + ".Context()"
+	ctx.StateReceiver = loc.state
 	ctx.StateFieldsExported = true
 	// Scope to the main component so its state vars resolve (StateReceiver
 	// then projects them onto `s.<Field>`). State surfaced to the route lives
@@ -181,17 +180,25 @@ func emitState(b *bytes.Buffer, r codegen.HTTPRoute) {
 // emitRenderRoute writes `func renderXState(s *XState) string` that concatenates
 // the RouteRender chunks and fills each hole by translating its IR expr against
 // the session State via gc. Returns the function name.
-func emitRenderRoute(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute, gc *GoIRContext) string {
+func emitRenderRoute(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRoute, gc *GoIRContext, loc routeLocals) string {
 	stateType := routeStateType(r)
 	fnName := "render" + ExportName(r.Name)
 	gc.RequireImport("strings")
 
-	fmt.Fprintf(b, "func %s(%s *%s) string {\n", fnName, routeStateReceiver, stateType)
-	fmt.Fprintln(b, "\tvar __b strings.Builder")
-	if r.Render != nil {
-		writeRenderBody(b, "\t", "__b", r.Render, gc)
+	var sig strings.Builder
+	sig.WriteString(loc.state + " *" + stateType)
+	for _, p := range r.Params {
+		sig.WriteString(", " + p + " string")
 	}
-	fmt.Fprintln(b, "\treturn __b.String()")
+	fmt.Fprintf(b, "func %s(%s) string {\n", fnName, sig.String())
+	for _, p := range r.Params {
+		fmt.Fprintf(b, "\t_ = %s\n", p)
+	}
+	fmt.Fprintf(b, "\tvar %s strings.Builder\n", loc.build)
+	if r.Render != nil {
+		writeRenderBody(b, "\t", loc.build, r.Render, gc)
+	}
+	fmt.Fprintf(b, "\treturn %s.String()\n", loc.build)
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
 	return fnName

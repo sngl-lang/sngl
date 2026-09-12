@@ -488,7 +488,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 				return &ir.Ident{AST: x, Type: funcType, Name: x.Name, Sym: fn}
 			}
 		}
-		c.error(x.Pos, "undefined: %s%s", x.Name, c.stdlibHint(x.Name))
+		c.error(x.Pos, "undefined: %s%s%s", x.Name, c.captureHint(x.Name), c.stdlibHint(x.Name))
 		return &ir.Ident{AST: x, Type: TypDyn, Name: x.Name}
 	}
 	// The export rule only governs cross-package access: an unexported
@@ -3440,29 +3440,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		c.registerVars(x)
 		return nil
 	case *ast.FuncDef:
-		fn := c.buildFunc(x)
-		c.declare(x.Pos, fn)
-		c.checkFuncBody(fn)
-		// When a `func` is declared inside a nested block (provider children,
-		// if/for body), it would otherwise be built and scoped but never
-		// appended to any IR collection — leaving call sites referencing an
-		// undefined function. Lift to the enclosing component (analogous to
-		// the LocalVar→Var promotion done by passNoContext for vars).
-		switch {
-		case c.currentComponent != nil:
-			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
-		case c.currentWindow != nil:
-			// A window owns funcs the way a component does (ir.Owners), and
-			// its state is in the same model -- so a target that emits a
-			// component's funcs as methods has to emit these as methods too.
-			// Registered in both collections, the way a component's nested
-			// methods are, because pkg.Funcs is what a call site resolves
-			// through.
-			c.currentWindow.Funcs = append(c.currentWindow.Funcs, fn)
-			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
-		case c.pkg != nil:
-			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
-		}
+		c.checkNestedFunc(x)
 		return nil
 	case *ast.StructDef, *ast.EnumDef, *ast.UnitDef:
 		// One at the top of a component body was registered in pass1
