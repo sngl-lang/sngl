@@ -3,6 +3,7 @@ package golang
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"sort"
 	"strconv"
 
@@ -86,7 +87,17 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 		fmt.Fprintln(&body, `}`)
 	}
 
-	return []*codegen.OutputFile{codegen.BytesFile("server.go", body.Bytes())}, nil
+	// Each handler writes its own trailing blank separator, so the last one
+	// leaves the file ending in one. gofmt strips it, which is what made
+	// `go generate` dirty a committed server.go on every run (#203); the
+	// route path assembles bytes by hand and never went through format.Source
+	// as the fileEmitter path does.
+	formatted, err := format.Source(body.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("golang: format server.go: %w\n%s", err, body.Bytes())
+	}
+
+	return []*codegen.OutputFile{codegen.BytesFile("server.go", formatted)}, nil
 }
 
 // writeRouteFuncs emits the user functions a route's markup or actions call,

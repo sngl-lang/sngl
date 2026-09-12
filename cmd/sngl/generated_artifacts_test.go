@@ -9,18 +9,6 @@ import (
 	"testing"
 )
 
-// Artifacts that regenerate differently from what is committed, each named
-// with the issue that explains why. An entry tolerates a *trailing whitespace*
-// difference and nothing else, so the exemption cannot quietly widen into
-// cover for a real drift -- and the test reports one that has stopped being
-// needed rather than leaving it to rot.
-var knownArtifactDrift = map[string]string{
-	// #203: the html emitter writes a trailing blank line that gofmt then
-	// strips, so every `go generate` dirties the file. Invisible in a verify
-	// run because verify's own `go fmt ./...` step undoes it a moment later.
-	"internal/docbrowser/server.go": "#203: regenerates with a trailing blank line that gofmt strips",
-}
-
 // A committed generated file that no longer matches its source reads as
 // correct: it compiles, the tests pass, and nothing regenerates it. #196
 // renamed a symbol inside examples/todo/ui/model.go and the whole suite stayed
@@ -43,22 +31,14 @@ func TestCommittedGeneratedArtifactsMatchTheirSource(t *testing.T) {
 		t.Fatal("no `go:generate go tool sngl generate` directives found: the walk is looking in the wrong place")
 	}
 
-	seen := map[string]bool{}
 	for _, d := range dirs {
 		t.Run(d.label(root), func(t *testing.T) {
 			for name, got := range regenerate(t, d) {
 				committed := filepath.Join(d.outDir(), name)
 				rel, _ := filepath.Rel(root, committed)
-				seen[filepath.ToSlash(rel)] = true
 				compareArtifact(t, committed, filepath.ToSlash(rel), got)
 			}
 		})
-	}
-
-	for name := range knownArtifactDrift {
-		if !seen[name] {
-			t.Errorf("%s is exempted but no directive generates it: drop the entry", name)
-		}
 	}
 }
 
@@ -69,15 +49,10 @@ func compareArtifact(t *testing.T, path, rel string, got []byte) {
 		t.Errorf("%s: generated but not committed: %v", rel, err)
 		return
 	}
-	reason, exempt := knownArtifactDrift[rel]
-	switch {
-	case bytes.Equal(got, want):
-		if exempt {
-			t.Errorf("%s: matches its source again -- remove the exemption (%s)", rel, reason)
-		}
-	case exempt && bytes.Equal(bytes.TrimRight(got, "\n"), bytes.TrimRight(want, "\n")):
-		t.Logf("%s: known trailing-whitespace drift (%s)", rel, reason)
-	default:
+	// Byte-for-byte, with no allowance for known drift: the one artifact that
+	// had any was #203, and fixing the emitter cost less than carrying cover
+	// for it. An allow-list here is an invitation to add an entry instead.
+	if !bytes.Equal(got, want) {
 		t.Errorf("%s is stale: it no longer matches what its source generates.\n%s",
 			rel, clipLines(lineDiff(string(want), string(got))))
 	}
