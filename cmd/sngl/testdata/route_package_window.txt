@@ -23,6 +23,13 @@ grep 'unnamed' out/server.go
 # The loop is ranged in the handler, not flattened into the page.
 grep 'for _, row := range' out/server.go
 
+# The route parameter is bound from the request and substituted into the
+# redirect, and the whole thing compiles -- which is what a grep over the
+# generated Go was never going to say.
+grep 'pkg := __r.PathValue\("pkg"\)' out/server.go
+grep 'http.Redirect\(__w, __r, "/p/" \+ url.PathEscape\(pkg\)' out/server.go
+exec go build ./...
+
 # No DOM patching reached the server: the page is written, not mutated.
 ! grep 'CreateNode' out/server.go
 ! grep '__renderSlot' out/server.go

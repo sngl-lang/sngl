@@ -11,6 +11,10 @@
 sngl generate --platform=html --lang=go --opt=main=true --out=out app.sngl
 exists out/server.go
 
+# The claim is that the generated Go compiles, so compile it. `exists` said
+# only that a file was written.
+exec go build ./...
+
 -- go.mod --
 module example.com/wasm-complex
 
