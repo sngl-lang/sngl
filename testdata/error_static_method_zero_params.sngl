@@ -1,0 +1,20 @@
+import . "sngl:ui"
+
+struct S {
+    x int
+}
+
+// The same rule with nothing to shift: no parameters at all, so the receiver
+// has nowhere to go and the diagnostic says that rather than naming a first
+// parameter that does not exist.
+func S.zero() => 5
+
+component main node {
+    var s S = {x=1}
+
+    text(value="{s.zero()}") // ERROR(check) "S.zero is static: it declares no parameters"
+}
+
+window {
+    main
+}

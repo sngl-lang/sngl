@@ -1409,14 +1409,25 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			// its own arity while the call site passed one more, and the
 			// inliner bound the receiver to the first declared parameter.
 			//
-			// Only of a program's own declaration. A `sngl:` method writes no
-			// receiver parameter at all -- `func Test.assert(b bool)` takes
-			// its receiver through Call.Receiver -- so the same shape there is
-			// the ordinary instance form, and every `t.assert(…)` in the suite
-			// is what said so.
-			if fn.Pkg == "" {
-				c.error(sel.Pos, "%s.%s is static: its first parameter is not %s, so call it as %s.%s(…)",
-					fn.Receiver, fn.Name, fn.Receiver, fn.Receiver, fn.Name)
+			// Pkg is empty for every declaration a program writes, its own and
+			// one it imported from a sibling directory alike, so what this
+			// excludes is a `sngl:` method: those write no receiver parameter
+			// at all -- `func Test.assert(b bool)` takes its receiver through
+			// Call.Receiver -- and the same shape there is the ordinary
+			// instance form.
+			//
+			// A native declaration is excluded for the other half of that
+			// reason: it *is* a host identifier, so its parameters are the
+			// host's and the receiver arrives the way the host takes it --
+			// before the dot under `method`, as argument zero without it.
+			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+				if len(sig.Params) == 0 {
+					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
+						fn.Receiver, fn.Name, fn.Receiver, fn.Name)
+				} else {
+					c.error(sel.Pos, "%s.%s is static: its first parameter is not %s, so call it as %s.%s(…)",
+						fn.Receiver, fn.Name, fn.Receiver, fn.Receiver, fn.Name)
+				}
 			}
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)

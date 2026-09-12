@@ -1,0 +1,30 @@
+# A static method reached through a value is reported wherever it was
+# declared. `ir.Func.Pkg` is empty for a declaration a sibling directory wrote
+# as much as for one this file did -- it names a `sngl:` tier and nothing else
+# -- so the check needs no second case for an imported package, and this says
+# so with the real import resolver rather than the checker harness's stub.
+
+! sngl check .
+stderr 'Point.zero is static: it declares no parameters'
+
+-- main.sngl --
+import . "sngl:ui"
+import d "./geom"
+
+component main node {
+    var p d.Point = d.Point{x = 1}
+
+    text(value=string(p.zero()))
+}
+
+window {
+    main
+}
+-- geom/geom.sngl --
+import . "sngl:ui"
+
+struct Point {
+    x int = 0
+}
+
+func Point.zero() => 7
