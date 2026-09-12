@@ -77,7 +77,7 @@ const (
 	BuiltinErrorBoundary BuiltinKind = "errorBoundary"
 	// Effect brackets a lifetime: @mount when the node enters the tree,
 	// @unmount when it leaves. `on` makes the bracket a keyed identity, so a
-	// changed value ends one lifetime and begins the next. See sngl:app.
+	// changed value ends one lifetime and begins the next. See sngl:builtin.
 	BuiltinEffect BuiltinKind = "effect"
 
 	BuiltinOutput BuiltinKind = "output"
