@@ -1,0 +1,61 @@
+# Reading a unit's magnitude, compiled and run as Go.
+#
+# testdata/unit_base_field_interpolation.txtar says what the three targets
+# generate; this says the Go they generate builds. That is the claim the whole
+# class of bug here needs, because every one of them was invisible for exactly
+# the same reason: `sngl generate` wrote invalid code to disk and exited 0.
+# `("px is " + m.m.Px)` is a string plus a float64, and before the checker
+# typed a per-base read as a float, that is what came out.
+#
+# The assertions are on the magnitudes rather than on the text, so the test
+# fails if the arithmetic is wrong as well as if the file does not build. A
+# test agent reads a component's own state and not a field of it, which is why
+# the reads are copied into scalars by a mount effect.
+#
+# `int(d)` is in the view but not asserted, and deliberately: a duration's base
+# is ms, and `int(d)` is 500 on Kotlin and JavaScript but 500000000 in Go,
+# where the value is a time.Duration and converting one yields nanoseconds.
+# That divergence is its own bug; asserting either number here would pin one
+# target's answer as though it were the language's.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+import "sngl:time"
+
+unit tick {
+    tk
+}
+
+component main ui.node {
+    var m ui.measurement = 3px
+    var t tick = 4tk
+    var d time.duration = 500ms
+    var widePx = 0.0
+    var ticks = 0.0
+
+    effect(@mount {
+        widePx = m.px
+        ticks = float(t)
+    })
+
+    ui.text(value="px is {m.px}")
+    ui.text(value="tk is {float(t)}")
+    ui.text(value="ms is {int(d)}")
+}
+
+func testAPerBaseFieldIsANumber(t Test, c main) {
+    t.assert(c.widePx == 3.0)
+}
+
+func testASingleBaseUnitConverts(t Test, c main) {
+    t.assert(c.ticks == 4.0)
+}
+
+ui.window {
+    main
+}

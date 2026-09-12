@@ -71,7 +71,7 @@ component first node {
     var elapsed Tick = 3beat
 
     text(value="{here.doubled()}")
-    text(value="{elapsed.value}")
+    text(value="{int(elapsed)}")
     if p == Phase.done {
         text(value="first done")
     }
@@ -104,7 +104,7 @@ component second node {
 
     text(value="{here.shout(2)}")
     text(value="{rows.length()}")
-    text(value="{elapsed.value}")
+    text(value="{int(elapsed)}")
     if p == Phase.ready {
         text(value="second ready")
     }
@@ -357,7 +357,7 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint((m.here__inst1.A * 2))))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(m.elapsed__inst1.Value))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(int(m.elapsed__inst1))))
 	parts = append(parts, part1)
 	var part2 string
 	if m.p__inst1 == "done" {
@@ -371,7 +371,7 @@ func (m Model) View() tea.View {
 	part4 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.rows__inst2))))
 	parts = append(parts, part4)
 	var part5 string
-	part5 = lipgloss.NewStyle().Render(fmt.Sprint(m.elapsed__inst2.Value))
+	part5 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(int(m.elapsed__inst2))))
 	parts = append(parts, part5)
 	var part6 string
 	if m.p__inst2 == "ready" {
@@ -456,13 +456,13 @@ fun MainScreen() {
 
     Column {
         Text(text = (here__inst1.a * 2).toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = elapsed__inst1.value, modifier = Modifier.safeDrawingPadding())
+        Text(text = elapsed__inst1.toInt().toString(), modifier = Modifier.safeDrawingPadding())
         if ((p__inst1 == Phase.DONE)) {
             Text(text = "first done", modifier = Modifier.safeDrawingPadding())
         }
         Text(text = shout(here__inst2, 2), modifier = Modifier.safeDrawingPadding())
         Text(text = rows__inst2.size.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = elapsed__inst2.value, modifier = Modifier.safeDrawingPadding())
+        Text(text = elapsed__inst2.toInt().toString(), modifier = Modifier.safeDrawingPadding())
         if ((p__inst2 == Phase__second.READY)) {
             Text(text = "second ready", modifier = Modifier.safeDrawingPadding())
         }
@@ -603,10 +603,10 @@ body { font-family: system-ui, sans-serif; }
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
   function __sngl_init() {
     __n0.textContent = String(state.here__inst1.a * 2);
-    __n1.textContent = state.elapsed__inst1.value;
+    __n1.textContent = String(Math.trunc(state.elapsed__inst1));
     __n2.textContent = Local__second_shout(state.here__inst2, 2);
     __n3.textContent = String(state.rows__inst2.length);
-    __n4.textContent = state.elapsed__inst2.value;
+    __n4.textContent = String(Math.trunc(state.elapsed__inst2));
     __n5.textContent = String(pick(state.seed__inst0));
   }
   __sngl_init();

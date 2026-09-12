@@ -1,0 +1,39 @@
+import ui "sngl:ui"
+import "sngl:time"
+
+// A unit's members are looked up on the declaration, the way a struct's are:
+// its fields are its bases. Before it had that table nothing looked a member
+// up at all, so every one of them -- the valid `.px` as much as the invented
+// `.value` -- fell through to dyn, was accepted in silence, and reached each
+// backend as a field read. Go got `Measurement.Value` and `Tick.Value`,
+// neither of which compiles; Kotlin `Double.value`; JavaScript `undefined`,
+// which rendered as the word.
+//
+// `.value` is not special here and gets no diagnostic of its own: it is a name
+// nothing declares, like `nope` below. All three unit shapes are pinned
+// because all three were broken and all three now answer alike.
+unit tick {
+    tk
+}
+
+component main ui.node {
+    var m ui.measurement = 3px
+    var t tick = 4tk
+    var d time.duration = 500ms
+
+    ui.text(value="{m.value}") // ERROR(check) "no field \"value\" on unit measurement"
+    ui.text(value="{t.value}") // ERROR(check) "no field \"value\" on unit tick"
+    ui.text(value="{d.value}") // ERROR(check) "no field \"value\" on unit duration"
+    ui.text(value="{m.nope}")  // ERROR(check) "no field \"nope\" on unit measurement"
+    // A single-base unit has no fields at all -- its value is a plain number on
+    // every target -- so even its own suffix is not one of them. float(t) and
+    // int(t) are how that magnitude is read.
+    ui.text(value="{t.tk}") // ERROR(check) "no field \"tk\" on unit tick"
+    // A reduced suffix is not a base and so is not a field either: `rem` is
+    // 16em and a value carries no magnitude of its own for it.
+    ui.text(value="{m.rem}") // ERROR(check) "no field \"rem\" on unit measurement"
+}
+
+ui.window {
+    main
+}

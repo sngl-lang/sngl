@@ -88,3 +88,35 @@ func FormatUnitMagnitude(v float64) string {
 	}
 	return strconv.FormatFloat(v, 'g', -1, 64)
 }
+
+// Fielded is a declaration whose members include named fields. Struct and unit
+// are the two: a struct's fields are written down and a unit's are its bases,
+// and a member lookup should not have to know which it is holding. It is the
+// field half of what methodTable already does for methods -- before it, a
+// unit had no member table at all, so `m.px` typed dyn exactly as `m.value`
+// did and each backend spelled whichever it was handed.
+type Fielded interface {
+	Symbol
+	FieldList() []*StructField
+	MethodTable() map[string]*Func
+}
+
+// MethodTable completes Fielded for a struct.
+func (s *StructDef) MethodTable() map[string]*Func { return s.Methods }
+
+// MethodTable completes Fielded for a unit.
+func (u *UnitDef) MethodTable() map[string]*Func { return u.Methods }
+
+// UnitFields is the member table a UnitDef carries: one float field per base
+// suffix, in declaration order, and none at all for a single-base unit.
+func UnitFields(u *UnitDef) []*StructField {
+	if u == nil || u.IsSingleBase() {
+		return nil
+	}
+	bases := u.Bases()
+	out := make([]*StructField, len(bases))
+	for i, b := range bases {
+		out[i] = &StructField{Name: b.Name, Type: TypFloat}
+	}
+	return out
+}

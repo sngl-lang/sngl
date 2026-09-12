@@ -864,6 +864,10 @@ type StructDef struct {
 
 func (s *StructDef) SymName() string { return s.Name }
 
+// FieldList is StructDef's half of Fielded. A declaration's members are looked
+// up on the declaration, and a field is a member like a method is.
+func (s *StructDef) FieldList() []*StructField { return s.Fields }
+
 // IsExported reports whether the struct is part of its package's public API.
 func (s *StructDef) IsExported() bool { return isExportedName(s.Name) }
 
@@ -912,17 +916,24 @@ type EnumMember struct {
 
 // UnitDef is a resolved unit type declaration with conversion table.
 type UnitDef struct {
-	AST       *ast.UnitDef
-	Name      string
-	Suffixes  []*UnitSuffix
+	AST      *ast.UnitDef
+	Name     string
+	Suffixes []*UnitSuffix
+	// Fields are the unit's members, looked up the way a struct's are: one per
+	// base suffix, because a unit value is a magnitude per base and that is
+	// what every backend emits it as. A single-base unit has none -- its value
+	// is a plain number on every target, with nothing to select -- and
+	// float(x)/int(x) is how the magnitude is read there.
+	Fields    []*StructField
 	Pkg       string           // declaring package URI; see StructDef.Pkg
 	Builtin   BuiltinKind      // compiler built-in marker; BuiltinNone otherwise
 	BodyOwner string           `json:",omitempty"` // see StructDef.BodyOwner
 	Methods   map[string]*Func `json:"-"`
 }
 
-func (u *UnitDef) SymName() string { return u.Name }
-func (u *UnitDef) SymType() *Type  { return &Type{Kind: TypeUnit, Decl: u} }
+func (u *UnitDef) SymName() string           { return u.Name }
+func (u *UnitDef) FieldList() []*StructField { return u.Fields }
+func (u *UnitDef) SymType() *Type            { return &Type{Kind: TypeUnit, Decl: u} }
 
 // IsExported reports whether the unit is part of its package's public API.
 func (u *UnitDef) IsExported() bool { return isExportedName(u.Name) }

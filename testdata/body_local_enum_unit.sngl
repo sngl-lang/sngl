@@ -10,7 +10,7 @@ func phase() int {
     var p = Phase.done
     var elapsed tick = 3tk
     if p == Phase.done {
-        return elapsed.value
+        return int(elapsed)
     }
     return 0
 }

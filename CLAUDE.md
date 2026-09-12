@@ -870,6 +870,41 @@ When adding a new stdlib package that needs runtime support:
 - **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
 - **`iter<T>`** — opaque generic iterator type. `list<T>` implicitly converts to `iter<T>`; `map<K, V>` does not, so a map cannot reach an `iter` position with its map-ness erased. For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
 
+**A unit's members are its bases, and they are registered like any other
+declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit
+measurement { px, em, rem = 16em, vw, vh, pct }` declares five bases, so a
+value carries five numbers and every backend emits it as a record of them.
+`ir.UnitDef.Fields` is that record's member table — `ir.UnitFields`, one
+`float` per base, built at registration — and `ir.Fielded` is what a struct and
+a unit answer it through, the field half of what `ir.methodTable` already does
+for methods across four kinds. `checker.selectDeclaredMember` is the one lookup
+both use.
+
+A **single-base** unit has no members at all. `unit tick { tk }` is `type Tick
+float64` in Go, a `Double` in Kotlin and a number in JavaScript: there is
+nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
+`t.tk` is an unknown member like any other, and a *reduced* suffix is one too —
+`rem` is 16em and no value carries a magnitude for it.
+
+Before the table existed, nothing looked a unit member up: `inferSelect`
+reports an unknown member only for the kinds `hasNoLegitimateFields` lists, and
+`ir.TypeUnit` was not one, so **every** select on a unit fell through to `dyn`.
+That is one defect with two faces. The invented `.value` was accepted in
+silence and spelled blindly by each backend — `Measurement.Value` and
+`Tick.Value` in Go, neither of which compiles, `Double.value` in Kotlin,
+`undefined` in JavaScript. And the *valid* `m.px` was `dyn` too, which
+`interpPartAlreadyString` answers yes to, so the string conversion every other
+numeric operand gets was skipped and Go emitted `"px is " + m.m.Px`. Typing the
+select fixed the second everywhere at once; no backend grew a case.
+
+`hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
+still accepts any member name silently: `list`, `map`, `option`, `iter`,
+`string` beyond `.length`, and a struct type carrying no `Decl`. That is not
+uniformly a defect — an element-ref list projects a member read over its
+elements, which `testdata/test_slot_element_ref.sngl` depends on
+(`c.body.value` where `c.body` is `list<text>`) — so closing the rest is a
+question per kind rather than one line.
+
 Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 
 ### AST
