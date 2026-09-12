@@ -20,7 +20,7 @@ declaration no closure, so `step`'s `a` is not in scope inside `mark` and
 naming it is an error (testdata/error_nested_func_capture.sngl). Both nested
 bodies take what they need as a parameter.
 
-deny * `\bmark\b` -- a nested func is emitted under the body that wrote it, never under the name that body scoped: a bare `mark` is one of the two declarations having taken the other's name
+deny * `\bmark` -- a nested func is emitted under the body that wrote it (step__mark, reset__mark) and never under the name that body scoped: an identifier *starting* `mark` is one of the two declarations having taken the other's name
 
 -- app.sngl --
 import . "sngl:ui"

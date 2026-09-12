@@ -8,36 +8,43 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// nestedFunc is one `func` written inside another body, and the name of the
-// body that wrote it. The owner is recorded here rather than read back later
-// because by the time renameNestedFuncs runs the scope it was written in is
-// gone.
+// nestedFunc is one `func` written inside a function body, and the function
+// that wrote it. Recorded here rather than read back later, because by the time
+// renameNestedFuncs runs the scope it was written in is gone.
 type nestedFunc struct {
-	fn    *ir.Func
-	owner string
-	// in is the function that declared it, nil when the body was a component,
-	// window or block rather than a function.
+	fn *ir.Func
 	in *ir.Func
 }
 
-// checkNestedFunc registers and checks a `func` declared inside another body:
-// a function body, an if/for block, a handler, or a provider's children.
+// checkNestedFunc registers and checks a `func` written as a statement: in a
+// function body, or in an if/for block, a handler or a provider's children.
 //
-// The declaration is hoisted -- it joins the enclosing component, window or
-// package, which is what a backend emits from -- while the *name* is scoped to
-// the body that wrote it, the rule a body-local struct or component already
-// follows (registerBodyDecl). The two halves have to be reconciled at emit,
-// where the namespace is flat, and renameNestedFuncs is that.
+// Either way the declaration is hoisted -- it joins the enclosing component,
+// window or package, which is what a backend emits from. Inside a *function*
+// body that leaves two things to reconcile, and ir.Func.Nested is which
+// declarations they apply to:
+//
+//   - the name is the enclosing body's, the rule a body-local struct or
+//     component already follows (registerBodyDecl), while the namespace a
+//     backend emits into is flat. renameNestedFuncs is that half.
+//   - the hoist is not a closure, so the enclosing params and locals must not
+//     resolve from inside one. The scope swap below is that half.
+//
+// A func at the root of a window body reaches here too and is neither: it is
+// the window's own, the way a component-body func is the component's, and it
+// keeps the name it was written under.
 func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	fn, built := c.nestedFuncs[x]
 	if !built {
 		fn = c.buildFunc(x)
-		fn.Nested = true
+		fn.Nested = c.currentFunc != nil
 		if c.nestedFuncs == nil {
 			c.nestedFuncs = map[*ast.FuncDef]*ir.Func{}
 		}
 		c.nestedFuncs[x] = fn
-		c.nestedOrder = append(c.nestedOrder, nestedFunc{fn: fn, owner: c.nestedOwner(), in: c.currentFunc})
+		if fn.Nested {
+			c.nestedOrder = append(c.nestedOrder, nestedFunc{fn: fn, in: c.currentFunc})
+		}
 
 		switch {
 		case c.currentComponent != nil:
@@ -60,30 +67,16 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 	// two in one body are that scope's duplicate.
 	c.declare(x.Pos, fn)
 
-	// The hoist gives the declaration no closure, so the body is checked
-	// against the scope its enclosing function was entered from rather than
-	// the one in force here. Checked in force, an enclosing param resolved and
-	// then reached the backend as a bare name nothing declared.
-	if outer := c.funcOuterScope; outer != nil {
+	// Checked in the scope the enclosing function was *entered* from rather
+	// than the one in force here. In force, an enclosing param resolves and
+	// then reaches the backend as a bare name nothing declared -- and the
+	// binding it would have named belongs to a call that has returned.
+	if outer := c.funcOuterScope; fn.Nested && outer != nil {
 		hidden, scope := c.nestedHidden, c.scope
 		c.nestedHidden, c.scope = scope, outer
 		defer func() { c.nestedHidden, c.scope = hidden, scope }()
 	}
 	c.checkFuncBody(fn)
-}
-
-// nestedOwner names the body a nested func was written in, for the emitted
-// name renameNestedFuncs builds out of it.
-func (c *checker) nestedOwner() string {
-	switch {
-	case c.currentFunc != nil:
-		return c.currentFunc.Name
-	case c.currentComponent != nil:
-		return c.currentComponent.Name
-	case c.currentWindow != nil:
-		return c.currentWindow.Name
-	}
-	return ""
 }
 
 // captureHint explains an unresolved name that the enclosing function body
@@ -99,34 +92,43 @@ func (c *checker) captureHint(name string) string {
 	return " — a nested func is hoisted rather than closed over, so it cannot read the enclosing function's params or locals; pass it as a parameter"
 }
 
-// renameNestedFuncs gives every hoisted func an emitted name of its own.
+// renameNestedFuncs gives every func hoisted out of a function body an emitted
+// name of its own.
 //
-// The name a nested func is *written* under is scoped to one body, so two
-// bodies may each declare `helper` and mean two functions; the namespace every
-// backend emits into is flat, and would take the second declaration of one
-// name as a redeclaration of the first. Renaming is what a body-local type is
-// still waiting on (#198) and what its `claimBodyType` reports in the
-// meantime; a func can have it now because a call site holds the declaration
-// (ir.Call.Func) rather than the name.
+// The name one is *written* under is scoped to a single body, so two bodies may
+// each declare `helper` and mean two functions; the namespace every backend
+// emits into is flat, and takes the second as a redeclaration of the first.
+// Renaming is what a body-local type is still waiting on (#198) and what
+// claimBodyType reports in the meantime; a func can have it now because a call
+// site holds the declaration (ir.Call.Func) rather than the name.
 //
 // Runs at the end of the check, once every body has resolved: the scopes hold
-// the written name, so renaming earlier would leave the body unable to find
-// what it calls.
+// the written name, so renaming earlier would leave a body unable to find what
+// it calls.
 func (c *checker) renameNestedFuncs() {
 	if len(c.nestedOrder) == 0 {
 		return
 	}
+	renaming := make(map[*ir.Func]bool, len(c.nestedOrder))
+	for _, n := range c.nestedOrder {
+		renaming[n.fn] = true
+	}
+	// The names to avoid are the ones nothing here is about to change. A
+	// declaration counted against itself took a disambiguating suffix for
+	// colliding with nobody.
 	taken := map[string]bool{}
 	for _, o := range ir.Owners(c.pkg) {
 		for _, f := range o.Funcs {
-			taken[f.Name] = true
+			if !renaming[f] {
+				taken[f.Name] = true
+			}
 		}
 	}
 	for _, n := range c.nestedOrder {
-		base := n.fn.Name
-		if n.owner != "" {
-			base = n.owner + "__" + n.fn.Name
-		}
+		// The enclosing name is already renamed where that body was itself
+		// nested, because nestedOrder is in declaration order: three levels
+		// compose rather than collide.
+		base := n.in.Name + "__" + n.fn.Name
 		name := base
 		for i := 2; taken[name]; i++ {
 			name = base + strconv.Itoa(i)
@@ -139,28 +141,19 @@ func (c *checker) renameNestedFuncs() {
 
 // orderNestedFuncs moves each hoisted func ahead of the body that declared it.
 //
-// The hoist appends, so a nested func always lands *after* its only caller.
-// Kotlin emits an owner's funcs as local `fun`s inside one composable, where a
-// local function may not be referenced above its declaration -- so the
-// append order is the one order that does not compile.
+// The hoist appends, so a nested func always landed *after* its only caller.
+// android emits an owner's funcs as local `fun`s inside one composable, where a
+// local function may not be referenced above its declaration -- so the append
+// order is the one order that does not compile.
 func (c *checker) orderNestedFuncs() {
 	declaredIn := map[*ir.Func]*ir.Func{}
-	for _, n := range c.nestedOrder {
-		if n.in != nil {
-			declaredIn[n.fn] = n.in
-		}
-	}
-	if len(declaredIn) == 0 {
-		return
-	}
-	// Built from the declaration order rather than by ranging declaredIn: a
-	// map hands them back in no order, and two nested in one body would swap
-	// places between runs.
 	children := map[*ir.Func][]*ir.Func{}
 	for _, n := range c.nestedOrder {
-		if n.in != nil {
-			children[n.in] = append(children[n.in], n.fn)
-		}
+		declaredIn[n.fn] = n.in
+		// Built by walking nestedOrder rather than by ranging declaredIn: a
+		// map hands them back in no order, and two nested in one body would
+		// swap places between runs.
+		children[n.in] = append(children[n.in], n.fn)
 	}
 	reorder := func(fns []*ir.Func) {
 		out := make([]*ir.Func, 0, len(fns))
@@ -178,7 +171,7 @@ func (c *checker) orderNestedFuncs() {
 		}
 		for _, fn := range fns {
 			// A child is emitted by its parent, and reached here only when the
-			// parent is in another collection.
+			// parent is in some other collection.
 			if owner, nested := declaredIn[fn]; nested && slices.Contains(fns, owner) {
 				continue
 			}
@@ -186,13 +179,14 @@ func (c *checker) orderNestedFuncs() {
 		}
 		copy(fns, out)
 	}
-	if c.pkg != nil {
-		reorder(c.pkg.Funcs)
-		for _, comp := range c.pkg.Components {
-			reorder(comp.Funcs)
-		}
-		for _, w := range c.pkg.Windows {
-			reorder(w.Funcs)
-		}
+	if c.pkg == nil {
+		return
+	}
+	reorder(c.pkg.Funcs)
+	for _, comp := range c.pkg.Components {
+		reorder(comp.Funcs)
+	}
+	for _, w := range c.pkg.Windows {
+		reorder(w.Funcs)
 	}
 }
