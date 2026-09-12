@@ -37,7 +37,7 @@ func TestCloneCarriesEveryField(t *testing.T) {
 			if ev.Kind() == reflect.Bool {
 				ev.SetBool(true)
 			}
-			m.SetMapIndex(reflect.ValueOf("k").Convert(f.Type().Key()), ev)
+			m.SetMapIndex(mapKey(f.Type().Key()), ev)
 			f.Set(m)
 		case reflect.Pointer, reflect.Interface:
 			if f.Kind() == reflect.Pointer {
@@ -71,4 +71,14 @@ func TestCloneCarriesEveryField(t *testing.T) {
 			t.Errorf("ExprCtx.Clone changed %s", name)
 		}
 	}
+}
+
+// mapKey is a distinguishable non-zero key of kt. Not every map here is keyed
+// by a string any more -- ModelParamFuncs is keyed by *ir.Func -- and
+// converting "k" to a pointer type panics.
+func mapKey(kt reflect.Type) reflect.Value {
+	if kt.Kind() == reflect.Pointer {
+		return reflect.New(kt.Elem())
+	}
+	return reflect.ValueOf("k").Convert(kt)
 }

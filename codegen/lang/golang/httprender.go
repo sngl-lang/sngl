@@ -228,6 +228,8 @@ func writeRenderBody(b *bytes.Buffer, indent, bv string, rr *codegen.RouteRender
 				key = "_item"
 			}
 			fmt.Fprintf(b, "%sfor _, %s := range %s {\n", indent, key, gc.EvalExpr(h.Expr))
+			// A loop body that never names the element is legal SNGL and
+			// "declared and not used" in Go.
 			fmt.Fprintf(b, "%s\t_ = %s\n", indent, key)
 			if h.Then != nil {
 				writeRenderBody(b, indent+"\t", bv, h.Then, gc.WithLocal(key))

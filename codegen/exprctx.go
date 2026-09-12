@@ -80,6 +80,10 @@ type ExprCtx struct {
 	// as a method anyway is what left a type method — which is free, having no
 	// receiver to be a method on — calling `m.format(…)` with no `m` in sight.
 	FreeFuncs map[string]bool
+	// ModelParamFuncs names the methods on a user type that are lifted to a
+	// free function and touch package state: those take the Model as a
+	// trailing parameter. golang.ModelParamFuncs builds it and says why.
+	ModelParamFuncs map[*ir.Func]bool
 	// StateReceiver, when non-empty, names a struct receiver onto which
 	// component/package state vars are projected as EXPORTED fields. Set by
 	// the html backend (route mode) so a state read `count` renders
@@ -259,11 +263,12 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		OutDir:        ctx.OutDir,
 		ContextVar:    ctx.ContextVar,
 		// Deep-copy the test/http-only maps (nil-safe via maps.Clone).
-		RawFieldAccess: maps.Clone(ctx.RawFieldAccess),
-		MethodFields:   maps.Clone(ctx.MethodFields),
-		IdentRewrites:  maps.Clone(ctx.IdentRewrites),
-		FreeFuncs:      ctx.FreeFuncs, // shared — one decision for the whole build
-		StateReceiver:  ctx.StateReceiver,
+		RawFieldAccess:  maps.Clone(ctx.RawFieldAccess),
+		MethodFields:    maps.Clone(ctx.MethodFields),
+		IdentRewrites:   maps.Clone(ctx.IdentRewrites),
+		FreeFuncs:       ctx.FreeFuncs,       // shared — one decision for the whole build
+		ModelParamFuncs: ctx.ModelParamFuncs, // shared, for the same reason
+		StateReceiver:   ctx.StateReceiver,
 		// The naming policy travels with the receiver it applies to.
 		StateFieldsExported: ctx.StateFieldsExported,
 	}

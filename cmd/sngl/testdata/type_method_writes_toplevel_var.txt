@@ -1,0 +1,51 @@
+# A method on a user type that writes a top-level var compiles, and the write
+# lands.
+#
+# The CLI's harness rather than a golden because the claim is that the
+# generated Go *compiles and runs*; testdata/type_method_reads_state.txtar
+# holds the shape it comes out in.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+var log string = ""
+
+struct Calc {
+    base int
+}
+
+func Calc.pending(k Calc) int {
+    log = log + "!"
+    return k.base * 2
+}
+
+func Calc.doubled(k Calc) => k.pending() * 2
+
+func viaCalc(k Calc) => k.doubled() + 1
+
+component main node {
+    var calc Calc = {base=3}
+    var out = 0
+    var note = ""
+
+    effect(@mount {
+        out = viaCalc(calc)
+        note = log
+    })
+
+    text(value="{out}{note}")
+}
+
+func testTypeMethodWritesTopLevelVar(t Test, c main) {
+    t.assert(c.out == 13)
+    t.assert(c.note == "!")
+}
+
+window {
+    main
+}

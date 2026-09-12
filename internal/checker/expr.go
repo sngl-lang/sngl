@@ -1417,6 +1417,27 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		} else {
+			// The receiver-as-param form with no parameter the receiver fits:
+			// the method is static in its type's namespace (`S.helper(5)`),
+			// and a value has nothing to hand it.
+			//
+			// Pkg is empty for every declaration a program writes, an imported
+			// sibling directory's included, so what the gate excludes is a
+			// `sngl:` method: one takes its receiver through Call.Receiver, so
+			// the same shape there is the ordinary instance form.
+			//
+			// A native is excluded because it *is* a host identifier: its
+			// parameters are the host's, and the receiver arrives before the
+			// dot under `method` and as argument zero without it.
+			if fn.Pkg == "" && (fn.Foreign.Name == "" || fn.Foreign.Marked) {
+				if len(sig.Params) == 0 {
+					c.error(sel.Pos, "%s.%s is static: it declares no parameters, so call it as %s.%s()",
+						fn.Receiver, fn.Name, fn.Receiver, fn.Name)
+				} else {
+					c.error(sel.Pos, "%s.%s is static: its first parameter is not %s, so call it as %s.%s(…)",
+						fn.Receiver, fn.Name, fn.Receiver, fn.Receiver, fn.Name)
+				}
+			}
 			rest := c.checkCallArgs(call.Args, sig)
 			args = append([]ir.CallArg{{Value: receiverExpr}}, rest...)
 		}

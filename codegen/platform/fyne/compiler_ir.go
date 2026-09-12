@@ -45,6 +45,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// these renders, and before ScopedExprCtx clones it. See
 	// golang.ModelFreeFuncs.
 	ctx.ExprCtx.FreeFuncs = golang.ModelFreeFuncs(ctx.Pkg)
+	ctx.ExprCtx.ModelParamFuncs = golang.ModelParamFuncs(ctx.Pkg)
 	exprCtx := ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	info := &irAnalysis{
@@ -353,6 +354,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 
 	componentFuncs := fyneComponentFuncs(ctx.Pkg)
+	stateFuncs := golang.ModelStateFuncs(ctx.Pkg)
 	var funcBuf strings.Builder
 	for _, fn := range allFuncs {
 		if fn.IsTest || codegen.IsComputed(fn) {
@@ -361,15 +363,14 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		if instanceOwnsFunc(ctx.Pkg, fn) {
 			continue
 		}
-		// A method on a user struct or enum is a free `ReceiverMethod(recv, …)`
-		// — Go has no receiver to hang one of those on — and a top-level func
-		// is free too, so that a type method can call it. Skipping everything
-		// with a receiver left both undefined at their call sites.
-		if fn.Receiver != "" && fyneUserTypeName(ctx.Pkg, fn.Receiver) {
+		// golang.LiftsToFreeFunc is the one answer the call site uses too.
+		if fn.Receiver != "" && golang.LiftsToFreeFunc(ctx.Pkg, fn.Receiver) {
 			emitIRFyneTypeMethod(&funcBuf, fn, gc)
 			continue
 		}
-		if fn.Receiver == "" && !componentFuncs[fn] && canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
+		// its doc for what a package var costs a free function.
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}
@@ -618,25 +619,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 	return td, nil
 }
 
-// fyneUserTypeName reports whether name is a struct or enum the package
-// declares, as opposed to a component (whose methods are the Model's).
-func fyneUserTypeName(pkg *ir.Package, name string) bool {
-	if pkg == nil {
-		return false
-	}
-	for _, s := range pkg.Structs {
-		if s.Name == name {
-			return true
-		}
-	}
-	for _, e := range pkg.Enums {
-		if e.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
 // fyneComponentFuncs is every func some component declares; what is left in
 // pkg.Funcs is top level, with no component in scope to read.
 func fyneComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
@@ -665,10 +647,7 @@ func emitIRFyneTypeMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContex
 	if len(fn.Block) == 0 {
 		return
 	}
-	fnCopy := *fn
-	fnCopy.Name = golang.ExportName(fn.Receiver) + golang.ExportName(fn.Name)
-	fnCopy.Receiver = ""
-	for _, line := range gc.EmitFuncDef(&fnCopy) {
+	for _, line := range gc.EmitTypeMethodDef(fn) {
 		b.WriteString(line)
 		b.WriteByte('\n')
 	}
