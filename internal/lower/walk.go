@@ -191,9 +191,9 @@ func walkWindow(w *ir.Window, fns walkFuncs) {
 		}
 	}
 	// A window owns timers as a component does: passTimerPrimitive records a
-	// schedule on whichever owner held the node, and a top-level window is one.
-	// Nothing in source puts a timer here, which is why the omission survived --
-	// every pass using this walk runs after that one.
+	// schedule on whichever owner held the node, and by then the inliner has
+	// put a top-level component's timer in the window. Nothing in source puts
+	// one here, so only the passes after that one could tell this was missing.
 	for _, t := range w.Timers {
 		walkTimer(t, fns)
 	}
