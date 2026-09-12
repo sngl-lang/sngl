@@ -8,6 +8,10 @@ sngl generate --platform html --lang go -o out_hg app.sngl
 grep 'html x' out_hg/server.go
 ! grep 'go x' out_hg/server.go
 
+# The override reached a Go file, so compile it. Only html's output: fyne's
+# needs the toolkit module, which this fixture does not vendor.
+exec go build ./out_hg/
+
 # The language override, on a platform that has none.
 sngl generate --platform fyne --lang go -o out_fg app.sngl
 grep 'go x' out_fg/model.go
@@ -21,6 +25,11 @@ grep 'default x' out_ak/MainScreen.kt
 # on either axis.
 ! sngl check dup_language.sngl
 stderr 'already has an implementation for "go"'
+
+-- go.mod --
+module example.com/langoverride
+
+go 1.24
 
 -- app.sngl --
 import . "sngl:ui"

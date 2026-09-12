@@ -61,7 +61,7 @@ func (rb *renderBuilder) pushHole(h codegen.RouteHole) {
 // names are identifiers the enclosing hole binds (a loop variable), which the
 // server has a value for inside the hole and the nested render may therefore
 // use.
-func (rb *renderBuilder) sub(stmts []ir.Stmt, path string, names ...string) *codegen.RouteRender {
+func (rb *renderBuilder) sub(stmts []ir.Stmt, names ...string) *codegen.RouteRender {
 	child := &renderBuilder{pkg: rb.pkg, state: rb.state, actionIdx: rb.actionIdx}
 	if len(names) > 0 {
 		child.state = maps.Clone(rb.state)
@@ -72,7 +72,7 @@ func (rb *renderBuilder) sub(stmts []ir.Stmt, path string, names ...string) *cod
 		}
 	}
 	for _, s := range stmts {
-		child.walkStmt(s, path)
+		child.walkStmt(s)
 	}
 	if child.err != nil {
 		rb.fail("%w", child.err)
@@ -89,15 +89,14 @@ func (rb *renderBuilder) finish() *codegen.RouteRender {
 // buildRenderModel walks a route window's visual tree into a RouteRender:
 // static HTML in Chunks, reactive bindings as Holes. Backend handlers (per
 // handlerPlacement) wrap their triggering element in a server-action <form>.
-// path is the route URL the form posts to.
-func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
+func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, actionIdx map[*ir.EventHandler]int) (*codegen.RouteRender, error) {
 	rb := &renderBuilder{
 		pkg:       pkg,
 		state:     stateVarNames(pkg, win),
 		actionIdx: actionIdx,
 	}
 	for _, s := range win.Body {
-		rb.walkStmt(s, path)
+		rb.walkStmt(s)
 	}
 	if rb.err != nil {
 		return nil, rb.err
@@ -105,39 +104,39 @@ func buildRenderModel(pkg *ir.Package, win *codegen.WindowCtx, path string, acti
 	return rb.finish(), nil
 }
 
-func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
+func (rb *renderBuilder) walkStmt(s ir.Stmt) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		rb.walkNode(n, path)
+		rb.walkNode(n)
 	case *ir.CallStmt:
 		if syn := nodeFromIRCallStmt(n); syn != nil {
-			rb.walkNode(syn, path)
+			rb.walkNode(syn)
 		}
 	case *ir.SlotInst:
 		for _, c := range n.Children {
-			rb.walkStmt(c, path)
+			rb.walkStmt(c)
 		}
 	case *ir.ErrorBoundary:
 		for _, c := range n.Children {
-			rb.walkStmt(c, path)
+			rb.walkStmt(c)
 		}
 	case *ir.If:
 		// A condition the optimizer could settle is already gone. One that is
 		// left depends on the request, so both arms are skeletons the server
 		// chooses between -- rendering them one after the other emitted both.
 		if rb.exprIsReactive(n.Cond) {
-			h := codegen.RouteHole{Kind: codegen.HoleIf, Expr: n.Cond, Then: rb.sub(n.Body, path)}
+			h := codegen.RouteHole{Kind: codegen.HoleIf, Expr: n.Cond, Then: rb.sub(n.Body)}
 			if len(n.Else) > 0 {
-				h.Else = rb.sub(n.Else, path)
+				h.Else = rb.sub(n.Else)
 			}
 			rb.pushHole(h)
 			return
 		}
 		for _, c := range n.Body {
-			rb.walkStmt(c, path)
+			rb.walkStmt(c)
 		}
 		for _, c := range n.Else {
-			rb.walkStmt(c, path)
+			rb.walkStmt(c)
 		}
 	case *ir.For:
 		// Same: a loop still here did not unroll, so its length is the
@@ -152,16 +151,16 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 				Kind: codegen.HoleFor,
 				Expr: n.Iter,
 				Key:  n.Key,
-				Then: rb.sub(n.Body, path, n.Key),
+				Then: rb.sub(n.Body, n.Key),
 			})
 			return
 		}
 		for _, c := range n.Body {
-			rb.walkStmt(c, path)
+			rb.walkStmt(c)
 		}
 	case *ir.ContextProvider:
 		for _, c := range n.Children {
-			rb.walkStmt(c, path)
+			rb.walkStmt(c)
 		}
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle,
 		*ir.Break, *ir.Continue:
@@ -173,7 +172,7 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt, path string) {
 // props that reference state become holes (text-content props → HoleText,
 // otherwise HoleAttr). A node carrying a backend event handler is wrapped in a
 // server-action <form>.
-func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
+func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 	// Windows and zero-visual nodes are skipped (handled at route level).
 	switch n.Name {
 	case "window", "timer":
@@ -182,9 +181,13 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 
 	actionIdx, backendForm := rb.nodeActionIndex(n)
 	if backendForm {
+		// No action attribute: a form without one posts to the URL the page was
+		// served from, which is the only spelling of a parameterised route that
+		// is correct per request -- the pattern the mux registered says
+		// "/p/{pkg}", and that is what a browser would have posted to.
 		rb.writeRaw(fmt.Sprintf(
-			`<form method="post" action="%s"><input type="hidden" name="_action" value="%d">`,
-			path, actionIdx))
+			`<form method="post"><input type="hidden" name="_action" value="%d">`,
+			actionIdx))
 	}
 
 	// A node the declaration cannot name a tag for is rendered as a container
@@ -279,7 +282,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst, path string) {
 	}
 
 	for _, c := range n.Children {
-		rb.walkStmt(c, path)
+		rb.walkStmt(c)
 	}
 
 	rb.writeRaw("</" + tag + ">")

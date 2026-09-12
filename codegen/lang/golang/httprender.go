@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -33,7 +34,7 @@ func routeStateType(r codegen.HTTPRoute) string {
 // POST action body so a state read/write renders `s.<Field>`.
 func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext) *GoIRContext {
 	ctx := codegen.NewExprCtx(req.Pkg)
-	ctx.ContextVar = "r.Context()"
+	ctx.ContextVar = routeRequestVar + ".Context()"
 	ctx.StateReceiver = routeStateReceiver
 	ctx.StateFieldsExported = true
 	// Scope to the main component so its state vars resolve (StateReceiver
@@ -186,7 +187,15 @@ func emitRenderRoute(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRo
 	fnName := "render" + ExportName(r.Name)
 	gc.RequireImport("strings")
 
-	fmt.Fprintf(b, "func %s(%s *%s) string {\n", fnName, routeStateReceiver, stateType)
+	var sig strings.Builder
+	sig.WriteString(routeStateReceiver + " *" + stateType)
+	for _, p := range r.Params {
+		sig.WriteString(", " + p + " string")
+	}
+	fmt.Fprintf(b, "func %s(%s) string {\n", fnName, sig.String())
+	for _, p := range r.Params {
+		fmt.Fprintf(b, "\t_ = %s\n", p)
+	}
 	fmt.Fprintln(b, "\tvar __b strings.Builder")
 	if r.Render != nil {
 		writeRenderBody(b, "\t", "__b", r.Render, gc)
