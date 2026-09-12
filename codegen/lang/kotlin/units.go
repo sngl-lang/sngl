@@ -25,7 +25,7 @@ func UnitKtType(u *ir.UnitDef) string {
 	if !u.IsSingleBase() {
 		return exportName(u.Name)
 	}
-	if u.Name == "duration" {
+	if u.Builtin == ir.BuiltinDuration {
 		return "Long" // milliseconds -- duration's own base
 	}
 	return "Double"

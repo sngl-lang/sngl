@@ -266,7 +266,7 @@ func recordTypeHelpers(h *HelperSet, t *ir.Type) {
 	case ir.IsDateTimeStruct(t):
 		h.NeedDateTime = true
 	case t.Kind == ir.TypeUnit:
-		if ud, ok := t.Decl.(*ir.UnitDef); ok && ud.Name == "duration" {
+		if ud, ok := t.Decl.(*ir.UnitDef); ok && ud.Builtin == ir.BuiltinDuration {
 			h.NeedDuration = true
 		}
 	}
