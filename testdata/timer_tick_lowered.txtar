@@ -84,7 +84,7 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.level__inst0 = 0
+	m.level__inst0 = 0.0
 	m.rung__inst0 = 0
 	return m
 }
@@ -142,8 +142,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetRung__inst0(msg.value)
 	case timerTickMsg0:
 		var __lt0 float64
-		if m.level__inst0 >= 1 {
-			__lt0 = 0
+		if m.level__inst0 >= 1.0 {
+			__lt0 = 0.0
 		} else {
 			__lt0 = (m.level__inst0 + 0.01)
 		}
@@ -207,7 +207,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.level__inst0 = 0
+	m.level__inst0 = 0.0
 	m.rung__inst0 = 0
 	return m
 }
@@ -235,8 +235,8 @@ func (m *Model) StartTimers() {
 		for range m.timer0Ticker.C {
 			fyne.Do(func() {
 				var __lt0 float64
-				if m.level__inst0 >= 1 {
-					__lt0 = 0
+				if m.level__inst0 >= 1.0 {
+					__lt0 = 0.0
 				} else {
 					__lt0 = (m.level__inst0 + 0.01)
 				}

@@ -158,28 +158,51 @@ component ui.textarea[platform] {
     // takes the value rather than the other event.
 }
 
-// Not converted, and for the reason progress is not: the field shows the date
-// only when a date was picked, and an override cannot ask whether `value` was
-// supplied -- a prop it reads is always there. `date` offers no zero test
-// either, and on Kotlin an unset one is the string "0001-01-01", so an
-// override writing `value=string(value)` pre-fills every unpicked field with
-// it. Its label would be expressible now; its value is not, so the whole
-// widget stays in Go.
-component ui.datepicker() {
-    OutlinedTextField(value=value, readOnly=true) {}
+// A read-only field showing the date, not a calendar: Material3's date-picker
+// dialog is a second surface with its own open state, which an override cannot
+// hold (see select). An unpicked date shows nothing -- the `option` is what
+// distinguishes that from the zero date, which would otherwise pre-fill every
+// field with the first day of year one. Compose's onValueChange is not
+// optional even on a read-only field, so the argument is written and never
+// reached.
+//
+// A ternary here rather than the two calls the other platforms' progress
+// overrides write: Kotlin has a conditional expression, so nothing lowers this
+// one to a temporary, and duplicating the call would duplicate the label slot
+// with it.
+component ui.datepicker[platform] {
+    OutlinedTextField(
+        value=(value != null ? string(value) : ""),
+        readOnly=true,
+        modifier={...style},
+        onValueChange=func(e) { change({}) },
+    ) {
+        component label {
+            if placeholder != "" {
+                Text(text=placeholder) {}
+            }
+        }
+    }
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
-// Not converted. Compose's determinate/indeterminate split is by *presence* of
-// the `progress` argument, and the emitter picks by whether the call site gave
-// `value` at all — a distinction an override body cannot draw, since a prop it
-// reads is always there. `progress` is also a `() -> Float` lambda, and a
-// func-typed prop's body is emitted as statements rather than as an
-// expression, and nothing declares that a Compose argument takes a Float where
-// SNGL's `float` is a Kotlin Double.
-component ui.progress() {
-    LinearProgressIndicator {}
+// Compose's determinate/indeterminate split is by *presence* of the `progress`
+// argument, which is the shape `value` being an `option` gives the override:
+// the null test picks the call, and neither branch invents a fraction.
+component ui.progress[platform] {
+    if value != null {
+        // The null test is repeated inside the lambda because narrowing does
+        // not cross into one: a lambda runs later, and the checker will not
+        // assume a binding still holds what it held when it was written. The
+        // branch the outer `if` already settled is the unreachable one.
+        LinearProgressIndicator(
+            progress=func() => (value != null ? float32(value / max) : float32(0.0)),
+            modifier={...style},
+        ) {}
+    } else {
+        LinearProgressIndicator(modifier={...style}) {}
+    }
 }
 
 component ui.spinner[platform] {

@@ -119,8 +119,8 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"})
-	ctx.Rect(0, 0, 200, 100)
+	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ctx.Rect(0.0, 0.0, 200.0, 100.0)
 	ctx.Restore()
 }
 
@@ -370,7 +370,7 @@ func Paint(ctx *C.cairo_t, style CanvasStyle) {
 }
 
 func Source(ctx *C.cairo_t, c snglcolor.Color) {
-	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255)), C.double((float64(c.G) / 255)), C.double((float64(c.B) / 255)), C.double((float64(c.A) / 255)))
+	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
 }
 
 func LineCap(name string) C.cairo_line_cap_t {
@@ -395,8 +395,8 @@ func LineJoin(name string) C.cairo_line_join_t {
 
 func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
 	C.cairo_save(ctx)
-	C.cairo_rectangle(ctx, C.double(0), C.double(0), C.double(200), C.double(100))
-	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"})
+	C.cairo_rectangle(ctx, C.double(0.0), C.double(0.0), C.double(200.0), C.double(100.0))
+	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 204, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
 	C.cairo_restore(ctx)
 }
 
@@ -521,10 +521,6 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
         dstSize = IntSize(w.toInt(), h.toInt()),
     )
 }
-
-data class SnglInputEvent(val value: String)
-
-data class ChangeEvent(val value: String = "")
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()

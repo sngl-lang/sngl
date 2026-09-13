@@ -135,6 +135,17 @@ component CircularProgressIndicator(
     modifier ui.Style,
 ) ui.node
 
+// Compose splits determinate from indeterminate by whether the `progress`
+// argument is there at all, so the override writes the two calls rather than
+// choosing a number for "unknown". It is a `() -> Float`, which is why the
+// prop is a func returning `float32`: `float` is a Kotlin Double, and the
+// declaration is what says otherwise.
+#[intrinsic("android:LinearProgressIndicator")]
+component LinearProgressIndicator(
+    progress func() float32,
+    modifier ui.Style,
+) ui.node
+
 // `colors` is the same Style the modifier gets. A Button paints its own
 // surface, so a background in the modifier lands behind the pill rather than
 // on it -- the colour has to go through the widget's own colour set.

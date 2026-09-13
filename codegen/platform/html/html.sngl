@@ -244,8 +244,15 @@ component ui.textarea[platform] {
 
 // --- Tier 2: Feedback & Navigation ---
 
+// `<progress>` with no `value` attribute is HTML's own indeterminate bar, so
+// the absent value is spelled by leaving the attribute off rather than by
+// choosing a number to stand for "unknown".
 component ui.progress[platform] {
-    html.progress(value=string(value), max=string(max), style={...style}) {}
+    if value != null {
+        html.progress(value=string(value), max=string(max), style={...style}) {}
+    } else {
+        html.progress(max=string(max), style={...style}) {}
+    }
 }
 
 component ui.spinner[platform] {
@@ -370,8 +377,17 @@ component ui.toolbar[platform] {
 
 // --- Tier 5: Mobile & Specialized ---
 
+// An empty `value` is what `<input type="date">` shows as unfilled, so an
+// unpicked date is the empty string rather than the zero date. Two calls
+// rather than one with a ternary, for the reason progress gives: under a
+// language with no conditional expression the ternary becomes a temporary
+// before the fold that would have settled it.
 component ui.datepicker[platform] {
-    html.input(type="date", value=value, disabled=disabled, style={...style}, @change { change() }) {}
+    if value != null {
+        html.input(type="date", value=string(value), disabled=disabled, style={...style}, @change { change() }) {}
+    } else {
+        html.input(type="date", value="", disabled=disabled, style={...style}, @change { change() }) {}
+    }
 }
 
 component ui.chip[platform] {

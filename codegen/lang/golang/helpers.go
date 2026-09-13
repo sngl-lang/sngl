@@ -199,7 +199,9 @@ func translateIRLiteral(n *ir.Literal) string {
 		switch n.Type.Kind {
 		case ir.TypeString:
 			return fmt.Sprintf("%q", n.Value)
-		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		case ir.TypeFloat:
+			return goFloatLiteral(n.Value)
+		case ir.TypeInt, ir.TypeBool:
 			return n.Value
 		case ir.TypeNull:
 			return "nil"

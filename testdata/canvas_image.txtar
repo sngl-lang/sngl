@@ -104,7 +104,7 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ctx.Image(1, 2, 8, 4, "logo.png")
+	ctx.Image(1.0, 2.0, 8.0, 4.0, "logo.png")
 	ctx.Restore()
 }
 

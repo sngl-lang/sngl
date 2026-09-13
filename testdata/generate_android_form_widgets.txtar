@@ -1,21 +1,23 @@
 The four form widgets android renders as a text field, a dropdown and a bar,
-pinned together: `input` is a declared override in codegen/platform/android and
-the other three are still a case in compose_ir.go, so converting any of those
-three shows as a diff here.
+pinned together: three are declared overrides in codegen/platform/android and
+`select` alone is still a case in compose_ir.go, so converting it shows as a
+diff here.
 
-input is Compose's OutlinedTextField. The placeholder is its `label`, which
-takes content rather than a value, so the intrinsic declares it as a slot --
-and the override's `if placeholder != ""` is the whole of that slot's body, so
-a field given no placeholder passes no `label` argument at all. That is not the
-same widget as one labelled with nothing: `label = {}` still reserves the space
-and notches the outline. It only folds that way for a placeholder the compiler
-can see; a run-time one keeps the argument and the `if` inside it.
+input and datepicker are both Compose's OutlinedTextField. The placeholder is
+its `label`, which takes content rather than a value, so the intrinsic declares
+it as a slot -- and the override's `if placeholder != ""` is the whole of that
+slot's body, so a field given no placeholder passes no `label` argument at all.
+That is not the same widget as one labelled with nothing: `label = {}` still
+reserves the space and notches the outline. It only folds that way for a
+placeholder the compiler can see; a run-time one keeps the argument and the
+`if` inside it.
 
-datepicker is the same field and is not an override, because it shows `value`
-only when a date was picked and no override can ask whether a prop was
-supplied. progress is the same question again, with a Float on top. select
-carries a `remember`ed `expanded` numbered per rendered node, which an override
-cannot ask for either.
+datepicker's `value` is an `option<date>`, which is what lets the override show
+nothing for a date nobody picked -- a `date`'s zero is the first day of year
+one and would otherwise pre-fill every empty field with it.
+
+select is what is left, and it is left for its state: `expanded` is numbered
+per rendered node, which an override has no way to ask for.
 
 deny out/kotlin/android/MainScreen.kt `value = plain.*label` -- `plain` is the field given no placeholder: it passes no label argument at all, not an empty one
 deny out/kotlin/android/MainScreen.kt `!= ""` -- the override's placeholder test is a constant here and folds away; it does not reach the emitted lambda
@@ -34,7 +36,7 @@ window {
     var name = ""
     var fruit = ""
     var plain = ""
-    var birthday date
+    var birthday option<date> = null
 
     input(placeholder="Name", value=name, @input(e) { name = e.value })
     input(value=plain)
@@ -72,8 +74,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class SnglInputEvent(val value: String)
 
-data class ChangeEvent(val value: String = "")
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -86,7 +86,7 @@ fun MainScreen() {
     var name by remember { mutableStateOf("") }
     var fruit by remember { mutableStateOf("") }
     var plain by remember { mutableStateOf("") }
-    var birthday by remember { mutableStateOf("0001-01-01") }
+    var birthday by remember { mutableStateOf<String?>(null) }
 
     Column {
         OutlinedTextField(value = name, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { newValue ->
@@ -110,21 +110,12 @@ fun MainScreen() {
                 }
             }
         }
-        LinearProgressIndicator(progress = { (2.0 / 10.0).toFloat() }, modifier = Modifier)
-        OutlinedTextField(
-            value = "",
-            onValueChange = { newValue ->
-            },
-            readOnly = true,
-            label = { Text("Birthday") },
-            modifier = Modifier
-        )
-        OutlinedTextField(
-            value = birthday,
-            onValueChange = { newValue ->
-            },
-            readOnly = true,
-            modifier = Modifier
-        )
+        LinearProgressIndicator(progress = fun(): Float {
+            return 0.2f
+        }, modifier = Modifier.safeDrawingPadding())
+        OutlinedTextField(value = "", readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {}, label = {
+            Text(text = "Birthday", modifier = Modifier)
+        })
+        OutlinedTextField(value = (if ((birthday != null)) birthday!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
     }
 }

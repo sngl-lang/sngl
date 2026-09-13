@@ -242,25 +242,52 @@ component ui.textarea[platform] {
     ) {}
 }
 
+// An unpicked date has nothing to show, so the field falls back to its
+// placeholder rather than to the zero date.
 component ui.datepicker[platform] {
-    Styled(content=string(value), style={...style}) {}
+    if value != null {
+        Styled(content=string(value), style={...style}) {}
+    } else {
+        Styled(content=placeholder, style={...style}) {}
+    }
 }
 
 // --- Tier 2: Feedback & Navigation ---
 
+// bubbles' progress is a fraction and has no indeterminate mode, so a bar
+// given no value is an empty one; `spinner` is the widget that says "working"
+// here. Written as two calls rather than one carrying a ternary: Go has no
+// conditional expression, so a ternary is lowered to a temporary, and that
+// happens before the fold that would have settled it -- leaving `${value}` to
+// interpolate a name the blueprint extractor cannot read a number off.
 component ui.progress[platform] {
-    Widget(
-        model=Model{
-            type = "progress.Model",
-            new = "progress.New()",
-            view = ".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
-            pkg = "charm.land/bubbles/v2/progress",
-            resize = ".SetWidth($\{w\})",
-        },
-        value=value,
-        max=max,
-        style={...style},
-    ) {}
+    if value != null {
+        Widget(
+            model=Model{
+                type = "progress.Model",
+                new = "progress.New()",
+                view = ".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
+                pkg = "charm.land/bubbles/v2/progress",
+                resize = ".SetWidth($\{w\})",
+            },
+            value=value,
+            max=max,
+            style={...style},
+        ) {}
+    } else {
+        Widget(
+            model=Model{
+                type = "progress.Model",
+                new = "progress.New()",
+                view = ".ViewAs(tui.Percent(float64($\{value\}), float64($\{max\})))",
+                pkg = "charm.land/bubbles/v2/progress",
+                resize = ".SetWidth($\{w\})",
+            },
+            value=0.0,
+            max=max,
+            style={...style},
+        ) {}
+    }
 }
 
 component ui.spinner[platform] {

@@ -600,6 +600,21 @@ func lineDirPath(file, base string) string {
 
 func (gc *GoIRContext) Scoped(name string) irwalk.Renderer { return gc.WithLocal(name) }
 
+// goFloatLiteral spells a float literal so Go reads it as one. A float whose
+// magnitude is whole folds to a spelling with no point in it, and an untyped
+// Go constant with no point is an *integer* constant: `2 / 10` is 0, not 0.2,
+// and nothing warns. Kotlin's literal emitter restores the point for the same
+// reason.
+//
+// A free function because three call sites in this package spell a literal and
+// each used to do it for itself.
+func goFloatLiteral(v string) string {
+	if !strings.ContainsAny(v, ".eE") {
+		return v + ".0"
+	}
+	return v
+}
+
 func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 	if n.Type == nil {
 		return n.Value
@@ -607,7 +622,9 @@ func (gc *GoIRContext) evalLiteral(n *ir.Literal) string {
 	switch n.Type.Kind {
 	case ir.TypeString:
 		return fmt.Sprintf("%q", n.Value)
-	case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+	case ir.TypeFloat:
+		return goFloatLiteral(n.Value)
+	case ir.TypeInt, ir.TypeBool:
 		return n.Value
 	case ir.TypeNull:
 		return "nil"
@@ -1711,7 +1728,9 @@ func IRLiteralToGo(e ir.Expr) string {
 		switch n.Type.Kind {
 		case ir.TypeString:
 			return fmt.Sprintf("%q", n.Value)
-		case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		case ir.TypeFloat:
+			return goFloatLiteral(n.Value)
+		case ir.TypeInt, ir.TypeBool:
 			return n.Value
 		case ir.TypeNull:
 			return "nil"
