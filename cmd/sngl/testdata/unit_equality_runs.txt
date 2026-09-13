@@ -1,0 +1,100 @@
+# Comparing two multi-base unit values, run on three backends.
+#
+# A unit value is a magnitude per base, so two of them are equal when every
+# base agrees. Go compares its struct field-wise and Kotlin its data class
+# component-wise, both for free; the interpreter compares its Amounts map; and
+# JavaScript emitted `===` on two objects, which is reference identity and so
+# was false for every pair the language calls equal. `sngl generate` exited 0
+# on it and esbuild even warned -- "Comparison using the === operator here is
+# always false" -- in a log nobody was reading.
+#
+# So this runs the comparisons rather than reading them. The html run is what
+# makes the claim about JavaScript at all: a golden shows the emitted text, and
+# only executing it shows that `a == b` for two equal measurements answers
+# true. Before the fix that run reports four failures and the other two pass,
+# which is the whole point of asking three backends the same question.
+#
+# `cancelled` is the case that separates two right-looking implementations: its
+# em was added and subtracted away, so the interpreter's map holds no em key at
+# all where the JS and Go records hold a zero. A base absent on one side and
+# present-but-zero on the other has to compare equal, and a comparison written
+# over "the bases this value carries" rather than over the unit's declared
+# bases gets it wrong.
+#
+# The assertions are copied into bools by a mount effect because a test agent
+# reads a component's own state rather than an expression over it.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+[!chromium] skip 'the JavaScript half needs a real Chromium'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+component main ui.node {
+    var a ui.measurement = 3px
+    var b ui.measurement = 3px
+    var wide ui.measurement = 3px + 2em
+    var wider ui.measurement = 3px + 5em
+    var cancelled ui.measurement = 3px + 2em - 2em
+
+    var sameIsEqual = false
+    var sameIsNotUnequal = true
+    var oneBaseApartIsUnequal = false
+    var oneBaseApartIsNotEqual = true
+    var cancelledMatchesPlain = false
+    var wideDiffersFromPlain = false
+
+    effect(@mount {
+        sameIsEqual = a == b
+        sameIsNotUnequal = a != b
+        oneBaseApartIsUnequal = wide != wider
+        oneBaseApartIsNotEqual = wide == wider
+        cancelledMatchesPlain = cancelled == a
+        wideDiffersFromPlain = wide != a
+    })
+
+    ui.text(value="{sameIsEqual}")
+}
+
+// Two values written the same way are equal, and JavaScript said they were
+// not: `===` asks whether the two records are the same object.
+func testEqualValuesCompareEqual(t Test, c main) {
+    t.assert(c.sameIsEqual)
+    t.assert(!c.sameIsNotUnequal)
+}
+
+// Differing in one base is unequal, which reference identity also answered --
+// for the wrong reason, and so is no evidence on its own.
+func testValuesDifferingInOneBaseCompareUnequal(t Test, c main) {
+    t.assert(c.oneBaseApartIsUnequal)
+    t.assert(!c.oneBaseApartIsNotEqual)
+}
+
+// A base that cancelled to zero is the same value as one never written, so a
+// record carrying a zero em equals one carrying no em at all.
+func testACancelledBaseEqualsAnAbsentOne(t Test, c main) {
+    t.assert(c.cancelledMatchesPlain)
+    t.assert(c.wideDiffersFromPlain)
+}
+
+ui.window {
+    main
+}

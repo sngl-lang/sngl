@@ -162,12 +162,19 @@ func buildUnitTables(pkg *ir.Package) map[string]*unitTable {
 }
 
 func buildUnitTableFromDef(u *ir.UnitDef) *unitTable {
-	t := &unitTable{Conversions: make(map[string]float64)}
+	t := &unitTable{
+		Conversions: make(map[string]float64),
+		BaseOf:      make(map[string]string),
+	}
 	if len(u.Suffixes) > 0 {
 		t.Base = u.Suffixes[0].Name
 	}
 	for _, s := range u.Suffixes {
 		t.Conversions[s.Name] = s.Factor
+		t.BaseOf[s.Name] = s.BaseName
+	}
+	for _, b := range u.Bases() {
+		t.Bases = append(t.Bases, b.Name)
 	}
 	return t
 }

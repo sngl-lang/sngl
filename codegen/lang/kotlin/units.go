@@ -25,7 +25,7 @@ func UnitKtType(u *ir.UnitDef) string {
 	if !u.IsSingleBase() {
 		return exportName(u.Name)
 	}
-	if u.Name == "duration" {
+	if u.Builtin == ir.BuiltinDuration {
 		return "Long" // milliseconds -- duration's own base
 	}
 	return "Double"
@@ -71,6 +71,39 @@ func UnitLiteralKt(n *ir.Literal) (string, bool) {
 	// rest to 0.0, so a literal stays one argument wide however many bases
 	// the unit declares.
 	return fmt.Sprintf("%s(%s = %s)", exportName(ud.Name), base, ktDouble(mag)), true
+}
+
+// UnitToStringKt renders a unit-typed operand the way every target displays
+// one -- its magnitude per base, `3px + 2em`. Reports false when the operand
+// is not a unit.
+//
+// A `let` rather than an emitted helper because the operand is read once per
+// base and may have side effects, and this is an expression position. The
+// magnitudes go through FloatStringFn so a unit's number reads the way a bare
+// float already does here -- Kotlin's own Double.toString writes `3.0`.
+func UnitToStringKt(n *ir.Conversion, operand string) (string, bool) {
+	if n == nil || n.Operand == nil {
+		return "", false
+	}
+	ud := ir.UnitDeclOf(n.Operand.ExprType())
+	if ud == nil {
+		return "", false
+	}
+	bases := ud.Bases()
+	if ud.IsSingleBase() {
+		// duration is a Long of milliseconds and every other single-base unit
+		// a Double; only the second needs the float spelling.
+		if UnitKtType(ud) == "Long" {
+			return fmt.Sprintf("((%s).toString() + %q)", operand, bases[0].Name), true
+		}
+		return fmt.Sprintf("(%s((%s)) + %q)", FloatStringFn, operand, bases[0].Name), true
+	}
+	terms := make([]string, 0, len(bases))
+	for _, b := range bases {
+		terms = append(terms, fmt.Sprintf("Pair(__u.%s, %q)", b.Name, b.Name))
+	}
+	return fmt.Sprintf("((%s).let { __u -> listOf(%s).filter { it.first != 0.0 }.joinToString(%q) { %s(it.first) + it.second }.ifEmpty { %q } })",
+		operand, strings.Join(terms, ", "), ir.UnitTermSep, FloatStringFn, ir.FormatUnitZero(ud)), true
 }
 
 // multiBaseUnitBinaryKt distributes a binary op over the fields of a

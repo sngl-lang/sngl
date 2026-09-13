@@ -40,7 +40,11 @@ window {
 	}
 	body := page.MustElement("body").MustText()
 	for _, want := range []string{
-		"sum=1100",   // 100ms + 1s, in ms
+		// Bare, so the display rule: the magnitude in duration's own base,
+		// carrying that base's suffix. The cast beneath it is the number
+		// alone, and the pair is what says the two are different questions
+		// asked of one representation.
+		"sum=1100ms",
 		"trunc=1100", // a number, so int() is not NaN
 		"scaled=300", // unit * scalar
 	} {

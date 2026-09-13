@@ -273,7 +273,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
 - **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Five run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either) and `CSE` (a pure call a statement makes twice). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Six run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice) and `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -728,25 +728,38 @@ body-scoped for one to land on.
 
 Two in *one* body is that scope's duplicate and `c.declare` says so. Two in
 *different* bodies is correct and the language allows it, but the emitted
-namespace is flat — so each kind is asked, in its own terms, whether the two
-would collide there, and both answers are a **codegen limitation surfaced in
-the checker** rather than a language rule. #198 renames per body and deletes
-both, along with the fixtures that pin them.
+namespace is flat — so each kind is asked, in its own terms, what that costs,
+and the two answers differ in kind because the collisions do.
 
 - A **type** collides always: every backend emits a type declaration straight
-  from `ir.Package.Structs` and none renames. `claimBodyType` reports the pair
-  at registration, and reports a body-local type against a *top-level* one of
-  the same name for the same reason
-  (`error_body_local_type_two_bodies.sngl`).
-- A **component** collides only inside a recursion cycle, which is why the two
-  checks differ in breadth. Every platform sets `InlineComponents=false`, so
+  from `ir.Package.Structs` and none renamed. `passHoistBodyTypes`
+  (`internal/lower/body_types.go`) is the answer — the first claimant keeps its
+  spelling and the rest become `Local__second`, named for the body they were
+  written in. It reserves every top-level name over the whole package first, so
+  a top-level declaration wins whatever order registration put the two in, and
+  a body-local type is measured against funcs and components too because Go
+  gets `type Local struct` beside `func Local()`. Which body a declaration
+  belongs to is `BodyOwner` on the three decls, stamped by `registerBodyDecl`.
+  Every reference rides on the declaration pointer — a literal's `Def`, an
+  annotation's `Decl`, a field type, the element of a `list<Local>`, the host
+  spelling each backend derives from `Name` — so setting `Name` reaches all of
+  them. `ir.Func.Receiver` is the exception, being the receiver type's name
+  written out as a string; renaming it is what keeps Go's `Local__secondShout`,
+  Kotlin's `fun Local__second.shout` and JS's `Local__second_shout` off a type
+  that holds someone else's fields. A checker error (`claimBodyType`) stood in
+  the gap for as long as #198 was open, so that no program could reach the
+  output while it was.
+- A **component** collides only inside a recursion cycle, which is why that
+  check is narrower and is still a **codegen limitation surfaced in the
+  checker**. Every platform sets `InlineComponents=false`, so
   `passNoInlineComponents` substitutes a component that is not in a cycle into
   its caller with its state renamed per call site (`__instN`) and it never
   reaches a backend under its declared name. What survives is a cycle, and two
   surviving declarations of one name emit one host component twice.
   `reportBodyComponentCollisions` asks that after pass2 and of the cycles only
   (`error_component_nested_recursive_collision.sngl`), which is what lets the
-  ordinary shadowing and two-bodies cases through.
+  ordinary shadowing and two-bodies cases through. Renaming it the way a type
+  is renamed is the remaining half of #198.
 
 What a nested *component* body sees is the body it was written in: its sibling
 declarations, and that body's props, vars and funcs. **Capture is lowered as
@@ -799,10 +812,11 @@ agree on their helpers' names.
 
 What is refused is an override helper **shadowing** one the base body wrote
 (`reportOverrideFuncShadows`). That is a codegen limitation surfaced in the
-checker, on `claimBodyType`'s terms rather than as a language rule: nothing
-renames a component method per body, so both would be emitted under one host
-identifier. #198's hoist-and-rename is where it lifts, and the diagnostic says
-so (`error_component_override_body_func_shadows.sngl`).
+checker, on `reportBodyComponentCollisions`' terms rather than as a language
+rule: nothing renames a component method per body, so both would be emitted
+under one host identifier. The hoist-and-rename `passHoistBodyTypes` does for
+types is where it lifts, and the diagnostic says so
+(`error_component_override_body_func_shadows.sngl`).
 
 `ir.BodyFuncs` is what pass2's `compOwnedFuncs` set reads, because by then the
 base declaration is restored and the live `Component.Funcs` no longer names the
@@ -989,6 +1003,159 @@ When adding a new stdlib package that needs runtime support:
 
 - **`map<K, V>`** — generic map type. Literal syntax `{k = v}` (disambiguated from struct literals by expected-type context). Methods: `length`, `keys`, `values`, `contains`, `get`. Codegen: Go → `map[K]V`, JS → `Map`, Kotlin → `Map<K,V>`.
 - **`iter<T>`** — opaque generic iterator type. `list<T>` implicitly converts to `iter<T>`; `map<K, V>` does not, so a map cannot reach an `iter` position with its map-ness erased. For-loops bind elements via `for var x = iter`; map iteration uses two variables `for var k, v = m`. No methods, no fields.
+
+**A unit's members are its bases, and they are registered like any other
+declaration's.** A unit value is a magnitude per base (`ir/units.go`): `unit measurement { px, em, rem = 16em, vw, vh, pct }` declares five bases, so a
+value carries five numbers and every backend emits it as a record of them.
+`ir.UnitDef.Fields` is that record's member table — `ir.UnitFields`, one
+`float` per base, built at registration — and `ir.Fielded` is what a struct and
+a unit answer it through, the field half of what `ir.methodTable` already does
+for methods across four kinds. `checker.selectDeclaredMember` is the one lookup
+both use.
+
+A **single-base** unit has no members at all. `unit tick { tk }` is `type Tick float64` in Go, a `Double` in Kotlin and a number in JavaScript: there is
+nothing to select, and `float(x)`/`int(x)` is how that magnitude is read. So
+`t.tk` is an unknown member like any other, and a *reduced* suffix is one too —
+`rem` is 16em and no value carries a magnitude for it.
+
+Before the table existed, nothing looked a unit member up: `inferSelect`
+reports an unknown member only for the kinds `hasNoLegitimateFields` lists, and
+`ir.TypeUnit` was not one, so **every** select on a unit fell through to `dyn`.
+That is one defect with two faces. The invented `.value` was accepted in
+silence and spelled blindly by each backend — `Measurement.Value` and
+`Tick.Value` in Go, neither of which compiles, `Double.value` in Kotlin,
+`undefined` in JavaScript. And the *valid* `m.px` was `dyn` too, which
+`interpPartAlreadyString` answers yes to, so the string conversion every other
+numeric operand gets was skipped and Go emitted `"px is " + m.m.Px`. Typing the
+select fixed the second everywhere at once; no backend grew a case.
+
+**A cast reads the magnitude, and it reads it in the unit's base.** `int(x)`
+and `float(x)` are the whole of how a single-base unit's value is got at, so
+every target has to answer them the same. A **multi-base** unit is refused
+there (`multiBaseUnitCast`): a value of one is a magnitude per base, so there
+is no single number to produce, and the diagnostic points at the per-base read
+that replaces the cast — `m.px`. That is the same premise the checker already
+applied to ordering two of them, extended to the one other place it decides
+anything. `string(m)` is untouched, being display rather than a magnitude.
+`duration` is the one that did not agree: Go carries one as a `time.Duration`,
+whose unit is nanoseconds, while the declared base is ms — so
+`GoIRContext.durationToNumber` divides at the cast. Only at the cast, because
+arithmetic stays inside the representation:
+`d + 100ms` and `d * 2` are `time.Duration` arithmetic and are correct in ns
+right up to the cast that divides them out. `float` divides as floats, since an
+integer division converted afterwards truncates a sub-millisecond duration to
+zero.
+
+`ClassifyUnit` is what gates it, and it reads `UnitDef.Builtin` —
+`ir.BuiltinDuration`, the kind `lib/time/time.sngl` marks — rather than the
+name `duration`. It asked the name in four places, which made the one built-in
+with a host representation the one built-in that was *not* shadowable: a
+program's own `unit duration { blip }` got `time.Duration(3) * time.Millisecond`
+for `3blip`, the `time` import, the `mustParseDuration` helper and a Kotlin
+`Long`. `testdata/unit_duration_shadowed.txtar` pins that it no longer does.
+`golang/helpers.go`'s `case "duration":` stays, switching on a scheme type
+*hint* beside `"color"` and `"date"` rather than on a declaration.
+
+**And the display, which is the same claim made without a cast.** A unit
+interpolated bare renders as its magnitude per base on every target: `"{d}"`
+of `500ms` is `500ms`, `"{m}"` of `3px + 2em` is `3px + 2em`. The rule is the
+representation restated rather than a second decision on top of it, and
+`ir.FormatUnitTerm`, `ir.UnitTermSep` and `ir.FormatUnitZero` are the one
+place it is written down — the interpreter and the optimizer call them, and
+each backend emits a runtime helper saying the same thing about values no
+compile-time caller can see.
+
+It was **five** answers, not one per target. A var-held `500ms` printed
+`500ms` on Go, `500` on JavaScript, `500.0` on Kotlin and `500ms` on the
+interpreter; a `const` one printed `500` on all four, because
+`optimize.evalConversion` folded a unit to the bare float64 its magnitude is
+and spelled that back with `%v`. Go's apparent agreement was a coincidence of
+the value: `time.Duration.String` normalises across units, so 1100ms prints
+`1.1s` for a unit whose declared base is ms. And a multi-base value had no
+chosen spelling anywhere — `{3 2 0 0 0}` on Go, `[object Object]` on
+JavaScript, `Measurement(px=3.0, …)` on Kotlin — because nothing had ever
+asked the question; those are three host defaults leaking.
+
+Two consequences, and each is the representation asserting itself. **The
+written suffix is gone from display**: `2rem` shows `32em`, because the record
+is the whole of what a compiled target holds and a spelling to prefer was a
+memory only `interp.unitValue.Suffix` had. And an **all-zero value prints in
+the first declared base**, so `0rem` and `0px` both print `0px` — they are the
+same value under per-base equality, and equal values have to print equally.
+
+Go needs a helper per unit (`HelperSet.UnitStrings`, emitted by
+`EmitUnitStringFuncs`) because it has no expression form for the join;
+JavaScript and Kotlin inline an arrow and a `let`, which is also what binds
+the operand so it is not re-evaluated once per base. Each helper spells its
+magnitude with whatever that target already spells a bare float with —
+`fmt.Sprint`, `String`, `_snglFloatStr` — so unit display inherits the float
+agreement instead of restating it and drifting from it.
+
+**The CSS path is not this path**, which is what made unifying it cheap rather
+than a trade against html. A style prop is spelled by `internal/htmlutil`:
+`UnitLiteralToCSS` off an `ir.Literal`, with its own rename table where the
+base `pct` is written `%`. It shares `ir.UnitMagnitude` with the above and
+nothing else, reaches `interpolateStringify` nowhere, and `7px` in a
+stylesheet is unchanged by any of this.
+
+The interpreter is a fourth implementation of all of this and has to be checked
+with the three backends: `interp.ToInt` needs its `unitValue` case (without it
+every `int(<unit>)` was 0 on `--platform=none`), `evalSelect` needs one to read
+a per-base member, and `unitTable.BaseOf` is what says which base a suffix
+reduces to, so `2rem` counts in em. `cmd/sngl/testdata/unit_magnitude_compiles.txt`
+runs one program under both `--platform=bubbletea --language=go` and
+`--platform=none` for exactly that reason.
+
+`interp.unitValue` **is** that record — `Amounts`, a magnitude per base, plus
+the suffix the value was written with for display. It was one `BaseAmount` and
+a suffix, the pre-`ea7b2f84` "a unit reduces to one number" model, and the
+member table is what made that visible: `1px + 2em` added to 3 and then
+answered 3 for `px` and 0 for `em`, so a per-base read off a value *arithmetic
+built* was quietly wrong where the same read off a literal was right. Both
+fixtures had only literals, which is why neither caught it.
+
+Four things follow, and the first three are the record restated:
+
+- **Arithmetic is per base.** `Add`/`Sub` combine base by base and `Scale`
+  scales each; a base whose magnitude is zero is absent rather than stored.
+- **Equality is per base**, and **ordering is refused** for a multi-base unit
+  (`orderable`): `3px` and `2em` are each the larger on their own base, so
+  there is no answer to invent. The checker already refuses the pair
+  (`IsSingleBaseUnit` gates `<`, `<=`, `>`, `>=`), so the guard is for the
+  `dyn` operand that reached a comparison untyped.
+- **A cast reads `magnitude()`** — the one base of a single-base unit, which is
+  every cast the checker's ordering rule leaves meaningful.
+- **Display sums the bases it carries**: `3px + 2em`, and a bare `3px` for a
+  value that only ever names one, which is what a program that never mixes
+  bases sees. In the bases, not in the spelling — `1rem` displays `16em`.
+
+The timer is unaffected: `durationFromMs` goes through `toFloat`, and a
+duration is single-base.
+
+**Equality is per base on all four**, and the three compiled targets get there
+differently: Go compares its `Measurement` struct field-wise and Kotlin its
+`data class` component-wise, both without being asked, while JavaScript has no
+such operator for an object. `===` there is reference identity, so `a == b` for
+two equal measurements was false on every pair — `multiBaseUnitEqualJS` emits
+the conjunction over the bases instead, with `!=` its negation rather than a
+second walk. A single-base unit is a plain number in JS and keeps the bare
+operator; routing one through the walk is what `testdata/unit_equality.txtar`
+denies. `cmd/sngl/testdata/unit_equality_runs.txt` runs the comparisons under
+bubbletea, the interpreter and a real Chromium, because a golden shows the
+emitted text and only executing it shows the answer.
+
+The case that separates two plausible implementations is a base that cancelled
+to zero: the interpreter's map holds no key for it where the JS and Go records
+hold a zero, so a comparison written over *the bases a value carries* rather
+than over the unit's declared bases disagrees with the other three.
+
+`hasNoLegitimateFields` stays an inverted allowlist, so a kind absent from it
+still accepts any member name silently: `list`, `map`, `option`, `iter`,
+`string` beyond `.length`, and a struct type carrying no `Decl`. That is not
+uniformly a defect — an element-ref list projects a member read over its
+elements, which `testdata/test_slot_element_ref.sngl` depends on
+(`c.body.value` where `c.body` is `list<text>`) — so closing the rest is a
+question per kind rather than one line.
 
 Stdlib collection types support generic methods: `func list<T>.filter(f func(T) bool) list<T>`, `func list<T>.map<U>(f func(T) U) list<U>`, `func map<K, V>.keys() list<K>`, etc. The receiver's type parameters are bound at the call site from the operand's concrete type (e.g. `xs : list<int>` binds `T=int`). Method-level type parameters (the `<U>` after the method name) are inferred from the call's actual argument types — typically from a lambda's return type.
 

@@ -91,7 +91,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = "$" + String(state.r__inst0.a) + "$" + String(state.r2__inst0.a) + "$" + String(state.p__inst0) + "$" + String(state.elapsed__inst0);
+    __n0.textContent = "$" + String(state.r__inst0.a) + "$" + String(state.r2__inst0.a) + "$" + String(state.p__inst0) + "$" + (String(state.elapsed__inst0) + "tk");
   }
   __sngl_init();
 })();

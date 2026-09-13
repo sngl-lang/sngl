@@ -1305,8 +1305,14 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	operand := gc.EvalExpr(n.Operand)
 	// Go's string(int) builds a single-rune string.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
+		if ud := UnitStringConversion(n); ud != nil {
+			return UnitStringFn(ud) + "(" + operand + ")"
+		}
 		gc.RequireImport("fmt")
 		return "fmt.Sprint(" + operand + ")"
+	}
+	if expr := gc.durationToNumber(n, goType, operand); expr != "" {
+		return expr
 	}
 	// And the other direction is not a cast at all: see StringToNumberHelper.
 	if helper := StringToNumberHelper(n); helper != "" {
@@ -1318,6 +1324,31 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		return "(" + goType + ")(" + operand + ")"
 	}
 	return goType + "(" + operand + ")"
+}
+
+// durationToNumber converts a duration out of Go's representation of one, or
+// returns "" for any other conversion. A time.Duration counts nanoseconds
+// while `duration` declares its base as ms, so a cast here divides where every
+// other target, holding a plain number of ms, does not.
+func (gc *GoIRContext) durationToNumber(n *ir.Conversion, goType, operand string) string {
+	if n.Type == nil || n.Operand == nil {
+		return ""
+	}
+	if ClassifyUnit(unitDeclOf(n.Operand.ExprType())) != UnitDuration {
+		return ""
+	}
+	switch n.Type.Kind {
+	case ir.TypeInt:
+		gc.RequireImport("time")
+		return goType + "(" + operand + " / time.Millisecond)"
+	case ir.TypeFloat:
+		// Not `d / time.Millisecond` converted after: that is integer
+		// division, so a duration finer than a millisecond would truncate to
+		// zero where the other targets report a fraction.
+		gc.RequireImport("time")
+		return goType + "(" + operand + ") / " + goType + "(time.Millisecond)"
+	}
+	return ""
 }
 
 // nullFuncStubGo is a callable substitute for a null func: it returns the
@@ -1602,12 +1633,14 @@ func IRTypeToGo(t *ir.Type) string {
 	case ir.TypeEnum:
 		return "string"
 	case ir.TypeUnit:
-		if t.Decl != nil {
-			name := t.Decl.SymName()
-			if name == "duration" {
+		if ud := ir.UnitDeclOf(t); ud != nil {
+			if ud.Builtin == ir.BuiltinDuration {
 				return "time.Duration"
 			}
-			return ExportName(name)
+			return ExportName(ud.Name)
+		}
+		if t.Decl != nil {
+			return ExportName(t.Decl.SymName())
 		}
 		return "any"
 	case ir.TypeFunc:

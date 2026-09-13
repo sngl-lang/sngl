@@ -259,14 +259,20 @@ func compareOp(op ast.BinaryOp, left, right any) (bool, error) {
 			return true, nil
 		}
 		return !equals(left, right), nil
-	case ast.BinLt:
-		return compareNum(left, right) < 0, nil
-	case ast.BinLte:
-		return compareNum(left, right) <= 0, nil
-	case ast.BinGt:
-		return compareNum(left, right) > 0, nil
-	case ast.BinGte:
-		return compareNum(left, right) >= 0, nil
+	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
+		if err := orderable(left, right); err != nil {
+			return false, err
+		}
+		switch cmp := compareNum(left, right); op {
+		case ast.BinLt:
+			return cmp < 0, nil
+		case ast.BinLte:
+			return cmp <= 0, nil
+		case ast.BinGt:
+			return cmp > 0, nil
+		default:
+			return cmp >= 0, nil
+		}
 	}
 	return false, fmt.Errorf("compareOp: not a comparison op %d", op)
 }

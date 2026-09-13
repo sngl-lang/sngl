@@ -12,9 +12,11 @@ import (
 // one, so every duration is a number of ms.
 //
 // The helpers here answer that for a UnitDef so no backend has to re-derive
-// it. What a value in that shape is *spelled* as belongs to the platform: the
-// magnitude is 7 and the base is px, and only html knows that CSS wants
-// "7px" and that the base named `pct` is spelled "%".
+// it, and that includes what a value in that shape is *spelled* as: a program
+// reading "{width}" gets the same string on every target. What belongs to a
+// platform is a spelling its host demands for its own reasons -- html's CSS
+// wants the base named `pct` written "%", and that rename lives in
+// internal/htmlutil, off this path entirely.
 
 // Bases returns u's base suffixes in declaration order -- the ones that
 // reduce to themselves, and so the ones a value of u carries a magnitude for.
@@ -87,4 +89,58 @@ func FormatUnitMagnitude(v float64) string {
 		return strconv.FormatInt(int64(v), 10)
 	}
 	return strconv.FormatFloat(v, 'g', -1, 64)
+}
+
+// Fielded is a declaration whose members include named fields. Struct and unit
+// are the two -- a struct's fields are written down and a unit's are its bases
+// -- so a member lookup need not know which it is holding.
+type Fielded interface {
+	Symbol
+	FieldList() []*StructField
+	MethodTable() map[string]*Func
+}
+
+// MethodTable completes Fielded for a struct.
+func (s *StructDef) MethodTable() map[string]*Func { return s.Methods }
+
+// MethodTable completes Fielded for a unit.
+func (u *UnitDef) MethodTable() map[string]*Func { return u.Methods }
+
+// UnitFields is the member table a UnitDef carries: one float field per base
+// suffix, in declaration order, and none at all for a single-base unit.
+func UnitFields(u *UnitDef) []*StructField {
+	if u == nil || u.IsSingleBase() {
+		return nil
+	}
+	bases := u.Bases()
+	out := make([]*StructField, len(bases))
+	for i, b := range bases {
+		out[i] = &StructField{Name: b.Name, Type: TypFloat}
+	}
+	return out
+}
+
+// UnitTermSep joins the per-base terms of a displayed unit value. A value is
+// a magnitude per base and a multi-base one has no single number, so what it
+// displays as is the sum it would have been written as: "3px + 2em".
+const UnitTermSep = " + "
+
+// FormatUnitTerm renders one base's magnitude as it is displayed: (3, "px")
+// is "3px". Every target spells a unit value by joining these, so the two
+// compile-time callers here and the three runtime helpers each backend emits
+// are all restating this one rule.
+func FormatUnitTerm(mag float64, base string) string {
+	return FormatUnitMagnitude(mag) + base
+}
+
+// FormatUnitZero is what a value carrying no magnitude at all displays as.
+// The first declared base, not the base the value was written in: a record of
+// zeros has no memory of its spelling, and 0rem and 0px are the same value,
+// so they have to print the same.
+func FormatUnitZero(u *UnitDef) string {
+	bases := u.Bases()
+	if len(bases) == 0 {
+		return "0"
+	}
+	return FormatUnitTerm(0, bases[0].Name)
 }

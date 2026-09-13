@@ -1,0 +1,39 @@
+import ui "sngl:ui"
+import "sngl:time"
+
+// A numeric cast asks a value for its one number, and a multi-base unit has
+// none: `measurement` declares five independent bases, so a value of it is a
+// magnitude per base and `float(m)` names no magnitude in particular. The
+// member table is what makes the refusal actionable -- `m.px` is the read the
+// diagnostic points at, and it is a float like any other.
+//
+// The checker already said this about ordering two of them (`a < b` is refused
+// for the same reason) and said nothing about the cast: Go emitted
+// `float64(m.m__inst0)` against a struct of five floats, which does not
+// compile, and `sngl generate` exited 0 on it.
+unit tick {
+    tk
+}
+
+component main ui.node {
+    var m ui.measurement = 3px
+    var t tick = 4tk
+    var d time.duration = 500ms
+
+    var a = float(m) // ERROR(check) "float(): measurement carries a magnitude per base, so it has no single number; read one with .px, .em, .vw, .vh or .pct"
+    var b = int(m)   // ERROR(check) "int(): measurement carries a magnitude per base, so it has no single number; read one with .px, .em, .vw, .vh or .pct"
+
+    // A single-base unit is a plain number on every target, so a cast is the
+    // supported way to read it and both of these stay legal.
+    var c = float(t)
+    var e = int(d)
+
+    // The per-base read the diagnostic names, and it is a float.
+    var f = m.px
+
+    ui.text(value="{a} {b} {c} {e} {f}")
+}
+
+ui.window {
+    main
+}

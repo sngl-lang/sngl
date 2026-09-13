@@ -7,11 +7,12 @@ struct Local {
 func takesFileScoped(v Local) => v.a
 
 // Type identity is per-declaration: this Local shadows the file-scope one and
-// is a second, incompatible type rather than another name for it. The
-// collision error is #198's interim, and the two assertions are independent --
-// the shadowing is the language rule, the collision a codegen limitation.
+// is a second, incompatible type rather than another name for it. Declaring it
+// is not an error -- passHoistBodyTypes renames it after the body it was
+// written in, so the host gets a name for each of the two types -- and passing
+// one where the other is wanted still is.
 func inner() int {
-    struct Local { // ERROR(check) "is declared in this package"
+    struct Local {
         a int
     }
 

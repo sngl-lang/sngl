@@ -28,7 +28,7 @@ func ClassifyUnit(u *ir.UnitDef) UnitGoTypeKind {
 	if u == nil {
 		return UnitScalar
 	}
-	if u.Name == "duration" {
+	if u.Builtin == ir.BuiltinDuration {
 		return UnitDuration
 	}
 	if u.IsSingleBase() {

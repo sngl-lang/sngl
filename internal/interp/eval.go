@@ -3,8 +3,8 @@ package interp
 import (
 	"fmt"
 	"maps"
-	"math"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -58,53 +58,164 @@ func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 	return env.execBlockForResult(lv.fn.Block)
 }
 
-// unitValue is the runtime representation of a unit value.
+// unitValue is the runtime representation of a unit value: a magnitude per
+// base, keyed by base name, which is the record `ir.UnitFields` describes and
+// every compiled backend emits. A base the value does not carry is absent
+// rather than stored as zero.
 type unitValue struct {
-	BaseAmount float64
-	Suffix     string
-	Table      *unitTable
+	Amounts map[string]float64
+	// Suffix is the spelling the value was written with. It says which base a
+	// multi-base value's cast reads and nothing else -- display normalises to
+	// the bases, since no compiled target carries a spelling to prefer.
+	Suffix string
+	Table  *unitTable
+}
+
+// newUnitValue takes ownership of amounts, so every caller passes a map it
+// built.
+func newUnitValue(table *unitTable, suffix string, amounts map[string]float64) unitValue {
+	return unitValue{Amounts: amounts, Suffix: suffix, Table: table}
+}
+
+// amountIn is the magnitude this value carries in one base.
+func (u unitValue) amountIn(base string) float64 { return u.Amounts[base] }
+
+// eachBase calls f for every base in declaration order, so two values of one
+// unit are combined and printed in one order whichever bases each carries. A
+// value whose suffix resolved to no table has no declared bases, so it falls
+// back to the union of the maps in hand -- sorted, because a map range is not
+// an order and this one reaches String.
+func (u unitValue) eachBase(peers []unitValue, f func(base string)) {
+	if u.Table != nil && len(u.Table.Bases) > 0 {
+		for _, b := range u.Table.Bases {
+			f(b)
+		}
+		return
+	}
+	seen := map[string]bool{}
+	for _, v := range append([]unitValue{u}, peers...) {
+		for b := range v.Amounts {
+			seen[b] = true
+		}
+	}
+	for _, b := range slices.Sorted(maps.Keys(seen)) {
+		f(b)
+	}
 }
 
 func (u unitValue) Equal(other unitValue) bool {
 	if u.Table != other.Table {
 		return false
 	}
-	return u.BaseAmount == other.BaseAmount
+	equal := true
+	u.eachBase([]unitValue{other}, func(b string) {
+		if u.amountIn(b) != other.amountIn(b) {
+			equal = false
+		}
+	})
+	return equal
+}
+
+// combine builds a new value from u and other base by base.
+func (u unitValue) combine(other unitValue, op func(a, b float64) float64) unitValue {
+	amounts := make(map[string]float64, len(u.Amounts))
+	u.eachBase([]unitValue{other}, func(b string) {
+		if v := op(u.amountIn(b), other.amountIn(b)); v != 0 {
+			amounts[b] = v
+		}
+	})
+	return newUnitValue(u.Table, u.Suffix, amounts)
 }
 
 func (u unitValue) Add(other unitValue) unitValue {
 	if u.Table != other.Table {
 		return u
 	}
-	return unitValue{BaseAmount: u.BaseAmount + other.BaseAmount, Suffix: u.Suffix, Table: u.Table}
+	return u.combine(other, func(a, b float64) float64 { return a + b })
 }
 
 func (u unitValue) Sub(other unitValue) unitValue {
 	if u.Table != other.Table {
 		return u
 	}
-	return unitValue{BaseAmount: u.BaseAmount - other.BaseAmount, Suffix: u.Suffix, Table: u.Table}
+	return u.combine(other, func(a, b float64) float64 { return a - b })
 }
 
 func (u unitValue) Scale(factor float64) unitValue {
-	return unitValue{BaseAmount: u.BaseAmount * factor, Suffix: u.Suffix, Table: u.Table}
-}
-
-func (u unitValue) displayAmount() float64 {
-	if u.Table != nil {
-		if factor, ok := u.Table.Conversions[u.Suffix]; ok && factor != 0 {
-			return u.BaseAmount / factor
+	amounts := make(map[string]float64, len(u.Amounts))
+	for b, v := range u.Amounts {
+		if v*factor != 0 {
+			amounts[b] = v * factor
 		}
 	}
-	return u.BaseAmount
+	return newUnitValue(u.Table, u.Suffix, amounts)
 }
 
-func (u unitValue) String() string {
-	amt := u.displayAmount()
-	if amt == math.Trunc(amt) && !math.IsInf(amt, 0) && !math.IsNaN(amt) {
-		return fmt.Sprintf("%d%s", int(amt), u.Suffix)
+// baseAmount reads one of the unit's per-base members -- the ones
+// ir.UnitFields registers and the checker types as a float.
+func (u unitValue) baseAmount(base string) (any, error) {
+	if u.Table == nil {
+		return nil, fmt.Errorf("no unit table for %q", base)
 	}
-	return fmt.Sprintf("%g%s", amt, u.Suffix)
+	if u.Table.BaseOf[base] != base {
+		// The checker registers a field per base and refuses anything else, so
+		// this is a value whose table was built without one rather than a
+		// program that asked for it.
+		return nil, fmt.Errorf("no base %q on this unit", base)
+	}
+	return u.amountIn(base), nil
+}
+
+// countedIn is the base this value's suffix reduces to.
+func (u unitValue) countedIn() string {
+	if u.Table == nil {
+		return u.Suffix
+	}
+	if b, ok := u.Table.BaseOf[u.Suffix]; ok {
+		return b
+	}
+	return u.Suffix
+}
+
+// magnitude is the one number a cast reads. A single-base unit has exactly one
+// and that is the whole of its value; a multi-base one is answered in the base
+// its own suffix names, which is all a single number can say about a record.
+func (u unitValue) magnitude() float64 {
+	if u.Table != nil && len(u.Table.Bases) == 1 {
+		return u.amountIn(u.Table.Bases[0])
+	}
+	return u.amountIn(u.countedIn())
+}
+
+// String prints every base the value carries a magnitude for, summed the way
+// the source would have written it: `3px + 2em`. A value carrying none prints
+// a zero rather than nothing at all.
+//
+// The written suffix is not consulted, so `2rem` prints as 32em. A compiled
+// target holds the record and nothing else, so preferring the spelling here
+// is a memory only the interpreter has -- and this is the one renderer every
+// target has to match.
+func (u unitValue) String() string {
+	var parts []string
+	u.eachBase(nil, func(b string) {
+		if amt := u.amountIn(b); amt != 0 {
+			parts = append(parts, ir.FormatUnitTerm(amt, b))
+		}
+	})
+	if len(parts) == 0 {
+		return ir.FormatUnitTerm(0, u.firstBase())
+	}
+	return strings.Join(parts, ir.UnitTermSep)
+}
+
+// firstBase is the base a value carrying no magnitude at all prints in. It is
+// the declared first rather than the one the suffix reduces to, because
+// `0rem` and `0px` are the same value and must print the same.
+func (u unitValue) firstBase() string {
+	if u.Table != nil && len(u.Table.Bases) > 0 {
+		return u.Table.Bases[0]
+	}
+	return u.countedIn()
 }
 
 func (u unitValue) sameFamily(other unitValue) bool {
@@ -115,6 +226,13 @@ func (u unitValue) sameFamily(other unitValue) bool {
 type unitTable struct {
 	Base        string
 	Conversions map[string]float64
+	// BaseOf is the base each suffix reduces to (a base reduces to itself),
+	// from ir.UnitSuffix.BaseName. Needed to read a per-base member off a
+	// value: `3rem` counts in em, not in whichever suffix was declared first.
+	BaseOf map[string]string
+	// Bases is ir.UnitDef.Bases in declaration order -- what a record's fields
+	// are, and the order two values are combined and printed in.
+	Bases []string
 }
 
 // Env holds the mutable state for test execution.
@@ -1072,6 +1190,9 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if m, ok := obj.(map[string]any); ok {
 		return m[e.Field], nil
 	}
+	if u, ok := obj.(unitValue); ok {
+		return u.baseAmount(e.Field)
+	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
 }
 
@@ -1335,14 +1456,20 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 			return nil, fmt.Errorf("|| requires bool operands, got %T and %T", left, right)
 		}
 		return lb || rb, nil
-	case ast.BinLt:
-		return compareNum(left, right) < 0, nil
-	case ast.BinLte:
-		return compareNum(left, right) <= 0, nil
-	case ast.BinGt:
-		return compareNum(left, right) > 0, nil
-	case ast.BinGte:
-		return compareNum(left, right) >= 0, nil
+	case ast.BinLt, ast.BinLte, ast.BinGt, ast.BinGte:
+		if err := orderable(left, right); err != nil {
+			return nil, err
+		}
+		switch cmp := compareNum(left, right); e.Op {
+		case ast.BinLt:
+			return cmp < 0, nil
+		case ast.BinLte:
+			return cmp <= 0, nil
+		case ast.BinGt:
+			return cmp > 0, nil
+		default:
+			return cmp >= 0, nil
+		}
 	case ast.BinAdd:
 		if ls, ok := left.(string); ok {
 			return ls + fmt.Sprintf("%v", right), nil
@@ -2369,13 +2496,20 @@ func (env *Env) makeUnitValue(lit *ir.Literal) (unitValue, error) {
 		return unitValue{}, fmt.Errorf("invalid unit literal %q: %w", lit.Value, err)
 	}
 	table := env.Units[suffix]
-	baseAmount := num
+	base, amount := suffix, num
 	if table != nil {
 		if factor, ok := table.Conversions[suffix]; ok {
-			baseAmount = num * factor
+			amount = num * factor
+		}
+		if b, ok := table.BaseOf[suffix]; ok {
+			base = b
 		}
 	}
-	return unitValue{BaseAmount: baseAmount, Suffix: suffix, Table: table}, nil
+	amounts := map[string]float64{}
+	if amount != 0 {
+		amounts[base] = amount
+	}
+	return newUnitValue(table, suffix, amounts), nil
 }
 
 func (env *Env) logAlertToast(args []ir.CallArg) (any, error) {
@@ -2463,7 +2597,7 @@ func toFloat(v any) float64 {
 		}
 		return 0
 	case unitValue:
-		return val.BaseAmount
+		return val.magnitude()
 	case string:
 		f, _ := strconv.ParseFloat(val, 64)
 		return f
@@ -2479,6 +2613,10 @@ func ToInt(v any) int {
 		return int(val)
 	case float64:
 		return int(val)
+	case unitValue:
+		// The magnitude in the unit's base, which is what every backend's cast
+		// produces -- without a case here a unit fell through to the zero below.
+		return int(val.magnitude())
 	case bool:
 		if val {
 			return 1
@@ -2489,6 +2627,19 @@ func ToInt(v any) int {
 		return n
 	}
 	return 0
+}
+
+// orderable reports why a pair cannot be ordered, or nil. Only a multi-base
+// unit has no answer: `3px` and `2em` are each larger on their own base. The
+// checker refuses that pair outright (`IsSingleBaseUnit` gates <, <=, >, >=),
+// so this is the `dyn` operand that reached a comparison untyped.
+func orderable(a, b any) error {
+	for _, v := range [...]any{a, b} {
+		if u, ok := v.(unitValue); ok && u.Table != nil && len(u.Table.Bases) > 1 {
+			return fmt.Errorf("cannot order %s: a magnitude per base has no single number to compare", u)
+		}
+	}
+	return nil
 }
 
 func compareNum(a, b any) int {

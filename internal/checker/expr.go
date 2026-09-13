@@ -1132,7 +1132,10 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		// and datetime are all TypeStruct, so the kinds alone cannot say which
 		// one, and an identity cast has to be told apart from a cast between
 		// two different string-repr types.
-		if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
+		if ud := multiBaseUnitCast(from, target); ud != nil {
+			c.error(x.Pos, "%s(): %s carries a magnitude per base, so it has no single number; read one with %s",
+				name, from, baseNameList(ud))
+		} else if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
@@ -1729,6 +1732,37 @@ func methodNamed(t *ir.Type, name string) bool {
 // through methods alone, so `box.value` is `box.value()` with the call left
 // off — which degraded to dyn, passed every prop it was handed, and reached a
 // backend as a field read of a struct that has none.
+// selectDeclaredMember resolves x.Field against a declaration's own member
+// table -- fields first, then methods -- and reports a name in neither. Struct
+// and unit share it because they share the question, which is the same reason
+// ir.methodTable serves four kinds: a declaration's members are looked up on
+// the declaration.
+//
+// bindings substitutes a generic struct's type arguments into the field type,
+// and is nil for a declaration that has none.
+func (c *checker) selectDeclaredMember(x *ast.SelectExpr, operandExpr ir.Expr, decl ir.Fielded, noun string, bindings map[string]*ir.Type) ir.Expr {
+	name := decl.SymName()
+	for _, f := range decl.FieldList() {
+		if f.Name != x.Field {
+			continue
+		}
+		if f.Foreign.Unusable != "" {
+			c.error(x.Pos, "field %s.%s cannot be used: %s", name, f.Name, f.Foreign.Unusable)
+		}
+		fieldType := f.Type
+		if bindings != nil {
+			fieldType = fieldType.Substitute(bindings)
+		}
+		return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
+	}
+	if _, isMethod := decl.MethodTable()[x.Field]; isMethod {
+		c.error(x.Pos, "%s.%s is a method; write %s() to call it", name, x.Field, x.Field)
+	} else {
+		c.error(x.Pos, "no field %q on %s %s", x.Field, noun, name)
+	}
+	return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
+}
+
 func hasNoLegitimateFields(t *ir.Type) bool {
 	if t == nil {
 		return false
@@ -1888,23 +1922,19 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 				if c.rejectForeignUnexported(x.Pos, sd, sd.Name, x.Field) {
 					return &ir.Select{AST: x, Type: TypDyn, Operand: operandExpr, Field: x.Field}
 				}
-				for _, f := range sd.Fields {
-					if f.Name == x.Field {
-						if f.Foreign.Unusable != "" {
-							c.error(x.Pos, "field %s.%s cannot be used: %s", sd.Name, f.Name, f.Foreign.Unusable)
-						}
-						fieldType := f.Type
-						if typeArgBindings != nil {
-							fieldType = fieldType.Substitute(typeArgBindings)
-						}
-						return &ir.Select{AST: x, Type: fieldType, Operand: operandExpr, Field: x.Field}
-					}
-				}
-				if _, isMethod := sd.Methods[x.Field]; isMethod {
-					c.error(x.Pos, "%s.%s is a method; write %s() to call it", sd.Name, x.Field, x.Field)
-				} else {
-					c.error(x.Pos, "no field %q on struct %s", x.Field, sd.Name)
-				}
+				return c.selectDeclaredMember(x, operandExpr, sd, "struct", typeArgBindings)
+			}
+		}
+
+		// A unit answers the same question off the same table: its fields are
+		// its bases (ir.UnitFields), so `m.px` is a float and anything else is
+		// the ordinary unknown-member error. Before the table existed a unit
+		// had no field lookup at all, and every member of one -- the valid
+		// `.px` as much as the invented `.value` -- fell through to dyn, which
+		// is why `"px is " + m.px` reached Go as a string plus a float64.
+		if operand.Kind == ir.TypeUnit && operand.Decl != nil {
+			if ud, ok := operand.Decl.(*ir.UnitDef); ok {
+				return c.selectDeclaredMember(x, operandExpr, ud, "unit", nil)
 			}
 		}
 
@@ -3446,7 +3476,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// One at the top of a component body was registered in pass1
 		// (collectComponentDecls); what reaches here is one in a nested block
 		// or a function body, which pass1 does not walk.
-		c.registerBodyDecl(x)
+		c.registerBodyDecl(x, c.bodyOwnerName())
 		return nil
 	case *ast.ComponentDecl:
 		// Position says what a `component` in a body means: at the root of a

@@ -1,0 +1,87 @@
+# Two bodies each declaring `Local`, `Phase` and `Tick`, compiled and run as Go
+# (#198).
+#
+# The golden in testdata/body_local_type_two_bodies.txtar says what the three
+# renamed declarations look like; this says the file Go is handed actually
+# builds. That is the half the goldens cannot state: before passHoistBodyTypes
+# `sngl generate` exited 0 on a model.go holding `type Local struct` twice, and
+# every assertion in the suite was about text that had been written to disk
+# rather than about code anyone had compiled.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component first node {
+    struct Local {
+        a int
+    }
+    enum Phase {
+        start
+        done
+    }
+    unit Tick {
+        beat
+    }
+
+    var here = Local{a=1}
+    var p = Phase.done
+    var elapsed Tick = 3beat
+    var mark = 0
+
+    effect(@mount {
+        mark = here.a
+    })
+
+    text(value="{here.a}{elapsed}")
+    if p == Phase.done {
+        text(value="done")
+    }
+}
+
+component second node {
+    struct Local {
+        bField string
+    }
+    enum Phase {
+        ready
+    }
+    unit Tick {
+        span
+    }
+
+    var here = Local{bField="two"}
+    var p = Phase.ready
+    var elapsed Tick = 5span
+    var mark = ""
+
+    effect(@mount {
+        mark = here.bField
+    })
+
+    text(value="{here.bField}{elapsed}")
+    if p == Phase.ready {
+        text(value="ready")
+    }
+}
+
+component main node {
+    first()
+    second()
+}
+
+func testFirstKeepsItsOwnLocal(t Test, c first) {
+    t.assert(c.mark == 1)
+}
+
+func testSecondKeepsItsOwnLocal(t Test, c second) {
+    t.assert(c.mark == "two")
+}
+
+window {
+    main
+}

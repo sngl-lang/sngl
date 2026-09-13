@@ -443,12 +443,17 @@ func (c *checker) buildUnitDef(u *ast.UnitDef) *ir.UnitDef {
 		localBaseNames[s.Name] = us.BaseName
 		suffixes[i] = us
 	}
-	return &ir.UnitDef{
+	ud := &ir.UnitDef{
 		AST:      u,
 		Name:     u.Name,
 		Pkg:      c.libPkgName,
 		Suffixes: suffixes,
 	}
+	// The member table, built here so it exists wherever a UnitDef does --
+	// registration is the only place that knows the suffixes have been
+	// resolved, and a lookup that had to derive it would be a second answer.
+	ud.Fields = ir.UnitFields(ud)
+	return ud
 }
 
 // unitFactorBaseName walks a suffix's factor expression to find which base

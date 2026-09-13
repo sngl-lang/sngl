@@ -1,0 +1,93 @@
+# A unit interpolated bare, compiled and run as Go, then run again on the
+# interpreter. The assertions are on the strings themselves, so the two
+# runners have to produce the same text and not merely both succeed.
+#
+# testdata/unit_bare_display.txtar says what the three targets generate; this
+# says the generated Go builds and answers, and that `sngl test` on its own
+# default platform answers the same. That pairing is the claim this class of
+# bug needs: bare display was never asserted anywhere, so one program had a
+# different answer on each of five paths and every one of them exited 0.
+#
+# `over` is the case that needs both runners the most. Go carried a duration
+# as a time.Duration and handed its String out, which normalises across units
+# -- so 500ms printed `500ms` and agreed with the interpreter by coincidence,
+# while 1100ms printed `1.1s` and did not. A fixture with one round value
+# would have passed on the unfixed compiler.
+#
+# `reduced` is the cost of agreement rather than a win: 2rem displays as 32em,
+# because a compiled target holds the record and has no spelling to prefer.
+#
+# `zero` pins the shape nothing else reaches: a value carrying no magnitude at
+# all prints in the first declared base, since 0rem and 0px are one value.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+import "sngl:time"
+
+unit tick {
+    tk
+}
+
+component main ui.node {
+    var mix ui.measurement = 3px + 2em
+    var reduced ui.measurement = 2rem
+    var zero ui.measurement = 1em - 1em
+    var ticks tick = 4tk
+    var half time.duration = 500ms
+    var over time.duration = 500ms + 600ms
+    var sMix = ""
+    var sReduced = ""
+    var sZero = ""
+    var sTicks = ""
+    var sHalf = ""
+    var sOver = ""
+
+    effect(@mount {
+        sMix = "{mix}"
+        sReduced = "{reduced}"
+        sZero = "{zero}"
+        sTicks = "{ticks}"
+        sHalf = "{half}"
+        sOver = "{over}"
+    })
+
+    ui.text(value="{mix} {half}")
+}
+
+// Two independent bases have no single number, so the value displays as the
+// sum it would have been written as.
+func testAMultiBaseValueSumsItsBases(t Test, c main) {
+    t.assert(c.sMix == "3px + 2em")
+}
+
+func testAReducedSuffixDisplaysInItsBase(t Test, c main) {
+    t.assert(c.sReduced == "32em")
+}
+
+func testAnEmptyValueTakesTheFirstBase(t Test, c main) {
+    t.assert(c.sZero == "0px")
+}
+
+func testASingleBaseValueCarriesItsSuffix(t Test, c main) {
+    t.assert(c.sTicks == "4tk")
+}
+
+// 500 is the value Go's own time.Duration.String agreed on; 1100 is the one
+// it did not, printing `1.1s` for a unit whose declared base is ms.
+func testADurationDisplaysInMilliseconds(t Test, c main) {
+    t.assert(c.sHalf == "500ms")
+    t.assert(c.sOver == "1100ms")
+}
+
+ui.window {
+    main
+}

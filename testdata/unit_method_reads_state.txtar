@@ -66,6 +66,10 @@ import (
 	"fmt"
 )
 
+func snglStrLen(v Len) string {
+	return fmt.Sprint(float64(v)) + "mm"
+}
+
 type Len float64
 
 type ErrorEvent struct {
@@ -255,7 +259,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint((fmt.Sprint(m.d__inst0) + fmt.Sprint(m.t2__inst0))))
+	part0 = lipgloss.NewStyle().Render(fmt.Sprint((snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0))))
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -272,6 +276,10 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
 )
+
+func snglStrLen(v Len) string {
+	return fmt.Sprint(float64(v)) + "mm"
+}
 
 type ErrorEvent struct {
 	Message string
@@ -322,9 +330,9 @@ func IntTwice(n int, m *Model) int {
 
 func (m *Model) __effect0_mount() {
 	m.d__inst0 = LenDoubled(m.five__inst0, m)
-	m.__n0.SetText((fmt.Sprint(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	m.__n0.SetText((snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 	m.t2__inst0 = IntTwice(3, m)
-	m.__n0.SetText((fmt.Sprint(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	m.__n0.SetText((snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 }
 
 func (m *Model) __effect0_down() {
@@ -400,7 +408,7 @@ func (m *Model) SetT2__inst0(v int) {
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText((fmt.Sprint(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	m.__n0.SetText((snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 	m.__effects0_settle()
 	content := fyne.CanvasObject(m.__n0)
 	return content
@@ -418,6 +426,10 @@ import (
 	"fmt"
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
+
+func snglStrLen(v Len) string {
+	return fmt.Sprint(float64(v)) + "mm"
+}
 
 type ErrorEvent struct {
 	Message string
@@ -469,9 +481,9 @@ func IntTwice(n int, m *Model) int {
 
 func (m *Model) __effect0_mount() {
 	m.d__inst0 = LenDoubled(m.five__inst0, m)
-	gtk4rt.LabelSetText(m.__n0, (fmt.Sprint(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	gtk4rt.LabelSetText(m.__n0, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 	m.t2__inst0 = IntTwice(3, m)
-	gtk4rt.LabelSetText(m.__n0, (fmt.Sprint(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	gtk4rt.LabelSetText(m.__n0, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 }
 
 func (m *Model) __effect0_down() {
@@ -550,7 +562,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, (fmt.Sprint(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
+	gtk4rt.LabelSetText(m.__n0, (snglStrLen(m.d__inst0) + fmt.Sprint(m.t2__inst0)))
 	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 }

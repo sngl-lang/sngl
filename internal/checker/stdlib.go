@@ -1201,7 +1201,7 @@ func (c *checker) collectExtensionDecls(owner *ir.Component, body ast.StmtBlock)
 	for _, stmt := range body.Stmts {
 		switch s := stmt.(type) {
 		case *ast.StructDef, *ast.EnumDef, *ast.UnitDef, *ast.ComponentDecl:
-			if sym := c.registerBodyDecl(stmt); sym != nil {
+			if sym := c.registerBodyDecl(stmt, owner.Name); sym != nil {
 				decls = append(decls, sym)
 				c.noteBodyOwner(owner, sym)
 			}

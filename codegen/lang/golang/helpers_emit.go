@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -36,6 +37,37 @@ type HelperSet struct {
 	// legal on an addressable operand, so the box is a helper rather than an
 	// operator -- see the IsOptionWrap arm of evalConversion.
 	NeedSome bool
+	// UnitStrings are the unit decls some string conversion renders, in the
+	// order first seen. One helper each rather than one shared: a unit's bases
+	// are per declaration, so the terms have to be written out.
+	UnitStrings []*ir.UnitDef
+}
+
+// needUnitString records that ud is rendered as a string somewhere, ignoring
+// a decl already seen.
+func (h *HelperSet) needUnitString(ud *ir.UnitDef) {
+	if ud == nil {
+		return
+	}
+	if slices.Contains(h.UnitStrings, ud) {
+		return
+	}
+	h.UnitStrings = append(h.UnitStrings, ud)
+}
+
+// UnitStringFn names the helper that renders a value of ud as a string.
+func UnitStringFn(ud *ir.UnitDef) string { return "snglStr" + ExportName(ud.Name) }
+
+// UnitStringConversion reports the unit a string conversion renders, if it
+// renders one. Go's own spelling is unusable for either shape a unit takes
+// here: fmt.Sprint of the generated struct prints `{3 2 0 0 0}`, and
+// time.Duration's String normalises 1100ms to "1.1s" where the declared base
+// is ms.
+func UnitStringConversion(n *ir.Conversion) *ir.UnitDef {
+	if n == nil || n.Type == nil || n.Type.Kind != ir.TypeString || n.Operand == nil {
+		return nil
+	}
+	return ir.UnitDeclOf(n.Operand.ExprType())
 }
 
 // StringToNumberHelper names the helper a conversion needs, or "" when Go's
@@ -104,6 +136,7 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 			if ir.IsOptionWrap(n) {
 				h.NeedSome = true
 			}
+			h.needUnitString(UnitStringConversion(n))
 		}
 		return nil
 	})
@@ -148,7 +181,53 @@ func (h HelperSet) Imports() []string {
 	if h.NeedParseInt || h.NeedParseFloat {
 		imps = append(imps, "strconv")
 	}
+	if len(h.UnitStrings) > 0 {
+		imps = append(imps, "fmt")
+		for _, ud := range h.UnitStrings {
+			if ClassifyUnit(ud) == UnitDuration {
+				imps = append(imps, "time")
+				break
+			}
+		}
+	}
 	return imps
+}
+
+// EmitUnitStringFuncs renders the display helper for each recorded unit. The
+// magnitude goes through fmt.Sprint rather than a spelling of its own, so a
+// unit's number reads the way a bare float already does on this target.
+func (h HelperSet) EmitUnitStringFuncs() string {
+	var b strings.Builder
+	for _, ud := range h.UnitStrings {
+		fmt.Fprintf(&b, "func %s(v %s) string {\n", UnitStringFn(ud), IRTypeToGo(unitTypeOf(ud)))
+		switch ClassifyUnit(ud) {
+		case UnitDuration:
+			// A time.Duration counts nanoseconds and the declared base is ms,
+			// the same divide the cast makes.
+			fmt.Fprintf(&b, "\treturn fmt.Sprint(float64(v)/float64(time.Millisecond)) + %q\n", ud.Bases()[0].Name)
+		case UnitScalar:
+			fmt.Fprintf(&b, "\treturn fmt.Sprint(float64(v)) + %q\n", ud.Bases()[0].Name)
+		case UnitMultiBase:
+			b.WriteString("\ts := \"\"\n")
+			for i, base := range ud.Bases() {
+				field := ExportName(base.Name)
+				fmt.Fprintf(&b, "\tif v.%s != 0 {\n", field)
+				if i > 0 {
+					fmt.Fprintf(&b, "\t\tif s != \"\" {\n\t\t\ts += %q\n\t\t}\n", ir.UnitTermSep)
+				}
+				fmt.Fprintf(&b, "\t\ts += fmt.Sprint(v.%s) + %q\n\t}\n", field, base.Name)
+			}
+			fmt.Fprintf(&b, "\tif s == \"\" {\n\t\treturn %q\n\t}\n\treturn s\n", ir.FormatUnitZero(ud))
+		}
+		b.WriteString("}\n\n")
+	}
+	return b.String()
+}
+
+// unitTypeOf rebuilds the ir.Type for a UnitDef so IRTypeToGo can name it --
+// duration included, which is time.Duration and not a type this package emits.
+func unitTypeOf(ud *ir.UnitDef) *ir.Type {
+	return &ir.Type{Kind: ir.TypeUnit, Decl: ud}
 }
 
 // Emit returns the Go source for the helper functions recorded on h,
@@ -251,6 +330,7 @@ func (h HelperSet) Emit() string {
 
 `)
 	}
+	b.WriteString(h.EmitUnitStringFuncs())
 	return b.String()
 }
 
@@ -266,7 +346,7 @@ func recordTypeHelpers(h *HelperSet, t *ir.Type) {
 	case ir.IsDateTimeStruct(t):
 		h.NeedDateTime = true
 	case t.Kind == ir.TypeUnit:
-		if ud, ok := t.Decl.(*ir.UnitDef); ok && ud.Name == "duration" {
+		if ud, ok := t.Decl.(*ir.UnitDef); ok && ud.Builtin == ir.BuiltinDuration {
 			h.NeedDuration = true
 		}
 	}

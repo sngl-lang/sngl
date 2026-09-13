@@ -24,8 +24,8 @@ The suffix does not vanish where a host needs it: CSS still wants `7px`, and
 the base named `pct` is spelled `%` there because `%` is not a legal SNGL
 identifier. That rename is html's, not the language's.
 
-deny out/none/html/index.html `"[0-9._]+(px|em|rem|vw|vh|pct|ms|s)` -- a unit value is a number, never a quoted spelling: `3px + 4px` used to evaluate to "3pxpx4pxpx"
-deny out/kotlin/android/MainScreen.kt `[0-9](px|pct|rem|em|ms)\b` -- Kotlin emitted the SNGL spelling verbatim (`(3px + 4px)`), which is not a Kotlin expression
+deny out/none/html/index.html `"[0-9._]*[1-9][0-9._]*(px|em|rem|vw|vh|pct|ms|s)` -- a unit value is a number, never a quoted spelling: `3px + 4px` used to evaluate to "3pxpx4pxpx". A *zero* magnitude is exempt because the display rule spells one: `"0px"` is what a value carrying nothing renders as, and it is a constant rather than a value that was spelled
+deny out/kotlin/android/MainScreen.kt `[^"][0-9](px|pct|rem|em|ms)\b` -- Kotlin emitted the SNGL spelling verbatim (`(3px + 4px)`), which is not a Kotlin expression. Exempt after a quote for the same reason as above -- `"0px"` is the display rule's zero, not a magnitude carrying a suffix
 
 -- app.sngl --
 import . "sngl:ui"
@@ -81,6 +81,45 @@ func mustParseDuration(s string) time.Duration {
 		panic(err)
 	}
 	return d
+}
+
+func snglStrMeasurement(v Measurement) string {
+	s := ""
+	if v.Px != 0 {
+		s += fmt.Sprint(v.Px) + "px"
+	}
+	if v.Em != 0 {
+		if s != "" {
+			s += " + "
+		}
+		s += fmt.Sprint(v.Em) + "em"
+	}
+	if v.Vw != 0 {
+		if s != "" {
+			s += " + "
+		}
+		s += fmt.Sprint(v.Vw) + "vw"
+	}
+	if v.Vh != 0 {
+		if s != "" {
+			s += " + "
+		}
+		s += fmt.Sprint(v.Vh) + "vh"
+	}
+	if v.Pct != 0 {
+		if s != "" {
+			s += " + "
+		}
+		s += fmt.Sprint(v.Pct) + "pct"
+	}
+	if s == "" {
+		return "0px"
+	}
+	return s
+}
+
+func snglStrDuration(v time.Duration) string {
+	return fmt.Sprint(float64(v)/float64(time.Millisecond)) + "ms"
 }
 
 type Measurement struct {
@@ -247,10 +286,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.samebase__inst0)))
+	part0 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.samebase__inst0)))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total__inst0)))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrDuration(m.total__inst0)))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -311,8 +350,8 @@ fun MainScreen() {
     var total__inst0 by remember { mutableStateOf((short__inst0 + long__inst0)) }
 
     Column {
-        Text(text = samebase__inst0.toString(), modifier = Modifier.safeDrawingPadding())
-        Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((total__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
     }
 }
 -- out/none/html/index.html --
@@ -339,14 +378,11 @@ body { font-family: system-ui, sans-serif; }
   var state = { samebase__inst0: { px: 7, em: 0, vw: 0, vh: 0, pct: 0 }, reduced__inst0: { px: 0, em: 18, vw: 0, vh: 0, pct: 0 }, mixed__inst0: null, short__inst0: 100, long__inst0: 1e3, total__inst0: null };
   state.mixed__inst0 = { px: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.px + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.px, em: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.em + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.em, vw: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.vw + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.vw, vh: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.vh + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.vh, pct: { px: 1, em: 0, vw: 0, vh: 0, pct: 0 }.pct + { px: 0, em: 0, vw: 0, vh: 0, pct: 2 }.pct };
   state.total__inst0 = state.short__inst0 + state.long__inst0;
-  function String(v) {
-    return "" + v;
-  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = String(state.samebase__inst0);
-    __n1.textContent = String(state.total__inst0);
+    __n0.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.samebase__inst0);
+    __n1.textContent = String(state.total__inst0) + "ms";
   }
   __sngl_init();
 })();
