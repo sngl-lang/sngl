@@ -602,9 +602,15 @@ func (gc *GoIRContext) Scoped(name string) irwalk.Renderer { return gc.WithLocal
 
 // goFloatLiteral spells a float literal so Go reads it as one. A float whose
 // magnitude is whole folds to a spelling with no point in it, and an untyped
-// Go constant with no point is an *integer* constant: `2 / 10` is 0, not 0.2,
-// and nothing warns. Kotlin's literal emitter restores the point for the same
-// reason.
+// Go constant with no point is an *integer* constant.
+//
+// Most positions survive that: an assignment to a float64 field, or arithmetic
+// against a float64 operand, converts the constant from the other half of the
+// expression. The position with no other half is `:=`, where the literal is
+// the only thing the local's type can be read off -- `acc := 2` is an int, and
+// the lines after it stop compiling. testdata/go_whole_float_literal.txtar is
+// that, and says why it is not about `2 / 10`: two literals never reach a
+// backend undivided, because the folder answers them first.
 //
 // A free function because three call sites in this package spell a literal and
 // each used to do it for itself.
