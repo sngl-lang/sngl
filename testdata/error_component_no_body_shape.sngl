@@ -1,0 +1,22 @@
+// The no-body rule reaches a member of a segmented tree, which
+// error_component_no_body.sngl cannot say: that one is a widget, and what is
+// varied here is the tree. A shape's render comes from passCanvas, so
+// exempting one is a standing temptation -- bodyless.go's own note about
+// making lib/ shapes bodyless contemplates "a fourth answer there for a tree
+// member whose render comes from passCanvas" -- and an exemption written into
+// renderSuppliedElsewhere leaves the widget fixture passing.
+//
+// A program cannot reach the exemption it would be granted, either: both
+// #[intrinsic] and #[builtin] live in sngl:internal/marks, so the only
+// bodyless shape a user can write is this one.
+
+import ui "sngl:ui"
+import "sngl:ui/draw"
+
+component blip(x float, y float) draw.shape // ERROR(check) "has no body"
+
+ui.window(title="t") {
+    draw.canvas(width=100px, height=100px) {
+        blip(x=1.0, y=2.0)
+    }
+}
