@@ -30,7 +30,7 @@ func routeStateType(r codegen.HTTPRoute) string {
 // newRouteGC builds a GoIRContext whose state idents project onto the `s`
 // receiver (the per-session State struct), used by both renderRoute and the
 // POST action body so a state read/write renders `s.<Field>`.
-func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext, loc routeLocals) *GoIRContext {
+func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRContext, loc routeLocals) *GoIRContext {
 	ctx := codegen.NewExprCtx(req.Pkg)
 	ctx.ContextVar = loc.request + ".Context()"
 	ctx.StateReceiver = loc.state
@@ -40,6 +40,19 @@ func newRouteGC(req *codegen.HTTPRequest, shared *GoIRContext, loc routeLocals) 
 	// on the main component (and/or package-level), matching routeStateVars.
 	if main := mainComponent(req.Pkg); main != nil {
 		ctx = ctx.ForComponent(main)
+	}
+	// And to the route's own window, which is where a root component's state is
+	// by the time a backend sees it (#215). ForWindow keeps the component scope
+	// rather than replacing it.
+	if r.Window != nil {
+		ctx = ctx.ForWindow(r.Window)
+	}
+	// A route parameter is a window var too -- the checker synthesizes one per
+	// `{x}` in the href -- but it is bound per request, not per session, so the
+	// window scope above would otherwise project it onto `s.<Field>`. As a
+	// local it renders as the bare name writeRouteParamBindings declares.
+	for _, p := range r.Params {
+		ctx = ctx.WithLocal(p)
 	}
 	gc := &GoIRContext{Ctx: ctx, imports: shared.imports}
 	return gc

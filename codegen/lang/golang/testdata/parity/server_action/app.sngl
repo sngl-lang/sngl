@@ -10,7 +10,7 @@ output { go { html } }
 
 import "go:example.com/route-post/api"
 
-component main node {
+component main root {
     var count = 0
 
     window #app(title="t", href="/") {

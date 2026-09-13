@@ -10,6 +10,15 @@ Two other expression forms had to be taken back from the Go lowering for the
 same reason, each in its own archive: a ternary in route_path_param_ternary.txtar
 and a list lambda in route_path_param_lambda.txtar.
 
+`main` names ui.root because what it renders is a window, and #214 is what
+makes that the only spelling: a component's own body is now asked which family
+it renders into, so `component main ui.node` is a check error here rather than a
+window a backend swallows without a word. The generated page below is what it
+was under the old spelling, byte for byte -- the `pkg` hole comes from the
+window, which the lift reaches either way -- so what this half of the archive
+pins is the source form, and the page is the evidence that naming the right
+family cost the output nothing.
+
 -- param.sngl --
 import "sngl:platform/html"
 import ui "sngl:ui"
@@ -20,7 +29,7 @@ output {
     }
 }
 
-component main ui.node {
+component main ui.root {
     ui.window #pkg(title="t", href="/p/{pkg}") {
         html.a(href="/p/" + pkg, innerText=pkg)
     }

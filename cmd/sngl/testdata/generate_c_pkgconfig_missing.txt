@@ -14,7 +14,7 @@ go 1.21
 import . "sngl:ui"
 import lib "c:pkg:nonexistent-lib-xyz-9999"
 
-component main node {
+component main root {
   window #app {
     text "hello"
   }

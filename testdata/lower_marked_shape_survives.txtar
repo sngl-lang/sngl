@@ -24,7 +24,7 @@ output {
 }
 component blip(x float, y float) draw.shape {}
 
-component main() node {
+component main() root {
     window(title="t") {
         draw.canvas(width=100px, height=100px) {
             blip(x=1.0, y=2.0)

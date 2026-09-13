@@ -128,7 +128,7 @@ func TestBuildRenderModel(t *testing.T) {
 
 func TestRouteStateVars(t *testing.T) {
 	pkg, _ := routeFixture()
-	svs := routeStateVars(pkg)
+	svs := routeStateVars(pkg, nil)
 	var count *codegen.StateVar
 	for i := range svs {
 		if svs[i].Name == "count" {

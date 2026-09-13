@@ -445,12 +445,18 @@ type HTTPRequest struct {
 
 // HTTPRoute maps a window to an HTTP route.
 type HTTPRoute struct {
-	Name      string       // handler function name (e.g., "handleHome")
-	Path      string       // URL path template: "/", "/about", "/users/{name}"
-	Title     string       // page title
-	Params    []string     // route parameter names extracted from Path (e.g., ["name"])
-	WindowIdx int          // index into CodegenCtx.Windows()
-	Actions   []HTTPAction // server-state form actions (POST handlers)
+	Name      string   // handler function name (e.g., "handleHome")
+	Path      string   // URL path template: "/", "/about", "/users/{name}"
+	Title     string   // page title
+	Params    []string // route parameter names extracted from Path (e.g., ["name"])
+	WindowIdx int      // index into CodegenCtx.Windows()
+	// Window is the window this route renders, carried rather than looked up
+	// by WindowIdx: a language needs it to scope a route's expressions to the
+	// window's own state, which is where a root component's declarations are
+	// hoisted (#215), and an index into a list the language does not hold is
+	// two things that can disagree.
+	Window  *ir.Window
+	Actions []HTTPAction // server-state form actions (POST handlers)
 
 	// Render is a static HTML skeleton interleaved with IR-expr holes, which
 	// the target language fills against the route's State. nil when the route

@@ -413,8 +413,9 @@ the count wrappers; the families live where their members do.
 **Naming nothing asks the compiler which family it joins**, and the body is
 what answers: a declaration that renders a widget is one. The evidence is the
 *root* of the body — what the component puts in the tree, not what those nodes
-host — and an `if`, a `for` and a boundary are how the nodes under them got
-there rather than nodes, so the walk reaches through all three. A slot
+host — and an `if`, a `for`, a boundary and a context override are how the
+nodes under them got there rather than nodes, so the walk reaches through all
+four. A slot
 insertion is not evidence: what a slot naming no family accepts is the family
 of the component declaring it, so reading one reads the answer off the
 question. Two bodies have no answer, and both are positioned errors:
@@ -432,16 +433,79 @@ what is left — necessarily a cycle — from the evidence that did resolve, so
 **Every membership check waits for it.** `checkTreeMembership` opens with
 `if want == nil { return }`, so a check that ran while its subject was still
 unsettled would compare against no family and pass in *silence* — the same
-nothing an unrestricted position reports. So the five call sites record a
+nothing an unrestricted position reports. So the six call sites record a
 closure (`deferTreeCheck`) and `runTreeChecks` drains them once every body has
 been read, which is why the function takes the component the content was
 written in rather than reading `c.currentComponent`.
 One fixture per position holds that, each naming a declaration written *below*
 it: `error_tree_inferred_late.sngl` for a node's bare children,
-`error_tree_inferred_positions.sngl` for the other four, and
+`error_tree_inferred_positions.sngl` for four more,
 `error_tree_inferred_treeless_contains.sngl` for the tree-less rule, which
-reads an inferred family too. Move the matching check back inline and the
-fixture passes clean rather than failing — which is how each was confirmed.
+reads an inferred family too, and `error_tree_component_body.sngl` for the
+body. Move the matching check back inline and the fixture passes clean rather
+than failing — which is how each was confirmed.
+
+**A component's own body is the sixth position**, and it is the one nothing
+else asks about: the other five are a container asking after its children,
+which leaves what a declaration itself puts in the tree unmeasured. So
+`component c ui.node { window … }` type-checked, and every backend then
+swallowed the window *and its siblings* without a word (#214) — five golden
+archives in this repository were written that way. The check is
+`checkTreeMembership` against `comp.Tree` at the end of `checkComponentBody`,
+which makes `output` and a `#[tree.none]` component exempt for free: both carry
+a nil `Tree`, so the first is never asked and the second is left to
+`checkTreelessBody` rather than reported twice.
+
+**Four constructs are reached through, and `treeTransparent` is the one list
+of them.** An `if` and a `for` say when and how many; an `ir.ErrorBoundary`
+says what happens when a raise reaches it; an `ir.ContextProvider` sets a value
+for what is under it. None puts anything in the tree itself, so every tree
+question asked of a block is asked of theirs.
+
+It returns **two** lists. `all` is every block, for the callers that ask whether
+content belongs to a family. `binds` is the blocks that may *supply* one, which
+is every block but a boundary's fallback: that stands where the content stood
+and is held to the content's answer rather than giving one. `childrenTree` is
+the only caller of `binds`, and handing it `all` made a diagnostic depend on
+source order — `T` bound to `shape` off the fallback of a boundary whose content
+was empty, and the widget beside it was blamed
+(`error_tree_boundary_failed_binds_nothing.sngl` is both orderings). A boundary
+with no content still takes `T` from its fallback as a last resort, in the
+boundary's own check where that rule belongs.
+
+There were **five** copies of that walk and each was missing a different
+member, which is why the list is now a function rather than a `switch` per
+caller:
+
+- `checkTreeMembership` walked `if`/`for`. A boundary is the subtle one — its
+  own check binds `T` off its content and holds the rest to that, so reaching
+  through it is what holds the `T` it settled on to the family the surrounding
+  *position* accepts. Without it, `vbox { boundary { circle(…) } }` passed in
+  silence.
+- `treeEvidence` is the same question from the other side, and missed the
+  provider: a component with no return position whose body was
+  `theme("dark") { ui.text(…) }` rendered nothing the inference could see and
+  was refused as a body that names no tree — a correct program refused.
+- `checkTreelessBody` walked `if`/`for`, so a `#[tree.none]` component rendered
+  a widget under either wrapper and passed.
+- `childrenTree` and `insertsSlot` each had their own partial copy.
+
+Two of those gaps were found one at a time, each as a silent acceptance; the
+third is what made the list shared rather than corrected a third time. Fixtures:
+`tree_inferred_context.sngl` (inference), `error_tree_component_body.sngl`'s
+`scoped` (membership) and `error_tree_treeless_wrapped.sngl` (tree-less, both
+wrappers). Deleting the `ContextProvider` case from `treeTransparent` fails all
+three, which is the unification doing its job.
+
+A **sixth** copy was `internal/checker/effects.go`'s `walkVisualErrors`, which
+resolves a raise to the nearest boundary. It had no provider case at all, so a
+handler written under one resolved past every boundary around it and the error
+came out uncaught — `sngl test` reporting `raised: boom` for a program that
+wrote a boundary. It keeps its own boundary case, because a boundary is the one
+transparent statement that is not: it pushes its handler onto the scope, which
+is the whole of what it does. Its fallback is walked under that same handler,
+since `passBoundaryFailed` puts the fallback exactly where the content was.
+`cmd/sngl/testdata/error_under_wrappers.txt` covers both halves — a CLI script, because nothing executes the test functions in a `testdata/test_*.sngl`: `sngl test ./...` does not walk `testdata/`, and no Go harness drives them. Those files are checked and their assertions never run.
 
 Two of those deferrals are subtler than the rest. The tree-less check captures
 the body it was asked about instead of re-reading `comp.Body`, because
@@ -466,9 +530,9 @@ halves:
   as readily as in a layout (`checkTreeMembership`);
 - it may contain a member of **none**, because a body that rendered a widget
   would have joined that family without saying so, and would then be
-  placeable in a canvas (`checkTreelessBody`). An `if` or a `for` is how the
-  nodes under it got there rather than a node, so the rule reaches through
-  both.
+  placeable in a canvas (`checkTreelessBody`). The rule reaches through
+  everything `treeTransparent` lists, so a widget wrapped in a boundary or a
+  context override is still a widget this component renders.
 
 **A wrapper whose family is whatever it was handed says so with a type
 parameter** — `component boundary<T>(@error error, content ...component T, failed component T) T`. Nothing at a call site names a type argument and nothing
@@ -519,6 +583,49 @@ node), and a component that names `root` itself renders windows, which
 `passRootWindow` lifts onto `pkg.Windows`. `output` is exempt: it is read as a
 build directive before any tree question is asked, and `sngl:builtin` cannot
 import `sngl:ui`, where the root tree lives.
+
+**A root component's own state is hoisted into the window it lifts**, because
+that is where it is mounted — the component is an empty shell once the lift is
+done, and a `var` or `func` left on one reached no backend at all
+(#215: `component main root { var n = 0; window … }` emitted `var state = {}`).
+A *timer* is not a declaration on the component but a statement in its body, and
+the body is cleared — so one written there, or at the root of a file, is dropped
+in silence. Pre-existing on both paths, not fixed, and noted at
+`applyRootWindow`.
+A window is a state owner every consumer already reads, so nothing downstream
+grew a case; what did have to change is the two places that still asked `main`
+for it, `html`'s `routeStateVars` and `golang`'s `newRouteGC`, which now ask the
+route's own window — the same fix `golang.ModelFreeFuncs` already carries for a
+window's funcs. The hoist drops the receiver with them (`dropComponentReceiver`):
+a component-body `func` is a method and a window-body one is not, and left as a
+method `biggest()` came out of the route emitter as a free `MainBiggest(s)`
+beside the `s.Biggest()` it had also emitted.
+
+**Several windows each get it, and the platform says what that means.** The
+same `*ir.Var` is mounted on every window the component lifts, so a target
+whose windows are one process shares one cell — bubbletea, fyne and gtk4 each
+put it in one Model — and a target whose windows are separate documents copies
+it, html writing its own `state` into each page. That divergence is the point
+rather than a gap: two pages *are* two states and one process *is* one, and
+forcing either way round in the lowering would be the language overriding the
+platform it compiled to. The author picks a target knowing it. Shared top-level
+state is mainly a performance tool, not the default way to write an
+application — a declaration belongs in the window that uses it unless there is
+a reason it does not.
+
+Two things that follow. **One Model, one cell:** the shared pointer reaches a
+Model through two owners, so `CodegenCtx.ModelState` dedupes by the `*ir.Var`
+— emitted per owner instead, the Go targets declared `hits int` twice and did
+not compile. And **reading it needs a scope**: `EntryWindow` declines to say
+which window a multi-window program's single Model is scoped to, rightly, since
+two windows' `count` are two names — but a declaration owned by *all* of them
+is one var reachable from each, so `sharedWindowScope` scopes to those without
+choosing between windows. Without it every such read rendered as a bare
+identifier the emitted Go never declared, beside the Model field it should have
+projected onto.
+
+`testdata/root_component_state_two_windows.txtar` is the fixture, and it is
+where the per-platform table is written down.
 
 **A program declares at least one window**, checked by `internal/build.Emit`
 rather than by the checker: `component c { … }` on its own is a perfectly good

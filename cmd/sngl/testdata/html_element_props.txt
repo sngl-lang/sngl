@@ -26,7 +26,7 @@ grep '<div' out/index.html
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main ui.node {
+component main ui.root {
     ui.window {
         html.div(innerTxt = "x")
     }
@@ -42,7 +42,7 @@ window {
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main ui.node {
+component main ui.root {
     ui.window {
         html.div {
             html.element(tag = "my-widget", innerText = "hi")

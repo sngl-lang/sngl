@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"maps"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -61,8 +62,50 @@ func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	}
 	if w := ctx.EntryWindow(); w != nil {
 		c = c.ForWindow(w)
+	} else if shared := ctx.sharedWindowScope(); shared != nil {
+		c = c.ForWindow(shared)
 	}
 	return c
+}
+
+// sharedWindowScope is the declarations *every* window owns, as a stand-in
+// window to resolve names against. Nil when there are none.
+//
+// A declaration owned by all of them is one *ir.Var reachable from every window
+// (passRootWindow mounts a root component's state there, #215), so scoping to
+// it chooses between no windows -- which is what EntryWindow returning nil past
+// one is guarding against.
+//
+// The stand-in is never rendered and carries no body: ExprCtx reads Vars and
+// Funcs off it and nothing else does.
+func (ctx *CodegenCtx) sharedWindowScope() *ir.Window {
+	if ctx.Pkg == nil || len(ctx.Pkg.Windows) < 2 {
+		return nil
+	}
+	first := ctx.Pkg.Windows[0]
+	inAll := func(has func(w *ir.Window) bool) bool {
+		for _, w := range ctx.Pkg.Windows[1:] {
+			if !has(w) {
+				return false
+			}
+		}
+		return true
+	}
+	shared := &ir.Window{}
+	for _, v := range first.Vars {
+		if inAll(func(w *ir.Window) bool { return slices.Contains(w.Vars, v) }) {
+			shared.Vars = append(shared.Vars, v)
+		}
+	}
+	for _, f := range first.Funcs {
+		if inAll(func(w *ir.Window) bool { return slices.Contains(w.Funcs, f) }) {
+			shared.Funcs = append(shared.Funcs, f)
+		}
+	}
+	if len(shared.Vars) == 0 && len(shared.Funcs) == 0 {
+		return nil
+	}
+	return shared
 }
 
 // EntryWindow is the window a single-model target scopes to, or nil where the
@@ -117,6 +160,20 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 	}
 	root := ctx.RootDecl()
 	var out []OwnedVar
+	// Keyed by the *ir.Var, because one declaration may be owned by several
+	// windows: passRootWindow mounts a root component's state on every window
+	// it lifts, and a Model holding two of those windows holds one cell for it
+	// -- which is what "the reference is shared" means on a target whose
+	// windows are one process. Emitted per owner instead, the Model declared
+	// `hits int` twice and did not compile.
+	seen := map[*ir.Var]bool{}
+	add := func(v *ir.Var, o ir.Owner) {
+		if v == nil || seen[v] {
+			return
+		}
+		seen[v] = true
+		out = append(out, OwnedVar{Var: v, Comp: o.Comp, Win: o.Win})
+	}
 	for _, o := range ir.Owners(ctx.Pkg) {
 		// One Model holds one component's state: the root's. The others are
 		// inlined into it before codegen, and a child's `count` is not this
@@ -125,10 +182,10 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 			continue
 		}
 		for _, v := range o.Vars {
-			out = append(out, OwnedVar{Var: v, Comp: o.Comp, Win: o.Win})
+			add(v, o)
 		}
 		for _, c := range o.Consts {
-			out = append(out, OwnedVar{Var: c, Comp: o.Comp, Win: o.Win})
+			add(c, o)
 		}
 	}
 	return out

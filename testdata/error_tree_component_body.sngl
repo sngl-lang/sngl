@@ -1,0 +1,53 @@
+// A component's body is a position like every other one, and the only one
+// nothing asked about: the other five are a container asking after its
+// children. So a `window` at the root of a widget body type-checked and
+// reached the backends, where every one of the five swallowed it and its
+// siblings without a word (#214).
+//
+// `wrap` is the half the deferral is for. It names no family, so its own is
+// read off its body once every body has been read -- asked where it is
+// written, the check compares against no family and passes in silence.
+
+import d "sngl:ui/draw"
+import ui "sngl:ui"
+
+component page ui.node {
+    ui.window #w(title="t") { // ERROR(check) "expected node component in the body of page, got window"
+        ui.text(value="hi")
+    }
+}
+
+component guarded ui.node {
+    boundary(@error(e) {}) {
+        ui.window #g(title="t") { // ERROR(check) "expected node component in the body of guarded, got window"
+            ui.text(value="hi")
+        }
+    }
+}
+
+// A context override is the third construct the walk reaches through, beside
+// an `if` and a `for`: it sets a value for the nodes under it and puts nothing
+// in the tree itself. `scoped` renders a shape, which a widget body may not.
+context #theme("light")
+
+component scoped ui.node {
+    theme("dark") {
+        d.circle(cx=1.0, cy=1.0, r=1.0, style={fill=#FF0000}) // ERROR(check) "expected node component in the body of scoped, got circle"
+    }
+}
+
+// A slot insertion is a position rather than a node, so the declaration is
+// where this is reported -- the same reading error_tree_inferred_window_owner
+// gets for a window.
+component wrap(art component d.shape, content ...component) { // ERROR(check) "expected node component in the body of wrap, got the shape slot art"
+    widget()
+    art
+}
+
+component widget ui.node {
+    ui.text(value="x")
+}
+
+ui.window #real(title="r") {
+    page()
+}

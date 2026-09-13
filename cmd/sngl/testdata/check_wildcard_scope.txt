@@ -48,7 +48,7 @@ struct tdAttrs {
     colspan string
 }
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
     }
@@ -57,7 +57,7 @@ component main() ui.node {
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         html.thisIsATypoNotATag(id = "x") { }
     }
@@ -65,7 +65,7 @@ component main() ui.node {
 -- unimported.sngl --
 import . "sngl:ui"
 
-component main() node {
+component main() root {
     window {
         text(value=string(bubbletea.JoinDir.vertical))
     }
@@ -74,7 +74,7 @@ component main() node {
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         div(id = "x") { }
     }
@@ -85,7 +85,7 @@ import . "sngl:platform/html"
 
 func typoed() => someUndefinedIdentifier
 
-component main() std.node {
+component main() std.root {
     std.window {
         std.text(value = "x")
     }
@@ -94,7 +94,7 @@ component main() std.node {
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         element(tag = "div") { }
     }

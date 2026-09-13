@@ -1,4 +1,10 @@
 caps: NoReactivity
+
+A func written in a component body is registered in pkg.Funcs as well as on the
+component, and passReactivity walked both -- so the updater it appends for `n`
+landed in the one Block twice. This expectation pinned that: it read
+`__n0.value = string(n)` twice and had done since the fixture was written.
+
 -- input.sngl --
 import . "sngl:ui"
 
@@ -18,7 +24,6 @@ component main node {
     var n int = 0
     func bump(this main) {
         n = n + 1
-        __n0.value = string(n)
         __n0.value = string(n)
     }
     text #__n0(value=string(n))

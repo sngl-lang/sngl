@@ -26,7 +26,7 @@ stderr 'unknown component "Widget" in package w'
 import "./widgets"
 import ui "sngl:ui"
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         widgets.marquee(tag = "marquee")
         widgets.blink(tag = "blink")
@@ -37,7 +37,7 @@ component main() ui.node {
 import "./widgets"
 import ui "sngl:ui"
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         widgets.box(label = "declared")
     }
@@ -47,7 +47,7 @@ component main() ui.node {
 import "./widgets"
 import ui "sngl:ui"
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         widgets.marquee(tag = "marquee", nope = 1)
     }
@@ -57,7 +57,7 @@ component main() ui.node {
 import w "./widgets"
 import ui "sngl:ui"
 
-component main() ui.node {
+component main() ui.root {
     ui.window {
         w.Widget(tag = "x")
     }

@@ -383,7 +383,7 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 // neither a literal nor state-dependent, and the route was refused.
 func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
-	for _, v := range routeStateVars(pkg) {
+	for _, v := range routeStateVars(pkg, win) {
 		out[v.Name] = true
 	}
 	if win != nil {
@@ -396,16 +396,26 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	return out
 }
 
-// routeStateVars returns the component state fields surfaced to the server
-// State struct: the package-level and main-component non-synthesized,
-// non-const vars. Mirrors htmlGen.stateVars but yields the language-agnostic
-// codegen.StateVar (name + IR type).
-func routeStateVars(pkg *ir.Package) []codegen.StateVar {
+// routeStateVars returns the state fields surfaced to a route's server State
+// struct: the package-level vars, the main component's, and the ones the
+// route's own window owns. Mirrors htmlGen.stateVars but yields the
+// language-agnostic codegen.StateVar (name + IR type).
+//
+// The window is the usual owner rather than the unusual one: passRootWindow
+// hoists a root component's declarations there (#215). stateVarNames below has
+// always counted a window's vars, so leaving them out here rendered the markup
+// as a hole into a State struct that had no such field.
+//
+// win may be nil, which is every caller that asks the package-wide question.
+func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar {
 	var out []codegen.StateVar
 	seen := map[string]bool{}
 	add := func(vars []*ir.Var) {
 		for _, v := range vars {
-			if v == nil || v.Synthesized || v.IsConst || seen[v.Name] {
+			// RouteParam: a window's `{x}` var is bound from the URL the
+			// request arrived on, so it is a handler local rather than a field
+			// of the per-session State the window's other vars become.
+			if v == nil || v.Synthesized || v.IsConst || v.RouteParam || seen[v.Name] {
 				continue
 			}
 			seen[v.Name] = true
@@ -417,6 +427,9 @@ func routeStateVars(pkg *ir.Package) []codegen.StateVar {
 		if main := mainIRComponent(pkg); main != nil {
 			add(main.Vars)
 		}
+	}
+	if win != nil {
+		add(win.Vars)
 	}
 	return out
 }

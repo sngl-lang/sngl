@@ -82,6 +82,39 @@ func (c *checker) treeOptional(decl *ast.ComponentDecl, comp *ir.Component) bool
 	return decl.Target != nil || strings.Contains(decl.Name, ".") || comp.Builtin.IsDirective()
 }
 
+// treeTransparent reports the blocks a statement carries the tree question
+// into, and whether it is one of the constructs that is *how* the nodes under
+// it got there rather than a node in its own right.
+//
+// Four of them: an `if` and a `for`, which say when and how many; an
+// `ir.ErrorBoundary`, which says what happens when one raises; and an
+// `ir.ContextProvider`, which sets a value for what is under it. None puts
+// anything in the tree itself, so every question asked of a block is asked of
+// theirs.
+//
+// `all` is every block; `binds` is the ones that may *supply* a family rather
+// than merely be held to one. They differ by a boundary's fallback alone: it
+// stands where the content stood and is held to the content's answer, so a
+// caller asking "what family is this?" must not read it. The boundary's own
+// check takes the fallback as a last resort once the content has given nothing
+// (checkVisualNodeIR), which is where that rule belongs.
+func treeTransparent(st ir.Stmt) (all, binds [][]ir.Stmt, ok bool) {
+	switch s := st.(type) {
+	case *ir.If:
+		b := [][]ir.Stmt{s.Body, s.Else}
+		return b, b, true
+	case *ir.For:
+		b := [][]ir.Stmt{s.Body, s.Else}
+		return b, b, true
+	case *ir.ErrorBoundary:
+		return [][]ir.Stmt{s.Children, s.Failed}, [][]ir.Stmt{s.Children}, true
+	case *ir.ContextProvider:
+		b := [][]ir.Stmt{s.Children}
+		return b, b, true
+	}
+	return nil, nil, false
+}
+
 // checkTreelessBody holds a tree-less component to containing no member of any
 // family. Placing one is unrestricted (a lifetime bracket belongs in a drawing
 // as much as in a layout), and this is what keeps that from being a hole: a
@@ -92,8 +125,9 @@ func (c *checker) treeOptional(decl *ast.ComponentDecl, comp *ir.Component) bool
 // is not one: inference is reading that same body to give it one, and holding
 // it to this rule would refuse every case inference is there to answer.
 //
-// An `if` or a `for` is how the nodes under it got there rather than a node,
-// the same reading checkTreeMembership gives them.
+// A boundary and a context override are reached through with the `if` and the
+// `for`, which is treeTransparent's list and the same reading
+// checkTreeMembership gives them.
 func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 	if comp == nil || !comp.Treeless || comp.AST == nil {
 		return
@@ -101,14 +135,10 @@ func (c *checker) checkTreelessBody(comp *ir.Component, body []ir.Stmt) {
 	var walk func(stmts []ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, st := range stmts {
-			switch s := st.(type) {
-			case *ir.If:
-				walk(s.Body)
-				walk(s.Else)
-				continue
-			case *ir.For:
-				walk(s.Body)
-				walk(s.Else)
+			if blocks, _, ok := treeTransparent(st); ok {
+				for _, b := range blocks {
+					walk(b)
+				}
 				continue
 			}
 			ni, ok := st.(*ir.NodeInst)

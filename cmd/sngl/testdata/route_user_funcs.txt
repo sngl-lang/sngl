@@ -38,7 +38,7 @@ import . "sngl:ui"
 import "go:routefuncs/srv"
 import "sngl:platform/html"
 
-component main node {
+component main root {
     var nums list<int> = [1, 2, 3]
     var total = 0
 

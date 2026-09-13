@@ -189,13 +189,31 @@ func callIsFallible(call *ir.Call) bool {
 // against the current scope. Nested errorBoundaries push their handler.
 func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 	for _, s := range stmts {
-		switch x := s.(type) {
-		case *ir.ErrorBoundary:
+		// A boundary is the one transparent statement that is not: it pushes
+		// its handler onto the scope, which is the whole of what it does. The
+		// fallback is under that handler too -- passBoundaryFailed lowers it to
+		// `if __failed { FALLBACK } else { CONTENT }` in place of the content,
+		// so it sits exactly where the content sat.
+		if b, ok := s.(*ir.ErrorBoundary); ok {
 			inner := scope
-			if x.Handler != nil {
-				inner = append(append([]*ir.EventHandler{}, x.Handler), scope...)
+			if b.Handler != nil {
+				inner = append(append([]*ir.EventHandler{}, b.Handler), scope...)
 			}
-			walkVisualErrors(x.Children, inner)
+			walkVisualErrors(b.Children, inner)
+			walkVisualErrors(b.Failed, inner)
+			continue
+		}
+		// The rest of treeTransparent's list carries the scope unchanged. This
+		// walk had its own copy of it and was missing the context provider, so
+		// a raise from a handler under one resolved past every boundary it was
+		// written inside and came out uncaught.
+		if blocks, _, ok := treeTransparent(s); ok {
+			for _, b := range blocks {
+				walkVisualErrors(b, scope)
+			}
+			continue
+		}
+		switch x := s.(type) {
 		case *ir.NodeInst:
 			for i := range x.Handlers {
 				h := &x.Handlers[i]
@@ -205,12 +223,6 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 				resolveCallsInBlock(h.Func.Block, scope, false)
 			}
 			walkVisualErrors(x.Children, scope)
-		case *ir.If:
-			walkVisualErrors(x.Body, scope)
-			walkVisualErrors(x.Else, scope)
-		case *ir.For:
-			walkVisualErrors(x.Body, scope)
-			walkVisualErrors(x.Else, scope)
 		case *ir.SlotInst:
 			walkVisualErrors(x.Children, scope)
 		case *ir.CallStmt:

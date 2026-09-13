@@ -4096,6 +4096,15 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	// base body once per override and the override's body never.
 	body := comp.Body
 	c.deferTreeCheck(func() { c.checkTreelessBody(comp, body) })
+	// What a body puts in the tree is held to the family the component is a
+	// member of, which is the one position nothing else asks about: the other
+	// five are a container asking about its children. A tree-less component
+	// has a nil Tree and falls out of checkTreeMembership, which is what keeps
+	// it to checkTreelessBody's rule alone rather than reporting it twice.
+	at := compDeclPos(comp)
+	c.deferTreeCheck(func() {
+		c.checkTreeMembership(comp, at, body, comp.Tree, "in the body of "+comp.Name)
+	})
 }
 
 func (c *checker) checkWindowBody(w *ir.Window) {

@@ -9,7 +9,7 @@ import . "sngl:ui"
 
 output { none { html } }
 
-component main node {
+component main root {
     window #home(title="Home", href="/") { text(value="home") }
     window #about(title="About", href="/about.html") { text(value="about") }
     window #intro(title="Intro", href="/docs/intro.html") { text(value="intro") }
