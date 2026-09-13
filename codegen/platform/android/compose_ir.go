@@ -150,38 +150,12 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 	panic(fmt.Sprintf("android: no composable for component %q (platform android has no override and no built-in body)", n.Name))
 }
 
-// emitInputHandlerCall lowers one @input/@change handler attached to
-// an input/entry composable. The handler body runs inside Compose's
-// onValueChange lambda with the new text bound to `newValueVar`; the
-// handler's event param (if any) is materialized as a tiny data
-// holder so `e.value` reads return the same Kotlin string. Handlers
-// with no event param (e.g. `@input { count += 1 }`) drop the alias.
-// emitValueWriteback lowers the synthesized `:value=var` two-way-bind
-// handler inside Compose's onValueChange lambda. The prop-binding lower
-// pass names this handler after the "value" prop and shapes its body as
-// `var = <param>` where the param IS the new string value (not an event
-// object). So the param binds directly to newValueVar — unlike
-// emitInputHandlerCall, which wraps it in a SnglInputEvent holder for
-// user `@input(e)` handlers that read `e.value`.
-func emitValueWriteback(cc *irComposeContext, n *ir.NodeInst, newValueVar string) {
-	h := codegen.NodeHandler(n, "value")
-	if h == nil || h.Func == nil {
-		return
-	}
-	cc.line("run {")
-	cc.indent++
-	if len(h.Func.Params) > 0 {
-		cc.line("val %s = %s", h.Func.Params[0].Name, newValueVar)
-	}
-	for _, stmt := range h.Func.Block {
-		for _, line := range cc.kc.EvalStmt(stmt) {
-			cc.line("%s", line)
-		}
-	}
-	cc.indent--
-	cc.line("}")
-}
-
+// emitInputHandlerCall lowers one @change handler attached to select, the
+// last composable whose body is written here. The handler body runs inside
+// Compose's onClick lambda with the chosen option bound to `newValueVar`;
+// the handler's event param (if any) is materialized as a tiny data holder so
+// `e.value` reads return the same Kotlin string. A handler with no event param
+// drops the alias.
 func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newValueVar string) {
 	h := codegen.NodeHandler(n, eventName)
 	if h == nil || h.Func == nil {
@@ -220,48 +194,20 @@ func declaredName(n *ir.NodeInst) string {
 	return n.Name
 }
 
-// renderStdlibComposable emits the components whose android body is still
-// written here rather than declared in codegen/platform/android. It reports
-// whether it recognised n; an unrecognised one is a missing override, which
-// renderNode panics on.
+// renderStdlibComposable emits the three components whose android body is
+// still written here rather than declared in codegen/platform/android. It
+// reports whether it recognised n; an unrecognised one is a missing override,
+// which renderNode panics on.
+//
+// Each is here for a reason a declaration cannot yet state, and the comment on
+// its `component ui.X()` stub in widgets.sngl is where that reason is written
+// down: select wants state numbered per rendered node, while progress and
+// datepicker both turn on whether a prop was supplied at all -- which an
+// override cannot ask, since a prop it reads is always there.
 func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 	style := cc.buildModifier(n)
 
 	switch declaredName(n) {
-	case "input":
-		// Resolve `value=...` for the controlled-input expression.
-		valueExpr := "\"\""
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			valueExpr = cc.kc.EvalExpr(v)
-		}
-		placeholder := ""
-		if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
-			placeholder = s
-		}
-		// Collect @input and @change handlers — Compose has no
-		// commit event distinct from per-keystroke change, so both
-		// fire on onValueChange. The synthetic event is built per
-		// handler using its first param's name, aliased to a
-		// data-class holder so `e.value` resolves naturally.
-		mod := cc.buildModifierRaw(n)
-		cc.line("OutlinedTextField(")
-		cc.indent++
-		cc.line("value = %s,", valueExpr)
-		cc.line("onValueChange = { newValue ->")
-		cc.indent++
-		emitValueWriteback(cc, n, "newValue")
-		emitInputHandlerCall(cc, n, "input", "newValue")
-		emitInputHandlerCall(cc, n, "change", "newValue")
-		emitInputHandlerCall(cc, n, "changed", "newValue")
-		cc.indent--
-		cc.line("},")
-		if placeholder != "" {
-			cc.line("label = { Text(%q) },", placeholder)
-		}
-		cc.line("modifier = %s", mod)
-		cc.indent--
-		cc.line(")")
-
 	case "select":
 		// Two-way `:value` dropdown. The binding pass synthesizes the
 		// write-back as a @change handler (like `input`), so selecting an
@@ -711,6 +657,7 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
 		}
 	}
+	args = append(args, cc.slotArgs(n, comp)...)
 	call := fmt.Sprintf("%s(%s)", composable, strings.Join(args, ", "))
 	if comp.ChildrenType == nil {
 		cc.line("%s", call)
@@ -733,6 +680,53 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	}
 	cc.indent--
 	cc.line("}")
+}
+
+// slotArgs emits each named slot a call site populated as the composable
+// lambda Compose takes in its place -- `label = { Text("Name") }`. A value
+// prop cannot say that: what Compose takes there is content, and content is a
+// tree the override writes like any other.
+//
+// A slot whose body renders nothing is left out rather than passed empty,
+// because Compose reads the two differently: an absent `label` has no floating
+// label at all, while `label = {}` still reserves its space and notches the
+// outline. That empty body is what an override conditional on a prop folds to
+// when the prop is a constant -- a condition only answerable at run time keeps
+// the argument, and the widget then has a caption that may be empty.
+func (cc *irComposeContext) slotArgs(n *ir.NodeInst, comp *ir.Component) []string {
+	var args []string
+	for _, slot := range comp.Slots {
+		if slot.Rest {
+			continue
+		}
+		sc := n.Slots[slot.Name]
+		if sc == nil {
+			continue
+		}
+		body := cc.renderNested(sc.Body)
+		if body == "" {
+			continue
+		}
+		args = append(args, slot.Name+" = {\n"+body+strings.Repeat("    ", cc.indent)+"}")
+	}
+	return args
+}
+
+// renderNested renders stmts one level in, into a buffer of their own. The
+// lambda is neither a Row nor a Column scope and is never the window's own
+// content, so nothing inside it may ask for a weight or for the display
+// cutout's inset.
+func (cc *irComposeContext) renderNested(stmts []ir.Stmt) string {
+	savedBuf, savedAxis, savedRoot := cc.buf, cc.parentAxis, cc.atRoot
+	cc.buf, cc.parentAxis, cc.atRoot = &strings.Builder{}, "", false
+	cc.indent++
+	for _, stmt := range stmts {
+		cc.renderStmt(stmt)
+	}
+	cc.indent--
+	body := cc.buf.String()
+	cc.buf, cc.parentAxis, cc.atRoot = savedBuf, savedAxis, savedRoot
+	return body
 }
 
 // intrinsicModifier builds the Modifier chain for a declared composable:

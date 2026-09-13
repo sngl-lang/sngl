@@ -201,6 +201,8 @@ data class ErrorEvent(val message: String = "", val kind: String = "")
 
 data class SnglInputEvent(val value: String)
 
+data class ChangeEvent(val value: String = "")
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 

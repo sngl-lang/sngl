@@ -60,12 +60,28 @@ component ui.image[platform] {
     Spacer(modifier={...style}) {}
 }
 
-// Not converted. The placeholder becomes Compose's `label`, which takes a
-// composable lambda — `label = { Text("...") }`. An intrinsic prop can carry a
-// value or a statement lambda, but nothing declares a *composable* lambda
-// argument, so the label cannot be written here.
-component ui.input() {
-    OutlinedTextField(value=value) {}
+// The placeholder is Compose's floating `label`. A field given none must get
+// no `label` argument rather than an empty one, so the conditional is the
+// slot's whole body: a literal placeholder folds the slot away and a slot that
+// renders nothing is not passed. A placeholder only known at run time cannot
+// be answered that way and keeps the argument, so an empty one shows as the
+// notched, uncaptioned field the fold exists to avoid.
+component ui.input[platform] {
+    OutlinedTextField(
+        value=value,
+        readOnly=readonly,
+        modifier={...style},
+        onValueChange=func(e) {
+            input(e)
+            change({value=e.value})
+        },
+    ) {
+        component label {
+            if placeholder != "" {
+                Text(text=placeholder) {}
+            }
+        }
+    }
 }
 
 component ui.checkbox[platform] {
@@ -114,12 +130,15 @@ component ui.toggle[platform] {
     }
 }
 
-// Not converted, for three reasons. The menu needs per-call-site state
-// (`var expanded by remember`), and expandCall hoists an override's vars into
-// the enclosing composable, so a select inside a `for` would share one
-// `expanded` across every row. DropdownMenuItem's `text` is a composable
-// lambda (see input). And the placeholder fallback needs Kotlin's
-// `isNotEmpty()`, which SNGL has no spelling for on a bound prop.
+// Not converted. The menu needs per-call-site state, and an override may
+// declare a var -- passInlinePure hoists one onto the enclosing composable
+// under a `__instN` suffix. What it does not survive is a `for`: two call
+// sites at one level get `__inst0` and `__inst1`, but one inside a loop and
+// one outside both get `__inst0`, and the emitted Kotlin then declares the
+// same name twice. One cell per call site is one cell for every row of the
+// loop besides, which is not what `expanded` means. compose_ir.go numbers
+// `expandedN` per rendered node, which is the thing an override cannot ask
+// for.
 component ui.select() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
@@ -139,7 +158,13 @@ component ui.textarea[platform] {
     // takes the value rather than the other event.
 }
 
-// Not converted. Same composable-lambda `label` as input.
+// Not converted, and for the reason progress is not: the field shows the date
+// only when a date was picked, and an override cannot ask whether `value` was
+// supplied -- a prop it reads is always there. `date` offers no zero test
+// either, and on Kotlin an unset one is the string "0001-01-01", so an
+// override writing `value=string(value)` pre-fills every unpicked field with
+// it. Its label would be expressible now; its value is not, so the whole
+// widget stays in Go.
 component ui.datepicker() {
     OutlinedTextField(value=value, readOnly=true) {}
 }
@@ -150,7 +175,9 @@ component ui.datepicker() {
 // the `progress` argument, and the emitter picks by whether the call site gave
 // `value` at all — a distinction an override body cannot draw, since a prop it
 // reads is always there. `progress` is also a `() -> Float` lambda, and a
-// func-typed prop's body is emitted as statements, not as an expression.
+// func-typed prop's body is emitted as statements rather than as an
+// expression, and nothing declares that a Compose argument takes a Float where
+// SNGL's `float` is a Kotlin Double.
 component ui.progress() {
     LinearProgressIndicator {}
 }

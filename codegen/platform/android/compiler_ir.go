@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -523,12 +524,21 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
 	}
 
-	// Stdlib InputEvent / ChangeEvent payload — emitInputHandlerCall
-	// in compose_ir.go materializes the handler's event param as
-	// `val e = SnglInputEvent(newValue)` so user code reading
-	// `e.value` resolves without flowing the stdlib struct through
-	// user output.
+	// Stdlib InputEvent payload — emitInputHandlerCall in compose_ir.go, and
+	// the lambda a declared intrinsic takes, materialize the handler's event
+	// param as `val e = SnglInputEvent(newValue)` so user code reading
+	// `e.value` resolves without flowing the stdlib struct through user output.
 	body.WriteString("data class SnglInputEvent(val value: String)\n\n")
+
+	// ChangeEvent is the other half and is spelled under its own name, because
+	// an override *builds* one -- `change({value=opt})` in radio and input --
+	// and the emitter writes the struct's name as written. Nothing flows a
+	// stdlib struct into info.Structs, so without this the emitted Kotlin
+	// names a class it never declares. A program shadowing the stdlib struct
+	// gets its own declaration below and must not get this one as well.
+	if !slices.ContainsFunc(info.Structs, func(sd *ir.StructDef) bool { return exportName(sd.Name) == "ChangeEvent" }) {
+		body.WriteString("data class ChangeEvent(val value: String = \"\")\n\n")
+	}
 
 	// string(float) is a helper rather than a method call: Kotlin's own
 	// Double.toString writes a fraction a whole number does not have.

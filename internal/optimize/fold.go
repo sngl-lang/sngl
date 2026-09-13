@@ -2,7 +2,9 @@ package optimize
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -294,6 +296,14 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	}
 	for i := range n.Handlers {
 		n.Handlers[i].Func.Block = foldStmts(n.Handlers[i].Func.Block, ctx)
+	}
+	// A named slot's population is a body like the children are. Visited by
+	// name because Slots is a map: folding itself does not care, but a pass
+	// sharing this walk's order should not depend on Go's.
+	for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+		if sc := n.Slots[name]; sc != nil {
+			sc.Body = foldStmts(sc.Body, ctx)
+		}
 	}
 	n.Children = foldStmts(n.Children, ctx)
 	return n
