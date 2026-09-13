@@ -1,0 +1,22 @@
+// A window's prop values are measured against the declaration like any other
+// node's. error_window_unknown_prop covers a name nobody declares; the *value*
+// was still never checked, because buildWindow read the three props it keeps
+// by name instead of through checkAndSplitArgs -- the one path that compares an
+// argument against its declared type. So `title=42` checked clean, and html
+// emitted a page with no <title> at all: the emitter reads the prop through
+// IRLiteralString, which yields nothing for an int.
+import . "sngl:ui"
+
+window #home(title=42) { // ERROR(check) "cannot use int as string for prop \"title\" on component window"
+    text(value="hi")
+}
+
+// A positional argument binds the same prop, and is held to the same type.
+window #about(true) { // ERROR(check) "cannot use bool as string for prop \"title\" on component window"
+    text(value="hi")
+}
+
+// Past the last prop there is nothing left to bind to.
+window #contact("Contact", "/contact", "f.ico", "extra") { // ERROR(check) "too many positional arguments"
+    text(value="hi")
+}
