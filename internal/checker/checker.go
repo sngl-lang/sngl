@@ -3108,27 +3108,17 @@ func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
 	seen[w.Name] = true
 }
 
-// resolvePositionalArgs maps positional args in an ArgList to named keys using
-// the given positional order. Named args are included as-is. Event handlers
-// are skipped. The caller handles EventHandler entries separately.
-func resolvePositionalArgs(args ast.ArgList, order []string) map[string]ast.Expr {
-	result := make(map[string]ast.Expr)
-	positional := 0
+// windowPropArgs is vn's arguments without its event handlers: what
+// checkAndSplitArgs is given so that it does not check an @error body
+// buildErrorHandler is about to check again.
+func windowPropArgs(args ast.ArgList) ast.ArgList {
+	out := ast.ArgList{Pos: args.Pos, IsMultiline: args.IsMultiline}
 	for _, a := range args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok {
-			continue
-		}
-		if arg.Name == "" {
-			if positional < len(order) && arg.Value != nil {
-				result[order[positional]] = arg.Value
-			}
-			positional++
-		} else if arg.Value != nil {
-			result[arg.Name] = arg.Value
+		if _, isHandler := a.(ast.EventHandler); !isHandler {
+			out.Args = append(out.Args, a)
 		}
 	}
-	return result
+	return out
 }
 
 // buildWindow fills in the window a `window #id` node declares. When the id
@@ -3136,22 +3126,6 @@ func resolvePositionalArgs(args ast.ArgList, order []string) map[string]ast.Expr
 // already, so this sets its fields rather than binding a second symbol over
 // the first — references made before the body is checked and after it resolve
 // to the same declaration.
-// windowPropOrder is the positional order of a window's props: the order the
-// declaration writes them in. Duplicating it in Go was a second place for it
-// to be wrong.
-func windowPropOrder(comp *ir.Component) []string {
-	if comp == nil {
-		return []string{"title", "href", "favicon"}
-	}
-	out := make([]string, 0, len(comp.Props))
-	for _, p := range comp.Props {
-		if p != nil && p.Wildcard == "" {
-			out = append(out, p.Name)
-		}
-	}
-	return out
-}
-
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := c.hoistedWindow(vn.ID)
 	if w == nil {
@@ -3159,7 +3133,9 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	}
 	w.AST = vn
 	// URL template params like `{name}` in href become string vars on the
-	// window, in scope for the href literal itself as well as the body.
+	// window, in scope for the href literal itself as well as the body — so
+	// they are read off the AST and declared before the scope below is pushed,
+	// ahead of anything that checks the href expression.
 	for _, name := range hrefPathParams(vn) {
 		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString, RouteParam: true})
 	}
@@ -3173,15 +3149,25 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// #[builtin("window")] component does not declare, and nothing said so --
 	// so it read as a prop gtk4 ignored rather than one nobody declared.
 	c.validateVisualNodeProps(vn, c.windowComp)
-	named := resolvePositionalArgs(vn.Args, windowPropOrder(c.windowComp))
-	if e, ok := named["href"]; ok {
-		w.Href = c.checkExpr(e)
-	}
-	if e, ok := named["title"]; ok {
-		w.Title = c.checkExpr(e)
-	}
-	if e, ok := named["favicon"]; ok {
-		w.Favicon = c.checkExpr(e)
+	// checkAndSplitArgs is the one path that measures an argument against its
+	// declared prop type. A window read its three props by name instead, so
+	// `title=42` checked clean and html emitted a page with no <title>.
+	//
+	// ir.Window keeps Href/Title/Favicon as fields rather than the ir.Arg list
+	// every other node carries: collapsing it into a marked NodeInst is its own
+	// change, so the three are picked back out here. The bindings are empty by
+	// construction: none of the three is declared bidirectional, so `:title`
+	// is reported by extractBindings rather than returned.
+	props, _, _ := c.checkAndSplitArgs(windowPropArgs(vn.Args), c.windowComp)
+	for _, p := range props {
+		switch p.Name {
+		case "href":
+			w.Href = p.Value
+		case "title":
+			w.Title = p.Value
+		case "favicon":
+			w.Favicon = p.Value
+		}
 	}
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {

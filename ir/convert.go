@@ -344,10 +344,43 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
+func hasRouteParam(w *Window) bool {
+	for _, v := range w.Vars {
+		if v.RouteParam {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	vn := &ast.VisualNode{
 		Target: &ast.IdentExpr{Name: "window"},
 		ID:     w.Name,
+	}
+	// The props are picked back out by name, mirroring buildWindow: ir.Window
+	// holds them as fields rather than as the ir.Arg list every other node
+	// carries. Omitted when nil, so an unwritten prop does not print.
+	var args []ast.ArgOrEventHandler
+	prop := func(name string, val Expr) {
+		if val != nil {
+			args = append(args, ast.Arg{Name: name, Value: c.convertExpr(val)})
+		}
+	}
+	prop("title", w.Title)
+	// A routed href is the exception. The checker desugars `"/u/{id}"` to a
+	// concatenation and synthesizes `id` as a window var, and there is no IR
+	// node left to reprint the template from -- so the href would name `id`
+	// above the body that declares it, and the dump would not check back in.
+	if !hasRouteParam(w) {
+		prop("href", w.Href)
+	}
+	prop("favicon", w.Favicon)
+	if w.ErrorHandler != nil {
+		args = append(args, c.convertEventHandler(w.ErrorHandler))
+	}
+	if len(args) > 0 {
+		vn.Args = ast.ArgList{IsMultiline: len(args) > 3, Args: args}
 	}
 	var bodyStmts []ast.Stmt
 	for _, v := range w.Vars {

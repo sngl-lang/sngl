@@ -1,0 +1,46 @@
+# `sngl dump --format sngl` prints IR back as source, so what it prints has to
+# be source. convertWindow built the node from Target, ID and the body alone and
+# never read Title, Href, Favicon or ErrorHandler -- the props the IR does hold
+# and html does emit -- so every one of them vanished from the dump.
+#
+# A routed href is the one that still does not print, and route.sngl is why. The
+# checker desugars `"/u/{id}"` to a concatenation and synthesizes `id` as a
+# window var, so a reprinted href would name `id` above the body that declares
+# it. Reconstructing the template is the fix; until then the round trip is what
+# is preserved, and the other props print either way.
+
+sngl dump --stage checked --format sngl win.sngl
+stdout 'window #home\('
+stdout 'title="Hi"'
+stdout 'href="/home"'
+stdout 'favicon="f.ico"'
+stdout '@error\(e error\)'
+
+cp stdout out.sngl
+sngl check out.sngl
+stdout 'out.sngl: ok'
+
+sngl dump --stage checked --format sngl route.sngl
+stdout 'title="User"'
+stdout 'var id string'
+! grep 'href' stdout
+
+cp stdout route_out.sngl
+sngl check route_out.sngl
+stdout 'route_out.sngl: ok'
+
+-- win.sngl --
+import . "sngl:ui"
+
+window #home(title="Hi", href="/home", favicon="f.ico", @error(e) {
+    output.print("{e.message}")
+}) {
+    text(value="hi")
+}
+
+-- route.sngl --
+import . "sngl:ui"
+
+window #user(title="User", href="/u/{id}") {
+    text(value="user {id}")
+}
