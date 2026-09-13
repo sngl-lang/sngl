@@ -108,6 +108,8 @@ var orderConstraints = []orderConstraint{
 	{"RecursionDepth", "ComponentProps",
 		"__depth is an ordinary prop, and ComponentProps is what promotes a prop to a settable cell"},
 
+	{"NoInlineComponents", "Canvas",
+		"a canvas written inside a user component is not in the tree this pass walks until the inliner has spliced that component into its caller -- moved ahead of it, canvas_shapes_from_data and generate_canvas_through_import extract no draw function at all, and ahead of InlinePure as well the early extraction freezes the host component into a runtime instance whose reactive `lit` prop NoReactivity then refuses"},
 	{"Canvas", "NoReactivity",
 		"a shape has to leave the visual tree first, or reactivity gives it a node id and emits setAttribute against a node that was never in the DOM"},
 	{"Canvas", "CanvasReactivity",
