@@ -148,7 +148,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			__lt0 = (m.level__inst0 + 0.01)
 		}
 		m.level__inst0 = __lt0
-		__iterIdx0 := -1
+		var __iterIdx0 int = -1
 		for x := range slices.Values([]int{0, 1, 2}) {
 			__iterIdx0 += 1
 			m.rung__inst0 = (m.rung__inst0 + (__iterIdx0 * x))
@@ -242,7 +242,7 @@ func (m *Model) StartTimers() {
 				}
 				m.level__inst0 = __lt0
 				m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
-				__iterIdx0 := -1
+				var __iterIdx0 int = -1
 				for x := range slices.Values([]int{0, 1, 2}) {
 					__iterIdx0 += 1
 					m.rung__inst0 = (m.rung__inst0 + (__iterIdx0 * x))

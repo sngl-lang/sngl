@@ -392,6 +392,23 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 func (gc *GoIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
 }
+
+// LocalVarText declares a local. A **numeric** one is declared with its type
+// written out rather than left to `:=`, because that is where Go's answer and
+// the program's can differ: `:=` takes the *default type* of an untyped
+// constant, which is `int` for a whole number and `float64` for a fractional
+// one, whatever the declaration said.
+//
+//	var acc float32 = 1.0   ->  acc := 1.0    // a float64; the next line,
+//	                                          // adding a float32, does not compile
+//	var acc float  = 2.0    ->  acc := 2      // an int, for the same reason
+//
+// Every other kind is left inferred, and not out of caution: a string, a bool,
+// a struct, a slice each have exactly one Go type that `:=` reads off a
+// correctly typed initialiser, so an annotation would restate it. It would
+// also do harm -- gtk4 emits twice and keeps the run that mentions no `C.`
+// symbol, so spelling a widget handle's type is what tips a program out of its
+// cgo-free mode.
 func (gc *GoIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	goType := "any"
 	if n.Type != nil {
@@ -402,10 +419,13 @@ func (gc *GoIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	// every type that can hold it. The reconcile a reactive slot performs
 	// opens each position that way: `var <id> <Comp> = null`, then one branch
 	// or the other binds it.
-	if n.Init != nil && initStr != "nil" {
-		return n.Name + " := " + initStr
+	if n.Init == nil || initStr == "nil" {
+		return "var " + n.Name + " " + goType
 	}
-	return "var " + n.Name + " " + goType
+	if n.Type != nil && n.Type.IsNumeric() {
+		return "var " + n.Name + " " + goType + " = " + initStr
+	}
+	return n.Name + " := " + initStr
 }
 func (gc *GoIRContext) ReturnText(n *ir.Return, valueStr string) string {
 	if n.Value != nil {
@@ -604,13 +624,16 @@ func (gc *GoIRContext) Scoped(name string) irwalk.Renderer { return gc.WithLocal
 // magnitude is whole folds to a spelling with no point in it, and an untyped
 // Go constant with no point is an *integer* constant.
 //
-// Most positions survive that: an assignment to a float64 field, or arithmetic
-// against a float64 operand, converts the constant from the other half of the
-// expression. The position with no other half is `:=`, where the literal is
-// the only thing the local's type can be read off -- `acc := 2` is an int, and
-// the lines after it stop compiling. testdata/go_whole_float_literal.txtar is
-// that, and says why it is not about `2 / 10`: two literals never reach a
-// backend undivided, because the folder answers them first.
+// Most positions survive that: an assignment to a float64 field, an argument
+// to a float64 parameter, or arithmetic against a float64 operand each convert
+// the constant from the other half of the expression, and a local now carries
+// its declared type (LocalVarText). What is left is the position no type
+// annotation reaches -- an element of an `any` composite -- where `[]any{2}`
+// boxes an `int` that compares unequal to every float64 beside it, and
+// compiles. testdata/go_untyped_constant_types.txtar holds both halves.
+//
+// It is *not* about `2 / 10`: two literals never reach a backend undivided,
+// because the folder answers them first.
 //
 // A free function because three call sites in this package spell a literal and
 // each used to do it for itself.

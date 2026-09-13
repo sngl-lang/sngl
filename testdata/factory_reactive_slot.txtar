@@ -92,7 +92,7 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 	}
 	m.__slot1 = nil
 	__inst0_next := []*CardInstance{}
-	__inst0_i := 0
+	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
 		var __n2 *CardInstance
 		if len(m.__inst0_live) > __inst0_i {
@@ -112,7 +112,7 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 		m.__slot1 = append(m.__slot1, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
-		__inst0_i_j := ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
 		if __inst0_i_j >= __inst0_i {
 			m.__inst0_live[__inst0_i_j].Destroy()
 		}
@@ -224,7 +224,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	}
 	m.__slot1 = nil
 	__inst0_next := []*CardInstance{}
-	__inst0_i := 0
+	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
 		var __n2 *CardInstance
 		if len(m.__inst0_live) > __inst0_i {
@@ -244,7 +244,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		m.__slot1 = append(m.__slot1, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
-		__inst0_i_j := ((len(m.__inst0_live) - 1) - __inst0_i_d)
+		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
 		if __inst0_i_j >= __inst0_i {
 			m.__inst0_live[__inst0_i_j].Destroy()
 		}

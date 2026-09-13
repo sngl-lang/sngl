@@ -122,7 +122,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func Total(xs func(func(int) bool)) int {
-	sum := 0
+	var sum int = 0
 	for x := range xs {
 		sum = (sum + x)
 	}
