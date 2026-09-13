@@ -128,7 +128,10 @@ func findSNGLGenerateDirectives(t *testing.T, root string) []directive {
 		}
 		if e.IsDir() {
 			switch e.Name() {
-			case ".git", "_site", "node_modules", "tmp", "testdata":
+			// .claude and .worktrees hold git worktrees -- a second checkout
+			// of this repo each -- so walking one re-runs every directive
+			// against another branch's in-progress artifacts.
+			case ".git", ".claude", ".worktrees", "_site", "node_modules", "tmp", "testdata":
 				return filepath.SkipDir
 			}
 			return nil
