@@ -641,6 +641,7 @@ component time.timer[platform] {
     var handle Schedule
     var rearm func()
     var live = false
+    var gen = 0
 
     if enabled {
         effect(
@@ -648,6 +649,8 @@ component time.timer[platform] {
             @mount(d) {
                 if d > 0ms {
                     live = true
+                    gen = gen + 1
+                    var mine = gen
                     rearm = func() {
                         post(func() {
                             // Every read of `live` and `handle`, and every
@@ -659,7 +662,14 @@ component time.timer[platform] {
                             // `if` around the rest, because a blocking call in
                             // a `@tick` is only moved off the drawing thread
                             // where it is a statement of the body itself.
-                            if !live {
+                            //
+                            // The test is `gen` and not `live`, because a
+                            // re-key is an unmount and a mount back to back: a
+                            // flag saying only that something is armed is true
+                            // again by the time this runs, and this closure
+                            // would then overwrite the handle the mount armed
+                            // and orphan a timer nothing can cancel.
+                            if gen != mine {
                                 return
                             }
                             // Re-armed ahead of the tick, so a period covers
@@ -676,13 +686,14 @@ component time.timer[platform] {
                 }
             },
             @unmount(d) {
-                // `live` is both the nil guard for a mount that armed nothing
-                // and the answer a callback finds when it fired and queued its
-                // closure before `Stop` got there. Both it and the closure run
-                // on the thread `post` hands over to, which is what makes this
-                // an ordering rather than a race.
+                // Two vars with one job each. `live` says a schedule was armed
+                // at all, so a non-positive period does not reach `stop` with
+                // nothing to stop; `gen` is the identity a queued post checks
+                // itself against. Both are read on the thread `post` hands over
+                // to, which is what makes this an ordering rather than a race.
                 if live {
                     live = false
+                    gen = gen + 1
                     handle.stop()
                 }
             },

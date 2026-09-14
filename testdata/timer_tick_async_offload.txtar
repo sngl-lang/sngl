@@ -105,6 +105,7 @@ type Model struct {
 	handle__inst0__inst1 *time.Timer
 	rearm__inst0__inst1  func()
 	live__inst0__inst1   bool
+	gen__inst0__inst1    int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -122,6 +123,7 @@ func New() *Model {
 	m.handle__inst0__inst1 = nil
 	m.rearm__inst0__inst1 = nil
 	m.live__inst0__inst1 = false
+	m.gen__inst0__inst1 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -134,9 +136,11 @@ func New() *Model {
 func (m *Model) __effect0_mount() {
 	if m.__effect0_key > time.Duration(0)*time.Millisecond {
 		m.live__inst0__inst1 = true
+		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
+		var mine int = m.gen__inst0__inst1
 		m.rearm__inst0__inst1 = func() {
 			fyne.Do(func() {
-				if !m.live__inst0__inst1 {
+				if m.gen__inst0__inst1 != mine {
 					return
 				}
 				m.handle__inst0__inst1 = time.AfterFunc(m.__effect0_key, m.rearm__inst0__inst1)
@@ -156,6 +160,7 @@ func (m *Model) __effect0_mount() {
 func (m *Model) __effect0_unmount() {
 	if m.live__inst0__inst1 {
 		m.live__inst0__inst1 = false
+		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
 		m.handle__inst0__inst1.Stop()
 	}
 }
@@ -254,6 +259,14 @@ func (m *Model) Live__inst0__inst1() bool {
 
 func (m *Model) SetLive__inst0__inst1(v bool) {
 	m.live__inst0__inst1 = v
+}
+
+func (m *Model) Gen__inst0__inst1() int {
+	return m.gen__inst0__inst1
+}
+
+func (m *Model) SetGen__inst0__inst1(v int) {
+	m.gen__inst0__inst1 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.

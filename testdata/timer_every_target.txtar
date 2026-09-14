@@ -2,9 +2,16 @@ What every target emits for a timer, and where it finds one.
 
 `timer` is an ordinary component, and every target overrides it with what it
 schedules with. Three do it with an `effect` bracketing a pair of host natives:
-html over setInterval/clearInterval, fyne over time.AfterFunc, gtk4 over gtk4rt. Such a
-pair already is a lifetime with a thing to release, which is what an effect
-brackets. Two still carry a primitive of their own, which passTimerPrimitive
+html over setInterval/clearInterval, fyne over time.AfterFunc, gtk4 over
+gtk4rt. Such a pair already is a lifetime with a thing to release, which is
+what an effect brackets.
+
+fyne's is the one whose pair is a *one-shot*: `AfterFunc` fires once, so the
+schedule re-arms itself from inside the closure it posts to the drawing
+thread, and the `gen`/`mine` pair below is what stops a post that was already
+queued when the effect re-keyed from arming a timer the unmount can no longer
+see. It cannot be asserted by running: fyne's test driver dispatches `fyne.Do`
+inline on the calling goroutine, so the queued window does not exist there. Two still carry a primitive of their own, which passTimerPrimitive
 takes out of the tree, because an effect's `@mount` hands over a *closure* and
 a closure is only a schedule where the host may run it against live state:
 bubbletea is Elm, so a tick has to arrive as a message and its body has to be a
@@ -38,6 +45,7 @@ and inert.
 deny out/kotlin/android/MainScreen.kt `while \(\)` -- a gate is an expression, not a variable name
 deny out/kotlin/android/MainScreen.kt `LaunchedEffect\(\)` -- likewise: LaunchedEffect with no key does not compile
 deny * `timer\(interval` -- the primitive leaves the tree; no target renders one
+deny out/go/fyne/model.go `if !m.live` -- fyne re-arms from inside the post, so a stale closure must test the generation it was armed in; a flag saying only that something is armed is true again by the time a re-key's mount has run, and the closure would orphan the timer that mount armed
 
 -- app.sngl --
 import . "sngl:ui"
@@ -267,10 +275,12 @@ type Model struct {
 	handle__inst1__inst2 *time.Timer
 	rearm__inst1__inst2  func()
 	live__inst1__inst2   bool
+	gen__inst1__inst2    int
 	beats__inst3         int
 	handle__inst0__inst3 *time.Timer
 	rearm__inst0__inst3  func()
 	live__inst0__inst3   bool
+	gen__inst0__inst3    int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -293,10 +303,12 @@ func New() *Model {
 	m.handle__inst1__inst2 = nil
 	m.rearm__inst1__inst2 = nil
 	m.live__inst1__inst2 = false
+	m.gen__inst1__inst2 = 0
 	m.beats__inst3 = 0
 	m.handle__inst0__inst3 = nil
 	m.rearm__inst0__inst3 = nil
 	m.live__inst0__inst3 = false
+	m.gen__inst0__inst3 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -312,9 +324,11 @@ func New() *Model {
 func (m *Model) __effect0_mount() {
 	if m.__effect0_key > time.Duration(0)*time.Millisecond {
 		m.live__inst1__inst2 = true
+		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
+		var mine int = m.gen__inst1__inst2
 		m.rearm__inst1__inst2 = func() {
 			fyne.Do(func() {
-				if !m.live__inst1__inst2 {
+				if m.gen__inst1__inst2 != mine {
 					return
 				}
 				m.handle__inst1__inst2 = time.AfterFunc(m.__effect0_key, m.rearm__inst1__inst2)
@@ -329,6 +343,7 @@ func (m *Model) __effect0_mount() {
 func (m *Model) __effect0_unmount() {
 	if m.live__inst1__inst2 {
 		m.live__inst1__inst2 = false
+		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
 		m.handle__inst1__inst2.Stop()
 	}
 }
@@ -378,9 +393,11 @@ func (m *Model) __effect0_teardown() {
 func (m *Model) __effect1_mount() {
 	if m.__effect1_key > time.Duration(0)*time.Millisecond {
 		m.live__inst0__inst3 = true
+		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
+		var mine int = m.gen__inst0__inst3
 		m.rearm__inst0__inst3 = func() {
 			fyne.Do(func() {
-				if !m.live__inst0__inst3 {
+				if m.gen__inst0__inst3 != mine {
 					return
 				}
 				m.handle__inst0__inst3 = time.AfterFunc(m.__effect1_key, m.rearm__inst0__inst3)
@@ -395,6 +412,7 @@ func (m *Model) __effect1_mount() {
 func (m *Model) __effect1_unmount() {
 	if m.live__inst0__inst3 {
 		m.live__inst0__inst3 = false
+		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
 		m.handle__inst0__inst3.Stop()
 	}
 }
@@ -506,6 +524,14 @@ func (m *Model) SetLive__inst1__inst2(v bool) {
 	m.live__inst1__inst2 = v
 }
 
+func (m *Model) Gen__inst1__inst2() int {
+	return m.gen__inst1__inst2
+}
+
+func (m *Model) SetGen__inst1__inst2(v int) {
+	m.gen__inst1__inst2 = v
+}
+
 func (m *Model) Beats__inst3() int {
 	return m.beats__inst3
 }
@@ -536,6 +562,14 @@ func (m *Model) Live__inst0__inst3() bool {
 
 func (m *Model) SetLive__inst0__inst3(v bool) {
 	m.live__inst0__inst3 = v
+}
+
+func (m *Model) Gen__inst0__inst3() int {
+	return m.gen__inst0__inst3
+}
+
+func (m *Model) SetGen__inst0__inst3(v int) {
+	m.gen__inst0__inst3 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
