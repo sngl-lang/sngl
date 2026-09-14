@@ -653,31 +653,18 @@ component time.timer[platform] {
                     var mine = gen
                     rearm = func() {
                         post(func() {
-                            // Every read of `live` and `handle`, and every
-                            // write `tick` makes, happens here on the one
-                            // thread. The callback itself only hands this
-                            // closure over.
-                            //
-                            // Written as an early return rather than as an
-                            // `if` around the rest, because a blocking call in
-                            // a `@tick` is only moved off the drawing thread
-                            // where it is a statement of the body itself.
-                            //
-                            // The test is `gen` and not `live`, because a
-                            // re-key is an unmount and a mount back to back: a
-                            // flag saying only that something is armed is true
-                            // again by the time this runs, and this closure
-                            // would then overwrite the handle the mount armed
-                            // and orphan a timer nothing can cancel.
+                            // A re-key is an unmount and a mount back to back,
+                            // so a flag saying merely that something is armed
+                            // is true again by the time a queued post runs.
+                            // An early return rather than an `if` around the
+                            // rest: a blocking `@tick` only moves off the
+                            // drawing thread as a statement of the body.
                             if gen != mine {
                                 return
                             }
-                            // Re-armed ahead of the tick, so a period covers
-                            // the tick rather than following it. `AfterFunc`
-                            // drifts by whatever the hand-over costs either
-                            // way, where a ticker would not; gtk4's
-                            // `g_timeout_add` has always drifted the same way,
-                            // and `timer` promises no better.
+                            // Ahead of the tick, so a period covers it rather
+                            // than following it. Drifts by the hand-over
+                            // either way, as gtk4's `g_timeout_add` does.
                             handle = after(d, rearm)
                             tick()
                         })
@@ -686,11 +673,9 @@ component time.timer[platform] {
                 }
             },
             @unmount(d) {
-                // Two vars with one job each. `live` says a schedule was armed
-                // at all, so a non-positive period does not reach `stop` with
-                // nothing to stop; `gen` is the identity a queued post checks
-                // itself against. Both are read on the thread `post` hands over
-                // to, which is what makes this an ordering rather than a race.
+                // `live` is the nil guard -- a non-positive period armed
+                // nothing. Both it and `gen` are read on the thread `post`
+                // hands over to, which is what makes this an ordering.
                 if live {
                     live = false
                     gen = gen + 1
