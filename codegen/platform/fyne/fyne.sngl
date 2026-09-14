@@ -610,7 +610,7 @@ component ui.textarea[platform] {
 // The runtime package the schedule lives in, named once.
 const _rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 
-#[go.native(_rtPkg, "fynert.Every")]
+#[go.native(_rtPkg, "fynert.Every", schedules)]
 func every(ms int, f func()) int
 
 #[go.native(_rtPkg, "fynert.CancelEvery")]

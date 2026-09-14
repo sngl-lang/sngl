@@ -21,11 +21,16 @@ import (
 // A platform may also contribute none, and finding nothing is an answer rather
 // than a failure. Three do: html, fyne and gtk4 each override `timer` with an
 // `effect` over a start/stop pair of host natives, which is what a schedule
-// already is. What is left here is the two that cannot spell one --
-// bubbletea, whose state is a value threaded through Update so a callback
-// arriving out of band has no live model to write, and android, whose
-// LaunchedEffect is the schedule rather than something a schedule is built
-// from.
+// already is.
+//
+// What is left is the two an effect cannot describe. An effect's `@mount` hands
+// over a *closure*, and a closure is only a schedule where the host may run it
+// against live state. bubbletea is Elm: nothing outside Update may touch the
+// model, so the tick has to arrive as a message and its body has to be a case
+// Update runs -- the period and that body together, which is what this pass
+// records and a closure cannot carry. android's LaunchedEffect *is* the
+// schedule rather than something a schedule is built from, so its override
+// would be describing a bracket in terms of a bracket.
 //
 // Placed beside passEffect and for the same reasons: after the inliner, so a
 // timer written in a child component has arrived in the tree that gets walked;

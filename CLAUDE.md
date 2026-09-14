@@ -199,12 +199,23 @@ host scheduler, so the same three defects came back on fyne, reached through
 an `ir.Lambda` instead of through a window's `Timers`. `passTernary` already
 carried a `*ir.Lambda` case of its own; `lowerIndexedIter` collects the
 lambdas separately (rather than descending, so a nested pair is rewritten once
-each), and `offloadableFuncs` takes the lambdas handed to a **native** call.
-That last is the exception to its own rule, and the rule is what states it:
-what calls an ordinary lambda is code the pass can read, and `xs.map(f)` wants
-the blocking f rather than a goroutine per element — but a native has no body
-here at all, and a host scheduler calls its callback from the loop it owns,
-which is the thread the target draws on.
+each), and `offloadableFuncs` takes the lambdas handed to a call that **says it
+schedules**. That last is the exception to its own rule, and the rule is what
+states it: what calls an ordinary lambda is code the pass can read, and
+`xs.map(f)` wants the blocking f rather than a goroutine per element — but a
+host scheduler calls its callback from the loop it owns, which is the thread
+the target draws on.
+
+**Which a declaration says with `schedules`**, the third `NativeFlag` beside
+`fails` and `method`. It is a flag rather than something read off the call, for
+the reason nothing about a `#[foreign]` declaration is ever inferred: its SNGL
+body describes the identifier and does not implement it, so nothing in the
+program says when the host runs an argument — and "the callee is a native"
+would be wrong in the other direction too, giving a goroutine to a native that
+runs its callback inline. A scheduler whose declaration forgets the flag gets
+the *old* bug rather than a new one: the callback is not an entry point and a
+blocking call in it stays on the drawing thread, which
+`testdata/timer_tick_async_offload.txtar` denies on both Go platforms.
 
 **Constructing a closure is not calling it**, which is the colouring half of
 the same change. `ir.ExprHasAsyncCall` read through an `ir.Lambda` into its
@@ -317,7 +328,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
-- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea and android still override it with an `#[intrinsic]` node that `passTimerPrimitive` takes back out of the tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
+- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea and android still override it with an `#[intrinsic]` node that `passTimerPrimitive` takes back out of the tree. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what those two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 - **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.

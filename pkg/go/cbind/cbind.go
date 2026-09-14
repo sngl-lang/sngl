@@ -24,28 +24,61 @@ type Handle unsafe.Pointer
 
 var (
 	mu    sync.Mutex
-	slots []func()
+	next  int
+	slots = map[int]func(){}
 )
 
 // Register stores fn and returns its dispatch index. Indices are stable and
-// never reused, so a C callback wired to an index keeps firing the same fn for
-// the lifetime of the process.
+// never reused, so a C callback wired to an index keeps firing the same fn
+// until that index is Released -- and a stray one arriving after a Release
+// finds nothing rather than something else's closure.
+//
+// A map rather than a slice because Release has to be able to drop an entry:
+// an index is handed to C and may not be reused, so a freed slot cannot be
+// filled and a slice would grow by one dead element per registration. That is
+// what a caller registering per callback rather than per program needs --
+// gtk4rt.Post does it once per idle tick.
 func Register(fn func()) int {
 	mu.Lock()
 	defer mu.Unlock()
-	slots = append(slots, fn)
-	return len(slots) - 1
+	idx := next
+	next++
+	slots[idx] = fn
+	return idx
 }
 
-// Dispatch invokes the fn registered at idx. Out-of-range indices are ignored
-// (a stray callback after teardown is a no-op rather than a panic). The fn runs
+// Release drops the fn at idx, so whatever it closed over can be collected.
+// The index is not reused. Releasing one twice, or one that was never
+// registered, is a no-op.
+//
+// Registering without releasing retains the closure for the life of the
+// process, and through it everything the closure captured -- a generated
+// program's whole Model, in the case a timer's tick is.
+func Release(idx int) {
+	mu.Lock()
+	delete(slots, idx)
+	mu.Unlock()
+}
+
+// Dispatch invokes the fn registered at idx. An unknown index is ignored (a
+// stray callback after teardown is a no-op rather than a panic). The fn runs
 // without cbind's lock held, so a handler may itself Register more callbacks.
 func Dispatch(idx int) {
 	mu.Lock()
-	var fn func()
-	if idx >= 0 && idx < len(slots) {
-		fn = slots[idx]
+	fn := slots[idx]
+	mu.Unlock()
+	if fn != nil {
+		fn()
 	}
+}
+
+// DispatchOnce is Dispatch for a callback C will not call again: the fn runs
+// and its slot is dropped. A one-shot source that registered per call would
+// otherwise retain every closure it ever scheduled.
+func DispatchOnce(idx int) {
+	mu.Lock()
+	fn := slots[idx]
+	delete(slots, idx)
 	mu.Unlock()
 	if fn != nil {
 		fn()

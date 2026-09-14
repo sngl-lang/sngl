@@ -194,7 +194,7 @@ component ui.popover[platform] {
 // The runtime package the schedule lives in, named once.
 const _rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 
-#[go.native(_rtPkg, "gtk4rt.Every")]
+#[go.native(_rtPkg, "gtk4rt.Every", schedules)]
 func every(ms int, f func()) int
 
 #[go.native(_rtPkg, "gtk4rt.CancelEvery")]

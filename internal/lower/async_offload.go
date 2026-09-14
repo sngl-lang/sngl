@@ -207,8 +207,8 @@ func lowerAllFuncs(pkg *ir.Package) []*ir.Func {
 //
 // A lambda is deliberately not here, with one exception. One is a value, and
 // what calls it is the code it was handed to: `xs.map(f)` with a blocking f
-// wants the blocking f, not a goroutine per element. A *native* callee is that
-// exception -- nativeCallbackFuncs below.
+// wants the blocking f, not a goroutine per element. A callee that *says* it
+// schedules is that exception -- nativeCallbackFuncs below.
 func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 	out := lowerAllFuncs(pkg)
 	seen := make(map[*ir.Func]bool, len(out))
@@ -254,31 +254,62 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 	return out
 }
 
-// nativeCallbackFuncs is every lambda handed to a call on a native.
+// nativeCallbackFuncs is every lambda handed to a call that says it schedules.
 //
-// It is the exception to the rule above, and for the reason that rule is
-// stated: what calls an ordinary lambda is code this pass can read, and a
-// native has no body here at all. A host scheduler calls its callback from the
-// loop it owns, which is the thread the target draws on -- `fynert.Every` and
-// `gtk4rt.Every` behind `time.timer` are that -- so a blocking call in a tick
-// is exactly the work this pass exists to move off it.
+// It is the exception to the rule above, and the `schedules` flag is what makes
+// it one: what calls an ordinary lambda is code this pass can read, and a
+// native has no body here to read at all. A host scheduler calls its callback
+// from the loop it owns, which is the thread the target draws on --
+// `fynert.Every` and `gtk4rt.Every` behind `time.timer` are that -- so a
+// blocking call in a tick is exactly the work this pass exists to move off it.
 //
-// A native that calls its callback inline instead is indistinguishable from
-// here and gets a goroutine it did not need. Nothing is mis-ordered by that,
-// since the tail is posted back.
+// The flag is asked for rather than inferred from the call's shape, which is
+// the rule the whole of #[foreign] follows: a foreign declaration describes an
+// identifier and does not implement it, so nothing here can find out when the
+// host runs an argument. Inferring it from "the callee is a native" would also
+// be wrong the other way -- a native that runs its callback inline would get a
+// goroutine nobody asked for.
+//
+// A scheduler whose declaration forgets the flag gets the old bug rather than a
+// new one: the callback is not an entry point, so a blocking call in it stays
+// on the drawing thread exactly as it did before any of this existed. That is
+// silent, which is why testdata/timer_tick_async_offload.txtar denies it.
 func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		c, ok := n.(*ir.Call)
-		if !ok || c.Func == nil || c.Func.Foreign.Name == "" || c.Func.Foreign.Marked {
+		if !ok || c.Func == nil || !c.Func.NativeSchedules {
 			return nil
 		}
 		for _, a := range c.Args {
-			if lam, ok := a.Value.(*ir.Lambda); ok && lam.Func != nil {
-				add(lam.Func)
+			if fn := callbackFunc(a.Value); fn != nil {
+				add(fn)
 			}
 		}
 		return nil
 	})
+}
+
+// callbackFunc is the body behind a callback argument, through whatever the
+// checker wrapped it in.
+//
+// Matching a bare *ir.Lambda is what this did, and the whole failure mode of
+// missing one is silent: the tick stops being an entry point and a blocking
+// call in it goes back onto the drawing thread with the generated code still
+// compiling. Nothing wraps one today -- Go sets neither NoLambda nor a
+// conversion at an argument position -- so this is the guard rather than a fix.
+func callbackFunc(e ir.Expr) *ir.Func {
+	for {
+		switch x := e.(type) {
+		case *ir.Lambda:
+			return x.Func
+		case *ir.Closure:
+			return x.Func
+		case *ir.Conversion:
+			e = x.Operand
+		default:
+			return nil
+		}
+	}
 }
 
 // collectHandlerFuncs walks a view body for the handlers hanging off its nodes.

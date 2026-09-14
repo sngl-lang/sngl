@@ -25,6 +25,7 @@ package gtk4rt
 #include <stdlib.h>
 
 extern void snglGoDispatch(int idx);
+extern void snglGoDispatchOnce(int idx);
 
 // Signal trampoline. GTK invokes simple signals as (instance, user_data);
 // the idx we connected with arrives as user_data, unmangled.
@@ -37,8 +38,11 @@ static void sngl_connect(void* widget, const char* signal, int idx) {
 }
 
 // Idle trampoline: fire the registered callback once, then remove the source.
+// DispatchOnce, not Dispatch: the source is gone after this and nothing will
+// ever quote the index again, so the closure has to be dropped here or every
+// Post leaks one.
 static gboolean sngl_idle_tramp(gpointer data) {
-    snglGoDispatch(GPOINTER_TO_INT(data));
+    snglGoDispatchOnce(GPOINTER_TO_INT(data));
     return G_SOURCE_REMOVE;
 }
 static void sngl_gtk_idle_add(int idx) {
@@ -176,6 +180,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sync"
 	"unsafe"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
@@ -383,13 +388,35 @@ func Every(ms int, fn func()) int {
 		return 0
 	}
 	idx := cbind.Register(fn)
-	return int(C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)))
+	id := int(C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)))
+	everyMu.Lock()
+	everyCB[id] = idx
+	everyMu.Unlock()
+	return id
 }
 
-// CancelEvery removes a source Every armed. Zero is accepted and does nothing,
-// so a caller need not track whether it ever armed one.
+// everyCB is the cbind index each armed source was registered under, so
+// CancelEvery can release it. The timer is an `effect` now and mounts again on
+// every gate toggle and every interval change, where it used to be armed once
+// from New -- so a registration that is never released is a closure (and
+// through it the whole Model) retained per mount, for the life of the process.
+var (
+	everyMu sync.Mutex
+	everyCB = map[int]int{}
+)
+
+// CancelEvery removes a source Every armed and drops its callback. Zero is
+// accepted and does nothing, so a caller need not track whether it ever armed
+// one.
 func CancelEvery(id int) {
 	C.sngl_gtk_source_remove(C.guint(id))
+	everyMu.Lock()
+	idx, ok := everyCB[id]
+	delete(everyCB, id)
+	everyMu.Unlock()
+	if ok {
+		cbind.Release(idx)
+	}
 }
 
 // PumpFor runs the GLib main loop for ms milliseconds and returns. It is the
@@ -419,6 +446,9 @@ func Post(fn func()) {
 
 //export snglGoDispatch
 func snglGoDispatch(idx C.int) { cbind.Dispatch(int(idx)) }
+
+//export snglGoDispatchOnce
+func snglGoDispatchOnce(idx C.int) { cbind.DispatchOnce(int(idx)) }
 
 // ---- Application run ----
 

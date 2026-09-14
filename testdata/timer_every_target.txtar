@@ -4,11 +4,13 @@ What every target emits for a timer, and where it finds one.
 schedules with. Three do it with an `effect` bracketing a pair of host natives:
 html over setInterval/clearInterval, fyne over fynert, gtk4 over gtk4rt. Such a
 pair already is a lifetime with a thing to release, which is what an effect
-brackets. Two still carry a primitive of their own, which
-passTimerPrimitive takes out of the tree: bubbletea, whose state is a value
-threaded through Update so an out-of-band callback has no live model to write,
-and android, whose LaunchedEffect is the schedule rather than something a
-schedule is built from.
+brackets. Two still carry a primitive of their own, which passTimerPrimitive
+takes out of the tree, because an effect's `@mount` hands over a *closure* and
+a closure is only a schedule where the host may run it against live state:
+bubbletea is Elm, so a tick has to arrive as a message and its body has to be a
+case Update runs, which is a period and a body together rather than a closure;
+and android's LaunchedEffect is the schedule rather than something a schedule
+is built from.
 
 So this asserts three things at once: that a timer is emitted at all, that a
 timer written in a child component is emitted too, and that its gate reaches

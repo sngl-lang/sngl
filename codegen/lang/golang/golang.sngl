@@ -66,7 +66,22 @@ func async() ir.Macro
 // handed it, which is what a Go method wants: `c.Circle(1, 2)` rather than the
 // method-expression spelling `canvas.Context.Circle(c, 1, 2)`. Both are valid;
 // only the API knows which it is.
-enum NativeFlag { fails, method }
+//
+// `schedules` says the identifier runs a callback it is handed from the loop it
+// owns, rather than inline on the thread that called it: `gtk4rt.Every` gives
+// its function to a GLib timeout source, and the source runs it from the main
+// loop, which is the thread the target draws on.
+//
+// passAsyncOffload reads it to know the callback is a body it may enter. A
+// blocking call inside one is work that has to leave the drawing thread, and
+// without the flag it stays there -- silently, which is the failure
+// testdata/timer_tick_async_offload.txtar exists to deny.
+//
+// It is a flag rather than something read off the call, for the reason nothing
+// is inferred from a foreign declaration at all: its SNGL body describes the
+// identifier and does not implement it, so nothing in the program says when the
+// host runs an argument.
+enum NativeFlag { fails, method, schedules }
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result

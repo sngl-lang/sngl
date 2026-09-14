@@ -9,11 +9,16 @@ to be reachable from the record.
 `interval` and `enabled` are `#[macro.construct]`, and passComponentProps used
 to read that as "no cell and no setter", on the grounds that such a prop is read
 while the instance is built and never again. Read while the instance is built is
-not the same as read *from the constructor*: an effect's position is a method,
-and a parameter is not in scope there. So `__effect0_down` named an `interval`
-and an `enabled` that no record declares -- `undefined: enabled` from the Go
-compiler on fyne and gtk4, and a silent ReferenceError on html, which has
-scheduled this way all along.
+not the same as read *from the constructor*, and whether that distinction bites
+is the host's answer rather than the language's. A Go record's methods take a
+receiver and see its fields, so `__effect0_down` named an `interval` and an
+`enabled` that no record declares: `undefined: enabled` from the compiler, on
+fyne and gtk4 both. **html was unaffected** -- its factory is a function and
+`__effect0_down` is nested inside it, so the bare reads resolved to the
+`let interval = props.interval` in the enclosing scope and always ran correctly.
+The cell is there so the two Go records can spell the prop at all; on html it is
+a rename of code that worked, which is the whole of that target's diff in
+`timer_row_per_instance.txtar`.
 
 The cell is the fix and the *setter* is what stays absent. That is the half the
 mark is really about: `componentAbsorbs` asks after the setter, so with none the
