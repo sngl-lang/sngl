@@ -177,13 +177,17 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 	}
 }
 
-// walkWindow deliberately skips w.Props. A window reached here is an entry in
-// pkg.Windows rather than a statement, so there is no list to hoist into and
-// passTernary's expr hook -- a no-op for exactly that reason -- would drop what
-// it produced. The cost is real and pre-dates this: `window #a(title = c ? x : y)`
-// at the root of a file panics the Go emitter with "ir.Ternary reached Go
-// codegen". Where that temp belongs is the open question; a window that is a
-// NodeInst in pkg.Body has an answer for free.
+// walkWindow deliberately skips w.Props, and a window reached as a *statement*
+// does not: passTernary and the rest carry their own `*ir.Window` arm, which
+// walks the props and hoists what it produces into the list the window sits in.
+// An entry in pkg.Windows sits in no list, so there is nothing to hoist into
+// and fns.expr -- a no-op for passTernary for exactly that reason -- would drop
+// it.
+//
+// The cost is real and pre-dates this: `window #a(title = c ? x : y)` at the
+// root of a file panics the Go emitter with "ir.Ternary reached Go codegen",
+// while the same ternary a level in lowers. Where that temp belongs is the open
+// question, and a window that is a NodeInst in pkg.Body answers it for free.
 func walkWindow(w *ir.Window, fns walkFuncs) {
 	for _, v := range w.Vars {
 		walkVar(v, fns)
