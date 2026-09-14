@@ -276,8 +276,13 @@ func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
 // schedulesItsCallback answers the question the flag exists for, and
 // AsyncPostIntrinsic is the second thing it is true of: a post runs its closure
 // from the loop the platform owns, which is the same thread a native scheduler
-// calls back on. It cannot carry the flag because it carries no declaration at
-// all -- this pass owns the id -- so it is named here instead.
+// calls back on.
+//
+// Named here rather than flagged, because the id has no one declaration to flag
+// -- this pass synthesizes calls to it, and a platform package may declare its
+// own (fyne.sngl does, to post a self-rearming timer's tick). Only the calls
+// standing before this pass runs are read, so the posts it goes on to generate
+// are not candidates.
 func schedulesItsCallback(fn *ir.Func) bool {
 	return fn.NativeSchedules || fn.Intrinsic == AsyncPostIntrinsic
 }
