@@ -63,15 +63,15 @@ body { font-family: system-ui, sans-serif; }
   }
 
   // sngl-entry.js
-  var state = { running__inst0: true, last__inst0: "", handle__inst0__inst0: 0 };
+  var state = { running__inst1: true, last__inst1: "", handle__inst0__inst1: 0 };
   async function __effect0_mount() {
-    state.handle__inst0__inst0 = setInterval(async () => {
-      state.last__inst0 = await fetchHello("poll");
-      __n0.textContent = state.last__inst0;
+    state.handle__inst0__inst1 = setInterval(async () => {
+      state.last__inst1 = await fetchHello("poll");
+      __n0.textContent = state.last__inst1;
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst0__inst0);
+    clearInterval(state.handle__inst0__inst1);
   }
   function __snglTeardown() {
     __effect0_teardown();
@@ -84,7 +84,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
-    if (state.running__inst0) {
+    if (state.running__inst1) {
       __effect0_desired.push(500);
     }
     for (const [__effect0_i, _] of __effect0_live.entries()) {
@@ -142,7 +142,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = state.last__inst0;
+    __n0.textContent = state.last__inst1;
   }
   __sngl_init();
   __effects0_settle();

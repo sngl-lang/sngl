@@ -80,21 +80,21 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds__inst0: 3, running__inst0: false, handle__inst0__inst0: 0 };
+  var state = { seconds__inst1: 3, running__inst1: false, handle__inst0__inst1: 0 };
   function __effect0_mount() {
-    state.handle__inst0__inst0 = setInterval(() => {
-      state.seconds__inst0 -= 1;
-      __n0.textContent = String(state.seconds__inst0) + " s";
-      if (state.seconds__inst0 <= 0) {
+    state.handle__inst0__inst1 = setInterval(() => {
+      state.seconds__inst1 -= 1;
+      __n0.textContent = String(state.seconds__inst1) + " s";
+      if (state.seconds__inst1 <= 0) {
         ;
-        state.running__inst0 = false;
+        state.running__inst1 = false;
         __effects0_settle();
       }
       ;
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst0__inst0);
+    clearInterval(state.handle__inst0__inst1);
   }
   function __snglTeardown() {
     __effect0_teardown();
@@ -107,7 +107,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
-    if (state.running__inst0) {
+    if (state.running__inst1) {
       __effect0_desired.push(1e3);
     }
     for (const [__effect0_i, _] of __effect0_live.entries()) {
@@ -169,15 +169,15 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
-    if (state.seconds__inst0 > 0) {
+    if (state.seconds__inst1 > 0) {
       ;
-      state.running__inst0 = !state.running__inst0;
+      state.running__inst1 = !state.running__inst1;
       __effects0_settle();
     }
     ;
   });
   function __sngl_init() {
-    __n0.textContent = String(state.seconds__inst0) + " s";
+    __n0.textContent = String(state.seconds__inst1) + " s";
   }
   __sngl_init();
   __effects0_settle();

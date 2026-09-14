@@ -979,6 +979,37 @@ two calls of a nested func share the model. Its own state is unaffected and
 stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
 that, because it is the surprising half.
 
+**`__instN` is one sequence across two passes.** `passInlinePure` substitutes a
+platform override and `passNoInlineComponents` substitutes a user component, and
+they rename that component's state into one host namespace — but each held a
+counter of its own, both starting at zero, so an owner holding one of each came
+out declaring two `hits__inst0`. Kotlin and Go refuse that outright; html keyed
+its `state` object twice and silently kept one of the two counters, with only an
+esbuild warning to say so. The counter is `Options.instSeq`, a `*int` so it
+survives `Options` being passed by value, set once by `Lower` and defaulted by
+`seqOrOwn` for a unit test that builds a pass's state directly.
+`testdata/inst_suffix_one_sequence.txtar` is the fixture.
+
+A *double* suffix is not the symptom and is correct wherever it appears: html's
+`timer` override is substituted by one pass and its owner's clone hoisted by the
+other, so `handle__inst0__inst1` is one var renamed twice as it travels through
+two owners.
+
+**Which target shows it turns on something unrelated**, and that is worth
+knowing before reading `viewReadVars`. It exempts a var only a *handler* touches
+from making a component impure — such a var needs neither an updater nor a
+setter, so the body may be substituted and the var hoisted. But android declares
+its `Button` primitive with `onClick func()` as an ordinary prop, and
+`passInlinePure` substitutes `@click` into it *while walking the override's own
+body*: by the time the call site asks, the handler is a lambda sitting in `Props`
+where a rendered read goes. So one source file gets two verdicts — impure on
+android, pure on html — and the purity question is answered by how a target
+spells a handler rather than by what the component renders. Skipping a
+lambda-valued prop makes the two agree and changes no output in this repository,
+which is why it is not done here: it is unpinnable as a change on its own, and
+the position where it *would* matter (a stateful override under a reactive `if`)
+is one where android's accidental answer is the better of the two.
+
 **A platform override body is a body like any other** (#230): an override *is*
 the body its target renders, so "the body it was written in" is well defined
 there and every word above applies unchanged. Two things make it work, and both

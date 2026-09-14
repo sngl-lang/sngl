@@ -128,6 +128,24 @@ type Options struct {
 	// declaration is this? -- and that question is still about the package.
 	// Set by Lower; a caller's value is overwritten.
 	localComponents map[*ir.Component]bool
+
+	// instSeq numbers the `__instN` suffix each substituted component's state
+	// is renamed with. Shared, because two passes substitute into one emitted
+	// namespace -- passInlinePure takes a platform override, passNoInlineComponents
+	// takes a user component -- and a counter each had them both start at zero:
+	// an override and a component in one owner were emitted as two
+	// `hits__inst0`. A pointer so it survives Options being passed by value.
+	// Set by Lower; a caller's value is overwritten.
+	instSeq *int
+}
+
+// seqOrOwn is the shared `__instN` counter, or a private one for a caller that
+// built a pass's state directly rather than through Lower -- a unit test.
+func seqOrOwn(seq *int) *int {
+	if seq == nil {
+		return new(int)
+	}
+	return seq
 }
 
 // Lower applies all enabled lowering passes to pkg in execution order,
@@ -140,6 +158,7 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 	if opts.StopAfter == "none" {
 		return nil
 	}
+	opts.instSeq = new(int)
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {
