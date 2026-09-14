@@ -13,7 +13,9 @@ The lambda has to sit in an initializer rather than in a handler: a handler
 body reaches the pass through the `stmts` hook, and `transformExpr` has handled
 `*ir.Lambda` all along. Only the position nothing walked into was broken.
 
-deny out/go/bubbletea/model.go `\? \(x \+ 1\) :` -- the Go emitter has no ternary; the hoisted temp is the whole point
+There is deliberately no `deny` for a ternary in the Go output: the emitter
+panics rather than writing one, so such a line could never fire. The golden's
+`__lt0` is the assertion, and the revert fails by panicking.
 
 -- app.sngl --
 import . "sngl:ui"
