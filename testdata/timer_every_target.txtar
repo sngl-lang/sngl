@@ -70,7 +70,7 @@ and inert.
 deny out/kotlin/android/MainScreen.kt `while \(\)` -- a gate is an expression, not a variable name
 deny out/kotlin/android/MainScreen.kt `LaunchedEffect\(\)` -- likewise: LaunchedEffect with no key does not compile
 deny * `timer\(interval` -- the primitive leaves the tree; no target renders one
-deny out/go/fyne/model.go `Reset\(m\.__effect\d+_key\)` -- a re-arm for a whole period makes every tick's cost cumulative; the reset is the remainder until the deadline the tick was due at
+deny out/go/fyne/model.go `Reset\(m\.__effect\d+_key\)` -- a re-arm for a whole period carries the hand-over onto the drawing thread into every period with nothing bounding the total; the reset is the remainder until the deadline the tick was due at
 deny out/go/fyne/model.go `if !m.live` -- fyne re-arms from inside the post, so a stale closure must test the generation it was armed in; a flag saying only that something is armed is true again by the time a re-key's mount has run, and the closure would orphan the timer that mount armed
 
 -- app.sngl --
