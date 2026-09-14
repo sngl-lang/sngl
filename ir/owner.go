@@ -102,9 +102,10 @@ func Owners(pkg *Package) []Owner {
 	}
 	// A window a body renders is an *ir.Window statement in that body and
 	// never reaches pkg.Windows. Each one found is itself searched, so the
-	// walk is a worklist over `out` rather than a loop over a fixed list --
-	// nothing forbids a window inside a window's body, and the previous
-	// version reported the outer one only.
+	// walk is a worklist over `out` rather than a loop over a fixed list:
+	// passWindowNesting rejects a window inside a window, but it runs late and
+	// every consumer before it -- the checker's four included -- has to be able
+	// to see the inner one to report on it.
 	search := func(stmts []Stmt) {
 		_ = WalkStmts(stmts, func(s Stmt) error {
 			if w, ok := s.(*Window); ok {
