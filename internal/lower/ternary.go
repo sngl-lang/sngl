@@ -39,7 +39,21 @@ func lowerTernary(pkg *ir.Package, _ Caps, _ Options) error {
 		// the optimizer before lower runs in the production pipeline. If a
 		// dynamic ternary reaches us in such a position there is no
 		// statement to hoist before — leave it alone.
-		expr: func(e ir.Expr) ir.Expr { return e },
+		//
+		// A lambda *body* inside one is not in that position: it is a
+		// statement list, so a ternary there hoists into it like any other.
+		// Skipping the initializer wholesale skipped those too, and
+		// `var ys = xs.map(func(x int) => c ? a : b)` panicked every Go
+		// emitter with "ir.Ternary reached Go codegen".
+		expr: func(e ir.Expr) ir.Expr {
+			_ = ir.Walk(e, func(n ir.Node) error {
+				if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
+					l.Func.Block = st.transformBlock(l.Func.Block)
+				}
+				return nil
+			})
+			return e
+		},
 	})
 	return nil
 }
