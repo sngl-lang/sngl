@@ -671,6 +671,18 @@ standing on re-entry -- the state a prop with no answer already reached codegen
 in. Keyed by window *and* prop, so two windows naming each other terminate on
 the second key rather than looping on the first.
 
+**Left standing is silent missing output**, and that is a known cost rather
+than a decision anyone defends: the page comes out with no `<title>` and
+nothing says why. The guard firing is exactly the signal a positioned *"this
+window prop reads itself"* error would need, and the reason one is not written
+there is that it would be the only self-reference the compiler refuses --
+`const a int = a` checks clean today. So the rule to make is the general one,
+in the checker where a positioned diagnostic reaches `sngl check` and the LSP,
+rather than in the optimizer's fatal-evaluation channel, which is also entered
+speculatively by `evalNativeRounds` and `specialize`.
+`cmd/sngl/testdata/window_prop_reads_itself.txt` pins the current answer, cycle
+included, so changing it is a fixture to update rather than a surprise.
+
 What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
 not simply carried over. `Window.Vars` is a *lowering artifact*: the checker
 leaves a window's `var` as an `*ir.LocalVar` statement in the body (which is
