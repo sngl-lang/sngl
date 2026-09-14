@@ -73,14 +73,10 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 				}
 			}
 		case *ir.Window:
-			if n.Href != nil {
-				n.Href = rewrite(n.Href)
-			}
-			if n.Title != nil {
-				n.Title = rewrite(n.Title)
-			}
-			if n.Favicon != nil {
-				n.Favicon = rewrite(n.Favicon)
+			for i := range n.Props {
+				if n.Props[i].Value != nil {
+					n.Props[i].Value = rewrite(n.Props[i].Value)
+				}
 			}
 			n.Body = rewriteStmtExprs(n.Body, rewrite)
 		case *ir.Toggle:
@@ -181,6 +177,17 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 	}
 }
 
+// walkWindow deliberately skips w.Props, and a window reached as a *statement*
+// does not: passTernary and the rest carry their own `*ir.Window` arm, which
+// walks the props and hoists what it produces into the list the window sits in.
+// An entry in pkg.Windows sits in no list, so there is nothing to hoist into
+// and fns.expr -- a no-op for passTernary for exactly that reason -- would drop
+// it.
+//
+// The cost is real and pre-dates this: `window #a(title = c ? x : y)` at the
+// root of a file panics the Go emitter with "ir.Ternary reached Go codegen",
+// while the same ternary a level in lowers. Where that temp belongs is the open
+// question, and a window that is a NodeInst in pkg.Body answers it for free.
 func walkWindow(w *ir.Window, fns walkFuncs) {
 	for _, v := range w.Vars {
 		walkVar(v, fns)

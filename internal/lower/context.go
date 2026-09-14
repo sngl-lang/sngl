@@ -1095,9 +1095,9 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 		case *ir.Window:
 			// Window stmts only appear inside for-loop bodies (dynamic
 			// window emission). Thread ctx args through their surface.
-			n.Href = lowerInExpr(n.Href, active, reach, hidden)
-			n.Title = lowerInExpr(n.Title, active, reach, hidden)
-			n.Favicon = lowerInExpr(n.Favicon, active, reach, hidden)
+			for i := range n.Props {
+				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, reach, hidden)
+			}
 			n.Body = lowerInStmts(n.Body, active, reach, hidden)
 			for _, v := range n.Vars {
 				v.Init = lowerInExpr(v.Init, active, reach, hidden)

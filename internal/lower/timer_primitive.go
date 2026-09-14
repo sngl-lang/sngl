@@ -56,15 +56,7 @@ func lowerTimerPrimitives(pkg *ir.Package, _ Caps, _ Options) error {
 	st := &timerPrimState{pkg: pkg}
 	for _, o := range ir.Owners(pkg) {
 		st.comp, st.win = o.Comp, o.Win
-		body := st.stmts(o.Stmts, nil)
-		switch {
-		case o.Comp != nil:
-			o.Comp.Body = body
-		case o.Win != nil:
-			o.Win.Body = body
-		default:
-			pkg.Body = body
-		}
+		*o.Body = st.stmts(o.Stmts(), nil)
 	}
 	return nil
 }

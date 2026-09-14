@@ -318,9 +318,9 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		walkStmts(n.Body, used, walk)
 		walkStmts(n.Else, used, walk)
 	case *ir.Window:
-		walkExpr(n.Href, used, walk)
-		walkExpr(n.Title, used, walk)
-		walkExpr(n.Favicon, used, walk)
+		for i := range n.Props {
+			walkExpr(n.Props[i].Value, used, walk)
+		}
 		for _, v := range n.Vars {
 			walk(v)
 		}

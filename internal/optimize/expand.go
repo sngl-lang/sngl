@@ -204,23 +204,17 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 }
 
 // windowStructValue produces the const-eval shape (map[string]any) for an
-// unrolled window: href/title/favicon literal-folded to Go values, when
-// available. Non-foldable expressions are omitted.
+// unrolled window: each prop literal-folded to a Go value, when available.
+// Non-foldable expressions are omitted.
 func windowStructValue(w *ir.Window) any {
 	m := map[string]any{}
-	if lit, ok := w.Href.(*ir.Literal); ok {
-		if v := parseLiteral(lit); v != nil {
-			m["href"] = v
+	for _, p := range w.Props {
+		lit, ok := p.Value.(*ir.Literal)
+		if !ok {
+			continue
 		}
-	}
-	if lit, ok := w.Title.(*ir.Literal); ok {
 		if v := parseLiteral(lit); v != nil {
-			m["title"] = v
-		}
-	}
-	if lit, ok := w.Favicon.(*ir.Literal); ok {
-		if v := parseLiteral(lit); v != nil {
-			m["favicon"] = v
+			m[p.Name] = v
 		}
 	}
 	return m
@@ -277,9 +271,9 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 			walkAllExprs(n.Call, visit)
 		}
 	case *ir.Window:
-		walkAllExprs(n.Href, visit)
-		walkAllExprs(n.Title, visit)
-		walkAllExprs(n.Favicon, visit)
+		for i := range n.Props {
+			walkAllExprs(n.Props[i].Value, visit)
+		}
 		walkForBody(n.Body, visit)
 	case *ir.SlotInst:
 		walkForBody(n.Children, visit)

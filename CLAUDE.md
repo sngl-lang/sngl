@@ -180,17 +180,47 @@ place* takes `blocks.go`'s pointers; a pass rewriting statements and leaf
 expressions together takes `walk.go`'s `walkPackage` (`passTernary`,
 `passIndexedIter`, `passNoRef`, `NoDeclarative`'s id scan); a pass wanting the
 *functions* a target may enter takes `async_offload.go`'s `offloadableFuncs`.
-The three enumerate the same owners and each says so in its own code, which is
-what let one of them forget a case the other two had. **A window owns timers**
-— `passTimerPrimitive` records a schedule on whichever owner held the node, and
-the inliner has by then put a top-level component's timer in the window — and
-`walkWindow` and `offloadableFuncs` both walked a window's vars, funcs and body
-and not its timers. Nothing in source puts a timer there, so both gaps opened
-only after that pass ran and were invisible to every fixture written before it:
-a ternary in a `@tick` panicked the Go emitter, a two-variable `sngl:seq` loop
-there emitted `for i, x := range` over a pull sequence, and a `#[go.async]` call
-there ran on fyne's drawing thread. `testdata/timer_tick_lowered.txtar` and
-`testdata/timer_tick_async_offload.txtar` pin the three.
+The three enumerate the same owners and each used to say so in its own code,
+which is what let one of them forget a case the other two had. **A window owns
+timers** — `passTimerPrimitive` records a schedule on whichever owner held the
+node, and the inliner has by then put a top-level component's timer in the
+window — and `walkWindow` and `offloadableFuncs` both walked a window's vars,
+funcs and body and not its timers. Nothing in source puts a timer there, so
+both gaps opened only after that pass ran and were invisible to every fixture
+written before it: a ternary in a `@tick` panicked the Go emitter, a
+two-variable `sngl:seq` loop there emitted `for i, x := range` over a pull
+sequence, and a `#[go.async]` call there ran on fyne's drawing thread.
+`testdata/timer_tick_lowered.txtar` and `testdata/timer_tick_async_offload.txtar`
+pin the three.
+
+Two of the three now *ask* `ir.Owner` rather than restating it. `blocks.go`
+and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's timers and
+its `@error` reach them because the enumeration says a window owns those and
+not because each remembered to — each had a *second*, thinner copy of the
+window arm beside the `pkg.Windows` one, and `blocks.go`'s passed nil timers
+and skipped the `@error` outright. Neither was reachable, since
+`passWindowNesting` rejects the only shape that leaves a window a statement by
+then; the point is that nothing had to notice.
+
+What *was* reachable is the case neither copy had: **the handlers on a package
+var.** Both files named the package's funcs and its body and stopped, while a
+component's and a window's vars were walked in both — so a `for … else` in the
+`@change` of a top-level `var` reached `passForElse` not at all and every
+backend dropped the else in silence. `passRootWindow` leaves a package's vars
+where the checker put them, deliberately, so the shape survives the whole
+pipeline; `testdata/for_else_package_var_handler.txtar` is it.
+
+Both orders are load-bearing and neither is this file's any more.
+`passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
+order, and `passAsyncOffload` names `__async_offN` off `offloadableFuncs`', so
+each keeps the order it had: a window's `@error` after its view body, and the
+declared funcs across every owner before any handler.
+`codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
+windows rather than the owners — reads the same list.
+`walk.go`'s `walkPackage` is the one left: several of its passes carry an
+`*ir.Window` arm in their own statement switch, so handing it the owners would
+walk a nested window's body twice, and unifying it means deleting those arms in
+the same change.
 
 ## Build & Test Commands
 
@@ -583,6 +613,28 @@ node), and a component that names `root` itself renders windows, which
 `passRootWindow` lifts onto `pkg.Windows`. `output` is exempt: it is read as a
 build directive before any tree question is asked, and `sngl:builtin` cannot
 import `sngl:ui`, where the root tree lives.
+
+**And a window's props are the declaration's, not the compiler's.**
+`lib/ui/window.sngl` declares `title`, `href` and `favicon` like any other
+component declares a prop, so `ir.Window` holds them as the `Props []Arg` a
+`NodeInst` carries and `ir.Window.Comp` is the declaration they were measured
+against. Naming the three as Go fields cost 22 files a hardcoded triple, and
+two of them — `buildWindow` and `convertWindow` — a hand-maintained list that
+had to agree; a fourth prop would have needed every one of them edited before
+it reached a backend. What a Go consumer still spells is `ir.WindowTitle` and
+its two siblings, which name the *prop it reads* rather than redeclaring one:
+html asks for the href, gtk4 for the title, and neither is a list of what a
+window has.
+
+`ir.Window` is still its own struct rather than a `#[builtin("window")]`
+`NodeInst`, and two things are why. Its **body-owner half** — vars, funcs,
+timers, `@error` — has nowhere to live on a `NodeInst`, which nothing else
+gives state to. And a window is an `ir.Symbol`: `window #home` binds a name
+that `output(entry = home)` and `home.title` resolve against, where a
+`NodeInst`'s `ID` is a plain string. Until both are answered
+`checkTreeMembership` keeps a `*ir.Window` arm beside its `*ir.NodeInst` one,
+now reading the same two fields off the same kind of pointer, which is what
+makes the collapse mechanical when they are.
 
 **A root component's own state is hoisted into the window it lifts**, because
 that is where it is mounted — the component is an empty shell once the lift is

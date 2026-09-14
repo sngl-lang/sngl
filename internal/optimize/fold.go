@@ -101,23 +101,12 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if id, ok := x.Operand.(*ir.Ident); ok {
 			if win, ok := id.Sym.(*ir.Window); ok {
 				// Every prop of the #[builtin("window")] component is
-				// readable off a window symbol, so all three must fold here —
-				// a Select left standing reaches codegen as a dangling
+				// readable off a window symbol, so each must fold here -- a
+				// Select left standing reaches codegen as a dangling
 				// reference. Keep in step with windowStructValue (expand.go),
 				// which does the same for the unrolled-list case.
-				switch x.Field {
-				case "href":
-					if win.Href != nil {
-						return win.Href
-					}
-				case "title":
-					if win.Title != nil {
-						return win.Title
-					}
-				case "favicon":
-					if win.Favicon != nil {
-						return win.Favicon
-					}
+				if v := win.Prop(x.Field); v != nil {
+					return v
 				}
 			}
 		}
@@ -262,14 +251,10 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 		n.Children = foldStmts(n.Children, ctx)
 	case *ir.Window:
-		if n.Href != nil {
-			n.Href = foldExpr(n.Href, ctx)
-		}
-		if n.Title != nil {
-			n.Title = foldExpr(n.Title, ctx)
-		}
-		if n.Favicon != nil {
-			n.Favicon = foldExpr(n.Favicon, ctx)
+		for i := range n.Props {
+			if n.Props[i].Value != nil {
+				n.Props[i].Value = foldExpr(n.Props[i].Value, ctx)
+			}
 		}
 		n.Body = foldStmts(n.Body, ctx)
 	case *ir.Toggle:

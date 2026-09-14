@@ -109,7 +109,7 @@ func uniqueNodeIDs(pkg *ir.Package) {
 		seen := map[string]int{}
 		// Every body the owner has, because an id is ambiguous wherever the
 		// two nodes that share it are written.
-		_ = ir.Walk(o.Stmts, func(node ir.Node) error {
+		_ = ir.Walk(o.Stmts(), func(node ir.Node) error {
 			n, ok := node.(*ir.NodeInst)
 			if !ok || n.ID == "" {
 				return nil

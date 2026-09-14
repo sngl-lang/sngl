@@ -23,6 +23,12 @@ pkg/kotlin/testagent/build/
 # `go build ./internal/cmd/verify/` drops its binary here
 /verify
 
-# Platform test runners build in temp dirs beside their package
-codegen/platform/*/fyne-canvas-*/
+# Platform test runners MkdirTemp(".", "<platform>-<case>-") beside their own
+# package, because the emitted Go has to build inside this module. An
+# interrupted run skips the deferred RemoveAll, so the prefixes are ignored
+# rather than the one case that happened to leak first.
+codegen/platform/*/bt-*/
+codegen/platform/*/fyne-*/
+codegen/platform/*/gtk4-*/
+codegen/platform/*/optnarrow*/
 /.sngl-consteval-*/

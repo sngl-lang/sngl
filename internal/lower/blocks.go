@@ -66,20 +66,14 @@ func collectBlocks(pkg *ir.Package, imperative, views bool) []*[]ir.Stmt {
 	for _, f := range pkg.Funcs {
 		c.addImperative(&f.Block)
 	}
-	c.viewIn(&pkg.Body)
-	for _, comp := range pkg.Components {
-		c.owner(comp.Funcs, comp.Vars, comp.Timers, &comp.Body)
-	}
-	for _, w := range pkg.Windows {
-		c.owner(w.Funcs, w.Vars, w.Timers, &w.Body)
-		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			c.addImperative(&w.ErrorHandler.Func.Block)
-		}
-	}
-	for _, t := range pkg.Timers {
-		if t.Handler != nil {
-			c.addImperative(&t.Handler.Block)
-		}
+	// The order is ir.Owners' now rather than this file's, and it is
+	// observable: passCSE and passForElse name their temps __cseN/__ranN off
+	// the position a block holds here. It also reaches one set of blocks this
+	// file never listed -- the handlers on a *package* var, which a component's
+	// and a window's had and the package's did not
+	// (testdata/for_else_package_var_handler.txtar).
+	for _, o := range ir.Owners(pkg) {
+		c.owner(o)
 	}
 	if imperative {
 		_ = ir.Walk(pkg, func(n ir.Node) error {
@@ -117,26 +111,34 @@ func (c *blockCollector) add(b *[]ir.Stmt) {
 	c.out = append(c.out, b)
 }
 
-// owner covers one component's or window's imperative blocks: its own
-// functions, the handlers on its vars and timers, and the handlers hanging off
-// the nodes in its view.
-func (c *blockCollector) owner(funcs []*ir.Func, vars []*ir.Var, timers []*ir.Timer, body *[]ir.Stmt) {
-	for _, f := range funcs {
+// owner covers one declaration's imperative blocks: its own functions, the
+// handlers on its vars and timers, its own @error, and the handlers hanging
+// off the nodes in its view.
+func (c *blockCollector) owner(o ir.Owner) {
+	for _, f := range o.Funcs {
 		c.addImperative(&f.Block)
 	}
-	for _, v := range vars {
+	for _, v := range o.Vars {
 		for _, h := range v.Handlers {
 			if h.Func != nil {
 				c.addImperative(&h.Func.Block)
 			}
 		}
 	}
-	for _, t := range timers {
+	for _, t := range o.Timers {
 		if t.Handler != nil {
 			c.addImperative(&t.Handler.Block)
 		}
 	}
-	c.viewIn(body)
+	c.viewIn(o.Body)
+	// After the view body, not before: passCSE and passForElse number their
+	// temps off this order, and a window's @error came last when this file
+	// enumerated the owners itself.
+	for _, h := range o.Handlers {
+		if h.Func != nil {
+			c.addImperative(&h.Func.Block)
+		}
+	}
 }
 
 // viewIn walks a view body for the handler bodies it hosts, and for the body's
@@ -185,8 +187,6 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 			c.viewIn(&n.Failed)
 		case *ir.ContextProvider:
 			c.viewIn(&n.Children)
-		case *ir.Window:
-			c.owner(n.Funcs, n.Vars, nil, &n.Body)
 		}
 	}
 }

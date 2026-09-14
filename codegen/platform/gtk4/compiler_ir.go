@@ -1125,10 +1125,14 @@ func isWindowClass(cType string) bool {
 // it declares none.
 func windowTitleGo(ctx *codegen.CodegenCtx, gc *golang.GoIRContext) string {
 	wins := ctx.Windows()
-	if len(wins) == 0 || wins[0].Window == nil || wins[0].Window.Title == nil {
+	if len(wins) == 0 {
 		return ""
 	}
-	return gc.EvalExpr(wins[0].Window.Title)
+	title := wins[0].Window.Prop(ir.WindowTitle)
+	if title == nil {
+		return ""
+	}
+	return gc.EvalExpr(title)
 }
 
 // emitBuildUI emits BuildUI(app *C.GtkApplication) *C.GtkWidget. Top-level
