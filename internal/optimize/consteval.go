@@ -300,6 +300,13 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 			// is not the right answer, only a survivable one: the rule that a
 			// declaration may not read itself belongs in the checker, where it
 			// reaches a program this pass never folds. See CLAUDE.md.
+			//
+			// Survivable rests on something in another package. The standing
+			// expression reaches JavaScript as `var a = a`, which is benign
+			// because `var` hoists; spelled `let` or `const` it is a TDZ
+			// ReferenceError and the page breaks on load rather than rendering
+			// one value short. cmd/sngl/testdata/const_reads_itself.txt denies
+			// both spellings so that modernising the emitter is caught here.
 			if ctx.evaluatingConst[v] {
 				return nil, false
 			}

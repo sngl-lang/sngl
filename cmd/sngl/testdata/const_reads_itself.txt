@@ -14,8 +14,16 @@
 # Answered "not constant", which leaves the initializer standing -- what a
 # const the optimizer cannot evaluate already does. Survivable rather than
 # right, and the page says exactly how much so: the self-reference reaches the
-# output verbatim as `var a = a`, and the text node that reads it is dropped
-# from the document altogether. No diagnostic either way.
+# output verbatim as `var a = a`, and the span that reads it renders empty --
+# the element survives, its content does not, and the page carries no
+# initializer to fill it. No diagnostic either way.
+#
+# That `var a = a` is tolerable at all is a fact about the JavaScript emitter,
+# not about this guard: `var` hoists, so the line assigns undefined to itself
+# and the page loads. Spelled `let` or `const` the identical line is a TDZ
+# ReferenceError and the page breaks outright -- which would turn a silently
+# missing value into a broken one and make leaving the expression standing the
+# wrong trade. The two denies below are what would notice.
 #
 # The rule that a declaration may not read itself belongs in the checker, and
 # this is why a guard here cannot be the answer: `sngl check` accepts this
@@ -28,6 +36,8 @@ sngl generate --lang none --platform html --out out selfconst.sngl
 grep '<title>t</title>' out/index.html
 grep 'var a = a;' out/index.html
 ! grep '__sngl_init' out/index.html
+! grep 'let a = a' out/index.html
+! grep 'const a = a' out/index.html
 
 # A cycle reaches the guard by a second key rather than the first one twice.
 sngl generate --lang none --platform html --out out2 cycle.sngl
