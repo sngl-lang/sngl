@@ -244,7 +244,7 @@ func outputOptions(nodes ...*ir.NodeInst) *ir.StructLit {
 		if n.Component != nil {
 			for _, p := range n.Component.Props {
 				if findField(def, p.Name) == nil {
-					def.Fields = append(def.Fields, &ir.StructField{Name: p.Name, Type: p.Type, Default: p.Default, DefaultWritten: p.Default != nil})
+					def.Fields = append(def.Fields, &ir.StructField{Name: p.Name, Type: p.Type, Default: p.Default})
 				}
 			}
 		}

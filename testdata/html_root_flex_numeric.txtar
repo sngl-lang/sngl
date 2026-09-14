@@ -3,18 +3,25 @@ its parent is a numeric question. html answers it by handing the page the
 viewport -- `html, body { height: 100% }` and a flex column body -- because a
 root has no parent to take a share from.
 
-Three pages say the three answers apart. `one` asks for a share and gets the
-viewport. `zero` asks for none and must not: turning the viewport rule on for
-a page that wants document flow changes how every page in it lays out.
-`plain` writes no style at all, which is the same claim reached by a different
-route -- the inliner binds the omitted prop to `Style`'s declared defaults, so
-the node carries a `flex` field of 0 rather than no field, and a page that
-never mentioned flex must read the same as one that set it to zero.
+`zero` is the case the numeric test exists for: a root asking for no share
+must not turn that rule on, and the string-typed test it replaced could not
+read a float at all, so it never fired and every page carrying a `flex`
+field got the viewport whatever the field held. `one` is the other side, and
+the two are byte-different in the archive below rather than only in prose.
+
+`plain` writes no style at all, and reaches the same answer by not carrying
+the field: `ui.Style` gives none of its fields a default, so an omitted
+`style` prop binds an empty literal and `NodeStyleFields` returns nothing to
+ask about. It is here because the two routes have to agree -- a page that
+never mentions flex and a page that sets it to zero are the same page -- and
+because it is the page that would move if `DeclaredDefault` ever went back to
+naming a field the declaration said nothing about.
 
 deny out/none/html/zero.html `(?m)^html, body \{ height: 100%; \}` -- flex = 0 asks for no share, so the page keeps document flow
 deny out/none/html/zero.html `(?m)^body \{ display: flex` -- same rule, the other half of it
 deny out/none/html/plain.html `(?m)^html, body \{ height: 100%; \}` -- a style nobody wrote asks for no share either
 deny out/none/html/plain.html `(?m)^body \{ display: flex` -- same rule, the other half of it
+deny out/none/html/plain.html `-webkit-line-clamp` -- an omitted style carries no fields at all; a zeroed one would put maxLines:0 here and clamp the element to no lines
 
 -- site.sngl --
 import . "sngl:ui"

@@ -907,7 +907,7 @@ type StructField struct {
 	// with the type's zero, and DeclaredDefault needs it: a field the
 	// declaration said nothing about has to stay absent, so that "unset" goes
 	// on meaning unset to a backend that reads presence.
-	DefaultWritten bool
+	DefaultWritten bool `json:",omitempty"`
 	Foreign        `json:"Foreign,omitzero"`
 }
 
