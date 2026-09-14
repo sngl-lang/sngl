@@ -254,6 +254,13 @@ func (s *stripper) stripComponent(c *Component) {
 func (s *stripper) stripWindow(w *Window) {
 	w.AST = nil
 	w.Checked = false
+	w.Comp = nil // cross-reference, as NodeInst.Component is
+	if w.Props == nil {
+		w.Props = []Arg{}
+	}
+	for i := range w.Props {
+		s.stripExpr(w.Props[i].Value)
+	}
 	if w.Vars == nil {
 		w.Vars = []*Var{}
 	}
