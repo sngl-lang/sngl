@@ -1,0 +1,58 @@
+# A const whose initializer reads itself does not take the compiler down.
+#
+# `evalIdent` reads a const's value by evaluating its initializer, and the
+# initializer reads the const: evalIdent <-> evalExpr with nothing between
+# them. `const a int = a` was a one-line program that ended in
+#
+#   runtime: goroutine stack exceeds 1000000000-byte limit
+#   fatal error: stack overflow
+#
+# with no position and no message. Pre-existing, and found from the other end:
+# the identical shape in a window prop (window_prop_reads_itself.txt) needed
+# the same guard, keyed the same way, twenty lines away.
+#
+# Answered "not constant", which leaves the initializer standing -- what a
+# const the optimizer cannot evaluate already does. That is survivable rather
+# than right: the page below carries no value for `a`, silently. The rule that
+# a declaration may not read itself belongs in the checker, where it reaches a
+# program this pass never folds; CLAUDE.md says so and this fixture is what
+# changing it would update.
+#
+# A CLI script rather than a golden because what is asserted is that the
+# compiler comes back at all.
+sngl generate --lang none --platform html --out out selfconst.sngl
+grep '<title>t</title>' out/index.html
+
+# A cycle reaches the guard by a second key rather than the first one twice.
+sngl generate --lang none --platform html --out out2 cycle.sngl
+grep '<title>t</title>' out2/index.html
+
+-- selfconst.sngl --
+import . "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+const a int = a
+
+window #home(title="t", href="/index.html") {
+    text(value="{a}")
+}
+-- cycle.sngl --
+import . "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+const a int = b
+const b int = a
+
+window #home(title="t", href="/index.html") {
+    text(value="{a}")
+}

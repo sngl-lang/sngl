@@ -675,13 +675,22 @@ the second key rather than looping on the first.
 than a decision anyone defends: the page comes out with no `<title>` and
 nothing says why. The guard firing is exactly the signal a positioned *"this
 window prop reads itself"* error would need, and the reason one is not written
-there is that it would be the only self-reference the compiler refuses --
-`const a int = a` checks clean today. So the rule to make is the general one,
-in the checker where a positioned diagnostic reaches `sngl check` and the LSP,
-rather than in the optimizer's fatal-evaluation channel, which is also entered
-speculatively by `evalNativeRounds` and `specialize`.
-`cmd/sngl/testdata/window_prop_reads_itself.txt` pins the current answer, cycle
-included, so changing it is a fixture to update rather than a surprise.
+there is that **self-reference is a rule the language has not made anywhere.**
+`const a int = a` is the same shape one layer down, and until the guard beside
+this one it did not check clean — it crashed the compiler, `evalIdent` and
+`evalExpr` calling each other until the stack went, with no position and no
+message (`cmd/sngl/testdata/const_reads_itself.txt`). So the compiler neither
+refuses self-reference nor survived it, and the window prop is the only one of
+the two that ever *terminated*.
+
+Both guards are the survivable answer rather than the right one. The right one
+is a checker rule refusing a declaration that reads itself, with a position —
+and the const case is the evidence it belongs there rather than in the
+optimizer, because no amount of guarding in `consteval` reaches a program that
+is never folded. `sngl check` and the LSP see nothing today.
+`cmd/sngl/testdata/window_prop_reads_itself.txt` and its const sibling pin the
+current answers, cycles included, so making that rule is two fixtures to update
+rather than a surprise.
 
 What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
 not simply carried over. `Window.Vars` is a *lowering artifact*: the checker

@@ -142,11 +142,15 @@ type evalCtx struct {
 	// reads itself stops rather than recursing. Built in foldPkg so that every
 	// child ctx shares the one map: created on first use instead, a child
 	// taken before that gets nil and makes its own.
-	foldingProp   map[windowProp]bool
-	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
-	inlining      map[*ir.Component]int // recursion guard for component call inlining
-	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
-	interpDepth   int                   // recursion guard for interpretFunc dispatch
+	foldingProp map[windowProp]bool
+	// evaluatingConst is the consts whose initializer is being evaluated, so
+	// one that reads itself stops rather than recursing. Same shape and same
+	// place as foldingProp, for the same reason.
+	evaluatingConst map[*ir.Var]bool
+	values          map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
+	inlining        map[*ir.Component]int // recursion guard for component call inlining
+	inliningFuncs   map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
+	interpDepth     int                   // recursion guard for interpretFunc dispatch
 	// err holds the first fatal evaluation error (e.g. a native import that
 	// failed to evaluate at build time on a platform that requires the value
 	// at compile time). Recorded during folding and surfaced by Optimize.
@@ -393,18 +397,19 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 
 	ctx := &evalCtx{
-		cache:         r.cfg.Cache,
-		native:        r.native,
-		nativeErr:     r.cfg.nativeErr,
-		platform:      r.cfg.Platform,
-		language:      r.cfg.Language,
-		staticView:    codegen.PlatformRendersViewStatically(r.cfg.Platform, r.cfg.Language),
-		dir:           r.cfg.Dir,
-		noCacheBust:   r.cfg.NoCacheBust,
-		pkg:           pkg,
-		values:        make(map[ir.Symbol]any),
-		inliningFuncs: make(map[*ir.Func]bool),
-		foldingProp:   make(map[windowProp]bool),
+		cache:           r.cfg.Cache,
+		native:          r.native,
+		nativeErr:       r.cfg.nativeErr,
+		platform:        r.cfg.Platform,
+		language:        r.cfg.Language,
+		staticView:      codegen.PlatformRendersViewStatically(r.cfg.Platform, r.cfg.Language),
+		dir:             r.cfg.Dir,
+		noCacheBust:     r.cfg.NoCacheBust,
+		pkg:             pkg,
+		values:          make(map[ir.Symbol]any),
+		inliningFuncs:   make(map[*ir.Func]bool),
+		foldingProp:     make(map[windowProp]bool),
+		evaluatingConst: make(map[*ir.Var]bool),
 	}
 
 	// Phase 1: Evaluate all top-level consts.

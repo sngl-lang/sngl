@@ -16,8 +16,10 @@ grep '<span>hi</span>' out/index.html
 # not answer reaches codegen as a dangling reference and html writes nothing
 # for it -- silent missing output, not a crash. Pinned because it is a
 # deliberate choice and the alternative (a positioned error) is a language rule
-# this MR does not make: `const a int = a` checks clean today, so a window prop
-# would be the only self-reference the compiler refuses.
+# this MR does not make. `const a int = a` is the same shape one layer down and
+# crashed the compiler outright until the guard beside this one
+# (const_reads_itself.txt), so self-reference is something the compiler neither
+# refuses nor survived -- and this is the only one of the two that terminated.
 ! grep '<title>' out/index.html
 
 # Two windows naming each other reach the guard by a second key rather than by
