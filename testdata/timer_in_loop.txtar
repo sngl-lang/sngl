@@ -228,15 +228,21 @@ func (c *TimerInstance) __effect0_mount() {
 		c.live = true
 		c.gen = (c.gen + 1)
 		var mine int = c.gen
-		c.next = time.Now().Add(c.__effect0_key)
+		period := c.__effect0_key
+		c.next = time.Now().Add(period)
 		c.rearm = func() {
 			fyne.Do(func() {
 				if c.gen != mine {
 					return
 				}
-				c.next = c.next.Add(c.__effect0_key)
-				for time.Until(c.next) <= time.Duration(0)*time.Millisecond {
-					c.next = c.next.Add(c.__effect0_key)
+				c.next = c.next.Add(period)
+				var caught int = 0
+				for (time.Until(c.next) <= time.Duration(0)*time.Millisecond) && (caught < 64) {
+					c.next = c.next.Add(period)
+					caught = (caught + 1)
+				}
+				if time.Until(c.next) <= time.Duration(0)*time.Millisecond {
+					c.next = time.Now().Add(period)
 				}
 				c.handle.Reset(time.Until(c.next))
 				c.__prop_tick(nil)

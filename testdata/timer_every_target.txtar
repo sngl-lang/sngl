@@ -356,15 +356,21 @@ func (m *Model) __effect0_mount() {
 		m.live__inst1__inst2 = true
 		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
 		var mine int = m.gen__inst1__inst2
-		m.next__inst1__inst2 = time.Now().Add(m.__effect0_key)
+		period := m.__effect0_key
+		m.next__inst1__inst2 = time.Now().Add(period)
 		m.rearm__inst1__inst2 = func() {
 			fyne.Do(func() {
 				if m.gen__inst1__inst2 != mine {
 					return
 				}
-				m.next__inst1__inst2 = m.next__inst1__inst2.Add(m.__effect0_key)
-				for time.Until(m.next__inst1__inst2) <= time.Duration(0)*time.Millisecond {
-					m.next__inst1__inst2 = m.next__inst1__inst2.Add(m.__effect0_key)
+				m.next__inst1__inst2 = m.next__inst1__inst2.Add(period)
+				var caught int = 0
+				for (time.Until(m.next__inst1__inst2) <= time.Duration(0)*time.Millisecond) && (caught < 64) {
+					m.next__inst1__inst2 = m.next__inst1__inst2.Add(period)
+					caught = (caught + 1)
+				}
+				if time.Until(m.next__inst1__inst2) <= time.Duration(0)*time.Millisecond {
+					m.next__inst1__inst2 = time.Now().Add(period)
 				}
 				m.handle__inst1__inst2.Reset(time.Until(m.next__inst1__inst2))
 				m.seconds__inst2 += 1
@@ -430,15 +436,21 @@ func (m *Model) __effect1_mount() {
 		m.live__inst0__inst3 = true
 		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
 		var mine int = m.gen__inst0__inst3
-		m.next__inst0__inst3 = time.Now().Add(m.__effect1_key)
+		period := m.__effect1_key
+		m.next__inst0__inst3 = time.Now().Add(period)
 		m.rearm__inst0__inst3 = func() {
 			fyne.Do(func() {
 				if m.gen__inst0__inst3 != mine {
 					return
 				}
-				m.next__inst0__inst3 = m.next__inst0__inst3.Add(m.__effect1_key)
-				for time.Until(m.next__inst0__inst3) <= time.Duration(0)*time.Millisecond {
-					m.next__inst0__inst3 = m.next__inst0__inst3.Add(m.__effect1_key)
+				m.next__inst0__inst3 = m.next__inst0__inst3.Add(period)
+				var caught int = 0
+				for (time.Until(m.next__inst0__inst3) <= time.Duration(0)*time.Millisecond) && (caught < 64) {
+					m.next__inst0__inst3 = m.next__inst0__inst3.Add(period)
+					caught = (caught + 1)
+				}
+				if time.Until(m.next__inst0__inst3) <= time.Duration(0)*time.Millisecond {
+					m.next__inst0__inst3 = time.Now().Add(period)
 				}
 				m.handle__inst0__inst3.Reset(time.Until(m.next__inst0__inst3))
 				m.beats__inst3 += 1

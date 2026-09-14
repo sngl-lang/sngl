@@ -680,25 +680,45 @@ component time.timer[platform] {
                     live = true
                     gen = gen + 1
                     var mine = gen
-                    next = now().add(d)
+                    // Captured like `mine`, because `d` compiles to the
+                    // effect's shared key field: read back at tick time it is
+                    // whatever the last settle left, and a zero there makes
+                    // the catch-up loop below a no-op with a true condition.
+                    var period = d
+                    next = now().add(period)
                     rearm = func() {
                         post(func() {
-                            // A re-key is an unmount and a mount back to
-                            // back, so a stale post finds `live` true again;
-                            // with `Reset` it would revive the very timer the
-                            // unmount stopped. An early return rather than a
-                            // wrapping `if`, because a blocking `@tick` only
-                            // moves off the drawing thread as a statement of
-                            // the body.
+                            // A post queued before an unmount runs after
+                            // it. Left to reach `Reset` it would revive the
+                            // timer that unmount stopped, or -- where a
+                            // re-key armed a new one -- reschedule that one
+                            // against the old period. An early return rather
+                            // than a wrapping `if`, because a blocking
+                            // `@tick` only moves off the drawing thread as a
+                            // statement of the body.
                             if gen != mine {
                                 return
                             }
                             // Missed deadlines are dropped, not made up: a
                             // tick slower than its period would queue a
                             // catch-up per period and never drain.
-                            next = next.add(d)
-                            for until(next) <= 0ms {
-                                next = next.add(d)
+                            //
+                            // Walking them keeps the phase, so a clock stays
+                            // on the second it started on. Bounded because the
+                            // walk is per missed period and a suspended laptop
+                            // misses millions -- past that the phase is not
+                            // worth a frozen drawing thread, and the deadline
+                            // is taken from now instead. A duration division
+                            // would do it in one step, which is arithmetic
+                            // `sngl:time` cannot express.
+                            next = next.add(period)
+                            var caught = 0
+                            for until(next) <= 0ms && caught < 64 {
+                                next = next.add(period)
+                                caught = caught + 1
+                            }
+                            if until(next) <= 0ms {
+                                next = now().add(period)
                             }
                             handle.reset(until(next))
                             tick()

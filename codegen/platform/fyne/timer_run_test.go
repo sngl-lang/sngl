@@ -75,8 +75,9 @@ func TestTimersTick(t *testing.T) {
 // `time.AfterFunc` is a one-shot that re-arms itself, so `Stop` is not the end
 // of it: a callback that has already fired has queued its closure through
 // `fyne.Do`, and that closure runs after the unmount and would arm the next
-// one. The `live` flag is what it finds instead, and both halves run on the
-// thread the post hands over to, which is what makes reading it an ordering.
+// one. The generation it was armed in is what it finds instead, and both
+// halves run on the thread the post hands over to, which is what makes reading
+// it an ordering.
 //
 // Asserted by running rather than by a grep, because the flag is emitted either
 // way -- what a revert changes is only when the ticking stops.

@@ -329,16 +329,23 @@ func varsOverlap(a, b map[*ir.Var]bool) bool {
 // into a lambda either, which is what keeps the two from both firing -- a func
 // holding a writing lambda is not itself seen to write.
 //
-// A call is credited to its callee's Writes, and an effect's `_up` calls the
-// mount it synthesized. Those Writes are empty, because the checker filled them
-// in before that body existed -- so the redraw lands on the mount rather than
-// on both.
+// Only the funcs lowering synthesized get one of their own. gatherBlockMutations
+// credits a call to its callee's Writes, so a handler calling `bump()` already
+// redraws for what bump writes -- injecting into bump as well rasterizes the
+// surface twice per click, the first time against half-applied state. Writes is
+// what tells the two apart: the checker fills it in, so a body that did not
+// exist then has none.
+//
+// A lambda is asked separately and always, because nothing credits one to a
+// caller: what runs it is a host scheduler rather than code this pass can read.
 func injectIntoFuncs(funcs []*ir.Func, stateVars map[*ir.Var]bool, canvases []canvasEntry) {
 	for _, fn := range funcs {
 		if fn == nil {
 			continue
 		}
-		redrawIfWrites(&fn.Block, stateVars, canvases)
+		if len(fn.Writes) == 0 {
+			redrawIfWrites(&fn.Block, stateVars, canvases)
+		}
 		for _, l := range lambdaFuncsIn(fn.Block) {
 			redrawIfWrites(&l.Block, stateVars, canvases)
 		}

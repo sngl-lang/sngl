@@ -252,15 +252,21 @@ func (m *Model) __effect0_mount() {
 		m.live__inst0__inst1 = true
 		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
 		var mine int = m.gen__inst0__inst1
-		m.next__inst0__inst1 = time.Now().Add(m.__effect0_key)
+		period := m.__effect0_key
+		m.next__inst0__inst1 = time.Now().Add(period)
 		m.rearm__inst0__inst1 = func() {
 			fyne.Do(func() {
 				if m.gen__inst0__inst1 != mine {
 					return
 				}
-				m.next__inst0__inst1 = m.next__inst0__inst1.Add(m.__effect0_key)
-				for time.Until(m.next__inst0__inst1) <= time.Duration(0)*time.Millisecond {
-					m.next__inst0__inst1 = m.next__inst0__inst1.Add(m.__effect0_key)
+				m.next__inst0__inst1 = m.next__inst0__inst1.Add(period)
+				var caught int = 0
+				for (time.Until(m.next__inst0__inst1) <= time.Duration(0)*time.Millisecond) && (caught < 64) {
+					m.next__inst0__inst1 = m.next__inst0__inst1.Add(period)
+					caught = (caught + 1)
+				}
+				if time.Until(m.next__inst0__inst1) <= time.Duration(0)*time.Millisecond {
+					m.next__inst0__inst1 = time.Now().Add(period)
 				}
 				m.handle__inst0__inst1.Reset(time.Until(m.next__inst0__inst1))
 				var __lt0 float64
