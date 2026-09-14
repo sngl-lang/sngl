@@ -115,13 +115,29 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 						// returned as written came out as the pre-unroll
 						// `it.title` and rendered empty.
 						//
-						// Cloned because the result is a second occurrence of
-						// the expression rather than the prop itself, and
-						// guarded because `window #h(title = h.title)` reads
+						// That is safe only because ctx.values is keyed by
+						// ir.Symbol *pointer*. A `const greet` read by this
+						// prop and a `for var greet` shadowing the name around
+						// the read are two symbols and two keys, so the prop
+						// still folds to the const. Resolve anything in here
+						// by name and this becomes a wrong value rather than a
+						// missing one.
+						//
+						// cloneExpr and not ir.CloneExpr: the result is a
+						// second occurrence of the expression rather than the
+						// prop itself, and this one shallow-copies, leaving
+						// Ident.Sym pointing at the same symbols. ir.CloneExpr
+						// repoints them, which is exactly the lookup above.
+						//
+						// Guarded because `window #h(title = h.title)` reads
 						// the prop it is. Left standing there, which is what a
 						// prop with no answer already reached codegen as.
 						key := windowProp{win: win, field: x.Field}
 						if !ctx.foldingProp[key] {
+							// foldPkg builds the map so that every child ctx
+							// shares one; this is for the contexts assembled
+							// by hand, which today fold nothing (nativescan)
+							// but would write into a nil map if one ever did.
 							if ctx.foldingProp == nil {
 								ctx.foldingProp = map[windowProp]bool{}
 							}

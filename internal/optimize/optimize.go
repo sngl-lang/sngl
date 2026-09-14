@@ -139,8 +139,9 @@ type evalCtx struct {
 	windowHandles    map[*ir.Var]*ir.Window
 	windowHandlesSet bool
 	// foldingProp is the window props currently being folded, so a prop that
-	// reads itself stops rather than recursing. Shared with every child ctx,
-	// which is what a map gives for free.
+	// reads itself stops rather than recursing. Built in foldPkg so that every
+	// child ctx shares the one map: created on first use instead, a child
+	// taken before that gets nil and makes its own.
 	foldingProp   map[windowProp]bool
 	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining      map[*ir.Component]int // recursion guard for component call inlining
@@ -403,6 +404,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		pkg:           pkg,
 		values:        make(map[ir.Symbol]any),
 		inliningFuncs: make(map[*ir.Func]bool),
+		foldingProp:   make(map[windowProp]bool),
 	}
 
 	// Phase 1: Evaluate all top-level consts.

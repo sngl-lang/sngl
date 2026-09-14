@@ -10,15 +10,25 @@
 # the guard changes nothing else. A CLI test rather than a golden because what
 # is asserted is that the compiler comes back at all.
 sngl generate --lang none --platform html --out out selfref.sngl
-exists out/index.html
+# The page has content: `exists` alone would pass on a file merely touched.
+grep '<span>hi</span>' out/index.html
+# And no <title>, which is what "left standing" costs. A select the fold could
+# not answer reaches codegen as a dangling reference and html writes nothing
+# for it -- silent missing output, not a crash. Pinned because it is a
+# deliberate choice and the alternative (a positioned error) is a language rule
+# this MR does not make: `const a int = a` checks clean today, so a window prop
+# would be the only self-reference the compiler refuses.
+! grep '<title>' out/index.html
 
 # Two windows naming each other reach the guard by a second key rather than by
 # the first one twice, which is the path a single self-reference never takes.
 # They have to sit in a root component's body: at the root of a file the
 # windows are registered in order, so the first cannot name the second at all.
 sngl generate --lang none --platform html --out out2 mutual.sngl
-exists out2/a.html
-exists out2/b.html
+grep '<span>a</span>' out2/a.html
+grep '<span>b</span>' out2/b.html
+! grep '<title>' out2/a.html
+! grep '<title>' out2/b.html
 
 -- selfref.sngl --
 import . "sngl:ui"
