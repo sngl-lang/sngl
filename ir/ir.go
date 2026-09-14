@@ -902,7 +902,13 @@ type StructField struct {
 	Name    string
 	Type    *Type
 	Default Expr // nil if no default
-	Foreign `json:"Foreign,omitzero"`
+	// DefaultWritten records that the declaration gave this field a default.
+	// Normalize otherwise erases the distinction by filling every nil Default
+	// with the type's zero, and DeclaredDefault needs it: a field the
+	// declaration said nothing about has to stay absent, so that "unset" goes
+	// on meaning unset to a backend that reads presence.
+	DefaultWritten bool
+	Foreign        `json:"Foreign,omitzero"`
 }
 
 // EnumDef is a resolved enum type declaration.
