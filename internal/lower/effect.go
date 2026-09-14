@@ -763,26 +763,16 @@ func (st *effectState) allOwnerFuncs() []*ir.Func {
 	return funcs
 }
 
+// addFunc and addVar exist only to supply the package to an ir.Owner this
+// pass built by hand -- one from Owners already carries it.
 func (st *effectState) addFunc(o *ir.Owner, fn *ir.Func) {
-	switch {
-	case o.Comp != nil:
-		o.Comp.Funcs = append(o.Comp.Funcs, fn)
-	case o.Win != nil:
-		o.Win.Funcs = append(o.Win.Funcs, fn)
-	default:
-		st.pkg.Funcs = append(st.pkg.Funcs, fn)
-	}
+	o.Pkg = st.pkg
+	o.AddFuncs(fn)
 }
 
 func (st *effectState) addVar(o *ir.Owner, v *ir.Var) {
-	switch {
-	case o.Comp != nil:
-		o.Comp.Vars = append(o.Comp.Vars, v)
-	case o.Win != nil:
-		o.Win.Vars = append(o.Win.Vars, v)
-	default:
-		st.pkg.Vars = append(st.pkg.Vars, v)
-	}
+	o.Pkg = st.pkg
+	o.AddVars(v)
 }
 
 // varIdent is a fresh reference to a var this pass synthesized. Fresh rather

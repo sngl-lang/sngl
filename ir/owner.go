@@ -24,6 +24,12 @@ type Owner struct {
 	// the checker puts those. Consumers disagree about whether a const is a
 	// model field, so the two stay apart rather than being merged here and
 	// re-separated by everyone.
+	//
+	// These four are *snapshots*, unlike Body: `o.Vars = append(o.Vars, v)`
+	// writes to a copy and the declaration never sees it. AddVars and AddFuncs
+	// are the writes that reach it, and they are the only two any pass has
+	// needed. They cannot be pointers the way Body is -- a component has no
+	// Consts field for one to point at.
 	Vars   []*Var
 	Consts []*Var
 	Funcs  []*Func
@@ -31,8 +37,14 @@ type Owner struct {
 
 	// Handlers is what the declaration itself subscribes to, which today is a
 	// window's @error and nothing else -- a component catches with a boundary,
-	// which is a statement in its body rather than a declaration on it.
+	// which is a statement in its body rather than a declaration on it. A
+	// snapshot, as the four above are.
 	Handlers []*EventHandler
+
+	// Pkg is the package this owner came from. AddVars and AddFuncs need it to
+	// reach pkg.Vars and pkg.Funcs for the owner that *is* the package, so an
+	// Owner built by hand rather than by Owners has to set it.
+	Pkg *Package
 
 	// Body points at the declaration's own statement list rather than copying
 	// it, so a pass that rewrites one writes through this instead of switching
@@ -47,6 +59,43 @@ func (o Owner) Stmts() []Stmt {
 		return nil
 	}
 	return *o.Body
+}
+
+// AddVars and AddFuncs append to the list the owning declaration actually
+// holds.
+//
+// They exist because Vars and Funcs are snapshots: every consumer *reads* what
+// an owner declares and only a lowering pass adds to it, so paying a pointer
+// at each of the twenty read sites to serve three writers is the wrong trade.
+// What is not the wrong trade is writing the Comp/Win/package switch once,
+// here, beside the enumeration that already names the three -- passEffect had
+// it twice and passBoundaryFailed a third time.
+func (o Owner) AddVars(vars ...*Var) {
+	if len(vars) == 0 {
+		return
+	}
+	switch {
+	case o.Comp != nil:
+		o.Comp.Vars = append(o.Comp.Vars, vars...)
+	case o.Win != nil:
+		o.Win.Vars = append(o.Win.Vars, vars...)
+	case o.Pkg != nil:
+		o.Pkg.Vars = append(o.Pkg.Vars, vars...)
+	}
+}
+
+func (o Owner) AddFuncs(funcs ...*Func) {
+	if len(funcs) == 0 {
+		return
+	}
+	switch {
+	case o.Comp != nil:
+		o.Comp.Funcs = append(o.Comp.Funcs, funcs...)
+	case o.Win != nil:
+		o.Win.Funcs = append(o.Win.Funcs, funcs...)
+	case o.Pkg != nil:
+		o.Pkg.Funcs = append(o.Pkg.Funcs, funcs...)
+	}
 }
 
 // IsPackage reports whether the package itself is the owner.
@@ -81,9 +130,9 @@ func Owners(pkg *Package) []Owner {
 		return nil
 	}
 	out := make([]Owner, 0, 1+len(pkg.Components)+len(pkg.Windows))
-	out = append(out, Owner{Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Timers: pkg.Timers, Body: &pkg.Body})
+	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Timers: pkg.Timers, Body: &pkg.Body})
 	for _, c := range pkg.Components {
-		out = append(out, Owner{Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Body: &c.Body})
+		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Body: &c.Body})
 	}
 	seen := make(map[*Window]bool, len(pkg.Windows))
 	addWin := func(w *Window) {
@@ -91,7 +140,7 @@ func Owners(pkg *Package) []Owner {
 			return
 		}
 		seen[w] = true
-		o := Owner{Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Body: &w.Body}
+		o := Owner{Pkg: pkg, Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Body: &w.Body}
 		if w.ErrorHandler != nil {
 			o.Handlers = []*EventHandler{w.ErrorHandler}
 		}
@@ -101,15 +150,14 @@ func Owners(pkg *Package) []Owner {
 		addWin(w)
 	}
 	// A window a body renders is an *ir.Window statement in that body and
-	// never reaches pkg.Windows. Each one found is itself searched, so the
-	// walk is a worklist over `out` rather than a loop over a fixed list:
-	// passWindowNesting rejects a window inside a window, but it runs late and
-	// every consumer before it -- the checker's four included -- has to be able
-	// to see the inner one to report on it.
+	// never reaches pkg.Windows. A found window is a leaf: its body is a
+	// separate owner, searched in its own turn below, so descending here would
+	// walk it a second time to reach what the worklist reaches anyway.
 	search := func(stmts []Stmt) {
 		_ = WalkStmts(stmts, func(s Stmt) error {
 			if w, ok := s.(*Window); ok {
 				addWin(w)
+				return SkipDir
 			}
 			return nil
 		})
@@ -120,6 +168,13 @@ func Owners(pkg *Package) []Owner {
 			search(c.Body)
 		}
 	}
+	// A worklist over `out` rather than a loop over a fixed list, because a
+	// window found here may itself hold one. Writing a window directly inside
+	// a window is a tree-membership error, but two routes through
+	// #[tree.none] are not -- a treeless body that renders one, and a treeless
+	// component's slot carrying one -- and passWindowNesting is the only guard
+	// on those, in lowering. Every consumer that runs before it sees what it
+	// will reject.
 	for i := 0; i < len(out); i++ {
 		if out[i].Win != nil {
 			search(out[i].Win.Body)
