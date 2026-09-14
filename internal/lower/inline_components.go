@@ -105,7 +105,7 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 		return nil
 	}
 	for _, o := range ir.Owners(pkg) {
-		read := handleReads(o.Stmts)
+		read := handleReads(o.Stmts())
 		seen := map[string]int{}
 		rendered := map[*ir.Var]*ir.NodeInst{}
 		var dup error
