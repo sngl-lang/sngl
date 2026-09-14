@@ -174,18 +174,11 @@ type effectFrame struct {
 }
 
 func (st *effectState) owner(o ir.Owner) error {
-	body, err := st.stmts(o.Stmts, &o, nil)
+	body, err := st.stmts(o.Stmts(), &o, nil)
 	if err != nil {
 		return err
 	}
-	switch {
-	case o.Comp != nil:
-		o.Comp.Body = body
-	case o.Win != nil:
-		o.Win.Body = body
-	default:
-		st.pkg.Body = body
-	}
+	*o.Body = body
 	return nil
 }
 
@@ -749,7 +742,7 @@ func (st *effectState) allOwnerFuncs() []*ir.Func {
 		roots = append(roots, fn.Block)
 	}
 	for _, o := range ir.Owners(st.pkg) {
-		roots = append(roots, o.Stmts)
+		roots = append(roots, o.Stmts())
 	}
 	for _, root := range roots {
 		_ = ir.Walk(root, func(node ir.Node) error {

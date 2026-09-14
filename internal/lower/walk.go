@@ -73,14 +73,10 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 				}
 			}
 		case *ir.Window:
-			if n.Href != nil {
-				n.Href = rewrite(n.Href)
-			}
-			if n.Title != nil {
-				n.Title = rewrite(n.Title)
-			}
-			if n.Favicon != nil {
-				n.Favicon = rewrite(n.Favicon)
+			for i := range n.Props {
+				if n.Props[i].Value != nil {
+					n.Props[i].Value = rewrite(n.Props[i].Value)
+				}
 			}
 			n.Body = rewriteStmtExprs(n.Body, rewrite)
 		case *ir.Toggle:

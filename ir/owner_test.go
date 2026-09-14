@@ -38,8 +38,8 @@ func TestOwnersReportsEveryKind(t *testing.T) {
 		if len(p.Consts) != 1 || p.Consts[0] != pkgConst {
 			t.Errorf("package owner Consts = %v; want just pkgConst", p.Consts)
 		}
-		if len(p.Stmts) != 1 {
-			t.Errorf("package owner Stmts = %d; want the package body", len(p.Stmts))
+		if len(p.Stmts()) != 1 {
+			t.Errorf("package owner Stmts = %d; want the package body", len(p.Stmts()))
 		}
 	}
 
@@ -59,5 +59,53 @@ func TestOwnersReportsEveryKind(t *testing.T) {
 func TestOwnersOfNilPackage(t *testing.T) {
 	if got := Owners(nil); got != nil {
 		t.Errorf("Owners(nil) = %v; want nil", got)
+	}
+}
+
+// A window is a statement wherever the root tree reaches, and the package body
+// is one of those places: `if ship { window #a {} }` at the root of a file
+// leaves the window there until passRootWindow lifts it, and every consumer
+// that runs before that pass -- the checker's four -- asks Owners.
+func TestOwnersFindsWindowsInAnyBody(t *testing.T) {
+	inPkg := &Window{Name: "fromPkgBody"}
+	inComp := &Window{Name: "fromCompBody"}
+	inWin := &Window{Name: "fromWindowBody"}
+	listed := &Window{Name: "listed", Body: []Stmt{inWin}}
+
+	pkg := &Package{
+		Body:       []Stmt{&If{Body: []Stmt{inPkg}}},
+		Components: []*Component{{Name: "root", Body: []Stmt{inComp}}},
+		Windows:    []*Window{listed},
+	}
+
+	found := map[string]bool{}
+	for _, o := range Owners(pkg) {
+		if o.Win != nil {
+			found[o.Win.Name] = true
+		}
+	}
+	for _, want := range []string{"listed", "fromPkgBody", "fromCompBody", "fromWindowBody"} {
+		if !found[want] {
+			t.Errorf("Owners did not report window %q", want)
+		}
+	}
+}
+
+// A window's @error is an imperative block it owns, and it reaches a consumer
+// the same way its funcs and timers do -- collected by hand beside the
+// enumeration, it was the half of blocks.go's window arm that went missing.
+func TestOwnersCarriesTheWindowErrorHandler(t *testing.T) {
+	h := &EventHandler{Name: "error", Func: &Func{}}
+	pkg := &Package{Windows: []*Window{{Name: "home", ErrorHandler: h}}}
+
+	got := Owners(pkg)
+	if len(got) != 2 {
+		t.Fatalf("Owners returned %d owners; want 2", len(got))
+	}
+	if len(got[1].Handlers) != 1 || got[1].Handlers[0] != h {
+		t.Errorf("window owner Handlers = %v; want the @error handler", got[1].Handlers)
+	}
+	if len(got[0].Handlers) != 0 {
+		t.Errorf("package owner Handlers = %v; want none", got[0].Handlers)
 	}
 }

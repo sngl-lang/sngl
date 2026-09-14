@@ -322,9 +322,9 @@ func (r *refLoopRewriter) stmt(s ir.Stmt) ir.Stmt {
 		n.Value = r.expr(n.Value)
 		r.stmtSlice(n.Children)
 	case *ir.Window:
-		n.Href = r.expr(n.Href)
-		n.Title = r.expr(n.Title)
-		n.Favicon = r.expr(n.Favicon)
+		for i := range n.Props {
+			n.Props[i].Value = r.expr(n.Props[i].Value)
+		}
 		r.stmtSlice(n.Body)
 	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No expressions to rewrite.

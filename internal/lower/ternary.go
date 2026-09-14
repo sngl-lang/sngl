@@ -138,20 +138,13 @@ func (st *ternState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 			}
 		}
 	case *ir.Window:
-		if n.Href != nil {
-			p, v := st.transformExpr(n.Href)
+		for i := range n.Props {
+			if n.Props[i].Value == nil {
+				continue
+			}
+			p, v := st.transformExpr(n.Props[i].Value)
 			pre = append(pre, p...)
-			n.Href = v
-		}
-		if n.Title != nil {
-			p, v := st.transformExpr(n.Title)
-			pre = append(pre, p...)
-			n.Title = v
-		}
-		if n.Favicon != nil {
-			p, v := st.transformExpr(n.Favicon)
-			pre = append(pre, p...)
-			n.Favicon = v
+			n.Props[i].Value = v
 		}
 		n.Body = st.transformBlock(n.Body)
 		// A window declared inside a component is a statement here rather

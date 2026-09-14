@@ -249,14 +249,10 @@ func normalizeWindow(w *Window) {
 	if w == nil {
 		return
 	}
-	if w.Href != nil {
-		normalizeExpr(w.Href)
-	}
-	if w.Title != nil {
-		normalizeExpr(w.Title)
-	}
-	if w.Favicon != nil {
-		normalizeExpr(w.Favicon)
+	for _, p := range w.Props {
+		if p.Value != nil {
+			normalizeExpr(p.Value)
+		}
 	}
 	for _, v := range w.Vars {
 		normalizeVar(v)

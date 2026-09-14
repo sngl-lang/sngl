@@ -366,9 +366,9 @@ func (w *rewriter) window(win *Window) {
 	if w.done || win == nil {
 		return
 	}
-	win.Href = w.expr(win.Href)
-	win.Title = w.expr(win.Title)
-	win.Favicon = w.expr(win.Favicon)
+	for i := range win.Props {
+		win.Props[i].Value = w.expr(win.Props[i].Value)
+	}
 	for _, v := range win.Vars {
 		w.varDecl(v)
 	}

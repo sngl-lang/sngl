@@ -51,7 +51,7 @@ func lowerBoundaryFailed(pkg *ir.Package, _ Caps, _ Options) error {
 	for _, o := range ir.Owners(pkg) {
 		st.owner = o
 		st.added = nil
-		st.stmts(o.Stmts)
+		st.stmts(o.Stmts())
 		st.attach(pkg)
 	}
 	return nil

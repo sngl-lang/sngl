@@ -40,31 +40,23 @@ type ComponentCtx struct {
 func (ctx *CodegenCtx) Windows() []*WindowCtx {
 	var out []*WindowCtx
 
-	// Root-level windows (declared outside any component).
-	for _, w := range ctx.Pkg.Windows {
+	// ir.Owners is what says which declarations own state, and a window is one
+	// of the three -- so which bodies a window may be written in is its answer
+	// rather than a second walk here.
+	for _, o := range ir.Owners(ctx.Pkg) {
+		if o.Win == nil {
+			continue
+		}
 		out = append(out, &WindowCtx{
-			Window: w,
-			Vars:   w.Vars,
-			Funcs:  w.Funcs,
-			Body:   w.Body,
-			Name:   w.Name,
+			Window: o.Win,
+			Vars:   o.Vars,
+			Funcs:  o.Funcs,
+			Body:   o.Stmts(),
+			Name:   o.Name(),
 		})
 	}
 
-	// Window statements in a component body.
 	root := ctx.RootDecl()
-	for _, comp := range ctx.Pkg.Components {
-		for _, w := range collectWindows(comp.Body) {
-			out = append(out, &WindowCtx{
-				Window: w,
-				Vars:   w.Vars,
-				Funcs:  w.Funcs,
-				Body:   w.Body,
-				Name:   w.Name,
-			})
-		}
-	}
-
 	if len(out) > 0 || root == nil {
 		return out
 	}
@@ -77,22 +69,6 @@ func (ctx *CodegenCtx) Windows() []*WindowCtx {
 		Funcs: funcs,
 		Name:  root.Name,
 	}}
-}
-
-// collectWindows walks a statement tree and returns all Window nodes found
-// at the top level or inside expanded for-loops, if-blocks, and platform filters.
-func collectWindows(stmts []ir.Stmt) []*ir.Window {
-	var windows []*ir.Window
-	ir.WalkStmts(stmts, func(s ir.Stmt) error {
-		if w, ok := s.(*ir.Window); ok {
-			windows = append(windows, w)
-			// A window is a leaf here: its own body is a separate root, and
-			// windows do not nest inside one another.
-			return ir.SkipDir
-		}
-		return nil
-	})
-	return windows
 }
 
 // Components returns a ComponentCtx for each component in the package.

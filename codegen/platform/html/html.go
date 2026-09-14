@@ -176,10 +176,10 @@ document.addEventListener('DOMContentLoaded', () => main());
 func rejectDynamicHrefs(req *codegen.Request) error {
 	ctx := codegen.NewCodegenCtx(req, "html")
 	for _, win := range ctx.Windows() {
-		if win.Window == nil || win.Window.Href == nil {
+		if win.Window == nil || win.Window.Prop(ir.WindowHref) == nil {
 			continue
 		}
-		if _, ok := codegen.IRLiteralString(win.Window.Href); !ok {
+		if _, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowHref)); !ok {
 			return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
 		}
 	}
@@ -403,13 +403,13 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
-		case win.Window == nil || win.Window.Href == nil:
+		case win.Window == nil || win.Window.Prop(ir.WindowHref) == nil:
 			// No declaration to take an href from: the package body's root
 			// window, or a lone main component's. It is the document the site
 			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
-			href, ok := codegen.IRLiteralString(win.Window.Href)
+			href, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowHref))
 			if !ok {
 				return nil, fmt.Errorf("html: window %q has a non-literal href after folding (internal error)", win.Name)
 			}
@@ -441,10 +441,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			gen.ctx = gen.ctx.ForWindow(win.Window)
 		}
 		if win.Window != nil {
-			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
+			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
 				gen.title = s
 			}
-			if s, ok := codegen.IRLiteralString(win.Window.Favicon); ok {
+			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowFavicon)); ok {
 				gen.favicon = s
 			}
 		}

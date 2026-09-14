@@ -141,9 +141,10 @@ func markedPackage() *Package {
 			Handler:  fn("Timer.Handler"),
 		}},
 		Windows: []*Window{{
-			Href:         mark("Window.Href"),
-			Title:        mark("Window.Title"),
-			Favicon:      mark("Window.Favicon"),
+			Props: []Arg{
+				{Name: WindowHref, Value: mark("Window.Props[0]")},
+				{Name: WindowTitle, Value: mark("Window.Props[1]")},
+			},
 			ErrorHandler: &EventHandler{Func: fn("Window.ErrorHandler")},
 		}},
 	}

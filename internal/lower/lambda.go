@@ -204,9 +204,9 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 			markMutable(rootSym(n.Target))
 			walkExpr(n.Target)
 		case *ir.Window:
-			walkExpr(n.Href)
-			walkExpr(n.Title)
-			walkExpr(n.Favicon)
+			for i := range n.Props {
+				walkExpr(n.Props[i].Value)
+			}
 			walkStmts(n.Body)
 		case *ir.ContextProvider:
 			walkExpr(n.Value)
@@ -384,9 +384,9 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 			liftLambdasInStmts(n.Handler.Func.Block, l)
 		}
 	case *ir.Window:
-		n.Href = liftLambdas(n.Href, l)
-		n.Title = liftLambdas(n.Title, l)
-		n.Favicon = liftLambdas(n.Favicon, l)
+		for i := range n.Props {
+			n.Props[i].Value = liftLambdas(n.Props[i].Value, l)
+		}
 		liftLambdasInStmts(n.Body, l)
 	case *ir.ContextProvider:
 		n.Value = liftLambdas(n.Value, l)
@@ -669,9 +669,9 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 			l.rewriteStmts(n.Handler.Func.Block, captureField, captureMutable)
 		}
 	case *ir.Window:
-		n.Href = l.rewriteExpr(n.Href, captureField, captureMutable)
-		n.Title = l.rewriteExpr(n.Title, captureField, captureMutable)
-		n.Favicon = l.rewriteExpr(n.Favicon, captureField, captureMutable)
+		for i := range n.Props {
+			n.Props[i].Value = l.rewriteExpr(n.Props[i].Value, captureField, captureMutable)
+		}
 		l.rewriteStmts(n.Body, captureField, captureMutable)
 	case *ir.ContextProvider:
 		n.Value = l.rewriteExpr(n.Value, captureField, captureMutable)

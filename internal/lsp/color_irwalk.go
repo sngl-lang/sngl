@@ -58,9 +58,9 @@ func (w *irLitWalker) window(win *ir.Window) {
 	if win == nil {
 		return
 	}
-	w.expr(win.Href)
-	w.expr(win.Title)
-	w.expr(win.Favicon)
+	for i := range win.Props {
+		w.expr(win.Props[i].Value)
+	}
 	for _, v := range win.Vars {
 		w.expr(v.Init)
 	}

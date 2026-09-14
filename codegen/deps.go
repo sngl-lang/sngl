@@ -407,9 +407,9 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 			}
 		}
 	case *ir.Window:
-		w.walkExpr(n.Href)
-		w.walkExpr(n.Title)
-		w.walkExpr(n.Favicon)
+		for i := range n.Props {
+			w.walkExpr(n.Props[i].Value)
+		}
 		for _, c := range n.Body {
 			w.walkStmt(c)
 		}

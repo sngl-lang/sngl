@@ -757,12 +757,16 @@ type EventHandler struct {
 
 // Window represents a window declaration at the root or component level.
 type Window struct {
-	AST          *ast.VisualNode
-	Name         string
-	Typ          *Type // instance type of the #[builtin("window")] component; nil if unresolved
-	Href         Expr  // checked href expression (folded during optimization)
-	Title        Expr  // checked title expression
-	Favicon      Expr  // checked favicon expression
+	AST  *ast.VisualNode
+	Name string
+	Typ  *Type // instance type of the #[builtin("window")] component; nil if unresolved
+	// Comp is the #[builtin("window")] declaration this instantiates, and
+	// Props the arguments written against it -- the same pair a NodeInst
+	// carries, so nothing here names a window prop. Every consumer that used
+	// to walk Href/Title/Favicon by name reads Props, and a prop added to
+	// lib/ui/window.sngl reaches codegen without a Go edit.
+	Comp         *Component `json:"-"`
+	Props        []Arg
 	Vars         []*Var
 	Funcs        []*Func
 	Timers       []*Timer
@@ -778,7 +782,32 @@ type Window struct {
 
 func (w *Window) SymName() string { return w.Name }
 func (w *Window) SymType() *Type  { return w.Typ }
-func (w *Window) stmtNode()       {} // Window can appear as a statement in for-loop bodies
+
+// Prop is the value written for name, or nil if the call site did not write
+// it. Positional args carry no name and are matched by checkAndSplitArgs
+// before they reach here, so every entry is named.
+func (w *Window) Prop(name string) Expr {
+	if w == nil {
+		return nil
+	}
+	for _, p := range w.Props {
+		if p.Name == name {
+			return p.Value
+		}
+	}
+	return nil
+}
+
+// WindowProp names a prop the compiler itself reads off a window. The three
+// are declared in lib/ui/window.sngl like any other prop; these constants are
+// the spelling a Go consumer matches, not a second declaration of them.
+const (
+	WindowTitle   = "title"
+	WindowHref    = "href"
+	WindowFavicon = "favicon"
+)
+
+func (w *Window) stmtNode() {} // Window can appear as a statement in for-loop bodies
 
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.
