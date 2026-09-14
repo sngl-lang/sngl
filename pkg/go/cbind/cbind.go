@@ -38,6 +38,14 @@ var (
 // filled and a slice would grow by one dead element per registration. That is
 // what a caller registering per callback rather than per program needs --
 // gtk4rt.Post does it once per idle tick.
+//
+// The ceiling that buys is real and unguarded: gtk4rt hands the index to C as a
+// C.int, so the 2^31st registration truncates, Dispatch finds nothing, and
+// every posted continuation after it is dropped in silence. Release is what
+// makes a bounded free-list possible instead, and the reuse it would need is
+// safe only once a stray callback can be told from a live one -- a generation
+// in the high bits. Not built here; named so the next caller to register in a
+// hot loop knows what it is spending.
 func Register(fn func()) int {
 	mu.Lock()
 	defer mu.Unlock()

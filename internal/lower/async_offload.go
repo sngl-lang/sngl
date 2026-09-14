@@ -295,6 +295,14 @@ func schedulesItsCallback(fn *ir.Func) bool {
 // call in it goes back onto the drawing thread with the generated code still
 // compiling. Nothing wraps one today -- Go sets neither NoLambda nor a
 // conversion at an argument position -- so this is the guard rather than a fix.
+//
+// A callback passed *by name* is the case this does not cover, and the flag
+// then protects nothing: an *ir.Ident bound to a func var is none of the three.
+// gtk4's `every(int(d), tick)` is covered only because inlining has made `tick`
+// a literal lambda by the time this runs, and fyne's `after(d, rearm)` is not
+// covered at all -- its tick reaches the pass through the AsyncPostIntrinsic
+// arm instead. Resolving an ident through pkg.PointsTo is what closing it
+// would take.
 func callbackFunc(e ir.Expr) *ir.Func {
 	for {
 		switch x := e.(type) {

@@ -1,4 +1,5 @@
-A canvas that animates itself keeps the bracket that drives it.
+A canvas that animates itself keeps the bracket that drives it, and on fyne it
+now repaints.
 
 `#[tree.none]` says a component belongs to no family, which is what lets an
 `effect` or a `timer` be placed in a drawing as readily as in a layout -- and
@@ -22,6 +23,27 @@ change compiles perfectly.
 The draw function is the other half. A member of no tree paints nothing, so
 emitShape bracketed one in a save and a restore with nothing between them --
 two calls per bracket, for as long as a canvas has been allowed to hold one.
+
+**The repaint is the third half, and it is finished on fyne only.** Keeping the
+bracket makes the tick run; it does not make the drawing move. Two separate
+things stopped it. passCanvasReactivity walked node handlers and var handlers,
+and an effect's `@mount` or a timer's `@tick` is neither -- so no redraw was
+injected anywhere. And its state set was the owner's vars alone, so a canvas
+drawn from a *package-level* var like `frame` here had an empty dep set and was
+not collected as reactive at all, which is why a plain button did not repaint
+one either. passReactivity has always patched the widgets that read a
+package-level var, so that half was an inconsistency rather than a policy.
+
+Both are fixed in the lowering, and the IR now carries `__canvasRedraw` in the
+mount and in the tick on all three targets -- `sngl dump --stage lowered
+--after CanvasReactivity` shows it for fyne, gtk4 and html alike. **Only fyne
+emits it.** gtk4 and html drop a redraw that sits inside a lambda body, which
+is the same blind spot `CLAUDE.md` records for the lowering passes, one layer
+further out: html additionally resolves a redraw against `canvasSetups`, which
+is populated by the markup walk rather than before the effect funcs are
+written. So the fyne golden below repaints twice and the html one still does
+not, and that is a gap to close in those two emitters rather than anything left
+undone here.
 
 deny out/go/fyne/model.go `(?m)^\tctx\.Save\(\)\n\tctx\.Restore\(\)$` -- a member of no tree paints nothing; it gets no bracket
 deny out/none/html/index.html `(?m)^    ctx\.save\(\);\n    ctx\.restore\(\);$` -- likewise
@@ -160,6 +182,10 @@ func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 
 func (m *Model) __effect0_mount() {
 	m.frame = 4
+	m.__n0Ctx = snglcanvas.New(40, 40)
+	m._canvasDraw0(m.__n0Ctx)
+	m.__n0.Image = m.__n0Ctx.Result()
+	m.__n0.Refresh()
 }
 
 func (m *Model) __effect0_down() {
@@ -192,6 +218,10 @@ func (m *Model) __effect1_mount() {
 				}
 				m.handle__inst0 = time.AfterFunc(m.__effect1_key, m.rearm__inst0)
 				m.frame = (m.frame + 1)
+				m.__n0Ctx = snglcanvas.New(40, 40)
+				m._canvasDraw0(m.__n0Ctx)
+				m.__n0.Image = m.__n0Ctx.Result()
+				m.__n0.Refresh()
 			})
 		}
 		m.handle__inst0 = time.AfterFunc(m.__effect1_key, m.rearm__inst0)
