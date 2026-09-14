@@ -38,10 +38,11 @@ func (c *checker) analyzeAsyncWithPointsTo() {
 // Propagation: any SNGL function whose body transitively calls an
 // IsAsync function becomes IsAsync itself. Mirrors the CanError pass,
 // but without handler-scoping — async is purely a transitive property.
-// Lambdas are visited too: their enclosing function gets IsAsync (since
-// BlockHasAsyncCall recurses into Lambda nodes), and the lambda's own
-// Func.IsAsync gets set so codegen can emit the `async` keyword on the
-// lambda expression itself.
+// Lambdas are visited too, but only in their own right: allFuncsAndLambdas
+// lists each one's Func, so it gets IsAsync and codegen emits the `async`
+// keyword on the lambda expression itself. The function that *holds* the
+// lambda does not -- constructing a closure is not calling it, which is why
+// ExprHasAsyncCall stops at a Lambda rather than reading through to its body.
 func (c *checker) analyzeAsync() {
 	pkg := c.pkg
 	if pkg == nil {

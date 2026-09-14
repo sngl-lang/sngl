@@ -1,10 +1,10 @@
 What every target emits for a timer, and where it finds one.
 
 `timer` is an ordinary component, and every target overrides it with what it
-schedules with. Three do it with an `effect` bracketing a pair of host natives
--- html over setInterval/clearInterval, fyne over fynert and gtk4 over gtk4rt --
-because such a pair already is a lifetime with a thing to release, which is what
-an effect brackets. Two still carry a primitive of their own, which
+schedules with. Three do it with an `effect` bracketing a pair of host natives:
+html over setInterval/clearInterval, fyne over fynert, gtk4 over gtk4rt. Such a
+pair already is a lifetime with a thing to release, which is what an effect
+brackets. Two still carry a primitive of their own, which
 passTimerPrimitive takes out of the tree: bubbletea, whose state is a value
 threaded through Update so an out-of-band callback has no live model to write,
 and android, whose LaunchedEffect is the schedule rather than something a

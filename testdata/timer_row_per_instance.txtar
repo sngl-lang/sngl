@@ -23,7 +23,10 @@ was:
 
 And `#[construct]` on `interval` is what makes a row rebuildable rather than
 patchable: a running schedule cannot have its period written into it, so a row
-whose period changed is destroyed and built again. On the four platforms whose
+whose period changed is destroyed and built again. It is the missing *setter*
+that says so. The `__prop_interval` cell beside it is not a way to write one in
+-- it is how `__effect0_down` reads the prop at all, the parameter being out of
+scope in a function of the row rather than of its factory call. On the four platforms whose
 timer is still a primitive the mark is never consulted, because
 passTimerPrimitive takes their node out of the tree before reactivity sees it.
 
@@ -85,6 +88,8 @@ body { font-family: system-ui, sans-serif; }
     let enabled = props.enabled ?? true;
     let tick = props.tick ?? ((__e) => {
     });
+    let __prop_interval = interval;
+    let __prop_enabled = enabled;
     let __prop_tick = tick;
     let handle = 0;
     let __effect0_key = 0;
@@ -104,8 +109,8 @@ body { font-family: system-ui, sans-serif; }
     }
     function __effect0_down() {
       __effect0_desired = [];
-      if (enabled) {
-        __effect0_desired.push(interval);
+      if (__prop_enabled) {
+        __effect0_desired.push(__prop_interval);
       }
       for (const [__effect0_i, _] of __effect0_live.entries()) {
         let __effect0_j = __effect0_live.length - 1 - __effect0_i;
