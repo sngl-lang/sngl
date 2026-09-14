@@ -1,0 +1,30 @@
+# `output(entry = page)` naming a window a package-level `for` declares.
+#
+# hoistForLoopWindowIDs binds that id at package scope as a list<window> -- one
+# window per iteration -- and that binding is an ir.Var like a node handle is.
+# Matching on the Go type alone took the handle branch for it, skipped the name
+# fallback, and refused the program.
+#
+# Only internal/build.Check resolves an entry, because only a caller holding the
+# whole target registry may say a name nobody declared is a misspelling -- so
+# this is a CLI fixture rather than a checker one.
+
+sngl check app.sngl
+stdout 'ok'
+
+-- app.sngl --
+import . "sngl:ui"
+
+output(entry = page) {
+    none {
+        html
+    }
+}
+
+const items list<string> = ["a", "b"]
+
+for var it = items {
+    window #page(title = it, href = "/" + it + ".html") {
+        text(value = page.title)
+    }
+}
