@@ -112,12 +112,12 @@ var _canvasSurface0 snglcanvas.Surface
 
 func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"})
-	ctx.Text(1, 1, "hi")
+	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ctx.Text(1.0, 1.0, "hi")
 	ctx.Restore()
 	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1, LineCap: "butt", LineJoin: "miter", FontSize: 16, FontFamily: "sans-serif"})
-	ctx.Rect(0, 0, 10, 5)
+	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ctx.Rect(0.0, 0.0, 10.0, 5.0)
 	ctx.Restore()
 }
 
