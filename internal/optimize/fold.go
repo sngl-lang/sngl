@@ -99,14 +99,18 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
 		if id, ok := x.Operand.(*ir.Ident); ok {
-			if win, ok := id.Sym.(*ir.Window); ok {
+			// A window's `#id` binds a handle var like every other node's, so
+			// the window is reached through it rather than off the symbol.
+			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
 				// Every prop of the #[builtin("window")] component is
-				// readable off a window symbol, so each must fold here -- a
-				// Select left standing reaches codegen as a dangling
-				// reference. Keep in step with windowStructValue (expand.go),
-				// which does the same for the unrolled-list case.
-				if v := win.Prop(x.Field); v != nil {
-					return v
+				// readable off the id, so each must fold here -- a Select left
+				// standing reaches codegen as a dangling reference. Keep in
+				// step with windowStructValue (expand.go), which does the same
+				// for the unrolled-list case.
+				if win := ir.WindowForHandle(ctx.pkg, v); win != nil {
+					if val := win.Prop(x.Field); val != nil {
+						return val
+					}
 				}
 			}
 		}

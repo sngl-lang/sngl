@@ -2843,7 +2843,6 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		w := c.buildWindow(vn)
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
-		c.bindWindow(vn.Pos, w)
 		return
 	}
 	switch kind, _ := c.builtinNode(name); kind {
@@ -3121,16 +3120,14 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 	return out
 }
 
-// buildWindow fills in the window a `window #id` node declares. When the id
-// was hoisted by declareNodeIDs the shell it bound is the window's symbol
-// already, so this sets its fields rather than binding a second symbol over
-// the first — references made before the body is checked and after it resolve
-// to the same declaration.
+// buildWindow builds the window a `window #id` node declares.
+//
+// The window is fresh every time and the *handle* is what persists: a
+// reference made before the body is checked and one made after both resolve to
+// the binding declareNodeIDs hoisted, which is a var rather than this. That is
+// what lets the window itself stop being a symbol.
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := c.hoistedWindow(vn.ID)
-	if w == nil {
-		w = &ir.Window{Name: vn.ID, Typ: c.windowType}
-	}
+	w := &ir.Window{Name: vn.ID, Typ: c.windowType, Handle: c.windowHandle(vn)}
 	w.AST = vn
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body — so
@@ -4235,13 +4232,14 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 			return
 		}
 	}
-	// A window's id names the window itself, so bind the window here and let
-	// buildWindow fill it in.
-	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true, NodeHandle: true}
+	// A window's id binds the same handle every other node id binds. Only the
+	// type differs: c.windowType is held directly rather than resolved from
+	// the written target, which may be `window` or `ui.window`.
+	typ := c.nodeHandleType(target)
 	if isWindow {
-		sym = &ir.Window{Name: id, Typ: c.windowType}
+		typ = c.windowType
 	}
-	c.declare(ast.Pos{}, sym)
+	c.declare(ast.Pos{}, &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true})
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
@@ -4285,29 +4283,27 @@ func (c *checker) componentNamed(target string) *ir.Component {
 	return comp
 }
 
-func (c *checker) hoistedWindow(id string) *ir.Window {
-	if id == "" {
+// windowHandle is the binding `window #id` declares, taking the one
+// declareNodeIDs hoisted when there is one.
+//
+// A window at the root of a file does not go through that pass -- it is
+// registered rather than checked as a statement -- so the binding is made here
+// instead, which is what `output(entry = home)` resolves against.
+func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
+	if vn.ID == "" {
 		return nil
 	}
-	sym, ok := c.scope.Lookup(id)
-	if !ok {
+	if v := c.nodeHandleSym(vn.ID); v != nil {
+		return v
+	}
+	// Some other declaration owns the name. declareNodeID declines to shadow
+	// one and so does this; the duplicate is reported where ids are checked.
+	if _, taken := c.scope.Lookup(vn.ID); taken {
 		return nil
 	}
-	w, isWindow := sym.(*ir.Window)
-	if !isWindow || w.Checked {
-		return nil
-	}
-	return w
-}
-
-func (c *checker) bindWindow(pos ast.Pos, w *ir.Window) {
-	if w.Name == "" {
-		return
-	}
-	if prev, ok := c.scope.LookupLocal(w.Name); ok && prev == ir.Symbol(w) {
-		return
-	}
-	c.declare(pos, w)
+	v := &ir.Var{Name: vn.ID, Type: c.windowType, IsConst: true, NodeHandle: true}
+	c.declare(vn.Pos, v)
+	return v
 }
 
 // hrefPathParams extracts URL template placeholders like {name} from a

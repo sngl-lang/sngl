@@ -182,3 +182,22 @@ func Owners(pkg *Package) []Owner {
 	}
 	return out
 }
+
+// WindowForHandle is the window whose `#id` declared v, or nil.
+//
+// A window's id binds an *ir.Var like every other node's, so a reference to it
+// carries the handle rather than the window -- which is what the two consumers
+// that need the window back (the entry-window reference, and folding a prop
+// read off the id) ask this for. Keyed by symbol and not by name, because two
+// bodies may each write `#home` and mean two windows.
+func WindowForHandle(pkg *Package, v *Var) *Window {
+	if pkg == nil || v == nil {
+		return nil
+	}
+	for _, o := range Owners(pkg) {
+		if o.Win != nil && o.Win.Handle == v {
+			return o.Win
+		}
+	}
+	return nil
+}
