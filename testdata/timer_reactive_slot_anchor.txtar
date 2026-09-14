@@ -64,16 +64,16 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { a__inst0: 0, handle__inst0__inst0: 0 };
+  var state = { a__inst1: 0, handle__inst0__inst1: 0 };
   function __effect0_mount() {
-    state.handle__inst0__inst0 = setInterval(() => {
-      state.a__inst0 = (state.a__inst0 + 1) % 2;
+    state.handle__inst0__inst1 = setInterval(() => {
+      state.a__inst1 = (state.a__inst1 + 1) % 2;
       __renderSlot0(__slotAnchor_0);
       __renderSlot1(__slotAnchor_1);
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst0__inst0);
+    clearInterval(state.handle__inst0__inst1);
   }
   function __snglTeardown() {
     __effect0_teardown();
@@ -146,7 +146,7 @@ body { font-family: system-ui, sans-serif; }
     let __place0_prev = __slot0;
     let __place0_i = 0;
     __slot0 = [];
-    if (state.a__inst0 === 0) {
+    if (state.a__inst1 === 0) {
       let __n0 = document.createElement("span");
       __n0.textContent = "ZERO";
       let __place0_i_ref0 = null;
@@ -170,7 +170,7 @@ body { font-family: system-ui, sans-serif; }
     let __place1_prev = __slot1;
     let __place1_i = 0;
     __slot1 = [];
-    if (state.a__inst0 === 1) {
+    if (state.a__inst1 === 1) {
       let __n1 = document.createElement("span");
       __n1.textContent = "ONE";
       let __place1_i_ref0 = null;

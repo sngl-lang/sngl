@@ -38,7 +38,7 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList, instSeq: seqOrOwn(opts.instSeq)}
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -144,7 +144,8 @@ type inlineCompState struct {
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
 	platform    string
-	instCounter int
+	// instSeq is passInlinePure's counter as well; see Options.instSeq.
+	instSeq *int
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -354,9 +355,12 @@ func retainComponents(in []*ir.Component, keep map[*ir.Component]bool) []*ir.Com
 
 // --- inliner helpers ---
 
-func (st *inlineCompState) freshSuffix() string {
-	n := st.instCounter
-	st.instCounter++
+func (st *inlineCompState) freshSuffix() string { return freshInstSuffix(st.instSeq) }
+
+// freshInstSuffix hands out the next `__instN`.
+func freshInstSuffix(seq *int) string {
+	n := *seq
+	*seq++
 	return "__inst" + strconv.Itoa(n)
 }
 

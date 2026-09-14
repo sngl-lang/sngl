@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -38,6 +37,7 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 	}
 	st := &inlinePureState{
 		pkg:      pkg,
+		instSeq:  seqOrOwn(opts.instSeq),
 		platform: opts.Platform,
 		inFlight: map[*ir.Component]bool{},
 		stack:    nil,
@@ -86,8 +86,10 @@ type inlinePureState struct {
 	// instance becomes a local of that instance's factory, which is what makes
 	// one per instance.
 	hoist *[]*ir.Var
-	// instCounter names each substitution's copy of the callee's state.
-	instCounter int
+	// instSeq names each substitution's copy of the callee's state. Shared with
+	// passNoInlineComponents through Options: the two substitute into one
+	// emitted namespace and a counter each made them collide.
+	instSeq *int
 	// loopDepth counts the `for`s the walk is inside. A call site under one
 	// holds many copies of the body and a substitution makes one, so a callee
 	// with state of its own may not be substituted there -- it stays a runtime
@@ -95,11 +97,7 @@ type inlinePureState struct {
 	loopDepth int
 }
 
-func (st *inlinePureState) freshSuffix() string {
-	n := st.instCounter
-	st.instCounter++
-	return "__inst" + strconv.Itoa(n)
-}
+func (st *inlinePureState) freshSuffix() string { return freshInstSuffix(st.instSeq) }
 
 // viewReadVars is every var of comp's that its rendered tree reads.
 //
