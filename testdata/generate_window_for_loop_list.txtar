@@ -7,6 +7,14 @@ folded href and title.
 Both loops run at build time. The golden is three static pages whose links are
 literal, with no client JS behind them.
 
+The body reads `page.title` beside `it.title`, and the two fold by different
+routes. `it.title` is the loop variable the unroll bound. `page.title` is a
+read off the window's own id, which folds to the window's `title` *expression*
+-- itself `it.title`, written one line up and not yet substituted. Returned as
+written it stayed `it.title` in a body where the unroll had already passed, and
+the page rendered an empty span; it is folded again against the context the
+read sits in, which is where `it` is bound.
+
 -- site.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
@@ -32,6 +40,7 @@ window #index(title="Index", href="/index.html") {
 for var it = items {
     window #page(title=it.title, href="/" + it.slug + ".html") {
         text(value=it.title)
+        text(value=page.title)
     }
 }
 -- out/none/html/index.html --
@@ -73,6 +82,7 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <span>One</span>
+<span>One</span>
 
 <script>
 (() => {
@@ -95,6 +105,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
+<span>Two</span>
 <span>Two</span>
 
 <script>

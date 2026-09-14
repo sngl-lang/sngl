@@ -4316,6 +4316,13 @@ func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 	// an early return here swallowed it.
 	v := &ir.Var{Name: vn.ID, Type: c.windowType, IsConst: true, NodeHandle: true}
 	c.declare(vn.Pos, v)
+	// Scope.Declare refuses to overwrite, so on a clash the name still binds
+	// the other declaration and nothing resolves to this window. The handle is
+	// what the scope actually bound or nothing at all -- a var no scope holds
+	// would be a handle reachable from the window and from nowhere else.
+	if bound, _ := c.scope.LookupLocal(vn.ID); bound != ir.Symbol(v) {
+		return nil
+	}
 	return v
 }
 

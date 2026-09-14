@@ -109,7 +109,27 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 				// for the unrolled-list case.
 				if win := ctx.windowForHandle(v); win != nil {
 					if val := win.Prop(x.Field); val != nil {
-						return val
+						// Folded again, and against *this* context: the read
+						// may sit in an unrolled loop body where the loop
+						// variable the prop names is bound, and a prop
+						// returned as written came out as the pre-unroll
+						// `it.title` and rendered empty.
+						//
+						// Cloned because the result is a second occurrence of
+						// the expression rather than the prop itself, and
+						// guarded because `window #h(title = h.title)` reads
+						// the prop it is. Left standing there, which is what a
+						// prop with no answer already reached codegen as.
+						key := windowProp{win: win, field: x.Field}
+						if !ctx.foldingProp[key] {
+							if ctx.foldingProp == nil {
+								ctx.foldingProp = map[windowProp]bool{}
+							}
+							ctx.foldingProp[key] = true
+							out := foldExpr(cloneExpr(val), ctx)
+							delete(ctx.foldingProp, key)
+							return out
+						}
 					}
 				}
 			}

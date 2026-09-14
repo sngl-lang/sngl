@@ -1,0 +1,26 @@
+# A window prop that reads itself folds once and stops.
+#
+# Folding `home.title` yields the window's `title` expression, which is folded
+# again against the context the read sits in -- that is what lets a read inside
+# an unrolled loop body see the loop variable. A prop that names its own window
+# returns itself, so the second fold re-enters on the same prop and the third
+# on the same one again: unguarded this is a stack overflow, not a diagnostic.
+#
+# Left standing is what a prop with no answer already reached codegen as, so
+# the guard changes nothing else. A CLI test rather than a golden because what
+# is asserted is that the compiler comes back at all.
+sngl generate --lang none --platform html --out out selfref.sngl
+exists out/index.html
+
+-- selfref.sngl --
+import . "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+window #home(title=home.title, href="/index.html") {
+    text(value="hi")
+}

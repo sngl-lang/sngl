@@ -138,10 +138,14 @@ type evalCtx struct {
 	// per package rather than walked per select. Nil until the first fold asks.
 	windowHandles    map[*ir.Var]*ir.Window
 	windowHandlesSet bool
-	values           map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
-	inlining         map[*ir.Component]int // recursion guard for component call inlining
-	inliningFuncs    map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
-	interpDepth      int                   // recursion guard for interpretFunc dispatch
+	// foldingProp is the window props currently being folded, so a prop that
+	// reads itself stops rather than recursing. Shared with every child ctx,
+	// which is what a map gives for free.
+	foldingProp   map[windowProp]bool
+	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
+	inlining      map[*ir.Component]int // recursion guard for component call inlining
+	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
+	interpDepth   int                   // recursion guard for interpretFunc dispatch
 	// err holds the first fatal evaluation error (e.g. a native import that
 	// failed to evaluate at build time on a platform that requires the value
 	// at compile time). Recorded during folding and surfaced by Optimize.
@@ -566,4 +570,10 @@ func (ctx *evalCtx) windowForHandle(v *ir.Var) *ir.Window {
 		ctx.windowHandlesSet = true
 	}
 	return ctx.windowHandles[v]
+}
+
+// windowProp names one prop of one window, for the self-reference guard.
+type windowProp struct {
+	win   *ir.Window
+	field string
 }
