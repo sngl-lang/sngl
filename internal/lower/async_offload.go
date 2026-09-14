@@ -206,10 +206,17 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 			out = append(out, fn)
 		}
 	}
-	for _, o := range ir.Owners(pkg) {
+	// Declared funcs first and handlers after, across all owners, rather than
+	// both per owner: passAsyncOffload numbers its goroutine helpers
+	// __async_offN off this order, and interleaving them renamed helpers in a
+	// program whose second owner also offloads.
+	owners := ir.Owners(pkg)
+	for _, o := range owners {
 		for _, fn := range o.Funcs {
 			add(fn)
 		}
+	}
+	for _, o := range owners {
 		for _, v := range o.Vars {
 			for _, h := range v.Handlers {
 				add(h.Func)

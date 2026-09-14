@@ -66,6 +66,12 @@ func collectBlocks(pkg *ir.Package, imperative, views bool) []*[]ir.Stmt {
 	for _, f := range pkg.Funcs {
 		c.addImperative(&f.Block)
 	}
+	// The order is ir.Owners' now rather than this file's, and it is
+	// observable: passCSE and passForElse name their temps __cseN/__ranN off
+	// the position a block holds here. It also reaches one set of blocks this
+	// file never listed -- the handlers on a *package* var, which a component's
+	// and a window's had and the package's did not
+	// (testdata/for_else_package_var_handler.txtar).
 	for _, o := range ir.Owners(pkg) {
 		c.owner(o)
 	}
@@ -124,12 +130,15 @@ func (c *blockCollector) owner(o ir.Owner) {
 			c.addImperative(&t.Handler.Block)
 		}
 	}
+	c.viewIn(o.Body)
+	// After the view body, not before: passCSE and passForElse number their
+	// temps off this order, and a window's @error came last when this file
+	// enumerated the owners itself.
 	for _, h := range o.Handlers {
 		if h.Func != nil {
 			c.addImperative(&h.Func.Block)
 		}
 	}
-	c.viewIn(o.Body)
 }
 
 // viewIn walks a view body for the handler bodies it hosts, and for the body's

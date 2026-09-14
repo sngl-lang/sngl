@@ -29,9 +29,15 @@ type ComponentCtx struct {
 	Handlers  []*ir.EventHandler // var-level event handlers
 }
 
-// Windows returns a WindowCtx for each window in the package: those at the
-// root of a file, and those a component body renders (including the ones a
-// for-loop expanded).
+// Windows returns a WindowCtx for each window ir.Owners reports: those at the
+// root of a file, and those a body renders (including the ones a for-loop
+// expanded).
+//
+// ir.Owners reports a window nested inside another as an owner of its own, and
+// this does not filter it out -- passWindowNesting has failed the build long
+// before any generator asks, so the pair cannot reach here. That is a
+// dependency on a lowering pass having run, which the deleted local walk did
+// not have.
 //
 // A program declares at least one, which the checker holds it to. The
 // synthesis below is for the one caller that deliberately removes them: a

@@ -109,3 +109,28 @@ func TestOwnersCarriesTheWindowErrorHandler(t *testing.T) {
 		t.Errorf("package owner Handlers = %v; want none", got[0].Handlers)
 	}
 }
+
+// Vars reads as a snapshot and writes through AddVars, which is the half a
+// consumer gets wrong silently: appending to Owner.Vars reaches a copy.
+func TestOwnerAddVarsReachesTheDeclaration(t *testing.T) {
+	comp := &Component{Name: "counter"}
+	win := &Window{Name: "home"}
+	pkg := &Package{Components: []*Component{comp}, Windows: []*Window{win}}
+
+	for _, o := range Owners(pkg) {
+		o.AddVars(&Var{Name: "added"})
+		// The snapshot stays empty, which is the trap AddVars exists for.
+		if len(o.Vars) != 0 {
+			t.Errorf("owner %q: AddVars wrote into the snapshot", o.Name())
+		}
+	}
+
+	for _, got := range []struct {
+		where string
+		vars  []*Var
+	}{{"package", pkg.Vars}, {"component", comp.Vars}, {"window", win.Vars}} {
+		if len(got.vars) != 1 || got.vars[0].Name != "added" {
+			t.Errorf("%s vars = %v; want the one added var", got.where, got.vars)
+		}
+	}
+}

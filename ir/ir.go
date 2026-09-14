@@ -761,10 +761,14 @@ type Window struct {
 	Name string
 	Typ  *Type // instance type of the #[builtin("window")] component; nil if unresolved
 	// Comp is the #[builtin("window")] declaration this instantiates, and
-	// Props the arguments written against it -- the same pair a NodeInst
-	// carries, so nothing here names a window prop. Every consumer that used
-	// to walk Href/Title/Favicon by name reads Props, and a prop added to
-	// lib/ui/window.sngl reaches codegen without a Go edit.
+	// Props the arguments written against it -- what NodeInst.Component and
+	// NodeInst.Props are, so nothing here names a window prop. Every consumer
+	// that used to walk Href/Title/Favicon by name reads Props, and a prop
+	// added to lib/ui/window.sngl reaches codegen without a Go edit.
+	//
+	// Comp is json:"-" where NodeInst.Component is not, so a JSON dump of a
+	// window does not carry the whole library graph the declaration points
+	// into. The stripper nils both, so the round-trip comparison sees neither.
 	Comp         *Component `json:"-"`
 	Props        []Arg
 	Vars         []*Var
@@ -784,8 +788,13 @@ func (w *Window) SymName() string { return w.Name }
 func (w *Window) SymType() *Type  { return w.Typ }
 
 // Prop is the value written for name, or nil if the call site did not write
-// it. Positional args carry no name and are matched by checkAndSplitArgs
-// before they reach here, so every entry is named.
+// it. checkAndSplitArgs binds a positional arg to its declared name before the
+// slice reaches here, so a lookup by name finds what was written positionally.
+//
+// Nil-safe on the receiver, and two callers depend on it:
+// CodegenCtx.Windows synthesizes a WindowCtx with a nil Window for a
+// harness-isolated root component, so html and gtk4 ask a window that is not
+// there rather than guarding first.
 func (w *Window) Prop(name string) Expr {
 	if w == nil {
 		return nil

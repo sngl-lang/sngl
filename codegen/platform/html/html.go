@@ -399,22 +399,23 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	seenPaths := map[string]ast.Pos{}
 	for i, win := range irWindows {
 		var name string
+		href := win.Window.Prop(ir.WindowHref)
 		switch {
 		case !staticMode:
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
-		case win.Window == nil || win.Window.Prop(ir.WindowHref) == nil:
+		case href == nil:
 			// No declaration to take an href from: the package body's root
 			// window, or a lone main component's. It is the document the site
 			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
-			href, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowHref))
+			h, ok := codegen.IRLiteralString(href)
 			if !ok {
 				return nil, fmt.Errorf("html: window %q has a non-literal href after folding (internal error)", win.Name)
 			}
-			name = pathFromHref(href)
+			name = pathFromHref(h)
 		}
 		if staticMode {
 			if prev, dup := seenPaths[name]; dup {
