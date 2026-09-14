@@ -15,12 +15,24 @@ inline on the calling goroutine, so the queued window does not exist there.
 
 **The deadline it resets to is absolute**, which is the difference between a
 one-shot that re-arms and a ticker. `AfterFunc` starts the next period when the
-callback runs rather than when the last one was due, so resetting to `interval`
-would add the tick body and the hand-over to every period, forever -- a
-second's timer losing a second every few minutes. `next` is when the tick was
-due, `time.Until(next)` is the remainder, and the error is dropped instead of
-carried. `sngl:time` declares `datetime` and `duration` and no operation on
-either, so the clock is named as a host native here, the way `AfterFunc` is.
+callback runs rather than when the last one was due, so what a re-arm for
+`interval` carries is however long it took to get here. Resetting *ahead* of
+the tick takes the tick body out of that; what is left is the hand-over -- the
+post onto the drawing thread, and whatever that thread was busy with -- and
+nothing bounds how many periods' worth accumulates over a long run. `next` is
+when the tick was due, `time.Until(next)` is the remainder, and the error is
+dropped each time rather than added up.
+
+Worth knowing that the residual is small per tick, so a short run does not
+separate the two: a fixture measuring ticks-per-second with a slow tick body
+passes either way, because the re-arm is already ahead of the body. What the
+absolute deadline changes is that the error stops accumulating, which is a
+claim about a clock left running rather than about a second of it. The
+assertion is the emitted shape and the `deny` below.
+
+`sngl:time` declares `date`, `time`, `datetime` and `duration` and no operation
+on any of them -- no clock, no arithmetic -- so `time.Now`, `Add` and `Until`
+are named as host natives here, the way `AfterFunc` is.
 
 Three still carry a primitive of their own, which passTimerPrimitive takes out
 of the tree, and two of those are because an effect's `@mount` hands over a

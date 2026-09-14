@@ -969,8 +969,12 @@ declaration itself. Two things about the name that are easy to get wrong:
 
   **A one-shot that re-arms drifts and a ticker does not**, so the deadline it
   resets to is absolute: `AfterFunc` starts the next period when the callback
-  runs rather than when the last one was due, which adds the tick body and the
-  hand-over to every period forever. The override holds `next` -- when the tick
+  runs rather than when the last one was due, so a re-arm carries however long
+  it took to get there. Resetting *ahead* of the tick takes the tick body out
+  of that; the hand-over onto the drawing thread is what is left, and nothing
+  bounds how much of it accumulates over a long run. It is small per tick, so
+  a short run does not separate the two -- the claim is about a clock left
+  running, and the assertion is the emitted shape. The override holds `next` -- when the tick
   was *due* -- and resets to `time.Until(next)`, so the error is dropped rather
   than carried, and it walks `next` forward past any deadline already passed so
   a tick slower than its period runs late instead of queueing a catch-up per
