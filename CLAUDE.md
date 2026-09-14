@@ -626,15 +626,34 @@ its two siblings, which name the *prop it reads* rather than redeclaring one:
 html asks for the href, gtk4 for the title, and neither is a list of what a
 window has.
 
-`ir.Window` is still its own struct rather than a `#[builtin("window")]`
-`NodeInst`, and two things are why. Its **body-owner half** — vars, funcs,
-timers, `@error` — has nowhere to live on a `NodeInst`, which nothing else
-gives state to. And a window is an `ir.Symbol`: `window #home` binds a name
-that `output(entry = home)` and `home.title` resolve against, where a
-`NodeInst`'s `ID` is a plain string. Until both are answered
-`checkTreeMembership` keeps a `*ir.Window` arm beside its `*ir.NodeInst` one,
-now reading the same two fields off the same kind of pointer, which is what
-makes the collapse mechanical when they are.
+**A window's `#id` binds a node handle**, which is the half of that collapse
+that is done. `declareNodeID` had the split written out: every node id bound an
+`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the `*ir.Window` itself
+— so `ir.Window` was an `ir.Symbol` and "what does a node id name" had two
+answers. It binds the same handle now, `ir.Window.Handle` points at it, and
+`SymName`/`SymType` are gone, so the compiler refuses any attempt to declare a
+window as a symbol. That is what found the three consumers rather than leaving
+them to a grep: `output(entry = home)` matches by handle and falls back to the
+name for a window a component renders, folding `home.title` reaches the window
+through `ir.WindowForHandle`, and `hoistedWindow`/`bindWindow` are deleted —
+the handle is the stable thing a reference resolves to, so `buildWindow` builds
+a fresh window every call. `ir.Window.Typ` went with them, having only ever
+answered `SymType`.
+
+What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
+not simply carried over. `Window.Vars` is a *lowering artifact*: the checker
+leaves a window's `var` as an `*ir.LocalVar` statement in the body (which is
+already the `NodeInst` shape) and `passHoistState` moves it. `Funcs` is not the
+same case and cannot follow it: `ir` has no statement for a func declaration,
+`passCanvas` *appends* a synthesized draw func to `w.Funcs` with no source body
+to live in, and sixteen non-test sites read the per-window grouping to decide
+which funcs become that window's methods. `Timers` stays a field by decision
+(#243): three platforms now lower a timer to an effect, but bubbletea cannot —
+Elm lets nothing outside `Update` touch the model, and `Init()` needs a period
+and a body, which is what `ir.Timer` carries and the closure an `@mount` hands
+over cannot. Until those have a home, `checkTreeMembership` keeps a
+`*ir.Window` arm beside its `*ir.NodeInst` one, now reading the same two fields
+off the same kind of pointer.
 
 **A root component's own state is hoisted into the window it lifts**, because
 that is where it is mounted — the component is an empty shell once the lift is
