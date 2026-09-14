@@ -660,12 +660,11 @@ func post(f func())
 // `enabled`, because a comparison of two unit constants does not fold: written
 // there it reaches every program's settle as `1000ms > 0ms`, spelled out.
 //
-// The deadline is absolute. Re-arming for a whole period each time would make
-// every tick's cost cumulative -- `AfterFunc` starts the next period when the
-// callback runs, not when the last one was due -- so a second's timer drifts by
-// the tick body plus the hand-over, every tick, forever. `next` is when the
-// tick was *due* and the schedule is reset to the remainder, so the error is
-// dropped rather than carried.
+// The deadline is absolute. `AfterFunc` starts the next period when the
+// callback runs rather than when the last one was due, so a re-arm for a whole
+// period carries the hand-over onto the drawing thread into every period, with
+// nothing bounding what that adds up to. `next` is when the tick was *due* and
+// the schedule is reset to the remainder, so the error is dropped each time.
 component time.timer[platform] {
     var handle Schedule
     var rearm func()
@@ -684,28 +683,23 @@ component time.timer[platform] {
                     next = now().add(d)
                     rearm = func() {
                         post(func() {
-                            // A re-key is an unmount and a mount back to back,
-                            // so a flag saying merely that something is armed
-                            // is true again by the time a queued post runs.
-                            // Still required with `Reset`: a stale closure
-                            // resets the very timer the unmount stopped.
-                            // An early return rather than an `if` around the
-                            // rest: a blocking `@tick` only moves off the
-                            // drawing thread as a statement of the body.
+                            // A re-key is an unmount and a mount back to
+                            // back, so a stale post finds `live` true again;
+                            // with `Reset` it would revive the very timer the
+                            // unmount stopped. An early return rather than a
+                            // wrapping `if`, because a blocking `@tick` only
+                            // moves off the drawing thread as a statement of
+                            // the body.
                             if gen != mine {
                                 return
                             }
-                            // Missed deadlines are dropped, not made up. A
-                            // tick slower than its period would otherwise
-                            // queue a catch-up per period and never drain,
-                            // which saturates the drawing thread instead of
-                            // just running late.
+                            // Missed deadlines are dropped, not made up: a
+                            // tick slower than its period would queue a
+                            // catch-up per period and never drain.
                             next = next.add(d)
                             for until(next) <= 0ms {
                                 next = next.add(d)
                             }
-                            // Ahead of the tick, so a period covers it rather
-                            // than following it.
                             handle.reset(until(next))
                             tick()
                         })
