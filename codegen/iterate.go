@@ -347,6 +347,29 @@ func IRLiteralBool(e ir.Expr) (bool, bool) {
 	return lit.Value == "true", true
 }
 
+// IRLiteralNumber extracts the value of an int or float literal. Both kinds
+// answer, because a numeric prop written `0` reaches a float field as an int
+// literal unless something along the way converted it.
+func IRLiteralNumber(e ir.Expr) (float64, bool) {
+	if e == nil {
+		return 0, false
+	}
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit.Type == nil {
+		return 0, false
+	}
+	switch lit.Type.Kind {
+	case ir.TypeInt, ir.TypeFloat:
+	default:
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(lit.Value, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
 // IRIsLiteral reports whether an expression is a compile-time literal.
 // List literals count when every element is itself a literal, so callers
 // that expect static data (table columns, tabs items) keep working.

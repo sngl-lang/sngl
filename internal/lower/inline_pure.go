@@ -358,8 +358,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	// A primitive is what every wrapper lowers *to* and has no body by design:
 	// #[intrinsic] for a platform widget, #[builtin] for a node kind the
-	// checker dispatches, a wildcard for a raw element, a tree kind for a
-	// member or host of a segmented tree.
+	// checker dispatches, a wildcard for a raw element, a slot hosting a tree.
 	if isPrimitiveComponent(comp) {
 		return []ir.Stmt{n}, nil
 	}
@@ -553,11 +552,12 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	// A *segmented* tree: the widget family is excluded, because its members
-	// are the ordinary components this pass exists to compose away. Every
-	// other family is rendered by a pass that names it.
+	// A tree kind is deliberately not on this list. Belonging to a segmented
+	// tree says which family a declaration joins, not that a codegen renders
+	// it: a shape composed out of other shapes is a wrapper like any other,
+	// and passCanvas emits whatever reaches it, composed away or not.
 	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
-		ir.IsSegmentedTree(comp.Tree) || hostsTree(comp)
+		hostsTree(comp)
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the
@@ -593,10 +593,14 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	}
 
 	// Build param-binding map. Bind every prop, falling back from the
-	// call-site arg to the prop's default to a typed zero-value, so the
-	// body never keeps a bare param identifier (mirrors expandCall in
-	// inline_components.go; ZeroExpr covers props with no default, e.g.
-	// `disabled bool`).
+	// call-site arg to the prop's default to the type's declared default, so
+	// the body never keeps a bare param identifier.
+	//
+	// DeclaredDefault, not ZeroExpr: shapeBody in pass_canvas.go answers the
+	// same question the same way, and the two have to agree because a shape
+	// reaches whichever of them composes it away. A struct's declared default
+	// is its fields' own, which is how a body reading `style.fontSize` off a
+	// prop the call site left out gets 16 rather than nothing.
 	bindings := map[string]ir.Expr{}
 	for _, p := range comp.Props {
 		var val ir.Expr
@@ -610,7 +614,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			val = p.Default
 		}
 		if val == nil {
-			val = ir.ZeroExpr(p.Type)
+			val = ir.DeclaredDefault(p.Type)
 		}
 		if val != nil {
 			bindings[p.Name] = val

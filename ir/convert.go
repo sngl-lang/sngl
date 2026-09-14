@@ -159,7 +159,13 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 			Names: []string{f.Name},
 			Type:  c.convertType(f.Type),
 		}
-		if f.Default != nil {
+		// DefaultWritten, not `Default != nil`: Normalize fills every nil
+		// Default with the type's zero, so printing them all turns
+		// `struct Foo { a int }` into `a int = 0` -- and re-checking that says
+		// the declaration wrote a default it never wrote. Which is not only a
+		// round-trip inequality: DeclaredDefault reads the flag, so a dump fed
+		// back through the checker reinstated a zeroed field per prop.
+		if f.DefaultWritten && f.Default != nil {
 			sf.Default = c.convertExpr(f.Default)
 		}
 		def.Body = append(def.Body, sf)

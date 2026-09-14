@@ -1,17 +1,23 @@
-A component the program declares as a primitive has no body by design.
+A shape whose body is `{}` renders nothing, so the draw function below is
+empty and the canvas around it is not.
 
-Lowering drops a bodyless component when building for a target, because one
-that declares nothing renders nothing and every platform used to guess
-differently at what an empty component meant. A member of a segmented tree is
-the exception: passCanvas emits it, so dropping it takes the canvas contents
-with it -- the ctx.save/ctx.restore pair in the golden is the marked shape
-having reached passCanvas.
+`{}` and no block at all are different declarations, and this is the first
+half of that pair. An empty body says the component renders nothing, which is
+a legitimate thing to say; a bodyless one says the render comes from
+somewhere the declaration names, and with no override for the target being
+built that is a build failure -- `error_component_no_body_shape.sngl` is
+that half.
 
-The signals are the whole list -- #[intrinsic], #[builtin], a wildcard
-pattern, a tree -- but only a tree is reachable from user code, so it is what
-this asserts: `blip` is one because it names `draw.shape` in its return
-position. Without the exemption the canvas emits no draw calls at all and
-still exits 0.
+This file used to assert the opposite: that `blip` survived lowering because
+`isPrimitiveComponent` exempted a segmented tree's members from
+passInlinePure, reading the `ctx.save()`/`ctx.restore()` pair it produced as
+the shape having reached passCanvas. That pair was the bracket `emitShape`
+puts around a composed shape, wrapped around a body with nothing in it -- so
+the exemption kept a declaration that renders nothing from being dropped, and
+the page carried a bracket nobody asked for. The header said the component
+had "no body by design", which the `{}` on the declaration below denies.
+
+deny out/none/html/index.html `ctx\.save\(\)` -- a component that renders nothing gets no bracket; the canvas is what survives here, not the shape
 
 -- main.sngl --
 import . "sngl:ui"
@@ -53,8 +59,6 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = {};
   function _canvasDraw0(ctx) {
-    ctx.save();
-    ctx.restore();
   }
   function _snglCanvasDraw(el, w, h, mode, draw) {
     const ctx = el.getContext("2d");

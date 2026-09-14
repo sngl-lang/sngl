@@ -85,8 +85,14 @@ func ZeroExpr(t *Type) Expr {
 // gets what the stdlib documents rather than a transparent hairline in a
 // zero-point font.
 //
-// Normalize has already given every field a Default (its own, or its type's
-// zero), so this reads them rather than recomputing.
+// Only the fields the declaration actually gave a default, which is what
+// DefaultWritten is for: Normalize fills every nil Default with the type's
+// zero, so reading Default alone names every field of every struct. That
+// difference is not academic -- a backend reads a field's *presence* as
+// having been set, and `ui.Style` declares no defaults at all while
+// documenting that an unset field inherits the platform's. Naming them all
+// put `flex:0` and a zero-line `-webkit-line-clamp` on every element of every
+// generated page.
 func DeclaredDefault(t *Type) Expr {
 	if t == nil || t.Kind != TypeStruct {
 		return ZeroExpr(t)
@@ -101,14 +107,10 @@ func DeclaredDefault(t *Type) Expr {
 	}
 	lit := &StructLit{Type: t, Def: sd}
 	for _, f := range sd.Fields {
-		v := f.Default
-		if v == nil {
-			v = ZeroExpr(f.Type)
-		}
-		if v == nil {
+		if !f.DefaultWritten || f.Default == nil {
 			continue
 		}
-		lit.Fields = append(lit.Fields, FieldInit{Name: f.Name, Value: v})
+		lit.Fields = append(lit.Fields, FieldInit{Name: f.Name, Value: f.Default})
 	}
 	return lit
 }
@@ -180,6 +182,7 @@ func normalizeStructDef(s *StructDef) {
 		if f.Default == nil {
 			f.Default = ZeroExpr(f.Type)
 		} else {
+			f.DefaultWritten = true
 			normalizeExpr(f.Default)
 		}
 	}

@@ -385,7 +385,7 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 				// Placeholder; actual default checked later when scope is ready.
 				def = &ir.Literal{Type: typ}
 			}
-			fld := &ir.StructField{Name: name, Type: typ, Default: def}
+			fld := &ir.StructField{Name: name, Type: typ, Default: def, DefaultWritten: f.Default != nil}
 			if first == nil {
 				first = fld
 			}
