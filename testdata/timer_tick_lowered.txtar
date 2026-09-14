@@ -192,7 +192,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 	"slices"
 	"time"
 )
@@ -214,7 +213,9 @@ type ErrorEvent struct {
 type Model struct {
 	level__inst1         float64
 	rung__inst1          int
-	handle__inst0__inst1 *fynert.Schedule
+	handle__inst0__inst1 *time.Timer
+	rearm__inst0__inst1  func()
+	live__inst0__inst1   bool
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -231,6 +232,8 @@ func New() *Model {
 	m.level__inst1 = 0.0
 	m.rung__inst1 = 0
 	m.handle__inst0__inst1 = nil
+	m.rearm__inst0__inst1 = nil
+	m.live__inst0__inst1 = false
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -241,26 +244,39 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst0__inst1 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
-		var __lt0 float64
-		if m.level__inst1 >= 1.0 {
-			__lt0 = 0.0
-		} else {
-			__lt0 = (m.level__inst1 + 0.01)
+	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+		m.live__inst0__inst1 = true
+		m.rearm__inst0__inst1 = func() {
+			fyne.Do(func() {
+				if !m.live__inst0__inst1 {
+					return
+				}
+				m.handle__inst0__inst1 = time.AfterFunc(m.__effect0_key, m.rearm__inst0__inst1)
+				var __lt0 float64
+				if m.level__inst1 >= 1.0 {
+					__lt0 = 0.0
+				} else {
+					__lt0 = (m.level__inst1 + 0.01)
+				}
+				m.level__inst1 = __lt0
+				m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+				var __iterIdx0 int = -1
+				for x := range slices.Values([]int{0, 1, 2}) {
+					__iterIdx0 += 1
+					m.rung__inst1 = (m.rung__inst1 + (__iterIdx0 * x))
+					m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
+				}
+			})
 		}
-		m.level__inst1 = __lt0
-		m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
-		var __iterIdx0 int = -1
-		for x := range slices.Values([]int{0, 1, 2}) {
-			__iterIdx0 += 1
-			m.rung__inst1 = (m.rung__inst1 + (__iterIdx0 * x))
-			m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
-		}
-	})
+		m.handle__inst0__inst1 = time.AfterFunc(m.__effect0_key, m.rearm__inst0__inst1)
+	}
 }
 
 func (m *Model) __effect0_unmount() {
-	m.handle__inst0__inst1.Cancel()
+	if m.live__inst0__inst1 {
+		m.live__inst0__inst1 = false
+		m.handle__inst0__inst1.Stop()
+	}
 }
 
 func (m *Model) __effect0_down() {
@@ -343,12 +359,28 @@ func (m *Model) SetRung__inst1(v int) {
 	m.rung__inst1 = v
 }
 
-func (m *Model) Handle__inst0__inst1() *fynert.Schedule {
+func (m *Model) Handle__inst0__inst1() *time.Timer {
 	return m.handle__inst0__inst1
 }
 
-func (m *Model) SetHandle__inst0__inst1(v *fynert.Schedule) {
+func (m *Model) SetHandle__inst0__inst1(v *time.Timer) {
 	m.handle__inst0__inst1 = v
+}
+
+func (m *Model) Rearm__inst0__inst1() func() {
+	return m.rearm__inst0__inst1
+}
+
+func (m *Model) SetRearm__inst0__inst1(v func()) {
+	m.rearm__inst0__inst1 = v
+}
+
+func (m *Model) Live__inst0__inst1() bool {
+	return m.live__inst0__inst1
+}
+
+func (m *Model) SetLive__inst0__inst1(v bool) {
+	m.live__inst0__inst1 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.

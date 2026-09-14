@@ -71,7 +71,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 	"time"
 )
 
@@ -186,7 +185,9 @@ type TimerInstance struct {
 	__prop_interval     time.Duration
 	__prop_enabled      bool
 	__prop_tick         func(any)
-	handle              *fynert.Schedule
+	handle              *time.Timer
+	rearm               func()
+	live                bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -203,6 +204,8 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 	c.__prop_enabled = enabled
 	c.__prop_tick = tick
 	c.handle = nil
+	c.rearm = nil
+	c.live = false
 	c.__effect0_key = time.Duration(0) * time.Millisecond
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
@@ -217,13 +220,26 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 }
 
 func (c *TimerInstance) __effect0_mount() {
-	c.handle = fynert.Every(int(c.__effect0_key/time.Millisecond), func() {
-		c.__prop_tick(nil)
-	})
+	if c.__effect0_key > time.Duration(0)*time.Millisecond {
+		c.live = true
+		c.rearm = func() {
+			fyne.Do(func() {
+				if !c.live {
+					return
+				}
+				c.handle = time.AfterFunc(c.__effect0_key, c.rearm)
+				c.__prop_tick(nil)
+			})
+		}
+		c.handle = time.AfterFunc(c.__effect0_key, c.rearm)
+	}
 }
 
 func (c *TimerInstance) __effect0_unmount() {
-	c.handle.Cancel()
+	if c.live {
+		c.live = false
+		c.handle.Stop()
+	}
 }
 
 func (c *TimerInstance) __effect0_down() {

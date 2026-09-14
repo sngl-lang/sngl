@@ -946,7 +946,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
   reached past `alpha` positionally.
 - **A native mark names a *type* as readily as a function**, which is what
-  makes a host handle spellable: `#[go.native(pkg, "*fynert.Schedule")] struct Schedule {}` with `#[go.native(pkg, "fynert.Schedule.Cancel", method)] func Schedule.cancel()` beside it. gtk4 has done the same for C all along —
+  makes a host handle spellable: `#[go.native("time", "*time.Timer")] struct Schedule {}` with `#[go.native("time", "time.Timer.Stop", method)] func Schedule.stop() bool` beside it. gtk4 has done the same for C all along —
   `#[cnative("*C.cairo_t")] struct CairoContext {}` — so the form predates the
   need for it by a platform.
 
@@ -954,9 +954,34 @@ declaration itself. Two things about the name that are easy to get wrong:
   runtimes each kept a process-wide mutex-guarded `map[int]…` and handed SNGL
   an integer index into it, because the override was written as
   `var handle = 0` and `int` looked like the only thing the declaration could
-  spell. It was not: the schedule itself is a name, the registries were bought
-  for nothing, and `pkg/go/fynert` existed almost entirely to hold one.
-  Nothing new had to be built to delete them.
+  spell. It was not: the schedule itself is a name, and the registries were
+  bought for nothing. Nothing new had to be built to delete them.
+
+  **A runtime package is a list of missing language features written in Go**,
+  and `pkg/go/fynert` was two of them in turn: a registry while a handle was
+  unspellable, then a goroutine and a `select` around a `time.Ticker`, because
+  `Ticker.Stop` does not close `C` and a bare `for range` over it leaks. The
+  second was answered by picking a host API the language can already say.
+  `time.AfterFunc` is a one-shot, so the schedule re-arms itself from its own
+  callback -- a `func()` var holding the closure that re-assigns it -- and
+  there is no channel to select over. fyne's timer is now written in
+  `fyne.sngl` alone and the package is gone.
+
+  **The hand-over it also held is `async.post`**, which a platform package may
+  name: `#[intrinsic("async.post")] func post(f func())` dispatches through
+  `LookupPlatformIntrinsic` exactly as a blocking call's posted tail does, and
+  emits `fyne.Do` with the import. So a callback that must reach the drawing
+  thread asks for that in one word instead of a package re-spelling it. The id
+  is also the second thing `nativeCallbackFuncs` treats as scheduling, for the
+  reason the `schedules` flag exists: a post runs its closure from the loop the
+  platform owns, so a blocking call written inside one is on the drawing thread
+  unless this pass takes the closure as an entry point. It cannot carry the
+  flag, having no declaration to carry it on.
+
+  What is *not* closed by any of this is channels: `go.chan<T>` and a `go.select`
+  that holds real `select` syntax remain the general answer, and a program
+  wanting either still has no way to say it. This change stepped around that
+  gap rather than through it.
 
   What such a type may *not* do is be constructed: a program holds one and
   calls methods on it. So the only literal of one that reaches a backend is the

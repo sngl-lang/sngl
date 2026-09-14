@@ -59,8 +59,8 @@ func BaseImports(pkg *ir.Package) []BaseImport {
 	// function with no context to register an import from -- and unlike a
 	// native call, a type may be the only mention its package gets: a var of
 	// one becomes a field, a getter and a setter with nothing calling the
-	// constructor beside them, which is what `*fynert.Schedule` in a canvas
-	// was. Collected here so all three Go platforms get it from the one place
+	// constructor beside them, which is what fyne's `*time.Timer` schedule is.
+	// Collected here so all three Go platforms get it from the one place
 	// each already asks.
 	for _, path := range foreignTypeImports(pkg) {
 		if seen[path] {

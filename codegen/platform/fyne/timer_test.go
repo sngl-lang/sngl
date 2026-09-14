@@ -11,14 +11,14 @@ import (
 // A component with a timer must emit a schedule, and its tick body must go
 // through the translator like any other imperative body.
 //
-// The timer is an `effect` over fynert.Every and the schedule it hands back,
-// so what says the
-// schedule is armed is the mount handler, and what says the gate still works is
-// that `running` decides whether the bracket is described at all. The widget
+// The timer is an `effect` over time.AfterFunc and the timer it hands back, so
+// what says the schedule is armed is the mount handler, and what says the gate
+// still works is that `running` decides whether the bracket is described at
+// all. The widget
 // write is the second claim and is independent of the first: rendered by
 // gc.EvalStmt alone it comes out as a raw `__n0.Value =`, which is not Fyne's
 // API and does not compile.
-func TestTimerEmitsTickerRuntime(t *testing.T) {
+func TestTimerEmitsSelfRearmingSchedule(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:time"
@@ -52,10 +52,13 @@ window {
 
 	for _, snippet := range []string{
 		"func (m *Model) __effect0_mount()",
-		"fynert.Every(",
-		// The schedule is the value, not an index into a registry: cancelling
-		// is a method on what Every handed back.
-		".Cancel()",
+		"time.AfterFunc(",
+		// The schedule is the value the caller holds: stopping is a method on
+		// what AfterFunc handed back.
+		".Stop()",
+		// A one-shot re-arms itself, and does so on the drawing thread -- the
+		// whole reason no runtime package holds a goroutine for this.
+		"fyne.Do(func() {",
 		"m.seconds += 1",
 		// Tick body's reactive widget update must use the fyne widget API,
 		// qualified with the receiver — not a raw, unqualified field write.

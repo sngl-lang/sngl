@@ -9,12 +9,18 @@ and error handler but not its timers -- and passTimerPrimitive records a
 schedule on whichever owner held the node, so an inlined timer's is a window's.
 
 Both timers here are an `effect` now, so the tick is a lambda handed to
-`fynert.Every` or `gtk4rt.Every`, and a lambda is deliberately not an entry
+`time.AfterFunc` or `gtk4rt.Every`, and a lambda is deliberately not an entry
 point: what calls one is usually code this pass can read, and `xs.map(f)` wants
 the blocking f rather than a goroutine per element. The exception is a callee
 that *says* it schedules -- the `schedules` flag on its native mark -- because a
 host scheduler calls its callback from the loop it owns, which is the thread the
 target draws on.
+
+`async.post` is the second thing that is true of, and on fyne it is the one that
+matters here: a self-rearming `AfterFunc` hands its whole body over with a post,
+so the tick is a lambda inside *that* lambda and the outer one's `schedules`
+flag does not reach it. The id has no declaration to carry a flag on, so the
+pass names it.
 
 The flag is asked for rather than read off the call, which is the rule the whole
 of #[foreign] follows: a foreign declaration describes an identifier and does
@@ -76,7 +82,6 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 	"os"
 	"time"
 )
@@ -97,7 +102,9 @@ type ErrorEvent struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	name__inst1          string
-	handle__inst0__inst1 *fynert.Schedule
+	handle__inst0__inst1 *time.Timer
+	rearm__inst0__inst1  func()
+	live__inst0__inst1   bool
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -113,6 +120,8 @@ func New() *Model {
 	m := &Model{}
 	m.name__inst1 = "idle"
 	m.handle__inst0__inst1 = nil
+	m.rearm__inst0__inst1 = nil
+	m.live__inst0__inst1 = false
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -123,19 +132,32 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst0__inst1 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
-		go func() {
-			__async_off0 := func() string { v, _ := os.Hostname(); return v }()
+	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+		m.live__inst0__inst1 = true
+		m.rearm__inst0__inst1 = func() {
 			fyne.Do(func() {
-				m.name__inst1 = __async_off0
-				m.__n0.SetText(m.name__inst1)
+				if !m.live__inst0__inst1 {
+					return
+				}
+				m.handle__inst0__inst1 = time.AfterFunc(m.__effect0_key, m.rearm__inst0__inst1)
+				go func() {
+					__async_off0 := func() string { v, _ := os.Hostname(); return v }()
+					fyne.Do(func() {
+						m.name__inst1 = __async_off0
+						m.__n0.SetText(m.name__inst1)
+					})
+				}()
 			})
-		}()
-	})
+		}
+		m.handle__inst0__inst1 = time.AfterFunc(m.__effect0_key, m.rearm__inst0__inst1)
+	}
 }
 
 func (m *Model) __effect0_unmount() {
-	m.handle__inst0__inst1.Cancel()
+	if m.live__inst0__inst1 {
+		m.live__inst0__inst1 = false
+		m.handle__inst0__inst1.Stop()
+	}
 }
 
 func (m *Model) __effect0_down() {
@@ -210,12 +232,28 @@ func (m *Model) SetName__inst1(v string) {
 	m.name__inst1 = v
 }
 
-func (m *Model) Handle__inst0__inst1() *fynert.Schedule {
+func (m *Model) Handle__inst0__inst1() *time.Timer {
 	return m.handle__inst0__inst1
 }
 
-func (m *Model) SetHandle__inst0__inst1(v *fynert.Schedule) {
+func (m *Model) SetHandle__inst0__inst1(v *time.Timer) {
 	m.handle__inst0__inst1 = v
+}
+
+func (m *Model) Rearm__inst0__inst1() func() {
+	return m.rearm__inst0__inst1
+}
+
+func (m *Model) SetRearm__inst0__inst1(v func()) {
+	m.rearm__inst0__inst1 = v
+}
+
+func (m *Model) Live__inst0__inst1() bool {
+	return m.live__inst0__inst1
+}
+
+func (m *Model) SetLive__inst0__inst1(v bool) {
+	m.live__inst0__inst1 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.

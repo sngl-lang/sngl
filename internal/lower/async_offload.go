@@ -244,7 +244,7 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 // it one: what calls an ordinary lambda is code this pass can read, and a
 // native has no body here to read at all. A host scheduler calls its callback
 // from the loop it owns, which is the thread the target draws on --
-// `fynert.Every` and `gtk4rt.Every` behind `time.timer` are that -- so a
+// `time.AfterFunc` and `gtk4rt.Every` behind `time.timer` are that -- so a
 // blocking call in a tick is exactly the work this pass exists to move off it.
 //
 // The flag is asked for rather than inferred from the call's shape, which is
@@ -261,7 +261,7 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
 	_ = ir.Walk(pkg, func(n ir.Node) error {
 		c, ok := n.(*ir.Call)
-		if !ok || c.Func == nil || !c.Func.NativeSchedules {
+		if !ok || c.Func == nil || !schedulesItsCallback(c.Func) {
 			return nil
 		}
 		for _, a := range c.Args {
@@ -271,6 +271,15 @@ func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
 		}
 		return nil
 	})
+}
+
+// schedulesItsCallback answers the question the flag exists for, and
+// AsyncPostIntrinsic is the second thing it is true of: a post runs its closure
+// from the loop the platform owns, which is the same thread a native scheduler
+// calls back on. It cannot carry the flag because it carries no declaration at
+// all -- this pass owns the id -- so it is named here instead.
+func schedulesItsCallback(fn *ir.Func) bool {
+	return fn.NativeSchedules || fn.Intrinsic == AsyncPostIntrinsic
 }
 
 // callbackFunc is the body behind a callback argument, through whatever the

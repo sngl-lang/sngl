@@ -437,7 +437,10 @@ func mainLoopNew()  { C.sngl_main_loop_new() }
 func mainLoopRun()  { C.sngl_main_loop_run() }
 func mainLoopQuit() { C.sngl_main_loop_quit() }
 
-// Post schedules fn to run once on the next GLib main-loop idle tick.
+// Post schedules fn to run once on the next GLib main-loop idle tick. It is
+// what this platform's async.post emitter calls rather than a second answer
+// beside it: a C callback cannot carry a Go closure, so there is no spelling of
+// an idle source for that emitter to inline.
 func Post(fn func()) {
 	idx := cbind.Register(fn)
 	C.sngl_gtk_idle_add(C.int(idx))

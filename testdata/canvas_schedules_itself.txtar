@@ -58,7 +58,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	snglcanvas "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 	"time"
 )
@@ -108,7 +107,9 @@ type CanvasStyle struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	frame               int
-	handle__inst0       *fynert.Schedule
+	handle__inst0       *time.Timer
+	rearm__inst0        func()
+	live__inst0         bool
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -127,6 +128,8 @@ func New() *Model {
 	m := &Model{}
 	m.frame = 0
 	m.handle__inst0 = nil
+	m.rearm__inst0 = nil
+	m.live__inst0 = false
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = time.Duration(0) * time.Millisecond
@@ -176,13 +179,26 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effect1_mount() {
-	m.handle__inst0 = fynert.Every(int(m.__effect1_key/time.Millisecond), func() {
-		m.frame = (m.frame + 1)
-	})
+	if m.__effect1_key > time.Duration(0)*time.Millisecond {
+		m.live__inst0 = true
+		m.rearm__inst0 = func() {
+			fyne.Do(func() {
+				if !m.live__inst0 {
+					return
+				}
+				m.handle__inst0 = time.AfterFunc(m.__effect1_key, m.rearm__inst0)
+				m.frame = (m.frame + 1)
+			})
+		}
+		m.handle__inst0 = time.AfterFunc(m.__effect1_key, m.rearm__inst0)
+	}
 }
 
 func (m *Model) __effect1_unmount() {
-	m.handle__inst0.Cancel()
+	if m.live__inst0 {
+		m.live__inst0 = false
+		m.handle__inst0.Stop()
+	}
 }
 
 func (m *Model) __effect1_down() {
@@ -259,12 +275,28 @@ func (m *Model) SetFrame(v int) {
 	m.frame = v
 }
 
-func (m *Model) Handle__inst0() *fynert.Schedule {
+func (m *Model) Handle__inst0() *time.Timer {
 	return m.handle__inst0
 }
 
-func (m *Model) SetHandle__inst0(v *fynert.Schedule) {
+func (m *Model) SetHandle__inst0(v *time.Timer) {
 	m.handle__inst0 = v
+}
+
+func (m *Model) Rearm__inst0() func() {
+	return m.rearm__inst0
+}
+
+func (m *Model) SetRearm__inst0(v func()) {
+	m.rearm__inst0 = v
+}
+
+func (m *Model) Live__inst0() bool {
+	return m.live__inst0
+}
+
+func (m *Model) SetLive__inst0(v bool) {
+	m.live__inst0 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.

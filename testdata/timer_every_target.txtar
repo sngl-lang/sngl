@@ -2,7 +2,7 @@ What every target emits for a timer, and where it finds one.
 
 `timer` is an ordinary component, and every target overrides it with what it
 schedules with. Three do it with an `effect` bracketing a pair of host natives:
-html over setInterval/clearInterval, fyne over fynert, gtk4 over gtk4rt. Such a
+html over setInterval/clearInterval, fyne over time.AfterFunc, gtk4 over gtk4rt. Such a
 pair already is a lifetime with a thing to release, which is what an effect
 brackets. Two still carry a primitive of their own, which passTimerPrimitive
 takes out of the tree, because an effect's `@mount` hands over a *closure* and
@@ -244,7 +244,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 	"time"
 )
 
@@ -265,9 +264,13 @@ type ErrorEvent struct {
 type Model struct {
 	seconds__inst2       int
 	running__inst2       bool
-	handle__inst1__inst2 *fynert.Schedule
+	handle__inst1__inst2 *time.Timer
+	rearm__inst1__inst2  func()
+	live__inst1__inst2   bool
 	beats__inst3         int
-	handle__inst0__inst3 *fynert.Schedule
+	handle__inst0__inst3 *time.Timer
+	rearm__inst0__inst3  func()
+	live__inst0__inst3   bool
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -288,8 +291,12 @@ func New() *Model {
 	m.seconds__inst2 = 0
 	m.running__inst2 = true
 	m.handle__inst1__inst2 = nil
+	m.rearm__inst1__inst2 = nil
+	m.live__inst1__inst2 = false
 	m.beats__inst3 = 0
 	m.handle__inst0__inst3 = nil
+	m.rearm__inst0__inst3 = nil
+	m.live__inst0__inst3 = false
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -303,14 +310,27 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst1__inst2 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
-		m.seconds__inst2 += 1
-		m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
-	})
+	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+		m.live__inst1__inst2 = true
+		m.rearm__inst1__inst2 = func() {
+			fyne.Do(func() {
+				if !m.live__inst1__inst2 {
+					return
+				}
+				m.handle__inst1__inst2 = time.AfterFunc(m.__effect0_key, m.rearm__inst1__inst2)
+				m.seconds__inst2 += 1
+				m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
+			})
+		}
+		m.handle__inst1__inst2 = time.AfterFunc(m.__effect0_key, m.rearm__inst1__inst2)
+	}
 }
 
 func (m *Model) __effect0_unmount() {
-	m.handle__inst1__inst2.Cancel()
+	if m.live__inst1__inst2 {
+		m.live__inst1__inst2 = false
+		m.handle__inst1__inst2.Stop()
+	}
 }
 
 func (m *Model) __effect0_down() {
@@ -356,14 +376,27 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
-	m.handle__inst0__inst3 = fynert.Every(int(m.__effect1_key/time.Millisecond), func() {
-		m.beats__inst3 += 1
-		m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
-	})
+	if m.__effect1_key > time.Duration(0)*time.Millisecond {
+		m.live__inst0__inst3 = true
+		m.rearm__inst0__inst3 = func() {
+			fyne.Do(func() {
+				if !m.live__inst0__inst3 {
+					return
+				}
+				m.handle__inst0__inst3 = time.AfterFunc(m.__effect1_key, m.rearm__inst0__inst3)
+				m.beats__inst3 += 1
+				m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
+			})
+		}
+		m.handle__inst0__inst3 = time.AfterFunc(m.__effect1_key, m.rearm__inst0__inst3)
+	}
 }
 
 func (m *Model) __effect1_unmount() {
-	m.handle__inst0__inst3.Cancel()
+	if m.live__inst0__inst3 {
+		m.live__inst0__inst3 = false
+		m.handle__inst0__inst3.Stop()
+	}
 }
 
 func (m *Model) __effect1_down() {
@@ -449,12 +482,28 @@ func (m *Model) SetRunning__inst2(v bool) {
 	m.running__inst2 = v
 }
 
-func (m *Model) Handle__inst1__inst2() *fynert.Schedule {
+func (m *Model) Handle__inst1__inst2() *time.Timer {
 	return m.handle__inst1__inst2
 }
 
-func (m *Model) SetHandle__inst1__inst2(v *fynert.Schedule) {
+func (m *Model) SetHandle__inst1__inst2(v *time.Timer) {
 	m.handle__inst1__inst2 = v
+}
+
+func (m *Model) Rearm__inst1__inst2() func() {
+	return m.rearm__inst1__inst2
+}
+
+func (m *Model) SetRearm__inst1__inst2(v func()) {
+	m.rearm__inst1__inst2 = v
+}
+
+func (m *Model) Live__inst1__inst2() bool {
+	return m.live__inst1__inst2
+}
+
+func (m *Model) SetLive__inst1__inst2(v bool) {
+	m.live__inst1__inst2 = v
 }
 
 func (m *Model) Beats__inst3() int {
@@ -465,12 +514,28 @@ func (m *Model) SetBeats__inst3(v int) {
 	m.beats__inst3 = v
 }
 
-func (m *Model) Handle__inst0__inst3() *fynert.Schedule {
+func (m *Model) Handle__inst0__inst3() *time.Timer {
 	return m.handle__inst0__inst3
 }
 
-func (m *Model) SetHandle__inst0__inst3(v *fynert.Schedule) {
+func (m *Model) SetHandle__inst0__inst3(v *time.Timer) {
 	m.handle__inst0__inst3 = v
+}
+
+func (m *Model) Rearm__inst0__inst3() func() {
+	return m.rearm__inst0__inst3
+}
+
+func (m *Model) SetRearm__inst0__inst3(v func()) {
+	m.rearm__inst0__inst3 = v
+}
+
+func (m *Model) Live__inst0__inst3() bool {
+	return m.live__inst0__inst3
+}
+
+func (m *Model) SetLive__inst0__inst3(v bool) {
+	m.live__inst0__inst3 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
