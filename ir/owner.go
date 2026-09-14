@@ -182,3 +182,33 @@ func Owners(pkg *Package) []Owner {
 	}
 	return out
 }
+
+// WindowHandles maps each window's `#id` binding to the window it declared.
+//
+// A window's id binds an *ir.Var like every other node's, so a reference to it
+// carries the handle rather than the window -- which is what the two consumers
+// that need the window back (the entry-window reference, and folding a prop
+// read off the id) ask this for. Keyed by symbol and not by name, because two
+// bodies may each write `#home` and mean two windows.
+//
+// A map rather than a lookup per reference: the fold asks for *every* node
+// handle a program selects off, and the answer is nil for all the ordinary
+// ones -- a button, a synthesized `__nN`. Walking the package to say so once
+// per select is quadratic in a handle-heavy program, and the fold already runs
+// several times over.
+func WindowHandles(pkg *Package) map[*Var]*Window {
+	if pkg == nil {
+		return nil
+	}
+	var out map[*Var]*Window
+	for _, o := range Owners(pkg) {
+		if o.Win == nil || o.Win.Handle == nil {
+			continue
+		}
+		if out == nil {
+			out = map[*Var]*Window{}
+		}
+		out[o.Win.Handle] = o.Win
+	}
+	return out
+}

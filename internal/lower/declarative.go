@@ -121,6 +121,11 @@ func lowerNSIdent() *ir.Ident {
 // counter past the max. Lets NoDeclarative coexist with NoReactivity's
 // pre-assigned IDs without clashing.
 func (st *declarativeState) seedCounter(pkg *ir.Package) {
+	// No `expr` hook, unlike the other walkPackage users: this scans for node
+	// ids and for the `__nN` locals a lowering pass synthesizes, and neither
+	// can occur in the one place an expr hook reaches that stmts does not -- a
+	// lambda body. A visual node in an imperative body is a checker error
+	// (rejectNodeInFuncBody) and no pass synthesizes a `__nN` there.
 	walkPackage(pkg, walkFuncs{
 		stmts: func(stmts []ir.Stmt) []ir.Stmt {
 			st.scanStmts(stmts)

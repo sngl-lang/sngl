@@ -222,6 +222,24 @@ windows rather than the owners — reads the same list.
 walk a nested window's body twice, and unifying it means deleting those arms in
 the same change.
 
+**A lambda body is the fourth kind of block**, and it is the one none of these
+reaches by walking declarations: it hangs off an *expression*. `blocks.go`
+collects them with an `ir.Walk` for exactly that reason, and `offloadableFuncs`
+leaves them out on purpose — a lambda is a value, and what calls it is the code
+it was handed to. `walkPackage` is where it bit, twice, and in the same
+position both times. `passTernary` and `passIndexedIter` each make the `expr`
+hook a no-op because a const-context expression — an initializer, a prop
+default — has no statement list to hoist into. True of the expression; false of
+a lambda body inside it, which is an ordinary statement list. So
+`var ys = xs.map(func(x int) => c ? a : b)` panicked every Go emitter with
+"ir.Ternary reached Go codegen", and a two-variable `sngl:seq` loop written
+there came out as `for i, v := range slices.Values(...)`, which no Go compiler
+accepts. Both hooks now descend to lambda bodies and hoist nothing into the
+initializer, so the reason they are no-ops survives.
+`testdata/ternary_in_lambda_initializer.txtar` and
+`testdata/indexed_iter_in_lambda_initializer.txtar` pin the pair; `passNoRef`,
+the third, already had an `*ir.Lambda` arm in its rewriter.
+
 ## Build & Test Commands
 
 ```bash
@@ -626,15 +644,67 @@ its two siblings, which name the *prop it reads* rather than redeclaring one:
 html asks for the href, gtk4 for the title, and neither is a list of what a
 window has.
 
-`ir.Window` is still its own struct rather than a `#[builtin("window")]`
-`NodeInst`, and two things are why. Its **body-owner half** — vars, funcs,
-timers, `@error` — has nowhere to live on a `NodeInst`, which nothing else
-gives state to. And a window is an `ir.Symbol`: `window #home` binds a name
-that `output(entry = home)` and `home.title` resolve against, where a
-`NodeInst`'s `ID` is a plain string. Until both are answered
-`checkTreeMembership` keeps a `*ir.Window` arm beside its `*ir.NodeInst` one,
-now reading the same two fields off the same kind of pointer, which is what
-makes the collapse mechanical when they are.
+**A window's `#id` binds a node handle**, which is the half of that collapse
+that is done. `declareNodeID` had the split written out: every node id bound an
+`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the `*ir.Window` itself
+— so `ir.Window` was an `ir.Symbol` and "what does a node id name" had two
+answers. It binds the same handle now, `ir.Window.Handle` points at it, and
+`SymName`/`SymType` are gone, so the compiler refuses any attempt to declare a
+window as a symbol. That is what found the three consumers rather than leaving
+them to a grep: `output(entry = home)` matches by handle and falls back to the
+name for a window a component renders, folding `home.title` reaches the window
+through `ir.WindowForHandle`, and `hoistedWindow`/`bindWindow` are deleted —
+the handle is the stable thing a reference resolves to, so `buildWindow` builds
+a fresh window every call. `ir.Window.Typ` went with them, having only ever
+answered `SymType`.
+
+**A read off a window's id folds to the window's own prop expression**, and it
+is folded again against the context the *read* sits in rather than the one the
+prop was written in. That is not a detail: `window #page(title=it.title)`
+inside a `for` puts the loop variable in the prop, and a read of `page.title`
+from the window's body sits where the unroll has already passed -- returned as
+written it stayed `it.title`, named nothing, and the page rendered an empty
+span with no diagnostic. Which makes a prop that reads itself,
+`window #h(title = h.title)`, a fold that re-enters on the same prop forever,
+so `evalCtx.foldingProp` holds the pairs in flight and leaves the select
+standing on re-entry -- the state a prop with no answer already reached codegen
+in. Keyed by window *and* prop, so two windows naming each other terminate on
+the second key rather than looping on the first.
+
+**Left standing is silent missing output**, and that is a known cost rather
+than a decision anyone defends: the page comes out with no `<title>` and
+nothing says why. The guard firing is exactly the signal a positioned *"this
+window prop reads itself"* error would need, and the reason one is not written
+there is that **self-reference is a rule the language has not made anywhere.**
+`const a int = a` is the same shape one layer down: `sngl check` accepts it and
+always did, because the checker never folds, while `sngl generate` used to
+crash — `evalIdent` and `evalExpr` calling each other until the stack went,
+with no position and no message
+(`cmd/sngl/testdata/const_reads_itself.txt`).
+
+That split is the whole argument. Both guards are the survivable answer rather
+than the right one, and the right one is a checker rule refusing a declaration
+that reads itself, with a position — because a guard in `consteval` protects
+only the programs that reach the optimizer at all, and `sngl check` and the LSP
+are where the question is asked first and answered `ok` today.
+`cmd/sngl/testdata/window_prop_reads_itself.txt` and its const sibling pin the
+current answers, cycles included, so making that rule is two fixtures to update
+rather than a surprise.
+
+What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
+not simply carried over. `Window.Vars` is a *lowering artifact*: the checker
+leaves a window's `var` as an `*ir.LocalVar` statement in the body (which is
+already the `NodeInst` shape) and `passHoistState` moves it. `Funcs` is not the
+same case and cannot follow it: `ir` has no statement for a func declaration,
+`passCanvas` *appends* a synthesized draw func to `w.Funcs` with no source body
+to live in, and sixteen non-test sites read the per-window grouping to decide
+which funcs become that window's methods. `Timers` stays a field by decision
+(#243): three platforms now lower a timer to an effect, but bubbletea cannot —
+Elm lets nothing outside `Update` touch the model, and `Init()` needs a period
+and a body, which is what `ir.Timer` carries and the closure an `@mount` hands
+over cannot. Until those have a home, `checkTreeMembership` keeps a
+`*ir.Window` arm beside its `*ir.NodeInst` one, now reading the same two fields
+off the same kind of pointer.
 
 **A root component's own state is hoisted into the window it lifts**, because
 that is where it is mounted — the component is an empty shell once the lift is

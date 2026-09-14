@@ -133,11 +133,24 @@ type evalCtx struct {
 	cache *EvalCache
 	// nativeErr is Config.nativeErr: the batch failure this build already hit,
 	// per scheme.
-	nativeErr     map[string]error
-	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
-	inlining      map[*ir.Component]int // recursion guard for component call inlining
-	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
-	interpDepth   int                   // recursion guard for interpretFunc dispatch
+	nativeErr map[string]error
+	// windowHandles maps a window's `#id` binding to the window, built once
+	// per package rather than walked per select. Nil until the first fold asks.
+	windowHandles    map[*ir.Var]*ir.Window
+	windowHandlesSet bool
+	// foldingProp is the window props currently being folded, so a prop that
+	// reads itself stops rather than recursing. Built in foldPkg so that every
+	// child ctx shares the one map: created on first use instead, a child
+	// taken before that gets nil and makes its own.
+	foldingProp map[windowProp]bool
+	// evaluatingConst is the consts whose initializer is being evaluated, so
+	// one that reads itself stops rather than recursing. Same shape and same
+	// place as foldingProp, for the same reason.
+	evaluatingConst map[*ir.Var]bool
+	values          map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
+	inlining        map[*ir.Component]int // recursion guard for component call inlining
+	inliningFuncs   map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
+	interpDepth     int                   // recursion guard for interpretFunc dispatch
 	// err holds the first fatal evaluation error (e.g. a native import that
 	// failed to evaluate at build time on a platform that requires the value
 	// at compile time). Recorded during folding and surfaced by Optimize.
@@ -170,6 +183,7 @@ func (ctx *evalCtx) childInPkg(pkg *ir.Package) *evalCtx {
 	c := ctx.child()
 	c.pkg = pkg
 	c.nativeImports, c.nativeSchemes = nil, nil
+	c.windowHandles, c.windowHandlesSet = nil, false
 	return c
 }
 
@@ -383,17 +397,19 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	}
 
 	ctx := &evalCtx{
-		cache:         r.cfg.Cache,
-		native:        r.native,
-		nativeErr:     r.cfg.nativeErr,
-		platform:      r.cfg.Platform,
-		language:      r.cfg.Language,
-		staticView:    codegen.PlatformRendersViewStatically(r.cfg.Platform, r.cfg.Language),
-		dir:           r.cfg.Dir,
-		noCacheBust:   r.cfg.NoCacheBust,
-		pkg:           pkg,
-		values:        make(map[ir.Symbol]any),
-		inliningFuncs: make(map[*ir.Func]bool),
+		cache:           r.cfg.Cache,
+		native:          r.native,
+		nativeErr:       r.cfg.nativeErr,
+		platform:        r.cfg.Platform,
+		language:        r.cfg.Language,
+		staticView:      codegen.PlatformRendersViewStatically(r.cfg.Platform, r.cfg.Language),
+		dir:             r.cfg.Dir,
+		noCacheBust:     r.cfg.NoCacheBust,
+		pkg:             pkg,
+		values:          make(map[ir.Symbol]any),
+		inliningFuncs:   make(map[*ir.Func]bool),
+		foldingProp:     make(map[windowProp]bool),
+		evaluatingConst: make(map[*ir.Var]bool),
 	}
 
 	// Phase 1: Evaluate all top-level consts.
@@ -550,4 +566,21 @@ func (ctx *evalCtx) getNativeImports() map[string]*ir.NativeImport {
 		}
 	}
 	return ctx.nativeImports
+}
+
+// windowForHandle is the window v's `#id` declared, or nil. The map is built
+// on the first ask and reused: fold asks for every node handle a program
+// selects off, and nil is the answer for all the ordinary ones.
+func (ctx *evalCtx) windowForHandle(v *ir.Var) *ir.Window {
+	if !ctx.windowHandlesSet {
+		ctx.windowHandles = ir.WindowHandles(ctx.pkg)
+		ctx.windowHandlesSet = true
+	}
+	return ctx.windowHandles[v]
+}
+
+// windowProp names one prop of one window, for the self-reference guard.
+type windowProp struct {
+	win   *ir.Window
+	field string
 }

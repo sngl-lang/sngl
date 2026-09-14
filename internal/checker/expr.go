@@ -3796,7 +3796,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	switch kind {
 	case ir.BuiltinWindow:
 		w := c.buildWindow(vn)
-		c.bindWindow(vn.Pos, w)
 		c.checkWindowBody(w)
 		w.Checked = true
 		return w

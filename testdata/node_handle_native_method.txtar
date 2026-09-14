@@ -212,7 +212,7 @@ func (m *Model) buildWidgetTree() {
 	C.gtk_orientable_set_orientation((*C.GtkOrientable)(unsafe.Pointer(m.__n0)), C.GTK_ORIENTATION_VERTICAL)
 	C.gtk_box_set_spacing((*C.GtkBox)(unsafe.Pointer(m.__n0)), C.int(6))
 	m.bar = (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
-	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.bar)), C.double(0))
+	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(m.bar)), C.double(0.0))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__n0)), (*C.GtkWidget)(unsafe.Pointer(m.bar)))
 	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(m.__root)), (*C.GtkWidget)(unsafe.Pointer(m.__n0)))
 }

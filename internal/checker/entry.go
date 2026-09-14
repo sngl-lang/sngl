@@ -32,15 +32,14 @@ func (c *checker) resolveEntryWindow(root *ir.NodeInst) {
 			c.error(p.NamePos, "output %s names a window by its #id, not a value", entryOption)
 			return
 		}
-		if w, isWindow := id.Sym.(*ir.Window); isWindow {
-			c.pkg.EntryWindow = w.Name
-			return
-		}
-		// A window a component renders is bound in that component's scope
-		// rather than the root one, so the reference resolves to nothing there
-		// and the name is what finds it.
+		// By handle first: a window's `#id` binds an *ir.Var like every other
+		// node's, and the symbol is what tells two bodies each writing `#home`
+		// apart. By name second, because a window a component renders is bound
+		// in that component's scope rather than the root one, so the reference
+		// resolves to nothing here and the name is all that is left.
+		handle, _ := id.Sym.(*ir.Var)
 		for _, w := range c.packageWindows() {
-			if w.Name == id.Name {
+			if (handle != nil && w.Handle == handle) || (handle == nil && w.Name == id.Name) {
 				c.pkg.EntryWindow = w.Name
 				return
 			}

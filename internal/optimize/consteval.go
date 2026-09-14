@@ -290,7 +290,32 @@ func evalIdent(x *ir.Ident, ctx *evalCtx) (any, bool) {
 			return val, true
 		}
 		if v.Init != nil {
+			// A const whose initializer reads itself, directly or around a
+			// cycle. Unguarded this is evalIdent <-> evalExpr with nothing to
+			// stop it: `const a int = a` took the compiler down with a stack
+			// overflow, no position and no message.
+			//
+			// Answered "not constant", which leaves the initializer standing
+			// -- what a const the optimizer cannot evaluate already does. It
+			// is not the right answer, only a survivable one: the rule that a
+			// declaration may not read itself belongs in the checker, where it
+			// reaches a program this pass never folds. See CLAUDE.md.
+			//
+			// Survivable rests on something in another package. The standing
+			// expression reaches JavaScript as `var a = a`, which is benign
+			// because `var` hoists; spelled `let` or `const` it is a TDZ
+			// ReferenceError and the page breaks on load rather than rendering
+			// one value short. cmd/sngl/testdata/const_reads_itself.txt denies
+			// both spellings so that modernising the emitter is caught here.
+			if ctx.evaluatingConst[v] {
+				return nil, false
+			}
+			if ctx.evaluatingConst == nil {
+				ctx.evaluatingConst = map[*ir.Var]bool{}
+			}
+			ctx.evaluatingConst[v] = true
 			val, ok := evalExpr(v.Init, ctx)
+			delete(ctx.evaluatingConst, v)
 			if ok {
 				ctx.values[v] = val
 			}

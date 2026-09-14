@@ -2843,7 +2843,6 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 		w := c.buildWindow(vn)
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
-		c.bindWindow(vn.Pos, w)
 		return
 	}
 	switch kind, _ := c.builtinNode(name); kind {
@@ -3121,16 +3120,14 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 	return out
 }
 
-// buildWindow fills in the window a `window #id` node declares. When the id
-// was hoisted by declareNodeIDs the shell it bound is the window's symbol
-// already, so this sets its fields rather than binding a second symbol over
-// the first — references made before the body is checked and after it resolve
-// to the same declaration.
+// buildWindow builds the window a `window #id` node declares.
+//
+// The window is fresh every time and the *handle* is what persists: a
+// reference made before the body is checked and one made after both resolve to
+// the binding declareNodeIDs hoisted, which is a var rather than this. That is
+// what lets the window itself stop being a symbol.
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := c.hoistedWindow(vn.ID)
-	if w == nil {
-		w = &ir.Window{Name: vn.ID, Typ: c.windowType}
-	}
+	w := &ir.Window{Name: vn.ID, Handle: c.windowHandle(vn)}
 	w.AST = vn
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body — so
@@ -4235,13 +4232,16 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 			return
 		}
 	}
-	// A window's id names the window itself, so bind the window here and let
-	// buildWindow fill it in.
-	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true, NodeHandle: true}
+	// A window's id binds the same handle every other node id binds. Only the
+	// type differs, and only because the checker already holds it: resolving
+	// `window` through the scope would answer the same, right up to a program
+	// that shadows the name, where c.windowType is the declaration the mark
+	// bound and a scope lookup is whatever the program wrote.
+	typ := c.nodeHandleType(target)
 	if isWindow {
-		sym = &ir.Window{Name: id, Typ: c.windowType}
+		typ = c.windowType
 	}
-	c.declare(ast.Pos{}, sym)
+	c.declare(ast.Pos{}, &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true})
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
@@ -4285,29 +4285,45 @@ func (c *checker) componentNamed(target string) *ir.Component {
 	return comp
 }
 
-func (c *checker) hoistedWindow(id string) *ir.Window {
-	if id == "" {
+// windowHandle is the binding `window #id` declares, taking the one
+// declareNodeIDs hoisted when there is one.
+//
+// Two positions do not go through that pass and are bound here instead. A
+// window at the root of a file is registered rather than checked as a
+// statement, which is what `output(entry = home)` resolves against. And a
+// window inside a `for` is skipped there deliberately: the enclosing scope
+// holds the id as a `list<window>` of every iteration
+// (hoistForLoopWindowIDs), while inside the body the same name is the one
+// window this iteration renders.
+//
+// Which is why the name is measured with LookupLocal and not Lookup. Asking
+// the whole chain finds that list and declines, so the body's own `page.title`
+// resolved to nothing the fold could answer, reached codegen as a dangling
+// Select and rendered empty -- in silence, since a list *is* a legitimate
+// binding for that name one scope out.
+func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
+	if vn.ID == "" {
 		return nil
 	}
-	sym, ok := c.scope.Lookup(id)
-	if !ok {
+	if v := c.nodeHandleSym(vn.ID); v != nil {
+		return v
+	}
+	// Declared rather than tested-then-declared, so that c.declare reports a
+	// name this scope already binds. Unlike declareNodeID, which declines
+	// silently for an ordinary node id, a window's clash is an error -- which
+	// is bindWindow's behaviour kept, not a rule invented here: `const home`
+	// beside `window #home` said "home is already declared in this scope", and
+	// an early return here swallowed it.
+	v := &ir.Var{Name: vn.ID, Type: c.windowType, IsConst: true, NodeHandle: true}
+	c.declare(vn.Pos, v)
+	// Scope.Declare refuses to overwrite, so on a clash the name still binds
+	// the other declaration and nothing resolves to this window. The handle is
+	// what the scope actually bound or nothing at all -- a var no scope holds
+	// would be a handle reachable from the window and from nowhere else.
+	if bound, _ := c.scope.LookupLocal(vn.ID); bound != ir.Symbol(v) {
 		return nil
 	}
-	w, isWindow := sym.(*ir.Window)
-	if !isWindow || w.Checked {
-		return nil
-	}
-	return w
-}
-
-func (c *checker) bindWindow(pos ast.Pos, w *ir.Window) {
-	if w.Name == "" {
-		return
-	}
-	if prev, ok := c.scope.LookupLocal(w.Name); ok && prev == ir.Symbol(w) {
-		return
-	}
-	c.declare(pos, w)
+	return v
 }
 
 // hrefPathParams extracts URL template placeholders like {name} from a
