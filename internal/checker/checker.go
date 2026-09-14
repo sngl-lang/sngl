@@ -3127,7 +3127,7 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 // the binding declareNodeIDs hoisted, which is a var rather than this. That is
 // what lets the window itself stop being a symbol.
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{Name: vn.ID, Typ: c.windowType, Handle: c.windowHandle(vn)}
+	w := &ir.Window{Name: vn.ID, Handle: c.windowHandle(vn)}
 	w.AST = vn
 	// URL template params like `{name}` in href become string vars on the
 	// window, in scope for the href literal itself as well as the body — so
