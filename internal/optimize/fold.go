@@ -107,7 +107,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 				// standing reaches codegen as a dangling reference. Keep in
 				// step with windowStructValue (expand.go), which does the same
 				// for the unrolled-list case.
-				if win := ir.WindowForHandle(ctx.pkg, v); win != nil {
+				if win := ctx.windowForHandle(v); win != nil {
 					if val := win.Prop(x.Field); val != nil {
 						return val
 					}

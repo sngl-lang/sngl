@@ -4233,8 +4233,10 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 		}
 	}
 	// A window's id binds the same handle every other node id binds. Only the
-	// type differs: c.windowType is held directly rather than resolved from
-	// the written target, which may be `window` or `ui.window`.
+	// type differs, and only because the checker already holds it: resolving
+	// `window` through the scope would answer the same, right up to a program
+	// that shadows the name, where c.windowType is the declaration the mark
+	// bound and a scope lookup is whatever the program wrote.
 	typ := c.nodeHandleType(target)
 	if isWindow {
 		typ = c.windowType
@@ -4286,9 +4288,19 @@ func (c *checker) componentNamed(target string) *ir.Component {
 // windowHandle is the binding `window #id` declares, taking the one
 // declareNodeIDs hoisted when there is one.
 //
-// A window at the root of a file does not go through that pass -- it is
-// registered rather than checked as a statement -- so the binding is made here
-// instead, which is what `output(entry = home)` resolves against.
+// Two positions do not go through that pass and are bound here instead. A
+// window at the root of a file is registered rather than checked as a
+// statement, which is what `output(entry = home)` resolves against. And a
+// window inside a `for` is skipped there deliberately: the enclosing scope
+// holds the id as a `list<window>` of every iteration
+// (hoistForLoopWindowIDs), while inside the body the same name is the one
+// window this iteration renders.
+//
+// Which is why the name is measured with LookupLocal and not Lookup. Asking
+// the whole chain finds that list and declines, so the body's own `page.title`
+// resolved to nothing the fold could answer, reached codegen as a dangling
+// Select and rendered empty -- in silence, since a list *is* a legitimate
+// binding for that name one scope out.
 func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 	if vn.ID == "" {
 		return nil
@@ -4296,9 +4308,11 @@ func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 	if v := c.nodeHandleSym(vn.ID); v != nil {
 		return v
 	}
-	// Some other declaration owns the name. declareNodeID declines to shadow
-	// one and so does this; the duplicate is reported where ids are checked.
-	if _, taken := c.scope.Lookup(vn.ID); taken {
+	// A binding in *this* scope owns the name; the duplicate is reported where
+	// ids are checked. Unlike declareNodeID this does not also ask
+	// lookupBodyMethod: a `window #home` beside a `func home()` is already
+	// reported as an id clashing with a func before anything reads the handle.
+	if _, taken := c.scope.LookupLocal(vn.ID); taken {
 		return nil
 	}
 	v := &ir.Var{Name: vn.ID, Type: c.windowType, IsConst: true, NodeHandle: true}

@@ -133,11 +133,15 @@ type evalCtx struct {
 	cache *EvalCache
 	// nativeErr is Config.nativeErr: the batch failure this build already hit,
 	// per scheme.
-	nativeErr     map[string]error
-	values        map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
-	inlining      map[*ir.Component]int // recursion guard for component call inlining
-	inliningFuncs map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
-	interpDepth   int                   // recursion guard for interpretFunc dispatch
+	nativeErr map[string]error
+	// windowHandles maps a window's `#id` binding to the window, built once
+	// per package rather than walked per select. Nil until the first fold asks.
+	windowHandles    map[*ir.Var]*ir.Window
+	windowHandlesSet bool
+	values           map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
+	inlining         map[*ir.Component]int // recursion guard for component call inlining
+	inliningFuncs    map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
+	interpDepth      int                   // recursion guard for interpretFunc dispatch
 	// err holds the first fatal evaluation error (e.g. a native import that
 	// failed to evaluate at build time on a platform that requires the value
 	// at compile time). Recorded during folding and surfaced by Optimize.
@@ -170,6 +174,7 @@ func (ctx *evalCtx) childInPkg(pkg *ir.Package) *evalCtx {
 	c := ctx.child()
 	c.pkg = pkg
 	c.nativeImports, c.nativeSchemes = nil, nil
+	c.windowHandles, c.windowHandlesSet = nil, false
 	return c
 }
 
@@ -550,4 +555,15 @@ func (ctx *evalCtx) getNativeImports() map[string]*ir.NativeImport {
 		}
 	}
 	return ctx.nativeImports
+}
+
+// windowForHandle is the window v's `#id` declared, or nil. The map is built
+// on the first ask and reused: fold asks for every node handle a program
+// selects off, and nil is the answer for all the ordinary ones.
+func (ctx *evalCtx) windowForHandle(v *ir.Var) *ir.Window {
+	if !ctx.windowHandlesSet {
+		ctx.windowHandles = ir.WindowHandles(ctx.pkg)
+		ctx.windowHandlesSet = true
+	}
+	return ctx.windowHandles[v]
 }

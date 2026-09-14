@@ -55,6 +55,10 @@ func lowerIndexedIter(pkg *ir.Package, _ Caps, _ Options) error {
 			_ = ir.Walk(e, func(n ir.Node) error {
 				if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
 					l.Func.Block = st.block(l.Func.Block)
+					// Exactly once, and never into the slice just replaced:
+					// the transform already recurses through a nested lambda,
+					// and ir.Walk descends after the callback returns.
+					return ir.SkipDir
 				}
 				return nil
 			})

@@ -49,8 +49,8 @@ window #home(title="Home", href="/index.html") {
 	if w.Handle.Name != "home" {
 		t.Errorf("handle name = %q; want home", w.Handle.Name)
 	}
-	if got := ir.WindowForHandle(pkg, w.Handle); got != w {
-		t.Errorf("WindowForHandle did not find the window back from its handle")
+	if got := ir.WindowHandles(pkg)[w.Handle]; got != w {
+		t.Errorf("WindowHandles did not map the handle back to its window")
 	}
 
 	// The read in the body resolves to the handle and to nothing else: a
@@ -75,5 +75,59 @@ window #home(title="Home", href="/index.html") {
 	// resolving it at all is what a program depends on.
 	if pkg.EntryWindow != "home" {
 		t.Errorf("EntryWindow = %q; want home", pkg.EntryWindow)
+	}
+}
+
+// Inside a `for`, the id names the one window this iteration renders. The
+// enclosing scope holds the same name as the `list<window>` of every iteration
+// (hoistForLoopWindowIDs), so the per-iteration binding has to shadow it --
+// which is why the name is measured with LookupLocal. Measured against the
+// whole chain it finds the list, declines to bind, and the body's `page.title`
+// becomes a member read off a list of windows that no fold can answer.
+func TestLoopWindowIDShadowsTheHoistedList(t *testing.T) {
+	src := `
+output {
+    none {
+        html
+    }
+}
+
+const items list<string> = ["a", "b"]
+
+for var it = items {
+    window #page(title=it, href="/" + it + ".html") {
+        text(value=page.title)
+    }
+}
+`
+	doc, err := parser.Parse("test.sngl", []byte(withStd(src)))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	pkg, diags := Check(doc, &Config{IsMain: true})
+	for _, d := range diags {
+		if d.Severity == ir.Error {
+			t.Fatalf("unexpected diag: %s", d.Msg)
+		}
+	}
+
+	var found int
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		id, ok := n.(*ir.Ident)
+		if !ok || id.Name != "page" {
+			return nil
+		}
+		found++
+		v, isVar := id.Sym.(*ir.Var)
+		switch {
+		case !isVar:
+			t.Errorf("`page` in the window body resolved to %T", id.Sym)
+		case !v.NodeHandle:
+			t.Error("`page` resolved to the hoisted list, not to this iteration's handle")
+		}
+		return nil
+	})
+	if found == 0 {
+		t.Error("no reference to `page` was found; the fixture no longer tests the read")
 	}
 }
