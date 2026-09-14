@@ -359,6 +359,15 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if ir.IsRemoteHTTPResultStruct(n.Type) {
 		gc.RequireImport(remoteHTTPImportPath)
 	}
+	name := structLitTypeName(n)
+	// A native type whose host spelling is a pointer has no composite literal:
+	// `*time.Ticker{}` does not parse. Only the empty literal can reach here
+	// for one -- it is the zero the checker synthesizes for `var t Ticker`,
+	// since a program cannot build a value of a type it only names -- and nil
+	// is what that zero is.
+	if len(n.Fields) == 0 && strings.HasPrefix(name, "*") {
+		return "nil"
+	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -366,7 +375,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		}
 		parts[i] = ExportName(f.Name) + ": " + fieldStrs[i]
 	}
-	return structLitTypeName(n) + "{" + strings.Join(parts, ", ") + "}"
+	return name + "{" + strings.Join(parts, ", ") + "}"
 }
 
 func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand + "..." }

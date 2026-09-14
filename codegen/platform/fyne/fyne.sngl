@@ -610,25 +610,32 @@ component ui.textarea[platform] {
 // The runtime package the schedule lives in, named once.
 const _rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 
-#[go.native(_rtPkg, "fynert.Every", schedules)]
-func every(ms int, f func()) int
+// The armed ticker itself, held as an opaque type rather than as an index into
+// a registry the runtime keeps. `*fynert.Schedule` is a name this declaration
+// can spell, so there is nothing to work around: the same thing `#[cnative]`
+// does for `*C.cairo_t` in gtk4.sngl, one scheme over.
+#[go.native(_rtPkg, "*fynert.Schedule")]
+struct Schedule {}
 
-#[go.native(_rtPkg, "fynert.CancelEvery")]
-func cancelEvery(id int)
+#[go.native(_rtPkg, "fynert.Every", schedules)]
+func every(ms int, f func()) Schedule
+
+#[go.native(_rtPkg, "fynert.Schedule.Cancel", method)]
+func Schedule.cancel()
 
 // `enabled` is the effect's *position*, not part of its key: an effect lives as
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
 component time.timer[platform] {
-    var handle = 0
+    var handle Schedule
 
     if enabled {
         effect(
             on=interval,
             @mount(d) { handle = every(int(d), tick) },
             @unmount(d) {
-                cancelEvery(handle)
+                handle.cancel()
             },
         )
     }

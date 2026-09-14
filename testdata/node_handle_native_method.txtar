@@ -170,7 +170,7 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	handle__inst0       int
+	handle__inst0       *gtk4rt.Schedule
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -186,7 +186,7 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.handle__inst0 = 0
+	m.handle__inst0 = nil
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -203,7 +203,7 @@ func (m *Model) __effect0_mount() {
 }
 
 func (m *Model) __effect0_unmount() {
-	gtk4rt.CancelEvery(m.handle__inst0)
+	m.handle__inst0.Cancel()
 }
 
 func (m *Model) __effect0_down() {
@@ -270,11 +270,11 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) Handle__inst0() int {
+func (m *Model) Handle__inst0() *gtk4rt.Schedule {
 	return m.handle__inst0
 }
 
-func (m *Model) SetHandle__inst0(v int) {
+func (m *Model) SetHandle__inst0(v *gtk4rt.Schedule) {
 	m.handle__inst0 = v
 }
 

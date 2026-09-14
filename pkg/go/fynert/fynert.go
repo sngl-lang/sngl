@@ -9,63 +9,52 @@ package fynert
 import (
 	"sync"
 	"time"
-
-	fyne "fyne.io/fyne/v2"
 )
 
-type schedule struct {
+// Schedule is one armed ticker. fyne.sngl names it as an opaque SNGL type, so
+// the caller holds the schedule itself rather than an index into a registry
+// here -- which is what this package used to be, and the reason it existed.
+type Schedule struct {
 	ticker *time.Ticker
+	once   sync.Once
 	done   chan struct{}
 }
 
-var (
-	mu      sync.Mutex
-	next    int
-	running = map[int]*schedule{}
-)
-
 // Every runs fn on Fyne's own thread every ms milliseconds until the returned
-// id is passed to CancelEvery.
-//
-// The id is an int rather than the ticker itself because the caller is a SNGL
-// `var handle = 0`: this pair is named by a `#[go.native]` declaration in
-// fyne.sngl, and `int` is the only integer type that declaration can spell.
-func Every(ms int, fn func()) int {
+// schedule is cancelled. A period of zero or less arms nothing and answers nil,
+// which Cancel accepts.
+func Every(ms int, fn func()) *Schedule {
 	if ms <= 0 {
-		return 0
+		return nil
 	}
-	s := &schedule{ticker: time.NewTicker(time.Duration(ms) * time.Millisecond), done: make(chan struct{})}
-	mu.Lock()
-	next++
-	id := next
-	running[id] = s
-	mu.Unlock()
+	s := &Schedule{
+		ticker: time.NewTicker(time.Duration(ms) * time.Millisecond),
+		done:   make(chan struct{}),
+	}
 	go func() {
 		for {
 			select {
 			case <-s.ticker.C:
-				fyne.Do(fn)
+				fyneDo(fn)
 			case <-s.done:
 				return
 			}
 		}
 	}()
-	return id
+	return s
 }
 
-// CancelEvery stops a schedule Every armed. Zero is accepted and does nothing,
-// so a caller need not track whether it ever armed one.
+// Cancel stops the schedule. A nil receiver and a second call are both no-ops,
+// so an unmount need not track whether a mount ever armed one.
 //
 // The done channel is what ends the goroutine: Ticker.Stop does not close C, so
 // a receive on it alone would block for the life of the process.
-func CancelEvery(id int) {
-	mu.Lock()
-	s := running[id]
-	delete(running, id)
-	mu.Unlock()
+func (s *Schedule) Cancel() {
 	if s == nil {
 		return
 	}
-	s.ticker.Stop()
-	close(s.done)
+	s.once.Do(func() {
+		s.ticker.Stop()
+		close(s.done)
+	})
 }

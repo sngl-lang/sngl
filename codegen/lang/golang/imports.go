@@ -55,6 +55,72 @@ func BaseImports(pkg *ir.Package) []BaseImport {
 	if PackageUsesI18n(pkg) && !seen[SnglI18nImportPath] {
 		out = append(out, BaseImport{Path: SnglI18nImportPath})
 	}
+	// A `#[go.native]` *type* is spelled by IRTypeToGo, which is a free
+	// function with no context to register an import from -- and unlike a
+	// native call, a type may be the only mention its package gets: a var of
+	// one becomes a field, a getter and a setter with nothing calling the
+	// constructor beside them, which is what `*fynert.Schedule` in a canvas
+	// was. Collected here so all three Go platforms get it from the one place
+	// each already asks.
+	for _, path := range foreignTypeImports(pkg) {
+		if seen[path] {
+			continue
+		}
+		seen[path] = true
+		out = append(out, BaseImport{Path: path})
+	}
+	return out
+}
+
+// foreignTypeImports is the import path of every `#[go.native]` type a value in
+// pkg is declared as.
+//
+// Read off the *values* rather than off pkg.Structs, because a platform
+// package's declaration is not in a program's struct list at all -- fyne's
+// `Schedule` reaches a program only as the type of the `handle` var its timer
+// override declares.
+func foreignTypeImports(pkg *ir.Package) []string {
+	var out []string
+	seen := map[string]bool{}
+	// Through the type arguments too: a `list<Schedule>` spells the element in
+	// the field it becomes.
+	var add func(t *ir.Type)
+	add = func(t *ir.Type) {
+		if t == nil {
+			return
+		}
+		for _, e := range t.Elems {
+			add(e)
+		}
+		sd, ok := t.Decl.(*ir.StructDef)
+		if !ok || sd.Foreign.Name == "" || sd.Foreign.Marked {
+			return
+		}
+		path := sd.Foreign.Path
+		if path == "" || path == "C" || seen[path] {
+			return
+		}
+		seen[path] = true
+		out = append(out, path)
+	}
+	for _, o := range ir.Owners(pkg) {
+		for _, v := range o.Vars {
+			if v != nil {
+				add(v.Type)
+			}
+		}
+		for _, fn := range o.Funcs {
+			if fn == nil {
+				continue
+			}
+			add(fn.Return)
+			for _, pm := range fn.Params {
+				if pm != nil {
+					add(pm.Type)
+				}
+			}
+		}
+	}
 	return out
 }
 

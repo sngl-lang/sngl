@@ -186,7 +186,7 @@ type TimerInstance struct {
 	__prop_interval     time.Duration
 	__prop_enabled      bool
 	__prop_tick         func(any)
-	handle              int
+	handle              *fynert.Schedule
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -202,7 +202,7 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 	c.__prop_interval = interval
 	c.__prop_enabled = enabled
 	c.__prop_tick = tick
-	c.handle = 0
+	c.handle = nil
 	c.__effect0_key = time.Duration(0) * time.Millisecond
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
@@ -223,7 +223,7 @@ func (c *TimerInstance) __effect0_mount() {
 }
 
 func (c *TimerInstance) __effect0_unmount() {
-	fynert.CancelEvery(c.handle)
+	c.handle.Cancel()
 }
 
 func (c *TimerInstance) __effect0_down() {
@@ -394,7 +394,7 @@ type TimerInstance struct {
 	__prop_interval     time.Duration
 	__prop_enabled      bool
 	__prop_tick         func(any)
-	handle              int
+	handle              *gtk4rt.Schedule
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -410,7 +410,7 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 	c.__prop_interval = interval
 	c.__prop_enabled = enabled
 	c.__prop_tick = tick
-	c.handle = 0
+	c.handle = nil
 	c.__effect0_key = time.Duration(0) * time.Millisecond
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
@@ -431,7 +431,7 @@ func (c *TimerInstance) __effect0_mount() {
 }
 
 func (c *TimerInstance) __effect0_unmount() {
-	gtk4rt.CancelEvery(c.handle)
+	c.handle.Cancel()
 }
 
 func (c *TimerInstance) __effect0_down() {

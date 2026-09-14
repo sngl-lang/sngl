@@ -88,7 +88,7 @@ func TestTimersTick(t *testing.T) {
 	if m.Seconds() == 0 {
 		t.Error("the root component's timer never fired")
 	}
-	if m.Beats__inst0() == 0 {
+	if m.Beats__inst2() == 0 {
 		t.Error("the child component's timer never fired")
 	}
 	m.__snglTeardown()

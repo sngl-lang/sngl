@@ -265,9 +265,9 @@ type ErrorEvent struct {
 type Model struct {
 	seconds__inst2       int
 	running__inst2       bool
-	handle__inst1__inst2 int
+	handle__inst1__inst2 *fynert.Schedule
 	beats__inst3         int
-	handle__inst0__inst3 int
+	handle__inst0__inst3 *fynert.Schedule
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -287,9 +287,9 @@ func New() *Model {
 	m := &Model{}
 	m.seconds__inst2 = 0
 	m.running__inst2 = true
-	m.handle__inst1__inst2 = 0
+	m.handle__inst1__inst2 = nil
 	m.beats__inst3 = 0
-	m.handle__inst0__inst3 = 0
+	m.handle__inst0__inst3 = nil
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -310,7 +310,7 @@ func (m *Model) __effect0_mount() {
 }
 
 func (m *Model) __effect0_unmount() {
-	fynert.CancelEvery(m.handle__inst1__inst2)
+	m.handle__inst1__inst2.Cancel()
 }
 
 func (m *Model) __effect0_down() {
@@ -363,7 +363,7 @@ func (m *Model) __effect1_mount() {
 }
 
 func (m *Model) __effect1_unmount() {
-	fynert.CancelEvery(m.handle__inst0__inst3)
+	m.handle__inst0__inst3.Cancel()
 }
 
 func (m *Model) __effect1_down() {
@@ -449,11 +449,11 @@ func (m *Model) SetRunning__inst2(v bool) {
 	m.running__inst2 = v
 }
 
-func (m *Model) Handle__inst1__inst2() int {
+func (m *Model) Handle__inst1__inst2() *fynert.Schedule {
 	return m.handle__inst1__inst2
 }
 
-func (m *Model) SetHandle__inst1__inst2(v int) {
+func (m *Model) SetHandle__inst1__inst2(v *fynert.Schedule) {
 	m.handle__inst1__inst2 = v
 }
 
@@ -465,11 +465,11 @@ func (m *Model) SetBeats__inst3(v int) {
 	m.beats__inst3 = v
 }
 
-func (m *Model) Handle__inst0__inst3() int {
+func (m *Model) Handle__inst0__inst3() *fynert.Schedule {
 	return m.handle__inst0__inst3
 }
 
-func (m *Model) SetHandle__inst0__inst3(v int) {
+func (m *Model) SetHandle__inst0__inst3(v *fynert.Schedule) {
 	m.handle__inst0__inst3 = v
 }
 
@@ -517,9 +517,9 @@ type ErrorEvent struct {
 type Model struct {
 	seconds__inst2       int
 	running__inst2       bool
-	handle__inst1__inst2 int
+	handle__inst1__inst2 *gtk4rt.Schedule
 	beats__inst3         int
-	handle__inst0__inst3 int
+	handle__inst0__inst3 *gtk4rt.Schedule
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -540,9 +540,9 @@ func New() *Model {
 	m := &Model{}
 	m.seconds__inst2 = 0
 	m.running__inst2 = true
-	m.handle__inst1__inst2 = 0
+	m.handle__inst1__inst2 = nil
 	m.beats__inst3 = 0
-	m.handle__inst0__inst3 = 0
+	m.handle__inst0__inst3 = nil
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -563,7 +563,7 @@ func (m *Model) __effect0_mount() {
 }
 
 func (m *Model) __effect0_unmount() {
-	gtk4rt.CancelEvery(m.handle__inst1__inst2)
+	m.handle__inst1__inst2.Cancel()
 }
 
 func (m *Model) __effect0_down() {
@@ -616,7 +616,7 @@ func (m *Model) __effect1_mount() {
 }
 
 func (m *Model) __effect1_unmount() {
-	gtk4rt.CancelEvery(m.handle__inst0__inst3)
+	m.handle__inst0__inst3.Cancel()
 }
 
 func (m *Model) __effect1_down() {
@@ -702,11 +702,11 @@ func (m *Model) SetRunning__inst2(v bool) {
 	m.running__inst2 = v
 }
 
-func (m *Model) Handle__inst1__inst2() int {
+func (m *Model) Handle__inst1__inst2() *gtk4rt.Schedule {
 	return m.handle__inst1__inst2
 }
 
-func (m *Model) SetHandle__inst1__inst2(v int) {
+func (m *Model) SetHandle__inst1__inst2(v *gtk4rt.Schedule) {
 	m.handle__inst1__inst2 = v
 }
 
@@ -718,11 +718,11 @@ func (m *Model) SetBeats__inst3(v int) {
 	m.beats__inst3 = v
 }
 
-func (m *Model) Handle__inst0__inst3() int {
+func (m *Model) Handle__inst0__inst3() *gtk4rt.Schedule {
 	return m.handle__inst0__inst3
 }
 
-func (m *Model) SetHandle__inst0__inst3(v int) {
+func (m *Model) SetHandle__inst0__inst3(v *gtk4rt.Schedule) {
 	m.handle__inst0__inst3 = v
 }
 

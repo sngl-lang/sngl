@@ -55,7 +55,7 @@ func TestTimersTick(t *testing.T) {
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if m.Seconds() > 0 && m.Beats__inst0() > 0 {
+		if m.Seconds() > 0 && m.Beats__inst2() > 0 {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -63,7 +63,7 @@ func TestTimersTick(t *testing.T) {
 	if m.Seconds() == 0 {
 		t.Error("the root component's timer never fired")
 	}
-	if m.Beats__inst0() == 0 {
+	if m.Beats__inst2() == 0 {
 		t.Error("the child component's timer never fired")
 	}
 }

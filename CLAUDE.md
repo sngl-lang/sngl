@@ -865,6 +865,29 @@ declaration itself. Two things about the name that are easy to get wrong:
   names**, which is what reaching a host parameter after one with a default
   requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
   reached past `alpha` positionally.
+- **A native mark names a *type* as readily as a function**, which is what
+  makes a host handle spellable: `#[go.native(pkg, "*fynert.Schedule")] struct Schedule {}` with `#[go.native(pkg, "fynert.Schedule.Cancel", method)] func Schedule.cancel()` beside it. gtk4 has done the same for C all along —
+  `#[cnative("*C.cairo_t")] struct CairoContext {}` — so the form predates the
+  need for it by a platform.
+
+  **Reach for it before working around a signature.** fyne's and gtk4's timer
+  runtimes each kept a process-wide mutex-guarded `map[int]…` and handed SNGL
+  an integer index into it, because the override was written as
+  `var handle = 0` and `int` looked like the only thing the declaration could
+  spell. It was not: the schedule itself is a name, the registries were bought
+  for nothing, and `pkg/go/fynert` existed almost entirely to hold one.
+  Nothing new had to be built to delete them.
+
+  What such a type may *not* do is be constructed: a program holds one and
+  calls methods on it. So the only literal of one that reaches a backend is the
+  empty zero the checker synthesizes for an uninitialised `var t Ticker`, and
+  where the host spelling is a pointer that zero is `nil` rather than a
+  composite literal — `*time.Ticker{}` does not parse
+  (`testdata/native_pointer_zero.txtar`).
+
+  An **index** is still right where the host's own ABI is an index: a GLib
+  callback carries an `int` user_data and cannot hold a Go pointer at all,
+  which is what `pkg/go/cbind` is. The test is whether the host asked for it.
 
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the

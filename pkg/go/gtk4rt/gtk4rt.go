@@ -180,7 +180,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"sync"
 	"unsafe"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
@@ -374,49 +373,49 @@ func Emit(w Handle, signal string) {
 	C.sngl_emit(C.gpointer(p(w)), c)
 }
 
-// Every schedules fn to run on the GLib main loop every ms milliseconds until
-// the returned id is passed to CancelEvery. It is the timer runtime for this
-// platform: a GLib timeout source already runs its callback on the main thread,
-// so a tick body mutates the model in the same place a signal handler does and
-// needs no marshalling of its own.
+// Schedule is one armed GLib timeout source. gtk4.sngl names it as an opaque
+// SNGL type, so the caller holds the schedule itself: the source id and the
+// cbind slot it dispatches through travel together rather than being paired in
+// a table here.
 //
-// The id is an int rather than GLib's guint because the caller is a SNGL
-// `var handle = 0`: this pair is named by a `#[go.native]` declaration in
-// gtk4.sngl, and `int` is the only integer type that declaration can spell.
-func Every(ms int, fn func()) int {
-	if ms <= 0 {
-		return 0
-	}
-	idx := cbind.Register(fn)
-	id := int(C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)))
-	everyMu.Lock()
-	everyCB[id] = idx
-	everyMu.Unlock()
-	return id
+// Such a source already runs its callback on the main thread, so a tick body
+// mutates the model in the same place a signal handler does and needs no
+// marshalling of its own.
+//
+// The cbind index is not the same kind of thing and stays an index: a GLib
+// callback carries an `int` user_data and cannot hold a Go pointer at all, so
+// that registry is the C ABI rather than a name this language could not spell.
+type Schedule struct {
+	id  C.guint
+	idx int
 }
 
-// everyCB is the cbind index each armed source was registered under, so
-// CancelEvery can release it. The timer is an `effect` now and mounts again on
-// every gate toggle and every interval change, where it used to be armed once
-// from New -- so a registration that is never released is a closure (and
-// through it the whole Model) retained per mount, for the life of the process.
-var (
-	everyMu sync.Mutex
-	everyCB = map[int]int{}
-)
-
-// CancelEvery removes a source Every armed and drops its callback. Zero is
-// accepted and does nothing, so a caller need not track whether it ever armed
-// one.
-func CancelEvery(id int) {
-	C.sngl_gtk_source_remove(C.guint(id))
-	everyMu.Lock()
-	idx, ok := everyCB[id]
-	delete(everyCB, id)
-	everyMu.Unlock()
-	if ok {
-		cbind.Release(idx)
+// Every schedules fn on the GLib main loop every ms milliseconds until the
+// returned schedule is cancelled. A period of zero or less arms nothing and
+// answers nil, which Cancel accepts.
+func Every(ms int, fn func()) *Schedule {
+	if ms <= 0 {
+		return nil
 	}
+	idx := cbind.Register(fn)
+	return &Schedule{id: C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)), idx: idx}
+}
+
+// Cancel removes the source and drops its callback. A nil receiver and a second
+// call are both no-ops, so an unmount need not track whether a mount ever armed
+// one.
+//
+// Releasing matters because the timer is an `effect`: it mounts again on every
+// gate toggle and every interval change, where it used to be armed once from
+// New. A registration nothing releases retains the closure, and through it the
+// whole Model, for the life of the process.
+func (s *Schedule) Cancel() {
+	if s == nil || s.id == 0 {
+		return
+	}
+	C.sngl_gtk_source_remove(s.id)
+	cbind.Release(s.idx)
+	s.id = 0
 }
 
 // PumpFor runs the GLib main loop for ms milliseconds and returns. It is the

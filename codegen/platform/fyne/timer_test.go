@@ -11,7 +11,8 @@ import (
 // A component with a timer must emit a schedule, and its tick body must go
 // through the translator like any other imperative body.
 //
-// The timer is an `effect` over fynert.Every/CancelEvery, so what says the
+// The timer is an `effect` over fynert.Every and the schedule it hands back,
+// so what says the
 // schedule is armed is the mount handler, and what says the gate still works is
 // that `running` decides whether the bracket is described at all. The widget
 // write is the second claim and is independent of the first: rendered by
@@ -52,7 +53,9 @@ window {
 	for _, snippet := range []string{
 		"func (m *Model) __effect0_mount()",
 		"fynert.Every(",
-		"fynert.CancelEvery(",
+		// The schedule is the value, not an index into a registry: cancelling
+		// is a method on what Every handed back.
+		".Cancel()",
 		"m.seconds += 1",
 		// Tick body's reactive widget update must use the fyne widget API,
 		// qualified with the receiver — not a raw, unqualified field write.

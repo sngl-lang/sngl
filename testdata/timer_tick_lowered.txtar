@@ -214,7 +214,7 @@ type ErrorEvent struct {
 type Model struct {
 	level__inst1         float64
 	rung__inst1          int
-	handle__inst0__inst1 int
+	handle__inst0__inst1 *fynert.Schedule
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -230,7 +230,7 @@ func New() *Model {
 	m := &Model{}
 	m.level__inst1 = 0.0
 	m.rung__inst1 = 0
-	m.handle__inst0__inst1 = 0
+	m.handle__inst0__inst1 = nil
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -260,7 +260,7 @@ func (m *Model) __effect0_mount() {
 }
 
 func (m *Model) __effect0_unmount() {
-	fynert.CancelEvery(m.handle__inst0__inst1)
+	m.handle__inst0__inst1.Cancel()
 }
 
 func (m *Model) __effect0_down() {
@@ -343,11 +343,11 @@ func (m *Model) SetRung__inst1(v int) {
 	m.rung__inst1 = v
 }
 
-func (m *Model) Handle__inst0__inst1() int {
+func (m *Model) Handle__inst0__inst1() *fynert.Schedule {
 	return m.handle__inst0__inst1
 }
 
-func (m *Model) SetHandle__inst0__inst1(v int) {
+func (m *Model) SetHandle__inst0__inst1(v *fynert.Schedule) {
 	m.handle__inst0__inst1 = v
 }
 
