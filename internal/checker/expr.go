@@ -3275,6 +3275,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				Handlers:  handlers,
 				Bindings:  bindings,
 				ID:        id,
+				Handle:    c.nodeHandleSym(id),
 				Key:       c.keyArgExpr(x.Call.Args),
 			}
 		}
@@ -3985,6 +3986,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Children:  children,
 		Slots:     slotContent,
 		ID:        vn.ID,
+		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
 	}
 }
@@ -5436,16 +5438,19 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 			if got := slotTree(owner, ownerSlot(owner, s.Name)); got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
-		// A window is the checker's own IR and never a NodeInst, so its
-		// family is read off the declaration the mark bound.
+		// A window is the checker's own IR rather than a NodeInst, so it
+		// carries the declaration it instantiates separately -- the arm below
+		// reads the same two fields off the same kind of pointer, and the two
+		// collapse when a window becomes a marked NodeInst.
 		case *ir.Window:
-			if c.windowComp != nil && c.windowComp.Tree != nil && c.windowComp.Tree != want {
-				at := pos
-				if s.AST != nil {
-					at = s.AST.Pos
-				}
-				c.error(at, "expected %s component %s, got window", want.Name, where)
+			if s.Comp == nil || s.Comp.Tree == nil || s.Comp.Tree == want {
+				continue
 			}
+			at := pos
+			if s.AST != nil {
+				at = s.AST.Pos
+			}
+			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Comp.Name)
 		case *ir.NodeInst:
 			if s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
 				continue

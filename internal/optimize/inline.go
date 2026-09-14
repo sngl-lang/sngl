@@ -700,9 +700,11 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		return &cp
 	case *ir.Window:
 		cp := *n
-		cp.Href = cloneExpr(n.Href)
-		cp.Title = cloneExpr(n.Title)
-		cp.Favicon = cloneExpr(n.Favicon)
+		cp.Props = make([]ir.Arg, len(n.Props))
+		for i, p := range n.Props {
+			p.Value = cloneExpr(p.Value)
+			cp.Props[i] = p
+		}
 		cp.Body = cloneStmts(n.Body)
 		return &cp
 	case *ir.ErrorBoundary:

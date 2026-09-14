@@ -3153,22 +3153,11 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// declared prop type. A window read its three props by name instead, so
 	// `title=42` checked clean and html emitted a page with no <title>.
 	//
-	// ir.Window keeps Href/Title/Favicon as fields rather than the ir.Arg list
-	// every other node carries: collapsing it into a marked NodeInst is its own
-	// change, so the three are picked back out here. The bindings are empty by
-	// construction: none of the three is declared bidirectional, so `:title`
-	// is reported by extractBindings rather than returned.
-	props, _, _ := c.checkAndSplitArgs(windowPropArgs(vn.Args), c.windowComp)
-	for _, p := range props {
-		switch p.Name {
-		case "href":
-			w.Href = p.Value
-		case "title":
-			w.Title = p.Value
-		case "favicon":
-			w.Favicon = p.Value
-		}
-	}
+	// The bindings are empty by construction: no window prop is declared
+	// bidirectional, so `:title` is reported by extractBindings rather than
+	// returned.
+	w.Comp = c.windowComp
+	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), c.windowComp)
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
 			w.ErrorHandler = c.buildErrorHandler(&eh)
@@ -4248,7 +4237,7 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	}
 	// A window's id names the window itself, so bind the window here and let
 	// buildWindow fill it in.
-	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true}
+	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true, NodeHandle: true}
 	if isWindow {
 		sym = &ir.Window{Name: id, Typ: c.windowType}
 	}
@@ -4587,4 +4576,22 @@ func looksLikeMacroDecl(f *ast.FuncDef) bool {
 	}
 	nt, ok := f.ReturnType.(*ast.NamedType)
 	return ok && nt.Name == "Macro"
+}
+
+// nodeHandleSym is the binding declareNodeID made for a written `#id`, or nil
+// when the id is empty or the name was already taken by a prop, var or method
+// (declareNodeID declines to shadow one).
+func (c *checker) nodeHandleSym(id string) *ir.Var {
+	if id == "" {
+		return nil
+	}
+	sym, ok := c.scope.Lookup(id)
+	if !ok {
+		return nil
+	}
+	v, ok := sym.(*ir.Var)
+	if !ok || !v.NodeHandle {
+		return nil
+	}
+	return v
 }

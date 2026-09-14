@@ -184,9 +184,9 @@ func scanStmt(s ir.Stmt, visit func(ir.Expr)) {
 	case *ir.CallStmt:
 		scanExpr(n.Call, visit)
 	case *ir.Window:
-		scanExpr(n.Href, visit)
-		scanExpr(n.Title, visit)
-		scanExpr(n.Favicon, visit)
+		for i := range n.Props {
+			scanExpr(n.Props[i].Value, visit)
+		}
 		scanStmts(n.Body, visit)
 	case *ir.SlotInst:
 		scanStmts(n.Children, visit)

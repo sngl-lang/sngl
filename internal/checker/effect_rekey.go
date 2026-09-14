@@ -48,7 +48,7 @@ func (c *checker) checkEffectSelfRekey() {
 		for _, v := range o.Vars {
 			scope[v] = struct{}{}
 		}
-		_ = ir.Walk(o.Stmts, func(n ir.Node) error {
+		_ = ir.Walk(o.Stmts(), func(n ir.Node) error {
 			inst, isNode := n.(*ir.NodeInst)
 			if !isNode || inst.Component == nil || inst.Component.Builtin != ir.BuiltinEffect {
 				return nil

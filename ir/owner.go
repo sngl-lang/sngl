@@ -24,11 +24,78 @@ type Owner struct {
 	// the checker puts those. Consumers disagree about whether a const is a
 	// model field, so the two stay apart rather than being merged here and
 	// re-separated by everyone.
+	//
+	// These four are *snapshots*, unlike Body: `o.Vars = append(o.Vars, v)`
+	// writes to a copy and the declaration never sees it. AddVars and AddFuncs
+	// are the writes that reach it, and they are the only two any pass has
+	// needed. They cannot be pointers the way Body is -- a component has no
+	// Consts field for one to point at.
 	Vars   []*Var
 	Consts []*Var
 	Funcs  []*Func
 	Timers []*Timer
-	Stmts  []Stmt
+
+	// Handlers is what the declaration itself subscribes to, which today is a
+	// window's @error and nothing else -- a component catches with a boundary,
+	// which is a statement in its body rather than a declaration on it. A
+	// snapshot, as the four above are.
+	Handlers []*EventHandler
+
+	// Pkg is the package this owner came from. AddVars and AddFuncs need it to
+	// reach pkg.Vars and pkg.Funcs for the owner that *is* the package, so an
+	// Owner built by hand rather than by Owners has to set it.
+	Pkg *Package
+
+	// Body points at the declaration's own statement list rather than copying
+	// it, so a pass that rewrites one writes through this instead of switching
+	// on Comp/Win/package to find the field again. Never nil.
+	Body *[]Stmt
+}
+
+// Stmts is the body's statements. Read-only: rewriting one means assigning
+// through Body.
+func (o Owner) Stmts() []Stmt {
+	if o.Body == nil {
+		return nil
+	}
+	return *o.Body
+}
+
+// AddVars and AddFuncs append to the list the owning declaration actually
+// holds.
+//
+// They exist because Vars and Funcs are snapshots: every consumer *reads* what
+// an owner declares and only a lowering pass adds to it, so paying a pointer
+// at each of the twenty read sites to serve three writers is the wrong trade.
+// What is not the wrong trade is writing the Comp/Win/package switch once,
+// here, beside the enumeration that already names the three -- passEffect had
+// it twice and passBoundaryFailed a third time.
+func (o Owner) AddVars(vars ...*Var) {
+	if len(vars) == 0 {
+		return
+	}
+	switch {
+	case o.Comp != nil:
+		o.Comp.Vars = append(o.Comp.Vars, vars...)
+	case o.Win != nil:
+		o.Win.Vars = append(o.Win.Vars, vars...)
+	case o.Pkg != nil:
+		o.Pkg.Vars = append(o.Pkg.Vars, vars...)
+	}
+}
+
+func (o Owner) AddFuncs(funcs ...*Func) {
+	if len(funcs) == 0 {
+		return
+	}
+	switch {
+	case o.Comp != nil:
+		o.Comp.Funcs = append(o.Comp.Funcs, funcs...)
+	case o.Win != nil:
+		o.Win.Funcs = append(o.Win.Funcs, funcs...)
+	case o.Pkg != nil:
+		o.Pkg.Funcs = append(o.Pkg.Funcs, funcs...)
+	}
 }
 
 // IsPackage reports whether the package itself is the owner.
@@ -46,9 +113,11 @@ func (o Owner) Name() string {
 }
 
 // Owners returns every declaration in pkg that owns state, outermost first:
-// the package, then each component, then each window -- including the windows a
-// component body renders, which are statements in that body rather than
-// entries in pkg.Windows.
+// the package, then each component, then each window -- including the windows
+// a body renders, which are statements in that body rather than entries in
+// pkg.Windows. A body is searched whether it belongs to the package, to a
+// component or to a window already found, because passRootWindow has not
+// necessarily run and a window is a statement anywhere the root tree reaches.
 //
 // It reports all of them, deduped by window pointer and by nothing else.
 // Which subset a consumer wants is that consumer's question, and the answers
@@ -61,9 +130,9 @@ func Owners(pkg *Package) []Owner {
 		return nil
 	}
 	out := make([]Owner, 0, 1+len(pkg.Components)+len(pkg.Windows))
-	out = append(out, Owner{Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Timers: pkg.Timers, Stmts: pkg.Body})
+	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Timers: pkg.Timers, Body: &pkg.Body})
 	for _, c := range pkg.Components {
-		out = append(out, Owner{Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Stmts: c.Body})
+		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Body: &c.Body})
 	}
 	seen := make(map[*Window]bool, len(pkg.Windows))
 	addWin := func(w *Window) {
@@ -71,23 +140,45 @@ func Owners(pkg *Package) []Owner {
 			return
 		}
 		seen[w] = true
-		out = append(out, Owner{Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Stmts: w.Body})
+		o := Owner{Pkg: pkg, Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Body: &w.Body}
+		if w.ErrorHandler != nil {
+			o.Handlers = []*EventHandler{w.ErrorHandler}
+		}
+		out = append(out, o)
 	}
 	for _, w := range pkg.Windows {
 		addWin(w)
 	}
-	// A window a component body renders is an *ir.Window statement in that
-	// body and never reaches pkg.Windows.
-	for _, c := range pkg.Components {
-		if c == nil {
-			continue
-		}
-		_ = WalkStmts(c.Body, func(s Stmt) error {
+	// A window a body renders is an *ir.Window statement in that body and
+	// never reaches pkg.Windows. A found window is a leaf: its body is a
+	// separate owner, searched in its own turn below, so descending here would
+	// walk it a second time to reach what the worklist reaches anyway.
+	search := func(stmts []Stmt) {
+		_ = WalkStmts(stmts, func(s Stmt) error {
 			if w, ok := s.(*Window); ok {
 				addWin(w)
+				return SkipDir
 			}
 			return nil
 		})
+	}
+	search(pkg.Body)
+	for _, c := range pkg.Components {
+		if c != nil {
+			search(c.Body)
+		}
+	}
+	// A worklist over `out` rather than a loop over a fixed list, because a
+	// window found here may itself hold one. Writing a window directly inside
+	// a window is a tree-membership error, but two routes through
+	// #[tree.none] are not -- a treeless body that renders one, and a treeless
+	// component's slot carrying one -- and passWindowNesting is the only guard
+	// on those, in lowering. Every consumer that runs before it sees what it
+	// will reject.
+	for i := 0; i < len(out); i++ {
+		if out[i].Win != nil {
+			search(out[i].Win.Body)
+		}
 	}
 	return out
 }

@@ -38,14 +38,13 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList, instSeq: seqOrOwn(opts.instSeq)}
 	if err := st.run(); err != nil {
 		return err
 	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
-	uniqueNodeIDs(pkg)
-	return nil
+	return uniqueNodeIDs(pkg)
 }
 
 // dropNestedMethods removes from pkg.Funcs the methods of every component the
@@ -101,27 +100,85 @@ func dropNestedMethods(pkg *ir.Package, keep map[*ir.Component]bool) {
 // Renaming here rather than while splicing, because "is this id ambiguous" is a
 // question about the finished owner and not about any one instance: the splice
 // that introduces a duplicate cannot tell it is doing so.
-func uniqueNodeIDs(pkg *ir.Package) {
+func uniqueNodeIDs(pkg *ir.Package) error {
 	if pkg == nil {
-		return
+		return nil
 	}
 	for _, o := range ir.Owners(pkg) {
+		read := handleReads(o.Stmts())
 		seen := map[string]int{}
+		rendered := map[*ir.Var]*ir.NodeInst{}
+		var dup error
 		// Every body the owner has, because an id is ambiguous wherever the
 		// two nodes that share it are written.
-		_ = ir.Walk(o.Stmts, func(node ir.Node) error {
+		_ = ir.Walk(o.Stmts(), func(node ir.Node) error {
 			n, ok := node.(*ir.NodeInst)
 			if !ok || n.ID == "" {
 				return nil
 			}
+			// The rename is keyed by *name*, because what it repairs is the
+			// emitted namespace: html addresses a node by its id, and two
+			// unrelated components each writing `#bar` collide there whether or
+			// not they are related.
 			k := seen[n.ID]
 			seen[n.ID] = k + 1
 			if k > 0 {
 				n.ID = n.ID + "__" + strconv.Itoa(k)
 			}
+			// The refusal is keyed by *symbol*, which is a narrower question
+			// and a different one. A read is an ident bound to one var, and
+			// declareNodeIDs runs per body: two unrelated `#bar`s are two vars
+			// and each read says which it meant, while two spliced copies of
+			// one body share theirs and neither read can. Only the second is
+			// ambiguous -- keyed by name instead, an innocent `quiet()`
+			// rendered twice was refused for a `#bar` that `reader()` read.
+			if n.Handle == nil {
+				return nil
+			}
+			if first, ok := rendered[n.Handle]; ok {
+				if r := read[n.Handle]; r != nil && dup == nil {
+					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r), n.Handle.Name, nodePos(first))
+				}
+				return nil
+			}
+			rendered[n.Handle] = n
 			return nil
 		})
+		if dup != nil {
+			return dup
+		}
 	}
+	return nil
+}
+
+// handleReads is every `#id` handle the statements read back by name, keyed by
+// the binding rather than by the name, and valued at one of the reads so the
+// diagnostic can point at source the user recognises.
+func handleReads(stmts []ir.Stmt) map[*ir.Var]*ir.Ident {
+	out := map[*ir.Var]*ir.Ident{}
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		id, ok := e.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle && out[v] == nil {
+			out[v] = id
+		}
+		return nil
+	})
+	return out
+}
+
+// identPos is where an ident was written, or "<unknown>" for one a pass
+// synthesized.
+func identPos(id *ir.Ident) string {
+	if id == nil || id.AST == nil {
+		return "<unknown>"
+	}
+	if p := id.AST.ExprPos(); p != nil && p.IsValid() {
+		return p.String()
+	}
+	return "<unknown>"
 }
 
 type inlineCompState struct {
@@ -144,7 +201,8 @@ type inlineCompState struct {
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
 	platform    string
-	instCounter int
+	// instSeq is passInlinePure's counter as well; see Options.instSeq.
+	instSeq *int
 }
 
 // Pointers rather than values because the append must be visible to the owner.
@@ -354,9 +412,12 @@ func retainComponents(in []*ir.Component, keep map[*ir.Component]bool) []*ir.Com
 
 // --- inliner helpers ---
 
-func (st *inlineCompState) freshSuffix() string {
-	n := st.instCounter
-	st.instCounter++
+func (st *inlineCompState) freshSuffix() string { return freshInstSuffix(st.instSeq) }
+
+// freshInstSuffix hands out the next `__instN`.
+func freshInstSuffix(seq *int) string {
+	n := *seq
+	*seq++
 	return "__inst" + strconv.Itoa(n)
 }
 

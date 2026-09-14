@@ -159,7 +159,13 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 			Names: []string{f.Name},
 			Type:  c.convertType(f.Type),
 		}
-		if f.Default != nil {
+		// DefaultWritten, not `Default != nil`: Normalize fills every nil
+		// Default with the type's zero, so printing them all turns
+		// `struct Foo { a int }` into `a int = 0` -- and re-checking that says
+		// the declaration wrote a default it never wrote. Which is not only a
+		// round-trip inequality: DeclaredDefault reads the flag, so a dump fed
+		// back through the checker reinstated a zeroed field per prop.
+		if f.DefaultWritten && f.Default != nil {
 			sf.Default = c.convertExpr(f.Default)
 		}
 		def.Body = append(def.Body, sf)
@@ -358,24 +364,20 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 		Target: &ast.IdentExpr{Name: "window"},
 		ID:     w.Name,
 	}
-	// The props are picked back out by name, mirroring buildWindow: ir.Window
-	// holds them as fields rather than as the ir.Arg list every other node
-	// carries. Omitted when nil, so an unwritten prop does not print.
+	// The props print in the order they were written, like any other node's.
+	// A routed href is the one that is dropped: the checker desugars
+	// `"/u/{id}"` to a concatenation and synthesizes `id` as a window var, and
+	// there is no IR node left to reprint the template from -- so the href
+	// would name `id` above the body that declares it, and the dump would not
+	// check back in.
+	routed := hasRouteParam(w)
 	var args []ast.ArgOrEventHandler
-	prop := func(name string, val Expr) {
-		if val != nil {
-			args = append(args, ast.Arg{Name: name, Value: c.convertExpr(val)})
+	for _, p := range w.Props {
+		if p.Value == nil || (routed && p.Name == WindowHref) {
+			continue
 		}
+		args = append(args, ast.Arg{Name: p.Name, Value: c.convertExpr(p.Value)})
 	}
-	prop("title", w.Title)
-	// A routed href is the exception. The checker desugars `"/u/{id}"` to a
-	// concatenation and synthesizes `id` as a window var, and there is no IR
-	// node left to reprint the template from -- so the href would name `id`
-	// above the body that declares it, and the dump would not check back in.
-	if !hasRouteParam(w) {
-		prop("href", w.Href)
-	}
-	prop("favicon", w.Favicon)
 	if w.ErrorHandler != nil {
 		args = append(args, c.convertEventHandler(w.ErrorHandler))
 	}

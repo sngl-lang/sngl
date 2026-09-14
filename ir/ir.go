@@ -532,6 +532,21 @@ type Var struct {
 	// placeholder in the window's href. It is bound once from the URL a
 	// request arrived on, so nothing the program runs can change it.
 	RouteParam bool `json:"RouteParam,omitempty"`
+
+	// NodeHandle marks the binding a `#id` on a visual node declares: a handle
+	// to the rendered instance, which every target stores wherever it keeps the
+	// tree rather than as a local. The marker is the declaration's, because
+	// IsElementRef is a fact about a *reference* (ir.Ident) and a read of a
+	// program-written `#id` does not carry it -- only the `__nN` handles a
+	// lowering pass synthesizes do. Reading the reference is what left a
+	// `#[cnative]` method call emitting `C.gtk_progress_bar_pulse(bar)` against
+	// a field the same file declares as `m.bar`.
+	//
+	// It answers *where the handle lives* and nothing about what may be read
+	// off it. A prop read still does not compile on fyne or gtk4 -- there is no
+	// getter counterpart to the platform hook the write side uses -- so the
+	// only read that works on those is a native call's receiver.
+	NodeHandle bool `json:"NodeHandle,omitempty"`
 }
 
 func (v *Var) SymName() string { return v.Name }
@@ -766,12 +781,20 @@ type EventHandler struct {
 
 // Window represents a window declaration at the root or component level.
 type Window struct {
-	AST          *ast.VisualNode
-	Name         string
-	Typ          *Type // instance type of the #[builtin("window")] component; nil if unresolved
-	Href         Expr  // checked href expression (folded during optimization)
-	Title        Expr  // checked title expression
-	Favicon      Expr  // checked favicon expression
+	AST  *ast.VisualNode
+	Name string
+	Typ  *Type // instance type of the #[builtin("window")] component; nil if unresolved
+	// Comp is the #[builtin("window")] declaration this instantiates, and
+	// Props the arguments written against it -- what NodeInst.Component and
+	// NodeInst.Props are, so nothing here names a window prop. Every consumer
+	// that used to walk Href/Title/Favicon by name reads Props, and a prop
+	// added to lib/ui/window.sngl reaches codegen without a Go edit.
+	//
+	// Comp is json:"-" where NodeInst.Component is not, so a JSON dump of a
+	// window does not carry the whole library graph the declaration points
+	// into. The stripper nils both, so the round-trip comparison sees neither.
+	Comp         *Component `json:"-"`
+	Props        []Arg
 	Vars         []*Var
 	Funcs        []*Func
 	Timers       []*Timer
@@ -787,7 +810,38 @@ type Window struct {
 
 func (w *Window) SymName() string { return w.Name }
 func (w *Window) SymType() *Type  { return w.Typ }
-func (w *Window) stmtNode()       {} // Window can appear as a statement in for-loop bodies
+
+// Prop is the value written for name, or nil if the call site did not write
+// it. checkAndSplitArgs binds a positional arg to its declared name before the
+// slice reaches here, so a lookup by name finds what was written positionally.
+//
+// Nil-safe on the receiver, and two callers depend on it:
+// CodegenCtx.Windows synthesizes a WindowCtx with a nil Window for a
+// harness-isolated root component, so html and gtk4 ask a window that is not
+// there rather than guarding first.
+func (w *Window) Prop(name string) Expr {
+	if w == nil {
+		return nil
+	}
+	for _, p := range w.Props {
+		if p.Name == name {
+			return p.Value
+		}
+	}
+	return nil
+}
+
+func (w *Window) stmtNode() {} // Window can appear as a statement in for-loop bodies
+
+// The window props the compiler itself reads. Each is declared in
+// lib/ui/window.sngl like any other prop; these are the spelling a Go consumer
+// matches, not a second declaration of them, and nothing enumerates the set --
+// html asks for the href, gtk4 for the title.
+const (
+	WindowTitle   = "title"
+	WindowHref    = "href"
+	WindowFavicon = "favicon"
+)
 
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.
@@ -911,7 +965,13 @@ type StructField struct {
 	Name    string
 	Type    *Type
 	Default Expr // nil if no default
-	Foreign `json:"Foreign,omitzero"`
+	// DefaultWritten records that the declaration gave this field a default.
+	// Normalize otherwise erases the distinction by filling every nil Default
+	// with the type's zero, and DeclaredDefault needs it: a field the
+	// declaration said nothing about has to stay absent, so that "unset" goes
+	// on meaning unset to a backend that reads presence.
+	DefaultWritten bool `json:",omitempty"`
+	Foreign        `json:"Foreign,omitzero"`
 }
 
 // EnumDef is a resolved enum type declaration.

@@ -29,9 +29,15 @@ type ComponentCtx struct {
 	Handlers  []*ir.EventHandler // var-level event handlers
 }
 
-// Windows returns a WindowCtx for each window in the package: those at the
-// root of a file, and those a component body renders (including the ones a
-// for-loop expanded).
+// Windows returns a WindowCtx for each window ir.Owners reports: those at the
+// root of a file, and those a body renders (including the ones a for-loop
+// expanded).
+//
+// ir.Owners reports a window nested inside another as an owner of its own, and
+// this does not filter it out -- passWindowNesting has failed the build long
+// before any generator asks, so the pair cannot reach here. That is a
+// dependency on a lowering pass having run, which the deleted local walk did
+// not have.
 //
 // A program declares at least one, which the checker holds it to. The
 // synthesis below is for the one caller that deliberately removes them: a
@@ -40,31 +46,23 @@ type ComponentCtx struct {
 func (ctx *CodegenCtx) Windows() []*WindowCtx {
 	var out []*WindowCtx
 
-	// Root-level windows (declared outside any component).
-	for _, w := range ctx.Pkg.Windows {
+	// ir.Owners is what says which declarations own state, and a window is one
+	// of the three -- so which bodies a window may be written in is its answer
+	// rather than a second walk here.
+	for _, o := range ir.Owners(ctx.Pkg) {
+		if o.Win == nil {
+			continue
+		}
 		out = append(out, &WindowCtx{
-			Window: w,
-			Vars:   w.Vars,
-			Funcs:  w.Funcs,
-			Body:   w.Body,
-			Name:   w.Name,
+			Window: o.Win,
+			Vars:   o.Vars,
+			Funcs:  o.Funcs,
+			Body:   o.Stmts(),
+			Name:   o.Name(),
 		})
 	}
 
-	// Window statements in a component body.
 	root := ctx.RootDecl()
-	for _, comp := range ctx.Pkg.Components {
-		for _, w := range collectWindows(comp.Body) {
-			out = append(out, &WindowCtx{
-				Window: w,
-				Vars:   w.Vars,
-				Funcs:  w.Funcs,
-				Body:   w.Body,
-				Name:   w.Name,
-			})
-		}
-	}
-
 	if len(out) > 0 || root == nil {
 		return out
 	}
@@ -77,22 +75,6 @@ func (ctx *CodegenCtx) Windows() []*WindowCtx {
 		Funcs: funcs,
 		Name:  root.Name,
 	}}
-}
-
-// collectWindows walks a statement tree and returns all Window nodes found
-// at the top level or inside expanded for-loops, if-blocks, and platform filters.
-func collectWindows(stmts []ir.Stmt) []*ir.Window {
-	var windows []*ir.Window
-	ir.WalkStmts(stmts, func(s ir.Stmt) error {
-		if w, ok := s.(*ir.Window); ok {
-			windows = append(windows, w)
-			// A window is a leaf here: its own body is a separate root, and
-			// windows do not nest inside one another.
-			return ir.SkipDir
-		}
-		return nil
-	})
-	return windows
 }
 
 // Components returns a ComponentCtx for each component in the package.
@@ -363,6 +345,29 @@ func IRLiteralBool(e ir.Expr) (bool, bool) {
 		return false, false
 	}
 	return lit.Value == "true", true
+}
+
+// IRLiteralNumber extracts the value of an int or float literal. Both kinds
+// answer, because a numeric prop written `0` reaches a float field as an int
+// literal unless something along the way converted it.
+func IRLiteralNumber(e ir.Expr) (float64, bool) {
+	if e == nil {
+		return 0, false
+	}
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit.Type == nil {
+		return 0, false
+	}
+	switch lit.Type.Kind {
+	case ir.TypeInt, ir.TypeFloat:
+	default:
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(lit.Value, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 // IRIsLiteral reports whether an expression is a compile-time literal.

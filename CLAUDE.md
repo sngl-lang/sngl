@@ -180,17 +180,47 @@ place* takes `blocks.go`'s pointers; a pass rewriting statements and leaf
 expressions together takes `walk.go`'s `walkPackage` (`passTernary`,
 `passIndexedIter`, `passNoRef`, `NoDeclarative`'s id scan); a pass wanting the
 *functions* a target may enter takes `async_offload.go`'s `offloadableFuncs`.
-The three enumerate the same owners and each says so in its own code, which is
-what let one of them forget a case the other two had. **A window owns timers**
-— `passTimerPrimitive` records a schedule on whichever owner held the node, and
-the inliner has by then put a top-level component's timer in the window — and
-`walkWindow` and `offloadableFuncs` both walked a window's vars, funcs and body
-and not its timers. Nothing in source puts a timer there, so both gaps opened
-only after that pass ran and were invisible to every fixture written before it:
-a ternary in a `@tick` panicked the Go emitter, a two-variable `sngl:seq` loop
-there emitted `for i, x := range` over a pull sequence, and a `#[go.async]` call
-there ran on fyne's drawing thread. `testdata/timer_tick_lowered.txtar` and
-`testdata/timer_tick_async_offload.txtar` pin the three.
+The three enumerate the same owners and each used to say so in its own code,
+which is what let one of them forget a case the other two had. **A window owns
+timers** — `passTimerPrimitive` records a schedule on whichever owner held the
+node, and the inliner has by then put a top-level component's timer in the
+window — and `walkWindow` and `offloadableFuncs` both walked a window's vars,
+funcs and body and not its timers. Nothing in source puts a timer there, so
+both gaps opened only after that pass ran and were invisible to every fixture
+written before it: a ternary in a `@tick` panicked the Go emitter, a
+two-variable `sngl:seq` loop there emitted `for i, x := range` over a pull
+sequence, and a `#[go.async]` call there ran on fyne's drawing thread.
+`testdata/timer_tick_lowered.txtar` and `testdata/timer_tick_async_offload.txtar`
+pin the three.
+
+Two of the three now *ask* `ir.Owner` rather than restating it. `blocks.go`
+and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's timers and
+its `@error` reach them because the enumeration says a window owns those and
+not because each remembered to — each had a *second*, thinner copy of the
+window arm beside the `pkg.Windows` one, and `blocks.go`'s passed nil timers
+and skipped the `@error` outright. Neither was reachable, since
+`passWindowNesting` rejects the only shape that leaves a window a statement by
+then; the point is that nothing had to notice.
+
+What *was* reachable is the case neither copy had: **the handlers on a package
+var.** Both files named the package's funcs and its body and stopped, while a
+component's and a window's vars were walked in both — so a `for … else` in the
+`@change` of a top-level `var` reached `passForElse` not at all and every
+backend dropped the else in silence. `passRootWindow` leaves a package's vars
+where the checker put them, deliberately, so the shape survives the whole
+pipeline; `testdata/for_else_package_var_handler.txtar` is it.
+
+Both orders are load-bearing and neither is this file's any more.
+`passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
+order, and `passAsyncOffload` names `__async_offN` off `offloadableFuncs`', so
+each keeps the order it had: a window's `@error` after its view body, and the
+declared funcs across every owner before any handler.
+`codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
+windows rather than the owners — reads the same list.
+`walk.go`'s `walkPackage` is the one left: several of its passes carry an
+`*ir.Window` arm in their own statement switch, so handing it the owners would
+walk a nested window's body twice, and unifying it means deleting those arms in
+the same change.
 
 **A lambda's body is a fourth kind of block, and none of the three reaches
 it** — a lambda is an expression, and all three enumerate owners. That was
@@ -619,6 +649,28 @@ node), and a component that names `root` itself renders windows, which
 build directive before any tree question is asked, and `sngl:builtin` cannot
 import `sngl:ui`, where the root tree lives.
 
+**And a window's props are the declaration's, not the compiler's.**
+`lib/ui/window.sngl` declares `title`, `href` and `favicon` like any other
+component declares a prop, so `ir.Window` holds them as the `Props []Arg` a
+`NodeInst` carries and `ir.Window.Comp` is the declaration they were measured
+against. Naming the three as Go fields cost 22 files a hardcoded triple, and
+two of them — `buildWindow` and `convertWindow` — a hand-maintained list that
+had to agree; a fourth prop would have needed every one of them edited before
+it reached a backend. What a Go consumer still spells is `ir.WindowTitle` and
+its two siblings, which name the *prop it reads* rather than redeclaring one:
+html asks for the href, gtk4 for the title, and neither is a list of what a
+window has.
+
+`ir.Window` is still its own struct rather than a `#[builtin("window")]`
+`NodeInst`, and two things are why. Its **body-owner half** — vars, funcs,
+timers, `@error` — has nowhere to live on a `NodeInst`, which nothing else
+gives state to. And a window is an `ir.Symbol`: `window #home` binds a name
+that `output(entry = home)` and `home.title` resolve against, where a
+`NodeInst`'s `ID` is a plain string. Until both are answered
+`checkTreeMembership` keeps a `*ir.Window` arm beside its `*ir.NodeInst` one,
+now reading the same two fields off the same kind of pointer, which is what
+makes the collapse mechanical when they are.
+
 **A root component's own state is hoisted into the window it lifts**, because
 that is where it is mounted — the component is an empty shell once the lift is
 done, and a `var` or `func` left on one reached no backend at all
@@ -814,6 +866,52 @@ declaration itself. Two things about the name that are easy to get wrong:
   requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
   reached past `alpha` positionally.
 
+**A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
+says so.** Every target stores one wherever it keeps the tree — a field of the
+Model on the Go targets — rather than as a local, so a read of it has to be
+qualified. There are two ways a reference can be recognised as one and only one
+of them is a fact about the *declaration*: `ir.Ident.IsElementRef` is set on the
+`__nN` references a lowering pass synthesizes, while a read of a program's own
+`#id` resolves to the var the checker bound and carries nothing. Neither kind
+lands in `Component.Vars`, so `ExprCtx.Resolve` answers for neither.
+
+Tested, never name-matched, for the reason `ir.Param.Receiver` gives: a node id
+is the author's word and `__`-prefixed names are not reserved. It is asked in
+the Go language context rather than in a platform emitter because the question
+— where does this handle live — has one answer for fyne, gtk4 and bubbletea;
+each platform's own intrinsic path already wrote `m.<id>` for the references it
+emits, which is why only a native call's *receiver* went bare and why it read
+as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
+`gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it and
+it is hand-declared as a `#[cnative]` method reached through the handle.
+
+**That receiver is the only read off a handle that works on the Go mutation
+platforms.** A *prop* read does not compile on either: `GoIRContext.Select`
+ends at `operand + "." + ExportName(field)`, inventing a Go field by
+title-casing the SNGL prop, so `box.value` is `m.box.Value` against a
+`widget.Entry` that spells it `Text` — and against a gtk4 handle that is an
+`unsafe.Pointer` with no fields at all. The asymmetry is the tell: the *write*
+side routes through the platform (fyne's `Spec` `Setter`, gtk4's
+`OnPropAssign`) and there is no getter counterpart, so `#id` handles are
+write-only there. Closing it is not `Setter`'s mirror — it needs a
+language↔platform read hook that does not exist, and on gtk4 a getter is a call
+(`gtk4rt.EntryGetText`) whose name GIR would have to supply per property, not a
+field.
+
+**Two nodes may share an id, but a handle that is *read* may not be rendered
+twice.** The two halves are asked differently and deliberately so.
+`uniqueNodeIDs` renames the later copies *by name*, because what that repairs is
+the emitted namespace, where any two `#bar`s collide however unrelated. The
+refusal is *by symbol*: `declareNodeIDs` runs per body, so two components each
+writing `#bar` declare two vars and each read says which it meant, while two
+spliced copies of one body share theirs and neither read can — all of them
+resolve to the first copy's field, and the second widget is created and never
+touched. `ir.NodeInst.Handle` is the link that makes the symbol reachable from
+the node, since `ID` is only a name. Keyed by name instead, a `quiet()` that
+reads nothing and renders one was refused for a `#bar` that a *different*
+component read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both
+halves apart.
+
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and
 because its users are outside the compiler: a language plugin generating marked
@@ -915,6 +1013,37 @@ the captured var rather than each getting an `__instN` copy of it, exactly as
 two calls of a nested func share the model. Its own state is unaffected and
 stays per instantiation. `testdata/component_nested_capture_shared.sngl` pins
 that, because it is the surprising half.
+
+**`__instN` is one sequence across two passes.** `passInlinePure` substitutes a
+platform override and `passNoInlineComponents` substitutes a user component, and
+they rename that component's state into one host namespace — but each held a
+counter of its own, both starting at zero, so an owner holding one of each came
+out declaring two `hits__inst0`. Kotlin and Go refuse that outright; html keyed
+its `state` object twice and silently kept one of the two counters, with only an
+esbuild warning to say so. The counter is `Options.instSeq`, a `*int` so it
+survives `Options` being passed by value, set once by `Lower` and defaulted by
+`seqOrOwn` for a unit test that builds a pass's state directly.
+`testdata/inst_suffix_one_sequence.txtar` is the fixture.
+
+A *double* suffix is not the symptom and is correct wherever it appears: html's
+`timer` override is substituted by one pass and its owner's clone hoisted by the
+other, so `handle__inst0__inst1` is one var renamed twice as it travels through
+two owners.
+
+**Which target shows it turns on something unrelated**, and that is worth
+knowing before reading `viewReadVars`. It exempts a var only a *handler* touches
+from making a component impure — such a var needs neither an updater nor a
+setter, so the body may be substituted and the var hoisted. But android declares
+its `Button` primitive with `onClick func()` as an ordinary prop, and
+`passInlinePure` substitutes `@click` into it *while walking the override's own
+body*: by the time the call site asks, the handler is a lambda sitting in `Props`
+where a rendered read goes. So one source file gets two verdicts — impure on
+android, pure on html — and the purity question is answered by how a target
+spells a handler rather than by what the component renders. Skipping a
+lambda-valued prop makes the two agree and changes no output in this repository,
+which is why it is not done here: it is unpinnable as a change on its own, and
+the position where it *would* matter (a stateful override under a reactive `if`)
+is one where android's accidental answer is the better of the two.
 
 **A platform override body is a body like any other** (#230): an override *is*
 the body its target renders, so "the body it was written in" is well defined

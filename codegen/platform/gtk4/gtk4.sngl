@@ -110,6 +110,14 @@ component ui.progress[platform] {
     }
 }
 
+// GIR describes a widget's *properties*, which is what this platform's
+// declarations are generated from, so a method that sets nothing has no
+// generated form. `pulse` is one: it moves the block along by a step and takes
+// no value. Hand-declared as the C identifier it is, the way cairo's vocabulary
+// below is, and reached through a `#id` handle on the widget.
+#[cnative("gtk_progress_bar_pulse")]
+func GtkProgressBar.pulse()
+
 component ui.spinner[platform] {
     gtk4.GtkSpinner(spinning=true, tooltipText=label, style={...style}) {}
 }

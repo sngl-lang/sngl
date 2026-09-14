@@ -185,17 +185,6 @@ func offloadEntryPoints(pkg *ir.Package) []*ir.Func {
 	return out
 }
 
-func lowerAllFuncs(pkg *ir.Package) []*ir.Func {
-	out := append([]*ir.Func(nil), pkg.Funcs...)
-	for _, comp := range pkg.Components {
-		out = append(out, comp.Funcs...)
-	}
-	for _, w := range pkg.Windows {
-		out = append(out, w.Funcs...)
-	}
-	return out
-}
-
 // offloadableFuncs is every body the target may enter from its own thread: the
 // declared functions, plus the handlers hanging off nodes, vars and timers.
 //
@@ -210,47 +199,42 @@ func lowerAllFuncs(pkg *ir.Package) []*ir.Func {
 // wants the blocking f, not a goroutine per element. A callee that *says* it
 // schedules is that exception -- nativeCallbackFuncs below.
 func offloadableFuncs(pkg *ir.Package) []*ir.Func {
-	out := lowerAllFuncs(pkg)
-	seen := make(map[*ir.Func]bool, len(out))
-	for _, fn := range out {
-		seen[fn] = true
-	}
+	var out []*ir.Func
+	seen := map[*ir.Func]bool{}
 	add := func(fn *ir.Func) {
 		if fn != nil && !seen[fn] {
 			seen[fn] = true
 			out = append(out, fn)
 		}
 	}
-	for _, t := range pkg.Timers {
-		add(t.Handler)
+	// Declared funcs first and handlers after, across all owners, rather than
+	// both per owner: passAsyncOffload numbers its goroutine helpers
+	// __async_offN off this order, and interleaving them renamed helpers in a
+	// program whose second owner also offloads.
+	owners := ir.Owners(pkg)
+	for _, o := range owners {
+		for _, fn := range o.Funcs {
+			add(fn)
+		}
 	}
-	collectHandlerFuncs(pkg.Body, add)
+	for _, o := range owners {
+		for _, v := range o.Vars {
+			for _, h := range v.Handlers {
+				add(h.Func)
+			}
+		}
+		for _, t := range o.Timers {
+			add(t.Handler)
+		}
+		for _, h := range o.Handlers {
+			add(h.Func)
+		}
+		collectHandlerFuncs(o.Stmts(), add)
+	}
+	// Last, for the numbering reason above: a callback is reached through an
+	// expression rather than through an owner, so it has no place in that walk
+	// and appending keeps every other helper's number where it was.
 	nativeCallbackFuncs(pkg, add)
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
-			for _, h := range v.Handlers {
-				add(h.Func)
-			}
-		}
-		for _, t := range comp.Timers {
-			add(t.Handler)
-		}
-		collectHandlerFuncs(comp.Body, add)
-	}
-	for _, w := range pkg.Windows {
-		for _, v := range w.Vars {
-			for _, h := range v.Handlers {
-				add(h.Func)
-			}
-		}
-		for _, t := range w.Timers {
-			add(t.Handler)
-		}
-		if w.ErrorHandler != nil {
-			add(w.ErrorHandler.Func)
-		}
-		collectHandlerFuncs(w.Body, add)
-	}
 	return out
 }
 
@@ -353,25 +337,6 @@ func collectHandlerFuncs(stmts []ir.Stmt, add func(*ir.Func)) {
 				add(n.Handler.Func)
 			}
 			collectHandlerFuncs(n.Children, add)
-		case *ir.Window:
-			// A window written inside a component is a statement in that
-			// component's body rather than an entry in pkg.Windows, and it
-			// owns funcs of its own -- which is where a flattened handler
-			// lands on a platform that lowers the declarative tree. Reading
-			// pkg.Windows alone found the handler in a top-level `window` and
-			// missed the identical one written a level in.
-			for _, f := range n.Funcs {
-				add(f)
-			}
-			for _, v := range n.Vars {
-				for _, h := range v.Handlers {
-					add(h.Func)
-				}
-			}
-			if n.ErrorHandler != nil {
-				add(n.ErrorHandler.Func)
-			}
-			collectHandlerFuncs(n.Body, add)
 		}
 	}
 }

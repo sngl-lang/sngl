@@ -96,8 +96,8 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	name__inst0          string
-	handle__inst0__inst0 int
+	name__inst1          string
+	handle__inst0__inst1 int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -111,8 +111,8 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.name__inst0 = "idle"
-	m.handle__inst0__inst0 = 0
+	m.name__inst1 = "idle"
+	m.handle__inst0__inst1 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -123,19 +123,19 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst0__inst0 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
+	m.handle__inst0__inst1 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
 		go func() {
 			__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 			fyne.Do(func() {
-				m.name__inst0 = __async_off0
-				m.__n0.SetText(m.name__inst0)
+				m.name__inst1 = __async_off0
+				m.__n0.SetText(m.name__inst1)
 			})
 		}()
 	})
 }
 
 func (m *Model) __effect0_unmount() {
-	fynert.CancelEvery(m.handle__inst0__inst0)
+	fynert.CancelEvery(m.handle__inst0__inst1)
 }
 
 func (m *Model) __effect0_down() {
@@ -202,26 +202,26 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) Name__inst0() string {
-	return m.name__inst0
+func (m *Model) Name__inst1() string {
+	return m.name__inst1
 }
 
-func (m *Model) SetName__inst0(v string) {
-	m.name__inst0 = v
+func (m *Model) SetName__inst1(v string) {
+	m.name__inst1 = v
 }
 
-func (m *Model) Handle__inst0__inst0() int {
-	return m.handle__inst0__inst0
+func (m *Model) Handle__inst0__inst1() int {
+	return m.handle__inst0__inst1
 }
 
-func (m *Model) SetHandle__inst0__inst0(v int) {
-	m.handle__inst0__inst0 = v
+func (m *Model) SetHandle__inst0__inst1(v int) {
+	m.handle__inst0__inst1 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(m.name__inst0)
+	m.__n0.SetText(m.name__inst1)
 	m.__effects0_settle()
 	content := fyne.CanvasObject(m.__n0)
 	return content
@@ -256,8 +256,8 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	name__inst0          string
-	handle__inst0__inst0 int
+	name__inst1          string
+	handle__inst0__inst1 int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -272,8 +272,8 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.name__inst0 = "idle"
-	m.handle__inst0__inst0 = 0
+	m.name__inst1 = "idle"
+	m.handle__inst0__inst1 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -284,19 +284,19 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst0__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
+	m.handle__inst0__inst1 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
 		go func() {
 			__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 			gtk4rt.Post(func() {
-				m.name__inst0 = __async_off0
-				gtk4rt.LabelSetText(m.__n0, m.name__inst0)
+				m.name__inst1 = __async_off0
+				gtk4rt.LabelSetText(m.__n0, m.name__inst1)
 			})
 		}()
 	})
 }
 
 func (m *Model) __effect0_unmount() {
-	gtk4rt.CancelEvery(m.handle__inst0__inst0)
+	gtk4rt.CancelEvery(m.handle__inst0__inst1)
 }
 
 func (m *Model) __effect0_down() {
@@ -363,20 +363,20 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) Name__inst0() string {
-	return m.name__inst0
+func (m *Model) Name__inst1() string {
+	return m.name__inst1
 }
 
-func (m *Model) SetName__inst0(v string) {
-	m.name__inst0 = v
+func (m *Model) SetName__inst1(v string) {
+	m.name__inst1 = v
 }
 
-func (m *Model) Handle__inst0__inst0() int {
-	return m.handle__inst0__inst0
+func (m *Model) Handle__inst0__inst1() int {
+	return m.handle__inst0__inst1
 }
 
-func (m *Model) SetHandle__inst0__inst0(v int) {
-	m.handle__inst0__inst0 = v
+func (m *Model) SetHandle__inst0__inst1(v int) {
+	m.handle__inst0__inst1 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -385,7 +385,7 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, m.name__inst0)
+	gtk4rt.LabelSetText(m.__n0, m.name__inst1)
 	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 }

@@ -263,11 +263,11 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	seconds__inst0       int
-	running__inst0       bool
-	handle__inst1__inst0 int
-	beats__inst1         int
-	handle__inst0__inst1 int
+	seconds__inst2       int
+	running__inst2       bool
+	handle__inst1__inst2 int
+	beats__inst3         int
+	handle__inst0__inst3 int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -285,11 +285,11 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.seconds__inst0 = 0
-	m.running__inst0 = true
-	m.handle__inst1__inst0 = 0
-	m.beats__inst1 = 0
-	m.handle__inst0__inst1 = 0
+	m.seconds__inst2 = 0
+	m.running__inst2 = true
+	m.handle__inst1__inst2 = 0
+	m.beats__inst3 = 0
+	m.handle__inst0__inst3 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -303,19 +303,19 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst1__inst0 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
-		m.seconds__inst0 += 1
-		m.__n1.SetText(fmt.Sprint(m.seconds__inst0))
+	m.handle__inst1__inst2 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
+		m.seconds__inst2 += 1
+		m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
 	})
 }
 
 func (m *Model) __effect0_unmount() {
-	fynert.CancelEvery(m.handle__inst1__inst0)
+	fynert.CancelEvery(m.handle__inst1__inst2)
 }
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	if m.running__inst0 {
+	if m.running__inst2 {
 		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
 	}
 	for __effect0_i, _ := range m.__effect0_live {
@@ -356,14 +356,14 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
-	m.handle__inst0__inst1 = fynert.Every(int(m.__effect1_key/time.Millisecond), func() {
-		m.beats__inst1 += 1
-		m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst1)))
+	m.handle__inst0__inst3 = fynert.Every(int(m.__effect1_key/time.Millisecond), func() {
+		m.beats__inst3 += 1
+		m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
 	})
 }
 
 func (m *Model) __effect1_unmount() {
-	fynert.CancelEvery(m.handle__inst0__inst1)
+	fynert.CancelEvery(m.handle__inst0__inst3)
 }
 
 func (m *Model) __effect1_down() {
@@ -433,52 +433,52 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) Seconds__inst0() int {
-	return m.seconds__inst0
+func (m *Model) Seconds__inst2() int {
+	return m.seconds__inst2
 }
 
-func (m *Model) SetSeconds__inst0(v int) {
-	m.seconds__inst0 = v
+func (m *Model) SetSeconds__inst2(v int) {
+	m.seconds__inst2 = v
 }
 
-func (m *Model) Running__inst0() bool {
-	return m.running__inst0
+func (m *Model) Running__inst2() bool {
+	return m.running__inst2
 }
 
-func (m *Model) SetRunning__inst0(v bool) {
-	m.running__inst0 = v
+func (m *Model) SetRunning__inst2(v bool) {
+	m.running__inst2 = v
 }
 
-func (m *Model) Handle__inst1__inst0() int {
-	return m.handle__inst1__inst0
+func (m *Model) Handle__inst1__inst2() int {
+	return m.handle__inst1__inst2
 }
 
-func (m *Model) SetHandle__inst1__inst0(v int) {
-	m.handle__inst1__inst0 = v
+func (m *Model) SetHandle__inst1__inst2(v int) {
+	m.handle__inst1__inst2 = v
 }
 
-func (m *Model) Beats__inst1() int {
-	return m.beats__inst1
+func (m *Model) Beats__inst3() int {
+	return m.beats__inst3
 }
 
-func (m *Model) SetBeats__inst1(v int) {
-	m.beats__inst1 = v
+func (m *Model) SetBeats__inst3(v int) {
+	m.beats__inst3 = v
 }
 
-func (m *Model) Handle__inst0__inst1() int {
-	return m.handle__inst0__inst1
+func (m *Model) Handle__inst0__inst3() int {
+	return m.handle__inst0__inst3
 }
 
-func (m *Model) SetHandle__inst0__inst1(v int) {
-	m.handle__inst0__inst1 = v
+func (m *Model) SetHandle__inst0__inst3(v int) {
+	m.handle__inst0__inst3 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst1)))
+	m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(fmt.Sprint(m.seconds__inst0))
+	m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
 	m.__effects0_settle()
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.__n0)
@@ -515,11 +515,11 @@ type ErrorEvent struct {
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	seconds__inst0       int
-	running__inst0       bool
-	handle__inst1__inst0 int
-	beats__inst1         int
-	handle__inst0__inst1 int
+	seconds__inst2       int
+	running__inst2       bool
+	handle__inst1__inst2 int
+	beats__inst3         int
+	handle__inst0__inst3 int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -538,11 +538,11 @@ type Model struct {
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.seconds__inst0 = 0
-	m.running__inst0 = true
-	m.handle__inst1__inst0 = 0
-	m.beats__inst1 = 0
-	m.handle__inst0__inst1 = 0
+	m.seconds__inst2 = 0
+	m.running__inst2 = true
+	m.handle__inst1__inst2 = 0
+	m.beats__inst3 = 0
+	m.handle__inst0__inst3 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -556,19 +556,19 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst1__inst0 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
-		m.seconds__inst0 += 1
-		gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst0))
+	m.handle__inst1__inst2 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
+		m.seconds__inst2 += 1
+		gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst2))
 	})
 }
 
 func (m *Model) __effect0_unmount() {
-	gtk4rt.CancelEvery(m.handle__inst1__inst0)
+	gtk4rt.CancelEvery(m.handle__inst1__inst2)
 }
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	if m.running__inst0 {
+	if m.running__inst2 {
 		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
 	}
 	for __effect0_i, _ := range m.__effect0_live {
@@ -609,14 +609,14 @@ func (m *Model) __effect0_teardown() {
 }
 
 func (m *Model) __effect1_mount() {
-	m.handle__inst0__inst1 = gtk4rt.Every(int(m.__effect1_key/time.Millisecond), func() {
-		m.beats__inst1 += 1
-		gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst1)))
+	m.handle__inst0__inst3 = gtk4rt.Every(int(m.__effect1_key/time.Millisecond), func() {
+		m.beats__inst3 += 1
+		gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst3)))
 	})
 }
 
 func (m *Model) __effect1_unmount() {
-	gtk4rt.CancelEvery(m.handle__inst0__inst1)
+	gtk4rt.CancelEvery(m.handle__inst0__inst3)
 }
 
 func (m *Model) __effect1_down() {
@@ -686,44 +686,44 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) Seconds__inst0() int {
-	return m.seconds__inst0
+func (m *Model) Seconds__inst2() int {
+	return m.seconds__inst2
 }
 
-func (m *Model) SetSeconds__inst0(v int) {
-	m.seconds__inst0 = v
+func (m *Model) SetSeconds__inst2(v int) {
+	m.seconds__inst2 = v
 }
 
-func (m *Model) Running__inst0() bool {
-	return m.running__inst0
+func (m *Model) Running__inst2() bool {
+	return m.running__inst2
 }
 
-func (m *Model) SetRunning__inst0(v bool) {
-	m.running__inst0 = v
+func (m *Model) SetRunning__inst2(v bool) {
+	m.running__inst2 = v
 }
 
-func (m *Model) Handle__inst1__inst0() int {
-	return m.handle__inst1__inst0
+func (m *Model) Handle__inst1__inst2() int {
+	return m.handle__inst1__inst2
 }
 
-func (m *Model) SetHandle__inst1__inst0(v int) {
-	m.handle__inst1__inst0 = v
+func (m *Model) SetHandle__inst1__inst2(v int) {
+	m.handle__inst1__inst2 = v
 }
 
-func (m *Model) Beats__inst1() int {
-	return m.beats__inst1
+func (m *Model) Beats__inst3() int {
+	return m.beats__inst3
 }
 
-func (m *Model) SetBeats__inst1(v int) {
-	m.beats__inst1 = v
+func (m *Model) SetBeats__inst3(v int) {
+	m.beats__inst3 = v
 }
 
-func (m *Model) Handle__inst0__inst1() int {
-	return m.handle__inst0__inst1
+func (m *Model) Handle__inst0__inst3() int {
+	return m.handle__inst0__inst3
 }
 
-func (m *Model) SetHandle__inst0__inst1(v int) {
-	m.handle__inst0__inst1 = v
+func (m *Model) SetHandle__inst0__inst3(v int) {
+	m.handle__inst0__inst3 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -732,9 +732,9 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst1)))
+	gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst3)))
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst0))
+	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst2))
 	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
@@ -829,24 +829,24 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { seconds__inst0: 0, running__inst0: true, handle__inst1__inst0: 0, beats__inst1: 0, handle__inst0__inst1: 0 };
+  var state = { seconds__inst2: 0, running__inst2: true, handle__inst1__inst2: 0, beats__inst3: 0, handle__inst0__inst3: 0 };
   function __effect0_mount() {
-    state.handle__inst1__inst0 = setInterval(() => {
-      state.seconds__inst0 += 1;
-      __n1.textContent = String(state.seconds__inst0);
+    state.handle__inst1__inst2 = setInterval(() => {
+      state.seconds__inst2 += 1;
+      __n1.textContent = String(state.seconds__inst2);
     }, __effect0_key);
   }
   function __effect0_unmount() {
-    clearInterval(state.handle__inst1__inst0);
+    clearInterval(state.handle__inst1__inst2);
   }
   function __effect1_mount() {
-    state.handle__inst0__inst1 = setInterval(() => {
-      state.beats__inst1 += 1;
-      __n0.textContent = "beats " + String(state.beats__inst1);
+    state.handle__inst0__inst3 = setInterval(() => {
+      state.beats__inst3 += 1;
+      __n0.textContent = "beats " + String(state.beats__inst3);
     }, __effect1_key);
   }
   function __effect1_unmount() {
-    clearInterval(state.handle__inst0__inst1);
+    clearInterval(state.handle__inst0__inst3);
   }
   function __snglTeardown() {
     __effect1_teardown();
@@ -863,7 +863,7 @@ body { font-family: system-ui, sans-serif; }
   var __effects0_steps = 0;
   function __effect0_down() {
     __effect0_desired = [];
-    if (state.running__inst0) {
+    if (state.running__inst2) {
       __effect0_desired.push(1e3);
     }
     for (const [__effect0_i, _] of __effect0_live.entries()) {
@@ -964,8 +964,8 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = "beats " + String(state.beats__inst1);
-    __n1.textContent = String(state.seconds__inst0);
+    __n0.textContent = "beats " + String(state.beats__inst3);
+    __n1.textContent = String(state.seconds__inst2);
   }
   __sngl_init();
   __effects0_settle();

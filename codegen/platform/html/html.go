@@ -176,10 +176,11 @@ document.addEventListener('DOMContentLoaded', () => main());
 func rejectDynamicHrefs(req *codegen.Request) error {
 	ctx := codegen.NewCodegenCtx(req, "html")
 	for _, win := range ctx.Windows() {
-		if win.Window == nil || win.Window.Href == nil {
+		href := win.Window.Prop(ir.WindowHref)
+		if href == nil {
 			continue
 		}
-		if _, ok := codegen.IRLiteralString(win.Window.Href); !ok {
+		if _, ok := codegen.IRLiteralString(href); !ok {
 			return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
 		}
 	}
@@ -398,22 +399,23 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	seenPaths := map[string]ast.Pos{}
 	for i, win := range irWindows {
 		var name string
+		href := win.Window.Prop(ir.WindowHref)
 		switch {
 		case !staticMode:
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
-		case win.Window == nil || win.Window.Href == nil:
+		case href == nil:
 			// No declaration to take an href from: the package body's root
 			// window, or a lone main component's. It is the document the site
 			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
-			href, ok := codegen.IRLiteralString(win.Window.Href)
+			h, ok := codegen.IRLiteralString(href)
 			if !ok {
 				return nil, fmt.Errorf("html: window %q has a non-literal href after folding (internal error)", win.Name)
 			}
-			name = pathFromHref(href)
+			name = pathFromHref(h)
 		}
 		if staticMode {
 			if prev, dup := seenPaths[name]; dup {
@@ -441,10 +443,10 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			gen.ctx = gen.ctx.ForWindow(win.Window)
 		}
 		if win.Window != nil {
-			if s, ok := codegen.IRLiteralString(win.Window.Title); ok {
+			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
 				gen.title = s
 			}
-			if s, ok := codegen.IRLiteralString(win.Window.Favicon); ok {
+			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowFavicon)); ok {
 				gen.favicon = s
 			}
 		}
@@ -1475,7 +1477,13 @@ func (g *htmlGen) rootFlexes() bool {
 			if sf.Name != "flex" {
 				continue
 			}
-			if v, ok := codegen.IRLiteralString(sf.Value); ok && (v == "" || v == "0") {
+			if sf.Value == nil {
+				continue
+			}
+			// `flex` is a float, so the question is numeric. An expression
+			// nobody can read at build time may ask for a share at runtime,
+			// and handing over the viewport costs a page that does not.
+			if v, ok := codegen.IRLiteralNumber(sf.Value); ok && v == 0 {
 				continue
 			}
 			return true

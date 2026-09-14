@@ -34,8 +34,8 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 	for i, win := range windows {
 		var hrefExpr, titleExpr ir.Expr
 		if win.Window != nil {
-			hrefExpr = win.Window.Href
-			titleExpr = win.Window.Title
+			hrefExpr = win.Window.Prop(ir.WindowHref)
+			titleExpr = win.Window.Prop(ir.WindowTitle)
 		}
 		path, err := hrefToRoutePath(hrefExpr)
 		if err != nil {

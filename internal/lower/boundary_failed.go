@@ -51,8 +51,8 @@ func lowerBoundaryFailed(pkg *ir.Package, _ Caps, _ Options) error {
 	for _, o := range ir.Owners(pkg) {
 		st.owner = o
 		st.added = nil
-		st.stmts(o.Stmts)
-		st.attach(pkg)
+		st.stmts(o.Stmts())
+		st.attach()
 	}
 	return nil
 }
@@ -142,17 +142,7 @@ func (st *boundaryFailedState) rewrite(n *ir.ErrorBoundary) {
 
 // attach hangs this owner's flags on the declaration that owns them. ir.Owner
 // carries Vars by value, so the write has to go back to the declaration
-// itself.
-func (st *boundaryFailedState) attach(pkg *ir.Package) {
-	if len(st.added) == 0 {
-		return
-	}
-	switch {
-	case st.owner.Comp != nil:
-		st.owner.Comp.Vars = append(st.owner.Comp.Vars, st.added...)
-	case st.owner.Win != nil:
-		st.owner.Win.Vars = append(st.owner.Win.Vars, st.added...)
-	default:
-		pkg.Vars = append(pkg.Vars, st.added...)
-	}
+// itself, which AddVars is.
+func (st *boundaryFailedState) attach() {
+	st.owner.AddVars(st.added...)
 }

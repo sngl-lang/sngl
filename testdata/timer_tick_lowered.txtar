@@ -212,9 +212,9 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	level__inst0         float64
-	rung__inst0          int
-	handle__inst0__inst0 int
+	level__inst1         float64
+	rung__inst1          int
+	handle__inst0__inst1 int
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -228,9 +228,9 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.level__inst0 = 0.0
-	m.rung__inst0 = 0
-	m.handle__inst0__inst0 = 0
+	m.level__inst1 = 0.0
+	m.rung__inst1 = 0
+	m.handle__inst0__inst1 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -241,26 +241,26 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	m.handle__inst0__inst0 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
+	m.handle__inst0__inst1 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
 		var __lt0 float64
-		if m.level__inst0 >= 1.0 {
+		if m.level__inst1 >= 1.0 {
 			__lt0 = 0.0
 		} else {
-			__lt0 = (m.level__inst0 + 0.01)
+			__lt0 = (m.level__inst1 + 0.01)
 		}
-		m.level__inst0 = __lt0
-		m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
+		m.level__inst1 = __lt0
+		m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
 		var __iterIdx0 int = -1
 		for x := range slices.Values([]int{0, 1, 2}) {
 			__iterIdx0 += 1
-			m.rung__inst0 = (m.rung__inst0 + (__iterIdx0 * x))
-			m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
+			m.rung__inst1 = (m.rung__inst1 + (__iterIdx0 * x))
+			m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
 		}
 	})
 }
 
 func (m *Model) __effect0_unmount() {
-	fynert.CancelEvery(m.handle__inst0__inst0)
+	fynert.CancelEvery(m.handle__inst0__inst1)
 }
 
 func (m *Model) __effect0_down() {
@@ -327,34 +327,34 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) Level__inst0() float64 {
-	return m.level__inst0
+func (m *Model) Level__inst1() float64 {
+	return m.level__inst1
 }
 
-func (m *Model) SetLevel__inst0(v float64) {
-	m.level__inst0 = v
+func (m *Model) SetLevel__inst1(v float64) {
+	m.level__inst1 = v
 }
 
-func (m *Model) Rung__inst0() int {
-	return m.rung__inst0
+func (m *Model) Rung__inst1() int {
+	return m.rung__inst1
 }
 
-func (m *Model) SetRung__inst0(v int) {
-	m.rung__inst0 = v
+func (m *Model) SetRung__inst1(v int) {
+	m.rung__inst1 = v
 }
 
-func (m *Model) Handle__inst0__inst0() int {
-	return m.handle__inst0__inst0
+func (m *Model) Handle__inst0__inst1() int {
+	return m.handle__inst0__inst1
 }
 
-func (m *Model) SetHandle__inst0__inst0(v int) {
-	m.handle__inst0__inst0 = v
+func (m *Model) SetHandle__inst0__inst1(v int) {
+	m.handle__inst0__inst1 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
+	m.__n0.SetText(((fmt.Sprint(m.level__inst1) + " ") + fmt.Sprint(m.rung__inst1)))
 	m.__effects0_settle()
 	content := fyne.CanvasObject(m.__n0)
 	return content

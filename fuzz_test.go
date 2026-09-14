@@ -456,14 +456,10 @@ func (v *irValidator) walkWindow(w *ir.Window) {
 	if w.Name == "" {
 		v.fail("window has no name")
 	}
-	if w.Href != nil {
-		v.walkExpr(w.Href)
-	}
-	if w.Title != nil {
-		v.walkExpr(w.Title)
-	}
-	if w.Favicon != nil {
-		v.walkExpr(w.Favicon)
+	for _, p := range w.Props {
+		if p.Value != nil {
+			v.walkExpr(p.Value)
+		}
 	}
 	for i, va := range w.Vars {
 		v.push(fmt.Sprintf("vars[%d]", i))

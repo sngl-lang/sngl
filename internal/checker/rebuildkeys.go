@@ -43,7 +43,7 @@ func (c *checker) checkRebuildKeys() {
 	}
 	w := &rebuildWalker{c: c, reported: map[rebuildDiag]bool{}, frames: map[rebuildFrame]bool{}}
 	for _, o := range ir.Owners(c.pkg) {
-		w.body(o.Stmts, rebuildScope{})
+		w.body(o.Stmts(), rebuildScope{})
 	}
 }
 
