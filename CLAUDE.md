@@ -222,6 +222,24 @@ windows rather than the owners — reads the same list.
 walk a nested window's body twice, and unifying it means deleting those arms in
 the same change.
 
+**A lambda body is the fourth kind of block**, and it is the one none of these
+reaches by walking declarations: it hangs off an *expression*. `blocks.go`
+collects them with an `ir.Walk` for exactly that reason, and `offloadableFuncs`
+leaves them out on purpose — a lambda is a value, and what calls it is the code
+it was handed to. `walkPackage` is where it bit, twice, and in the same
+position both times. `passTernary` and `passIndexedIter` each make the `expr`
+hook a no-op because a const-context expression — an initializer, a prop
+default — has no statement list to hoist into. True of the expression; false of
+a lambda body inside it, which is an ordinary statement list. So
+`var ys = xs.map(func(x int) => c ? a : b)` panicked every Go emitter with
+"ir.Ternary reached Go codegen", and a two-variable `sngl:seq` loop written
+there came out as `for i, v := range slices.Values(...)`, which no Go compiler
+accepts. Both hooks now descend to lambda bodies and hoist nothing into the
+initializer, so the reason they are no-ops survives.
+`testdata/ternary_in_lambda_initializer.txtar` and
+`testdata/indexed_iter_in_lambda_initializer.txtar` pin the pair; `passNoRef`,
+the third, already had an `*ir.Lambda` arm in its rewriter.
+
 ## Build & Test Commands
 
 ```bash
