@@ -967,6 +967,19 @@ declaration itself. Two things about the name that are easy to get wrong:
   there is no channel to select over. fyne's timer is now written in
   `fyne.sngl` alone and the package is gone.
 
+  **A one-shot that re-arms drifts and a ticker does not**, so the deadline it
+  resets to is absolute: `AfterFunc` starts the next period when the callback
+  runs rather than when the last one was due, which adds the tick body and the
+  hand-over to every period forever. The override holds `next` -- when the tick
+  was *due* -- and resets to `time.Until(next)`, so the error is dropped rather
+  than carried, and it walks `next` forward past any deadline already passed so
+  a tick slower than its period runs late instead of queueing a catch-up per
+  period. `sngl:time` declares `date`, `time`, `datetime` and `duration` and
+  **no operation on any of them** -- no clock, no arithmetic -- so
+  `time.Now`/`Add`/`Until` are named as host natives there, the way `AfterFunc`
+  is. A clock in `sngl:time` is the thing that would let the language say
+  this.
+
   **The hand-over it also held is `async.post`**, which a platform package may
   name: `#[intrinsic("async.post")] func post(f func())` dispatches through
   `LookupPlatformIntrinsic` exactly as a blocking call's posted tail does, and
@@ -975,8 +988,11 @@ declaration itself. Two things about the name that are easy to get wrong:
   is also the second thing `nativeCallbackFuncs` treats as scheduling, for the
   reason the `schedules` flag exists: a post runs its closure from the loop the
   platform owns, so a blocking call written inside one is on the drawing thread
-  unless this pass takes the closure as an entry point. It cannot carry the
-  flag, having no declaration to carry it on.
+  unless this pass takes the closure as an entry point. There is no *one*
+  declaration to put the flag on -- the pass synthesizes calls to the id
+  itself, and a platform package may declare its own -- so the pass names it.
+  Only fyne and gtk4 answer the id at all, which is what stops the declaration
+  being lifted somewhere portable.
 
   What is *not* closed by any of this is channels: `go.chan<T>` and a `go.select`
   that holds real `select` syntax remain the general answer, and a program

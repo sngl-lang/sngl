@@ -616,8 +616,31 @@ struct Schedule {}
 #[go.native("time", "time.AfterFunc", schedules)]
 func after(d time.duration, f func()) Schedule
 
+// Re-arming is `Reset` on the schedule already held, rather than a second
+// `AfterFunc`: one timer exists per mount for as long as the mount lasts, so
+// `handle` is written once and only read after.
+#[go.native("time", "time.Timer.Reset", method)]
+func Schedule.reset(d time.duration) bool
+
 #[go.native("time", "time.Timer.Stop", method)]
 func Schedule.stop() bool
+
+// The clock the deadlines are measured against. `sngl:time` declares `datetime`
+// and `duration` and no operation on either -- no `now`, no arithmetic -- so
+// the host's is named here, the way `AfterFunc` is. Nothing about this is
+// fyne's; it is the first thing that wanted a clock.
+#[go.native("time", "time.Time")]
+struct Instant {}
+
+#[go.native("time", "time.Now")]
+func now() Instant
+
+#[go.native("time", "time.Time.Add", method)]
+func Instant.add(d time.duration) Instant
+
+// The remainder until an instant, negative once it has passed.
+#[go.native("time", "time.Until")]
+func until(t Instant) time.duration
 
 // The hand-over onto Fyne's own goroutine, since a widget touched from any
 // other is a data race. It is the intrinsic a blocking call's tail is already
@@ -632,16 +655,23 @@ func post(f func())
 // schedule is the same schedule for as long as its period is unchanged.
 //
 // A non-positive interval arms nothing. `AfterFunc` accepts one and fires at
-// once, so a re-arm would spin, posting to the drawing thread as fast as it can
-// drain -- where `NewTicker` would have panicked and said so. The test is in
-// the mount rather than in the position beside `enabled`, because a comparison
-// of two unit constants does not fold: written there it reaches every program's
-// settle as `1000ms > 0ms`, spelled out.
+// once, so a re-arm would spin -- where `NewTicker` would have panicked and
+// said so. The test is in the mount rather than in the position beside
+// `enabled`, because a comparison of two unit constants does not fold: written
+// there it reaches every program's settle as `1000ms > 0ms`, spelled out.
+//
+// The deadline is absolute. Re-arming for a whole period each time would make
+// every tick's cost cumulative -- `AfterFunc` starts the next period when the
+// callback runs, not when the last one was due -- so a second's timer drifts by
+// the tick body plus the hand-over, every tick, forever. `next` is when the
+// tick was *due* and the schedule is reset to the remainder, so the error is
+// dropped rather than carried.
 component time.timer[platform] {
     var handle Schedule
     var rearm func()
     var live = false
     var gen = 0
+    var next Instant
 
     if enabled {
         effect(
@@ -651,25 +681,36 @@ component time.timer[platform] {
                     live = true
                     gen = gen + 1
                     var mine = gen
+                    next = now().add(d)
                     rearm = func() {
                         post(func() {
                             // A re-key is an unmount and a mount back to back,
                             // so a flag saying merely that something is armed
                             // is true again by the time a queued post runs.
+                            // Still required with `Reset`: a stale closure
+                            // resets the very timer the unmount stopped.
                             // An early return rather than an `if` around the
                             // rest: a blocking `@tick` only moves off the
                             // drawing thread as a statement of the body.
                             if gen != mine {
                                 return
                             }
+                            // Missed deadlines are dropped, not made up. A
+                            // tick slower than its period would otherwise
+                            // queue a catch-up per period and never drain,
+                            // which saturates the drawing thread instead of
+                            // just running late.
+                            next = next.add(d)
+                            for until(next) <= 0ms {
+                                next = next.add(d)
+                            }
                             // Ahead of the tick, so a period covers it rather
-                            // than following it. Drifts by the hand-over
-                            // either way, as gtk4's `g_timeout_add` does.
-                            handle = after(d, rearm)
+                            // than following it.
+                            handle.reset(until(next))
                             tick()
                         })
                     }
-                    handle = after(d, rearm)
+                    handle = after(until(next), rearm)
                 }
             },
             @unmount(d) {

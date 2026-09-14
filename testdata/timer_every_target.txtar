@@ -11,13 +11,26 @@ schedule re-arms itself from inside the closure it posts to the drawing
 thread, and the `gen`/`mine` pair below is what stops a post that was already
 queued when the effect re-keyed from arming a timer the unmount can no longer
 see. It cannot be asserted by running: fyne's test driver dispatches `fyne.Do`
-inline on the calling goroutine, so the queued window does not exist there. Two still carry a primitive of their own, which passTimerPrimitive
-takes out of the tree, because an effect's `@mount` hands over a *closure* and
-a closure is only a schedule where the host may run it against live state:
-bubbletea is Elm, so a tick has to arrive as a message and its body has to be a
-case Update runs, which is a period and a body together rather than a closure;
-and android's LaunchedEffect is the schedule rather than something a schedule
-is built from.
+inline on the calling goroutine, so the queued window does not exist there.
+
+**The deadline it resets to is absolute**, which is the difference between a
+one-shot that re-arms and a ticker. `AfterFunc` starts the next period when the
+callback runs rather than when the last one was due, so resetting to `interval`
+would add the tick body and the hand-over to every period, forever -- a
+second's timer losing a second every few minutes. `next` is when the tick was
+due, `time.Until(next)` is the remainder, and the error is dropped instead of
+carried. `sngl:time` declares `datetime` and `duration` and no operation on
+either, so the clock is named as a host native here, the way `AfterFunc` is.
+
+Three still carry a primitive of their own, which passTimerPrimitive takes out
+of the tree, and two of those are because an effect's `@mount` hands over a
+*closure* and a closure is only a schedule where the host may run it against
+live state: bubbletea is Elm, so a tick has to arrive as a message and its body
+has to be a case Update runs, which is a period and a body together rather than
+a closure; and android's LaunchedEffect is the schedule rather than something a
+schedule is built from. none is the third and is a different case -- the
+interpreter honours `effect` itself and owns the clock, so an override would
+bracket correctly and schedule nothing.
 
 So this asserts three things at once: that a timer is emitted at all, that a
 timer written in a child component is emitted too, and that its gate reaches
@@ -45,6 +58,7 @@ and inert.
 deny out/kotlin/android/MainScreen.kt `while \(\)` -- a gate is an expression, not a variable name
 deny out/kotlin/android/MainScreen.kt `LaunchedEffect\(\)` -- likewise: LaunchedEffect with no key does not compile
 deny * `timer\(interval` -- the primitive leaves the tree; no target renders one
+deny out/go/fyne/model.go `Reset\(m\.__effect\d+_key\)` -- a re-arm for a whole period makes every tick's cost cumulative; the reset is the remainder until the deadline the tick was due at
 deny out/go/fyne/model.go `if !m.live` -- fyne re-arms from inside the post, so a stale closure must test the generation it was armed in; a flag saying only that something is armed is true again by the time a re-key's mount has run, and the closure would orphan the timer that mount armed
 
 -- app.sngl --
@@ -276,11 +290,13 @@ type Model struct {
 	rearm__inst1__inst2  func()
 	live__inst1__inst2   bool
 	gen__inst1__inst2    int
+	next__inst1__inst2   time.Time
 	beats__inst3         int
 	handle__inst0__inst3 *time.Timer
 	rearm__inst0__inst3  func()
 	live__inst0__inst3   bool
 	gen__inst0__inst3    int
+	next__inst0__inst3   time.Time
 	__effect0_key        time.Duration
 	__effect0_live       []time.Duration
 	__effect0_desired    []time.Duration
@@ -304,11 +320,13 @@ func New() *Model {
 	m.rearm__inst1__inst2 = nil
 	m.live__inst1__inst2 = false
 	m.gen__inst1__inst2 = 0
+	m.next__inst1__inst2 = time.Time{}
 	m.beats__inst3 = 0
 	m.handle__inst0__inst3 = nil
 	m.rearm__inst0__inst3 = nil
 	m.live__inst0__inst3 = false
 	m.gen__inst0__inst3 = 0
+	m.next__inst0__inst3 = time.Time{}
 	m.__effect0_key = time.Duration(0) * time.Millisecond
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
@@ -326,17 +344,22 @@ func (m *Model) __effect0_mount() {
 		m.live__inst1__inst2 = true
 		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
 		var mine int = m.gen__inst1__inst2
+		m.next__inst1__inst2 = time.Now().Add(m.__effect0_key)
 		m.rearm__inst1__inst2 = func() {
 			fyne.Do(func() {
 				if m.gen__inst1__inst2 != mine {
 					return
 				}
-				m.handle__inst1__inst2 = time.AfterFunc(m.__effect0_key, m.rearm__inst1__inst2)
+				m.next__inst1__inst2 = m.next__inst1__inst2.Add(m.__effect0_key)
+				for time.Until(m.next__inst1__inst2) <= time.Duration(0)*time.Millisecond {
+					m.next__inst1__inst2 = m.next__inst1__inst2.Add(m.__effect0_key)
+				}
+				m.handle__inst1__inst2.Reset(time.Until(m.next__inst1__inst2))
 				m.seconds__inst2 += 1
 				m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
 			})
 		}
-		m.handle__inst1__inst2 = time.AfterFunc(m.__effect0_key, m.rearm__inst1__inst2)
+		m.handle__inst1__inst2 = time.AfterFunc(time.Until(m.next__inst1__inst2), m.rearm__inst1__inst2)
 	}
 }
 
@@ -395,17 +418,22 @@ func (m *Model) __effect1_mount() {
 		m.live__inst0__inst3 = true
 		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
 		var mine int = m.gen__inst0__inst3
+		m.next__inst0__inst3 = time.Now().Add(m.__effect1_key)
 		m.rearm__inst0__inst3 = func() {
 			fyne.Do(func() {
 				if m.gen__inst0__inst3 != mine {
 					return
 				}
-				m.handle__inst0__inst3 = time.AfterFunc(m.__effect1_key, m.rearm__inst0__inst3)
+				m.next__inst0__inst3 = m.next__inst0__inst3.Add(m.__effect1_key)
+				for time.Until(m.next__inst0__inst3) <= time.Duration(0)*time.Millisecond {
+					m.next__inst0__inst3 = m.next__inst0__inst3.Add(m.__effect1_key)
+				}
+				m.handle__inst0__inst3.Reset(time.Until(m.next__inst0__inst3))
 				m.beats__inst3 += 1
 				m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
 			})
 		}
-		m.handle__inst0__inst3 = time.AfterFunc(m.__effect1_key, m.rearm__inst0__inst3)
+		m.handle__inst0__inst3 = time.AfterFunc(time.Until(m.next__inst0__inst3), m.rearm__inst0__inst3)
 	}
 }
 
@@ -532,6 +560,14 @@ func (m *Model) SetGen__inst1__inst2(v int) {
 	m.gen__inst1__inst2 = v
 }
 
+func (m *Model) Next__inst1__inst2() time.Time {
+	return m.next__inst1__inst2
+}
+
+func (m *Model) SetNext__inst1__inst2(v time.Time) {
+	m.next__inst1__inst2 = v
+}
+
 func (m *Model) Beats__inst3() int {
 	return m.beats__inst3
 }
@@ -570,6 +606,14 @@ func (m *Model) Gen__inst0__inst3() int {
 
 func (m *Model) SetGen__inst0__inst3(v int) {
 	m.gen__inst0__inst3 = v
+}
+
+func (m *Model) Next__inst0__inst3() time.Time {
+	return m.next__inst0__inst3
+}
+
+func (m *Model) SetNext__inst0__inst3(v time.Time) {
+	m.next__inst0__inst3 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
