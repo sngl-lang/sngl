@@ -541,14 +541,20 @@ component ui.spinner[platform] {
 
 // `value` is a float and the label is text, so the conversion is spelled
 // here rather than left to the Spec, which binds a prop to a setter and
-// converts nothing.
+// converts nothing. A bar with no value has no number to show and falls back
+// to its `label`, which is the only other thing it was told.
 component ui.progress[platform] {
-    Label(text=string(value), style={...style}) {}
+    if value != null {
+        Label(text=string(value), style={...style}) {}
+    } else {
+        Label(text=label, style={...style}) {}
+    }
 }
 
-// `value`, `min` and `max` are `date`, which no SNGL expression converts to a
-// string, so the picker shows its `placeholder` and its selection does not
-// reach the bound value.
+// The picker shows its `placeholder` and neither reads the bound value nor
+// reports a selection: Fyne has no date widget among the twelve wrapped here,
+// so the Label is a stub standing in for one rather than a picker whose value
+// has nowhere to go.
 component ui.datepicker[platform] {
     Label(text=placeholder, style={...style}) {}
 }

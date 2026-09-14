@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -523,12 +524,27 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
 	}
 
-	// Stdlib InputEvent / ChangeEvent payload — emitInputHandlerCall
-	// in compose_ir.go materializes the handler's event param as
-	// `val e = SnglInputEvent(newValue)` so user code reading
-	// `e.value` resolves without flowing the stdlib struct through
-	// user output.
-	body.WriteString("data class SnglInputEvent(val value: String)\n\n")
+	// The two stdlib event payloads this platform materializes itself, each
+	// gated on a program reaching the site that spells it -- ErrorEvent's
+	// shape, because a data class nothing names is dead Kotlin in every file
+	// that never takes an event.
+	//
+	// InputEvent is built from the value Compose hands a callback
+	// (emitInputHandlerCall, and the lambda a declared intrinsic takes), so it
+	// is named for this platform. ChangeEvent is built by an override --
+	// `change({value=opt})` in radio and input -- and the emitter writes a
+	// struct's name as declared, so it keeps its own. Neither flows through
+	// info.Structs, which is what makes both of these declarations necessary
+	// rather than duplicates.
+	if usesInputHolder(ctx.Pkg) {
+		body.WriteString("data class SnglInputEvent(val value: String)\n\n")
+	}
+	// A program declaring a struct of that name gets its own data class below
+	// and must not get this one as well.
+	if usesChangeEvent(ctx.Pkg) &&
+		!slices.ContainsFunc(info.Structs, func(sd *ir.StructDef) bool { return exportName(sd.Name) == "ChangeEvent" }) {
+		body.WriteString("data class ChangeEvent(val value: String = \"\")\n\n")
+	}
 
 	// string(float) is a helper rather than a method call: Kotlin's own
 	// Double.toString writes a fraction a whole number does not have.

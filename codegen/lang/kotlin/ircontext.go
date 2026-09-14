@@ -78,7 +78,7 @@ func (kc *KtIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(kc,
 // --- irwalk.Renderer implementation ---
 
 func (kc *KtIRContext) NilExpr() string              { return "null" }
-func (kc *KtIRContext) Literal(n *ir.Literal) string { return kc.evalLiteral(n) }
+func (kc *KtIRContext) Literal(n *ir.Literal) string { return ktLiteral(n) }
 func (kc *KtIRContext) Ident(n *ir.Ident) string     { return kc.evalIdent(n) }
 
 func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
@@ -363,7 +363,10 @@ func (kc *KtIRContext) StmtPrefix(_ ir.Stmt) []string { return nil }
 
 func (kc *KtIRContext) Scoped(name string) irwalk.Renderer { return kc.WithLocal(name) }
 
-func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
+// ktLiteral spells one IR literal. A free function because it reads nothing
+// off the context and both entry points need it -- IRLiteralToKt used to carry
+// its own copy, and the two had already drifted on the exponent case.
+func ktLiteral(n *ir.Literal) string {
 	if n.Type == nil {
 		return n.Value
 	}
@@ -382,6 +385,13 @@ func (kc *KtIRContext) evalLiteral(n *ir.Literal) string {
 		// stopped compiling.
 		if !strings.ContainsAny(s, ".eE") {
 			s += ".0"
+		}
+		if n.Type.Bits == 32 {
+			// Kotlin has no implicit Double -> Float, so a 32-bit literal
+			// carries the suffix that makes it the type IRTypeToKt already
+			// calls it. Without it a folded `float32(0.0)` reached a Float
+			// position as a Double and did not compile.
+			s += "f"
 		}
 		return s
 	case ir.TypeBool:
@@ -1055,35 +1065,7 @@ func IRLiteralToKt(e ir.Expr) string {
 	}
 	switch n := e.(type) {
 	case *ir.Literal:
-		if n.Type == nil {
-			return n.Value
-		}
-		if s, ok := UnitLiteralKt(n); ok {
-			return s
-		}
-		switch n.Type.Kind {
-		case ir.TypeString:
-			return fmt.Sprintf("%q", n.Value)
-		case ir.TypeInt:
-			return n.Value
-		case ir.TypeFloat:
-			s := n.Value
-			if !strings.ContainsAny(s, ".eE") {
-				s += ".0"
-			}
-			return s
-		case ir.TypeBool:
-			return n.Value
-		case ir.TypeNull:
-			return "null"
-		case ir.TypeStruct:
-			if ir.StringReprStruct(n.Type) {
-				return fmt.Sprintf("%q", n.Value)
-			}
-			return n.Value
-		default:
-			return n.Value
-		}
+		return ktLiteral(n)
 	case *ir.ListLit:
 		if len(n.Elems) == 0 {
 			return "emptyList()"

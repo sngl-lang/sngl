@@ -68,7 +68,7 @@ func (m *Model) __focusNext() {
 			m.__focusLoop2_cursor = 0
 		} else {
 			if m.__focusID == 2 {
-				__focusLen := len(m.todos)
+				var __focusLen int = len(m.todos)
 				if (m.__focusLoop2_cursor + 1) < __focusLen {
 					m.__focusLoop2_cursor = (m.__focusLoop2_cursor + 1)
 				} else {

@@ -2,7 +2,9 @@ package optimize
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -46,6 +48,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if lit := combinedUnitLiteral(x); lit != nil {
 			return lit
 		}
+		if lit := settledNullTest(x); lit != nil {
+			return lit
+		}
 	case *ir.Unary:
 		// Reference operations (&x, *p) are never const — the underlying
 		// storage may be mutated through aliases, and `&literal` is not a
@@ -82,6 +87,15 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		}
 	case *ir.Conversion:
 		x.Operand = foldExpr(x.Operand, ctx)
+		// An unwrap of a value put into an option is that value. The pair
+		// appears where a call site supplied a plain T for a declared
+		// option<T> and the body read it in a branch a null test had settled
+		// -- two authors' halves, meeting only after inlining. Left standing,
+		// Go boxes and immediately dereferences, Kotlin asserts `2.0!!`, and
+		// the static html renderer cannot see a constant where there is one.
+		if inner := unwrappedOptionOperand(x); inner != nil {
+			return foldExpr(inner, ctx)
+		}
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
 		if id, ok := x.Operand.(*ir.Ident); ok {
@@ -147,6 +161,17 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		// No subexpressions.
 	default:
 		panic(fmt.Sprintf("foldExpr: unhandled expr %T", x))
+	}
+	// Asked a second time, because a sub-expression may have become constant
+	// only during the walk above and the evaluation at the top saw the shape
+	// before that. An option unwrap is what makes this necessary rather than
+	// merely tidy: evalConversion refuses an option *wrap* outright, so
+	// `float(option<float>(2.0)) / 10.0` evaluated to nothing whole while both
+	// its operands folded -- and gtk4 emitted the division for cgo to do.
+	if val, ok := evalExpr(e, ctx); ok {
+		if expr := irFromValue(val, e.ExprType()); expr != nil {
+			return expr
+		}
 	}
 	return e
 }
@@ -295,8 +320,144 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	for i := range n.Handlers {
 		n.Handlers[i].Func.Block = foldStmts(n.Handlers[i].Func.Block, ctx)
 	}
+	// A named slot's population is a body like the children are. Visited by
+	// name because Slots is a map: folding itself does not care, but a pass
+	// sharing this walk's order should not depend on Go's.
+	for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+		if sc := n.Slots[name]; sc != nil {
+			sc.Body = foldStmts(sc.Body, ctx)
+		}
+	}
 	n.Children = foldStmts(n.Children, ctx)
 	return n
+}
+
+// putsValueInOption reports whether conv is a value being placed into an
+// option -- which is to say that what comes out of it is not null.
+//
+// Deliberately wider than ir.IsOptionWrap, which is the promotion of a bare T
+// into option<T> and nothing else: an argument crossing two coercions at once
+// arrives as the single conversion `option<float>(2)`, an int operand under a
+// float option, and that is a value in an option too.
+func putsValueInOption(conv *ir.Conversion) bool {
+	if conv == nil || conv.Type == nil || conv.Type.Kind != ir.TypeOption || conv.Operand == nil {
+		return false
+	}
+	src := conv.Operand.ExprType()
+	if src == nil {
+		return false
+	}
+	return src.Kind != ir.TypeNull && src.Kind != ir.TypeOption && src.Kind != ir.TypeDyn
+}
+
+// unwrappedOptionOperand answers `float(option<float>(2))` with `float(2)`,
+// and nil for anything that is not an unwrap of a value known to be there.
+//
+// The conversion is rebuilt rather than dropped because the inner operand may
+// carry a different type from the position it now stands in -- the `2` above
+// is an int where a float is wanted.
+func unwrappedOptionOperand(x *ir.Conversion) ir.Expr {
+	if !ir.IsOptionUnwrap(x) {
+		return nil
+	}
+	inner, ok := x.Operand.(*ir.Conversion)
+	if !ok || !putsValueInOption(inner) {
+		return nil
+	}
+	if inner.Operand.ExprType().Equal(x.Type) {
+		return inner.Operand
+	}
+	return &ir.Conversion{AST: x.AST, Type: x.Type, Operand: inner.Operand}
+}
+
+// isNullOperand reports whether e is the `null` literal, which carries a type
+// of its own rather than any option's.
+func isNullOperand(e ir.Expr) bool {
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeNull
+}
+
+// settledNullTest folds `x != null` and `x == null` where the type of x says
+// the answer: everything in SNGL is non-nullable but `option<T>`, the `null`
+// literal itself, and `dyn`, which says nothing about what it holds.
+//
+// The test is written by whoever declared the option and answered by whoever
+// filled it in, and for a component prop those are two different authors. A
+// platform override asks `if value != null`; a call site that supplied a value
+// has had its argument wrapped by the checker, so after inlining what is left
+// is a float compared against null. Unfolded, every determinate `progress` on
+// android emitted a dead branch around the live one, a `!!` on a literal, and
+// an unreachable arm whose type the host then had to agree with.
+func settledNullTest(x *ir.Binary) *ir.Literal {
+	if x.Op != ast.BinEq && x.Op != ast.BinNeq {
+		return nil
+	}
+	var other ir.Expr
+	switch {
+	case isNullOperand(x.Left) && isNullOperand(x.Right):
+		// null against null: no operand type to read, the literals decide.
+		return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(x.Op == ast.BinEq)}
+	case isNullOperand(x.Right):
+		other = x.Left
+	case isNullOperand(x.Left):
+		other = x.Right
+	default:
+		return nil
+	}
+	// A value written where an option was declared reaches here as the
+	// conversion the checker inserted, whose *type* is the option. What it
+	// holds is the operand, and that is the half the test is about.
+	for {
+		conv, ok := other.(*ir.Conversion)
+		if !ok || !putsValueInOption(conv) {
+			break
+		}
+		other = conv.Operand
+	}
+	if !alwaysPresent(other.ExprType()) || !droppable(other) {
+		return nil
+	}
+	return &ir.Literal{Type: ir.TypBool, Value: strconv.FormatBool(x.Op == ast.BinNeq)}
+}
+
+// alwaysPresent reports whether a value of t is necessarily there, so that
+// comparing one against null has an answer the type already holds.
+//
+// An allowlist, and that direction is the point: the kinds that *can* be
+// absent are not a closed set -- `option`, `dyn` and a func null converts to,
+// but also an unbound type parameter, a foreign handle that is a host pointer,
+// and a `remote` still in flight. Listed the other way round, each new kind
+// would join the fold by default and be wrong there in silence.
+func alwaysPresent(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
+		ir.TypeUnit, ir.TypeEnum, ir.TypeStruct, ir.TypeList, ir.TypeMap:
+		return true
+	}
+	return false
+}
+
+// droppable reports whether evaluating e can be skipped without losing
+// anything. Every other fold in this file replaces an expression with what
+// evaluating it produced; this one replaces it with an answer read off its
+// *type*, so the operand goes unevaluated and a call inside it would never
+// run.
+func droppable(e ir.Expr) bool {
+	ok := true
+	_ = ir.WalkExprs(e, func(sub ir.Expr) error {
+		call, isCall := sub.(*ir.Call)
+		if !isCall {
+			return nil
+		}
+		if call.Func == nil || call.Func.Purity != ir.PurityPure || call.ErrorMode != ir.ErrorNone {
+			ok = false
+		}
+		return nil
+	})
+	return ok
 }
 
 // scaledUnitLiteral folds a unit literal scaled by a number -- `400 * 1px`,

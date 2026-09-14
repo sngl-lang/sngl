@@ -4,7 +4,10 @@
 // prop, an int reached a string one, and `html.div(hidden="yes")` type-checked.
 //
 // Widening a number is lossless and stays implicit, and a numeric literal is
-// untyped so it takes the type it is assigned to.
+// untyped so it takes the type it is assigned to. Both still hold through the
+// `option` promotion `progress.value` asks for: two implicit steps, int to
+// float and float into the option, and neither is a conversion the program
+// wrote.
 import . "sngl:ui"
 import "sngl:platform/html"
 
@@ -18,5 +21,5 @@ window {
     html.div(hidden="yes") {} // ERROR(check) "cannot use string as bool for prop \"hidden\""
     html.input(value=42) {}   // ERROR(check) "cannot use int as string for prop \"value\""
     text(value=n)             // ERROR(check) "cannot use int as string for prop \"value\""
-    progress(value="x")       // ERROR(check) "cannot use string as float for prop \"value\""
+    progress(value="x")       // ERROR(check) "cannot use string as option<float> for prop \"value\""
 }

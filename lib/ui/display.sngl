@@ -103,13 +103,18 @@ component _example_avatar node {
     }
 }
 
-// Determinate progress indicator. Shows the fraction `value / max`
-// filled. Set `showValue=true` to render a numeric read-out alongside
-// the bar. `variant` styles the bar ("primary", "success", "warning",
-// "error"); `label` annotates the bar with a short description.
+// Progress indicator. Shows the fraction `value / max` filled. Set
+// `showValue=true` to render a numeric read-out alongside the bar. `variant`
+// styles the bar ("primary", "success", "warning", "error"); `label`
+// annotates the bar with a short description.
+//
+// Written with no `value` it is *indeterminate*: a bar that says work is
+// happening and not how much is left. That is why `value` is an `option` --
+// zero is a legitimate fraction and cannot double as "not known", and each
+// platform has its own shape for the indeterminate one.
 component progress(
     style Style,
-    value float,
+    value option<float>,
     // The value `value` is measured against. One rather than zero, because a
     // platform that wants a fraction divides by it and every platform that
     // does not still has to render something: `<progress max="0">` is invalid
@@ -124,6 +129,7 @@ component _example_progress node {
     vbox(style={gap=8, padding=16}) {
         progress(value=0.7, max=1, label="70% complete", showValue=true)
         progress(value=3, max=10)
+        progress(label="working")
     }
 }
 

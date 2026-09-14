@@ -150,38 +150,12 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 	panic(fmt.Sprintf("android: no composable for component %q (platform android has no override and no built-in body)", n.Name))
 }
 
-// emitInputHandlerCall lowers one @input/@change handler attached to
-// an input/entry composable. The handler body runs inside Compose's
-// onValueChange lambda with the new text bound to `newValueVar`; the
-// handler's event param (if any) is materialized as a tiny data
-// holder so `e.value` reads return the same Kotlin string. Handlers
-// with no event param (e.g. `@input { count += 1 }`) drop the alias.
-// emitValueWriteback lowers the synthesized `:value=var` two-way-bind
-// handler inside Compose's onValueChange lambda. The prop-binding lower
-// pass names this handler after the "value" prop and shapes its body as
-// `var = <param>` where the param IS the new string value (not an event
-// object). So the param binds directly to newValueVar — unlike
-// emitInputHandlerCall, which wraps it in a SnglInputEvent holder for
-// user `@input(e)` handlers that read `e.value`.
-func emitValueWriteback(cc *irComposeContext, n *ir.NodeInst, newValueVar string) {
-	h := codegen.NodeHandler(n, "value")
-	if h == nil || h.Func == nil {
-		return
-	}
-	cc.line("run {")
-	cc.indent++
-	if len(h.Func.Params) > 0 {
-		cc.line("val %s = %s", h.Func.Params[0].Name, newValueVar)
-	}
-	for _, stmt := range h.Func.Block {
-		for _, line := range cc.kc.EvalStmt(stmt) {
-			cc.line("%s", line)
-		}
-	}
-	cc.indent--
-	cc.line("}")
-}
-
+// emitInputHandlerCall lowers one @change handler attached to select, the
+// last composable whose body is written here. The handler body runs inside
+// Compose's onClick lambda with the chosen option bound to `newValueVar`;
+// the handler's event param (if any) is materialized as a tiny data holder so
+// `e.value` reads return the same Kotlin string. A handler with no event param
+// drops the alias.
 func emitInputHandlerCall(cc *irComposeContext, n *ir.NodeInst, eventName, newValueVar string) {
 	h := codegen.NodeHandler(n, eventName)
 	if h == nil || h.Func == nil {
@@ -220,48 +194,28 @@ func declaredName(n *ir.NodeInst) string {
 	return n.Name
 }
 
+// handWrittenComposables names what renderStdlibComposable has a case for.
+// Kept beside it so the one other question asked about that set -- whether a
+// node reaches emitInputHandlerCall, and so needs the event holder declared --
+// reads the same list rather than a copy of it.
+var handWrittenComposables = []string{"select"}
+
+func handWrittenComposable(n *ir.NodeInst) bool {
+	return slices.Contains(handWrittenComposables, declaredName(n))
+}
+
 // renderStdlibComposable emits the components whose android body is still
 // written here rather than declared in codegen/platform/android. It reports
 // whether it recognised n; an unrecognised one is a missing override, which
 // renderNode panics on.
+//
+// Each is here for a reason a declaration cannot yet state, and the comment on
+// its `component ui.X()` stub in widgets.sngl is where that reason is written
+// down.
 func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 	style := cc.buildModifier(n)
 
 	switch declaredName(n) {
-	case "input":
-		// Resolve `value=...` for the controlled-input expression.
-		valueExpr := "\"\""
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			valueExpr = cc.kc.EvalExpr(v)
-		}
-		placeholder := ""
-		if s, ok := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder")); ok {
-			placeholder = s
-		}
-		// Collect @input and @change handlers — Compose has no
-		// commit event distinct from per-keystroke change, so both
-		// fire on onValueChange. The synthetic event is built per
-		// handler using its first param's name, aliased to a
-		// data-class holder so `e.value` resolves naturally.
-		mod := cc.buildModifierRaw(n)
-		cc.line("OutlinedTextField(")
-		cc.indent++
-		cc.line("value = %s,", valueExpr)
-		cc.line("onValueChange = { newValue ->")
-		cc.indent++
-		emitValueWriteback(cc, n, "newValue")
-		emitInputHandlerCall(cc, n, "input", "newValue")
-		emitInputHandlerCall(cc, n, "change", "newValue")
-		emitInputHandlerCall(cc, n, "changed", "newValue")
-		cc.indent--
-		cc.line("},")
-		if placeholder != "" {
-			cc.line("label = { Text(%q) },", placeholder)
-		}
-		cc.line("modifier = %s", mod)
-		cc.indent--
-		cc.line(")")
-
 	case "select":
 		// Two-way `:value` dropdown. The binding pass synthesizes the
 		// write-back as a @change handler (like `input`), so selecting an
@@ -309,46 +263,6 @@ func (cc *irComposeContext) renderStdlibComposable(n *ir.NodeInst) bool {
 		cc.line("}")
 		cc.indent--
 		cc.line("}")
-
-	case "progress":
-		// Compose's progress is 0..1, so the value is measured against max
-		// rather than passed through as if it already were a fraction. max
-		// defaults to 1, so a call site that gave only a value is unchanged.
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			val := cc.kc.EvalExpr(v)
-			frac := val + ".toFloat()"
-			if m := codegen.NodeProp(n, "max"); m != nil {
-				frac = "(" + val + " / " + cc.kc.EvalExpr(m) + ").toFloat()"
-			}
-			cc.line("LinearProgressIndicator(progress = { %s }, %s)", frac, style)
-		} else {
-			cc.line("LinearProgressIndicator(%s)", style)
-		}
-
-	case "datepicker":
-		// One-way `value` (the date, a String on Android) + @change. Rendered
-		// as a read-only field showing the date with the placeholder as label.
-		// (A full Material3 calendar dialog is a future enhancement.)
-		valueExpr := "\"\""
-		if v := codegen.NodeProp(n, "value"); v != nil {
-			valueExpr = cc.kc.EvalExpr(v)
-		}
-		placeholder, _ := codegen.IRLiteralString(codegen.NodeProp(n, "placeholder"))
-		cc.line("OutlinedTextField(")
-		cc.indent++
-		cc.line("value = %s,", valueExpr)
-		cc.line("onValueChange = { newValue ->")
-		cc.indent++
-		emitInputHandlerCall(cc, n, "change", "newValue")
-		cc.indent--
-		cc.line("},")
-		cc.line("readOnly = true,")
-		if placeholder != "" {
-			cc.line("label = { Text(%q) },", placeholder)
-		}
-		cc.line("modifier = %s", cc.buildModifierRaw(n))
-		cc.indent--
-		cc.line(")")
 
 	default:
 		return false
@@ -711,6 +625,7 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 			args = append(args, p.Name+" = "+cc.kc.EvalExpr(v))
 		}
 	}
+	args = append(args, cc.slotArgs(n, comp)...)
 	call := fmt.Sprintf("%s(%s)", composable, strings.Join(args, ", "))
 	if comp.ChildrenType == nil {
 		cc.line("%s", call)
@@ -733,6 +648,53 @@ func (cc *irComposeContext) renderIntrinsic(n *ir.NodeInst, comp *ir.Component, 
 	}
 	cc.indent--
 	cc.line("}")
+}
+
+// slotArgs emits each named slot a call site populated as the composable
+// lambda Compose takes in its place -- `label = { Text("Name") }`. A value
+// prop cannot say that: what Compose takes there is content, and content is a
+// tree the override writes like any other.
+//
+// A slot whose body renders nothing is left out rather than passed empty,
+// because Compose reads the two differently: an absent `label` has no floating
+// label at all, while `label = {}` still reserves its space and notches the
+// outline. That empty body is what an override conditional on a prop folds to
+// when the prop is a constant -- a condition only answerable at run time keeps
+// the argument, and the widget then has a caption that may be empty.
+func (cc *irComposeContext) slotArgs(n *ir.NodeInst, comp *ir.Component) []string {
+	var args []string
+	for _, slot := range comp.Slots {
+		if slot.Rest {
+			continue
+		}
+		sc := n.Slots[slot.Name]
+		if sc == nil {
+			continue
+		}
+		body := cc.renderNested(sc.Body)
+		if body == "" {
+			continue
+		}
+		args = append(args, slot.Name+" = {\n"+body+strings.Repeat("    ", cc.indent)+"}")
+	}
+	return args
+}
+
+// renderNested renders stmts one level in, into a buffer of their own. The
+// lambda is neither a Row nor a Column scope and is never the window's own
+// content, so nothing inside it may ask for a weight or for the display
+// cutout's inset.
+func (cc *irComposeContext) renderNested(stmts []ir.Stmt) string {
+	savedBuf, savedAxis, savedRoot := cc.buf, cc.parentAxis, cc.atRoot
+	cc.buf, cc.parentAxis, cc.atRoot = &strings.Builder{}, "", false
+	cc.indent++
+	for _, stmt := range stmts {
+		cc.renderStmt(stmt)
+	}
+	cc.indent--
+	body := cc.buf.String()
+	cc.buf, cc.parentAxis, cc.atRoot = savedBuf, savedAxis, savedRoot
+	return body
 }
 
 // intrinsicModifier builds the Modifier chain for a declared composable:
@@ -776,6 +738,13 @@ const rawCallbackValue = "newValue"
 // lambda may leave the value it is passed unnamed, and every declaration here
 // is one the stdlib override wrote for whichever handlers a call site turned
 // out to supply.
+//
+// A prop that *returns* something is written as Kotlin's other function
+// literal, the anonymous `fun`, because the lambda form cannot say either half
+// of what such an argument needs. `return` in a lambda is a non-local return
+// from the enclosing function, and the value's type is left to inference --
+// where Compose wants a Float and SNGL's `float` is a Double, inference gives
+// it the wrong one silently. `fun(): Float { return … }` states both.
 func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 	if lam.Func == nil || len(lam.Func.Block) == 0 {
 		return name + " = {}"
@@ -794,6 +763,9 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 	if len(body) == 0 {
 		return name + " = {}"
 	}
+	if lam.Func.Return != nil {
+		return cc.anonFuncArg(name, lam, body)
+	}
 
 	var params, prologue []string
 	for _, p := range lam.Func.Params {
@@ -804,7 +776,7 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 		// Compose passes the changed value: the event is built from it here,
 		// the only place both are in view. SnglInputEvent is the holder this
 		// platform emits (compiler_ir.go).
-		if p.Type != nil && p.Type.Kind == ir.TypeStruct {
+		if paramTakesInputHolder(lam.Func.Block, p) {
 			params = append(params, rawCallbackValue)
 			prologue = append(prologue, fmt.Sprintf("val %s = SnglInputEvent(%s)", p.Name, rawCallbackValue))
 			continue
@@ -825,6 +797,36 @@ func (cc *irComposeContext) lambdaArg(name string, lam *ir.Lambda) string {
 	return b.String()
 }
 
+// anonFuncArg emits a value-returning func-typed prop as Kotlin's anonymous
+// function. Every parameter is named and typed here, unlike the lambda form:
+// an anonymous `fun` may not drop one, and the declaration holds the types
+// that make the signature Compose's rather than whatever inference reached.
+//
+// An event-payload parameter is built from the framework's value here too,
+// the way lambdaArg does it -- a parameter typed as the SNGL event names a
+// class this platform emits under its own name, so declaring it as written
+// would name one nothing declares.
+func (cc *irComposeContext) anonFuncArg(name string, lam *ir.Lambda, body []string) string {
+	params := make([]string, 0, len(lam.Func.Params))
+	var prologue []string
+	for _, p := range lam.Func.Params {
+		if paramTakesInputHolder(lam.Func.Block, p) {
+			params = append(params, rawCallbackValue+": String")
+			prologue = append(prologue, fmt.Sprintf("val %s = SnglInputEvent(%s)", p.Name, rawCallbackValue))
+			continue
+		}
+		params = append(params, p.Name+": "+kotlin.IRTypeToKt(p.Type))
+	}
+	outer := strings.Repeat("    ", cc.indent)
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s = fun(%s): %s {", name, strings.Join(params, ", "), kotlin.IRTypeToKt(lam.Func.Return))
+	for _, line := range append(prologue, body...) {
+		b.WriteString("\n" + outer + "    " + line)
+	}
+	b.WriteString("\n" + outer + "}")
+	return b.String()
+}
+
 // readsParam reports whether stmts reference p. The parameter is declared only
 // then: what a callback's lambda receives is named for the body's sake, and a
 // name declared over an unused value would shadow whatever else carries it —
@@ -833,6 +835,72 @@ func readsParam(stmts []ir.Stmt, p *ir.Param) bool {
 	found := false
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
 		if id, ok := e.(*ir.Ident); ok && id.Sym == p {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// paramTakesInputHolder reports whether p is a callback parameter this
+// platform materializes as a SnglInputEvent: an event payload the body reads,
+// where Compose passes the changed value instead.
+//
+// It is a function rather than the inline test it replaces because
+// compiler_ir.go has to answer the same question *before* it writes the
+// preamble the holder is declared in, and a second spelling of the predicate
+// would eventually disagree with this one. Only over-declaring is harmless;
+// under-declaring is Kotlin naming a class nothing defines.
+func paramTakesInputHolder(block []ir.Stmt, p *ir.Param) bool {
+	return readsParam(block, p) && p.Type != nil && p.Type.Kind == ir.TypeStruct
+}
+
+// usesInputHolder reports whether anything in pkg will reach one of the two
+// sites that emit a SnglInputEvent: a func-typed prop's lambda (lambdaArg) or
+// a param-carrying handler on one of the components renderStdlibComposable
+// still writes by hand (emitInputHandlerCall).
+//
+// The walk is over the whole package rather than over the windows and
+// components actually emitted, because the cost of the two answers is not
+// symmetric: a declaration nothing uses is dead Kotlin, and a use with no
+// declaration does not compile.
+func usesInputHolder(pkg *ir.Package) bool {
+	found := false
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch v := n.(type) {
+		case *ir.Lambda:
+			if v.Func == nil || len(v.Func.Block) == 0 {
+				return nil
+			}
+			for _, p := range v.Func.Params {
+				if paramTakesInputHolder(v.Func.Block, p) {
+					found = true
+				}
+			}
+		case *ir.NodeInst:
+			if !handWrittenComposable(v) {
+				return nil
+			}
+			for i := range v.Handlers {
+				if h := &v.Handlers[i]; h.Func != nil && len(h.Func.Params) > 0 {
+					found = true
+				}
+			}
+		}
+		return nil
+	})
+	return found
+}
+
+// usesChangeEvent reports whether anything in pkg builds a `sngl:ui`
+// ChangeEvent. A struct literal is what spells the class name in the emitted
+// Kotlin -- `change({value=opt})` in an override becomes
+// `ChangeEvent(value = opt)` -- and nothing flows a stdlib struct into the
+// data classes the file declares.
+func usesChangeEvent(pkg *ir.Package) bool {
+	found := false
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
+		if lit, ok := e.(*ir.StructLit); ok && lit.Def != nil && lit.Def.Name == "ChangeEvent" {
 			found = true
 		}
 		return nil

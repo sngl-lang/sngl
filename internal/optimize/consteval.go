@@ -644,7 +644,14 @@ func irLiteral(val any, typ *ir.Type) *ir.Literal {
 	case uint64:
 		return &ir.Literal{Type: intLitType(typ), Value: strconv.FormatUint(v, 10)}
 	case float64:
-		return &ir.Literal{Type: floatLitType(typ), Value: floatToStr(v)}
+		t := floatLitType(typ)
+		// Spelled at the width it is stored at: a folded float32 has already
+		// been rounded to one, and printing it back at float64 precision gives
+		// `0.20000000298023224f` where the value is 0.2.
+		if t.Bits == 32 {
+			return &ir.Literal{Type: t, Value: strconv.FormatFloat(v, 'g', -1, 32)}
+		}
+		return &ir.Literal{Type: t, Value: floatToStr(v)}
 	case bool:
 		raw := "false"
 		if v {

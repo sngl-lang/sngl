@@ -167,7 +167,7 @@ func (m *Model) __effect0_down() {
 	m.__effect0_desired = []int{}
 	m.__effect0_desired = append(m.__effect0_desired, m.k__inst0)
 	for __effect0_i, _ := range m.__effect0_live {
-		__effect0_j := ((len(m.__effect0_live) - 1) - __effect0_i)
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
 			m.__effect0_key = m.__effect0_live[__effect0_j]
 			m.__effect0_unmount()
@@ -215,7 +215,7 @@ func (m *Model) __effect1_down() {
 	m.__effect1_desired = []int{}
 	m.__effect1_desired = append(m.__effect1_desired, m.k__inst0)
 	for __effect1_i, _ := range m.__effect1_live {
-		__effect1_j := ((len(m.__effect1_live) - 1) - __effect1_i)
+		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
 			m.__effect1_key = m.__effect1_live[__effect1_j]
 			m.__effect1_unmount()

@@ -178,11 +178,15 @@ component _example_select node {
 // (two-way bound). `min` / `max` clamp the selectable range;
 // `placeholder` shows when no date is picked. `@change` fires once
 // the user picks a date.
+//
+// All three are `option`s because each is absent until someone supplies it,
+// and a `date` has no value meaning "none": its zero is the first day of year
+// one, which is a date a picker would happily show.
 component datepicker(
     style Style,
-    value time.date,
-    min time.date,
-    max time.date,
+    value option<time.date>,
+    min option<time.date>,
+    max option<time.date>,
     disabled bool,
     placeholder string,
     @change DateEvent,

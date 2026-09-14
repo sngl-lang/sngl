@@ -9,8 +9,8 @@
 // A `component ui.X { platform android { ... } }` override is inlined into
 // the caller at lower time, so its body is what the codegen sees.
 //
-// The four `component ui.X()` bodies left below are not read at all — the
-// parens form is skipped by mergePlatformExtensions — and those four
+// The three `component ui.X()` bodies left below are not read at all — the
+// parens form is skipped by mergePlatformExtensions — and those three
 // components are still written by name in a switch in compose_ir.go. Each
 // needs something the generic intrinsic emitter cannot yet say; the comment
 // on each says which.
@@ -76,6 +76,11 @@ component android(
 // from: a shorthand for a single-field payload would stop checking the moment
 // that payload gained a second field.
 //
+// A **slot** is the other kind of lambda Compose takes: content rather than a
+// callback. A named slot a call site populated is emitted as that argument,
+// and one whose body renders nothing is left out — an absent argument and one
+// given empty content are two different widgets.
+//
 // The id is `android:` plus the composable's name — namespaced by the
 // platform whose codegen answers to it, so a platform primitive can never
 // collide with a stdlib intrinsic or with another platform's. It names no
@@ -130,6 +135,17 @@ component CircularProgressIndicator(
     modifier ui.Style,
 ) ui.node
 
+// Compose splits determinate from indeterminate by whether the `progress`
+// argument is there at all, so the override writes the two calls rather than
+// choosing a number for "unknown". It is a `() -> Float`, which is why the
+// prop is a func returning `float32`: `float` is a Kotlin Double, and the
+// declaration is what says otherwise.
+#[intrinsic("android:LinearProgressIndicator")]
+component LinearProgressIndicator(
+    progress func() float32,
+    modifier ui.Style,
+) ui.node
+
 // `colors` is the same Style the modifier gets. A Button paints its own
 // surface, so a background in the modifier lands behind the pill rather than
 // on it -- the colour has to go through the widget's own colour set.
@@ -178,14 +194,20 @@ component RadioButton(
     onClick func(),
 ) ui.node
 
+// `label` is the floating caption, and it is a slot rather than a prop
+// because Compose takes content there, not text. An override that leaves it
+// empty gets no `label` argument at all, which is not the same widget as one
+// labelled with nothing.
 #[intrinsic("android:OutlinedTextField")]
 component OutlinedTextField(
     value string,
     minLines int,
+    readOnly bool,
     modifier ui.Style,
     // Compose passes the new text; the SNGL event a handler reads is built
     // from it at the boundary, which is what declaring the payload says.
     onValueChange func(e ui.InputEvent),
+    label component ui.node,
 ) ui.node
 
 #[intrinsic("android:Dialog")]

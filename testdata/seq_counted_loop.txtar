@@ -122,7 +122,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func Total(xs func(func(int) bool)) int {
-	sum := 0
+	var sum int = 0
 	for x := range xs {
 		sum = (sum + x)
 	}
@@ -260,8 +260,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
-
-data class SnglInputEvent(val value: String)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()

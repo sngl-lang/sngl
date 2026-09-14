@@ -86,7 +86,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func (m *Model) paint__inst0(c gfx.Context) {
-	c.Circle(1, 2, 3)
+	c.Circle(1.0, 2.0, 3.0)
 	gfx.Reset(c)
 }
 

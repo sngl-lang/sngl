@@ -320,8 +320,6 @@ data class Measurement(
     val pct: Double = 0.0
 )
 
-data class SnglInputEvent(val value: String)
-
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 

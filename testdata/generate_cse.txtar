@@ -272,10 +272,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			__cse0 := Weight(m.seed__inst0)
+			var __cse0 int = Weight(m.seed__inst0)
 			m.total__inst0 = (__cse0 + (__cse0 * 2))
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			__cse1 := Weight(m.a__inst0)
+			var __cse1 int = Weight(m.a__inst0)
 			m.total__inst0 = (((__cse1 * 100) + Weight(m.b__inst0)) + __cse1)
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
 			m.log__inst0 = (m.noisy__inst0() + m.noisy__inst0())
@@ -344,8 +344,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.safeDrawingPadding
-
-data class SnglInputEvent(val value: String)
 
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
