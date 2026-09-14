@@ -8,7 +8,7 @@ import (
 )
 
 // emitFyneModel writes the structural model file — lang helpers, unit/struct
-// decls, the Model struct, New(), toast + timer methods, computed methods,
+// decls, the Model struct, New(), toast methods, computed methods,
 // user functions, and getters/setters. It emits Go directly (not via a
 // template) so every framework reference registers its import through gc:
 // method-body references (fyne.Do, time.*, widget.*) call gc.RequireImport at
@@ -53,10 +53,6 @@ func emitFyneModel(b *strings.Builder, td *templateData, gc *golang.GoIRContext)
 	}
 	if len(td.WidgetFields) > 0 {
 		b.WriteString("\n")
-	}
-	for _, t := range td.Timers {
-		fmt.Fprintf(b, "\ttimer%dTicker *time.Ticker\n", t.Index)
-		gc.RequireImport("time")
 	}
 	if td.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
@@ -121,31 +117,6 @@ func (m *Model) updateToast() {
 		}
 		fmt.Fprintf(b, "func (m *Model) %s() %s {\n\treturn m.%s\n}\n\n", bd.Getter, bd.GoType, bd.Name)
 		fmt.Fprintf(b, "func (m *Model) Set%s(v %s) {\n\tm.%s = v\n%s}\n\n", bd.Getter, bd.GoType, bd.Name, bd.SetterExtra)
-	}
-
-	if td.HasTimers {
-		// Timer lifecycle methods reference time.* and fyne.Do.
-		gc.RequireImport("time")
-		gc.RequireImport("fyne.io/fyne/v2")
-		// The ticker runs unconditionally; each tick gates its body on the
-		// `enabled` var. This matches SNGL timer semantics ("nothing runs while
-		// enabled is false") and means flipping the var pauses/resumes the timer
-		// with no restart wiring — the next tick simply fires or skips.
-		b.WriteString("// StartTimers starts all timers; ticks are gated on each timer's enabled var.\nfunc (m *Model) StartTimers() {\n")
-		for _, t := range td.Timers {
-			fmt.Fprintf(b, "\tm.timer%dTicker = time.NewTicker(%d * time.Millisecond)\n", t.Index, t.IntervalMs)
-			fmt.Fprintf(b, "\tgo func() {\n\t\tfor range m.timer%dTicker.C {\n\t\t\tfyne.Do(func() {\n", t.Index)
-			if t.ActiveVar != "" {
-				fmt.Fprintf(b, "\t\t\t\tif !m.%s {\n\t\t\t\t\treturn\n\t\t\t\t}\n", t.ActiveVar)
-			}
-			fmt.Fprintf(b, "%s\n\t\t\t})\n\t\t}\n\t}()\n", t.Body)
-		}
-		b.WriteString("}\n\n")
-		b.WriteString("// StopTimers stops all active timers.\nfunc (m *Model) StopTimers() {\n")
-		for _, t := range td.Timers {
-			fmt.Fprintf(b, "\tif m.timer%dTicker != nil {\n\t\tm.timer%dTicker.Stop()\n\t}\n", t.Index, t.Index)
-		}
-		b.WriteString("}\n\n")
 	}
 }
 

@@ -1,18 +1,34 @@
 A blocking call in a timer's `@tick` gets a goroutine like one anywhere else.
 
 `offloadableFuncs` is the list of bodies passAsyncOffload may enter from the
-target's own thread. It reads each component's timers and the package's, and
-read a window's vars, funcs and error handler but not its timers -- and
-passTimerPrimitive records a schedule on whichever owner held the node, so an
-inlined timer's is a window's.
+target's own thread, and a tick has been missing from it twice, for two
+different reasons.
 
-The failure was silent, which is what makes it worse than the ternary panic in
-`timer_tick_lowered.txtar`: the tick body was left as written, so
-`os.Hostname()` ran on the goroutine fyne draws on. A poll of anything slower
-than a hostname lookup freezes the window, and the generated code compiles and
-runs.
+It read each component's timers and the package's, and a window's vars, funcs
+and error handler but not its timers -- and passTimerPrimitive records a
+schedule on whichever owner held the node, so an inlined timer's is a window's.
+
+fyne's timer is an `effect` now, so the tick is a lambda handed to
+`fynert.Every`, and a lambda is deliberately not an entry point: what calls one
+is usually code this pass can read, and `xs.map(f)` wants the blocking f rather
+than a goroutine per element. A *native* callee is the exception, because its
+body is not in the program at all -- a host scheduler calls its callback from
+the loop it owns, which is the thread the target draws on.
+
+The failure was silent both times, which is what makes it worse than the
+ternary panic in `timer_tick_lowered.txtar`: the tick body was left as written,
+so `os.Hostname()` ran on the goroutine fyne draws on. A poll of anything
+slower than a hostname lookup freezes the window, and the generated code
+compiles and runs.
+
+The third thing this pins is what the lambda does *not* make async. Colouring
+once read through a closure, so `handle = every(d, func(){ ...blocking... })`
+was itself an async statement -- and passAsyncOffload refuses one inside the
+`if` its caller wraps it in, for a mount that hands work over and blocks on
+nothing. Constructing a closure is not calling it.
 
 deny out/go/fyne/model.go `m.name__inst0 = func\(\) string \{ v, _ := os.Hostname` -- the answer is bound on the spawned goroutine and posted back, never assigned on the drawing thread
+deny out/go/fyne/model.go `(?m)^\tgo func\(\)` -- the goroutine is inside the tick, not around the arming: a mount that hands a closure over blocks on nothing
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -50,6 +66,7 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 	"os"
 	"time"
 )
@@ -62,20 +79,117 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	name__inst0 string
+	name__inst0          string
+	handle__inst0__inst0 int
+	__effect0_key        time.Duration
+	__effect0_live       []time.Duration
+	__effect0_desired    []time.Duration
+	__effects0_settling  bool
+	__effects0_pending   bool
+	__effects0_steps     int
 
 	__n0 *widget.Label
-
-	timer0Ticker *time.Ticker
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
 	m.name__inst0 = "idle"
+	m.handle__inst0__inst0 = 0
+	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_live = []time.Duration{}
+	m.__effect0_desired = []time.Duration{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
+}
+
+func (m *Model) __effect0_mount() {
+	m.handle__inst0__inst0 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
+		go func() {
+			__async_off0 := func() string { v, _ := os.Hostname(); return v }()
+			fyne.Do(func() {
+				m.name__inst0 = __async_off0
+				m.__n0.SetText(m.name__inst0)
+			})
+		}()
+	})
+}
+
+func (m *Model) __effect0_unmount() {
+	fynert.CancelEvery(m.handle__inst0__inst0)
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []time.Duration{}
+	m.__effect0_desired = append(m.__effect0_desired, time.Duration(50)*time.Millisecond)
+	for __effect0_i, _ := range m.__effect0_live {
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
+		if __effect0_j >= len(m.__effect0_desired) {
+			m.__effect0_key = m.__effect0_live[__effect0_j]
+			m.__effect0_unmount()
+		} else {
+			if m.__effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
+				m.__effect0_key = m.__effect0_live[__effect0_j]
+				m.__effect0_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect0_teardown() {
+	for __effect0_ti, _ := range m.__effect0_live {
+		m.__effect0_key = m.__effect0_live[((len(m.__effect0_live) - 1) - __effect0_ti)]
+		m.__effect0_unmount()
+	}
+	m.__effect0_live = []time.Duration{}
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	m.__effect0_teardown()
 }
 
 func (m *Model) Name__inst0() string {
@@ -86,36 +200,19 @@ func (m *Model) SetName__inst0(v string) {
 	m.name__inst0 = v
 }
 
-// StartTimers starts all timers; ticks are gated on each timer's enabled var.
-func (m *Model) StartTimers() {
-	m.timer0Ticker = time.NewTicker(50 * time.Millisecond)
-	go func() {
-		for range m.timer0Ticker.C {
-			fyne.Do(func() {
-				go func() {
-					__async_off0 := func() string { v, _ := os.Hostname(); return v }()
-					fyne.Do(func() {
-						m.name__inst0 = __async_off0
-						m.__n0.SetText(m.name__inst0)
-					})
-				}()
-
-			})
-		}
-	}()
+func (m *Model) Handle__inst0__inst0() int {
+	return m.handle__inst0__inst0
 }
 
-// StopTimers stops all active timers.
-func (m *Model) StopTimers() {
-	if m.timer0Ticker != nil {
-		m.timer0Ticker.Stop()
-	}
+func (m *Model) SetHandle__inst0__inst0(v int) {
+	m.handle__inst0__inst0 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(m.name__inst0)
+	m.__effects0_settle()
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }

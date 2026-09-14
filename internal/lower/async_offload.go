@@ -205,9 +205,10 @@ func lowerAllFuncs(pkg *ir.Package) []*ir.Func {
 // a component leaves it an ir.EventHandler that the generator names itself. A
 // list of Funcs alone offloaded the first and silently blocked the second.
 //
-// A lambda is deliberately not here. One is a value, and what calls it is the
-// code it was handed to: `xs.map(f)` with a blocking f wants the blocking f,
-// not a goroutine per element.
+// A lambda is deliberately not here, with one exception. One is a value, and
+// what calls it is the code it was handed to: `xs.map(f)` with a blocking f
+// wants the blocking f, not a goroutine per element. A *native* callee is that
+// exception -- nativeCallbackFuncs below.
 func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 	out := lowerAllFuncs(pkg)
 	seen := make(map[*ir.Func]bool, len(out))
@@ -224,6 +225,7 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 		add(t.Handler)
 	}
 	collectHandlerFuncs(pkg.Body, add)
+	nativeCallbackFuncs(pkg, add)
 	for _, comp := range pkg.Components {
 		for _, v := range comp.Vars {
 			for _, h := range v.Handlers {
@@ -250,6 +252,33 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 		collectHandlerFuncs(w.Body, add)
 	}
 	return out
+}
+
+// nativeCallbackFuncs is every lambda handed to a call on a native.
+//
+// It is the exception to the rule above, and for the reason that rule is
+// stated: what calls an ordinary lambda is code this pass can read, and a
+// native has no body here at all. A host scheduler calls its callback from the
+// loop it owns, which is the thread the target draws on -- `fynert.Every` and
+// `gtk4rt.Every` behind `time.timer` are that -- so a blocking call in a tick
+// is exactly the work this pass exists to move off it.
+//
+// A native that calls its callback inline instead is indistinguishable from
+// here and gets a goroutine it did not need. Nothing is mis-ordered by that,
+// since the tail is posted back.
+func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Func == nil || c.Func.Foreign.Name == "" || c.Func.Foreign.Marked {
+			return nil
+		}
+		for _, a := range c.Args {
+			if lam, ok := a.Value.(*ir.Lambda); ok && lam.Func != nil {
+				add(lam.Func)
+			}
+		}
+		return nil
+	})
 }
 
 // collectHandlerFuncs walks a view body for the handlers hanging off its nodes.

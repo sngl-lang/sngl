@@ -374,17 +374,21 @@ func Emit(w Handle, signal string) {
 // platform: a GLib timeout source already runs its callback on the main thread,
 // so a tick body mutates the model in the same place a signal handler does and
 // needs no marshalling of its own.
-func Every(ms int, fn func()) uint {
+//
+// The id is an int rather than GLib's guint because the caller is a SNGL
+// `var handle = 0`: this pair is named by a `#[go.native]` declaration in
+// gtk4.sngl, and `int` is the only integer type that declaration can spell.
+func Every(ms int, fn func()) int {
 	if ms <= 0 {
 		return 0
 	}
 	idx := cbind.Register(fn)
-	return uint(C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)))
+	return int(C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)))
 }
 
 // CancelEvery removes a source Every armed. Zero is accepted and does nothing,
 // so a caller need not track whether it ever armed one.
-func CancelEvery(id uint) {
+func CancelEvery(id int) {
 	C.sngl_gtk_source_remove(C.guint(id))
 }
 

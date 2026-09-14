@@ -44,12 +44,14 @@ import (
 
 // A ticker runs on a goroutine and marshals its body through fyne.Do, so the
 // driver needs a real Fyne app for that to be dispatched at all.
+//
+// Nothing arms the schedules here: the timer is an effect, so BuildUI's settle
+// is what mounts them, and __snglTeardown is what would release them.
 func TestTimersTick(t *testing.T) {
 	test.NewApp()
 	m := New()
 	m.BuildUI()
-	m.StartTimers()
-	defer m.StopTimers()
+	defer m.__snglTeardown()
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {

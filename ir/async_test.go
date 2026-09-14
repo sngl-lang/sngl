@@ -6,22 +6,25 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
+// A closure holding a blocking call does not make the expression holding the
+// closure a blocking one: constructing it is not calling it, and the closure's
+// own Func is coloured in its own right.
+//
+// It read the other way round until `time.timer` became an effect on the Go
+// platforms. `handle = every(d, func(){ ...blocking... })` was then an async
+// statement, and passAsyncOffload refuses one inside the `if` its caller wraps
+// it in -- for a body that does not block at all.
 func TestExprHasAsyncCall_LambdaBody(t *testing.T) {
 	asyncFn := &ir.Func{Name: "fetchHello", IsAsync: true}
 	inner := &ir.Func{
 		Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}},
 	}
 	lam := &ir.Lambda{Func: inner}
-	if !ir.ExprHasAsyncCall(lam) {
-		t.Fatalf("expected async detected through Lambda.Func.Block")
+	if ir.ExprHasAsyncCall(lam) {
+		t.Fatalf("constructing a Lambda is not calling it")
 	}
-
-	syncInner := &ir.Func{
-		Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: &ir.Func{Name: "noop"}}}},
-	}
-	syncLam := &ir.Lambda{Func: syncInner}
-	if ir.ExprHasAsyncCall(syncLam) {
-		t.Fatalf("did not expect async in sync Lambda")
+	if !ir.BlockHasAsyncCall(inner.Block) {
+		t.Fatalf("the Lambda's own body is what blocks")
 	}
 }
 
@@ -31,8 +34,8 @@ func TestExprHasAsyncCall_ClosureBody(t *testing.T) {
 		Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: asyncFn}}},
 	}
 	cl := &ir.Closure{Func: inner}
-	if !ir.ExprHasAsyncCall(cl) {
-		t.Fatalf("expected async detected through Closure.Func.Block")
+	if ir.ExprHasAsyncCall(cl) {
+		t.Fatalf("constructing a Closure is not calling it")
 	}
 
 	nilFunc := &ir.Closure{Func: nil}

@@ -47,7 +47,32 @@ func lowerIndexedIter(pkg *ir.Package, _ Caps, _ Options) error {
 		stmts: func(stmts []ir.Stmt) []ir.Stmt { return st.block(stmts) },
 		expr:  func(e ir.Expr) ir.Expr { return e },
 	})
+	// A lambda's body is a block of its own, and walkPackage hands over no
+	// expression's insides -- so a loop written there was left with its second
+	// variable, which Go rejects over a range func. fyne's and gtk4's
+	// `time.timer` put a tick in one, handed to the host scheduler, and that
+	// is what reached it. Collected separately rather than descended into
+	// above, so each block is rewritten exactly once however the two nest.
+	for _, fn := range ownedLambdaFuncs(pkg) {
+		fn.Block = st.block(fn.Block)
+	}
 	return nil
+}
+
+// ownedLambdaFuncs is the func behind every ir.Lambda in pkg.
+//
+// ir.Closure is deliberately absent: passLambda lifts one into pkg.Funcs, so
+// walkPackage already hands its block over and collecting it here would
+// rewrite the same block twice.
+func ownedLambdaFuncs(pkg *ir.Package) []*ir.Func {
+	var out []*ir.Func
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
+			out = append(out, l.Func)
+		}
+		return nil
+	})
+	return out
 }
 
 type indexedIterState struct {

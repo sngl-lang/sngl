@@ -1,12 +1,22 @@
 A timer's `@tick` body is lowered like any other imperative body.
 
 `timer` is an ordinary component, so the inliner has already put this one in the
-window by the time passTimerPrimitive takes the node back out of the tree and
-records the schedule on its owner. That owner is an `ir.Window`, and
-`walkWindow` in internal/lower/walk.go -- the traversal passNoTernary,
-passIndexedIter, passNoRef and NoDeclarative's id scan all ride on -- walked a
-window's vars, funcs and body and not its timers. Nothing in source puts a timer
-there, so the omission was invisible until the pass that creates one ran.
+window before either target's override is reached. The two targets here reach
+it by different routes, and each route had the same gap in a different place.
+
+bubbletea keeps a primitive, which passTimerPrimitive takes out of the tree and
+records on its owner. That owner is an `ir.Window`, and `walkWindow` in
+internal/lower/walk.go -- the traversal passNoTernary, passIndexedIter,
+passNoRef and NoDeclarative's id scan all ride on -- walked a window's vars,
+funcs and body and not its timers. Nothing in source puts a timer there, so the
+omission was invisible until the pass that creates one ran.
+
+fyne's override is an `effect`, so the tick is a lambda handed to a host
+scheduler -- and a lambda's body is an expression's insides, which walkPackage
+hands over to nobody. passNoTernary reaches one through a case of its own and
+passIndexedIter did not, so the ternary came out lowered and the loop beside it
+kept the second variable Go rejects over a range func. lowerIndexedIter collects
+the lambdas separately for that.
 
 The ternary is the loud half: it reached the Go emitter intact and panicked the
 build with "ir.Ternary reached Go codegen". The two-variable loop over a
@@ -19,7 +29,7 @@ The same body in an `@click` handler lowered correctly throughout, which is what
 isolated the position rather than the constructs.
 
 deny out/go/bubbletea/model.go `for i, x := range` -- a pull sequence hands out no index; passIndexedIter counts one alongside
-deny out/go/fyne/model.go `for i, x := range` -- the same, on the other Go platform whose timer is a primitive
+deny out/go/fyne/model.go `for i, x := range` -- the same claim reached through a lambda instead, since this platform schedules with an effect
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -182,6 +192,7 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynert"
 	"slices"
 	"time"
 )
@@ -194,14 +205,24 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	level__inst0 float64
-	rung__inst0  int
+	level__inst0         float64
+	rung__inst0          int
+	handle__inst0__inst0 int
+	__effect0_key        time.Duration
+	__effect0_live       []time.Duration
+	__effect0_desired    []time.Duration
+	__effects0_settling  bool
+	__effects0_pending   bool
+	__effects0_steps     int
 
 	__n0 *widget.Label
-
-	timer0Ticker *time.Ticker
 }
 
 // New creates a Model with default values.
@@ -209,7 +230,101 @@ func New() *Model {
 	m := &Model{}
 	m.level__inst0 = 0.0
 	m.rung__inst0 = 0
+	m.handle__inst0__inst0 = 0
+	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_live = []time.Duration{}
+	m.__effect0_desired = []time.Duration{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
+}
+
+func (m *Model) __effect0_mount() {
+	m.handle__inst0__inst0 = fynert.Every(int(m.__effect0_key/time.Millisecond), func() {
+		var __lt0 float64
+		if m.level__inst0 >= 1.0 {
+			__lt0 = 0.0
+		} else {
+			__lt0 = (m.level__inst0 + 0.01)
+		}
+		m.level__inst0 = __lt0
+		m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
+		var __iterIdx0 int = -1
+		for x := range slices.Values([]int{0, 1, 2}) {
+			__iterIdx0 += 1
+			m.rung__inst0 = (m.rung__inst0 + (__iterIdx0 * x))
+			m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
+		}
+	})
+}
+
+func (m *Model) __effect0_unmount() {
+	fynert.CancelEvery(m.handle__inst0__inst0)
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []time.Duration{}
+	m.__effect0_desired = append(m.__effect0_desired, time.Duration(50)*time.Millisecond)
+	for __effect0_i, _ := range m.__effect0_live {
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
+		if __effect0_j >= len(m.__effect0_desired) {
+			m.__effect0_key = m.__effect0_live[__effect0_j]
+			m.__effect0_unmount()
+		} else {
+			if m.__effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
+				m.__effect0_key = m.__effect0_live[__effect0_j]
+				m.__effect0_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect0_teardown() {
+	for __effect0_ti, _ := range m.__effect0_live {
+		m.__effect0_key = m.__effect0_live[((len(m.__effect0_live) - 1) - __effect0_ti)]
+		m.__effect0_unmount()
+	}
+	m.__effect0_live = []time.Duration{}
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	m.__effect0_teardown()
 }
 
 func (m *Model) Level__inst0() float64 {
@@ -228,43 +343,19 @@ func (m *Model) SetRung__inst0(v int) {
 	m.rung__inst0 = v
 }
 
-// StartTimers starts all timers; ticks are gated on each timer's enabled var.
-func (m *Model) StartTimers() {
-	m.timer0Ticker = time.NewTicker(50 * time.Millisecond)
-	go func() {
-		for range m.timer0Ticker.C {
-			fyne.Do(func() {
-				var __lt0 float64
-				if m.level__inst0 >= 1.0 {
-					__lt0 = 0.0
-				} else {
-					__lt0 = (m.level__inst0 + 0.01)
-				}
-				m.level__inst0 = __lt0
-				m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
-				var __iterIdx0 int = -1
-				for x := range slices.Values([]int{0, 1, 2}) {
-					__iterIdx0 += 1
-					m.rung__inst0 = (m.rung__inst0 + (__iterIdx0 * x))
-					m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
-				}
-
-			})
-		}
-	}()
+func (m *Model) Handle__inst0__inst0() int {
+	return m.handle__inst0__inst0
 }
 
-// StopTimers stops all active timers.
-func (m *Model) StopTimers() {
-	if m.timer0Ticker != nil {
-		m.timer0Ticker.Stop()
-	}
+func (m *Model) SetHandle__inst0__inst0(v int) {
+	m.handle__inst0__inst0 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(((fmt.Sprint(m.level__inst0) + " ") + fmt.Sprint(m.rung__inst0)))
+	m.__effects0_settle()
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }

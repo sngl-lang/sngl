@@ -18,8 +18,14 @@ import (
 // build, which is the honest version of the same failure gtk4 had silently for
 // as long as it had timers at all.
 //
-// A platform may also contribute none -- html's override is an `effect` over
-// setInterval -- and finding nothing is an answer, not a failure.
+// A platform may also contribute none, and finding nothing is an answer rather
+// than a failure. Three do: html, fyne and gtk4 each override `timer` with an
+// `effect` over a start/stop pair of host natives, which is what a schedule
+// already is. What is left here is the two that cannot spell one --
+// bubbletea, whose state is a value threaded through Update so a callback
+// arriving out of band has no live model to write, and android, whose
+// LaunchedEffect is the schedule rather than something a schedule is built
+// from.
 //
 // Placed beside passEffect and for the same reasons: after the inliner, so a
 // timer written in a child component has arrived in the tree that gets walked;
@@ -33,9 +39,9 @@ var passTimerPrimitive = pass{
 }
 
 // timerRole is the second half of a platform's timer primitive id. The id is
-// namespaced by the platform that emits it -- `fyne:Timer`, `bubbletea:Timer`
-// -- so only the target being built for can have contributed one to this tree,
-// and the role is what they have in common.
+// namespaced by the platform that emits it -- `bubbletea:Timer`,
+// `android:Timer` -- so only the target being built for can have contributed
+// one to this tree, and the role is what they have in common.
 const timerRole = "Timer"
 
 // IsTimerPrimitive reports whether a component is some platform's timer

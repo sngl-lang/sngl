@@ -36,8 +36,16 @@ func check(t *testing.T, src string) *ir.Package {
 	if plat == nil {
 		t.Fatal("fyne platform not registered")
 	}
+	// The go language is listed even though this run is interpreted: fyne.sngl
+	// imports sngl:language/go to name the natives its timer schedules with,
+	// and resolving that import is what says the language exists.
+	goLang := codegen.LookupLang("go")
+	if goLang == nil {
+		t.Fatal("go language not registered")
+	}
 	cfg := &checker.Config{
 		IsMain:    true,
+		Languages: []ir.Language{goLang},
 		Platforms: []ir.Platform{plat},
 		Targets:   []ir.StaticTarget{{Platform: "fyne", Language: "none"}},
 	}
