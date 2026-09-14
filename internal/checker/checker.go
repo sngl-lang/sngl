@@ -4308,13 +4308,12 @@ func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 	if v := c.nodeHandleSym(vn.ID); v != nil {
 		return v
 	}
-	// A binding in *this* scope owns the name; the duplicate is reported where
-	// ids are checked. Unlike declareNodeID this does not also ask
-	// lookupBodyMethod: a `window #home` beside a `func home()` is already
-	// reported as an id clashing with a func before anything reads the handle.
-	if _, taken := c.scope.LookupLocal(vn.ID); taken {
-		return nil
-	}
+	// Declared rather than tested-then-declared, so that c.declare reports a
+	// name this scope already binds. Unlike declareNodeID, which declines
+	// silently for an ordinary node id, a window's clash is an error -- which
+	// is bindWindow's behaviour kept, not a rule invented here: `const home`
+	// beside `window #home` said "home is already declared in this scope", and
+	// an early return here swallowed it.
 	v := &ir.Var{Name: vn.ID, Type: c.windowType, IsConst: true, NodeHandle: true}
 	c.declare(vn.Pos, v)
 	return v
