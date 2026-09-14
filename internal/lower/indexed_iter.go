@@ -45,7 +45,25 @@ func lowerIndexedIter(pkg *ir.Package, _ Caps, _ Options) error {
 	st := &indexedIterState{}
 	walkPackage(pkg, walkFuncs{
 		stmts: func(stmts []ir.Stmt) []ir.Stmt { return st.block(stmts) },
-		expr:  func(e ir.Expr) ir.Expr { return e },
+		// A const-context expression holds no loop of its own, but a lambda
+		// body inside one is a statement list and may. Skipping the whole
+		// expression skipped those, and the counter this pass binds is what
+		// stops `for var i, v = <pull sequence>` reaching Go as
+		// `for i, v := range slices.Values(...)`, which does not compile.
+		// Same hole, same shape, as passTernary's.
+		expr: func(e ir.Expr) ir.Expr {
+			_ = ir.Walk(e, func(n ir.Node) error {
+				if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
+					l.Func.Block = st.block(l.Func.Block)
+					// Exactly once, and never into the slice just replaced:
+					// the transform already recurses through a nested lambda,
+					// and ir.Walk descends after the callback returns.
+					return ir.SkipDir
+				}
+				return nil
+			})
+			return e
+		},
 	})
 	// A lambda's body is a block of its own, and walkPackage hands over no
 	// expression's insides -- so a loop written there was left with its second

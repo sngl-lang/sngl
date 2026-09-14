@@ -99,14 +99,54 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
 		if id, ok := x.Operand.(*ir.Ident); ok {
-			if win, ok := id.Sym.(*ir.Window); ok {
+			// A window's `#id` binds a handle var like every other node's, so
+			// the window is reached through it rather than off the symbol.
+			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
 				// Every prop of the #[builtin("window")] component is
-				// readable off a window symbol, so each must fold here -- a
-				// Select left standing reaches codegen as a dangling
-				// reference. Keep in step with windowStructValue (expand.go),
-				// which does the same for the unrolled-list case.
-				if v := win.Prop(x.Field); v != nil {
-					return v
+				// readable off the id, so each must fold here -- a Select left
+				// standing reaches codegen as a dangling reference. Keep in
+				// step with windowStructValue (expand.go), which does the same
+				// for the unrolled-list case.
+				if win := ctx.windowForHandle(v); win != nil {
+					if val := win.Prop(x.Field); val != nil {
+						// Folded again, and against *this* context: the read
+						// may sit in an unrolled loop body where the loop
+						// variable the prop names is bound, and a prop
+						// returned as written came out as the pre-unroll
+						// `it.title` and rendered empty.
+						//
+						// That is safe only because ctx.values is keyed by
+						// ir.Symbol *pointer*. A `const greet` read by this
+						// prop and a `for var greet` shadowing the name around
+						// the read are two symbols and two keys, so the prop
+						// still folds to the const. Resolve anything in here
+						// by name and this becomes a wrong value rather than a
+						// missing one.
+						//
+						// cloneExpr and not ir.CloneExpr: the result is a
+						// second occurrence of the expression rather than the
+						// prop itself, and this one shallow-copies, leaving
+						// Ident.Sym pointing at the same symbols. ir.CloneExpr
+						// repoints them, which is exactly the lookup above.
+						//
+						// Guarded because `window #h(title = h.title)` reads
+						// the prop it is. Left standing there, which is what a
+						// prop with no answer already reached codegen as.
+						key := windowProp{win: win, field: x.Field}
+						if !ctx.foldingProp[key] {
+							// foldPkg builds the map so that every child ctx
+							// shares one; this is for the contexts assembled
+							// by hand, which today fold nothing (nativescan)
+							// but would write into a nil map if one ever did.
+							if ctx.foldingProp == nil {
+								ctx.foldingProp = map[windowProp]bool{}
+							}
+							ctx.foldingProp[key] = true
+							out := foldExpr(cloneExpr(val), ctx)
+							delete(ctx.foldingProp, key)
+							return out
+						}
+					}
 				}
 			}
 		}

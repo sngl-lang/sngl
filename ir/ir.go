@@ -783,7 +783,6 @@ type EventHandler struct {
 type Window struct {
 	AST  *ast.VisualNode
 	Name string
-	Typ  *Type // instance type of the #[builtin("window")] component; nil if unresolved
 	// Comp is the #[builtin("window")] declaration this instantiates, and
 	// Props the arguments written against it -- what NodeInst.Component and
 	// NodeInst.Props are, so nothing here names a window prop. Every consumer
@@ -793,8 +792,18 @@ type Window struct {
 	// Comp is json:"-" where NodeInst.Component is not, so a JSON dump of a
 	// window does not carry the whole library graph the declaration points
 	// into. The stripper nils both, so the round-trip comparison sees neither.
-	Comp         *Component `json:"-"`
-	Props        []Arg
+	Comp  *Component `json:"-"`
+	Props []Arg
+	// Handle is the binding `#id` declared, and it is an *ir.Var for the same
+	// reason NodeInst.Handle is: what a node id names is one question, and a
+	// window answering it differently was the second half of the split this
+	// type still is. See NodeInst.Handle for why the symbol rather than the
+	// name is the identity. Nil when no id was written, or when the name was
+	// already taken.
+	//
+	// It also carries the window's type, which is where a NodeInst keeps one:
+	// nothing reads a type off the window itself any more.
+	Handle       *Var `json:"-"`
 	Vars         []*Var
 	Funcs        []*Func
 	Timers       []*Timer
@@ -807,9 +816,6 @@ type Window struct {
 	// scope. See internal/lower/node_escape.go and Component.LocalRefs.
 	LocalRefs map[string]bool `json:"-"`
 }
-
-func (w *Window) SymName() string { return w.Name }
-func (w *Window) SymType() *Type  { return w.Typ }
 
 // Prop is the value written for name, or nil if the call site did not write
 // it. checkAndSplitArgs binds a positional arg to its declared name before the
