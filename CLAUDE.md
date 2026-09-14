@@ -193,15 +193,20 @@ sequence, and a `#[go.async]` call there ran on fyne's drawing thread.
 `testdata/timer_tick_lowered.txtar` and `testdata/timer_tick_async_offload.txtar`
 pin the three.
 
-Two of the three now *ask* `ir.Owner` rather than restating it:
-`blocks.go` and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's
-timers and its `@error` reach them because the enumeration says a window owns
-those, not because each remembered to. `codegen.CodegenCtx.Windows` — the
-iterator a backend takes when it wants the windows rather than the owners —
-reads the same list. `walk.go`'s `walkPackage` is the one left: several of its
-passes carry an `*ir.Window` arm in their own statement switch, so handing it
-the owners would walk a nested window's body twice, and unifying it means
-deleting those arms in the same change.
+Two of the three now *ask* `ir.Owner` rather than restating it. `blocks.go`
+and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's timers and
+its `@error` reach them because the enumeration says a window owns those and
+not because each remembered to — each had a *second*, thinner copy of the
+window arm beside the `pkg.Windows` one, and `blocks.go`'s passed nil timers
+and skipped the `@error` outright. Neither was reachable, since
+`passWindowNesting` rejects the only shape that leaves a window a statement by
+then; the point is that nothing had to notice.
+`codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
+windows rather than the owners — reads the same list.
+`walk.go`'s `walkPackage` is the one left: several of its passes carry an
+`*ir.Window` arm in their own statement switch, so handing it the owners would
+walk a nested window's body twice, and unifying it means deleting those arms in
+the same change.
 
 ## Build & Test Commands
 
@@ -608,10 +613,14 @@ html asks for the href, gtk4 for the title, and neither is a list of what a
 window has.
 
 `ir.Window` is still its own struct rather than a `#[builtin("window")]`
-`NodeInst`, which is the rest of that change: its body-owner half (vars, funcs,
-timers, `@error`) has nowhere to live on a `NodeInst` today, and
-`checkTreeMembership` keeps a `*ir.Window` arm that does exactly what its
-`*ir.NodeInst` arm does for want of one.
+`NodeInst`, and two things are why. Its **body-owner half** — vars, funcs,
+timers, `@error` — has nowhere to live on a `NodeInst`, which nothing else
+gives state to. And a window is an `ir.Symbol`: `window #home` binds a name
+that `output(entry = home)` and `home.title` resolve against, where a
+`NodeInst`'s `ID` is a plain string. Until both are answered
+`checkTreeMembership` keeps a `*ir.Window` arm beside its `*ir.NodeInst` one,
+now reading the same two fields off the same kind of pointer, which is what
+makes the collapse mechanical when they are.
 
 **A root component's own state is hoisted into the window it lifts**, because
 that is where it is mounted — the component is an empty shell once the lift is
