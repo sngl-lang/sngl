@@ -12,20 +12,28 @@
 # the same guard, keyed the same way, twenty lines away.
 #
 # Answered "not constant", which leaves the initializer standing -- what a
-# const the optimizer cannot evaluate already does. That is survivable rather
-# than right: the page below carries no value for `a`, silently. The rule that
-# a declaration may not read itself belongs in the checker, where it reaches a
-# program this pass never folds; CLAUDE.md says so and this fixture is what
-# changing it would update.
+# const the optimizer cannot evaluate already does. Survivable rather than
+# right, and the page says exactly how much so: the self-reference reaches the
+# output verbatim as `var a = a`, and the text node that reads it is dropped
+# from the document altogether. No diagnostic either way.
 #
-# A CLI script rather than a golden because what is asserted is that the
-# compiler comes back at all.
+# The rule that a declaration may not read itself belongs in the checker, and
+# this is why a guard here cannot be the answer: `sngl check` accepts this
+# program and always did, because the checker never folds. CLAUDE.md says so
+# and this fixture is what changing it would update.
+#
+# A CLI script rather than a golden because the first thing asserted is that
+# the compiler comes back at all.
 sngl generate --lang none --platform html --out out selfconst.sngl
 grep '<title>t</title>' out/index.html
+grep 'var a = a;' out/index.html
+! grep '__sngl_init' out/index.html
 
 # A cycle reaches the guard by a second key rather than the first one twice.
 sngl generate --lang none --platform html --out out2 cycle.sngl
 grep '<title>t</title>' out2/index.html
+grep 'var a = b;' out2/index.html
+grep 'var b = a;' out2/index.html
 
 -- selfconst.sngl --
 import . "sngl:ui"

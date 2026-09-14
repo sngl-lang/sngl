@@ -16,10 +16,11 @@ grep '<span>hi</span>' out/index.html
 # not answer reaches codegen as a dangling reference and html writes nothing
 # for it -- silent missing output, not a crash. Pinned because it is a
 # deliberate choice and the alternative (a positioned error) is a language rule
-# this MR does not make. `const a int = a` is the same shape one layer down and
-# crashed the compiler outright until the guard beside this one
-# (const_reads_itself.txt), so self-reference is something the compiler neither
-# refuses nor survived -- and this is the only one of the two that terminated.
+# this MR does not make. `const a int = a` is the same shape one layer down:
+# `sngl check` accepts it, because the checker never folds, and `sngl generate`
+# crashed outright until the guard beside this one (const_reads_itself.txt).
+# The rule the language has not made is the general one, and the checker
+# accepting both is where it belongs.
 ! grep '<title>' out/index.html
 
 # Two windows naming each other reach the guard by a second key rather than by
