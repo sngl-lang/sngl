@@ -201,6 +201,20 @@ window arm beside the `pkg.Windows` one, and `blocks.go`'s passed nil timers
 and skipped the `@error` outright. Neither was reachable, since
 `passWindowNesting` rejects the only shape that leaves a window a statement by
 then; the point is that nothing had to notice.
+
+What *was* reachable is the case neither copy had: **the handlers on a package
+var.** Both files named the package's funcs and its body and stopped, while a
+component's and a window's vars were walked in both — so a `for … else` in the
+`@change` of a top-level `var` reached `passForElse` not at all and every
+backend dropped the else in silence. `passRootWindow` leaves a package's vars
+where the checker put them, deliberately, so the shape survives the whole
+pipeline; `testdata/for_else_package_var_handler.txtar` is it.
+
+Both orders are load-bearing and neither is this file's any more.
+`passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
+order, and `passAsyncOffload` names `__async_offN` off `offloadableFuncs`', so
+each keeps the order it had: a window's `@error` after its view body, and the
+declared funcs across every owner before any handler.
 `codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
 windows rather than the owners — reads the same list.
 `walk.go`'s `walkPackage` is the one left: several of its passes carry an
