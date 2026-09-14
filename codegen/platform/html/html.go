@@ -176,10 +176,11 @@ document.addEventListener('DOMContentLoaded', () => main());
 func rejectDynamicHrefs(req *codegen.Request) error {
 	ctx := codegen.NewCodegenCtx(req, "html")
 	for _, win := range ctx.Windows() {
-		if win.Window == nil || win.Window.Prop(ir.WindowHref) == nil {
+		href := win.Window.Prop(ir.WindowHref)
+		if href == nil {
 			continue
 		}
-		if _, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowHref)); !ok {
+		if _, ok := codegen.IRLiteralString(href); !ok {
 			return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
 		}
 	}

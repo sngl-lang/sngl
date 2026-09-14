@@ -798,16 +798,17 @@ func (w *Window) Prop(name string) Expr {
 	return nil
 }
 
-// WindowProp names a prop the compiler itself reads off a window. The three
-// are declared in lib/ui/window.sngl like any other prop; these constants are
-// the spelling a Go consumer matches, not a second declaration of them.
+func (w *Window) stmtNode() {} // Window can appear as a statement in for-loop bodies
+
+// The window props the compiler itself reads. Each is declared in
+// lib/ui/window.sngl like any other prop; these are the spelling a Go consumer
+// matches, not a second declaration of them, and nothing enumerates the set --
+// html asks for the href, gtk4 for the title.
 const (
 	WindowTitle   = "title"
 	WindowHref    = "href"
 	WindowFavicon = "favicon"
 )
-
-func (w *Window) stmtNode() {} // Window can appear as a statement in for-loop bodies
 
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.
