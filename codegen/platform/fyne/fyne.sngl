@@ -625,10 +625,10 @@ func Schedule.reset(d time.duration) bool
 #[go.native("time", "time.Timer.Stop", method)]
 func Schedule.stop() bool
 
-// The clock the deadlines are measured against. `sngl:time` declares `datetime`
-// and `duration` and no operation on either -- no `now`, no arithmetic -- so
-// the host's is named here, the way `AfterFunc` is. Nothing about this is
-// fyne's; it is the first thing that wanted a clock.
+// The clock the deadlines are measured against. `sngl:time` declares `date`,
+// `time`, `datetime` and `duration` and no operation on any of them -- no
+// `now`, no arithmetic -- so the host's is named here, the way `AfterFunc` is.
+// Nothing about this is fyne's; it is the first thing that wanted a clock.
 #[go.native("time", "time.Time")]
 struct Instant {}
 
