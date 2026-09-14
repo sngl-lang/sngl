@@ -658,6 +658,19 @@ the handle is the stable thing a reference resolves to, so `buildWindow` builds
 a fresh window every call. `ir.Window.Typ` went with them, having only ever
 answered `SymType`.
 
+**A read off a window's id folds to the window's own prop expression**, and it
+is folded again against the context the *read* sits in rather than the one the
+prop was written in. That is not a detail: `window #page(title=it.title)`
+inside a `for` puts the loop variable in the prop, and a read of `page.title`
+from the window's body sits where the unroll has already passed -- returned as
+written it stayed `it.title`, named nothing, and the page rendered an empty
+span with no diagnostic. Which makes a prop that reads itself,
+`window #h(title = h.title)`, a fold that re-enters on the same prop forever,
+so `evalCtx.foldingProp` holds the pairs in flight and leaves the select
+standing on re-entry -- the state a prop with no answer already reached codegen
+in. Keyed by window *and* prop, so two windows naming each other terminate on
+the second key rather than looping on the first.
+
 What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
 not simply carried over. `Window.Vars` is a *lowering artifact*: the checker
 leaves a window's `var` as an `*ir.LocalVar` statement in the body (which is
