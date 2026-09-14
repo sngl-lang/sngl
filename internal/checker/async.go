@@ -12,7 +12,11 @@ func (c *checker) analyzeAsyncWithPointsTo() {
 	if pkg == nil || pkg.PointsTo == nil {
 		return
 	}
-	funcs := allFuncs(pkg)
+	// Lambdas too, for the reason analyzeAsync lists them: colouring stops at
+	// a closure -- constructing one is not calling it -- so the arrow holding
+	// the awaiting call is the only thing left to colour, and nothing colours
+	// what it was not given.
+	funcs := allFuncsAndLambdas(pkg)
 	for {
 		changed := false
 		for _, fn := range funcs {

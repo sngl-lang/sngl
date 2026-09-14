@@ -1336,7 +1336,9 @@ func emitGTK4Main(b *strings.Builder, cfg Config, wrapped bool, pkg *ir.Package)
 	b.WriteString("func snglActivate(app *C.GtkApplication, _ C.gpointer) {\n")
 	b.WriteString("\tm := New()\n")
 	if teardown {
-		b.WriteString("\tsnglModel = &m\n")
+		// New() already answers a *Model here, unlike bubbletea's value model,
+		// so the address-of this used to take made it a **Model.
+		b.WriteString("\tsnglModel = m\n")
 	}
 	b.WriteString("\twin := m.BuildUI(app)\n")
 	b.WriteString("\tC.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))\n")

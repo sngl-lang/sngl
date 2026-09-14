@@ -365,7 +365,14 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	// for one -- it is the zero the checker synthesizes for `var t Ticker`,
 	// since a program cannot build a value of a type it only names -- and nil
 	// is what that zero is.
-	if len(n.Fields) == 0 && strings.HasPrefix(name, "*") {
+	//
+	// The panic is the other half of that sentence. If a populated one ever
+	// arrives the invariant has changed, and falling through would emit Go
+	// that does not parse rather than say so.
+	if strings.HasPrefix(name, "*") {
+		if len(n.Fields) > 0 {
+			panic("golang: composite literal for pointer-spelled native type " + name)
+		}
 		return "nil"
 	}
 	parts := make([]string, len(n.Fields))

@@ -588,8 +588,23 @@ contract, which a body should not be quietly restating.
 
 **`#[tree.none]` says a component belongs to no family**, which is what a
 component that renders nothing wants — `effect`, `timer`, `context`, and each
-platform's `Timer` primitive. Two rules follow, and they are each other's
-halves:
+platform's `Timer` primitive.
+
+**A canvas keeps them and draws the rest.** `passCanvas` turns a canvas's shape
+children into a draw function, and then cleared `Children` outright — so the
+bracket went with the shapes, and it runs before `passEffect` and
+`passTimerPrimitive`, which therefore never saw one. A canvas that schedules
+its own animation compiled clean and never moved, on every target with a
+canvas, for as long as the rule above has allowed one to be written there.
+`treelessChildren` is what a canvas keeps now, and it mirrors `emitShapes`
+statement for statement: everything that walk reaches through, this one reaches
+through too, or a bracket under an `if` is dropped exactly as before — which is
+where a `timer` lands, its override being `if enabled { effect(…) }` by then.
+`emitShape` skips a tree-less node for the same reason from the draw side: it
+paints nothing, so the save and restore around it were two empty calls.
+`testdata/canvas_schedules_itself.txtar` holds both halves.
+
+Two rules follow from the mark, and they are each other's halves:
 
 - it may be placed in **any** tree, so a lifetime bracket belongs in a drawing
   as readily as in a layout (`checkTreeMembership`);

@@ -11,6 +11,11 @@ This program is that shape: `arm` is never called on either target, so the only
 compile at all -- `undefined: time` -- which a golden alone would not have
 shown, since the text looks right.
 
+A *field* of a native type is the same claim one level in, and is why the walk
+does not stop at a program's own struct: `Box` holds a `Vals`, and the Go
+struct emitted for it spells `url.Values` with nothing else in the file naming
+that package either.
+
 `BaseImports` is where it is collected, off the *values* a package declares
 rather than off `pkg.Structs`: a platform package's own type is not in a
 program's struct list, and fyne's `Schedule` reaches a program only as the type
@@ -23,6 +28,7 @@ own target and is where the missing import surfaced.
 
 deny * `t__inst\d+ +Ticker` -- the field is the Go type the mark names, not the SNGL name
 deny * `\*time\.Ticker\{\}` -- a pointer type has no composite literal
+deny * `(?m)^\tM Vals$` -- a native-typed field is the Go type the mark names
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -34,6 +40,9 @@ struct Ticker {}
 #[go.native("time", "time.NewTicker")]
 func arm(d int) Ticker
 
+#[go.native("net/url", "url.Values")]
+struct Vals {}
+
 output {
     go {
         fyne
@@ -41,10 +50,15 @@ output {
     }
 }
 
+struct Box {
+    m Vals
+}
+
 component main ui.node {
     var t Ticker
+    var boxes list<Box> = []
 
-    ui.text(value="held")
+    ui.text(value=string(boxes.length()))
 }
 
 ui.window(title="import") { main }
@@ -57,12 +71,18 @@ import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"fmt"
+	"net/url"
 	"time"
 )
 
+type Box struct {
+	M url.Values
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	t__inst0 *time.Ticker
+	t__inst0     *time.Ticker
+	boxes__inst0 []Box
 
 	width, height int
 }
@@ -71,6 +91,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.t__inst0 = nil
+	m.boxes__inst0 = []Box{}
 	return m
 }
 
@@ -95,6 +116,21 @@ func SetT__inst0Cmd(v *time.Ticker) tea.Cmd {
 	return func() tea.Msg { return setT__inst0Msg{value: v} }
 }
 
+func (m Model) Boxes__inst0() []Box {
+	return m.boxes__inst0
+}
+
+func (m Model) SetBoxes__inst0(v []Box) Model {
+	m.boxes__inst0 = v
+	return m
+}
+
+type setBoxes__inst0Msg struct{ value []Box }
+
+func SetBoxes__inst0Cmd(v []Box) tea.Cmd {
+	return func() tea.Msg { return setBoxes__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -106,6 +142,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setT__inst0Msg:
 		m = m.SetT__inst0(msg.value)
+	case setBoxes__inst0Msg:
+		m = m.SetBoxes__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -120,7 +158,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint("held"))
+	content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.boxes__inst0))))
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -131,14 +169,21 @@ func (m Model) View() tea.View {
 package ui
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/widget"
+	"net/url"
 	"time"
 )
 
+type Box struct {
+	M url.Values
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	t__inst0 *time.Ticker
+	t__inst0     *time.Ticker
+	boxes__inst0 []Box
 
 	__n0 *widget.Label
 }
@@ -147,6 +192,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.t__inst0 = nil
+	m.boxes__inst0 = []Box{}
 	return m
 }
 
@@ -158,10 +204,18 @@ func (m *Model) SetT__inst0(v *time.Ticker) {
 	m.t__inst0 = v
 }
 
+func (m *Model) Boxes__inst0() []Box {
+	return m.boxes__inst0
+}
+
+func (m *Model) SetBoxes__inst0(v []Box) {
+	m.boxes__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText("held")
+	m.__n0.SetText(fmt.Sprint(len(m.boxes__inst0)))
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }

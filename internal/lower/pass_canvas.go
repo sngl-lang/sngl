@@ -27,6 +27,66 @@ func lowerCanvas(pkg *ir.Package, _ Caps, _ Options) error {
 	return nil
 }
 
+// isTreeless reports whether a node's declaration belongs to no family, which
+// is what `#[tree.none]` says and what `effect` and `timer` carry.
+func isTreeless(n *ir.NodeInst) bool {
+	return n != nil && n.Component != nil && n.Component.Tree == nil
+}
+
+// treelessChildren is the children a canvas keeps: the members of no family,
+// under whatever control flow they were written in. Everything else is a shape
+// and is the draw function now.
+//
+// They stay *children* rather than being lifted anywhere, because that is where
+// their lifetime is: an effect written inside a canvas lives as long as the
+// canvas is rendered, the same as one written inside a vbox. And the control
+// flow is kept with them for the same reason -- `if enabled` around a timer is
+// what makes toggling the gate a mount and an unmount.
+//
+// It mirrors emitShapes, which is the other half of the same split: everything
+// that walk reaches through, this one reaches through too, or a bracket written
+// under it is dropped exactly as it was before any of this.
+func treelessChildren(children []ir.Stmt) []ir.Stmt {
+	var out []ir.Stmt
+	for _, c := range children {
+		switch v := c.(type) {
+		case *ir.NodeInst:
+			if isTreeless(v) {
+				out = append(out, v)
+			}
+		case *ir.If:
+			body, els := treelessChildren(v.Body), treelessChildren(v.Else)
+			if len(body) == 0 && len(els) == 0 {
+				continue
+			}
+			out = append(out, &ir.If{AST: v.AST, Cond: v.Cond, Body: body, Else: els})
+		case *ir.For:
+			body, els := treelessChildren(v.Body), treelessChildren(v.Else)
+			if len(body) == 0 && len(els) == 0 {
+				continue
+			}
+			out = append(out, &ir.For{
+				AST: v.AST, Key: v.Key, Value: v.Value, Iter: v.Iter,
+				ElemType: v.ElemType, Body: body, Else: els,
+				KeySym: v.KeySym, ValueSym: v.ValueSym,
+			})
+		case *ir.ErrorBoundary:
+			// Flattened, as emitShapes flattens it: what it wrapped is what the
+			// canvas holds, and the fallback is already an `if` among them.
+			out = append(out, treelessChildren(v.Children)...)
+		case *ir.ContextProvider:
+			kids := treelessChildren(v.Children)
+			if len(kids) == 0 {
+				continue
+			}
+			cp := *v
+			cp.Children = kids
+			out = append(out, &cp)
+		}
+	}
+	return out
+}
+
 // walkCanvasStmts finds canvas containers (NodeInsts that host shapes)
 // and transforms their shape children into a draw function. Recurses into
 // layout NodeInsts (vbox, hbox, etc.) and ir.Window nodes to find canvases
@@ -41,7 +101,13 @@ func walkCanvasStmts(stmts []ir.Stmt, funcs *[]*ir.Func, counter *int) {
 				drawFunc := buildDrawFunc(v, funcs, name)
 				*funcs = append(*funcs, drawFunc)
 				v.CanvasDraw = drawFunc
-				v.Children = nil
+				// The shapes are the draw function now, but a child belonging
+				// to no tree is not one of them: `effect` and `timer` are
+				// placed in a drawing precisely because they render nothing,
+				// and dropping them with the shapes left the passes that turn
+				// them into schedules nothing to find. A canvas that animates
+				// itself is the case, and it silently did not.
+				v.Children = treelessChildren(v.Children)
 			} else {
 				walkCanvasStmts(v.Children, funcs, counter)
 			}
@@ -378,6 +444,12 @@ func shapeBody(ni *ir.NodeInst) []ir.Stmt {
 
 // emitShape emits save / applyStyle / primitive-draw / recurse / restore for one shape.
 func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, funcs *[]*ir.Func, env drawEnv) {
+	// A member of no tree is not a shape and paints nothing -- `effect` and
+	// `timer` are placed in a drawing precisely because they render nothing.
+	// Bracketing one emitted a save and a restore with no drawing between them.
+	if isTreeless(ni) {
+		return
+	}
 	// A shape the target implemented itself brackets its own drawing: the
 	// override is the body, and what it saves, styles and restores is its
 	// business. Emitting a bracket around it too gave every overridden shape

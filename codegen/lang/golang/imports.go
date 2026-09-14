@@ -82,8 +82,12 @@ func BaseImports(pkg *ir.Package) []BaseImport {
 func foreignTypeImports(pkg *ir.Package) []string {
 	var out []string
 	seen := map[string]bool{}
-	// Through the type arguments too: a `list<Schedule>` spells the element in
-	// the field it becomes.
+	// Through the type arguments and through a struct's fields: a
+	// `list<Schedule>` spells the element in the field it becomes, and a
+	// program struct holding a native-typed field spells that type in the Go
+	// struct the backend emits -- with nothing else in the file naming the
+	// package, a field being no call.
+	walked := map[*ir.StructDef]bool{}
 	var add func(t *ir.Type)
 	add = func(t *ir.Type) {
 		if t == nil {
@@ -93,7 +97,20 @@ func foreignTypeImports(pkg *ir.Package) []string {
 			add(e)
 		}
 		sd, ok := t.Decl.(*ir.StructDef)
-		if !ok || sd.Foreign.Name == "" || sd.Foreign.Marked {
+		if !ok {
+			return
+		}
+		if sd.Foreign.Name == "" || sd.Foreign.Marked {
+			// The program's own struct: its fields are emitted with it. The
+			// guard is for a struct that reaches itself through a list.
+			if !walked[sd] {
+				walked[sd] = true
+				for _, f := range sd.Fields {
+					if f != nil {
+						add(f.Type)
+					}
+				}
+			}
 			return
 		}
 		path := sd.Foreign.Path
