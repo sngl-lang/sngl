@@ -4248,7 +4248,7 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	}
 	// A window's id names the window itself, so bind the window here and let
 	// buildWindow fill it in.
-	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true}
+	var sym ir.Symbol = &ir.Var{Name: id, Type: c.nodeHandleType(target), IsConst: true, NodeHandle: true}
 	if isWindow {
 		sym = &ir.Window{Name: id, Typ: c.windowType}
 	}
@@ -4587,4 +4587,22 @@ func looksLikeMacroDecl(f *ast.FuncDef) bool {
 	}
 	nt, ok := f.ReturnType.(*ast.NamedType)
 	return ok && nt.Name == "Macro"
+}
+
+// nodeHandleSym is the binding declareNodeID made for a written `#id`, or nil
+// when the id is empty or the name was already taken by a prop, var or method
+// (declareNodeID declines to shadow one).
+func (c *checker) nodeHandleSym(id string) *ir.Var {
+	if id == "" {
+		return nil
+	}
+	sym, ok := c.scope.Lookup(id)
+	if !ok {
+		return nil
+	}
+	v, ok := sym.(*ir.Var)
+	if !ok || !v.NodeHandle {
+		return nil
+	}
+	return v
 }

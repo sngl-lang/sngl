@@ -409,8 +409,22 @@ func AllDeclPages() []DeclPage {
 			}
 			add("components", c.Name, "")
 		}
+		component := map[string]bool{}
+		for _, c := range idx.Components {
+			component[c.Name] = true
+		}
 		for _, t := range idx.Types {
-			add("types", t.Name, "")
+			// A method whose receiver names a component of the same package
+			// synthesizes a type entry (buildTypeEntries) that no `struct`
+			// declares, and the type page's href is built from the name alone
+			// -- so it lands on the component's path and docsgen refuses the
+			// collision. Only that page collides: a method's href carries the
+			// method name too, so the methods are still emitted. gtk4 writes
+			// the case -- a GTK method that sets no property has no
+			// GIR-generated form, so it is hand-declared on the widget.
+			if !component[t.Name] {
+				add("types", t.Name, "")
+			}
 			for _, m := range t.Methods {
 				add("types", t.Name, m.ShortName)
 			}

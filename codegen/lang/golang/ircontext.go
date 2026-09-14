@@ -640,9 +640,22 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	}
 
 	name := n.Name
-	// A synthesized element ref is stored as a struct field of whatever the
-	// scope dispatches through, so it must be qualified: a bare ident would
-	// not resolve in the method scope.
+	// A node handle is stored as a struct field of whatever the scope
+	// dispatches through, so it must be qualified: a bare ident would not
+	// resolve in the method scope. Asked of both halves, because the two say it
+	// in different places -- a lowering pass marks the `__nN` references it
+	// synthesizes, while a program's own `#id` is marked on the declaration the
+	// checker bound and its reads carry nothing. Neither is in Component.Vars,
+	// so Ctx.Resolve below answers for neither.
+	//
+	// Ahead of Resolve, so it does not see Locals/Renames. That holds only
+	// because the two places that deliberately spell a node ref as a local --
+	// fyne's localElementRef and gtk4's qualifyNodeExpr -- each build a *fresh*
+	// ir.Ident carrying no Sym. Copy one with its Sym instead and the local
+	// silently becomes a field read.
+	if v, ok := n.Sym.(*ir.Var); ok && v.NodeHandle {
+		return gc.RecvName() + "." + name
+	}
 	if n.IsElementRef && n.Synthesized {
 		return gc.RecvName() + "." + name
 	}

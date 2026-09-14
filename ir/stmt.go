@@ -29,11 +29,23 @@ type NodeInst struct {
 	Children  []Stmt         // type-checked body
 	// Slots is the content supplied per named slot; Children go to the rest
 	// slot.
-	Slots      map[string]*SlotContent `json:",omitempty"`
-	ID         string                  // #id binding
-	Key        Expr                    // key expression for list diffing (nil → implicit index)
-	Ref        Expr                    // ref binding (nil if none)
-	CanvasDraw *Func                   // non-nil for canvas containers after passCanvas
+	Slots map[string]*SlotContent `json:",omitempty"`
+	ID    string                  // #id binding
+	// Handle is the binding that `ID` declared, when a program wrote one.
+	//
+	// The link exists because `ID` is a *name* and the checker distinguishes
+	// handles by *symbol*: `declareNodeIDs` runs per body, so two unrelated
+	// components each writing `#bar` declare two vars, while two spliced copies
+	// of one body share theirs. Nothing else in the IR can tell those apart,
+	// and the difference is what separates an id collision the inliner renames
+	// from a read that cannot say which copy it meant.
+	//
+	// Not serialized: it points back into the symbol graph, and a reparse of a
+	// printed tree re-declares the handle from the `#id` it prints.
+	Handle     *Var  `json:"-"`
+	Key        Expr  // key expression for list diffing (nil → implicit index)
+	Ref        Expr  // ref binding (nil if none)
+	CanvasDraw *Func // non-nil for canvas containers after passCanvas
 }
 
 // SlotContent is what a call site supplies for one named slot. Params are the
