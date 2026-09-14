@@ -37,12 +37,21 @@ func (c *checker) resolveEntryWindow(root *ir.NodeInst) {
 		// apart. By name second, because a window a component renders is bound
 		// in that component's scope rather than the root one, so the reference
 		// resolves to nothing here and the name is all that is left.
-		// NodeHandle, not merely *ir.Var: hoistForLoopWindowIDs binds a loop
-		// window's id at package scope as a list<window>, which is an ir.Var
-		// too. Taking the handle branch for it skipped the name fallback and
-		// refused `output(entry = page)` for a window declared in a `for`.
+		// A `for` over the windows binds its id to the whole run of them --
+		// hoistForLoopWindowIDs declares a list<window> at package scope -- so
+		// the name answers with as many windows as the loop has iterations and
+		// an entry is one window. Refused here rather than resolved, because
+		// EntryWindow matches by name and would otherwise hand a single-model
+		// target whichever of them the unroll happened to put first.
+		//
+		// NodeHandle is what tells that binding from a node handle: both are
+		// *ir.Var, and only the handle carries it.
 		handle, _ := id.Sym.(*ir.Var)
 		if handle != nil && !handle.NodeHandle {
+			if handle.Type != nil && handle.Type.Kind == ir.TypeList {
+				c.error(p.NamePos, "output %s names %s, which a loop declares once per iteration -- an entry is a single window, so name one declared outside the loop", entryOption, id.Name)
+				return
+			}
 			handle = nil
 		}
 		for _, w := range c.packageWindows() {
