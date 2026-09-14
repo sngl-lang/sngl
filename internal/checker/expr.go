@@ -3275,6 +3275,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				Handlers:  handlers,
 				Bindings:  bindings,
 				ID:        id,
+				Handle:    c.nodeHandleSym(id),
 				Key:       c.keyArgExpr(x.Call.Args),
 			}
 		}
@@ -3985,6 +3986,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		Children:  children,
 		Slots:     slotContent,
 		ID:        vn.ID,
+		Handle:    c.nodeHandleSym(vn.ID),
 		Key:       c.keyArgExpr(vn.Args),
 	}
 }

@@ -831,6 +831,52 @@ declaration itself. Two things about the name that are easy to get wrong:
   requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
   reached past `alpha` positionally.
 
+**A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
+says so.** Every target stores one wherever it keeps the tree — a field of the
+Model on the Go targets — rather than as a local, so a read of it has to be
+qualified. There are two ways a reference can be recognised as one and only one
+of them is a fact about the *declaration*: `ir.Ident.IsElementRef` is set on the
+`__nN` references a lowering pass synthesizes, while a read of a program's own
+`#id` resolves to the var the checker bound and carries nothing. Neither kind
+lands in `Component.Vars`, so `ExprCtx.Resolve` answers for neither.
+
+Tested, never name-matched, for the reason `ir.Param.Receiver` gives: a node id
+is the author's word and `__`-prefixed names are not reserved. It is asked in
+the Go language context rather than in a platform emitter because the question
+— where does this handle live — has one answer for fyne, gtk4 and bubbletea;
+each platform's own intrinsic path already wrote `m.<id>` for the references it
+emits, which is why only a native call's *receiver* went bare and why it read
+as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
+`gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it and
+it is hand-declared as a `#[cnative]` method reached through the handle.
+
+**That receiver is the only read off a handle that works on the Go mutation
+platforms.** A *prop* read does not compile on either: `GoIRContext.Select`
+ends at `operand + "." + ExportName(field)`, inventing a Go field by
+title-casing the SNGL prop, so `box.value` is `m.box.Value` against a
+`widget.Entry` that spells it `Text` — and against a gtk4 handle that is an
+`unsafe.Pointer` with no fields at all. The asymmetry is the tell: the *write*
+side routes through the platform (fyne's `Spec` `Setter`, gtk4's
+`OnPropAssign`) and there is no getter counterpart, so `#id` handles are
+write-only there. Closing it is not `Setter`'s mirror — it needs a
+language↔platform read hook that does not exist, and on gtk4 a getter is a call
+(`gtk4rt.EntryGetText`) whose name GIR would have to supply per property, not a
+field.
+
+**Two nodes may share an id, but a handle that is *read* may not be rendered
+twice.** The two halves are asked differently and deliberately so.
+`uniqueNodeIDs` renames the later copies *by name*, because what that repairs is
+the emitted namespace, where any two `#bar`s collide however unrelated. The
+refusal is *by symbol*: `declareNodeIDs` runs per body, so two components each
+writing `#bar` declare two vars and each read says which it meant, while two
+spliced copies of one body share theirs and neither read can — all of them
+resolve to the first copy's field, and the second widget is created and never
+touched. `ir.NodeInst.Handle` is the link that makes the symbol reachable from
+the node, since `ID` is only a name. Keyed by name instead, a `quiet()` that
+reads nothing and renders one was refused for a `#bar` that a *different*
+component read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both
+halves apart.
+
 **`#[foreign]` records what a declaration corresponds to outside SNGL.** It
 lives in `sngl:macro` for the same reason `shape` lives in `sngl:ui/draw`, and
 because its users are outside the compiler: a language plugin generating marked

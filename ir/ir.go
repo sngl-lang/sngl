@@ -523,6 +523,21 @@ type Var struct {
 	// placeholder in the window's href. It is bound once from the URL a
 	// request arrived on, so nothing the program runs can change it.
 	RouteParam bool `json:"RouteParam,omitempty"`
+
+	// NodeHandle marks the binding a `#id` on a visual node declares: a handle
+	// to the rendered instance, which every target stores wherever it keeps the
+	// tree rather than as a local. The marker is the declaration's, because
+	// IsElementRef is a fact about a *reference* (ir.Ident) and a read of a
+	// program-written `#id` does not carry it -- only the `__nN` handles a
+	// lowering pass synthesizes do. Reading the reference is what left a
+	// `#[cnative]` method call emitting `C.gtk_progress_bar_pulse(bar)` against
+	// a field the same file declares as `m.bar`.
+	//
+	// It answers *where the handle lives* and nothing about what may be read
+	// off it. A prop read still does not compile on fyne or gtk4 -- there is no
+	// getter counterpart to the platform hook the write side uses -- so the
+	// only read that works on those is a native call's receiver.
+	NodeHandle bool `json:"NodeHandle,omitempty"`
 }
 
 func (v *Var) SymName() string { return v.Name }
