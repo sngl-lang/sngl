@@ -37,13 +37,19 @@ package-level var, so that half was an inconsistency rather than a policy.
 Both are fixed in the lowering, and the IR now carries `__canvasRedraw` in the
 mount and in the tick on all three targets -- `sngl dump --stage lowered
 --after CanvasReactivity` shows it for fyne, gtk4 and html alike. **Only fyne
-emits it.** gtk4 and html drop a redraw that sits inside a lambda body, which
-is the same blind spot `CLAUDE.md` records for the lowering passes, one layer
-further out: html additionally resolves a redraw against `canvasSetups`, which
-is populated by the markup walk rather than before the effect funcs are
-written. So the fyne golden below repaints twice and the html one still does
-not, and that is a gap to close in those two emitters rather than anything left
-undone here.
+emits it.** Both of the others drop a redraw that sits inside a lambda body,
+which is the same blind spot `CLAUDE.md` records for the lowering passes, one
+layer further out. html drops the one at the top of an effect's body too, for a
+reason of its own: `translateBlockWithJC` lifts a redraw out of a handler and
+resolves it against `canvasSetups`, and `emitJSFunc` -- which is what writes an
+effect's body -- routes through `WalkLowered` and `EvalStmt` without that lift.
+The translator's `OnDefault` answers one only for a canvas in `canvasByFunc`,
+which a canvas the page rendered as markup is not in, so the statement is
+returned unchanged and emitted as nothing at all.
+
+So the fyne golden below repaints twice and the html one does not repaint at
+all. That is a gap in those two emitters rather than anything left undone in
+the lowering.
 
 deny out/go/fyne/model.go `(?m)^\tctx\.Save\(\)\n\tctx\.Restore\(\)$` -- a member of no tree paints nothing; it gets no bracket
 deny out/none/html/index.html `(?m)^    ctx\.save\(\);\n    ctx\.restore\(\);$` -- likewise
