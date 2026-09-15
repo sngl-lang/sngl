@@ -46,3 +46,39 @@ component timer(
     #[macro.construct] enabled bool = true,
     @tick,
 ) {}
+
+// The current instant, as the host's clock reports it.
+//
+// `readonly` is the load-bearing half of this mark and the easiest thing here
+// to delete by accident: a library function with no body is typed pure, and a
+// pure call is one the compiler may evaluate at build time -- so an unflagged
+// clock is a `const` a program may declare and a value the build machine bakes
+// in as a literal, on every target, silently.
+#[marks.intrinsic("time.now", readonly)]
+func now() datetime
+
+// The instant `d` after this one. A negative duration moves back.
+#[marks.intrinsic("datetime.add")]
+func datetime.add(d duration) datetime
+
+// How long `start` is before `end`; negative when it is after.
+//
+// A package function and not a `datetime` method, which is not a style
+// choice: a method's first parameter *is* the receiver when it carries the
+// receiver's own type (`resolve.go`'s convention, what lets `int.ident(1)`
+// mean `1.ident()`), so no `datetime` method can take a second instant.
+#[marks.intrinsic("time.between")]
+func between(start datetime, end datetime) duration
+
+// How long ago `t` was, negative while it is still ahead.
+//
+// A SNGL body rather than a third intrinsic: it inherits `now`'s impurity
+// through the purity fixed point, so nothing here restates the rule above.
+func since(t datetime) duration {
+    return between(t, now())
+}
+
+// What remains until `t`, negative once it has passed.
+func until(t datetime) duration {
+    return between(now(), t)
+}

@@ -1,0 +1,20 @@
+// A clock is not a constant, and the mark that says so is the one `now` does
+// *not* carry. A library function with no body is typed PurityPure by default
+// (`checker.go`'s inLibSource block), and `ir.IsConst` calls a pure call
+// constant -- so without `readonly` on `#[marks.intrinsic("time.now", ...)]`
+// this directive is accepted and the build machine's timestamp is baked into
+// the artifact name.
+//
+// The output directive is where that is visible, because it is the position
+// the language already holds to `ir.IsConst`: it is read once, before the
+// program runs. Drop the flag in `lib/time/time.sngl` and this fixture passes
+// clean rather than failing.
+
+import ui "sngl:ui"
+import time "sngl:time"
+
+output(name=string(time.now())) // ERROR(check) "must be constant"
+
+ui.window {
+    ui.text(value="hi")
+}

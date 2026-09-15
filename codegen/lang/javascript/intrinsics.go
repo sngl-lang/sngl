@@ -43,6 +43,23 @@ func init() {
 	reg("string.replace", func(a []string) string { return a[0] + ".replaceAll(" + a[1] + ", " + a[2] + ")" })
 	reg("string.split", func(a []string) string { return a[0] + ".split(" + a[1] + ")" })
 
+	// --- sngl:time ---
+	// A datetime is an RFC3339 string here, so every operation parses. The
+	// `replace(/Z?$/, "Z")` is what pins the parse to UTC in a single
+	// evaluation of the operand: a SNGL datetime literal may be written with
+	// no offset, and ES reads an offsetless date-time as *local* time, so an
+	// add spanning a DST boundary lands an hour out. A literal carrying an
+	// explicit numeric offset is not handled here or on Kotlin; supporting one
+	// needs a runtime helper on both.
+	utc := func(x string) string { return x + `.replace(/Z?$/, "Z")` }
+	reg("time.now", func(a []string) string { return "new Date().toISOString()" })
+	reg("datetime.add", func(a []string) string {
+		return "new Date(Date.parse(" + utc(a[0]) + ") + (" + a[1] + ")).toISOString()"
+	})
+	reg("time.between", func(a []string) string {
+		return "(Date.parse(" + utc(a[1]) + ") - Date.parse(" + utc(a[0]) + "))"
+	})
+
 	// --- float math ---
 	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ")" })
 	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ")" })

@@ -48,6 +48,24 @@ func init() {
 	// one meaning, on every target.
 	reg("string.split", func(a []string) string { return SplitFn + "(" + a[0] + ", " + a[1] + ")" })
 
+	// --- sngl:time ---
+	// A datetime is an RFC3339 string here and a duration a Long of
+	// milliseconds, so every operation parses. Instant.toString is what writes
+	// RFC3339; LocalDateTime is what reads it, because Instant.parse refuses a
+	// string with no offset and a SNGL datetime literal may be written without
+	// one. removeSuffix absorbs the Z the producer wrote. A literal carrying
+	// an explicit numeric offset is not handled here or on JavaScript.
+	local := func(x string) string {
+		return "java.time.LocalDateTime.parse(" + x + `.removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC)`
+	}
+	reg("time.now", func(a []string) string { return "java.time.Instant.now().toString()" })
+	reg("datetime.add", func(a []string) string {
+		return local(a[0]) + ".plusMillis(" + a[1] + ").toString()"
+	})
+	reg("time.between", func(a []string) string {
+		return "java.time.Duration.between(" + local(a[0]) + ", " + local(a[1]) + ").toMillis()"
+	})
+
 	// --- float math --- (java.lang.Math)
 	reg("float.floor", func(a []string) string { return "Math.floor(" + a[0] + ")" })
 	reg("float.ceil", func(a []string) string { return "Math.ceil(" + a[0] + ")" })

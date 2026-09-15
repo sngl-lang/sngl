@@ -38,6 +38,14 @@ func init() {
 	regImp("string.replace", []string{"strings"}, func(a []string) string { return "strings.ReplaceAll(" + a[0] + ", " + a[1] + ", " + a[2] + ")" })
 	regImp("string.split", []string{"strings"}, func(a []string) string { return "strings.Split(" + a[0] + ", " + a[1] + ")" })
 
+	// --- sngl:time ---
+	// datetime is time.Time here and duration is time.Duration, so the host
+	// operators line up and nothing is converted. The other two languages carry
+	// datetime as an ISO string and pay a parse per operation.
+	regImp("time.now", []string{"time"}, func(a []string) string { return "time.Now()" })
+	reg("datetime.add", func(a []string) string { return "(" + a[0] + ").Add(" + a[1] + ")" })
+	reg("time.between", func(a []string) string { return "(" + a[1] + ").Sub(" + a[0] + ")" })
+
 	// --- float math --- (Math{Floor,Ceil,Round} return int)
 	regImp("float.floor", []string{"math"}, func(a []string) string { return "math.Floor(" + a[0] + ")" })
 	regImp("float.ceil", []string{"math"}, func(a []string) string { return "math.Ceil(" + a[0] + ")" })

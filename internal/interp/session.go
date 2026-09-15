@@ -39,6 +39,7 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	env.Clock = clock
 	timers := NewTimers(clock)
 	// Settling here rather than after: a mount handler runs before anything has
 	// seen the tree, so what a host is first handed already reflects it. An

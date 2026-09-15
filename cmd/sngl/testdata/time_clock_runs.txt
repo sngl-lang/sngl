@@ -1,0 +1,98 @@
+# The sngl:time clock and instant arithmetic, run as compiled Go and then run
+# again on the interpreter.
+#
+# testdata/time_clock_arithmetic.txtar says what each target generates; this
+# says the answers agree. Two runners over one program is the claim that
+# matters here, because the two carry a datetime differently -- Go as a
+# time.Time and the interpreter as the ISO string a literal is written in --
+# and a conversion that is wrong in one of them is invisible from the other.
+#
+# Nothing here asserts an absolute instant, so the answers do not depend on
+# when the suite ran. The two that do read the clock are bounded rather than
+# exact: each reads it twice and a real clock has moved between the readings,
+# which the truncating cast shows as 89 rather than 90.
+#
+# `since` and `until` have SNGL bodies calling `between` and `now` by their
+# bare names, which only library source can write. Nothing dispatched an
+# #[intrinsic] reached that way in the interpreter, so both evaluated to null
+# in silence; `elapsed` and `left` are what say they do not.
+#
+# `ratio` is duration / duration, which the checker types as a float. Go
+# carries a duration as an integer time.Duration and Kotlin as a Long, so both
+# divided as integers -- Go returning one from a float64 function, which does
+# not compile at all.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+import time "sngl:time"
+
+component main ui.node {
+    var anchor time.datetime = "2024-01-15T10:30:00"
+    var period time.duration = 250ms
+    var ahead = 0
+    var behind = 0
+    var left = 0
+    var elapsed = 0
+    var ratio = 0.0
+    var halved = 0
+
+    effect(@mount {
+        ahead = int(time.between(anchor, anchor.add(90s)) / 1s)
+        behind = int(time.between(anchor.add(90s), anchor) / 1s)
+        left = int(time.until(time.now().add(90s)) / 1s)
+        elapsed = int(time.since(time.now().add(90s)) / 1s)
+        ratio = time.duration(1m) / period
+        halved = int((period / 2) / 1ms)
+    })
+
+    ui.text(value="{ahead}")
+}
+
+// An instant plus a duration is that far ahead of the instant it came from,
+// and `between` reports the gap in the order its parameters name. Anchored on
+// a literal rather than on the clock, so the two runners answer exactly: two
+// readings of a real clock differ by the time between them, and the truncating
+// cast turns that into 89.
+func testAnAddedDurationIsTheGap(t Test, c main) {
+    t.assert(c.ahead == 90)
+}
+
+// The same gap read the other way round is negative. A duration carries a
+// sign like any other magnitude, which is what lets `until` report an instant
+// that has already passed.
+func testTheReverseGapIsNegative(t Test, c main) {
+    t.assert(c.behind == -90)
+}
+
+// `until` and `since` are the two halves of `between` with `now` supplied, so
+// they answer the same number with opposite signs. Bounded rather than exact,
+// because each reads the clock a second time and a real one has moved.
+func testUntilAndSinceAreOpposites(t Test, c main) {
+    t.assert(c.left >= 89 && c.left <= 90)
+    t.assert(c.elapsed >= -90 && c.elapsed <= -89)
+}
+
+// duration / duration is the dimensionless ratio of the two magnitudes, and a
+// float: 1m over 250ms is 240 whichever representation the target carries.
+func testTheRatioOfTwoDurationsIsAFloat(t Test, c main) {
+    t.assert(c.ratio == 240.0)
+}
+
+// duration / number is still a duration, which is the other half of the same
+// rule and the one that has always worked.
+func testADurationOverANumberIsADuration(t Test, c main) {
+    t.assert(c.halved == 125)
+}
+
+ui.window {
+    main
+}

@@ -274,6 +274,10 @@ type Env struct {
 	Log           []string
 	// Locale is the active BCP-47 locale for i18n calls (default "en").
 	Locale string
+	// Clock is what `time.now()` reads. Nil is the wall clock, so an env built
+	// outside a Session still answers; a test's Session hands in its Virtual
+	// one so `now()` and a timer's schedule cannot disagree.
+	Clock Clock
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
 	// Set by t.setContext(); read by Eval(*ir.ContextRead).
 	ContextVals map[*ir.Context]any
@@ -447,6 +451,7 @@ func (env *Env) Snapshot() *Env {
 		RenderDepth:   env.RenderDepth,
 		maxIterations: env.maxIterations,
 		Locale:        env.Locale,
+		Clock:         env.Clock,
 		ContextVals:   env.ContextVals, // shared reference — overrides visible in child envs
 		// Shared reference: a click handler runs against a snapshot, and the
 		// boundary it trips is the one the original scope renders.
@@ -1656,6 +1661,22 @@ func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
 			return re, nil
 		}
 	}
+	// An #[intrinsic] reached by its bare name. Only library source can write
+	// that -- a program names one through the package alias, which is the
+	// namespace path -- so nothing dispatched it here, and a library body
+	// calling its own package's intrinsic evaluated to null in silence.
+	if call.Func.Intrinsic != "" && len(call.Func.Block) == 0 {
+		evalArgs, err := env.evalCallArgs(call.Args)
+		if err != nil {
+			return nil, err
+		}
+		if result, handled, err := env.runClockIntrinsic(call.Func, evalArgs); handled {
+			return result, err
+		}
+		if result, handled, err := runIntrinsic(call.Func.Intrinsic, evalArgs); handled {
+			return result, err
+		}
+	}
 	return env.EvalUserFuncCallArgs(call.Func, call.Args)
 }
 
@@ -1713,6 +1734,10 @@ func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
 				return result, err
 			}
 		}
+	}
+
+	if result, handled, err := env.runClockIntrinsic(call.Func, evalArgs); handled {
+		return result, err
 	}
 
 	if result, handled, err := runIntrinsic(call.Func.Intrinsic, evalArgs); handled {
