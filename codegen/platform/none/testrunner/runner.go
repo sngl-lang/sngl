@@ -138,9 +138,10 @@ type testingT struct {
 	contextOverrides map[*ir.Context]any
 	// clock and timers are the test's simulated time. A test advances time
 	// explicitly, so the clock is virtual: t.wait() spends simulated
-	// milliseconds, not real ones. The clock is the env's, handed in at
-	// construction -- built on first use here, it was a second clock, and
-	// `time.now()` read the wall clock while `t.tick()` moved this one.
+	// milliseconds, not real ones. The clock is the env's and is never built
+	// here -- lazily, it was a *second* clock, so `time.now()` read one and
+	// `t.tick()` moved the other. A subtest is handed the parent's for the
+	// same reason.
 	clock  *interp.Virtual
 	timers *interp.Timers
 }
@@ -161,9 +162,6 @@ type testingT struct {
 // compEnv() snapshots, so two calls are two scopes and the write would land in
 // the one that is thrown away.
 func (tv *testingT) sched(env *interp.Env) (*interp.Timers, error) {
-	if tv.clock == nil {
-		tv.clock = interp.NewVirtual()
-	}
 	if tv.timers == nil {
 		tv.timers = interp.NewTimers(tv.clock)
 	}

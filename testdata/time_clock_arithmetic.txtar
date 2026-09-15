@@ -24,8 +24,19 @@ unconditionally is the shorter spelling and turns `...+05:00` into a string
 raised, while Kotlin throws and Go reads it correctly: three targets, three
 answers, for a literal the checker accepts.
 
+What the four agree on is the offsetless forms, `Z`, and `+HH:MM`. They do
+**not** agree beyond that, and the reason is upstream of anything here:
+`checkStringReprLiteral` validates a datetime with an unanchored *prefix*
+match, so `"2024-01-15T10:30:00+0500"` and `"2024-01-15T10:30garbage"` are both
+accepted declarations. The first parses on JavaScript and on nothing else; the
+second is `NaN` there, a panic on Go and an error in the interpreter. Anchoring
+that pattern means settling what a datetime literal's grammar actually is,
+which is a language decision and not this change's to make.
+
 Each normaliser evaluates its operand once -- a replacement function in
-JavaScript, `let` in Kotlin -- because the operand is an arbitrary expression.
+JavaScript, index tests in Kotlin, both inside a `let`/callback -- because the
+operand is an arbitrary expression. Kotlin avoids a `Regex` because these land
+inside `derivedStateOf`, which re-runs on recomposition.
 
 `between` is a package function rather than a `datetime` method because a
 method's first parameter *is* its receiver when it carries the receiver's own
@@ -39,8 +50,13 @@ neither restates what `now` already says.
 library function with no body is typed pure, and `ir.IsConst` calls a pure call
 constant -- so without `readonly` the build machine's reading is a constant a
 program may put anywhere one is demanded. `error_time_now_is_not_constant.sngl`
-is where that is refused; this is the artifact it would otherwise appear in.
+is where that is refused; this is the artifact it would otherwise appear in,
+and the first `deny` is that claim made across every target rather than on the
+one whose spelling happens to be checked below it. It names the shape a folded
+reading is *written* in -- RFC3339 to the second, with an optional fraction and
+a Z -- which is why the offset-bearing literal in the source does not trip it.
 
+deny * `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z` -- no target may carry a clock reading as a literal; a folded one is written in exactly this form, and the offset-bearing literal below is not
 deny out/go/bubbletea/model.go `(?m)^\tm\.deadline__inst0 = time\.Now\(\)$` -- the clock reads UTC, so that the four runners display one instant the same way
 deny out/go/bubbletea/model.go `Sub\(m\.deadline__inst0\) / ` -- unit / unit is a float ratio, so both operands widen before the divide
 deny out/kotlin/android/MainScreen.kt `toMillis\(\) / period` -- the same for Kotlin, where a duration is a Long and a bare divide truncates
@@ -307,15 +323,15 @@ fun MainScreen() {
     var deadline__inst0 by remember { mutableStateOf(java.time.Instant.now().toString()) }
     var period__inst0 by remember { mutableStateOf(250L) }
     var offset__inst0 by remember { mutableStateOf("2024-01-15T10:30:00+05:00") }
-    val left__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(deadline__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
-    val elapsed__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
-    val caughtUp__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / period__inst0.toDouble()) } }
+    val left__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(deadline__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+    val elapsed__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+    val caughtUp__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / period__inst0.toDouble()) } }
     val half__inst0 by remember { derivedStateOf { (period__inst0 / 2) } }
-    val offsetGap__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(offset__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.OffsetDateTime.parse(offset__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant().plusMillis(60000L).toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+    val offsetGap__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(offset__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.OffsetDateTime.parse(offset__inst0.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant().plusMillis(60000L).toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
 
     Column {
         Button(onClick = {
-            deadline__inst0 = java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant().plusMillis(90000L).toString()
+            deadline__inst0 = java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant().plusMillis(90000L).toString()
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "arm", modifier = Modifier)
         }

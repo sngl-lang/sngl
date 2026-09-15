@@ -53,10 +53,12 @@ func init() {
 	// Instant.parse refuses a string with no offset and a SNGL datetime
 	// literal may be written without one. Z is supplied only where no offset
 	// is there -- unconditionally makes `...+05:00` throw -- and `let` keeps
-	// that to one evaluation of what may be any expression.
+	// that to one evaluation of what may be any expression. Index tests rather
+	// than a Regex: these land inside `derivedStateOf`, which re-runs on every
+	// recomposition, and a Regex there is compiled per frame.
 	local := func(x string) string {
 		return "java.time.OffsetDateTime.parse(" + x +
-			`.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()`
+			`.let { if (it.endsWith("Z") || it.length > 16 && (it[it.length - 6] == '+' || it[it.length - 6] == '-')) it else it + "Z" }).toInstant()`
 	}
 	reg("time.now", func(a []string) string { return "java.time.Instant.now().toString()" })
 	reg("datetime.add", func(a []string) string {

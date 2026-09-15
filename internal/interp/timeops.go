@@ -84,8 +84,10 @@ func parseSnglDateTime(v any) (time.Time, error) {
 }
 
 // durationOf reads a duration operand as a Go Duration. A unit value carries a
-// magnitude per base; the value's own first base is read rather than the
-// spelling `ms`, so nothing here depends on what the declaration calls it.
+// magnitude per base, and the first declared base is where Env.duration stores
+// the millisecond count -- so the two read and write the same slot whatever it
+// is called. Both still assume that base *is* the millisecond, which is what
+// the `* time.Millisecond` below says.
 func durationOf(v any) time.Duration {
 	if u, ok := v.(unitValue); ok {
 		return time.Duration(u.amountIn(u.firstBase()) * float64(time.Millisecond))
