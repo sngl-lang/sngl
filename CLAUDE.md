@@ -342,6 +342,45 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component that lowers to an effect, not a builtin node, which is why it carries no `#[builtin]` mark. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
+
+  **The clock is `now`, and the mark it does *not* carry is the load-bearing
+  part.** A library function with no body is typed `PurityPure`, and
+  `ir.IsConst` calls a pure call constant — so unflagged, a clock reading is
+  accepted wherever a constant is demanded and the value a build ships is the
+  one the build machine read. `#[marks.intrinsic("time.now", readonly)]` is
+  what refuses it; `since` and `until` have SNGL bodies and inherit the
+  impurity through the purity fixed point rather than restating it, while
+  `between` stays pure, being a pure function of its arguments.
+
+  The instant is **`datetime` itself** rather than a type of its own: it
+  already maps to the host's date type everywhere, and a second one would be
+  two SNGL types over one host representation. What that costs is that Go
+  carries it as a `time.Time` beside a `time.Duration` and converts nothing,
+  while JavaScript and Kotlin carry an RFC3339 string and pay a parse per
+  operation — and both have to normalise first, because a datetime *literal*
+  may be written with no offset, which ES reads as local time and
+  `Instant.parse` refuses outright.
+
+  `between` is a **package function and not a `datetime` method**, which is
+  forced rather than chosen: `resolve.go` reads a method's first parameter *as*
+  the receiver when it carries the receiver's own type (what lets
+  `int.ident(1)` mean `1.ident()`), so no `datetime` method can take a second
+  instant — `d.since(x)` reports `too many arguments: expected 0`.
+
+  It is **wall-clock** time and says so in `lib/time/doc.sngl`: what a date
+  shown to someone is, and what an interval against a calendar deadline is. Not
+  a scheduling primitive — a wall clock jumps on an NTP correction and on a
+  daylight saving change, and an RFC3339 string cannot carry a monotonic
+  reading at all.
+
+  Duration arithmetic needed no declarations: `unit / unit` is the
+  dimensionless `float` the checker has always typed it, and `unit / scalar` is
+  still that unit. It had simply never compiled — Go divided two
+  `time.Duration`s into a `float64` return and Kotlin two `Long`s into a
+  `Double`, so a program could write the division and no Go or Kotlin target
+  could build it. `ir.IsUnitRatio` is the shared answer, single-base only for
+  the reason the checker already refuses *ordering* and *casting* a multi-base
+  value: a magnitude per base has no one ratio to report.
 - **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
