@@ -31,6 +31,13 @@ stderr 'see #245'
 ! sngl generate --platform fyne --lang go -o out constloopif.sngl
 stderr 'brackets a lifetime and this loop is not reactive'
 
+# And through a component of the program's own, which costs nothing extra:
+# passInlinePure splices a platform override into its caller before this pass
+# runs, so a user component wrapping a timer holds the effect node directly by
+# the time the question is asked.
+! sngl generate --platform fyne --lang go -o out wrapped.sngl
+stderr 'brackets a lifetime and this loop is not reactive'
+
 # One word is the whole difference, and the other word still works.
 sngl generate --platform fyne --lang go -o out varloop.sngl
 grep 'TimerInstance' out/model.go
@@ -72,6 +79,23 @@ ui.window(title="t") {
         if n < 100 {
             time.timer(interval=p, enabled=true, @tick { n = n + 1 })
         }
+    }
+}
+-- wrapped.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const periods list<time.duration> = [100ms, 250ms]
+
+component ticker(period time.duration = 100ms) ui.node {
+    time.timer(interval=period, enabled=true, @tick { n = n + 1 })
+    ui.text(value=string(n))
+}
+
+ui.window(title="t") {
+    for var p = periods {
+        ticker(period=p)
     }
 }
 -- varloop.sngl --
