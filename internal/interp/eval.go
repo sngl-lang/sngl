@@ -274,9 +274,10 @@ type Env struct {
 	Log           []string
 	// Locale is the active BCP-47 locale for i18n calls (default "en").
 	Locale string
-	// Clock is what `time.now()` reads. Nil is the wall clock, so an env built
-	// outside a Session still answers; a test's Session hands in its Virtual
-	// one so `now()` and a timer's schedule cannot disagree.
+	// Clock is what `time.now()` reads, set on the scope a run is rooted at
+	// and found from the rest through the owner chain (Env.clock). A test
+	// hands in the Virtual one its timers are scheduled against, so the two
+	// cannot disagree; nil anywhere on the chain is the wall clock.
 	Clock Clock
 	// ContextVals holds runtime overrides for context values keyed by *ir.Context.
 	// Set by t.setContext(); read by Eval(*ir.ContextRead).
@@ -1665,17 +1666,22 @@ func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
 	// that -- a program names one through the package alias, which is the
 	// namespace path -- so nothing dispatched it here, and a library body
 	// calling its own package's intrinsic evaluated to null in silence.
+	//
+	// Bound rather than read positionally, because a library body may write
+	// its own call by name; and the bound values are what the fallback runs
+	// on, so nothing is evaluated twice.
 	if call.Func.Intrinsic != "" && len(call.Func.Block) == 0 {
-		evalArgs, err := env.evalCallArgs(call.Args)
+		args, err := env.boundArgs(call.Func, call.Args)
 		if err != nil {
 			return nil, err
 		}
-		if result, handled, err := env.runClockIntrinsic(call.Func, evalArgs); handled {
+		if result, handled, err := env.runClockIntrinsic(call.Func, args); handled {
 			return result, err
 		}
-		if result, handled, err := runIntrinsic(call.Func.Intrinsic, evalArgs); handled {
+		if result, handled, err := runIntrinsic(call.Func.Intrinsic, args); handled {
 			return result, err
 		}
+		return env.evalUserFuncCore(call.Func, args)
 	}
 	return env.EvalUserFuncCallArgs(call.Func, call.Args)
 }
@@ -2298,18 +2304,32 @@ func (env *Env) EvalUserFunc(fn *ir.Func, argExprs []ir.Expr) (any, error) {
 // Name field are bound to the matching parameter by name; args without a Name
 // are bound positionally. Parameters with no supplied arg use their default.
 func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, error) {
-	// Check whether any arg carries a Name — if not, fall back to positional.
-	hasNamed := false
-	for _, a := range callArgs {
-		if a.Name != "" {
-			hasNamed = true
-			break
-		}
-	}
-	if !hasNamed {
+	if !hasNamedArg(callArgs) {
 		return env.EvalUserFunc(fn, argExprs(callArgs))
 	}
+	args, err := env.boundArgs(fn, callArgs)
+	if err != nil {
+		return nil, err
+	}
+	return env.evalUserFuncCore(fn, args)
+}
 
+// hasNamedArg reports whether any argument was written by name; without one
+// the whole list is positional.
+func hasNamedArg(callArgs []ir.CallArg) bool {
+	for _, a := range callArgs {
+		if a.Name != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// boundArgs evaluates a call's arguments into fn's parameter order, honouring
+// defaults and names. Extracted so a caller that wants the values rather than
+// the call -- an intrinsic dispatcher -- gets the same binding instead of
+// reading the list positionally, which silently swapped `between(end=, start=)`.
+func (env *Env) boundArgs(fn *ir.Func, callArgs []ir.CallArg) ([]any, error) {
 	// Build a param→value map honouring defaults.
 	vals := make(map[string]any, len(fn.Params))
 	for _, p := range fn.Params {
@@ -2337,12 +2357,11 @@ func (env *Env) EvalUserFuncCallArgs(fn *ir.Func, callArgs []ir.CallArg) (any, e
 			positional++
 		}
 	}
-	// Assemble positional slice in param order for evalUserFuncCore.
 	args := make([]any, len(fn.Params))
 	for i, p := range fn.Params {
 		args[i] = vals[p.Name]
 	}
-	return env.evalUserFuncCore(fn, args)
+	return args, nil
 }
 
 func (env *Env) evalUserFuncCore(fn *ir.Func, args []any) (any, error) {

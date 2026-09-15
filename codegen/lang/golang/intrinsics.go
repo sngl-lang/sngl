@@ -40,9 +40,15 @@ func init() {
 
 	// --- sngl:time ---
 	// datetime is time.Time here and duration is time.Duration, so the host
-	// operators line up and nothing is converted. The other two languages carry
-	// datetime as an ISO string and pay a parse per operation.
-	regImp("time.now", []string{"time"}, func(a []string) string { return "time.Now()" })
+	// operators line up and nothing is converted. The other two languages
+	// carry datetime as an RFC3339 string and pay a parse per operation.
+	//
+	// .UTC() so the four runners agree on what the clock *displays*: every
+	// other one produces UTC, and a bare time.Now() carries the machine's
+	// zone. It drops Go's monotonic reading with it, which costs nothing here
+	// -- this is wall-clock time and is documented as not being a scheduling
+	// primitive.
+	regImp("time.now", []string{"time"}, func(a []string) string { return "time.Now().UTC()" })
 	reg("datetime.add", func(a []string) string { return "(" + a[0] + ").Add(" + a[1] + ")" })
 	reg("time.between", func(a []string) string { return "(" + a[1] + ").Sub(" + a[0] + ")" })
 

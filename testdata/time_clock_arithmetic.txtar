@@ -7,15 +7,25 @@ datetime as `time.Time` and a duration as `time.Duration`, so the operators
 line up and nothing is converted, while JavaScript and Kotlin carry one as an
 RFC3339 string and pay a parse per operation.
 
+`time.Now().UTC()` rather than `time.Now()` so the four runners agree on what
+the clock *displays*: every other one produces UTC and a bare reading carries
+the machine's zone. It drops Go's monotonic reading, which costs nothing here
+and is noted in the package doc: this is wall-clock time and not a scheduling
+primitive.
+
 Those two produce RFC3339 and read something wider, and both halves are
-deliberate. `toISOString` and `Instant.toString` write the offset; but a SNGL
+deliberate. `toISOString` and `Instant.toString` write the offset; a SNGL
 datetime *literal* may be written without one, and an offsetless date-time is
 read as **local** time by `Date.parse` and refused outright by `Instant.parse`.
-So the parse normalises first: `replace(/Z?$/, "Z")` in JavaScript, which pins
-it to UTC in a single evaluation of the operand, and `LocalDateTime` plus
-`removeSuffix("Z")` in Kotlin. A literal carrying an explicit *numeric* offset
-is not handled on either and would need a runtime helper on both; Go takes one
-through `mustParseDateTime`.
+So the parse normalises first, and normalises by supplying Z *only when no
+offset is there* -- which is what `offsetGap` is here to hold. Appending one
+unconditionally is the shorter spelling and turns `...+05:00` into a string
+`Date.parse` answers `NaN` for, propagating into rendered output with nothing
+raised, while Kotlin throws and Go reads it correctly: three targets, three
+answers, for a literal the checker accepts.
+
+Each normaliser evaluates its operand once -- a replacement function in
+JavaScript, `let` in Kotlin -- because the operand is an arbitrary expression.
 
 `between` is a package function rather than a `datetime` method because a
 method's first parameter *is* its receiver when it carries the receiver's own
@@ -31,10 +41,11 @@ constant -- so without `readonly` the build machine's reading is a constant a
 program may put anywhere one is demanded. `error_time_now_is_not_constant.sngl`
 is where that is refused; this is the artifact it would otherwise appear in.
 
-deny * `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}` -- no target may carry the build machine's clock reading as a literal
+deny out/go/bubbletea/model.go `(?m)^\tm\.deadline__inst0 = time\.Now\(\)$` -- the clock reads UTC, so that the four runners display one instant the same way
 deny out/go/bubbletea/model.go `Sub\(m\.deadline__inst0\) / ` -- unit / unit is a float ratio, so both operands widen before the divide
 deny out/kotlin/android/MainScreen.kt `toMillis\(\) / period` -- the same for Kotlin, where a duration is a Long and a bare divide truncates
-deny out/none/html/index.html `Date\.parse\(state2\.deadline__inst0\)` -- every parse is pinned to UTC; an offsetless operand reaching one unnormalised reads as local time
+deny out/none/html/index.html `replace\(/Z\?\$/` -- Z is supplied only when no offset is there; unconditional turns an offset-bearing literal into NaN
+deny out/kotlin/android/MainScreen.kt `removeSuffix\("Z"\)` -- the same for Kotlin, where stripping the offset instead throws
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -55,6 +66,7 @@ output {
 component main ui.node {
     var deadline = time.now()
     var period time.duration = 250ms
+    var offset time.datetime = "2024-01-15T10:30:00+05:00"
 
     func left() => int(time.until(deadline) / 1s)
 
@@ -70,7 +82,9 @@ component main ui.node {
         deadline = time.now().add(90s)
     })
 
-    ui.text(value=string(left()) + "/" + string(elapsed()) + "/" + string(caughtUp()) + "/" + string(half()))
+    func offsetGap() => int(time.between(offset, offset.add(60s)) / 1s)
+
+    ui.text(value=string(left()) + "/" + string(elapsed()) + "/" + string(caughtUp()) + "/" + string(half()) + "/" + string(offsetGap()))
 }
 
 ui.window {
@@ -104,6 +118,7 @@ func snglStrDuration(v time.Duration) string {
 type Model struct {
 	deadline__inst0 time.Time
 	period__inst0   time.Duration
+	offset__inst0   time.Time
 	__focusID       int
 
 	width, height int
@@ -112,8 +127,9 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.deadline__inst0 = time.Now()
+	m.deadline__inst0 = time.Now().UTC()
 	m.period__inst0 = (time.Duration(250) * time.Millisecond)
+	m.offset__inst0 = mustParseDateTime("2024-01-15T10:30:00+05:00")
 	m.__focusID = 0
 	return m
 }
@@ -125,19 +141,23 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func (m Model) left__inst0() int {
-	return int((float64((m.deadline__inst0).Sub(time.Now())) / float64((time.Duration(1000) * time.Millisecond))))
+	return int((float64((m.deadline__inst0).Sub(time.Now().UTC())) / float64((time.Duration(1000) * time.Millisecond))))
 }
 
 func (m Model) elapsed__inst0() int {
-	return int((float64((time.Now()).Sub(m.deadline__inst0)) / float64((time.Duration(1000) * time.Millisecond))))
+	return int((float64((time.Now().UTC()).Sub(m.deadline__inst0)) / float64((time.Duration(1000) * time.Millisecond))))
 }
 
 func (m Model) caughtUp__inst0() float64 {
-	return (float64((time.Now()).Sub(m.deadline__inst0)) / float64(m.period__inst0))
+	return (float64((time.Now().UTC()).Sub(m.deadline__inst0)) / float64(m.period__inst0))
 }
 
 func (m Model) half__inst0() time.Duration {
 	return (m.period__inst0 / 2)
+}
+
+func (m Model) offsetGap__inst0() int {
+	return int((float64(((m.offset__inst0).Add((time.Duration(60000) * time.Millisecond))).Sub(m.offset__inst0)) / float64((time.Duration(1000) * time.Millisecond))))
 }
 
 func (m *Model) __focusNext() {
@@ -182,6 +202,21 @@ func SetPeriod__inst0Cmd(v time.Duration) tea.Cmd {
 	return func() tea.Msg { return setPeriod__inst0Msg{value: v} }
 }
 
+func (m Model) Offset__inst0() time.Time {
+	return m.offset__inst0
+}
+
+func (m Model) SetOffset__inst0(v time.Time) Model {
+	m.offset__inst0 = v
+	return m
+}
+
+type setOffset__inst0Msg struct{ value time.Time }
+
+func SetOffset__inst0Cmd(v time.Time) tea.Cmd {
+	return func() tea.Msg { return setOffset__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -195,6 +230,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetDeadline__inst0(msg.value)
 	case setPeriod__inst0Msg:
 		m = m.SetPeriod__inst0(msg.value)
+	case setOffset__inst0Msg:
+		m = m.SetOffset__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -207,7 +244,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			m.deadline__inst0 = (time.Now()).Add((time.Duration(90000) * time.Millisecond))
+			m.deadline__inst0 = (time.Now().UTC()).Add((time.Duration(90000) * time.Millisecond))
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -224,7 +261,7 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(part0Prefix + " " + fmt.Sprint("arm"))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((fmt.Sprint(m.left__inst0()) + "/") + fmt.Sprint(m.elapsed__inst0())) + "/") + fmt.Sprint(m.caughtUp__inst0())) + "/") + snglStrDuration(m.half__inst0()))))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(((((((((fmt.Sprint(m.left__inst0()) + "/") + fmt.Sprint(m.elapsed__inst0())) + "/") + fmt.Sprint(m.caughtUp__inst0())) + "/") + snglStrDuration(m.half__inst0())) + "/") + fmt.Sprint(m.offsetGap__inst0()))))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -269,18 +306,20 @@ fun _snglSplit(s: String, sep: String): List<String> =
 fun MainScreen() {
     var deadline__inst0 by remember { mutableStateOf(java.time.Instant.now().toString()) }
     var period__inst0 by remember { mutableStateOf(250L) }
-    val left__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.LocalDateTime.parse(java.time.Instant.now().toString().removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC), java.time.LocalDateTime.parse(deadline__inst0.removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC)).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
-    val elapsed__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.LocalDateTime.parse(deadline__inst0.removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC), java.time.LocalDateTime.parse(java.time.Instant.now().toString().removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC)).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
-    val caughtUp__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.LocalDateTime.parse(deadline__inst0.removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC), java.time.LocalDateTime.parse(java.time.Instant.now().toString().removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC)).toMillis().toDouble() / period__inst0.toDouble()) } }
+    var offset__inst0 by remember { mutableStateOf("2024-01-15T10:30:00+05:00") }
+    val left__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(deadline__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+    val elapsed__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
+    val caughtUp__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(deadline__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / period__inst0.toDouble()) } }
     val half__inst0 by remember { derivedStateOf { (period__inst0 / 2) } }
+    val offsetGap__inst0 by remember { derivedStateOf { (java.time.Duration.between(java.time.OffsetDateTime.parse(offset__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant(), java.time.OffsetDateTime.parse(java.time.OffsetDateTime.parse(offset__inst0.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant().plusMillis(60000L).toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()).toMillis().toDouble() / 1000L.toDouble()).toInt() } }
 
     Column {
         Button(onClick = {
-            deadline__inst0 = java.time.LocalDateTime.parse(java.time.Instant.now().toString().removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC).plusMillis(90000L).toString()
+            deadline__inst0 = java.time.OffsetDateTime.parse(java.time.Instant.now().toString().let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant().plusMillis(90000L).toString()
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "arm", modifier = Modifier)
         }
-        Text(text = ((((((left__inst0.toString() + "/") + elapsed__inst0.toString()) + "/") + _snglFloatStr(caughtUp__inst0)) + "/") + ((half__inst0).toString() + "ms")), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((((((((left__inst0.toString() + "/") + elapsed__inst0.toString()) + "/") + _snglFloatStr(caughtUp__inst0)) + "/") + ((half__inst0).toString() + "ms")) + "/") + offsetGap__inst0.toString()), modifier = Modifier.safeDrawingPadding())
     }
 }
 -- out/none/html/index.html --
@@ -305,19 +344,22 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { deadline__inst0: null, period__inst0: 250 };
+  var state = { deadline__inst0: null, period__inst0: 250, offset__inst0: "2024-01-15T10:30:00+05:00" };
   state.deadline__inst0 = (/* @__PURE__ */ new Date()).toISOString();
   function main_left__inst0(state2) {
-    return Math.trunc((Date.parse(state2.deadline__inst0.replace(/Z?$/, "Z")) - Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/Z?$/, "Z"))) / 1e3);
+    return Math.trunc((Date.parse(state2.deadline__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / 1e3);
   }
   function main_elapsed__inst0(state2) {
-    return Math.trunc((Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/Z?$/, "Z")) - Date.parse(state2.deadline__inst0.replace(/Z?$/, "Z"))) / 1e3);
+    return Math.trunc((Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse(state2.deadline__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / 1e3);
   }
   function main_caughtUp__inst0(state2) {
-    return (Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/Z?$/, "Z")) - Date.parse(state2.deadline__inst0.replace(/Z?$/, "Z"))) / state2.period__inst0;
+    return (Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse(state2.deadline__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / state2.period__inst0;
   }
   function main_half__inst0(state2) {
     return state2.period__inst0 / 2;
+  }
+  function main_offsetGap__inst0(state2) {
+    return Math.trunc((Date.parse(new Date(Date.parse(state2.offset__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) + 6e4).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) - Date.parse(state2.offset__inst0.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z"))) / 1e3);
   }
   function String(v) {
     return "" + v;
@@ -325,11 +367,11 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   $0.addEventListener("click", function() {
-    state.deadline__inst0 = new Date(Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/Z?$/, "Z")) + 9e4).toISOString();
-    $1.textContent = String(main_left__inst0(state)) + "/" + String(main_elapsed__inst0(state)) + "/" + String(main_caughtUp__inst0(state)) + "/" + (String(main_half__inst0(state)) + "ms");
+    state.deadline__inst0 = new Date(Date.parse((/* @__PURE__ */ new Date()).toISOString().replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")) + 9e4).toISOString();
+    $1.textContent = String(main_left__inst0(state)) + "/" + String(main_elapsed__inst0(state)) + "/" + String(main_caughtUp__inst0(state)) + "/" + (String(main_half__inst0(state)) + "ms") + "/" + String(main_offsetGap__inst0(state));
   });
   function __sngl_init() {
-    $1.textContent = String(main_left__inst0(state)) + "/" + String(main_elapsed__inst0(state)) + "/" + String(main_caughtUp__inst0(state)) + "/" + (String(main_half__inst0(state)) + "ms");
+    $1.textContent = String(main_left__inst0(state)) + "/" + String(main_elapsed__inst0(state)) + "/" + String(main_caughtUp__inst0(state)) + "/" + (String(main_half__inst0(state)) + "ms") + "/" + String(main_offsetGap__inst0(state));
   }
   __sngl_init();
 })();

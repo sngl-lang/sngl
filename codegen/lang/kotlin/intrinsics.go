@@ -51,12 +51,16 @@ func init() {
 	// --- sngl:time ---
 	// A datetime is an RFC3339 string here and a duration a Long of
 	// milliseconds, so every operation parses. Instant.toString is what writes
-	// RFC3339; LocalDateTime is what reads it, because Instant.parse refuses a
-	// string with no offset and a SNGL datetime literal may be written without
-	// one. removeSuffix absorbs the Z the producer wrote. A literal carrying
-	// an explicit numeric offset is not handled here or on JavaScript.
+	// RFC3339; OffsetDateTime is what reads it, because a SNGL datetime
+	// literal may be written with no offset and Instant.parse refuses one. The
+	// normaliser supplies Z only when no offset is there -- appending
+	// unconditionally makes `...+05:00` throw, which is the same bug
+	// JavaScript answers NaN for.
+	//
+	// `let` rather than naming the operand twice: it may be any expression.
 	local := func(x string) string {
-		return "java.time.LocalDateTime.parse(" + x + `.removeSuffix("Z")).toInstant(java.time.ZoneOffset.UTC)`
+		return "java.time.OffsetDateTime.parse(" + x +
+			`.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()`
 	}
 	reg("time.now", func(a []string) string { return "java.time.Instant.now().toString()" })
 	reg("datetime.add", func(a []string) string {

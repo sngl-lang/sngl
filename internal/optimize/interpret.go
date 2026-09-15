@@ -111,7 +111,7 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 		err error
 	)
 	if ctx != nil && ctx.pkg != nil {
-		env, err = interp.BuildEnv(ctx.pkg, "")
+		env, err = interp.BuildEnv(ctx.pkg, "", nil)
 		if err != nil {
 			return nil, false
 		}

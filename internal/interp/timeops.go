@@ -1,6 +1,7 @@
 package interp
 
 import (
+	"fmt"
 	"time"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -19,56 +20,67 @@ func (env *Env) runClockIntrinsic(fn *ir.Func, args []any) (any, bool, error) {
 	if fn == nil {
 		return nil, false, nil
 	}
+	// handled is true for every id this implements, failures included: a
+	// caller reads false as "not mine" and goes on to a fallback that answers
+	// null for a declaration with no body, which is the silence this is here
+	// to remove.
 	switch fn.Intrinsic {
 	case "time.now":
 		return env.clock().Now().UTC().Format(snglDateTime), true, nil
 	case "datetime.add":
 		if len(args) != 2 {
-			return nil, false, nil
+			return nil, true, fmt.Errorf("datetime.add takes an instant and a duration, got %d arguments", len(args))
 		}
-		t, ok := parseSnglDateTime(args[0])
-		if !ok {
-			return nil, false, nil
+		t, err := parseSnglDateTime(args[0])
+		if err != nil {
+			return nil, true, err
 		}
 		return t.Add(durationOf(args[1])).UTC().Format(snglDateTime), true, nil
 	case "time.between":
 		if len(args) != 2 {
-			return nil, false, nil
+			return nil, true, fmt.Errorf("time.between takes two instants, got %d arguments", len(args))
 		}
-		start, sok := parseSnglDateTime(args[0])
-		end, eok := parseSnglDateTime(args[1])
-		if !sok || !eok {
-			return nil, false, nil
+		start, err := parseSnglDateTime(args[0])
+		if err != nil {
+			return nil, true, err
+		}
+		end, err := parseSnglDateTime(args[1])
+		if err != nil {
+			return nil, true, err
 		}
 		return env.duration(fn.Return, float64(end.Sub(start))/float64(time.Millisecond)), true, nil
 	}
 	return nil, false, nil
 }
 
-// clock is the wall clock for an env built outside a Session; a Session hands
-// in its own, so a test's `now()` and its timer schedule cannot disagree.
+// clock walks the owner chain rather than reading this scope alone: a child
+// component's env is built field by field in render.go, so anything it does not
+// name is absent there and one clock for a run has to be reachable from every
+// scope in it. The wall clock is the answer for an env built outside a session.
 func (env *Env) clock() Clock {
-	if env == nil || env.Clock == nil {
-		return Real{}
+	for e := env; e != nil; e = e.parent {
+		if e.Clock != nil {
+			return e.Clock
+		}
 	}
-	return env.Clock
+	return Real{}
 }
 
 // parseSnglDateTime accepts every shape the checker lets a datetime literal be
 // written in: the seconds, the fraction and the offset are each optional. So a
 // literal and a clock reading are interchangeable operands even though only
 // the reading is written back in full.
-func parseSnglDateTime(v any) (time.Time, bool) {
+func parseSnglDateTime(v any) (time.Time, error) {
 	s, ok := v.(string)
 	if !ok {
-		return time.Time{}, false
+		return time.Time{}, fmt.Errorf("not a datetime: %v", v)
 	}
 	for _, layout := range []string{snglDateTime, time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
 		if t, err := time.Parse(layout, s); err == nil {
-			return t, true
+			return t, nil
 		}
 	}
-	return time.Time{}, false
+	return time.Time{}, fmt.Errorf("not a datetime: %q", s)
 }
 
 // durationOf reads a duration operand as a Go Duration. A unit value carries a

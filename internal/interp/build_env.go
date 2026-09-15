@@ -10,9 +10,13 @@ import (
 // package and optional component. When compName is empty, only package-level
 // consts/funcs are populated; when set, the named component's vars/consts/
 // props/funcs are also seeded and env.Comp/BodyStmts are wired up.
-func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
+// clock is what `time.now()` answers with, all the way down: a var initializer
+// is evaluated here, before BuildEnv returns, so a caller that assigned the
+// field afterwards had already read the wall clock. Nil is the wall clock.
+func BuildEnv(pkg *ir.Package, compName string, clock Clock) (*Env, error) {
 	env := NewEnv()
 	env.Pkg = pkg
+	env.Clock = clock
 	env.Units = buildUnitTables(pkg)
 
 	// Seed context defaults so ContextRead expressions evaluate to their

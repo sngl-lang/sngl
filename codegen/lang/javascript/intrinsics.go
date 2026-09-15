@@ -45,13 +45,18 @@ func init() {
 
 	// --- sngl:time ---
 	// A datetime is an RFC3339 string here, so every operation parses. The
-	// `replace(/Z?$/, "Z")` is what pins the parse to UTC in a single
-	// evaluation of the operand: a SNGL datetime literal may be written with
-	// no offset, and ES reads an offsetless date-time as *local* time, so an
-	// add spanning a DST boundary lands an hour out. A literal carrying an
-	// explicit numeric offset is not handled here or on Kotlin; supporting one
-	// needs a runtime helper on both.
-	utc := func(x string) string { return x + `.replace(/Z?$/, "Z")` }
+	// normaliser is what makes the parse mean one thing: a SNGL datetime
+	// literal may be written with no offset, and ES reads an offsetless
+	// date-time as *local* time, so an add spanning a DST boundary lands an
+	// hour out. It appends Z only when there is no offset already -- appending
+	// unconditionally turns `...+05:00` into a string `Date.parse` answers NaN
+	// for, which then propagates into rendered output with nothing raised.
+	//
+	// One evaluation of the operand, because the replacement is a function of
+	// what matched rather than a second read.
+	utc := func(x string) string {
+		return x + `.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")`
+	}
 	reg("time.now", func(a []string) string { return "new Date().toISOString()" })
 	reg("datetime.add", func(a []string) string {
 		return "new Date(Date.parse(" + utc(a[0]) + ") + (" + a[1] + ")).toISOString()"

@@ -35,11 +35,10 @@ func NewSession(pkg *ir.Package, comp string, clock Clock) (*Session, error) {
 	// every stdlib component is before a platform implements it, and schedules
 	// nothing.
 	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	env, err := BuildEnv(pkg, comp)
+	env, err := BuildEnv(pkg, comp, clock)
 	if err != nil {
 		return nil, err
 	}
-	env.Clock = clock
 	timers := NewTimers(clock)
 	// Settling here rather than after: a mount handler runs before anything has
 	// seen the tree, so what a host is first handed already reflects it. An
@@ -193,7 +192,7 @@ func (s *Session) Reload(pkg *ir.Package) ([]Patch, error) {
 	// platform's bodies exactly as the first one did. Without it a reload
 	// silently dropped every timer: `timer` reverted to the empty stub.
 	ir.SpecializeForTarget(pkg, InterpreterPlatform, "")
-	env, err := BuildEnv(pkg, s.Comp)
+	env, err := BuildEnv(pkg, s.Comp, s.Clock)
 	if err != nil {
 		return nil, err
 	}

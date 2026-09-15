@@ -9,7 +9,7 @@ import (
 func envFor(t *testing.T, src, comp string) (*Env, *ir.Package) {
 	t.Helper()
 	pkg := check(t, src)
-	env, err := BuildEnv(pkg, comp)
+	env, err := BuildEnv(pkg, comp, nil)
 	if err != nil {
 		t.Fatalf("BuildEnv: %v", err)
 	}

@@ -8,9 +8,11 @@
 # and a conversion that is wrong in one of them is invisible from the other.
 #
 # Nothing here asserts an absolute instant, so the answers do not depend on
-# when the suite ran. The two that do read the clock are bounded rather than
-# exact: each reads it twice and a real clock has moved between the readings,
-# which the truncating cast shows as 89 rather than 90.
+# when the suite ran. The two that read the clock are bounded rather than exact
+# because of the compiled run: each reads the clock twice and a real one has
+# moved between the readings, which the truncating cast shows as 89 rather than
+# 90. The interpreter answers exactly -- `sngl test` runs on a virtual clock --
+# and the bound is what lets one source state the claim for both.
 #
 # `since` and `until` have SNGL bodies calling `between` and `now` by their
 # bare names, which only library source can write. Nothing dispatched an
