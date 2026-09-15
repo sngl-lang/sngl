@@ -280,6 +280,9 @@ func (c Caps) String() string {
 	if c.AsyncPost {
 		parts = append(parts, "AsyncPost")
 	}
+	if c.AsyncSpawn {
+		parts = append(parts, "AsyncSpawn")
+	}
 	if c.NoComputed {
 		parts = append(parts, "NoComputed")
 	}

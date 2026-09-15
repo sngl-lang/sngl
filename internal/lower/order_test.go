@@ -57,6 +57,9 @@ func TestPassRegistryIsWellFormed(t *testing.T) {
 // them. It is a set and not an order: what it states is that a pass cannot
 // quietly acquire a gate, or quietly lose one, without someone saying so.
 var alwaysOn = []string{
+	// A program naming sngl:async is refused on a target with no answer for
+	// it, and every target is asked -- what differs is the answer.
+	"AsyncCapable",
 	"BoundaryFailed",
 	"CSE",
 	"ForElse",
@@ -154,6 +157,11 @@ var soleGate = map[string][]string{
 	// reads this itself to choose between the rewrite and refusing the
 	// program, so a target that can post back still needs the first flag.
 	"AsyncPost": nil,
+
+	// Nor this one. passAsyncCapable runs for every target and reads both
+	// async flags to decide which half of the build to name in its refusal,
+	// so neither turns a pass on.
+	"AsyncSpawn": nil,
 }
 
 func gatedPasses(c Caps) []string {

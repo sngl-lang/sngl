@@ -28,11 +28,16 @@
 // The compiler writes both itself. A blocking call on a language that cannot
 // suspend is moved to a spawn with its tail posted back -- that is
 // `passAsyncOffload`, and it is why these two ids existed before this package
-// did. They are declared here because a *platform package* needs to name one:
-// fyne's `time.timer` hands its tick to a host scheduler and has to get back
-// onto the drawing thread before it touches a widget. Without a declaration it
-// spelled `fyne.Do` in its own package, which made a hand-over every target
-// needs into one platform's private affordance.
+// did.
+//
+// What they were missing is a *name*. A platform reaches its own drawing
+// thread from hand-written Go inside the generator, which is fine for as long
+// as the generator is the only thing that needs to: the moment a platform's
+// own `.sngl` describes a schedule -- a timer handing its tick to a host
+// scheduler, and having to be back on the drawing thread before it touches a
+// widget -- there is nothing for it to write but that platform's own spelling
+// of `fyne.Do`, in its own package. That turns a hand-over every target needs
+// into one platform's private affordance.
 //
 // That is also the line between these and the node operations a visual tree
 // lowers to, which are deliberately *not* a package: nothing can name those,

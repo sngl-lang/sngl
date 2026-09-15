@@ -18,7 +18,11 @@
 ! sngl generate --platform bubbletea --lang go -o out post.sngl
 stderr 'async.post runs a closure back on the thread the target draws on'
 stderr 'bubbletea has no way to reach one'
-stderr 'post.sngl:12:'
+# The call's own line, not the enclosing statement's: allBlocks hands over a
+# view body before the handler bodies hanging off it, so the position used to
+# come out as the button rather than the post inside its @click.
+stderr 'post.sngl:13:'
+! stderr 'post.sngl:12:'
 ! stderr 'panic'
 
 # spawn is answered on the language axis, so a different program is refused for
@@ -27,6 +31,23 @@ stderr 'post.sngl:12:'
 stderr 'async.spawn runs a closure without waiting for it'
 stderr 'has no way to start one'
 ! stderr 'panic'
+
+# A platform has the last word over the language. html's client handlers are
+# JavaScript whatever --lang says, so Go answering async.spawn is not html
+# answering it: this emitted a bare `spawn(...)` into the inline script, an
+# undefined identifier and a ReferenceError at click time -- the same failure
+# as bubbletea's `m.post(...)`, reached along the other axis.
+! sngl generate --platform html --lang go -o out spawngo.sngl
+stderr 'go on html has no way to start one'
+! stderr 'panic'
+
+# The interpreter answers both, which is not a refusal at all: `sngl test` runs
+# the checked IR with no lowering, so passAsyncCapable never speaks there and a
+# program naming the package got "unsupported method" from the evaluator with
+# no position. One thread means both ids are the same thing -- call it -- and a
+# test wants the closure to have run before the assertion does.
+sngl test interp.sngl
+stdout '0 failures'
 
 # And the target that does answer builds, so the refusal is about the target
 # rather than about the declaration.
@@ -47,6 +68,49 @@ ui.window(title="t") {
     var n = 0
     ui.button(text="go", @click {
         async.post(func() {
+            n = n + 1
+        })
+    })
+}
+-- interp.sngl --
+import ui "sngl:ui"
+import async "sngl:async"
+import test "sngl:test"
+
+output {
+    none {
+        html
+    }
+}
+
+func testBothRun(t test.Test) {
+    var hits = 0
+    async.post(func() {
+        hits = hits + 1
+    })
+    async.spawn(func() {
+        hits = hits + 1
+    })
+    t.assert(hits == 2)
+}
+
+ui.window(title="t") {
+    ui.text(value="x")
+}
+-- spawngo.sngl --
+import ui "sngl:ui"
+import async "sngl:async"
+
+output {
+    go {
+        html
+    }
+}
+
+ui.window(title="t") {
+    var n = 0
+    ui.button(text="go", @click {
+        async.spawn(func() {
             n = n + 1
         })
     })
