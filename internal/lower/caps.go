@@ -96,6 +96,16 @@ type Features struct {
 	// A platform declaring it must register an emitter for that id; codegen's
 	// tests check the two against each other.
 	AsyncPost bool
+	// AsyncSpawn says the language can run a closure without waiting for it,
+	// and answers lower.AsyncSpawnIntrinsic with the call that does -- Go's
+	// `go func(){}()`. It sits on the language axis where AsyncPost sits on
+	// the platform's, because starting work is a property of the host language
+	// and getting back to the drawing thread is a property of the surface.
+	//
+	// Deliberately absent from AllFeatures: a language that has not registered
+	// the emitter must not claim the capability, and the diagnostic naming it
+	// is better than the Go compiler reporting an undefined method.
+	AsyncSpawn bool
 	// Effects says the platform emits an `effect` node itself and wants it left
 	// standing. A framework whose own model already brackets a lifetime keyed
 	// on a value -- Compose's DisposableEffect is one -- expresses the
@@ -151,6 +161,7 @@ func (f Features) ToLowerCaps() Caps {
 		Canvas:             f.Canvas,
 		ReactiveCanvas:     f.ReactiveCanvas,
 		AsyncPost:          f.AsyncPost,
+		AsyncSpawn:         f.AsyncSpawn,
 		NoEffects:          !f.Effects,
 		InsertBefore:       f.InsertBefore,
 	}
@@ -169,6 +180,7 @@ type Caps struct {
 	NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
 	NoAsyncCalls    bool // a blocking call → a goroutine, and the answer posted back
 	AsyncPost       bool // the platform can run a closure back on its drawing thread
+	AsyncSpawn      bool // the language can run a closure without waiting for it
 	NoComputed      bool // computed vars → inlined exprs or memoized funcs
 	// StructComponents declares that components compile to structs with
 	// methods rather than functions/closures. User-declared `context #foo`

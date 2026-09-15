@@ -1,0 +1,71 @@
+# A target with no answer for sngl:async refuses the build, at the call.
+#
+# The two ids are declared now, so a program can write them -- and what a
+# target that cannot emit one produced was neither an error nor working code.
+# bubbletea's Go emitter had already spelled the call as a method on the model,
+# so `async.post` there emitted `m.post(func(){...})` and the first anyone heard
+# of it was the Go compiler reporting an undefined method, with no position in
+# the SNGL that asked for it. RequireIntrinsicFallback is the guard for exactly
+# this and never saw the call: a backend consults it at the generic path, which
+# that spelling had already left.
+#
+# A txtar rather than a golden because a golden runs nothing and this is a
+# refusal: the claim is the exit status and the text, which is the CLI's to make.
+
+# post is answered on the platform axis, and bubbletea owns its loop: nothing
+# outside Update may touch the model, which is the same reason it cannot take
+# an effect timer.
+! sngl generate --platform bubbletea --lang go -o out post.sngl
+stderr 'async.post runs a closure back on the thread the target draws on'
+stderr 'bubbletea has no way to reach one'
+stderr 'post.sngl:12:'
+! stderr 'panic'
+
+# spawn is answered on the language axis, so a different program is refused for
+# a different reason and names the other half of the build.
+! sngl generate --platform html --lang none -o out spawn.sngl
+stderr 'async.spawn runs a closure without waiting for it'
+stderr 'has no way to start one'
+! stderr 'panic'
+
+# And the target that does answer builds, so the refusal is about the target
+# rather than about the declaration.
+sngl generate --platform fyne --lang go -o out post.sngl
+grep 'fyne.Do' out/model.go
+
+-- post.sngl --
+import ui "sngl:ui"
+import async "sngl:async"
+
+output {
+    go {
+        fyne
+    }
+}
+
+ui.window(title="t") {
+    var n = 0
+    ui.button(text="go", @click {
+        async.post(func() {
+            n = n + 1
+        })
+    })
+}
+-- spawn.sngl --
+import ui "sngl:ui"
+import async "sngl:async"
+
+output {
+    none {
+        html
+    }
+}
+
+ui.window(title="t") {
+    var n = 0
+    ui.button(text="go", @click {
+        async.spawn(func() {
+            n = n + 1
+        })
+    })
+}

@@ -15,12 +15,20 @@ import (
 // AsyncPostIntrinsic runs its one argument back on the thread the target
 // draws on. The *platform* answers that one, because there is no such thread
 // in general and no two toolkits reach theirs the same way: fyne queues onto
-// the driver, gtk4 onto a GLib idle tick, Bubble Tea through a message into
-// the loop it already owns.
+// the driver and gtk4 onto a GLib idle tick. Those two are the whole list --
+// Bubble Tea owns its loop and lets nothing outside Update touch the model,
+// which is the same reason it cannot take an effect timer.
 //
-// Neither is declared anywhere a program can name, for the reason ir.NodeOps
-// are not: a declaration would describe nobody's contract. They exist between
-// this pass and the two emitters that answer it.
+// Both are declared in sngl:async, which is what separates them from
+// ir.NodeOps: those name nobody's contract, and these name a platform
+// package's. fyne's timer hands its tick to a host scheduler and has to reach
+// the drawing thread again before it touches a widget.
+//
+// So this pass is no longer the only writer of either, and passAsyncCapable
+// runs ahead of it to refuse a program that names one its target cannot emit.
+// The calls this pass goes on to synthesize are past that check by then, which
+// is deliberate: it may write a post for a target whose own program never
+// could.
 const (
 	AsyncSpawnIntrinsic = "async.spawn"
 	AsyncPostIntrinsic  = "async.post"
