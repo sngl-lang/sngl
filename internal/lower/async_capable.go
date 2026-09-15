@@ -23,7 +23,14 @@ import (
 // which answers the same question for a *blocking call* the offload has to
 // move. That pass synthesizes calls to both ids itself, so a check after it
 // would report the compiler's own rewrites at whatever position they inherited.
-// Here every call it sees is one a program wrote.
+//
+// It does *not* see only what a program wrote, though: passPlatformExtensionBody
+// has already swapped an override's body into the declaration, so a platform
+// package's own `async.post` is walked too. That is right -- a platform whose
+// override needs the hand-over must answer for it -- but the first override
+// written for a target with AsyncPost false would point its diagnostic inside
+// that package's own .sngl, at a target the program author picked and a line
+// they cannot act on.
 var passAsyncCapable = pass{
 	name:    "AsyncCapable",
 	enabled: func(Caps) bool { return true },

@@ -410,12 +410,18 @@ func Every(ms int, fn func()) *Schedule {
 // New. A registration nothing releases retains the closure, and through it the
 // whole Model, for the life of the process.
 func (s *Schedule) Cancel() {
-	if s == nil || s.id == 0 {
+	if s == nil {
 		return
 	}
-	C.sngl_gtk_source_remove(s.id)
+	// The slot is released even where no source was ever added. Register runs
+	// before g_timeout_add answers, so an id of 0 still has a registration
+	// behind it -- returning early there retains the closure, and through it
+	// the whole Model, for the life of the process.
+	if s.id != 0 {
+		C.sngl_gtk_source_remove(s.id)
+		s.id = 0
+	}
 	cbind.Release(s.idx)
-	s.id = 0
 }
 
 // PumpFor runs the GLib main loop for ms milliseconds and returns. It is the
