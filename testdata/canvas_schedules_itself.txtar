@@ -135,8 +135,8 @@ type CanvasStyle struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	frame               int
-	handle__inst0       *time.Timer
-	rearm__inst0        func()
+	handle__inst0       *time.Ticker
+	done__inst0         chan bool
 	live__inst0         bool
 	gen__inst0          int
 	__effect0_live      []bool
@@ -157,7 +157,7 @@ func New() *Model {
 	m := &Model{}
 	m.frame = 0
 	m.handle__inst0 = nil
-	m.rearm__inst0 = nil
+	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
 	m.__effect0_live = []bool{}
@@ -217,21 +217,29 @@ func (m *Model) __effect1_mount() {
 		m.live__inst0 = true
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
-		period := m.__effect1_key
-		m.rearm__inst0 = func() {
-			fyne.Do(func() {
-				if m.gen__inst0 != mine {
+		m.handle__inst0 = time.NewTicker(m.__effect1_key)
+		m.done__inst0 = make(chan bool)
+		stopped := m.done__inst0
+		ticker := m.handle__inst0
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fyne.Do(func() {
+						if m.gen__inst0 != mine {
+							return
+						}
+						m.frame = (m.frame + 1)
+						m.__n0Ctx = snglcanvas.New(40, 40)
+						m._canvasDraw0(m.__n0Ctx)
+						m.__n0.Image = m.__n0Ctx.Result()
+						m.__n0.Refresh()
+					})
+				case <-stopped:
 					return
 				}
-				m.handle__inst0.Reset(period)
-				m.frame = (m.frame + 1)
-				m.__n0Ctx = snglcanvas.New(40, 40)
-				m._canvasDraw0(m.__n0Ctx)
-				m.__n0.Image = m.__n0Ctx.Result()
-				m.__n0.Refresh()
-			})
-		}
-		m.handle__inst0 = time.AfterFunc(period, m.rearm__inst0)
+			}
+		}()
 	}
 }
 
@@ -240,6 +248,7 @@ func (m *Model) __effect1_unmount() {
 		m.live__inst0 = false
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		m.handle__inst0.Stop()
+		close(m.done__inst0)
 	}
 }
 
@@ -317,20 +326,20 @@ func (m *Model) SetFrame(v int) {
 	m.frame = v
 }
 
-func (m *Model) Handle__inst0() *time.Timer {
+func (m *Model) Handle__inst0() *time.Ticker {
 	return m.handle__inst0
 }
 
-func (m *Model) SetHandle__inst0(v *time.Timer) {
+func (m *Model) SetHandle__inst0(v *time.Ticker) {
 	m.handle__inst0 = v
 }
 
-func (m *Model) Rearm__inst0() func() {
-	return m.rearm__inst0
+func (m *Model) Done__inst0() chan bool {
+	return m.done__inst0
 }
 
-func (m *Model) SetRearm__inst0(v func()) {
-	m.rearm__inst0 = v
+func (m *Model) SetDone__inst0(v chan bool) {
+	m.done__inst0 = v
 }
 
 func (m *Model) Live__inst0() bool {

@@ -285,3 +285,52 @@ component shapes.canvasImage[language] {
         e.ctx.restore()
     })
 }
+
+// --- Channels ---
+//
+// A host channel, named so a Go API that hands one out can be described at all:
+// `*time.Ticker`'s `C` is a `<-chan Time`, and without this there is no type to
+// declare that field as.
+//
+// Direction is not spelled. A receive-only channel is reachable because nothing
+// writes a Go type for an expression that is only received from -- binding one
+// to a var would emit the bidirectional `chan T` and not compile against it.
+#[marks.builtin("chan")]
+struct chan<T> {}
+
+// The element type comes from the argument rather than from a type argument,
+// which a call site has no syntax for: `makeChan(false)` is a `chan<bool>`. The
+// value itself is not used -- a channel has no initial contents -- so writing
+// the zero of the type reads as what it is.
+#[marks.intrinsic("go.makechan")]
+func makeChan<T>(zero T) chan<T>
+
+#[marks.intrinsic("go.close")]
+func closeChan<T>(c chan<T>)
+
+// One arm of a `select`: a receive from c, and what to run with the value.
+//
+// A value only so that `select` can be handed a list of them. Nothing holds one
+// and nothing reads one but the emitter, which takes the channel and the body
+// apart again to write the case.
+struct Case {}
+
+#[marks.intrinsic("go.recv")]
+func recv<T>(c chan<T>, body func(T)) Case
+
+// Blocks until one arm is ready and runs exactly that one. Real `select`
+// syntax, which is what makes it a choice rather than a sequence of receives:
+// two receives in a row would take the first channel's value before ever
+// looking at the second.
+//
+// Two shapes behave in ways worth knowing, and both are Go's rather than this
+// declaration's:
+//
+//   - A **closed** channel is always ready and yields the zero value, forever.
+//     That is the idiom rather than the hazard: closing a `done` channel is how
+//     a loop is told to stop, and its arm is chosen on the very next pass.
+//   - A **nil** channel is never ready, so its arm is never chosen. The zero
+//     value of `chan<T>` is nil, so a select over arms that were never made
+//     blocks for the life of the process.
+#[marks.intrinsic("go.select")]
+func select(cases list<Case>)

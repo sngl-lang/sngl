@@ -269,6 +269,24 @@ func walkExprLambdas(ctx context.Context, e ir.Expr, t IntrinsicTranslator) (ir.
 		if call, changed := walkCallLambdas(ctx, x, t); changed {
 			return call, true
 		}
+	case *ir.ListLit:
+		// A list of callbacks is one call argument, which is what go.select's
+		// arms are. Without this the widget writes inside a select arm reach
+		// the emitter untranslated -- a bare `__n0.Text =` rather than the
+		// platform's setter, which is not a field any Fyne widget has.
+		changed := false
+		elems := append([]ir.Expr(nil), x.Elems...)
+		for i := range elems {
+			if v, moved := walkExprLambdas(ctx, elems[i], t); moved {
+				elems[i] = v
+				changed = true
+			}
+		}
+		if changed {
+			cp := *x
+			cp.Elems = elems
+			return &cp, true
+		}
 	}
 	return e, false
 }

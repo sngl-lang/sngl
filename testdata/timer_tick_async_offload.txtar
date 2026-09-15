@@ -102,8 +102,8 @@ type ErrorEvent struct {
 // Model holds the state for this SNGL UI.
 type Model struct {
 	name__inst1          string
-	handle__inst0__inst1 *time.Timer
-	rearm__inst0__inst1  func()
+	handle__inst0__inst1 *time.Ticker
+	done__inst0__inst1   chan bool
 	live__inst0__inst1   bool
 	gen__inst0__inst1    int
 	__effect0_key        time.Duration
@@ -121,7 +121,7 @@ func New() *Model {
 	m := &Model{}
 	m.name__inst1 = "idle"
 	m.handle__inst0__inst1 = nil
-	m.rearm__inst0__inst1 = nil
+	m.done__inst0__inst1 = nil
 	m.live__inst0__inst1 = false
 	m.gen__inst0__inst1 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
@@ -138,23 +138,31 @@ func (m *Model) __effect0_mount() {
 		m.live__inst0__inst1 = true
 		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
 		var mine int = m.gen__inst0__inst1
-		period := m.__effect0_key
-		m.rearm__inst0__inst1 = func() {
-			fyne.Do(func() {
-				if m.gen__inst0__inst1 != mine {
+		m.handle__inst0__inst1 = time.NewTicker(m.__effect0_key)
+		m.done__inst0__inst1 = make(chan bool)
+		stopped := m.done__inst0__inst1
+		ticker := m.handle__inst0__inst1
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fyne.Do(func() {
+						if m.gen__inst0__inst1 != mine {
+							return
+						}
+						go func() {
+							__async_off0 := func() string { v, _ := os.Hostname(); return v }()
+							fyne.Do(func() {
+								m.name__inst1 = __async_off0
+								m.__n0.SetText(m.name__inst1)
+							})
+						}()
+					})
+				case <-stopped:
 					return
 				}
-				m.handle__inst0__inst1.Reset(period)
-				go func() {
-					__async_off0 := func() string { v, _ := os.Hostname(); return v }()
-					fyne.Do(func() {
-						m.name__inst1 = __async_off0
-						m.__n0.SetText(m.name__inst1)
-					})
-				}()
-			})
-		}
-		m.handle__inst0__inst1 = time.AfterFunc(period, m.rearm__inst0__inst1)
+			}
+		}()
 	}
 }
 
@@ -163,6 +171,7 @@ func (m *Model) __effect0_unmount() {
 		m.live__inst0__inst1 = false
 		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
 		m.handle__inst0__inst1.Stop()
+		close(m.done__inst0__inst1)
 	}
 }
 
@@ -238,20 +247,20 @@ func (m *Model) SetName__inst1(v string) {
 	m.name__inst1 = v
 }
 
-func (m *Model) Handle__inst0__inst1() *time.Timer {
+func (m *Model) Handle__inst0__inst1() *time.Ticker {
 	return m.handle__inst0__inst1
 }
 
-func (m *Model) SetHandle__inst0__inst1(v *time.Timer) {
+func (m *Model) SetHandle__inst0__inst1(v *time.Ticker) {
 	m.handle__inst0__inst1 = v
 }
 
-func (m *Model) Rearm__inst0__inst1() func() {
-	return m.rearm__inst0__inst1
+func (m *Model) Done__inst0__inst1() chan bool {
+	return m.done__inst0__inst1
 }
 
-func (m *Model) SetRearm__inst0__inst1(v func()) {
-	m.rearm__inst0__inst1 = v
+func (m *Model) SetDone__inst0__inst1(v chan bool) {
+	m.done__inst0__inst1 = v
 }
 
 func (m *Model) Live__inst0__inst1() bool {

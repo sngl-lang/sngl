@@ -605,43 +605,55 @@ component ui.textarea[platform] {
 // the pair below is a lifetime with a thing to release, which is what `effect`
 // brackets.
 
-// `*time.Timer` is a name this declaration can spell, which is what
-// `#[cnative]` does for `*C.cairo_t` in gtk4.sngl, one scheme over -- so the
-// schedule is the timer itself and there is nothing left for a runtime package
-// to hold.
-#[go.native("time", "*time.Timer")]
-struct Schedule {}
+// `*time.Ticker` is a name this declaration can spell, which is what
+// `#[cnative]` does for `*C.cairo_t` in gtk4.sngl, one scheme over -- and `C`
+// is a field of it, which is why `sngl:language/go` had to grow a channel type
+// before any of this could be written down.
+#[go.native("time", "*time.Ticker")]
+struct Schedule {
+    C go.chan<time.datetime>
+}
 
-#[go.native("time", "time.AfterFunc", schedules)]
-func after(d time.duration, f func()) Schedule
+#[go.native("time", "time.NewTicker")]
+func newTicker(d time.duration) Schedule
 
-#[go.native("time", "time.Timer.Reset", method)]
-func Schedule.reset(d time.duration) bool
+// Declared for the surface rather than called: a period change is a *re-key*,
+// and the effect answers one by unmounting and mounting, which builds a new
+// ticker. Reset is what a schedule held across that change would want.
+#[go.native("time", "time.Ticker.Reset", method)]
+func Schedule.reset(d time.duration)
 
-#[go.native("time", "time.Timer.Stop", method)]
-func Schedule.stop() bool
+#[go.native("time", "time.Ticker.Stop", method)]
+func Schedule.stop()
 
 // The hand-over onto Fyne's own goroutine, since a widget touched from any
-// other is a data race. It is the intrinsic a blocking call's tail is already
-// posted through, named here rather than spelled `fyne.Do`: this package says
-// what it wants and the platform answers it in one place.
+// other is a data race, and the goroutine the ticker is consumed on. Both are
+// the ids passAsyncOffload already writes for a blocking call; naming them here
+// is what lets this package ask for the same two things.
 #[intrinsic("async.post")]
 func post(f func())
+
+#[intrinsic("async.spawn")]
+func spawn(f func())
 
 // `enabled` is the effect's *position*, not part of its key: an effect lives as
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
 //
-// `AfterFunc` fires once, so the tick re-arms it with the same period -- `Reset`
-// on the schedule already held, rather than a second timer per tick. A
-// non-positive interval arms nothing: `AfterFunc` accepts one and fires at
-// once, so a re-arm would spin. The test is in the mount rather than in the
-// position beside `enabled`, because a comparison of two unit constants does
-// not fold and would reach every program's settle as `1000ms > 0ms`.
+// A non-positive interval arms nothing, and it has to be tested before
+// `NewTicker` rather than after: that call *panics* on one. The test is in the
+// mount rather than in the position beside `enabled`, because a comparison of
+// two unit constants does not fold and would reach every program's settle as
+// `1000ms > 0ms`, spelled out.
+//
+// `Ticker.Stop` does not close `C`, so a goroutine parked on a receive from it
+// stays parked for the life of the process. `done` is the second arm that ends
+// it, and `go.select` is what makes the two a choice rather than a sequence --
+// two receives in a row would take the tick before ever looking at `done`.
 component time.timer[platform] {
     var handle Schedule
-    var rearm func()
+    var done go.chan<bool>
     var live = false
     var gen = 0
 
@@ -653,38 +665,48 @@ component time.timer[platform] {
                     live = true
                     gen = gen + 1
                     var mine = gen
-                    // Captured, because `d` compiles to the effect's shared key
-                    // field: the closure must re-arm with the period it was
-                    // armed for, not whatever the last settle left there.
-                    var period = d
-                    rearm = func() {
-                        post(func() {
-                            // A post queued before an unmount runs after it,
-                            // and would `Reset` the timer that unmount
-                            // stopped. An early return rather than a wrapping
-                            // `if`, because a blocking `@tick` only moves off
-                            // the drawing thread as a statement of the body.
-                            if gen != mine {
-                                return
-                            }
-                            handle.reset(period)
-                            tick()
-                        })
-                    }
-                    handle = after(period, rearm)
+                    handle = newTicker(d)
+                    done = go.makeChan(false)
+                    var stopped = done
+                    var ticker = handle
+                    spawn(func() {
+                        for {
+                            go.select([
+                                go.recv(ticker.C, func(at time.datetime) {
+                                    post(func() {
+                                        // A post queued before an unmount runs
+                                        // after it. `gen` is what it finds:
+                                        // without it a stale tick writes state
+                                        // the unmount has finished with.
+                                        if gen != mine {
+                                            return
+                                        }
+                                        tick()
+                                    })
+                                }),
+                                go.recv(stopped, func(b bool) {
+                                    return
+                                }),
+                            ])
+                        }
+                    })
                 }
             },
             @unmount(d) {
-                // `live` is what stands between a non-positive interval and
-                // a crash: the `d > 0ms` test is in the mount, not in the
+                // `live` is what stands between a non-positive interval and a
+                // crash: the `d > 0ms` test is in the mount, not in the
                 // effect's desired list, so a zero key is still live here with
-                // `handle` never assigned -- and a nil `*time.Timer` does not
-                // survive `Stop`. Both it and `gen` are read on the thread
-                // `post` hands over to, which is what makes this an ordering.
+                // `handle` never assigned -- and a nil `*time.Ticker` does not
+                // survive `Stop`.
+                //
+                // Closing `done` rather than sending on it: a closed channel is
+                // always ready, so the goroutine's second arm is taken on its
+                // very next pass whether or not anything is listening yet.
                 if live {
                     live = false
                     gen = gen + 1
                     handle.stop()
+                    go.closeChan(done)
                 }
             },
         )

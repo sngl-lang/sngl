@@ -13,12 +13,19 @@ queued when the effect re-keyed from arming a timer the unmount can no longer
 see. It cannot be asserted by running: fyne's test driver dispatches `fyne.Do`
 inline on the calling goroutine, so the queued window does not exist there.
 
-`Reset` is what makes the re-arm the schedule already held rather than a second
-timer per tick, and what makes a period change need no remount. `Stop` is what
-makes an unmount need no channel -- which is the whole reason this is a
-`*time.Timer` and not a `*time.Ticker`: a ticker is consumed by receiving from
-`C`, `Ticker.Stop` does not close it, and SNGL has no channel type to write
-either the receive or the select that ends it.
+fyne consumes a `*time.Ticker` on a goroutine of its own, and `go.select` is
+what ends it. `Ticker.Stop` does not close `C`, so a receive from it alone
+parks for the life of the process; `done` is the second arm, closed rather than
+sent on, because a closed channel is always ready and the arm is taken on the
+very next pass. **The two have to be a select and not a sequence** -- two
+receives in a row would take the tick before ever looking at `done` -- and that
+is the one thing only a golden can show, which is what the emitted `select {`
+below is here for.
+
+`sngl:language/go` grew `go.chan<T>` for this: `C` is a `<-chan Time` field, and
+without a channel type there was nothing to declare it as. Direction is not
+spelled -- a receive-only channel is reachable because nothing writes a Go type
+for an expression that is only selected on.
 
 Three still carry a primitive of their own, which passTimerPrimitive takes out
 of the tree, and two of those are because an effect's `@mount` hands over a
@@ -56,6 +63,7 @@ and inert.
 deny out/kotlin/android/MainScreen.kt `while \(\)` -- a gate is an expression, not a variable name
 deny out/kotlin/android/MainScreen.kt `LaunchedEffect\(\)` -- likewise: LaunchedEffect with no key does not compile
 deny * `timer\(interval` -- the primitive leaves the tree; no target renders one
+deny out/go/fyne/model.go `(?m)^\t+<-ticker\.C$` -- a bare receive outside a select is a sequence, and the tick would be taken before `done` was ever looked at
 deny out/go/fyne/model.go `if !m.live` -- fyne re-arms from inside the post, so a stale closure must test the generation it was armed in: a re-key is an unmount and a mount back to back, so a flag saying only that something is armed is true again by the time the stale post runs, and it would Reset the timer that mount armed back to the period it captured
 
 -- app.sngl --
@@ -283,13 +291,13 @@ type ErrorEvent struct {
 type Model struct {
 	seconds__inst2       int
 	running__inst2       bool
-	handle__inst1__inst2 *time.Timer
-	rearm__inst1__inst2  func()
+	handle__inst1__inst2 *time.Ticker
+	done__inst1__inst2   chan bool
 	live__inst1__inst2   bool
 	gen__inst1__inst2    int
 	beats__inst3         int
-	handle__inst0__inst3 *time.Timer
-	rearm__inst0__inst3  func()
+	handle__inst0__inst3 *time.Ticker
+	done__inst0__inst3   chan bool
 	live__inst0__inst3   bool
 	gen__inst0__inst3    int
 	__effect0_key        time.Duration
@@ -312,12 +320,12 @@ func New() *Model {
 	m.seconds__inst2 = 0
 	m.running__inst2 = true
 	m.handle__inst1__inst2 = nil
-	m.rearm__inst1__inst2 = nil
+	m.done__inst1__inst2 = nil
 	m.live__inst1__inst2 = false
 	m.gen__inst1__inst2 = 0
 	m.beats__inst3 = 0
 	m.handle__inst0__inst3 = nil
-	m.rearm__inst0__inst3 = nil
+	m.done__inst0__inst3 = nil
 	m.live__inst0__inst3 = false
 	m.gen__inst0__inst3 = 0
 	m.__effect0_key = time.Duration(0) * time.Millisecond
@@ -337,18 +345,26 @@ func (m *Model) __effect0_mount() {
 		m.live__inst1__inst2 = true
 		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
 		var mine int = m.gen__inst1__inst2
-		period := m.__effect0_key
-		m.rearm__inst1__inst2 = func() {
-			fyne.Do(func() {
-				if m.gen__inst1__inst2 != mine {
+		m.handle__inst1__inst2 = time.NewTicker(m.__effect0_key)
+		m.done__inst1__inst2 = make(chan bool)
+		stopped := m.done__inst1__inst2
+		ticker := m.handle__inst1__inst2
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fyne.Do(func() {
+						if m.gen__inst1__inst2 != mine {
+							return
+						}
+						m.seconds__inst2 += 1
+						m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
+					})
+				case <-stopped:
 					return
 				}
-				m.handle__inst1__inst2.Reset(period)
-				m.seconds__inst2 += 1
-				m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
-			})
-		}
-		m.handle__inst1__inst2 = time.AfterFunc(period, m.rearm__inst1__inst2)
+			}
+		}()
 	}
 }
 
@@ -357,6 +373,7 @@ func (m *Model) __effect0_unmount() {
 		m.live__inst1__inst2 = false
 		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
 		m.handle__inst1__inst2.Stop()
+		close(m.done__inst1__inst2)
 	}
 }
 
@@ -407,18 +424,26 @@ func (m *Model) __effect1_mount() {
 		m.live__inst0__inst3 = true
 		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
 		var mine int = m.gen__inst0__inst3
-		period := m.__effect1_key
-		m.rearm__inst0__inst3 = func() {
-			fyne.Do(func() {
-				if m.gen__inst0__inst3 != mine {
+		m.handle__inst0__inst3 = time.NewTicker(m.__effect1_key)
+		m.done__inst0__inst3 = make(chan bool)
+		stopped := m.done__inst0__inst3
+		ticker := m.handle__inst0__inst3
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fyne.Do(func() {
+						if m.gen__inst0__inst3 != mine {
+							return
+						}
+						m.beats__inst3 += 1
+						m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
+					})
+				case <-stopped:
 					return
 				}
-				m.handle__inst0__inst3.Reset(period)
-				m.beats__inst3 += 1
-				m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
-			})
-		}
-		m.handle__inst0__inst3 = time.AfterFunc(period, m.rearm__inst0__inst3)
+			}
+		}()
 	}
 }
 
@@ -427,6 +452,7 @@ func (m *Model) __effect1_unmount() {
 		m.live__inst0__inst3 = false
 		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
 		m.handle__inst0__inst3.Stop()
+		close(m.done__inst0__inst3)
 	}
 }
 
@@ -513,20 +539,20 @@ func (m *Model) SetRunning__inst2(v bool) {
 	m.running__inst2 = v
 }
 
-func (m *Model) Handle__inst1__inst2() *time.Timer {
+func (m *Model) Handle__inst1__inst2() *time.Ticker {
 	return m.handle__inst1__inst2
 }
 
-func (m *Model) SetHandle__inst1__inst2(v *time.Timer) {
+func (m *Model) SetHandle__inst1__inst2(v *time.Ticker) {
 	m.handle__inst1__inst2 = v
 }
 
-func (m *Model) Rearm__inst1__inst2() func() {
-	return m.rearm__inst1__inst2
+func (m *Model) Done__inst1__inst2() chan bool {
+	return m.done__inst1__inst2
 }
 
-func (m *Model) SetRearm__inst1__inst2(v func()) {
-	m.rearm__inst1__inst2 = v
+func (m *Model) SetDone__inst1__inst2(v chan bool) {
+	m.done__inst1__inst2 = v
 }
 
 func (m *Model) Live__inst1__inst2() bool {
@@ -553,20 +579,20 @@ func (m *Model) SetBeats__inst3(v int) {
 	m.beats__inst3 = v
 }
 
-func (m *Model) Handle__inst0__inst3() *time.Timer {
+func (m *Model) Handle__inst0__inst3() *time.Ticker {
 	return m.handle__inst0__inst3
 }
 
-func (m *Model) SetHandle__inst0__inst3(v *time.Timer) {
+func (m *Model) SetHandle__inst0__inst3(v *time.Ticker) {
 	m.handle__inst0__inst3 = v
 }
 
-func (m *Model) Rearm__inst0__inst3() func() {
-	return m.rearm__inst0__inst3
+func (m *Model) Done__inst0__inst3() chan bool {
+	return m.done__inst0__inst3
 }
 
-func (m *Model) SetRearm__inst0__inst3(v func()) {
-	m.rearm__inst0__inst3 = v
+func (m *Model) SetDone__inst0__inst3(v chan bool) {
+	m.done__inst0__inst3 = v
 }
 
 func (m *Model) Live__inst0__inst3() bool {

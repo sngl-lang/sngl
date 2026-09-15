@@ -11,14 +11,14 @@ import (
 // A component with a timer must emit a schedule, and its tick body must go
 // through the translator like any other imperative body.
 //
-// The timer is an `effect` over time.AfterFunc and the timer it hands back, so
+// The timer is an `effect` over time.NewTicker and the ticker it hands back, so
 // what says the schedule is armed is the mount handler, and what says the gate
 // still works is that `running` decides whether the bracket is described at
 // all. The widget
 // write is the second claim and is independent of the first: rendered by
 // gc.EvalStmt alone it comes out as a raw `__n0.Value =`, which is not Fyne's
 // API and does not compile.
-func TestTimerEmitsSelfRearmingSchedule(t *testing.T) {
+func TestTimerEmitsATickerAndASelect(t *testing.T) {
 	src := `
 import . "sngl:ui"
 import . "sngl:time"
@@ -52,12 +52,19 @@ window {
 
 	for _, snippet := range []string{
 		"func (m *Model) __effect0_mount()",
-		"time.AfterFunc(",
+		"time.NewTicker(",
 		// The schedule is the value the caller holds: stopping is a method on
-		// what AfterFunc handed back.
+		// what NewTicker handed back.
 		".Stop()",
-		// A one-shot re-arms itself, and does so on the drawing thread -- the
-		// whole reason no runtime package holds a goroutine for this.
+		// Real select syntax over two arms, not two receives in a row: a
+		// sequence would take the tick before ever looking at `done`, and
+		// `Ticker.Stop` does not close `C`, so the second arm is the only
+		// thing that ends the goroutine.
+		"select {",
+		"case <-ticker.C:",
+		"case <-stopped:",
+		// The tick reaches the drawing thread, since a widget touched from any
+		// other goroutine is a data race.
 		"fyne.Do(func() {",
 		"m.seconds += 1",
 		// Tick body's reactive widget update must use the fyne widget API,

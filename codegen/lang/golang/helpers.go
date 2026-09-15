@@ -338,6 +338,12 @@ func ZeroValueGo(hint string) string {
 	if strings.HasPrefix(hint, "[]") || strings.HasPrefix(hint, "*") {
 		return "nil"
 	}
+	// Same reason as the func fast-path: TypeHintToGo would title-case this
+	// into `Chan bool`. A channel's zero is nil, and `make` is what produces a
+	// usable one.
+	if strings.HasPrefix(hint, "chan ") {
+		return "nil"
+	}
 	goType := TypeHintToGo(hint)
 	switch goType {
 	case "int":
