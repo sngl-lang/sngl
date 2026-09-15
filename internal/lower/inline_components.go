@@ -569,6 +569,11 @@ func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error)
 type reactiveCtx struct {
 	in       bool
 	repeated bool
+	// loopReactive is whether the nearest enclosing `for` iterates something
+	// the program can change. It is not `in`: a const loop holding a reactive
+	// `if` sets `in` and still hands every pass the same hoisted vars, because
+	// what elects per-copy state is the *loop*.
+	loopReactive bool
 }
 
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
@@ -614,6 +619,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// passEffect already reads the enclosing `if` as the bracket's
 		// position. Not under a `for` -- the body is spliced once and its state
 		// hoisted once, so the copies would share one var.
+		if err := refuseRepeatedLifetime(n, rc); err != nil {
+			return nil, false, err
+		}
 		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
@@ -651,7 +659,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return spliced, true, nil
 	case *ir.If:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loopReactive: rc.loopReactive}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
@@ -664,7 +672,12 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.For:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true}
+		reactiveIter := dependsOnReactiveVar(n.Iter, st.reactive)
+		inner := reactiveCtx{
+			in:           rc.in || reactiveIter,
+			repeated:     true,
+			loopReactive: rc.loopReactive || reactiveIter,
+		}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
@@ -970,4 +983,49 @@ func cloneFuncShallow(f *ir.Func) *ir.Func {
 	c := *f
 	c.Block = nil
 	return &c
+}
+
+// bracketsALifetime reports whether a component's body holds an `effect`, at
+// any depth of its control flow.
+//
+// This runs before passEffect, so a bracket is still the node a program wrote:
+// a NodeInst whose declaration carries the effect kind. What it is asked about
+// is a *declaration*, since the question is whether splicing one body twice
+// would give two lifetimes one set of vars to release through.
+func bracketsALifetime(comp *ir.Component) bool {
+	if comp == nil {
+		return false
+	}
+	found := false
+	_ = ir.Walk(comp.Body, func(nd ir.Node) error {
+		if n, ok := nd.(*ir.NodeInst); ok && isEffectNode(n) {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// refuseRepeatedLifetime stops a component that brackets a lifetime from being
+// spliced into a position that holds many copies of it.
+//
+// A `for` sets `repeated` whether or not it is reactive, and a *reactive* one
+// elects a RuntimeInstance below, so each copy gets state of its own. A
+// non-reactive one -- a `const` iterable, where nothing can change -- does not:
+// the body is spliced once and its vars hoisted once, so every copy shares the
+// one handle. For an ordinary component that is the documented cost of sharing
+// a cell; for a lifetime it is a resource nothing can release, because the
+// second mount overwrites the handle the first would have been stopped through.
+//
+// Refused rather than tolerated because the failure is silent and unbounded: a
+// timer under such a loop leaves a goroutine running for the life of the
+// process. #245 is the real fix -- route a stateful component to a runtime
+// instance whether or not the position is reactive -- and until it lands this
+// is the loud half of what `main` did by accident.
+func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
+	if !rc.repeated || rc.loopReactive || !bracketsALifetime(n.Component) {
+		return nil
+	}
+	return fmt.Errorf("%s: %q brackets a lifetime and this loop is not reactive, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own; see #245",
+		nodePos(n), n.Component.Name)
 }

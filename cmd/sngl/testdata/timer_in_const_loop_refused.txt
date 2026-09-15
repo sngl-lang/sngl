@@ -1,0 +1,124 @@
+# A lifetime in a non-reactive loop is refused, and the reactive one still builds.
+#
+# A `for` holds many copies of its body whether or not it is reactive, and only a
+# *reactive* one elects a runtime instance -- which is what gives each copy state
+# of its own. Over a `const` iterable nothing can change, so the body is spliced
+# once and its vars hoisted once: every pass shares the one handle, the second
+# mount overwrites the first, and the schedule the first opened runs on with
+# nothing able to stop it.
+#
+# Shared state is the documented cost of a non-reactive loop for an ordinary
+# component. For a lifetime it is a leak, so it is refused rather than paid.
+# #245 is the real fix -- route a stateful component to a runtime instance
+# whether or not the position is reactive -- and until that lands this is the
+# loud half of what main did by accident, which was to fail with "fyne primitive
+# Timer was instantiated without a spec record".
+#
+# A txtar rather than a testdata fixture: the refusal is passNoInlineComponents',
+# and ERROR(lower) is a phase nothing evaluates -- only parse, check and test
+# are. A fixture written that way asserts nothing at all.
+
+! sngl generate --platform fyne --lang go -o out constloop.sngl
+stderr 'brackets a lifetime and this loop is not reactive'
+stderr 'see #245'
+! stderr 'panic'
+
+# A reactive `if` inside the same const loop is the same defect by another
+# route: it sets the "needs reconciling" bit, which elects a runtime instance --
+# but the loop var is still one hoisted cell, and the emitted Go did not even
+# compile (`undefined: p`). What decides per-copy state is the *loop*, so that
+# is the bit the refusal reads.
+! sngl generate --platform fyne --lang go -o out constloopif.sngl
+stderr 'brackets a lifetime and this loop is not reactive'
+
+# One word is the whole difference, and the other word still works.
+sngl generate --platform fyne --lang go -o out varloop.sngl
+grep 'TimerInstance' out/model.go
+
+# The boundary, which matters more than the message. A loop over the same const
+# list builds when what it holds brackets no lifetime...
+sngl generate --platform fyne --lang go -o out stateless.sngl
+
+# ...and so does a component with state of its own, which shares a cell here and
+# always has. Widening the refusal to that would refuse programs that work.
+sngl generate --platform fyne --lang go -o out stateful.sngl
+
+# And a lifetime outside any loop is untouched.
+sngl generate --platform fyne --lang go -o out plain.sngl
+grep 'NewTicker' out/model.go
+
+-- constloop.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const periods list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var p = periods {
+        time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+    }
+    ui.text(value=string(n))
+}
+-- constloopif.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const periods list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var p = periods {
+        if n < 100 {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
+    }
+}
+-- varloop.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+var periods list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var p = periods {
+        time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+    }
+    ui.text(value=string(n))
+}
+-- stateless.sngl --
+import ui "sngl:ui"
+
+const labels list<string> = ["a", "b"]
+
+ui.window(title="t") {
+    for var l = labels {
+        ui.text(value=l)
+    }
+}
+-- stateful.sngl --
+import ui "sngl:ui"
+
+const labels list<string> = ["a", "b"]
+
+component counter(label = "") ui.node {
+    var hits = 0
+    ui.button(text="{label} {hits}", @click { hits = hits + 1 })
+}
+
+ui.window(title="t") {
+    for var l = labels {
+        counter(label=l)
+    }
+}
+-- plain.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+
+ui.window(title="t") {
+    time.timer(interval=100ms, enabled=true, @tick { n = n + 1 })
+    ui.text(value=string(n))
+}

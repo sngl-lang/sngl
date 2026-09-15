@@ -1316,6 +1316,22 @@ Two shapes cannot be spliced, and both are reported rather than emitted:
   cell there with or without capture, which is the pre-existing `rc.repeated`
   limitation.
 
+**A lifetime is the one thing that limitation cannot absorb**, and
+`refuseRepeatedLifetime` says so. Sharing a cell costs an ordinary component
+correctness it mostly does not notice; a component bracketing an `effect` shares
+the *handle* it would be released through, so the second mount overwrites the
+first and whatever the first opened runs on with nothing able to stop it — a
+goroutine for the life of the process, on fyne. It is refused where it would be
+spliced, and #245 is the real fix: route a stateful component to a runtime
+instance whether or not the position is reactive.
+
+The bit it reads is `reactiveCtx.loopReactive`, **not** `in`. Those differ, and
+the difference is the whole of why the first attempt was half a guard: a const
+loop holding a *reactive* `if` sets `in`, which elects a runtime instance — and
+the loop variable is still one hoisted cell, so the emitted Go did not even
+compile (`undefined: p`). What decides per-copy state is the loop, so that is
+what the refusal asks about.
+
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,
 so `lookupBodyMethod` walks the owner chain where `inferIdent` used to ask
