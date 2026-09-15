@@ -1325,12 +1325,27 @@ goroutine for the life of the process, on fyne. It is refused where it would be
 spliced, and #245 is the real fix: route a stateful component to a runtime
 instance whether or not the position is reactive.
 
-The bit it reads is `reactiveCtx.loopReactive`, **not** `in`. Those differ, and
-the difference is the whole of why the first attempt was half a guard: a const
-loop holding a *reactive* `if` sets `in`, which elects a runtime instance — and
-the loop variable is still one hoisted cell, so the emitted Go did not even
-compile (`undefined: p`). What decides per-copy state is the loop, so that is
-what the refusal asks about.
+The bit it reads is `reactiveCtx.loopReactive`, **not** `in`, and it is `in` as
+it was *entering* the loop. Those three differ, and getting it wrong cost a
+guard in each direction:
+
+- A const loop holding a reactive `if` **inside** it sets `in`, elects a runtime
+  instance, and still hoists the loop variable once — the emitted Go did not
+  compile (`undefined: p`). Reading `!in` let that through.
+- A const loop **inside** a reactive `if` sets exactly the same `in` and
+  `repeated`, and lowers the other way: the whole loop lands in the slot's
+  render func, so `p` is in scope there and each pass gets its own record,
+  destroyed through the slot's own reuse loop. Reading `loopReactive` alone
+  refused that, which is a working program.
+
+What separates them is *where* the reactive boundary sits relative to the loop,
+which is why the `*ir.For` arm reads `rc.in` on entry rather than the node
+reading it on arrival.
+
+**It is a lowering rule, so it is target-dependent**: html on `--lang none`
+unrolls a const loop in the optimizer, so the source fyne refuses builds there
+as independent schedules. Defensible — lowering is per-target — but a
+portability wart, so the diagnostic says it rather than leaving it to be found.
 
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,

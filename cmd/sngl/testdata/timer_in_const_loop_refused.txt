@@ -31,6 +31,23 @@ stderr 'see #245'
 ! sngl generate --platform fyne --lang go -o out constloopif.sngl
 stderr 'brackets a lifetime and this loop is not reactive'
 
+# The refusal is a *lowering* rule, so it is target-dependent, and that is worth
+# knowing rather than discovering: html on --lang none unrolls a const loop in
+# the optimizer, so the very source refused above builds there as two
+# independent schedules. The diagnostic says so.
+sngl generate --platform html --lang none -o outh constloop.sngl
+grep 'setInterval' outh/index.html
+
+# The inverse nesting is the false positive this guard had first, and it builds:
+# a reactive `if` *outside* the const loop puts the whole loop inside the slot's
+# render func, so `p` is in scope there and each pass gets its own
+# TimerInstance with its own handle, destroyed through the slot's own reuse and
+# teardown loops. Same `in`, same `repeated`, opposite lowering -- which is why
+# what the guard reads is whether `in` was true *entering* the loop.
+sngl generate --platform fyne --lang go -o out ifoutside.sngl
+grep 'TimerInstance' out/model.go
+grep 'Destroy\(\)' out/model.go
+
 # And through a component of the program's own, which costs nothing extra:
 # passInlinePure splices a platform override into its caller before this pass
 # runs, so a user component wrapping a timer holds the effect node directly by
@@ -64,6 +81,22 @@ const periods list<time.duration> = [100ms, 250ms]
 ui.window(title="t") {
     for var p = periods {
         time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+    }
+    ui.text(value=string(n))
+}
+-- ifoutside.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+ui.window(title="t") {
+    var n = 0
+    var on = true
+    const periods list<time.duration> = [100ms, 250ms]
+
+    if on {
+        for var p = periods {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
     }
     ui.text(value=string(n))
 }

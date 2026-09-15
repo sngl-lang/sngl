@@ -569,10 +569,16 @@ func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error)
 type reactiveCtx struct {
 	in       bool
 	repeated bool
-	// loopReactive is whether the nearest enclosing `for` iterates something
-	// the program can change. It is not `in`: a const loop holding a reactive
-	// `if` sets `in` and still hands every pass the same hoisted vars, because
-	// what elects per-copy state is the *loop*.
+	// loopReactive is whether the nearest enclosing `for` yields a copy that
+	// gets state of its own -- either because it iterates something the program
+	// can change, or because the loop itself sits somewhere reactive and is
+	// rebuilt as a unit.
+	//
+	// It is not `in`, and the two part company in both directions: a const loop
+	// holding a reactive `if` sets `in` and still hands every pass the same
+	// hoisted vars, while a const loop *inside* a reactive `if` also sets `in`
+	// and does not. What separates them is where `in` was true -- outside the
+	// loop, or under it.
 	loopReactive bool
 }
 
@@ -674,9 +680,16 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 	case *ir.For:
 		reactiveIter := dependsOnReactiveVar(n.Iter, st.reactive)
 		inner := reactiveCtx{
-			in:           rc.in || reactiveIter,
-			repeated:     true,
-			loopReactive: rc.loopReactive || reactiveIter,
+			in:       rc.in || reactiveIter,
+			repeated: true,
+			// `rc.in` as it was *entering* the loop, not inside it. A loop that
+			// already sits in a reactive position re-renders as a unit, so its
+			// copies are built at run time and each gets a record of its own --
+			// which is the same thing a reactive iterable buys. A reactive `if`
+			// written *inside* a const loop is the opposite case and reaches
+			// the node with the same `in`, which is why this is read here and
+			// not there.
+			loopReactive: rc.in || rc.loopReactive || reactiveIter,
 		}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
@@ -1026,6 +1039,6 @@ func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
 	if !rc.repeated || rc.loopReactive || !bracketsALifetime(n.Component) {
 		return nil
 	}
-	return fmt.Errorf("%s: %q brackets a lifetime and this loop is not reactive, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own; see #245",
+	return fmt.Errorf("%s: %q brackets a lifetime and this loop is not reactive, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own. This is a lowering rule, so a target that unrolls the loop instead -- html on --lang none -- builds the same source; see #245",
 		nodePos(n), n.Component.Name)
 }
