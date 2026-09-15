@@ -61,6 +61,18 @@ func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
 	// drawing; html has no such goroutine -- a route handler already runs on
 	// its own, and blocking there is what a handler is for.
 	f.AsyncCalls = true
+	// And AsyncSpawn the other way. The language grants it -- Go registers the
+	// emitter for the id -- but html's client half is JavaScript whatever
+	// `--lang` says, so `async.spawn` in a `@click` was written into the inline
+	// script as a bare `spawn(...)`: an undefined identifier, and a
+	// ReferenceError at click time. A platform whose handlers are not in the
+	// language cannot take the language's word for this.
+	//
+	// It costs a server-side spawn in route mode, where the Go is real and the
+	// call would compile. That is a refusal naming the target rather than a
+	// page that breaks when clicked, and a per-body capability is what
+	// answering it properly needs.
+	f.AsyncSpawn = false
 	f.AsyncReactive = false
 	f.ImplicitRecv = false
 	f.InlineComponents = false
