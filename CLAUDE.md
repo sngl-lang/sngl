@@ -1316,12 +1316,22 @@ Two shapes cannot be spliced, and both are reported rather than emitted:
   cell there with or without capture, which is the pre-existing `rc.repeated`
   limitation.
 
-**A lifetime is the one thing that limitation cannot absorb**, and
-`refuseRepeatedLifetime` says so. Sharing a cell costs an ordinary component
-correctness it mostly does not notice; a component bracketing an `effect` shares
-the *handle* it would be released through, so the second mount overwrites the
-first and whatever the first opened runs on with nothing able to stop it — a
-goroutine for the life of the process, on fyne. It is refused where it would be
+**A lifetime over a component's own state is the one thing that limitation
+cannot absorb**, and `refuseRepeatedLifetime` says so. Sharing a cell costs an
+ordinary component correctness it mostly does not notice; a component whose
+`effect` handlers touch a var *it declares* shares the **handle** it would be
+released through, so the second mount overwrites the first and whatever the
+first opened runs on with nothing able to stop it — a goroutine for the life of
+the process, on fyne.
+
+**Holding an `effect` is not the test, and asking only that refused working
+programs.** `passEffect` keys a bracket's own bookkeeping by list —
+`__effectN_live` and `__effectN_desired` hold an entry per key — so N copies of
+a bare lifetime mount and unmount independently. What has no list is a
+*component's* state: `passHoistState` gives each declared var one cell on the
+owner. So `sharesLifetimeState` asks the conjunction — a var this component
+declares, which an effect's handlers read or write — and a lifetime closing over
+nothing of its component's is as safe here as a bare one. It is refused where it would be
 spliced, and #245 is the real fix: route a stateful component to a runtime
 instance whether or not the position is reactive.
 

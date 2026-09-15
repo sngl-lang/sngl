@@ -58,6 +58,16 @@ sngl generate --platform fyne --lang go -o out ifoutside.sngl
 grep 'TimerInstance' out/model.go
 grep 'Destroy\(\)' out/model.go
 
+# A component holding a lifetime that touches none of its own state is NOT the
+# hazard, and refusing it refused working programs. passEffect keys a bracket's
+# bookkeeping by list -- __effectN_live/_desired hold an entry per key -- so N
+# copies mount and unmount independently. What has no list is a component's own
+# cells, one per declared var. So the question is the conjunction, and this one
+# shares its cells exactly as stateful.sngl does: the documented cost, not a
+# schedule nobody can stop.
+sngl generate --platform fyne --lang go -o out effectfree.sngl
+grep '__effect0_live' out/model.go
+
 # And through a component of the program's own, which costs nothing extra:
 # passInlinePure splices a platform override into its caller before this pass
 # runs, so a user component wrapping a timer holds the effect node directly by
@@ -98,6 +108,24 @@ ui.window(title="t") {
         time.timer(interval=p, enabled=true, @tick { n = n + 1 })
     }
     ui.text(value=string(n))
+}
+-- effectfree.sngl --
+import ui "sngl:ui"
+
+var hits = 0
+const periods list<int> = [100, 250]
+
+component blinker(ms = 0) ui.node {
+    var label = "x"
+
+    effect(on = ms, @mount { hits = hits + 1 }, @unmount { hits = hits - 1 })
+    ui.text(value="{label}-{ms}")
+}
+
+ui.window(title="t") {
+    for var p = periods {
+        blinker(ms=p)
+    }
 }
 -- constinconst.sngl --
 import ui "sngl:ui"

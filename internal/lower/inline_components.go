@@ -1004,21 +1004,50 @@ func cloneFuncShallow(f *ir.Func) *ir.Func {
 	return &c
 }
 
-// bracketsALifetime reports whether a component's body holds an `effect`, at
-// any depth of its control flow.
+// sharesLifetimeState reports whether splicing comp twice would give two
+// lifetimes one set of cells to release through.
 //
-// This runs before passEffect, so a bracket is still the node a program wrote:
-// a NodeInst whose declaration carries the effect kind. What it is asked about
-// is a *declaration*, since the question is whether splicing one body twice
-// would give two lifetimes one set of vars to release through.
-func bracketsALifetime(comp *ir.Component) bool {
-	if comp == nil {
+// **Holding an `effect` is not enough**, and asking only that refused working
+// programs. `passEffect` keys a bracket's own bookkeeping by list --
+// `__effectN_live` and `__effectN_desired` hold an entry per key -- so N copies
+// of a bare lifetime mount and unmount independently and correctly. What has no
+// list is a *component's* state: `passHoistState` gives each declared var one
+// cell on the owner, and a non-reactive loop splices the body once, so every
+// pass writes the same cell. A handle stored there is overwritten by the second
+// mount and the first schedule can no longer be reached to be stopped.
+//
+// So the question is the conjunction: a var this component declares, which an
+// effect's own handlers touch. A lifetime that closes over nothing of its
+// component's is as safe here as a bare one, and a component whose state no
+// bracket reads is the ordinary shared-cell cost the loop already carries.
+//
+// Runs before passEffect, so a bracket is still the node a program wrote.
+func sharesLifetimeState(comp *ir.Component) bool {
+	if comp == nil || len(comp.Vars) == 0 {
 		return false
+	}
+	own := make(map[*ir.Var]bool, len(comp.Vars))
+	for _, v := range comp.Vars {
+		own[v] = true
 	}
 	found := false
 	_ = ir.Walk(comp.Body, func(nd ir.Node) error {
-		if n, ok := nd.(*ir.NodeInst); ok && isEffectNode(n) {
-			found = true
+		n, ok := nd.(*ir.NodeInst)
+		if !ok || !isEffectNode(n) || found {
+			return nil
+		}
+		for _, h := range n.Handlers {
+			if h.Func == nil {
+				continue
+			}
+			_ = ir.Walk(h.Func.Block, func(in ir.Node) error {
+				if id, ok := in.(*ir.Ident); ok {
+					if v, ok := id.Sym.(*ir.Var); ok && own[v] {
+						found = true
+					}
+				}
+				return nil
+			})
 		}
 		return nil
 	})
@@ -1050,7 +1079,7 @@ func forPos(n *ir.For) string {
 // instance whether or not the position is reactive -- and until it lands this
 // is the loud half of what `main` did by accident.
 func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
-	if !rc.repeated || rc.loopReactive || !bracketsALifetime(n.Component) {
+	if !rc.repeated || rc.loopReactive || !sharesLifetimeState(n.Component) {
 		return nil
 	}
 	// Two positions, because they are usually two different lines: the loop is
