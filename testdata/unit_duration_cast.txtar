@@ -88,8 +88,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.d__inst0 = time.Duration(500) * time.Millisecond
-	m.one__inst0 = time.Duration(1) * time.Millisecond
+	m.d__inst0 = (time.Duration(500) * time.Millisecond)
+	m.one__inst0 = (time.Duration(1) * time.Millisecond)
 	m.n__inst0 = 3
 	return m
 }
@@ -181,10 +181,10 @@ func (m Model) View() tea.View {
 	part1 = lipgloss.NewStyle().Render(fmt.Sprint(("f " + fmt.Sprint(float64(m.d__inst0)/float64(time.Millisecond)))))
 	parts = append(parts, part1)
 	var part2 string
-	part2 = lipgloss.NewStyle().Render(fmt.Sprint(("sum " + fmt.Sprint(int((m.d__inst0+time.Duration(100)*time.Millisecond)/time.Millisecond)))))
+	part2 = lipgloss.NewStyle().Render(fmt.Sprint(("sum " + fmt.Sprint(int((m.d__inst0+(time.Duration(100)*time.Millisecond))/time.Millisecond)))))
 	parts = append(parts, part2)
 	var part3 string
-	part3 = lipgloss.NewStyle().Render(fmt.Sprint(("secs " + fmt.Sprint(int((m.d__inst0+time.Duration(1000)*time.Millisecond)/time.Millisecond)))))
+	part3 = lipgloss.NewStyle().Render(fmt.Sprint(("secs " + fmt.Sprint(int((m.d__inst0+(time.Duration(1000)*time.Millisecond))/time.Millisecond)))))
 	parts = append(parts, part3)
 	var part4 string
 	part4 = lipgloss.NewStyle().Render(fmt.Sprint(("scaled " + fmt.Sprint(int((m.d__inst0*2)/time.Millisecond)))))

@@ -123,7 +123,7 @@ func New() Model {
 	m.r__inst0 = Measurement{Em: 32}
 	m.sum__inst0 = Measurement{Px: m.m__inst0.Px + m.r__inst0.Px, Em: m.m__inst0.Em + m.r__inst0.Em, Vw: m.m__inst0.Vw + m.r__inst0.Vw, Vh: m.m__inst0.Vh + m.r__inst0.Vh, Pct: m.m__inst0.Pct + m.r__inst0.Pct}
 	m.t__inst0 = Tick(4)
-	m.d__inst0 = time.Duration(500) * time.Millisecond
+	m.d__inst0 = (time.Duration(500) * time.Millisecond)
 	m.w__inst0 = 2.5
 	return m
 }

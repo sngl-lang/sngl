@@ -106,8 +106,8 @@ func New() Model {
 	m.a__inst0 = Measurement{Px: 3}
 	m.b__inst0 = Measurement{Px: 3}
 	m.wide__inst0 = Measurement{Px: Measurement{Px: 3}.Px + Measurement{Em: 2}.Px, Em: Measurement{Px: 3}.Em + Measurement{Em: 2}.Em, Vw: Measurement{Px: 3}.Vw + Measurement{Em: 2}.Vw, Vh: Measurement{Px: 3}.Vh + Measurement{Em: 2}.Vh, Pct: Measurement{Px: 3}.Pct + Measurement{Em: 2}.Pct}
-	m.d__inst0 = time.Duration(500) * time.Millisecond
-	m.e__inst0 = time.Duration(1000) * time.Millisecond
+	m.d__inst0 = (time.Duration(500) * time.Millisecond)
+	m.e__inst0 = (time.Duration(1000) * time.Millisecond)
 	m.same__inst0 = (m.a__inst0 == m.b__inst0)
 	m.apart__inst0 = (m.wide__inst0 != m.a__inst0)
 	m.single__inst0 = (m.d__inst0 == m.e__inst0)
