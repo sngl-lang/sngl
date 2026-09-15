@@ -31,6 +31,16 @@ stderr 'see #245'
 ! sngl generate --platform fyne --lang go -o out constloopif.sngl
 stderr 'brackets a lifetime and this loop is not reactive'
 
+# Nesting inherits, in both directions. Two const loops is still no per-copy
+# state, so the inner one is refused...
+! sngl generate --platform fyne --lang go -o out constinconst.sngl
+stderr 'brackets a lifetime and this loop is not reactive'
+
+# ...and a reactive outer loop makes the const inner one safe, because the outer
+# one is rebuilt as a unit and carries the inner copies with it.
+sngl generate --platform fyne --lang go -o out varouter.sngl
+grep 'TimerInstance' out/model.go
+
 # The refusal is a *lowering* rule, so it is target-dependent, and that is worth
 # knowing rather than discovering: html on --lang none unrolls a const loop in
 # the optimizer, so the very source refused above builds there as two
@@ -83,6 +93,38 @@ ui.window(title="t") {
         time.timer(interval=p, enabled=true, @tick { n = n + 1 })
     }
     ui.text(value=string(n))
+}
+-- constinconst.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const outer list<int> = [1, 2]
+const inner list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var o = outer {
+        for var p = inner {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
+    }
+    ui.text(value=string(n))
+}
+-- varouter.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+var outer list<int> = [1, 2]
+const inner list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var o = outer {
+        ui.text(value=string(o))
+        for var p = inner {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
+    }
 }
 -- ifoutside.sngl --
 import ui "sngl:ui"
