@@ -320,12 +320,16 @@ func (h HelperSet) Emit() string {
 `)
 	}
 	if h.NeedDateTime {
+		// The layouts the checker's datetime literal permits, widest first.
+		// RFC3339 alone panicked on every offsetless one, which is most of
+		// them: the seconds and the offset are both optional there.
 		b.WriteString(`func mustParseDateTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		panic(err)
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
 	}
-	return t
+	panic("not a datetime: " + s)
 }
 
 `)
