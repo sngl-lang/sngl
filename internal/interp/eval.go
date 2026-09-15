@@ -218,6 +218,12 @@ func (u unitValue) firstBase() string {
 	return u.countedIn()
 }
 
+// singleBase reports whether the unit declares one base, which is what makes
+// magnitude() the whole of the value rather than one component of it.
+func (u unitValue) singleBase() bool {
+	return u.Table != nil && len(u.Table.Bases) == 1
+}
+
 func (u unitValue) sameFamily(other unitValue) bool {
 	return u.Table != nil && u.Table == other.Table
 }
@@ -1433,7 +1439,19 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 				}
 				return lu.Scale(1 / r), nil
 			}
-			return nil, fmt.Errorf("cannot divide by a unit value")
+			// unit / unit is the dimensionless ratio the checker types as
+			// float. Only for a single-base unit: a multi-base value is a
+			// magnitude per base, so a ratio would need one answer per base
+			// and there is none to pick -- the same premise that refuses
+			// ordering two of them.
+			if lu.sameFamily(ru) && lu.singleBase() && ru.singleBase() {
+				d := ru.magnitude()
+				if d == 0 {
+					return nil, fmt.Errorf("division by zero")
+				}
+				return lu.magnitude() / d, nil
+			}
+			return nil, fmt.Errorf("cannot divide %s by %s", lu.Suffix, ru.Suffix)
 		}
 	}
 
