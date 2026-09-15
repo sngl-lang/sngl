@@ -946,7 +946,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
   reached past `alpha` positionally.
 - **A native mark names a *type* as readily as a function**, which is what
-  makes a host handle spellable: `#[go.native("time", "*time.Timer")] struct Schedule {}` with `#[go.native("time", "time.Timer.Stop", method)] func Schedule.stop() bool` beside it. gtk4 has done the same for C all along —
+  makes a host handle spellable: `#[go.native("time", "*time.Ticker")] struct Schedule { C go.chan<time.datetime> }` with `#[go.native("time", "time.Ticker.Stop", method)] func Schedule.stop()` beside it -- and a *field* of one is how a host API hands a channel back. gtk4 has done the same for C all along —
   `#[cnative("*C.cairo_t")] struct CairoContext {}` — so the form predates the
   need for it by a platform.
 
@@ -961,28 +961,57 @@ declaration itself. Two things about the name that are easy to get wrong:
   and `pkg/go/fynert` was two of them in turn: a registry while a handle was
   unspellable, then a goroutine and a `select` around a `time.Ticker`, because
   `Ticker.Stop` does not close `C` and a bare `for range` over it leaks. The
-  second was answered by picking a host API the language can already say.
-  `time.AfterFunc` is a one-shot, so the schedule re-arms itself from its own
-  callback -- a `func()` var holding the closure that re-assigns it -- and
-  there is no channel to select over. fyne's timer is now written in
-  `fyne.sngl` alone and the package is gone.
+  registry went when the handle became spellable. The second was the language
+  gap itself, and it is closed rather than stepped around: fyne's timer is a
+  `*time.Ticker` consumed on a goroutine, and `fyne.sngl` holds all of it.
 
-  **`Stop` and `Reset` are the whole of why it is a `Timer` and not a
-  `Ticker`.** `Reset` re-arms the schedule already held, so a period change
-  needs no remount and no second timer per tick; `Stop` ends it, so an unmount
-  needs no channel. A ticker is consumed by receiving from `C` and `Ticker.Stop`
-  does not close it, so the goroutine wants a `select` over a done channel --
-  and SNGL has **no channel type at all**, so neither the receive nor the select
-  is spellable. That is the gap `go.chan<T>`/`go.select` would close, and
-  picking the host API the language can already say is what made closing it
-  unnecessary here.
+  **`go.chan<T>` is a builtin type kind declared by `sngl:language/go`**, not by
+  `lib/`, because only a language with channels can answer one. It exists
+  because a host API hands channels *out*: `*time.Ticker`'s `C` is a field, and
+  without a channel type there was nothing to declare it as. `IRTypeToGo`
+  spells it `chan T`, `lazyIter` ranges it one variable at a time like the pull
+  sequence it is, and its zero is nil in both places a zero is written --
+  `ZeroValueGo`, whose `TypeHintToGo` would otherwise title-case it into
+  `Chan bool`, and the struct-literal path, which resolves the declaration the
+  way `structLitTypeName` does because a synthesized zero leaves `Def` nil.
 
-  An `AfterFunc` that re-arms after the callback does drift where a ticker does
-  not, by the hand-over onto the drawing thread. Measuring the difference needs
-  a run longer than any fixture here, and pricing it in an absolute deadline
-  costs a clock the language does not have, arithmetic it cannot express and a
-  catch-up walk that is O(missed periods) -- a suspended laptop is millions, on
-  the drawing thread. Not paid.
+  **Direction is not spelled**, and the declaration says why: a receive-only
+  channel is reachable because nothing writes a Go type for an expression that
+  is only selected on, while binding one to a var would emit the bidirectional
+  `chan T` and not compile against it.
+
+  **`go.select` takes a `list<Case>`** -- SNGL has no variadic func parameters,
+  `...` being a slot's -- and each arm is `go.recv(ch, func(v T) { … })`. It is
+  the one thing here that cannot be an `IntrinsicEmitter`: that renders a single
+  *expression*, and a select's arms are statement lists. So it is answered from
+  `CallStmtLines`, the statement-level seam that already existed, and the arms
+  are **inlined rather than called** -- an arm may `return`, and that has to
+  leave the goroutine, which a closure wrapper would not do. A case variable is
+  bound only where the body reads it, Go rejecting an unused one.
+
+  `go.makechan` takes a witness value rather than a type argument --
+  `makeChan(false)` is a `chan<bool>` -- because a call site has no syntax for
+  the latter and a zero-argument generic leaves the element type unrecoverable.
+  `make` and `close` are Go *builtins*, carrying no import path, so a
+  `#[go.native]` cannot name them at all and both are intrinsics for that
+  reason.
+
+  **A statement-level answer has to say so**, which is what
+  `DeclareLangImplements` is: the language-axis counterpart of
+  `DeclarePlatformImplements`, and it exists for the same reason stated there.
+  `lib/internal_intrinsics_test.go` asks whether *some* target can emit each id,
+  and three of these are answered outside the emitter registry, so without it
+  the check reads them as ids a build would emit a call to nothing for. It names
+  the ids rather than the package, the opposite of the platform side and
+  deliberately: `sngl:language/go` holds ordinary emitter-answered intrinsics
+  too.
+
+  **A list literal is a fourth place a lambda hides.** `WalkLowered` reached a
+  lambda that *was* an expression and one handed to a call, and not one inside a
+  list -- which is what a select's arms are, two levels down. So the widget
+  writes in a tick reached the emitter untranslated: a bare `__n0.Text =`, which
+  is neither a field any Fyne widget has nor a name in scope. The same blind
+  spot recorded above for the lowering passes, one layer out.
 
   **The hand-over it also held is `async.post`**, which a platform package may
   name: `#[intrinsic("async.post")] func post(f func())` dispatches through
@@ -998,10 +1027,12 @@ declaration itself. Two things about the name that are easy to get wrong:
   Only fyne and gtk4 answer the id at all, which is what stops the declaration
   being lifted somewhere portable.
 
-  What is *not* closed by any of this is channels: `go.chan<T>` and a `go.select`
-  that holds real `select` syntax remain the general answer, and a program
-  wanting either still has no way to say it. This change stepped around that
-  gap rather than through it.
+  **Two shapes make Go's select behave unexpectedly, and both are written on the
+  declaration.** A *closed* channel is always ready and yields the zero value
+  forever -- which is the idiom here rather than the hazard, since closing
+  `done` is how the goroutine is told to stop and its arm is taken on the very
+  next pass. A *nil* channel is never ready, so its arm is never chosen, and nil
+  is exactly what `chan<T>`'s zero value is.
 
   What such a type may *not* do is be constructed: a program holds one and
   calls methods on it. So the only literal of one that reaches a backend is the

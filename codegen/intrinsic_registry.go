@@ -32,6 +32,7 @@ var (
 	intrinsicEmitters = map[string]map[string]IntrinsicEmitter{} // lang -> intrinsic ID -> emitter
 	platformEmitters  = map[string]map[string]IntrinsicEmitter{} // platform -> intrinsic ID -> emitter
 	platformPackages  = map[string]map[string]bool{}             // platform -> library package it implements
+	langDeclared      = map[string]map[string]bool{}             // lang -> intrinsic ID it answers outside the emitter registry
 )
 
 // RegisterIntrinsic registers an emitter for the given intrinsic ID (e.g.
@@ -134,6 +135,33 @@ func DeclarePlatformImplements(platform, pkg string) {
 	byPkg[pkg] = true
 }
 
+// DeclareLangImplements records that a language emits these ids from somewhere
+// other than a registered emitter.
+//
+// The language-axis counterpart of DeclarePlatformImplements, and it exists for
+// the same reason stated there: an IntrinsicEmitter renders one *expression*,
+// and some things are not one. `go.select` is a statement whose arms are
+// statement lists, so it is answered from CallStmtLines; `go.makechan` needs the
+// call's return type, which an emitter handed only its arguments cannot see; and
+// `go.recv` is never emitted alone at all -- the select takes it apart.
+//
+// It names the ids rather than the package, which is the opposite choice to the
+// platform side and deliberate: `sngl:language/go` holds ordinary
+// emitter-answered intrinsics too, so covering the whole package would stop
+// this check ever asking about them again.
+func DeclareLangImplements(lang string, ids ...string) {
+	intrinsicMu.Lock()
+	defer intrinsicMu.Unlock()
+	byID := langDeclared[lang]
+	if byID == nil {
+		byID = map[string]bool{}
+		langDeclared[lang] = byID
+	}
+	for _, id := range ids {
+		byID[id] = true
+	}
+}
+
 // PlatformImplementsPackage reports whether platform declared it implements the
 // intrinsics of pkg.
 func PlatformImplementsPackage(platform, pkg string) bool {
@@ -165,6 +193,11 @@ func AnyTargetImplements(def *ir.IntrinsicDef) bool {
 	}
 	for _, byPkg := range platformPackages {
 		if byPkg[def.Pkg] {
+			return true
+		}
+	}
+	for _, byID := range langDeclared {
+		if byID[def.Name] {
 			return true
 		}
 	}

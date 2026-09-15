@@ -26,6 +26,10 @@ func init() {
 		}
 		return "close(" + tr(args[0]) + ")", nil
 	})
+	// The other three are answered outside the emitter registry, so the
+	// completeness check is told here rather than left to conclude that a build
+	// reaching one emits a call to nothing.
+	codegen.DeclareLangImplements(langGo, chanMakeIntrinsic, chanRecvIntrinsic, chanSelectIntrinsic)
 }
 
 // MakeChanText is make's emission. It needs the type the call was declared to
