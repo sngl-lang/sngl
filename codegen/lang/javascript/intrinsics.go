@@ -44,16 +44,11 @@ func init() {
 	reg("string.split", func(a []string) string { return a[0] + ".split(" + a[1] + ")" })
 
 	// --- sngl:time ---
-	// A datetime is an RFC3339 string here, so every operation parses. The
-	// normaliser is what makes the parse mean one thing: a SNGL datetime
-	// literal may be written with no offset, and ES reads an offsetless
-	// date-time as *local* time, so an add spanning a DST boundary lands an
-	// hour out. It appends Z only when there is no offset already -- appending
-	// unconditionally turns `...+05:00` into a string `Date.parse` answers NaN
-	// for, which then propagates into rendered output with nothing raised.
-	//
-	// One evaluation of the operand, because the replacement is a function of
-	// what matched rather than a second read.
+	// ES reads an offsetless date-time as *local* time, and a SNGL datetime
+	// literal may be written without one -- so the parse supplies Z, and only
+	// where no offset is there: appending it unconditionally makes `...+05:00`
+	// a string Date.parse answers NaN for. One evaluation of the operand,
+	// because the replacement is a function of what matched.
 	utc := func(x string) string {
 		return x + `.replace(/(?:Z|[+-]\d\d:?\d\d)?$/, (m) => m || "Z")`
 	}

@@ -49,15 +49,11 @@ func init() {
 	reg("string.split", func(a []string) string { return SplitFn + "(" + a[0] + ", " + a[1] + ")" })
 
 	// --- sngl:time ---
-	// A datetime is an RFC3339 string here and a duration a Long of
-	// milliseconds, so every operation parses. Instant.toString is what writes
-	// RFC3339; OffsetDateTime is what reads it, because a SNGL datetime
-	// literal may be written with no offset and Instant.parse refuses one. The
-	// normaliser supplies Z only when no offset is there -- appending
-	// unconditionally makes `...+05:00` throw, which is the same bug
-	// JavaScript answers NaN for.
-	//
-	// `let` rather than naming the operand twice: it may be any expression.
+	// Instant.toString writes RFC3339; OffsetDateTime reads it, because
+	// Instant.parse refuses a string with no offset and a SNGL datetime
+	// literal may be written without one. Z is supplied only where no offset
+	// is there -- unconditionally makes `...+05:00` throw -- and `let` keeps
+	// that to one evaluation of what may be any expression.
 	local := func(x string) string {
 		return "java.time.OffsetDateTime.parse(" + x +
 			`.let { if (Regex("(Z|[+-]\\d\\d:?\\d\\d)$").containsMatchIn(it)) it else it + "Z" }).toInstant()`
