@@ -56,9 +56,11 @@ func (gc *GoIRContext) selectLines(n *ir.CallStmt) ([]string, bool) {
 	if c == nil || c.Func == nil || c.Func.Intrinsic != chanSelectIntrinsic || len(c.Args) != 1 {
 		return nil, false
 	}
-	// The arms have to be readable here, so the list is written at the call.
-	// Anything else declines and reaches the intrinsic fallback, which stops
-	// the build rather than emitting a select with no cases.
+	// The arms have to be readable here, so the list is written at the call. A
+	// list bound to a var declines and falls through to the ordinary named-call
+	// path, which emits `m.select(arms)` -- caught by `format.Source` as a
+	// parse error naming `select`, with no position. That is a poor diagnostic
+	// rather than a wrong program, and a checker rule is what would improve it.
 	list, ok := c.Args[0].Value.(*ir.ListLit)
 	if !ok {
 		return nil, false
@@ -74,14 +76,14 @@ func (gc *GoIRContext) selectLines(n *ir.CallStmt) ([]string, bool) {
 			return nil, false
 		}
 		ch := gc.EvalExpr(arm.Args[0].Value)
-		name := ""
-		if len(lam.Func.Params) == 1 && lam.Func.Params[0] != nil {
-			name = lam.Func.Params[0].Name
+		var param *ir.Param
+		if len(lam.Func.Params) == 1 {
+			param = lam.Func.Params[0]
 		}
 		// Bind only what the body reads: Go rejects an unused case variable,
 		// and a tick that ignores the time it arrived at is the common shape.
-		if name != "" && blockReadsName(lam.Func.Block, name) {
-			out = append(out, "case "+name+" := <-"+ch+":")
+		if param != nil && blockReadsParam(lam.Func.Block, param) {
+			out = append(out, "case "+param.Name+" := <-"+ch+":")
 		} else {
 			out = append(out, "case <-"+ch+":")
 		}
@@ -92,14 +94,18 @@ func (gc *GoIRContext) selectLines(n *ir.CallStmt) ([]string, bool) {
 	return append(out, "}"), true
 }
 
-// blockReadsName reports whether any identifier in block is spelled name. An
+// blockReadsParam reports whether block reads the case's own parameter. An
 // unused case variable is a compile error in Go, and the body is the only thing
 // that can say whether there would be one.
-func blockReadsName(block []ir.Stmt, name string) bool {
+//
+// By symbol and not by name: a tick body that happens to mention something else
+// spelled `at` -- a state var of the program's own, which emits as `m.at` --
+// would otherwise bind a case variable nothing reads, and Go rejects the file.
+func blockReadsParam(block []ir.Stmt, param *ir.Param) bool {
 	found := false
 	for _, s := range block {
 		_ = ir.Walk(s, func(nd ir.Node) error {
-			if id, ok := nd.(*ir.Ident); ok && id.Name == name {
+			if id, ok := nd.(*ir.Ident); ok && id.Sym == ir.Symbol(param) {
 				found = true
 			}
 			return nil

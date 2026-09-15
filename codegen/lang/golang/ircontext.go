@@ -1480,9 +1480,6 @@ func isColorStructLit(n *ir.StructLit) bool {
 	return n.Def != nil && n.Def.Name == "color"
 }
 
-// structLitTypeName picks the Go type prefix for a struct literal. An
-// anonymous struct materializes an inline `struct { … }`, since Go rejects a
-// bare `{…}` literal.
 // isChanLit reports whether a literal's type is a channel, resolving the
 // declaration the way structLitTypeName does -- a synthesized zero carries the
 // type on n.Type and leaves Def nil.
@@ -1502,6 +1499,9 @@ func isChanLit(n *ir.StructLit) bool {
 	return def != nil && def.Builtin == ir.BuiltinChan
 }
 
+// structLitTypeName picks the Go type prefix for a struct literal. An
+// anonymous struct materializes an inline `struct { … }`, since Go rejects a
+// bare `{…}` literal.
 func structLitTypeName(n *ir.StructLit) string {
 	if n == nil {
 		return "struct{}"

@@ -63,22 +63,28 @@ func treelessChildren(children []ir.Stmt) []ir.Stmt {
 			if isTreeless(v) {
 				out = append(out, v)
 			}
+		// Both copy the node and replace its two child lists, rather than
+		// naming the fields to keep. Listing them drops whatever is not listed
+		// -- IterKind, Counted, RefElem, the hoisted window ids -- and that is
+		// invisible today only because passCanvas runs before every pass that
+		// stamps one. A pass reordered, or a field added, and the loss is
+		// silent.
 		case *ir.If:
 			body, els := treelessChildren(v.Body), treelessChildren(v.Else)
 			if len(body) == 0 && len(els) == 0 {
 				continue
 			}
-			out = append(out, &ir.If{AST: v.AST, Cond: v.Cond, Body: body, Else: els})
+			cp := *v
+			cp.Body, cp.Else = body, els
+			out = append(out, &cp)
 		case *ir.For:
 			body, els := treelessChildren(v.Body), treelessChildren(v.Else)
 			if len(body) == 0 && len(els) == 0 {
 				continue
 			}
-			out = append(out, &ir.For{
-				AST: v.AST, Key: v.Key, Value: v.Value, Iter: v.Iter,
-				ElemType: v.ElemType, Body: body, Else: els,
-				KeySym: v.KeySym, ValueSym: v.ValueSym,
-			})
+			cp := *v
+			cp.Body, cp.Else = body, els
+			out = append(out, &cp)
 		case *ir.ErrorBoundary:
 			// Flattened, as emitShapes flattens it: what it wrapped is what the
 			// canvas holds, and the fallback is already an `if` among them.

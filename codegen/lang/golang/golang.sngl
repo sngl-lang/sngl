@@ -332,5 +332,8 @@ func recv<T>(c chan<T>, body func(T)) Case
 //   - A **nil** channel is never ready, so its arm is never chosen. The zero
 //     value of `chan<T>` is nil, so a select over arms that were never made
 //     blocks for the life of the process.
+// The arms are written at the call, as a list literal: the emitter takes each
+// one apart to write a case, so a list it cannot read is a list it cannot turn
+// into arms.
 #[marks.intrinsic("go.select")]
 func select(cases list<Case>)
