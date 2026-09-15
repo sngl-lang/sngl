@@ -49,6 +49,7 @@ import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
 import go "sngl:language/go"
+import async "sngl:async"
 
 // The `fyne` node of a build directive: `output { go { fyne() } }`.
 component fyne(
@@ -626,16 +627,6 @@ func Schedule.reset(d time.duration)
 #[go.native("time", "time.Ticker.Stop", method)]
 func Schedule.stop()
 
-// The hand-over onto Fyne's own goroutine, since a widget touched from any
-// other is a data race, and the goroutine the ticker is consumed on. Both are
-// the ids passAsyncOffload already writes for a blocking call; naming them here
-// is what lets this package ask for the same two things.
-#[intrinsic("async.post")]
-func post(f func())
-
-#[intrinsic("async.spawn")]
-func spawn(f func())
-
 // `enabled` is the effect's *position*, not part of its key: an effect lives as
 // long as the branch it is written in, so `if enabled` is what makes toggling
 // the gate a mount and an unmount. `on=interval` is the key, because a running
@@ -669,11 +660,11 @@ component time.timer[platform] {
                     done = go.makeChan(false)
                     var stopped = done
                     var ticker = handle
-                    spawn(func() {
+                    async.spawn(func() {
                         for {
                             go.select([
                                 go.recv(ticker.C, func(at time.datetime) {
-                                    post(func() {
+                                    async.post(func() {
                                         // A post queued before an unmount runs
                                         // after it. `gen` is what it finds:
                                         // without it a stale tick writes state
