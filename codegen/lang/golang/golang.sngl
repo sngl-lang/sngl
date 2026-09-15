@@ -350,12 +350,17 @@ func recv<T>(c chan<T>, body func(T)) Case
 // position*, having dumped the generated file. Same for a `recv` written
 // anywhere but inside one of these lists.
 //
-// It stays a poor diagnostic rather than a rule because there is nowhere good
-// to put the rule yet: the checker knows nothing of a target's intrinsics by
-// design, a lowering pass cannot name this id without importing the plugin that
-// declares it, and the emitter has no way to report a positioned error. The
-// seam that would fix it -- a language plugin declaring an argument *shape* its
-// intrinsic requires -- does not exist, and inventing one for a single callee
-// is the wrong trade. See #245's sibling discussion.
+// It stays a poor diagnostic because both *rule* shapes are wrong here: the
+// checker knows nothing of a target's intrinsics by design, and a lowering pass
+// cannot name this id without importing the plugin that declares it -- lower is
+// imported by codegen, not the reverse.
+//
+// The emitter reporting a *position* is a different question and is **not**
+// blocked. selectLines already holds the call's AST position, the same one
+// async_capable.go reads, and the three Go platforms' Generate already return an
+// error, so an additive errs field drained there is three call sites and no new
+// interface. It is untaken rather than impossible: it buys this one callee a
+// diagnostic while every other positionless emitter failure stays as it is,
+// which is a choice worth making deliberately rather than here.
 #[marks.intrinsic("go.select")]
 func select(cases list<Case>)
