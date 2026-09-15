@@ -292,9 +292,13 @@ component shapes.canvasImage[language] {
 // `*time.Ticker`'s `C` is a `<-chan Time`, and without this there is no type to
 // declare that field as.
 //
-// Direction is not spelled. A receive-only channel is reachable because nothing
-// writes a Go type for an expression that is only received from -- binding one
-// to a var would emit the bidirectional `chan T` and not compile against it.
+// **Direction is not spelled, and that is a gap rather than a decision.** A
+// receive-only channel is reachable only because nothing writes a Go type for an
+// expression that is merely selected on: `ticker.C` is passed straight to
+// `go.recv` and no annotation is emitted for it. Bind one to a var and this type
+// emits the bidirectional `chan T`, which Go will not assign a `<-chan T` to.
+// Closing that means two types, or a direction on this one; nothing here needs
+// it yet, and the first API that hands a channel out to be *stored* will.
 #[marks.builtin("chan")]
 struct chan<T> {}
 

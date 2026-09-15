@@ -618,12 +618,9 @@ struct Schedule {
 #[go.native("time", "time.NewTicker")]
 func newTicker(d time.duration) Schedule
 
-// Declared for the surface rather than called: a period change is a *re-key*,
-// and the effect answers one by unmounting and mounting, which builds a new
-// ticker. Reset is what a schedule held across that change would want.
-#[go.native("time", "time.Ticker.Reset", method)]
-func Schedule.reset(d time.duration)
-
+// Stop and no Reset: a period change is a *re-key*, which the effect answers by
+// unmounting and mounting, so the ticker built for the old period is stopped
+// rather than reset. A schedule held across that change is what would want one.
 #[go.native("time", "time.Ticker.Stop", method)]
 func Schedule.stop()
 
