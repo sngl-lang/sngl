@@ -6,6 +6,10 @@ import marks "sngl:internal/marks"
 //
 // Answered on the language axis, because none of those is a property of the
 // surface being drawn on.
+//
+// Pair it with `post`. Whatever f touches, it touches from somewhere that does
+// not own the widgets, so a UI program that spawns and then writes state has
+// written a data race rather than a background task.
 #[marks.intrinsic("async.spawn")]
 func spawn(f func())
 
