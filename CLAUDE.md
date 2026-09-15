@@ -1347,6 +1347,12 @@ unrolls a const loop in the optimizer, so the source fyne refuses builds there
 as independent schedules. Defensible — lowering is per-target — but a
 portability wart, so the diagnostic says it rather than leaving it to be found.
 
+**It reports at the loop and names where the lifetime came in**, which are two
+different lines whenever the component is a wrapper: a two-level wrap cited the
+inner insertion inside the *outer declaration*, so the message complained that
+"this loop is not reactive" about a line with no loop on it and no way to find
+one. `reactiveCtx.loopPos` is the first half and `nodePos` the second.
+
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,
 so `lookupBodyMethod` walks the owner chain where `inferIdent` used to ask

@@ -81,11 +81,19 @@ func BaseImports(pkg *ir.Package) []BaseImport {
 // override declares.
 //
 // The values are an owner's vars and its funcs' signatures, which is what a
-// platform override writes today. A local of such a type inside a func body, or
-// a const of one, reaches the file without its import and IRTypeToGo spells the
-// name anyway -- generated Go that does not compile. Nothing produces either
-// yet, so this is the shape of the gap rather than a live bug: an ir.LocalVar
-// arm is what adding one costs.
+// platform override writes today. Three shapes reach the file without their
+// import, and IRTypeToGo spells the name anyway -- generated Go that does not
+// compile. Nothing produces any of them yet, so this is the shape of the gap
+// rather than a live bug:
+//
+//   - a local of such a type inside a func body, and a const of one, which an
+//     ir.LocalVar arm is what adding costs;
+//   - a type reached only *through a function type*, `func(Entry)` over a
+//     `#[go.native]` struct: the walk below recurses `t.Elems`, and a signature
+//     is not there -- ir.Type keeps it in `Sig`. A direct native param or
+//     return is covered, because those are read off the func's own signature
+//     rather than out of a type; only a func type written as a value's type
+//     escapes. A `case TypeFunc` reaching into Sig is what adding costs.
 func foreignTypeImports(pkg *ir.Package) []string {
 	var out []string
 	seen := map[string]bool{}

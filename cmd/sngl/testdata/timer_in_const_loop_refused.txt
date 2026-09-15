@@ -19,7 +19,7 @@
 # are. A fixture written that way asserts nothing at all.
 
 ! sngl generate --platform fyne --lang go -o out constloop.sngl
-stderr 'brackets a lifetime and this loop is not reactive'
+stderr 'this loop is not reactive and .* brackets a lifetime'
 stderr 'see #245'
 ! stderr 'panic'
 
@@ -29,12 +29,12 @@ stderr 'see #245'
 # compile (`undefined: p`). What decides per-copy state is the *loop*, so that
 # is the bit the refusal reads.
 ! sngl generate --platform fyne --lang go -o out constloopif.sngl
-stderr 'brackets a lifetime and this loop is not reactive'
+stderr 'this loop is not reactive and .* brackets a lifetime'
 
 # Nesting inherits, in both directions. Two const loops is still no per-copy
 # state, so the inner one is refused...
 ! sngl generate --platform fyne --lang go -o out constinconst.sngl
-stderr 'brackets a lifetime and this loop is not reactive'
+stderr 'this loop is not reactive and .* brackets a lifetime'
 
 # ...and a reactive outer loop makes the const inner one safe, because the outer
 # one is rebuilt as a unit and carries the inner copies with it.
@@ -63,7 +63,12 @@ grep 'Destroy\(\)' out/model.go
 # runs, so a user component wrapping a timer holds the effect node directly by
 # the time the question is asked.
 ! sngl generate --platform fyne --lang go -o out wrapped.sngl
-stderr 'brackets a lifetime and this loop is not reactive'
+stderr 'this loop is not reactive and .* brackets a lifetime'
+# The rule is about the loop, so that is the line it names -- and the lifetime
+# is inside a declaration written elsewhere, so it says where it came in too.
+# Cited at the node alone, this read as a complaint about a line with no loop.
+stderr 'wrapped.sngl:13:5: this loop is not reactive'
+stderr 'reached from wrapped.sngl:14:15'
 
 # One word is the whole difference, and the other word still works.
 sngl generate --platform fyne --lang go -o out varloop.sngl

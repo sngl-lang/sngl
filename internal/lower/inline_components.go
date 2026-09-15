@@ -580,6 +580,11 @@ type reactiveCtx struct {
 	// and does not. What separates them is where `in` was true -- outside the
 	// loop, or under it.
 	loopReactive bool
+	// loopPos is where the nearest enclosing `for` was written. The node's own
+	// position is not a substitute: a lifetime reached through a component sits
+	// in *that declaration*, so a diagnostic about the loop would otherwise cite
+	// a line with no loop on it.
+	loopPos string
 }
 
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
@@ -690,6 +695,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			// the node with the same `in`, which is why this is read here and
 			// not there.
 			loopReactive: rc.in || rc.loopReactive || reactiveIter,
+			loopPos:      forPos(n),
 		}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
@@ -1019,6 +1025,14 @@ func bracketsALifetime(comp *ir.Component) bool {
 	return found
 }
 
+// forPos is where a loop was written, or "" when the IR carries no position.
+func forPos(n *ir.For) string {
+	if p := ir.StmtPos(n); p.IsValid() {
+		return p.String()
+	}
+	return ""
+}
+
 // refuseRepeatedLifetime stops a component that brackets a lifetime from being
 // spliced into a position that holds many copies of it.
 //
@@ -1039,6 +1053,17 @@ func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
 	if !rc.repeated || rc.loopReactive || !bracketsALifetime(n.Component) {
 		return nil
 	}
-	return fmt.Errorf("%s: %q brackets a lifetime and this loop is not reactive, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own. This is a lowering rule, so a target that unrolls the loop instead -- html on --lang none -- builds the same source; see #245",
-		nodePos(n), n.Component.Name)
+	// Two positions, because they are usually two different lines: the loop is
+	// what the rule is about, and the node is where the lifetime entered it --
+	// which for a wrapped one is inside a declaration written somewhere else.
+	where := ""
+	if rc.loopPos != "" && rc.loopPos != nodePos(n) {
+		where = fmt.Sprintf(" (reached from %s)", nodePos(n))
+	}
+	at := rc.loopPos
+	if at == "" {
+		at = nodePos(n)
+	}
+	return fmt.Errorf("%s: this loop is not reactive and %q%s brackets a lifetime, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own. This is a lowering rule, so a target that unrolls the loop instead -- html on --lang none -- builds the same source; see #245",
+		at, n.Component.Name, where)
 }
