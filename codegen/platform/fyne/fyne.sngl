@@ -653,6 +653,9 @@ component time.timer[platform] {
                     live = true
                     gen = gen + 1
                     var mine = gen
+                    // Captured, because `d` compiles to the effect's shared key
+                    // field: the closure must re-arm with the period it was
+                    // armed for, not whatever the last settle left there.
                     var period = d
                     rearm = func() {
                         post(func() {
