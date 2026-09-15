@@ -675,9 +675,12 @@ component time.timer[platform] {
                 }
             },
             @unmount(d) {
-                // `live` is the nil guard -- a non-positive period armed
-                // nothing. Both it and `gen` are read on the thread `post`
-                // hands over to, which is what makes this an ordering.
+                // `live` is what stands between a non-positive interval and
+                // a crash: the `d > 0ms` test is in the mount, not in the
+                // effect's desired list, so a zero key is still live here with
+                // `handle` never assigned -- and a nil `*time.Timer` does not
+                // survive `Stop`. Both it and `gen` are read on the thread
+                // `post` hands over to, which is what makes this an ordering.
                 if live {
                     live = false
                     gen = gen + 1

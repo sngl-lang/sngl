@@ -115,13 +115,65 @@ func TestTeardownStops(t *testing.T) {
 	}
 
 	m.__snglTeardown()
-	// Long enough for a callback in flight at teardown to have been dispatched
-	// and found the flag, at a 1ms period.
+	// The reads here are not ordered against the tick's writes, and cannot be:
+	// fyne's *test* driver runs DoFromGoroutine inline on the caller, which is
+	// AfterFunc's goroutine, where the real driver marshals onto its own. So
+	// the emitted program is single-threaded in production and concurrent under
+	// this harness, and -race would say so. What the sleeps buy is that no
+	// writer remains once Stop has run and gen has moved -- the assertion is
+	// about the count no longer changing, not about any single read.
 	time.Sleep(200 * time.Millisecond)
 	settled := m.Ticks()
 	time.Sleep(300 * time.Millisecond)
 	if got := m.Ticks(); got != settled {
 		t.Errorf("a torn-down schedule kept firing: %d then %d", settled, got)
+	}
+}
+`)
+}
+
+// A non-positive interval arms nothing, and tearing that down does not panic.
+//
+// The `d > 0ms` test is inside `@mount`, not in the effect's desired list, so a
+// zero key is still appended to `__effect0_live` and unmount still runs for it
+// -- with `handle` never assigned. `(*time.Timer)(nil).Stop()` is a nil
+// dereference, so `live` is the difference between this and a crash at
+// teardown, and nothing asserted that until this fixture: the whole suite stayed
+// green with the guard removed.
+//
+// A run rather than a golden because the emitted code is identical either way
+// in every respect a grep can see -- what changes is whether it survives being
+// torn down.
+func TestANonPositiveIntervalTearsDownCleanly(t *testing.T) {
+	src := `
+import . "sngl:ui"
+import . "sngl:time"
+
+window {
+    var ticks = 0
+    timer(interval=0ms, enabled=true, @tick { ticks += 1 })
+    text(value=string(ticks))
+}
+`
+	runEmitted(t, "fyne-timer-zero-", []byte(generateFyneModelBuilt(t, src)), `package ui
+
+import (
+	"testing"
+
+	"fyne.io/fyne/v2/test"
+)
+
+func TestZeroIntervalTeardown(t *testing.T) {
+	test.NewApp()
+	m := New()
+	m.BuildUI()
+
+	// The assertion is that this returns at all: unguarded it is a nil
+	// dereference on the timer the mount never armed.
+	m.__snglTeardown()
+
+	if m.Ticks() != 0 {
+		t.Errorf("a non-positive interval fired %d times; it should arm nothing", m.Ticks())
 	}
 }
 `)

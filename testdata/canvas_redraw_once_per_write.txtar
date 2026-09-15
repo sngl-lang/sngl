@@ -19,6 +19,8 @@ had an empty dep set and was collected as reactive by nothing at all.
 
 deny out/go/fyne/model.go `(?m)^func \(m \*Model\) bump\(\) \{\n\tm\.frame = \(m\.frame \+ 1\)\n\tm\.__n1Ctx` -- the helper must not rasterise; its caller already does, and two per click means the first runs against state the handler has not finished writing
 
+deny out/go/fyne/model.go `(?m)^\tstep := func\(\) \{\n\t\ttotal = \(total \+ 1\)\n\t\tm\.__n1Ctx` -- a lambda inside a declared func is credited to that func's Writes too, so the caller already redraws for it; the checker's effect walk descends into a lambda where gatherBlockMutations does not
+
 -- app.sngl --
 import d "sngl:ui/draw"
 import ui "sngl:ui"
@@ -33,7 +35,12 @@ var frame = 0
 
 ui.window(title="t") {
     func bump() {
-        frame = frame + 1
+        // Through a lambda, because `Writes` covers one written inside a func
+        // and the redraw must not land on both it and the caller.
+        var step = func() {
+            frame = frame + 1
+        }
+        step()
     }
 
     ui.vbox {
@@ -104,7 +111,10 @@ func New() *Model {
 }
 
 func (m *Model) bump() {
-	m.frame = (m.frame + 1)
+	step := func() {
+		m.frame = (m.frame + 1)
+	}
+	step()
 }
 
 func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {

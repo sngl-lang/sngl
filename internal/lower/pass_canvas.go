@@ -46,6 +46,15 @@ func isTreeless(n *ir.NodeInst) bool {
 // It mirrors emitShapes, which is the other half of the same split: everything
 // that walk reaches through, this one reaches through too, or a bracket written
 // under it is dropped exactly as it was before any of this.
+//
+// What it does *not* reach through is a shape's own children, and that is safe
+// only because no shape has any: `canvas` declares the one `...component shape`
+// slot in sngl:ui/draw, and every member of that tree is a leaf. A container
+// shape -- the `group` the tree docs use as their example -- would need a
+// NodeInst arm here descending into Children, or a `#[tree.none]` node written
+// inside one would be dropped on both paths: painted by nobody, since it is
+// treeless, and kept by nobody, so passEffect finds no schedule. That is this
+// pass's own bug one level down, so add the arm with the shape.
 func treelessChildren(children []ir.Stmt) []ir.Stmt {
 	var out []ir.Stmt
 	for _, c := range children {

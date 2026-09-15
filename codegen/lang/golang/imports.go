@@ -79,6 +79,13 @@ func BaseImports(pkg *ir.Package) []BaseImport {
 // package's declaration is not in a program's struct list at all -- fyne's
 // `Schedule` reaches a program only as the type of the `handle` var its timer
 // override declares.
+//
+// The values are an owner's vars and its funcs' signatures, which is what a
+// platform override writes today. A local of such a type inside a func body, or
+// a const of one, reaches the file without its import and IRTypeToGo spells the
+// name anyway -- generated Go that does not compile. Nothing produces either
+// yet, so this is the shape of the gap rather than a live bug: an ir.LocalVar
+// arm is what adding one costs.
 func foreignTypeImports(pkg *ir.Package) []string {
 	var out []string
 	seen := map[string]bool{}

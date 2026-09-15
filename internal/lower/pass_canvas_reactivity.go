@@ -325,27 +325,26 @@ func varsOverlap(a, b map[*ir.Var]bool) bool {
 //
 // The lambda half is where a timer lands: a tick reaches the emitter as the
 // closure handed to the host scheduler, so the write is a statement of the
-// lambda and not of the func holding it. gatherBlockMutations does not descend
-// into a lambda either, which is what keeps the two from both firing -- a func
-// holding a writing lambda is not itself seen to write.
+// lambda and not of the func holding it.
 //
-// Only the funcs lowering synthesized get one of their own. gatherBlockMutations
-// credits a call to its callee's Writes, so a handler calling `bump()` already
-// redraws for what bump writes -- injecting into bump as well rasterizes the
-// surface twice per click, the first time against half-applied state. Writes is
-// what tells the two apart: the checker fills it in, so a body that did not
-// exist then has none.
+// `Writes` is the gate, and it governs the func and its lambdas together.
+// gatherBlockMutations credits a call to its callee's Writes, so a handler
+// calling `bump()` already redraws for whatever bump writes -- and the checker's
+// effect walk descends into a lambda, so bump's Writes covers a lambda written
+// inside it too. Injecting into either as well rasterizes the surface more than
+// once per click, the extra times against half-applied state.
 //
-// A lambda is asked separately and always, because nothing credits one to a
-// caller: what runs it is a host scheduler rather than code this pass can read.
+// What has no Writes is what the checker never saw: the bodies lowering
+// synthesized, which is an effect's mount and the tick closure inside it. Those
+// are exactly the ones nothing credits to a caller, so they get one of their
+// own -- which is why the gate is asked once, per owner func, rather than twice
+// with different answers.
 func injectIntoFuncs(funcs []*ir.Func, stateVars map[*ir.Var]bool, canvases []canvasEntry) {
 	for _, fn := range funcs {
-		if fn == nil {
+		if fn == nil || len(fn.Writes) > 0 {
 			continue
 		}
-		if len(fn.Writes) == 0 {
-			redrawIfWrites(&fn.Block, stateVars, canvases)
-		}
+		redrawIfWrites(&fn.Block, stateVars, canvases)
 		for _, l := range lambdaFuncsIn(fn.Block) {
 			redrawIfWrites(&l.Block, stateVars, canvases)
 		}
