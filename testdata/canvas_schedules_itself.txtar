@@ -139,7 +139,6 @@ type Model struct {
 	rearm__inst0        func()
 	live__inst0         bool
 	gen__inst0          int
-	next__inst0         time.Time
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -161,7 +160,6 @@ func New() *Model {
 	m.rearm__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
-	m.next__inst0 = time.Time{}
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = time.Duration(0) * time.Millisecond
@@ -220,22 +218,12 @@ func (m *Model) __effect1_mount() {
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
 		period := m.__effect1_key
-		m.next__inst0 = time.Now().Add(period)
 		m.rearm__inst0 = func() {
 			fyne.Do(func() {
 				if m.gen__inst0 != mine {
 					return
 				}
-				m.next__inst0 = m.next__inst0.Add(period)
-				var caught int = 0
-				for (time.Until(m.next__inst0) <= time.Duration(0)*time.Millisecond) && (caught < 64) {
-					m.next__inst0 = m.next__inst0.Add(period)
-					caught = (caught + 1)
-				}
-				if time.Until(m.next__inst0) <= time.Duration(0)*time.Millisecond {
-					m.next__inst0 = time.Now().Add(period)
-				}
-				m.handle__inst0.Reset(time.Until(m.next__inst0))
+				m.handle__inst0.Reset(period)
 				m.frame = (m.frame + 1)
 				m.__n0Ctx = snglcanvas.New(40, 40)
 				m._canvasDraw0(m.__n0Ctx)
@@ -243,7 +231,7 @@ func (m *Model) __effect1_mount() {
 				m.__n0.Refresh()
 			})
 		}
-		m.handle__inst0 = time.AfterFunc(time.Until(m.next__inst0), m.rearm__inst0)
+		m.handle__inst0 = time.AfterFunc(period, m.rearm__inst0)
 	}
 }
 
@@ -359,14 +347,6 @@ func (m *Model) Gen__inst0() int {
 
 func (m *Model) SetGen__inst0(v int) {
 	m.gen__inst0 = v
-}
-
-func (m *Model) Next__inst0() time.Time {
-	return m.next__inst0
-}
-
-func (m *Model) SetNext__inst0(v time.Time) {
-	m.next__inst0 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.

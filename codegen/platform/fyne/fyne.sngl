@@ -605,42 +605,21 @@ component ui.textarea[platform] {
 // the pair below is a lifetime with a thing to release, which is what `effect`
 // brackets.
 
-// `time.AfterFunc` is a one-shot, so the schedule re-arms itself from its own
-// callback: no ticker, no goroutine and no select, and so nothing left for a
-// runtime package to hold. `*time.Timer` is a name this declaration can spell,
-// which is what `#[cnative]` does for `*C.cairo_t` in gtk4.sngl, one scheme
-// over.
+// `*time.Timer` is a name this declaration can spell, which is what
+// `#[cnative]` does for `*C.cairo_t` in gtk4.sngl, one scheme over -- so the
+// schedule is the timer itself and there is nothing left for a runtime package
+// to hold.
 #[go.native("time", "*time.Timer")]
 struct Schedule {}
 
 #[go.native("time", "time.AfterFunc", schedules)]
 func after(d time.duration, f func()) Schedule
 
-// Re-arming is `Reset` on the schedule already held, rather than a second
-// `AfterFunc`: one timer exists per mount for as long as the mount lasts, so
-// `handle` is written once and only read after.
 #[go.native("time", "time.Timer.Reset", method)]
 func Schedule.reset(d time.duration) bool
 
 #[go.native("time", "time.Timer.Stop", method)]
 func Schedule.stop() bool
-
-// The clock the deadlines are measured against. `sngl:time` declares `date`,
-// `time`, `datetime` and `duration` and no operation on any of them -- no
-// `now`, no arithmetic -- so the host's is named here, the way `AfterFunc` is.
-// Nothing about this is fyne's; it is the first thing that wanted a clock.
-#[go.native("time", "time.Time")]
-struct Instant {}
-
-#[go.native("time", "time.Now")]
-func now() Instant
-
-#[go.native("time", "time.Time.Add", method)]
-func Instant.add(d time.duration) Instant
-
-// The remainder until an instant, negative once it has passed.
-#[go.native("time", "time.Until")]
-func until(t Instant) time.duration
 
 // The hand-over onto Fyne's own goroutine, since a widget touched from any
 // other is a data race. It is the intrinsic a blocking call's tail is already
@@ -654,23 +633,17 @@ func post(f func())
 // the gate a mount and an unmount. `on=interval` is the key, because a running
 // schedule is the same schedule for as long as its period is unchanged.
 //
-// A non-positive interval arms nothing. `AfterFunc` accepts one and fires at
-// once, so a re-arm would spin -- where `NewTicker` would have panicked and
-// said so. The test is in the mount rather than in the position beside
-// `enabled`, because a comparison of two unit constants does not fold: written
-// there it reaches every program's settle as `1000ms > 0ms`, spelled out.
-//
-// The deadline is absolute. `AfterFunc` starts the next period when the
-// callback runs rather than when the last one was due, so a re-arm for a whole
-// period carries the hand-over onto the drawing thread into every period, with
-// nothing bounding what that adds up to. `next` is when the tick was *due* and
-// the schedule is reset to the remainder, so the error is dropped each time.
+// `AfterFunc` fires once, so the tick re-arms it with the same period -- `Reset`
+// on the schedule already held, rather than a second timer per tick. A
+// non-positive interval arms nothing: `AfterFunc` accepts one and fires at
+// once, so a re-arm would spin. The test is in the mount rather than in the
+// position beside `enabled`, because a comparison of two unit constants does
+// not fold and would reach every program's settle as `1000ms > 0ms`.
 component time.timer[platform] {
     var handle Schedule
     var rearm func()
     var live = false
     var gen = 0
-    var next Instant
 
     if enabled {
         effect(
@@ -680,51 +653,22 @@ component time.timer[platform] {
                     live = true
                     gen = gen + 1
                     var mine = gen
-                    // Captured like `mine`, because `d` compiles to the
-                    // effect's shared key field: read back at tick time it is
-                    // whatever the last settle left, and a zero there makes
-                    // the catch-up loop below a no-op with a true condition.
                     var period = d
-                    next = now().add(period)
                     rearm = func() {
                         post(func() {
-                            // A post queued before an unmount runs after
-                            // it. Left to reach `Reset` it would revive the
-                            // timer that unmount stopped, or -- where a
-                            // re-key armed a new one -- reschedule that one
-                            // against the old period. An early return rather
-                            // than a wrapping `if`, because a blocking
-                            // `@tick` only moves off the drawing thread as a
-                            // statement of the body.
+                            // A post queued before an unmount runs after it,
+                            // and would `Reset` the timer that unmount
+                            // stopped. An early return rather than a wrapping
+                            // `if`, because a blocking `@tick` only moves off
+                            // the drawing thread as a statement of the body.
                             if gen != mine {
                                 return
                             }
-                            // Missed deadlines are dropped, not made up: a
-                            // tick slower than its period would queue a
-                            // catch-up per period and never drain.
-                            //
-                            // Walking them keeps the phase, so a clock stays
-                            // on the second it started on. Bounded because the
-                            // walk is per missed period and a suspended laptop
-                            // misses millions -- past that the phase is not
-                            // worth a frozen drawing thread, and the deadline
-                            // is taken from now instead. A duration division
-                            // would do it in one step, which is arithmetic
-                            // `sngl:time` cannot express.
-                            next = next.add(period)
-                            var caught = 0
-                            for until(next) <= 0ms && caught < 64 {
-                                next = next.add(period)
-                                caught = caught + 1
-                            }
-                            if until(next) <= 0ms {
-                                next = now().add(period)
-                            }
-                            handle.reset(until(next))
+                            handle.reset(period)
                             tick()
                         })
                     }
-                    handle = after(until(next), rearm)
+                    handle = after(period, rearm)
                 }
             },
             @unmount(d) {

@@ -967,22 +967,22 @@ declaration itself. Two things about the name that are easy to get wrong:
   there is no channel to select over. fyne's timer is now written in
   `fyne.sngl` alone and the package is gone.
 
-  **A one-shot that re-arms drifts and a ticker does not**, so the deadline it
-  resets to is absolute: `AfterFunc` starts the next period when the callback
-  runs rather than when the last one was due, so a re-arm carries however long
-  it took to get there. Resetting *ahead* of the tick takes the tick body out
-  of that; the hand-over onto the drawing thread is what is left, and nothing
-  bounds how much of it accumulates over a long run. It is small per tick, so
-  a short run does not separate the two -- the claim is about a clock left
-  running, and the assertion is the emitted shape. The override holds `next` -- when the tick
-  was *due* -- and resets to `time.Until(next)`, so the error is dropped rather
-  than carried, and it walks `next` forward past any deadline already passed so
-  a tick slower than its period runs late instead of queueing a catch-up per
-  period. `sngl:time` declares `date`, `time`, `datetime` and `duration` and
-  **no operation on any of them** -- no clock, no arithmetic -- so
-  `time.Now`/`Add`/`Until` are named as host natives there, the way `AfterFunc`
-  is. A clock in `sngl:time` is the thing that would let the language say
-  this.
+  **`Stop` and `Reset` are the whole of why it is a `Timer` and not a
+  `Ticker`.** `Reset` re-arms the schedule already held, so a period change
+  needs no remount and no second timer per tick; `Stop` ends it, so an unmount
+  needs no channel. A ticker is consumed by receiving from `C` and `Ticker.Stop`
+  does not close it, so the goroutine wants a `select` over a done channel --
+  and SNGL has **no channel type at all**, so neither the receive nor the select
+  is spellable. That is the gap `go.chan<T>`/`go.select` would close, and
+  picking the host API the language can already say is what made closing it
+  unnecessary here.
+
+  An `AfterFunc` that re-arms after the callback does drift where a ticker does
+  not, by the hand-over onto the drawing thread. Measuring the difference needs
+  a run longer than any fixture here, and pricing it in an absolute deadline
+  costs a clock the language does not have, arithmetic it cannot express and a
+  catch-up walk that is O(missed periods) -- a suspended laptop is millions, on
+  the drawing thread. Not paid.
 
   **The hand-over it also held is `async.post`**, which a platform package may
   name: `#[intrinsic("async.post")] func post(f func())` dispatches through

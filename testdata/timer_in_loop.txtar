@@ -189,7 +189,6 @@ type TimerInstance struct {
 	rearm               func()
 	live                bool
 	gen                 int
-	next                time.Time
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
 	__effect0_desired   []time.Duration
@@ -209,7 +208,6 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 	c.rearm = nil
 	c.live = false
 	c.gen = 0
-	c.next = time.Time{}
 	c.__effect0_key = time.Duration(0) * time.Millisecond
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
@@ -229,26 +227,16 @@ func (c *TimerInstance) __effect0_mount() {
 		c.gen = (c.gen + 1)
 		var mine int = c.gen
 		period := c.__effect0_key
-		c.next = time.Now().Add(period)
 		c.rearm = func() {
 			fyne.Do(func() {
 				if c.gen != mine {
 					return
 				}
-				c.next = c.next.Add(period)
-				var caught int = 0
-				for (time.Until(c.next) <= time.Duration(0)*time.Millisecond) && (caught < 64) {
-					c.next = c.next.Add(period)
-					caught = (caught + 1)
-				}
-				if time.Until(c.next) <= time.Duration(0)*time.Millisecond {
-					c.next = time.Now().Add(period)
-				}
-				c.handle.Reset(time.Until(c.next))
+				c.handle.Reset(period)
 				c.__prop_tick(nil)
 			})
 		}
-		c.handle = time.AfterFunc(time.Until(c.next), c.rearm)
+		c.handle = time.AfterFunc(period, c.rearm)
 	}
 }
 
