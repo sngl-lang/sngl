@@ -66,7 +66,22 @@ func async() ir.Macro
 // handed it, which is what a Go method wants: `c.Circle(1, 2)` rather than the
 // method-expression spelling `canvas.Context.Circle(c, 1, 2)`. Both are valid;
 // only the API knows which it is.
-enum NativeFlag { fails, method }
+//
+// `schedules` says the identifier runs a callback it is handed from the loop it
+// owns, rather than inline on the thread that called it: `gtk4rt.Every` gives
+// its function to a GLib timeout source, and the source runs it from the main
+// loop, which is the thread the target draws on.
+//
+// passAsyncOffload reads it to know the callback is a body it may enter. A
+// blocking call inside one is work that has to leave the drawing thread, and
+// without the flag it stays there -- silently, which is the failure
+// testdata/timer_tick_async_offload.txtar exists to deny.
+//
+// It is a flag rather than something read off the call, for the reason nothing
+// is inferred from a foreign declaration at all: its SNGL body describes the
+// identifier and does not implement it, so nothing in the program says when the
+// host runs an argument.
+enum NativeFlag { fails, method, schedules }
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result
@@ -270,3 +285,82 @@ component shapes.canvasImage[language] {
         e.ctx.restore()
     })
 }
+
+// --- Channels ---
+//
+// A host channel, named so a Go API that hands one out can be described at all:
+// `*time.Ticker`'s `C` is a `<-chan Time`, and without this there is no type to
+// declare that field as.
+//
+// **Direction is not spelled, and that is a gap rather than a decision.** A
+// receive-only channel is reachable only because nothing writes a Go type for an
+// expression that is merely selected on: `ticker.C` is passed straight to
+// `go.recv` and no annotation is emitted for it. Bind one to a var and this type
+// emits the bidirectional `chan T`, which Go will not assign a `<-chan T` to.
+// Closing that means two types, or a direction on this one; nothing here needs
+// it yet, and the first API that hands a channel out to be *stored* will.
+#[marks.builtin("chan")]
+struct chan<T> {}
+
+// The element type comes from the argument rather than from a type argument,
+// which a call site has no syntax for: `makeChan(false)` is a `chan<bool>`. The
+// value itself is not used -- a channel has no initial contents -- so writing
+// the zero of the type reads as what it is.
+#[marks.intrinsic("go.makechan")]
+func makeChan<T>(zero T) chan<T>
+
+#[marks.intrinsic("go.close")]
+func closeChan<T>(c chan<T>)
+
+// One arm of a `select`: a receive from c, and what to run with the value.
+//
+// A value only so that `select` can be handed a list of them. Nothing holds one
+// and nothing reads one but the emitter, which takes the channel and the body
+// apart again to write the case.
+struct Case {}
+
+// Write one only inside the list a `select` is handed. Anywhere else the
+// emitter has no case to put it in, and the failure is the positionless parse
+// error described on `select`.
+#[marks.intrinsic("go.recv")]
+func recv<T>(c chan<T>, body func(T)) Case
+
+// Blocks until one arm is ready and runs exactly that one. Real `select`
+// syntax, which is what makes it a choice rather than a sequence of receives:
+// two receives in a row would take the first channel's value before ever
+// looking at the second.
+//
+// Two shapes behave in ways worth knowing, and both are Go's rather than this
+// declaration's:
+//
+//   - A **closed** channel is always ready and yields the zero value, forever.
+//     That is the idiom rather than the hazard: closing a `done` channel is how
+//     a loop is told to stop, and its arm is chosen on the very next pass.
+//   - A **nil** channel is never ready, so its arm is never chosen. The zero
+//     value of `chan<T>` is nil, so a select over arms that were never made
+//     blocks for the life of the process.
+// The arms are written at the call, as a list literal: the emitter takes each
+// one apart to write a case, so a list it cannot read is a list it cannot turn
+// into arms.
+//
+// **Write them there, because the failure is a poor one.** Bind the arms to a
+// var and the emitter declines, the call falls through to the ordinary path,
+// and the Go that comes out says `m.select(arms)` -- `select` being a keyword,
+// the build then fails in `go format` with a parse error and *no SNGL
+// position*, having dumped the generated file. Same for a `recv` written
+// anywhere but inside one of these lists.
+//
+// It stays a poor diagnostic because both *rule* shapes are wrong here: the
+// checker knows nothing of a target's intrinsics by design, and a lowering pass
+// cannot name this id without importing the plugin that declares it -- lower is
+// imported by codegen, not the reverse.
+//
+// The emitter reporting a *position* is a different question and is **not**
+// blocked. selectLines already holds the call's AST position, the same one
+// async_capable.go reads, and the three Go platforms' Generate already return an
+// error, so an additive errs field drained there is three call sites and no new
+// interface. It is untaken rather than impossible: it buys this one callee a
+// diagnostic while every other positionless emitter failure stays as it is,
+// which is a choice worth making deliberately rather than here.
+#[marks.intrinsic("go.select")]
+func select(cases list<Case>)

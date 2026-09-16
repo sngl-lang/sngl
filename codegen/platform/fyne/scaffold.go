@@ -44,7 +44,6 @@ type templateData struct {
 	Main       bool
 	AppName    string
 	NeedsToast bool
-	HasTimers  bool
 
 	Structs      []structData
 	UnitDecls    string // pre-rendered `type X float64 / struct {...}` decls
@@ -53,7 +52,6 @@ type templateData struct {
 	Externs      []externData
 	Computeds    []computedData
 	WidgetFields []widgetFieldData
-	Timers       []timerData
 	FunctionCode string          // pre-rendered user functions
 	Imports      map[string]bool // import set; template iterates in sorted key order and uses `index .Imports "path"` for lookups
 
@@ -95,13 +93,6 @@ type computedData struct {
 type widgetFieldData struct {
 	Name   string
 	GoType string
-}
-
-type timerData struct {
-	Index      int
-	IntervalMs int
-	ActiveVar  string
-	Body       string // pre-rendered mutation statements
 }
 
 // newTemplateData is now in compiler_ir.go as newIRTemplateData.

@@ -1,12 +1,51 @@
 What every target emits for a timer, and where it finds one.
 
 `timer` is an ordinary component, and every target overrides it with what it
-schedules with -- four of them with a primitive of their own, which
-passTimerPrimitive takes out of the tree, and html with an `effect` bracketing
-setInterval, which needs no primitive because the pair of natives already is a
-lifetime with a thing to release. So this asserts three things at once: that a
-timer is emitted at all, that a timer written in a child component is emitted
-too, and that its gate reaches the backend as an expression.
+schedules with. Three do it with an `effect` bracketing a pair of host natives:
+html over setInterval/clearInterval, fyne over time.AfterFunc, gtk4 over
+gtk4rt. Such a pair already is a lifetime with a thing to release, which is
+what an effect brackets.
+
+fyne's is the one whose pair is a *one-shot*: `AfterFunc` fires once, so the
+schedule re-arms itself from inside the closure it posts to the drawing
+thread, and the `gen`/`mine` pair below is what stops a post that was already
+queued when the effect re-keyed from arming a timer the unmount can no longer
+see. It cannot be asserted by running: fyne's test driver dispatches `fyne.Do`
+inline on the calling goroutine, so the queued window does not exist there.
+
+fyne consumes a `*time.Ticker` on a goroutine of its own, and `go.select` is
+what ends it. `Ticker.Stop` does not close `C`, so a receive from it alone
+parks for the life of the process; `done` is the second arm, closed rather than
+sent on, because a closed channel is always ready and the arm is taken on the
+very next pass. **The two have to be a select and not a sequence** -- two
+receives in a row would take the tick before ever looking at `done` -- and that
+is the one thing only a golden can show, which is what the emitted `select {`
+below is here for.
+
+`sngl:language/go` grew `go.chan<T>` for this: `C` is a `<-chan Time` field, and
+without a channel type there was nothing to declare it as. Direction is not
+spelled -- a receive-only channel is reachable because nothing writes a Go type
+for an expression that is only selected on.
+
+Three still carry a primitive of their own, which passTimerPrimitive takes out
+of the tree, and two of those are because an effect's `@mount` hands over a
+*closure* and a closure is only a schedule where the host may run it against
+live state: bubbletea is Elm, so a tick has to arrive as a message and its body
+has to be a case Update runs, which is a period and a body together rather than
+a closure; and android's LaunchedEffect is the schedule rather than something a
+schedule is built from. none is the third and is a different case -- the
+interpreter honours `effect` itself and owns the clock, so an override would
+bracket correctly and schedule nothing.
+
+So this asserts three things at once: that a timer is emitted at all, that a
+timer written in a child component is emitted too, and that its gate reaches
+the backend as an expression.
+
+On the three effect targets the gate is the bracket's *position*: `if enabled`
+is what makes toggling it a mount and an unmount, and `on=interval` is the key,
+so a schedule is re-armed when its period changes and left alone when it does
+not. Read the `__effect0_down` bodies below -- the desired list is empty or
+holds one key, and that is the whole of the gate.
 
 Both were broken before, in opposite directions and on different targets:
 
@@ -24,6 +63,8 @@ and inert.
 deny out/kotlin/android/MainScreen.kt `while \(\)` -- a gate is an expression, not a variable name
 deny out/kotlin/android/MainScreen.kt `LaunchedEffect\(\)` -- likewise: LaunchedEffect with no key does not compile
 deny * `timer\(interval` -- the primitive leaves the tree; no target renders one
+deny out/go/fyne/model.go `(?m)^\t+<-ticker\.C$` -- a bare receive outside a select is a sequence, and the tick would be taken before `done` was ever looked at
+deny out/go/fyne/model.go `if !m.live` -- fyne re-arms from inside the post, so a stale closure must test the generation it was armed in: a re-key is an unmount and a mount back to back, so a flag saying only that something is armed is true again by the time the stale post runs, and it would Reset the timer that mount armed back to the period it captured
 
 -- app.sngl --
 import . "sngl:ui"
@@ -241,95 +282,342 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	seconds__inst0 int
-	running__inst0 bool
-	beats__inst1   int
+	seconds__inst2       int
+	running__inst2       bool
+	handle__inst1__inst2 *time.Ticker
+	done__inst1__inst2   chan bool
+	live__inst1__inst2   bool
+	gen__inst1__inst2    int
+	beats__inst3         int
+	handle__inst0__inst3 *time.Ticker
+	done__inst0__inst3   chan bool
+	live__inst0__inst3   bool
+	gen__inst0__inst3    int
+	__effect0_key        time.Duration
+	__effect0_live       []time.Duration
+	__effect0_desired    []time.Duration
+	__effect1_key        time.Duration
+	__effect1_live       []time.Duration
+	__effect1_desired    []time.Duration
+	__effects0_settling  bool
+	__effects0_pending   bool
+	__effects0_steps     int
 
 	__n0 *widget.Label
 	__n1 *widget.Label
-
-	timer0Ticker *time.Ticker
-	timer1Ticker *time.Ticker
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.seconds__inst0 = 0
-	m.running__inst0 = true
-	m.beats__inst1 = 0
+	m.seconds__inst2 = 0
+	m.running__inst2 = true
+	m.handle__inst1__inst2 = nil
+	m.done__inst1__inst2 = nil
+	m.live__inst1__inst2 = false
+	m.gen__inst1__inst2 = 0
+	m.beats__inst3 = 0
+	m.handle__inst0__inst3 = nil
+	m.done__inst0__inst3 = nil
+	m.live__inst0__inst3 = false
+	m.gen__inst0__inst3 = 0
+	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_live = []time.Duration{}
+	m.__effect0_desired = []time.Duration{}
+	m.__effect1_key = time.Duration(0) * time.Millisecond
+	m.__effect1_live = []time.Duration{}
+	m.__effect1_desired = []time.Duration{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
 }
 
-func (m *Model) Seconds__inst0() int {
-	return m.seconds__inst0
-}
-
-func (m *Model) SetSeconds__inst0(v int) {
-	m.seconds__inst0 = v
-}
-
-func (m *Model) Running__inst0() bool {
-	return m.running__inst0
-}
-
-func (m *Model) SetRunning__inst0(v bool) {
-	m.running__inst0 = v
-}
-
-func (m *Model) Beats__inst1() int {
-	return m.beats__inst1
-}
-
-func (m *Model) SetBeats__inst1(v int) {
-	m.beats__inst1 = v
-}
-
-// StartTimers starts all timers; ticks are gated on each timer's enabled var.
-func (m *Model) StartTimers() {
-	m.timer0Ticker = time.NewTicker(1000 * time.Millisecond)
-	go func() {
-		for range m.timer0Ticker.C {
-			fyne.Do(func() {
-				if !m.running__inst0 {
+func (m *Model) __effect0_mount() {
+	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+		m.live__inst1__inst2 = true
+		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
+		var mine int = m.gen__inst1__inst2
+		m.handle__inst1__inst2 = time.NewTicker(m.__effect0_key)
+		m.done__inst1__inst2 = make(chan bool)
+		stopped := m.done__inst1__inst2
+		ticker := m.handle__inst1__inst2
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fyne.Do(func() {
+						if m.gen__inst1__inst2 != mine {
+							return
+						}
+						m.seconds__inst2 += 1
+						m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
+					})
+				case <-stopped:
 					return
 				}
-				m.seconds__inst0 += 1
-				m.__n1.SetText(fmt.Sprint(m.seconds__inst0))
-
-			})
-		}
-	}()
-	m.timer1Ticker = time.NewTicker(250 * time.Millisecond)
-	go func() {
-		for range m.timer1Ticker.C {
-			fyne.Do(func() {
-				m.beats__inst1 += 1
-				m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst1)))
-
-			})
-		}
-	}()
+			}
+		}()
+	}
 }
 
-// StopTimers stops all active timers.
-func (m *Model) StopTimers() {
-	if m.timer0Ticker != nil {
-		m.timer0Ticker.Stop()
+func (m *Model) __effect0_unmount() {
+	if m.live__inst1__inst2 {
+		m.live__inst1__inst2 = false
+		m.gen__inst1__inst2 = (m.gen__inst1__inst2 + 1)
+		m.handle__inst1__inst2.Stop()
+		close(m.done__inst1__inst2)
 	}
-	if m.timer1Ticker != nil {
-		m.timer1Ticker.Stop()
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []time.Duration{}
+	if m.running__inst2 {
+		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
 	}
+	for __effect0_i, _ := range m.__effect0_live {
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
+		if __effect0_j >= len(m.__effect0_desired) {
+			m.__effect0_key = m.__effect0_live[__effect0_j]
+			m.__effect0_unmount()
+		} else {
+			if m.__effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
+				m.__effect0_key = m.__effect0_live[__effect0_j]
+				m.__effect0_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effect0_teardown() {
+	for __effect0_ti, _ := range m.__effect0_live {
+		m.__effect0_key = m.__effect0_live[((len(m.__effect0_live) - 1) - __effect0_ti)]
+		m.__effect0_unmount()
+	}
+	m.__effect0_live = []time.Duration{}
+}
+
+func (m *Model) __effect1_mount() {
+	if m.__effect1_key > time.Duration(0)*time.Millisecond {
+		m.live__inst0__inst3 = true
+		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
+		var mine int = m.gen__inst0__inst3
+		m.handle__inst0__inst3 = time.NewTicker(m.__effect1_key)
+		m.done__inst0__inst3 = make(chan bool)
+		stopped := m.done__inst0__inst3
+		ticker := m.handle__inst0__inst3
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					fyne.Do(func() {
+						if m.gen__inst0__inst3 != mine {
+							return
+						}
+						m.beats__inst3 += 1
+						m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
+					})
+				case <-stopped:
+					return
+				}
+			}
+		}()
+	}
+}
+
+func (m *Model) __effect1_unmount() {
+	if m.live__inst0__inst3 {
+		m.live__inst0__inst3 = false
+		m.gen__inst0__inst3 = (m.gen__inst0__inst3 + 1)
+		m.handle__inst0__inst3.Stop()
+		close(m.done__inst0__inst3)
+	}
+}
+
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []time.Duration{}
+	m.__effect1_desired = append(m.__effect1_desired, time.Duration(250)*time.Millisecond)
+	for __effect1_i, _ := range m.__effect1_live {
+		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
+		if __effect1_j >= len(m.__effect1_desired) {
+			m.__effect1_key = m.__effect1_live[__effect1_j]
+			m.__effect1_unmount()
+		} else {
+			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+				m.__effect1_key = m.__effect1_live[__effect1_j]
+				m.__effect1_unmount()
+			}
+		}
+	}
+}
+
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if m.__effect1_live[__effect1_i] != __effect1_k {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
+}
+
+func (m *Model) __effect1_teardown() {
+	for __effect1_ti, _ := range m.__effect1_live {
+		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
+		m.__effect1_unmount()
+	}
+	m.__effect1_live = []time.Duration{}
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect1_down()
+			m.__effect0_down()
+			m.__effect0_up()
+			m.__effect1_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	m.__effect1_teardown()
+	m.__effect0_teardown()
+}
+
+func (m *Model) Seconds__inst2() int {
+	return m.seconds__inst2
+}
+
+func (m *Model) SetSeconds__inst2(v int) {
+	m.seconds__inst2 = v
+}
+
+func (m *Model) Running__inst2() bool {
+	return m.running__inst2
+}
+
+func (m *Model) SetRunning__inst2(v bool) {
+	m.running__inst2 = v
+}
+
+func (m *Model) Handle__inst1__inst2() *time.Ticker {
+	return m.handle__inst1__inst2
+}
+
+func (m *Model) SetHandle__inst1__inst2(v *time.Ticker) {
+	m.handle__inst1__inst2 = v
+}
+
+func (m *Model) Done__inst1__inst2() chan bool {
+	return m.done__inst1__inst2
+}
+
+func (m *Model) SetDone__inst1__inst2(v chan bool) {
+	m.done__inst1__inst2 = v
+}
+
+func (m *Model) Live__inst1__inst2() bool {
+	return m.live__inst1__inst2
+}
+
+func (m *Model) SetLive__inst1__inst2(v bool) {
+	m.live__inst1__inst2 = v
+}
+
+func (m *Model) Gen__inst1__inst2() int {
+	return m.gen__inst1__inst2
+}
+
+func (m *Model) SetGen__inst1__inst2(v int) {
+	m.gen__inst1__inst2 = v
+}
+
+func (m *Model) Beats__inst3() int {
+	return m.beats__inst3
+}
+
+func (m *Model) SetBeats__inst3(v int) {
+	m.beats__inst3 = v
+}
+
+func (m *Model) Handle__inst0__inst3() *time.Ticker {
+	return m.handle__inst0__inst3
+}
+
+func (m *Model) SetHandle__inst0__inst3(v *time.Ticker) {
+	m.handle__inst0__inst3 = v
+}
+
+func (m *Model) Done__inst0__inst3() chan bool {
+	return m.done__inst0__inst3
+}
+
+func (m *Model) SetDone__inst0__inst3(v chan bool) {
+	m.done__inst0__inst3 = v
+}
+
+func (m *Model) Live__inst0__inst3() bool {
+	return m.live__inst0__inst3
+}
+
+func (m *Model) SetLive__inst0__inst3(v bool) {
+	m.live__inst0__inst3 = v
+}
+
+func (m *Model) Gen__inst0__inst3() int {
+	return m.gen__inst0__inst3
+}
+
+func (m *Model) SetGen__inst0__inst3(v int) {
+	m.gen__inst0__inst3 = v
 }
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
-	m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst1)))
+	m.__n0.SetText(("beats " + fmt.Sprint(m.beats__inst3)))
 	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText(fmt.Sprint(m.seconds__inst0))
+	m.__n1.SetText(fmt.Sprint(m.seconds__inst2))
+	m.__effects0_settle()
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.__n0)
 	parts = append(parts, m.__n1)
@@ -358,88 +646,222 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	seconds__inst0 int
-	running__inst0 bool
-	beats__inst1   int
-	__n0           gtk4rt.Handle
-	__n1           gtk4rt.Handle
-	__root         gtk4rt.Handle
-	timer0ID       uint
-	timer1ID       uint
+	seconds__inst2       int
+	running__inst2       bool
+	handle__inst1__inst2 *gtk4rt.Schedule
+	beats__inst3         int
+	handle__inst0__inst3 *gtk4rt.Schedule
+	__effect0_key        time.Duration
+	__effect0_live       []time.Duration
+	__effect0_desired    []time.Duration
+	__effect1_key        time.Duration
+	__effect1_live       []time.Duration
+	__effect1_desired    []time.Duration
+	__effects0_settling  bool
+	__effects0_pending   bool
+	__effects0_steps     int
+	__n0                 gtk4rt.Handle
+	__n1                 gtk4rt.Handle
+	__root               gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.seconds__inst0 = 0
-	m.running__inst0 = true
-	m.beats__inst1 = 0
-	m.startTimers()
+	m.seconds__inst2 = 0
+	m.running__inst2 = true
+	m.handle__inst1__inst2 = nil
+	m.beats__inst3 = 0
+	m.handle__inst0__inst3 = nil
+	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_live = []time.Duration{}
+	m.__effect0_desired = []time.Duration{}
+	m.__effect1_key = time.Duration(0) * time.Millisecond
+	m.__effect1_live = []time.Duration{}
+	m.__effect1_desired = []time.Duration{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
 }
 
-// startTimers arms every schedule the program describes. A GLib timeout source
-// already runs its callback on the main thread, so a tick body mutates the
-// model in the same place a signal handler does.
-//
-// Armed unconditionally and gated inside: flipping the gate then pauses and
-// resumes with no re-arming wiring, and the next tick simply fires or skips.
-func (m *Model) startTimers() {
-	m.timer0ID = gtk4rt.Every(1000, func() {
-		if !(m.running__inst0) {
-			return
-		}
-		m.__timer0_tick()
-	})
-	m.timer1ID = gtk4rt.Every(250, func() {
-		if !(true) {
-			return
-		}
-		m.__timer1_tick()
+func (m *Model) __effect0_mount() {
+	m.handle__inst1__inst2 = gtk4rt.Every(int(m.__effect0_key/time.Millisecond), func() {
+		m.seconds__inst2 += 1
+		gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst2))
 	})
 }
 
-// StopTimers removes every source startTimers armed.
-func (m *Model) StopTimers() {
-	gtk4rt.CancelEvery(m.timer0ID)
-	gtk4rt.CancelEvery(m.timer1ID)
+func (m *Model) __effect0_unmount() {
+	m.handle__inst1__inst2.Cancel()
 }
 
-func (m *Model) __timer0_tick() {
-	m.seconds__inst0 += 1
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst0))
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []time.Duration{}
+	if m.running__inst2 {
+		m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
+	}
+	for __effect0_i, _ := range m.__effect0_live {
+		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
+		if __effect0_j >= len(m.__effect0_desired) {
+			m.__effect0_key = m.__effect0_live[__effect0_j]
+			m.__effect0_unmount()
+		} else {
+			if m.__effect0_desired[__effect0_j] != m.__effect0_live[__effect0_j] {
+				m.__effect0_key = m.__effect0_live[__effect0_j]
+				m.__effect0_unmount()
+			}
+		}
+	}
 }
 
-func (m *Model) __timer1_tick() {
-	m.beats__inst1 += 1
-	gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst1)))
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		} else {
+			if m.__effect0_live[__effect0_i] != __effect0_k {
+				m.__effect0_key = __effect0_k
+				m.__effect0_mount()
+			}
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
 }
 
-func (m *Model) Seconds__inst0() int {
-	return m.seconds__inst0
+func (m *Model) __effect0_teardown() {
+	for __effect0_ti, _ := range m.__effect0_live {
+		m.__effect0_key = m.__effect0_live[((len(m.__effect0_live) - 1) - __effect0_ti)]
+		m.__effect0_unmount()
+	}
+	m.__effect0_live = []time.Duration{}
 }
 
-func (m *Model) SetSeconds__inst0(v int) {
-	m.seconds__inst0 = v
+func (m *Model) __effect1_mount() {
+	m.handle__inst0__inst3 = gtk4rt.Every(int(m.__effect1_key/time.Millisecond), func() {
+		m.beats__inst3 += 1
+		gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst3)))
+	})
 }
 
-func (m *Model) Running__inst0() bool {
-	return m.running__inst0
+func (m *Model) __effect1_unmount() {
+	m.handle__inst0__inst3.Cancel()
 }
 
-func (m *Model) SetRunning__inst0(v bool) {
-	m.running__inst0 = v
+func (m *Model) __effect1_down() {
+	m.__effect1_desired = []time.Duration{}
+	m.__effect1_desired = append(m.__effect1_desired, time.Duration(250)*time.Millisecond)
+	for __effect1_i, _ := range m.__effect1_live {
+		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
+		if __effect1_j >= len(m.__effect1_desired) {
+			m.__effect1_key = m.__effect1_live[__effect1_j]
+			m.__effect1_unmount()
+		} else {
+			if m.__effect1_desired[__effect1_j] != m.__effect1_live[__effect1_j] {
+				m.__effect1_key = m.__effect1_live[__effect1_j]
+				m.__effect1_unmount()
+			}
+		}
+	}
 }
 
-func (m *Model) Beats__inst1() int {
-	return m.beats__inst1
+func (m *Model) __effect1_up() {
+	for __effect1_i, __effect1_k := range m.__effect1_desired {
+		if __effect1_i >= len(m.__effect1_live) {
+			m.__effect1_key = __effect1_k
+			m.__effect1_mount()
+		} else {
+			if m.__effect1_live[__effect1_i] != __effect1_k {
+				m.__effect1_key = __effect1_k
+				m.__effect1_mount()
+			}
+		}
+	}
+	m.__effect1_live = m.__effect1_desired
 }
 
-func (m *Model) SetBeats__inst1(v int) {
-	m.beats__inst1 = v
+func (m *Model) __effect1_teardown() {
+	for __effect1_ti, _ := range m.__effect1_live {
+		m.__effect1_key = m.__effect1_live[((len(m.__effect1_live) - 1) - __effect1_ti)]
+		m.__effect1_unmount()
+	}
+	m.__effect1_live = []time.Duration{}
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect1_down()
+			m.__effect0_down()
+			m.__effect0_up()
+			m.__effect1_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
+}
+
+func (m *Model) __snglTeardown() {
+	m.__effect1_teardown()
+	m.__effect0_teardown()
+}
+
+func (m *Model) Seconds__inst2() int {
+	return m.seconds__inst2
+}
+
+func (m *Model) SetSeconds__inst2(v int) {
+	m.seconds__inst2 = v
+}
+
+func (m *Model) Running__inst2() bool {
+	return m.running__inst2
+}
+
+func (m *Model) SetRunning__inst2(v bool) {
+	m.running__inst2 = v
+}
+
+func (m *Model) Handle__inst1__inst2() *gtk4rt.Schedule {
+	return m.handle__inst1__inst2
+}
+
+func (m *Model) SetHandle__inst1__inst2(v *gtk4rt.Schedule) {
+	m.handle__inst1__inst2 = v
+}
+
+func (m *Model) Beats__inst3() int {
+	return m.beats__inst3
+}
+
+func (m *Model) SetBeats__inst3(v int) {
+	m.beats__inst3 = v
+}
+
+func (m *Model) Handle__inst0__inst3() *gtk4rt.Schedule {
+	return m.handle__inst0__inst3
+}
+
+func (m *Model) SetHandle__inst0__inst3(v *gtk4rt.Schedule) {
+	m.handle__inst0__inst3 = v
 }
 
 func (m *Model) buildWidgetTree() {
@@ -448,9 +870,10 @@ func (m *Model) buildWidgetTree() {
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	m.__n0 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst1)))
+	gtk4rt.LabelSetText(m.__n0, ("beats " + fmt.Sprint(m.beats__inst3)))
 	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst0))
+	gtk4rt.LabelSetText(m.__n1, fmt.Sprint(m.seconds__inst2))
+	m.__effects0_settle()
 	gtk4rt.BoxAppend(m.__root, m.__n0)
 	gtk4rt.BoxAppend(m.__root, m.__n1)
 }

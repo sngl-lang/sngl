@@ -359,6 +359,29 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if ir.IsRemoteHTTPResultStruct(n.Type) {
 		gc.RequireImport(remoteHTTPImportPath)
 	}
+	// A channel has no composite literal either, and for the same reason: the
+	// only one that reaches here is the zero the checker synthesizes for an
+	// uninitialised `var done go.chan<bool>`, and a channel's zero is nil.
+	// `make` is what produces a usable one, which is go.makechan.
+	if isChanLit(n) {
+		return "nil"
+	}
+	name := structLitTypeName(n)
+	// A native type whose host spelling is a pointer has no composite literal:
+	// `*time.Ticker{}` does not parse. Only the empty literal can reach here
+	// for one -- it is the zero the checker synthesizes for `var t Ticker`,
+	// since a program cannot build a value of a type it only names -- and nil
+	// is what that zero is.
+	//
+	// The panic is the other half of that sentence. If a populated one ever
+	// arrives the invariant has changed, and falling through would emit Go
+	// that does not parse rather than say so.
+	if strings.HasPrefix(name, "*") {
+		if len(n.Fields) > 0 {
+			panic("golang: composite literal for pointer-spelled native type " + name)
+		}
+		return "nil"
+	}
 	parts := make([]string, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -366,7 +389,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		}
 		parts[i] = ExportName(f.Name) + ": " + fieldStrs[i]
 	}
-	return structLitTypeName(n) + "{" + strings.Join(parts, ", ") + "}"
+	return name + "{" + strings.Join(parts, ", ") + "}"
 }
 
 func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand + "..." }
@@ -382,6 +405,9 @@ func (gc *GoIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
 }
 func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
+	if lines, ok := gc.selectLines(n); ok {
+		return lines
+	}
 	if n.Call != nil && n.Call.ErrorMode != ir.ErrorNone {
 		if lines := gc.evalErrorAwareCall(n.Call); lines != nil {
 			return lines
@@ -527,7 +553,9 @@ func lazyIter(e ir.Expr) bool {
 		return false
 	}
 	t := e.ExprType()
-	return t != nil && t.Kind == ir.TypeIter
+	// A channel ranges like a pull sequence and not like a slice: one variable,
+	// the element.
+	return t != nil && (t.Kind == ir.TypeIter || t.Kind == ir.TypeChan)
 }
 
 func (gc *GoIRContext) IfHead(_ *ir.If, cond string) string { return "if " + cond + " {" }
@@ -764,6 +792,11 @@ func (gc *GoIRContext) maybeWrapErrorReturn(n *ir.Call, raw string) string {
 }
 
 func (gc *GoIRContext) evalCall(n *ir.Call) string {
+	// Ahead of the registry, because make's spelling comes from the call's
+	// return type and an emitter is handed only its arguments.
+	if out, ok := gc.MakeChanText(n); ok {
+		return out
+	}
 	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
 	// through to the paths below.
 	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, gc.Ctx.Platform, n, gc.EvalExpr); ok {
@@ -1447,6 +1480,25 @@ func isColorStructLit(n *ir.StructLit) bool {
 	return n.Def != nil && n.Def.Name == "color"
 }
 
+// isChanLit reports whether a literal's type is a channel, resolving the
+// declaration the way structLitTypeName does -- a synthesized zero carries the
+// type on n.Type and leaves Def nil.
+func isChanLit(n *ir.StructLit) bool {
+	if n == nil {
+		return false
+	}
+	if n.Type != nil && n.Type.Kind == ir.TypeChan {
+		return true
+	}
+	def := n.Def
+	if def == nil && n.Type != nil {
+		if sd, ok := n.Type.Decl.(*ir.StructDef); ok {
+			def = sd
+		}
+	}
+	return def != nil && def.Builtin == ir.BuiltinChan
+}
+
 // structLitTypeName picks the Go type prefix for a struct literal. An
 // anonymous struct materializes an inline `struct { … }`, since Go rejects a
 // bare `{…}` literal.
@@ -1723,6 +1775,15 @@ func IRTypeToGo(t *ir.Type) string {
 			return "func(func(" + IRTypeToGo(t.Elems[0]) + ") bool)"
 		}
 		return "func(func(any) bool)"
+	case ir.TypeChan:
+		// Bidirectional, because SNGL does not spell a direction. A host
+		// channel that is receive-only reaches a program as a field read and
+		// is selected on rather than bound, so no Go type is written for it;
+		// binding one to a var would spell this and not compile.
+		if len(t.Elems) == 1 {
+			return "chan " + IRTypeToGo(t.Elems[0])
+		}
+		return "chan any"
 	case ir.TypeInstance:
 		// A live instance of a component is the generated record every Go
 		// platform allocates for it. Decl carries which component; without one

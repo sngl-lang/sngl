@@ -2,15 +2,24 @@ Async colouring reaches a timer's tick, wherever inlining put it.
 
 html implements `timer` as an `effect` over setInterval, so the `@tick` body
 ends up inside the callback the override hands to it -- a lambda, not a named
-function. The body awaits an async native, so that arrow has to carry `async`,
-and every link from it up to the settle that mounts the bracket has to as well.
+function. The body awaits an async native, so that arrow has to carry `async`.
 
 The pass that recolours what it built collected the owner's named functions and
 none of the lambdas they held, which emitted `setInterval(() => { ... await ...
 })` -- text no bundler accepts, and the failure a golden shows and a grep for
 the `async` keyword would not.
 
+The colour stops at the arrow, and that is the second half of the same claim:
+`__effect0_mount` *constructs* the callback and hands it to setInterval, which
+is not awaiting it, so nothing above the arrow is async either -- not the
+mount, not `__effect0_up`, not the settle. Colouring the chain was what the
+Go targets could not survive: `handle = every(d, func(){ ...blocking... })`
+became an async statement, and passAsyncOffload refuses one inside the `if`
+its caller wraps it in.
+
 `__effect0_unmount` stays sync: it clears the handle and never runs the tick.
+
+deny out/none/html/index.html `(?m)^  async function __effect0_mount` -- handing a closure over is not awaiting it
 
 deny out/none/html/index.html `setInterval\(\(\) =>` -- the callback awaits, so it is an async arrow
 
@@ -64,7 +73,7 @@ body { font-family: system-ui, sans-serif; }
 
   // sngl-entry.js
   var state = { running__inst1: true, last__inst1: "", handle__inst0__inst1: 0 };
-  async function __effect0_mount() {
+  function __effect0_mount() {
     state.handle__inst0__inst1 = setInterval(async () => {
       state.last__inst1 = await fetchHello("poll");
       __n0.textContent = state.last__inst1;
@@ -100,15 +109,15 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  async function __effect0_up() {
+  function __effect0_up() {
     for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {
       if (__effect0_i >= __effect0_live.length) {
         __effect0_key = __effect0_k;
-        await __effect0_mount();
+        __effect0_mount();
       } else {
         if (__effect0_live[__effect0_i] !== __effect0_k) {
           __effect0_key = __effect0_k;
-          await __effect0_mount();
+          __effect0_mount();
         }
       }
     }
@@ -121,7 +130,7 @@ body { font-family: system-ui, sans-serif; }
     }
     __effect0_live = [];
   }
-  async function __effects0_settle() {
+  function __effects0_settle() {
     if (__effects0_settling) {
       __effects0_pending = true;
     } else {
@@ -132,7 +141,7 @@ body { font-family: system-ui, sans-serif; }
         __effects0_pending = false;
         __effects0_steps = __effects0_steps + 1;
         __effect0_down();
-        await __effect0_up();
+        __effect0_up();
       }
       __effects0_settling = false;
       if (__effects0_pending) {

@@ -80,6 +80,7 @@ func markGoNative(m *mark) error {
 		// is said.
 		d.HasErrorReturn = slices.Contains(flags, flagFails)
 		d.NativeMethod = slices.Contains(flags, flagMethod)
+		d.NativeSchedules = slices.Contains(flags, flagSchedules)
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -300,6 +301,11 @@ const flagMethod = "method"
 // flagNamed says a native call passes its arguments by name, using the
 // declaration's own parameter names.
 const flagNamed = "named"
+
+// flagSchedules says the host identifier runs a callback it is handed from the
+// loop it owns rather than inline. It describes *when* a call's argument runs,
+// which is the one thing about a native nothing else can find out.
+const flagSchedules = "schedules"
 
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //

@@ -15,12 +15,20 @@ import (
 // AsyncPostIntrinsic runs its one argument back on the thread the target
 // draws on. The *platform* answers that one, because there is no such thread
 // in general and no two toolkits reach theirs the same way: fyne queues onto
-// the driver, gtk4 onto a GLib idle tick, Bubble Tea through a message into
-// the loop it already owns.
+// the driver and gtk4 onto a GLib idle tick. Those two are the whole list --
+// Bubble Tea owns its loop and lets nothing outside Update touch the model,
+// which is the same reason it cannot take an effect timer.
 //
-// Neither is declared anywhere a program can name, for the reason ir.NodeOps
-// are not: a declaration would describe nobody's contract. They exist between
-// this pass and the two emitters that answer it.
+// Both are declared in sngl:async, which is what separates them from
+// ir.NodeOps: those name nobody's contract, and these name a platform
+// package's. fyne's timer hands its tick to a host scheduler and has to reach
+// the drawing thread again before it touches a widget.
+//
+// So this pass is no longer the only writer of either, and passAsyncCapable
+// runs ahead of it to refuse a program that names one its target cannot emit.
+// The calls this pass goes on to synthesize are past that check by then, which
+// is deliberate: it may write a post for a target whose own program never
+// could.
 const (
 	AsyncSpawnIntrinsic = "async.spawn"
 	AsyncPostIntrinsic  = "async.post"
@@ -194,9 +202,10 @@ func offloadEntryPoints(pkg *ir.Package) []*ir.Func {
 // a component leaves it an ir.EventHandler that the generator names itself. A
 // list of Funcs alone offloaded the first and silently blocked the second.
 //
-// A lambda is deliberately not here. One is a value, and what calls it is the
-// code it was handed to: `xs.map(f)` with a blocking f wants the blocking f,
-// not a goroutine per element.
+// A lambda is deliberately not here, with one exception. One is a value, and
+// what calls it is the code it was handed to: `xs.map(f)` with a blocking f
+// wants the blocking f, not a goroutine per element. A callee that *says* it
+// schedules is that exception -- nativeCallbackFuncs below.
 func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 	var out []*ir.Func
 	seen := map[*ir.Func]bool{}
@@ -230,7 +239,91 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 		}
 		collectHandlerFuncs(o.Stmts(), add)
 	}
+	// Last, for the numbering reason above: a callback is reached through an
+	// expression rather than through an owner, so it has no place in that walk
+	// and appending keeps every other helper's number where it was.
+	nativeCallbackFuncs(pkg, add)
 	return out
+}
+
+// nativeCallbackFuncs is every lambda handed to a call that says it schedules.
+//
+// It is the exception to the rule above, and the `schedules` flag is what makes
+// it one: what calls an ordinary lambda is code this pass can read, and a
+// native has no body here to read at all. A host scheduler calls its callback
+// from the loop it owns, which is the thread the target draws on --
+// `time.AfterFunc` and `gtk4rt.Every` behind `time.timer` are that -- so a
+// blocking call in a tick is exactly the work this pass exists to move off it.
+//
+// The flag is asked for rather than inferred from the call's shape, which is
+// the rule the whole of #[foreign] follows: a foreign declaration describes an
+// identifier and does not implement it, so nothing here can find out when the
+// host runs an argument. Inferring it from "the callee is a native" would also
+// be wrong the other way -- a native that runs its callback inline would get a
+// goroutine nobody asked for.
+//
+// A scheduler whose declaration forgets the flag gets the old bug rather than a
+// new one: the callback is not an entry point, so a blocking call in it stays
+// on the drawing thread exactly as it did before any of this existed. That is
+// silent, which is why testdata/timer_tick_async_offload.txtar denies it.
+func nativeCallbackFuncs(pkg *ir.Package, add func(*ir.Func)) {
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Func == nil || !schedulesItsCallback(c.Func) {
+			return nil
+		}
+		for _, a := range c.Args {
+			if fn := callbackFunc(a.Value); fn != nil {
+				add(fn)
+			}
+		}
+		return nil
+	})
+}
+
+// schedulesItsCallback answers the question the flag exists for, and
+// AsyncPostIntrinsic is the second thing it is true of: a post runs its closure
+// from the loop the platform owns, which is the same thread a native scheduler
+// calls back on.
+//
+// Named here rather than flagged, because the id has no one declaration to flag
+// -- this pass synthesizes calls to it, and a platform package may declare its
+// own (fyne.sngl does, to post a self-rearming timer's tick). Only the calls
+// standing before this pass runs are read, so the posts it goes on to generate
+// are not candidates.
+func schedulesItsCallback(fn *ir.Func) bool {
+	return fn.NativeSchedules || fn.Intrinsic == AsyncPostIntrinsic
+}
+
+// callbackFunc is the body behind a callback argument, through whatever the
+// checker wrapped it in.
+//
+// Matching a bare *ir.Lambda is what this did, and the whole failure mode of
+// missing one is silent: the tick stops being an entry point and a blocking
+// call in it goes back onto the drawing thread with the generated code still
+// compiling. Nothing wraps one today -- Go sets neither NoLambda nor a
+// conversion at an argument position -- so this is the guard rather than a fix.
+//
+// A callback passed *by name* is the case this does not cover, and the flag
+// then protects nothing: an *ir.Ident bound to a func var is none of the three.
+// gtk4's `every(int(d), tick)` is covered only because inlining has made `tick`
+// a literal lambda by the time this runs, and fyne's `after(d, rearm)` is not
+// covered at all -- its tick reaches the pass through the AsyncPostIntrinsic
+// arm instead. Resolving an ident through pkg.PointsTo is what closing it
+// would take.
+func callbackFunc(e ir.Expr) *ir.Func {
+	for {
+		switch x := e.(type) {
+		case *ir.Lambda:
+			return x.Func
+		case *ir.Closure:
+			return x.Func
+		case *ir.Conversion:
+			e = x.Operand
+		default:
+			return nil
+		}
+	}
 }
 
 // collectHandlerFuncs walks a view body for the handlers hanging off its nodes.

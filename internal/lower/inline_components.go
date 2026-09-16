@@ -569,6 +569,22 @@ func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error)
 type reactiveCtx struct {
 	in       bool
 	repeated bool
+	// loopReactive is whether the nearest enclosing `for` yields a copy that
+	// gets state of its own -- either because it iterates something the program
+	// can change, or because the loop itself sits somewhere reactive and is
+	// rebuilt as a unit.
+	//
+	// It is not `in`, and the two part company in both directions: a const loop
+	// holding a reactive `if` sets `in` and still hands every pass the same
+	// hoisted vars, while a const loop *inside* a reactive `if` also sets `in`
+	// and does not. What separates them is where `in` was true -- outside the
+	// loop, or under it.
+	loopReactive bool
+	// loopPos is where the nearest enclosing `for` was written. The node's own
+	// position is not a substitute: a lifetime reached through a component sits
+	// in *that declaration*, so a diagnostic about the loop would otherwise cite
+	// a line with no loop on it.
+	loopPos string
 }
 
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
@@ -614,6 +630,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// passEffect already reads the enclosing `if` as the bracket's
 		// position. Not under a `for` -- the body is spliced once and its state
 		// hoisted once, so the copies would share one var.
+		if err := refuseRepeatedLifetime(n, rc); err != nil {
+			return nil, false, err
+		}
 		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
@@ -651,7 +670,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return spliced, true, nil
 	case *ir.If:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loopReactive: rc.loopReactive}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
@@ -664,7 +683,20 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.For:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true}
+		reactiveIter := dependsOnReactiveVar(n.Iter, st.reactive)
+		inner := reactiveCtx{
+			in:       rc.in || reactiveIter,
+			repeated: true,
+			// `rc.in` as it was *entering* the loop, not inside it. A loop that
+			// already sits in a reactive position re-renders as a unit, so its
+			// copies are built at run time and each gets a record of its own --
+			// which is the same thing a reactive iterable buys. A reactive `if`
+			// written *inside* a const loop is the opposite case and reaches
+			// the node with the same `in`, which is why this is read here and
+			// not there.
+			loopReactive: rc.in || rc.loopReactive || reactiveIter,
+			loopPos:      forPos(n),
+		}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
@@ -970,4 +1002,97 @@ func cloneFuncShallow(f *ir.Func) *ir.Func {
 	c := *f
 	c.Block = nil
 	return &c
+}
+
+// sharesLifetimeState reports whether splicing comp twice would give two
+// lifetimes one set of cells to release through.
+//
+// **Holding an `effect` is not enough**, and asking only that refused working
+// programs. `passEffect` keys a bracket's own bookkeeping by list --
+// `__effectN_live` and `__effectN_desired` hold an entry per key -- so N copies
+// of a bare lifetime mount and unmount independently and correctly. What has no
+// list is a *component's* state: `passHoistState` gives each declared var one
+// cell on the owner, and a non-reactive loop splices the body once, so every
+// pass writes the same cell. A handle stored there is overwritten by the second
+// mount and the first schedule can no longer be reached to be stopped.
+//
+// So the question is the conjunction: a var this component declares, which an
+// effect's own handlers touch. A lifetime that closes over nothing of its
+// component's is as safe here as a bare one, and a component whose state no
+// bracket reads is the ordinary shared-cell cost the loop already carries.
+//
+// Runs before passEffect, so a bracket is still the node a program wrote.
+func sharesLifetimeState(comp *ir.Component) bool {
+	if comp == nil || len(comp.Vars) == 0 {
+		return false
+	}
+	own := make(map[*ir.Var]bool, len(comp.Vars))
+	for _, v := range comp.Vars {
+		own[v] = true
+	}
+	found := false
+	_ = ir.Walk(comp.Body, func(nd ir.Node) error {
+		n, ok := nd.(*ir.NodeInst)
+		if !ok || !isEffectNode(n) || found {
+			return nil
+		}
+		for _, h := range n.Handlers {
+			if h.Func == nil {
+				continue
+			}
+			_ = ir.Walk(h.Func.Block, func(in ir.Node) error {
+				if id, ok := in.(*ir.Ident); ok {
+					if v, ok := id.Sym.(*ir.Var); ok && own[v] {
+						found = true
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+	return found
+}
+
+// forPos is where a loop was written, or "" when the IR carries no position.
+func forPos(n *ir.For) string {
+	if p := ir.StmtPos(n); p.IsValid() {
+		return p.String()
+	}
+	return ""
+}
+
+// refuseRepeatedLifetime stops a component that brackets a lifetime from being
+// spliced into a position that holds many copies of it.
+//
+// A `for` sets `repeated` whether or not it is reactive, and a *reactive* one
+// elects a RuntimeInstance below, so each copy gets state of its own. A
+// non-reactive one -- a `const` iterable, where nothing can change -- does not:
+// the body is spliced once and its vars hoisted once, so every copy shares the
+// one handle. For an ordinary component that is the documented cost of sharing
+// a cell; for a lifetime it is a resource nothing can release, because the
+// second mount overwrites the handle the first would have been stopped through.
+//
+// Refused rather than tolerated because the failure is silent and unbounded: a
+// timer under such a loop leaves a goroutine running for the life of the
+// process. #245 is the real fix -- route a stateful component to a runtime
+// instance whether or not the position is reactive -- and until it lands this
+// is the loud half of what `main` did by accident.
+func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
+	if !rc.repeated || rc.loopReactive || !sharesLifetimeState(n.Component) {
+		return nil
+	}
+	// Two positions, because they are usually two different lines: the loop is
+	// what the rule is about, and the node is where the lifetime entered it --
+	// which for a wrapped one is inside a declaration written somewhere else.
+	where := ""
+	if rc.loopPos != "" && rc.loopPos != nodePos(n) {
+		where = fmt.Sprintf(" (reached from %s)", nodePos(n))
+	}
+	at := rc.loopPos
+	if at == "" {
+		at = nodePos(n)
+	}
+	return fmt.Errorf("%s: this loop is not reactive and %q%s brackets a lifetime, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own. This is a lowering rule, so a target that unrolls the loop instead -- html on --lang none -- builds the same source; see #245",
+		at, n.Component.Name, where)
 }

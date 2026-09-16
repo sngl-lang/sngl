@@ -240,6 +240,36 @@ initializer, so the reason they are no-ops survives.
 `testdata/indexed_iter_in_lambda_initializer.txtar` pin the pair; `passNoRef`,
 the third, already had an `*ir.Lambda` arm in its rewriter.
 
+That was latent in a second place until a timer became an effect: the tick is
+then a closure handed to a host scheduler, so the same defects came back on
+fyne through an `ir.Lambda` instead of through a window's `Timers`.
+`offloadableFuncs` leaves a lambda out for the reason above, with one
+exception -- the lambdas handed to a call that **says it schedules**. What
+calls an ordinary lambda is code the pass can read, and `xs.map(f)` wants the
+blocking f rather than a goroutine per element; but a host scheduler calls its
+callback from the loop it owns, which is the thread the target draws on.
+
+**Which a declaration says with `schedules`**, the third `NativeFlag` beside
+`fails` and `method`. It is a flag rather than something read off the call, for
+the reason nothing about a `#[foreign]` declaration is ever inferred: its SNGL
+body describes the identifier and does not implement it, so nothing in the
+program says when the host runs an argument -- and "the callee is a native"
+would be wrong in the other direction too, giving a goroutine to a native that
+runs its callback inline. A scheduler whose declaration forgets the flag gets
+the *old* bug rather than a new one: the callback is not an entry point and a
+blocking call in it stays on the drawing thread, which
+`testdata/timer_tick_async_offload.txtar` denies on both Go platforms.
+
+**Constructing a closure is not calling it**, which is the colouring half of
+the same change. `ir.ExprHasAsyncCall` read through an `ir.Lambda` into its
+body, so `handle = every(d, func(){ …blocking… })` was an async statement and
+the function holding it was coloured async -- for a body that hands work over
+and blocks on nothing. On Go that reached `passAsyncOffload`, which refuses a
+blocking call inside the `if` an effect's `_up` wraps its mount in; on
+JavaScript it spread `async` from the arrow up through the settle. The closure's
+own `ir.Func` is coloured in its own right, which is what makes the descent
+redundant as well as wrong.
+
 ## Build & Test Commands
 
 ```bash
@@ -341,9 +371,10 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
-- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component that lowers to an effect, not a builtin node, which is why it carries no `#[builtin]` mark. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
+- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node that `passTimerPrimitive` takes back out of the tree. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 - **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
+- **`lib/async/` → `sngl:async`** — `spawn` and `post`: handing a closure somewhere else to run. They are each other's halves — `spawn` starts work that must not block the caller, `post` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.post` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
@@ -571,8 +602,23 @@ contract, which a body should not be quietly restating.
 
 **`#[tree.none]` says a component belongs to no family**, which is what a
 component that renders nothing wants — `effect`, `timer`, `context`, and each
-platform's `Timer` primitive. Two rules follow, and they are each other's
-halves:
+platform's `Timer` primitive.
+
+**A canvas keeps them and draws the rest.** `passCanvas` turns a canvas's shape
+children into a draw function, and then cleared `Children` outright — so the
+bracket went with the shapes, and it runs before `passEffect` and
+`passTimerPrimitive`, which therefore never saw one. A canvas that schedules
+its own animation compiled clean and never moved, on every target with a
+canvas, for as long as the rule above has allowed one to be written there.
+`treelessChildren` is what a canvas keeps now, and it mirrors `emitShapes`
+statement for statement: everything that walk reaches through, this one reaches
+through too, or a bracket under an `if` is dropped exactly as before — which is
+where a `timer` lands, its override being `if enabled { effect(…) }` by then.
+`emitShape` skips a tree-less node for the same reason from the draw side: it
+paints nothing, so the save and restore around it were two empty calls.
+`testdata/canvas_schedules_itself.txtar` holds both halves.
+
+Two rules follow from the mark, and they are each other's halves:
 
 - it may be placed in **any** tree, so a lifetime bracket belongs in a drawing
   as readily as in a layout (`checkTreeMembership`);
@@ -900,6 +946,105 @@ declaration itself. Two things about the name that are easy to get wrong:
   names**, which is what reaching a host parameter after one with a default
   requires: `drawCircle(color, radius, center, alpha, style, …)` cannot be
   reached past `alpha` positionally.
+- **A native mark names a *type* as readily as a function**, which is what
+  makes a host handle spellable: `#[go.native("time", "*time.Ticker")] struct Schedule { C go.chan<time.datetime> }` with `#[go.native("time", "time.Ticker.Stop", method)] func Schedule.stop()` beside it -- and a *field* of one is how a host API hands a channel back. gtk4 has done the same for C all along —
+  `#[cnative("*C.cairo_t")] struct CairoContext {}` — so the form predates the
+  need for it by a platform.
+
+  **Reach for it before working around a signature.** fyne's and gtk4's timer
+  runtimes each kept a process-wide mutex-guarded `map[int]…` and handed SNGL
+  an integer index into it, because the override was written as
+  `var handle = 0` and `int` looked like the only thing the declaration could
+  spell. It was not: the schedule itself is a name, and the registries were
+  bought for nothing. Nothing new had to be built to delete them.
+
+  **A runtime package is a list of missing language features written in Go**,
+  and `pkg/go/fynert` was two of them in turn: a registry while a handle was
+  unspellable, then a goroutine and a `select` around a `time.Ticker`, because
+  `Ticker.Stop` does not close `C` and a bare `for range` over it leaks. The
+  registry went when the handle became spellable. The second was the language
+  gap itself, and it is closed rather than stepped around: fyne's timer is a
+  `*time.Ticker` consumed on a goroutine, and `fyne.sngl` holds all of it.
+
+  **`go.chan<T>` is a builtin type kind declared by `sngl:language/go`**, not by
+  `lib/`, because only a language with channels can answer one. It exists
+  because a host API hands channels *out*: `*time.Ticker`'s `C` is a field, and
+  without a channel type there was nothing to declare it as. `IRTypeToGo`
+  spells it `chan T`, `lazyIter` ranges it one variable at a time like the pull
+  sequence it is, and its zero is nil in both places a zero is written --
+  `ZeroValueGo`, whose `TypeHintToGo` would otherwise title-case it into
+  `Chan bool`, and the struct-literal path, which resolves the declaration the
+  way `structLitTypeName` does because a synthesized zero leaves `Def` nil.
+
+  **Direction is not spelled**, and the declaration says why: a receive-only
+  channel is reachable because nothing writes a Go type for an expression that
+  is only selected on, while binding one to a var would emit the bidirectional
+  `chan T` and not compile against it.
+
+  **`go.select` takes a `list<Case>`** -- SNGL has no variadic func parameters,
+  `...` being a slot's -- and each arm is `go.recv(ch, func(v T) { … })`. It is
+  the one thing here that cannot be an `IntrinsicEmitter`: that renders a single
+  *expression*, and a select's arms are statement lists. So it is answered from
+  `CallStmtLines`, the statement-level seam that already existed, and the arms
+  are **inlined rather than called** -- an arm may `return`, and that has to
+  leave the goroutine, which a closure wrapper would not do. A case variable is
+  bound only where the body reads it, Go rejecting an unused one.
+
+  `go.makechan` takes a witness value rather than a type argument --
+  `makeChan(false)` is a `chan<bool>` -- because a call site has no syntax for
+  the latter and a zero-argument generic leaves the element type unrecoverable.
+  `make` and `close` are Go *builtins*, carrying no import path, so a
+  `#[go.native]` cannot name them at all and both are intrinsics for that
+  reason.
+
+  **A statement-level answer has to say so**, which is what
+  `DeclareLangImplements` is: the language-axis counterpart of
+  `DeclarePlatformImplements`, and it exists for the same reason stated there.
+  `lib/internal_intrinsics_test.go` asks whether *some* target can emit each id,
+  and three of these are answered outside the emitter registry, so without it
+  the check reads them as ids a build would emit a call to nothing for. It names
+  the ids rather than the package, the opposite of the platform side and
+  deliberately: `sngl:language/go` holds ordinary emitter-answered intrinsics
+  too.
+
+  **A list literal is a fourth place a lambda hides.** `WalkLowered` reached a
+  lambda that *was* an expression and one handed to a call, and not one inside a
+  list -- which is what a select's arms are, two levels down. So the widget
+  writes in a tick reached the emitter untranslated: a bare `__n0.Text =`, which
+  is neither a field any Fyne widget has nor a name in scope. The same blind
+  spot recorded above for the lowering passes, one layer out.
+
+  **The hand-over it also held is `async.post`**, which a platform package may
+  name: `#[intrinsic("async.post")] func post(f func())` dispatches through
+  `LookupPlatformIntrinsic` exactly as a blocking call's posted tail does, and
+  emits `fyne.Do` with the import. So a callback that must reach the drawing
+  thread asks for that in one word instead of a package re-spelling it. The id
+  is also the second thing `nativeCallbackFuncs` treats as scheduling, for the
+  reason the `schedules` flag exists: a post runs its closure from the loop the
+  platform owns, so a blocking call written inside one is on the drawing thread
+  unless this pass takes the closure as an entry point. There is no *one*
+  declaration to put the flag on -- the pass synthesizes calls to the id
+  itself, and a platform package may declare its own -- so the pass names it.
+  Only fyne and gtk4 answer the id at all, which is what stops the declaration
+  being lifted somewhere portable.
+
+  **Two shapes make Go's select behave unexpectedly, and both are written on the
+  declaration.** A *closed* channel is always ready and yields the zero value
+  forever -- which is the idiom here rather than the hazard, since closing
+  `done` is how the goroutine is told to stop and its arm is taken on the very
+  next pass. A *nil* channel is never ready, so its arm is never chosen, and nil
+  is exactly what `chan<T>`'s zero value is.
+
+  What such a type may *not* do is be constructed: a program holds one and
+  calls methods on it. So the only literal of one that reaches a backend is the
+  empty zero the checker synthesizes for an uninitialised `var t Ticker`, and
+  where the host spelling is a pointer that zero is `nil` rather than a
+  composite literal — `*time.Ticker{}` does not parse
+  (`testdata/native_pointer_zero.txtar`).
+
+  An **index** is still right where the host's own ABI is an index: a GLib
+  callback carries an `int` user_data and cannot hold a Go pointer at all,
+  which is what `pkg/go/cbind` is. The test is whether the host asked for it.
 
 **A `#id` on a visual node declares a handle, and `ir.Var.NodeHandle` is what
 says so.** Every target stores one wherever it keeps the tree — a field of the
@@ -1170,6 +1315,53 @@ Two shapes cannot be spliced, and both are reported rather than emitted:
   **non-reactive** loop is deliberately allowed: a nested component shares one
   cell there with or without capture, which is the pre-existing `rc.repeated`
   limitation.
+
+**A lifetime over a component's own state is the one thing that limitation
+cannot absorb**, and `refuseRepeatedLifetime` says so. Sharing a cell costs an
+ordinary component correctness it mostly does not notice; a component whose
+`effect` handlers touch a var *it declares* shares the **handle** it would be
+released through, so the second mount overwrites the first and whatever the
+first opened runs on with nothing able to stop it — a goroutine for the life of
+the process, on fyne.
+
+**Holding an `effect` is not the test, and asking only that refused working
+programs.** `passEffect` keys a bracket's own bookkeeping by list —
+`__effectN_live` and `__effectN_desired` hold an entry per key — so N copies of
+a bare lifetime mount and unmount independently. What has no list is a
+*component's* state: `passHoistState` gives each declared var one cell on the
+owner. So `sharesLifetimeState` asks the conjunction — a var this component
+declares, which an effect's handlers read or write — and a lifetime closing over
+nothing of its component's is as safe here as a bare one. It is refused where it would be
+spliced, and #245 is the real fix: route a stateful component to a runtime
+instance whether or not the position is reactive.
+
+The bit it reads is `reactiveCtx.loopReactive`, **not** `in`, and it is `in` as
+it was *entering* the loop. Those three differ, and getting it wrong cost a
+guard in each direction:
+
+- A const loop holding a reactive `if` **inside** it sets `in`, elects a runtime
+  instance, and still hoists the loop variable once — the emitted Go did not
+  compile (`undefined: p`). Reading `!in` let that through.
+- A const loop **inside** a reactive `if` sets exactly the same `in` and
+  `repeated`, and lowers the other way: the whole loop lands in the slot's
+  render func, so `p` is in scope there and each pass gets its own record,
+  destroyed through the slot's own reuse loop. Reading `loopReactive` alone
+  refused that, which is a working program.
+
+What separates them is *where* the reactive boundary sits relative to the loop,
+which is why the `*ir.For` arm reads `rc.in` on entry rather than the node
+reading it on arrival.
+
+**It is a lowering rule, so it is target-dependent**: html on `--lang none`
+unrolls a const loop in the optimizer, so the source fyne refuses builds there
+as independent schedules. Defensible — lowering is per-target — but a
+portability wart, so the diagnostic says it rather than leaving it to be found.
+
+**It reports at the loop and names where the lifetime came in**, which are two
+different lines whenever the component is a wrapper: a two-level wrap cited the
+inner insertion inside the *outer declaration*, so the message complained that
+"this loop is not reactive" about a line with no loop on it and no way to find
+one. `reactiveCtx.loopPos` is the first half and `nodePos` the second.
 
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,

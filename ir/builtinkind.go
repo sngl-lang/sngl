@@ -39,9 +39,12 @@ const (
 	BuiltinDuration BuiltinKind = "duration"
 
 	// Generic constructors.
-	BuiltinList   BuiltinKind = "list"
-	BuiltinMap    BuiltinKind = "map"
-	BuiltinIter   BuiltinKind = "iter"
+	BuiltinList BuiltinKind = "list"
+	BuiltinMap  BuiltinKind = "map"
+	BuiltinIter BuiltinKind = "iter"
+	// Chan is a host channel. It is declared by sngl:language/go rather than
+	// by lib/, because only a language with channels can answer it.
+	BuiltinChan   BuiltinKind = "chan"
 	BuiltinRef    BuiltinKind = "ref"
 	BuiltinOption BuiltinKind = "option"
 	// Remote is the box a data adapter returns: the last value that arrived,
@@ -157,7 +160,7 @@ func (b BuiltinKind) IsTreeRole() bool {
 // (list/map/iter/ref/option/remote).
 func (b BuiltinKind) IsGeneric() bool {
 	switch b {
-	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption, BuiltinRemote:
+	case BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote:
 		return true
 	}
 	return false
@@ -194,7 +197,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinInt, BuiltinFloat, BuiltinString,
 		BuiltinColor, BuiltinDate, BuiltinTime, BuiltinDateTime,
 		BuiltinDuration,
-		BuiltinList, BuiltinMap, BuiltinIter, BuiltinRef, BuiltinOption, BuiltinRemote,
+		BuiltinList, BuiltinMap, BuiltinIter, BuiltinChan, BuiltinRef, BuiltinOption, BuiltinRemote,
 		BuiltinTreeOne, BuiltinTreeRoot, BuiltinTreeNode, BuiltinTreeShape,
 		BuiltinWindow, BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinOutput,

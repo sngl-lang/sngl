@@ -154,11 +154,6 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		}
 	}
 
-	for _, t := range info.Timers {
-		if t.IntervalMs > 0 {
-			gc.RequireImport("time")
-		}
-	}
 	if info.NeedsToast {
 		gc.RequireImport("time")
 	}
@@ -395,32 +390,8 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRFyneFunc(&funcBuf, fn, gc)
 	}
 
-	// A tick body carries reactivity-injected widget updates like a handler
-	// body, so it must go through WalkLowered; gc.EvalStmt alone emits raw,
-	// unqualified `__n0.Value = …` that will not compile.
-	var timerDatas []timerData
-	for _, t := range info.Timers {
-		tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
-			widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
-		}, addWidgetImport).withLocalRefs(t.LocalRefs)
-		tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
-		bodyStmts := codegen.WalkLowered(context.Background(), t.Body, tr)
-		var bodyBuf strings.Builder
-		for _, stmt := range bodyStmts {
-			for _, line := range gc.EvalStmt(stmt) {
-				fmt.Fprintf(&bodyBuf, "\t\t\t\t\t%s\n", line)
-			}
-		}
-		timerDatas = append(timerDatas, timerData{
-			Index:      t.Index,
-			IntervalMs: t.IntervalMs,
-			ActiveVar:  t.ActiveVar,
-			Body:       bodyBuf.String(),
-		})
-	}
-
-	// A var handler's body carries reactivity-injected widget updates like a
-	// tick body does, so it goes through WalkLowered for the same reason. The
+	// A var handler's body carries reactivity-injected widget updates like an
+	// event handler's, so it goes through WalkLowered for the same reason. The
 	// value being assigned is the setter's own `v`.
 	varHandlerCode := map[string]string{}
 	for name, handlers := range info.dataEvents {
@@ -464,7 +435,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		return "", nil, nil, "", err
 	}
 	td.Computeds = computedDatas
-	td.Timers = timerDatas
 
 	// Emitted directly rather than through a template, so every framework
 	// reference registers its import through gc as it is written.
@@ -498,7 +468,6 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		Main:         cfg.Main,
 		AppName:      cfg.AppName,
 		NeedsToast:   info.NeedsToast,
-		HasTimers:    len(info.Timers) > 0,
 		FunctionCode: functionCode,
 	}
 
@@ -871,13 +840,7 @@ func emitIRMain(b *strings.Builder, cfg Config, info *irAnalysis, pkg *ir.Packag
 		fmt.Fprintf(b, "\tremote.Default.OnSettle(func() { fyne.DoAndWait(m.%s) })\n", pkg.RemoteSettle.Name)
 	}
 	b.WriteString("\tw.Resize(fyne.NewSize(480, 640))\n")
-	if len(info.Timers) > 0 {
-		b.WriteString("\tm.StartTimers()\n")
-	}
 	b.WriteString("\tw.ShowAndRun()\n")
-	if len(info.Timers) > 0 {
-		b.WriteString("\tm.StopTimers()\n")
-	}
 	if pkg != nil && pkg.Teardown != nil {
 		// ShowAndRun returns when the window closes, which is the one exit
 		// this can be reached from: a killed process runs nothing here, and an

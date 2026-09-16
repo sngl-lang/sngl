@@ -292,6 +292,31 @@ func clampByte(v int) int {
 // call back into the interpreter through LambdaValue, and a composite literal
 // that references it is an initialization cycle.
 func init() {
+	// --- async (sngl:async) ---
+	// One thread, so both are the same thing: call it. The interpreter is what
+	// `sngl test` runs on, and a test wants the closure to have run by the time
+	// the assertion does -- spawning it anywhere else would make the result
+	// depend on scheduling.
+	//
+	// They are implemented rather than refused because passAsyncCapable never
+	// speaks here: `sngl test` runs the checked IR with no lowering at all, so
+	// a program naming the package got "unsupported method" from the evaluator
+	// instead, with no position.
+	runClosure := func(name string) func([]any) (any, error) {
+		return func(args []any) (any, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("%s: want one closure, got %d args", name, len(args))
+			}
+			lv, ok := args[0].(*LambdaValue)
+			if !ok {
+				return nil, fmt.Errorf("%s requires a closure, got %T", name, args[0])
+			}
+			return lv.Call(nil)
+		}
+	}
+	intrinsics["async.spawn"] = runClosure("spawn")
+	intrinsics["async.post"] = runClosure("post")
+
 	intrinsics["list.filter"] = func(args []any) (any, error) {
 		list, ok := args[0].([]any)
 		if !ok || len(args) != 2 {

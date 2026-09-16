@@ -102,6 +102,12 @@ func (c *checker) constructBuiltinGeneric(id ir.BuiltinKind, sd *ir.StructDef, t
 			return TypDyn
 		}
 		return IterOf(c.resolveType(t.TypeArgs[0]))
+	case ir.BuiltinChan:
+		if len(t.TypeArgs) != 1 {
+			c.error(t.Pos, "go.chan requires exactly 1 type argument, got %d", len(t.TypeArgs))
+			return TypDyn
+		}
+		return ir.ChanOf(c.resolveType(t.TypeArgs[0]))
 	case ir.BuiltinRef:
 		if len(t.TypeArgs) == 0 {
 			c.error(t.Pos, "ref requires a type argument, e.g. ref<int>")
