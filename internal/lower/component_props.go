@@ -23,9 +23,15 @@ import (
 // written here, and neither is a rebuild of the instance -- which would throw
 // away the subtree whose state the instance was retained to keep.
 //
-// The exception is a #[construct] prop, which is skipped: a cell nothing reads
-// after construction is what made such a prop's new value vanish silently. The
-// render rebuilds the instance for it instead (see reuseOrCreate).
+// The exception is a #[construct] prop, which gets the cell and no setter: the
+// render rebuilds the instance for it instead (componentAbsorbs asks after the
+// setter, and reuseOrCreate destroys and rebuilds when there is none). The cell
+// is still needed, because "read while the instance is built" is not the same
+// as "read from the constructor" -- a `@mount` handler, or the position an
+// effect is written at, is a *method* of the record, and a parameter is not in
+// scope there. Skipped entirely, `time.timer`'s two came out of the effect
+// lowering as bare `interval`/`enabled` on every target that schedules with an
+// effect (testdata/timer_in_loop.txtar).
 var passComponentProps = pass{
 	name:    "ComponentProps",
 	enabled: hasInstanceRuntime,
@@ -73,13 +79,6 @@ func promoteProps(c *ir.Component) {
 		if p == nil || p.Sym == nil {
 			continue
 		}
-		// A #[construct] prop is read while the instance is built and never
-		// again, so it gets neither cell nor setter: the parameter it already
-		// is says exactly that. componentAbsorbs then reports it as
-		// unwritable, and the render rebuilds the instance instead.
-		if p.Construct {
-			continue
-		}
 		v := &ir.Var{
 			Name: propVarName(p.Name),
 			Type: p.Type,
@@ -91,7 +90,12 @@ func promoteProps(c *ir.Component) {
 		vars = append(vars, v)
 		symRenames[ir.Symbol(p.Sym)] = v
 		renames[ir.Symbol(p.Sym)] = v.Name
-		setters = append(setters, propSetter(p, v))
+		// No setter for a #[construct] prop: its absence is what
+		// componentAbsorbs reads to say the instance cannot take a new value
+		// and has to be rebuilt.
+		if !p.Construct {
+			setters = append(setters, propSetter(p, v))
+		}
 	}
 	if len(vars) == 0 {
 		return

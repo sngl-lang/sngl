@@ -2,6 +2,10 @@
 instance carries no setter for it and a new value cannot be written in. The
 answer is to build a new instance, and this page holds both places that do it.
 
+It still carries a *cell*, `__prop_start` below: built once is not the same as
+readable only from the constructor, and a method of the instance -- a handler,
+or the position an effect is written at -- has no parameter in scope.
+
 Inside the factory, the recursive child sits in a reactive slot, and the slot
 answers by reconciling: `__inst1_was_start[__inst1_i] === start` is what the
 live instance was built from against what this render describes, and a
@@ -83,9 +87,10 @@ body { font-family: system-ui, sans-serif; }
     let start = props.start ?? 0;
     let more = props.more ?? 0;
     let __depth = props.__depth ?? 0;
+    let __prop_start = start;
     let __prop_more = more;
     let __prop___depth = __depth;
-    let n = start;
+    let n = __prop_start;
     let __slot02 = [];
     let __inst1_live = [];
     let __inst1_was_start = [];
@@ -109,7 +114,7 @@ body { font-family: system-ui, sans-serif; }
           throw Object.assign(new Error("seeded: recursion exceeded 512 nested instances"), { kind: "recursion" });
         } else {
           let __n2 = null;
-          if (__inst1_live.length > __inst1_i && __inst1_was_start[__inst1_i] === start) {
+          if (__inst1_live.length > __inst1_i && __inst1_was_start[__inst1_i] === __prop_start) {
             __n2 = __inst1_live[__inst1_i];
             __n2.__set_more(__prop_more - 1);
             __n2.__set___depth(__prop___depth + 1);
@@ -117,11 +122,11 @@ body { font-family: system-ui, sans-serif; }
             if (__inst1_live.length > __inst1_i) {
               __inst1_live[__inst1_i].__destroy();
             }
-            let __n2__new = __cf_seeded({ start, more: __prop_more - 1, __depth: __prop___depth + 1 });
+            let __n2__new = __cf_seeded({ start: __prop_start, more: __prop_more - 1, __depth: __prop___depth + 1 });
             __n2 = __n2__new;
           }
           __inst1_next.push(__n2);
-          __inst1_now_start.push(start);
+          __inst1_now_start.push(__prop_start);
           __inst1_i = __inst1_i + 1;
           let __n2__el = __n2.__root;
           let __place0_i_ref0 = null;

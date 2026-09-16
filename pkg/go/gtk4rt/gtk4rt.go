@@ -25,6 +25,7 @@ package gtk4rt
 #include <stdlib.h>
 
 extern void snglGoDispatch(int idx);
+extern void snglGoDispatchOnce(int idx);
 
 // Signal trampoline. GTK invokes simple signals as (instance, user_data);
 // the idx we connected with arrives as user_data, unmangled.
@@ -37,8 +38,11 @@ static void sngl_connect(void* widget, const char* signal, int idx) {
 }
 
 // Idle trampoline: fire the registered callback once, then remove the source.
+// DispatchOnce, not Dispatch: the source is gone after this and nothing will
+// ever quote the index again, so the closure has to be dropped here or every
+// Post leaks one.
 static gboolean sngl_idle_tramp(gpointer data) {
-    snglGoDispatch(GPOINTER_TO_INT(data));
+    snglGoDispatchOnce(GPOINTER_TO_INT(data));
     return G_SOURCE_REMOVE;
 }
 static void sngl_gtk_idle_add(int idx) {
@@ -369,23 +373,55 @@ func Emit(w Handle, signal string) {
 	C.sngl_emit(C.gpointer(p(w)), c)
 }
 
-// Every schedules fn to run on the GLib main loop every ms milliseconds until
-// the returned id is passed to CancelEvery. It is the timer runtime for this
-// platform: a GLib timeout source already runs its callback on the main thread,
-// so a tick body mutates the model in the same place a signal handler does and
-// needs no marshalling of its own.
-func Every(ms int, fn func()) uint {
-	if ms <= 0 {
-		return 0
-	}
-	idx := cbind.Register(fn)
-	return uint(C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)))
+// Schedule is one armed GLib timeout source. gtk4.sngl names it as an opaque
+// SNGL type, so the caller holds the schedule itself: the source id and the
+// cbind slot it dispatches through travel together rather than being paired in
+// a table here.
+//
+// Such a source already runs its callback on the main thread, so a tick body
+// mutates the model in the same place a signal handler does and needs no
+// marshalling of its own.
+//
+// The cbind index is not the same kind of thing and stays an index: a GLib
+// callback carries an `int` user_data and cannot hold a Go pointer at all, so
+// that registry is the C ABI rather than a name this language could not spell.
+type Schedule struct {
+	id  C.guint
+	idx int
 }
 
-// CancelEvery removes a source Every armed. Zero is accepted and does nothing,
-// so a caller need not track whether it ever armed one.
-func CancelEvery(id uint) {
-	C.sngl_gtk_source_remove(C.guint(id))
+// Every schedules fn on the GLib main loop every ms milliseconds until the
+// returned schedule is cancelled. A period of zero or less arms nothing and
+// answers nil, which Cancel accepts.
+func Every(ms int, fn func()) *Schedule {
+	if ms <= 0 {
+		return nil
+	}
+	idx := cbind.Register(fn)
+	return &Schedule{id: C.sngl_gtk_timeout_add(C.int(ms), C.int(idx)), idx: idx}
+}
+
+// Cancel removes the source and drops its callback. A nil receiver and a second
+// call are both no-ops, so an unmount need not track whether a mount ever armed
+// one.
+//
+// Releasing matters because the timer is an `effect`: it mounts again on every
+// gate toggle and every interval change, where it used to be armed once from
+// New. A registration nothing releases retains the closure, and through it the
+// whole Model, for the life of the process.
+func (s *Schedule) Cancel() {
+	if s == nil {
+		return
+	}
+	// The slot is released even where no source was ever added. Register runs
+	// before g_timeout_add answers, so an id of 0 still has a registration
+	// behind it -- returning early there retains the closure, and through it
+	// the whole Model, for the life of the process.
+	if s.id != 0 {
+		C.sngl_gtk_source_remove(s.id)
+		s.id = 0
+	}
+	cbind.Release(s.idx)
 }
 
 // PumpFor runs the GLib main loop for ms milliseconds and returns. It is the
@@ -407,7 +443,10 @@ func mainLoopNew()  { C.sngl_main_loop_new() }
 func mainLoopRun()  { C.sngl_main_loop_run() }
 func mainLoopQuit() { C.sngl_main_loop_quit() }
 
-// Post schedules fn to run once on the next GLib main-loop idle tick.
+// Post schedules fn to run once on the next GLib main-loop idle tick. It is
+// what this platform's async.post emitter calls rather than a second answer
+// beside it: a C callback cannot carry a Go closure, so there is no spelling of
+// an idle source for that emitter to inline.
 func Post(fn func()) {
 	idx := cbind.Register(fn)
 	C.sngl_gtk_idle_add(C.int(idx))
@@ -415,6 +454,9 @@ func Post(fn func()) {
 
 //export snglGoDispatch
 func snglGoDispatch(idx C.int) { cbind.Dispatch(int(idx)) }
+
+//export snglGoDispatchOnce
+func snglGoDispatchOnce(idx C.int) { cbind.DispatchOnce(int(idx)) }
 
 // ---- Application run ----
 

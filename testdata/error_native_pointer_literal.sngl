@@ -1,0 +1,22 @@
+// A host type spelled as a pointer can be named and not built: `*api.Entry{}`
+// does not parse in Go. The zero for `var e Entry` is fine -- that is nil --
+// so only a populated literal is refused, and refused here, where it has a
+// position. The Go emitter used to meet this as a panic with a stack trace.
+import ui "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("example.com/api", "*api.Entry")]
+struct Entry {
+    n int
+}
+
+output {
+    go {
+        fyne
+    }
+}
+
+ui.window(title="t") {
+    var e Entry = Entry{n=1} // ERROR(check) "which a program can name but not build"
+    ui.text(value=string(e.n))
+}

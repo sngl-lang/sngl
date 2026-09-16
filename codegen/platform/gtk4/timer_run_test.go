@@ -13,6 +13,12 @@ import (
 // timerRunSrc has a timer in `main` and a second one in a component, so the run
 // asserts both that a timer fires at all and that one written somewhere other
 // than the root is emitted.
+//
+// No label reads a counter, deliberately: a tick that wrote one would carry the
+// reactive `gtk4rt.LabelSetText` beside it, and the widget it names is built by
+// buildWidgetTree, which is gtk_init and a display. What a tick writes to a
+// widget is a claim the `timer_every_target.txtar` golden makes; what this one
+// makes is that the schedule runs at all, and that has to run in CI.
 const timerRunSrc = `
 import . "sngl:ui"
 import . "sngl:time"
@@ -22,7 +28,7 @@ component beat(label = "") node {
 
     timer(interval=10ms, enabled=true, @tick { beats += 1 })
 
-    text(value="{label} {beats}")
+    text(value=label)
 }
 
 window {
@@ -34,7 +40,7 @@ window {
     timer(interval=10ms, enabled=running, @tick { seconds += 1 })
 
     beat(label="b")
-    text #out(value=string(seconds))
+    text #out(value="tick")
 }
 `
 
@@ -45,6 +51,9 @@ window {
 // platform never looked at it. A program with a timer compiled clean, reported
 // success, and never ticked -- which is exactly why compiling the output is not
 // enough here and the GLib loop has to actually run.
+//
+// The schedule is an `effect` over gtk4rt.Every now, so what arms it is the
+// settle rather than a startTimers the model called from New.
 func TestATimerFires(t *testing.T) {
 	skipWithoutGIR(t)
 	model := generateGTK4ModelBuilt(t, timerRunSrc)
@@ -59,8 +68,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
-// The model arms its schedules in New(). Pumping the loop is what lets them
-// fire; without it the sources exist and nothing ever runs them.
+// The settle is what arms the schedules, and buildWidgetTree is where the
+// emitted model calls it. It is called directly here because that function is
+// gtk_init and a display; the brackets themselves need neither.
+//
+// Pumping the loop is what lets them fire; without it the sources exist and
+// nothing ever runs them.
 //
 // Deliberately no gtk4rt.Init(): that is gtk_init(), which needs a display, and
 // CI has none -- it failed here with "cannot open display". A timer is a GLib
@@ -70,18 +83,19 @@ import (
 // runs in CI.
 func TestTimersTick(t *testing.T) {
 	m := New()
+	m.__effects0_settle()
 	gtk4rt.PumpFor(200)
 	if m.Seconds() == 0 {
 		t.Error("the root component's timer never fired")
 	}
-	if m.Beats__inst0() == 0 {
+	if m.Beats__inst2() == 0 {
 		t.Error("the child component's timer never fired")
 	}
-	m.StopTimers()
+	m.__snglTeardown()
 	stopped := m.Seconds()
 	gtk4rt.PumpFor(100)
 	if m.Seconds() != stopped {
-		t.Errorf("a stopped timer kept firing: %d then %d", stopped, m.Seconds())
+		t.Errorf("a released timer kept firing: %d then %d", stopped, m.Seconds())
 	}
 }
 `)

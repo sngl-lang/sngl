@@ -161,8 +161,11 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 		case *ir.Window:
 			st.scanStmts(n.Body)
 		case *ir.Assign, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
-			*ir.Break, *ir.Continue:
-			// Leaf/non-visual stmts — no NodeInst IDs to observe.
+			*ir.Break, *ir.Continue, *ir.CanvasRedrawStmt:
+			// Leaf/non-visual stmts — no NodeInst IDs to observe. A redraw
+			// names a canvas declared elsewhere, so its id is already counted;
+			// it reaches this scan at all only now that a redraw can land in
+			// an effect's body rather than only in a handler's.
 		default:
 			panic(fmt.Sprintf("declarativeState.scanStmts: unhandled %T", n))
 		}
