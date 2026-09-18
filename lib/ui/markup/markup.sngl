@@ -1,0 +1,72 @@
+import std "sngl:ui"
+import tree "sngl:tree"
+
+// The tree the inline pieces form. Declaring it here is what makes `span` a
+// name a component can resolve, so a misspelling is an unresolved name rather
+// than a family nobody joins.
+//
+// A member is a run of text and what is true of it. It hosts its own family
+// and nothing else: emphasis around a link is a link inside emphasis, and both
+// orders are one flow of words. What it may not hold is a `node` -- a box
+// placed in the middle of a sentence has no line to sit on -- which is the
+// membership rule doing the work a content model would otherwise do in prose.
+#[tree.kind]
+struct span {}
+
+// Shows one flow of rich text. Its rest slot accepts spans, so it hosts them
+// without being one, and the flow wraps as a whole: a line break falls
+// wherever the words put it, not at the edge of a child.
+//
+// `style` applies to the run -- its size, colour, alignment and font. A span
+// inside says what is different about its own words and inherits the rest, so
+// setting a size on a `bold` is not how a heading is written: a heading is a
+// `richText` with a size and a `bold` inside it.
+//
+// One run is one paragraph. A document is a `vbox` of these, which is what
+// leaves room between them for the parts of a document this family does not
+// describe.
+component richText(
+    style std.Style,
+    content ...component span,
+) std.node
+
+// A literal run of text -- the leaf every other span eventually holds. Named
+// `text` rather than for the package: a program writes `markup.text(...)`,
+// which is the spelling that reads, and a program dot-importing both this
+// package and `sngl:ui` is told about the collision where it wrote it.
+component text(value string) span
+
+// The word carries weight. Bold on every platform that has a bold face, and
+// a platform that cannot vary the face has to say what it does instead.
+component bold(content ...component span) span
+
+// The word is slanted, using the family's italic face where one exists.
+component italic(content ...component span) span
+
+// A rule under the words.
+component underline(content ...component span) span
+
+// A rule through the words: text that was there and is not any more.
+component strike(content ...component span) span
+
+// A literal in a sentence -- an identifier, a flag, a filename. Monospaced
+// where the platform has a monospaced face, and distinguished some other way
+// where it does not.
+//
+// Its content is a string and not a slot, because what is inside a code span
+// is literal: emphasis inside a filename is a filename with asterisks in it.
+component code(value string) span
+
+// The words lead somewhere. `href` takes the same URL a `std.link` does, and
+// the content is spans, so a link may be emphasised and emphasis may be
+// linked.
+component link(href string, content ...component span) span
+
+// A picture on the line with the words -- an icon, a badge, an inline
+// formula. `alt` describes it, and is what a platform with no way to draw a
+// picture inside a flow of text shows in its place.
+component image(src string, alt string) span
+
+// A break within one flow: the words continue on the next line and are still
+// the same run. Two flows are two `richText`s.
+component lineBreak() span
