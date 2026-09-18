@@ -26,6 +26,10 @@ set down the nesting, and flatten to a list of runs.
       `markup.text("Hello, {name}!")` has to stay a render slot when `name`
       changes, so the pass runs early enough that `passReactivity` sees it the
       way it sees an `if`.
+- [ ] Style accumulation is now a defined operation: a `richText`'s five font
+      fields seed a `SpanStyle`, and each nested span overwrites the fields it
+      set, `inherit`/zero meaning it set none. Write it once in the pass so
+      every target gets the same answer.
 - [ ] Style accumulation down the nesting. Two candidates, and the choice
       decides how much of this is SNGL:
       - a **pass** folds `bold { italic { text } }` into one run with both
@@ -75,10 +79,12 @@ Every target that a document can reach needs one, or
       `RichTextSegment` in `pkg/go/fynert` (a widget implementation, not a
       language gap).
 - [ ] A span behaves the same everywhere, which is a requirement and not an
-      aspiration: a segment list has no inheritance, so fyne needs the run's
-      `richText` style copied into every segment at lowering. Whether that is a
-      fyne-only lowering capability or the flattening always resolving the
-      cascade is the decision; the second keeps one answer for everyone.
+      aspiration. Decided: the flattening always resolves the cascade, so a
+      host with no inheritance (a segment list) gets the same answer as one
+      with it, and no target needs a capability of its own.
+- [ ] fyne likely needs a custom `RichTextSegment` for the whole `SpanStyle` —
+      `RichTextStyle` carries named sizes and theme colors, not arbitrary ones,
+      on top of the underline/strike question.
 - [ ] **bubbletea** — lipgloss. `image` has to render its description; that is
       the platform answering rather than dropping it.
 - [ ] **android** — `AnnotatedString` + `SpanStyle`, `LinkAnnotation` for href.

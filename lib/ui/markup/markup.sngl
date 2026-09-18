@@ -17,11 +17,18 @@ struct span {}
 // without being one, and the flow wraps as a whole: a line break falls
 // wherever the words put it, not at the edge of a child.
 //
-// `role` says what the run is for and `style` says what it looks like. The
-// first is the one to reach for: a platform that has headings emits one, with
-// the host's own typography, and `style` is how an author says something
-// different from that. A span inside says what is different about its own
-// words and inherits the rest.
+// `role` says what the flow is for and `style` says what it looks like. The
+// first is the one to reach for: a platform that has headings emits one, and
+// `style` is how an author says something different from the block components
+// already set.
+//
+// This one is a `ui.Style` and a span's is not, because a `richText` is a
+// `ui.node` and has a box: its padding, background and border are real, which
+// is how a quote gets its rule. What its five font fields do is seed every run
+// inside it -- color, size, family, weight, slant -- and a span says what is
+// different about its own words. That seeding is where the cascade is
+// resolved, once, so a host with no inheritance of its own (a segment list)
+// gets the same answer as one with it.
 //
 // One run is one paragraph. A document is a `vbox` of these -- usually of the
 // block components at the foot of this file, which are each a `richText` with
@@ -72,22 +79,58 @@ enum Role { paragraph, heading, quote, code, caption }
 // where it wrote it.
 component text(value string) span
 
+// What an inline run may vary about its own appearance.
+//
+// Its own struct rather than `ui.Style`, for two reasons and the second is the
+// one that decides it.
+//
+// A run has no box: of `ui.Style`'s forty-odd fields it could honor five, and
+// the rest -- padding, flex, position, border, overflow -- would type-check on
+// a span and do nothing. Silently on most targets, and *not* silently on html,
+// where a `<span>` takes padding and the same source would come out different
+// on one platform than the others. A span behaving the same everywhere is a
+// requirement here, so a vocabulary that can express something only html can
+// do is the wrong vocabulary.
+//
+// And the cascade needs a third state. Flattening `bold { italic { … } }` into
+// one run means the inner span overwrites only what it set, so "not set" has
+// to be distinguishable from "set to the default" -- and it is not in
+// `ui.Style`, where an enum's zero is its first member and `FontWeight`'s is
+// `normal`. The inner run would say `normal` and silently un-bold its parent.
+// So the two enums below lead with `inherit`, which is what a zero value of
+// this struct means field by field: no color, no size, no family, and neither
+// decoration.
+//
+// The consequence of that is a decoration cannot be turned *off* by a span
+// inside one that turned it on. No markup asks to, and a fourth state per
+// field to express it would be paid for on every run.
+struct SpanStyle {
+    color color = color{a=0}
+    fontSize ui.measurement = 0px
+    fontFamily string = ""
+    fontWeight Weight = Weight.inherit
+    fontStyle Slant = Slant.inherit
+    underline bool = false
+    strike bool = false
+}
+
+// Weight of a run, with `inherit` first so an unset one leaves its parent's
+// alone. The rest mirror `ui.FontWeight`.
+enum Weight { inherit, normal, bold, lighter, bolder }
+
+// Slant of a run, with `inherit` first for the same reason. The rest mirror
+// `ui.FontStyle`.
+enum Slant { inherit, normal, italic, oblique }
+
 // A run of text and what is true of its appearance -- the one span that
 // carries style, and what every wrapper below is written in terms of.
-//
-// `style` says what `ui.Style` has a word for: weight, slant, family, size,
-// color, alignment. `underline` and `strike` are props because it does not --
-// there is no `textDecoration` field, and inventing one would add a property
-// to every component in the language to serve two spans.
 //
 // Nothing about a run says what it *means*. `token` says that for code and
 // `role` says it for a whole flow; this is appearance, and a document that
 // reaches for it directly is saying it wants those exact letters rather than
 // what the wrappers name.
 component run(
-    style ui.Style,
-    underline bool,
-    strike bool,
+    style SpanStyle,
     content ...component span,
 ) span
 
@@ -105,28 +148,28 @@ component run(
 
 // The word carries weight.
 component bold(content ...component span) span {
-    run(style={fontWeight=ui.FontWeight.bold}) {
+    run(style={fontWeight=Weight.bold}) {
         content
     }
 }
 
 // The word is slanted, using the family's italic face where one exists.
 component italic(content ...component span) span {
-    run(style={fontStyle=ui.FontStyle.italic}) {
+    run(style={fontStyle=Slant.italic}) {
         content
     }
 }
 
 // A rule under the words.
 component underline(content ...component span) span {
-    run(underline=true) {
+    run(style={underline=true}) {
         content
     }
 }
 
 // A rule through the words: text that was there and is not any more.
 component strike(content ...component span) span {
-    run(strike=true) {
+    run(style={strike=true}) {
         content
     }
 }
