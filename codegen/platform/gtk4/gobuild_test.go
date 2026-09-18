@@ -115,7 +115,7 @@ func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
 // buildGeneratedGo compiles model.go alone.
 func buildGeneratedFiles(t *testing.T, prefix string, files map[string]string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", prefix)
+	tmp, err := os.MkdirTemp(".", "_"+prefix)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func buildGeneratedGo(t *testing.T, prefix, model string) {
 // unrelated defect keeps failing.
 func compileErrors(t *testing.T, prefix, model string) string {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", prefix)
+	tmp, err := os.MkdirTemp(".", "_"+prefix)
 	if err != nil {
 		t.Fatal(err)
 	}

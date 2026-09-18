@@ -83,7 +83,7 @@ window {
 	// Compile-check: write the emitted source under the main module so
 	// fyne imports resolve through the project's go.mod/go.sum. Catches
 	// __root-style "undefined ident" failures the snippet matcher misses.
-	tmp, err := os.MkdirTemp(".", "fyne-emit-")
+	tmp, err := os.MkdirTemp(".", "_fyne-emit-")
 	if err != nil {
 		t.Fatal(err)
 	}

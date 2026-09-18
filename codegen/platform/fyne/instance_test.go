@@ -115,7 +115,7 @@ func TestInstanceRecordsRunIndependently(t *testing.T) {
 	// Under the main module, so the fyne imports resolve through the
 	// project's own go.mod -- the same trick the intrinsic integration test
 	// uses to compile emitted Go.
-	tmp, err := os.MkdirTemp(".", "fyne-run-")
+	tmp, err := os.MkdirTemp(".", "_fyne-run-")
 	if err != nil {
 		t.Fatal(err)
 	}

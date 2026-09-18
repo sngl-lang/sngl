@@ -23,12 +23,20 @@ pkg/kotlin/testagent/build/
 # `go build ./internal/cmd/verify/` drops its binary here
 /verify
 
-# Platform test runners MkdirTemp(".", "<platform>-<case>-") beside their own
+# Platform test runners MkdirTemp(".", "_<platform>-<case>-") beside their own
 # package, because the emitted Go has to build inside this module. An
 # interrupted run skips the deferred RemoveAll, so the prefixes are ignored
 # rather than the one case that happened to leak first.
-codegen/platform/*/bt-*/
-codegen/platform/*/fyne-*/
-codegen/platform/*/gtk4-*/
-codegen/platform/*/optnarrow*/
+#
+# The leading underscore is what keeps a leaked one harmless: `go` skips a
+# directory whose name starts with `_` or `.` when expanding `./...`, so the
+# debris is invisible to `go vet ./...` and `go build ./...` rather than being
+# compiled as part of the module. Without it a killed run left `go vet ./...`
+# reporting a cgo diagnostic in generated code -- a real-looking failure with
+# nothing behind it. The build inside the directory is unaffected: the runners
+# set cmd.Dir and build `.`, which is a path rather than a pattern.
+codegen/platform/*/_bt-*/
+codegen/platform/*/_fyne-*/
+codegen/platform/*/_gtk4-*/
+codegen/platform/*/_optnarrow*/
 /.sngl-consteval-*/

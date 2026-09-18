@@ -112,7 +112,7 @@ func TestConstructPropRebuildsTheInstance(t *testing.T) {
 
 	// Under the main module, so the fyne imports resolve through the project's
 	// own go.mod.
-	tmp, err := os.MkdirTemp(".", "fyne-construct-")
+	tmp, err := os.MkdirTemp(".", "_fyne-construct-")
 	if err != nil {
 		t.Fatal(err)
 	}

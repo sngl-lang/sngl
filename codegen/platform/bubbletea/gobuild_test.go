@@ -83,7 +83,7 @@ func fixtureSource(t *testing.T, name string) string {
 // os.TempDir() has no module above it.
 func buildGeneratedGo(t *testing.T, prefix, model string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", prefix)
+	tmp, err := os.MkdirTemp(".", "_"+prefix)
 	if err != nil {
 		t.Fatal(err)
 	}

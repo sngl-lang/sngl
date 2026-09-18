@@ -94,7 +94,7 @@ func TestGeneratedGoWithACollidingNestedFuncCompiles(t *testing.T) {
 
 	// Under the main module, so charm.land/bubbletea resolves through the
 	// project's own go.mod.
-	tmp, err := os.MkdirTemp(".", "bt-name-collision-")
+	tmp, err := os.MkdirTemp(".", "_bt-name-collision-")
 	if err != nil {
 		t.Fatal(err)
 	}

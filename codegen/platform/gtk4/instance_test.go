@@ -73,7 +73,7 @@ func TestInstanceRecordIsPerRow(t *testing.T) {
 	}
 
 	// Under the main module, so gtk4rt resolves through the project's go.mod.
-	tmp, err := os.MkdirTemp(".", "gtk4-inst-")
+	tmp, err := os.MkdirTemp(".", "_gtk4-inst-")
 	if err != nil {
 		t.Fatal(err)
 	}

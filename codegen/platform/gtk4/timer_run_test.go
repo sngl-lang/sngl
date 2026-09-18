@@ -105,7 +105,7 @@ func TestTimersTick(t *testing.T) {
 // gtk4rt resolves through the project's go.mod, and runs `go test` there.
 func runGTK4Model(t *testing.T, prefix, model, testSrc string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", prefix)
+	tmp, err := os.MkdirTemp(".", "_"+prefix)
 	if err != nil {
 		t.Fatal(err)
 	}
