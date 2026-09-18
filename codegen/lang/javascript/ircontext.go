@@ -568,6 +568,14 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	if jc.Ctx != nil && jc.Ctx.Helpers != nil {
 		jc.Ctx.Helpers["native:"+name] = true
 	}
+	// `value` says the identifier is read rather than called -- `Math.PI` is
+	// a property, and calling it is a TypeError rather than a compile error.
+	if n.Func.NativeValue {
+		if bundled {
+			return codegen.NativeAlias(mod) + "." + name
+		}
+		return name
+	}
 	args := jc.evalCallArgs(n.Args)
 	var call string
 	switch {

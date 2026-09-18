@@ -37,4 +37,8 @@ func native(name string, module string = "", flags list<NativeFlag> = []) ir.Mac
 // function with defaults in the middle of its parameter list requires: reaching
 // `style` on `drawCircle` positionally means supplying the `alpha` before it,
 // and the declaration's own parameter names are the Compose ones.
-enum NativeFlag { method, named }
+// `value` says the identifier is a value rather than something to call: a
+// constant, a property, a field. A declaration has to be a func for a program
+// to read it at all, so its shape cannot say this. Such a declaration takes no
+// parameters and returns the value's type.
+enum NativeFlag { method, named, value }

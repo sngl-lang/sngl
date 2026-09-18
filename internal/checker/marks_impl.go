@@ -81,6 +81,9 @@ func markGoNative(m *mark) error {
 		d.HasErrorReturn = slices.Contains(flags, flagFails)
 		d.NativeMethod = slices.Contains(flags, flagMethod)
 		d.NativeSchedules = slices.Contains(flags, flagSchedules)
+		if err := setNativeValue(d, flags, name); err != nil {
+			return err
+		}
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -112,6 +115,9 @@ func markKotlinNative(m *mark) error {
 		d.Foreign = fm
 		d.NativeMethod = slices.Contains(flags, flagMethod)
 		d.NativeNamedArgs = slices.Contains(flags, flagNamed)
+		if err := setNativeValue(d, flags, name); err != nil {
+			return err
+		}
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -177,6 +183,9 @@ func markJSNative(m *mark) error {
 		// where it is said, and the emitter awaits the call.
 		d.IsAsync = slices.Contains(flags, flagAsync)
 		d.NativeMethod = slices.Contains(flags, flagMethod)
+		if err := setNativeValue(d, flags, name); err != nil {
+			return err
+		}
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
@@ -306,6 +315,11 @@ const flagNamed = "named"
 // loop it owns rather than inline. It describes *when* a call's argument runs,
 // which is the one thing about a native nothing else can find out.
 const flagSchedules = "schedules"
+
+// flagValue says the host identifier is a value rather than something to call:
+// a constant, a property, a field. A declaration has to be a func for a
+// program to read it at all, so its shape cannot say this and the flag does.
+const flagValue = "value"
 
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //
@@ -643,4 +657,23 @@ func identityLiteral(decl *ast.ConstDecl, name string) (string, bool) {
 		return lit.StringValue()
 	}
 	return "", false
+}
+
+// setNativeValue applies the `value` flag, which says the host identifier is
+// read rather than called. A declaration carrying it must take no parameters
+// and return something: there is nothing to pass a value, and a value nobody
+// reads is not one. Both are refused here rather than emitted, since what a
+// backend would write is the name with the arguments silently dropped.
+func setNativeValue(fn *ir.Func, flags []string, name string) error {
+	if !slices.Contains(flags, flagValue) {
+		return nil
+	}
+	if len(fn.Params) > 0 {
+		return fmt.Errorf("#[native(%q)] carries %s and declares %d parameter(s); a value takes none", name, flagValue, len(fn.Params))
+	}
+	if fn.Return == nil {
+		return fmt.Errorf("#[native(%q)] carries %s and returns nothing; a value is read, so there is nothing for a call to it to be", name, flagValue)
+	}
+	fn.NativeValue = true
+	return nil
 }

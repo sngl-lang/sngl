@@ -448,6 +448,12 @@ func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
 		kc.RequireImport(n.Func.Foreign.Path)
 	}
 	name := n.Func.Foreign.Name
+	// `value` says the identifier is read rather than called:
+	// `StrokeCap.Round` is a property, and the parens a call would write make
+	// Kotlin look for an `invoke()` it has none of.
+	if n.Func.NativeValue {
+		return name, true
+	}
 	args := kc.evalCallArgs(n.Args)
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
@@ -592,6 +598,26 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 				return result
 			}
 		}
+		// The receiver is an import alias when the declaration carries no
+		// receiver of its own: a directory import qualifies the call in SNGL
+		// and names nothing in the emitted Kotlin, where the function is a
+		// top-level `fun` of its own name. `readout.cells("1.5")` reached the
+		// android test runner verbatim, against a `cells` declared beside it.
+		if n.Func.Receiver == "" {
+			name := fname
+			// Through IdentRewrites like every other bare call: test mode
+			// reaches a hoisted state member as `state.<name>`.
+			if kc.IdentRewrites != nil {
+				if rw, ok := kc.IdentRewrites[name]; ok {
+					name = rw
+				}
+			}
+			if kc.isScopeComputed(fname, n.Func) {
+				return name
+			}
+			codegen.RequireIntrinsicFallback(langKt, n.Func)
+			return name + "(" + strings.Join(args, ", ") + ")"
+		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	// Func resolution may be incomplete (e.g. checker did not bind a
@@ -728,6 +754,16 @@ func (kc *KtIRContext) isScopeComputed(name string, fn *ir.Func) bool {
 // call is by bare name and no receiver is involved.
 func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
 	if fn == nil || kc.Ctx == nil {
+		return "", false
+	}
+	// A method on a struct or an enum is emitted as an extension function and
+	// is called as one, so the scope must not claim its bare name: the package
+	// scope answers for every func it holds and a method is one of them, so
+	// `func Item.label()` resolved here and came out as `label(it)` against a
+	// declaration spelled `fun Item.label()`. A component's method is the case
+	// this lookup exists for and is left alone -- there is no Kotlin type to
+	// extend, and the composable calls it by bare name.
+	if fn.Receiver != "" && ReceiverIsUserType(kc.pkg(), fn.Receiver) {
 		return "", false
 	}
 	sym, kind := kc.Ctx.Resolve(fn.Name)
@@ -1027,6 +1063,14 @@ func IRTypeToKt(t *ir.Type) string {
 			if t.Decl.SymName() == "PluralKey" {
 				return "String"
 			}
+			// An unmarked native struct *is* the Kotlin type, so the
+			// declaration's own name names nothing this file emits: android's
+			// `#[kt.native("androidx.compose.ui.graphics.StrokeCap")]` came
+			// out as the undeclared `StrokeCap`. The same rule IRTypeToGo
+			// already applies.
+			if sd, ok := t.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" && !sd.Foreign.Marked {
+				return sd.Foreign.Name
+			}
 			return exportName(t.Decl.SymName())
 		}
 		return "Any"
@@ -1297,3 +1341,33 @@ const ColorDecl = `data class ` + colorKtType + `(
         if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
 }
 `
+
+// pkg is the package being emitted, or nil.
+func (kc *KtIRContext) pkg() *ir.Package {
+	if kc.Ctx == nil {
+		return nil
+	}
+	return kc.Ctx.Pkg
+}
+
+// ReceiverIsUserType reports whether name is a struct or enum the package
+// declares, as opposed to a component. It is what decides that a method is
+// emitted as a Kotlin extension function, and so has to be asked at the call
+// site too -- the declaration and the call disagreeing is what left
+// `fun Item.label()` beside a call to `label(it)`.
+func ReceiverIsUserType(pkg *ir.Package, name string) bool {
+	if pkg == nil || name == "" {
+		return false
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Name == name {
+			return true
+		}
+	}
+	for _, ed := range pkg.Enums {
+		if ed.Name == name {
+			return true
+		}
+	}
+	return false
+}

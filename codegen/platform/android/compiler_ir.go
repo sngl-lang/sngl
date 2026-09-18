@@ -363,11 +363,34 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		componentOwnFuncs[fn] = true
 	}
 
+	// The reactive state the class holds: a func reaching one of these is what
+	// the class's scope is for.
+	stateNames := map[string]struct{}{}
+	for _, bind := range info.binds {
+		stateNames[bind.name] = struct{}{}
+	}
+	for _, comp := range info.computeds {
+		stateNames[comp.name] = struct{}{}
+	}
+
 	var stateFuncs []*ir.Func
 	if testMode && !cfg.GoLib {
 		allFuncs := ctx.AllFuncs()
 		for _, fn := range allFuncs {
-			if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+			if fn.IsTest || codegen.IsComputed(fn) {
+				continue
+			}
+			// A method on a struct or an enum is an extension function and
+			// belongs nowhere near the state class -- it is called on a value
+			// of that type. A *component's* func has a receiver too (the
+			// component it was written in), and that one is exactly what the
+			// class holds: its state is the class's fields. Excluding both
+			// left a component's func emitted by nobody in test mode, which
+			// is what `press__inst0` was.
+			if fn.Receiver != "" && kotlin.ReceiverIsUserType(ctx.Pkg, fn.Receiver) {
+				continue
+			}
+			if !needsStateScope(fn, stateNames) {
 				continue
 			}
 			// Synthesized canvas draw funcs hold canvas-intrinsic CallStmts
@@ -381,6 +404,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			}
 			stateFuncs = append(stateFuncs, fn)
 		}
+	}
+	stateMembers := make(map[*ir.Func]bool, len(stateFuncs))
+	for _, fn := range stateFuncs {
+		stateMembers[fn] = true
 	}
 
 	if testMode {
@@ -687,6 +714,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) || isCanvasDrawFunc(fn) {
 				continue
 			}
+			if !needsStateScope(fn, stateNames) {
+				continue
+			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
 				continue
 			}
@@ -765,12 +795,19 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		emitIRComponentComposable(&body, comp, ctx, kc, cfg, cfg.combo())
 	}
 
-	// User functions (non-GoLib). In test mode these were emitted
-	// as members of MainScreenState already.
-	if !cfg.GoLib && !testMode {
+	// User functions (non-GoLib). In test mode the state class holds them,
+	// with one exception: a method on a struct or an enum is an extension
+	// function either way -- the class is the component's state and a method
+	// on a value of a user type has nothing to do with it. Skipped in both
+	// places, `Calc.pending` was declared by nobody while every call site
+	// spelled it.
+	if !cfg.GoLib {
 		allFuncs := ctx.AllFuncs()
 		for _, fn := range allFuncs {
 			if fn.IsTest || codegen.IsComputed(fn) {
+				continue
+			}
+			if testMode && stateMembers[fn] {
 				continue
 			}
 			// Canvas draw funcs are inlined into the Canvas {} DrawScope
@@ -786,7 +823,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// put in front of the parameters is Kotlin's own `this`. A
 			// component's own func is not that: it is called by bare name from
 			// the composable, and the component is no Kotlin type to extend.
-			if fn.Receiver != "" && ktUserTypeName(ctx.Pkg, fn.Receiver) {
+			if fn.Receiver != "" && kotlin.ReceiverIsUserType(ctx.Pkg, fn.Receiver) {
 				emitIRKtMethod(&body, fn, kc)
 				continue
 			}
@@ -794,7 +831,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// on Compose that state is a `remember`ed local of the composable.
 			// So it is a local fun of the composable too; emitted at top level
 			// it named a `state` nothing had declared.
-			if componentOwnFuncs[fn] {
+			//
+			// One that touches no such state is not that, and putting it there
+			// anyway is not free: a method on a user type is an extension
+			// function at top level, so `Calc.pending` calling the pure
+			// `format` found it only inside the composable, or as
+			// `state.format` in test mode.
+			if componentOwnFuncs[fn] && needsStateScope(fn, stateNames) {
 				continue
 			}
 			emitIRKtFunc(&body, fn, kc)
@@ -909,10 +952,18 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 // implicit `this` because `kc.IdentRewrites` is intentionally not
 // set on the caller-provided context here.
 func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
-	params := make([]string, len(fn.Params))
-	for i, p := range fn.Params {
+	// passNoImplicitRecv's receiver param is the component the func was
+	// written in, whose state is this class's fields -- so it is `this` here
+	// as it is in the composable, and never something a call site passes.
+	// Left in, the class declared `fun press__inst0(this: Any, k: Key)`.
+	fnParams := fn.Params
+	if len(fnParams) > 0 && isReceiverParam(fn, fnParams[0]) {
+		fnParams = fnParams[1:]
+	}
+	params := make([]string, len(fnParams))
+	for i, p := range fnParams {
 		ktType := kotlin.IRTypeToKt(p.Type)
-		params[i] = p.Name + ": " + ktType
+		params[i] = kotlin.SafeIdent(p.Name) + ": " + ktType
 	}
 	paramStr := strings.Join(params, ", ")
 
@@ -922,7 +973,7 @@ func emitIRKtMemberFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext)
 	}
 
 	localKC := kc
-	for _, p := range fn.Params {
+	for _, p := range fnParams {
 		localKC = localKC.WithLocal(p.Name)
 	}
 
@@ -958,25 +1009,6 @@ func isReceiverParam(fn *ir.Func, p *ir.Param) bool {
 		return true
 	}
 	return p.Type != nil && p.Type.Decl != nil && p.Type.Decl.SymName() == fn.Receiver
-}
-
-// ktUserTypeName reports whether name is a struct or enum the package
-// declares, as opposed to a component.
-func ktUserTypeName(pkg *ir.Package, name string) bool {
-	if pkg == nil {
-		return false
-	}
-	for _, sd := range pkg.Structs {
-		if sd.Name == name {
-			return true
-		}
-	}
-	for _, ed := range pkg.Enums {
-		if ed.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // emitIRKtMethod emits a method on a user type as a Kotlin extension
@@ -1141,4 +1173,41 @@ func literalStructLit(n *ir.StructLit) string {
 		args = append(args, f.Name+" = "+v)
 	}
 	return name + "(" + strings.Join(args, ", ") + ")"
+}
+
+// needsStateScope reports whether a func has to be a member of the hoisted
+// state class rather than a top-level function.
+//
+// A component's own func does: its body names the component's vars. So does a
+// func that reads or writes reactive state -- Reads/Writes are transitive, so
+// a helper reaching one through another helper is included too.
+//
+// It is asked on both sides, because a func has to be in exactly one place and
+// the two questions are the same one: whether a body owns a func decides where
+// it goes, and being *listed* as a body's does not -- every package func is a
+// window's by the time this runs.
+//
+// The body is walked rather than `fn.Reads`/`fn.Writes` asked: those are
+// effect analysis's and are empty for a func the lowering synthesized, so
+// `step__mark__inst0` -- which assigns the composable's `log__inst0` -- read
+// as touching nothing and was emitted beside the composable.
+//
+// Everything else does not, and hoisting it anyway is not free: a method on a
+// user type is an extension function at top level, so a `Calc.pending` calling
+// the pure `format` found it only as `state.format`, against a `state` nothing
+// in that scope declares.
+func needsStateScope(fn *ir.Func, state map[string]struct{}) bool {
+	if fn.Receiver != "" {
+		return true
+	}
+	found := false
+	ir.WalkExprs(fn.Block, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok {
+			if _, isState := state[id.Name]; isState {
+				found = true
+			}
+		}
+		return nil
+	})
+	return found
 }

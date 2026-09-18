@@ -904,6 +904,12 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 		}
 		args = append([]string{ctxVar}, args...)
 	}
+	// `value` says the identifier is read rather than called -- a host
+	// constant such as `math.Pi`, which is not a function and has no call
+	// form at all.
+	if n.Func.NativeValue {
+		return name, true
+	}
 	// `method` says the identifier is invoked on its first argument rather
 	// than handed it: `c.Circle(1, 2)` where the default is
 	// `canvas.Context.Circle(c, 1, 2)`. Both are valid Go for the same

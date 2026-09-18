@@ -458,7 +458,7 @@ fun MainScreen() {
         if ((p__inst1 == Phase.DONE)) {
             Text(text = "first done", modifier = Modifier.safeDrawingPadding())
         }
-        Text(text = shout(here__inst2, 2), modifier = Modifier.safeDrawingPadding())
+        Text(text = here__inst2.shout(2), modifier = Modifier.safeDrawingPadding())
         Text(text = rows__inst2.size.toString(), modifier = Modifier.safeDrawingPadding())
         Text(text = elapsed__inst2.toInt().toString(), modifier = Modifier.safeDrawingPadding())
         if ((p__inst2 == Phase__second.READY)) {
@@ -472,7 +472,7 @@ fun Local__second.shout(n: Int): String {
     if ((n <= 0)) {
     	return this.bField
     }
-    return shout(this, (n - 1))
+    return this.shout((n - 1))
 }
 
 fun pick(n: Int): Int {

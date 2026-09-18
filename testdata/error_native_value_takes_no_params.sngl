@@ -1,0 +1,23 @@
+// `value` says the host identifier is read rather than called, so a
+// declaration carrying it has nothing to pass and nothing to be if it answers
+// with nothing. Both are refused at the mark, where there is a position: what
+// a backend would otherwise write is the bare name with the arguments
+// silently dropped.
+import ui "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("math", "math.Pi", value)] // ERROR(check) "a value takes none"
+func pi(scale float) float
+
+#[go.native("math", "math.E", value)] // ERROR(check) "there is nothing for a call to it to be"
+func e()
+
+output {
+    go {
+        fyne
+    }
+}
+
+ui.window(title="t") {
+    ui.text(value=string(pi(1.0)))
+}

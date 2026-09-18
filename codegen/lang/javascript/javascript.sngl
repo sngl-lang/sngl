@@ -44,4 +44,8 @@ func native(name string, module string = "", flags list<NativeFlag> = []) ir.Mac
 // `method` says the identifier is a method of its first argument. A DOM API
 // has no other shape -- `ctx.arc(x, y, r)` and never `arc(ctx, x, y, r)` --
 // so describing one needs this.
-enum NativeFlag { async, method }
+// `value` says the identifier is a value rather than something to call: a
+// constant, a property, a field. A declaration has to be a func for a program
+// to read it at all, so its shape cannot say this. Such a declaration takes no
+// parameters and returns the value's type.
+enum NativeFlag { async, method, value }

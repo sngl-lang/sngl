@@ -673,6 +673,13 @@ plugins {
 -- out/kotlin/android/gradle.properties --
 android.useAndroidX=true
 kotlin.code.style=official
+# A generated composable is one long function, and the Compose plugin's IR
+# lowering of one runs out of the default heap -- examples/showcase died with
+# "GC overhead limit exceeded" rather than a diagnostic. Both settings are
+# needed: the Kotlin compiler runs in a daemon of its own, so raising Gradle's
+# heap alone moved the failure to "Daemon compilation failed: null".
+org.gradle.jvmargs=-Xmx2g
+kotlin.daemon.jvmargs=-Xmx2g
 -- out/kotlin/android/gradle/wrapper/gradle-wrapper.properties --
 distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists

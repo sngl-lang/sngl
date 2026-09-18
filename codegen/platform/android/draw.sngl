@@ -60,28 +60,32 @@ func composeColor(red int, green int, blue int, alpha int) ComposeColor
 #[kt.native("Stroke", "androidx.compose.ui.graphics.drawscope.Stroke", named)]
 func strokeOf(width float, cap StrokeCap, join StrokeJoin) DrawStyle
 
-#[foreign("kotlin:androidx.compose.ui.graphics", "StrokeCap", native)]
+// Named in full, as DrawStyle is: a native type's name is what a Kotlin
+// signature spells, and `#[foreign]`'s separate path is not an import Kotlin
+// takes -- the bare `StrokeCap` reached the emitted signatures with nothing
+// declaring it.
+#[kt.native("androidx.compose.ui.graphics.StrokeCap")]
 struct StrokeCap {}
 
-#[foreign("kotlin:androidx.compose.ui.graphics", "StrokeJoin", native)]
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin")]
 struct StrokeJoin {}
 
-#[kt.native("androidx.compose.ui.graphics.StrokeCap.Butt")]
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Butt", "", value)]
 func capButt() StrokeCap
 
-#[kt.native("androidx.compose.ui.graphics.StrokeCap.Round")]
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Round", "", value)]
 func capRound() StrokeCap
 
-#[kt.native("androidx.compose.ui.graphics.StrokeCap.Square")]
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Square", "", value)]
 func capSquare() StrokeCap
 
-#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Miter")]
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Miter", "", value)]
 func joinMiter() StrokeJoin
 
-#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Round")]
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Round", "", value)]
 func joinRound() StrokeJoin
 
-#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Bevel")]
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Bevel", "", value)]
 func joinBevel() StrokeJoin
 
 // The names are SNGL's and the values Compose's, the same mapping gtk4 writes
