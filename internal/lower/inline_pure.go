@@ -412,7 +412,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Recursive pure components (self-call directly or transitively) can't
 	// be inlined to a finite body. In strict mode that's fatal; in
 	// optimization mode the user's recursion is legitimate, leave as-is.
-	if st.inFlight[comp] || containsSelfRef(comp) {
+	if st.inFlight[comp] || ir.ComponentSelfRefs(comp) {
 		if strictApplies {
 			return nil, fmt.Errorf("inline cycle: %s at %s", st.cycleChain(comp), posOf(n.AST))
 		}
@@ -491,58 +491,6 @@ func impurityReason(comp *ir.Component) string {
 		return "state"
 	}
 	return strings.Join(parts, ", ")
-}
-
-// containsSelfRef reports whether comp's body invokes comp anywhere
-// (direct self-reference). Mutual recursion isn't detected here — the
-// in-flight check catches that during substitution.
-func containsSelfRef(comp *ir.Component) bool {
-	var visit func(stmts []ir.Stmt) bool
-	visit = func(stmts []ir.Stmt) bool {
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ir.NodeInst:
-				if n.Component == comp {
-					return true
-				}
-				if visit(n.Children) {
-					return true
-				}
-				for _, h := range n.Handlers {
-					if h.Func != nil && visit(h.Func.Block) {
-						return true
-					}
-				}
-			case *ir.If:
-				if visit(n.Body) || visit(n.Else) {
-					return true
-				}
-			case *ir.For:
-				if visit(n.Body) || visit(n.Else) {
-					return true
-				}
-			case *ir.SlotInst:
-				if visit(n.Children) {
-					return true
-				}
-			case *ir.ErrorBoundary:
-				if visit(n.Children) {
-					return true
-				}
-			case *ir.Window:
-				if visit(n.Body) {
-					return true
-				}
-			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
-				*ir.Break, *ir.Continue:
-				// Leaf stmts can't host a NodeInst self-reference.
-			default:
-				panic(fmt.Sprintf("containsSelfRef.visit: unhandled %T", n))
-			}
-		}
-		return false
-	}
-	return visit(comp.Body)
 }
 
 // isPrimitiveComponent reports whether a component is something a codegen

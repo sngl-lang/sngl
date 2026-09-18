@@ -1,0 +1,45 @@
+# --skip-platform leaves a platform out of the --platform=all matrix, and says
+# so rather than passing it over in silence: the skip line is how a run reports
+# what it did not cover.
+#
+# Distinct from a platform's own ProbeTest skip, which answers "this host
+# cannot run it". android can run on a developer's machine -- that is exactly
+# when it costs, a Gradle project built and run per fixture -- so nothing about
+# the host says to leave it out and the caller does. `go tool verify` passes
+# it unless -full, the same flag that puts android's Go tests behind -short.
+
+sngl test --platform=all --skip-platform=none app.sngl
+stdout '--- SKIP platform=none: left out by --skip-platform'
+! stdout '=== platform=none'
+
+# The rest of the matrix still runs: the flag names platforms, it does not
+# narrow to one.
+sngl test --platform=all --skip-platform=none app.sngl
+stdout '=== platform=html'
+
+# Naming none of them runs everything, which is what says the skip above was
+# the flag and not the fixture.
+sngl test --platform=all app.sngl
+stdout '=== platform=none'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+output {
+    none {
+        html
+    }
+}
+
+component main ui.node {
+    ui.text(value="hi")
+}
+
+func testItRenders(t test.Test, c main) {
+    t.assert(true)
+}
+
+ui.window(title="t") {
+    main
+}

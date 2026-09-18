@@ -32,6 +32,7 @@ func init() {
 	testCmd.Flags().String("platform", "", "target platform (e.g. html)")
 	testCmd.Flags().String("language", "", "target language (e.g. js)")
 	testCmd.Flags().StringSlice("opt", nil, "generator options (key=value)")
+	testCmd.Flags().StringSlice("skip-platform", nil, "platforms to leave out of --platform=all")
 }
 
 // Unlike compile, test validates nothing against the per-target option
@@ -74,7 +75,8 @@ func runTest(cmd *cobra.Command, args []string) error {
 	opts := parseTestOpts(optSlice)
 
 	if platform == "all" {
-		return runTestAll(language, units, runFilter, verbose, format, opts)
+		skip, _ := cmd.Flags().GetStringSlice("skip-platform")
+		return runTestAll(language, units, runFilter, verbose, format, opts, skip)
 	}
 
 	plat := codegen.LookupPlatform(platform)
@@ -96,13 +98,26 @@ func runTest(cmd *cobra.Command, args []string) error {
 	return reportResults(allResults, totalTests, totalFail, format, verbose)
 }
 
-func runTestAll(language string, units []unit, runFilter string, verbose bool, format string, opts *ir.StructLit) error {
+// skip names the platforms to leave out. A platform whose toolchain is simply
+// absent is already skipped by its own ProbeTest; this is for one that *can*
+// run and is being left out on purpose -- android builds a Gradle project per
+// fixture, which is minutes rather than seconds.
+func runTestAll(language string, units []unit, runFilter string, verbose bool, format string, opts *ir.StructLit, skip []string) error {
 	names := codegen.Platforms()
+	skipOut := make(map[string]struct{}, len(skip))
+	for _, n := range skip {
+		skipOut[n] = struct{}{}
+	}
 	var ran, skipped, failedPlats int
 	var grandTests, grandFail int
 	var allResults []*codegen.TestResult
 
 	for _, name := range names {
+		if _, off := skipOut[name]; off {
+			fmt.Printf("--- SKIP platform=%s: left out by --skip-platform\n", name)
+			skipped++
+			continue
+		}
 		plat := codegen.LookupPlatform(name)
 		runner, _ := plat.(codegen.TestRunner)
 		if runner == nil {

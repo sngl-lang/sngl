@@ -7,9 +7,17 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// maxInlineDepth caps how deep component-call inlining may recurse before
-// the optimizer falls back to the unspecialized call. Guards against
-// pathological self-referential components.
+// maxInlineDepth caps how deep component-call inlining may recurse.
+//
+// For a recursive component it is not a fallback but a *refusal*: reaching it
+// means the recursion did not fold to its base case, and stopping there has
+// already made one copy of the body per level -- 2^8 of them for a body with
+// two self-calls. So the whole expansion is discarded and the call left to the
+// runtime. See inlineCapped.
+//
+// A recursion that does fold still unrolls, which is the point: `countdown(n=3)`
+// on a target with no host language has no runtime to instantiate a component,
+// and what should be left is markup.
 const maxInlineDepth = 8
 
 // findComponentPkg searches root and its transitive imports for the package
@@ -55,6 +63,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		return nil
 	}
 	if ctx.inlining[comp] >= maxInlineDepth {
+		if ctx.inlineCapped != nil {
+			*ctx.inlineCapped = true
+		}
 		return nil
 	}
 	// Stateful components (Vars/Funcs/Timers) carry per-instance state that
@@ -148,7 +159,27 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		substituteParamsInStmts(cloned, subs)
 	}
 
+	// The outermost call of a recursive component watches whether its own
+	// expansion bottomed out on maxInlineDepth. Saved and cleared first, so
+	// what is observed is this expansion rather than one a sibling made.
+	outermost := ctx.inlining[comp] == 0 && ir.ComponentSelfRefs(comp)
+	var sawCapped bool
+	if outermost && ctx.inlineCapped != nil {
+		sawCapped, *ctx.inlineCapped = *ctx.inlineCapped, false
+	}
+
 	folded := foldStmts(cloned, childCtx)
+
+	if outermost && ctx.inlineCapped != nil {
+		capped := *ctx.inlineCapped
+		*ctx.inlineCapped = sawCapped
+		if capped {
+			// The recursion never reached its base case, so what was just
+			// built is 2^depth copies of the body with a runtime call at every
+			// leaf. Leave the call alone and let the target instantiate it.
+			return nil
+		}
+	}
 
 	ctx.fileAssets = childCtx.fileAssets
 	if ctx.err == nil {
