@@ -1,0 +1,26 @@
+// `ir.Foreign` holds one scheme and one name, so a second native mark used to
+// overwrite the first and keep whichever ran last: `go.native` beside
+// `js.native` emitted `Math.PI` into the *Go* output, silently. A value each
+// language spells differently is an `#[marks.intrinsic]`.
+//
+// And the call flags are refused on a value, which makes no call.
+import ui "sngl:ui"
+import go "sngl:language/go"
+import js "sngl:language/js"
+
+#[go.native("math", "math.Pi")]
+#[js.native("Math.PI")] // ERROR(check) "a second host identity"
+const pi float
+
+#[go.native("math", "math.E", method)] // ERROR(check) "a const or var names a value and makes none"
+const e float
+
+output {
+    go {
+        bubbletea
+    }
+}
+
+ui.window(title="t") {
+    ui.text(value=string(pi + e))
+}

@@ -226,7 +226,7 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 	// the emitted code names, whichever package wrote it.
 	addForeignTypes(pkg)
 
-	// A const that *is* a host identifier is taken off the list a backend
+	// A const or var that *is* a host identifier is taken off the lists a backend
 	// emits from, the way `CodegenCtx.AllFuncs` drops a native func: it has no
 	// value of its own to declare, and `math.Pi` came out as
 	// `var pi float64 = Float64{}` -- a zero for a value that lives on the
@@ -235,6 +235,7 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 	// same test. Every reference already resolves through ir.Ident.Sym, which
 	// holds the declaration and not its place in this list.
 	pkg.Consts = slices.DeleteFunc(pkg.Consts, ir.IsHostValue)
+	pkg.Vars = slices.DeleteFunc(pkg.Vars, ir.IsHostValue)
 
 	for _, p := range passes {
 		if !p.enabled(caps) {

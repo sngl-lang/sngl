@@ -2096,9 +2096,6 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 }
 
 func (c *checker) registerVars(decl *ast.VarDecl) {
-	// A var declares no marked form, so this reports the mark rather than
-	// applying one; the declaration still registers.
-	c.applyMarks(decl, nil)
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
 		var initExpr ir.Expr
@@ -2149,6 +2146,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				Type: typ,
 				Init: initExpr,
 			}
+			c.applyMarks(decl, v)
 			for i := range spec.Handlers {
 				h := &spec.Handlers[i]
 				handler := &ir.EventHandler{

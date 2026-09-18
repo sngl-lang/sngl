@@ -74,7 +74,9 @@ func markGoNative(m *mark) error {
 	fm := ir.Foreign{Scheme: "go", Path: path, Name: name}
 	switch d := m.sym.(type) {
 	case *ir.Func:
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 		// The same fact the Go importer reads off a signature it sees. A
 		// declaration here has no signature to read, so the mark is where it
 		// is said.
@@ -85,21 +87,25 @@ func markGoNative(m *mark) error {
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.Var:
-		// A const names a host value: `math.Pi` is a constant, Kotlin's
-		// `StrokeCap.Round` a property, `Math.PI` a field. None has a call
-		// form, and a declaration that had to be a func to be readable said
-		// so only through a flag nothing else could check.
-		if !d.IsConst {
-			return fmt.Errorf("#[native(%q)] marks a var; a host value the program cannot assign to is a const", name)
-		}
+		// A const or var names a host value: `math.Pi` is a constant, Kotlin's
+		// `StrokeCap.Round` a property, `os.Args` a package var. None has a
+		// call form, and a declaration that had to be a func to be readable
+		// said so only through a flag nothing else could check.
+		//
+		// Which of the two is the host's distinction rather than ours: a const
+		// is what the program only reads, a var a global it may assign to.
 		if len(flags) > 0 {
-			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a const names a value and makes none", name, flags[0])
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a const or var names a value and makes none", name, flags[0])
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	default:
-		return fmt.Errorf("#[go.native] cannot mark %s; only a func, a struct or a const names a Go identifier", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[go.native] cannot mark %s; only a func, a struct, a const or a var names a Go identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
@@ -121,28 +127,34 @@ func markKotlinNative(m *mark) error {
 	fm := ir.Foreign{Scheme: "kotlin", Path: module, Name: name}
 	switch d := m.sym.(type) {
 	case *ir.Func:
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 		d.NativeMethod = slices.Contains(flags, flagMethod)
 		d.NativeNamedArgs = slices.Contains(flags, flagNamed)
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.Var:
-		// A const names a host value: `math.Pi` is a constant, Kotlin's
-		// `StrokeCap.Round` a property, `Math.PI` a field. None has a call
-		// form, and a declaration that had to be a func to be readable said
-		// so only through a flag nothing else could check.
-		if !d.IsConst {
-			return fmt.Errorf("#[native(%q)] marks a var; a host value the program cannot assign to is a const", name)
-		}
+		// A const or var names a host value: `math.Pi` is a constant, Kotlin's
+		// `StrokeCap.Round` a property, `os.Args` a package var. None has a
+		// call form, and a declaration that had to be a func to be readable
+		// said so only through a flag nothing else could check.
+		//
+		// Which of the two is the host's distinction rather than ours: a const
+		// is what the program only reads, a var a global it may assign to.
 		if len(flags) > 0 {
-			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a const names a value and makes none", name, flags[0])
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a const or var names a value and makes none", name, flags[0])
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	default:
-		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a func, a struct or a const names a Kotlin identifier", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[kotlin.native] cannot mark %s; only a func, a struct, a const or a var names a Kotlin identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
@@ -162,9 +174,13 @@ func markCNative(m *mark) error {
 	fm := ir.Foreign{Scheme: "c", Path: "C", Name: name}
 	switch d := m.sym.(type) {
 	case *ir.Func:
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.StructDef:
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("#[cnative] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
 	}
@@ -195,7 +211,9 @@ func markJSNative(m *mark) error {
 	fm := ir.Foreign{Scheme: "js", Path: module, Name: name}
 	switch d := m.sym.(type) {
 	case *ir.Func:
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 		// The same fact the TypeScript importer reads off a `Promise<T>`
 		// return. A declaration here has no signature to read, so the mark is
 		// where it is said, and the emitter awaits the call.
@@ -205,21 +223,25 @@ func markJSNative(m *mark) error {
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.Var:
-		// A const names a host value: `math.Pi` is a constant, Kotlin's
-		// `StrokeCap.Round` a property, `Math.PI` a field. None has a call
-		// form, and a declaration that had to be a func to be readable said
-		// so only through a flag nothing else could check.
-		if !d.IsConst {
-			return fmt.Errorf("#[native(%q)] marks a var; a host value the program cannot assign to is a const", name)
-		}
+		// A const or var names a host value: `math.Pi` is a constant, Kotlin's
+		// `StrokeCap.Round` a property, `os.Args` a package var. None has a
+		// call form, and a declaration that had to be a func to be readable
+		// said so only through a flag nothing else could check.
+		//
+		// Which of the two is the host's distinction rather than ours: a const
+		// is what the program only reads, a var a global it may assign to.
 		if len(flags) > 0 {
-			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a const names a value and makes none", name, flags[0])
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a const or var names a value and makes none", name, flags[0])
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	default:
-		return fmt.Errorf("#[js.native] cannot mark %s; only a func, a struct or a const names a JavaScript identifier", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[js.native] cannot mark %s; only a func, a struct, a const or a var names a JavaScript identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
@@ -388,17 +410,23 @@ func markForeign(m *mark) error {
 		if d.Foreign.Marked {
 			return fmt.Errorf("#[foreign(%q)]: already marked as %q", name, d.Foreign.Name)
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.StructField:
 		if d.Foreign.Marked {
 			return fmt.Errorf("#[foreign(%q)]: already marked as %q", name, d.Foreign.Name)
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 	case *ir.Func:
 		if d.Foreign.Marked {
 			return fmt.Errorf("#[foreign(%q)]: already marked as %q", name, d.Foreign.Name)
 		}
-		d.Foreign = fm
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
 		// A foreign function's body describes the declaration rather than
 		// implementing it, so what a call costs is what the mark says. Purity
 		// is left unknown without the flag: inferring it from the body would
@@ -679,4 +707,19 @@ func identityLiteral(decl *ast.ConstDecl, name string) (string, bool) {
 		return lit.StringValue()
 	}
 	return "", false
+}
+
+// claimForeign records fm on a declaration that has no host identity yet.
+//
+// A second native mark is refused rather than overwriting the first: ir.Foreign
+// holds one scheme and one name, so `#[go.native]` and `#[js.native]` written
+// on one declaration kept whichever ran last, silently, and the *Go* output
+// said `Math.PI`. A value each language spells differently is an
+// `#[marks.intrinsic]`, which is what `float.sin` already is.
+func claimForeign(dst *ir.Foreign, fm ir.Foreign, name string) error {
+	if dst.Name != "" {
+		return fmt.Errorf("#[native(%q)] is a second host identity; %q already names this declaration's, and a declaration names one identifier", name, dst.Name)
+	}
+	*dst = fm
+	return nil
 }

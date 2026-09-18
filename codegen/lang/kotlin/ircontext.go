@@ -350,6 +350,9 @@ func (kc *KtIRContext) BlockEnd() string                    { return "}" }
 func (kc *KtIRContext) Indent() string                      { return "\t" }
 
 func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
+	if host, ok := kc.hostValueIdent(n); ok {
+		return host
+	}
 	if kc.IdentRewrites != nil {
 		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
 			return rewritten
@@ -418,15 +421,8 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		return fmt.Sprintf("%q", n.Member)
 	}
 	name := n.Name
-	// A const that *is* a Kotlin identifier -- `StrokeCap.Round`, a property
-	// with no call form at all. The reference resolves to it and nothing is
-	// emitted for the declaration. Ahead of the rewrites and of Resolve: the
-	// names those answer to are this package's, and this one is not.
-	if v, ok := n.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
-		if v.Foreign.Path != "" {
-			kc.RequireImport(v.Foreign.Path)
-		}
-		return v.Foreign.Name
+	if host, ok := kc.hostValueIdent(n); ok {
+		return host
 	}
 	if kc.IdentRewrites != nil {
 		if rewritten, ok := kc.IdentRewrites[name]; ok {
@@ -1374,4 +1370,21 @@ func ReceiverIsUserType(pkg *ir.Package, name string) bool {
 		}
 	}
 	return false
+}
+
+// hostValueIdent resolves a reference to a const or var that *is* a Kotlin
+// identifier -- `StrokeCap.Round`, a property with no call form at all -- to
+// that identifier, and requires its import. Nothing is emitted for the
+// declaration. Asked on the read and the write path both, and ahead of the
+// rewrites and of Resolve in each: the names those answer for are this
+// package's, and this one is not.
+func (kc *KtIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
+	v, ok := n.Sym.(*ir.Var)
+	if !ok || !ir.IsHostValue(v) {
+		return "", false
+	}
+	if v.Foreign.Path != "" {
+		kc.RequireImport(v.Foreign.Path)
+	}
+	return v.Foreign.Name, true
 }
