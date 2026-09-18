@@ -287,6 +287,12 @@ component caption(content ...component span) ui.node {
     }
 }
 
+// Whether a list item is a task, and if so whether it is done. Three states
+// rather than a `bool`, because "not a task at all" is the common one and a
+// flag cannot say it: a checkbox is a thing a markdown list item may have and
+// usually does not.
+enum Task { none, todo, done }
+
 // A list, and one item of one. Their own components rather than a role,
 // because a list is a construct the host has -- `<ul>` announces its length
 // and its position to a screen reader, and a run of text styled with a bullet
@@ -297,24 +303,43 @@ component caption(content ...component span) ui.node {
 // primitive by construction, and these are not, so an override of either
 // inlines the way every `sngl:ui` override does. It is also faithful -- an
 // item of a markdown list holds blocks, so a nested list and a code sample go
-// in one.
+// in one, and the indent accumulates because each list adds its own.
 //
-// The default body is a box with a marker beside it, which is what a target
-// with no list construct should look like anyway.
-component list(ordered bool, start int, items ...component) ui.node {
-    ui.vbox {
+// `ordered` and `start` are for whoever emits a real list; the default body
+// does not read them, because it cannot count.
+component list(ordered bool = false, start int = 1, items ...component) ui.node {
+    ui.vbox(style={gap=4, paddingLeft=20px}) {
         items
     }
 }
 
-// `marker` is the bullet or the number, written by whoever knows the ordinal
-// rather than counted at render time: a platform that emits a real list item
-// ignores it and lets the host number the list, and a platform with no list
-// construct shows it. That is what lets an ordered list be numbered on a
-// target that cannot count.
-component listItem(marker string, content ...component) ui.node {
-    ui.hbox {
-        ui.text(value=marker)
+// One item. `marker` is the bullet or the number, written by whoever knows the
+// ordinal rather than counted at render time: a platform that emits a real
+// list item ignores it and lets the host number the list, and a platform with
+// no list construct shows it. That is what lets an ordered list be numbered on
+// a target that cannot count, and it is how a nested list gets a different
+// bullet from its parent.
+//
+// Empty is the plain bullet. Deriving one per depth from a context is what
+// this wants and is not what it does: a context provider whose value reads the
+// context it overrides does not accumulate, and emits the context name as a
+// bare identifier nothing declares. Until that is fixed, depth is the
+// importer's to know -- which it does, along with the ordinal.
+//
+// `task` replaces the marker with a checkbox, which is what a markdown task
+// list is. It is not interactive: a document describes state rather than
+// holding it, and an application that wants a real checkbox writes one.
+component listItem(
+    marker string = "",
+    task Task = Task.none,
+    content ...component,
+) ui.node {
+    ui.hbox(style={gap=8, alignItems=ui.Alignment.start}) {
+        if task == Task.none {
+            ui.text(value=marker == "" ? "•" : marker)
+        } else {
+            ui.checkbox(checked=task == Task.done, disabled=true)
+        }
         ui.vbox {
             content
         }

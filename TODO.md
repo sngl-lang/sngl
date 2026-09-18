@@ -107,6 +107,9 @@ Every target that a document can reach needs one, or
       ordinary layout: list → `vbox` of `hbox` rows (bullet in a fixed column
       so wrapped lines hang); `thematicBreak` → `ui.divider`; table →
       `ui.table`.
+- [ ] Task list rendering per platform — `listItem(task=)` emits a disabled
+      `ui.checkbox` by default; html wants a real disabled `<input type=checkbox>`
+      inside the `<li>`.
 - [ ] `list` / `listItem` overrides per platform. They are bodied, so a target
       inherits a box with markers beside it; html wants `<ul>`/`<ol>`/`<li>`,
       and since neither hosts the span family an override of either inlines
@@ -159,6 +162,19 @@ Every target that a document can reach needs one, or
 - [ ] Delete this file.
 
 ---
+
+## Blocked on a compiler bug
+
+- [ ] **A context provider that reads the context it overrides is broken.**
+      `depth(depth + 1) { … depth(depth + 1) { … } }` emits `depth + 1` at both
+      levels — no accumulation — and `depth` reaches codegen as a bare
+      identifier nothing declares, so a language target would not compile.
+      Plain providers are fine: `depth(7)` reaches an inlined component as
+      `__ctx_depth__inst1 = 7`. Repro is three lines; it is not a markup bug
+      and wants its own change.
+      Until then `listItem.marker` is written by the importer, which knows the
+      depth the way it knows the ordinal. Fixing it would let a nested list
+      pick its own bullet with no caller involved.
 
 ## Open questions
 
