@@ -17,3 +17,9 @@
 // is one flow. That is also what makes a document extensible: a thing this
 // package cannot express is a `ui.node` placed between two runs rather than a
 // gap in the vocabulary.
+//
+// Text in the family is literal. A space is a space and a newline ends the
+// line, whatever the target, so a run written here renders as it was written
+// and a platform that collapses whitespace is the one that has to stop. That
+// is why there is no line-break component: `"\n"` is one, and a second
+// spelling of it would be a second answer to give.

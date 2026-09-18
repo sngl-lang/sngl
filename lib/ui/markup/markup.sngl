@@ -30,10 +30,24 @@ component richText(
     content ...component span,
 ) std.node
 
-// A literal run of text -- the leaf every other span eventually holds. Named
-// `text` rather than for the package: a program writes `markup.text(...)`,
-// which is the spelling that reads, and a program dot-importing both this
-// package and `sngl:ui` is told about the collision where it wrote it.
+// A literal run of text -- the leaf every other span eventually holds.
+//
+// Literal means every character of it, spaces and newlines included. Two
+// spaces are two spaces and a newline ends the line, on every target, because
+// what an author wrote between the quotes is the one thing a document cannot
+// afford to have a platform reinterpret. Wrapping still happens around that:
+// the run flows to the width it is given, and an explicit newline breaks it
+// wherever it falls.
+//
+// So the collapsing html does to whitespace is html's to undo -- a `pre-wrap`
+// on the run, or the entities and breaks that say the same thing where a style
+// cannot be attached -- and it is codegen's job rather than the author's. The
+// other targets carry the characters through as written.
+//
+// Named `text` rather than for the package: a program writes
+// `markup.text("...")`, which is the spelling that reads, and a program
+// dot-importing both this package and `sngl:ui` is told about the collision
+// where it wrote it.
 component text(value string) span
 
 // The word carries weight. Bold on every platform that has a bold face, and
@@ -93,7 +107,3 @@ component link(href string, content ...component span) span
 // flattens it to its words, which is a thing codegen can do and a thing an
 // author writing the markup cannot undo.
 component image(src string, alt ...component span) span
-
-// A break within one flow: the words continue on the next line and are still
-// the same run. Two flows are two `richText`s.
-component lineBreak() span
