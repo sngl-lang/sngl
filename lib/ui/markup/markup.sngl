@@ -30,7 +30,6 @@ struct span {}
 component richText(
     style ui.Style,
     role Role,
-    level int,
     content ...component span,
 ) ui.node
 
@@ -147,10 +146,48 @@ component image(src string, alt ...component span) span
 // platform implements the one primitive and inherits all of these; there is no
 // per-block override to write and none to forget.
 
-// A section title. `level` is 1 through 6, as in a document outline, and is
-// what the host's own heading element or paragraph style is chosen by.
-component heading(level int, content ...component span) ui.node {
-    richText(role=Role.heading, level=level) {
+// A document's own title -- the one heading a page has at most one of.
+//
+// The six levels are six components rather than one taking a level, for the
+// reason `Role` gives: a level is only ever one of six, and a number can be
+// none of them.
+component heading1(content ...component span) ui.node {
+    richText(role=Role.heading1) {
+        content
+    }
+}
+
+// A section title.
+component heading2(content ...component span) ui.node {
+    richText(role=Role.heading2) {
+        content
+    }
+}
+
+// A subsection title.
+component heading3(content ...component span) ui.node {
+    richText(role=Role.heading3) {
+        content
+    }
+}
+
+// A title below a subsection.
+component heading4(content ...component span) ui.node {
+    richText(role=Role.heading4) {
+        content
+    }
+}
+
+// A title four levels down; rare outside a reference document.
+component heading5(content ...component span) ui.node {
+    richText(role=Role.heading5) {
+        content
+    }
+}
+
+// The deepest title a document outline has.
+component heading6(content ...component span) ui.node {
+    richText(role=Role.heading6) {
         content
     }
 }
@@ -184,5 +221,39 @@ component codeBlock(content ...component span) ui.node {
 component caption(content ...component span) ui.node {
     richText(role=Role.caption) {
         content
+    }
+}
+
+// A list, and one item of one. Their own components rather than a role,
+// because a list is a construct the host has -- `<ul>` announces its length
+// and its position to a screen reader, and a run of text styled with a bullet
+// announces neither.
+//
+// They host nodes and not spans, which is what makes them the two blocks a
+// platform may usefully override: a component hosting the span family is a
+// primitive by construction, and these are not, so an override of either
+// inlines the way every `sngl:ui` override does. It is also faithful -- an
+// item of a markdown list holds blocks, so a nested list and a code sample go
+// in one.
+//
+// The default body is a box with a marker beside it, which is what a target
+// with no list construct should look like anyway.
+component list(ordered bool, start int, items ...component) ui.node {
+    ui.vbox {
+        items
+    }
+}
+
+// `marker` is the bullet or the number, written by whoever knows the ordinal
+// rather than counted at render time: a platform that emits a real list item
+// ignores it and lets the host number the list, and a platform with no list
+// construct shows it. That is what lets an ordered list be numbered on a
+// target that cannot count.
+component listItem(marker string, content ...component) ui.node {
+    ui.hbox {
+        ui.text(value=marker)
+        ui.vbox {
+            content
+        }
     }
 }

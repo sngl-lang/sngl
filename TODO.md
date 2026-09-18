@@ -107,10 +107,11 @@ Every target that a document can reach needs one, or
       ordinary layout: list → `vbox` of `hbox` rows (bullet in a fixed column
       so wrapped lines hang); `thematicBreak` → `ui.divider`; table →
       `ui.table`.
-- [ ] `list` and `listItem` are the two blocks with no semantic component yet.
-      A list needs a real `<ul>`/`<ol>` on html to announce correctly, which is
-      the same argument `Role` answered for headings — decide whether that is a
-      sixth role or a component of its own.
+- [ ] `list` / `listItem` overrides per platform. They are bodied, so a target
+      inherits a box with markers beside it; html wants `<ul>`/`<ol>`/`<li>`,
+      and since neither hosts the span family an override of either inlines
+      like any `sngl:ui` override. The importer writes `marker`, so an ordered
+      list is numbered even where the host cannot count.
 - [ ] Inline mapping — emphasis, strong, delete, link, image, inlineCode, hard
       break (`"\n"`), soft break (the importer decides space or newline).
 - [ ] Syntax highlighting inside a fence: tokenize, emit `token` spans inside a
@@ -161,10 +162,6 @@ Every target that a document can reach needs one, or
 
 ## Open questions
 
-- Does `Role` want a member for a list item, or do lists get a component of
-  their own? See the block-mapping item above.
-- `level` is an `int` on `richText` and is meaningless for every role but
-  `heading`. Live with it, or make the heading level part of the role?
 - Where does the `Token` palette live, and how does an application override it?
   html wants classes and everyone else wants values, so it may not be one kind
   of thing on every target.
