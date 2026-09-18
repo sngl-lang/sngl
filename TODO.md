@@ -36,11 +36,25 @@ set down the nesting, and flatten to a list of runs.
       The second is the `shapes.rect → draw(@draw(e){…})` split; try it first
       and fall back if the context's value cannot be read at lowering time.
 - [ ] `link` and `token` are not style bits — a run carries an optional href
-      and an optional token kind alongside its flags.
+      and an optional token kind alongside its flags. That is also what makes
+      `monospace { link { … } }` and `link { monospace { … } }` render the
+      same: one record carries both, so neither nesting order can win over the
+      other. Verify per target rather than assuming it.
 - [ ] `image` is not a run at all. Decide whether it interrupts the run list
       as its own entry or lowers to a node the platform splices into the flow.
 - [ ] Nested `richText` is not a thing (it is a node, not a span), so the pass
       has one level to walk. Confirm the tree rule already refuses it.
+- [ ] Reactivity is settled and needs no new pattern — confirmed against the
+      canvas, which is the same shape. A reactive canvas lowers to a draw
+      function plus `__canvasRedraw(_canvasDraw0)` appended to the handler that
+      mutates the state, and an `if` inside it becomes a conditional *within*
+      that function rather than a render slot. So a `richText` is one reactive
+      unit: anything its runs read makes the whole run list rebuild. Const
+      inputs fold in the optimizer and the run list is static, which is what
+      lets a documentation page emit literal markup and no script.
+      Open: whether a paragraph-sized rebuild is granular enough, or whether an
+      `if` in a span slot should become a real render slot. Start with the
+      canvas behavior; it is the simpler one and matches the precedent.
 
 ## 2. Platform implementations
 
@@ -60,6 +74,11 @@ Every target that a document can reach needs one, or
       `RichTextStyle` carries underline and strikethrough; if not, a custom
       `RichTextSegment` in `pkg/go/fynert` (a widget implementation, not a
       language gap).
+- [ ] A span behaves the same everywhere, which is a requirement and not an
+      aspiration: a segment list has no inheritance, so fyne needs the run's
+      `richText` style copied into every segment at lowering. Whether that is a
+      fyne-only lowering capability or the flattening always resolving the
+      cascade is the decision; the second keeps one answer for everyone.
 - [ ] **bubbletea** — lipgloss. `image` has to render its description; that is
       the platform answering rather than dropping it.
 - [ ] **android** — `AnnotatedString` + `SpanStyle`, `LinkAnnotation` for href.
@@ -77,13 +96,21 @@ Every target that a document can reach needs one, or
       CommonMark is a large spec and the subset a document needs is not.
 - [ ] `codegen/scheme/markdown`, registered like `file` and `http`, resolving
       `import doc "md:./getting_started.md"`.
-- [ ] Emit SNGL: a `vbox` of `richText` runs interleaved with `ui.node` blocks.
-      One component per document; frontmatter, if any, as consts.
-- [ ] Block mapping — all of it ordinary layout, none of it in the family:
-      paragraph → `richText`; heading → `richText` with a size; blockquote →
-      `vbox` with a rule; list → `vbox` of `hbox` rows (bullet in a fixed
-      column so wrapped lines hang); `thematicBreak` → `ui.divider`; table →
-      `ui.table`; code fence → a code-block node.
+- [ ] Emit SNGL: a `vbox` of block components interleaved with other
+      `ui.node`s. A document is a **package** holding one component and taking
+      **no props** — the use case is documentation, so any SNGL snippet inside
+      it is a logical island and nothing of the host application reaches in.
+      Frontmatter, if any, as consts.
+- [ ] Block mapping — none of it in the family. `paragraph`, `heading`,
+      `quote`, `codeBlock` and `caption` now exist as bodied `ui.node`
+      components carrying a `Role`, so the importer emits those; the rest is
+      ordinary layout: list → `vbox` of `hbox` rows (bullet in a fixed column
+      so wrapped lines hang); `thematicBreak` → `ui.divider`; table →
+      `ui.table`.
+- [ ] `list` and `listItem` are the two blocks with no semantic component yet.
+      A list needs a real `<ul>`/`<ol>` on html to announce correctly, which is
+      the same argument `Role` answered for headings — decide whether that is a
+      sixth role or a component of its own.
 - [ ] Inline mapping — emphasis, strong, delete, link, image, inlineCode, hard
       break (`"\n"`), soft break (the importer decides space or newline).
 - [ ] Syntax highlighting inside a fence: tokenize, emit `token` spans inside a
@@ -134,13 +161,15 @@ Every target that a document can reach needs one, or
 
 ## Open questions
 
-- Does a span inherit the `richText`'s `Style` on every target, or only where
-  the host's inline model has inheritance? A Fyne segment list does not.
-- Should `Token` grow a `plain` member, or is "no token span" the plain case?
-- An imported document is a component — can it take props, so app state reaches
-  an interpolation in the markdown? If so, how does the markdown name them?
-- `monospace` inside a heading, `link` inside `monospace`: legal by the tree,
-  but confirm each target renders the combination rather than the last-set wins.
-- Accessibility beyond `alt`: does a heading emitted as a styled `richText`
-  still announce as a heading? On html that wants a real `<h2>`, which argues
-  the importer should emit a semantic node, not a styled run.
+- Does `Role` want a member for a list item, or do lists get a component of
+  their own? See the block-mapping item above.
+- `level` is an `int` on `richText` and is meaningless for every role but
+  `heading`. Live with it, or make the heading level part of the role?
+- Where does the `Token` palette live, and how does an application override it?
+  html wants classes and everyone else wants values, so it may not be one kind
+  of thing on every target.
+- Does a platform ever need to override a block component after all? They are
+  bodied so it is optional, but `hostsTree` makes a span-hosting component a
+  primitive, so an override would not inline — meaning the answer has to be a
+  richer `Role`, not an override. Worth confirming against a real platform
+  before the vocabulary is fixed.

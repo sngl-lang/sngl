@@ -17,18 +17,38 @@ struct span {}
 // without being one, and the flow wraps as a whole: a line break falls
 // wherever the words put it, not at the edge of a child.
 //
-// `style` applies to the run -- its size, color, alignment and font. A span
-// inside says what is different about its own words and inherits the rest, so
-// setting a size on a `bold` is not how a heading is written: a heading is a
-// `richText` with a size and a `bold` inside it.
+// `role` says what the run is for and `style` says what it looks like. The
+// first is the one to reach for: a platform that has headings emits one, with
+// the host's own typography, and `style` is how an author says something
+// different from that. A span inside says what is different about its own
+// words and inherits the rest.
 //
-// One run is one paragraph. A document is a `vbox` of these, which is what
-// leaves room between them for the parts of a document this family does not
-// describe.
+// One run is one paragraph. A document is a `vbox` of these -- usually of the
+// block components at the foot of this file, which are each a `richText` with
+// its role already set -- and what goes between them is everything a document
+// holds that this family does not describe.
 component richText(
     style ui.Style,
+    role Role,
+    level int,
     content ...component span,
 ) ui.node
+
+// What a run of text is *for*, as opposed to what it looks like.
+//
+// A platform answers it however its host does: html emits the element the
+// role names, so a heading announces as one and a quote is quoted; fyne has a
+// paragraph style per role; a terminal has the styling and none of the
+// semantics. Which is the reason this is a prop on the one primitive rather
+// than a component per role -- a component hosting the span family is a
+// primitive by construction (`hostsTree`), so an override of one would not
+// inline and would land on an emitter that has never heard of it. As a prop it
+// reaches every emitter through the node they already render.
+//
+// It also carries the styling. A platform that emits a real heading gets the
+// host's own typography for free and an author who wants different says so
+// with `style`, which is the direction that leaves the default right.
+enum Role { paragraph, heading, quote, code, caption }
 
 // A literal run of text -- the leaf every other span eventually holds.
 //
@@ -82,17 +102,23 @@ component monospace(content ...component span) span
 // drawing: a CSS class on html, a theme color name on fyne, an ANSI pair in a
 // terminal, a Pango foreground on gtk4.
 //
-// The set is deliberately small -- what every syntax theme distinguishes, and
-// no more. A highlighter with a finer vocabulary maps down to these, which is
-// the direction that loses nothing a reader can see.
-enum Token { keyword, type, function, variable, constant, string, number, comment, operator, punctuation }
+// `plain` is the default and is what a run that is code but is nothing in
+// particular gets: whitespace, an identifier a tokenizer did not classify, the
+// whole of a fence whose language nobody highlights. Written rather than left
+// out, so a highlighter says "this is plain" and a reader of the tree is never
+// asked to tell that from a missing span.
+//
+// The set is otherwise deliberately small -- what every syntax theme
+// distinguishes, and no more. A highlighter with a finer vocabulary maps down
+// to these, which is the direction that loses nothing a reader can see.
+enum Token { plain, keyword, type, function, variable, constant, string, number, comment, operator, punctuation }
 
 // The content is a run of code of this kind. Written inside a `monospace`,
 // which is what says it is code at all; this says which part of it.
 component token(kind Token, content ...component span) span
 
 // The words lead somewhere. `href` takes the same URL a `ui.link` does, and
-// the content is spans, so a link may be emphasised and emphasis may be
+// the content is spans, so a link may be emphasized and emphasis may be
 // linked.
 component link(href string, content ...component span) span
 
@@ -107,3 +133,56 @@ component link(href string, content ...component span) span
 // flattens it to its words, which is a thing codegen can do and a thing an
 // author writing the markup cannot undo.
 component image(src string, alt ...component span) span
+
+// --- Document blocks ---
+//
+// Ordinary `ui.node` components with bodies, not members of the family: a
+// document is a `vbox` of these, and each is a `richText` that says what it
+// is. They are here rather than in an application because the semantic is not
+// a style an author should have to remember -- `heading(level=2)` announces as
+// a heading on the targets that have the concept, and is a bold larger line on
+// the ones that do not.
+//
+// Bodied on purpose. Each composes away into the `richText` it wraps, so a
+// platform implements the one primitive and inherits all of these; there is no
+// per-block override to write and none to forget.
+
+// A section title. `level` is 1 through 6, as in a document outline, and is
+// what the host's own heading element or paragraph style is chosen by.
+component heading(level int, content ...component span) ui.node {
+    richText(role=Role.heading, level=level) {
+        content
+    }
+}
+
+// A run of prose -- the block a paragraph of a document becomes, and the
+// default.
+component paragraph(content ...component span) ui.node {
+    richText(role=Role.paragraph) {
+        content
+    }
+}
+
+// Words quoted from somewhere else.
+component quote(content ...component span) ui.node {
+    richText(role=Role.quote) {
+        content
+    }
+}
+
+// A code sample on its own, as opposed to a `monospace` run inside a
+// sentence. Its content is spans, so it holds the `token` spans a highlighter
+// produced; its whitespace is literal like every other run.
+component codeBlock(content ...component span) ui.node {
+    richText(role=Role.code) {
+        content
+    }
+}
+
+// A caption: what the thing above or below it is. Smaller and quieter than
+// prose on every host that distinguishes them.
+component caption(content ...component span) ui.node {
+    richText(role=Role.caption) {
+        content
+    }
+}
