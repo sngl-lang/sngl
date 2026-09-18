@@ -791,7 +791,7 @@ ConstDecl =
     "const" ConstSpec
     | "const" "(" { ConstSpec [ "," | ";" ] } ")"
 
-ConstSpec = IdentList [ Type ] "=" Expr
+ConstSpec = IdentList [ Type ] [ "=" Expr ]
 
 IdentList = IDENT { "," IDENT }
 
@@ -1680,7 +1680,7 @@ ConstDecl =
     "const" ConstSpec
     | "const" "(" { ConstSpec [ "," | ";" ] } ")"
 
-ConstSpec = IdentList [ Type ] "=" Expr
+ConstSpec = IdentList [ Type ] [ "=" Expr ]
 
 IdentList = IDENT { "," IDENT }
 

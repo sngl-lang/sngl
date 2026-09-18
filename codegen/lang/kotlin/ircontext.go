@@ -418,6 +418,16 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		return fmt.Sprintf("%q", n.Member)
 	}
 	name := n.Name
+	// A const that *is* a Kotlin identifier -- `StrokeCap.Round`, a property
+	// with no call form at all. The reference resolves to it and nothing is
+	// emitted for the declaration. Ahead of the rewrites and of Resolve: the
+	// names those answer to are this package's, and this one is not.
+	if v, ok := n.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
+		if v.Foreign.Path != "" {
+			kc.RequireImport(v.Foreign.Path)
+		}
+		return v.Foreign.Name
+	}
 	if kc.IdentRewrites != nil {
 		if rewritten, ok := kc.IdentRewrites[name]; ok {
 			return rewritten
@@ -448,12 +458,6 @@ func (kc *KtIRContext) nativeCall(n *ir.Call) (string, bool) {
 		kc.RequireImport(n.Func.Foreign.Path)
 	}
 	name := n.Func.Foreign.Name
-	// `value` says the identifier is read rather than called:
-	// `StrokeCap.Round` is a property, and the parens a call would write make
-	// Kotlin look for an `invoke()` it has none of.
-	if n.Func.NativeValue {
-		return name, true
-	}
 	args := kc.evalCallArgs(n.Args)
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + ktMethodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true

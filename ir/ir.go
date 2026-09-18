@@ -428,12 +428,6 @@ type Func struct {
 	// defaults in the middle of its parameter list needs it -- reaching a
 	// later one positionally means supplying every default before it.
 	NativeNamedArgs bool `json:",omitempty"`
-	// NativeValue is the `value` flag: the host identifier is a value, not
-	// something to call. A host constant is reachable only this way --
-	// Kotlin's `StrokeCap.Round` is a property and `Math.PI` is a field --
-	// and a declaration has to be a func to be *called*, so the shape says
-	// nothing and the flag does. Such a declaration takes no parameters.
-	NativeValue bool `json:",omitempty"`
 	// NativeSchedules is the `schedules` flag: the host identifier invokes a
 	// callback it is handed from the loop it owns, rather than inline on the
 	// caller's thread. On a target that draws on one thread that loop *is* the

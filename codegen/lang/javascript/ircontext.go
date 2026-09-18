@@ -427,6 +427,16 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	if _, ok := n.Sym.(*ir.Component); ok {
 		return "state"
 	}
+	// A const that *is* a JavaScript identifier -- `Math.PI`, a property whose
+	// call form is a TypeError rather than a compile error. The reference
+	// resolves to it and nothing is emitted for the declaration.
+	if v, ok := n.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
+		if v.Foreign.Path != "" {
+			jc.registerNativeImport(v.Foreign.Path, v.Foreign.Name)
+			return codegen.NativeAlias(v.Foreign.Path) + "." + v.Foreign.Name
+		}
+		return v.Foreign.Name
+	}
 	name := n.Name
 	if jc.EventVar != "" && jc.EventParam != nil && n.Sym == jc.EventParam {
 		return jc.EventVar
@@ -567,14 +577,6 @@ func (jc *JsIRContext) evalNativeCall(n *ir.Call) string {
 	// recorded so the platform can ask; nothing here knows which names matter.
 	if jc.Ctx != nil && jc.Ctx.Helpers != nil {
 		jc.Ctx.Helpers["native:"+name] = true
-	}
-	// `value` says the identifier is read rather than called -- `Math.PI` is
-	// a property, and calling it is a TypeError rather than a compile error.
-	if n.Func.NativeValue {
-		if bundled {
-			return codegen.NativeAlias(mod) + "." + name
-		}
-		return name
 	}
 	args := jc.evalCallArgs(n.Args)
 	var call string

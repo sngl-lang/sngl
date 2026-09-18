@@ -70,44 +70,44 @@ struct StrokeCap {}
 #[kt.native("androidx.compose.ui.graphics.StrokeJoin")]
 struct StrokeJoin {}
 
-#[kt.native("androidx.compose.ui.graphics.StrokeCap.Butt", "", value)]
-func capButt() StrokeCap
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Butt")]
+const capButt StrokeCap
 
-#[kt.native("androidx.compose.ui.graphics.StrokeCap.Round", "", value)]
-func capRound() StrokeCap
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Round")]
+const capRound StrokeCap
 
-#[kt.native("androidx.compose.ui.graphics.StrokeCap.Square", "", value)]
-func capSquare() StrokeCap
+#[kt.native("androidx.compose.ui.graphics.StrokeCap.Square")]
+const capSquare StrokeCap
 
-#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Miter", "", value)]
-func joinMiter() StrokeJoin
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Miter")]
+const joinMiter StrokeJoin
 
-#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Round", "", value)]
-func joinRound() StrokeJoin
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Round")]
+const joinRound StrokeJoin
 
-#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Bevel", "", value)]
-func joinBevel() StrokeJoin
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin.Bevel")]
+const joinBevel StrokeJoin
 
 // The names are SNGL's and the values Compose's, the same mapping gtk4 writes
 // for cairo's enums.
 func strokeCap(name string) StrokeCap {
     if name == "round" {
-        return capRound()
+        return capRound
     }
     if name == "square" {
-        return capSquare()
+        return capSquare
     }
-    return capButt()
+    return capButt
 }
 
 func strokeJoin(name string) StrokeJoin {
     if name == "round" {
-        return joinRound()
+        return joinRound
     }
     if name == "bevel" {
-        return joinBevel()
+        return joinBevel
     }
-    return joinMiter()
+    return joinMiter
 }
 
 func strokeStyle(style shapes.CanvasStyle) DrawStyle {

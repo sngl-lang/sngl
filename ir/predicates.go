@@ -254,3 +254,13 @@ func ComponentSelfRefs(comp *Component) bool {
 	})
 	return found
 }
+
+// IsHostValue reports whether v is a const that *is* a host identifier: a
+// `#[<lang>.native]` mark naming `math.Pi`, `StrokeCap.Round`, `Math.PI`.
+//
+// The declaration is never emitted and every reference resolves to the host
+// name, which is the rule a native func already follows. Unmarked, the way
+// Foreign says "this is the host's own and not a name to spell beside it".
+func IsHostValue(v *Var) bool {
+	return v != nil && v.IsConst && v.Foreign.Name != "" && !v.Foreign.Marked
+}

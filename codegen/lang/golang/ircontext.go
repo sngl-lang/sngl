@@ -730,6 +730,16 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if v, ok := n.Sym.(*ir.Var); ok && v.NodeHandle {
 		return gc.RecvName() + "." + name
 	}
+	// A const that *is* a Go identifier: the reference resolves to it, and
+	// nothing is emitted for the declaration. Ahead of Resolve for the reason
+	// the handle above is -- the name it answers to is this package's, and
+	// this one is not.
+	if v, ok := n.Sym.(*ir.Var); ok && ir.IsHostValue(v) {
+		if v.Foreign.Path != "" {
+			gc.RequireImport(v.Foreign.Path)
+		}
+		return v.Foreign.Name
+	}
 	if n.IsElementRef && n.Synthesized {
 		return gc.RecvName() + "." + name
 	}
@@ -903,12 +913,6 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 			gc.RequireImport("context")
 		}
 		args = append([]string{ctxVar}, args...)
-	}
-	// `value` says the identifier is read rather than called -- a host
-	// constant such as `math.Pi`, which is not a function and has no call
-	// form at all.
-	if n.Func.NativeValue {
-		return name, true
 	}
 	// `method` says the identifier is invoked on its first argument rather
 	// than handed it: `c.Circle(1, 2)` where the default is

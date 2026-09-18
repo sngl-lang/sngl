@@ -81,11 +81,7 @@ func async() ir.Macro
 // is inferred from a foreign declaration at all: its SNGL body describes the
 // identifier and does not implement it, so nothing in the program says when the
 // host runs an argument.
-// `value` says the identifier is a value rather than something to call: a
-// constant, a property, a field. A declaration has to be a func for a program
-// to read it at all, so its shape cannot say this. Such a declaration takes no
-// parameters and returns the value's type.
-enum NativeFlag { fails, method, schedules, value }
+enum NativeFlag { fails, method, schedules }
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result

@@ -2787,12 +2787,13 @@ state4:
 
 // ConstSpec grammar:
 //
-//	ConstSpec = IdentList [ Type ] assign Expr .
+//	ConstSpec = IdentList [ Type ] [ assign Expr ] .
 //
 //	State 0
 //		on  ident
 //			call IdentList and goto state 1
 //	State 1
+//		Accept
 //		on  assign
 //			shift and goto state 2
 //		on  ellipsis, ident, kw_component, kw_enum, kw_func, kw_struct, kw_unit
@@ -2803,6 +2804,7 @@ state4:
 //	State 3
 //		Accept
 //	State 4
+//		Accept
 //		on  assign
 //			shift and goto state 2
 //
@@ -2819,7 +2821,7 @@ func (p *Parser) ConstSpec() (r []int32) {
 	}
 	return p.stop(r, accept, errorSet)
 state1:
-	accept, errorSet = false, 66
+	accept, errorSet = true, 66
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		r = append(r, p.shift())
@@ -2841,7 +2843,7 @@ state3:
 	accept, errorSet = true, 0
 	return p.stop(r, accept, errorSet)
 state4:
-	accept, errorSet = false, 89
+	accept, errorSet = true, 89
 	switch Symbol(p.tok.Ch) {
 	case assign:
 		r = append(r, p.shift())
