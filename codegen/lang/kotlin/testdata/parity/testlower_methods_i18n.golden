@@ -23,7 +23,7 @@ class MainScreenTest {
         composeRule.setContent { MainScreen(c) }
         org.junit.Assert.assertTrue("(c.count == 0)", (c.count == 0))
         org.junit.Assert.assertTrue("(c.label() != \"\")", (c.label() != ""))
-        val msg = I18n.getTranslator().tr("Saved at {arg0, plural, one{# entry} other{# entries}}", "Saved at {arg0, plural, one{# entry} other{# entries}}", mapOf("arg0" to c.count))
+        var msg = I18n.getTranslator().tr("Saved at {arg0, plural, one{# entry} other{# entries}}", "Saved at {arg0, plural, one{# entry} other{# entries}}", mapOf("arg0" to c.count))
         org.junit.Assert.assertTrue("(msg != \"\")", (msg != ""))
     }
 
@@ -44,7 +44,7 @@ fun testFieldMethodAndI18n(t: T) {
     val c = __snglTestComponent
     t.assertTrue((c.count == 0), "(c.count == 0)")
     t.assertTrue((c.label() != ""), "(c.label() != \"\")")
-    val msg = I18n.getTranslator().tr("Saved at {arg0, plural, one{# entry} other{# entries}}", "Saved at {arg0, plural, one{# entry} other{# entries}}", mapOf("arg0" to c.count))
+    var msg = I18n.getTranslator().tr("Saved at {arg0, plural, one{# entry} other{# entries}}", "Saved at {arg0, plural, one{# entry} other{# entries}}", mapOf("arg0" to c.count))
     t.assertTrue((msg != ""), "(msg != \"\")")
 }
 

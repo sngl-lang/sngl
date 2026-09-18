@@ -84,14 +84,18 @@ func lowerTestFileFixture(t *testing.T, path string) string {
 		t.Fatal("nil pkg")
 	}
 	fns, suffixes, methodFields := codegen.CollectTestFuncs(pkg)
+	surf := kotlin.TestSurface{
+		MethodFields: methodFields,
+		StateFields:  codegen.StateFieldNames(pkg),
+	}
 	if len(fns) == 0 {
 		t.Fatal("fixture has no test funcs")
 	}
 	const pkgName = "us.duckfam.sngl.app"
 	var out strings.Builder
 	out.WriteString("// ==== TestEmitNative (robolectric) ====\n")
-	out.WriteString(kotlin.LowerTestFile(pkgName, fns, suffixes, methodFields, kotlin.TestEmitNative, "robolectric"))
+	out.WriteString(kotlin.LowerTestFile(pkgName, fns, suffixes, surf, kotlin.TestEmitNative, "robolectric"))
 	out.WriteString("\n// ==== TestEmitAgent ====\n")
-	out.WriteString(kotlin.LowerTestFile(pkgName, fns, suffixes, methodFields, kotlin.TestEmitAgent, ""))
+	out.WriteString(kotlin.LowerTestFile(pkgName, fns, suffixes, surf, kotlin.TestEmitAgent, ""))
 	return out.String()
 }

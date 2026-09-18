@@ -313,6 +313,10 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 //     relocates these into a generated project.
 func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
+	surf := kotlin.TestSurface{
+		MethodFields: methodFields,
+		StateFields:  codegen.StateFieldNames(req.Pkg),
+	}
 	if len(testFns) == 0 {
 		return nil
 	}
@@ -321,7 +325,7 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 	if agent {
 		mode = kotlin.TestEmitAgent
 	}
-	src := kotlin.LowerTestFile(cfg.Package, testFns, suffixes, methodFields, mode, cfg.TestRunner)
+	src := kotlin.LowerTestFile(cfg.Package, testFns, suffixes, surf, mode, cfg.TestRunner)
 
 	if !agent {
 		// Native: target gradle test sourceset (robolectric) or
