@@ -44,9 +44,12 @@ component richText(
 // inline and would land on an emitter that has never heard of it. As a prop it
 // reaches every emitter through the node they already render.
 //
-// It also carries the styling. A platform that emits a real heading gets the
-// host's own typography for free and an author who wants different says so
-// with `style`, which is the direction that leaves the default right.
+// Meaning only -- the appearance is `style`, set beside it by whichever block
+// component wrapped this run. Leaving the typography to each platform's
+// reading of the role was the alternative, and it makes a new target look
+// wrong until it has implemented six heading sizes; setting it here means a
+// target implements escaping and inherits a document that reads correctly.
+// A host that has its own idea about a heading is free to let the role win.
 enum Role { paragraph, heading, quote, code, caption }
 
 // A literal run of text -- the leaf every other span eventually holds.
@@ -69,28 +72,77 @@ enum Role { paragraph, heading, quote, code, caption }
 // where it wrote it.
 component text(value string) span
 
-// The word carries weight. Bold on every platform that has a bold face, and
-// a platform that cannot vary the face has to say what it does instead.
-component bold(content ...component span) span
+// A run of text and what is true of its appearance -- the one span that
+// carries style, and what every wrapper below is written in terms of.
+//
+// `style` says what `ui.Style` has a word for: weight, slant, family, size,
+// color, alignment. `underline` and `strike` are props because it does not --
+// there is no `textDecoration` field, and inventing one would add a property
+// to every component in the language to serve two spans.
+//
+// Nothing about a run says what it *means*. `token` says that for code and
+// `role` says it for a whole flow; this is appearance, and a document that
+// reaches for it directly is saying it wants those exact letters rather than
+// what the wrappers name.
+component run(
+    style ui.Style,
+    underline bool,
+    strike bool,
+    content ...component span,
+) span
+
+// --- The named weights and faces ---
+//
+// Each is a `run` with one thing set, which is what makes them worth having:
+// a document says `bold` and means the word carries weight, and the one place
+// that decides what carrying weight looks like is here.
+//
+// Convenience, not override points. A span-hosting component is a primitive by
+// construction (`hostsTree`), so these compose away into the `run` they wrap
+// but a platform *override* of one would not inline -- a target that needs to
+// do something particular about bold does it in its `run` emitter, reading the
+// style it was handed.
+
+// The word carries weight.
+component bold(content ...component span) span {
+    run(style={fontWeight=ui.FontWeight.bold}) {
+        content
+    }
+}
 
 // The word is slanted, using the family's italic face where one exists.
-component italic(content ...component span) span
+component italic(content ...component span) span {
+    run(style={fontStyle=ui.FontStyle.italic}) {
+        content
+    }
+}
 
 // A rule under the words.
-component underline(content ...component span) span
+component underline(content ...component span) span {
+    run(underline=true) {
+        content
+    }
+}
 
 // A rule through the words: text that was there and is not any more.
-component strike(content ...component span) span
+component strike(content ...component span) span {
+    run(strike=true) {
+        content
+    }
+}
 
-// A run set in a monospaced face -- an identifier, a flag, a filename, a
-// line of a code sample. Monospaced where the platform has such a face, and
-// distinguished some other way where it does not.
+// A run set in a monospaced face -- an identifier, a flag, a filename, a line
+// of a code sample.
 //
 // Its content is spans rather than a string, which is what makes a highlighted
 // code sample writable: the coloring is `token` spans inside this one. A leaf
 // taking a string could only ever be one color, so the two decisions are the
 // same decision.
-component monospace(content ...component span) span
+component monospace(content ...component span) span {
+    run(style={fontFamily="monospace"}) {
+        content
+    }
+}
 
 // What a run of code *is*, for a platform to color as it sees fit.
 //
@@ -142,6 +194,11 @@ component image(src string, alt ...component span) span
 // a heading on the targets that have the concept, and is a bold larger line on
 // the ones that do not.
 //
+// Each sets both halves: a `role`, which is what the block means, and a
+// `style`, which is what it looks like where the host has no opinion. The
+// sizes are the ones a document outline wants rather than any platform's, and
+// an author who disagrees wraps `richText` directly.
+//
 // Bodied on purpose. Each composes away into the `richText` it wraps, so a
 // platform implements the one primitive and inherits all of these; there is no
 // per-block override to write and none to forget.
@@ -152,42 +209,42 @@ component image(src string, alt ...component span) span
 // reason `Role` gives: a level is only ever one of six, and a number can be
 // none of them.
 component heading1(content ...component span) ui.node {
-    richText(role=Role.heading1) {
+    richText(role=Role.heading1, style={fontSize=32px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A section title.
 component heading2(content ...component span) ui.node {
-    richText(role=Role.heading2) {
+    richText(role=Role.heading2, style={fontSize=26px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A subsection title.
 component heading3(content ...component span) ui.node {
-    richText(role=Role.heading3) {
+    richText(role=Role.heading3, style={fontSize=21px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A title below a subsection.
 component heading4(content ...component span) ui.node {
-    richText(role=Role.heading4) {
+    richText(role=Role.heading4, style={fontSize=18px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // A title four levels down; rare outside a reference document.
 component heading5(content ...component span) ui.node {
-    richText(role=Role.heading5) {
+    richText(role=Role.heading5, style={fontSize=16px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
 
 // The deepest title a document outline has.
 component heading6(content ...component span) ui.node {
-    richText(role=Role.heading6) {
+    richText(role=Role.heading6, style={fontSize=14px, fontWeight=ui.FontWeight.bold}) {
         content
     }
 }
@@ -202,7 +259,7 @@ component paragraph(content ...component span) ui.node {
 
 // Words quoted from somewhere else.
 component quote(content ...component span) ui.node {
-    richText(role=Role.quote) {
+    richText(role=Role.quote, style={fontStyle=ui.FontStyle.italic, paddingLeft=12px, borderLeft="3px solid #CCCCCC"}) {
         content
     }
 }
@@ -210,16 +267,22 @@ component quote(content ...component span) ui.node {
 // A code sample on its own, as opposed to a `monospace` run inside a
 // sentence. Its content is spans, so it holds the `token` spans a highlighter
 // produced; its whitespace is literal like every other run.
+//
+// It wraps them in `monospace` itself, because a code block is monospaced by
+// being one -- a caller that had to say so could forget to, and a highlighter
+// emitting token spans has no reason to know it is being rendered as a block.
 component codeBlock(content ...component span) ui.node {
-    richText(role=Role.code) {
-        content
+    richText(role=Role.code, style={padding=12px, background=#F5F5F5, borderRadius=4px}) {
+        monospace {
+            content
+        }
     }
 }
 
 // A caption: what the thing above or below it is. Smaller and quieter than
 // prose on every host that distinguishes them.
 component caption(content ...component span) ui.node {
-    richText(role=Role.caption) {
+    richText(role=Role.caption, style={fontSize=13px, color=#666666}) {
         content
     }
 }
