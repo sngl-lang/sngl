@@ -1,4 +1,4 @@
-import std "sngl:ui"
+import ui "sngl:ui"
 import tree "sngl:tree"
 
 // The tree the inline pieces form. Declaring it here is what makes `span` a
@@ -17,7 +17,7 @@ struct span {}
 // without being one, and the flow wraps as a whole: a line break falls
 // wherever the words put it, not at the edge of a child.
 //
-// `style` applies to the run -- its size, colour, alignment and font. A span
+// `style` applies to the run -- its size, color, alignment and font. A span
 // inside says what is different about its own words and inherits the rest, so
 // setting a size on a `bold` is not how a heading is written: a heading is a
 // `richText` with a size and a `bold` inside it.
@@ -26,9 +26,9 @@ struct span {}
 // leaves room between them for the parts of a document this family does not
 // describe.
 component richText(
-    style std.Style,
+    style ui.Style,
     content ...component span,
-) std.node
+) ui.node
 
 // A literal run of text -- the leaf every other span eventually holds.
 //
@@ -68,18 +68,18 @@ component strike(content ...component span) span
 // distinguished some other way where it does not.
 //
 // Its content is spans rather than a string, which is what makes a highlighted
-// code sample writable: the colouring is `token` spans inside this one. A leaf
-// taking a string could only ever be one colour, so the two decisions are the
+// code sample writable: the coloring is `token` spans inside this one. A leaf
+// taking a string could only ever be one color, so the two decisions are the
 // same decision.
 component monospace(content ...component span) span
 
-// What a run of code *is*, for a platform to colour as it sees fit.
+// What a run of code *is*, for a platform to color as it sees fit.
 //
-// Semantic rather than a colour, because the alternative does not survive the
+// Semantic rather than a color, because the alternative does not survive the
 // trip. A document that names #7DAEA3 is unreadable on a light theme and
-// approximate on a terminal with sixteen colours, and it overrides an
+// approximate on a terminal with sixteen colors, and it overrides an
 // application that had its own palette. A kind is answered by whoever is
-// drawing: a CSS class on html, a theme colour name on fyne, an ANSI pair in a
+// drawing: a CSS class on html, a theme color name on fyne, an ANSI pair in a
 // terminal, a Pango foreground on gtk4.
 //
 // The set is deliberately small -- what every syntax theme distinguishes, and
@@ -91,7 +91,7 @@ enum Token { keyword, type, function, variable, constant, string, number, commen
 // which is what says it is code at all; this says which part of it.
 component token(kind Token, content ...component span) span
 
-// The words lead somewhere. `href` takes the same URL a `std.link` does, and
+// The words lead somewhere. `href` takes the same URL a `ui.link` does, and
 // the content is spans, so a link may be emphasised and emphasis may be
 // linked.
 component link(href string, content ...component span) span
