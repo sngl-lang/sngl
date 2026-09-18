@@ -1008,9 +1008,16 @@ func IRTypeToKt(t *ir.Type) string {
 		}
 		return "Any?"
 	case ir.TypeStruct:
-		// color/date/time/datetime are string-representable stdlib structs;
-		// the Kotlin runtime carries them as String (date/time/datetime are
-		// quoted ISO strings, matching their literal emission).
+		// A color is the emitted Color data class, matching the
+		// `Color(r=…, g=…, b=…, a=…)` every color *value* already renders as
+		// and what `color.hex` and composeColorExpr read. Answering String
+		// here left a signature disagreeing with the values crossing it.
+		if ir.IsColorStruct(t) {
+			return colorKtType
+		}
+		// date/time/datetime are string-representable stdlib structs; the
+		// Kotlin runtime carries them as String (quoted ISO strings, matching
+		// their literal emission).
 		if ir.StringReprStruct(t) {
 			return "String"
 		}
@@ -1268,4 +1275,25 @@ const SplitDecl = `fun ` + SplitFn + `(s: String, sep: String): List<String> =
 
 const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
+`
+
+// colorKtType names the Kotlin class SNGL's `color` is carried as, and
+// ColorDecl is its declaration -- the counterpart of Go's
+// pkg/go/snglcolor.Color. Channels are Int, not the UByte the SNGL
+// declaration's uint8 would give, so that the stdlib helpers (color.rgb,
+// color.lighten, ...) and Compose's own Int channel constructor both reach it
+// without a conversion per channel.
+const colorKtType = "Color"
+
+// toString mirrors snglcolor.Color.String: a colour is its complete value, so
+// a translucent one keeps its alpha rather than printing as an opaque one.
+const ColorDecl = `data class ` + colorKtType + `(
+    var r: Int = 0,
+    var g: Int = 0,
+    var b: Int = 0,
+    var a: Int = 255
+) {
+    override fun toString(): String =
+        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+}
 `

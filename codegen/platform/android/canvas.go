@@ -8,6 +8,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
+	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -361,18 +362,16 @@ func (cc *irComposeContext) emitCanvasIntrinsic(call *ir.Call) {
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib
-// structs (Color/CanvasStyle/PathCmd) plus the SNGL-color→Compose-Color helper.
+// structs (CanvasStyle/PathCmd) plus the SNGL-color→Compose-Color helper.
 // These structs are stdlib-only and aren't carried on pkg.Structs, so — like
 // canvasutil does for the Go platforms — they're materialized here. declared is
 // the set of user-declared struct names (data classes already emitted) so a
 // collision drops just that one decl.
+//
+// Color is not among them: a canvas is one of two ways a program reaches the
+// color type, so it is emitted by colorKotlinDecl for both.
 func canvasKotlinDecls(declared map[string]struct{}) string {
 	var b strings.Builder
-	if _, ok := declared["Color"]; !ok {
-		b.WriteString("data class Color(\n")
-		b.WriteString("    var r: Int = 0,\n    var g: Int = 0,\n    var b: Int = 0,\n    var a: Int = 255\n")
-		b.WriteString(")\n\n")
-	}
 	if _, ok := declared["CanvasStyle"]; !ok {
 		b.WriteString("data class CanvasStyle(\n")
 		b.WriteString("    var fill: Color = Color(a = 0),\n")
@@ -393,9 +392,6 @@ func canvasKotlinDecls(declared map[string]struct{}) string {
 		b.WriteString("    var r: Double = 0.0\n")
 		b.WriteString(")\n\n")
 	}
-	// SNGL color{r,g,b,a} 0..255 → Compose ComposeColor(red,green,blue,alpha)
-	// (the Int overload takes 0..255 channels).
-
 	// Two DrawScope extensions the shape overrides call, for the drawing this
 	// platform cannot describe with a native declaration: text goes through a
 	// `Paint` built by an `apply` block and reached by chained property
@@ -436,3 +432,26 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
 }
 
 `
+
+// colorKotlinDecl returns the Color data class, or "" when the program
+// declares a struct of that name itself -- that one is emitted from
+// info.Structs and is what every reference resolves to.
+func colorKotlinDecl(declared map[string]struct{}) string {
+	if _, ok := declared["Color"]; ok {
+		return ""
+	}
+	return kotlin.ColorDecl + "\n"
+}
+
+// namesColor reports whether the built-in color type reached this package's
+// struct list -- promoteForeignStructs puts it there when a function this
+// build emits names it in its signature, which is the one way a program
+// reaches the type without drawing.
+func namesColor(structs []*ir.StructDef) bool {
+	for _, sd := range structs {
+		if sd.Builtin == ir.BuiltinColor {
+			return true
+		}
+	}
+	return false
+}

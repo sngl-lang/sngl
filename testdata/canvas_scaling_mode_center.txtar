@@ -457,7 +457,10 @@ data class Color(
     var g: Int = 0,
     var b: Int = 0,
     var a: Int = 255
-)
+) {
+    override fun toString(): String =
+        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+}
 
 data class CanvasStyle(
     var fill: Color = Color(a = 0),

@@ -473,20 +473,37 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// nothing.
 	body.WriteString(kotlin.EmitUnitDataClasses(info.Units))
 
-	// Data classes
+	// Data classes. The built-in `color` is skipped: it is carried as
+	// kotlin.ColorDecl below, whose channels are Int rather than the UByte
+	// its uint8 fields would give -- which is what the stdlib helpers pass and
+	// what Compose's own channel constructor takes. Emitting the declaration
+	// too left two `data class Color` in one file.
+	declaredStructs := map[string]struct{}{}
 	for _, sd := range info.Structs {
+		if sd.Builtin == ir.BuiltinColor {
+			continue
+		}
+		declaredStructs[exportName(sd.Name)] = struct{}{}
 		fmt.Fprintf(&body, "data class %s(\n", exportName(sd.Name))
 		for i, f := range sd.Fields {
 			ktType := kotlin.IRTypeToKt(f.Type)
 			def := ""
 			if f.Default != nil {
-				// A literal default is emitted as written. Anything else is
-				// an expression a data class header cannot hold — `false` is
-				// a constant declaration whose own initializer is `0 != 0` —
-				// so the field takes the type's Kotlin zero.
+				// A literal default is emitted as written, and so is a struct
+				// literal of them -- `fill color = color{a=0}` is the one
+				// CanvasStyle writes, and a transparent fill is not the type's
+				// zero. Anything else is an expression a data class header
+				// cannot hold — `false` is a constant declaration whose own
+				// initializer is `0 != 0` — so the field takes the type's
+				// Kotlin zero.
 				lit := kotlin.KtZeroFor(f.Type)
-				if _, isLit := f.Default.(*ir.Literal); isLit {
+				switch d := f.Default.(type) {
+				case *ir.Literal:
 					if s := kotlin.IRLiteralToKt(f.Default); s != "" {
+						lit = s
+					}
+				case *ir.StructLit:
+					if s := literalStructLit(d); s != "" {
 						lit = s
 					}
 				}
@@ -501,20 +518,24 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString(")\n\n")
 	}
 
-	// Canvas2D stdlib structs (Color/CanvasStyle/PathCmd) + color helper.
-	// Stdlib-only structs aren't carried on pkg.Structs, so materialize them
-	// here (analogous to canvasutil for the Go platforms) whenever the
-	// program contains a canvas. ComposeColor is the aliased framework color
-	// import; Color is our SNGL `color` data class.
-	if packageHasCanvas(ctx.Pkg) {
-		declared := map[string]struct{}{}
-		for _, sd := range info.Structs {
-			switch sd.Name {
-			case "Color", "CanvasStyle", "PathCmd":
-				declared[exportName(sd.Name)] = struct{}{}
-			}
-		}
-		body.WriteString(canvasKotlinDecls(declared))
+	// The SNGL `color` data class, emitted when the program names the type:
+	// a canvas draws with it, and promoteForeignStructs puts it in info.Structs
+	// when a surviving signature names it. ComposeColor is the aliased
+	// framework color import; Color is our SNGL `color` data class.
+	//
+	// declaredStructs is keyed by *emitted* name, because that is where the
+	// collision is: SNGL's own struct is `color`, so a switch over the source
+	// spelling matched nothing and the class was emitted twice.
+	hasCanvas := packageHasCanvas(ctx.Pkg)
+	if hasCanvas || namesColor(info.Structs) {
+		body.WriteString(colorKotlinDecl(declaredStructs))
+	}
+
+	// Canvas2D stdlib structs (CanvasStyle/PathCmd). Stdlib-only structs
+	// aren't carried on pkg.Structs, so materialize them here (analogous to
+	// canvasutil for the Go platforms) whenever the program contains a canvas.
+	if hasCanvas {
+		body.WriteString(canvasKotlinDecls(declaredStructs))
 	}
 
 	// ErrorEvent is emitted when any error-handling construct is present
@@ -1091,4 +1112,33 @@ func listElementTypeKt(ktType string) string {
 		return ktType[5 : len(ktType)-1]
 	}
 	return "Any"
+}
+
+// literalStructLit renders a struct literal whose every field is a literal as
+// a Kotlin constructor call, or "" for anything else -- a data class header
+// takes an expression naming nothing else this file declares, and only this
+// shape is one.
+func literalStructLit(n *ir.StructLit) string {
+	name := ""
+	switch {
+	case n.Type != nil && ir.IsColorStruct(n.Type):
+		name = "Color"
+	case n.Def != nil:
+		name = exportName(n.Def.Name)
+	default:
+		return ""
+	}
+	var args []string
+	for _, f := range n.Fields {
+		lit, ok := f.Value.(*ir.Literal)
+		if !ok || f.Name == "" {
+			return ""
+		}
+		v := kotlin.IRLiteralToKt(lit)
+		if v == "" {
+			return ""
+		}
+		args = append(args, f.Name+" = "+v)
+	}
+	return name + "(" + strings.Join(args, ", ") + ")"
 }
