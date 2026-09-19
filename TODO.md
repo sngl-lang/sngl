@@ -30,15 +30,11 @@ set down the nesting, and flatten to a list of runs.
       fields seed a `SpanStyle`, and each nested span overwrites the fields it
       set, `inherit`/zero meaning it set none. Write it once in the pass so
       every target gets the same answer.
-- [ ] Style accumulation down the nesting. Two candidates, and the choice
-      decides how much of this is SNGL:
-      - a **pass** folds `bold { italic { text } }` into one run with both
-        bits set, the way `emitShapes` walks the shape tree;
-      - a **context** (`context #spanStyle`) has each span override it for its
-        subtree and the leaf read it, which is existing language machinery and
-        would put the spans' implementation in SNGL rather than Go.
-      The second is the `shapes.rect → draw(@draw(e){…})` split; try it first
-      and fall back if the context's value cannot be read at lowering time.
+      It is a pass and not a context: a `context #spanStyle` each span
+      overrides would have put the spans' implementation in SNGL, which is the
+      `shapes.rect → draw(@draw(e){…})` split, but it is exactly the shape the
+      context bug below breaks — and a style set has to be resolvable at
+      lowering time whatever the host.
 - [ ] `link` and `token` are not style bits — a run carries an optional href
       and an optional token kind alongside its flags. That is also what makes
       `monospace { link { … } }` and `link { monospace { … } }` render the
