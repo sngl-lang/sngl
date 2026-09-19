@@ -1,0 +1,61 @@
+# A context provider's value is evaluated in the scope enclosing it, so
+# `depth(depth + 1)` reads the value it is overriding and nesting accumulates.
+#
+# The interpreter honours providers itself -- passContext does not run for a
+# target with no host language, the same reason `for ... else` and a boundary
+# are answered there -- and it walked a provider's children without ever
+# evaluating its value. So on `none` a provider set nothing at all and every
+# read beneath one answered the context's default: 0 and 0 here, and 0 for the
+# plain `depth(7)` below, which is the half that had nothing to do with
+# self-reference.
+#
+# The lowered targets are testdata/context_provider_reads_enclosing.txtar; this
+# is the claim a golden cannot make, because it has to run.
+
+sngl test --platform none nested.sngl
+stdout 'ok'
+sngl test --platform none plain.sngl
+stdout 'ok'
+
+-- nested.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+context #depth(0)
+
+component probe node {
+    depth(depth + 1) {
+        text #one(value="{depth}")
+        depth(depth + 1) {
+            text #two(value="{depth}")
+        }
+    }
+}
+
+func testAccumulates(t Test, c probe) {
+    t.assert(c.one.value == "1")
+    t.assert(c.two.value == "2")
+}
+
+window {
+}
+-- plain.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+context #theme("light")
+
+component probe node {
+    theme("dark") {
+        text #inner(value="{theme}")
+    }
+    text #outer(value="{theme}")
+}
+
+func testProviderApplies(t Test, c probe) {
+    t.assert(c.inner.value == "dark")
+    t.assert(c.outer.value == "light")
+}
+
+window {
+}

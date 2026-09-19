@@ -78,7 +78,30 @@ func applyNoContext(pkg *ir.Package, _ Caps, _ Options) error {
 	lowerProviders(pkg, reach, extra, hiddenParams)
 
 	pkg.Contexts = nil
-	return nil
+	return reportSurvivingReads(pkg)
+}
+
+// reportSurvivingReads fails the build if a *ir.ContextRead outlived the pass.
+// No backend has a case for one, and every backend that prints an expression
+// prints it as the bare context name — so what a leak produced was host source
+// naming an identifier nothing declares, blamed on the host compiler rather
+// than on this pass. The pass's own postcondition, stated where it can be
+// checked.
+func reportSurvivingReads(pkg *ir.Package) error {
+	var err error
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		r, ok := n.(*ir.ContextRead)
+		if !ok || err != nil {
+			return nil
+		}
+		name := "?"
+		if r.Ref != nil {
+			name = r.Ref.Name
+		}
+		err = fmt.Errorf("context %q: read survived lowering with no provider or default in scope", name)
+		return ir.SkipDir
+	})
+	return err
 }
 
 // collectReachableExternalFuncs walks the user package and returns all
@@ -1004,8 +1027,14 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 		switch n := s.(type) {
 		case *ir.ContextProvider:
 			// Replace provider with its children, updating the active value.
+			// The value is lowered against the *enclosing* active map, not the
+			// one it establishes: `depth(depth + 1)` reads the value it is
+			// overriding, which is a strictly outer scope, so the substitution
+			// terminates and nesting accumulates. Installed unlowered, that
+			// read stayed an *ir.ContextRead and reached codegen as a bare
+			// identifier nothing declares.
 			inner := copyExprMap(active)
-			inner[n.Ref] = n.Value
+			inner[n.Ref] = lowerInExpr(n.Value, active, reach, hidden)
 			lowered := lowerInStmts(n.Children, inner, reach, hidden)
 			out = append(out, lowered...)
 

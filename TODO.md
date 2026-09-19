@@ -32,9 +32,9 @@ set down the nesting, and flatten to a list of runs.
       every target gets the same answer.
       It is a pass and not a context: a `context #spanStyle` each span
       overrides would have put the spans' implementation in SNGL, which is the
-      `shapes.rect → draw(@draw(e){…})` split, but it is exactly the shape the
-      context bug below breaks — and a style set has to be resolvable at
-      lowering time whatever the host.
+      `shapes.rect → draw(@draw(e){…})` split — and a style set has to be
+      resolvable at lowering time whatever the host. (The nesting a context
+      would have needed now works; the reason is still the second one.)
 - [ ] `link` and `token` are not style bits — a run carries an optional href
       and an optional token kind alongside its flags. That is also what makes
       `monospace { link { … } }` and `link { monospace { … } }` render the
@@ -165,60 +165,21 @@ Every target that a document can reach needs one, or
 
 ---
 
-## Blocked on a compiler bug
+## Context providers that read the context they override
 
-- [ ] **A context provider whose value reads the context it overrides is
-      broken.** Two symptoms, and the second is the serious one: the value does
-      not accumulate across nesting, and the context name reaches codegen as a
-      bare identifier nothing declares — so a language target emits code that
-      does not compile.
+Fixed. `depth(depth + 1)` now accumulates: a provider's value is evaluated in
+the scope *enclosing* it, so the read resolves to the value being overridden --
+a strictly outer scope, which is what makes the substitution terminate. Two
+nestings give 1 and 2.
 
-      Repro, verbatim:
+Not the self-reference family the window-prop and const guards are in, and the
+contexts' own case is already settled: `context #depth(depth)` is a positioned
+`undefined`, since the name is not bound until its default has been checked.
+Those two guards are untouched and still open.
 
-      ```sngl
-      import ui "sngl:ui"
-
-      context #depth(0)
-
-      component main() ui.root {
-          ui.window(title="t") {
-              depth(depth + 1) {
-                  ui.text(value="one={depth}")
-                  depth(depth + 1) {
-                      ui.text(value="two={depth}")
-                  }
-              }
-          }
-      }
-      ```
-
-      `sngl dump --stage lowered --platform html --lang none <file>` gives:
-
-      ```
-      span(textContent="one=" + string(depth + 1), …)
-      span(textContent="two=" + string(depth + 1), …)
-      ```
-
-      Expected `1` and `2`. Note `depth` itself in the output, declared
-      nowhere.
-
-      A **plain** provider is fine and is the contrast to work from: with
-      `depth(7) { reader() }` where `reader` reads `{depth}`, the lowering
-      declares `var __ctx_depth__inst1 int = 7` and the read resolves to it.
-      So the defect is specific to a provider reading the context it is
-      overriding, not to contexts or to inlining.
-
-      The passes live in `internal/checker/context.go` and
-      `internal/lower/context.go`; neither has been read, so that is a starting
-      point and not a diagnosis. This is the same self-reference family as the
-      window-prop and const guards CLAUDE.md describes, except those guard and
-      this one is silent — worth deciding whether the answer here is a
-      positioned error or a working accumulation, since a language rule
-      refusing self-reference would also settle those two.
-
-      Blocks nothing in markup: `listItem.marker` is written by the importer,
-      which knows the depth the way it knows the ordinal. Fixing it would let a
-      nested list pick its own bullet with no caller involved.
+`listItem` can now pick its own bullet from the depth with no caller involved --
+`depth(depth + 1)` around each nested list, a modulo on the read. The importer
+still writes `marker` for an ordered list.
 
 ## Open questions
 

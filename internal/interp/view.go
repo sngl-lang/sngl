@@ -383,7 +383,12 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 			out = append(out, nodes...)
 
 		case *ir.ContextProvider:
+			restore, err := env.pushContext(n.Ref, n.Value)
+			if err != nil {
+				return nil, err
+			}
 			nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("context@%d", next("context"))))
+			restore()
 			if err != nil {
 				return nil, err
 			}
