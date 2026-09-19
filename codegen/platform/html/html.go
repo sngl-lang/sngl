@@ -249,6 +249,9 @@ type windowShared struct {
 	owners     []ir.Owner
 	canvasByID map[string]*canvasutil.Meta
 	canvasByFn map[*ir.Func]*canvasutil.Meta
+	// modelVars is derived from dt on first use rather than beside it: only
+	// the mutation model asks for it.
+	modelVars map[string]*ir.Var
 }
 
 // derivePackage fills all four on first use. One gate rather than a nil check
@@ -2647,7 +2650,7 @@ func extractElemIDs(js string) []string {
 func (g *htmlGen) optimizeIR() {
 	// The pointer-keyed dep sets are synthesized from html's name-keyed maps;
 	// iropt only reads *ir.Var.Name, so synthetic placeholders are safe.
-	varReg := newVarRegistry(g.dt)
+	varReg := newVarRegistry(g.shared.modelVarsByName(g.pkg))
 	updaters := make([]codegen.Updater, len(g.initWrites))
 	for i, u := range g.initWrites {
 		updaters[i] = codegen.Updater{
@@ -2890,26 +2893,47 @@ func varSetToNames(vs map[*ir.Var]struct{}) map[string]bool {
 // varRegistry maps names back to *ir.Var pointers at the codegen boundary.
 // A promoted or suffixed name is synthesized on demand; iropt only reads
 // .Name, so a synthetic placeholder is safe.
+//
+// Two maps because the halves have two lifetimes. base is the package's model
+// vars, which no window changes -- built per window, it was the package's var
+// table rebuilt once per page. own is what this window synthesized, which is
+// the half that must not reach another: a placeholder stands for a name no
+// declaration owns, so two windows naming one get one each, as they did when
+// the whole map was per window.
 type varRegistry struct {
-	byName map[string]*ir.Var
+	base map[string]*ir.Var
+	own  map[string]*ir.Var
 }
 
-func newVarRegistry(dt *codegen.DepTracker) *varRegistry {
-	r := &varRegistry{byName: make(map[string]*ir.Var)}
-	if dt != nil {
-		for v := range dt.ModelVars {
-			r.byName[v.Name] = v
+func newVarRegistry(base map[string]*ir.Var) *varRegistry {
+	return &varRegistry{base: base, own: map[string]*ir.Var{}}
+}
+
+// modelVarsByName is base, derived from the dep tracker once per compilation.
+//
+// A name two owners both declare resolves to whichever the map iteration
+// reached last, which is what it did per window before -- shared, that choice
+// is at least made once rather than redrawn per page.
+func (s *windowShared) modelVarsByName(pkg *ir.Package) map[string]*ir.Var {
+	s.derivePackage(pkg)
+	if s.modelVars == nil {
+		s.modelVars = make(map[string]*ir.Var, len(s.dt.ModelVars))
+		for v := range s.dt.ModelVars {
+			s.modelVars[v.Name] = v
 		}
 	}
-	return r
+	return s.modelVars
 }
 
 func (r *varRegistry) lookup(name string) *ir.Var {
-	if v, ok := r.byName[name]; ok {
+	if v, ok := r.own[name]; ok {
+		return v
+	}
+	if v, ok := r.base[name]; ok {
 		return v
 	}
 	v := &ir.Var{Name: name}
-	r.byName[name] = v
+	r.own[name] = v
 	return v
 }
 

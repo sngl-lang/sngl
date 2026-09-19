@@ -66,3 +66,43 @@ func TestWindowSharedDerivesPackageAnalysisOnce(t *testing.T) {
 func sameCanvasMap(x, y map[string]*canvasutil.Meta) bool {
 	return reflect.ValueOf(x).UnsafePointer() == reflect.ValueOf(y).UnsafePointer()
 }
+
+// The var registry is two maps for two lifetimes, and a test for each: the
+// package's model vars are one table however many pages read it, and what a
+// page synthesizes for a name no declaration owns stays that page's.
+func TestVarRegistrySharesTheModelVarsAndNotThePlaceholders(t *testing.T) {
+	count := &ir.Var{Name: "count"}
+	pkg := &ir.Package{
+		Vars:    []*ir.Var{count},
+		Windows: []*ir.Window{{Name: "alpha"}, {Name: "beta"}},
+	}
+	shared := newWindowShared("", nil)
+
+	base := shared.modelVarsByName(pkg)
+	if again := shared.modelVarsByName(pkg); !sameVarMap(base, again) {
+		t.Error("the model-var table is rebuilt per call; it is the package's, and a page does not change it")
+	}
+	if base["count"] != count {
+		t.Fatalf("the table lost the package's own var: %v", base)
+	}
+
+	alpha, beta := newVarRegistry(base), newVarRegistry(base)
+	if alpha.lookup("count") != count || beta.lookup("count") != count {
+		t.Error("a declared var did not resolve to the declaration")
+	}
+
+	a, b := alpha.lookup("__promoted"), beta.lookup("__promoted")
+	if a == nil || b == nil {
+		t.Fatal("an undeclared name got no placeholder")
+	}
+	if a == b {
+		t.Error("two pages share one placeholder; each synthesizes its own")
+	}
+	if _, leaked := base["__promoted"]; leaked {
+		t.Error("a page's placeholder reached the shared table, where every other page reads it")
+	}
+}
+
+func sameVarMap(x, y map[string]*ir.Var) bool {
+	return reflect.ValueOf(x).UnsafePointer() == reflect.ValueOf(y).UnsafePointer()
+}
