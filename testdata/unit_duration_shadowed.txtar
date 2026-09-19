@@ -188,4 +188,6 @@ fun MainScreen() {
     Text(text = ("n is " + _snglFloatStr(n__inst0)), modifier = Modifier.safeDrawingPadding())
 }
 -- run/go/bubbletea --
-pass sha256:8536321b0780c6d2c3c64ff262a4f110
+pass sha256:e033753d4353c6a1fdc417e7a60dd6c0
+-- run/kotlin/android --
+pass sha256:dd1170531f1b982a5d5d4651ad815022

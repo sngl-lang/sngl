@@ -244,10 +244,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ae4ec07152433f1e6dc7d9674e8c04c3
+pass sha256:0e66dd9fc33b89967d3468320aa04bf3
 -- run/go/fyne --
-pass sha256:e72bb105ab3c1bbf3773434733d2a81e
+pass sha256:9dae6ab8d1dec97c9b43ef285bfb15df
 -- run/go/gtk4 --
-pass sha256:9f5c7360a194b157f7d569a91d31f2ea
+pass sha256:713e5f67a5ee6cb3cd19ddb1ae7adb77
+-- run/kotlin/android --
+pass sha256:1ff58229b1e2cffea2a646f532d9adfe
 -- run/none/html --
 pass sha256:5cec7d6b04652690446861237267b0ef

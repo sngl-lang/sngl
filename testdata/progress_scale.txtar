@@ -268,6 +268,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:f43e5f2cd06a344847cae0fe165d8d6b
+pass sha256:f4af2ebfb180c83bff935dee764bfd62
+-- run/kotlin/android --
+pass sha256:7e616631a3f237b06ce76de9cdca24cd
 -- run/none/html --
 pass sha256:a06b9b4ef7cee16de2f838bf52d9e5d6

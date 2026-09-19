@@ -415,6 +415,6 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	return content
 }
 -- run/go/bubbletea --
-pass sha256:23b41136d6b4f3d6b6076d35e0216654
+pass sha256:39e9c83760870817ba3eb30911882fae
 -- run/go/fyne --
-pass sha256:c6c2e10d80ce66c6571bebb9bc057bb9
+pass sha256:832b47b78546582a2e80d36a8eb4207e

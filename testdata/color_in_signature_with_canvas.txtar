@@ -173,3 +173,5 @@ fun bgOf(on: Boolean): Color {
     }
     return Color(r = 24, g = 60, b = 52, a = 255)
 }
+-- run/kotlin/android --
+pass sha256:8f0851bdbef87d75d5adfc5f2530bec8

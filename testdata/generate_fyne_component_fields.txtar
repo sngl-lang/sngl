@@ -105,4 +105,4 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	return content
 }
 -- run/go/fyne --
-pass sha256:b5a1566676465c2cbee36af44fb20943
+pass sha256:2815db32627926d704383c7cca7d090b

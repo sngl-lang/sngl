@@ -370,10 +370,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7e0f4c1eb94ba952ff3928dc082b98eb
+pass sha256:7d2fcd67e5325f59fb47e1ea26776e47
 -- run/go/fyne --
-pass sha256:39626dadb0c72ed4d6d2aca1e0ae819a
+pass sha256:b7caa1d8280dde23404b84e197c93a62
 -- run/go/gtk4 --
-pass sha256:3320deb4fd081a50fddf91be7400c7cc
+pass sha256:7ae6b681ab23fde76215e97aae9dac49
+-- run/kotlin/android --
+pass sha256:301d9b0d12d36d91b0275d67b66f9ff1
 -- run/none/html --
 pass sha256:a4db370166da1f28eca3a1efb7ea83e4

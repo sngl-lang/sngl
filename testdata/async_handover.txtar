@@ -153,6 +153,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:9d49ddc7b3d1539fbb6716c1e2576600
+pass sha256:a287998f8dbf250e095ce6c15895b509
 -- run/go/gtk4 --
-pass sha256:70db502aad317b04b9a2039e35022b25
+pass sha256:4a73e5ce50521625fd758bea891593d1

@@ -119,6 +119,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1169dd6b45375cb77897d43ab399c236
+pass sha256:9785bfa696f497ec60292615ea658c0d
 -- run/none/html --
 pass sha256:d9e2b3f484d1f127da45e19496ede6b5

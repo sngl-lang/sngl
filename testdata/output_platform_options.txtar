@@ -76,6 +76,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:91488531eec970da539917c60893c7bc
+pass sha256:0793be9a91bf1bd9f2a4b6409b3efed7
 -- run/none/html --
 pass sha256:2a6feb6f21dfc735d9da4cc475fa404e

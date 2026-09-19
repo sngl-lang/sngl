@@ -100,25 +100,24 @@ func targetsOf(got map[string][]byte) []target {
 	return out
 }
 
-// verify holds each target to its record, and is where the compiler does or
-// does not run.
+// verify holds each target to its record.
 //
-// The rule, and it is the whole design:
+// The ordinary run does not compile. It compares the digest of what was
+// generated against the digest in the record, and that is the whole of it --
+// no toolchain is consulted, nothing is probed, and the answer does not depend
+// on what the host has installed. A plain Go container can run it.
 //
-//   - the digest matches the record — the toolchain has already seen these
-//     exact bytes and passed. Nothing runs.
-//   - it does not, and update is set — run the toolchain and write what it
-//     said. This is the only path that compiles in the ordinary course of
-//     work, and it runs for the changed targets alone.
-//   - it does not, and update is not set — a failure naming -update, the same
+// Compiling happens under -update and -verify, and there a missing tool is a
+// failure rather than a skip. A golden may not be regenerated without running
+// the tooling: allowed to skip, -update would rewrite the generated code and
+// leave the record describing bytes nobody built, which is the one state the
+// record exists to make impossible.
+//
+//   - the digest matches and the status agrees — nothing to do.
+//   - it does not, and update or force is set — compile, and write what the
+//     toolchain said.
+//   - it does not, and neither is set — a failure naming -update, the same
 //     answer a golden mismatch gives, for the same reason.
-//   - force is set — run the toolchain whatever the record says. A record goes
-//     stale when the *toolchain* changes under it, which no fixture edit
-//     announces, so something has to ask.
-//
-// A host missing the toolchain skips, and on update leaves whatever record was
-// committed untouched: a verification that did not happen must not be written
-// down as one.
 func verify(t *testing.T, tgts []target, records map[string]record, exempt map[string]exemption, update, force bool) map[string]record {
 	t.Helper()
 	out := map[string]record{}
@@ -132,33 +131,14 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 
 		if exempted && !ex.broken {
 			// Nothing to run and nothing to record: no host can compile this,
-			// so a record would be a claim about a machine that does not exist.
+			// so a record would be a claim about a machine that does not
+			// exist. The directive is the claim instead, and it names why.
 			t.Logf("%s: unverifiable — %s", name, ex.reason)
 			continue
 		}
-		if reason := toolchain.Unavailable(tg.lang, tg.platform); reason != "" {
-			if recorded {
-				out[name] = have
-			}
-			t.Logf("%s: %s", name, reason)
-			continue
-		}
-		// Only asked of output that actually runs something. Plain generated
-		// output has no test file, so the toolchain compiles it and presents
-		// nothing -- gating that on a compositor skipped gtk4's compile for a
-		// window it was never going to open.
-		if runsTests(tg.files) {
-			if reason := toolchain.PresentsWindows(tg.platform); reason != "" {
-				if recorded {
-					out[name] = have
-				}
-				t.Logf("%s: %s", name, reason)
-				continue
-			}
-		}
+
 		// What the record must say for this target, so a directive added or
-		// removed without the output moving is still caught by the digest
-		// check below rather than silently inheriting the old verdict.
+		// removed without the output moving is still caught below.
 		status := "pass"
 		if ex.broken {
 			status = "broken"
@@ -167,19 +147,51 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			out[name] = have
 			continue
 		}
-		// No usable record means there is nothing to trust, so the toolchain
-		// runs whether or not this is an update. Reporting "run -update" from
-		// here instead was wrong in both directions: it failed every target
-		// whose build would merely have *skipped* -- android's plain build
-		// emits no gradle wrapper, so 55 archives failed the moment an SDK
-		// appeared on the host -- and where the build would have failed it
-		// said the output had moved rather than that it no longer compiles.
-		output, err := toolchain.Build(t.Context(), tg.files, tg.lang, tg.platform)
-		if se, ok := errors.AsType[*toolchain.SkipError](err); ok {
+		if !update && !force {
+			switch {
+			case !recorded:
+				t.Errorf("%s: no record; regenerate with -update on a host that has the toolchain", name)
+			case have.digest != want:
+				t.Errorf("%s: generated output changed since it was verified; run -update", name)
+			default:
+				// Same bytes, different verdict asked for: a `broken`
+				// directive added over a passing target or removed from a
+				// failing one. Saying "the output changed" here sent a reader
+				// looking for a codegen diff that is not there.
+				t.Errorf("%s: recorded %s but the fixture now declares %s; run -update", name, have.status, status)
+			}
 			if recorded {
 				out[name] = have
 			}
-			t.Logf("%s: %s", name, se.Reason)
+			continue
+		}
+
+		// From here the toolchain must answer. Anything that stops it is a
+		// failure: the record about to be written would otherwise say a build
+		// happened that did not.
+		if reason := toolchain.Unavailable(tg.lang, tg.platform); reason != "" {
+			t.Errorf("%s: cannot verify — %s", name, reason)
+			if recorded {
+				out[name] = have
+			}
+			continue
+		}
+		if reason := toolchain.PresentsWindows(tg.platform); reason != "" {
+			t.Errorf("%s: cannot verify — %s", name, reason)
+			if recorded {
+				out[name] = have
+			}
+			continue
+		}
+
+		output, err := toolchain.Build(t.Context(), tg.files, tg.lang, tg.platform)
+		if se, ok := errors.AsType[*toolchain.SkipError](err); ok {
+			// A gap the probe could not see until the build revealed it --
+			// still a gap, still not something to record around.
+			t.Errorf("%s: cannot verify — %s", name, se.Reason)
+			if recorded {
+				out[name] = have
+			}
 			continue
 		}
 		// The toolchain's own output is the whole of what makes either verdict
@@ -201,23 +213,6 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			t.Errorf("%s: %v", name, err)
 			continue
 		}
-		if !update && !force {
-			// It compiles, but the archive does not say so. Left silent, a
-			// record would never be written and every later run would pay for
-			// this build again.
-			switch {
-			case !recorded:
-				t.Errorf("%s: compiles, but has never been recorded; run -update", name)
-			case have.digest != want:
-				t.Errorf("%s: generated output changed since it was verified; run -update", name)
-			default:
-				// Same bytes, different verdict asked for: a `broken`
-				// directive added over a passing target or removed from a
-				// failing one. Saying "the output changed" here sent a reader
-				// looking for a codegen diff that is not there.
-				t.Errorf("%s: recorded %s but the fixture now declares %s; run -update", name, have.status, status)
-			}
-		}
 		out[name] = record{status: "pass", digest: want}
 	}
 	// A directive naming a target the fixture does not generate asserts
@@ -235,17 +230,6 @@ func directiveName(e exemption) string {
 		return "broken"
 	}
 	return "unverifiable"
-}
-
-// runsTests reports whether the generated output carries tests the toolchain
-// will execute rather than merely compile.
-func runsTests(files map[string][]byte) bool {
-	for name := range files {
-		if strings.HasSuffix(name, "_test.go") || strings.HasSuffix(name, "Test.kt") {
-			return true
-		}
-	}
-	return false
 }
 
 func sortedStrings[V any](m map[string]V) []string {

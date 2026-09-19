@@ -576,8 +576,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:7ec8b262fda3eb7d34532b2bc6d0119b
+pass sha256:51fd3b27784bf776754cb63af3b76959
 -- run/go/fyne --
-pass sha256:bc48f2ed0c84520820b8c6241e30b3c3
+pass sha256:6f3853f305a208ffeeb982e33c39fc76
 -- run/go/gtk4 --
-pass sha256:250ba15c8617849c1eb828519c4e49a0
+pass sha256:c03fd7e49755f329adf72386f0795fa7

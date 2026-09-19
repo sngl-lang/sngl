@@ -157,4 +157,4 @@ func (m Model) View() tea.View {
 // remoteSettledMsg wakes the program when a fetch answers.
 type remoteSettledMsg struct{}
 -- run/go/bubbletea --
-broken sha256:77246c91effe8339941e973a627ace12
+broken sha256:698bde1b936805c670e3675cde6f3750

@@ -1318,10 +1318,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:fdaa0ebf894471349d2105676826579f
+pass sha256:6907d64ec848eae4c06b716c580b5ce0
 -- run/go/fyne --
-pass sha256:6068e9dcab7b8228122e5dcec7af7e4a
+pass sha256:9b0dde8f751088e207548b58773c734a
 -- run/go/gtk4 --
-pass sha256:8e208e662e0fdfa83820e52dff15a81a
+pass sha256:d3afcc0374879917251a359f56791c0c
+-- run/kotlin/android --
+pass sha256:402bd9076adb5313d5dc01f4dce88a35
 -- run/none/html --
 pass sha256:34a43027d9dedfc0b2d84993f6681415

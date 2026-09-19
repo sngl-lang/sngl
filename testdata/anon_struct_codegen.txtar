@@ -27,7 +27,7 @@ not declared.
 
 deny out/go/bubbletea/model.go `(?s)type __anon_a_b_\w+ struct.*type __anon_a_b_` -- four spellings of one signature are one declaration, not two that happen to look alike
 deny out/go/bubbletea/model.go `struct\{\}\{` -- a literal names its declared type; `struct{}{A: 1, B: 2}` is what a decl-less anonymous struct emitted, and it does not compile
-
+broken out/kotlin/android -- an empty anonymous struct emits a Kotlin `data class` with no primary constructor parameter, which the language forbids
 -- app.sngl --
 import . "sngl:ui"
 
@@ -371,6 +371,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:746db57f8deb56c8ce3272456654070a
+pass sha256:928360ba1eac5b1c5ef593dfd40b577b
+-- run/kotlin/android --
+broken sha256:8b674b8d5137e202bbe5257f8be8a971
 -- run/none/html --
 pass sha256:3d977ca561d3cfd00b8da0363ba40c4a

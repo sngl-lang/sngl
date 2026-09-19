@@ -76,3 +76,5 @@ fun MainScreen() {
         Text(text = "x", modifier = Modifier)
     }
 }
+-- run/kotlin/android --
+pass sha256:b381c9c09df5b6201260d38886c8837c

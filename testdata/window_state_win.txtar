@@ -387,10 +387,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:22927c6b3c5103cc2641b78be5440c8a
+pass sha256:e4751f7f114549ec68fd3acf722199f5
 -- run/go/fyne --
-pass sha256:ec963660a535c798bcf6207548e304eb
+pass sha256:f8407624a861571928345adda99ae476
 -- run/go/gtk4 --
-pass sha256:0b48d57b62bbd582b6e31286013fe435
+pass sha256:18f3d4ffc7d0222a77db5fc190dc44c2
+-- run/kotlin/android --
+pass sha256:9a459a8186457ee1cb672a09d1ed7024
 -- run/none/html --
 pass sha256:3822814bbd235ced66a901432860fadd

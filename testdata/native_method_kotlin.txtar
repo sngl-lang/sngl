@@ -17,7 +17,7 @@ All three shapes matter to that:
 none, and neither does a function the enclosing scope supplies.
 
 deny out/kotlin/android/MainScreen.kt `\bhyp\(|\brep\(|\bplace\(` -- the SNGL names are not emitted; the call becomes a call to the Kotlin identifier
-
+broken out/kotlin/android -- the native method `shift` is called and never declared: `Unresolved reference 'shift'`
 -- app.sngl --
 import ui "sngl:ui"
 import kt "sngl:language/kotlin"
@@ -91,3 +91,5 @@ fun MainScreen() {
         Text(text = "ab".repeat(2), modifier = Modifier)
     }
 }
+-- run/kotlin/android --
+broken sha256:e4d05a57b7beb1dcb12dd1642ccd4b43

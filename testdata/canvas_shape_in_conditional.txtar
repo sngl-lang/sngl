@@ -290,6 +290,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9f14e6150cd8f1df46b7433692b6985a
+pass sha256:c5738cbca4907ceae2d27c220f7a03bb
 -- run/none/html --
 pass sha256:b509d3818f46577f59e3f71c16daac44

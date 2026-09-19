@@ -18,7 +18,7 @@ alone, since neither is this walk: android types a func-valued parameter as
 the element even though the substitution has removed the only emit of it.
 
 deny * `emit\(` -- an emit is substituted away by lowering; one reaching a backend is a call to a function no target defines
-
+broken out/kotlin/android -- MainScreen.kt calls `f`, which the Compose emitter declares nowhere: `Unresolved reference 'f'`
 -- app.sngl --
 import . "sngl:ui"
 
@@ -271,6 +271,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:243a180308ca07f246af1f62a957b5ca
+pass sha256:229003386d8f1de55a88b641e0e9edf0
+-- run/kotlin/android --
+broken sha256:75ba5789364c2a1d70f976e817007ff4
 -- run/none/html --
 pass sha256:ad85a508a3006f638da51d3ec2142434

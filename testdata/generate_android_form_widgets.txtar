@@ -119,3 +119,5 @@ fun MainScreen() {
         OutlinedTextField(value = (if ((birthday != null)) birthday!!.toString() else ""), readOnly = true, modifier = Modifier.safeDrawingPadding(), onValueChange = {})
     }
 }
+-- run/kotlin/android --
+pass sha256:522d7168e0a47260c2c8163f772444b7

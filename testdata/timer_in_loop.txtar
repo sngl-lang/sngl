@@ -30,7 +30,7 @@ deny * `(?m)^\s*if \(?enabled\)? \{` -- the gate is a cell of the instance, not 
 deny out/go/fyne/model.go `append\(c.__effect0_desired, interval\)` -- likewise the key
 deny out/go/gtk4/model.go `append\(c.__effect0_desired, interval\)` -- likewise
 deny * `SetInterval|__set_interval` -- a construct prop gets the cell and no setter; the row is rebuilt
-
+broken out/go/fyne -- `m.__snglTeardown` is written by the timer lowering and declared on no Model
 -- app.sngl --
 import ui "sngl:ui"
 import time "sngl:time"
@@ -771,8 +771,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:85cadb1b4bceaebe3b2151bf8abd70da
+broken sha256:99de7e4d6a68ccc16843900001cd22a3
 -- run/go/gtk4 --
-pass sha256:d721e5cbe8913d16fed78e0157666b1f
+pass sha256:b74d4c7e7036ea8bd4265495a6e001cf
 -- run/none/html --
 pass sha256:b7c49791fa6c735776b505f5b4919c27

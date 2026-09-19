@@ -31,7 +31,7 @@ Neither of the two needs anywhere to put a statement, and a view body on
 
 deny * `__ran\d` -- a view for-else is a re-evaluated test, never passForElse's flag: a view body on a target with no host language cannot hold the statement that declares one
 deny out/none/html/index.html `<span>NOTHING YET</span>` -- the empty state is not baked into the static markup; each of the three slots is an anchor, and which branch fills it is decided in its render function on every change
-
+broken out/kotlin/android -- the view for-else assigns a List<String> to a SnapshotStateList val: `'val' cannot be reassigned`
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:seq"
@@ -741,10 +741,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d3ca4692da8b0b1704c5ad89fbd014b7
+pass sha256:a0e51c4b587ba1cbaa049903c2954345
 -- run/go/fyne --
 pass sha256:35c01b23334bf6ba590d949f41913204
 -- run/go/gtk4 --
 pass sha256:3c10b8e498fa52864cc1bbdd183c180f
+-- run/kotlin/android --
+broken sha256:50566a41d383236b4acb37a508b8b5eb
 -- run/none/html --
 pass sha256:7ca5895bc2f4487b56ccd31099fe743c

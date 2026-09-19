@@ -172,4 +172,4 @@ func (m Model) View() tea.View {
 	return v
 }
 -- run/go/bubbletea --
-pass sha256:a999099f852df55fa1bf1ee9bc9ae83e
+pass sha256:f27b62fd47ef0d37d44712cb8867fef3

@@ -9,6 +9,7 @@ reachable at all, and why a non-recursive fixture would prove nothing.
 
 deny out/go/android/MainScreen.kt `= fib\(` -- the call goes through golib.Golib.Fib; a bare one would name a function neither file defines
 deny out/go/android/MainScreen.kt `fun fib` -- under --lang go the function lives in the module, so Kotlin declares no copy of it
+unverifiable out/go/android -- the emitted project consumes a golib.aar produced by a `gomobile bind` step that generation does not perform
 -- which is what made this
 reachable at all, and why a non-recursive fixture would prove nothing.
 

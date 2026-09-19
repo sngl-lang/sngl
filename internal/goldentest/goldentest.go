@@ -167,19 +167,23 @@ func runFixture(t *testing.T, path string, update, force bool) {
 		t.Fatalf("generate: %v", err)
 	}
 
-	// What the host toolchain is handed is not always what the golden shows.
-	// A fixture carrying `func test…` is built again with the test options,
-	// because a program with no entry point and no test files compiles and
-	// asserts nothing -- and on android the plain build emits no gradle
-	// wrapper at all, so there was nothing to run it with. The golden stays
-	// the plain build: it is there to be read.
-	verifyFiles := got
-	if opts, ok := testutil.TestHarnessBuild(fixtureSource(src)); ok {
-		built, err := generate(src, opts, true)
-		if err != nil {
-			t.Fatalf("generate (test build): %v", err)
-		}
-		verifyFiles = built
+	// What the host toolchain is handed is not what the golden shows, and
+	// deliberately so. The golden is the plain build, because that is what a
+	// reader wants; the toolchain gets a *runnable* one.
+	//
+	// `main` is what makes it runnable, and it is unconditional. A library
+	// build gives android one Kotlin file and no Gradle project at all, so
+	// there was nothing to build it with and the target recorded nothing --
+	// the "skip because there is nothing to run" that this harness must not
+	// have. With main it is an eleven-file scaffold with a wrapper, and every
+	// target answers for every fixture.
+	//
+	// A fixture carrying `func test…` adds the test options on top, so the
+	// assertions are compiled and run rather than merely the program.
+	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
+	verifyFiles, err := generate(src, opts, true)
+	if err != nil {
+		t.Fatalf("generate (verification build): %v", err)
 	}
 
 	// Verification comes before the golden is written, so a -update run that
@@ -189,6 +193,15 @@ func runFixture(t *testing.T, path string, update, force bool) {
 	kept := verify(t, targetsOf(verifyFiles), records, exempt, update, force)
 
 	if update {
+		if t.Failed() {
+			// All or nothing. A verification that could not run leaves the
+			// archive exactly as it was found -- written anyway, the golden
+			// would advance to bytes nobody built while the record beside it
+			// still described the old ones, which is the half-updated state
+			// the record exists to make impossible.
+			t.Logf("not writing the archive: verification did not complete")
+			return
+		}
 		writeGolden(t, path, arc, got, kept)
 		// Deny directives are checked against the rewritten golden too: a
 		// -update run that quietly reintroduces what a fixture denies is the

@@ -90,12 +90,25 @@ func Unavailable(lang, platform string) string {
 //
 // Separate from Unavailable because it is a different kind of missing: the
 // compiler is there and the code builds, and what is absent is somewhere to
-// draw. A caller that only builds ignores this; one that runs does not.
+// draw.
+//
+// It asks only whether there is *anywhere* to draw, which is not what
+// headless.SkipReason answers. That reports the absence of cage even when a
+// desktop is right there, because a test suite should not throw windows onto
+// the user's screen -- a politeness rule, and the right one for a test that
+// may run at any time. Read as a capability here it would refuse to verify a
+// gtk4 fixture on any developer machine without cage installed, which is a
+// skip dressed as an error: the tooling is present and the build would run.
+// `go tool verify` still wraps the whole suite in a compositor, so the
+// courtesy is kept where it was always enforced.
 func PresentsWindows(platform string) string {
 	if platform != "gtk4" {
 		return ""
 	}
-	return headless.SkipReason()
+	if headless.Active() || headless.HasDisplay() || headless.Compositor() != "" {
+		return ""
+	}
+	return "no display and no headless compositor: a gtk4 program has nowhere to draw"
 }
 
 func needGo() string {

@@ -87,3 +87,5 @@ fun MainScreen() {
         Text(text = pick__inst0, modifier = Modifier.safeDrawingPadding())
     }
 }
+-- run/kotlin/android --
+pass sha256:056203ba9d0b2fbe00b9f439d00e4ca3

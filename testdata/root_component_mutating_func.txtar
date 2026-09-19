@@ -226,6 +226,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f41fe5641d22e3e07c64091d7b349594
+pass sha256:588fedbf145cbee29b9185f4d9f447e5
 -- run/none/html --
 pass sha256:c8541584daec7acc12bad15b0ba491cc

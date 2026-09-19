@@ -598,10 +598,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:4ffda73e2555ba45f539a2ec3050b7a3
+pass sha256:20ba2003a76807dea23d530b33e48b4c
 -- run/go/fyne --
-pass sha256:636b31ef81bb4b3365baf9b43a18af9b
+pass sha256:479539d043c89a7957817a1b10e6d0cf
 -- run/go/gtk4 --
-pass sha256:66891e2e7a4a3a7633827a1b8867bdcd
+pass sha256:5b528c050b890ff6d104a041516054c7
+-- run/kotlin/android --
+pass sha256:78e4f84be96d9e2df20414afe40806dd
 -- run/none/html --
 pass sha256:139c909374afc6e1f16dd31fbbfd4bb7
