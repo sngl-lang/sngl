@@ -64,6 +64,12 @@ type Result struct {
 	// Files are the generated files, keyed by the path relative to the output
 	// directory. Empty for an interpreted target.
 	Files map[string][]byte
+	// Boilerplate names the subset of Files the program had no part in --
+	// a project scaffold the platform writes around it. Nothing in a build
+	// treats them differently; the golden harness commits the rest and lets
+	// a digest stand for these, so a hundred fixtures do not each carry a
+	// copy of the same Gradle project.
+	Boilerplate map[string]bool
 }
 
 // Emit builds pkg for every resolved target.
@@ -195,21 +201,21 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	}
 
 	start = time.Now()
-	files, err := generate(o, tpkg, target, fileAssets)
+	files, boilerplate, err := generate(o, tpkg, target, fileAssets)
 	if err != nil {
 		return Result{}, err
 	}
 	slog.Info("codegen", "dir", o.Dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-	return Result{Target: target, Pkg: tpkg, Files: files}, nil
+	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate}, nil
 }
 
-func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset) (map[string][]byte, error) {
+func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset) (map[string][]byte, map[string]bool, error) {
 	lang := codegen.LookupLang(target.Lang)
 	plat := codegen.LookupPlatform(target.Platform)
 
 	if !slices.Contains(plat.SupportedLangs(), target.Lang) {
-		return nil, fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", o.Name, target.Platform, target.Lang, plat.SupportedLangs())
+		return nil, nil, fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", o.Name, target.Platform, target.Lang, plat.SupportedLangs())
 	}
 
 	projectFS := o.ProjectFS
@@ -229,9 +235,9 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 	}
 	mem := codegen.NewMemSink()
 	if err := plat.Generate(req, mem); err != nil {
-		return nil, fmt.Errorf("%s: %w", o.Name, err)
+		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
 	}
-	return mem.Files(), nil
+	return mem.Files(), mem.Boilerplate(), nil
 }
 
 // IsolateRootComponent makes comp the program's only entry point, and is what

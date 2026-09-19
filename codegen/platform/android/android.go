@@ -250,6 +250,11 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
+			// The Gradle project, the manifest, MainActivity and the theme:
+			// what a build needs around the program rather than anything the
+			// program said. A sink that files output for review takes the
+			// digest of these and the text of the rest.
+			codegen.MarkBoilerplate(sink, f.Name)
 		}
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {

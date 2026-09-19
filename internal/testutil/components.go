@@ -15,6 +15,8 @@ import (
 	"sync"
 	"testing"
 
+	"golang.org/x/tools/txtar"
+
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
@@ -80,21 +82,22 @@ func childProcs() int {
 	return max(runtime.GOMAXPROCS(0)/codegen.BuildTokenSlots(), 1)
 }
 
-// RunComponentFixtures executes every testdata/component_*.sngl fixture
-// against the named platform in two modes:
+// RunComponentFixtures runs every testdata/component_*.txtar fixture through
+// `sngl test --platform=<platform>`, the platform's own test runner.
 //
-//   - "native":     invokes `sngl generate --opt test=true ...` then
-//     runs the emitted target-language test files via the host
-//     toolchain (e.g. `go test ./...` for Go-emitting platforms).
-//   - "agent":      invokes `sngl test --platform=<platform> ...`
-//     which uses the platform's TestLauncher.
+// It used to do two things for five platforms, and the other one is now the
+// golden harness's. A component fixture is an archive with a `run/` record
+// saying a host toolchain compiled its generated code and ran the tests it
+// emitted, and that record is only refreshed when the generated code changes
+// -- so the compile-and-run that used to happen 480 times a suite now happens
+// when something moved.
 //
-// Each fixture runs as a t.Run subtest so failures localize. When a
-// mode's toolchain is missing on the host (no gradle, no Chromium,
-// etc.), that mode reports t.Skip with a clear reason; the other mode
-// still attempts. Platforms where a mode is intentionally not supported
-// (e.g. html "native" mode is a no-op per Plan 4 spec) are t.Skip'd for
-// that mode.
+// What a record cannot say is what this still does. For html there is no
+// native toolchain at all: its artifact is a page, the record for it is
+// `node --check`, and the assertions only run when something drives a real
+// browser. That is this, and it is why html is the one caller left. The Go
+// platforms and android compile and run their emitted tests inside the
+// record, which carries the same assertions.
 func RunComponentFixtures(t *testing.T, platform string) {
 	t.Helper()
 
@@ -103,40 +106,58 @@ func RunComponentFixtures(t *testing.T, platform string) {
 		t.Fatalf("build sngl: %v", err)
 	}
 
-	root := projectRoot()
-	testdataDir := filepath.Join(root, "testdata")
-	matches, err := filepath.Glob(filepath.Join(testdataDir, "component_*.sngl"))
+	matches, err := filepath.Glob(filepath.Join(projectRoot(), "testdata", "component_*.txtar"))
 	if err != nil {
 		t.Fatalf("glob: %v", err)
 	}
 	if len(matches) == 0 {
-		t.Fatalf("no component_*.sngl fixtures in %s", testdataDir)
+		t.Fatalf("no component_*.txtar fixtures in testdata")
 	}
 
-	for _, fixture := range matches {
-		base := strings.TrimSuffix(filepath.Base(fixture), ".sngl")
-		skip, reason, err := ParseSkipCodegen(fixture)
-		if err != nil {
-			t.Fatalf("skip directive %s: %v", fixture, err)
-		}
-		if skip {
-			t.Logf("%s: SKIP(codegen): %s", base, reason)
-			continue
-		}
+	for _, archive := range matches {
+		base := strings.TrimSuffix(filepath.Base(archive), ".txtar")
 		t.Run(base, func(t *testing.T) {
-			// Fixtures are independent: each gets its own build
-			// directory and its own subprocesses, so the only shared
-			// state is the read-only sngl binary.
 			t.Parallel()
-			fpath := fixture
-			t.Run("native", func(t *testing.T) {
-				runComponentNative(t, bin, platform, fpath)
-			})
-			t.Run("agent", func(t *testing.T) {
-				runComponentAgent(t, bin, platform, fpath)
-			})
+			src, err := archiveSource(archive)
+			if err != nil {
+				t.Fatalf("%s: %v", base, err)
+			}
+			if !strings.Contains(src, "\nfunc test") {
+				t.Skip("fixture declares no func test… — nothing for the runner to assert")
+			}
+			dir := t.TempDir()
+			path := filepath.Join(dir, base+".sngl")
+			if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			runComponentAgent(t, bin, platform, path)
 		})
 	}
+}
+
+// archiveSource returns the fixture's own .sngl source out of the archive --
+// everything outside `out/` and `run/`, which are the golden and the record.
+func archiveSource(path string) (string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	arc := txtar.Parse(raw)
+	var b strings.Builder
+	for _, f := range arc.Files {
+		name := strings.TrimPrefix(f.Name, "./")
+		if strings.HasPrefix(name, "out/") || strings.HasPrefix(name, "run/") {
+			continue
+		}
+		if !strings.HasSuffix(name, ".sngl") {
+			continue
+		}
+		b.Write(f.Data)
+	}
+	if b.Len() == 0 {
+		return "", fmt.Errorf("archive has no .sngl source")
+	}
+	return b.String(), nil
 }
 
 // componentUnderTest reports the component every `func test…` in the fixture
@@ -545,4 +566,45 @@ func runGradleTest(dir string) error {
 		return fmt.Errorf("gradlew :app:testDebugUnitTest: %v\n%s", err, out)
 	}
 	return nil
+}
+
+// TestHarnessBuild reports the build options a fixture carrying `func test…`
+// needs, or ok=false when it carries none.
+//
+// The two facts are read off the source rather than written in a directive,
+// because the source already states them. That a fixture has tests is that it
+// declares one; which component they are written against is the second
+// parameter every one of them takes. The component-fixture harness derived
+// both this way long before a golden did, and exporting it is what lets the
+// two agree rather than each deriving its own answer.
+//
+// `test` and `main` are what turn a generated program into one the host
+// toolchain can run: the first emits the companion test files, the second an
+// entry point for them to sit beside. `rootComponent` makes the component
+// under test the root the way the launcher does -- otherwise it inlines into
+// the fixture's own window and the Model carries `x__inst0` where the test
+// asks for `x`.
+func TestHarnessBuild(source string) (opts map[string]string, ok bool) {
+	if !strings.Contains(source, "\nfunc test") && !strings.HasPrefix(source, "func test") {
+		return nil, false
+	}
+	opts = map[string]string{"test": "true"}
+	if root := componentUnderTestIn(source); root != "" {
+		opts["rootComponent"] = root
+	}
+	return opts, true
+}
+
+// componentUnderTestIn reports the component every `func test…` takes as its
+// second parameter, or "" when they disagree or none does. One build serves
+// one root, so a fixture whose tests disagree is built as written.
+func componentUnderTestIn(source string) string {
+	found := ""
+	for _, m := range testParamRe.FindAllStringSubmatch(source, -1) {
+		if found != "" && found != m[1] {
+			return ""
+		}
+		found = m[1]
+	}
+	return found
 }

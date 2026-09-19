@@ -22,6 +22,7 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "construct"}:          markConstruct,
 	{"macro", "foreign"}:            markForeign,
 	{"macro", "cnative"}:            markCNative,
+	{"macro", "unusable"}:           markUnusable,
 	{"language/kotlin", "native"}:   markKotlinNative,
 	{"macro", "identity"}:           markIdentity,
 	{"language/go", "native"}:       markGoNative,
@@ -64,8 +65,16 @@ func markGoAsync(m *mark) error {
 // to describe, and a package may use a macro it declares.
 func markGoNative(m *mark) error {
 	path, name := m.args.String("path"), m.args.String("name")
-	if path == "" || name == "" {
-		return fmt.Errorf("#[go.native]: a package path and an identifier are both required")
+	if !m.args.Has("name") {
+		// One argument is the identifier alone, which is all a struct field
+		// can say: a field has no package of its own.
+		path, name = "", path
+	}
+	if name == "" {
+		return fmt.Errorf("#[go.native]: an identifier is required")
+	}
+	if _, isField := m.sym.(*ir.StructField); !isField && path == "" {
+		return fmt.Errorf("#[go.native(%q)]: a package path is required; only a struct field may name an identifier alone", name)
 	}
 	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[native(%q)]", name))
 	if err != nil {
@@ -83,9 +92,20 @@ func markGoNative(m *mark) error {
 		d.HasErrorReturn = slices.Contains(flags, flagFails)
 		d.NativeMethod = slices.Contains(flags, flagMethod)
 		d.NativeSchedules = slices.Contains(flags, flagSchedules)
+		d.HasContextArg = slices.Contains(flags, flagContext)
 	case *ir.StructDef:
 		if len(flags) > 0 {
 			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct has none", name, flags[0])
+		}
+		if err := claimForeign(&d.Foreign, fm, name); err != nil {
+			return err
+		}
+	case *ir.StructField:
+		// The Go spelling of a field SNGL writes differently -- `ID` against
+		// `id`. There is no call and no package, so no flag applies and the
+		// path is the one this form leaves empty.
+		if len(flags) > 0 {
+			return fmt.Errorf("#[native(%q)] carries %s, which describes a call; a struct field has none", name, flags[0])
 		}
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
@@ -365,6 +385,11 @@ const flagNamed = "named"
 // which is the one thing about a native nothing else can find out.
 const flagSchedules = "schedules"
 
+// flagContext says the host function takes a leading context.Context the SNGL
+// signature does not, so the call site supplies one. An importer reads it off
+// the Go signature; a hand-written declaration has no signature to read.
+const flagContext = "context"
+
 // markForeign implements #[foreign("scheme://path", "Name", flags...)].
 //
 // Two arguments are the import path the declaration comes from and its name
@@ -438,6 +463,46 @@ func markForeign(m *mark) error {
 	default:
 		return fmt.Errorf("#[foreign(%q)] cannot mark %s", name, ast.DeclFormName(m.decl))
 	}
+	return nil
+}
+
+// markUnusable implements #[unusable(reason = "...")].
+//
+// The declaration is registered like any other and then refused at every use.
+// That is the point of it: an importer that dropped what it could not model
+// would leave a program naming it with `undefined`, which says nothing about
+// the foreign thing or about why SNGL cannot reach it. Resolving to a
+// declaration that carries the reason turns that into a sentence.
+//
+// Language-neutral, because the wall is. Go returning two non-error values, a
+// C type nothing models and a JavaScript signature nothing describes are one
+// condition met by three importers.
+func markUnusable(m *mark) error {
+	reason := m.args.String("reason")
+	if reason == "" {
+		return fmt.Errorf("#[unusable] requires a reason: it is what a program naming this declaration is told")
+	}
+	switch d := m.sym.(type) {
+	case *ir.StructDef:
+		return claimUnusable(&d.Foreign, reason)
+	case *ir.StructField:
+		return claimUnusable(&d.Foreign, reason)
+	case *ir.Func:
+		return claimUnusable(&d.Foreign, reason)
+	case *ir.Var:
+		return claimUnusable(&d.Foreign, reason)
+	}
+	return fmt.Errorf("#[unusable] cannot mark %s", ast.DeclFormName(m.decl))
+}
+
+// claimUnusable refuses a second reason rather than overwriting the first, the
+// rule every other mark is held to: two reasons for one declaration is a
+// question about which is true, and silence picks one.
+func claimUnusable(f *ir.Foreign, reason string) error {
+	if f.Unusable != "" {
+		return fmt.Errorf("#[unusable]: already unusable (%s)", f.Unusable)
+	}
+	f.Unusable = reason
 	return nil
 }
 

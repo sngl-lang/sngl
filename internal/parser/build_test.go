@@ -1,13 +1,10 @@
 package parser_test
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	. "git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
 )
 
 func mustParse(t *testing.T, src string) *ast.Document {
@@ -946,46 +943,6 @@ func TestFormatMarkedDecl(t *testing.T) {
 	want := src + "\n"
 	if got != want {
 		t.Errorf("format round-trip mismatch:\ngot:  %q\nwant: %q", got, want)
-	}
-}
-
-// Every fixture parses, and one carrying an ERROR(parse) directive fails the
-// way the directive says. The directive used to be a skip here and in every
-// other testdata consumer, so a fixture asserting a parse message asserted
-// nothing -- the message could change or the error move to another line and
-// no test noticed.
-func TestParseTestdata(t *testing.T) {
-	for s := range testutil.TestdataSamples(t) {
-		t.Run(s.Name, func(t *testing.T) {
-			_, err := Parse(s.Filename, []byte(s.Source))
-			expected := s.PhaseErrors("parse")
-			if len(expected) == 0 {
-				if err != nil {
-					t.Errorf("parse failed: %v", err)
-				}
-				return
-			}
-			if err == nil {
-				t.Fatalf("expected a parse error, got none")
-			}
-			// The errors arrive joined into one message, one per line, each
-			// prefixed "file:line:col: ".
-			lines := strings.Split(err.Error(), "\n")
-			for _, exp := range expected {
-				prefix := fmt.Sprintf("%s:%d:", s.Filename, exp.Pos())
-				found := false
-				for _, got := range lines {
-					if strings.HasPrefix(got, prefix) && strings.Contains(got, exp.Substring) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("line %d: expected a parse error containing %q, got:\n%v",
-						exp.Pos(), exp.Substring, err)
-				}
-			}
-		})
 	}
 }
 

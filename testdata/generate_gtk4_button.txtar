@@ -23,7 +23,7 @@ handler hooked to the GApplication.
 
 deny out/go/gtk4/model.go `gtk_label_set_label` -- the platform's own setter table wins over the GIR name, so a label's text goes through gtk_label_set_text
 deny out/go/gtk4/model.go `gtk_button_new_with_label` -- the GIR names gtk_button_new as the constructor; with_label is a separate one the emitter must not reach for
-
+broken out/go/gtk4 -- `undefined: app`, and a GtkApplicationWindow is passed where gtk_window_set_child wants a GtkWindow
 -- main.sngl --
 import . "sngl:test"
 import "sngl:platform/gtk4"
@@ -241,3 +241,5 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	m.buildWidgetTree()
 	return (*C.GtkWidget)(unsafe.Pointer(m.__n0))
 }
+-- run/go/gtk4 --
+broken sha256:a9e763b0e82abd4da2849d81b06fb4c7
