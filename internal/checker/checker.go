@@ -3162,6 +3162,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// returned.
 	w.Comp = c.windowComp
 	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), c.windowComp)
+	c.reportSelfReferentialProps(vn.Pos, vn.ID, w.Handle, w.Props)
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
 			w.ErrorHandler = c.buildErrorHandler(&eh)

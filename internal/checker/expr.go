@@ -3275,6 +3275,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if argsComp == nil && elemComp != nil {
 				props = namePositionalProps(elemComp, props)
 			}
+			c.reportSelfReferentialProps(x.Pos, id, c.nodeHandleSym(id), props)
 			return &ir.NodeInst{
 				AST:       x,
 				Name:      name,
@@ -3977,6 +3978,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		})
 	}
 	props, handlers, bindings := c.checkAndSplitArgs(vn.Args, spec)
+	c.reportSelfReferentialProps(vn.Pos, vn.ID, c.nodeHandleSym(vn.ID), props)
 
 	emitName := name
 	if qualifiedLocal != "" {

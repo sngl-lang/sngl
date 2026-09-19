@@ -717,25 +717,35 @@ standing on re-entry -- the state a prop with no answer already reached codegen
 in. Keyed by window *and* prop, so two windows naming each other terminate on
 the second key rather than looping on the first.
 
-**Left standing is silent missing output**, and that is a known cost rather
-than a decision anyone defends: the page comes out with no `<title>` and
-nothing says why. The guard firing is exactly the signal a positioned *"this
-window prop reads itself"* error would need, and the reason one is not written
-there is that **self-reference is a rule the language has not made anywhere.**
-`const a int = a` is the same shape one layer down: `sngl check` accepts it and
+**A node may not read its own `#id` in its own arguments**, and that is now a
+positioned checker error (`reportSelfReferentialProps`, `internal/checker/selfref.go`).
+The id names the instance the argument list is building, so `window
+#h(title = h.title)` asks the title for the title. All three forms of a node
+that carries an id are held to it — a window, an element-ref call
+(`text #t(value = t.value)`), and the `context` declaration, whose id *is* its
+own declaration, so `context #depth(depth)` is the same error rather than an
+`undefined` naming the context on the line declaring it. Matched by *symbol*:
+`declareNodeID` declines to bind an id an outer scope already holds, so a
+`#foo` written beside an existing `foo` reads that one, which is an ordinary
+read of something that does exist. A handler is untouched — `@click` is split
+off before the rule is asked, and a handler runs after mount.
+
+What it does **not** cover is the two cases where no single declaration reads
+itself, and both keep the guards they had. **Mutual reference** —
+`window #a(title = b.title)` beside `window #b(title = a.title)` — reaches
+`evalCtx.foldingProp` by a second key and is still left standing, so the page
+comes out with content and no `<title>`, silently. And `const a int = a` is the
+same shape one layer down in a scope of its own: `sngl check` accepts it and
 always did, because the checker never folds, while `sngl generate` used to
 crash — `evalIdent` and `evalExpr` calling each other until the stack went,
 with no position and no message
 (`cmd/sngl/testdata/const_reads_itself.txt`).
 
-That split is the whole argument. Both guards are the survivable answer rather
-than the right one, and the right one is a checker rule refusing a declaration
-that reads itself, with a position — because a guard in `consteval` protects
-only the programs that reach the optimizer at all, and `sngl check` and the LSP
-are where the question is asked first and answered `ok` today.
-`cmd/sngl/testdata/window_prop_reads_itself.txt` and its const sibling pin the
-current answers, cycles included, so making that rule is two fixtures to update
-rather than a surprise.
+So the general rule — a *declaration* that reads itself, however many hops
+round — is still not made, and both guards are still the survivable answer
+rather than the right one there. `cmd/sngl/testdata/window_prop_reads_itself.txt`
+holds the two halves apart: the self-reference refused with a position, the
+mutual pair still emitted with nothing said.
 
 What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
 not simply carried over. `Window.Vars` is a *lowering artifact*: the checker

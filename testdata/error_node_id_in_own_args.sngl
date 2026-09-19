@@ -1,0 +1,23 @@
+// A node's `#id` names the instance the argument list is building, so an
+// argument of that list cannot read it. All three forms of a node that carries
+// an id are held to it: a window, an element-ref call, and the `context`
+// declaration, whose id is its own declaration.
+//
+// Nothing refused any of them. `window #h(title = h.title)` folded through a
+// re-entry guard and emitted a page with no <title>, in silence; `context
+// #depth(depth)` was an `undefined` naming the context on the line declaring
+// it.
+
+import . "sngl:ui"
+
+context #depth(depth) // ERROR(check) "#depth names the context this argument list declares"
+
+component probe node {
+    vbox {
+        text #t(value=t.value) // ERROR(check) "#t names the node this argument list declares"
+    }
+}
+
+window #h(title=h.title) { // ERROR(check) "#h names the node this argument list declares"
+    probe()
+}

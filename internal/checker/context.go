@@ -90,7 +90,17 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	// context's root/provider is set up — the same semantics as a var
 	// initializer. It need not be a compile-time constant (e.g. the stdlib
 	// `#locale` context defaults to the runtime `i18n.defaultLocale()`).
+	// Declared before its own default is checked, which is what lets the rule
+	// below match by symbol the way reportSelfReferentialProps does. Bound
+	// after, `context #depth(depth)` was an `undefined` naming the context
+	// being declared on the line declaring it -- and where an outer `depth`
+	// existed it was not even that, the default quietly reading a different
+	// binding.
+	if name != "" {
+		c.declare(s.Pos, ctx)
+	}
 	def := c.checkExpr(a.Value)
+	c.reportSelfReferentialDefault(s.Pos, ctx, def)
 	ctx.Default = def
 	if def != nil {
 		ctx.Typ = def.ExprType()
@@ -99,7 +109,24 @@ func (c *checker) registerRootContextDecl(s *ast.CallStmt) {
 	// declares has to reach the program's own codegen, which reads
 	// c.pkg.Contexts.
 	c.pkg.Contexts = append(c.pkg.Contexts, ctx)
-	if name != "" {
-		c.declare(s.Pos, ctx)
-	}
+}
+
+// reportSelfReferentialDefault reports a context default that reads the
+// context it is declaring -- the rule reportSelfReferentialProps states for a
+// node's id, asked of the one node whose id is its own declaration.
+func (c *checker) reportSelfReferentialDefault(pos ast.Pos, ctx *ir.Context, def ir.Expr) {
+	reported := false
+	_ = ir.Walk(def, func(n ir.Node) error {
+		r, ok := n.(*ir.ContextRead)
+		if !ok || reported || r.Ref != ctx {
+			return nil
+		}
+		reported = true
+		at := pos
+		if r.AST != nil {
+			at = r.AST.Pos
+		}
+		c.error(at, "#%s names the context this argument list declares, so its default cannot read it", ctx.Name)
+		return nil
+	})
 }

@@ -177,9 +177,32 @@ contexts' own case is already settled: `context #depth(depth)` is a positioned
 `undefined`, since the name is not bound until its default has been checked.
 Those two guards are untouched and still open.
 
-`listItem` can now pick its own bullet from the depth with no caller involved --
-`depth(depth + 1)` around each nested list, a modulo on the read. The importer
-still writes `marker` for an ordered list.
+`listItem` still cannot pick its own bullet from the depth, and the reason is a
+different gap: **a context does not cross a slot boundary.** A provider written
+in `list`'s body covers `list`'s own body and nothing the caller wrote into its
+`items` slot, which is where every `listItem` is. Verified on both paths, and
+they fail differently:
+
+- **Lowered** (`passContext`) threads `__ctx_<name>` onto a call site by its
+  *lexical* position, and a slot population is lexically at the call site --
+  outside the callee's provider. It does cross an ordinary component boundary:
+  `depth(7) { reader() }` reaches `reader`'s body correctly.
+- **The interpreter** does not cross a component boundary at all. Providers are
+  answered by mutating the env's shared `ContextVals`, and a component instance
+  is mounted with an env of its own, so `depth(7) { leaf() }` reads 0 in `leaf`.
+  `t.setContext` and the declared defaults are the whole of what worked there
+  before providers were evaluated at all.
+
+Closing the first is per-component, per-slot: record the provider chain
+enclosing each `SlotInst` in a body with its value expressions still holding
+`ir.ContextRead`, then at each call site substitute the value threaded to that
+callee and walk the population under the result. Cloning matters -- the value
+expression would otherwise be shared across call sites and `lowerInExpr`
+mutates in place. Closing the second is the interpreter's own answer and is not
+the same code.
+
+Until then the importer writes `marker`, which it can: it knows the depth the
+way it knows the ordinal.
 
 ## Open questions
 

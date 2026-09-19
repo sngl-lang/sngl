@@ -1,32 +1,22 @@
-# A window prop that reads itself folds once and stops.
+# A node's `#id` names the instance its argument list is building, so an
+# argument of that list may not read it. The checker says so, with a position.
 #
-# Folding `home.title` yields the window's `title` expression, which is folded
-# again against the context the read sits in -- that is what lets a read inside
-# an unrolled loop body see the loop variable. A prop that names its own window
-# returns itself, so the second fold re-enters on the same prop and the third
-# on the same one again: unguarded this is a stack overflow, not a diagnostic.
-#
-# Left standing is what a prop with no answer already reached codegen as, so
-# the guard changes nothing else. A CLI test rather than a golden because what
-# is asserted is that the compiler comes back at all.
-sngl generate --lang none --platform html --out out selfref.sngl
-# The page has content: `exists` alone would pass on a file merely touched.
-grep '<span>hi</span>' out/index.html
-# And no <title>, which is what "left standing" costs. A select the fold could
-# not answer reaches codegen as a dangling reference and html writes nothing
-# for it -- silent missing output, not a crash. Pinned because it is a
-# deliberate choice and the alternative (a positioned error) is a language rule
-# this MR does not make. `const a int = a` is the same shape one layer down:
-# `sngl check` accepts it, because the checker never folds, and `sngl generate`
-# crashed outright until the guard beside this one (const_reads_itself.txt).
-# The rule the language has not made is the general one, and the checker
-# accepting both is where it belongs.
-! grep '<title>' out/index.html
+# This file used to pin the opposite: the fold's re-entry guard left such a
+# prop standing and html wrote no <title> for it, silently, which CLAUDE.md
+# recorded as the survivable answer rather than the right one. This is the
+# right one for the half a node's id covers. `const a int = a` is the same
+# shape one layer down and is a scope of its own, still accepted by `sngl
+# check` and still guarded in consteval (const_reads_itself.txt).
+! sngl check selfref.sngl
+stderr 'names the node this argument list declares'
+! sngl generate --lang none --platform html --out out selfref.sngl
 
-# Two windows naming each other reach the guard by a second key rather than by
-# the first one twice, which is the path a single self-reference never takes.
-# They have to sit in a root component's body: at the root of a file the
-# windows are registered in order, so the first cannot name the second at all.
+# Mutual reference is not reached by that rule and is not meant to be: neither
+# window reads its own id, so what the two name is each other and there is no
+# single declaration to blame. It reaches the fold's guard by a second key
+# rather than by the first one twice, which is the path a self-reference never
+# took, and it is still left standing -- the page comes out with content and no
+# <title>. The general rule the language has not made is this one.
 sngl generate --lang none --platform html --out out2 mutual.sngl
 grep '<span>a</span>' out2/a.html
 grep '<span>b</span>' out2/b.html
