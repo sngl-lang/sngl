@@ -61,36 +61,38 @@ func async() ir.Macro
 
 // What a Go declaration's shape says beyond its name.
 //
-// `fails` says the function returns `(T, error)` where the SNGL declaration
-// answers T alone — the shape half of Go's standard library is written in, and
-// the one the Go importer reads off a signature it can see. A declaration named
-// here has no signature to read, so the mark is where it is said.
+// Each is a fact the Go importer reads off a signature it can see. A
+// declaration named here has no signature to read, so the mark is where it is
+// said -- and a flag rather than something inferred from the call, for the
+// reason nothing about a foreign declaration is ever inferred: its SNGL body
+// describes the identifier and does not implement it.
 //
-// It describes a call, so a struct refuses it.
-// `method` says the identifier is invoked on its first argument rather than
-// handed it, which is what a Go method wants: `c.Circle(1, 2)` rather than the
-// method-expression spelling `canvas.Context.Circle(c, 1, 2)`. Both are valid;
-// only the API knows which it is.
-//
-// `schedules` says the identifier runs a callback it is handed from the loop it
-// owns, rather than inline on the thread that called it: `gtk4rt.Every` gives
-// its function to a GLib timeout source, and the source runs it from the main
-// loop, which is the thread the target draws on.
-//
-// passAsyncOffload reads it to know the callback is a body it may enter. A
-// blocking call inside one is work that has to leave the drawing thread, and
-// without the flag it stays there -- silently, which is the failure
-// testdata/timer_tick_async_offload.txtar exists to deny.
-//
-// It is a flag rather than something read off the call, for the reason nothing
-// is inferred from a foreign declaration at all: its SNGL body describes the
-// identifier and does not implement it, so nothing in the program says when the
-// host runs an argument.
-// `context` says the Go function takes a leading context.Context that SNGL
-// does not: the importer strips it from the signature and the call site
-// supplies one. It is the same fact HasErrorReturn is for `fails` -- read off
-// a signature by an importer, and unreadable here, so the mark states it.
-enum NativeFlag { fails, method, schedules, context }
+// All of them describe a call, so a struct refuses every one.
+enum NativeFlag {
+    // The function returns `(T, error)` where the SNGL declaration answers T
+    // alone -- the shape half of Go's standard library is written in. The
+    // error becomes a raise at the call site.
+    fails
+    // The identifier is invoked *on* its first argument rather than handed
+    // it: `c.Circle(1, 2)` rather than the method-expression spelling
+    // `canvas.Context.Circle(c, 1, 2)`. Both are valid Go for the same
+    // method; only the API knows which it is.
+    method
+    // The identifier runs a callback it is handed from the loop it owns,
+    // rather than inline on the thread that called it: `gtk4rt.Every` gives
+    // its function to a GLib timeout source, and the source runs it from the
+    // main loop, which is the thread the target draws on.
+    //
+    // passAsyncOffload reads it to know the callback is a body it may enter.
+    // A blocking call inside one is work that has to leave the drawing
+    // thread, and without the flag it stays there -- silently, which is the
+    // failure testdata/timer_tick_async_offload.txtar exists to deny.
+    schedules
+    // The function takes a leading `context.Context` that the SNGL signature
+    // does not: it is stripped from the parameters and the call site supplies
+    // one.
+    context
+}
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result
