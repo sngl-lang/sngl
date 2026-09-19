@@ -175,9 +175,17 @@ func Owners(pkg *Package) []Owner {
 	// component's slot carrying one -- and passWindowNesting is the only guard
 	// on those, in lowering. Every consumer that runs before it sees what it
 	// will reject.
-	for i := 0; i < len(out); i++ {
-		if out[i].Win != nil {
-			search(out[i].Win.Body)
+	//
+	// Which is the whole of what this loop finds, so once that pass has run it
+	// finds nothing and costs a walk of every window's body to say so. A
+	// window's body is a page, so that is the package over again per call, and
+	// the lowering asks 21 times after the pass and codegen more. Package.
+	// WindowsFlat is the pass handing its answer forward.
+	if !pkg.WindowsFlat {
+		for i := 0; i < len(out); i++ {
+			if out[i].Win != nil {
+				search(out[i].Win.Body)
+			}
 		}
 	}
 	return out
