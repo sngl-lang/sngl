@@ -162,35 +162,30 @@ func runFixture(t *testing.T, path string, update, force bool) {
 
 	assertFormatted(t, src)
 
-	got, err := generate(src, nil, false)
-	if err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-
-	// What the host toolchain is handed is not what the golden shows, and
-	// deliberately so. The golden is the plain build, because that is what a
-	// reader wants; the toolchain gets a *runnable* one.
+	// One build, and it is the runnable one -- what the host toolchain is
+	// handed is what the archive shows. It used to be two: a plain build for
+	// the golden and a runnable one for the compiler, with only a digest of
+	// the second committed. That made every difference between them
+	// invisible, so a digest could move with nothing in the archive to say
+	// why, and the emitted test assertions -- the most interesting thing
+	// codegen produces -- were shown nowhere at all.
 	//
 	// `main` is what makes it runnable, and it is unconditional. A library
-	// build gives android one Kotlin file and no Gradle project at all, so
-	// there was nothing to build it with and the target recorded nothing --
-	// the "skip because there is nothing to run" that this harness must not
-	// have. With main it is an eleven-file scaffold with a wrapper, and every
-	// target answers for every fixture.
-	//
-	// A fixture carrying `func test…` adds the test options on top, so the
-	// assertions are compiled and run rather than merely the program.
+	// build gives android one Kotlin file and no Gradle project, so there was
+	// nothing to build it with. A fixture carrying `func test…` adds the test
+	// options on top, so the assertions are compiled and run rather than
+	// merely the program.
 	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
-	verifyFiles, err := generate(src, opts, true)
+	got, boilerplate, err := generate(src, opts, true)
 	if err != nil {
-		t.Fatalf("generate (verification build): %v", err)
+		t.Fatalf("generate: %v", err)
 	}
 
 	// Verification comes before the golden is written, so a -update run that
 	// cannot compile what it generated leaves the archive as it found it.
 	// Written first, the bad golden would be committed and the record beside
 	// it would be the only thing saying so.
-	kept := verify(t, targetsOf(verifyFiles), records, exempt, update, force)
+	kept := verify(t, targetsOf(got), records, exempt, update, force)
 
 	if update {
 		if t.Failed() {
@@ -202,16 +197,16 @@ func runFixture(t *testing.T, path string, update, force bool) {
 			t.Logf("not writing the archive: verification did not complete")
 			return
 		}
-		writeGolden(t, path, arc, got, kept)
+		writeGolden(t, path, arc, got, boilerplate, kept)
 		// Deny directives are checked against the rewritten golden too: a
 		// -update run that quietly reintroduces what a fixture denies is the
 		// regression the directive is there to catch.
-		checkDenies(t, denies, got)
+		checkDenies(t, denies, got, boilerplate)
 		return
 	}
 
-	compare(t, got, golden)
-	checkDenies(t, denies, got)
+	compare(t, reviewable(got, boilerplate), golden)
+	checkDenies(t, denies, got, boilerplate)
 }
 
 // split separates the package's source from the golden and from the
@@ -306,7 +301,7 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 // opts and main are the overlay a verification build adds; the golden itself
 // is generated with neither, so what the archive shows is what `sngl generate`
 // writes.
-func generate(src map[string][]byte, opts map[string]string, main bool) (map[string][]byte, error) {
+func generate(src map[string][]byte, opts map[string]string, main bool) (files map[string][]byte, boilerplate map[string]bool, err error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -314,7 +309,7 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (map[str
 
 	doc, err := build.ParsePackageFS(fsys)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pkg, err := build.Check(doc, build.CheckConfig{
 		Dir:      ".",
@@ -323,7 +318,7 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (map[str
 		IsMain:   true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("check: %w", err)
+		return nil, nil, fmt.Errorf("check: %w", err)
 	}
 
 	// Name and Dir match what `sngl generate <file>` passes for a package in
@@ -339,10 +334,11 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (map[str
 		Main:      main,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	out := map[string][]byte{}
+	boiler := map[string]bool{}
 	seen := map[string]bool{}
 	// txtar has no spelling for a file that does not end in a newline --
 	// Format appends one -- so a generated file missing it is compared, and
@@ -352,20 +348,24 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (map[str
 	for _, res := range results {
 		dir := goldenPrefix + res.Target.Lang + "/" + res.Target.Platform
 		if seen[dir] {
-			return nil, fmt.Errorf("output declares %s/%s twice; its two builds would overwrite each other's golden", res.Target.Lang, res.Target.Platform)
+			return nil, nil, fmt.Errorf("output declares %s/%s twice; its two builds would overwrite each other's golden", res.Target.Lang, res.Target.Platform)
 		}
 		seen[dir] = true
 		if len(res.Files) == 0 {
-			return nil, fmt.Errorf("target %s/%s generated no files", res.Target.Lang, res.Target.Platform)
+			return nil, nil, fmt.Errorf("target %s/%s generated no files", res.Target.Lang, res.Target.Platform)
 		}
 		for name, data := range res.Files {
 			if len(data) > 0 && data[len(data)-1] != '\n' {
 				data = append(append([]byte{}, data...), '\n')
 			}
-			out[dir+"/"+path.Clean(name)] = data
+			full := dir + "/" + path.Clean(name)
+			out[full] = data
+			if res.Boilerplate[name] {
+				boiler[full] = true
+			}
 		}
 	}
-	return out, nil
+	return out, boiler, nil
 }
 
 func firstRootSNGL(src map[string][]byte) string {
@@ -399,7 +399,7 @@ func compare(t *testing.T, got, golden map[string][]byte) {
 	}
 }
 
-func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][]byte, records map[string]record) {
+func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][]byte, boilerplate map[string]bool, records map[string]record) {
 	t.Helper()
 	var files []txtar.File
 	for _, f := range arc.Files {
@@ -408,7 +408,7 @@ func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][
 			files = append(files, f)
 		}
 	}
-	for _, name := range sortedKeys(got) {
+	for _, name := range sortedKeys(reviewable(got, boilerplate)) {
 		files = append(files, txtar.File{Name: name, Data: got[name]})
 	}
 	for _, name := range sortedStrings(records) {
@@ -466,4 +466,25 @@ func fixtureSource(src map[string][]byte) string {
 		}
 	}
 	return b.String()
+}
+
+// reviewable drops the files a platform writes around the program.
+//
+// The digest in the record covers every generated file, boilerplate included,
+// so nothing goes unkeyed by being left out here -- what changes is only
+// whether a reader sees the bytes or the hash that stands for them. Android
+// is why: its runnable build is twelve files, ten of them a Gradle project
+// identical in all hundred android fixtures, and committing those is ~770KB
+// of the same manifest over and over in a diff nobody reads.
+func reviewable(files map[string][]byte, boilerplate map[string]bool) map[string][]byte {
+	if len(boilerplate) == 0 {
+		return files
+	}
+	out := make(map[string][]byte, len(files))
+	for name, data := range files {
+		if !boilerplate[name] {
+			out[name] = data
+		}
+	}
+	return out
 }
