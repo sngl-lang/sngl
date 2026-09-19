@@ -1,0 +1,60 @@
+# `dump --stage checked` prints what makes a declaration foreign.
+#
+# It printed the declarations stripped of their marks: a native was an
+# ordinary `func shout(s string) string`, a field SNGL cannot model was a bare
+# `bad dyn` with the reason gone, and both read as declarations a backend
+# would emit -- the opposite of what they are.
+#
+# The round trip is the assertion worth making, and it is a CLI script rather
+# than a golden because it runs the compiler twice over its own output:
+# dump, check what came back, dump that, and require the two dumps to agree.
+# A rendering that loses a mark checks clean and differs on the second pass.
+
+sngl dump --stage checked app.sngl
+cp stdout first.sngl
+
+# What came back is a program, not a transcript of one.
+sngl check first.sngl
+
+# And re-dumping it reaches the same text, so nothing was lost on the way.
+sngl dump --stage checked first.sngl
+cp stdout second.sngl
+cmp first.sngl second.sngl
+
+# Each mark survived, with its arguments.
+grep '#\[go\.native\("example\.com/todo", "todo\.Todo"\)\]' first.sngl
+grep '#\[go\.native\("ID"\)\]' first.sngl
+grep '#\[go\.native\("example\.com/todo", "todo\.Fetch", fails, context\)\]' first.sngl
+grep '#\[macro\.unusable\("functions returning multiple values are not supported"\)\]' first.sngl
+grep '#\[go\.native\("example\.com/todo", "todo\.Count"\)\]' first.sngl
+
+# A declaration the host already has is emitted by nobody, so it prints with
+# no body. The checker synthesizes `return <zero>` for a bodyless func, and
+# printing that back read as a real implementation returning zero -- which,
+# beside the mark, is the shape the checker itself refuses.
+! grep 'return Todo\{\}' first.sngl
+
+-- app.sngl --
+import go "sngl:language/go"
+import macro "sngl:macro"
+import . "sngl:ui"
+
+#[go.native("example.com/todo", "todo.Todo")]
+struct Todo {
+    #[go.native("ID")]
+    id int
+}
+
+#[go.native("example.com/todo", "todo.Fetch", context, fails)]
+func Fetch(q string) Todo
+
+#[go.native("example.com/todo", "todo.MultiReturn")]
+#[macro.unusable("functions returning multiple values are not supported")]
+func MultiReturn()
+
+#[go.native("example.com/todo", "todo.Count")]
+var Count int
+
+window {
+    text(value="{Count}")
+}
