@@ -220,6 +220,66 @@ type windowShared struct {
 	usedComponents map[string]bool
 	prewalked      map[string]*ir.NodeInst
 	slotsRewritten bool
+
+	// The rest are the package-derived analysis each window used to rebuild
+	// for itself. Each is a function of the package alone and each walks the
+	// whole of it -- and a window's body is part of that package, so a site of
+	// N pages walked N tree-heavy packages per page. The docs site's 1044
+	// windows spent 8m27s of an 8m49s build here.
+	//
+	// Filled on the first window, like usedComponents above: the slot retarget
+	// that runs after it rewrites call arguments and declares nothing, so it
+	// changes none of these answers. The multi-window goldens are what says a
+	// later page takes nothing of an earlier one out of them.
+	common     *codegen.CommonAnalysis
+	dt         *codegen.DepTracker
+	owners     []ir.Owner
+	canvasesIn bool
+	canvasByID map[string]*canvasutil.Meta
+	canvasByFn map[*ir.Func]*canvasutil.Meta
+}
+
+// analysis derives the package's CommonAnalysis once and hands out a copy.
+// The copy is what keeps a window's own emission off every other window's,
+// which is the isolation the shared cache must not cost.
+func (s *windowShared) analysis(pkg *ir.Package) *codegen.CommonAnalysis {
+	if s.common == nil {
+		var ao codegen.AnalyzeOpts
+		ao.UsedComponents = s.usedComponents
+		s.common = codegen.AnalyzeCommonFor(pkg, ao)
+		if s.usedComponents == nil {
+			s.usedComponents = maps.Clone(s.common.UsedComponents)
+		}
+	}
+	return s.common.Clone()
+}
+
+// depTracker is shared rather than copied: nothing writes to a DepTracker
+// after it is built, ExprDeps being the whole of what a generator asks it.
+func (s *windowShared) depTracker(pkg *ir.Package) *codegen.DepTracker {
+	if s.dt == nil {
+		s.dt = codegen.NewDepTrackerFromPkg(pkg)
+	}
+	return s.dt
+}
+
+// ownerList is ir.Owners memoized. A caller filters it per window; the walk
+// that produces it is per package.
+func (s *windowShared) ownerList(pkg *ir.Package) []ir.Owner {
+	if s.owners == nil {
+		s.owners = ir.Owners(pkg)
+	}
+	return s.owners
+}
+
+// canvases is canvasutil.Collect memoized. Shared, not copied, for the reason
+// depTracker is.
+func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.Func]*canvasutil.Meta) {
+	if !s.canvasesIn {
+		s.canvasByID, s.canvasByFn = canvasutil.Collect(pkg, nil)
+		s.canvasesIn = true
+	}
+	return s.canvasByID, s.canvasByFn
 }
 
 func newWindowShared(projectDir string, projectFS fs.FS) *windowShared {
@@ -677,12 +737,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	if shared == nil {
 		shared = newWindowShared("", nil)
 	}
-	var ao codegen.AnalyzeOpts
-	ao.UsedComponents = shared.usedComponents
-	common := codegen.AnalyzeCommonFor(pkg, ao)
-	if shared.usedComponents == nil {
-		shared.usedComponents = maps.Clone(common.UsedComponents)
-	}
+	common := shared.analysis(pkg)
 
 	g := &htmlGen{
 		pkg:            pkg,
@@ -700,12 +755,12 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		shared:         shared,
 	}
 
-	g.dt = codegen.NewDepTrackerFromPkg(pkg)
+	g.dt = shared.depTracker(pkg)
 	// The canvases passCanvas flattened into a lowered body. A canvas the page
 	// renders as markup is an ir.NodeInst and is not among these; what is, is
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
-	g.canvasByID, g.canvasByFunc = canvasutil.Collect(pkg, nil)
+	g.canvasByID, g.canvasByFunc = shared.canvases(pkg)
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
@@ -1386,7 +1441,7 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
 func (g *htmlGen) stateVars() []*ir.Var {
 	var out []*ir.Var
-	for _, o := range ir.Owners(g.pkg) {
+	for _, o := range g.shared.ownerList(g.pkg) {
 		if o.Comp != nil && o.Comp != g.rootComp {
 			continue
 		}

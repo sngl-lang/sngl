@@ -29,6 +29,33 @@ type CommonAnalysis struct {
 	UsedComponents map[string]bool // primitive component names used in the visual tree
 }
 
+// Clone copies the analysis so one generator's may not reach another's. The
+// maps are copied and the slices are not: a slice here holds declarations,
+// which belong to the package and are the same for every generator reading it,
+// while the maps are keyed by name and are what a platform would mutate.
+//
+// It exists so a caller emitting many documents from one package can derive
+// the analysis once -- it is a function of the package alone, and a full IR
+// walk -- and still hand each document an analysis of its own.
+func (a *CommonAnalysis) Clone() *CommonAnalysis {
+	if a == nil {
+		return nil
+	}
+	out := *a
+	out.ModelFields = maps.Clone(a.ModelFields)
+	out.ComputedFields = maps.Clone(a.ComputedFields)
+	out.FuncNames = maps.Clone(a.FuncNames)
+	out.ExternFuncs = maps.Clone(a.ExternFuncs)
+	out.ExternVars = maps.Clone(a.ExternVars)
+	out.UsedComponents = maps.Clone(a.UsedComponents)
+	out.StructFields = maps.Clone(a.StructFields)
+	out.ComputedDeps = make(map[string]map[string]bool, len(a.ComputedDeps))
+	for k, v := range a.ComputedDeps {
+		out.ComputedDeps[k] = maps.Clone(v)
+	}
+	return &out
+}
+
 // Emission is what a code generator accumulates while it emits, as opposed to
 // the facts about the program that CommonAnalysis holds.
 type Emission struct {
