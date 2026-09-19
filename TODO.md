@@ -171,16 +171,58 @@ Every target that a document can reach needs one, or
 
 ## Blocked on a compiler bug
 
-- [ ] **A context provider that reads the context it overrides is broken.**
-      `depth(depth + 1) { … depth(depth + 1) { … } }` emits `depth + 1` at both
-      levels — no accumulation — and `depth` reaches codegen as a bare
-      identifier nothing declares, so a language target would not compile.
-      Plain providers are fine: `depth(7)` reaches an inlined component as
-      `__ctx_depth__inst1 = 7`. Repro is three lines; it is not a markup bug
-      and wants its own change.
-      Until then `listItem.marker` is written by the importer, which knows the
-      depth the way it knows the ordinal. Fixing it would let a nested list
-      pick its own bullet with no caller involved.
+- [ ] **A context provider whose value reads the context it overrides is
+      broken.** Two symptoms, and the second is the serious one: the value does
+      not accumulate across nesting, and the context name reaches codegen as a
+      bare identifier nothing declares — so a language target emits code that
+      does not compile.
+
+      Repro, verbatim:
+
+      ```sngl
+      import ui "sngl:ui"
+
+      context #depth(0)
+
+      component main() ui.root {
+          ui.window(title="t") {
+              depth(depth + 1) {
+                  ui.text(value="one={depth}")
+                  depth(depth + 1) {
+                      ui.text(value="two={depth}")
+                  }
+              }
+          }
+      }
+      ```
+
+      `sngl dump --stage lowered --platform html --lang none <file>` gives:
+
+      ```
+      span(textContent="one=" + string(depth + 1), …)
+      span(textContent="two=" + string(depth + 1), …)
+      ```
+
+      Expected `1` and `2`. Note `depth` itself in the output, declared
+      nowhere.
+
+      A **plain** provider is fine and is the contrast to work from: with
+      `depth(7) { reader() }` where `reader` reads `{depth}`, the lowering
+      declares `var __ctx_depth__inst1 int = 7` and the read resolves to it.
+      So the defect is specific to a provider reading the context it is
+      overriding, not to contexts or to inlining.
+
+      The passes live in `internal/checker/context.go` and
+      `internal/lower/context.go`; neither has been read, so that is a starting
+      point and not a diagnosis. This is the same self-reference family as the
+      window-prop and const guards CLAUDE.md describes, except those guard and
+      this one is silent — worth deciding whether the answer here is a
+      positioned error or a working accumulation, since a language rule
+      refusing self-reference would also settle those two.
+
+      Blocks nothing in markup: `listItem.marker` is written by the importer,
+      which knows the depth the way it knows the ordinal. Fixing it would let a
+      nested list pick its own bullet with no caller involved.
 
 ## Open questions
 
