@@ -106,38 +106,38 @@ func displayOS(goos string) string {
 	}
 }
 
-// buildOne cross-compiles sngl for a single target with CGO disabled, stamps
-// version metadata via ldflags, gzip-compresses the binary into
-// <outDir>/downloads/, removes the uncompressed binary, and returns its
-// artifact record.
-func buildOne(repoRoot, outDir string, t target, version, commit, date string) (artifact, error) {
-	dlDir := filepath.Join(outDir, "downloads")
-	if err := os.MkdirAll(dlDir, 0o755); err != nil {
-		return artifact{}, err
-	}
-
-	base := fmt.Sprintf("sngl-%s-%s", t.goos, t.goarch)
-	binName := base
+// binName is the uncompressed basename for a target, e.g. "sngl-linux-amd64"
+// with Windows' .exe.
+func binName(t target) string {
+	name := fmt.Sprintf("sngl-%s-%s", t.goos, t.goarch)
 	if t.goos == "windows" {
-		binName += ".exe"
+		name += ".exe"
 	}
-	tmpBin := filepath.Join(dlDir, binName)
+	return name
+}
 
+// buildCommand is the cross-build for one target: CGO disabled, version
+// metadata stamped via ldflags, output at binPath.
+func buildCommand(repoRoot, binPath string, t target, version, commit, date string) *exec.Cmd {
 	ldflags := fmt.Sprintf("-s -w -X main.version=%s -X main.commit=%s -X main.date=%s", version, commit, date)
-	cmd := exec.Command("go", "build", "-o", tmpBin, "-ldflags", ldflags, "./cmd/sngl")
+	cmd := exec.Command("go", "build", "-o", binPath, "-ldflags", ldflags, "./cmd/sngl")
 	cmd.Dir = repoRoot
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+t.goos, "GOARCH="+t.goarch)
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return artifact{}, fmt.Errorf("building %s/%s: %w", t.goos, t.goarch, err)
-	}
+	return cmd
+}
 
-	gzName := binName + ".gz"
-	gzPath := filepath.Join(dlDir, gzName)
-	if err := gzipFile(tmpBin, gzPath); err != nil {
-		return artifact{}, fmt.Errorf("gzip %s: %w", binName, err)
+// packageBinary gzip-compresses binPath in place, removes the uncompressed
+// binary and returns the artifact record for the result. Split from buildOne
+// so a test can exercise it over a stand-in file: the compile it would
+// otherwise need is a full cross-build of the compiler, under a CGO_ENABLED=0
+// configuration nothing else in the suite shares a build cache with.
+func packageBinary(binPath string, t target) (artifact, error) {
+	gzPath := binPath + ".gz"
+	if err := gzipFile(binPath, gzPath); err != nil {
+		return artifact{}, fmt.Errorf("gzip %s: %w", filepath.Base(binPath), err)
 	}
-	if err := os.Remove(tmpBin); err != nil {
+	if err := os.Remove(binPath); err != nil {
 		return artifact{}, err
 	}
 
@@ -145,8 +145,24 @@ func buildOne(repoRoot, outDir string, t target, version, commit, date string) (
 	if err != nil {
 		return artifact{}, err
 	}
+	gzName := filepath.Base(gzPath)
 	log.Printf("binaries: built %s (%s)", gzName, humanSize(info.Size()))
 	return artifact{os: displayOS(t.goos), arch: t.goarch, filename: gzName, size: info.Size()}, nil
+}
+
+// buildOne cross-compiles sngl for a single target and packages the result
+// into <outDir>/downloads/.
+func buildOne(repoRoot, outDir string, t target, version, commit, date string) (artifact, error) {
+	dlDir := filepath.Join(outDir, "downloads")
+	if err := os.MkdirAll(dlDir, 0o755); err != nil {
+		return artifact{}, err
+	}
+
+	tmpBin := filepath.Join(dlDir, binName(t))
+	if err := buildCommand(repoRoot, tmpBin, t, version, commit, date).Run(); err != nil {
+		return artifact{}, fmt.Errorf("building %s/%s: %w", t.goos, t.goarch, err)
+	}
+	return packageBinary(tmpBin, t)
 }
 
 // gzipFile streams src through gzip into dst.

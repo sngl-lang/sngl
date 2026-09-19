@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -70,31 +71,70 @@ func TestResolveVersion(t *testing.T) {
 	}
 }
 
-func TestBuildOne(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping cross-build in -short mode")
+// TestPackageBinary covers the download artifact's naming, compression and
+// size record over a stand-in file. It deliberately does not build anything:
+// producing a real binary here is a cross-compile of the whole compiler, and
+// the CGO_ENABLED=0 target configuration shares its build cache with nothing
+// else in the suite, so it is a cold link every time.
+func TestPackageBinary(t *testing.T) {
+	for _, tc := range []struct {
+		t    target
+		want string
+	}{
+		{target{"linux", "amd64"}, "sngl-linux-amd64.gz"},
+		{target{"windows", "amd64"}, "sngl-windows-amd64.exe.gz"},
+	} {
+		dl := filepath.Join(t.TempDir(), "downloads")
+		if err := os.MkdirAll(dl, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		bin := filepath.Join(dl, binName(tc.t))
+		if err := os.WriteFile(bin, []byte(strings.Repeat("sngl", 1024)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		a, err := packageBinary(bin, tc.t)
+		if err != nil {
+			t.Fatalf("packageBinary: %v", err)
+		}
+		if a.filename != tc.want {
+			t.Errorf("filename = %q, want %q", a.filename, tc.want)
+		}
+		if a.arch != tc.t.goarch || a.os != displayOS(tc.t.goos) {
+			t.Errorf("artifact = %s/%s, want %s/%s", a.os, a.arch, displayOS(tc.t.goos), tc.t.goarch)
+		}
+		if _, err := os.Stat(bin); !os.IsNotExist(err) {
+			t.Errorf("uncompressed binary %s survived packaging", bin)
+		}
+		info, err := os.Stat(filepath.Join(dl, a.filename))
+		if err != nil {
+			t.Fatalf("stat: %v", err)
+		}
+		if info.Size() == 0 {
+			t.Error("gzip artifact is empty")
+		}
+		if a.size != info.Size() {
+			t.Errorf("artifact.size = %d, stat size = %d", a.size, info.Size())
+		}
 	}
-	repoRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
+}
+
+// TestBuildCommand asserts the cross-build's shape without running it: the
+// target selection and version stamping are what the download page depends on.
+func TestBuildCommand(t *testing.T) {
+	cmd := buildCommand("/repo", "/out/sngl-darwin-arm64", target{"darwin", "arm64"}, "v1", "abc", "2026-01-01")
+	if cmd.Dir != "/repo" {
+		t.Errorf("Dir = %q, want /repo", cmd.Dir)
 	}
-	out := t.TempDir()
-	a, err := buildOne(repoRoot, out, target{goos: "linux", goarch: "amd64"}, "vtest", "ctest", "dtest")
-	if err != nil {
-		t.Fatalf("buildOne: %v", err)
+	args := strings.Join(cmd.Args, " ")
+	for _, want := range []string{"-o /out/sngl-darwin-arm64", "./cmd/sngl", "-X main.version=v1", "-X main.commit=abc", "-X main.date=2026-01-01"} {
+		if !strings.Contains(args, want) {
+			t.Errorf("build args %q missing %q", args, want)
+		}
 	}
-	if a.filename != "sngl-linux-amd64.gz" {
-		t.Errorf("filename = %q, want sngl-linux-amd64.gz", a.filename)
-	}
-	gz := filepath.Join(out, "downloads", a.filename)
-	info, err := os.Stat(gz)
-	if err != nil {
-		t.Fatalf("stat %s: %v", gz, err)
-	}
-	if info.Size() == 0 {
-		t.Error("gzip artifact is empty")
-	}
-	if a.size != info.Size() {
-		t.Errorf("artifact.size = %d, stat size = %d", a.size, info.Size())
+	for _, want := range []string{"CGO_ENABLED=0", "GOOS=darwin", "GOARCH=arm64"} {
+		if !slices.Contains(cmd.Env, want) {
+			t.Errorf("build env missing %q", want)
+		}
 	}
 }
