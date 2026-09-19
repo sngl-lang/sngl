@@ -585,6 +585,17 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	}
 
 	cenv := frame.env
+	// The *names* in that content are the caller's and the *contexts* are not:
+	// a context is set by the provider the content is mounted beneath, and
+	// this insertion is where the callee's body puts it. So the caller's
+	// scope answers for identifiers and this scope answers for contexts,
+	// which is what lets `list { listItem() }` put the item under whatever
+	// `list`'s body wrapped its slot in. Swapped and restored rather than
+	// snapshotted, because frame.env is the caller's live scope and a copy of
+	// it would lose the writes RebindFrom carries back.
+	prevCtx := cenv.ContextVals
+	cenv.ContextVals = capturedContext(env)
+	defer func() { cenv.ContextVals = prevCtx }()
 	// A scoped slot's arguments are the insertion's, evaluated here, and the
 	// names they bind are the populator's, declared at the call site.
 	if sc != nil && len(sc.Params) > 0 {

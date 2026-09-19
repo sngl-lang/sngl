@@ -2,6 +2,7 @@ package interp
 
 import (
 	"fmt"
+	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -75,6 +76,10 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 		// `running` to false, because the branch testing it read the value the
 		// prop had when the tree was first built.
 		bindProps(env, cached, comp, inst)
+		// And the contexts, for the same reason: they are inputs too, and the
+		// provider this instance is mounted under may be answering with a
+		// different value than it did last time.
+		cached.ContextVals = capturedContext(env)
 		// And the scope it answers to. Snapshot() shares the child cache, so a
 		// cached child still points at the env it was first mounted from --
 		// which for a subtest is the enclosing test's. An emit runs its handler
@@ -90,6 +95,7 @@ func (env *Env) componentEnv(comp *ir.Component, inst *ir.NodeInst) *Env {
 	child.Comp = comp
 	child.parent = env
 	child.inst = inst
+	child.ContextVals = capturedContext(env)
 
 	bindProps(env, child, comp, inst)
 	for _, v := range comp.Vars {
@@ -194,7 +200,7 @@ func (env *Env) componentEnvFromCall(comp *ir.Component, call *ir.Call) *Env {
 	child.Units = env.Units
 	child.Comp = comp
 	child.parent = env
-	child.parent = env
+	child.ContextVals = capturedContext(env)
 
 	// Override with named positional args from the call.
 	if call != nil {
@@ -236,4 +242,26 @@ func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
 	}
 	m["__ownerEnv"] = env
 	return m
+}
+
+// capturedContext is the context values an instance is mounted under, copied
+// rather than shared.
+//
+// A context is *dynamic*: its value is the one the provider a node is mounted
+// beneath is answering with, not one the scope holding the node's names has.
+// The mounter tracks that by pushing onto the enclosing env's map and
+// restoring on the way out, so during the mount `env.ContextVals` is exactly
+// the right answer -- and after it, it is exactly the wrong one. A test
+// reading `c.leaf.label.value` evaluates the prop then, long after every
+// provider has been unwound, so an instance that shared the map read the
+// default. Copying at mount is what makes the value outlive the descent.
+//
+// Left out entirely, a provider set nothing beyond the body it was written in:
+// `theme("dark") { leaf() }` read the default inside leaf, on every target
+// with no host language.
+func capturedContext(env *Env) map[*ir.Context]any {
+	if len(env.ContextVals) == 0 {
+		return nil
+	}
+	return maps.Clone(env.ContextVals)
 }

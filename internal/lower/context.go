@@ -74,8 +74,8 @@ func applyNoContext(pkg *ir.Package, _ Caps, _ Options) error {
 	reach := computeReachability(pkg, extra)
 	addHiddenParams(pkg, reach, extra)
 	hiddenParams := buildHiddenParamIndex(pkg, reach, extra)
-	rewriteReads(pkg, reach, extra, hiddenParams)
 	lowerProviders(pkg, reach, extra, hiddenParams)
+	rewriteReads(pkg, reach, extra, hiddenParams)
 
 	pkg.Contexts = nil
 	return reportSurvivingReads(pkg)
@@ -813,6 +813,128 @@ func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidde
 
 // --- Provider lowering + root defaults ---
 
+// provLower is what the three walkers below need to answer a call site, held
+// together rather than passed as four parameters: the reachability sets, the
+// hidden bindings, each context's default, and the slot environments.
+type provLower struct {
+	reach    Reachable
+	hidden   hiddenParamIndex
+	defaults map[*ir.Context]ir.Expr
+	slots    slotEnvs
+}
+
+// slotEnvs records, per component and per slot, the context values a provider
+// in that component's body establishes over that slot's insertion point.
+//
+// A provider covers what is *under* it in the rendered tree, and a slot
+// insertion is a hole in that tree the caller fills -- so `list { listItem() }`
+// puts the item under whatever `list`'s body wrapped its `items` around, even
+// though the item is written at the call site. Nothing else in this pass can
+// see that: everywhere else a context is threaded by *lexical* position, and
+// lexically the population is the caller's, outside the callee's provider.
+//
+// The rest slot is keyed by "", which is where a caller's bare children go
+// (ir.NodeInst.Children); a named slot is keyed by its name, matching
+// ir.NodeInst.Slots.
+type slotEnvs map[*ir.Component]map[string]map[*ir.Context]ir.Expr
+
+// computeSlotEnvs builds that table. It runs before any body is lowered,
+// because lowerProviders splices a provider out of the body it was written in
+// and the values recorded here are read long after that.
+//
+// A recorded value is written in the *callee's* terms: its ContextReads are
+// the values the callee was entered with, which is what a call site
+// substitutes. Composition down a chain of providers happens here rather than
+// at the call site, so `depth(depth + 1)` inside `depth(depth + 1)` is one
+// closed expression by the time any caller reads it.
+func computeSlotEnvs(pkg *ir.Package) slotEnvs {
+	out := slotEnvs{}
+	for _, comp := range pkg.Components {
+		per := map[string]map[*ir.Context]ir.Expr{}
+		collectSlotEnv(comp.Body, map[*ir.Context]ir.Expr{}, per)
+		if len(per) > 0 {
+			out[comp] = per
+		}
+	}
+	return out
+}
+
+// collectSlotEnv walks root recording the active provider values at every
+// SlotInst under it. Like callsIn, it cannot be a plain ir.Walk: what it
+// records is a property of the path taken to a slot, not of the slot.
+func collectSlotEnv(root any, cur map[*ir.Context]ir.Expr, out map[string]map[*ir.Context]ir.Expr) {
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.ContextProvider:
+			inner := copyExprMap(cur)
+			inner[x.Ref] = substituteReads(x.Value, cur)
+			collectSlotEnv(x.Children, inner, out)
+			return ir.SkipDir
+		case *ir.SlotInst:
+			if len(cur) > 0 {
+				key := x.Name
+				if x.Rest {
+					key = ""
+				}
+				out[key] = copyExprMap(cur)
+			}
+		}
+		return nil
+	})
+}
+
+// substituteReads returns a copy of e with every ContextRead that vals answers
+// replaced by its value. The copy is the point: the result is spliced into
+// however many call sites the component has, and this pass and the ones after
+// it rewrite expressions in place.
+func substituteReads(e ir.Expr, vals map[*ir.Context]ir.Expr) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	w := newExprWalker(func(x ir.Expr) ir.Expr {
+		cr, ok := x.(*ir.ContextRead)
+		if !ok {
+			return x
+		}
+		if v, found := vals[cr.Ref]; found {
+			return ir.CloneExprSharingDecls(v)
+		}
+		return x
+	})
+	return w.expr(ir.CloneExprSharingDecls(e))
+}
+
+// slotActive is the active map for content a caller writes into one of inst's
+// slots: the caller's own, overridden by whatever the callee's body wraps that
+// slot in. entry is what the callee reads at its own entry, which is what the
+// recorded values are written against.
+func slotActive(active, entry map[*ir.Context]ir.Expr, env map[*ir.Context]ir.Expr, pc *provLower) map[*ir.Context]ir.Expr {
+	if len(env) == 0 {
+		return active
+	}
+	out := copyExprMap(active)
+	for ctx, ex := range env {
+		// Lowered against entry rather than against active: the expression
+		// came from the callee's body, so a call inside it is threaded with
+		// what the callee holds.
+		out[ctx] = lowerInExpr(substituteReads(ex, entry), entry, pc)
+	}
+	return out
+}
+
+// calleeEntry is what inst's callee reads for each context on entry: the value
+// threaded to it where the caller has one, and the context's default where it
+// does not -- which is exactly what the hidden var's Init would have been.
+func calleeEntry(active map[*ir.Context]ir.Expr, pc *provLower) map[*ir.Context]ir.Expr {
+	out := copyExprMap(active)
+	for ctx, def := range pc.defaults {
+		if _, ok := out[ctx]; !ok {
+			out[ctx] = def
+		}
+	}
+	return out
+}
+
 // lowerProviders rewrites ContextProvider nodes to plain children, threading
 // the context value as a hidden arg onto every reachable NodeInst (component
 // call) and Call (func call) inside. Window roots are seeded with ctx.Default
@@ -824,36 +946,44 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, ctx := range pkg.Contexts {
 		defaults[ctx] = ctx.Default
 	}
+	pc := &provLower{
+		reach:    reach,
+		hidden:   hidden,
+		defaults: defaults,
+		// Recorded before the first body is lowered: this walk splices every
+		// provider out of the body it was written in.
+		slots: computeSlotEnvs(pkg),
+	}
 
 	// Seed window roots with defaults.
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
-		w.Body = lowerInStmts(w.Body, windowActive, reach, hidden)
+		w.Body = lowerInStmts(w.Body, windowActive, pc)
 		// The provider unwrap splices a provider's children up to window-body
 		// level, which can put a fresh LocalVar there after passHoistState
 		// already ran. Promote those too, into the same slice.
 		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
 		for _, v := range w.Vars {
-			v.Init = lowerInExpr(v.Init, windowActive, reach, hidden)
+			v.Init = lowerInExpr(v.Init, windowActive, pc)
 			for _, h := range v.Handlers {
 				if h.Func != nil {
-					h.Func.Block = lowerInStmts(h.Func.Block, windowActive, reach, hidden)
+					h.Func.Block = lowerInStmts(h.Func.Block, windowActive, pc)
 				}
 			}
 		}
 		for _, fn := range w.Funcs {
 			if hasBody(fn) {
-				fn.Block = lowerInStmts(fn.Block, windowActive, reach, hidden)
+				fn.Block = lowerInStmts(fn.Block, windowActive, pc)
 			}
 		}
 	}
 	// Top-level pkg.Vars: also rooted, seed with defaults.
 	for _, v := range pkg.Vars {
 		pkgActive := copyExprMap(defaults)
-		v.Init = lowerInExpr(v.Init, pkgActive, reach, hidden)
+		v.Init = lowerInExpr(v.Init, pkgActive, pc)
 		for _, h := range v.Handlers {
 			if h.Func != nil {
-				h.Func.Block = lowerInStmts(h.Func.Block, pkgActive, reach, hidden)
+				h.Func.Block = lowerInStmts(h.Func.Block, pkgActive, pc)
 			}
 		}
 	}
@@ -865,7 +995,7 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	// the field see the threaded value.
 	for _, comp := range pkg.Components {
 		compActive := hiddenActiveFor(pkg, reach, hidden, comp, nil)
-		comp.Body = lowerInStmts(comp.Body, compActive, reach, hidden)
+		comp.Body = lowerInStmts(comp.Body, compActive, pc)
 		// Any LocalVar (`var x = ...` originating from inside a provider
 		// block, now spliced up to component-body level by the provider
 		// unwrap above) is promoted to a component-level *ir.Var so
@@ -877,21 +1007,21 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		// expressions that can call ctx-reading wrappers too — walk them so
 		// hidden args get threaded uniformly.
 		for _, v := range comp.Vars {
-			v.Init = lowerInExpr(v.Init, compActive, reach, hidden)
+			v.Init = lowerInExpr(v.Init, compActive, pc)
 			for _, h := range v.Handlers {
 				if h.Func != nil {
-					h.Func.Block = lowerInStmts(h.Func.Block, compActive, reach, hidden)
+					h.Func.Block = lowerInStmts(h.Func.Block, compActive, pc)
 				}
 			}
 		}
 		for _, fn := range comp.Funcs {
 			if hasBody(fn) {
-				fn.Block = lowerInStmts(fn.Block, compActive, reach, hidden)
+				fn.Block = lowerInStmts(fn.Block, compActive, pc)
 			}
 		}
 		for _, t := range comp.Timers {
 			if t.Handler != nil {
-				t.Handler.Block = lowerInStmts(t.Handler.Block, compActive, reach, hidden)
+				t.Handler.Block = lowerInStmts(t.Handler.Block, compActive, pc)
 			}
 		}
 	}
@@ -903,7 +1033,7 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 			return
 		}
 		fnActive := hiddenActiveFor(pkg, reach, hidden, nil, fn)
-		fn.Block = lowerInStmts(fn.Block, fnActive, reach, hidden)
+		fn.Block = lowerInStmts(fn.Block, fnActive, pc)
 	}
 	for _, fn := range pkg.Funcs {
 		lowerFn(fn)
@@ -1021,7 +1151,7 @@ func hiddenActiveFor(pkg *ir.Package, reach Reachable, hidden hiddenParamIndex, 
 // lowerInStmts recursively lowers ContextProvider nodes and threads context
 // args onto component-call NodeInsts and func-call Calls. active maps each
 // context to its current value expression at this point in the tree.
-func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachable, hidden hiddenParamIndex) []ir.Stmt {
+func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower) []ir.Stmt {
 	out := make([]ir.Stmt, 0, len(stmts))
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -1034,15 +1164,15 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 			// read stayed an *ir.ContextRead and reached codegen as a bare
 			// identifier nothing declares.
 			inner := copyExprMap(active)
-			inner[n.Ref] = lowerInExpr(n.Value, active, reach, hidden)
-			lowered := lowerInStmts(n.Children, inner, reach, hidden)
+			inner[n.Ref] = lowerInExpr(n.Value, active, pc)
+			lowered := lowerInStmts(n.Children, inner, pc)
 			out = append(out, lowered...)
 
 		case *ir.NodeInst:
 			// Thread hidden args onto user-component calls that are reachable.
 			if n.Component != nil {
 				for ctx, val := range active {
-					if !reach.Components[ctx][n.Component] {
+					if !pc.reach.Components[ctx][n.Component] {
 						continue
 					}
 					paramName := "__ctx_" + ctx.Name
@@ -1052,93 +1182,103 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 				}
 			}
 			// Walk prop values and handler bodies to thread args onto
-			// nested func calls.
+			// nested func calls. Those are the caller's own and stay on the
+			// caller's active map -- only what the callee *renders* stands
+			// under the callee's providers.
 			for i := range n.Props {
-				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, reach, hidden)
+				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, pc)
 			}
 			for _, h := range n.Handlers {
 				if h.Func != nil {
-					h.Func.Block = lowerInStmts(h.Func.Block, active, reach, hidden)
+					h.Func.Block = lowerInStmts(h.Func.Block, active, pc)
 				}
 			}
-			n.Children = lowerInStmts(n.Children, active, reach, hidden)
-			for _, sc := range n.Slots {
-				sc.Body = lowerInStmts(sc.Body, active, reach, hidden)
+			// A slot population is rendered where the callee's body inserts
+			// it, so a provider the callee wrapped that insertion in covers
+			// it -- even though the population is written here.
+			slots := pc.slots[n.Component]
+			entry := active
+			if len(slots) > 0 {
+				entry = calleeEntry(active, pc)
+			}
+			n.Children = lowerInStmts(n.Children, slotActive(active, entry, slots[""], pc), pc)
+			for name, sc := range n.Slots {
+				sc.Body = lowerInStmts(sc.Body, slotActive(active, entry, slots[name], pc), pc)
 			}
 			out = append(out, n)
 
 		case *ir.If:
-			n.Cond = lowerInExpr(n.Cond, active, reach, hidden)
-			n.Body = lowerInStmts(n.Body, active, reach, hidden)
-			n.Else = lowerInStmts(n.Else, active, reach, hidden)
+			n.Cond = lowerInExpr(n.Cond, active, pc)
+			n.Body = lowerInStmts(n.Body, active, pc)
+			n.Else = lowerInStmts(n.Else, active, pc)
 			out = append(out, n)
 
 		case *ir.For:
-			n.Iter = lowerInExpr(n.Iter, active, reach, hidden)
-			n.Body = lowerInStmts(n.Body, active, reach, hidden)
-			n.Else = lowerInStmts(n.Else, active, reach, hidden)
+			n.Iter = lowerInExpr(n.Iter, active, pc)
+			n.Body = lowerInStmts(n.Body, active, pc)
+			n.Else = lowerInStmts(n.Else, active, pc)
 			out = append(out, n)
 
 		case *ir.SlotInst:
-			n.Children = lowerInStmts(n.Children, active, reach, hidden)
+			n.Children = lowerInStmts(n.Children, active, pc)
 			out = append(out, n)
 
 		case *ir.ErrorBoundary:
-			n.Children = lowerInStmts(n.Children, active, reach, hidden)
+			n.Children = lowerInStmts(n.Children, active, pc)
 			out = append(out, n)
 
 		case *ir.Assign:
-			n.Target = lowerInExpr(n.Target, active, reach, hidden)
-			n.Value = lowerInExpr(n.Value, active, reach, hidden)
+			n.Target = lowerInExpr(n.Target, active, pc)
+			n.Value = lowerInExpr(n.Value, active, pc)
 			out = append(out, n)
 
 		case *ir.LocalVar:
-			n.Init = lowerInExpr(n.Init, active, reach, hidden)
+			n.Init = lowerInExpr(n.Init, active, pc)
 			out = append(out, n)
 
 		case *ir.Return:
-			n.Value = lowerInExpr(n.Value, active, reach, hidden)
+			n.Value = lowerInExpr(n.Value, active, pc)
 			out = append(out, n)
 
 		case *ir.CallStmt:
 			if n.Call != nil {
-				lowerCallInPlace(n.Call, active, reach, hidden)
-				n.Call.Receiver = lowerInExpr(n.Call.Receiver, active, reach, hidden)
+				lowerCallInPlace(n.Call, active, pc)
+				n.Call.Receiver = lowerInExpr(n.Call.Receiver, active, pc)
 				for i := range n.Call.Args {
-					n.Call.Args[i].Value = lowerInExpr(n.Call.Args[i].Value, active, reach, hidden)
+					n.Call.Args[i].Value = lowerInExpr(n.Call.Args[i].Value, active, pc)
 				}
 			}
 			out = append(out, n)
 
 		case *ir.Emit:
 			for i := range n.Args {
-				n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, reach, hidden)
+				n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, pc)
 			}
 			out = append(out, n)
 
 		case *ir.Toggle:
 			// Toggle may survive into NoContext when NoToggle cap is off.
-			n.Target = lowerInExpr(n.Target, active, reach, hidden)
+			n.Target = lowerInExpr(n.Target, active, pc)
 			out = append(out, n)
 
 		case *ir.Window:
 			// Window stmts only appear inside for-loop bodies (dynamic
 			// window emission). Thread ctx args through their surface.
 			for i := range n.Props {
-				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, reach, hidden)
+				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, pc)
 			}
-			n.Body = lowerInStmts(n.Body, active, reach, hidden)
+			n.Body = lowerInStmts(n.Body, active, pc)
 			for _, v := range n.Vars {
-				v.Init = lowerInExpr(v.Init, active, reach, hidden)
+				v.Init = lowerInExpr(v.Init, active, pc)
 				for _, h := range v.Handlers {
 					if h.Func != nil {
-						h.Func.Block = lowerInStmts(h.Func.Block, active, reach, hidden)
+						h.Func.Block = lowerInStmts(h.Func.Block, active, pc)
 					}
 				}
 			}
 			for _, fn := range n.Funcs {
 				if hasBody(fn) {
-					fn.Block = lowerInStmts(fn.Block, active, reach, hidden)
+					fn.Block = lowerInStmts(fn.Block, active, pc)
 				}
 			}
 			out = append(out, n)
@@ -1154,61 +1294,61 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 
 // lowerInExpr walks an expression, threading hidden ctx args onto any
 // reachable *ir.Call inside.
-func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, reach Reachable, hidden hiddenParamIndex) ir.Expr {
+func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Expr {
 	if e == nil {
 		return nil
 	}
 	switch n := e.(type) {
 	case *ir.Call:
-		lowerCallInPlace(n, active, reach, hidden)
-		n.Receiver = lowerInExpr(n.Receiver, active, reach, hidden)
-		n.Callee = lowerInExpr(n.Callee, active, reach, hidden)
+		lowerCallInPlace(n, active, pc)
+		n.Receiver = lowerInExpr(n.Receiver, active, pc)
+		n.Callee = lowerInExpr(n.Callee, active, pc)
 		for i := range n.Args {
-			n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, reach, hidden)
+			n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, pc)
 		}
 	case *ir.Binary:
-		n.Left = lowerInExpr(n.Left, active, reach, hidden)
-		n.Right = lowerInExpr(n.Right, active, reach, hidden)
+		n.Left = lowerInExpr(n.Left, active, pc)
+		n.Right = lowerInExpr(n.Right, active, pc)
 	case *ir.Unary:
-		n.Operand = lowerInExpr(n.Operand, active, reach, hidden)
+		n.Operand = lowerInExpr(n.Operand, active, pc)
 	case *ir.Ternary:
-		n.Cond = lowerInExpr(n.Cond, active, reach, hidden)
-		n.Then = lowerInExpr(n.Then, active, reach, hidden)
-		n.Else = lowerInExpr(n.Else, active, reach, hidden)
+		n.Cond = lowerInExpr(n.Cond, active, pc)
+		n.Then = lowerInExpr(n.Then, active, pc)
+		n.Else = lowerInExpr(n.Else, active, pc)
 	case *ir.Select:
-		n.Operand = lowerInExpr(n.Operand, active, reach, hidden)
+		n.Operand = lowerInExpr(n.Operand, active, pc)
 	case *ir.Index:
-		n.Operand = lowerInExpr(n.Operand, active, reach, hidden)
-		n.Idx = lowerInExpr(n.Idx, active, reach, hidden)
+		n.Operand = lowerInExpr(n.Operand, active, pc)
+		n.Idx = lowerInExpr(n.Idx, active, pc)
 	case *ir.Conversion:
-		n.Operand = lowerInExpr(n.Operand, active, reach, hidden)
+		n.Operand = lowerInExpr(n.Operand, active, pc)
 	case *ir.StructLit:
 		for i := range n.Fields {
-			n.Fields[i].Value = lowerInExpr(n.Fields[i].Value, active, reach, hidden)
+			n.Fields[i].Value = lowerInExpr(n.Fields[i].Value, active, pc)
 		}
 	case *ir.ListLit:
 		for i := range n.Elems {
-			n.Elems[i] = lowerInExpr(n.Elems[i], active, reach, hidden)
+			n.Elems[i] = lowerInExpr(n.Elems[i], active, pc)
 		}
 	case *ir.MapLitIR:
 		for i := range n.Entries {
-			n.Entries[i].Key = lowerInExpr(n.Entries[i].Key, active, reach, hidden)
-			n.Entries[i].Value = lowerInExpr(n.Entries[i].Value, active, reach, hidden)
+			n.Entries[i].Key = lowerInExpr(n.Entries[i].Key, active, pc)
+			n.Entries[i].Value = lowerInExpr(n.Entries[i].Value, active, pc)
 		}
 	case *ir.Spread:
-		n.Operand = lowerInExpr(n.Operand, active, reach, hidden)
+		n.Operand = lowerInExpr(n.Operand, active, pc)
 	case *ir.Lambda:
 		// Lambda survives NoContext when NoLambda cap is off; thread ctx
 		// args into its body.
 		if n.Func != nil {
-			n.Func.Block = lowerInStmts(n.Func.Block, active, reach, hidden)
+			n.Func.Block = lowerInStmts(n.Func.Block, active, pc)
 		}
 	case *ir.Closure:
 		// Closure (post-NoLambda) — captured-state field exprs may need
 		// threading; the lifted Func is walked separately via pkg.Funcs.
 		if n.State != nil {
 			for i := range n.State.Fields {
-				n.State.Fields[i].Value = lowerInExpr(n.State.Fields[i].Value, active, reach, hidden)
+				n.State.Fields[i].Value = lowerInExpr(n.State.Fields[i].Value, active, pc)
 			}
 		}
 	case *ir.ContextRead:
@@ -1241,15 +1381,15 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, reach Reachable, hid
 // actually carry the hidden Param) receive threading — user pkg.Funcs
 // pick up the hidden state from the pkg-level synth Var directly and
 // expose no Param to thread into.
-func lowerCallInPlace(c *ir.Call, active map[*ir.Context]ir.Expr, reach Reachable, hidden hiddenParamIndex) {
+func lowerCallInPlace(c *ir.Call, active map[*ir.Context]ir.Expr, pc *provLower) {
 	if c == nil || c.Func == nil {
 		return
 	}
 	for ctx, val := range active {
-		if !reach.Funcs[ctx][c.Func] {
+		if !pc.reach.Funcs[ctx][c.Func] {
 			continue
 		}
-		if hidden.get(c.Func, ctx) == nil {
+		if pc.hidden.get(c.Func, ctx) == nil {
 			// User pkg.Func — has no hidden Param to thread into.
 			continue
 		}

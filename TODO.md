@@ -165,44 +165,47 @@ Every target that a document can reach needs one, or
 
 ---
 
-## Context providers that read the context they override
+## Contexts — done
 
-Fixed. `depth(depth + 1)` now accumulates: a provider's value is evaluated in
-the scope *enclosing* it, so the read resolves to the value being overridden --
-a strictly outer scope, which is what makes the substitution terminate. Two
-nestings give 1 and 2.
+A provider's value is evaluated in the scope *enclosing* it, so
+`depth(depth + 1)` accumulates across nesting. Not the self-reference family
+the const guard is in: the read resolves to a strictly outer scope, so it
+terminates. `context #depth(depth)` — the case that *is* self-reference — is
+now a positioned checker error, along with every other node argument that
+reads the node's own `#id`.
 
-Not the self-reference family the window-prop and const guards are in, and the
-contexts' own case is already settled: `context #depth(depth)` is a positioned
-`undefined`, since the name is not bound until its default has been checked.
-Those two guards are untouched and still open.
+**A context follows a slot.** A provider written in a component's body covers
+the content a caller writes into that component's slots. Three gaps were in
+the way and all three are closed:
 
-`listItem` still cannot pick its own bullet from the depth, and the reason is a
-different gap: **a context does not cross a slot boundary.** A provider written
-in `list`'s body covers `list`'s own body and nothing the caller wrote into its
-`items` slot, which is where every `listItem` is. Verified on both paths, and
-they fail differently:
+- `rewriteReads` ran *before* `lowerProviders`, so inside a component body
+  every read had already collapsed to the one hidden var and a provider there
+  set nothing at all. The two are now in the other order, which is the whole
+  fix: a read under a provider is substituted by the provider, and what is left
+  over is what the hidden var answers.
+- Slot populations were threaded by lexical position. `computeSlotEnvs` records,
+  per component and per slot, the provider values enclosing that slot's
+  insertion, composed down the chain in the callee's own terms; a call site
+  substitutes what it threaded to that callee. `ir.CloneExprSharingDecls` is
+  what makes one recorded value safe to splice into several call sites.
+- The interpreter answered a provider only within the body it was written in.
+  A component instance is now mounted with a *copy* of the context values in
+  force at that point, and slot content is mounted with the contexts of the
+  insertion and the names of the caller.
 
-- **Lowered** (`passContext`) threads `__ctx_<name>` onto a call site by its
-  *lexical* position, and a slot population is lexically at the call site --
-  outside the callee's provider. It does cross an ordinary component boundary:
-  `depth(7) { reader() }` reaches `reader`'s body correctly.
-- **The interpreter** does not cross a component boundary at all. Providers are
-  answered by mutating the env's shared `ContextVals`, and a component instance
-  is mounted with an env of its own, so `depth(7) { leaf() }` reads 0 in `leaf`.
-  `t.setContext` and the declared defaults are the whole of what worked there
-  before providers were evaluated at all.
+`testdata/context_through_slot.txtar` and
+`cmd/sngl/testdata/context_through_slot.txt` are the pair, the second because
+the interpreter's answer has to run.
 
-Closing the first is per-component, per-slot: record the provider chain
-enclosing each `SlotInst` in a body with its value expressions still holding
-`ir.ContextRead`, then at each call site substitute the value threaded to that
-callee and walk the population under the result. Cloning matters -- the value
-expression would otherwise be shared across call sites and `lowerInExpr`
-mutates in place. Closing the second is the interpreter's own answer and is not
-the same code.
-
-Until then the importer writes `marker`, which it can: it knows the depth the
-way it knows the ordinal.
+`listItem` now asks `listDepth` for its bullet and `list` provides
+`listDepth + 1` around its items, so a nested list changes bullet with no
+caller involved. **It cannot be seen yet**: a bodied `lib/` component with no
+platform override does not reach codegen at all — `md.list { md.listItem { … } }`
+emits its children and neither body — so the bullet does not render, on any
+target, and did not before this either. That is §2's work, and it is the first
+thing to check when a target implements the family. One thing to confirm there:
+`computeSlotEnvs` and the reachability scan both iterate `pkg.Components`, and
+a lib component is not in it today.
 
 ## Open questions
 

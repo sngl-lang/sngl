@@ -330,6 +330,26 @@ component caption(content ...component span) ui.node {
     }
 }
 
+// How deep the list nesting is, counted by `list` and read by `listItem`.
+// Zero is "not in a list at all", which is a `listItem` written on its own
+// and still has to render something.
+context #listDepth(0)
+
+// The bullets, cycling by depth the way a document does: a nested list wants
+// to look different from the one it sits in, and after three levels the eye
+// has stopped counting anyway.
+const bullets = ["•", "◦", "▪"]
+
+// The bullet for a nesting level. Depth 1 is the outermost list, so the
+// modulo is taken of one less; anything shallower than that is a `listItem`
+// with no list around it and gets the plain bullet.
+func bulletAt(depth int) string {
+    if depth <= 1 {
+        return bullets[0]
+    }
+    return bullets[(depth - 1) % 3]
+}
+
 // Whether a list item is a task, and if so whether it is done. Three states
 // rather than a `bool`, because "not a task at all" is the common one and a
 // flag cannot say it: a checkbox is a thing a markdown list item may have and
@@ -350,9 +370,17 @@ enum Task { none, todo, done }
 //
 // `ordered` and `start` are for whoever emits a real list; the default body
 // does not read them, because it cannot count.
+//
+// What it does count is nesting. The items go under a provider that adds one
+// to `listDepth`, so an item asks how deep it is rather than being told, and
+// a list nested inside an item's content is one deeper again -- a context
+// follows a slot, so the items a caller writes stand under whatever this body
+// wrapped the slot in.
 component list(ordered bool = false, start int = 1, items ...component) ui.node {
-    ui.vbox(style={gap=4, paddingLeft=20px}) {
-        items
+    listDepth(listDepth + 1) {
+        ui.vbox(style={gap=4, paddingLeft=20px}) {
+            items
+        }
     }
 }
 
@@ -363,13 +391,10 @@ component list(ordered bool = false, start int = 1, items ...component) ui.node 
 // a target that cannot count, and it is how a nested list gets a different
 // bullet from its parent.
 //
-// Empty is the plain bullet. Deriving one per depth from a context is what
-// this wants and is not what it does, and the reason has moved: a provider
-// whose value reads the context it overrides now accumulates, but a provider
-// written in `list`'s body does not reach the items, because those are the
-// caller's and a context does not cross a slot boundary on any target. Until
-// it does, depth is the importer's to know -- which it does, along with the
-// ordinal.
+// Empty asks `listDepth` for the bullet of this nesting level, so a nested
+// list changes bullet with nobody writing one -- which is what the context
+// following the slot buys. A caller that knows better still says so, and the
+// importer does for an ordered list, where the marker is the ordinal.
 //
 // `task` replaces the marker with a checkbox, which is what a markdown task
 // list is. It is not interactive: a document describes state rather than
@@ -381,7 +406,7 @@ component listItem(
 ) ui.node {
     ui.hbox(style={gap=8, alignItems=ui.Alignment.start}) {
         if task == Task.none {
-            ui.text(value=marker == "" ? "•" : marker)
+            ui.text(value=marker == "" ? bulletAt(listDepth) : marker)
         } else {
             ui.checkbox(checked=task == Task.done, disabled=true)
         }
