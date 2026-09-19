@@ -1,9 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -132,9 +133,60 @@ func TestBuildCommand(t *testing.T) {
 			t.Errorf("build args %q missing %q", args, want)
 		}
 	}
+	// By last entry, not by presence: the overrides are appended after
+	// os.Environ(), and a host exporting GOOS would otherwise decide the
+	// target with this test still green.
 	for _, want := range []string{"CGO_ENABLED=0", "GOOS=darwin", "GOARCH=arm64"} {
-		if !slices.Contains(cmd.Env, want) {
-			t.Errorf("build env missing %q", want)
+		key, _, _ := strings.Cut(want, "=")
+		if got := lastEnv(cmd.Env, key); got != want {
+			t.Errorf("build env %s = %q, want %q", key, got, want)
 		}
+	}
+}
+
+// lastEnv is the entry the child process sees: exec takes the last assignment
+// to a name.
+func lastEnv(env []string, key string) string {
+	out := ""
+	for _, e := range env {
+		if k, _, ok := strings.Cut(e, "="); ok && k == key {
+			out = e
+		}
+	}
+	return out
+}
+
+// TestBuildOneWiresTheCompileToWhatItPackages covers the joint the split left
+// between buildCommand and packageBinary: the path the compiler is told to
+// write is the path that gets packaged, and the downloads directory exists
+// before either. The compile is stubbed -- a real one is the whole compiler.
+func TestBuildOneWiresTheCompileToWhatItPackages(t *testing.T) {
+	var told string
+	defer func(orig func(*exec.Cmd) error) { runBuild = orig }(runBuild)
+	runBuild = func(cmd *exec.Cmd) error {
+		for i, a := range cmd.Args {
+			if a == "-o" && i+1 < len(cmd.Args) {
+				told = cmd.Args[i+1]
+			}
+		}
+		if told == "" {
+			return fmt.Errorf("build command names no output path")
+		}
+		return os.WriteFile(told, []byte("stand-in binary"), 0o755)
+	}
+
+	out := t.TempDir()
+	a, err := buildOne("/repo", out, target{"windows", "amd64"}, "v", "c", "d")
+	if err != nil {
+		t.Fatalf("buildOne: %v", err)
+	}
+	if want := filepath.Join(out, "downloads", "sngl-windows-amd64.exe"); told != want {
+		t.Errorf("compiler told to write %q, want %q", told, want)
+	}
+	if a.filename != "sngl-windows-amd64.exe.gz" {
+		t.Errorf("packaged %q, want sngl-windows-amd64.exe.gz", a.filename)
+	}
+	if _, err := os.Stat(filepath.Join(out, "downloads", a.filename)); err != nil {
+		t.Errorf("the artifact buildOne reported is not where it said: %v", err)
 	}
 }

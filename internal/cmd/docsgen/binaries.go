@@ -150,6 +150,12 @@ func packageBinary(binPath string, t target) (artifact, error) {
 	return artifact{os: displayOS(t.goos), arch: t.goarch, filename: gzName, size: info.Size()}, nil
 }
 
+// runBuild is the compile step, indirected so a test can drive what buildOne
+// wires together -- the directory it creates, the path it tells the compiler
+// to write, and the path it then packages -- without cross-building the
+// compiler to produce a file.
+var runBuild = func(cmd *exec.Cmd) error { return cmd.Run() }
+
 // buildOne cross-compiles sngl for a single target and packages the result
 // into <outDir>/downloads/.
 func buildOne(repoRoot, outDir string, t target, version, commit, date string) (artifact, error) {
@@ -159,7 +165,7 @@ func buildOne(repoRoot, outDir string, t target, version, commit, date string) (
 	}
 
 	tmpBin := filepath.Join(dlDir, binName(t))
-	if err := buildCommand(repoRoot, tmpBin, t, version, commit, date).Run(); err != nil {
+	if err := runBuild(buildCommand(repoRoot, tmpBin, t, version, commit, date)); err != nil {
 		return artifact{}, fmt.Errorf("building %s/%s: %w", t.goos, t.goarch, err)
 	}
 	return packageBinary(tmpBin, t)

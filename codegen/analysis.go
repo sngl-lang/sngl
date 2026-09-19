@@ -29,14 +29,18 @@ type CommonAnalysis struct {
 	UsedComponents map[string]bool // primitive component names used in the visual tree
 }
 
-// Clone copies the analysis so one generator's may not reach another's. The
-// maps are copied and the slices are not: a slice here holds declarations,
-// which belong to the package and are the same for every generator reading it,
-// while the maps are keyed by name and are what a platform would mutate.
+// Clone copies the analysis so one generator's may not reach another's. Every
+// map is copied, including the LocalRefs a TimerInfo carries, which is what
+// makes "a map here is private to the caller that asked for it" true of the
+// whole structure rather than of the top level. The declaration slices are
+// not: Components, Structs, Enums and Units hold the package's own
+// declarations, which are the same for every generator reading them.
 //
 // It exists so a caller emitting many documents from one package can derive
 // the analysis once -- it is a function of the package alone, and a full IR
 // walk -- and still hand each document an analysis of its own.
+// TestCommonAnalysisCloneCopiesEveryMap is what says a map field added later
+// is copied too.
 func (a *CommonAnalysis) Clone() *CommonAnalysis {
 	if a == nil {
 		return nil
@@ -52,6 +56,10 @@ func (a *CommonAnalysis) Clone() *CommonAnalysis {
 	out.ComputedDeps = make(map[string]map[string]bool, len(a.ComputedDeps))
 	for k, v := range a.ComputedDeps {
 		out.ComputedDeps[k] = maps.Clone(v)
+	}
+	out.Timers = slices.Clone(a.Timers)
+	for i := range out.Timers {
+		out.Timers[i].LocalRefs = maps.Clone(out.Timers[i].LocalRefs)
 	}
 	return &out
 }

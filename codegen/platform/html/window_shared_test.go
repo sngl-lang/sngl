@@ -1,7 +1,10 @@
 package html
 
 import (
+	"reflect"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -9,10 +12,6 @@ import (
 // TestWindowSharedDerivesPackageAnalysisOnce pins the split a site of many
 // pages depends on: the package-derived analysis is walked once per
 // compilation, and each window still gets one of its own to emit against.
-//
-// Without it the walk is per window over a package that holds every window's
-// body, so a site is quadratic in its page count -- 8m27s of codegen for the
-// docs site's 1044 pages.
 func TestWindowSharedDerivesPackageAnalysisOnce(t *testing.T) {
 	pkg := &ir.Package{
 		Vars: []*ir.Var{{Name: "count", Type: ir.TypInt}},
@@ -26,11 +25,31 @@ func TestWindowSharedDerivesPackageAnalysisOnce(t *testing.T) {
 	first := newHTMLGen(pkg, nil, htmlConfig{}, shared)
 	second := newHTMLGen(pkg, nil, htmlConfig{}, shared)
 
-	if shared.common == nil {
-		t.Fatal("windowShared holds no derived analysis: every window re-walks the package")
+	// Derived once. Each is asserted by identity across the two windows, since
+	// two equal answers are what a per-window walk produces too.
+	if !shared.derived {
+		t.Fatal("windowShared derived nothing: every window re-walks the package")
 	}
+	if first.dt != second.dt {
+		t.Error("the dep tracker is rebuilt per window")
+	}
+	firstIDs, _ := shared.canvases(pkg)
+	secondIDs, _ := shared.canvases(pkg)
+	if !sameCanvasMap(firstIDs, secondIDs) {
+		t.Error("the canvas metadata is recollected per window")
+	}
+	owners := shared.ownerList(pkg)
+	if again := shared.ownerList(pkg); len(owners) == 0 || len(again) == 0 || &owners[0] != &again[0] {
+		t.Error("the owner list is re-walked per call")
+	}
+	if len(owners) != 3 {
+		t.Errorf("ownerList = %d owners, want 3 (package + two windows)", len(owners))
+	}
+
+	// And the analysis, alone among them, is a copy: html writes to one
+	// through codegen.OptimizeMutation.
 	if first.CommonAnalysis == shared.common || second.CommonAnalysis == shared.common {
-		t.Error("a window emits against the shared analysis itself; its emission would reach every other window")
+		t.Error("a window emits against the shared analysis itself; its writes would reach every other window")
 	}
 	if first.CommonAnalysis == second.CommonAnalysis {
 		t.Error("two windows share one analysis")
@@ -42,11 +61,8 @@ func TestWindowSharedDerivesPackageAnalysisOnce(t *testing.T) {
 	if !second.ModelFields["count"] {
 		t.Error("one window's analysis reaches another's")
 	}
+}
 
-	if first.dt != second.dt {
-		t.Error("the dep tracker is rebuilt per window; it is a function of the package alone")
-	}
-	if got := shared.ownerList(pkg); len(got) != 3 {
-		t.Errorf("ownerList = %d owners, want 3 (package + two windows)", len(got))
-	}
+func sameCanvasMap(x, y map[string]*canvasutil.Meta) bool {
+	return reflect.ValueOf(x).UnsafePointer() == reflect.ValueOf(y).UnsafePointer()
 }

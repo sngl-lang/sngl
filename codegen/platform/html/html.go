@@ -126,15 +126,15 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 
 	if req.Lang.LanguageIdentifier() == "none" {
-		if err := rejectDynamicHrefs(req); err != nil {
+		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html")}
+		if err := rejectDynamicHrefs(c.ctx); err != nil {
 			return err
 		}
 		// Static mode has no server to host the route's POST handler.
-		if win, ok := backendHandlerWindow(req.Pkg, codegen.NewCodegenCtx(req, "html").Windows()); ok {
+		if win, ok := backendHandlerWindow(req.Pkg, c.ctx.Windows()); ok {
 			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
 		}
-		c := &compilation{}
-		m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
+		m, err := c.BuildMutationModel(req, c.ctx.Analysis)
 		if err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		}
 		if agentMode {
 			modelType := "main"
-			if main := codegen.NewCodegenCtx(req, "html").RootDecl(); main != nil {
+			if main := c.ctx.RootDecl(); main != nil {
 				modelType = main.Name
 			}
 			if err := emitTestagentFiles(sink, req.Pkg, modelType); err != nil {
@@ -185,8 +185,7 @@ document.addEventListener('DOMContentLoaded', () => main());
 }
 
 // rejectDynamicHrefs errors in static mode: {param} routes need a server.
-func rejectDynamicHrefs(req *codegen.Request) error {
-	ctx := codegen.NewCodegenCtx(req, "html")
+func rejectDynamicHrefs(ctx *codegen.CodegenCtx) error {
 	for _, win := range ctx.Windows() {
 		href := win.Window.Prop(ir.WindowHref)
 		if href == nil {
@@ -202,6 +201,21 @@ func rejectDynamicHrefs(req *codegen.Request) error {
 type compilation struct {
 	assetFiles []htmlAssetFile
 	windows    []htmlWindowOutput
+
+	// ctx is the compilation's, built once by the caller. Constructing one
+	// analyzes the whole package twice over (AnalyzeCommon and the dep
+	// tracker), and the static path asked four separate times for the same
+	// answer. Nil for a caller that builds a compilation directly, which
+	// codegenCtx then serves.
+	ctx *codegen.CodegenCtx
+}
+
+// codegenCtx is c.ctx, or a fresh one for a caller that supplied none.
+func (c *compilation) codegenCtx(req *codegen.Request) *codegen.CodegenCtx {
+	if c.ctx == nil {
+		c.ctx = codegen.NewCodegenCtx(req, "html")
+	}
+	return c.ctx
 }
 
 // windowShared caches what a window's codegen recomputes but that does not
@@ -224,61 +238,73 @@ type windowShared struct {
 	// The rest are the package-derived analysis each window used to rebuild
 	// for itself. Each is a function of the package alone and each walks the
 	// whole of it -- and a window's body is part of that package, so a site of
-	// N pages walked N tree-heavy packages per page. The docs site's 1044
-	// windows spent 8m27s of an 8m49s build here.
+	// N pages walked N tree-heavy packages per page.
 	//
 	// Filled on the first window, like usedComponents above: the slot retarget
 	// that runs after it rewrites call arguments and declares nothing, so it
-	// changes none of these answers. The multi-window goldens are what says a
-	// later page takes nothing of an earlier one out of them.
+	// changes none of these answers.
+	derived    bool
 	common     *codegen.CommonAnalysis
 	dt         *codegen.DepTracker
 	owners     []ir.Owner
-	canvasesIn bool
 	canvasByID map[string]*canvasutil.Meta
 	canvasByFn map[*ir.Func]*canvasutil.Meta
 }
 
-// analysis derives the package's CommonAnalysis once and hands out a copy.
-// The copy is what keeps a window's own emission off every other window's,
-// which is the isolation the shared cache must not cost.
-func (s *windowShared) analysis(pkg *ir.Package) *codegen.CommonAnalysis {
-	if s.common == nil {
-		var ao codegen.AnalyzeOpts
-		ao.UsedComponents = s.usedComponents
-		s.common = codegen.AnalyzeCommonFor(pkg, ao)
-		if s.usedComponents == nil {
-			s.usedComponents = maps.Clone(s.common.UsedComponents)
-		}
+// derivePackage fills all four on first use. One gate rather than a nil check
+// per field, because two of them answer nil legitimately -- ir.Owners and
+// canvasutil.Collect both do for a nil package -- and a nil check would then
+// re-walk on every window for the one case where the walk means nothing.
+func (s *windowShared) derivePackage(pkg *ir.Package) {
+	if s.derived {
+		return
 	}
+	s.derived = true
+
+	var ao codegen.AnalyzeOpts
+	ao.UsedComponents = s.usedComponents
+	s.common = codegen.AnalyzeCommonFor(pkg, ao)
+	if s.usedComponents == nil {
+		s.usedComponents = maps.Clone(s.common.UsedComponents)
+	}
+	s.dt = codegen.NewDepTrackerFromPkg(pkg)
+	s.owners = ir.Owners(pkg)
+	s.canvasByID, s.canvasByFn = canvasutil.Collect(pkg, nil)
+}
+
+// analysis hands each window a copy.
+//
+// Nothing in this platform reads a CommonAnalysis field: codegen.OptimizeMutation
+// writes to one -- PruneUnusedComputeds deletes from three of its maps, per
+// window -- and html reads the updaters it kept rather than the analysis it
+// pruned. So sharing one would produce identical output today, and no fixture
+// can be written that says otherwise. The copy is what keeps that from being a
+// fact a later emitter has to know before it reads ModelFields and gets a map
+// three windows have already pruned.
+func (s *windowShared) analysis(pkg *ir.Package) *codegen.CommonAnalysis {
+	s.derivePackage(pkg)
 	return s.common.Clone()
 }
 
-// depTracker is shared rather than copied: nothing writes to a DepTracker
-// after it is built, ExprDeps being the whole of what a generator asks it.
+// depTracker is shared rather than copied: html asks it four things --
+// ExprDeps, codegen.MutatedFields, a range over ModelVars in newVarRegistry,
+// and OptimizeMutation through MutationModel.DepTracker -- and all four read.
 func (s *windowShared) depTracker(pkg *ir.Package) *codegen.DepTracker {
-	if s.dt == nil {
-		s.dt = codegen.NewDepTrackerFromPkg(pkg)
-	}
+	s.derivePackage(pkg)
 	return s.dt
 }
 
 // ownerList is ir.Owners memoized. A caller filters it per window; the walk
 // that produces it is per package.
 func (s *windowShared) ownerList(pkg *ir.Package) []ir.Owner {
-	if s.owners == nil {
-		s.owners = ir.Owners(pkg)
-	}
+	s.derivePackage(pkg)
 	return s.owners
 }
 
 // canvases is canvasutil.Collect memoized. Shared, not copied, for the reason
-// depTracker is.
+// depTracker is: the two maps and the Meta behind them are only read.
 func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.Func]*canvasutil.Meta) {
-	if !s.canvasesIn {
-		s.canvasByID, s.canvasByFn = canvasutil.Collect(pkg, nil)
-		s.canvasesIn = true
-	}
+	s.derivePackage(pkg)
 	return s.canvasByID, s.canvasByFn
 }
 
@@ -441,7 +467,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	}
 	shared := newWindowShared(projectDir, projectFS)
 
-	ctx := codegen.NewCodegenCtx(req, "html")
+	ctx := c.codegenCtx(req)
 
 	// A package with no main component and no windows still emits an empty
 	// index.html, so callers can verify codegen succeeded.
