@@ -149,8 +149,14 @@ type evalCtx struct {
 	evaluatingConst map[*ir.Var]bool
 	values          map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
 	inlining        map[*ir.Component]int // recursion guard for component call inlining
-	inliningFuncs   map[*ir.Func]bool     // recursion guard for function inlining (detects mutual recursion)
-	interpDepth     int                   // recursion guard for interpretFunc dispatch
+	// inlineCapped records that maxInlineDepth stopped a component expansion
+	// rather than the recursion folding to its base case. A pointer so it
+	// survives child(), which copies the struct: the outermost call of a
+	// recursive component is the one that has to see it, and it is set by a
+	// child several levels down.
+	inlineCapped  *bool
+	inliningFuncs map[*ir.Func]bool // recursion guard for function inlining (detects mutual recursion)
+	interpDepth   int               // recursion guard for interpretFunc dispatch
 	// err holds the first fatal evaluation error (e.g. a native import that
 	// failed to evaluate at build time on a platform that requires the value
 	// at compile time). Recorded during folding and surfaced by Optimize.
@@ -410,6 +416,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		inliningFuncs:   make(map[*ir.Func]bool),
 		foldingProp:     make(map[windowProp]bool),
 		evaluatingConst: make(map[*ir.Var]bool),
+		inlineCapped:    new(bool),
 	}
 
 	// Phase 1: Evaluate all top-level consts.

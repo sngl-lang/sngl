@@ -27,6 +27,7 @@ import build "sngl:build"
 import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
 import math "sngl:math"
+import go "sngl:language/go"
 
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
 component gtk4(
@@ -191,24 +192,45 @@ component ui.popover[platform] {
 
 // --- The timer ---
 //
-// A recurring deadline, which is not a GTK widget and so is not generated from
-// the GIR: it has no C type to read an API back out of. GLib's g_timeout_add is
-// what the emitter builds from it.
-//
-// gtk4 emitted no timer at all before this declaration existed. A program with
-// one compiled clean and simply never ticked, because the analysis read a list
-// the checker had hoisted every timer onto and this platform never looked at
-// it.
-#[tree.none]
-#[intrinsic("gtk4:Timer")]
-component Timer(
-    interval time.duration,
-    enabled bool,
-    @tick,
-)
+// GLib already schedules, so this platform needs no timer primitive: the
+// g_timeout_add/g_source_remove pair behind these two is a lifetime with a
+// thing to release, which is what `effect` brackets. A GLib timeout source runs
+// its callback on the thread holding the main loop, which is the thread every
+// GTK call must come from, so a tick body mutates the model in the same place a
+// signal handler does and needs no marshalling of its own.
 
+// The runtime package the schedule lives in, named once.
+const _rtPkg = "git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+
+// The armed source itself, held as an opaque type rather than as an id paired
+// with its callback slot in a table the runtime keeps. `*gtk4rt.Schedule` is a
+// name this declaration can spell -- the same thing `#[cnative]` does for
+// `*C.cairo_t` below.
+#[go.native(_rtPkg, "*gtk4rt.Schedule")]
+struct Schedule {}
+
+#[go.native(_rtPkg, "gtk4rt.Every", schedules)]
+func every(ms int, f func()) Schedule
+
+#[go.native(_rtPkg, "gtk4rt.Schedule.Cancel", method)]
+func Schedule.cancel()
+
+// `enabled` is the effect's *position*, not part of its key: an effect lives as
+// long as the branch it is written in, so `if enabled` is what makes toggling
+// the gate a mount and an unmount. `on=interval` is the key, because a running
+// schedule is the same schedule for as long as its period is unchanged.
 component time.timer[platform] {
-    Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+    var handle Schedule
+
+    if enabled {
+        effect(
+            on=interval,
+            @mount(d) { handle = every(int(d), tick) },
+            @unmount(d) {
+                handle.cancel()
+            },
+        )
+    }
 }
 
 // --- Drawing ---

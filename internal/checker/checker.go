@@ -1846,6 +1846,15 @@ func (c *checker) registerConstShells(decl *ast.ConstDecl) {
 		for _, name := range spec.Names {
 			v := &ir.Var{AST: decl, Name: name, Type: typ, IsConst: true}
 			c.applyMarks(decl, v)
+			// A const with no initializer names a host value and nothing
+			// else: `#[go.native("math", "math.Pi")] const pi float` is the
+			// whole of why the initializer is optional. Without one it is a
+			// name with no value at all, and every read of it would compile
+			// to whatever the target's zero happens to be -- the counterpart
+			// of the rule checkFuncBody applies to a bodyless func.
+			if spec.Default == nil && !ir.IsHostValue(v) {
+				c.error(spec.Pos, "const %q has no value: give it one, or name the host value it is with a native mark", name)
+			}
 			c.declPkg().Consts = append(c.declPkg().Consts, v)
 			c.bindVar(decl.Pos, v)
 			vars = append(vars, v)
@@ -2087,9 +2096,6 @@ func (c *checker) nonConstCallRef(x *ast.CallExpr) string {
 }
 
 func (c *checker) registerVars(decl *ast.VarDecl) {
-	// A var declares no marked form, so this reports the mark rather than
-	// applying one; the declaration still registers.
-	c.applyMarks(decl, nil)
 	for _, spec := range decl.Specs {
 		typ := c.resolveType(spec.Type)
 		var initExpr ir.Expr
@@ -2140,6 +2146,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				Type: typ,
 				Init: initExpr,
 			}
+			c.applyMarks(decl, v)
 			for i := range spec.Handlers {
 				h := &spec.Handlers[i]
 				handler := &ir.EventHandler{

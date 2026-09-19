@@ -1,0 +1,256 @@
+# A lifetime in a non-reactive loop is refused, and the reactive one still builds.
+#
+# A `for` holds many copies of its body whether or not it is reactive, and only a
+# *reactive* one elects a runtime instance -- which is what gives each copy state
+# of its own. Over a `const` iterable nothing can change, so the body is spliced
+# once and its vars hoisted once: every pass shares the one handle, the second
+# mount overwrites the first, and the schedule the first opened runs on with
+# nothing able to stop it.
+#
+# Shared state is the documented cost of a non-reactive loop for an ordinary
+# component. For a lifetime it is a leak, so it is refused rather than paid.
+# #245 is the real fix -- route a stateful component to a runtime instance
+# whether or not the position is reactive -- and until that lands this is the
+# loud half of what main did by accident, which was to fail with "fyne primitive
+# Timer was instantiated without a spec record".
+#
+# A txtar rather than a testdata fixture: the refusal is passNoInlineComponents',
+# and ERROR(lower) is a phase nothing evaluates -- only parse, check and test
+# are. A fixture written that way asserts nothing at all.
+
+! sngl generate --platform fyne --lang go -o out constloop.sngl
+stderr 'this loop is not reactive and .* brackets a lifetime'
+stderr 'see #245'
+! stderr 'panic'
+
+# A reactive `if` inside the same const loop is the same defect by another
+# route: it sets the "needs reconciling" bit, which elects a runtime instance --
+# but the loop var is still one hoisted cell, and the emitted Go did not even
+# compile (`undefined: p`). What decides per-copy state is the *loop*, so that
+# is the bit the refusal reads.
+! sngl generate --platform fyne --lang go -o out constloopif.sngl
+stderr 'this loop is not reactive and .* brackets a lifetime'
+
+# Nesting inherits, in both directions. Two const loops is still no per-copy
+# state, so the inner one is refused...
+! sngl generate --platform fyne --lang go -o out constinconst.sngl
+stderr 'this loop is not reactive and .* brackets a lifetime'
+
+# ...and a reactive outer loop makes the const inner one safe, because the outer
+# one is rebuilt as a unit and carries the inner copies with it.
+sngl generate --platform fyne --lang go -o out varouter.sngl
+grep 'TimerInstance' out/model.go
+
+# The refusal is a *lowering* rule, so it is target-dependent, and that is worth
+# knowing rather than discovering: html on --lang none unrolls a const loop in
+# the optimizer, so the very source refused above builds there as two
+# independent schedules. The diagnostic says so.
+sngl generate --platform html --lang none -o outh constloop.sngl
+grep 'setInterval' outh/index.html
+
+# The inverse nesting is the false positive this guard had first, and it builds:
+# a reactive `if` *outside* the const loop puts the whole loop inside the slot's
+# render func, so `p` is in scope there and each pass gets its own
+# TimerInstance with its own handle, destroyed through the slot's own reuse and
+# teardown loops. Same `in`, same `repeated`, opposite lowering -- which is why
+# what the guard reads is whether `in` was true *entering* the loop.
+sngl generate --platform fyne --lang go -o out ifoutside.sngl
+grep 'TimerInstance' out/model.go
+grep 'Destroy\(\)' out/model.go
+
+# A component holding a lifetime that touches none of its own state is NOT the
+# hazard, and refusing it refused working programs. passEffect keys a bracket's
+# bookkeeping by list -- __effectN_live/_desired hold an entry per key -- so N
+# copies mount and unmount independently. What has no list is a component's own
+# cells, one per declared var. So the question is the conjunction, and this one
+# shares its cells exactly as stateful.sngl does: the documented cost, not a
+# schedule nobody can stop.
+sngl generate --platform fyne --lang go -o out effectfree.sngl
+grep '__effect0_live' out/model.go
+
+# And through a component of the program's own, which costs nothing extra:
+# passInlinePure splices a platform override into its caller before this pass
+# runs, so a user component wrapping a timer holds the effect node directly by
+# the time the question is asked.
+! sngl generate --platform fyne --lang go -o out wrapped.sngl
+stderr 'this loop is not reactive and .* brackets a lifetime'
+# The rule is about the loop, so that is the line it names -- and the lifetime
+# is inside a declaration written elsewhere, so it says where it came in too.
+# Cited at the node alone, this read as a complaint about a line with no loop.
+stderr 'wrapped.sngl:13:5: this loop is not reactive'
+stderr 'reached from wrapped.sngl:14:15'
+
+# One word is the whole difference, and the other word still works.
+sngl generate --platform fyne --lang go -o out varloop.sngl
+grep 'TimerInstance' out/model.go
+
+# The boundary, which matters more than the message. A loop over the same const
+# list builds when what it holds brackets no lifetime...
+sngl generate --platform fyne --lang go -o out stateless.sngl
+
+# ...and so does a component with state of its own, which shares a cell here and
+# always has. Widening the refusal to that would refuse programs that work.
+sngl generate --platform fyne --lang go -o out stateful.sngl
+
+# And a lifetime outside any loop is untouched.
+sngl generate --platform fyne --lang go -o out plain.sngl
+grep 'NewTicker' out/model.go
+
+-- constloop.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const periods list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var p = periods {
+        time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+    }
+    ui.text(value=string(n))
+}
+-- effectfree.sngl --
+import ui "sngl:ui"
+
+var hits = 0
+const periods list<int> = [100, 250]
+
+component blinker(ms = 0) ui.node {
+    var label = "x"
+
+    effect(on = ms, @mount { hits = hits + 1 }, @unmount { hits = hits - 1 })
+    ui.text(value="{label}-{ms}")
+}
+
+ui.window(title="t") {
+    for var p = periods {
+        blinker(ms=p)
+    }
+}
+-- constinconst.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const outer list<int> = [1, 2]
+const inner list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var o = outer {
+        for var p = inner {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
+    }
+    ui.text(value=string(n))
+}
+-- varouter.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+var outer list<int> = [1, 2]
+const inner list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var o = outer {
+        ui.text(value=string(o))
+        for var p = inner {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
+    }
+}
+-- ifoutside.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+ui.window(title="t") {
+    var n = 0
+    var on = true
+    const periods list<time.duration> = [100ms, 250ms]
+
+    if on {
+        for var p = periods {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
+    }
+    ui.text(value=string(n))
+}
+-- constloopif.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const periods list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var p = periods {
+        if n < 100 {
+            time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+        }
+    }
+}
+-- wrapped.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+const periods list<time.duration> = [100ms, 250ms]
+
+component ticker(period time.duration = 100ms) ui.node {
+    time.timer(interval=period, enabled=true, @tick { n = n + 1 })
+    ui.text(value=string(n))
+}
+
+ui.window(title="t") {
+    for var p = periods {
+        ticker(period=p)
+    }
+}
+-- varloop.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+var periods list<time.duration> = [100ms, 250ms]
+
+ui.window(title="t") {
+    for var p = periods {
+        time.timer(interval=p, enabled=true, @tick { n = n + 1 })
+    }
+    ui.text(value=string(n))
+}
+-- stateless.sngl --
+import ui "sngl:ui"
+
+const labels list<string> = ["a", "b"]
+
+ui.window(title="t") {
+    for var l = labels {
+        ui.text(value=l)
+    }
+}
+-- stateful.sngl --
+import ui "sngl:ui"
+
+const labels list<string> = ["a", "b"]
+
+component counter(label = "") ui.node {
+    var hits = 0
+    ui.button(text="{label} {hits}", @click { hits = hits + 1 })
+}
+
+ui.window(title="t") {
+    for var l = labels {
+        counter(label=l)
+    }
+}
+-- plain.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var n = 0
+
+ui.window(title="t") {
+    time.timer(interval=100ms, enabled=true, @tick { n = n + 1 })
+    ui.text(value=string(n))
+}

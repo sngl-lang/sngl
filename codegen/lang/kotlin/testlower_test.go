@@ -45,7 +45,7 @@ func testFoo(t Test, c box) {
 	if fn == nil {
 		t.Fatal("no test func in package")
 	}
-	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitAgent, "")
+	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, TestSurface{}, TestEmitAgent, "")
 	if !strings.Contains(out, "import us.duckfam.git.jonathan.sngl.testagent.T") {
 		t.Errorf("agent mode missing T import:\n%s", out)
 	}
@@ -88,7 +88,7 @@ func testFoo(t Test, c box) {
 	if fn == nil {
 		t.Fatal("no test func in package")
 	}
-	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitNative, "robolectric")
+	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, TestSurface{}, TestEmitNative, "robolectric")
 	if !strings.Contains(out, "import org.junit.Test") {
 		t.Errorf("native mode missing JUnit import:\n%s", out)
 	}
@@ -137,7 +137,7 @@ func testFoo(t Test, c box) {
 	if fn == nil {
 		t.Fatal("no test func in package")
 	}
-	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, nil, TestEmitNative, "device")
+	out := LowerTestFile("us.duckfam.sngl.app", []*ir.Func{fn}, []string{"Foo"}, TestSurface{}, TestEmitNative, "device")
 	if !strings.Contains(out, "@RunWith(AndroidJUnit4::class)") {
 		t.Errorf("device mode should use AndroidJUnit4:\n%s", out)
 	}

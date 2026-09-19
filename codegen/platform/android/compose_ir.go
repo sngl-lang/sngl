@@ -357,9 +357,9 @@ func (cc *irComposeContext) flexModifier(val string) string {
 		// across the other one by default, which is why the rows of the
 		// keypad divided the height while the keys in them stayed the height
 		// of their own labels.
-		return fmt.Sprintf("weight(%sf).fillMaxHeight()", val)
+		return fmt.Sprintf("weight(%s).fillMaxHeight()", ktFloat(val))
 	case "Column":
-		return fmt.Sprintf("weight(%sf).fillMaxWidth()", val)
+		return fmt.Sprintf("weight(%s).fillMaxWidth()", ktFloat(val))
 	}
 	return "fillMaxSize()"
 }
@@ -935,4 +935,15 @@ func irStringList(e ir.Expr) []string {
 		}
 	}
 	return out
+}
+
+// ktFloat renders an already-emitted Kotlin expression as a Float. weight()
+// takes one and a SNGL float is a Double, so a literal takes the `f` suffix --
+// but the suffix is the literal's, and appending it to an expression made
+// `entry.span` into the undeclared name `entry.spanf`.
+func ktFloat(val string) string {
+	if _, err := strconv.ParseFloat(val, 64); err == nil {
+		return val + "f"
+	}
+	return "(" + val + ").toFloat()"
 }

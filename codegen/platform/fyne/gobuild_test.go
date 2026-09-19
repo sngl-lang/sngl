@@ -76,7 +76,7 @@ func buildGeneratedGo(t *testing.T, prefix, model string) {
 // unrelated defect keeps failing.
 func compileErrors(t *testing.T, prefix, model string) string {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", prefix)
+	tmp, err := os.MkdirTemp(".", "_"+prefix)
 	if err != nil {
 		t.Fatal(err)
 	}

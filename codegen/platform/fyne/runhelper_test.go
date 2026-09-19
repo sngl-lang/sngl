@@ -39,7 +39,7 @@ func generateForFyne(t *testing.T, src string) []byte {
 // the project's own go.mod.
 func runEmitted(t *testing.T, prefix string, modelSrc []byte, driver string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", prefix)
+	tmp, err := os.MkdirTemp(".", "_"+prefix)
 	if err != nil {
 		t.Fatal(err)
 	}

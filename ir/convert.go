@@ -153,11 +153,13 @@ func (c *converter) convertStructDef(s *StructDef) *ast.StructDef {
 		Name:        s.Name,
 		TypeParams:  c.convertTypeParams(s.TypeParams),
 		IsMultiline: len(s.Fields) > 1,
+		Attrs:       c.foreignAttrs(s.Foreign, nil),
 	}
 	for _, f := range s.Fields {
 		sf := &ast.StructField{
 			Names: []string{f.Name},
 			Type:  c.convertType(f.Type),
+			Attrs: c.foreignAttrs(f.Foreign, nil),
 		}
 		// DefaultWritten, not `Default != nil`: Normalize fills every nil
 		// Default with the type's zero, so printing them all turns
@@ -220,7 +222,7 @@ func (c *converter) convertConstDecl(v *Var) *ast.ConstDecl {
 	if v.Init != nil {
 		spec.Default = c.convertExpr(v.Init)
 	}
-	return &ast.ConstDecl{Specs: []ast.VarSpec{spec}}
+	return &ast.ConstDecl{Specs: []ast.VarSpec{spec}, Attrs: c.foreignAttrs(v.Foreign, nil)}
 }
 
 func (c *converter) convertVarDecl(v *Var) *ast.VarDecl {
@@ -234,7 +236,7 @@ func (c *converter) convertVarDecl(v *Var) *ast.VarDecl {
 	for _, h := range v.Handlers {
 		spec.Handlers = append(spec.Handlers, c.convertEventHandler(h))
 	}
-	return &ast.VarDecl{Specs: []ast.VarSpec{spec}}
+	return &ast.VarDecl{Specs: []ast.VarSpec{spec}, Attrs: c.foreignAttrs(v.Foreign, nil)}
 }
 
 func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
@@ -246,11 +248,19 @@ func (c *converter) convertFuncDef(f *Func) *ast.FuncDef {
 		Name:       name,
 		TypeParams: c.convertTypeParams(f.TypeParams),
 		Params:     c.convertParamList(f.Params),
+		Attrs:      c.foreignAttrs(f.Foreign, f),
 	}
 	if f.Return != nil {
 		fd.ReturnType = c.convertType(f.Return)
 	}
-	if len(f.Block) > 0 {
+	// A declaration the host already has is emitted by nobody, so it has no
+	// body to print -- and the one in the IR is not the author's. The checker
+	// synthesizes `return <zero>` for a bodyless func, which read back as a
+	// real implementation returning zero; printed beside the mark that says
+	// the host has this, it is the shape the checker itself refuses. The test
+	// is CodegenCtx.AllFuncs': a name, and not a #[foreign] correspondence
+	// the program's own backend still emits.
+	if len(f.Block) > 0 && !(f.Foreign.Name != "" && !f.Foreign.Marked) {
 		fd.Block = c.convertStmtBlock(f.Block)
 	}
 	return fd

@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -18,6 +19,57 @@ func TestCommonAnalysisHoldsNoIRPackage(t *testing.T) {
 				"it was derived from (see NewDepTrackerFromPkg)", f.Name, f.Type)
 		}
 	}
+}
+
+// A window's generator mutates its own analysis, so a map Clone forgets is one
+// every window shares. The check is over the type rather than over a list of
+// field names: forgetting the copy and forgetting to extend this test are the
+// same omission, and only reflection makes a new field fail without an edit.
+func TestCommonAnalysisCloneCopiesEveryMap(t *testing.T) {
+	a := &CommonAnalysis{
+		ModelFields:    map[string]bool{"a": true},
+		ComputedFields: map[string]bool{"b": true},
+		ComputedDeps:   map[string]map[string]bool{"b": {"a": true}},
+		FuncNames:      map[string]bool{"f": true},
+		ExternFuncs:    map[string]bool{"g": true},
+		ExternVars:     map[string]bool{"v": true},
+		StructFields:   map[string][]string{"S": {"x"}},
+		UsedComponents: map[string]bool{"text": true},
+		Timers:         []TimerInfo{{Index: 0, LocalRefs: map[string]bool{"__n0": true}}},
+	}
+	b := a.Clone()
+
+	av, bv := reflect.ValueOf(a).Elem(), reflect.ValueOf(b).Elem()
+	for i, f := range slices.Collect(av.Type().Fields()) {
+		if f.Type.Kind() != reflect.Map {
+			continue
+		}
+		if av.Field(i).IsNil() {
+			t.Fatalf("CommonAnalysis.%s: this test must populate every map field to say anything about it", f.Name)
+		}
+		if av.Field(i).UnsafePointer() == bv.Field(i).UnsafePointer() {
+			t.Errorf("Clone shares CommonAnalysis.%s; one generator's writes would reach every other's", f.Name)
+		}
+	}
+
+	// ComputedDeps' values and a TimerInfo's LocalRefs are the maps one level
+	// down, which a shallow copy of the field above would leave shared.
+	if sameMap(a.ComputedDeps["b"], b.ComputedDeps["b"]) {
+		t.Error("Clone shares a ComputedDeps entry")
+	}
+	if sameMap(a.Timers[0].LocalRefs, b.Timers[0].LocalRefs) {
+		t.Error("Clone shares a TimerInfo's LocalRefs")
+	}
+
+	b.ModelFields["a"] = false
+	delete(b.ComputedFields, "b")
+	if !a.ModelFields["a"] || !a.ComputedFields["b"] {
+		t.Error("writing through a clone reached the original")
+	}
+}
+
+func sameMap(x, y map[string]bool) bool {
+	return reflect.ValueOf(x).UnsafePointer() == reflect.ValueOf(y).UnsafePointer()
 }
 
 // Helpers and Styles are accumulated during emit, so a dump of the analysis

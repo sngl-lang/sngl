@@ -78,3 +78,5 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/none/html --
+pass sha256:6838b41d586d5be265c98423f170604b

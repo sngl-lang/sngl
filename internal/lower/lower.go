@@ -41,6 +41,9 @@ var passes = []pass{
 	passUnit,
 	passEnum,
 	passQuery,
+	// Before passAsyncOffload, which synthesizes calls to the two ids this
+	// reads, and before anything rewrites a body out from under a position.
+	passAsyncCapable,
 	passAsyncReactive,
 	passComputed,
 	passLambda,
@@ -222,6 +225,17 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 	// Go, Kotlin -- has to be given the declaration of every struct and enum
 	// the emitted code names, whichever package wrote it.
 	addForeignTypes(pkg)
+
+	// A const or var that *is* a host identifier is taken off the lists a backend
+	// emits from, the way `CodegenCtx.AllFuncs` drops a native func: it has no
+	// value of its own to declare, and `math.Pi` came out as
+	// `var pi float64 = Float64{}` -- a zero for a value that lives on the
+	// host, spelled as a type name that is not a Go literal. Here rather than
+	// per backend because five of them read pkg.Consts and each would need the
+	// same test. Every reference already resolves through ir.Ident.Sym, which
+	// holds the declaration and not its place in this list.
+	pkg.Consts = slices.DeleteFunc(pkg.Consts, ir.IsHostValue)
+	pkg.Vars = slices.DeleteFunc(pkg.Vars, ir.IsHostValue)
 
 	for _, p := range passes {
 		if !p.enabled(caps) {

@@ -1,0 +1,22 @@
+import marks "sngl:internal/marks"
+
+// Runs f without waiting for it, on whatever the host gives for work that must
+// not block the caller: a goroutine in Go, a microtask in JavaScript, a
+// coroutine in Kotlin.
+//
+// Answered on the language axis, because none of those is a property of the
+// surface being drawn on.
+//
+// Pair it with `post`. Whatever f touches, it touches from somewhere that does
+// not own the widgets, so a UI program that spawns and then writes state has
+// written a data race rather than a background task.
+#[marks.intrinsic("async.spawn")]
+func spawn(f func())
+
+// Runs f back on the thread the target draws on.
+//
+// Answered on the platform axis, because there is no such thread in general
+// and no two toolkits reach theirs the same way: fyne queues onto the driver,
+// gtk4 onto a GLib idle tick.
+#[marks.intrinsic("async.post")]
+func post(f func())

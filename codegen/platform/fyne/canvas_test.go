@@ -100,7 +100,7 @@ window {
 	}
 
 	// Compile-check under the main module so fyne + gg imports resolve.
-	tmp, err := os.MkdirTemp(".", "fyne-canvas-")
+	tmp, err := os.MkdirTemp(".", "_fyne-canvas-")
 	if err != nil {
 		t.Fatal(err)
 	}

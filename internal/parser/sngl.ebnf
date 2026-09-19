@@ -286,7 +286,7 @@ ConstDecl =
     | kw_const lparen { ConstSpec [ comma | semi ] } rparen
     .
 
-ConstSpec = IdentList [ Type ] assign Expr .
+ConstSpec = IdentList [ Type ] [ assign Expr ] .
 
 IdentList = ident { comma ident } .
 

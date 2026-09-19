@@ -94,7 +94,7 @@ func TestInstanceEventReachesTheModelsWidget(t *testing.T) {
 		t.Fatal("model.go not found in generated files")
 	}
 
-	tmp, err := os.MkdirTemp(".", "fyne-event-")
+	tmp, err := os.MkdirTemp(".", "_fyne-event-")
 	if err != nil {
 		t.Fatal(err)
 	}

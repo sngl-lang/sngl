@@ -448,9 +448,23 @@ component ui.avatar[platform] {
 
 // A recurring deadline. Not a blueprint primitive: a timer renders nothing, so
 // it carries no Kind and never reaches the view. compiler_ir.go collects it and
-// emits the tea.Tick / Msg pair the Elm architecture schedules with -- a
-// callback cannot be the shape here, because Update takes the Model by value
-// and returns it, so nothing a scheduler called later would have to mutate.
+// emits the tea.Tick / Msg pair the Elm architecture schedules with.
+//
+// html, fyne and gtk4 all schedule with an `effect` over a start/stop pair of
+// host natives instead, and this platform cannot: an effect's `@mount` hands
+// over a *closure*, and in Elm nothing outside Update may touch the model. The
+// closure would capture whichever local it was settled on -- New's, which is
+// copied out on return -- so the emitted program arms its ticker, increments a
+// field of an orphaned copy, and renders the same screen forever. Tried and
+// measured rather than assumed: the model still read 0 after three ticks, and
+// Init returned nil because nothing in the effect lowering is a schedule the
+// emitter can describe.
+//
+// What Init needs back is a command, and a command needs the period and a body
+// Update can run against its own live Model -- which is exactly what ir.Timer
+// carries and what a closure cannot supply. Emitting a *Model receiver would
+// not rescue it either: it turns the silent no-op into a data race with the
+// Update goroutine, which is the rule the architecture exists to enforce.
 //
 // The gate is a prop rather than the position the node is written at, because
 // arming happens in Init and Update, outside the view the position describes.

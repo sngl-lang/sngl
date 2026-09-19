@@ -742,7 +742,7 @@ func (b *builder) buildConstDecl(it nodeIter) *ast.ConstDecl {
 }
 
 func (b *builder) buildConstSpec(it nodeIter) ast.VarSpec {
-	// ConstSpec = IdentList [ Type ] assign Expr .
+	// ConstSpec = IdentList [ Type ] [ assign Expr ] .
 	var spec ast.VarSpec
 	if !it.done() && it.isNonTerminal() && it.symbol() == IdentList {
 		spec.Names, spec.NamePositions = b.buildIdentListWithPos(it.enter())

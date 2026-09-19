@@ -97,7 +97,7 @@ func TestOptionWrapAndUnwrapRunInTheEmittedProgram(t *testing.T) {
 
 	// Under the main module, so charm.land/bubbletea resolves through the
 	// project's own go.mod.
-	tmp, err := os.MkdirTemp(".", "bt-option-wrap-run-")
+	tmp, err := os.MkdirTemp(".", "_bt-option-wrap-run-")
 	if err != nil {
 		t.Fatal(err)
 	}

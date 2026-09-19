@@ -10,9 +10,10 @@ import (
 )
 
 // TestCanvasKotlinDeclsInSync guards against drift between the hand-written
-// Kotlin data class decls in canvasKotlinDecls and the source-of-truth SNGL
-// struct declarations in lib/canvas.sngl (CanvasStyle, PathCmd) and
-// lib/types.sngl (color → Color). These Kotlin decls are hand-written because
+// Kotlin data class decls (canvasKotlinDecls, colorKotlinDecl) and the
+// source-of-truth SNGL struct declarations in lib/ui/draw/draw.sngl
+// (CanvasStyle, PathCmd) and lib/builtin/color.sngl (color → Color). These
+// Kotlin decls are hand-written because
 // the canvas stdlib structs aren't carried on pkg.Structs for the Kotlin path
 // (mirrors what canvasutil_sync_test.go does for the Go-emitting platforms).
 //
@@ -29,7 +30,7 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 		"PathCmd":     "ui/draw/draw.sngl",
 		"color":       "builtin/color.sngl",
 	}
-	// SNGL struct name → Kotlin data class name as emitted by canvasKotlinDecls.
+	// SNGL struct name → Kotlin data class name as emitted.
 	kotlinName := map[string]string{
 		"CanvasStyle": "CanvasStyle",
 		"PathCmd":     "PathCmd",
@@ -74,7 +75,10 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 		}
 	}
 
-	decls := canvasKotlinDecls(nil)
+	// Color is emitted by colorKotlinDecl rather than canvasKotlinDecls -- a
+	// canvas is one of two ways a program reaches the type -- so the guard
+	// reads both.
+	decls := canvasKotlinDecls(nil) + colorKotlinDecl(nil)
 
 	// Split the emitted Kotlin into per-data-class bodies so a field present in
 	// one decl can't satisfy a check for another struct.
@@ -85,7 +89,7 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 			return "", false
 		}
 		rest := after
-		// canvasKotlinDecls closes each data class with a ")" at the start of
+		// Each data class closes with a ")" at the start of
 		// its own line ("\n)"). Field defaults may contain inline "(...)"
 		// (e.g. CanvasStyle's `Color(a = 0)`), so match the line-leading close.
 		before, _, ok := strings.Cut(rest, "\n)")
@@ -99,18 +103,18 @@ func TestCanvasKotlinDeclsInSync(t *testing.T) {
 		kName := kotlinName[structName]
 		body, ok := bodyOf(kName)
 		if !ok {
-			t.Errorf("stdlib struct %s (Kotlin: %q) has no data class decl in canvasKotlinDecls",
+			t.Errorf("stdlib struct %s (Kotlin: %q) has no data class decl",
 				structName, kName)
 			continue
 		}
 		for _, field := range fields {
-			// canvasKotlinDecls emits "    var <name>: <type>" — match the
+			// Each decl emits "    var <name>: <type>" — match the
 			// property by its "var <name>:" / "var <name> " form.
 			if !strings.Contains(body, "var "+field+":") &&
 				!strings.Contains(body, "var "+field+" ") {
 				t.Errorf("stdlib struct %s field %q is declared in lib/%s "+
-					"but missing as a property in canvasKotlinDecls data class %q — "+
-					"update android canvas.go to match",
+					"but missing as a property in emitted data class %q — "+
+					"update android canvas.go / kotlin.ColorDecl to match",
 					structName, field, want[structName], kName)
 			}
 		}

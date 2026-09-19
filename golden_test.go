@@ -7,7 +7,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/internal/goldentest"
 )
 
-var update = flag.Bool("update", false, "rewrite the out/ golden in testdata/*.txtar")
+var (
+	update = flag.Bool("update", false, "rewrite the out/ golden and the run/ record in testdata/*.txtar")
+	verify = flag.Bool("verify", false, "re-run every host toolchain, whatever the run/ record says")
+)
 
 // TestGolden compiles every testdata/*.txtar fixture for each target its
 // source declares and compares the result against the archive's own `out/`.
@@ -19,5 +22,5 @@ var update = flag.Bool("update", false, "rewrite the out/ golden in testdata/*.t
 //
 //	go test . -run TestGolden -update
 func TestGolden(t *testing.T) {
-	goldentest.Run(t, "testdata/*.txtar", *update)
+	goldentest.Run(t, "testdata/*.txtar", *update, *verify)
 }

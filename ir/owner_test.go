@@ -91,6 +91,46 @@ func TestOwnersFindsWindowsInAnyBody(t *testing.T) {
 	}
 }
 
+// WindowsFlat is a proof carried from the pass that refused the program which
+// would falsify it, so Owners stops looking for what cannot be there. What it
+// must not do is skip the windows a body legitimately declares, which is every
+// window this finds but the nested one.
+func TestOwnersSkipsTheNestedSearchOnceWindowsAreFlat(t *testing.T) {
+	newPkg := func() *Package {
+		return &Package{
+			Body:       []Stmt{&If{Body: []Stmt{&Window{Name: "fromPkgBody"}}}},
+			Components: []*Component{{Name: "root", Body: []Stmt{&Window{Name: "fromCompBody"}}}},
+			Windows:    []*Window{{Name: "listed", Body: []Stmt{&Window{Name: "nested"}}}},
+		}
+	}
+	names := func(pkg *Package) map[string]bool {
+		out := map[string]bool{}
+		for _, o := range Owners(pkg) {
+			if o.Win != nil {
+				out[o.Win.Name] = true
+			}
+		}
+		return out
+	}
+
+	unproven := names(newPkg())
+	if !unproven["nested"] {
+		t.Error("an unflattened package must still report a nested window: the passes before the guard are what report it")
+	}
+
+	flat := newPkg()
+	flat.WindowsFlat = true
+	got := names(flat)
+	for _, want := range []string{"listed", "fromPkgBody", "fromCompBody"} {
+		if !got[want] {
+			t.Errorf("WindowsFlat dropped window %q, which no window's body declared", want)
+		}
+	}
+	if got["nested"] {
+		t.Error("WindowsFlat did not skip the nested-window search")
+	}
+}
+
 // A window's @error is an imperative block it owns, and it reaches a consumer
 // the same way its funcs and timers do -- collected by hand beside the
 // enumeration, it was the half of blocks.go's window arm that went missing.

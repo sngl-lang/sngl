@@ -192,6 +192,13 @@ func normalizeVar(v *Var) {
 	if v == nil {
 		return
 	}
+	// A const that *is* a host identifier has no initializer and must not be
+	// given one: the value lives on the host, and a zero here is a number the
+	// program never wrote. `math.Pi` normalized to 0.0 and every read of it
+	// folded to that, on every target, with nothing to say so.
+	if IsHostValue(v) {
+		return
+	}
 	if v.Init == nil {
 		v.Init = ZeroExpr(v.Type)
 	} else {

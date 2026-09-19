@@ -1,0 +1,14 @@
+// The reason the declaration is emitted at all: a program that names it is
+// told what the foreign thing is and why SNGL cannot reach it. Dropped by the
+// importer instead, this would be a bare `undefined`.
+import go "sngl:language/go"
+import macro "sngl:macro"
+import . "sngl:ui"
+
+#[go.native("example.com/api", "api.MultiReturn")]
+#[macro.unusable("functions returning multiple values are not supported")]
+func MultiReturn()
+
+window {
+    button(text="go", @click { MultiReturn() }) // ERROR(check) "cannot be used: functions returning multiple values"
+}

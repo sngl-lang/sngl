@@ -69,7 +69,7 @@ func TestDenyOnAbsentFileFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	fake := &testing.T{}
-	checkDenies(fake, denies, map[string][]byte{"out/go/bubbletea/model.go": []byte("x")})
+	checkDenies(fake, denies, map[string][]byte{"out/go/bubbletea/model.go": []byte("x")}, nil)
 	if !fake.Failed() {
 		t.Error("deny naming an ungenerated file passed")
 	}

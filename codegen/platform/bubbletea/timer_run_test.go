@@ -139,7 +139,7 @@ func TestATimerTicksInTheEmittedProgram(t *testing.T) {
 		t.Fatalf("model.go not among generated files %v", mem.Files())
 	}
 
-	tmp, err := os.MkdirTemp(".", "bt-timer-run-")
+	tmp, err := os.MkdirTemp(".", "_bt-timer-run-")
 	if err != nil {
 		t.Fatal(err)
 	}

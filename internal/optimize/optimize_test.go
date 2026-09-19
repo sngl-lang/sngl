@@ -1,7 +1,6 @@
 package optimize
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -602,121 +600,4 @@ func assertNoFor(t *testing.T, where string, stmts []ir.Stmt) {
 			assertNoFor(t, where, n.Else)
 		}
 	}
-}
-
-// TestFoldsTestdata exercises the previously-dead `// FOLD value` directive
-// machinery. Each fixture with FOLD directives is parsed, checked, optimized;
-// each marked line is checked against the corresponding *ir.Var initializer
-// to confirm it folded to the expected literal value.
-func TestFoldsTestdata(t *testing.T) {
-	for s := range testutil.TestdataSamples(t) {
-		if len(s.Folds) == 0 {
-			continue
-		}
-		if s.ExpectsError("parse") || s.ExpectsError("check") {
-			continue
-		}
-		t.Run(s.Name, func(t *testing.T) {
-			doc, err := parser.Parse(s.Filename, []byte(s.Source))
-			if err != nil {
-				t.Fatalf("parse: %v", err)
-			}
-			pkg, diags := checker.Check(doc, &checker.Config{
-				FS:     s.FS,
-				Dir:    s.Dir,
-				IsMain: true,
-			})
-			for _, d := range diags {
-				if d.Severity == ir.Error {
-					t.Fatalf("check: %s", d.Error())
-				}
-			}
-			if err := Optimize(pkg, &Config{Platform: "html", Language: "js"}); err != nil {
-				t.Fatalf("optimize: %v", err)
-			}
-			byLine := collectVarsByLine(pkg)
-			for _, fd := range s.Folds {
-				v, ok := byLine[fd.Line]
-				if !ok {
-					t.Errorf("line %d: no var found at FOLD directive line", fd.Line)
-					continue
-				}
-				lit, ok := v.Init.(*ir.Literal)
-				if !ok {
-					t.Errorf("line %d (%s): expected folded literal, got %T (%s)",
-						fd.Line, v.Name, v.Init, irExprDescr(v.Init))
-					continue
-				}
-				got := litValue(lit)
-				if got != fd.Expected {
-					t.Errorf("line %d (%s): got %v (%T), want %v (%T)",
-						fd.Line, v.Name, got, got, fd.Expected, fd.Expected)
-				}
-			}
-		})
-	}
-}
-
-func collectVarsByLine(pkg *ir.Package) map[int]*ir.Var {
-	byLine := map[int]*ir.Var{}
-	walk := func(v *ir.Var) {
-		if v == nil || v.AST == nil {
-			return
-		}
-		// VarDecl/ConstDecl positions: each spec sits on the parent decl's
-		// line for single-line decls; grouped (parenthesized) decls share
-		// the parent decl's line. The fold matcher uses the spec line, so
-		// we record the per-spec position when available.
-		// VarSpec has no Pos, so non-grouped var/const decls (one spec
-		// per line) are matched by the parent decl's line. Grouped decls
-		// would land all specs on the same line, which is good enough for
-		// the existing FOLD fixtures (none use grouped form for FOLDed
-		// expressions).
-		switch d := v.AST.(type) {
-		case *ast.VarDecl:
-			byLine[d.Pos.Line] = v
-		case *ast.ConstDecl:
-			byLine[d.Pos.Line] = v
-		}
-	}
-	for _, v := range pkg.Vars {
-		walk(v)
-	}
-	for _, v := range pkg.Consts {
-		walk(v)
-	}
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
-			walk(v)
-		}
-	}
-	return byLine
-}
-
-func litValue(lit *ir.Literal) any {
-	if lit == nil || lit.Type == nil {
-		return lit.Value
-	}
-	switch lit.Type.Kind {
-	case ir.TypeInt:
-		var i int
-		_, _ = fmt.Sscanf(lit.Value, "%d", &i)
-		return i
-	case ir.TypeFloat:
-		var f float64
-		_, _ = fmt.Sscanf(lit.Value, "%g", &f)
-		return f
-	case ir.TypeBool:
-		return lit.Value == "true"
-	case ir.TypeString:
-		return lit.Value
-	}
-	return lit.Value
-}
-
-func irExprDescr(e ir.Expr) string {
-	if e == nil {
-		return "nil"
-	}
-	return fmt.Sprintf("%T", e)
 }

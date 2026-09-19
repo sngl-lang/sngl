@@ -376,3 +376,34 @@ func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, metho
 	}
 	return
 }
+
+// StateFieldNames is every name the emitted state object declares as a cell:
+// the vars a window, the package and each component own. A test reads one as
+// an ordinary field -- `c.state.entry` -- so it is what tells that shape from
+// `c.<id>.<prop>`, where the middle segment is a node's `#id` and the read has
+// to go through the host's view tree instead.
+//
+// A positive set rather than the node ids, because the state object is built
+// from these same vars: what it declares and what a field read may name are
+// then one list rather than two that have to agree.
+func StateFieldNames(pkg *ir.Package) map[string]bool {
+	names := map[string]bool{}
+	if pkg == nil {
+		return names
+	}
+	add := func(vars []*ir.Var) {
+		for _, v := range vars {
+			if v != nil && !v.NodeHandle {
+				names[v.Name] = true
+			}
+		}
+	}
+	add(pkg.Vars)
+	for _, w := range pkg.Windows {
+		add(w.Vars)
+	}
+	for _, c := range pkg.Components {
+		add(c.Vars)
+	}
+	return names
+}

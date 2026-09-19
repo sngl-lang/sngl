@@ -1,0 +1,25 @@
+// The `#[unusable]` mark. It lives beside `#[foreign]` and for the same
+// reason: its users are the scheme importers, which are outside the compiler,
+// and every one of them needs it.
+import ir "sngl:internal/ir"
+
+// Records that a declaration exists in the foreign package but cannot be used
+// from SNGL, and why.
+//
+// It is language-neutral because the condition is. Go has functions returning
+// two non-error values, C has types no SNGL type models, JavaScript has
+// signatures nothing can describe -- three importers meeting one wall, and
+// they would otherwise each spell it their own way.
+//
+// The declaration is emitted so the checker has something to resolve, and the
+// reason is the whole of why: a program naming it gets a diagnostic saying
+// what the foreign thing is and why SNGL cannot reach it, where omitting the
+// declaration would leave only `undefined`. The reason is therefore written
+// for the program's author rather than for the importer's, and is not
+// optional -- an unusable declaration with nothing to say is worse than an
+// absent one, because it resolves.
+//
+// Struct, struct field, function and var are the forms that carry it. A
+// marked declaration may be referred to in a type position and read in a
+// diagnostic; what it may not do is be called or have its value taken.
+func unusable(reason string) ir.Macro

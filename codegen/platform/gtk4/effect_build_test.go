@@ -77,7 +77,7 @@ func TestAnEffectCompiles(t *testing.T) {
 // resolves through the project's go.mod.
 func buildGTK4Model(t *testing.T, prefix, model string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", prefix)
+	tmp, err := os.MkdirTemp(".", "_"+prefix)
 	if err != nil {
 		t.Fatal(err)
 	}

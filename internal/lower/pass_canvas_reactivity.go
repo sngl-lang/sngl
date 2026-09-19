@@ -14,21 +14,28 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 	if !pkg.UsesDrawShapes() {
 		return nil
 	}
+	// A package-level var is state a body may write like any other, and
+	// passReactivity already patches the widgets that read one. Leaving it out
+	// here meant a canvas drawn from one had an empty dep set, so it was not
+	// collected at all and nothing redrew it -- not a timer, and not a button
+	// either.
+	pkgVars := mutableVars(pkg.Vars)
 	for _, comp := range pkg.Components {
-		stateVars := componentStateVars(comp)
+		stateVars := mergeVarSets(pkgVars, mutableVars(comp.Vars))
 		injectCanvasRedraws(comp.Body, comp.Vars, stateVars, &comp.Funcs)
 	}
 	for _, w := range pkg.Windows {
-		stateVars := windowStateVars(w)
+		stateVars := mergeVarSets(pkgVars, mutableVars(w.Vars))
 		injectCanvasRedraws(w.Body, w.Vars, stateVars, &w.Funcs)
 	}
 	return nil
 }
 
-// componentStateVars returns the mutable state vars for a component.
-func componentStateVars(comp *ir.Component) map[*ir.Var]bool {
-	out := make(map[*ir.Var]bool, len(comp.Vars))
-	for _, v := range comp.Vars {
+// mutableVars is the set of vars a body may write: every declared one that is
+// not a const.
+func mutableVars(vars []*ir.Var) map[*ir.Var]bool {
+	out := make(map[*ir.Var]bool, len(vars))
+	for _, v := range vars {
 		if !v.IsConst {
 			out[v] = true
 		}
@@ -36,13 +43,14 @@ func componentStateVars(comp *ir.Component) map[*ir.Var]bool {
 	return out
 }
 
-// windowStateVars returns the mutable state vars for a window.
-func windowStateVars(w *ir.Window) map[*ir.Var]bool {
-	out := make(map[*ir.Var]bool, len(w.Vars))
-	for _, v := range w.Vars {
-		if !v.IsConst {
-			out[v] = true
-		}
+// mergeVarSets returns the union of two var sets, sharing neither.
+func mergeVarSets(a, b map[*ir.Var]bool) map[*ir.Var]bool {
+	out := make(map[*ir.Var]bool, len(a)+len(b))
+	for v := range a {
+		out[v] = true
+	}
+	for v := range b {
+		out[v] = true
 	}
 	return out
 }
@@ -78,6 +86,14 @@ func injectCanvasRedraws(stmts []ir.Stmt, vars []*ir.Var, stateVars map[*ir.Var]
 
 	// Handlers on NodeInsts in the visual tree (e.g. button @click).
 	injectIntoNodeHandlers(stmts, stateVars, canvases)
+
+	// The owner's own funcs, which by now include the bodies passEffect
+	// synthesized. An effect's `@mount` and a timer's `@tick` are not node
+	// handlers and reach none of the walks above, so a canvas driven by one
+	// was redrawn by nobody -- the state advanced and the drawing held still.
+	if funcs != nil {
+		injectIntoFuncs(*funcs, stateVars, canvases)
+	}
 }
 
 type canvasEntry struct {
@@ -302,4 +318,64 @@ func varsOverlap(a, b map[*ir.Var]bool) bool {
 		}
 	}
 	return false
+}
+
+// injectIntoFuncs appends a redraw to each of an owner's funcs that writes a
+// var a canvas draws from, and to each lambda body inside one.
+//
+// The lambda half is where a timer lands: a tick reaches the emitter as the
+// closure handed to the host scheduler, so the write is a statement of the
+// lambda and not of the func holding it.
+//
+// `Writes` is the gate, and it governs the func and its lambdas together.
+// gatherBlockMutations credits a call to its callee's Writes, so a handler
+// calling `bump()` already redraws for whatever bump writes -- and the checker's
+// effect walk descends into a lambda, so bump's Writes covers a lambda written
+// inside it too. Injecting into either as well rasterizes the surface more than
+// once per click, the extra times against half-applied state.
+//
+// What has no Writes is what the checker never saw: the bodies lowering
+// synthesized, which is an effect's mount and the tick closure inside it. Those
+// are exactly the ones nothing credits to a caller, so they get one of their
+// own -- which is why the gate is asked once, per owner func, rather than twice
+// with different answers.
+func injectIntoFuncs(funcs []*ir.Func, stateVars map[*ir.Var]bool, canvases []canvasEntry) {
+	for _, fn := range funcs {
+		if fn == nil || len(fn.Writes) > 0 {
+			continue
+		}
+		redrawIfWrites(&fn.Block, stateVars, canvases)
+		for _, l := range lambdaFuncsIn(fn.Block) {
+			redrawIfWrites(&l.Block, stateVars, canvases)
+		}
+	}
+}
+
+// redrawIfWrites appends one redraw per canvas whose draw reads a var block
+// writes.
+func redrawIfWrites(block *[]ir.Stmt, stateVars map[*ir.Var]bool, canvases []canvasEntry) {
+	mutated := map[*ir.Var]bool{}
+	gatherBlockMutations(*block, stateVars, mutated)
+	for _, e := range canvases {
+		if varsOverlap(mutated, e.deps) {
+			*block = append(*block, &ir.CanvasRedrawStmt{
+				Canvas:   e.canvas,
+				DrawFunc: e.canvas.CanvasDraw,
+			})
+		}
+	}
+}
+
+// lambdaFuncsIn returns every lambda body inside block, at any depth. Flat
+// rather than recursive on purpose: a nested pair is then visited once each by
+// the caller instead of once per level of nesting.
+func lambdaFuncsIn(block []ir.Stmt) []*ir.Func {
+	var out []*ir.Func
+	_ = ir.Walk(block, func(n ir.Node) error {
+		if l, ok := n.(*ir.Lambda); ok && l.Func != nil {
+			out = append(out, l.Func)
+		}
+		return nil
+	})
+	return out
 }

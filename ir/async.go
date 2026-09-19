@@ -136,14 +136,14 @@ func exprHasFuncvarAsyncCall(e Expr, pts *PointsToInfo) bool {
 		}
 	case *Spread:
 		return exprHasFuncvarAsyncCall(x.Operand, pts)
-	case *Lambda:
-		if x.Func != nil {
-			return BlockHasFuncvarAsyncCall(x.Func.Block, pts)
-		}
-	case *Closure:
-		if x.Func != nil {
-			return BlockHasFuncvarAsyncCall(x.Func.Block, pts)
-		}
+	case *Lambda, *Closure:
+		// Constructing a closure is not calling it. What blocks is whatever
+		// eventually invokes the closure, and the closure's own Func is
+		// coloured in its own right -- so descending here colours the
+		// *enclosing* function for work it only handed over. On Go that turned
+		// `handle = every(d, func(){ …blocking… })` into an async statement,
+		// which passAsyncOffload then refused for sitting inside the `if`
+		// its caller wrapped it in.
 	}
 	return false
 }
@@ -211,12 +211,8 @@ func ExprHasAsyncCall(e Expr) bool {
 		}
 	case *Spread:
 		return ExprHasAsyncCall(x.Operand)
-	case *Lambda:
-		return BlockHasAsyncCall(x.Func.Block)
-	case *Closure:
-		if x.Func != nil {
-			return BlockHasAsyncCall(x.Func.Block)
-		}
+	case *Lambda, *Closure:
+		// See exprHasFuncvarAsyncCall: a closure is handed over, not called.
 	}
 	return false
 }

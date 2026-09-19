@@ -250,6 +250,11 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			if err := writeOutputFile(sink, f); err != nil {
 				return err
 			}
+			// The Gradle project, the manifest, MainActivity and the theme:
+			// what a build needs around the program rather than anything the
+			// program said. A sink that files output for review takes the
+			// digest of these and the text of the rest.
+			codegen.MarkBoilerplate(sink, f.Name)
 		}
 		if iconRes, err := iconFiles(cfg); err == nil {
 			for _, f := range iconRes {
@@ -313,6 +318,10 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 //     relocates these into a generated project.
 func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
+	surf := kotlin.TestSurface{
+		MethodFields: methodFields,
+		StateFields:  codegen.StateFieldNames(req.Pkg),
+	}
 	if len(testFns) == 0 {
 		return nil
 	}
@@ -321,7 +330,7 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 	if agent {
 		mode = kotlin.TestEmitAgent
 	}
-	src := kotlin.LowerTestFile(cfg.Package, testFns, suffixes, methodFields, mode, cfg.TestRunner)
+	src := kotlin.LowerTestFile(cfg.Package, testFns, suffixes, surf, mode, cfg.TestRunner)
 
 	if !agent {
 		// Native: target gradle test sourceset (robolectric) or

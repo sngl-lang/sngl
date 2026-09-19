@@ -309,6 +309,9 @@ func (jc *JsIRContext) BlockEnd() string                    { return "}" }
 func (jc *JsIRContext) Indent() string                      { return "\t" }
 
 func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
+	if host, ok := jc.hostValueIdent(n); ok {
+		return host
+	}
 	// A synthesized ref is a plain module-scoped local, not a state field, as
 	// evalIdent's read path also treats it. Emitting `state.__slotN = []` never
 	// clears the real accumulator, and the slot's removeChild loop then throws
@@ -426,6 +429,9 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	// passNoImplicitRecv's synthesized receiver renders as `state`.
 	if _, ok := n.Sym.(*ir.Component); ok {
 		return "state"
+	}
+	if host, ok := jc.hostValueIdent(n); ok {
+		return host
 	}
 	name := n.Name
 	if jc.EventVar != "" && jc.EventParam != nil && n.Sym == jc.EventParam {
@@ -1082,4 +1088,21 @@ func (jc *JsIRContext) EmitFuncDef(fn *ir.Func) []string {
 
 	lines = append(lines, "}")
 	return lines
+}
+
+// hostValueIdent resolves a reference to a const or var that *is* a JavaScript
+// identifier -- `Math.PI`, a property whose call form is a TypeError rather
+// than a compile error -- to that identifier, registering its import where it
+// has one. Nothing is emitted for the declaration. Asked on the read and the
+// write path both, a host var being assignable.
+func (jc *JsIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
+	v, ok := n.Sym.(*ir.Var)
+	if !ok || !ir.IsHostValue(v) {
+		return "", false
+	}
+	if v.Foreign.Path != "" {
+		jc.registerNativeImport(v.Foreign.Path, v.Foreign.Name)
+		return codegen.NativeAlias(v.Foreign.Path) + "." + v.Foreign.Name, true
+	}
+	return v.Foreign.Name, true
 }

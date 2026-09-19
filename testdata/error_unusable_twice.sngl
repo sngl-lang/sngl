@@ -1,0 +1,9 @@
+// Two reasons for one declaration is a question about which is true, and
+// overwriting picks one in silence.
+import go "sngl:language/go"
+import macro "sngl:macro"
+
+#[go.native("example.com/api", "api.Thing")]
+#[macro.unusable("returns two values")]
+#[macro.unusable("and also a map")] // ERROR(check) "already unusable"
+func Thing()

@@ -28,10 +28,10 @@ func testIRContext() *KtIRContext {
 	return testFallbackCtx
 }
 
-func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string]bool, ctxCounts map[string]int, mode TestEmitMode) []string {
+func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCounts map[string]int, mode TestEmitMode) []string {
 	switch n := s.(type) {
 	case *ir.CallStmt:
-		if line, ok := lowerTestAssert(n, methodFields, compRecvs, mode); ok {
+		if line, ok := lowerTestAssert(n, surf, compRecvs, mode); ok {
 			return []string{line}
 		}
 		if line, ok := lowerEventTrigger(n); ok {
@@ -46,29 +46,32 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string
 			// capture and posts a snapshotAssert RPC. Native mode has no
 			// snapshot story today, so it remains a TODO.
 			if c.Func.Name == "snapshot" && mode == TestEmitAgent && len(c.Args) >= 2 {
-				name := lowerTestExpr(c.Args[1].Value, nil, nil)
+				name := lowerTestExpr(c.Args[1].Value, TestSurface{}, nil)
 				return []string{fmt.Sprintf("t.snapshot(%s)", name)}
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
 	case *ir.LocalVar:
-		// `var name T [= expr]` inside a test body: emit a Kotlin `val`
-		// binding so subsequent statements that reference the name (e.g.
-		// `c.field = name`) compile. Initialiser is the IR-provided Init
-		// when present (ir.Normalize injects the zero value otherwise).
+		// `var name T [= expr]` inside a test body. `var`, as the ordinary
+		// translator spells it: a SNGL local is mutable, and a test that
+		// assigns to one -- `s = s.digit(d)` in a loop -- is Kotlin refusing
+		// to reassign a val. The case exists at all so the initialiser goes
+		// through lowerTestExpr, which is what lets it read `c.<id>.<prop>`.
+		// Initialiser is the IR-provided Init when present (ir.Normalize
+		// injects the zero value otherwise).
 		var init string
 		if n.Init != nil {
-			init = lowerTestExpr(n.Init, methodFields, compRecvs)
+			init = lowerTestExpr(n.Init, surf, compRecvs)
 		} else {
 			init = "null"
 		}
-		return []string{fmt.Sprintf("val %s = %s", n.Name, init)}
+		return []string{fmt.Sprintf("var %s = %s", n.Name, init)}
 	case *ir.Assign:
 		// `<recv>.<var> += X` etc.: mutate state on the UI thread so
 		// Compose recomposition sees it before the next assertion.
 		if sel, ok := n.Target.(*ir.Select); ok {
 			if id, ok := sel.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
-				value := lowerTestExpr(n.Value, methodFields, compRecvs)
+				value := lowerTestExpr(n.Value, surf, compRecvs)
 				op := n.Op.String()
 				return []string{
 					"composeTestRule.runOnUiThread {",
@@ -79,9 +82,13 @@ func lowerTestStmt(s ir.Stmt, methodFields map[string]bool, compRecvs map[string
 			}
 		}
 	}
-	// Fall through: emit a comment so unrecognised stmts surface in
-	// the generated source rather than vanishing.
-	return []string{fmt.Sprintf("// TODO: lower stmt %T", s)}
+	// Anything with no test-specific meaning is an ordinary statement, so the
+	// ordinary translator emits it -- which is what `lowerTestExpr` already
+	// does on the expression side and what Go's lowerTestStmt does here. A
+	// comment instead meant a test calling one of its component's own methods
+	// (`c.press(key)`) lowered to nothing at all, and the assertions after it
+	// ran against a component nobody had touched.
+	return testIRContext().EvalStmt(s)
 }
 
 // lowerTestSetContext recognises a `t.setContext(ctxName, value)` call and
@@ -105,7 +112,7 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 		if cr, ok := a.Value.(*ir.ContextRead); ok && ctxName == "" {
 			ctxName = cr.Ref.Name
 		} else if ctxName != "" && valExpr == "" {
-			valExpr = lowerTestExpr(a.Value, nil, nil)
+			valExpr = lowerTestExpr(a.Value, TestSurface{}, nil)
 		}
 	}
 	if ctxName == "" {
@@ -127,7 +134,7 @@ func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) 
 	}, true
 }
 
-func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool, compRecvs map[string]bool, mode TestEmitMode) (string, bool) {
+func lowerTestAssert(call *ir.CallStmt, surf TestSurface, compRecvs map[string]bool, mode TestEmitMode) (string, bool) {
 	c := call.Call
 	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "assert" {
 		return "", false
@@ -135,7 +142,7 @@ func lowerTestAssert(call *ir.CallStmt, methodFields map[string]bool, compRecvs 
 	if len(c.Args) != 2 {
 		return "", false
 	}
-	expr := lowerTestExpr(c.Args[1].Value, methodFields, compRecvs)
+	expr := lowerTestExpr(c.Args[1].Value, surf, compRecvs)
 	// Agent mode routes assertions through the testagent T receiver so
 	// failures land in the JSON-RPC test report; native (Robolectric
 	// @Test) mode falls back to junit's bundled assertTrue.
@@ -198,11 +205,11 @@ func extractEventValue(args []ir.CallArg) string {
 	}
 	sl, ok := args[0].Value.(*ir.StructLit)
 	if !ok {
-		return lowerTestExpr(args[0].Value, nil, nil)
+		return lowerTestExpr(args[0].Value, TestSurface{}, nil)
 	}
 	for _, f := range sl.Fields {
 		if f.Name == "value" {
-			return lowerTestExpr(f.Value, nil, nil)
+			return lowerTestExpr(f.Value, TestSurface{}, nil)
 		}
 	}
 	return "\"\""
@@ -212,24 +219,28 @@ func extractEventValue(args []ir.CallArg) string {
 // `c.<var>` is a direct field read on MainScreenState; `c.<id>.<prop>`
 // is fetched via the Compose semantics tree.
 //
-// methodFields names component ids that are NOT MainScreenState
-// fields — they correspond to widgets gated by `if` / `for`. For
-// those, presence and per-prop reads go through Compose finders
-// rather than the state object.
-func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string]bool) string {
+// surf is what the receiver exposes, and the two halves answer different
+// questions. MethodFields names component ids that are NOT MainScreenState
+// fields — they correspond to widgets gated by `if` / `for`, so presence and
+// per-prop reads go through Compose finders rather than the state object.
+// StateFields names the cells the state object does declare, which is what
+// separates `c.state.entry` from `c.<id>.<prop>`: without it every `c.X.Y`
+// read as a node's text, so a test asserting on its component's own state
+// asked the view tree for a tag no widget carries.
+func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) string {
 	// Special shape: `<recv>.<id> == null` / `!= null` where <id> is in
 	// methodFields → presence check via Compose finder count. SNGL's
 	// nilable widget semantics maps to "any nodes match this tag?".
 	if bin, ok := e.(*ir.Binary); ok {
 		if bin.Op == ast.BinEq || bin.Op == ast.BinNeq {
-			if id, ok := composeIDRef(bin.Left, methodFields, compRecvs); ok && isNullLit(bin.Right) {
+			if id, ok := composeIDRef(bin.Left, surf, compRecvs); ok && isNullLit(bin.Right) {
 				op := "=="
 				if bin.Op == ast.BinNeq {
 					op = "!="
 				}
 				return fmt.Sprintf("(composeNodeCount(composeTestRule, %q) %s 0)", id, op)
 			}
-			if id, ok := composeIDRef(bin.Right, methodFields, compRecvs); ok && isNullLit(bin.Left) {
+			if id, ok := composeIDRef(bin.Right, surf, compRecvs); ok && isNullLit(bin.Left) {
 				op := "=="
 				if bin.Op == ast.BinNeq {
 					op = "!="
@@ -240,14 +251,14 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 	}
 	switch n := e.(type) {
 	case *ir.Binary:
-		left := lowerTestExpr(n.Left, methodFields, compRecvs)
-		right := lowerTestExpr(n.Right, methodFields, compRecvs)
+		left := lowerTestExpr(n.Left, surf, compRecvs)
+		right := lowerTestExpr(n.Right, surf, compRecvs)
 		return "(" + left + " " + n.Op.String() + " " + right + ")"
 	case *ir.Unary:
 		if n.Op == ast.UnaryNot {
-			return "!" + lowerTestExpr(n.Operand, methodFields, compRecvs)
+			return "!" + lowerTestExpr(n.Operand, surf, compRecvs)
 		}
-		return "-" + lowerTestExpr(n.Operand, methodFields, compRecvs)
+		return "-" + lowerTestExpr(n.Operand, surf, compRecvs)
 	case *ir.Literal:
 		if ir.StringReprStruct(n.Type) {
 			return fmt.Sprintf("%q", n.Value)
@@ -275,23 +286,25 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 			if inner, ok := idx.Operand.(*ir.Select); ok {
 				if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 					return fmt.Sprintf("composeNodeTextAt(composeTestRule, %q, %s)",
-						inner.Field, lowerTestExpr(idx.Idx, methodFields, compRecvs))
+						inner.Field, lowerTestExpr(idx.Idx, surf, compRecvs))
 				}
 			}
 		}
 		// `<recv>.<id>.<prop>` — Compose semantics text read for the tag.
+		// A cell the state object declares is not that: it is an ordinary
+		// field, and the read is an ordinary one.
 		if inner, ok := n.Operand.(*ir.Select); ok {
-			if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
+			if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] && !surf.StateFields[inner.Field] {
 				return fmt.Sprintf("composeNodeText(composeTestRule, %q)", inner.Field)
 			}
 		}
 		if id, ok := n.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 			return id.Name + "." + n.Field
 		}
-		return lowerTestExpr(n.Operand, methodFields, compRecvs) + "." + n.Field
+		return lowerTestExpr(n.Operand, surf, compRecvs) + "." + n.Field
 	case *ir.Index:
-		operand := lowerTestExpr(n.Operand, methodFields, compRecvs)
-		idx := lowerTestExpr(n.Idx, methodFields, compRecvs)
+		operand := lowerTestExpr(n.Operand, surf, compRecvs)
+		idx := lowerTestExpr(n.Idx, surf, compRecvs)
 		return operand + "[" + idx + "]"
 	case *ir.Call:
 		// Delegate to the full expression translator for calls and any
@@ -308,9 +321,9 @@ func lowerTestExpr(e ir.Expr, methodFields map[string]bool, compRecvs map[string
 
 // composeIDRef returns the id when e is the bare `<recv>.<id>` shape
 // (where <recv> is a component-typed test param) and <id> is in
-// methodFields. Used by lowerTestExpr's null-comparison shortcut to
+// surf.MethodFields. Used by lowerTestExpr's null-comparison shortcut to
 // detect conditional widget presence checks.
-func composeIDRef(e ir.Expr, methodFields map[string]bool, compRecvs map[string]bool) (string, bool) {
+func composeIDRef(e ir.Expr, surf TestSurface, compRecvs map[string]bool) (string, bool) {
 	sel, ok := e.(*ir.Select)
 	if !ok {
 		return "", false
@@ -319,7 +332,7 @@ func composeIDRef(e ir.Expr, methodFields map[string]bool, compRecvs map[string]
 	if !ok || !compRecvs[id.Name] {
 		return "", false
 	}
-	if methodFields == nil || !methodFields[sel.Field] {
+	if !surf.MethodFields[sel.Field] {
 		return "", false
 	}
 	return sel.Field, true
@@ -361,7 +374,7 @@ const (
 // SNGL source can produce, so a local in the test body never collides.
 const testInstanceVar = "__snglTestComponent"
 
-func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields map[string]bool, mode TestEmitMode, testRunner string) string {
+func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurface, mode TestEmitMode, testRunner string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "package %s\n\n", pkg)
 	switch mode {
@@ -443,7 +456,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
 			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
 			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitNative) {
+				for _, line := range lowerTestStmt(s, surf, compRecvs, ctxCounts, TestEmitNative) {
 					fmt.Fprintf(&b, "        %s\n", line)
 				}
 			}
@@ -458,7 +471,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, methodFields m
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
 			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, methodFields, compRecvs, ctxCounts, TestEmitAgent) {
+				for _, line := range lowerTestStmt(s, surf, compRecvs, ctxCounts, TestEmitAgent) {
 					fmt.Fprintf(&b, "    %s\n", line)
 				}
 			}
@@ -500,4 +513,16 @@ func compReceiverSet(fn *ir.Func) map[string]bool {
 		}
 	}
 	return out
+}
+
+// TestSurface is what a test's component receiver exposes, as the emitters
+// need to tell one read from another. Two sets rather than two parameters
+// because every function that takes one takes the other.
+type TestSurface struct {
+	// MethodFields is every component func and computed package func: a name
+	// the state object does not hold a cell for.
+	MethodFields map[string]bool
+	// StateFields is every var a window, the package or a component owns --
+	// the cells the state object declares.
+	StateFields map[string]bool
 }

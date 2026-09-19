@@ -2198,6 +2198,14 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 	}
 
 	if sd != nil {
+		// A host type spelled as a pointer has no composite literal: `*api.Entry{…}`
+		// does not parse in Go. The zero the checker synthesizes for `var e Entry`
+		// is fine -- that is nil -- so only a populated one is refused, and here,
+		// where the literal has a position. The Go emitter used to meet this as a
+		// panic with a stack trace through the build.
+		if len(fields) > 0 && strings.HasPrefix(sd.Foreign.Name, "*") {
+			c.error(x.Pos, "%s is the host type %s, which a program can name but not build: a pointer has no composite literal", sd.Name, sd.Foreign.Name)
+		}
 		typ := sd.SymType()
 		// For generic structs initialized via anonymous literal against a
 		// known expected type (e.g. `var b box<int> = {v=42}`), inherit the

@@ -94,12 +94,18 @@ func parseDeny(rest string) (deny, error) {
 	return deny{file: file, pattern: re, reason: reason}, nil
 }
 
-func checkDenies(t *testing.T, denies []deny, got map[string][]byte) {
+func checkDenies(t *testing.T, denies []deny, got map[string][]byte, boilerplate map[string]bool) {
 	t.Helper()
 	for _, d := range denies {
 		targets := []string{d.file}
 		if d.file == "*" {
-			targets = sortedKeys(got)
+			// `*` is every file generated *from the program*. The scaffold a
+			// platform writes around it is not the program's output and a
+			// claim about codegen is not a claim about it -- android's
+			// manifest carries `android:label="App"`, which matched a fixture
+			// denying `\blabel\b` about a prop name it has nothing to do
+			// with. A deny that does mean the scaffold names the file.
+			targets = sortedKeys(reviewable(got, boilerplate))
 		}
 		for _, name := range targets {
 			data, ok := got[name]

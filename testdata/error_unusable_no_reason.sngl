@@ -1,0 +1,8 @@
+// An unusable declaration with nothing to say is worse than an absent one: it
+// resolves, so the program gets a diagnostic naming it and no reason why.
+import go "sngl:language/go"
+import macro "sngl:macro"
+
+#[go.native("example.com/api", "api.Thing")]
+#[macro.unusable("")] // ERROR(check) "requires a reason"
+func Thing()

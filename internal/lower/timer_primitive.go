@@ -18,8 +18,26 @@ import (
 // build, which is the honest version of the same failure gtk4 had silently for
 // as long as it had timers at all.
 //
-// A platform may also contribute none -- html's override is an `effect` over
-// setInterval -- and finding nothing is an answer, not a failure.
+// A platform may also contribute none, and finding nothing is an answer rather
+// than a failure. Three do: html, fyne and gtk4 each override `timer` with an
+// `effect` over a start/stop pair of host natives, which is what a schedule
+// already is.
+//
+// Three keep a timer intrinsic, and only two of those are because an effect
+// cannot describe one. An effect's `@mount` hands over a *closure*, and a
+// closure is only a schedule where the host may run it against live state.
+// bubbletea is Elm: nothing outside Update may touch the model, so the tick has
+// to arrive as a message and its body has to be a case Update runs -- the
+// period and that body together, which is what this pass records and a closure
+// cannot carry. android's LaunchedEffect *is* the schedule rather than
+// something a schedule is built from, so its override would be describing a
+// bracket in terms of a bracket.
+//
+// none is the third and is a different case: the interpreter honours `effect`
+// natively, so an override would mount and unmount correctly and schedule
+// nothing -- it finds `none:Timer` in the rendered tree and owns the clock
+// itself. It is the path `sngl test` runs on, which is why forgetting it here
+// is worth naming.
 //
 // Placed beside passEffect and for the same reasons: after the inliner, so a
 // timer written in a child component has arrived in the tree that gets walked;
@@ -33,9 +51,9 @@ var passTimerPrimitive = pass{
 }
 
 // timerRole is the second half of a platform's timer primitive id. The id is
-// namespaced by the platform that emits it -- `fyne:Timer`, `bubbletea:Timer`
-// -- so only the target being built for can have contributed one to this tree,
-// and the role is what they have in common.
+// namespaced by the platform that emits it -- `bubbletea:Timer`,
+// `android:Timer` -- so only the target being built for can have contributed
+// one to this tree, and the role is what they have in common.
 const timerRole = "Timer"
 
 // IsTimerPrimitive reports whether a component is some platform's timer

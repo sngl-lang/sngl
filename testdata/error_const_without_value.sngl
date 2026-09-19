@@ -1,0 +1,19 @@
+// A const may omit its initializer, and the one thing that says is that it
+// names a host value: `#[go.native("math", "math.Pi")] const pi float` is the
+// whole reason the grammar allows it. Without a mark there is no value
+// anywhere, and every read would compile to whatever the target's zero is --
+// so it is refused where it is written, the counterpart of the rule a bodyless
+// func answers to.
+import ui "sngl:ui"
+
+const lonely int // ERROR(check) "has no value"
+
+output {
+    none {
+        html
+    }
+}
+
+ui.window(title="t") {
+    ui.text(value=string(lonely))
+}

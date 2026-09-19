@@ -61,6 +61,11 @@ func lowerWindowNesting(pkg *ir.Package, _ Caps, _ Options) error {
 			}
 		}
 	}
+	// Every window's body has just been searched and none held a window, which
+	// is the question ir.Owners walks each of them to answer. Nothing after
+	// this pass constructs a window -- passRootWindow, which does, is two
+	// dozen passes earlier -- so the answer holds for the rest of the build.
+	pkg.WindowsFlat = true
 	return nil
 }
 

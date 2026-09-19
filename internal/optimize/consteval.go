@@ -2,10 +2,8 @@ package optimize
 
 import (
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"math"
-	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -13,7 +11,6 @@ import (
 	"unicode/utf8"
 
 	"git.duckfam.us/jonathan/sngl/ast"
-	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -1095,34 +1092,29 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 
 // evalFileFunc evaluates file: scheme functions (path, contents).
 func evalFileFunc(funcName, dirPath, filename string, ctx *evalCtx) (any, bool) {
-	fsys := os.DirFS(dirPath)
+	f := ctx.evalCache().file(dirPath, filename)
+	if f.err != nil {
+		return nil, false
+	}
 
 	switch funcName {
 	case "path":
-		data, err := fs.ReadFile(fsys, filename)
-		if err != nil {
-			return nil, false
-		}
 		outRel := filename
 		if !ctx.noCacheBust {
-			dir, base := path.Split(filename)
-			outRel = dir + asset.HashedName(base, data)
+			dir, _ := path.Split(filename)
+			outRel = dir + f.hashed
 		}
 		outPath := "assets/" + outRel
 		url := "/" + outPath
 		ctx.fileAssets = append(ctx.fileAssets, FileAsset{
 			SrcPath: filepath.Join(dirPath, filename),
 			OutPath: outPath,
-			Data:    data,
+			Data:    f.data,
 		})
 		return url, true
 
 	case "contents":
-		data, err := fs.ReadFile(fsys, filename)
-		if err != nil {
-			return nil, false
-		}
-		return string(data), true
+		return string(f.data), true
 	}
 	return nil, false
 }

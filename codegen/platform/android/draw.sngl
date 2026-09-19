@@ -60,50 +60,54 @@ func composeColor(red int, green int, blue int, alpha int) ComposeColor
 #[kt.native("Stroke", "androidx.compose.ui.graphics.drawscope.Stroke", named)]
 func strokeOf(width float, cap StrokeCap, join StrokeJoin) DrawStyle
 
-#[foreign("kotlin:androidx.compose.ui.graphics", "StrokeCap", native)]
+// Named in full, as DrawStyle is: a native type's name is what a Kotlin
+// signature spells, and `#[foreign]`'s separate path is not an import Kotlin
+// takes -- the bare `StrokeCap` reached the emitted signatures with nothing
+// declaring it.
+#[kt.native("androidx.compose.ui.graphics.StrokeCap")]
 struct StrokeCap {}
 
-#[foreign("kotlin:androidx.compose.ui.graphics", "StrokeJoin", native)]
+#[kt.native("androidx.compose.ui.graphics.StrokeJoin")]
 struct StrokeJoin {}
 
 #[kt.native("androidx.compose.ui.graphics.StrokeCap.Butt")]
-func capButt() StrokeCap
+const capButt StrokeCap
 
 #[kt.native("androidx.compose.ui.graphics.StrokeCap.Round")]
-func capRound() StrokeCap
+const capRound StrokeCap
 
 #[kt.native("androidx.compose.ui.graphics.StrokeCap.Square")]
-func capSquare() StrokeCap
+const capSquare StrokeCap
 
 #[kt.native("androidx.compose.ui.graphics.StrokeJoin.Miter")]
-func joinMiter() StrokeJoin
+const joinMiter StrokeJoin
 
 #[kt.native("androidx.compose.ui.graphics.StrokeJoin.Round")]
-func joinRound() StrokeJoin
+const joinRound StrokeJoin
 
 #[kt.native("androidx.compose.ui.graphics.StrokeJoin.Bevel")]
-func joinBevel() StrokeJoin
+const joinBevel StrokeJoin
 
 // The names are SNGL's and the values Compose's, the same mapping gtk4 writes
 // for cairo's enums.
 func strokeCap(name string) StrokeCap {
     if name == "round" {
-        return capRound()
+        return capRound
     }
     if name == "square" {
-        return capSquare()
+        return capSquare
     }
-    return capButt()
+    return capButt
 }
 
 func strokeJoin(name string) StrokeJoin {
     if name == "round" {
-        return joinRound()
+        return joinRound
     }
     if name == "bevel" {
-        return joinBevel()
+        return joinBevel
     }
-    return joinMiter()
+    return joinMiter
 }
 
 func strokeStyle(style shapes.CanvasStyle) DrawStyle {

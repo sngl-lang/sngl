@@ -231,3 +231,38 @@ func rebuildIncomparable(t *Type, seen []*StructDef) (string, []string) {
 	}
 	return t.String(), nil
 }
+
+// ComponentSelfRefs reports whether comp's body instantiates comp -- direct
+// self-recursion. Mutual recursion is not this question: a caller detects that
+// with an in-flight set, since the cycle is not visible from one declaration.
+//
+// A recursive component cannot be substituted into its caller to a finite
+// body, so every pass that substitutes one asks this. It is a full walk rather
+// than a switch over the statements a body usually holds: a self-call under a
+// boundary, a context override or a handler is still a self-call, and each
+// hand-rolled copy of this walk was missing a different one of them.
+func ComponentSelfRefs(comp *Component) bool {
+	if comp == nil {
+		return false
+	}
+	found := false
+	Walk(comp.Body, func(n Node) error {
+		if inst, ok := n.(*NodeInst); ok && inst.Component == comp {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// IsHostValue reports whether v *is* a host identifier: a `#[<lang>.native]`
+// mark naming `math.Pi`, `StrokeCap.Round`, `Math.PI`, `os.Args`.
+//
+// Const and var both, and the difference between them is the host's: a const
+// names something the program only reads, a var names a host global it may
+// also assign to. Neither is emitted and every reference resolves to the host
+// name, which is the rule a native func already follows. Unmarked, the way
+// Foreign says "this is the host's own and not a name to spell beside it".
+func IsHostValue(v *Var) bool {
+	return v != nil && v.Foreign.Name != "" && !v.Foreign.Marked
+}

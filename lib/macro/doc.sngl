@@ -4,7 +4,8 @@
 // The vocabulary is public, and deliberately not in the `internal/` tier: a
 // plugin living outside this repository writes the same marks its in-tree
 // siblings do. `#[foreign]` records what a declaration corresponds to
-// outside SNGL; `#[wildcard]` says what a name nobody declared resolves to; and
+// outside SNGL and `#[unusable]` records that it cannot be reached from here;
+// `#[wildcard]` says what a name nobody declared resolves to; and
 // `#[construct]` says a prop is read only while its instance is being built.
 //
 // The per-target packages under it -- `sngl:platform/html`, `sngl:language/go`

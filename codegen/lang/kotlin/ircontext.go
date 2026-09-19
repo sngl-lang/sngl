@@ -356,6 +356,9 @@ func (kc *KtIRContext) BlockEnd() string                    { return "}" }
 func (kc *KtIRContext) Indent() string                      { return "\t" }
 
 func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
+	if host, ok := kc.hostValueIdent(n); ok {
+		return host
+	}
 	if kc.IdentRewrites != nil {
 		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
 			return rewritten
@@ -424,6 +427,9 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		return fmt.Sprintf("%q", n.Member)
 	}
 	name := n.Name
+	if host, ok := kc.hostValueIdent(n); ok {
+		return host
+	}
 	if kc.IdentRewrites != nil {
 		if rewritten, ok := kc.IdentRewrites[name]; ok {
 			return rewritten
@@ -598,6 +604,26 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 				return result
 			}
 		}
+		// The receiver is an import alias when the declaration carries no
+		// receiver of its own: a directory import qualifies the call in SNGL
+		// and names nothing in the emitted Kotlin, where the function is a
+		// top-level `fun` of its own name. `readout.cells("1.5")` reached the
+		// android test runner verbatim, against a `cells` declared beside it.
+		if n.Func.Receiver == "" {
+			name := fname
+			// Through IdentRewrites like every other bare call: test mode
+			// reaches a hoisted state member as `state.<name>`.
+			if kc.IdentRewrites != nil {
+				if rw, ok := kc.IdentRewrites[name]; ok {
+					name = rw
+				}
+			}
+			if kc.isScopeComputed(fname, n.Func) {
+				return name
+			}
+			codegen.RequireIntrinsicFallback(langKt, n.Func)
+			return name + "(" + strings.Join(args, ", ") + ")"
+		}
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	// Func resolution may be incomplete (e.g. checker did not bind a
@@ -734,6 +760,16 @@ func (kc *KtIRContext) isScopeComputed(name string, fn *ir.Func) bool {
 // call is by bare name and no receiver is involved.
 func (kc *KtIRContext) scopeFuncName(fn *ir.Func) (string, bool) {
 	if fn == nil || kc.Ctx == nil {
+		return "", false
+	}
+	// A method on a struct or an enum is emitted as an extension function and
+	// is called as one, so the scope must not claim its bare name: the package
+	// scope answers for every func it holds and a method is one of them, so
+	// `func Item.label()` resolved here and came out as `label(it)` against a
+	// declaration spelled `fun Item.label()`. A component's method is the case
+	// this lookup exists for and is left alone -- there is no Kotlin type to
+	// extend, and the composable calls it by bare name.
+	if fn.Receiver != "" && ReceiverIsUserType(kc.pkg(), fn.Receiver) {
 		return "", false
 	}
 	sym, kind := kc.Ctx.Resolve(fn.Name)
@@ -1014,9 +1050,16 @@ func IRTypeToKt(t *ir.Type) string {
 		}
 		return "Any?"
 	case ir.TypeStruct:
-		// color/date/time/datetime are string-representable stdlib structs;
-		// the Kotlin runtime carries them as String (date/time/datetime are
-		// quoted ISO strings, matching their literal emission).
+		// A color is the emitted Color data class, matching the
+		// `Color(r=…, g=…, b=…, a=…)` every color *value* already renders as
+		// and what `color.hex` and composeColorExpr read. Answering String
+		// here left a signature disagreeing with the values crossing it.
+		if ir.IsColorStruct(t) {
+			return colorKtType
+		}
+		// date/time/datetime are string-representable stdlib structs; the
+		// Kotlin runtime carries them as String (quoted ISO strings, matching
+		// their literal emission).
 		if ir.StringReprStruct(t) {
 			return "String"
 		}
@@ -1025,6 +1068,14 @@ func IRTypeToKt(t *ir.Type) string {
 			// runtime uses string plural categories exclusively.
 			if t.Decl.SymName() == "PluralKey" {
 				return "String"
+			}
+			// An unmarked native struct *is* the Kotlin type, so the
+			// declaration's own name names nothing this file emits: android's
+			// `#[kt.native("androidx.compose.ui.graphics.StrokeCap")]` came
+			// out as the undeclared `StrokeCap`. The same rule IRTypeToGo
+			// already applies.
+			if sd, ok := t.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" && !sd.Foreign.Marked {
+				return sd.Foreign.Name
 			}
 			return exportName(t.Decl.SymName())
 		}
@@ -1275,3 +1326,71 @@ const SplitDecl = `fun ` + SplitFn + `(s: String, sep: String): List<String> =
 const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 `
+
+// colorKtType names the Kotlin class SNGL's `color` is carried as, and
+// ColorDecl is its declaration -- the counterpart of Go's
+// pkg/go/snglcolor.Color. Channels are Int, not the UByte the SNGL
+// declaration's uint8 would give, so that the stdlib helpers (color.rgb,
+// color.lighten, ...) and Compose's own Int channel constructor both reach it
+// without a conversion per channel.
+const colorKtType = "Color"
+
+// toString mirrors snglcolor.Color.String: a colour is its complete value, so
+// a translucent one keeps its alpha rather than printing as an opaque one.
+const ColorDecl = `data class ` + colorKtType + `(
+    var r: Int = 0,
+    var g: Int = 0,
+    var b: Int = 0,
+    var a: Int = 255
+) {
+    override fun toString(): String =
+        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+}
+`
+
+// pkg is the package being emitted, or nil.
+func (kc *KtIRContext) pkg() *ir.Package {
+	if kc.Ctx == nil {
+		return nil
+	}
+	return kc.Ctx.Pkg
+}
+
+// ReceiverIsUserType reports whether name is a struct or enum the package
+// declares, as opposed to a component. It is what decides that a method is
+// emitted as a Kotlin extension function, and so has to be asked at the call
+// site too -- the declaration and the call disagreeing is what left
+// `fun Item.label()` beside a call to `label(it)`.
+func ReceiverIsUserType(pkg *ir.Package, name string) bool {
+	if pkg == nil || name == "" {
+		return false
+	}
+	for _, sd := range pkg.Structs {
+		if sd.Name == name {
+			return true
+		}
+	}
+	for _, ed := range pkg.Enums {
+		if ed.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// hostValueIdent resolves a reference to a const or var that *is* a Kotlin
+// identifier -- `StrokeCap.Round`, a property with no call form at all -- to
+// that identifier, and requires its import. Nothing is emitted for the
+// declaration. Asked on the read and the write path both, and ahead of the
+// rewrites and of Resolve in each: the names those answer for are this
+// package's, and this one is not.
+func (kc *KtIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
+	v, ok := n.Sym.(*ir.Var)
+	if !ok || !ir.IsHostValue(v) {
+		return "", false
+	}
+	if v.Foreign.Path != "" {
+		kc.RequireImport(v.Foreign.Path)
+	}
+	return v.Foreign.Name, true
+}
