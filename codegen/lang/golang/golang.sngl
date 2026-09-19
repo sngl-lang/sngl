@@ -33,7 +33,12 @@ component go(
 // #[foreign(..., native)] in the language it is about, which is where a Go path
 // and a Go identifier belong — and which a package can now use on its own
 // declarations, since a mark resolves through the scope like any other name.
-func native(path string, name string, flags list<NativeFlag> = []) ir.Macro
+//
+// One argument is the identifier alone. That is all a struct *field* can say:
+// a field has no package of its own, and what it records is the Go spelling of
+// a name SNGL writes differently — `#[go.native("ID")] id int`. The two-argument
+// form is everything else, where the path is what the call site has to import.
+func native(path string, name string = "", flags list<NativeFlag> = []) ir.Macro
 
 // Says a call to this function blocks, so a target that draws on one thread
 // must not make the call there.
@@ -81,7 +86,11 @@ func async() ir.Macro
 // is inferred from a foreign declaration at all: its SNGL body describes the
 // identifier and does not implement it, so nothing in the program says when the
 // host runs an argument.
-enum NativeFlag { fails, method, schedules }
+// `context` says the Go function takes a leading context.Context that SNGL
+// does not: the importer strips it from the signature and the call site
+// supplies one. It is the same fact HasErrorReturn is for `fails` -- read off
+// a signature by an importer, and unreadable here, so the mark states it.
+enum NativeFlag { fails, method, schedules, context }
 
 #[native("git.duckfam.us/jonathan/sngl/pkg/go/remote/http", "http.Get", fails)]
 func httpGet(url string) http.Result

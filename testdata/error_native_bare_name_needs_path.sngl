@@ -1,0 +1,6 @@
+// The one-argument form is the struct field's: a field has no package of its
+// own. Anything else has a call site that must import the path.
+import go "sngl:language/go"
+
+#[go.native("api.Thing")] // ERROR(check) "a package path is required"
+func Thing()
