@@ -7,19 +7,12 @@
 //  4. go tool mdox fmt --soft-wraps <markdown files>
 //  5. go fix ./...
 //  6. go vet ./...
-//  7. go test, in two passes, and their coverage profiles concatenated
+//  7. go test -coverpkg=./... -coverprofile=... ./...
 //
-// Step 7 is two passes because only one package wants the whole library
-// instrumented. The module root is where TestFixtures and TestGolden live --
-// one binary driving the parser, the checker, the optimizer, the LSP and every
-// backend over every fixture in testdata/ -- so it runs under
-// -coverpkg=./... and is credited for the reach it actually has. Every other
-// package is measured on its own code.
-//
-// Asking all 87 packages for cross-package coverage is what made building the
-// test binaries the heaviest step of the suite: -coverpkg=./... instruments
-// every package into every one of them, to attribute statements that the one
-// fixture binary already reaches.
+// Step 5 collects cross-package coverage so packages exercised by integration
+// tests (e.g. codegen/lang/* through codegen/platform/*) are credited for the
+// statements they execute, not just statements covered by their own package's
+// tests.
 //
 // The -dry flag skips file-mutating steps: generate is skipped entirely,
 // mod tidy, fmt, mdox fmt, and fix run in check-only mode (reporting
@@ -41,7 +34,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"cmp"
 	"flag"
 	"fmt"
 	"log"
@@ -264,26 +256,25 @@ func runTests(verbose, fmtDocs, full bool) {
 	profile.Close()
 	defer os.Remove(profile.Name())
 
-	// Common flags for both runs below.
-	common := []string{}
+	args := []string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}
 	// Default to -short so the routine run (and background sessions) skips the
 	// slow/heavy tests (android fixtures, Robolectric). `-full` opts into the
 	// complete suite. testing.Short() / the `[short]` scripttest cond do the
 	// actual gating; this just drives them.
 	if !full {
-		common = append(common, "-short")
+		args = append(args, "-short")
 	}
 	// Raise the per-package timeout above Go's 10m default: under -full the cgo
 	// GUI packages run close to the wall (the fyne suite alone ~560s) plus the
 	// android fixtures + Robolectric, so on a loaded runner the default 10m
 	// would flake into a timeout.
-	common = append(common, "-timeout=20m")
+	args = append(args, "-timeout=20m")
 	// Bound how many test binaries compile and run at once by memory rather
 	// than by core count. Go's default is GOMAXPROCS, and building this
-	// repo's own test binaries is the heaviest thing the suite does, well
-	// ahead of anything it compiles from generated code. Measured on an
-	// 8-core, 15GB box, peak resident across go/compile/link, back when every
-	// binary was instrumented by -coverpkg=./...:
+	// repo's own test binaries -- 87 packages, each instrumented by
+	// -coverpkg=./... -- is the heaviest thing the suite does, well ahead of
+	// anything it compiles from generated code. Measured on an 8-core, 15GB
+	// box, peak resident across go/compile/link:
 	//
 	//     -p 2   1.62GB   2m57s, 4m42s
 	//     -p 4   2.91GB   3m20s
@@ -295,46 +286,44 @@ func runTests(verbose, fmtDocs, full bool) {
 	// with headroom still gets the wide setting (this box picks 8), and a
 	// constrained container gives up some wall time rather than being
 	// OOM-killed, which is how CI failed before SNGL_BUILD_SLOTS existed.
-	common = append(common, "-p="+strconv.Itoa(codegen.BuildTokenSlots()))
+	args = append(args, "-p="+strconv.Itoa(codegen.BuildTokenSlots()))
 	if verbose {
-		common = append(common, "-v")
+		args = append(args, "-v")
 	}
+	args = append(args, "./...")
 
-	// Two runs, because only one package wants the whole library instrumented.
-	//
-	// The root package is where TestFixtures and TestGolden live: one binary
-	// driving the parser, the checker, the optimizer, the LSP and every
-	// backend over 553 fixtures and 192 archives. That is the broadest reach
-	// in the repo, and -coverpkg=./... is how it gets credited for it.
-	//
-	// Every other package is measured on its own code. Asking all 87 for
-	// cross-package coverage is what made building the test binaries the
-	// heaviest step of the suite: it instruments every package into every one
-	// of them, to attribute statements that one binary already reaches.
-	rootArgs := append([]string{"test", "-coverpkg=./...", "-coverprofile=" + profile.Name()}, common...)
-	rootArgs = append(rootArgs, ".")
+	// Run under a headless compositor when available so gtk4's window-present
+	// snapshot tests don't pop up on the user's desktop.
+	command, args, extraEnv := wrapHeadless("go", args)
 
-	rest, err := os.CreateTemp("", "sngl-verify-cover-rest-*.out")
+	fmt.Printf(">>> %s %s\n", command, strings.Join(args, " "))
+
+	cmd := exec.Command(command, args...)
+	cmd.Env = append(os.Environ(), extraEnv...)
+	if fmtDocs {
+		cmd.Env = append(cmd.Env, "SNGL_FMT_DOCS=1")
+	}
+	cmd.Stderr = os.Stderr
+
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatalf("create coverprofile: %v", err)
+		log.Fatal(err)
 	}
-	rest.Close()
-	defer os.Remove(rest.Name())
-
-	restArgs := append([]string{"test", "-coverprofile=" + rest.Name()}, common...)
-	restArgs = append(restArgs, otherPackages()...)
+	if err := cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
 
 	failed := map[string]bool{}
-	rootErr := runPass(rootArgs, fmtDocs, failed)
-	restErr := runPass(restArgs, fmtDocs, failed)
-	cmdErr := cmp.Or(rootErr, restErr)
-
-	// readProfile dedups by block and ORs the counts, and skips any line it
-	// cannot parse -- which is what the appended file's `mode:` header becomes
-	// -- so concatenation is all the merge this needs.
-	if err := appendFile(profile.Name(), rest.Name()); err != nil {
-		log.Printf("merge coverage profiles: %v", err)
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+		if m := failRE.FindStringSubmatch(line); m != nil {
+			failed[m[1]] = true
+		}
 	}
+
+	cmdErr := cmd.Wait()
 
 	results, err := readProfile(profile.Name())
 	if err != nil {
@@ -522,97 +511,4 @@ func shortPkg(full string) string {
 		return s
 	}
 	return full
-}
-
-// otherPackages is every package but the module root, which runPass covers on
-// its own with the whole library instrumented.
-func otherPackages() []string {
-	out, err := exec.Command("go", "list", "./...").Output()
-	if err != nil {
-		log.Printf("go list: %v (falling back to ./...)", err)
-		return []string{"./..."}
-	}
-	mod, err := exec.Command("go", "list", "-m").Output()
-	if err != nil {
-		log.Printf("go list -m: %v (falling back to ./...)", err)
-		return []string{"./..."}
-	}
-	root := strings.TrimSpace(string(mod))
-	var pkgs []string
-	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
-		if p := strings.TrimSpace(line); p != "" && p != root {
-			pkgs = append(pkgs, p)
-		}
-	}
-	if len(pkgs) == 0 {
-		return []string{"./..."}
-	}
-	return pkgs
-}
-
-// runPass runs one `go test` invocation, streaming its output and recording
-// which packages failed. It returns the command's own error.
-func runPass(args []string, fmtDocs bool, failed map[string]bool) error {
-	// Run under a headless compositor when available so gtk4's window-present
-	// snapshot tests don't pop up on the user's desktop.
-	command, args, extraEnv := wrapHeadless("go", args)
-
-	fmt.Printf(">>> %s %s\n", command, abbreviate(args))
-
-	cmd := exec.Command(command, args...)
-	cmd.Env = append(os.Environ(), extraEnv...)
-	if fmtDocs {
-		cmd.Env = append(cmd.Env, "SNGL_FMT_DOCS=1")
-	}
-	cmd.Stderr = os.Stderr
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		log.Fatal(err)
-	}
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Println(line)
-		if m := failRE.FindStringSubmatch(line); m != nil {
-			failed[m[1]] = true
-		}
-	}
-	return cmd.Wait()
-}
-
-// appendFile appends src's bytes to dst.
-func appendFile(dst, src string) error {
-	b, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	f, err := os.OpenFile(dst, os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.Write(b)
-	return err
-}
-
-// abbreviate renders a command line for the progress echo, collapsing a long
-// tail of package paths. The second test pass names every package but the
-// root explicitly -- ninety of them -- and printing the list in full buries
-// the flags that are the reason for reading the line at all.
-func abbreviate(args []string) string {
-	const keep = 6
-	if len(args) <= keep+2 {
-		return strings.Join(args, " ")
-	}
-	tail := args[keep:]
-	for _, a := range tail {
-		if strings.HasPrefix(a, "-") {
-			return strings.Join(args, " ")
-		}
-	}
-	return fmt.Sprintf("%s %s ... (%d packages)", strings.Join(args[:keep], " "), tail[0], len(tail))
 }
