@@ -1,4 +1,9 @@
-package parser_test
+package fixtures
+
+// Format-preservation helpers, moved here from internal/parser's external test
+// package. They are what `sngl fmt` is held to over every fixture, and the
+// fixture runner is now the one place that walks every fixture -- leaving them
+// where they were would have meant a second walk to reach them.
 
 import (
 	"fmt"
@@ -8,8 +13,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/lspcore"
-	. "git.duckfam.us/jonathan/sngl/internal/parser"
-	"git.duckfam.us/jonathan/sngl/internal/testutil"
+	"git.duckfam.us/jonathan/sngl/internal/parser"
 )
 
 // stringLiterals lists the spelling of every string literal in a document, in
@@ -26,14 +30,17 @@ func stringLiterals(doc *ast.Document) []string {
 
 // A format must not rewrite a string. The AST holds a literal's spelling as
 // written and only the checker decodes it, so the formatter reprints the raw.
+
+// A format must not rewrite a string. The AST holds a literal's spelling as
+// written and only the checker decodes it, so the formatter reprints the raw.
 func assertLiteralsSurviveFormat(t *testing.T, name, src string) {
 	t.Helper()
-	doc, err := Parse(name, []byte(src))
+	doc, err := parser.Parse(name, []byte(src))
 	if err != nil {
 		return // parse failures are another test's business
 	}
-	formatted := Format(doc)
-	reparsed, err := Parse(name, []byte(formatted))
+	formatted := parser.Format(doc)
+	reparsed, err := parser.Parse(name, []byte(formatted))
 	if err != nil {
 		t.Errorf("formatted output does not re-parse: %v\n%s", err, formatted)
 		return
@@ -47,25 +54,6 @@ func assertLiteralsSurviveFormat(t *testing.T, name, src string) {
 		if before[i] != after[i] {
 			t.Errorf("format rewrote a string literal:\nbefore: %q\nafter:  %q", before[i], after[i])
 		}
-	}
-}
-
-func TestFormatPreservesTestdataLiterals(t *testing.T) {
-	for s := range testutil.TestdataSamples(t) {
-		t.Run(s.Name, func(t *testing.T) {
-			if s.ExpectsError("parse") {
-				t.Skip("has ERROR(parse) directive")
-			}
-			assertLiteralsSurviveFormat(t, s.Filename, s.Source)
-		})
-	}
-}
-
-func TestFormatPreservesDocLiterals(t *testing.T) {
-	for s := range testutil.DocSamples(t) {
-		t.Run(s.Name, func(t *testing.T) {
-			assertLiteralsSurviveFormat(t, s.Filename, s.Source)
-		})
 	}
 }
 
@@ -204,14 +192,20 @@ func commentTexts(doc *ast.Document) []string {
 // parameter list or among an i18n message's cases was hoisted out to the
 // nearest enclosing statement list, which for a `// ERROR(check)` directive
 // means it stops naming the line it was written on.
+
+// A format must not move a comment away from what it describes. Comments used
+// to survive only in statement lists — one written on a struct field, in a
+// parameter list or among an i18n message's cases was hoisted out to the
+// nearest enclosing statement list, which for a `// ERROR(check)` directive
+// means it stops naming the line it was written on.
 func assertCommentsSurviveFormat(t *testing.T, name, src string) {
 	t.Helper()
-	doc, err := Parse(name, []byte(src))
+	doc, err := parser.Parse(name, []byte(src))
 	if err != nil {
 		return
 	}
-	formatted := Format(doc)
-	reparsed, err := Parse(name, []byte(formatted))
+	formatted := parser.Format(doc)
+	reparsed, err := parser.Parse(name, []byte(formatted))
 	if err != nil {
 		t.Errorf("formatted output does not re-parse: %v\n%s", err, formatted)
 		return
@@ -227,58 +221,6 @@ func assertCommentsSurviveFormat(t *testing.T, name, src string) {
 // carrying an ERROR(parse) directive is excluded: there is nothing to format.
 // One whose exact layout is the thing under test opts out with
 // `// NOFMT "reason"`, which this test then holds to that claim.
-func TestTestdataIsFormatted(t *testing.T) {
-	for s := range testutil.TestdataSamples(t) {
-		t.Run(s.Name, func(t *testing.T) {
-			if s.ExpectsError("parse") {
-				t.Skip("has ERROR(parse) directive")
-			}
-			doc, err := Parse(s.Filename, []byte(s.Source))
-			if err != nil {
-				t.Fatalf("parse: %s", err)
-			}
-			got := Format(doc)
-			switch {
-			case s.NoFmt && got == s.Source:
-				t.Errorf("NOFMT is stale (%s): the fixture is formatted, so drop the directive", s.NoFmtReason)
-			case !s.NoFmt && got != s.Source:
-				t.Errorf("fixture is not formatted; run `sngl fmt testdata`:\n%s", firstDiff(s.Source, got))
-			}
-			assertCommentsSurviveFormat(t, s.Filename, s.Source)
-		})
-	}
-}
-
-// Formatting twice must be formatting once.
-func TestFormatIsIdempotent(t *testing.T) {
-	for s := range testutil.TestdataSamples(t) {
-		t.Run(s.Name, func(t *testing.T) {
-			if s.ExpectsError("parse") {
-				t.Skip("has ERROR(parse) directive")
-			}
-			doc, err := Parse(s.Filename, []byte(s.Source))
-			if err != nil {
-				t.Fatalf("parse: %v", err)
-			}
-			once := Format(doc)
-			again, err := Parse(s.Filename, []byte(once))
-			if err != nil {
-				t.Fatalf("formatted output does not re-parse: %v", err)
-			}
-			if twice := Format(again); twice != once {
-				t.Errorf("second format differs from the first:\n%s", firstDiff(once, twice))
-			}
-		})
-	}
-}
-
-func TestFormatPreservesDocComments(t *testing.T) {
-	for s := range testutil.DocSamples(t) {
-		t.Run(s.Name, func(t *testing.T) {
-			assertCommentsSurviveFormat(t, s.Filename, s.Source)
-		})
-	}
-}
 
 // firstDiff reports the first line the two differ on, with a little context.
 func firstDiff(want, got string) string {
