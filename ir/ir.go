@@ -70,6 +70,16 @@ type Package struct {
 	// without a special case (#135).
 	Body []Stmt `json:",omitempty"`
 
+	// WindowsFlat says no window's body holds another window, which
+	// Owners reads to skip the search that would prove it again. Only
+	// passWindowNesting sets it, and only by refusing the program that would
+	// make it false -- so it is a proof carried forward rather than a claim,
+	// and the passes after that one are where every expensive Owners call is.
+	//
+	// False means unproven, not disproven: everything before that pass, and
+	// every consumer that never lowers at all, searches as it always did.
+	WindowsFlat bool `json:"-"`
+
 	// TreeKinds records the segmented trees whose members
 	// this package declares or imports. The lowering pass for a tree gates on
 	// it: an import of sngl:ui/draw is neither necessary (a package may declare
