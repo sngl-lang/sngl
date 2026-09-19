@@ -102,3 +102,5 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	parts = append(parts, m.__n1)
 	return container.NewVBox(parts...)
 }
+-- run/go/fyne --
+pass sha256:f7a7a83f46b2b996511721386d969e05

@@ -51,3 +51,5 @@ func New() *Model {
 func (m *Model) BuildUI() fyne.CanvasObject {
 	return widget.NewLabel("")
 }
+-- run/go/fyne --
+pass sha256:34de671e9f45325a8f5caeae33a8162f

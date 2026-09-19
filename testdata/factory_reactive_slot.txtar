@@ -329,3 +329,7 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	gtk4rt.WindowSetChild(win, m.__root)
 	return win
 }
+-- run/go/fyne --
+pass sha256:0c5709f9d5bfd253db271a4d4f6012cc
+-- run/go/gtk4 --
+pass sha256:92943541532da0c592fd0dff902d20b1

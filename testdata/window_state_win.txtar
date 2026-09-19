@@ -386,3 +386,11 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+pass sha256:22927c6b3c5103cc2641b78be5440c8a
+-- run/go/fyne --
+pass sha256:ec963660a535c798bcf6207548e304eb
+-- run/go/gtk4 --
+pass sha256:0b48d57b62bbd582b6e31286013fe435
+-- run/none/html --
+pass sha256:3822814bbd235ced66a901432860fadd

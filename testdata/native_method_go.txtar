@@ -17,7 +17,7 @@ unflagged form, for contrast -- the same declaration shape, called the other
 way.
 
 deny out/go/bubbletea/model.go `Context\.Circle\(` -- the method expression is what the flag replaces
-
+unverifiable out/go/bubbletea -- imports example.com/gfx, a module written to describe a foreign API and deliberately not published
 -- app.sngl --
 import ui "sngl:ui"
 import go "sngl:language/go"

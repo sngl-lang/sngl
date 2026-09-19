@@ -76,3 +76,7 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/html --
+pass sha256:00fa00c748d00e6979e8fa5a0ac40d29
+-- run/none/html --
+pass sha256:2ee6344579c63f15e28cb6502d201a6d

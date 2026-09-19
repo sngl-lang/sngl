@@ -215,3 +215,5 @@ fun MainScreen() {
         Text(text = pair.size.toString(), modifier = Modifier)
     }
 }
+-- run/go/bubbletea --
+pass sha256:44d82cb4fe99f4d840e5211d98f68604

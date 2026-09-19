@@ -283,3 +283,9 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+pass sha256:4fc0ab5a451274e62d4f8926bbf005ae
+-- run/go/fyne --
+pass sha256:c501f5f18b1897f02f422749e35a6e60
+-- run/none/html --
+pass sha256:c74be1e35802cafac82e6cad12a16a60

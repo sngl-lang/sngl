@@ -219,3 +219,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
+-- run/go/bubbletea --
+pass sha256:7dfafd5107cac6dbc368015e5693c4b7
+-- run/go/fyne --
+pass sha256:83981cad3663ff0c99f61e8d254c7df0

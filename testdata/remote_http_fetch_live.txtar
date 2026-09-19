@@ -17,7 +17,7 @@ the Go package that performs the request.
 deny out/go/bubbletea/model.go `m\.res = remote\.Query` -- a box bound once never re-keys however often its url changes, so this form is stored nowhere
 deny out/go/bubbletea/model.go `res ` -- the model carries no res field at all; there is nothing to hold between reads
 deny out/go/bubbletea/model.go `&m\.url` -- a pointer into a model the platform copies is not something a backend can be handed, so the cell reaches the key as a value
-
+broken out/go/bubbletea -- a []string literal is passed where the helper takes []any, which Go will not convert
 -- live.sngl --
 import . "sngl:ui"
 import http "sngl:remote/http"
@@ -156,3 +156,5 @@ func (m Model) View() tea.View {
 
 // remoteSettledMsg wakes the program when a fetch answers.
 type remoteSettledMsg struct{}
+-- run/go/bubbletea --
+broken sha256:77246c91effe8339941e973a627ace12

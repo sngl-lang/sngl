@@ -612,3 +612,9 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/fyne --
+pass sha256:d6a47052585a4b607488db8b010bb169
+-- run/go/gtk4 --
+pass sha256:4a509bb7d26104b0b8c2257b5d05188a
+-- run/none/html --
+pass sha256:26f4eac8f40518e8d70867d75efc21b7

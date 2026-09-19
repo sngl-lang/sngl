@@ -588,3 +588,9 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/fyne --
+pass sha256:306b0386639703e7073ff63c195a9776
+-- run/go/gtk4 --
+pass sha256:4e0f572dd4d2ec4f9422ffbb9e781668
+-- run/none/html --
+pass sha256:8e746f36e2ffd5a497746a3afaa51c2f

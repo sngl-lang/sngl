@@ -740,3 +740,11 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+pass sha256:d3ca4692da8b0b1704c5ad89fbd014b7
+-- run/go/fyne --
+pass sha256:35c01b23334bf6ba590d949f41913204
+-- run/go/gtk4 --
+pass sha256:3c10b8e498fa52864cc1bbdd183c180f
+-- run/none/html --
+pass sha256:7ca5895bc2f4487b56ccd31099fe743c

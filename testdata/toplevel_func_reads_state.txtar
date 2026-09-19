@@ -13,7 +13,7 @@ it would leave the two denies below asserting nothing.
 
 deny * `(?m)^func Bump\(` -- a func that writes a package var is a Model method; free, its body names an undefined m
 deny * `(?m)^func ViaBump\(` -- and so is every top-level caller of one, or the call site names that m instead
-
+broken out/go/fyne -- the element-ref handle __n0 is read and declared by nothing
 -- app.sngl --
 import . "sngl:ui"
 
@@ -309,3 +309,9 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	gtk4rt.WindowSetChild(win, m.__root)
 	return win
 }
+-- run/go/bubbletea --
+pass sha256:d1be02d2aff6b9d724fa98363d9f5d5e
+-- run/go/fyne --
+broken sha256:f3c20ead0f107956ad17bf945cd46368
+-- run/go/gtk4 --
+pass sha256:97e7f917b7ac4f7e94afe92ed3fcccb8

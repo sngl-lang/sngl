@@ -84,3 +84,7 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/html --
+pass sha256:0cc2a3cf6a2fa8ba4d42a57efa0b810b
+-- run/none/html --
+pass sha256:ed78f4f6e7b9edc7c6814454fbf2ff33

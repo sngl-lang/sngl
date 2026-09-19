@@ -26,7 +26,7 @@ is nothing to alias it as.
 deny out/kotlin/android/MainScreen.kt `mutableStateOf\(time\.` -- the unfolded cast reached Compose as `mutableStateOf(time.date("2026-05-09"))`, a call to nothing Kotlin declares
 deny out/none/html/index.html `__inst1: null` -- an unfoldable field is initialised to null and assigned at startup; a folded one is a literal in `state`
 deny out/go/bubbletea/model.go `= time\(` -- the call kept only its receiver's alias, so Go got `m.d__inst1 = time("2026-05-09")` -- JS got the same, and crashed on load
-
+broken out/go/bubbletea -- mustParseDate, mustParseTime and mustParseDateTime are called but never emitted
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:time"
@@ -363,3 +363,7 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+broken sha256:8c494709df4b0639ca7c7344aa44ea6c
+-- run/none/html --
+pass sha256:59f8744fd15fea4c7653e3bf5a4374ec

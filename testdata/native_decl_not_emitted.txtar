@@ -25,7 +25,7 @@ of each is what states the rule.
 
 deny out/go/bubbletea/model.go `func .*[Hh]ostname\(\) string \{` -- #[go.native] is os.Hostname at every call site; a declaration here would be a second one returning the zero value. Either case: bubbletea emits a free func under an exported name and a component's under its own
 deny out/go/bubbletea/model.go `func .*Cabs\(n int\) int \{` -- #[cnative] is C.abs at every call site, and the same rule reaches it
-
+broken out/go/bubbletea -- #[cnative] emits C.abs into model.go with no cgo preamble, so `C` is undefined
 -- app.sngl --
 import ui "sngl:ui"
 import macro "sngl:macro"
@@ -197,3 +197,5 @@ func (m Model) View() tea.View {
 	v.AltScreen = true
 	return v
 }
+-- run/go/bubbletea --
+broken sha256:ed7ac5acf3e419de0236cd09343d90f1

@@ -24,7 +24,7 @@ deny * `\bcount\b` -- the captured var is the owner's, so every target names the
 deny * `\bextra\b` -- the var the override body declares is captured the same way and gets the same clone
 deny * `\blabel\b` -- the captured prop is substituted by the instantiation's argument, so no target emits its name
 deny * `\bbump\b` -- the owner's method is cloned per owner instance, so every target calls the clone and never the declared name
-
+broken out/go/bubbletea -- interpolating an int into a string emits `"L " + m.count__inst2` with no conversion
 -- app.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
@@ -376,3 +376,7 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+broken sha256:5027131194cb6807584c701cd9d151e6
+-- run/none/html --
+pass sha256:4bc7e4741aa2aa3dae922417ab48629a

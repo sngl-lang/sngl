@@ -1111,3 +1111,11 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+pass sha256:6755df9e1dfff495f5a04cbd0f865f9c
+-- run/go/fyne --
+pass sha256:3c84416d0024968c3a73ae740522bbe8
+-- run/go/gtk4 --
+pass sha256:01c02e01b524578a7fe0b0e6adce26de
+-- run/none/html --
+pass sha256:f358e6f064901ce75fe21ae0fa3f4838

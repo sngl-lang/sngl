@@ -194,3 +194,5 @@ func (m Model) View() tea.View {
 	v.AltScreen = true
 	return v
 }
+-- run/go/bubbletea --
+pass sha256:58709867b40336b3ea9f6c358d9790b7

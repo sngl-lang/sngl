@@ -13,7 +13,7 @@ remote_http_fetch_live.txtar.
 Either way it is the same lookup under the id the adapter spelled, keyed by
 the url, and inside the thunk the transport the language implements, down to
 the Go package that performs the request.
-
+broken out/go/bubbletea -- a []string literal is passed where the helper takes []any, which Go will not convert
 -- snap.sngl --
 import . "sngl:ui"
 import http "sngl:remote/http"
@@ -171,3 +171,5 @@ func (m Model) View() tea.View {
 
 // remoteSettledMsg wakes the program when a fetch answers.
 type remoteSettledMsg struct{}
+-- run/go/bubbletea --
+broken sha256:70c2e92d8b7c6901c7b4442395239a3a

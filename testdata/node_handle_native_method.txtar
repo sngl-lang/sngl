@@ -301,3 +301,5 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	C.gtk_window_set_child((*C.GtkWindow)(unsafe.Pointer(win)), (*C.GtkWidget)(unsafe.Pointer(m.__root)))
 	return win
 }
+-- run/go/gtk4 --
+pass sha256:863be9b2d150563ae1a3d317e3fa4973

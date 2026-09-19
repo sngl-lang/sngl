@@ -377,3 +377,7 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+pass sha256:e450176ed83b985d24dd81cfec9c92cb
+-- run/none/html --
+pass sha256:df9f2722b8b87a8a6167597a204bbf7e

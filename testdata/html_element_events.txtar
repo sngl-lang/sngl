@@ -176,3 +176,5 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/none/html --
+pass sha256:a73a7a8204b1a4173b46ea0384629cdb

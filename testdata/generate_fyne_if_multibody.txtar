@@ -107,3 +107,5 @@ func main() {
 	w.ShowAndRun()
 	_ = os.Stderr
 }
+-- run/go/fyne --
+pass sha256:be2ebd4bfdeda6c046e3d3ae264e339e

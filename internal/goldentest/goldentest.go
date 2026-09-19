@@ -10,6 +10,33 @@
 // The compile is internal/build's — the same code `sngl generate` runs. This
 // package only arranges files around it.
 //
+// # The record beside the golden
+//
+// A golden says what the compiler emitted. Whether that emission is a
+// *program* is a question only a host toolchain answers, and the two fail
+// differently: a change that reorders two statements breaks the golden, and
+// one that emits a name nothing declares leaves the golden looking fine. So
+// `run/<lang>/<platform>` holds what the host said — `pass`, and the digest of
+// the bytes it said it about.
+//
+// The digest is what makes the compiler *conditional*. Generating is
+// milliseconds and compiling is seconds to minutes, so the default run
+// generates, fingerprints, and compares against the record: unchanged output
+// has already been compiled, by whoever last ran -update, and the archive
+// carries the proof. Only -update compiles, and only for the targets whose
+// output actually moved.
+//
+// That the proof is *committed* is the point. Go's build cache already avoids
+// recompiling byte-identical code on a warm machine, which is why this looked
+// unnecessary locally; a CI runner clones fresh every pipeline and has no such
+// memory, and gradle, a browser and `go mod tidy` have no such cache anywhere.
+//
+// Two things follow. A record must never be written for a verification that
+// did not happen — a host missing the toolchain leaves the committed record
+// alone and says so, rather than recording a skip as a pass. And a record goes
+// stale when the *toolchain* moves under it, which no diff announces, so
+// -verify compiles everything regardless of what the records say.
+//
 // # Why this exists next to cmd/sngl/testdata
 //
 // cmd/sngl/testdata is an rsc.io/script harness driving the real CLI, and it
@@ -38,9 +65,11 @@
 //
 //   - Anything whose subject is the command line: flags, exit codes, the text
 //     of an error, `dump` stages, what is printed on stdout.
-//   - A fixture that compiles and runs what it generated (`sngl test`,
-//     `sngl build`). A golden runs nothing, and running the output is the
-//     stronger test — those are worth more where they are.
+//   - Anything whose subject is the `sngl` command itself compiling or running
+//     a program: `sngl test`'s own reporting, `sngl build`'s artifacts, the
+//     `--skip-platform` flag. The *generated code* being compiled is no longer
+//     a reason to stay — that is what the record above is — but the CLI's
+//     behaviour around it still is.
 //   - A fixture whose imports reach outside the archive. A `go:` or `c:`
 //     import is resolved by shelling out to the host toolchain against the
 //     working directory, and this harness has an fstest.MapFS and no
@@ -86,7 +115,7 @@ const goldenPrefix = "out/"
 
 // Run runs every archive matching glob as a subtest. update rewrites each
 // archive's golden instead of comparing against it.
-func Run(t *testing.T, glob string, update bool) {
+func Run(t *testing.T, glob string, update, force bool) {
 	t.Helper()
 	// The build logs a phase timing per target at Info, which is three lines
 	// per fixture of noise between a failure and its diff. Restored after,
@@ -104,25 +133,29 @@ func Run(t *testing.T, glob string, update bool) {
 	for _, file := range files {
 		name := strings.TrimSuffix(filepath.Base(file), ".txtar")
 		t.Run(name, func(t *testing.T) {
-			runFixture(t, file, update)
+			runFixture(t, file, update, force)
 		})
 	}
 }
 
 // No t.Helper: with one, every failure from any of the four checks below
 // reports this function's caller, and which check fired is the useful part.
-func runFixture(t *testing.T, path string, update bool) {
+func runFixture(t *testing.T, path string, update, force bool) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read: %v", err)
 	}
 	arc := txtar.Parse(raw)
 
-	src, golden, err := split(arc)
+	src, golden, records, err := split(arc)
 	if err != nil {
 		t.Fatal(err)
 	}
 	denies, err := parseDenies(string(arc.Comment))
+	if err != nil {
+		t.Fatalf("comment: %v", err)
+	}
+	exempt, err := parseExemptions(string(arc.Comment))
 	if err != nil {
 		t.Fatalf("comment: %v", err)
 	}
@@ -134,8 +167,14 @@ func runFixture(t *testing.T, path string, update bool) {
 		t.Fatalf("generate: %v", err)
 	}
 
+	// Verification comes before the golden is written, so a -update run that
+	// cannot compile what it generated leaves the archive as it found it.
+	// Written first, the bad golden would be committed and the record beside
+	// it would be the only thing saying so.
+	kept := verify(t, targetsOf(got), records, exempt, update, force)
+
 	if update {
-		writeGolden(t, path, arc, got)
+		writeGolden(t, path, arc, got, kept)
 		// Deny directives are checked against the rewritten golden too: a
 		// -update run that quietly reintroduces what a fixture denies is the
 		// regression the directive is there to catch.
@@ -147,30 +186,45 @@ func runFixture(t *testing.T, path string, update bool) {
 	checkDenies(t, denies, got)
 }
 
-// split separates the package's source from the golden.
-func split(arc *txtar.Archive) (src, golden map[string][]byte, err error) {
-	src, golden = map[string][]byte{}, map[string][]byte{}
+// split separates the package's source from the golden and from the
+// verification records.
+func split(arc *txtar.Archive) (src, golden map[string][]byte, records map[string]record, err error) {
+	src, golden, records = map[string][]byte{}, map[string][]byte{}, map[string]record{}
+	fail := func(format string, a ...any) (_, _ map[string][]byte, _ map[string]record, err error) {
+		return nil, nil, nil, fmt.Errorf(format, a...)
+	}
 	for _, f := range arc.Files {
 		name := path.Clean(f.Name)
 		if !fs.ValidPath(name) {
-			return nil, nil, fmt.Errorf("file %q is not a valid FS path", f.Name)
+			return fail("file %q is not a valid FS path", f.Name)
 		}
 		if rest, ok := strings.CutPrefix(name, goldenPrefix); ok {
 			if strings.Count(rest, "/") < 2 {
-				return nil, nil, fmt.Errorf("golden file %q: expected out/<lang>/<platform>/<path>", f.Name)
+				return fail("golden file %q: expected out/<lang>/<platform>/<path>", f.Name)
 			}
 			golden[name] = f.Data
+			continue
+		}
+		if rest, ok := strings.CutPrefix(name, recordPrefix); ok {
+			if strings.Count(rest, "/") != 1 {
+				return fail("record file %q: expected run/<lang>/<platform>", f.Name)
+			}
+			r, rerr := parseRecord(name, f.Data)
+			if rerr != nil {
+				return fail("%w", rerr)
+			}
+			records[name] = r
 			continue
 		}
 		src[name] = f.Data
 	}
 	if len(src) == 0 {
-		return nil, nil, fmt.Errorf("archive has no source files")
+		return fail("archive has no source files")
 	}
 	if !hasRootSNGL(src) {
-		return nil, nil, fmt.Errorf("archive has no root-level .sngl file")
+		return fail("archive has no root-level .sngl file")
 	}
-	return src, golden, nil
+	return src, golden, records, nil
 }
 
 func hasRootSNGL(src map[string][]byte) bool {
@@ -311,16 +365,20 @@ func compare(t *testing.T, got, golden map[string][]byte) {
 	}
 }
 
-func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][]byte) {
+func writeGolden(t *testing.T, path string, arc *txtar.Archive, got map[string][]byte, records map[string]record) {
 	t.Helper()
 	var files []txtar.File
 	for _, f := range arc.Files {
-		if !strings.HasPrefix(strings.TrimPrefix(f.Name, "./"), goldenPrefix) {
+		trimmed := strings.TrimPrefix(f.Name, "./")
+		if !strings.HasPrefix(trimmed, goldenPrefix) && !strings.HasPrefix(trimmed, recordPrefix) {
 			files = append(files, f)
 		}
 	}
 	for _, name := range sortedKeys(got) {
 		files = append(files, txtar.File{Name: name, Data: got[name]})
+	}
+	for _, name := range sortedStrings(records) {
+		files = append(files, txtar.File{Name: name, Data: []byte(records[name].String())})
 	}
 	arc.Files = files
 	if err := os.WriteFile(path, txtar.Format(arc), 0o644); err != nil {

@@ -94,3 +94,5 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	gtk4rt.WindowSetChild(win, m.__root)
 	return win
 }
+-- run/go/gtk4 --
+pass sha256:076853550060ace386e891b28d7592a3

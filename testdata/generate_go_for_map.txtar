@@ -1,7 +1,7 @@
 Go codegen for a `for` over `map<K, V>`: the two-variable loop in the handler
 becomes Go's own `for k, v := range`, with nothing between it and the map
 field.
-
+broken out/go/bubbletea -- a two-variable map loop binds a key the body never reads: `declared and not used: k`
 -- app.sngl --
 import . "sngl:ui"
 
@@ -149,3 +149,5 @@ func (m Model) View() tea.View {
 	v.AltScreen = true
 	return v
 }
+-- run/go/bubbletea --
+broken sha256:9cabdb86cd0866eb11e0bd9757f1174a

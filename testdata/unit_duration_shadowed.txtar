@@ -187,3 +187,5 @@ fun MainScreen() {
 
     Text(text = ("n is " + _snglFloatStr(n__inst0)), modifier = Modifier.safeDrawingPadding())
 }
+-- run/go/bubbletea --
+pass sha256:8536321b0780c6d2c3c64ff262a4f110

@@ -8,7 +8,7 @@ saw a non-literal and answered false, while `--opt test=true`, which parses
 the string itself, worked throughout. The fixture passed either way with only
 the model to look at -- the missing file is exactly what a golden shows and a
 grep cannot.
-
+broken out/go/bubbletea -- the emitted model_test.go reads c.count, which the inlined Model spells count__inst0
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -149,3 +149,5 @@ func TestInitialCountIsZero(t *testing.T) {
 
 
 func newTestComponent() Model { return New() }
+-- run/go/bubbletea --
+broken sha256:e5d08311fcc4eadcbcdc62b20799a2a3

@@ -42,7 +42,7 @@ deny out/go/fyne/model.go `(?sm)^\thits\s+int$.*^\thits\s+int$` -- as above, for
 deny * `(?i)\bmain_?bump\b` -- the hoisted func is the windows', so no target spells it as a method of the component it was written on
 deny out/go/bubbletea/model.go `[(,+]hits\b` -- a read of the shared var is `m.hits`; the bare `Sprint(hits)` is the scope gap this fixture is for
 deny out/none/html/b.html `var state = \{\s*\}` -- the second page carries the state too; an empty state object is the defect this fixture is for
-
+broken out/go/bubbletea -- __focusID is read by the emitted focus handling and declared by nothing
 -- app.sngl --
 import ui "sngl:ui"
 
@@ -406,3 +406,9 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+broken sha256:fab8ff4d0661cf12c407395242ca757f
+-- run/go/fyne --
+pass sha256:48b56fa34034e62fc4f6ac224acd99f9
+-- run/none/html --
+pass sha256:c825b9436eed132573787a4a97eda5c1

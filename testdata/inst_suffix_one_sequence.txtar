@@ -415,3 +415,11 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+pass sha256:cb7c78cba80d615ca3622484c45aac8a
+-- run/go/fyne --
+pass sha256:f9a682aca89eb0e577b55048d5be7856
+-- run/go/gtk4 --
+pass sha256:6437678e6fc5ed0c54f4aca0f7611f3b
+-- run/none/html --
+pass sha256:b2d943875408c4d8ee6d01d74fca415b

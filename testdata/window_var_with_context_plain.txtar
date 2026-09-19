@@ -258,3 +258,9 @@ fun MainScreen() {
         Text(text = name, modifier = Modifier)
     }
 }
+-- run/go/bubbletea --
+pass sha256:3a82702d35b5e4c0a4c133a50972a64b
+-- run/go/fyne --
+pass sha256:e4fa5693be36eaeb57fc9aae5796d533
+-- run/go/gtk4 --
+pass sha256:41a1f7952e764f7ddeb3e79ee0becc97

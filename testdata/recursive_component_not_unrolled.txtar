@@ -239,3 +239,5 @@ fun TreeView(node: Any? = null, __depth: Int = 0) {
         }
     }
 }
+-- run/go/bubbletea --
+pass sha256:b95dc27b3d2b4643986969a71aa38e83

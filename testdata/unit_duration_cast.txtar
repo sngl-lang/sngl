@@ -23,7 +23,7 @@ elsewhere rather than truncating to zero.
 deny out/go/bubbletea/model.go `int\(m\.d__inst0\)` -- the bare cast is the bug: a time.Duration handed out as a number is nanoseconds
 deny out/go/bubbletea/model.go `float64\(m\.d__inst0\)\)` -- the same for the float cast, which must divide rather than widen
 deny out/go/bubbletea/model.go `int\(\(m\.d__inst0 \* 2\)\)` -- arithmetic reaches the cast still in ns, so a scaled duration has to divide too
-
+broken out/go/bubbletea -- a duration times an int emits `m.one__inst0 * m.n__inst0`, mismatched time.Duration and int
 -- app.sngl --
 import ui "sngl:ui"
 import time "sngl:time"
@@ -297,3 +297,7 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/go/bubbletea --
+broken sha256:4a768e0714d45e6f4d30e722a260a605
+-- run/none/html --
+pass sha256:ae062d101c28b5a014f2a86d8f086164
