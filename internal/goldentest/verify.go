@@ -167,25 +167,13 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			out[name] = have
 			continue
 		}
-		if !update && !force {
-			switch {
-			case !recorded:
-				t.Errorf("%s: never verified on a host that could; run -update", name)
-			case have.digest != want:
-				t.Errorf("%s: generated output changed since it was verified; run -update", name)
-			default:
-				// Same bytes, different verdict asked for: a `broken`
-				// directive added over a passing target or removed from a
-				// failing one. Saying "the output changed" here sent a reader
-				// looking for a codegen diff that is not there.
-				t.Errorf("%s: recorded %s but the fixture now declares %s; run -update", name, have.status, status)
-			}
-			if recorded {
-				out[name] = have
-			}
-			continue
-		}
-
+		// No usable record means there is nothing to trust, so the toolchain
+		// runs whether or not this is an update. Reporting "run -update" from
+		// here instead was wrong in both directions: it failed every target
+		// whose build would merely have *skipped* -- android's plain build
+		// emits no gradle wrapper, so 55 archives failed the moment an SDK
+		// appeared on the host -- and where the build would have failed it
+		// said the output had moved rather than that it no longer compiles.
 		output, err := toolchain.Build(t.Context(), tg.files, tg.lang, tg.platform)
 		if se, ok := errors.AsType[*toolchain.SkipError](err); ok {
 			if recorded {
@@ -212,6 +200,23 @@ func verify(t *testing.T, tgts []target, records map[string]record, exempt map[s
 			t.Logf("%s: toolchain output:\n%s", name, output)
 			t.Errorf("%s: %v", name, err)
 			continue
+		}
+		if !update && !force {
+			// It compiles, but the archive does not say so. Left silent, a
+			// record would never be written and every later run would pay for
+			// this build again.
+			switch {
+			case !recorded:
+				t.Errorf("%s: compiles, but has never been recorded; run -update", name)
+			case have.digest != want:
+				t.Errorf("%s: generated output changed since it was verified; run -update", name)
+			default:
+				// Same bytes, different verdict asked for: a `broken`
+				// directive added over a passing target or removed from a
+				// failing one. Saying "the output changed" here sent a reader
+				// looking for a codegen diff that is not there.
+				t.Errorf("%s: recorded %s but the fixture now declares %s; run -update", name, have.status, status)
+			}
 		}
 		out[name] = record{status: "pass", digest: want}
 	}

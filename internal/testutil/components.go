@@ -546,3 +546,44 @@ func runGradleTest(dir string) error {
 	}
 	return nil
 }
+
+// TestHarnessBuild reports the build options a fixture carrying `func test…`
+// needs, or ok=false when it carries none.
+//
+// The two facts are read off the source rather than written in a directive,
+// because the source already states them. That a fixture has tests is that it
+// declares one; which component they are written against is the second
+// parameter every one of them takes. The component-fixture harness derived
+// both this way long before a golden did, and exporting it is what lets the
+// two agree rather than each deriving its own answer.
+//
+// `test` and `main` are what turn a generated program into one the host
+// toolchain can run: the first emits the companion test files, the second an
+// entry point for them to sit beside. `rootComponent` makes the component
+// under test the root the way the launcher does -- otherwise it inlines into
+// the fixture's own window and the Model carries `x__inst0` where the test
+// asks for `x`.
+func TestHarnessBuild(source string) (opts map[string]string, ok bool) {
+	if !strings.Contains(source, "\nfunc test") && !strings.HasPrefix(source, "func test") {
+		return nil, false
+	}
+	opts = map[string]string{"test": "true"}
+	if root := componentUnderTestIn(source); root != "" {
+		opts["rootComponent"] = root
+	}
+	return opts, true
+}
+
+// componentUnderTestIn reports the component every `func test…` takes as its
+// second parameter, or "" when they disagree or none does. One build serves
+// one root, so a fixture whose tests disagree is built as written.
+func componentUnderTestIn(source string) string {
+	found := ""
+	for _, m := range testParamRe.FindAllStringSubmatch(source, -1) {
+		if found != "" && found != m[1] {
+			return ""
+		}
+		found = m[1]
+	}
+	return found
+}

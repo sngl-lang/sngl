@@ -739,3 +739,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "App"
 include(":app")
+-- run/kotlin/android --
+pass sha256:b72f35a48439c5b8f0313cc806aed306

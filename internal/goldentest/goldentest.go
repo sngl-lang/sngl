@@ -162,16 +162,31 @@ func runFixture(t *testing.T, path string, update, force bool) {
 
 	assertFormatted(t, src)
 
-	got, err := generate(src)
+	got, err := generate(src, nil, false)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
+	}
+
+	// What the host toolchain is handed is not always what the golden shows.
+	// A fixture carrying `func test…` is built again with the test options,
+	// because a program with no entry point and no test files compiles and
+	// asserts nothing -- and on android the plain build emits no gradle
+	// wrapper at all, so there was nothing to run it with. The golden stays
+	// the plain build: it is there to be read.
+	verifyFiles := got
+	if opts, ok := testutil.TestHarnessBuild(fixtureSource(src)); ok {
+		built, err := generate(src, opts, true)
+		if err != nil {
+			t.Fatalf("generate (test build): %v", err)
+		}
+		verifyFiles = built
 	}
 
 	// Verification comes before the golden is written, so a -update run that
 	// cannot compile what it generated leaves the archive as it found it.
 	// Written first, the bad golden would be committed and the record beside
 	// it would be the only thing saying so.
-	kept := verify(t, targetsOf(got), records, exempt, update, force)
+	kept := verify(t, targetsOf(verifyFiles), records, exempt, update, force)
 
 	if update {
 		writeGolden(t, path, arc, got, kept)
@@ -274,7 +289,11 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 
 // generate compiles the package for every target its output block names, and
 // returns the generated files keyed by their golden path.
-func generate(src map[string][]byte) (map[string][]byte, error) {
+//
+// opts and main are the overlay a verification build adds; the golden itself
+// is generated with neither, so what the archive shows is what `sngl generate`
+// writes.
+func generate(src map[string][]byte, opts map[string]string, main bool) (map[string][]byte, error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -303,6 +322,8 @@ func generate(src map[string][]byte) (map[string][]byte, error) {
 		Dir:       ".",
 		OutDir:    ".",
 		ProjectFS: fsys,
+		Opts:      opts,
+		Main:      main,
 	})
 	if err != nil {
 		return nil, err
@@ -419,4 +440,17 @@ func firstDiff(want, got string) string {
 		return b.String()
 	}
 	return "(identical line by line; trailing newline differs)"
+}
+
+// fixtureSource concatenates the package's own .sngl files, which is what the
+// test-build derivation reads.
+func fixtureSource(src map[string][]byte) string {
+	var b strings.Builder
+	for _, name := range sortedKeys(src) {
+		if strings.HasSuffix(name, ".sngl") {
+			b.Write(src[name])
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
 }

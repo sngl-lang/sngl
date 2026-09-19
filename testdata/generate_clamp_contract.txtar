@@ -277,5 +277,7 @@ body { font-family: system-ui, sans-serif; }
 })();
 </script>
 </body></html>
+-- run/kotlin/android --
+pass sha256:f44a858c7a7ebfcfd40bd30f826686c1
 -- run/none/html --
 pass sha256:5e652311ea4a2fa844737c52f2a04d4c
