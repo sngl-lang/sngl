@@ -120,21 +120,104 @@ Codegen is permitted to *error* where it cannot honor the result -- html on
 `--lang none` cannot build a static page out of state whose value is not known
 at build time. That is the right layer for it, and it replaces a lowering pass
 that quietly rearranged the program instead.
+## passCanvas goes away
+
+Settled with Jonathan: a canvas's shapes are already segmented into their own
+family, so a pass that surgically lifts them out of the tree is special logic
+the type system has since made unnecessary.
+
+What the pass does today: finds a canvas, turns its shape children into a
+synthesized `_canvasDrawN` `*ir.Func`, hangs it off `NodeInst.CanvasDraw`, and
+strips the children to the tree-less ones. That synthesized func is one of the
+two reasons TODO §9 called `Funcs` the blocker, so **this comes before the func
+work, not after**.
+
+The tell that it is the same mistake the timer was:
+
+```go
+func isCanvasDrawFunc(fn *ir.Func) bool {
+	return fn != nil && fn.Synthesized && strings.HasPrefix(fn.Name, "_canvasDraw")
+}
+```
+
+A name match, against the rule stated everywhere else in this repository -- and
+a name match *because the pass invented a function with no other identity*.
+
+**Measured, not predicted.** Disabling the pass outright and generating
+`canvas_shape_in_conditional` on html: the canvas still came out a `<canvas>`
+element and no shape was emitted as DOM, but the `if` around the shapes became
+a **render slot** (`<span data-sngl-slot="0">`) and the shape nodes consumed two
+`__nN` refs before the canvas did. Moving the pass to the end of the pipeline
+instead broke exactly the seven canvas goldens and nothing else.
+
+So the gap is three widget passes, not the 51 `case *ir.NodeInst` arms across 26
+files in `internal/lower`. The other 48 do things to a shape node that are
+harmless or correct.
+
+- `passReactivity` -- must not make a shape's `if` a render slot.
+- `passNodeEscape` -- must not allocate a widget ref for a shape.
+- `passDeclarative` -- must not flatten a shape into `CreateNode`.
+
+One predicate, `ir.IsSegmentedTree(comp.Tree)`, which already exists and which
+`isPrimitiveComponent` already uses to exempt shapes from inlining. It is not a
+new fact about the program; it is an established fact the rendering passes were
+never told.
+
+**The draw function does not stop existing; it stops being owned.**
+`feat/markup-tree` is the evidence for how far this can go and where it stops.
+A markup member lowers to *nodes* -- `markup.bold[platform]` is
+`inline(tag="strong")` -- so DOM being a tree is the whole reason that family
+needs no pass. A shape lowers to imperative draw calls on a context, with
+save/restore bracketing, and that sequencing is real work.
+
+So `emitShapes` moves to `codegen` and still builds an `*ir.Func`, at analysis
+time, keyed by the canvas `*ir.NodeInst`. What that buys:
+
+- the pass goes;
+- the func is in no owner's list -- not `pkg.Funcs`, not `comp.Funcs`, not
+  `w.Funcs` -- so the ownership problem blocking step 4 goes with it;
+- `isCanvasDrawFunc` goes, because the generic func-emission path never meets
+  the func at all;
+- the five platforms keep keying by `*ir.Func` pointer as they already do, so
+  the ~40 read sites barely move.
+
+`feat/markup-tree` also narrowed `isPrimitiveComponent`'s `hostsTree` exception
+to `hostsLoweredTree`, and its comment says the exception exists *only* because
+passCanvas needs the node the shapes hang off. It dies here, and a canvas
+becomes an ordinary component a platform implements in its own package.
+
+**One commit, not staged:** `codegen` imports `lower` for `lower.Features`, so
+`lower` cannot import `codegen` and there is no intermediate where both hold
+the emission code.
+
+Two fixes on that branch are general rather than markup's, and a composed shape
+may need them: a *kept* component's body is never inlined into, and a stdlib
+component with a body of its own is not inlinable (`|| comp.Stdlib`). Take them
+only if canvas reaches them.
+
 ## Staging
 
 Each step green, each with its own fixture, a golden refresh read rather than
 rubber-stamped.
 
 1. This plan. (done)
-2. `ir.FuncDecl` — introduce the statement, move a *component's* funcs onto it
-   first, where there is no window in the picture. Proves the shape.
-   Taken after 3, at Jonathan's call.
-3. Delete `ir.Timer`: gate fold into `AnalyzeCommon`, `passTimerPrimitive`
-   deleted. (done -- 49 files, -621 lines, every golden byte-identical)
-4. `pkg.Windows` derived at codegen; `passRootWindow` deleted, root components
+2. Delete `ir.Timer`. (done -- 53 files, -764/+340, every golden byte-identical)
+3. Delete `passCanvas`: shapes stay in the tree, a shared codegen walker emits
+   the draw. Removes the synthesized func that blocks 4.
+4. Funcs into **body scopes** -- not a body statement and not `pkg.Funcs`.
+   `ir.Package.Symbols` already survives into IR; what does not is a durable
+   scope per body, of which `Component.BodyDecls` is the vestige. Needs
+   declaration order (today `Scope.Symbols` is an unordered map, and `__cseN`
+   and `__async_offN` are numbered off owner order) and a way for lowering to
+   bind into a scope.
+5. `pkg.Windows` derived at codegen; `passRootWindow` deleted, root components
    left to ordinary inlining, the eight fixtures above rewritten.
-5. The 39 statement arms, once a window is no longer a statement kind.
-6. Delete `ir.Window`. Delete this file.
+6. The 39 statement arms, once a window is no longer a statement kind.
+7. Delete `ir.Window`. Delete this file.
+
+Emit-when-called is a separable follow-up: `shakeUnused` filters `pkg.Funcs`
+but treats `comp.Funcs` and `w.Funcs` as roots, so those are unconditionally
+live today whatever records ownership.
 
 ## Rules that bite
 
