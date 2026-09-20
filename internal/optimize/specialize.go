@@ -132,6 +132,48 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		}
 	}
 
+	// A prop the call site left out is bound to the default the declaration
+	// wrote. Only the written ones decide whether inlining unlocks a fold, and
+	// that decision is above; every prop still has to be *bound*, or its
+	// parameter reference is left standing in the spliced body. The lowering's
+	// two inliners both fall back this way and this one did not, so
+	// `markup.listItem(marker="1.")` kept a bare `task` and the
+	// `if task == Task.none` choosing between a bullet and a checkbox was not
+	// const: html emitted both branches, and every numbered list item came out
+	// with a stray disabled checkbox beside its ordinal.
+	//
+	// Only where a prop was written, since a call that wrote none is not
+	// inlined here at all -- which is why this went unseen.
+	defaultSubs := make(map[*ir.Param]ir.Expr)
+	written := make(map[string]bool, len(n.Props))
+	for _, p := range n.Props {
+		written[p.Name] = true
+	}
+	for _, p := range comp.Props {
+		if written[p.Name] {
+			continue
+		}
+		sym, ok := paramSyms[p.Name]
+		if !ok {
+			continue
+		}
+		// DeclaredDefault, not ZeroExpr, for the reason inline_pure gives: a
+		// struct's declared default is its fields' own, so a body reading
+		// `style.fontSize` off an omitted prop gets what the declaration says.
+		def := p.Default
+		if def == nil {
+			def = ir.DeclaredDefault(p.Type)
+		}
+		if def == nil {
+			continue
+		}
+		if val, ok := evalExpr(foldExpr(def, childCtx), childCtx); ok {
+			childCtx.values[sym] = val
+			continue
+		}
+		defaultSubs[sym] = def
+	}
+
 	cloned = substituteSlots(cloned, n)
 	// Component-body platform override at inline time: optimize splices the
 	// (cloned) body into the parent tree here, before lower's
@@ -154,6 +196,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 		if param, ok := paramSyms[p.Name]; ok {
 			subs[param] = p.Value
 		}
+	}
+	for param, def := range defaultSubs {
+		subs[param] = def
 	}
 	if len(subs) > 0 {
 		substituteParamsInStmts(cloned, subs)
