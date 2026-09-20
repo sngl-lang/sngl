@@ -89,54 +89,41 @@ own blocks name.
 - [ ] **gtk4** — Pango markup in a `GtkLabel`. Escape `&`, `<`, `>`; `<b>`,
       `<i>`, `<u>`, `<s>`, `<tt>`, `<a href>`, `<span foreground=>`. This is
       the first host that has to resolve the cascade itself.
-- [ ] **fyne** — `widget.RichText` segment list. Read against fyne v2.7.4
-      before starting, and it carries less than the plan assumed. Four
-      findings, and the last two are what make this a fork rather than a task:
+- [x] **fyne** — `widget.RichText`, via `pkg/go/fynetext`. Two primitives and
+      a table of overrides, and the ordinary fyne path downstream of them: a
+      constructor, a Model field, `Add`, a setter per reactive prop, because a
+      span is a value with an `Add` and a `SetText`, which is all this platform
+      has ever asked a node to be. The one thing its Spec cannot be is *data* --
+      a run is constructed with the style it was written with, and which fields
+      a `SpanStyle` literal set is a question about the literal -- so
+      `codegen/platform/fyne/markup.go` builds it from the node's props, and
+      the style reaches the constructor as a builder chain rather than a record
+      so only the first name needs the alias this file gave the runtime package.
 
-      - **No strikethrough anywhere.** Not on `fyne.TextStyle`, not on
-        `canvas.Text`.
-      - **Underline exists and is not drawn.** `fyne.TextStyle.Underline` is
-        there, and nothing in `internal/painter` reads it -- its own comment
-        says TextGrid only. So `RichTextStyle` answers neither decoration.
-      - **A custom segment is atomic.** `richtext.go`'s row-bounds walk
-        measures and wraps `*widget.TextSegment` and nothing else; anything
-        else inline (`*HyperlinkSegment` is fyne's own example) occupies one
-        unbreakable box on the row. So a custom segment renders the two
-        decorations at the cost of never wrapping inside itself -- tolerable
-        for a run of emphasis, not for a paragraph, so the custom segment has
-        to be the exception and `*widget.TextSegment` the rule.
-      - **A span's color and size are not expressible on a segment at all.**
-        `RichTextStyle` carries a `ColorName` and a `SizeName` -- theme names,
-        resolved through `theme.ColorForWidget(name, parent)` -- and not an
-        RGBA or a px. A document that writes `color=#336699` has nowhere to
-        put it.
+      Three things Fyne does not do for itself are in the runtime package, and
+      each is a widget implementation rather than a language gap:
 
-      That last one has an answer already in this platform: generated themes
-      (`theme.go`, `fyneSpec.ThemeVar`), which is how every other fyne widget
-      gets a color. A flow would map the colors and sizes its runs asked for
-      onto distinct theme names and carry a theme that resolves them. It is
-      the right answer and it is most of the work.
+      - **The cascade.** Flattened at render time and not at build time,
+        because the tree is what a reactive program mutates -- a `SetText`
+        against a nested span is all that reaches the emitted code when state
+        moves, and the flow rebuilds its segments from the tree it still holds.
+      - **Color and size.** A segment names them through a *theme* and never
+        carries a value, so the flow names the ones its runs asked for -- one
+        name per distinct value -- and carries a theme answering those names
+        over whatever theme the block style put it under.
+      - **Underline and strikethrough.** Drawn by a segment of the package's
+        own, which is the exception: `widget.RichText` breaks a line inside
+        `*widget.TextSegment` and nothing else, so anything else inline is one
+        unbreakable box, as Fyne's own `HyperlinkSegment` already is. Short for
+        a run of emphasis, wrong for a paragraph, which is why every other run
+        stays Fyne's.
 
-      So the fork, to settle before writing any of it:
-
-      1. **`widget.RichText` plus generated themes.** Inherits fyne's
-         wrapping and its list/paragraph segments; pays for color and size
-         with a theme per flow, and for the two decorations with a custom
-         atomic segment.
-      2. **A flow laid out in `pkg/go/fynert`.** `canvas.Text` runs in a
-         wrapping layout of our own: every field of `SpanStyle` reachable
-         directly, no theme gymnastics, no atomic runs -- and we own line
-         breaking, which is the thing `widget.RichText` is for.
-
-      The architecture sketch either way is settled and is html's division:
-      `Flow` and `Span` `#[intrinsic]` primitives in `fyne.sngl`, their
-      `fyneSpec` synthesized in `specFromProps` from the node's props rather
-      than read off a `spec` record (a `SpanStyle` literal has to be read by
-      the emitter, as it is on html and bubbletea, and `Arg.raw` is where the
-      Go for it goes). Everything downstream -- `OnCreateNode`,
-      `OnAppendChild`, `OnPropAssign`, the Model field, reactivity -- then
-      works unchanged, because a span is a value with an `Add` and a
-      `SetText` like any other node the platform builds.
+      A `token` is a theme color name, which is the form this host has for the
+      family's "whoever is drawing decides" -- so an application that themes
+      its app themes its code samples with it. A `link` is Fyne's own
+      `HyperlinkSegment`, which carries its words and no style: what was said
+      inside the link is lost, and the link is followed when it is tapped.
+      `image` renders its description, Fyne's image segment being a block.
 - [x] **bubbletea** — lipgloss. `Flow` and `Span` in `bubbletea.sngl`, a
       table of overrides, and the cascade resolved in `markup.go`: lipgloss
       renders a string and hands back a string, so the nesting is flattened at
@@ -167,8 +154,12 @@ own blocks name.
       colors, which is a palette the reader already picked. Three kinds --
       `variable`, `operator`, `punctuation` -- map to the foreground, which is
       what most themes do with them and what sixteen colors is worth spending.
-      Whether a host with real colors should read them from somewhere an
-      application writes is still the open half.
+      fyne answers it in its own vocabulary too, and more directly: a theme
+      color name, so an application that themes its app themes its code
+      samples with it. Three targets, three palettes the *reader* owns, which
+      is the shape the answer is taking -- and whether a host with real colors
+      should read them from somewhere an application writes is still the open
+      half.
 
 ## 3. Markdown parser and the `md:` scheme
 
