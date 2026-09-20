@@ -126,15 +126,15 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 
 	if req.Lang.LanguageIdentifier() == "none" {
-		if err := rejectDynamicHrefs(req); err != nil {
+		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html")}
+		if err := rejectDynamicHrefs(c.ctx); err != nil {
 			return err
 		}
 		// Static mode has no server to host the route's POST handler.
-		if win, ok := backendHandlerWindow(req.Pkg, codegen.NewCodegenCtx(req, "html").Windows()); ok {
+		if win, ok := backendHandlerWindow(req.Pkg, c.ctx.Windows()); ok {
 			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
 		}
-		c := &compilation{}
-		m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
+		m, err := c.BuildMutationModel(req, c.ctx.Analysis)
 		if err != nil {
 			return err
 		}
@@ -146,7 +146,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		}
 		if agentMode {
 			modelType := "main"
-			if main := codegen.NewCodegenCtx(req, "html").RootDecl(); main != nil {
+			if main := c.ctx.RootDecl(); main != nil {
 				modelType = main.Name
 			}
 			if err := emitTestagentFiles(sink, req.Pkg, modelType); err != nil {
@@ -185,8 +185,7 @@ document.addEventListener('DOMContentLoaded', () => main());
 }
 
 // rejectDynamicHrefs errors in static mode: {param} routes need a server.
-func rejectDynamicHrefs(req *codegen.Request) error {
-	ctx := codegen.NewCodegenCtx(req, "html")
+func rejectDynamicHrefs(ctx *codegen.CodegenCtx) error {
 	for _, win := range ctx.Windows() {
 		href := win.Window.Prop(ir.WindowHref)
 		if href == nil {
@@ -202,6 +201,21 @@ func rejectDynamicHrefs(req *codegen.Request) error {
 type compilation struct {
 	assetFiles []htmlAssetFile
 	windows    []htmlWindowOutput
+
+	// ctx is the compilation's, built once by the caller. Constructing one
+	// analyzes the whole package twice over (AnalyzeCommon and the dep
+	// tracker), and the static path asked four separate times for the same
+	// answer. Nil for a caller that builds a compilation directly, which
+	// codegenCtx then serves.
+	ctx *codegen.CodegenCtx
+}
+
+// codegenCtx is c.ctx, or a fresh one for a caller that supplied none.
+func (c *compilation) codegenCtx(req *codegen.Request) *codegen.CodegenCtx {
+	if c.ctx == nil {
+		c.ctx = codegen.NewCodegenCtx(req, "html")
+	}
+	return c.ctx
 }
 
 // windowShared caches what a window's codegen recomputes but that does not
@@ -220,6 +234,81 @@ type windowShared struct {
 	usedComponents map[string]bool
 	prewalked      map[string]*ir.NodeInst
 	slotsRewritten bool
+
+	// The rest are the package-derived analysis each window used to rebuild
+	// for itself. Each is a function of the package alone and each walks the
+	// whole of it -- and a window's body is part of that package, so a site of
+	// N pages walked N tree-heavy packages per page.
+	//
+	// Filled on the first window, like usedComponents above: the slot retarget
+	// that runs after it rewrites call arguments and declares nothing, so it
+	// changes none of these answers.
+	derived    bool
+	common     *codegen.CommonAnalysis
+	dt         *codegen.DepTracker
+	owners     []ir.Owner
+	canvasByID map[string]*canvasutil.Meta
+	canvasByFn map[*ir.Func]*canvasutil.Meta
+	// modelVars is derived from dt on first use rather than beside it: only
+	// the mutation model asks for it.
+	modelVars map[string]*ir.Var
+}
+
+// derivePackage fills all four on first use. One gate rather than a nil check
+// per field, because two of them answer nil legitimately -- ir.Owners and
+// canvasutil.Collect both do for a nil package -- and a nil check would then
+// re-walk on every window for the one case where the walk means nothing.
+func (s *windowShared) derivePackage(pkg *ir.Package) {
+	if s.derived {
+		return
+	}
+	s.derived = true
+
+	var ao codegen.AnalyzeOpts
+	ao.UsedComponents = s.usedComponents
+	s.common = codegen.AnalyzeCommonFor(pkg, ao)
+	if s.usedComponents == nil {
+		s.usedComponents = maps.Clone(s.common.UsedComponents)
+	}
+	s.dt = codegen.NewDepTrackerFromPkg(pkg)
+	s.owners = ir.Owners(pkg)
+	s.canvasByID, s.canvasByFn = canvasutil.Collect(pkg, nil)
+}
+
+// analysis hands each window a copy.
+//
+// Nothing in this platform reads a CommonAnalysis field: codegen.OptimizeMutation
+// writes to one -- PruneUnusedComputeds deletes from three of its maps, per
+// window -- and html reads the updaters it kept rather than the analysis it
+// pruned. So sharing one would produce identical output today, and no fixture
+// can be written that says otherwise. The copy is what keeps that from being a
+// fact a later emitter has to know before it reads ModelFields and gets a map
+// three windows have already pruned.
+func (s *windowShared) analysis(pkg *ir.Package) *codegen.CommonAnalysis {
+	s.derivePackage(pkg)
+	return s.common.Clone()
+}
+
+// depTracker is shared rather than copied: html asks it four things --
+// ExprDeps, codegen.MutatedFields, a range over ModelVars in newVarRegistry,
+// and OptimizeMutation through MutationModel.DepTracker -- and all four read.
+func (s *windowShared) depTracker(pkg *ir.Package) *codegen.DepTracker {
+	s.derivePackage(pkg)
+	return s.dt
+}
+
+// ownerList is ir.Owners memoized. A caller filters it per window; the walk
+// that produces it is per package.
+func (s *windowShared) ownerList(pkg *ir.Package) []ir.Owner {
+	s.derivePackage(pkg)
+	return s.owners
+}
+
+// canvases is canvasutil.Collect memoized. Shared, not copied, for the reason
+// depTracker is: the two maps and the Meta behind them are only read.
+func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.Func]*canvasutil.Meta) {
+	s.derivePackage(pkg)
+	return s.canvasByID, s.canvasByFn
 }
 
 func newWindowShared(projectDir string, projectFS fs.FS) *windowShared {
@@ -381,7 +470,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	}
 	shared := newWindowShared(projectDir, projectFS)
 
-	ctx := codegen.NewCodegenCtx(req, "html")
+	ctx := c.codegenCtx(req)
 
 	// A package with no main component and no windows still emits an empty
 	// index.html, so callers can verify codegen succeeded.
@@ -677,12 +766,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	if shared == nil {
 		shared = newWindowShared("", nil)
 	}
-	var ao codegen.AnalyzeOpts
-	ao.UsedComponents = shared.usedComponents
-	common := codegen.AnalyzeCommonFor(pkg, ao)
-	if shared.usedComponents == nil {
-		shared.usedComponents = maps.Clone(common.UsedComponents)
-	}
+	common := shared.analysis(pkg)
 
 	g := &htmlGen{
 		pkg:            pkg,
@@ -700,12 +784,12 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		shared:         shared,
 	}
 
-	g.dt = codegen.NewDepTrackerFromPkg(pkg)
+	g.dt = shared.depTracker(pkg)
 	// The canvases passCanvas flattened into a lowered body. A canvas the page
 	// renders as markup is an ir.NodeInst and is not among these; what is, is
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
-	g.canvasByID, g.canvasByFunc = canvasutil.Collect(pkg, nil)
+	g.canvasByID, g.canvasByFunc = shared.canvases(pkg)
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
@@ -1386,7 +1470,7 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
 func (g *htmlGen) stateVars() []*ir.Var {
 	var out []*ir.Var
-	for _, o := range ir.Owners(g.pkg) {
+	for _, o := range g.shared.ownerList(g.pkg) {
 		if o.Comp != nil && o.Comp != g.rootComp {
 			continue
 		}
@@ -2566,7 +2650,7 @@ func extractElemIDs(js string) []string {
 func (g *htmlGen) optimizeIR() {
 	// The pointer-keyed dep sets are synthesized from html's name-keyed maps;
 	// iropt only reads *ir.Var.Name, so synthetic placeholders are safe.
-	varReg := newVarRegistry(g.dt)
+	varReg := newVarRegistry(g.shared.modelVarsByName(g.pkg))
 	updaters := make([]codegen.Updater, len(g.initWrites))
 	for i, u := range g.initWrites {
 		updaters[i] = codegen.Updater{
@@ -2809,26 +2893,47 @@ func varSetToNames(vs map[*ir.Var]struct{}) map[string]bool {
 // varRegistry maps names back to *ir.Var pointers at the codegen boundary.
 // A promoted or suffixed name is synthesized on demand; iropt only reads
 // .Name, so a synthetic placeholder is safe.
+//
+// Two maps because the halves have two lifetimes. base is the package's model
+// vars, which no window changes -- built per window, it was the package's var
+// table rebuilt once per page. own is what this window synthesized, which is
+// the half that must not reach another: a placeholder stands for a name no
+// declaration owns, so two windows naming one get one each, as they did when
+// the whole map was per window.
 type varRegistry struct {
-	byName map[string]*ir.Var
+	base map[string]*ir.Var
+	own  map[string]*ir.Var
 }
 
-func newVarRegistry(dt *codegen.DepTracker) *varRegistry {
-	r := &varRegistry{byName: make(map[string]*ir.Var)}
-	if dt != nil {
-		for v := range dt.ModelVars {
-			r.byName[v.Name] = v
+func newVarRegistry(base map[string]*ir.Var) *varRegistry {
+	return &varRegistry{base: base, own: map[string]*ir.Var{}}
+}
+
+// modelVarsByName is base, derived from the dep tracker once per compilation.
+//
+// A name two owners both declare resolves to whichever the map iteration
+// reached last, which is what it did per window before -- shared, that choice
+// is at least made once rather than redrawn per page.
+func (s *windowShared) modelVarsByName(pkg *ir.Package) map[string]*ir.Var {
+	s.derivePackage(pkg)
+	if s.modelVars == nil {
+		s.modelVars = make(map[string]*ir.Var, len(s.dt.ModelVars))
+		for v := range s.dt.ModelVars {
+			s.modelVars[v.Name] = v
 		}
 	}
-	return r
+	return s.modelVars
 }
 
 func (r *varRegistry) lookup(name string) *ir.Var {
-	if v, ok := r.byName[name]; ok {
+	if v, ok := r.own[name]; ok {
+		return v
+	}
+	if v, ok := r.base[name]; ok {
 		return v
 	}
 	v := &ir.Var{Name: name}
-	r.byName[name] = v
+	r.own[name] = v
 	return v
 }
 

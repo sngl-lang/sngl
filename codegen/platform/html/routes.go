@@ -18,8 +18,8 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 		return fmt.Errorf("html: language %q does not implement HTTPCompiler", req.Lang.LanguageIdentifier())
 	}
 
-	c := &compilation{}
-	if _, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg)); err != nil {
+	c := &compilation{ctx: codegen.NewCodegenCtx(req, "html")}
+	if _, err := c.BuildMutationModel(req, c.ctx.Analysis); err != nil {
 		return err
 	}
 	perWindow := make([][]byte, len(c.windows))
@@ -27,7 +27,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 		perWindow[i] = w.bytes
 	}
 
-	ctx := codegen.NewCodegenCtx(req, "html")
+	ctx := c.ctx
 	windows := ctx.Windows()
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
