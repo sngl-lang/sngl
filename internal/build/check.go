@@ -272,7 +272,13 @@ func (r *Resolver) ResolveSchemeFS(scheme, uri, dir string) ([]*ast.Document, fs
 	if imp == nil {
 		return nil, nil, nil
 	}
-	fsys, err := imp.ResolveFS(uri, dir)
+	var fsys fs.FS
+	var err error
+	if proj, ok := imp.(codegen.ProjectFSScheme); ok && r.FS != nil {
+		fsys, err = proj.ResolveProjectFS(uri, r.FS, dir)
+	} else {
+		fsys, err = imp.ResolveFS(uri, dir)
+	}
 	if err != nil {
 		return nil, nil, err
 	}

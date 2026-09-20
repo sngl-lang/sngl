@@ -1,0 +1,64 @@
+# What the md: importer says when it cannot read a document. The claim is about
+# the diagnostics rather than the SNGL it emits, which is why this is a script
+# fixture and `testdata/markdown_import.txtar` is a golden.
+
+# A path nothing is at names the file that was written, not the one on disk.
+! sngl check missing.sngl
+stderr 'md: reading "./nowhere.md"'
+
+# A path that is not markdown is a mistake worth naming before the file is
+# opened: an md: import of a .sngl is a typo, not a document with no blocks.
+! sngl check wrong_suffix.sngl
+stderr 'is not a markdown file'
+
+# Frontmatter is the compiler's to parse, so its failures carry the file.
+! sngl check bad_front.sngl
+stderr 'guide.md'
+stderr 'not a scalar'
+
+# And a document that reads is a package holding one component, which is what
+# the program renders.
+sngl check ok.sngl
+stdout 'ok'
+
+-- missing.sngl --
+import doc "md:./nowhere.md"
+
+component main ui.node {
+    doc.document
+}
+-- wrong_suffix.sngl --
+import doc "md:./ok.sngl"
+
+component main ui.node {
+    doc.document
+}
+-- bad_front.sngl --
+import doc "md:./guide.md"
+
+component main ui.node {
+    doc.document
+}
+-- guide.md --
+---
+tags: [a, b]
+---
+
+# Guide
+-- ok.sngl --
+import ui "sngl:ui"
+import doc "md:./page.md"
+
+ui.window #home(title="page") {
+    doc.document
+}
+
+output {
+    none {
+        html
+    }
+}
+-- page.md --
+# Page
+
+Words.

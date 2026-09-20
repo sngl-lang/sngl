@@ -232,69 +232,88 @@ own blocks name.
 
 ## 3. Markdown parser and the `md:` scheme
 
-- [ ] Walk goldmark's AST. Not a decision to make: goldmark v1.7.8 is already
-      a direct dependency with GFM on, in `internal/docsite/markdown.go`,
-      which renders the doc site. Its tree is its own `ast.Node` and not
-      mdast — and its nodes carry source *segments*, so the text is read back
-      out of the original buffer rather than held on the node.
-- [ ] `codegen/scheme/markdown`, registered like `file` and `http`, resolving
-      `import doc "md:./getting_started.md"`.
-- [ ] Emit SNGL: a `vbox` of block components interleaved with other
-      `ui.node`s. A document is a **package** holding one component and taking
-      **no props** — the use case is documentation, so any SNGL snippet inside
-      it is a logical island and nothing of the host application reaches in.
-      Frontmatter, if any, as consts.
-- [ ] Block mapping — none of it in the family. `paragraph`, `heading`,
-      `quote`, `codeBlock` and `caption` now exist as bodied `ui.node`
-      components carrying a `Role`, so the importer emits those; the rest is
-      ordinary layout: list → `vbox` of `hbox` rows (bullet in a fixed column
-      so wrapped lines hang); `thematicBreak` → `ui.divider`; table →
-      `ui.table`.
-- [ ] Task list rendering per platform — `listItem(task=)` emits a disabled
-      `ui.checkbox` by default; html wants a real disabled `<input type=checkbox>`
-      inside the `<li>`.
-- [ ] `list` / `listItem` overrides per platform. They are bodied, so a target
-      inherits a box with markers beside it; html wants `<ul>`/`<ol>`/`<li>`,
-      and since neither hosts the span family an override of either inlines
-      like any `sngl:ui` override. The importer writes `marker`, so an ordered
-      list is numbered even where the host cannot count.
-- [ ] Inline mapping — emphasis, strong, delete, link, image, inlineCode, hard
-      break (`"\n"`), soft break (the importer decides space or newline). An
-      image's alt text flattens to its words; nothing else about it survives.
-- [ ] Syntax highlighting inside a fence: tokenize, emit `token` spans inside a
-      `monospace`. Chroma already answers every language, and
-      `internal/highlight` already registers the SNGL lexer with it -- which
-      is what `internal/docsite.Highlight` uses. What is new is the mapping:
-      the doc site turns a chroma token type into a CSS class, and the
-      importer has to turn one into a `markup.Token` member instead. That is
-      the narrower vocabulary, so it is a fold rather than a translation, and
-      `Token.plain` is what an unclassified token becomes.
-- [ ] **Live fences.** A fence whose content should become components rather
-      than text — the thing that lets a tutorial show a running example beside
-      its source. The spelling is a **`mode=` trailer on the info line**
-      (Jonathan's call): ` ```sngl mode=island `. goldmark's `Language()`
-      splits the info string at the first space and `Info.Segment` carries the
-      rest, so the fence still reports `sngl` and still highlights through the
-      chroma path every other fence uses — a trailer costs the default path
-      nothing.
+`codegen/scheme/markdown` is the importer. `import doc "md:./guide.md"` parses
+the file and hands back a filesystem holding one generated `.sngl`, which the
+checker then checks like any other package -- the `FSSchemeImporter` seam
+`git:` and `http:` use, chosen over the native one so the generated package can
+be dumped and read. `testdata/markdown_import.txtar` is the golden and
+`cmd/sngl/testdata/markdown_import_errors.txt` the diagnostics.
+
+- [x] Walk goldmark's AST. The same `goldmark.New(WithExtensions(extension.GFM))`
+      the doc site parses with, so two readings of one document cannot differ.
+      Its nodes carry source *segments*, so every run of words is read back out
+      of the original buffer.
+- [x] `codegen/scheme/markdown`, registered like `file` and `http`.
+
+      One thing the plan did not have: the document is a file of the *project*,
+      not something the scheme fetches, so it has to be read through the
+      filesystem the program is checked against -- an in-memory package (a
+      golden archive, the playground) has no other. `codegen.ProjectFSScheme`
+      is that, the FS-side counterpart of `FSAwareScheme`, and `ResolveFS`
+      stays the fallback for a caller with no FS.
+- [x] Emit SNGL: a `vbox` of block components. The component is named
+      `document` whatever the file is called -- deriving it from the filename
+      would make the call site depend on a path the alias already stands for.
+      No props. Frontmatter scalars become consts, in the order the document
+      wrote them, keeping their type.
+- [x] Block mapping -- `paragraph`, the six headings, `quote`, `codeBlock`,
+      `list`/`listItem` from `sngl:ui/markup`; `thematicBreak` → `ui.divider`;
+      table → `ui.table`. A blockquote's *paragraphs* each become a
+      `markup.quote`, the family having no block that contains prose. An html
+      block and a raw inline are dropped: one target's vocabulary, and this
+      renders on six.
+- [x] Task list rendering -- `listItem(task=)`, lifted off the item's first
+      inline before the block is walked. The per-platform half is still open
+      below.
+- [x] Inline mapping -- emphasis, strong, delete, link, autolink, image,
+      inlineCode, hard break (`"\n"`), soft break (a space: the family's text
+      is literal, so the wrapping the author's editor chose must not reach the
+      reader as one). Adjacent literal text is coalesced, so a sentence is one
+      `markup.text` rather than one per word.
+- [x] Syntax highlighting inside a fence -- chroma, with
+      `internal/highlight`'s SNGL lexer registered, folded onto the family's
+      eleven kinds. `plain` is written rather than left out, so whitespace and
+      an unclassified identifier are spans a reader of the tree can see. A
+      language chroma does not know, and a fence that named none, is one plain
+      run.
+- [ ] **Live fences.** Unstarted. The spelling is settled -- a `mode=` trailer
+      on the info line, four modes naming the scope the source lands in -- and
+      the entry below is unchanged. The importer ignores the trailer today,
+      which is exactly `view`: goldmark's `Language()` splits the info string
+      at the first space, so such a fence already highlights and shows like any
+      other.
+- [ ] `list` / `listItem` overrides per platform, and the task item's real
+      `<input type=checkbox>` inside an `<li>`. Still open, still optional --
+      the default bodies render on every target, which is what the golden
+      shows.
+
+### Live fences -- the settled spelling
+
+      A fence whose content should become components rather than text -- the
+      thing that lets a tutorial show a running example beside its source. The
+      spelling is a **`mode=` trailer on the info line** (Jonathan's call):
+      ` ```sngl mode=island `. goldmark's `Language()` splits the info string
+      at the first space and `Info.Segment` carries the rest, so the fence
+      still reports `sngl` and still highlights through the chroma path every
+      other fence uses -- a trailer costs the default path nothing.
 
       Four modes, and what separates them is **which scope the source lands
       in** rather than how it is parsed:
 
-      - **`view`** — the default, and what every fence in every other language
+      - **`view`** -- the default, and what every fence in every other language
         already is. Handled like any other code fence: shown, highlighted, not
         compiled. Never written, being the default.
-      - **`island`** — wrapped in a component of its own, with its imports
+      - **`island`** -- wrapped in a component of its own, with its imports
         hoisted to the generated package and its `output` blocks dropped. The
         isolation is the point and is what the name says: an example is not
         the host application, so two islands each writing `var n = 0` are two
         examples and neither reaches the other. This is the mode the "running
         example beside its source" case wants, and it is the word this file
         already used for a document's snippets before there were modes.
-      - **`package`** — package-level declarations, and what they are for is
+      - **`package`** -- package-level declarations, and what they are for is
         the component the page gets wrapped in: a document can then be handed
         props and can set context values for everything under it.
-      - **`body`** — placed directly into the generated document's own
+      - **`body`** -- placed directly into the generated document's own
         component body, as raw source, at the position it was written. The
         positional counterpart of `package`: `package` declares, `body`
         emits.
@@ -319,6 +338,23 @@ own blocks name.
       - What `mode=` other than `view` means on a fence whose language is not
         `sngl`. Refusing it at the fence is the cheap answer and says so where
         it was written.
+
+### Three bugs the importer found, each fixed with its own commit and fixture
+
+None is about markdown; each is a gap a document was simply the first thing to
+reach.
+
+- A component an **import left standing** never had its body inlined. The
+  inliner walked `main` and the windows -- every root a *program* declares and
+  none of the ones the pass elects -- so `markup.list` written in an imported
+  component reached codegen as a node and html wrote `<list>`.
+- An imported package's **contexts** landed on a list nothing downstream
+  reads, which was a nil-map panic in `computeReachability`; and html then
+  spelled a synthesized reference bare while binding it under a promoted name,
+  which was a ReferenceError under markup that had rendered.
+- The optimizer's inliner **bound only the props the call site wrote**, so
+  `markup.listItem(marker="1.")` kept a bare `task` and every numbered list
+  item drew a stray disabled checkbox beside its ordinal.
 
 ## 4. Compile-time parse (later)
 
@@ -351,7 +387,10 @@ own blocks name.
       the claim is about the checker alone -- both nesting orders, every
       member, the bodied blocks as ordinary nodes, and a component joining the
       family by naming it and by inference.
-- [ ] Round-trip: a document imported twice is the same SNGL.
+- [x] Round-trip: a document imported twice is the same SNGL.
+      `codegen/scheme/markdown/convert_test.go` converts one sample five times
+      and compares, and parses the result -- the generated package is source,
+      so the first thing it owes anyone is to parse.
 
 ## 6. Acceptance
 

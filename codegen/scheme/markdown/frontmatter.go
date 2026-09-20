@@ -1,0 +1,106 @@
+package markdown
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+
+	snglast "git.duckfam.us/jonathan/sngl/ast"
+)
+
+// constDecl is one frontmatter key as the const the generated package writes.
+type constDecl struct {
+	name  string
+	value string // already spelled as SNGL source
+}
+
+// splitFrontmatter peels a leading `---` YAML block off src and returns its
+// scalars as consts, in the order they were written. goldmark does not parse
+// frontmatter, so the block is removed before it is handed over -- left in, it
+// reads as a thematic break followed by a heading.
+func splitFrontmatter(src []byte) ([]constDecl, []byte, error) {
+	rest, ok := bytes.CutPrefix(src, []byte("---\n"))
+	if !ok {
+		return nil, src, nil
+	}
+	end := bytes.Index(rest, []byte("\n---"))
+	if end < 0 {
+		return nil, src, fmt.Errorf("frontmatter opened with --- and is never closed")
+	}
+	block := rest[:end]
+	body := rest[end+len("\n---"):]
+	if i := bytes.IndexByte(body, '\n'); i >= 0 {
+		body = body[i+1:]
+	} else {
+		body = nil
+	}
+
+	// A yaml.Node rather than a map: the document's own key order is what the
+	// consts are written in, and a map hands back Go's.
+	var doc yaml.Node
+	if err := yaml.Unmarshal(block, &doc); err != nil {
+		return nil, nil, fmt.Errorf("frontmatter: %w", err)
+	}
+	if len(doc.Content) == 0 {
+		return nil, body, nil
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return nil, nil, fmt.Errorf("frontmatter is not a mapping")
+	}
+	var out []constDecl
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		key, val := root.Content[i], root.Content[i+1]
+		name := key.Value
+		if !isIdent(name) {
+			return nil, nil, fmt.Errorf("frontmatter key %q is not a SNGL identifier", name)
+		}
+		lit, ok := scalarLiteral(val)
+		if !ok {
+			// A list or a nested mapping has no const to be, and inventing a
+			// type for one is the importer deciding what the document meant.
+			return nil, nil, fmt.Errorf("frontmatter key %q is not a scalar", name)
+		}
+		out = append(out, constDecl{name: name, value: lit})
+	}
+	return out, body, nil
+}
+
+// scalarLiteral spells a YAML scalar as SNGL source. A bool and a number keep
+// their type; everything else is the string it was written as.
+func scalarLiteral(n *yaml.Node) (string, bool) {
+	if n.Kind != yaml.ScalarNode {
+		return "", false
+	}
+	switch n.Tag {
+	case "!!bool":
+		var b bool
+		if err := n.Decode(&b); err != nil {
+			return "", false
+		}
+		if b {
+			return "true", true
+		}
+		return "false", true
+	case "!!int", "!!float":
+		return n.Value, true
+	}
+	return `"` + snglast.EscapeString(n.Value, snglast.StyleDouble) + `"`, true
+}
+
+func isIdent(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r == '_', r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z':
+		case i > 0 && r >= '0' && r <= '9':
+		default:
+			return false
+		}
+	}
+	return !strings.ContainsAny(s, " ")
+}
