@@ -1440,6 +1440,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 			c.diags = append(c.diags, diags...)
 			exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 			c.mergePkgInto(exported, pkg)
+			c.adoptContexts(pkg)
 			irImport.Pkg = exported
 		} else {
 			native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
@@ -1530,6 +1531,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 				// view.
 				exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 				c.mergePkgInto(exported, pkg)
+				c.adoptContexts(pkg)
 				irImport.Pkg = exported
 				// The view is memoized, not the checked package: two importers
 				// of one directory must see one set of declarations, or a
@@ -1629,6 +1631,29 @@ func (c *checker) declPkg() *ir.Package {
 		return c.libLoadPkg
 	}
 	return c.pkg
+}
+
+// adoptContexts moves an imported package's contexts onto the program's own
+// list.
+//
+// A context is program-global whichever package declared it, which is the rule
+// declPkg already states for the library tiers: the loader leaves a `sngl:`
+// package's contexts on c.pkg so `#locale` reaches the program's codegen. A
+// directory or scheme import is a separate CheckPackage, so its contexts land
+// on a list nothing downstream reads -- and a component of that package
+// reading one then arrived at lower.computeReachability, which seeds its maps
+// from pkg.Contexts, with no entry to write to. That was a panic rather than a
+// wrong answer: "assignment to entry in nil map", with no position and no
+// mention of the import.
+func (c *checker) adoptContexts(src *ir.Package) {
+	if src == nil {
+		return
+	}
+	for _, ctx := range src.Contexts {
+		if !slices.Contains(c.pkg.Contexts, ctx) {
+			c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		}
+	}
 }
 
 func (c *checker) mergePkgInto(dst, src *ir.Package) {
