@@ -194,7 +194,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
 		return false
 	}
-	if len(c.Funcs) > 0 || len(c.Timers) > 0 {
+	if len(c.Funcs) > 0 {
 		return false
 	}
 	if len(c.Vars) == 0 {
@@ -369,12 +369,13 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
 	}
 
-	// Renders nothing *and* holds nothing: a component with state, a function
-	// or a timer is not empty even with no visual body, and dropping it takes
-	// its timer and its state with it. canInline asks the same four questions
-	// (inline_components.go), and asking only about Body here is how a
-	// timer-only component vanished from every platform with no diagnostic.
-	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+	// Renders nothing *and* holds nothing: a component with state or a function
+	// is not empty even with no visual body, and dropping it takes that state
+	// with it. canInline asks the same questions (inline_components.go), and
+	// asking only about Body here is how a timer-only component vanished from
+	// every platform with no diagnostic -- a timer is a node in the body now,
+	// so Body is what answers for one.
+	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		// A user component declaring nothing at all renders nothing, so the
 		// node goes rather than reaching a codegen that has to guess what an
 		// empty component means — each platform guessed differently, and two
@@ -482,12 +483,9 @@ func impurityReason(comp *ir.Component) string {
 	if len(comp.Funcs) > 0 {
 		parts = append(parts, fmt.Sprintf("func %q", comp.Funcs[0].Name))
 	}
-	if len(comp.Timers) > 0 {
-		parts = append(parts, "timer")
-	}
 	if len(parts) == 0 {
 		// Unreachable: the caller asks only when isPure said no, and isPure
-		// says no only for one of the three above.
+		// says no only for one of the two above.
 		return "state"
 	}
 	return strings.Join(parts, ", ")

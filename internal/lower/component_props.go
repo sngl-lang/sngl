@@ -116,13 +116,6 @@ func promoteProps(c *ir.Component) {
 			}
 		}
 	}
-	for _, t := range c.Timers {
-		t.Interval = renameInExpr(t.Interval, renames, symRenames)
-		t.Enabled = renameInExpr(t.Enabled, renames, symRenames)
-		if t.Handler != nil {
-			t.Handler.Block = renameIdents(t.Handler.Block, renames, symRenames)
-		}
-	}
 
 	// Ahead of the component's own vars, because a var initializer may read a
 	// prop and every backend initialises a record's cells in this order. A

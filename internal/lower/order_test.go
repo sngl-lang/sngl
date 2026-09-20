@@ -84,7 +84,6 @@ var alwaysOn = []string{
 	"RefLoop",
 	"RootWindow",
 	"StampUsage",
-	"TimerPrimitive",
 	"ViewForElse",
 	"WindowNesting",
 }

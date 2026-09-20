@@ -47,13 +47,6 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 				return err
 			}
 		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				if err := walk(t.Handler.Block); err != nil {
-					return err
-				}
-			}
-		}
 	}
 	for _, fn := range pkg.Funcs {
 		if err := walk(fn.Block); err != nil {

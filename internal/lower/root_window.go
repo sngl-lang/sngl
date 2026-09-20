@@ -81,9 +81,9 @@ func applyRootWindow(pkg *ir.Package, _ Caps, _ Options) error {
 // (CodegenCtx.ModelState), and a consumer that walks per owner has to inject
 // once (passReactivity's `injected`).
 //
-// comp.Timers is not moved: only passTimerPrimitive populates it, ~30 passes
-// later, so it is always empty here. A timer written in the body is an ordinary
-// statement in comp.Body, and applyRootWindow drops those -- see its own note.
+// A timer is not moved, and there is nothing to move: a timer primitive is an
+// ordinary node in comp.Body, and applyRootWindow drops the body -- see its
+// own note.
 func hoistRootState(comp *ir.Component, windows []*ir.Window) {
 	if comp == nil || len(windows) == 0 {
 		return

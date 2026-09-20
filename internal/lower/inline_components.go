@@ -191,8 +191,7 @@ type inlineCompState struct {
 	// is allowed to keep.
 	onList map[*ir.Component]bool
 	// hoist is where an inlined callee's own declarations land. Set per
-	// container as run() walks: a component holds all three slices, a window
-	// holds vars and funcs and borrows pkg.Timers.
+	// container as run() walks.
 	hoist hoistTarget
 	// captureOnly, while spliceNestedCaptures runs, is the set of nested
 	// components that round may splice. Nil for the main walk.
@@ -207,19 +206,16 @@ type inlineCompState struct {
 
 // Pointers rather than values because the append must be visible to the owner.
 type hoistTarget struct {
-	vars   *[]*ir.Var
-	funcs  *[]*ir.Func
-	timers *[]*ir.Timer
+	vars  *[]*ir.Var
+	funcs *[]*ir.Func
 }
 
 func componentHoist(c *ir.Component) hoistTarget {
-	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, timers: &c.Timers}
+	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs}
 }
 
-// A window has no timers of its own: the checker files a timer declared
-// outside a component on the package, so that is where a hoisted one goes too.
-func windowHoist(w *ir.Window, pkg *ir.Package) hoistTarget {
-	return hoistTarget{vars: &w.Vars, funcs: &w.Funcs, timers: &pkg.Timers}
+func windowHoist(w *ir.Window) hoistTarget {
+	return hoistTarget{vars: &w.Vars, funcs: &w.Funcs}
 }
 
 func (st *inlineCompState) run() error {
@@ -259,7 +255,7 @@ func (st *inlineCompState) run() error {
 		// instantiated inside windows must also be inlined.
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
-			st.hoist = windowHoist(w, st.pkg)
+			st.hoist = windowHoist(w)
 			wbody, wch, err := st.inlineStmts(w.Body)
 			if err != nil {
 				return err
@@ -493,7 +489,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 		return false
 	}
 	// Platform primitives and stdlib wrappers with no body cannot be inlined.
-	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return false
 	}
 	// Only inline components declared in this package, or a stdlib component
@@ -515,7 +511,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 // It does not ask what a nested node renders, because a stdlib component is
 // still abstract here -- a descent reads `text` as rendering nothing.
 func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
-	if comp == nil || len(comp.Timers) > 0 {
+	if comp == nil {
 		return false
 	}
 	renders := false
@@ -873,18 +869,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
 	}
-	timerStart := len(*hoist.timers)
-	for _, t := range comp.Timers {
-		clone := *t
-		clone.Interval = deepCloneExpr(t.Interval)
-		clone.Enabled = deepCloneExpr(t.Enabled)
-		if t.Handler != nil {
-			h := *t.Handler
-			h.Block = deepCloneStmts(t.Handler.Block)
-			clone.Handler = &h
-		}
-		*hoist.timers = append(*hoist.timers, &clone)
-	}
 
 	// Apply renames to every hoisted block.
 	for i := varStart; i < len(*hoist.vars); i++ {
@@ -904,13 +888,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = renameIdents((*hoist.funcs)[i].Block, renames, symRenames)
 	}
-	for i := timerStart; i < len(*hoist.timers); i++ {
-		t := (*hoist.timers)[i]
-		if t.Handler != nil {
-			t.Handler.Block = renameIdents(t.Handler.Block, renames, symRenames)
-		}
-	}
-
 	body := deepCloneStmts(comp.Body)
 	body = renameIdents(body, renames, symRenames)
 
@@ -941,7 +918,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	body = substituteParams(body, bindings)
 
-	// Prop refs may appear in the hoisted callee-scope Vars/Funcs/Timers too.
+	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
 		for _, h := range (*hoist.vars)[i].Handlers {
@@ -953,15 +930,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
 	}
-	for i := timerStart; i < len(*hoist.timers); i++ {
-		t := (*hoist.timers)[i]
-		t.Interval = substituteParamsExpr(t.Interval, bindings)
-		t.Enabled = substituteParamsExpr(t.Enabled, bindings)
-		if t.Handler != nil {
-			t.Handler.Block = substituteParams(t.Handler.Block, bindings)
-		}
-	}
-
 	body = substituteSlots(body, n)
 	body = substituteEvents(body, n.Handlers)
 

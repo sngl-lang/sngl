@@ -27,8 +27,9 @@ without a channel type there was nothing to declare it as. Direction is not
 spelled -- a receive-only channel is reachable because nothing writes a Go type
 for an expression that is only selected on.
 
-Three still carry a primitive of their own, which passTimerPrimitive takes out
-of the tree, and two of those are because an effect's `@mount` hands over a
+Three still carry a primitive of their own, which stands in the tree where it
+was written and which codegen reads the schedule off; two of those are because
+an effect's `@mount` hands over a
 *closure* and a closure is only a schedule where the host may run it against
 live state: bubbletea is Elm, so a tick has to arrive as a message and its body
 has to be a case Update runs, which is a period and a body together rather than

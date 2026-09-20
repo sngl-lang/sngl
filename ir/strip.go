@@ -106,9 +106,6 @@ func (s *stripper) stripPackage(pkg *Package) {
 	if pkg.Windows == nil {
 		pkg.Windows = []*Window{}
 	}
-	if pkg.Timers == nil {
-		pkg.Timers = []*Timer{}
-	}
 	if pkg.Outputs == nil {
 		pkg.Outputs = []*Output{}
 	}
@@ -141,9 +138,6 @@ func (s *stripper) stripPackage(pkg *Package) {
 	}
 	for _, w := range pkg.Windows {
 		s.stripWindow(w)
-	}
-	for _, t := range pkg.Timers {
-		s.stripTimer(t)
 	}
 	for _, o := range pkg.Outputs {
 		o.AST = nil
@@ -224,9 +218,6 @@ func (s *stripper) stripComponent(c *Component) {
 	if c.Funcs == nil {
 		c.Funcs = []*Func{}
 	}
-	if c.Timers == nil {
-		c.Timers = []*Timer{}
-	}
 	if c.Body == nil {
 		c.Body = []Stmt{}
 	}
@@ -244,9 +235,6 @@ func (s *stripper) stripComponent(c *Component) {
 	}
 	for _, f := range c.Funcs {
 		s.stripFunc(f)
-	}
-	for _, t := range c.Timers {
-		s.stripTimer(t)
 	}
 	s.stripStmts(c.Body)
 }
@@ -277,13 +265,6 @@ func (s *stripper) stripWindow(w *Window) {
 		s.stripFunc(f)
 	}
 	s.stripStmts(w.Body)
-}
-
-func (s *stripper) stripTimer(t *Timer) {
-	t.AST = nil
-	s.stripExpr(t.Interval)
-	s.stripExpr(t.Enabled)
-	s.stripFunc(t.Handler)
 }
 
 // --- Statements ---

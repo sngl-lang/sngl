@@ -139,9 +139,6 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 	for _, w := range pkg.Windows {
 		walkWindow(w, fns)
 	}
-	for _, t := range pkg.Timers {
-		walkTimer(t, fns)
-	}
 }
 
 func walkVar(v *ir.Var, fns walkFuncs) {
@@ -169,9 +166,6 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 			f.Block = fns.stmts(f.Block)
 		}
 	}
-	for _, t := range c.Timers {
-		walkTimer(t, fns)
-	}
 	if fns.stmts != nil {
 		c.Body = fns.stmts(c.Body)
 	}
@@ -197,28 +191,10 @@ func walkWindow(w *ir.Window, fns walkFuncs) {
 			f.Block = fns.stmts(f.Block)
 		}
 	}
-	// Only passTimerPrimitive puts a timer on a window; nothing in source does.
-	for _, t := range w.Timers {
-		walkTimer(t, fns)
-	}
 	if fns.stmts != nil {
 		w.Body = fns.stmts(w.Body)
 	}
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil && fns.stmts != nil {
 		w.ErrorHandler.Func.Block = fns.stmts(w.ErrorHandler.Func.Block)
-	}
-}
-
-func walkTimer(t *ir.Timer, fns walkFuncs) {
-	if fns.expr != nil {
-		if t.Interval != nil {
-			t.Interval = fns.expr(t.Interval)
-		}
-		if t.Enabled != nil {
-			t.Enabled = fns.expr(t.Enabled)
-		}
-	}
-	if t.Handler != nil && fns.stmts != nil {
-		t.Handler.Block = fns.stmts(t.Handler.Block)
 	}
 }

@@ -26,9 +26,6 @@ func walkIRColorLiterals(pkg *ir.Package, fn func(*ir.StructLit)) {
 	for _, win := range pkg.Windows {
 		w.window(win)
 	}
-	for _, t := range pkg.Timers {
-		w.timer(t)
-	}
 }
 
 type irLitWalker struct {
@@ -47,9 +44,6 @@ func (w *irLitWalker) component(c *ir.Component) {
 	}
 	for _, f := range c.Funcs {
 		w.fn_(f)
-	}
-	for _, t := range c.Timers {
-		w.timer(t)
 	}
 	w.stmts(c.Body)
 }
@@ -71,15 +65,6 @@ func (w *irLitWalker) window(win *ir.Window) {
 	if win.ErrorHandler != nil {
 		w.fn_(win.ErrorHandler.Func)
 	}
-}
-
-func (w *irLitWalker) timer(t *ir.Timer) {
-	if t == nil {
-		return
-	}
-	w.expr(t.Interval)
-	w.expr(t.Enabled)
-	w.fn_(t.Handler)
 }
 
 func (w *irLitWalker) fn_(f *ir.Func) {

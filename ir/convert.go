@@ -115,9 +115,6 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		}
 		stmts = append(stmts, c.convertWindow(w))
 	}
-	for _, t := range pkg.Timers {
-		stmts = append(stmts, c.convertTimer(t))
-	}
 	for _, ctx := range pkg.Contexts {
 		// Standard-library contexts arrive with the import, not from this
 		// package's source; emitting them would redeclare the name.
@@ -340,9 +337,6 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 		bodyStmts = append(bodyStmts, fd)
 	}
-	for _, t := range comp.Timers {
-		bodyStmts = append(bodyStmts, c.convertTimer(t))
-	}
 	if len(comp.Body) > 0 {
 		bodyBlock := c.convertStmtBlock(comp.Body)
 		bodyStmts = append(bodyStmts, bodyBlock.Stmts...)
@@ -405,11 +399,6 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	for _, f := range w.Funcs {
 		bodyStmts = append(bodyStmts, c.convertFuncDef(f))
 	}
-	// Only passTimerPrimitive puts a timer on a window, so this prints in
-	// `dump --stage lowered` and nowhere else.
-	for _, t := range w.Timers {
-		bodyStmts = append(bodyStmts, c.convertTimer(t))
-	}
 	for _, s := range w.Body {
 		bodyStmts = append(bodyStmts, c.convertStmt(s))
 	}
@@ -419,23 +408,6 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 			Stmts:       bodyStmts,
 			Pos:         ast.Pos{Line: 1},
 		}
-	}
-	return vn
-}
-
-func (c *converter) convertTimer(t *Timer) *ast.VisualNode {
-	vn := &ast.VisualNode{
-		Target: &ast.IdentExpr{Name: "timer"},
-	}
-	if t.Interval != nil {
-		vn.Args = ast.ArgList{
-			Args: []ast.ArgOrEventHandler{
-				ast.Arg{Value: c.convertExpr(t.Interval)},
-			},
-		}
-	}
-	if len(t.Handler.Block) > 0 {
-		vn.Block = c.convertStmtBlock(t.Handler.Block)
 	}
 	return vn
 }

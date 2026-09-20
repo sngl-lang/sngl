@@ -181,9 +181,9 @@ expressions together takes `walk.go`'s `walkPackage` (`passTernary`,
 `passIndexedIter`, `passNoRef`, `NoDeclarative`'s id scan); a pass wanting the
 *functions* a target may enter takes `async_offload.go`'s `offloadableFuncs`.
 The three enumerate the same owners and each used to say so in its own code,
-which is what let one of them forget a case the other two had. **A window owns
-timers** — `passTimerPrimitive` records a schedule on whichever owner held the
-node, and the inliner has by then put a top-level component's timer in the
+which is what let one of them forget a case the other two had. **A window used
+to own timers** — a lowering pass lifted each schedule onto whichever owner held
+the node, and the inliner has by then put a top-level component's timer in the
 window — and `walkWindow` and `offloadableFuncs` both walked a window's vars,
 funcs and body and not its timers. Nothing in source puts a timer there, so
 both gaps opened only after that pass ran and were invisible to every fixture
@@ -191,7 +191,9 @@ written before it: a ternary in a `@tick` panicked the Go emitter, a
 two-variable `sngl:seq` loop there emitted `for i, x := range` over a pull
 sequence, and a `#[go.async]` call there ran on fyne's drawing thread.
 `testdata/timer_tick_lowered.txtar` and `testdata/timer_tick_async_offload.txtar`
-pin the three.
+pin the three. Neither list exists any more: a timer primitive stays in the
+tree it was written in, so a tick is the `@tick` handler of an ordinary node and
+is reached wherever a node's handlers are.
 
 Two of the three now *ask* `ir.Owner` rather than restating it. `blocks.go`
 and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's timers and
@@ -242,7 +244,7 @@ the third, already had an `*ir.Lambda` arm in its rewriter.
 
 That was latent in a second place until a timer became an effect: the tick is
 then a closure handed to a host scheduler, so the same defects came back on
-fyne through an `ir.Lambda` instead of through a window's `Timers`.
+fyne through an `ir.Lambda` instead of through the window list a timer then had.
 `offloadableFuncs` leaves a lambda out for the reason above, with one
 exception -- the lambdas handed to a call that **says it schedules**. What
 calls an ordinary lambda is code the pass can read, and `xs.map(f)` wants the
@@ -371,7 +373,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
-- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node that `passTimerPrimitive` takes back out of the tree. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
+- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 - **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/async/` → `sngl:async`** — `spawn` and `post`: handing a closure somewhere else to run. They are each other's halves — `spawn` starts work that must not block the caller, `post` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.post` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
@@ -606,8 +608,8 @@ platform's `Timer` primitive.
 
 **A canvas keeps them and draws the rest.** `passCanvas` turns a canvas's shape
 children into a draw function, and then cleared `Children` outright — so the
-bracket went with the shapes, and it runs before `passEffect` and
-`passTimerPrimitive`, which therefore never saw one. A canvas that schedules
+bracket went with the shapes, and it runs before `passEffect`, and before the
+timer lowering that then existed, which therefore never saw one. A canvas that schedules
 its own animation compiled clean and never moved, on every target with a
 canvas, for as long as the rule above has allowed one to be written there.
 `treelessChildren` is what a canvas keeps now, and it mirrors `emitShapes`
@@ -744,13 +746,19 @@ already the `NodeInst` shape) and `passHoistState` moves it. `Funcs` is not the
 same case and cannot follow it: `ir` has no statement for a func declaration,
 `passCanvas` *appends* a synthesized draw func to `w.Funcs` with no source body
 to live in, and sixteen non-test sites read the per-window grouping to decide
-which funcs become that window's methods. `Timers` stays a field by decision
-(#243): three platforms now lower a timer to an effect, but bubbletea cannot —
-Elm lets nothing outside `Update` touch the model, and `Init()` needs a period
-and a body, which is what `ir.Timer` carries and the closure an `@mount` hands
-over cannot. Until those have a home, `checkTreeMembership` keeps a
-`*ir.Window` arm beside its `*ir.NodeInst` one, now reading the same two fields
-off the same kind of pointer.
+which funcs become that window's methods. `Timers` is **gone**, and with it
+`ir.Timer`: the record held an interval, a gate and a tick body, and every one
+of those is readable off the timer-primitive node -- the `interval` and
+`enabled` props and the `@tick` handler -- so it carried nothing the tree did
+not, while costing a field on three owners and a timer arm in nineteen walks.
+`codegen.CollectTimers` reads them, folding the enclosing `if` conditions onto
+the gate as the pass did. #243 is untouched by that: bubbletea still cannot
+lower a timer to an effect -- Elm lets nothing outside `Update` touch the model,
+and `Init()` needs a period and a body, which the closure an `@mount` hands over
+cannot carry -- and it still reads `CommonAnalysis.Timers`, which still carries
+both. Until `Funcs` has a home, `checkTreeMembership` keeps a `*ir.Window` arm
+beside its `*ir.NodeInst` one, now reading the same two fields off the same kind
+of pointer.
 
 **A root component's own state is hoisted into the window it lifts**, because
 that is where it is mounted — the component is an empty shell once the lift is

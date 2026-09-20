@@ -445,7 +445,7 @@ func hasRealComponentBody(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0 || len(comp.Timers) > 0
+	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // lowerComponentNodeIntoStmts emits the flat sequence for a NodeInst whose

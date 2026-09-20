@@ -4,12 +4,14 @@ A timer's `@tick` body is lowered like any other imperative body.
 window before either target's override is reached. The two targets here reach
 it by different routes, and each route had the same gap in a different place.
 
-bubbletea keeps a primitive, which passTimerPrimitive takes out of the tree and
-records on its owner. That owner is an `ir.Window`, and `walkWindow` in
+bubbletea keeps a primitive. It used to be lifted out of the tree onto its
+owner, and that owner was an `ir.Window`: `walkWindow` in
 internal/lower/walk.go -- the traversal passNoTernary, passIndexedIter,
 passNoRef and NoDeclarative's id scan all ride on -- walked a window's vars,
-funcs and body and not its timers. Nothing in source puts a timer there, so the
-omission was invisible until the pass that creates one ran.
+funcs and body and not its timers. Nothing in source put a timer there, so the
+omission was invisible until the pass that created one ran. The primitive stays
+in the tree now, so the tick is walked as the node handler it is and there is no
+second list to forget.
 
 fyne's override is an `effect`, so the tick is a lambda handed to a host
 scheduler -- and a lambda's body is an expression's insides, which walkPackage

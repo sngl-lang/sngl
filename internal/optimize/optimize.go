@@ -394,7 +394,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		// Skip native-scheme shells: they hold no SNGL bodies that the
 		// optimizer can act on.
 		if imp.Native != nil && len(imp.Pkg.Components) == 0 &&
-			len(imp.Pkg.Windows) == 0 && len(imp.Pkg.Timers) == 0 {
+			len(imp.Pkg.Windows) == 0 {
 			continue
 		}
 		if subCtx := r.foldPkg(imp.Pkg); subCtx != nil {
@@ -474,9 +474,6 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	for _, w := range pkg.Windows {
 		foldWindow(w, ctx)
 	}
-	for _, t := range pkg.Timers {
-		foldTimer(t, ctx)
-	}
 	slog.Debug("optimize: fold", "duration", time.Since(start))
 
 	if ctx.err != nil && r.err == nil {
@@ -506,9 +503,6 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 	for _, f := range comp.Funcs {
 		f.Block = foldStmts(f.Block, ctx)
 	}
-	for _, t := range comp.Timers {
-		foldTimer(t, ctx)
-	}
 	comp.Body = foldStmts(comp.Body, ctx)
 }
 
@@ -533,22 +527,7 @@ func foldWindow(w *ir.Window, ctx *evalCtx) {
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 		w.ErrorHandler.Func.Block = foldStmts(w.ErrorHandler.Func.Block, ctx)
 	}
-	for _, t := range w.Timers {
-		foldTimer(t, ctx)
-	}
 	w.Body = foldStmts(w.Body, ctx)
-}
-
-func foldTimer(t *ir.Timer, ctx *evalCtx) {
-	if t.Interval != nil {
-		t.Interval = foldExpr(t.Interval, ctx)
-	}
-	if t.Enabled != nil {
-		t.Enabled = foldExpr(t.Enabled, ctx)
-	}
-	if t.Handler != nil {
-		t.Handler.Block = foldStmts(t.Handler.Block, ctx)
-	}
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.

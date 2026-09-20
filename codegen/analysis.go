@@ -209,28 +209,21 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		}
 	}
 
-	// Every schedule the program describes, as passTimerPrimitive recorded it:
-	// one entry per placed timer primitive, wherever in the tree it was
-	// written, with its enclosing branch conditions folded into the gate.
+	// Every schedule the program describes: one entry per placed timer
+	// primitive, wherever in the tree it was written, with its enclosing branch
+	// conditions folded into the gate.
 	//
+	// Read off the tree rather than out of a side list a lowering pass filled.
 	// It used to be pkg.Timers plus `main`'s -- a list the checker hoisted every
 	// timer onto -- so a timer in any other component was checked, type-correct
-	// and never emitted at all.
-	schedules := append([]*ir.Timer{}, pkg.Timers...)
-	for _, comp := range pkg.Components {
-		if comp != nil {
-			schedules = append(schedules, comp.Timers...)
-		}
-	}
-	for _, win := range pkg.Windows {
-		if win != nil {
-			schedules = append(schedules, win.Timers...)
-		}
+	// and never emitted at all. Asking ir.Owners is what makes that class of gap
+	// unrepeatable: the enumeration says which declarations own a body, and this
+	// walks every one of them rather than naming two by hand.
+	var schedules []ScheduledTimer
+	for _, o := range ir.Owners(pkg) {
+		schedules = append(schedules, CollectTimers(o.Stmts())...)
 	}
 	for i, t := range schedules {
-		if t == nil || t.Handler == nil {
-			continue
-		}
 		activeVar := ""
 		if id, ok := t.Enabled.(*ir.Ident); ok {
 			activeVar = id.Name

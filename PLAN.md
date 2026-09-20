@@ -128,8 +128,9 @@ rubber-stamped.
 1. This plan. (done)
 2. `ir.FuncDecl` — introduce the statement, move a *component's* funcs onto it
    first, where there is no window in the picture. Proves the shape.
+   Taken after 3, at Jonathan's call.
 3. Delete `ir.Timer`: gate fold into `AnalyzeCommon`, `passTimerPrimitive`
-   deleted. 122 references across 42 files -- its own sitting.
+   deleted. (done -- 49 files, -621 lines, every golden byte-identical)
 4. `pkg.Windows` derived at codegen; `passRootWindow` deleted, root components
    left to ordinary inlining, the eight fixtures above rewritten.
 5. The 39 statement arms, once a window is no longer a statement kind.

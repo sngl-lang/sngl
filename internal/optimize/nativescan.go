@@ -91,9 +91,6 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		for _, f := range comp.Funcs {
 			scanStmts(f.Block, visit)
 		}
-		for _, t := range comp.Timers {
-			scanTimer(t, visit)
-		}
 		scanStmts(comp.Body, visit)
 	}
 	for _, w := range pkg.Windows {
@@ -103,13 +100,7 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		for _, f := range w.Funcs {
 			scanStmts(f.Block, visit)
 		}
-		for _, t := range w.Timers {
-			scanTimer(t, visit)
-		}
 		scanStmts(w.Body, visit)
-	}
-	for _, t := range pkg.Timers {
-		scanTimer(t, visit)
 	}
 	return found
 }
@@ -130,16 +121,6 @@ func isEvaluableNativeCall(call *ir.Call, ctx *evalCtx) bool {
 		}
 	}
 	return false
-}
-
-func scanTimer(t *ir.Timer, visit func(ir.Expr)) {
-	if t == nil {
-		return
-	}
-	scanExpr(t.Interval, visit)
-	if t.Handler != nil {
-		scanStmts(t.Handler.Block, visit)
-	}
 }
 
 func scanStmts(stmts []ir.Stmt, visit func(ir.Expr)) {

@@ -353,9 +353,6 @@ func (w *rewriter) component(c *Component) {
 	for _, f := range c.Funcs {
 		w.fn(f)
 	}
-	for _, t := range c.Timers {
-		w.timer(t)
-	}
 	c.Body = w.stmts(c.Body)
 }
 
@@ -378,9 +375,6 @@ func (w *rewriter) window(win *Window) {
 	if win.ErrorHandler != nil {
 		w.fn(win.ErrorHandler.Func)
 	}
-	for _, t := range win.Timers {
-		w.timer(t)
-	}
 	win.Body = w.stmts(win.Body)
 }
 
@@ -394,19 +388,6 @@ func (w *rewriter) varDecl(v *Var) {
 			w.fn(h.Func)
 		}
 	}
-}
-
-func (w *rewriter) timer(t *Timer) {
-	if w.done || t == nil {
-		return
-	}
-	if t.Interval != nil {
-		t.Interval = w.expr(t.Interval)
-	}
-	if t.Enabled != nil {
-		t.Enabled = w.expr(t.Enabled)
-	}
-	w.fn(t.Handler)
 }
 
 func (w *rewriter) pkg(pkg *Package) {
@@ -449,9 +430,6 @@ func (w *rewriter) pkg(pkg *Package) {
 	}
 	for _, c := range pkg.Components {
 		w.component(c)
-	}
-	for _, t := range pkg.Timers {
-		w.timer(t)
 	}
 	for _, win := range pkg.Windows {
 		w.window(win)

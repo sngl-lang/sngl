@@ -150,11 +150,6 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 				seedFromStmts(fn.Block)
 			}
 		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				seedFromStmts(t.Handler.Block)
-			}
-		}
 	}
 	for _, fn := range pkg.Funcs {
 		if !hasBody(fn) {
@@ -281,11 +276,6 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 				calls = append(calls, callsInBody(fn.Block, nil)...)
 			}
 		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				calls = append(calls, callsInBody(t.Handler.Block, nil)...)
-			}
-		}
 		return calls
 	}
 	// Direct ContextReads can also live in Vars/Funcs/Timers — mark those.
@@ -303,11 +293,6 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		for _, fn := range comp.Funcs {
 			if hasBody(fn) {
 				collectContextReads(fn.Block, out)
-			}
-		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				collectContextReads(t.Handler.Block, out)
 			}
 		}
 		return out
@@ -712,11 +697,6 @@ func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidde
 					fn.Block = w.stmts(fn.Block)
 				}
 			}
-			for _, t := range comp.Timers {
-				if t.Handler != nil {
-					t.Handler.Block = w.stmts(t.Handler.Block)
-				}
-			}
 		}
 		// pkg.Funcs (user-defined) bind reads to the pkg-level hidden Var.
 		// extraFuncs (stdlib wrappers) bind reads to their hidden Param.
@@ -864,11 +844,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		for _, fn := range comp.Funcs {
 			if hasBody(fn) {
 				fn.Block = lowerInStmts(fn.Block, compActive, reach, hidden)
-			}
-		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				t.Handler.Block = lowerInStmts(t.Handler.Block, compActive, reach, hidden)
 			}
 		}
 	}

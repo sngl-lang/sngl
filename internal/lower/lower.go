@@ -61,7 +61,6 @@ var passes = []pass{
 	// synthesized from an override's handler body.
 	passLibFuncs,
 	passEffect,
-	passTimerPrimitive,
 	passSlotChildInstances,
 	passInstanceEvents,
 	passComponentProps,
@@ -416,7 +415,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		// bodiless here. Judged so, it never joined the list, so a node of it
 		// that survived inlining had no declaration for a backend to emit --
 		// html called `__cf_timer(...)`, a factory nothing defined.
-		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && len(c.Timers) == 0 && !statefulOverrideFor(c, platform) {
+		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !statefulOverrideFor(c, platform) {
 			return
 		}
 		seen[c] = true

@@ -150,9 +150,6 @@ func irIdentifierTokens(pkg *ir.Package) []rawToken {
 	for _, win := range pkg.Windows {
 		w.window(win)
 	}
-	for _, t := range pkg.Timers {
-		w.timer(t)
-	}
 	return out
 }
 
@@ -185,9 +182,6 @@ func (w *irTokenWalker) component(c *ir.Component) {
 	for _, f := range c.Funcs {
 		w.fn_(f)
 	}
-	for _, t := range c.Timers {
-		w.timer(t)
-	}
 	w.stmts(c.Body)
 }
 
@@ -208,15 +202,6 @@ func (w *irTokenWalker) window(win *ir.Window) {
 	if win.ErrorHandler != nil {
 		w.fn_(win.ErrorHandler.Func)
 	}
-}
-
-func (w *irTokenWalker) timer(t *ir.Timer) {
-	if t == nil {
-		return
-	}
-	w.expr(t.Interval)
-	w.expr(t.Enabled)
-	w.fn_(t.Handler)
 }
 
 func (w *irTokenWalker) fn_(f *ir.Func) {

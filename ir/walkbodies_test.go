@@ -70,7 +70,6 @@ var carrierTypes = map[string]reflect.Type{
 	"Component":    reflect.TypeFor[Component](),
 	"Func":         reflect.TypeFor[Func](),
 	"Var":          reflect.TypeFor[Var](),
-	"Timer":        reflect.TypeFor[Timer](),
 	"EventHandler": reflect.TypeFor[EventHandler](),
 	"SlotContent":  reflect.TypeFor[SlotContent](),
 }
@@ -177,12 +176,10 @@ func bodiedPackage() *Package {
 			},
 		}},
 		Components: []*Component{{
-			Body:   body("Component.Body"),
-			Funcs:  []*Func{fn("Component.Funcs")},
-			Vars:   []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
-			Timers: []*Timer{{Handler: fn("Timer.Handler")}},
+			Body:  body("Component.Body"),
+			Funcs: []*Func{fn("Component.Funcs")},
+			Vars:  []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
 		}},
-		Timers: []*Timer{{Handler: fn("Timer.Handler")}},
 		Windows: []*Window{{
 			Body:         body("Window.Body"),
 			Funcs:        []*Func{fn("Window.Funcs")},

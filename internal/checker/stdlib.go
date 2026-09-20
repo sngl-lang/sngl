@@ -147,7 +147,7 @@ func parseStdlibDocs() []*ast.Document {
 //
 // Being ambient is the only way sngl:builtin is special. sngl:ui is
 // eager rather than special: it is loaded here because the checker needs its
-// node components to build ir.Window and ir.Timer at all, not because user
+// node components to build ir.Window at all, not because user
 // code sees it differently from sngl:ui/draw.
 //
 // Declarations are grouped by kind across a package's files and registered in

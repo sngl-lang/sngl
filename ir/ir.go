@@ -45,7 +45,6 @@ type Package struct {
 	// adds only an implementation for the ones it implements.
 	Macros  []*Func
 	Windows []*Window
-	Timers  []*Timer
 	Outputs []*Output
 	// RootComponent is the component a test harness isolated as the whole
 	// program, having cleared the body and the windows around it. Empty for
@@ -660,7 +659,6 @@ type Component struct {
 	ChildrenType *Type
 	Vars         []*Var
 	Funcs        []*Func
-	Timers       []*Timer
 	Body         []Stmt // type-checked body statements
 	// PlatformOverrides holds the body each target implements this component
 	// with, keyed by platform, and LanguageOverrides the same keyed by
@@ -816,7 +814,6 @@ type Window struct {
 	Handle       *Var `json:"-"`
 	Vars         []*Var
 	Funcs        []*Func
-	Timers       []*Timer
 	Body         []Stmt        // type-checked body statements
 	Checked      bool          // true if body was already checked in context (e.g., inside a for-loop)
 	ErrorHandler *EventHandler // optional @error handler; outermost error boundary for this window
@@ -861,13 +858,6 @@ const (
 
 // Timer represents a timer declaration at the component or package level.
 // The timer body is a Func so codegen can reuse function transform logic.
-type Timer struct {
-	AST      *ast.VisualNode
-	Interval Expr // checked interval expression (e.g., 500ms)
-	Enabled  Expr // optional bool expression gating the timer
-	Handler  *Func
-}
-
 // Output is one language/platform pair a build directive names, with the
 // options it carries. Only permitted in the program's own package.
 //

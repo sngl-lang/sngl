@@ -3381,12 +3381,6 @@ func (c *checker) pass2() {
 	c.checkPackageBody()
 	c.checkOutputTree()
 
-	// Check timer handler bodies (component timers are checked inside
-	// checkComponentBody so they can see component vars in scope).
-	for _, t := range c.pkg.Timers {
-		c.checkTimerBody(t)
-	}
-
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
 
@@ -4061,14 +4055,6 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 		}
 	}
 
-	// Check timer handler bodies inside the component scope so they can
-	// reference component-level vars/funcs. Timers themselves were attached
-	// to comp.Timers during the body pass above via the timer visual-node
-	// special case.
-	for _, t := range comp.Timers {
-		c.checkTimerBody(t)
-	}
-
 	// The body is captured rather than re-read: checkPendingExtensions swaps an
 	// override's statements onto the declaration for the length of one check
 	// and restores the base body after, so a drain-time read would check the
@@ -4381,17 +4367,6 @@ func extractBraceParams(s string) []string {
 		s = s[i+j+1:]
 	}
 	return out
-}
-
-func (c *checker) checkTimerBody(t *ir.Timer) {
-	if t.AST == nil || !t.AST.Block.IsDefined() {
-		return
-	}
-	defer c.fileOf(t.AST.Pos)()
-	c.pushScope()
-	defer c.popScope()
-	defer c.enterFuncBody()()
-	t.Handler.Block = c.checkBlockIR(&t.AST.Block)
 }
 
 // validateStringDomainLiteral checks whether a string literal is valid for a

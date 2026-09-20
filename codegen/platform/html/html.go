@@ -1039,11 +1039,6 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 				visit(fn.Block)
 			}
 		}
-		for _, t := range c.Timers {
-			if t != nil && t.Handler != nil {
-				visit(t.Handler.Block)
-			}
-		}
 		visitHandlers(c.Vars)
 	}
 	for _, w := range g.pkg.Windows {

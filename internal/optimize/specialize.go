@@ -72,9 +72,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// must be hoisted into the surrounding scope's state container. The
 	// optimizer's body-substitution path doesn't clone state — it only
 	// splices body statements. Leave stateful components to the lowering
-	// pass `passNoInlineComponents`, which properly clones Vars/Funcs/Timers
-	// into main with per-call-site rename suffixes.
-	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 || len(comp.Timers) > 0 {
+	// pass `passNoInlineComponents`, which properly clones Vars/Funcs into
+	// main with per-call-site rename suffixes.
+	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 {
 		return nil
 	}
 

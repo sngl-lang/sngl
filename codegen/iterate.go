@@ -23,7 +23,6 @@ type ComponentCtx struct {
 	Events    []*ir.EventDecl
 	Vars      []*ir.Var
 	Funcs     []*ir.Func
-	Timers    []*ir.Timer
 	Body      []ir.Stmt
 	Computeds []*ir.Func         // zero-param expression-body funcs
 	Handlers  []*ir.EventHandler // var-level event handlers
@@ -91,7 +90,6 @@ func componentsFor(comps []*ir.Component) []*ComponentCtx {
 			Events:    c.Events,
 			Vars:      c.Vars,
 			Funcs:     c.Funcs,
-			Timers:    c.Timers,
 			Body:      c.Body,
 		}
 		for _, f := range c.Funcs {

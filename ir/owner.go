@@ -33,7 +33,6 @@ type Owner struct {
 	Vars   []*Var
 	Consts []*Var
 	Funcs  []*Func
-	Timers []*Timer
 
 	// Handlers is what the declaration itself subscribes to, which today is a
 	// window's @error and nothing else -- a component catches with a boundary,
@@ -130,9 +129,9 @@ func Owners(pkg *Package) []Owner {
 		return nil
 	}
 	out := make([]Owner, 0, 1+len(pkg.Components)+len(pkg.Windows))
-	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Timers: pkg.Timers, Body: &pkg.Body})
+	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Body: &pkg.Body})
 	for _, c := range pkg.Components {
-		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Body: &c.Body})
+		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Body: &c.Body})
 	}
 	seen := make(map[*Window]bool, len(pkg.Windows))
 	addWin := func(w *Window) {
@@ -140,7 +139,7 @@ func Owners(pkg *Package) []Owner {
 			return
 		}
 		seen[w] = true
-		o := Owner{Pkg: pkg, Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Body: &w.Body}
+		o := Owner{Pkg: pkg, Win: w, Vars: w.Vars, Funcs: w.Funcs, Body: &w.Body}
 		if w.ErrorHandler != nil {
 			o.Handlers = []*EventHandler{w.ErrorHandler}
 		}

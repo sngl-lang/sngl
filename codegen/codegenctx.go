@@ -232,19 +232,14 @@ func (ctx *CodegenCtx) collectHandlers(stmts []ir.Stmt) []Handler {
 
 func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 	var timers []TimerHandler
-	allTimers := append([]*ir.Timer{}, ctx.Pkg.Timers...)
-	if main := ctx.RootDecl(); main != nil {
-		allTimers = append(allTimers, main.Timers...)
-	}
-	for _, w := range ctx.Pkg.Windows {
-		allTimers = append(allTimers, w.Timers...)
+	var allTimers []ScheduledTimer
+	for _, o := range ir.Owners(ctx.Pkg) {
+		allTimers = append(allTimers, CollectTimers(o.Stmts())...)
 	}
 	for i, t := range allTimers {
 		mutated := make(map[*ir.Var]struct{})
-		if t.Handler != nil {
-			for _, stmt := range t.Handler.Block {
-				maps.Copy(mutated, MutatedFields(nil, ctx.Deps, stmt))
-			}
+		for _, stmt := range t.Handler.Block {
+			maps.Copy(mutated, MutatedFields(nil, ctx.Deps, stmt))
 		}
 		activeVar := ""
 		if t.Enabled != nil {

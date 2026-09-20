@@ -386,11 +386,6 @@ func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *i
 		}
 	}
 	// Walk timer handler blocks.
-	for _, t := range comp.Timers {
-		if t.Handler != nil {
-			t.Handler.Block = walk(t.Handler.Block)
-		}
-	}
 }
 
 // rewriteStmtPropMutation converts Assign/Toggle targeting propName into an

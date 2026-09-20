@@ -205,9 +205,6 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 			for _, f := range s.Funcs {
 				walk(f)
 			}
-			for _, t := range s.Timers {
-				walkTimer(t, used, walk)
-			}
 			walkStmts(s.Body, used, walk)
 		}
 	}
@@ -227,13 +224,7 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 		for _, f := range w.Funcs {
 			walk(f)
 		}
-		for _, t := range w.Timers {
-			walkTimer(t, used, walk)
-		}
 		walkStmts(w.Body, used, walk)
-	}
-	for _, t := range pkg.Timers {
-		walkTimer(t, used, walk)
 	}
 	// Test functions are roots.
 	for _, f := range pkg.Funcs {
@@ -249,15 +240,6 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 	}
 
 	return used
-}
-
-func walkTimer(t *ir.Timer, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	if t.Interval != nil {
-		walkExpr(t.Interval, used, walk)
-	}
-	if t.Handler != nil {
-		walkFunc(t.Handler, used, walk)
-	}
 }
 
 func walkFunc(f *ir.Func, used map[ir.Symbol]bool, walk func(ir.Symbol)) {

@@ -43,6 +43,13 @@ func (cc *irComposeContext) line(format string, args ...any) {
 func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
+		// A schedule is not a composable. The timer primitive stays in the
+		// tree so the branch around it is answered there; AnalyzeCommon reads
+		// it and the LaunchedEffect it becomes is emitted with the model,
+		// not here.
+		if ir.IsTimerPrimitive(s.Component) {
+			return
+		}
 		cc.renderNode(s)
 	case *ir.If:
 		cc.renderIf(s)

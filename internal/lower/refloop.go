@@ -39,11 +39,6 @@ func lowerRefLoop(pkg *ir.Package, _ Caps, _ Options) error {
 			}
 		}
 		st.varHandlers(c.Vars)
-		for _, t := range c.Timers {
-			if t != nil && t.Handler != nil {
-				st.stmts(t.Handler.Block)
-			}
-		}
 	}
 	for _, w := range pkg.Windows {
 		st.stmts(w.Body)

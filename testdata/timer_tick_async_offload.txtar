@@ -5,8 +5,10 @@ target's own thread, and a tick has been missing from it twice, for two
 different reasons.
 
 It read each component's timers and the package's, and a window's vars, funcs
-and error handler but not its timers -- and passTimerPrimitive records a
-schedule on whichever owner held the node, so an inlined timer's is a window's.
+and error handler but not its timers -- a timer was lifted onto whichever owner
+held the node back then, so an inlined timer's was a window's. Both lists are
+gone with ir.Timer: a tick is the @tick handler of an ordinary node, reached
+wherever a node's handlers are.
 
 Both timers here are an `effect` now, so the tick is a lambda handed to
 `time.AfterFunc` or `gtk4rt.Every`, and a lambda is deliberately not an entry

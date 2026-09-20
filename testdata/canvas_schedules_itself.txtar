@@ -8,9 +8,9 @@ prose says scheduling inside a drawing is what an animated canvas is made of.
 
 It type-checked and rendered nothing. passCanvas turns a canvas's shape
 children into a draw function and then cleared `Children` outright, so the
-bracket went with the shapes -- and it runs at position 56, before passEffect
-at 60 and passTimerPrimitive at 61, so neither ever saw one. `frame` stayed 0
-and the drawing never moved, on every target with a canvas.
+bracket went with the shapes -- and it runs before passEffect, and before the
+timer lowering that then existed, so neither ever saw one. `frame` stayed 0 and
+the drawing never moved, on every target with a canvas.
 
 What a canvas keeps now is exactly the children belonging to no tree. They are
 not shapes, so the draw function does not want them; their lifetime is the

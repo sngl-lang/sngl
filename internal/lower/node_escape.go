@@ -88,11 +88,6 @@ func lowerNodeEscape(pkg *ir.Package, _ Caps, _ Options) error {
 		for _, v := range comp.Vars {
 			addVarHandlerScopes(v, &scopes)
 		}
-		for _, tm := range comp.Timers {
-			if tm.Handler != nil {
-				addScope(tm.Handler.Block, &tm.Handler.LocalRefs)
-			}
-		}
 	}
 	for _, w := range pkg.Windows {
 		addScope(w.Body, &w.LocalRefs)
@@ -105,19 +100,9 @@ func lowerNodeEscape(pkg *ir.Package, _ Caps, _ Options) error {
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			addScope(w.ErrorHandler.Func.Block, &w.ErrorHandler.Func.LocalRefs)
 		}
-		for _, tm := range w.Timers {
-			if tm.Handler != nil {
-				addScope(tm.Handler.Block, &tm.Handler.LocalRefs)
-			}
-		}
 	}
 	for _, v := range pkg.Vars {
 		addVarHandlerScopes(v, &scopes)
-	}
-	for _, tm := range pkg.Timers {
-		if tm.Handler != nil {
-			addScope(tm.Handler.Block, &tm.Handler.LocalRefs)
-		}
 	}
 
 	// Map each created ref id → its creating scope. A well-formed flattened
