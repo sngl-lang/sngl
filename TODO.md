@@ -89,10 +89,54 @@ own blocks name.
 - [ ] **gtk4** — Pango markup in a `GtkLabel`. Escape `&`, `<`, `>`; `<b>`,
       `<i>`, `<u>`, `<s>`, `<tt>`, `<a href>`, `<span foreground=>`. This is
       the first host that has to resolve the cascade itself.
-- [ ] **fyne** — `widget.RichText` segment list. Confirm whether
-      `RichTextStyle` carries underline and strikethrough; if not, a custom
-      `RichTextSegment` in `pkg/go/fynert` (a widget implementation, not a
-      language gap).
+- [ ] **fyne** — `widget.RichText` segment list. Read against fyne v2.7.4
+      before starting, and it carries less than the plan assumed. Four
+      findings, and the last two are what make this a fork rather than a task:
+
+      - **No strikethrough anywhere.** Not on `fyne.TextStyle`, not on
+        `canvas.Text`.
+      - **Underline exists and is not drawn.** `fyne.TextStyle.Underline` is
+        there, and nothing in `internal/painter` reads it -- its own comment
+        says TextGrid only. So `RichTextStyle` answers neither decoration.
+      - **A custom segment is atomic.** `richtext.go`'s row-bounds walk
+        measures and wraps `*widget.TextSegment` and nothing else; anything
+        else inline (`*HyperlinkSegment` is fyne's own example) occupies one
+        unbreakable box on the row. So a custom segment renders the two
+        decorations at the cost of never wrapping inside itself -- tolerable
+        for a run of emphasis, not for a paragraph, so the custom segment has
+        to be the exception and `*widget.TextSegment` the rule.
+      - **A span's color and size are not expressible on a segment at all.**
+        `RichTextStyle` carries a `ColorName` and a `SizeName` -- theme names,
+        resolved through `theme.ColorForWidget(name, parent)` -- and not an
+        RGBA or a px. A document that writes `color=#336699` has nowhere to
+        put it.
+
+      That last one has an answer already in this platform: generated themes
+      (`theme.go`, `fyneSpec.ThemeVar`), which is how every other fyne widget
+      gets a color. A flow would map the colors and sizes its runs asked for
+      onto distinct theme names and carry a theme that resolves them. It is
+      the right answer and it is most of the work.
+
+      So the fork, to settle before writing any of it:
+
+      1. **`widget.RichText` plus generated themes.** Inherits fyne's
+         wrapping and its list/paragraph segments; pays for color and size
+         with a theme per flow, and for the two decorations with a custom
+         atomic segment.
+      2. **A flow laid out in `pkg/go/fynert`.** `canvas.Text` runs in a
+         wrapping layout of our own: every field of `SpanStyle` reachable
+         directly, no theme gymnastics, no atomic runs -- and we own line
+         breaking, which is the thing `widget.RichText` is for.
+
+      The architecture sketch either way is settled and is html's division:
+      `Flow` and `Span` `#[intrinsic]` primitives in `fyne.sngl`, their
+      `fyneSpec` synthesized in `specFromProps` from the node's props rather
+      than read off a `spec` record (a `SpanStyle` literal has to be read by
+      the emitter, as it is on html and bubbletea, and `Arg.raw` is where the
+      Go for it goes). Everything downstream -- `OnCreateNode`,
+      `OnAppendChild`, `OnPropAssign`, the Model field, reactivity -- then
+      works unchanged, because a span is a value with an `Add` and a
+      `SetText` like any other node the platform builds.
 - [x] **bubbletea** — lipgloss. `Flow` and `Span` in `bubbletea.sngl`, a
       table of overrides, and the cascade resolved in `markup.go`: lipgloss
       renders a string and hands back a string, so the nesting is flattened at
