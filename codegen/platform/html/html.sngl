@@ -19,6 +19,7 @@ import . "sngl:macro"
 import . "sngl:internal/marks"
 import build "sngl:build"
 import shapes "sngl:ui/draw"
+import markup "sngl:ui/markup"
 import math "sngl:math"
 
 // The `html` node of a build directive: `output { js { html() } }`. Its props
@@ -404,6 +405,153 @@ component ui.avatar[platform] {
 
 component ui.card[platform] {
     html.div(style={borderRadius=8, padding=16, ...style}) {
+        content
+    }
+}
+
+// --- Rich text ---
+//
+// The span family, implemented the way every other family here is: a component
+// per member, each naming the element html already has for what the member
+// means. A flow is a tree of spans and this platform renders a tree of
+// elements, so the nesting carries over as it stands and the cascade is the
+// one CSS already applies -- which is what the family asks for, the five
+// typography fields being exactly the ones a browser inherits.
+//
+// The named faces are not lowered to `run` first. Each has an element that
+// says what it *is* -- `<strong>`, `<em>`, `<code>` -- and a document that
+// announces its emphasis to a screen reader is most of the reason to render
+// one on the web at all. `run` is the general case underneath, and it is the
+// only member that has to map a style field at a time.
+
+// The two elements a flow is built from. `element` above cannot serve: it
+// belongs to the widget family and hosts it, so a span written inside one is
+// the ordinary membership error. These are the same element by the time they
+// are emitted -- a tag, a style and children -- and differ only in the family
+// each joins, which is the whole of what a tree kind is for.
+//
+// `flow` is the box the words sit in and is a widget; `inline` is one of the
+// words and is a span. Both take their tag as a prop, so the vocabulary below
+// is a table of tags rather than a declaration per element.
+#[intrinsic("html:flow")]
+component flow(
+    tag string,
+    style ui.Style,
+    class string,
+    content ...component markup.span,
+) ui.node
+
+#[intrinsic("html:inline")]
+component inline(
+    tag string,
+    style ui.Style,
+    // What a `run` says about its own words. A `SpanStyle` and not a
+    // `ui.Style`: its five typography fields lead with a state that means "the
+    // span set nothing", and only a value carrying that distinction can be
+    // turned into CSS that leaves the enclosing words alone. `spanStyleCSS`
+    // is the half of this platform that reads it.
+    spanStyle markup.SpanStyle,
+    class string,
+    href string,
+    textContent string,
+    content ...component markup.span,
+) markup.span
+
+// The element a flow's role names. A heading announces as one, a quotation is
+// quoted, a code sample is preformatted; a role html has no element for is a
+// paragraph, which is what an unmarked run of prose is anyway.
+func roleTag(role markup.Role) string {
+    if role == markup.Role.heading1 {
+        return "h1"
+    } else if role == markup.Role.heading2 {
+        return "h2"
+    } else if role == markup.Role.heading3 {
+        return "h3"
+    } else if role == markup.Role.heading4 {
+        return "h4"
+    } else if role == markup.Role.heading5 {
+        return "h5"
+    } else if role == markup.Role.heading6 {
+        return "h6"
+    } else if role == markup.Role.quote {
+        return "blockquote"
+    } else if role == markup.Role.code {
+        return "pre"
+    } else if role == markup.Role.caption {
+        return "figcaption"
+    }
+    return "p"
+}
+
+// `preWrap` is the family's literal-whitespace rule, and html is the one host
+// that would otherwise collapse what the author wrote. It is written first so
+// a caller's own style wins, which is also how every other override here
+// orders its defaults.
+component markup.richText[platform] {
+    flow(tag=roleTag(role), style={whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
+        content
+    }
+}
+
+component markup.text[platform] {
+    inline(tag="span", textContent=value) {}
+}
+
+component markup.bold[platform] {
+    inline(tag="strong") {
+        content
+    }
+}
+
+component markup.italic[platform] {
+    inline(tag="em") {
+        content
+    }
+}
+
+component markup.underline[platform] {
+    inline(tag="u") {
+        content
+    }
+}
+
+component markup.strike[platform] {
+    inline(tag="s") {
+        content
+    }
+}
+
+component markup.monospace[platform] {
+    inline(tag="code") {
+        content
+    }
+}
+
+component markup.link[platform] {
+    inline(tag="a", href=href) {
+        content
+    }
+}
+
+// A class and not a color: what a keyword looks like is the page's to say, and
+// a document that named one would be unreadable against a theme it never heard
+// of.
+component markup.token[platform] {
+    inline(tag="span", class="sngl-tok-" + string(kind)) {
+        content
+    }
+}
+
+// The general run, and the one member with a style to map. A field the author
+// left alone has to emit no CSS at all -- `font-weight: normal` on an inner
+// span would un-bold the words around it, which is what the `inherit` members
+// of `SpanStyle` exist to prevent -- and which fields those are is a question
+// about a struct literal that only the emitter can ask. So the style is handed
+// over whole and `spanStyleCSS` decides, rather than a chain of components
+// here asking field by field: a prop is opaque to the `if` that would ask,
+// so every branch survived folding and the words came out once per branch.
+component markup.run[platform] {
+    inline(tag="span", spanStyle=style) {
         content
     }
 }

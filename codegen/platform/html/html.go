@@ -1678,9 +1678,27 @@ func preservesWhitespace(tag string) bool {
 	return false
 }
 
+// preservesWhitespaceNode is the same question asked of an element that says
+// so in its style rather than by being one of the two tags that always do.
+//
+// A flow of rich text is the case: its text is literal on every target, which
+// on the web means `white-space: pre-wrap`, and the pretty-printer's own
+// newline and indentation are inside the element and so are part of it. A
+// `<p>` is not whitespace-sensitive in general, so the tag cannot answer -- the
+// style has to.
+func (g *htmlGen) preservesWhitespaceNode(n *ir.NodeInst, tag string) bool {
+	return preservesWhitespace(tag) || strings.Contains(g.buildCSSStyle(n), "white-space:pre")
+}
+
 // stripInterTagWhitespace collapses whitespace between adjacent tags, so a
 // <pre>'s children do not carry the pretty-printer's indentation into the
 // output. Whitespace inside text nodes is preserved.
+//
+// Only a run holding a newline is the pretty-printer's: that is what it always
+// writes between two elements, and a text node of literal spaces never carries
+// one. Stripping every run instead ate the space between two words of a code
+// sample -- `<span> </span>` came out `<span></span>` -- which is precisely the
+// character a flow of rich text promises to keep.
 func stripInterTagWhitespace(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -1690,11 +1708,12 @@ func stripInterTagWhitespace(s string) string {
 		c := s[i]
 		if c == '>' {
 			b.WriteByte('>')
-			j := i + 1
+			j, nl := i+1, false
 			for j < n && (s[j] == ' ' || s[j] == '\t' || s[j] == '\n' || s[j] == '\r') {
+				nl = nl || s[j] == '\n' || s[j] == '\r'
 				j++
 			}
-			if j < n && s[j] == '<' {
+			if nl && j < n && s[j] == '<' {
 				i = j
 				continue
 			}
@@ -1705,7 +1724,7 @@ func stripInterTagWhitespace(s string) string {
 		i++
 	}
 	out := b.String()
-	return strings.TrimRight(out, " \t\n\r")
+	return strings.TrimRight(out, "\t\n\r")
 }
 
 const maxComponentDepth = 10
@@ -1758,6 +1777,12 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := g.buildCSSStyle(n)
+	if css := spanStyleCSS(n); css != "" {
+		if style != "" {
+			style += ";"
+		}
+		style += css
+	}
 	if css := canvasScalingCSS(n); css != "" {
 		if style != "" {
 			style += ";"
@@ -1777,9 +1802,9 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		if name == "style" || name == "class" {
 			continue
 		}
-		// Read into the element's CSS by canvasScalingCSS, and not an
-		// attribute any element has.
-		if name == "scalingMode" {
+		// Read into the element's CSS by canvasScalingCSS and spanStyleCSS,
+		// and not an attribute any element has.
+		if name == "scalingMode" || name == spanStyleProp {
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
@@ -1853,7 +1878,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		} else if staticInnerText != "" {
 			b.WriteString(html.EscapeString(staticInnerText))
 			fmt.Fprintf(b, "</%s>\n", tag)
-		} else if preservesWhitespace(tag) {
+		} else if g.preservesWhitespaceNode(n, tag) {
 			// A whitespace-sensitive tag renders its children inline: the
 			// pretty-printer's newlines would be visible in the output.
 			var sub strings.Builder
