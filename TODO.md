@@ -419,9 +419,57 @@ reach.
 
 ## 6. Acceptance
 
+**Both halves want a decision before they are written.** What each actually
+needs is below, found by reading the two files rather than by attempting them.
+
 - [ ] Rewrite `internal/learn/getting_started.sngl` as markdown with live
       `sngl` fences.
+
+      **What is in the way: the tutorial's prose is inside its conditionals.**
+      It holds `var runPlatform`, four buttons that set it, and a run of
+      `if runPlatform == "bubbletea" { CodeBlock(...) Paragraph(...) }` --
+      prose and samples *inside* a branch, and that is most of the file.
+
+      A `body` fence holds complete statements, so an `if` written in one takes
+      its branches with it, and the prose inside them has to be written as
+      `markup.paragraph { markup.text(...) }` by hand. Markdown would survive
+      in the eighth of the file that is unconditional and nowhere else, which
+      is not the rewrite this item means.
+
+      Three ways out, none of them free:
+
+      - **A paired fence** -- one that opens a block and a later one that
+        closes it -- so prose between two fences is inside the branch. It is
+        the obvious answer and it is also the one that makes a document's
+        blocks no longer nest the way the document does: a mismatched pair is
+        a new class of error with nothing local to report it against.
+      - **A slotted component per branch**, written in a `package` fence and
+        given the prose as children by an `island`. Expressible today, and it
+        moves the conditional out of the prose rather than letting prose sit
+        inside one.
+      - **Drop the interactivity** and show every platform's instructions,
+        which is what most tutorials do and what markdown is shaped for.
+
 - [ ] Delete `internal/docui/markdown.sngl` and its `innerHTML` path.
+
+      **`md:` does not replace it, and neither would §4 on its own.** The name
+      is misleading: `docui.Markdown` renders no markdown. Its `src` is
+      *already-rendered HTML*, produced Go-side -- `lookup.DeclPage.Body` says
+      so in as many words ("rendered HTML body (already markdown-converted)"),
+      and the other three call sites are a component preview, a
+      chroma-rendered code sample and a doc page's body. It is an HTML sink.
+
+      And its four call sites are inside `for` loops over *data*
+      (`docs.Pages()`, `lookup.AllDeclPages()`), not over a fixed list of
+      files. An import names one document at build time, so nothing about the
+      `md:` scheme reaches a page whose existence is a row in a slice.
+
+      What would close it is a different change: the Go side handing back
+      markdown *source* instead of HTML, and §4's compile-time parse over the
+      const string that results, folded per iteration of the loop. Worth doing
+      and worth costing separately -- it is the `innerHTML` path's real
+      replacement and it is not this branch's.
+
 - [ ] Reconsider the rest of `internal/docui` — `Heading1`, `Paragraph`,
       `CodeBlock`, `Table` are the block vocabulary the importer now emits, so
       they may belong in `lib/` rather than in an internal package.
