@@ -276,12 +276,8 @@ be dumped and read. `testdata/markdown_import.txtar` is the golden and
       an unclassified identifier are spans a reader of the tree can see. A
       language chroma does not know, and a fence that named none, is one plain
       run.
-- [ ] **Live fences.** Unstarted. The spelling is settled -- a `mode=` trailer
-      on the info line, four modes naming the scope the source lands in -- and
-      the entry below is unchanged. The importer ignores the trailer today,
-      which is exactly `view`: goldmark's `Language()` splits the info string
-      at the first space, so such a fence already highlights and shows like any
-      other.
+- [x] **Live fences.** All four modes, and the four questions the spelling
+      left open are answered below.
 - [ ] `list` / `listItem` overrides per platform, and the task item's real
       `<input type=checkbox>` inside an `<li>`. Still open, still optional --
       the default bodies render on every target, which is what the golden
@@ -289,55 +285,84 @@ be dumped and read. `testdata/markdown_import.txtar` is the golden and
 
 ### Live fences -- the settled spelling
 
-      A fence whose content should become components rather than text -- the
-      thing that lets a tutorial show a running example beside its source. The
-      spelling is a **`mode=` trailer on the info line** (Jonathan's call):
-      ` ```sngl mode=island `. goldmark's `Language()` splits the info string
-      at the first space and `Info.Segment` carries the rest, so the fence
-      still reports `sngl` and still highlights through the chroma path every
-      other fence uses -- a trailer costs the default path nothing.
+A fence whose content becomes components rather than text -- the thing that
+lets a tutorial show a running example beside its source. The spelling is a
+**`mode=` trailer on the info line** (Jonathan's call): ` ```sngl mode=island `.
+goldmark's `Language()` splits the info string at the first space and
+`Info.Segment` carries the rest, so the fence still reports `sngl` and still
+highlights through the chroma path every other fence uses -- a trailer costs
+the default path nothing.
 
-      Four modes, and what separates them is **which scope the source lands
-      in** rather than how it is parsed:
+Four modes, and what separates them is **which scope the source lands in**
+rather than how it is parsed:
 
-      - **`view`** -- the default, and what every fence in every other language
-        already is. Handled like any other code fence: shown, highlighted, not
-        compiled. Never written, being the default.
-      - **`island`** -- wrapped in a component of its own, with its imports
-        hoisted to the generated package and its `output` blocks dropped. The
-        isolation is the point and is what the name says: an example is not
-        the host application, so two islands each writing `var n = 0` are two
-        examples and neither reaches the other. This is the mode the "running
-        example beside its source" case wants, and it is the word this file
-        already used for a document's snippets before there were modes.
-      - **`package`** -- package-level declarations, and what they are for is
-        the component the page gets wrapped in: a document can then be handed
-        props and can set context values for everything under it.
-      - **`body`** -- placed directly into the generated document's own
-        component body, as raw source, at the position it was written. The
-        positional counterpart of `package`: `package` declares, `body`
-        emits.
+- **`view`** -- the default, and what every fence in every other language
+  already is. Shown, highlighted, not compiled. Never written, being the
+  default.
+- **`island`** -- a component of its own, inserted where the fence was, with
+  its imports hoisted and its `output` blocks dropped.
 
-      The three written modes name the scope the source lands in, which is
-      also what keeps them clear of three terms this repository already spends
-      precisely. `inline` is the inliner and is markup's own inline-vs-block
-      distinction; `root` is `sngl:ui`'s root family, the thing that makes a
-      window top-level; and a `view` body is what renders, which is the
-      opposite of the fence that does not. `view` keeps the name anyway, being
-      the default and so never written.
+  The isolation is the language's own rather than a mechanism this importer
+  built: the whole fence goes in the component's **body**, where a `var` is
+  that component's state and a `struct`, `enum`, `unit` or nested `component`
+  is scoped to that body. So two islands each writing `var n = 0` are two
+  examples and neither reaches the other, and neither reaches the page.
 
-      Four things the modes do not settle and the implementation will reach:
+  What follows from that is the contract: an island *is* a component body.
+  An example that wants a `window` has nowhere to put one, a `window` being a
+  member of `sngl:ui`'s root family and a body accepting `ui.node`.
+- **`package`** -- package-level declarations, and nothing at the position it
+  was written. **Declarations only** (Jonathan's call): it contributes funcs,
+  consts, types, contexts and components that the document's islands and body
+  fences can name. It selects no wrapper and nothing is reserved -- the
+  question of how one would have been named is retracted with the feature.
+- **`body`** -- the statements it holds, placed into the generated document's
+  own component body at the position it was written. The positional
+  counterpart of `package`: `package` declares, `body` emits.
 
-      - Whether an `island` or `body` fence also *shows* its source. The entry
-        above has always said a live fence leaves the `richText` and splices
-        the components, so both is the standing answer for `island`;
-        `package` has no position to show at, and `body` is a judgment call.
-      - How a `package` fence's wrapper component is named or selected.
-      - What an island's hoisted import does when two of them claim one alias,
-        or when one claims an alias the document already uses.
-      - What `mode=` other than `view` means on a fence whose language is not
-        `sngl`. Refusing it at the fence is the cheap answer and says so where
-        it was written.
+The three written modes name the scope the source lands in, which is also what
+keeps them clear of three terms this repository already spends precisely.
+`inline` is the inliner and is markup's own inline-vs-block distinction; `root`
+is `sngl:ui`'s root family, the thing that makes a window top-level; and a
+`view` body is what renders, which is the opposite of the fence that does not.
+`view` keeps the name anyway, being the default and so never written.
+
+The four things the modes did not settle, now settled:
+
+- **A live fence does not also show its source** (Jonathan's call), for any of
+  the three. An example is what it does, and a document that wants both writes
+  both -- which costs nothing, the two fences being the two things they are.
+- **A `package` fence names no wrapper**, above.
+- **Imports are hoisted as written, and collapsed when redundant** (Jonathan's
+  call). Rewriting an alias means resolving every name under it, which is
+  checking, and this importer emits source *for* the checker rather than doing
+  its work. The same alias for the same path, twice, is one import; the two
+  the generated package always writes are seeded into that set, so a fence
+  importing `sngl:ui` as `ui` adds nothing. A genuine conflict reaches the
+  checker as the program it is, and fails there.
+
+  The cost is written down in
+  `cmd/sngl/testdata/markdown_live_fence_errors.txt`: the diagnostic names
+  `document.sngl`, the generated file, which the author cannot open. A second
+  check in the importer would fix that and is the thing this decision declines
+  to build.
+- **`mode=` on a fence whose language is not `sngl` is an error**, named at the
+  fence. So is a mode value nobody defined.
+
+  An *unrecognised trailer* is not. The info line is shared vocabulary -- a doc
+  site reads `title=` and `linenos` off it -- and refusing one would turn a
+  document that renders everywhere else into a build failure. The cost is that
+  `mod=island` is silently `view`; `mode=islnd` is not, being a value this does
+  name.
+
+A mistake inside a fence reports the **markdown file and line**, because the
+position a checker would report is the `import` that read the document and says
+nothing about where in it the mistake was written. That is what the frontmatter
+splitter's line count is for: goldmark never sees those lines.
+
+`testdata/markdown_live_fences.txtar` is the golden -- two islands with a `var n`
+each, coming out as two cells with different values -- and
+`cmd/sngl/testdata/markdown_live_fence_errors.txt` the diagnostics.
 
 ### Three bugs the importer found, each fixed with its own commit and fixture
 

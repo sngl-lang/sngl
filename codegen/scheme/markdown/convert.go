@@ -24,7 +24,7 @@ const DocumentComponent = "document"
 // Convert turns markdown into the source of a SNGL package holding one
 // component. name is the markdown file's own name and appears in the header.
 func Convert(src []byte, name string) (string, error) {
-	front, body, err := splitFrontmatter(src)
+	front, body, lineOffset, err := splitFrontmatter(src)
 	if err != nil {
 		return "", fmt.Errorf("md: %s: %w", name, err)
 	}
@@ -32,27 +32,58 @@ func Convert(src []byte, name string) (string, error) {
 	// one document is a difference nobody would look for.
 	doc := goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser().Parse(text.NewReader(body))
 
-	e := &emitter{src: body}
+	// The document's own component body is written first, because walking it
+	// is what discovers the imports a live fence hoists and the declarations a
+	// `package` fence contributes -- and both of those are written above it.
+	state := &docState{
+		name:        name,
+		lineOffset:  lineOffset,
+		seenImports: map[importDecl]bool{},
+	}
+	var err0 error
+	inner := &emitter{src: body, depth: 2, err: &err0, doc: state}
+	inner.blocks(doc, false)
+
+	e := &emitter{src: body, err: &err0, doc: state}
 	e.linef("// Generated from %s by the md: import scheme; DO NOT EDIT.", name)
 	e.line("")
 	e.line(`import ui "sngl:ui"`)
 	e.line(`import markup "sngl:ui/markup"`)
+	for _, imp := range state.imports {
+		e.line(imp.line())
+	}
 	if len(front) > 0 {
 		e.line("")
 		for _, c := range front {
 			e.linef("const %s = %s", c.name, c.value)
 		}
 	}
+	for _, decl := range state.decls {
+		e.line("")
+		e.emitLines(decl)
+	}
 	e.line("")
-	e.wrap("component "+DocumentComponent+" ui.node", "", func(e *emitter) {
-		e.wrap("ui.vbox", "style={gap=12}", func(e *emitter) {
-			e.blocks(doc, false)
-		})
-	})
-	if e.err != nil && *e.err != nil {
-		return "", fmt.Errorf("md: %s: %w", name, *e.err)
+	e.line("component " + DocumentComponent + " ui.node {")
+	e.line("    ui.vbox(style={gap=12}) {")
+	e.b.WriteString(inner.b.String())
+	e.line("    }")
+	e.line("}")
+	if err0 != nil {
+		return "", fmt.Errorf("md: %s: %w", name, err0)
 	}
 	return e.b.String(), nil
+}
+
+// docState is what the walk discovers about the whole document rather than
+// about one block: the imports live fences hoisted, the declarations they
+// contributed, and what to call the next island.
+type docState struct {
+	name        string
+	lineOffset  int // lines the frontmatter took, so a fence reports its own
+	imports     []importDecl
+	seenImports map[importDecl]bool
+	decls       []string
+	islands     int
 }
 
 type emitter struct {
@@ -60,6 +91,7 @@ type emitter struct {
 	src   []byte
 	depth int
 	err   *error // shared with every nested emitter, so the first failure wins
+	doc   *docState
 }
 
 func (e *emitter) line(s string) {
@@ -93,7 +125,7 @@ func (e *emitter) wrap(head, args string, body func(*emitter)) {
 	if args != "" {
 		head += "(" + args + ")"
 	}
-	inner := &emitter{src: e.src, depth: e.depth + 1, err: e.errp()}
+	inner := &emitter{src: e.src, depth: e.depth + 1, err: e.errp(), doc: e.doc}
 	body(inner)
 	if inner.b.Len() == 0 {
 		e.line(head)
@@ -134,9 +166,11 @@ func (e *emitter) block(n gast.Node, quoted bool) {
 	case *gast.Blockquote:
 		e.blocks(n, true)
 	case *gast.FencedCodeBlock:
-		e.codeBlock(n, languageOf(n, e.src))
+		e.fence(n)
 	case *gast.CodeBlock:
-		e.codeBlock(n, "")
+		// An indented code block has no info line, so it has no mode and is
+		// always a sample.
+		e.codeBlock(strings.TrimSuffix(string(linesOf(n, e.src)), "\n"), "")
 	case *gast.ThematicBreak:
 		e.line("ui.divider")
 	case *gast.List:
@@ -219,11 +253,52 @@ func takeTask(n *gast.ListItem) string {
 	return "todo"
 }
 
-func (e *emitter) codeBlock(n gast.Node, language string) {
-	// The last line's newline belongs to the closing fence rather than to the
-	// sample: kept, every code block ends in an empty plain token and a blank
-	// line the author did not write.
+// fence emits a code fence in whichever scope its `mode=` trailer named. The
+// three live modes show nothing: an island is a component, a package fence is
+// declarations, and a body fence is the statements it holds at the position it
+// was written -- none of them is also a sample of itself.
+func (e *emitter) fence(n *gast.FencedCodeBlock) {
+	language := languageOf(n, e.src)
 	source := strings.TrimSuffix(string(linesOf(n, e.src)), "\n")
+	// A fence with no info line at all has no mode either, so the position it
+	// would report is the first byte of what it holds.
+	where := e.doc.name
+	switch {
+	case n.Info != nil:
+		where = e.pos(n.Info.Segment.Start)
+	case n.Lines().Len() > 0:
+		seg := n.Lines().At(0)
+		where = e.pos(seg.Start)
+	}
+	switch e.fenceModeOf(n, language) {
+	case modeIsland:
+		imports, rest := e.liveSource(source, where)
+		e.doc.addImports(imports)
+		e.doc.islands++
+		name := fmt.Sprintf("island%d", e.doc.islands)
+		// The whole of the fence goes in the component's *body*, which is
+		// what makes two islands two examples: a `var` there is that
+		// component's own state and a `struct` or nested `component` is
+		// scoped to that body, so neither reaches the other and neither
+		// reaches the page.
+		decl := &emitter{src: e.src, depth: 1, err: e.errp(), doc: e.doc}
+		decl.emitLines(rest)
+		e.doc.decls = append(e.doc.decls, "component "+name+" ui.node {\n"+decl.b.String()+"}")
+		e.line(name)
+	case modePackage:
+		imports, rest := e.liveSource(source, where)
+		e.doc.addImports(imports)
+		e.doc.decls = append(e.doc.decls, rest)
+	case modeBody:
+		imports, rest := e.liveSource(source, where)
+		e.doc.addImports(imports)
+		e.emitLines(rest)
+	default:
+		e.codeBlock(source, language)
+	}
+}
+
+func (e *emitter) codeBlock(source, language string) {
 	e.wrap("markup.codeBlock", "", func(e *emitter) {
 		for _, t := range tokenize(source, language) {
 			e.wrap("markup.token", "kind=markup.Token."+t.kind, func(e *emitter) {
