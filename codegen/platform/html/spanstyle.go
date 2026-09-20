@@ -69,7 +69,7 @@ func spanStyleCSS(n *ir.NodeInst) string {
 			}
 			parts = append(parts, htmlutil.StylePropToCSSIR(f.Name, f.Value))
 		case "color":
-			if transparentColor(f.Value) {
+			if codegen.SpanStyleUnsetColor(f.Value) {
 				continue
 			}
 			parts = append(parts, htmlutil.StylePropToCSSIR(f.Name, f.Value))
@@ -89,23 +89,4 @@ func spanStyleCSS(n *ir.NodeInst) string {
 		}
 	}
 	return strings.Join(out, ";")
-}
-
-// transparentColor reports whether a color literal is the one a `SpanStyle`
-// says "no color" with: alpha zero, which is the one value that cannot also be
-// a choice, since nothing painted with it would be visible.
-func transparentColor(e ir.Expr) bool {
-	sl, ok := e.(*ir.StructLit)
-	if !ok {
-		return false
-	}
-	for _, f := range sl.Fields {
-		if f.Name != "a" {
-			continue
-		}
-		lit, ok := f.Value.(*ir.Literal)
-		return ok && lit.Value == "0"
-	}
-	// No alpha written at all is an opaque color: `#336699` fills it in.
-	return false
 }

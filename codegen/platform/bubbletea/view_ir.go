@@ -448,6 +448,16 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 	style := buildIRStyleExpr(styleFields, vc.gc, vc.scaleFactor)
 
 	switch bp.Kind {
+	case bpFlow:
+		vc.renderFlow(n, resultVar)
+
+	case bpSpan:
+		// A Span outside a Flow: the family's own membership rule makes that
+		// impossible from source, so reaching here means one was rendered
+		// without its flow. Render it as its own flow rather than dropping it.
+		vc.line(`%s = ""`, resultVar)
+		vc.renderSpan(n, resultVar, spanCascade{})
+
 	case bpOverlay:
 		// An Overlay (modal/drawer body) must NOT join inline into resultVar.
 		// Render its children (joined vertically, then styled) into a private

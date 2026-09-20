@@ -8,6 +8,7 @@
 
 import ui "sngl:ui"
 import time "sngl:time"
+import markup "sngl:ui/markup"
 import . "sngl:macro"
 import . "sngl:internal/marks"
 import tree "sngl:tree"
@@ -478,4 +479,84 @@ component Timer(
 
 component time.timer[platform] {
     Timer(interval=interval, enabled=enabled, @tick { tick() }) {}
+}
+
+// --- Rich text ---
+//
+// The span family, implemented the way every other family here is: two
+// primitives and a table of overrides. lipgloss has no inheritance -- a style
+// is applied to a string and the result is a string -- so the cascade an
+// author wrote is resolved in the emitter, one leaf at a time, and each run of
+// words is rendered exactly once with the style it ends up with. Rendering a
+// joined flow a second time would not work even if it were tidier: the inner
+// runs have left their reset sequences in the string, and an outer color would
+// stop at the first of them.
+//
+// A terminal has one face and one size, so `fontFamily` and `fontSize` say
+// nothing here -- which is also why `monospace` needs no override of its own:
+// the `run` the stdlib body wraps it in already reaches `Span`, and its
+// `fontFamily` is a field the emitter has nothing to do with.
+
+// A flow of spans, as a node. `richText` cannot insert its own content -- the
+// component is a `ui.node` and its slot is the span family -- so something has
+// to join the widget family and host the span one.
+//
+// `role` is not taken. A terminal has the styling and none of the semantics,
+// which `markup.Role`'s own documentation says; what a heading looks like
+// arrives in `style`, and that is the whole of what this target can show.
+#[intrinsic("bubbletea:Flow")]
+component Flow(
+    style ui.Style,
+    content ...component markup.span,
+) ui.node
+
+// One run of words. `text` is the literal a leaf carries, `spanStyle` what
+// this run says about its own appearance, and `kind` what a `token` says it
+// is -- read by the emitter, which maps it to one of the terminal's own
+// sixteen colors rather than to a value a document chose.
+#[intrinsic("bubbletea:Span")]
+component Span(
+    text string,
+    spanStyle markup.SpanStyle,
+    kind markup.Token,
+    content ...component markup.span,
+) markup.span
+
+component markup.richText[platform] {
+    Flow(style={...style}) {
+        content
+    }
+}
+
+component markup.text[platform] {
+    Span(text=value) {}
+}
+
+component markup.run[platform] {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+// A terminal cannot follow a link, so the URL is dropped and the words are
+// underlined -- which is how a link reads in one, and is the same trade
+// `ui.link` above already makes. Written as a style rather than as a prop the
+// emitter reads, because the family's own vocabulary already says it.
+component markup.link[platform] {
+    Span(spanStyle={underline=true}) {
+        content
+    }
+}
+
+component markup.token[platform] {
+    Span(kind=kind) {
+        content
+    }
+}
+
+// Nothing here can draw, so the description is what an image is: the words
+// between the brackets, in brackets, which is the form `ui.image` renders its
+// own placeholder in.
+component markup.image[platform] {
+    Span(text="[{alt}]") {}
 }

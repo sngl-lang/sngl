@@ -117,6 +117,12 @@ const (
 	bpLayout
 	bpWidget
 	bpOverlay
+	// bpFlow and bpSpan are the rich-text pair. Unlike the four above they
+	// are decided by the #[intrinsic] id alone: a Span carries no prop that
+	// is its own, since a run of words with nothing said about it is the
+	// common case.
+	bpFlow
+	bpSpan
 )
 
 // joinDir mirrors the JoinDir enum declared in bubbletea.sngl. It selects the
@@ -224,6 +230,10 @@ func extractBlueprint(n *ir.NodeInst) blueprint {
 	placementProp := codegen.NodeProp(n, "placement")
 
 	switch {
+	case btIntrinsic(n) == "Flow":
+		bp.Kind = bpFlow
+	case btIntrinsic(n) == "Span":
+		bp.Kind = bpSpan
 	case btIntrinsic(n) == "Overlay" || placementProp != nil:
 		bp.Kind = bpOverlay
 		bp.Placement = placementProp

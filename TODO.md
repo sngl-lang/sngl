@@ -93,8 +93,22 @@ own blocks name.
       `RichTextStyle` carries underline and strikethrough; if not, a custom
       `RichTextSegment` in `pkg/go/fynert` (a widget implementation, not a
       language gap).
-- [ ] **bubbletea** — lipgloss. `image` has to render its description; that is
-      the platform answering rather than dropping it.
+- [x] **bubbletea** — lipgloss. `Flow` and `Span` in `bubbletea.sngl`, a
+      table of overrides, and the cascade resolved in `markup.go`: lipgloss
+      renders a string and hands back a string, so the nesting is flattened at
+      compile time and each run of words is rendered exactly once with the
+      style it ends up with. A second render over the joined flow is not the
+      tidier alternative -- the runs inside it have left their reset sequences
+      in the string, and an outer color stops at the first of them -- so a
+      flow's typography seeds the words and only its box style reaches the
+      block.
+
+      Three answers a terminal gives differently. One face and one size, so
+      `monospace` needs no override at all and a heading is bold rather than
+      large. No way to follow a link, so the URL is dropped and the words are
+      underlined, which is the trade `ui.link` already makes. And `image`
+      renders its description in brackets, the form `ui.image` renders its own
+      placeholder in.
 - [ ] **android** — `AnnotatedString` + `SpanStyle`, `LinkAnnotation` for href.
 
 ### Token palette
@@ -103,6 +117,14 @@ own blocks name.
       page's palette comes from, and how an application overrides it; the other
       targets want values rather than classes, so it may not be one kind of
       thing on every target.
+
+      bubbletea is the first target to answer it and answers it the same way
+      html does, in the vocabulary it has: one of the terminal's own sixteen
+      colors, which is a palette the reader already picked. Three kinds --
+      `variable`, `operator`, `punctuation` -- map to the foreground, which is
+      what most themes do with them and what sixteen colors is worth spending.
+      Whether a host with real colors should read them from somewhere an
+      application writes is still the open half.
 
 ## 3. Markdown parser and the `md:` scheme
 
