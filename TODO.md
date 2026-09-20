@@ -62,11 +62,12 @@ own blocks name.
       importer flattens CommonMark's inline alt content to its words, and
       html's override is an `<img>` with the attribute it was already a string
       for.
-- [ ] **A run that reads state.** Everything here is static. A `richText` whose
-      text reads a var renders the value it held when the page was written and
-      is never patched -- the same question the canvas answers with
-      `passCanvasReactivity`, and the reason to answer it on the tree rather
-      than on a run list.
+- [x] **A run that reads state** is patched, and nothing had to be written for
+      it. A run is an ordinary node at codegen time, so `passReactivity` sees
+      the prop and emits the updater -- `md.text(value=string(n))` becomes a
+      `textContent` write in the handler that moved `n`. That is the payoff
+      for keeping the tree: the canvas needs `passCanvasReactivity` only
+      because `passCanvas` hoists its shapes out of the tree first (#252).
 - [ ] **html, `--lang go`** — route mode, same overrides.
 - [ ] **none** (interpreter) — needed for `sngl test`.
 - [ ] **gtk4** — Pango markup in a `GtkLabel`. Escape `&`, `<`, `>`; `<b>`,
