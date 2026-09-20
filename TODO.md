@@ -13,84 +13,78 @@ three membership refusals.
 
 ---
 
-## 1. Lowering — `richText` to runs
+## 1. Lowering — not needed, and that was the finding
 
-The span tree has to become something a backend can emit. A `passMarkup`
-analogous to `passCanvas`: walk a `richText`'s children, accumulate the style
-set down the nesting, and flatten to a list of runs.
+There is no `passMarkup` and there should not be one. The span family is an
+ordinary component tree: a platform implements each member the way `html.sngl`
+implements every other family it serves, and the nesting an author wrote is
+the nesting the host renders. Flattening to a run list in `ir` was tried and
+reverted -- a second representation of a tree is a class of bug this repository
+has spent enough time chasing, and `ir.NodeInst.CanvasDraw` is the same
+mistake one family over rather than a pattern to copy.
 
-- [ ] Mark the family so a pass can name it: `#[marks.builtin("treeMarkup")]`
-      on `struct span`, `ir.BuiltinTreeMarkup`, `ir.IsMarkupTree`. The mark
-      names the role, so a program's own `struct span` is not this family.
-- [ ] Decide the IR shape of a run. Carries an **expression**, not a string —
-      `markup.text("Hello, {name}!")` has to stay a render slot when `name`
-      changes, so the pass runs early enough that `passReactivity` sees it the
-      way it sees an `if`.
-- [ ] Style accumulation is now a defined operation: a `richText`'s five font
-      fields seed a `SpanStyle`, and each nested span overwrites the fields it
-      set, `inherit`/zero meaning it set none. Write it once in the pass so
-      every target gets the same answer.
-      It is a pass and not a context: a `context #spanStyle` each span
-      overrides would have put the spans' implementation in SNGL, which is the
-      `shapes.rect → draw(@draw(e){…})` split — and a style set has to be
-      resolvable at lowering time whatever the host. (The nesting a context
-      would have needed now works; the reason is still the second one.)
-- [ ] `link` and `token` are not style bits — a run carries an optional href
-      and an optional token kind alongside its flags. That is also what makes
-      `monospace { link { … } }` and `link { monospace { … } }` render the
-      same: one record carries both, so neither nesting order can win over the
-      other. Verify per target rather than assuming it.
-- [ ] `image` is not a run at all. Decide whether it interrupts the run list
-      as its own entry or lowers to a node the platform splices into the flow.
-- [ ] Nested `richText` is not a thing (it is a node, not a span), so the pass
-      has one level to walk. Confirm the tree rule already refuses it.
-- [ ] Reactivity is settled and needs no new pattern — confirmed against the
-      canvas, which is the same shape. A reactive canvas lowers to a draw
-      function plus `__canvasRedraw(_canvasDraw0)` appended to the handler that
-      mutates the state, and an `if` inside it becomes a conditional *within*
-      that function rather than a render slot. So a `richText` is one reactive
-      unit: anything its runs read makes the whole run list rebuild. Const
-      inputs fold in the optimizer and the run list is static, which is what
-      lets a documentation page emit literal markup and no script.
-      Open: whether a paragraph-sized rebuild is granular enough, or whether an
-      `if` in a span slot should become a real render slot. Start with the
-      canvas behavior; it is the simpler one and matches the precedent.
+What the experiment did establish, and what is now in main:
+
+- A `lib/` component's **body was never checked and never inlined**, so every
+  bodied library component rendered *nothing*, on every target. `md.paragraph`,
+  `md.list` and the six headings were dead source. Two commits: the loader
+  checks component bodies on every tier, and the inliner splices a stdlib
+  component that carries a body. `testdata/lib_component_body_renders.txtar`
+  pins it, bullet and all.
+- Hosting a family marked a component as "rendered by a codegen", so a
+  platform could not implement one in its own package: the override was
+  written, never substituted, and the emitter met a node it had never heard
+  of. Now only the drawing tree keeps its host standing, which is passCanvas's
+  own requirement and is noted as such.
+- The cascade is resolved by the host. On html that is CSS, which inherits
+  exactly the five typography fields a `SpanStyle` carries. A host that does
+  not inherit (a segment list, a Pango string) resolves it in its own emitter;
+  a shared helper under `codegen/` is the place for that if two of them want
+  the same code, not `ir`.
+
+Three bugs fell out along the way and are fixed: a `continue` or `break` was
+deleted outright by the context lowering whenever anything in the build
+declared a context; bubbletea emitted `Measurement{Px: 20}/8` for any padding,
+margin, width or height; and markup's `Role` was missing the six headings its
+own blocks name.
 
 ## 2. Platform implementations
 
-Every target that a document can reach needs one, or
-`reportBodylessLibComponents` fails the build — which is the point.
-
-- [ ] **html** first, `--lang none`. Escaping is the whole reason this lives in
-      Go: `htmlutil` escapes the text, whitespace is honored with `pre-wrap` on
-      the run (entities and `<br>` only where a style cannot be attached), and
-      `token` emits a class the page styles.
-- [ ] **html, `--lang go`** — route mode, same emitter.
-- [ ] **none** (interpreter) — needed for `sngl test` and for the golden
-      fixtures to run at all.
+- [x] **html**, `--lang none`. `codegen/platform/html/html.sngl` declares
+      `flow` and `inline` -- the same element twice, differing only in the
+      family each joins -- and one override per member. `spanStyleCSS` in Go
+      maps a `run`'s style, because which fields a `SpanStyle` literal set is a
+      question about the literal and a prop is opaque to the `if` that would
+      ask it. `testdata/markup_inline.txtar` is the golden.
+- [ ] **`image` on html.** The one member not implemented, and it needs a
+      decision rather than code: the description is spans and `alt` is a
+      string, so either the emitter flattens the spans to their words or the
+      declaration makes `alt` a string. A document using one fails the build
+      naming the platform and the component, so nothing is silently wrong.
+- [ ] **A run that reads state.** Everything here is static. A `richText` whose
+      text reads a var renders the value it held when the page was written and
+      is never patched -- the same question the canvas answers with
+      `passCanvasReactivity`, and the reason to answer it on the tree rather
+      than on a run list.
+- [ ] **html, `--lang go`** — route mode, same overrides.
+- [ ] **none** (interpreter) — needed for `sngl test`.
 - [ ] **gtk4** — Pango markup in a `GtkLabel`. Escape `&`, `<`, `>`; `<b>`,
-      `<i>`, `<u>`, `<s>`, `<tt>`, `<a href>`, `<span foreground=>`.
+      `<i>`, `<u>`, `<s>`, `<tt>`, `<a href>`, `<span foreground=>`. This is
+      the first host that has to resolve the cascade itself.
 - [ ] **fyne** — `widget.RichText` segment list. Confirm whether
       `RichTextStyle` carries underline and strikethrough; if not, a custom
       `RichTextSegment` in `pkg/go/fynert` (a widget implementation, not a
       language gap).
-- [ ] A span behaves the same everywhere, which is a requirement and not an
-      aspiration. Decided: the flattening always resolves the cascade, so a
-      host with no inheritance (a segment list) gets the same answer as one
-      with it, and no target needs a capability of its own.
-- [ ] fyne likely needs a custom `RichTextSegment` for the whole `SpanStyle` —
-      `RichTextStyle` carries named sizes and theme colors, not arbitrary ones,
-      on top of the underline/strike question.
 - [ ] **bubbletea** — lipgloss. `image` has to render its description; that is
       the platform answering rather than dropping it.
 - [ ] **android** — `AnnotatedString` + `SpanStyle`, `LinkAnnotation` for href.
 
 ### Token palette
 
-- [ ] Decide where a target's `Token` → appearance mapping lives, and how an
-      application overrides it. A context with a per-platform default is the
-      obvious shape; html wants classes, not values, so the mapping may not be
-      one kind of thing on every target.
+- [ ] html emits `class="sngl-tok-<kind>"` and styles nothing. Decide where a
+      page's palette comes from, and how an application overrides it; the other
+      targets want values rather than classes, so it may not be one kind of
+      thing on every target.
 
 ## 3. Markdown parser and the `md:` scheme
 
@@ -199,19 +193,17 @@ the interpreter's answer has to run.
 
 `listItem` now asks `listDepth` for its bullet and `list` provides
 `listDepth + 1` around its items, so a nested list changes bullet with no
-caller involved. **It cannot be seen yet**: a bodied `lib/` component with no
-platform override does not reach codegen at all — `md.list { md.listItem { … } }`
-emits its children and neither body — so the bullet does not render, on any
-target, and did not before this either. That is §2's work, and it is the first
-thing to check when a target implements the family. One thing to confirm there:
-`computeSlotEnvs` and the reachability scan both iterate `pkg.Components`, and
-a lib component is not in it today.
+caller involved. It renders: a bodied `lib/` component reaching codegen at all
+was the blocker, and `testdata/lib_component_body_renders.txtar` is that list,
+nested, with a different bullet at each depth.
 
 ## Open questions
 
 - Where does the `Token` palette live, and how does an application override it?
   html wants classes and everyone else wants values, so it may not be one kind
   of thing on every target.
+- Is `image`'s description spans or a string? html's `alt` forces the question
+  and every other host with an attribute will force it again.
 - Does a platform ever need to override a block component after all? They are
   bodied so it is optional, but `hostsTree` makes a span-hosting component a
   primitive, so an override would not inline — meaning the answer has to be a
