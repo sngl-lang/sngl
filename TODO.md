@@ -157,7 +157,43 @@ own blocks name.
       underlined, which is the trade `ui.link` already makes. And `image`
       renders its description in brackets, the form `ui.image` renders its own
       placeholder in.
-- [ ] **android** — `AnnotatedString` + `SpanStyle`, `LinkAnnotation` for href.
+- [x] **android** — `AnnotatedString` + `SpanStyle`, `LinkAnnotation.Url` for
+      href, and the best-matched host of the six. Compose's `SpanStyle`
+      carries color, size, family, weight and slant, leaves every one unset by
+      default, and merges overlapping styles with an unset field leaving the
+      enclosing one standing -- which is exactly what `markup.SpanStyle`'s
+      `inherit` members mean. So nothing is flattened and the *host* resolves
+      the cascade, as it does on gtk4.
+
+      A span is a piece of an `AnnotatedString` *value* rather than a
+      composable, so this looks like gtk4: a flow is one `Text` and neither
+      primitive is a call. It needs no pre-pass, though -- android is a
+      RenderModel target and its emitter walks the `ir.NodeInst` tree, where
+      gtk4 reads lowered CreateNode statements and has to collect the flows
+      ahead of the walk. Reactivity is free for bubbletea's reason: Compose
+      re-renders from state.
+
+      `textDecoration` is the one field the host does not merge and the one
+      thing the walk carries down. Compose applies a decoration as a single
+      span setting both of the paint's flags, so a `strike` written inside an
+      `underline` turns the underline off unless the inner run writes the
+      whole accumulated set.
+
+      Two bugs fell out on the way, both pre-existing and both in the Style a
+      block component sets: a measurement written with its unit came out as
+      `Measurement(px = 8.0).dp`, which compiles nowhere, and a Style's
+      `fontWeight`, `fontStyle` and `fontFamily` never reached the
+      `TextStyle` at all -- the weight was compared against the string
+      `"bold"`, which an enum member never is. A heading was unemphasized and
+      a quotation upright on this target. Each has its own commit and fixture.
+
+      `image` renders its description in brackets. Compose has
+      `InlineTextContent` and is the one host here that could draw an inline
+      picture, but it needs a painter per source, which is the same thing
+      `ui.image` has no answer for on android.
+
+      With this, `testdata/markup_flow.sngl` no longer carries its
+      `// SKIP(codegen)`: every registered platform implements the family.
 
 ### Token palette
 
@@ -175,12 +211,21 @@ own blocks name.
       color name, so an application that themes its app themes its code
       samples with it.
 
+      android answers it in the same spirit and with the most to give: a role
+      in the Material color scheme, so a themed app themes its code samples
+      and light and dark come out right without this compiler naming a value.
+      What a scheme does not have is seven hues -- three accents, an error
+      color and two muted roles -- so the kinds are grouped by what they are:
+      a keyword is the primary accent, the names of things share the
+      secondary, the literals share the tertiary, and a comment is
+      onSurfaceVariant, which is the one mapping that is exactly right.
+
       gtk4 is the one that cannot. Pango markup has no classes and no theme
       names, so a foreground colour is the only thing a span can be told --
       which is what the family's own declaration nominates for this host, and
       is also the case the `token` doc warns about: the names chosen there
       read on the light theme GTK ships with and are approximate against a
-      dark one. Four targets, three of which hand the palette to the reader
+      dark one. Five targets, four of which hand the palette to the reader
       and one of which cannot, is the shape the answer is taking -- and the
       open half is a host with real colours reading them from somewhere an
       application writes.

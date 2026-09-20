@@ -1,4 +1,3 @@
-// SKIP(codegen) "the span family is implemented on html and none; bubbletea, fyne, gtk4 and android have no richText yet, and a per-platform harness compiles every fixture for its own target"
 // A flow of rich text, checked. The membership refusals are pinned next door
 // in error_markup_span_membership.sngl; this is the other half -- what the
 // family accepts -- and it is here because a fixture that only ever says no
