@@ -95,32 +95,30 @@ func StringToNumberHelper(n *ir.Conversion) string {
 }
 
 // HelpersNeeded walks pkg and returns the helpers the generated code
-// will use. It inspects every typed var (package-level + per-component)
-// and every checker-inserted ir.Conversion target.
+// will use. It inspects every typed var (on every state owner) and every
+// checker-inserted ir.Conversion target.
 func HelpersNeeded(pkg *ir.Package) HelperSet {
 	var h HelperSet
 	if pkg == nil {
 		return h
 	}
-	for _, v := range pkg.Vars {
-		recordTypeHelpers(&h, v.Type)
-		recordExprHelpers(&h, v.Init)
-	}
-	for _, c := range pkg.Consts {
-		recordTypeHelpers(&h, c.Type)
-		recordExprHelpers(&h, c.Init)
-	}
-	for _, comp := range pkg.Components {
-		for _, v := range comp.Vars {
+	// A var's declared type is the whole of what says which parse helper its
+	// initializer needs: LowerTypedLiteralGo reads the target type, not the
+	// string literal's own. So the owners have to be enumerated rather than
+	// left to the expression sweep below -- and asked through ir.Owners, since
+	// passHoistState moves a root component's vars onto the window it lifts.
+	for _, o := range ir.Owners(pkg) {
+		for _, v := range o.Vars {
 			recordTypeHelpers(&h, v.Type)
 			recordExprHelpers(&h, v.Init)
 		}
-		for _, f := range comp.Funcs {
+		for _, c := range o.Consts {
+			recordTypeHelpers(&h, c.Type)
+			recordExprHelpers(&h, c.Init)
+		}
+		for _, f := range o.Funcs {
 			recordFuncHelpers(&h, f)
 		}
-	}
-	for _, f := range pkg.Funcs {
-		recordFuncHelpers(&h, f)
 	}
 	// The loops above miss exprs that live only in the rendered visual tree
 	// (component/window bodies, handlers, timers) — e.g. a date/time literal

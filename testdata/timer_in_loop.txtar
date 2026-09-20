@@ -85,11 +85,12 @@ func mustParseDuration(s string) time.Duration {
 }
 
 func mustParseDateTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		panic(err)
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
 	}
-	return t
+	panic("not a datetime: " + s)
 }
 
 type ErrorEvent struct {
@@ -113,7 +114,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.n__inst0 = 0
-	m.periods__inst0 = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods__inst0 = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__inst0_live = []*TimerInstance{}
@@ -218,7 +219,7 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 	c.done = nil
 	c.live = false
 	c.gen = 0
-	c.__effect0_key = time.Duration(0) * time.Millisecond
+	c.__effect0_key = (time.Duration(0) * time.Millisecond)
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
@@ -232,7 +233,7 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 }
 
 func (c *TimerInstance) __effect0_mount() {
-	if c.__effect0_key > time.Duration(0)*time.Millisecond {
+	if c.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		c.live = true
 		c.gen = (c.gen + 1)
 		var mine int = c.gen
@@ -399,7 +400,7 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.n__inst0 = 0
-	m.periods__inst0 = []time.Duration{time.Duration(100) * time.Millisecond, time.Duration(250) * time.Millisecond}
+	m.periods__inst0 = []time.Duration{(time.Duration(100) * time.Millisecond), (time.Duration(250) * time.Millisecond)}
 	m.__root = nil
 	m.__slot0 = nil
 	m.__inst0_live = []*TimerInstance{}
@@ -471,7 +472,7 @@ func newTimerInstance(interval time.Duration, enabled bool, tick func(any)) *Tim
 	c.__prop_enabled = enabled
 	c.__prop_tick = tick
 	c.handle = nil
-	c.__effect0_key = time.Duration(0) * time.Millisecond
+	c.__effect0_key = (time.Duration(0) * time.Millisecond)
 	c.__effect0_live = []time.Duration{}
 	c.__effect0_desired = []time.Duration{}
 	c.__effects0_settling = false
@@ -792,8 +793,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-broken sha256:99de7e4d6a68ccc16843900001cd22a3
+broken sha256:b38e61a90b2f8dd880b5128af6a9b865
 -- run/go/gtk4 --
-pass sha256:b74d4c7e7036ea8bd4265495a6e001cf
+pass sha256:a1641e077cd6246a8b6a14a246b5c693
 -- run/none/html --
 pass sha256:b7c49791fa6c735776b505f5b4919c27

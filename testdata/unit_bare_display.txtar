@@ -440,7 +440,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5297817174383465cda1a56e4e45da92
+pass sha256:ce5d45e099bf9db3884a9704cc506d79
 -- run/kotlin/android --
 pass sha256:a0e2f7013592e878da9f5aacfb630034
 -- run/none/html --

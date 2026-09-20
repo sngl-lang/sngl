@@ -66,6 +66,15 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+func mustParseDateTime(s string) time.Time {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	panic("not a datetime: " + s)
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -97,7 +106,7 @@ func New() *Model {
 	m.done__inst0 = nil
 	m.live__inst0 = false
 	m.gen__inst0 = 0
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -107,7 +116,7 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+	if m.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0 = true
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
@@ -145,7 +154,7 @@ func (m *Model) __effect0_unmount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	m.__effect0_desired = append(m.__effect0_desired, time.Duration(1000)*time.Millisecond)
+	m.__effect0_desired = append(m.__effect0_desired, (time.Duration(1000) * time.Millisecond))
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
@@ -279,4 +288,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:42dcaed1cb9e3b3fcd8ce251564f0f8c
+pass sha256:b891f19b2e70983096c6c4344b0428db

@@ -303,6 +303,15 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+func mustParseDateTime(s string) time.Time {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	panic("not a datetime: " + s)
+}
+
 type PathCmd struct {
 	Op  string
 	X   float64
@@ -368,7 +377,7 @@ func New() *Model {
 	m.gen__inst0 = 0
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
-	m.__effect1_key = time.Duration(0) * time.Millisecond
+	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_live = []time.Duration{}
 	m.__effect1_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -419,7 +428,7 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effect1_mount() {
-	if m.__effect1_key > time.Duration(0)*time.Millisecond {
+	if m.__effect1_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0 = true
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
@@ -460,7 +469,7 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []time.Duration{}
-	m.__effect1_desired = append(m.__effect1_desired, time.Duration(100)*time.Millisecond)
+	m.__effect1_desired = append(m.__effect1_desired, (time.Duration(100) * time.Millisecond))
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
@@ -860,7 +869,7 @@ func New() *Model {
 	m.handle__inst0 = nil
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
-	m.__effect1_key = time.Duration(0) * time.Millisecond
+	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_live = []time.Duration{}
 	m.__effect1_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -955,7 +964,7 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []time.Duration{}
-	m.__effect1_desired = append(m.__effect1_desired, time.Duration(100)*time.Millisecond)
+	m.__effect1_desired = append(m.__effect1_desired, (time.Duration(100) * time.Millisecond))
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
@@ -1373,9 +1382,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:6907d64ec848eae4c06b716c580b5ce0
 -- run/go/fyne --
-pass sha256:9b0dde8f751088e207548b58773c734a
+pass sha256:503b33bfa10e87e43d3863abe747cfca
 -- run/go/gtk4 --
-pass sha256:d3afcc0374879917251a359f56791c0c
+pass sha256:c717466bc149d71dcfab389daeb07c12
 -- run/kotlin/android --
 pass sha256:402bd9076adb5313d5dc01f4dce88a35
 -- run/none/html --

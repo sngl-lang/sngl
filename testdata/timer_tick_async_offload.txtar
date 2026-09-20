@@ -95,6 +95,15 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+func mustParseDateTime(s string) time.Time {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	panic("not a datetime: " + s)
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -125,7 +134,7 @@ func New() *Model {
 	m.done__inst0__inst1 = nil
 	m.live__inst0__inst1 = false
 	m.gen__inst0__inst1 = 0
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -135,7 +144,7 @@ func New() *Model {
 }
 
 func (m *Model) __effect0_mount() {
-	if m.__effect0_key > time.Duration(0)*time.Millisecond {
+	if m.__effect0_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0__inst1 = true
 		m.gen__inst0__inst1 = (m.gen__inst0__inst1 + 1)
 		var mine int = m.gen__inst0__inst1
@@ -178,7 +187,7 @@ func (m *Model) __effect0_unmount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	m.__effect0_desired = append(m.__effect0_desired, time.Duration(50)*time.Millisecond)
+	m.__effect0_desired = append(m.__effect0_desired, (time.Duration(50) * time.Millisecond))
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
@@ -355,7 +364,7 @@ func New() *Model {
 	m := &Model{}
 	m.name__inst1 = "idle"
 	m.handle__inst0__inst1 = nil
-	m.__effect0_key = time.Duration(0) * time.Millisecond
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
 	m.__effect0_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -382,7 +391,7 @@ func (m *Model) __effect0_unmount() {
 
 func (m *Model) __effect0_down() {
 	m.__effect0_desired = []time.Duration{}
-	m.__effect0_desired = append(m.__effect0_desired, time.Duration(50)*time.Millisecond)
+	m.__effect0_desired = append(m.__effect0_desired, (time.Duration(50) * time.Millisecond))
 	for __effect0_i, _ := range m.__effect0_live {
 		var __effect0_j int = ((len(m.__effect0_live) - 1) - __effect0_i)
 		if __effect0_j >= len(m.__effect0_desired) {
@@ -481,6 +490,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:942bfc8b6ed6e47646839a5ec5d0adea
+pass sha256:c5406788428ec91859eeadf07515ff51
 -- run/go/gtk4 --
-pass sha256:44582c1d513d05e30c97b0a26035ee66
+pass sha256:90b96f67785204f09b4b157d13adc843

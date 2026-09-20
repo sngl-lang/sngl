@@ -100,6 +100,15 @@ func mustParseDuration(s string) time.Duration {
 	return d
 }
 
+func mustParseDateTime(s string) time.Time {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02T15:04"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	panic("not a datetime: " + s)
+}
+
 type PathCmd struct {
 	Op  string
 	X   float64
@@ -164,7 +173,7 @@ func New() *Model {
 	m.gen__inst0 = 0
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
-	m.__effect1_key = time.Duration(0) * time.Millisecond
+	m.__effect1_key = (time.Duration(0) * time.Millisecond)
 	m.__effect1_live = []time.Duration{}
 	m.__effect1_desired = []time.Duration{}
 	m.__effects0_settling = false
@@ -215,7 +224,7 @@ func (m *Model) __effect0_up() {
 }
 
 func (m *Model) __effect1_mount() {
-	if m.__effect1_key > time.Duration(0)*time.Millisecond {
+	if m.__effect1_key > (time.Duration(0) * time.Millisecond) {
 		m.live__inst0 = true
 		m.gen__inst0 = (m.gen__inst0 + 1)
 		var mine int = m.gen__inst0
@@ -256,7 +265,7 @@ func (m *Model) __effect1_unmount() {
 
 func (m *Model) __effect1_down() {
 	m.__effect1_desired = []time.Duration{}
-	m.__effect1_desired = append(m.__effect1_desired, time.Duration(100)*time.Millisecond)
+	m.__effect1_desired = append(m.__effect1_desired, (time.Duration(100) * time.Millisecond))
 	for __effect1_i, _ := range m.__effect1_live {
 		var __effect1_j int = ((len(m.__effect1_live) - 1) - __effect1_i)
 		if __effect1_j >= len(m.__effect1_desired) {
@@ -564,6 +573,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e2223818f2c0f95b0ad68e055937765e
+pass sha256:124e8d6a0db007ae913636280bfec1f3
 -- run/none/html --
 pass sha256:cef4ea71283aee667932043990cf1251
