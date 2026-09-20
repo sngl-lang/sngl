@@ -4,11 +4,13 @@
 # widget nodes and the generated program failed to build.
 
 # The calls are this platform's own cairo vocabulary, because gtk4 draws a
-# rect from its override now rather than from a name-matched intrinsic. What
-# the test is about is unchanged: the shapes became a draw function instead of
-# surviving as widget nodes.
+# rect from its override rather than from a name-matched intrinsic. What the
+# test is about is unchanged: the shapes became the drawing instead of
+# surviving as widget nodes. They are spliced where they stood rather than
+# lifted into a function of their own, so what the dump shows is the statements
+# themselves, under the canvas the flattening left behind.
 sngl dump --stage lowered --lang go --platform gtk4 app.sngl
-stdout '_canvasDraw0'
+stdout 'lower.CreateNode\("canvas"\)'
 stdout 'CairoContext.save'
 stdout 'CairoContext.rectangle'
 

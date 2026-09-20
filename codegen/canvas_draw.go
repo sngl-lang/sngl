@@ -33,6 +33,13 @@ type Canvas struct {
 	// optimizer folds them and the shaker keeps what they call. Empty for a
 	// canvas whose shapes all folded away.
 	Draw []ir.Stmt
+	// Owner is the component whose body holds this drawing, or nil when a
+	// window's body or the package's does. A platform that gives a component
+	// a record of its own puts the drawing's routine on that record: the
+	// canvas's widget and its backing context are fields of the instance, not
+	// of the Model, so a method on the Model would address the wrong one --
+	// and there is one per instance rather than one per program.
+	Owner *ir.Component
 	// Name is what a platform calls the routine it emits for Draw. Three
 	// places invoke a drawing -- the first paint, a repaint, and the host's
 	// own generator callback -- so every backend wraps the statements once and
@@ -65,25 +72,29 @@ func Canvases(pkg *ir.Package) []Canvas {
 	// shapes with the statements that paint them, so the program uses none and
 	// the gate answers no for every drawing there is.
 	var out []Canvas
-	owner := func(body []ir.Stmt, funcs []*ir.Func) {
+	owner := func(comp *ir.Component, body []ir.Stmt, funcs []*ir.Func) {
+		first := len(out)
 		collectCanvases(body, &out)
 		for _, fn := range funcs {
 			if fn != nil {
 				collectCanvases(fn.Block, &out)
 			}
 		}
+		for i := first; i < len(out); i++ {
+			out[i].Owner = comp
+		}
 	}
 	for _, comp := range pkg.Components {
 		if comp != nil {
-			owner(comp.Body, comp.Funcs)
+			owner(comp, comp.Body, comp.Funcs)
 		}
 	}
 	for _, w := range pkg.Windows {
 		if w != nil {
-			owner(w.Body, w.Funcs)
+			owner(nil, w.Body, w.Funcs)
 		}
 	}
-	owner(nil, pkg.Funcs)
+	owner(nil, nil, pkg.Funcs)
 	for i := range out {
 		c := &out[i]
 		c.Draw = c.Node.Children

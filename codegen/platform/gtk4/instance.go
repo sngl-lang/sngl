@@ -34,6 +34,7 @@ func emitComponentInstance(
 	reg *gir.TypeRegistry,
 	shared *emitShared,
 	wrapped bool,
+	canvases []codegen.Canvas,
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -116,6 +117,29 @@ func emitComponentInstance(
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, mtr),
 		}
 		for _, line := range igc.EmitFuncDef(emitted) {
+			methods.WriteString(line)
+			methods.WriteByte('\n')
+		}
+		methods.WriteByte('\n')
+	}
+
+	// A drawing written in this component's body paints into fields of this
+	// record -- the drawing area and the cairo context it is handed -- so its
+	// routine is a method here rather than on the Model. There is one per
+	// instance, and a Model method would address whichever was built last.
+	for i := range canvases {
+		cv := &canvases[i]
+		if cv.Owner != comp {
+			continue
+		}
+		dtr := newTr(nil)
+		drawn := &ir.Func{
+			Name:   cv.Name,
+			Params: []*ir.Param{{Name: "ctx", Type: ir.NativePointerOf("cairo_t")}},
+			Return: ir.TypVoid,
+			Block:  codegen.WalkLowered(context.Background(), cv.Draw, dtr),
+		}
+		for _, line := range igc.EmitFuncDef(drawn) {
 			methods.WriteString(line)
 			methods.WriteByte('\n')
 		}

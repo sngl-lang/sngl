@@ -399,9 +399,7 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	for _, f := range w.Funcs {
 		bodyStmts = append(bodyStmts, c.convertFuncDef(f))
 	}
-	for _, s := range w.Body {
-		bodyStmts = append(bodyStmts, c.convertStmt(s))
-	}
+	bodyStmts = append(bodyStmts, c.convertBodyStmts(w.Body)...)
 	if len(bodyStmts) > 0 {
 		vn.Block = ast.StmtBlock{
 			IsMultiline: len(bodyStmts) > 0,
@@ -636,13 +634,29 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 	}
 }
 
-func (c *converter) convertStmtBlock(stmts []Stmt) ast.StmtBlock {
-	block := ast.StmtBlock{}
+// convertBodyStmts is one statement list, converted. Shared with the window
+// body's own loop, which had a second copy of it and so printed a flattened
+// canvas as an empty one.
+func (c *converter) convertBodyStmts(stmts []Stmt) []ast.Stmt {
+	var out []ast.Stmt
 	for _, s := range stmts {
 		if as := c.convertStmt(s); as != nil {
-			block.Stmts = append(block.Stmts, as)
+			out = append(out, as)
+		}
+		// A flattened canvas keeps the statements that paint it on the node
+		// the flattening replaced, which convertStmt cannot reach: it answers
+		// with one statement and these are several. Printed after the
+		// createNode they belong to, so `dump --stage lowered` shows the
+		// drawing rather than an empty canvas.
+		if lv, ok := s.(*LocalVar); ok && lv.CanvasNode != nil {
+			out = append(out, c.convertBodyStmts(lv.CanvasNode.Children)...)
 		}
 	}
+	return out
+}
+
+func (c *converter) convertStmtBlock(stmts []Stmt) ast.StmtBlock {
+	block := ast.StmtBlock{Stmts: c.convertBodyStmts(stmts)}
 	block.IsMultiline = len(block.Stmts) > 0
 	// Set Pos so IsDefined() returns true.
 	block.Pos = ast.Pos{Line: 1}

@@ -303,7 +303,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
 			var ib strings.Builder
-			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode)
+			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode, ctx.Canvases.All())
 			componentCodes = append(componentCodes, ib.String())
 			continue
 		}
@@ -392,8 +392,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	// this platform need a name match to keep them off the generic path.
 	// Their place among the emitted functions moved when they stopped being
 	// entries in one; the order of Go declarations is inert.
-	for i := range ctx.Canvases.All() {
-		emitIRCanvasDraw(&funcBuf, &ctx.Canvases.All()[i], gc, canvasByNode, nodeSpecs, addWidgetImport)
+	all := ctx.Canvases.All()
+	for i := range all {
+		// A drawing inside a component with a record of its own is that
+		// record's: emitComponentInstance emits it with the instance receiver,
+		// because the widget and the context it paints into are fields there.
+		if isInstanceComponent(all[i].Owner) {
+			continue
+		}
+		emitIRCanvasDraw(&funcBuf, &all[i], gc, canvasByNode, nodeSpecs, addWidgetImport)
 	}
 
 	// A var handler's body carries reactivity-injected widget updates like an

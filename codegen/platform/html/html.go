@@ -2413,6 +2413,12 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	// here. It is this platform's, built at emission: no func list holds one
 	// and nothing in the IR names it.
 	for _, cv := range g.canvasDraws.All() {
+		// A drawing owned by a component the page builds as a factory is
+		// declared inside that factory, where the elements it paints are in
+		// scope. See emitFactory.
+		if cv.Owner != nil && g.isInstanceComponent(cv.Owner) {
+			continue
+		}
 		tr := g.newHTMLTranslator(jc)
 		drawn := &ir.Func{
 			Name:   cv.Name,

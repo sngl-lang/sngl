@@ -318,6 +318,12 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 	emitCanvasDrawFuncs := func(b *strings.Builder) {
 		all := c.ctx.Canvases.All()
 		for i := range all {
+			// A drawing inside a component with a record of its own is that
+			// record's; emitComponentInstance emits it with the instance
+			// receiver.
+			if isInstanceComponent(all[i].Owner) {
+				continue
+			}
 			emitIRCanvasDraw(b, &all[i], gc, c.registry, c.shared)
 		}
 	}
@@ -388,7 +394,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
-			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
+			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All())
 			continue
 		}
 		if createTargets[cc.Component] {

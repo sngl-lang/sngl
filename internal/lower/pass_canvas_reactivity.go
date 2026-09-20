@@ -14,6 +14,9 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 	// Not gated on pkg.UsesDrawShapes(): passShapeDraw runs first and leaves
 	// no shape in the tree, so the gate answers no for every canvas there is.
 	// collectCanvases finds nothing in a program with no drawing anyway.
+	if pkg == nil {
+		return nil
+	}
 	// A package-level var is state a body may write like any other, and
 	// passReactivity already patches the widgets that read one. Leaving it out
 	// here meant a canvas drawn from one had an empty dep set, so it was not
