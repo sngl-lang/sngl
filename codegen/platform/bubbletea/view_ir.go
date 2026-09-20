@@ -688,6 +688,53 @@ func lipglossColor(expr ir.Expr, gc *golang.GoIRContext) string {
 	return val
 }
 
+// cellVal is a style value in terminal cells.
+//
+// A measurement is a magnitude per base, and a terminal has a size for exactly
+// one of them: a cell is so many pixels wide, while an em is a font the host
+// chose and a pct is a fraction of a box lipgloss never reports. So the first
+// declared base is the one read and the rest contribute nothing -- which is
+// the same answer `2rem` and `50pct` already got, arrived at deliberately.
+//
+// Reading the magnitude at all is what was missing: a unit value is a record
+// in Go, so `paddingLeft=20px` came out as `max(1, Measurement{Px: 20}/8)` and
+// no generated program carrying a padding, margin, width or height has ever
+// compiled. Nothing in lib/ rendered a body until now, which is why the one
+// spelling every document uses did not reach it sooner.
+func cellVal(expr ir.Expr, gc *golang.GoIRContext, scaleFactor int) string {
+	val := gc.EvalExpr(expr)
+	ud := ir.UnitDeclOf(exprType(expr))
+	if ud == nil {
+		return scaleVal(val, scaleFactor)
+	}
+	bases := ud.Bases()
+	if len(bases) == 0 {
+		return scaleVal(val, scaleFactor)
+	}
+	if lit, ok := expr.(*ir.Literal); ok {
+		mag, base, ok := ir.UnitMagnitude(lit)
+		if ok && base != bases[0].Name {
+			return "0"
+		}
+		if ok {
+			return scaleVal(strconv.Itoa(int(mag)), scaleFactor)
+		}
+	}
+	if ud.IsSingleBase() {
+		return scaleVal("int("+val+")", scaleFactor)
+	}
+	return scaleVal("int("+val+"."+golang.ExportName(bases[0].Name)+")", scaleFactor)
+}
+
+// exprType is expr's type, nil-safely: a style field may carry no expression
+// at all.
+func exprType(expr ir.Expr) *ir.Type {
+	if expr == nil {
+		return nil
+	}
+	return expr.ExprType()
+}
+
 // scaleVal wraps a numeric value expression with pixel-to-cell scaling.
 func scaleVal(val string, scaleFactor int) string {
 	var n int
@@ -718,33 +765,33 @@ func irStyleCall(prop string, expr ir.Expr, gc *golang.GoIRContext, scaleFactor 
 
 	switch prop {
 	case "padding":
-		return fmt.Sprintf("Padding(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("Padding(%s)", cellVal(expr, gc, scaleFactor))
 	case "paddingTop":
-		return fmt.Sprintf("PaddingTop(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("PaddingTop(%s)", cellVal(expr, gc, scaleFactor))
 	case "paddingRight":
-		return fmt.Sprintf("PaddingRight(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("PaddingRight(%s)", cellVal(expr, gc, scaleFactor))
 	case "paddingBottom":
-		return fmt.Sprintf("PaddingBottom(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("PaddingBottom(%s)", cellVal(expr, gc, scaleFactor))
 	case "paddingLeft":
-		return fmt.Sprintf("PaddingLeft(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("PaddingLeft(%s)", cellVal(expr, gc, scaleFactor))
 	case "margin":
-		return fmt.Sprintf("Margin(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("Margin(%s)", cellVal(expr, gc, scaleFactor))
 	case "marginTop":
-		return fmt.Sprintf("MarginTop(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("MarginTop(%s)", cellVal(expr, gc, scaleFactor))
 	case "marginRight":
-		return fmt.Sprintf("MarginRight(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("MarginRight(%s)", cellVal(expr, gc, scaleFactor))
 	case "marginBottom":
-		return fmt.Sprintf("MarginBottom(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("MarginBottom(%s)", cellVal(expr, gc, scaleFactor))
 	case "marginLeft":
-		return fmt.Sprintf("MarginLeft(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("MarginLeft(%s)", cellVal(expr, gc, scaleFactor))
 	case "width":
-		return fmt.Sprintf("Width(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("Width(%s)", cellVal(expr, gc, scaleFactor))
 	case "height":
-		return fmt.Sprintf("Height(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("Height(%s)", cellVal(expr, gc, scaleFactor))
 	case "maxWidth":
-		return fmt.Sprintf("MaxWidth(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("MaxWidth(%s)", cellVal(expr, gc, scaleFactor))
 	case "maxHeight":
-		return fmt.Sprintf("MaxHeight(%s)", scaleVal(val, scaleFactor))
+		return fmt.Sprintf("MaxHeight(%s)", cellVal(expr, gc, scaleFactor))
 	case "fontWeight":
 		if val == `"bold"` {
 			return "Bold(true)"
