@@ -350,4 +350,3 @@ func enumMember(e ir.Expr) string {
 	s, _ := codegen.IRLiteralString(e)
 	return s
 }
-
