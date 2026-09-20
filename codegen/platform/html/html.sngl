@@ -453,6 +453,8 @@ component inline(
     spanStyle markup.SpanStyle,
     class string,
     href string,
+    src string,
+    alt string,
     textContent string,
     content ...component markup.span,
 ) markup.span
@@ -531,6 +533,12 @@ component markup.link[platform] {
     inline(tag="a", href=href) {
         content
     }
+}
+
+// `<img>` is a void element, so the description has nowhere to go but the
+// attribute it is already a string for.
+component markup.image[platform] {
+    inline(tag="img", src=src, alt=alt) {}
 }
 
 // A class and not a color: what a keyword looks like is the page's to say, and

@@ -217,16 +217,20 @@ component token(kind Token, content ...component span) span
 component link(href string, content ...component span) span
 
 // A picture on the line with the words -- an icon, a badge, an inline
-// formula. Its bare children are the description: what the picture shows, for
-// a reader who is not looking at it and for a platform that cannot draw one
-// inside a flow of text.
+// formula. `alt` is the description: what the picture shows, for a reader who
+// is not looking at it and for a platform that cannot draw one inside a flow
+// of text.
 //
-// Spans rather than a string because that is what a description is in
-// CommonMark, where the text between the brackets is inline content like any
-// other. A platform whose description is a plain attribute -- html's `alt` --
-// flattens it to its words, which is a thing codegen can do and a thing an
-// author writing the markup cannot undo.
-component image(src string, alt ...component span) span
+// A string and not spans, though CommonMark's alt text is inline content like
+// any other: **no formatting is available in a description.** Every host that
+// has one has a plain attribute -- html's `alt`, a Compose `contentDescription`
+// -- and a description is read aloud rather than looked at, so emphasis in one
+// has nothing to express and no host to express it to. Spans here would be a
+// vocabulary every target flattened on the way out, which is a way of saying
+// the author was offered a choice that was never theirs.
+//
+// So an importer flattens: the words between the brackets, and nothing else.
+component image(src string, alt string) span
 
 // --- Document blocks ---
 //

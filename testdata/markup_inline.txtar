@@ -25,6 +25,11 @@ wrong somewhere else:
     quoted, a code sample is preformatted. That is what `role` is *for*, as
     against `style`, which is what the block components set beside it.
 
+`image` is the one member whose description is a string rather than spans: no
+formatting is available in one, every host that has a description has a plain
+attribute, and the quote and ampersand in this fixture's `alt` are there to
+show the attribute is escaped like any other.
+
 `token` emits a class and never a color: what a keyword looks like is the
 page's to say, and a document naming one would be unreadable against a theme
 it never heard of.
@@ -80,6 +85,11 @@ ui.window #home(title="doc") {
             }
         }
         md.paragraph {
+            md.text(value="before ")
+            md.image(src="/icon.png", alt="an \"icon\" & more")
+            md.text(value=" after")
+        }
+        md.paragraph {
             md.run(style={color=#336699, fontSize=20px, fontWeight=md.Weight.bold}) {
                 md.text(value="a styled run")
             }
@@ -113,6 +123,7 @@ and a newline</span></p>
   <p style="white-space:pre-wrap"><code><a href="https://example.com/?a=1&amp;b=2"><span>mono link</span></a></code><a href="https://example.com/"><code><span>link mono</span></code></a></p>
   <pre style="background-color:#f5f5f5;border-radius:4px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span> </span><span class="sngl-tok-function"><span>main</span></span></code></pre>
   <p style="white-space:pre-wrap"><u><s><em><span>all three</span></em></s></u></p>
+  <p style="white-space:pre-wrap"><span>before </span><img alt="an &#34;icon&#34; &amp; more" src="/icon.png"/><span> after</span></p>
   <p style="white-space:pre-wrap"><span style="color:#336699;font-size:20px;font-weight:bold;font-style:inherit"><span>a styled run</span></span></p>
   <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;padding-left:12px;white-space:pre-wrap"><span>quoted</span></blockquote>
   <figcaption style="color:#666666;font-size:13px;white-space:pre-wrap"><span>a caption</span></figcaption>
@@ -126,4 +137,4 @@ and a newline</span></p>
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4efcd44628525b2cfc022089a99db4b7
+pass sha256:4300e4a8e8bef07b947e4aff8654e38e

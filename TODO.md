@@ -56,11 +56,12 @@ own blocks name.
       maps a `run`'s style, because which fields a `SpanStyle` literal set is a
       question about the literal and a prop is opaque to the `if` that would
       ask it. `testdata/markup_inline.txtar` is the golden.
-- [ ] **`image` on html.** The one member not implemented, and it needs a
-      decision rather than code: the description is spans and `alt` is a
-      string, so either the emitter flattens the spans to their words or the
-      declaration makes `alt` a string. A document using one fails the build
-      naming the platform and the component, so nothing is silently wrong.
+- [x] **`image`.** `alt` is a string (Jonathan's call): no formatting is
+      available in a description, every host that has one has a plain
+      attribute, and a description is read aloud rather than looked at. So the
+      importer flattens CommonMark's inline alt content to its words, and
+      html's override is an `<img>` with the attribute it was already a string
+      for.
 - [ ] **A run that reads state.** Everything here is static. A `richText` whose
       text reads a var renders the value it held when the page was written and
       is never patched -- the same question the canvas answers with
@@ -112,7 +113,8 @@ own blocks name.
       like any `sngl:ui` override. The importer writes `marker`, so an ordered
       list is numbered even where the host cannot count.
 - [ ] Inline mapping — emphasis, strong, delete, link, image, inlineCode, hard
-      break (`"\n"`), soft break (the importer decides space or newline).
+      break (`"\n"`), soft break (the importer decides space or newline). An
+      image's alt text flattens to its words; nothing else about it survives.
 - [ ] Syntax highlighting inside a fence: tokenize, emit `token` spans inside a
       `monospace`. SNGL's own lexer highlights `sngl` fences; decide what
       answers for `go`, `bash`, `json`.
@@ -206,10 +208,9 @@ nested, with a different bullet at each depth.
 - Where does the `Token` palette live, and how does an application override it?
   html wants classes and everyone else wants values, so it may not be one kind
   of thing on every target.
-- Is `image`'s description spans or a string? html's `alt` forces the question
-  and every other host with an attribute will force it again.
 - Does a platform ever need to override a block component after all? They are
-  bodied so it is optional, but `hostsTree` makes a span-hosting component a
-  primitive, so an override would not inline — meaning the answer has to be a
-  richer `Role`, not an override. Worth confirming against a real platform
-  before the vocabulary is fixed.
+  bodied so it is optional. The reason it used to be impossible is gone —
+  hosting a family no longer makes a component a primitive, so an override of
+  one inlines like any other — which means a richer `Role` and an override are
+  both now on the table. Worth confirming against a real platform before the
+  vocabulary is fixed.
