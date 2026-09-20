@@ -206,6 +206,99 @@ may need them: a *kept* component's body is never inlined into, and a stdlib
 component with a body of its own is not inlinable (`|| comp.Stdlib`). Take them
 only if canvas reaches them.
 
+## A window is not a storage level
+
+Settled with Jonathan, and it dissolves the question step 4 was going to be
+about. The IR does not need lexical levels, it needs **storage levels** -- the
+places a declaration can exist more than once at run time: the package, a
+component instance, a loop iteration. Scoping and shadowing are the checker's,
+resolved into pointers by IR time, so a `var` under a `vbox` and one at the
+root of the component body are the same thing to every consumer.
+
+A window is a *rendering root*, not a lifetime. On bubbletea, fyne and gtk4 the
+windows are one process with one Model -- the shared root-component var is
+already one cell there. On html each window is a separate document, but that is
+the platform instantiating one declaration per page, which is the divergence
+this repository already defends.
+
+So a window's declarations go to its container, and since `window` is
+root-only that is almost always the package; it is a component exactly when a
+root-family component renders the windows, which html on `--lang none` should
+reject as something a static page cannot produce.
+
+**`ir.Owner` was the right shape with the wrong membership.** One enumeration
+of who owns state, asked rather than restated, is what stopped six consumers
+each naming the package and `main` and stopping. It listed the window, and it
+shrinks to package and component.
+
+**What is left of `ir.Window` after that is nothing that needs a home.**
+`Comp`, `Props` and `Handle` are already `NodeInst`'s; `Body` is `Children`;
+`Timers` is gone; `Name` is `NodeInst.ID`, which is what `buildWindow` already
+sets it from; `ErrorHandler` is an ordinary entry in `NodeInst.Handlers`;
+`LocalRefs` is a set of id strings and `uniqueNodeIDs` has already made those
+unique package-wide, so the container's set cannot confuse two. `Checked` is a
+checker flag and can be a set in the checker. None of `ir.FuncDecl`, a durable
+body scope, or an ownership field is needed -- all three answered a question
+that this dissolves.
+
+**Two behaviour changes, not a pure refactor.** html's per-page `State` is
+built by list membership today (`routeStateVars` adds `pkg.Vars` unconditionally,
+then the main component's, then the window's) and has to become reachability --
+what this page's tree actually reads. That is strictly more accurate than what
+is there. And colliding names need renaming, which is *not* a new cost: two
+windows each declaring `var count` already emit
+
+```go
+type Model struct {
+	count int
+	count int
+}
+```
+
+on bubbletea today, which does not compile. The field being preserved is not
+preserving anything.
+
+## The mark goes last, behind a platform primitive
+
+`BuiltinWindow` has exactly three non-test uses and all three are in the
+checker: the dispatch that builds `ir.Window` (`expr.go`), `isWindowNode`
+(`checker.go`, three callers), and `bindBuiltinRole` storing the reference.
+`isWindowNode`'s own doc says why it exists -- *"Window is the only node kind
+that owns a lexical scope and hoists its own element ids"* -- and both of those
+are what step 4 removes.
+
+What does *not* dissolve is `isPrimitiveComponent`'s `comp.Builtin != ""`,
+which is what keeps a declaration standing against `passInlinePure`. It is
+redundant for `window` today only because the declaration is empty-bodied and
+`inlinable()` tests `len(comp.Body) == 0`. That test conflates bodyless with
+empty-bodied and should read `comp.Bodyless` -- a one-line fix, and the
+distinction matters the moment a platform gives `window` an override body.
+
+The replacement is the pattern `timer`, the drawing shapes and `button`
+already use: **the override bottoms out in a platform-declared `#[intrinsic]`
+the codegen understands.**
+
+```sngl
+component ui.window[platform] {
+    html.Document(title=title, href=href) { content }
+}
+```
+
+`isPrimitiveComponent` protects the primitive rather than the wrapper, and
+codegen dispatches on the id. Identification moves from a compiler mark to a
+platform id, which is the right layer: what a window *is* differs per target in
+a way the compiler has no stake in -- a `fyne.Window`, a
+`GtkApplicationWindow`, an Activity, the whole TUI, or an output file.
+
+Every target must then declare one, and `reportBodylessLibComponents` already
+enforces exactly that. html's is the odd one, being an output file rather than
+a widget: an intrinsic id carries it, but it is the first whose effect is on
+the build output rather than the render.
+
+`internal/build.Emit`'s "a program declares at least one window" becomes "the
+package body renders at least one root-family member" -- the tree answering a
+tree question instead of a check that knows a construct's name.
+
 ## Staging
 
 Each step green, each with its own fixture, a golden refresh read rather than
@@ -216,22 +309,16 @@ rubber-stamped.
 3. Delete `passCanvas`. (done -- `passShapeDraw` splices the drawing where it
    was written; no function is synthesized into the IR, so 4's blocker is
    gone.)
-4. Funcs into **body scopes** -- not a body statement and not `pkg.Funcs`.
-   `ir.Package.Symbols` already survives into IR; what does not is a durable
-   scope per body, of which `Component.BodyDecls` (22 non-test references) is
-   the vestige. Needs declaration order -- `Scope.Symbols` is an unordered
-   map, and `__cseN` and `__async_offN` are numbered off owner order -- and a
-   way for lowering to bind into a scope, which today only the checker does.
-
-   Measured: **276 non-test references to a `.Funcs` field across 92 files**,
-   most of them the per-owner grouping. Two of the three things TODO §9 called
-   the blocker are now gone -- there is no synthesized draw func, and the
-   statement-vs-field question is answered -- so what is left is the grouping
-   itself.
+4. **A window's declarations go to its container**, the way any other visual
+   node's would. `ir.Window.Vars` and `.Funcs` are deleted; a `var` or `func`
+   at the root of a window body lands on the package, or on the component that
+   renders the window where a root-family component does. See below.
 5. `pkg.Windows` derived at codegen; `passRootWindow` deleted, root components
    left to ordinary inlining, the eight fixtures above rewritten.
 6. The 39 statement arms, once a window is no longer a statement kind.
-7. Delete `ir.Window`. Delete this file.
+7. Delete `ir.Window`: a window is a `NodeInst` like any other node.
+8. Delete the `#[builtin("window")]` mark, behind per-platform window
+   primitives. See below. Delete this file.
 
 Emit-when-called is a separable follow-up: `shakeUnused` filters `pkg.Funcs`
 but treats `comp.Funcs` and `w.Funcs` as roots, so those are unconditionally
