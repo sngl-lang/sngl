@@ -213,14 +213,21 @@ rubber-stamped.
 
 1. This plan. (done)
 2. Delete `ir.Timer`. (done -- 53 files, -764/+340, every golden byte-identical)
-3. Delete `passCanvas`: shapes stay in the tree, a shared codegen walker emits
-   the draw. Removes the synthesized func that blocks 4.
+3. Delete `passCanvas`. (done -- `passShapeDraw` splices the drawing where it
+   was written; no function is synthesized into the IR, so 4's blocker is
+   gone.)
 4. Funcs into **body scopes** -- not a body statement and not `pkg.Funcs`.
    `ir.Package.Symbols` already survives into IR; what does not is a durable
-   scope per body, of which `Component.BodyDecls` is the vestige. Needs
-   declaration order (today `Scope.Symbols` is an unordered map, and `__cseN`
-   and `__async_offN` are numbered off owner order) and a way for lowering to
-   bind into a scope.
+   scope per body, of which `Component.BodyDecls` (22 non-test references) is
+   the vestige. Needs declaration order -- `Scope.Symbols` is an unordered
+   map, and `__cseN` and `__async_offN` are numbered off owner order -- and a
+   way for lowering to bind into a scope, which today only the checker does.
+
+   Measured: **276 non-test references to a `.Funcs` field across 92 files**,
+   most of them the per-owner grouping. Two of the three things TODO §9 called
+   the blocker are now gone -- there is no synthesized draw func, and the
+   statement-vs-field question is answered -- so what is left is the grouping
+   itself.
 5. `pkg.Windows` derived at codegen; `passRootWindow` deleted, root components
    left to ordinary inlining, the eight fixtures above rewritten.
 6. The 39 statement arms, once a window is no longer a statement kind.
