@@ -290,7 +290,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg)}
 	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc

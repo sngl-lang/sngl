@@ -86,9 +86,26 @@ own blocks name.
       the member's name does not already say. `cmd/sngl/testdata/markup_interpreted.txt`
       is the fixture; the golden in `testdata/markup_inline.txtar` cannot grow
       a `none` target, since `none` emits no code.
-- [ ] **gtk4** — Pango markup in a `GtkLabel`. Escape `&`, `<`, `>`; `<b>`,
-      `<i>`, `<u>`, `<s>`, `<tt>`, `<a href>`, `<span foreground=>`. This is
-      the first host that has to resolve the cascade itself.
+- [x] **gtk4** — Pango markup in a `GtkLabel`, and the one target where the
+      *host* resolves the cascade: Pango nests, so `<b><i>x</i></b>` is what
+      `bold { italic { … } }` means and the tree an author wrote is the tree
+      GTK is handed. Nothing is flattened; what the platform builds is the
+      string.
+
+      A flow is one `GtkLabel` and a span is no widget at all, so neither
+      primitive names a GIR class and the span nodes emit nothing. The markup
+      is a Go *expression* -- a literal run escaped where it is written, a run
+      reading state as `gtk4rt.Escape(expr)` -- so reactivity costs one
+      `LabelSetMarkup` and no span in the Model. The tree is collected
+      package-wide ahead of the walk, on `emitShared` beside the canvas maps
+      and for the same reason: a reactive splice assigns a span's prop in a
+      scope that never saw the flow.
+
+      The flow's own typography is the outer `<span>`, which is also what
+      Pango inherits from -- and it is the only part of a `ui.Style` this
+      target has ever answered, gtk4 having no per-widget styling. So a
+      heading is large and bold here and a code sample still has no
+      background.
 - [x] **fyne** — `widget.RichText`, via `pkg/go/fynetext`. Two primitives and
       a table of overrides, and the ordinary fyne path downstream of them: a
       constructor, a Model field, `Add`, a setter per reactive prop, because a
@@ -156,10 +173,17 @@ own blocks name.
       what most themes do with them and what sixteen colors is worth spending.
       fyne answers it in its own vocabulary too, and more directly: a theme
       color name, so an application that themes its app themes its code
-      samples with it. Three targets, three palettes the *reader* owns, which
-      is the shape the answer is taking -- and whether a host with real colors
-      should read them from somewhere an application writes is still the open
-      half.
+      samples with it.
+
+      gtk4 is the one that cannot. Pango markup has no classes and no theme
+      names, so a foreground colour is the only thing a span can be told --
+      which is what the family's own declaration nominates for this host, and
+      is also the case the `token` doc warns about: the names chosen there
+      read on the light theme GTK ships with and are approximate against a
+      dark one. Four targets, three of which hand the palette to the reader
+      and one of which cannot, is the shape the answer is taking -- and the
+      open half is a host with real colours reading them from somewhere an
+      application writes.
 
 ## 3. Markdown parser and the `md:` scheme
 
@@ -211,6 +235,10 @@ own blocks name.
       growing a target per implementation. It asserts on the golden rather than
       a grep and `deny`s the two absences that matter -- no `innerHTML`, and
       nothing emitted under the family's own names.
+- [x] `testdata/markup_reactive.txtar` is the run-that-reads-state claim, per
+      target: html patches a text node, bubbletea re-renders, fyne calls
+      `SetText` on a span that refreshes the flow owning it, and gtk4 writes
+      the whole label again from an expression over the same state.
 - [x] `cmd/sngl/testdata/markup_rendered.txt` runs a document in Chromium and
       snapshots the DOM it parsed: `<em>not markup</em>` comes back as four
       entities in one span, the two spaces and the newline are in the text

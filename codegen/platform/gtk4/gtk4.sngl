@@ -26,6 +26,7 @@ import tree "sngl:tree"
 import build "sngl:build"
 import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
+import markup "sngl:ui/markup"
 import math "sngl:math"
 import go "sngl:language/go"
 
@@ -584,4 +585,73 @@ component shapes.canvasImage[platform] {
             unrefPixbuf(pb)
         }
     })
+}
+
+// --- Rich text ---
+//
+// The span family, and the one target where the *host* resolves the cascade.
+// Pango markup nests: `<b><i>x</i></b>` is what `bold { italic { … } }` means,
+// so the tree an author wrote is the tree GTK is handed and nothing is
+// flattened. What this platform builds is the string.
+//
+// A flow is therefore one `GtkLabel` and a span is no widget at all -- it is a
+// piece of that label's markup -- which is why neither primitive names a GIR
+// class. `codegen/platform/gtk4/markup.go` collects the span tree ahead of the
+// walk and writes the markup as a Go string expression, so a run whose words
+// come from state is an ordinary concatenation and the updater that moved that
+// state sets the label again.
+
+#[marks.intrinsic("gtk4:Flow")]
+component Flow(
+    style ui.Style,
+    content ...component markup.span,
+) ui.node
+
+// One run of words. `spanStyle` and `kind` are read off the literal -- which
+// fields a `SpanStyle` set is a question about the literal, as it is on every
+// other target -- and become the Pango tags wrapped around this run's content.
+#[marks.intrinsic("gtk4:Span")]
+component Span(
+    text string,
+    href string,
+    spanStyle markup.SpanStyle,
+    kind markup.Token,
+    content ...component markup.span,
+) markup.span
+
+component markup.richText[platform] {
+    Flow(style={...style}) {
+        content
+    }
+}
+
+component markup.text[platform] {
+    Span(text=value) {}
+}
+
+component markup.run[platform] {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+// Pango has `<a href>` and GtkLabel follows one when it is clicked, so this is
+// the one target besides html where a link is a link.
+component markup.link[platform] {
+    Span(href=href) {
+        content
+    }
+}
+
+component markup.token[platform] {
+    Span(kind=kind) {
+        content
+    }
+}
+
+// Pango markup has no image, and a GtkLabel holds text. So the description is
+// what an image is here, in the brackets that say a picture stood where they
+// are.
+component markup.image[platform] {
+    Span(text="[{alt}]") {}
 }

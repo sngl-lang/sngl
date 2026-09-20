@@ -31,6 +31,13 @@ type emitShared struct {
 	// separate scopes have now been found to have forgotten.
 	canvasByID   map[string]*canvasMeta
 	canvasByFunc map[*ir.Func]*canvasMeta
+
+	// The flow and span trees, collected package-wide before the walk. Here
+	// for the reason the canvas maps are: a span is no widget, so its words
+	// reach the label they belong to only through this, and a reactive splice
+	// assigns a span's prop in a scope that never saw the flow. Collecting it
+	// once beside them also means it is walked once rather than per scope.
+	markup *markupTrees
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -82,7 +89,12 @@ type gtk4Translator struct {
 	fieldIDs map[string]bool
 	idCTypes map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
 	skipped  map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
-	topLevel []string
+	// builtSpans are the spans this scope created. Their build-time prop
+	// assignments follow the create, and the markup they would each rewrite
+	// was written once already; an assignment from any other scope is a
+	// reactive one and is what re-writes it.
+	builtSpans map[string]bool
+	topLevel   []string
 	// slotRoot is the box a reactive slot in this scope's body renders into,
 	// when this scope owns one. A call to that slot's renderer holds a place in
 	// the tree exactly as a created widget does -- the subtree is built into
@@ -357,6 +369,22 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		if t.canvasMetaForID(id) != nil {
 			return t.emitCanvasCreate(id)
 		}
+	}
+	// A flow is a GtkLabel and a span is a piece of its markup, so neither
+	// names a GIR class and both are intercepted before the lookup. The span
+	// emits nothing at all: it is recorded as skipped so the AppendChild
+	// naming it is dropped too, and its words reach the label through
+	// emitFlowMarkup.
+	switch tag {
+	case flowTag:
+		return t.emitFlowCreate(id)
+	case spanTag:
+		t.skipped[id] = struct{}{}
+		if t.builtSpans == nil {
+			t.builtSpans = map[string]bool{}
+		}
+		t.builtSpans[id] = true
+		return nil
 	}
 	// passInlinePure already substituted the stdlib wrappers with their
 	// gtk4.sngl bodies, so every tag here is a GIR-resolved widget name.
@@ -727,6 +755,22 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	// A span's props are read off the tree rather than assigned to a widget,
+	// so an assignment to one is a reason to write its flow's label again --
+	// which is the whole of reactivity here, the markup being an expression
+	// over the same state the run was written against. Asked before the skip
+	// check, which a span's own id is in.
+	if bare := codegen.IdentBareName(node); t.markupTrees().ownerOf[bare] != "" {
+		// The props a span is built with were already read off the tree and
+		// written into the label emitConstructorAssign followed, so the
+		// assignments the build emits next would each set the same string
+		// again. A scope that did not create this span is a handler or an
+		// updater, and there the assignment is the reason to write it.
+		if t.builtSpans[bare] {
+			return nil
+		}
+		return t.emitFlowMarkup(t.markupTrees().ownerOf[bare])
+	}
 	if t.isSkipped(node) {
 		return nil
 	}
