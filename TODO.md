@@ -144,9 +144,14 @@ own blocks name.
       growing a target per implementation. It asserts on the golden rather than
       a grep and `deny`s the two absences that matter -- no `innerHTML`, and
       nothing emitted under the family's own names.
-- [ ] A `cmd/sngl/testdata/*.txt` that **runs** a document — the escaping and
-      the whitespace rule are claims about output a golden cannot execute.
-      Chromium for html, the interpreter for `none`.
+- [x] `cmd/sngl/testdata/markup_rendered.txt` runs a document in Chromium and
+      snapshots the DOM it parsed: `<em>not markup</em>` comes back as four
+      entities in one span, the two spaces and the newline are in the text
+      node, and `white-space: pre-wrap` is on the element. Confirmed by
+      reverting -- without the escaping, `sngl test` still says PASS and the
+      grep is what fails, because an injection is invisible to a state
+      assertion. Layout itself is not asserted. The interpreter half waits on
+      `none`.
 - [ ] Positive checker fixture for the family. It can exist now that html
       implements `richText`; `markup_inline.txtar` is a golden and the checker
       harness does not run those.
