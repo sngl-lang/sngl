@@ -275,7 +275,47 @@ func (st *inlineCompState) run() error {
 				anyWinCh = anyWinCh || fch
 			}
 		}
-		if !ch && !anyFuncCh && !anyWinCh {
+		// A component that survives is a root the backend reads its body from,
+		// so what is inlinable *inside* that body has to be inlined too. Only
+		// main and the windows were walked -- every root a *program* declares,
+		// and none of the ones this pass elects. An imported component is one:
+		// nothing inlines it, so it reached codegen holding the bodied callees
+		// its body wrote, and `sngl:ui/markup`'s `list` written there emitted a
+		// node no backend has heard of.
+		//
+		// A cycle is excluded, and that is the pre-existing behaviour kept
+		// rather than a case answered: a recursive component is on the keep
+		// list whether or not anything renders it, so walking one elects a
+		// runtime instance for a recursion the optimizer may already have
+		// unrolled away -- a factory in the page for a declaration nothing
+		// instantiates (`testdata/recursive_component_page_scope.txtar` denies
+		// exactly that). What a bodied callee inside a recursive body does is
+		// the same gap one construct over and is its own question.
+		//
+		// Indexed, because a splice here may elect another one.
+		anyKeptCh := false
+		for i := 0; i < len(st.pkg.Components); i++ {
+			c := st.pkg.Components[i]
+			if c == nil || c == st.main || !st.keep[c] || st.cycles[c] {
+				continue
+			}
+			st.hoist = componentHoist(c)
+			body, cch, err := st.inlineStmts(c.Body)
+			if err != nil {
+				return err
+			}
+			c.Body = body
+			anyKeptCh = anyKeptCh || cch
+			for j := 0; j < len(c.Funcs); j++ {
+				fbody, fch, err := st.inlineStmts(c.Funcs[j].Block)
+				if err != nil {
+					return err
+				}
+				c.Funcs[j].Block = fbody
+				anyKeptCh = anyKeptCh || fch
+			}
+		}
+		if !ch && !anyFuncCh && !anyWinCh && !anyKeptCh {
 			break
 		}
 	}
