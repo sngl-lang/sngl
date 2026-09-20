@@ -275,6 +275,12 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		if n.Init != nil {
 			n.Init = foldExpr(n.Init, ctx)
 		}
+		// The statements that paint a flattened canvas, which are ordinary
+		// statements with ordinary constants in them: a shape's style test
+		// against a colour nobody set folds away here or the target draws it.
+		if n.CanvasNode != nil {
+			n.CanvasNode.Children = foldStmts(n.CanvasNode.Children, ctx)
+		}
 	case *ir.Return:
 		if n.Value != nil {
 			n.Value = foldExpr(n.Value, ctx)

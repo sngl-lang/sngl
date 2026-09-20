@@ -277,6 +277,12 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		}
 	case *LocalVar:
 		n.Init = w.expr(n.Init)
+		// See LocalVar.CanvasNode: a flattened canvas keeps the statements that
+		// paint it on the node the flattening replaced, and they are IR like
+		// any other.
+		if n.CanvasNode != nil {
+			n.CanvasNode.Children = w.stmts(n.CanvasNode.Children)
+		}
 	case *Return:
 		n.Value = w.expr(n.Value)
 	case *If:

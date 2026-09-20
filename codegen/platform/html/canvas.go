@@ -52,7 +52,8 @@ type canvasSetup struct {
 	// node is what a repaint names: a CanvasRedrawStmt points at the canvas
 	// instantiation, the draw function being codegen's own artifact.
 	node     *ir.NodeInst
-	drawFunc *ir.Func
+	drawName string
+	draw     []ir.Stmt
 	// w and h are the coordinate space the shapes were placed in, and scaling
 	// what to do when the box is not that size. Both are needed at the draw
 	// call, not only where the element is written.
@@ -77,7 +78,7 @@ func canvasIntProp(n *ir.NodeInst, name string) int {
 // drawCall is the one way this platform draws a canvas: through the helper,
 // which decides the backing store from the box and scales the shapes into it.
 func (cs canvasSetup) drawCall() string {
-	return fmt.Sprintf("_snglCanvasDraw(%s,%d,%d,%q,%s)", cs.id, cs.w, cs.h, cs.scaling, cs.drawFunc.Name)
+	return fmt.Sprintf("_snglCanvasDraw(%s,%d,%d,%q,%s)", cs.id, cs.w, cs.h, cs.scaling, cs.drawName)
 }
 
 // canvasDrawStmt is that same call as IR, for a canvas the lowering flattened
@@ -94,7 +95,7 @@ func canvasDrawStmt(m *canvasutil.Meta) ir.Stmt {
 			{Value: num(m.Width)},
 			{Value: num(m.Height)},
 			{Value: &ir.Literal{Type: ir.TypString, Value: m.Scaling}},
-			{Value: &ir.Ident{Name: m.Draw.Name, Type: ir.TypDyn}},
+			{Value: &ir.Ident{Name: m.DrawName, Type: ir.TypDyn}},
 		},
 	}}
 }

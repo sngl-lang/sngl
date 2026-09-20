@@ -181,13 +181,6 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
 }
 
-func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
-	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	ctx.Circle(20.0, 20.0, float64(m.frame))
-	ctx.Restore()
-}
-
 func (m *Model) __effect0_mount() {
 	m.frame = 4
 	m.__n0Ctx = snglcanvas.New(40, 40)
@@ -318,6 +311,13 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __snglTeardown() {
 	m.__effect1_teardown()
+}
+
+func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
+	ctx.Save()
+	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ctx.Circle(20.0, 20.0, float64(m.frame))
+	ctx.Restore()
 }
 
 func (m *Model) Frame() int {
@@ -564,6 +564,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e2223818f2c0f95b0ad68e055937765e
+pass sha256:4f6dcd642c89c3f7495e10b267a097aa
 -- run/none/html --
 pass sha256:cef4ea71283aee667932043990cf1251

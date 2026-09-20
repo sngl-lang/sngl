@@ -58,6 +58,7 @@ var passes = []pass{
 	passNoImplicitRecv,
 	// After passCanvas: the call it promotes may be inside a draw function
 	// synthesized from an override's handler body.
+	passShapeDraw,
 	passLibFuncs,
 	passEffect,
 	passSlotChildInstances,

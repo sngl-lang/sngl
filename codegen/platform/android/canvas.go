@@ -204,11 +204,8 @@ func canvasScalingProp(n *ir.NodeInst) string {
 // Kotlin lines. passCanvas emits a fixed per-shape structure: Save,
 // [ApplyStyle], DrawPrimitive, Restore. ApplyStyle binds the style the
 // following primitive's fill/stroke reference.
-func (cc *irComposeContext) emitDrawBody(fn *ir.Func) {
-	if fn == nil {
-		return
-	}
-	cc.emitDrawStmts(fn.Block)
+func (cc *irComposeContext) emitDrawBody(stmts []ir.Stmt) {
+	cc.emitDrawStmts(stmts)
 }
 
 // emitDrawStmts walks a draw body. An `if` or a `for` is not a shape, it is

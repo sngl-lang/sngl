@@ -33,7 +33,7 @@ func emitComponentInstance(
 	nodeSpecs map[string]*fyneSpec,
 	importSink func(string),
 	canvasByID map[string]*canvasMeta,
-	canvasByFunc map[*ir.Func]*canvasMeta,
+	canvasByNode map[*ir.NodeInst]*canvasMeta,
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -56,7 +56,7 @@ func emitComponentInstance(
 
 	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink).
 		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar)
-	tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
+	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
 
 	var ctorBody strings.Builder
@@ -80,18 +80,12 @@ func emitComponentInstance(
 			continue
 		}
 		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink).withLocalRefs(fn.LocalRefs)
-		mtr.canvasByFunc = canvasByFunc
+		mtr.canvasByNode = canvasByNode
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if canvasByFunc[fn] != nil {
-			// A canvas draw func draws into a snglcanvas.Context, not into
-			// nothing: the body was written against the name "ctx", and left
-			// as a plain method it came out `_canvasDraw0(ctx any)`, which its
-			// own body's Context method calls do not compile against.
-			params = []*ir.Param{{Name: "ctx", Type: canvasCtxType()}}
-		} else if fn.SlotRender {
+		if fn.SlotRender {
 			// A reactive slot's render func. Its body was written against the
 			// reactivity pass's `parent` name, which the translator rewrites
 			// to `container` -- so the parameter has to be spelled the way

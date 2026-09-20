@@ -289,6 +289,13 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	case *ir.LocalVar:
 		walkType(n.Type, used, walk)
 		walkExpr(n.Init, used, walk)
+		// A flattened canvas carries the statements that paint it on the node
+		// it replaced. They call what the platform package's shapes call --
+		// fyne's applyStyle, gtk4's paint -- and reaching them is what keeps
+		// those declarations from being shaken as unreferenced.
+		if n.CanvasNode != nil {
+			walkStmts(n.CanvasNode.Children, used, walk)
+		}
 	case *ir.Return:
 		walkExpr(n.Value, used, walk)
 	case *ir.If:

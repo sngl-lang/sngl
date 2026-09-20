@@ -208,7 +208,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	// Shared into every translator so OnCreateNode builds the raster-backed
 	// widget and OnDefault wires reactive redraws.
-	canvasByID, canvasByFunc, canvasByNode := collectCanvases(ctx.Canvases)
+	canvasByID, canvasByNode := collectCanvases(ctx.Canvases)
 	hasCanvas := len(canvasByID) > 0
 
 	if len(wins) <= 1 {
@@ -220,7 +220,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				withInvokerSink(func(inv fyneEventInvoker) {
 					eventInvokers = append(eventInvokers, inv)
 				})
-			tr.canvasByID, tr.canvasByFunc, tr.canvasByNode = canvasByID, canvasByFunc, canvasByNode
+			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
@@ -261,7 +261,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport).withLocalRefs(w.Window.LocalRefs)
-			tr.canvasByID, tr.canvasByFunc, tr.canvasByNode = canvasByID, canvasByFunc, canvasByNode
+			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 			body := codegen.WalkLowered(context.Background(), w.Body, tr)
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
@@ -303,7 +303,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
 			var ib strings.Builder
-			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByFunc)
+			emitComponentInstance(&ib, cc, gc, nodeSpecs, addWidgetImport, canvasByID, canvasByNode)
 			componentCodes = append(componentCodes, ib.String())
 			continue
 		}
@@ -365,34 +365,35 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}
 		// A promoted node handler routes to emitIRPromotedHandler even when
 		// Synthesized: the two-way-bind writeback handler is both.
 		if fn.LoweredFromTag != "" {
-			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
+			emitIRPromotedHandler(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode)
 			continue
 		}
 		if fn.Synthesized {
-			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
+			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode)
 			continue
 		}
 		if componentFuncs[fn] {
-			emitIRFyneComponentFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByFunc)
+			emitIRFyneComponentFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode)
 			continue
 		}
 		emitIRFyneFunc(&funcBuf, fn, gc)
 	}
 
-	// The draw funcs are codegen's own and are in no func list, so they are
-	// emitted from the drawings rather than fished out of the loop above --
-	// which is what the `canvasByFunc[fn] != nil` arm there used to do, and
-	// what made every platform need a name match to keep them out of the
-	// generic path.
-	for _, cv := range ctx.Canvases.All() {
-		emitIRCanvasDraw(&funcBuf, cv.Draw, gc, canvasByFunc, nodeSpecs, addWidgetImport)
+	// The draw routines are codegen's own and are in no func list, so they
+	// come from the drawings rather than out of the loop below -- which is
+	// what the `canvasByFunc[fn] != nil` arm there used to do, and what made
+	// this platform need a name match to keep them off the generic path.
+	// Their place among the emitted functions moved when they stopped being
+	// entries in one; the order of Go declarations is inert.
+	for i := range ctx.Canvases.All() {
+		emitIRCanvasDraw(&funcBuf, &ctx.Canvases.All()[i], gc, canvasByNode, nodeSpecs, addWidgetImport)
 	}
 
 	// A var handler's body carries reactivity-injected widget updates like an
@@ -408,7 +409,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport)
-			tr.canvasByID, tr.canvasByFunc, tr.canvasByNode = canvasByID, canvasByFunc, canvasByNode
+			tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 			hgc := codegen.BindVarHandlerValue(gc, h, "v")
 			for _, stmt := range codegen.WalkLowered(context.Background(), h.Func.Block, tr) {
 				for _, line := range hgc.EvalStmt(stmt) {
@@ -648,14 +649,14 @@ func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 // translation a promoted handler's does, because it touches the same things:
 // state, and the element refs that are Model fields. Emitted through the plain
 // renderer instead, `__n0.Text = …` named a variable that does not exist.
-func emitIRFyneComponentFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
+func emitIRFyneComponentFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta) {
 	if len(fn.Block) == 0 {
 		return
 	}
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	}, importSink).withLocalRefs(fn.LocalRefs)
-	tr.canvasByFunc = canvasByFunc
+	tr.canvasByNode = canvasByNode
 
 	params := fn.Params
 	if len(params) > 0 && params[0].Receiver {
@@ -1166,7 +1167,7 @@ func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest [
 // The node is found by LoweredFromNode rather than LoweredFromTag: a tag
 // names one of three primitives, so it says which children contract the
 // widget has and nothing about its callbacks.
-func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
+func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta) {
 	var binding fyneHandler
 	if sp, ok := nodeSpecs[fn.LoweredFromNode]; ok {
 		binding = sp.Handlers[fn.LoweredFromEvent]
@@ -1189,7 +1190,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	}, importSink).withLocalRefs(fn.LocalRefs)
-	tr.canvasByFunc = canvasByFunc
+	tr.canvasByNode = canvasByNode
 
 	stmts := fn.Block
 
@@ -1237,12 +1238,12 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 // against passReactivity's `parent`, which the translator rewrites to
 // `container`. Every other synthesized func -- an effect's settle halves, the
 // focus-order navigation -- takes the parameters it declares, which is none.
-func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByFunc map[*ir.Func]*canvasMeta) {
+func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, specs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta) {
 	tr := newFyneTranslator(gc, specs, func(name, goType string) {
 		*widgetFields = append(*widgetFields, irWidgetField{name: name, goType: goType})
 	}, importSink).withLocalRefs(fn.LocalRefs)
-	tr.canvasByFunc = canvasByFunc
-	tr.canvasByID = canvasByIDFor(canvasByFunc)
+	tr.canvasByNode = canvasByNode
+
 	bodyStmts := codegen.WalkLowered(context.Background(), fn.Block, tr)
 
 	params := fn.Params

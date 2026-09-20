@@ -19,8 +19,8 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	// package. Reported here rather than written out: before the shapes became
 	// overrides the same combination panicked in the Go backend on an
 	// untranslated canvas intrinsic, so this is a loud failure staying loud.
-	if fn := firstCanvasDrawFunc(ctx.Canvases); fn != nil {
-		return fmt.Errorf("android draws a canvas through Compose, which is Kotlin: build this program with --lang kotlin, or remove the canvas (%s)", fn.Name)
+	if name := firstCanvasName(ctx.Canvases); name != "" {
+		return fmt.Errorf("android draws a canvas through Compose, which is Kotlin: build this program with --lang kotlin, or remove the canvas (%s)", name)
 	}
 	src, err := CompileIR(ctx, cfg)
 	if err != nil {
@@ -166,12 +166,12 @@ func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	}
 }
 
-// firstCanvasDrawFunc is any one of the program's drawings, or nil. Which one
-// does not matter: the caller asks only to read the shape of a draw body.
-func firstCanvasDrawFunc(draws *codegen.CanvasDraws) *ir.Func {
+// firstCanvasName is what to call any one of the program's drawings, or "".
+// Which one does not matter: the caller only names it in a diagnostic.
+func firstCanvasName(draws *codegen.CanvasDraws) string {
 	all := draws.All()
 	if len(all) == 0 {
-		return nil
+		return ""
 	}
-	return all[0].Draw
+	return all[0].Name
 }

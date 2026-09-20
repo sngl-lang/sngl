@@ -142,7 +142,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	// like any other leaf node's output. Only wrap it in the node's lipgloss
 	// style when one is actually set — an empty NewStyle().Render() pads the
 	// multi-line half-block grid with background cells, mangling the art.
-	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(c.Draw), canvasRasteriser(c))
+	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(c), canvasRasteriser(c))
 	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
 	if style != "lipgloss.NewStyle()" {
 		vc.line("%s = %s.Render(%s)", resultVar, style, render)
@@ -161,15 +161,15 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 // buffer survives every frame after the first.
 func canvasRasteriser(c *codegen.Canvas) string {
 	return fmt.Sprintf("func() image.Image { __c := %s.Begin(%d, %d, 0, 0, \"\"); m.%s(__c); return __c.Result() }",
-		canvasSurfaceVar(c.Draw), c.Width, c.Height, c.Draw.Name)
+		canvasSurfaceVar(c), c.Width, c.Height, c.Name)
 }
 
 // canvasSurfaceVar names the package-level surface backing a draw func. It is a
 // package var rather than a Model field because bubbletea's Model is a value:
 // an Update returns a copy, so a buffer parked in a field would be reallocated
 // on the frame after every keypress -- the allocation this exists to remove.
-func canvasSurfaceVar(fn *ir.Func) string {
-	return strings.Replace(fn.Name, "canvasDraw", "canvasSurface", 1)
+func canvasSurfaceVar(c *codegen.Canvas) string {
+	return strings.Replace(c.Name, "canvasDraw", "canvasSurface", 1)
 }
 
 // emitCanvasSurfaceDecls declares one reusable drawing surface per canvas.
@@ -180,7 +180,7 @@ func canvasSurfaceVar(fn *ir.Func) string {
 func emitCanvasSurfaceDecls(b *strings.Builder, draws *codegen.CanvasDraws) {
 	all := draws.All()
 	for i := range all {
-		fmt.Fprintf(b, "var %s %s.Surface\n", canvasSurfaceVar(all[i].Draw), snglCanvasAlias)
+		fmt.Fprintf(b, "var %s %s.Surface\n", canvasSurfaceVar(&all[i]), snglCanvasAlias)
 	}
 	if len(all) > 0 {
 		b.WriteByte('\n')
@@ -192,15 +192,15 @@ func emitCanvasSurfaceDecls(b *strings.Builder, draws *codegen.CanvasDraws) {
 // unique per canvas in the package — so the trailing index + 1 gives each
 // on-screen canvas a distinct image ID (kitty IDs must be > 0, and two images
 // sharing an ID would clobber each other's transmitted data).
-func canvasImageID(fn *ir.Func) int {
-	if fn == nil {
+func canvasImageID(c *codegen.Canvas) int {
+	if c == nil {
 		return 1
 	}
-	i := len(fn.Name)
-	for i > 0 && fn.Name[i-1] >= '0' && fn.Name[i-1] <= '9' {
+	i := len(c.Name)
+	for i > 0 && c.Name[i-1] >= '0' && c.Name[i-1] <= '9' {
 		i--
 	}
-	if n, err := strconv.Atoi(fn.Name[i:]); err == nil {
+	if n, err := strconv.Atoi(c.Name[i:]); err == nil {
 		return n + 1
 	}
 	return 1
@@ -230,7 +230,7 @@ func emitCanvasTransmitMethod(b *strings.Builder, draws *codegen.CanvasDraws, gc
 		// KittyTransmit calls the rasteriser only when it actually needs to
 		// re-encode (kitty + pixels changed), so a static or off-screen canvas
 		// costs nothing here.
-		fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, canvasImageID(c.Draw), canvasRasteriser(c))
+		fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, canvasImageID(c), canvasRasteriser(c))
 	}
 	b.WriteString("\tif __ctb.Len() == 0 {\n\t\treturn nil\n\t}\n")
 	b.WriteString("\treturn tea.Raw(__ctb.String())\n")
@@ -245,12 +245,12 @@ func emitCanvasTransmitMethod(b *strings.Builder, draws *codegen.CanvasDraws, gc
 func emitCanvasDrawFuncs(b *strings.Builder, draws *codegen.CanvasDraws, gc *golang.GoIRContext) {
 	all := draws.All()
 	for i := range all {
-		emitCanvasDrawFunc(b, all[i].Draw, gc)
+		emitCanvasDrawFunc(b, &all[i], gc)
 	}
 }
 
 // translateCanvasBody rewrites the canvas intrinsics in stmts into Context
-// method calls, descending into the conditionals and loops passCanvas keeps in
+// method calls, descending into the conditionals and loops the splice keeps in
 // a draw body -- reading only the top level left a shape written inside an
 // `if` as a call to a Go function nobody emits, which panicked the build.
 //
@@ -288,10 +288,10 @@ func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 
 // emitCanvasDrawFunc emits a single draw func as a Model method, translating
 // each canvas-intrinsic body CallStmt into Context method calls.
-func emitCanvasDrawFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	body := translateCanvasBody(fn.Block)
+func emitCanvasDrawFunc(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext) {
+	body := translateCanvasBody(cv.Draw)
 	synthesized := &ir.Func{
-		Name:     fn.Name,
+		Name:     cv.Name,
 		Receiver: "Model",
 		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
 		Return:   ir.TypVoid,

@@ -30,7 +30,6 @@ type emitShared struct {
 	// on a builder call of its own because a per-site `with` is what three
 	// separate scopes have now been found to have forgotten.
 	canvasByID   map[string]*canvasMeta
-	canvasByFunc map[*ir.Func]*canvasMeta
 	canvasByNode map[*ir.NodeInst]*canvasMeta
 }
 

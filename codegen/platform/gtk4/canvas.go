@@ -200,7 +200,7 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	// context rather than spelled `m`.
 	closure := &ir.Ident{
 		Name: fmt.Sprintf("func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, %d, %d, %q); %s.%s(cr) }",
-			w, h, m.Scaling, t.gc.RecvName(), m.Draw.Name),
+			w, h, m.Scaling, t.gc.RecvName(), m.DrawName),
 		Type: ir.TypDyn,
 	}
 	appendCall := &ir.Call{
@@ -222,19 +222,22 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	return stmts
 }
 
-// emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
-// method `func (m *Model) _canvasDrawN(cr *C.cairo_t)`, translating each
-// canvas-intrinsic CallStmt body statement into native cairo calls.
-func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, reg *gir.TypeRegistry, shared *emitShared) {
+// emitIRCanvasDraw wraps one drawing's statements in a Model method
+// `func (m *Model) _canvasDrawN(ctx *C.cairo_t)`, translating each
+// canvas-intrinsic CallStmt into native cairo calls.
+//
+// The method is this platform's: three places invoke a drawing, so the
+// statements the tree carries are wrapped once here and called by name.
+func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext, reg *gir.TypeRegistry, shared *emitShared) {
 	// The registry and the shared sink are not optional even though a draw
 	// body reaches mostly cairo intrinsics: *emitShared is nil-safe, so
 	// without the sink a fail() here would be discarded and the build would
 	// emit the broken call anyway, and a needBoolToInt() would silently omit
 	// the helper the emitted code then references.
 	tr := newGtk4Translator(gc, func(string, string) {}).withRegistry(reg).withShared(shared)
-	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	body := codegen.WalkLowered(context.Background(), cv.Draw, tr)
 	synthesized := &ir.Func{
-		Name:     fn.Name,
+		Name:     cv.Name,
 		Receiver: "Model",
 		// Param name matches the IR draw-func param ("ctx") the
 		// canvas-intrinsic bodies reference; renaming would dangle them.

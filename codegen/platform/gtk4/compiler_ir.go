@@ -310,14 +310,15 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	// Shared into every translator so OnCreateNode builds the GtkDrawingArea +
 	// cairo trampoline and OnDefault wires reactive redraws.
-	c.shared.canvasByID, c.shared.canvasByFunc, c.shared.canvasByNode = canvasutil.Collect(c.ctx.Canvases)
+	c.shared.canvasByID, c.shared.canvasByNode = canvasutil.Collect(c.ctx.Canvases)
 	hasCanvas := len(c.shared.canvasByID) > 0
 	// The draw funcs are codegen's own and are in no func list, so they are
 	// emitted from the drawings rather than fished out of the loop below --
 	// which is what the `canvasByFunc[fn] != nil` arm there used to do.
 	emitCanvasDrawFuncs := func(b *strings.Builder) {
-		for _, cv := range c.ctx.Canvases.All() {
-			emitIRCanvasDraw(b, cv.Draw, gc, c.registry, c.shared)
+		all := c.ctx.Canvases.All()
+		for i := range all {
+			emitIRCanvasDraw(b, &all[i], gc, c.registry, c.shared)
 		}
 	}
 
@@ -365,7 +366,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && c.shared.canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitGTK4FreeFunc(&funcBuf, fn, gc)
 			continue
 		}

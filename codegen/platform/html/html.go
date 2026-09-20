@@ -243,12 +243,12 @@ type windowShared struct {
 	// Filled on the first window, like usedComponents above: the slot retarget
 	// that runs after it rewrites call arguments and declares nothing, so it
 	// changes none of these answers.
-	derived    bool
-	common     *codegen.CommonAnalysis
-	dt         *codegen.DepTracker
-	owners     []ir.Owner
-	canvasByID map[string]*canvasutil.Meta
-	canvasByFn map[*ir.Func]*canvasutil.Meta
+	derived      bool
+	common       *codegen.CommonAnalysis
+	dt           *codegen.DepTracker
+	owners       []ir.Owner
+	canvasByID   map[string]*canvasutil.Meta
+	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
 	// canvasDraws is the one set of drawings this package's generation uses.
 	// One instance, because the draw funcs are keyed by pointer: a second
 	// NewCanvasDraws would build equal funcs that match nothing.
@@ -277,7 +277,7 @@ func (s *windowShared) derivePackage(pkg *ir.Package) {
 	s.dt = codegen.NewDepTrackerFromPkg(pkg)
 	s.owners = ir.Owners(pkg)
 	s.canvasDraws = codegen.NewCanvasDraws(pkg)
-	s.canvasByID, s.canvasByFn, _ = canvasutil.Collect(s.canvasDraws)
+	s.canvasByID, s.canvasByNode = canvasutil.Collect(s.canvasDraws)
 }
 
 // analysis hands each window a copy.
@@ -311,9 +311,9 @@ func (s *windowShared) ownerList(pkg *ir.Package) []ir.Owner {
 
 // canvases is canvasutil.Collect memoized. Shared, not copied, for the reason
 // depTracker is: the two maps and the Meta behind them are only read.
-func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.Func]*canvasutil.Meta) {
+func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.NodeInst]*canvasutil.Meta) {
 	s.derivePackage(pkg)
-	return s.canvasByID, s.canvasByFn
+	return s.canvasByID, s.canvasByNode
 }
 
 // drawings is the package's canvases, for the paths that meet a canvas as a
@@ -736,7 +736,6 @@ type htmlGen struct {
 	// canvasByID/canvasByFunc are the flattened canvases of every lowered
 	// body, threaded into every translator by newHTMLTranslator.
 	canvasByID   map[string]*canvasutil.Meta
-	canvasByFunc map[*ir.Func]*canvasutil.Meta
 	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
 	canvasDraws  *codegen.CanvasDraws
 
@@ -803,9 +802,8 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	// renders as markup is an ir.NodeInst and is not among these; what is, is
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
-	g.canvasByID, g.canvasByFunc = shared.canvases(pkg)
+	g.canvasByID, g.canvasByNode = shared.canvases(pkg)
 	g.canvasDraws = shared.drawings(pkg)
-	_, _, g.canvasByNode = canvasutil.Collect(g.canvasDraws)
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
@@ -1551,13 +1549,6 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		seen[f] = true
 		out = append(out, f)
 	}
-	// The draw funcs are codegen's own and are in no func list, so they are
-	// named here rather than found by the scan below. They are synthesized in
-	// every sense the loop cares about: emitted as a definition, called from
-	// the canvas setup, and written by nobody.
-	for _, cv := range g.canvasDraws.All() {
-		add(cv.Draw)
-	}
 	if g.pkg != nil {
 		for _, f := range g.pkg.Funcs {
 			add(f)
@@ -1759,7 +1750,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 	if drawing != nil {
 		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
-		cs := canvasSetup{id: id, node: n, drawFunc: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n)}
 		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
 		// passCanvasReactivity injects into handler/timer bodies. A scaled
@@ -2390,7 +2381,10 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 	synthVars := g.synthesizedVars()
 	synthFuncs := g.synthesizedFuncs()
-	if len(synthVars) == 0 && len(synthFuncs) == 0 {
+	// The drawings count: they are emitted below and are in no func list, so a
+	// page whose only synthesized code is a canvas would return here and write
+	// none of it.
+	if len(synthVars) == 0 && len(synthFuncs) == 0 && len(g.canvasDraws.All()) == 0 {
 		return
 	}
 	jc := javascript.NewIRContext(g.ctx)
@@ -2412,6 +2406,24 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 	if emittedVar {
 		b.WriteString("\n")
+	}
+
+	// A drawing is wrapped once and called from the canvas setup and from
+	// every repaint, so the statements the tree carries become a function
+	// here. It is this platform's, built at emission: no func list holds one
+	// and nothing in the IR names it.
+	for _, cv := range g.canvasDraws.All() {
+		tr := g.newHTMLTranslator(jc)
+		drawn := &ir.Func{
+			Name:   cv.Name,
+			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Block:  codegen.WalkLowered(context.Background(), cv.Draw, tr),
+		}
+		for _, line := range jc.EmitFuncDef(drawn) {
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+		b.WriteByte('\n')
 	}
 
 	for _, fn := range synthFuncs {
