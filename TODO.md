@@ -271,9 +271,54 @@ own blocks name.
       `Token.plain` is what an unclassified token becomes.
 - [ ] **Live fences.** A fence whose content should become components rather
       than text — the thing that lets a tutorial show a running example beside
-      its source. Needs a directive spelling (` ```sngl run `? an attribute?),
-      and the parser leaves the `richText` and splices the parsed components
-      into the `vbox`.
+      its source. The spelling is a **`mode=` trailer on the info line**
+      (Jonathan's call): ` ```sngl mode=island `. goldmark's `Language()`
+      splits the info string at the first space and `Info.Segment` carries the
+      rest, so the fence still reports `sngl` and still highlights through the
+      chroma path every other fence uses — a trailer costs the default path
+      nothing.
+
+      Four modes, and what separates them is **which scope the source lands
+      in** rather than how it is parsed:
+
+      - **`view`** — the default, and what every fence in every other language
+        already is. Handled like any other code fence: shown, highlighted, not
+        compiled. Never written, being the default.
+      - **`island`** — wrapped in a component of its own, with its imports
+        hoisted to the generated package and its `output` blocks dropped. The
+        isolation is the point and is what the name says: an example is not
+        the host application, so two islands each writing `var n = 0` are two
+        examples and neither reaches the other. This is the mode the "running
+        example beside its source" case wants, and it is the word this file
+        already used for a document's snippets before there were modes.
+      - **`package`** — package-level declarations, and what they are for is
+        the component the page gets wrapped in: a document can then be handed
+        props and can set context values for everything under it.
+      - **`body`** — placed directly into the generated document's own
+        component body, as raw source, at the position it was written. The
+        positional counterpart of `package`: `package` declares, `body`
+        emits.
+
+      The three written modes name the scope the source lands in, which is
+      also what keeps them clear of three terms this repository already spends
+      precisely. `inline` is the inliner and is markup's own inline-vs-block
+      distinction; `root` is `sngl:ui`'s root family, the thing that makes a
+      window top-level; and a `view` body is what renders, which is the
+      opposite of the fence that does not. `view` keeps the name anyway, being
+      the default and so never written.
+
+      Four things the modes do not settle and the implementation will reach:
+
+      - Whether an `island` or `body` fence also *shows* its source. The entry
+        above has always said a live fence leaves the `richText` and splices
+        the components, so both is the standing answer for `island`;
+        `package` has no position to show at, and `body` is a judgment call.
+      - How a `package` fence's wrapper component is named or selected.
+      - What an island's hoisted import does when two of them claim one alias,
+        or when one claims an alias the document already uses.
+      - What `mode=` other than `view` means on a fence whose language is not
+        `sngl`. Refusing it at the fence is the cheap answer and says so where
+        it was written.
 
 ## 4. Compile-time parse (later)
 
