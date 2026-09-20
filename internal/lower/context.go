@@ -1284,7 +1284,13 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			out = append(out, n)
 
 		case *ir.Break, *ir.Continue:
-			// A loop escape has no expression and no nested block to lower.
+			// A loop escape has no expression and no nested block to lower --
+			// but it is still a statement, and this walk rebuilds the list it
+			// was in. Left out it was deleted: a `continue` in any program
+			// that also lowers a context vanished on every target, silently,
+			// and which programs those were depended only on whether some
+			// package in the build declared one.
+			out = append(out, n)
 		default:
 			panic(fmt.Sprintf("lowerInStmts: unhandled %T", n))
 		}
