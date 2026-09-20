@@ -79,32 +79,47 @@ reads `CommonAnalysis.Timers`, which it already does today, and which still
 carries a period and a body. Nothing about #243 depended on `ir.Timer` being a
 field on a window.
 
-## Open — needs Jonathan
+## Root components inline down; they are not lifted
 
-**Root components are not dead.** The claim that the lift is mostly unnecessary
-because "main components no longer exist" holds for the *harness convention* —
-`CodegenCtx.RootDecl()` answers only for a harness that cleared the windows,
-and `main` is an ordinary component. It does not hold for
-`component X ui.root`, which is still writable, still checked, and still
-exercised:
+Settled. A component may name the root family, and it reaches codegen the way
+every other component does -- inlined at the site that instantiates it, with
+its state renamed per instantiation by the pass that already does that. There
+is no hoist and no scan of `pkg.Components` for a family.
 
-- `testdata/root_component_state.txtar` — `component main ui.root` with
-  `var hits` and `func bump`, hoisted into the window, on three targets.
-- `testdata/root_component_state_two_windows.txtar` — the same var mounted on
-  two windows, and the file where the per-platform copy-or-share table is
-  written down.
-- `testdata/root_component_mutating_func.txtar`,
-  `testdata/route_path_param_param.txtar`,
-  `cmd/sngl/testdata/route_param_beside_root_state.txt`,
-  `examples/http-session/app.sngl`.
+Where the family is declared, since it comes up: `struct root {}` in
+`lib/ui/window.sngl`, carrying `#[marks.builtin("treeRoot")]`. A program
+spells it `ui.root`; `ir.IsAppRootTree` matches the *mark* and never the name,
+as it does for the other two tree kinds.
 
-So `hoistRootState` and `stripComponentReceivers` are live code with goldens
-behind them, and the second path of `applyRootWindow` cannot simply be dropped.
+**The consequence is that a root component nobody instantiates renders
+nothing**, and that is the last remnant of the harness convention rather than
+a new rule. `applyRootWindow` today scans every declaration for the root tree
+and lifts its windows whether or not anything renders it, which is why
 
-Either the collapse keeps a hoist for that shape, or `component X ui.root` is
-itself on the way out and these fixtures change. That is a language decision,
-not a refactor decision, and it is the one thing here still unanswered.
+```sngl
+component main ui.root {
+    var hits = 0
+    ui.window #page(title="t") { ... }
+}
+```
 
+is a whole program in six fixtures with nothing calling `main`. Under ordinary
+inlining it is a declaration nobody reached. Each of those moves its windows
+and state to package scope, where `pkg.Vars` already owns them:
+`root_component_state.txtar`, `root_component_state_two_windows.txtar`,
+`root_component_mutating_func.txtar`, `route_path_param_param.txtar`,
+`unroll_static_view.txtar`, `unroll_static_view_empty.txtar`,
+`cmd/sngl/testdata/route_param_beside_root_state.txt`, and
+`examples/http-session/app.sngl`.
+
+`root_component_state_two_windows.txtar` is the one to rewrite rather than
+delete: it is where the per-platform copy-or-share table for one var mounted on
+two windows is written down, and that claim survives the move.
+
+Codegen is permitted to *error* where it cannot honor the result -- html on
+`--lang none` cannot build a static page out of state whose value is not known
+at build time. That is the right layer for it, and it replaces a lowering pass
+that quietly rearranged the program instead.
 ## Staging
 
 Each step green, each with its own fixture, a golden refresh read rather than
@@ -114,9 +129,9 @@ rubber-stamped.
 2. `ir.FuncDecl` — introduce the statement, move a *component's* funcs onto it
    first, where there is no window in the picture. Proves the shape.
 3. Delete `ir.Timer`: gate fold into `AnalyzeCommon`, `passTimerPrimitive`
-   deleted.
-4. `pkg.Windows` derived; `passRootWindow` reduced to whatever the answer to
-   the open question leaves of it.
+   deleted. 122 references across 42 files -- its own sitting.
+4. `pkg.Windows` derived at codegen; `passRootWindow` deleted, root components
+   left to ordinary inlining, the eight fixtures above rewritten.
 5. The 39 statement arms, once a window is no longer a statement kind.
 6. Delete `ir.Window`. Delete this file.
 
