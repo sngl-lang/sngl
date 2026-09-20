@@ -42,10 +42,9 @@ type NodeInst struct {
 	//
 	// Not serialized: it points back into the symbol graph, and a reparse of a
 	// printed tree re-declares the handle from the `#id` it prints.
-	Handle     *Var  `json:"-"`
-	Key        Expr  // key expression for list diffing (nil → implicit index)
-	Ref        Expr  // ref binding (nil if none)
-	CanvasDraw *Func // non-nil for canvas containers after passCanvas
+	Handle *Var `json:"-"`
+	Key    Expr // key expression for list diffing (nil → implicit index)
+	Ref    Expr // ref binding (nil if none)
 }
 
 // SlotContent is what a call site supplies for one named slot. Params are the
@@ -166,19 +165,17 @@ type LocalVar struct {
 	// node handles passDeclarative emits, which are addressed as element refs
 	// rather than by symbol.
 	Sym *Var
-	// CanvasDraw is set by passDeclarative when flattening a canvas
-	// NodeInst (whose own CanvasDraw was set by passCanvas) into a
-	// `lower.CreateNode("canvas")` LocalVar. It carries the synthesized
-	// draw func through flattening so widget-emitting platforms (fyne,
-	// gtk4) can wire a raster-backed canvas widget. CanvasWidth/Height
-	// carry the canvas's pixel dimensions (from its width/height props).
-	CanvasDraw   *Func
-	CanvasWidth  int
-	CanvasHeight int
-	// CanvasScaling is the `scalingMode` prop: what a platform does with the
-	// picture when the room it lays the canvas out in is not the size the
-	// shapes were placed at. Empty means the declaration's default.
-	CanvasScaling string
+	// CanvasNode is the canvas instantiation this createNode flattened, kept
+	// only when it is one.
+	//
+	// passDeclarative's whole job is to destroy the tree, so a drawing needs
+	// something to ride across on -- its shapes are not widgets and are not
+	// flattened with it. The node is the smallest such thing and carries
+	// everything a platform asks of a canvas: the shapes, and the width,
+	// height and scalingMode props. It used to be four fields holding a
+	// synthesized draw func and three prop values copied out, which is the
+	// same carrier written out longhand.
+	CanvasNode *NodeInst
 }
 
 func (*LocalVar) stmtNode() {}
@@ -415,8 +412,7 @@ func constInt(e Expr) (int, bool) {
 // bodies that mutate state vars read by a canvas draw function. Each platform
 // translates this to its native "clear and redraw the canvas" operation.
 type CanvasRedrawStmt struct {
-	Canvas   *NodeInst // the canvas element (has CanvasDraw set)
-	DrawFunc *Func     // the synthesized draw function
+	Canvas *NodeInst // the canvas element
 }
 
 func (*CanvasRedrawStmt) stmtNode() {}

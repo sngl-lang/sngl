@@ -21,6 +21,11 @@ type CodegenCtx struct {
 	// The test launcher sets it per-group so each test binary builds its
 	// Model from the component under test.
 	RootComponent string
+	// Canvases is the drawings in this package and the function each paints
+	// with. Built once here rather than by each platform: the names are method
+	// names, so two platforms computing them separately would be two places to
+	// number them in.
+	Canvases *CanvasDraws
 }
 
 func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
@@ -43,6 +48,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 		Namer:         NewNamer(),
 		Platform:      platform,
 		RootComponent: root,
+		Canvases:      NewCanvasDraws(req.Pkg),
 	}
 }
 

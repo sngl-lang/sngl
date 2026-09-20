@@ -501,9 +501,16 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 	// A tree kind is deliberately not on this list. Belonging to a segmented
 	// tree says which family a declaration joins, not that a codegen renders
 	// it: a shape composed out of other shapes is a wrapper like any other,
-	// and passCanvas emits whatever reaches it, composed away or not.
-	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
-		hostsTree(comp)
+	// and the canvas emitter draws whatever reaches it, composed away or not.
+	//
+	// Hosting a family used to be on this list, and only passCanvas wanted it
+	// there: that pass looked for the node the shapes hang off, so a canvas
+	// whose override had been composed away was an `html.canvas` with shape
+	// children and no draw function. Nothing lifts them out now, so hosting a
+	// family is the ordinary thing it reads as -- `richText` hosts the inline
+	// family the way `vbox` hosts widgets -- and a platform may implement such
+	// a component in its own package like any other.
+	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ""
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the

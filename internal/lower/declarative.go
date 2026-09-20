@@ -139,7 +139,7 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			st.observeID(n.ID)
-			st.scanStmts(n.Children)
+			st.scanStmts(ir.WidgetChildren(n))
 		case *ir.LocalVar:
 			// LocalVar __nN = lower.CreateNode(...) — already-lowered
 			// node from a sibling pass (e.g. reactivity's slot synth).
@@ -321,9 +321,10 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		varType = &ir.Type{Kind: ir.TypeComponent, Decl: n.Component}
 	}
 
-	// 1. createNode — thread canvas draw func + dimensions through the
-	// flattening so widget-emitting platforms can build a raster-backed
-	// canvas widget (the NodeInst's CanvasDraw is otherwise discarded here).
+	// 1. createNode — a canvas rides across on the statement that replaces it,
+	// so a widget-emitting platform can still build a raster-backed canvas.
+	// Its shapes are a family of their own and were never flattened; without
+	// the back-pointer the flattening is where the drawing is lost.
 	lv := &ir.LocalVar{
 		Name: id,
 		Type: varType,
@@ -336,11 +337,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			},
 		},
 	}
-	if n.CanvasDraw != nil {
-		lv.CanvasDraw = n.CanvasDraw
-		lv.CanvasWidth = nodeIntProp(n, "width")
-		lv.CanvasHeight = nodeIntProp(n, "height")
-		lv.CanvasScaling = nodeEnumProp(n, "scalingMode")
+	if ir.IsShapeContainer(n) {
+		lv.CanvasNode = n
 	}
 	stmts = append(stmts, lv)
 
@@ -410,8 +408,10 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		})
 	}
 
-	// 4. children — recurse, then appendChild parent → child.
-	for _, c := range n.Children {
+	// 4. children — recurse, then appendChild parent → child. A canvas's are
+	// shapes and are not flattened: they are not widgets, there is nothing to
+	// create for one, and an id spent on one shifts every id after it.
+	for _, c := range ir.WidgetChildren(n) {
 		switch cn := c.(type) {
 		case *ir.NodeInst:
 			stmts = append(stmts, st.lowerNodeIntoStmts(cn, funcs)...)

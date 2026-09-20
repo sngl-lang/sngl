@@ -19,7 +19,7 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	// package. Reported here rather than written out: before the shapes became
 	// overrides the same combination panicked in the Go backend on an
 	// untranslated canvas intrinsic, so this is a loud failure staying loud.
-	if fn := firstCanvasDrawFunc(ctx.Pkg); fn != nil {
+	if fn := firstCanvasDrawFunc(ctx.Canvases); fn != nil {
 		return fmt.Errorf("android draws a canvas through Compose, which is Kotlin: build this program with --lang kotlin, or remove the canvas (%s)", fn.Name)
 	}
 	src, err := CompileIR(ctx, cfg)
@@ -166,26 +166,12 @@ func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	}
 }
 
-// firstCanvasDrawFunc returns a synthesized canvas draw func from anywhere in
-// the package, or nil. passCanvas puts one on the package, on a component and
-// on a window, which is why this asks all three.
-func firstCanvasDrawFunc(pkg *ir.Package) *ir.Func {
-	if pkg == nil {
+// firstCanvasDrawFunc is any one of the program's drawings, or nil. Which one
+// does not matter: the caller asks only to read the shape of a draw body.
+func firstCanvasDrawFunc(draws *codegen.CanvasDraws) *ir.Func {
+	all := draws.All()
+	if len(all) == 0 {
 		return nil
 	}
-	lists := [][]*ir.Func{pkg.Funcs}
-	for _, comp := range pkg.Components {
-		lists = append(lists, comp.Funcs)
-	}
-	for _, w := range pkg.Windows {
-		lists = append(lists, w.Funcs)
-	}
-	for _, fns := range lists {
-		for _, fn := range fns {
-			if isCanvasDrawFunc(fn) {
-				return fn
-			}
-		}
-	}
-	return nil
+	return all[0].Draw
 }

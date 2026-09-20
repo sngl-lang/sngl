@@ -376,7 +376,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// The canvas stdlib structs are read by the synthesized draw funcs but are
 	// not carried on pkg.Structs for the Go path. Skip a name a user struct
 	// already declares.
-	if hasCanvasNodes(ctx.Pkg) {
+	if len(ctx.Canvases.All()) > 0 {
 		b.WriteString(canvasStdlibDecls(info.Structs))
 	}
 
@@ -523,14 +523,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
-	// Routed through the shared canvas Context translator, so they are excluded
-	// from the generic user-func loop below.
-	canvasDraws := canvasDrawFuncSet(ctx.Pkg)
-	emitCanvasSurfaceDecls(&b, ctx.Pkg)
-	emitCanvasDrawFuncs(&b, ctx.Pkg, gc)
-	hasCanvas := hasCanvasNodes(ctx.Pkg)
+	// Routed through the shared canvas Context translator. They are in no
+	// func list, so the generic user-func loop below never meets them and
+	// needs no exclusion -- which is what the name match on `_canvasDraw`
+	// used to be for.
+	emitCanvasSurfaceDecls(&b, ctx.Canvases)
+	emitCanvasDrawFuncs(&b, ctx.Canvases, gc)
+	hasCanvas := len(ctx.Canvases.All()) > 0
 	if hasCanvas {
-		emitCanvasTransmitMethod(&b, ctx.Pkg, gc)
+		emitCanvasTransmitMethod(&b, ctx.Canvases, gc)
 	}
 
 	// Every component this build renders, not only the root: one that
@@ -549,7 +550,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			continue
 		}
 		seenUserFn[fn] = true
-		if fn.IsTest || codegen.IsComputed(fn) || canvasDraws[fn] {
+		if fn.IsTest || codegen.IsComputed(fn) {
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
@@ -1043,7 +1044,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t}\n")
 	}
 
-	if hasCanvasNodes(ctx.Pkg) {
+	if len(ctx.Canvases.All()) > 0 {
 		// Re-transmit canvas pixels after each update so reactive canvases reflect
 		// new state; the image data goes out of band (the View carries only
 		// placeholder cells). The placement is virtual, so re-transmitting causes

@@ -31,6 +31,7 @@ type emitShared struct {
 	// separate scopes have now been found to have forgotten.
 	canvasByID   map[string]*canvasMeta
 	canvasByFunc map[*ir.Func]*canvasMeta
+	canvasByNode map[*ir.NodeInst]*canvasMeta
 }
 
 func (s *emitShared) needBoolToInt() {

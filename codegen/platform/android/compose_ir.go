@@ -124,7 +124,7 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		cc.renderEffect(n)
 		return
 	}
-	if n.CanvasDraw != nil {
+	if ir.IsShapeContainer(n) {
 		cc.renderCanvas(n)
 		return
 	}

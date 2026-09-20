@@ -48,7 +48,10 @@ func init() {
 
 // canvasSetup records a canvas element that needs its draw function wired up.
 type canvasSetup struct {
-	id       string
+	id string
+	// node is what a repaint names: a CanvasRedrawStmt points at the canvas
+	// instantiation, the draw function being codegen's own artifact.
+	node     *ir.NodeInst
 	drawFunc *ir.Func
 	// w and h are the coordinate space the shapes were placed in, and scaling
 	// what to do when the box is not that size. Both are needed at the draw

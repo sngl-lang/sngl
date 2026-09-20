@@ -163,28 +163,39 @@ One predicate, `ir.IsSegmentedTree(comp.Tree)`, which already exists and which
 new fact about the program; it is an established fact the rendering passes were
 never told.
 
-**The draw function does not stop existing; it stops being owned.**
-`feat/markup-tree` is the evidence for how far this can go and where it stops.
-A markup member lowers to *nodes* -- `markup.bold[platform]` is
-`inline(tag="strong")` -- so DOM being a tree is the whole reason that family
-needs no pass. A shape lowers to imperative draw calls on a context, with
-save/restore bracketing, and that sequencing is real work.
+**There is no draw function.** Two findings turned the first plan around, and
+both came from the `run/` toolchain records rather than from any text diff.
 
-So `emitShapes` moves to `codegen` and still builds an `*ir.Func`, at analysis
-time, keyed by the canvas `*ir.NodeInst`. What that buys:
+Building the body at codegen puts it *after* the optimize pass that runs again
+following lowering, and two things depend on that pass seeing it:
 
-- the pass goes;
-- the func is in no owner's list -- not `pkg.Funcs`, not `comp.Funcs`, not
-  `w.Funcs` -- so the ownership problem blocking step 4 goes with it;
-- `isCanvasDrawFunc` goes, because the generic func-emission path never meets
-  the func at all;
-- the five platforms keep keying by `*ir.Func` pointer as they already do, so
-  the ~40 read sites barely move.
+- `undefined: applyStyle` (fyne), `undefined: paint` (gtk4). Those helpers are
+  referenced only from shape override bodies, which `ir.SpecializeForTarget`
+  swaps in during lowering -- after the first shake. They survived because the
+  draw func sat in `w.Funcs`, which is a shake root. Unowned and built later,
+  the func is invisible and the helpers are shaken away.
+- android grew a `drawRect` with a zero-alpha stroke: `Color(0,0,0,0).a > 0`
+  used to fold to false and drop the branch.
 
-`feat/markup-tree` also narrowed `isPrimitiveComponent`'s `hostsTree` exception
-to `hostsLoweredTree`, and its comment says the exception exists *only* because
-passCanvas needs the node the shapes hang off. It dies here, and a canvas
-becomes an ordinary component a platform implements in its own package.
+So *unowned* and *built at codegen* are separable, and conflating them was the
+error. The answer (Jonathan's) is that neither is needed:
+
+- **Lowering rewrites a canvas's shape children in place** into the imperative
+  statements the platform package's `@draw` handlers supply. They stay in the
+  tree as ordinary statements, so folding, shaking and usage reach them the way
+  they reach anything else. The pass splices; it lifts nothing, invents no
+  declaration and has no owner to find.
+- **Codegen understands its canvas component** and emits those statements where
+  its own backend needs them -- the cairo closure on gtk4, the `Raster`
+  generator on fyne, the `DrawScope` lambda on android (which already inlines
+  one), the rasteriser closure on bubbletea, the JS draw callback on html.
+
+What that deletes: the synthesized `*ir.Func`, its name and the numbering
+behind it, `NodeInst.CanvasDraw`, `CanvasRedrawStmt.DrawFunc`, three of
+`LocalVar`'s four canvas fields, `isCanvasDrawFunc`'s name match, and
+`isPrimitiveComponent`'s `hostsTree` exception -- whose own comment on
+`feat/markup-tree` says it exists only because passCanvas needs the node the
+shapes hang off.
 
 **One commit, not staged:** `codegen` imports `lower` for `lower.Features`, so
 `lower` cannot import `codegen` and there is no intermediate where both hold

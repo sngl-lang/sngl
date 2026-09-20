@@ -208,7 +208,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 
 	// Shared into every translator so OnCreateNode builds the raster-backed
 	// widget and OnDefault wires reactive redraws.
-	canvasByID, canvasByFunc := collectCanvases(ctx.Pkg, ctx.AllFuncs())
+	canvasByID, canvasByFunc, canvasByNode := collectCanvases(ctx.Canvases)
 	hasCanvas := len(canvasByID) > 0
 
 	if len(wins) <= 1 {
@@ -220,7 +220,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 				withInvokerSink(func(inv fyneEventInvoker) {
 					eventInvokers = append(eventInvokers, inv)
 				})
-			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
+			tr.canvasByID, tr.canvasByFunc, tr.canvasByNode = canvasByID, canvasByFunc, canvasByNode
 			body := codegen.WalkLowered(context.Background(), bodyStmts, tr)
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
@@ -261,7 +261,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport).withLocalRefs(w.Window.LocalRefs)
-			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
+			tr.canvasByID, tr.canvasByFunc, tr.canvasByNode = canvasByID, canvasByFunc, canvasByNode
 			body := codegen.WalkLowered(context.Background(), w.Body, tr)
 			for _, stmt := range body {
 				for _, line := range gc.EvalStmt(stmt) {
@@ -369,10 +369,6 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			emitIRFyneFreeFunc(&funcBuf, fn, gc)
 			continue
 		}
-		if cm := canvasByFunc[fn]; cm != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, canvasByFunc, nodeSpecs, addWidgetImport)
-			continue
-		}
 		// A promoted node handler routes to emitIRPromotedHandler even when
 		// Synthesized: the two-way-bind writeback handler is both.
 		if fn.LoweredFromTag != "" {
@@ -390,6 +386,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 		emitIRFyneFunc(&funcBuf, fn, gc)
 	}
 
+	// The draw funcs are codegen's own and are in no func list, so they are
+	// emitted from the drawings rather than fished out of the loop above --
+	// which is what the `canvasByFunc[fn] != nil` arm there used to do, and
+	// what made every platform need a name match to keep them out of the
+	// generic path.
+	for _, cv := range ctx.Canvases.All() {
+		emitIRCanvasDraw(&funcBuf, cv.Draw, gc, canvasByFunc, nodeSpecs, addWidgetImport)
+	}
+
 	// A var handler's body carries reactivity-injected widget updates like an
 	// event handler's, so it goes through WalkLowered for the same reason. The
 	// value being assigned is the setter's own `v`.
@@ -403,7 +408,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			tr := newFyneTranslator(gc, nodeSpecs, func(name, goType string) {
 				widgetFields = append(widgetFields, irWidgetField{name: name, goType: goType})
 			}, addWidgetImport)
-			tr.canvasByID, tr.canvasByFunc = canvasByID, canvasByFunc
+			tr.canvasByID, tr.canvasByFunc, tr.canvasByNode = canvasByID, canvasByFunc, canvasByNode
 			hgc := codegen.BindVarHandlerValue(gc, h, "v")
 			for _, stmt := range codegen.WalkLowered(context.Background(), h.Func.Block, tr) {
 				for _, line := range hgc.EvalStmt(stmt) {

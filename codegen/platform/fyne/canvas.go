@@ -77,8 +77,8 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 }
 
 // collectCanvases delegates to the shared canvasutil collector.
-func collectCanvases(pkg *ir.Package, funcs []*ir.Func) (map[string]*canvasMeta, map[*ir.Func]*canvasMeta) {
-	return canvasutil.Collect(pkg, funcs)
+func collectCanvases(draws *codegen.CanvasDraws) (map[string]*canvasMeta, map[*ir.Func]*canvasMeta, map[*ir.NodeInst]*canvasMeta) {
+	return canvasutil.Collect(draws)
 }
 
 // canvasByIDFor delegates to the shared canvasutil rebuild.
@@ -108,7 +108,7 @@ func methodStmt(receiver ir.Expr, method string, args ...ir.Expr) ir.Stmt {
 //	m.<id>.Image = m.<id>Ctx.Result()
 //	m.<id>.Refresh()
 func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {
-	m := t.canvasMetaForDraw(rs.DrawFunc)
+	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
 	}
@@ -138,13 +138,13 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	}
 }
 
-// canvasMetaForDraw resolves the canvasMeta for a draw func via the
+// canvasMetaForNode resolves the canvasMeta for a canvas node via the
 // translator's shared map.
-func (t *fyneTranslator) canvasMetaForDraw(draw *ir.Func) *canvasMeta {
-	if t.canvasByFunc == nil {
+func (t *fyneTranslator) canvasMetaForNode(n *ir.NodeInst) *canvasMeta {
+	if t.canvasByNode == nil {
 		return nil
 	}
-	return t.canvasByFunc[draw]
+	return t.canvasByNode[n]
 }
 
 // canvasCtxField names the *snglcanvas.Context Model field backing a canvas

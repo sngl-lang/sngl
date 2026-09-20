@@ -249,6 +249,10 @@ type windowShared struct {
 	owners     []ir.Owner
 	canvasByID map[string]*canvasutil.Meta
 	canvasByFn map[*ir.Func]*canvasutil.Meta
+	// canvasDraws is the one set of drawings this package's generation uses.
+	// One instance, because the draw funcs are keyed by pointer: a second
+	// NewCanvasDraws would build equal funcs that match nothing.
+	canvasDraws *codegen.CanvasDraws
 	// modelVars is derived from dt on first use rather than beside it: only
 	// the mutation model asks for it.
 	modelVars map[string]*ir.Var
@@ -272,7 +276,8 @@ func (s *windowShared) derivePackage(pkg *ir.Package) {
 	}
 	s.dt = codegen.NewDepTrackerFromPkg(pkg)
 	s.owners = ir.Owners(pkg)
-	s.canvasByID, s.canvasByFn = canvasutil.Collect(pkg, nil)
+	s.canvasDraws = codegen.NewCanvasDraws(pkg)
+	s.canvasByID, s.canvasByFn, _ = canvasutil.Collect(s.canvasDraws)
 }
 
 // analysis hands each window a copy.
@@ -309,6 +314,13 @@ func (s *windowShared) ownerList(pkg *ir.Package) []ir.Owner {
 func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.Func]*canvasutil.Meta) {
 	s.derivePackage(pkg)
 	return s.canvasByID, s.canvasByFn
+}
+
+// drawings is the package's canvases, for the paths that meet a canvas as a
+// node rather than as a flattened local.
+func (s *windowShared) drawings(pkg *ir.Package) *codegen.CanvasDraws {
+	s.derivePackage(pkg)
+	return s.canvasDraws
 }
 
 func newWindowShared(projectDir string, projectFS fs.FS) *windowShared {
@@ -725,6 +737,8 @@ type htmlGen struct {
 	// body, threaded into every translator by newHTMLTranslator.
 	canvasByID   map[string]*canvasutil.Meta
 	canvasByFunc map[*ir.Func]*canvasutil.Meta
+	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
+	canvasDraws  *codegen.CanvasDraws
 
 	// staticInsts are the factory instances the page builds once, in the order
 	// the static renderer met them.
@@ -790,6 +804,8 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
 	g.canvasByID, g.canvasByFunc = shared.canvases(pkg)
+	g.canvasDraws = shared.drawings(pkg)
+	_, _, g.canvasByNode = canvasutil.Collect(g.canvasDraws)
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
@@ -1535,6 +1551,13 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 		seen[f] = true
 		out = append(out, f)
 	}
+	// The draw funcs are codegen's own and are in no func list, so they are
+	// named here rather than found by the scan below. They are synthesized in
+	// every sense the loop cares about: emitted as a definition, called from
+	// the canvas setup, and written by nobody.
+	for _, cv := range g.canvasDraws.All() {
+		add(cv.Draw)
+	}
 	if g.pkg != nil {
 		for _, f := range g.pkg.Funcs {
 			add(f)
@@ -1727,15 +1750,16 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
 		id = g.nodeID(n)
 	}
-	if n.CanvasDraw != nil && id == "" {
+	drawing := g.canvasDraws.ForNode(n)
+	if drawing != nil && id == "" {
 		id = g.nodeID(n)
 		if g.idToNode != nil {
 			g.idToNode[id] = n
 		}
 	}
-	if n.CanvasDraw != nil {
+	if drawing != nil {
 		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
-		cs := canvasSetup{id: id, drawFunc: n.CanvasDraw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		cs := canvasSetup{id: id, node: n, drawFunc: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n)}
 		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
 		// passCanvasReactivity injects into handler/timer bodies. A scaled
@@ -1753,7 +1777,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := g.buildCSSStyle(n)
-	if css := canvasScalingCSS(n); css != "" {
+	if css := canvasScalingCSS(n, drawing != nil); css != "" {
 		if style != "" {
 			style += ";"
 		}
@@ -1852,14 +1876,14 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			// A whitespace-sensitive tag renders its children inline: the
 			// pretty-printer's newlines would be visible in the output.
 			var sub strings.Builder
-			for _, s := range n.Children {
+			for _, s := range ir.WidgetChildren(n) {
 				g.renderIRStmt(&sub, s, 0)
 			}
 			b.WriteString(stripInterTagWhitespace(sub.String()))
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else {
 			b.WriteString("\n")
-			for _, s := range n.Children {
+			for _, s := range ir.WidgetChildren(n) {
 				g.renderIRStmt(b, s, depth+1)
 			}
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
@@ -2432,8 +2456,8 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 //
 // `center` is the default and adds nothing: the element stays the size of its
 // drawing, which is what every canvas did before there was a choice.
-func canvasScalingCSS(n *ir.NodeInst) string {
-	if n == nil || n.CanvasDraw == nil {
+func canvasScalingCSS(n *ir.NodeInst, isCanvas bool) string {
+	if n == nil || !isCanvas {
 		return ""
 	}
 	// Emitted after the width and height the canvas declared, so it wins:
@@ -3021,7 +3045,7 @@ func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stm
 
 func (g *htmlGen) canvasRedrawLine(rs *ir.CanvasRedrawStmt) string {
 	for _, cs := range g.canvasSetups {
-		if cs.drawFunc == rs.DrawFunc {
+		if cs.node == rs.Canvas {
 			return cs.drawCall()
 		}
 	}

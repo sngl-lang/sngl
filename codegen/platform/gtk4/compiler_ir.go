@@ -310,8 +310,16 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	// Shared into every translator so OnCreateNode builds the GtkDrawingArea +
 	// cairo trampoline and OnDefault wires reactive redraws.
-	c.shared.canvasByID, c.shared.canvasByFunc = canvasutil.Collect(c.ctx.Pkg, c.ctx.AllFuncs())
+	c.shared.canvasByID, c.shared.canvasByFunc, c.shared.canvasByNode = canvasutil.Collect(c.ctx.Canvases)
 	hasCanvas := len(c.shared.canvasByID) > 0
+	// The draw funcs are codegen's own and are in no func list, so they are
+	// emitted from the drawings rather than fished out of the loop below --
+	// which is what the `canvasByFunc[fn] != nil` arm there used to do.
+	emitCanvasDrawFuncs := func(b *strings.Builder) {
+		for _, cv := range c.ctx.Canvases.All() {
+			emitIRCanvasDraw(b, cv.Draw, gc, c.registry, c.shared)
+		}
+	}
 
 	var widgetFields []widgetField
 	// lower.passPlatformExtensionBody is always on, so every platform override
@@ -361,10 +369,6 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 			emitGTK4FreeFunc(&funcBuf, fn, gc)
 			continue
 		}
-		if c.shared.canvasByFunc[fn] != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared)
-			continue
-		}
 		if fn.Synthesized {
 			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 			continue
@@ -375,6 +379,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 	}
+	emitCanvasDrawFuncs(&funcBuf)
 
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonRootComponents() {

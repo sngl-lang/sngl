@@ -367,11 +367,14 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 		case *ir.NodeInst:
 			// If any direct child is a reactive If/For we need a stable
 			// element ref for it to thread through to the slot updater.
-			if n.ID == "" && childrenContainReactiveSlot(n.Children) {
+			kids := ir.WidgetChildren(n)
+			if n.ID == "" && childrenContainReactiveSlot(kids) {
 				n.ID = st.freshNodeID()
 			}
 			pref := &ir.Ident{Name: n.ID, Type: ir.TypDyn, IsElementRef: true, Synthesized: true}
-			n.Children = st.rewriteReactiveStructures(n.Children, pref)
+			if kids != nil {
+				n.Children = st.rewriteReactiveStructures(kids, pref)
+			}
 			for _, h := range n.Handlers {
 				if h.Func != nil {
 					h.Func.Block = st.rewriteReactiveStructures(h.Func.Block, parentRef)
@@ -626,7 +629,7 @@ func (st *reactivityState) collectFromNode(n *ir.NodeInst) {
 			})
 		}
 	}
-	st.collectFromStmts(n.Children)
+	st.collectFromStmts(ir.WidgetChildren(n))
 }
 
 func (st *reactivityState) collectFromIf(n *ir.If) {
@@ -672,7 +675,7 @@ func (st *reactivityState) registerSlotBodyDeps(stmts []ir.Stmt, slotID string) 
 				for _, p := range n.Props {
 					addDep(p.Value)
 				}
-				walk(n.Children)
+				walk(ir.WidgetChildren(n))
 			case *ir.If:
 				addDep(n.Cond)
 				walk(n.Body)
@@ -961,7 +964,9 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
 		case *ir.NodeInst:
-			n.Children = st.injectIntoStmts(n.Children)
+			if kids := ir.WidgetChildren(n); kids != nil {
+				n.Children = st.injectIntoStmts(kids)
+			}
 			for i := range n.Handlers {
 				if n.Handlers[i].Func != nil {
 					n.Handlers[i].Func.Block = st.injectIntoStmts(n.Handlers[i].Func.Block)
@@ -1687,7 +1692,7 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Body)
 				walk(n.Else)
 			case *ir.NodeInst:
-				walk(n.Children)
+				walk(ir.WidgetChildren(n))
 				for _, h := range n.Handlers {
 					if h.Func != nil {
 						walk(h.Func.Block)

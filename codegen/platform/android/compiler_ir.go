@@ -393,12 +393,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if !needsStateScope(fn, stateNames) {
 				continue
 			}
-			// Synthesized canvas draw funcs hold canvas-intrinsic CallStmts
-			// that only the canvas translation understands; they're inlined
-			// into the Canvas {} DrawScope lambda, not emitted as funcs.
-			if isCanvasDrawFunc(fn) {
-				continue
-			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
 				continue
 			}
@@ -553,7 +547,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// declaredStructs is keyed by *emitted* name, because that is where the
 	// collision is: SNGL's own struct is `color`, so a switch over the source
 	// spelling matched nothing and the class was emitted twice.
-	hasCanvas := packageHasCanvas(ctx.Pkg)
+	hasCanvas := packageHasCanvas(ctx.Canvases)
 	if hasCanvas || namesColor(info.Structs) {
 		body.WriteString(colorKotlinDecl(declaredStructs))
 	}
@@ -711,7 +705,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// instead, and the call sites are rewritten to reach them there.
 	if !testMode && !cfg.GoLib {
 		for _, fn := range ctx.AllFuncs() {
-			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) || isCanvasDrawFunc(fn) {
+			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) {
 				continue
 			}
 			if !needsStateScope(fn, stateNames) {
@@ -810,11 +804,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if testMode && stateMembers[fn] {
 				continue
 			}
-			// Canvas draw funcs are inlined into the Canvas {} DrawScope
-			// lambda; never emit them as standalone Kotlin funcs.
-			if isCanvasDrawFunc(fn) {
-				continue
-			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
 				continue
 			}
@@ -909,7 +898,7 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		decls++
 	}
 	for _, fn := range cc.Funcs {
-		if fn.IsTest || codegen.IsComputed(fn) || isCanvasDrawFunc(fn) {
+		if fn.IsTest || codegen.IsComputed(fn) {
 			continue
 		}
 		if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {

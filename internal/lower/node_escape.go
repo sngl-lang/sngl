@@ -223,16 +223,15 @@ func collectScopeRefsStmt(s ir.Stmt, info *scopeRefInfo) {
 		collectScopeRefs(n.Body, info)
 		collectScopeRefs(n.Else, info)
 	case *ir.NodeInst:
-		// A surviving NodeInst (e.g. canvas shape) — its props/children may
-		// reference refs. Children are still tree-shaped here only in pre-
-		// declarative passes; after passDeclarative they are flattened. Walk
-		// defensively.
+		// A surviving NodeInst — its props/children may reference refs.
+		// Children are still tree-shaped here only in pre-declarative passes;
+		// after passDeclarative they are flattened. Walk defensively.
 		for i := range n.Props {
 			collectScopeRefsExpr(n.Props[i].Value, info)
 		}
 		collectScopeRefsExpr(n.Key, info)
 		collectScopeRefsExpr(n.Ref, info)
-		collectScopeRefs(n.Children, info)
+		collectScopeRefs(ir.WidgetChildren(n), info)
 	case *ir.SlotInst:
 		collectScopeRefs(n.Children, info)
 	case *ir.ErrorBoundary:

@@ -122,7 +122,7 @@ func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 // translateCanvasRedraw rewrites a CanvasRedrawStmt into a
 // gtk_widget_queue_draw on the matching canvas drawing-area Model field.
 func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {
-	m := t.canvasMetaForDraw(rs.DrawFunc)
+	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
 	}
@@ -130,13 +130,13 @@ func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", widget)}}
 }
 
-// canvasMetaForDraw resolves the canvasMeta for a draw func via the
+// canvasMetaForNode resolves the canvasMeta for a canvas node via the
 // translator's shared map.
-func (t *gtk4Translator) canvasMetaForDraw(draw *ir.Func) *canvasMeta {
+func (t *gtk4Translator) canvasMetaForNode(n *ir.NodeInst) *canvasMeta {
 	if t.shared == nil {
 		return nil
 	}
-	return t.shared.canvasByFunc[draw]
+	return t.shared.canvasByNode[n]
 }
 
 // canvasMetaForID resolves the canvasMeta for a flattened canvas node id.

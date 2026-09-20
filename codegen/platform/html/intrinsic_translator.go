@@ -48,6 +48,7 @@ type htmlTranslator struct {
 	// out as a bare element nothing ever drew into.
 	canvasByID   map[string]*canvasutil.Meta
 	canvasByFunc map[*ir.Func]*canvasutil.Meta
+	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
 	// canvasDraws are the canvases this scope created, in order. The draw call
 	// cannot be emitted where the element is: it reads the box the element was
 	// laid out in, and the props that size it are assigned after OnCreateNode.
@@ -59,6 +60,7 @@ func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator 
 	return &htmlTranslator{
 		jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByFunc: g.canvasByFunc,
+		canvasByNode: g.canvasByNode,
 	}
 }
 
@@ -456,7 +458,7 @@ func (t *htmlTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	// reach here: translateBlockJC lifts their redraws out first, because a
 	// canvas the page rendered as markup is not in canvasByFunc at all.
 	if rs, ok := stmt.(*ir.CanvasRedrawStmt); ok {
-		if m := t.canvasByFunc[rs.DrawFunc]; m != nil {
+		if m := t.canvasByNode[rs.Canvas]; m != nil {
 			return []ir.Stmt{canvasDrawStmt(m)}
 		}
 	}

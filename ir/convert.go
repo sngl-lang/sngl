@@ -618,9 +618,12 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		// so it has no source form; printed as the call it behaves like, so
 		// that `dump --stage lowered` over a reactive canvas prints rather
 		// than panics.
+		// Named for the canvas, not for a draw function: which function
+		// paints it is codegen's to decide, and by this stage there is none
+		// to print.
 		name := "canvas"
-		if s.DrawFunc != nil {
-			name = s.DrawFunc.Name
+		if s.Canvas != nil && s.Canvas.ID != "" {
+			name = s.Canvas.ID
 		}
 		return &ast.CallStmt{Call: &ast.CallExpr{
 			Func: &ast.IdentExpr{Name: "__canvasRedraw"},
