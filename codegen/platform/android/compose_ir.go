@@ -126,6 +126,19 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		return
 	}
 	if comp, composable := composeIntrinsic(n); comp != nil {
+		// A flow is one Text whose argument is built from the span tree
+		// written inside it, and a span is a piece of that value rather than
+		// a composable -- neither of which the generic emitter can say, since
+		// it reads a declaration's props and children and nothing else. Both
+		// tags are answered before it. A Span reaching here is one written
+		// outside a flow, which the family's own membership rule refuses.
+		switch composable {
+		case flowTag:
+			cc.renderFlow(n, comp)
+			return
+		case spanTag:
+			return
+		}
 		cc.renderIntrinsic(n, comp, composable)
 		return
 	}
@@ -452,6 +465,12 @@ func userTestTag(n *ir.NodeInst) string {
 	return n.ID
 }
 
+// The three font fields beside fontSize go through the same readers a run of
+// rich text uses, because a Style says them the same way: an enum member, not
+// a string. `fontWeight` was compared against the string `"bold"` and so never
+// matched an enum at all, and the other two had no case -- so a heading came
+// out unemphasized on this target and a quotation upright, the same defect
+// fyne carried until this branch.
 func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) string {
 	styleFields := codegen.NodeStyleFieldsOf(n, styleProp)
 	if styleFields == nil {
@@ -464,8 +483,18 @@ func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) stri
 		case "fontSize":
 			styleParts = append(styleParts, fmt.Sprintf("fontSize = %s.sp", val))
 		case "fontWeight":
-			if val == `"bold"` {
-				styleParts = append(styleParts, "fontWeight = FontWeight.Bold")
+			if w := composeWeight(enumMember(sf.Value)); w != "" {
+				styleParts = append(styleParts, "fontWeight = "+w)
+			}
+		case "fontStyle":
+			if st := composeSlant(enumMember(sf.Value)); st != "" {
+				styleParts = append(styleParts, "fontStyle = "+st)
+				cc.kc.RequireImport("androidx.compose.ui.text.font.FontStyle")
+			}
+		case "fontFamily":
+			if name, ok := codegen.IRLiteralString(sf.Value); ok && name != "" {
+				styleParts = append(styleParts, "fontFamily = "+fontFamilyExpr(name))
+				cc.kc.RequireImport("androidx.compose.ui.text.font.FontFamily")
 			}
 		case "textAlign":
 			switch val {
