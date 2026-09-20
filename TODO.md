@@ -75,7 +75,17 @@ own blocks name.
       renderers now ask `nodeInlineCSS` for an element's inline CSS, which is
       also what stops a node carrying a box style and a run style from
       emitting `style` twice. Both targets are in `markup_inline.txtar`.
-- [ ] **none** (interpreter) — needed for `sngl test`.
+- [x] **none** (interpreter). `codegen/platform/none/none.sngl` declares
+      `flow` and `inline` and overrides the six signatures. The interpreter
+      draws nothing, so what it owes the family is the tree `sngl test`
+      asserts on -- but a member whose body inserts its content is a component
+      with a body, and a snapshot prints a component's expansion rather than
+      the component. So `text` and `image` keep the empty bodies the shapes
+      have and stay under their own names, and the four that host content go
+      through a primitive that survives the expansion carrying the one prop
+      the member's name does not already say. `cmd/sngl/testdata/markup_interpreted.txt`
+      is the fixture; the golden in `testdata/markup_inline.txtar` cannot grow
+      a `none` target, since `none` emits no code.
 - [ ] **gtk4** — Pango markup in a `GtkLabel`. Escape `&`, `<`, `>`; `<b>`,
       `<i>`, `<u>`, `<s>`, `<tt>`, `<a href>`, `<span foreground=>`. This is
       the first host that has to resolve the cascade itself.
@@ -152,9 +162,12 @@ own blocks name.
       grep is what fails, because an injection is invisible to a state
       assertion. Layout itself is not asserted. The interpreter half waits on
       `none`.
-- [ ] Positive checker fixture for the family. It can exist now that html
-      implements `richText`; `markup_inline.txtar` is a golden and the checker
-      harness does not run those.
+- [x] Positive checker fixture for the family: `testdata/markup_flow.sngl`,
+      the other half of `error_markup_span_membership.sngl`. It carries no
+      `output` block, so nothing asks which targets implement the family and
+      the claim is about the checker alone -- both nesting orders, every
+      member, the bodied blocks as ordinary nodes, and a component joining the
+      family by naming it and by inference.
 - [ ] Round-trip: a document imported twice is the same SNGL.
 
 ## 6. Acceptance

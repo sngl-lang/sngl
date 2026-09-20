@@ -1,0 +1,120 @@
+// SKIP(codegen) "the span family is implemented on html and none; bubbletea, fyne, gtk4 and android have no richText yet, and a per-platform harness compiles every fixture for its own target"
+// A flow of rich text, checked. The membership refusals are pinned next door
+// in error_markup_span_membership.sngl; this is the other half -- what the
+// family accepts -- and it is here because a fixture that only ever says no
+// leaves "says yes to nothing" indistinguishable from correct.
+//
+// No output block, so nothing asks which targets implement the family: this
+// is a claim about the checker rather than about a build.
+
+import ui "sngl:ui"
+import markup "sngl:ui/markup"
+
+// Both nesting orders are one flow of words, which is the property that makes
+// the family a tree rather than a list of attributes: emphasis around a link
+// is a link inside emphasis.
+component orders() ui.node {
+    markup.paragraph {
+        markup.monospace {
+            markup.link(href="https://example.com/") {
+                markup.text(value="mono link")
+            }
+        }
+        markup.link(href="https://example.com/") {
+            markup.monospace {
+                markup.text(value="link mono")
+            }
+        }
+    }
+}
+
+// Every member in one run. `image` is the one leaf whose description is a
+// string, and `run` the one member that carries a style of its own.
+component members() ui.node {
+    markup.richText(role=markup.Role.paragraph) {
+        markup.text(value="plain")
+        markup.bold {
+            markup.italic {
+                markup.underline {
+                    markup.strike {
+                        markup.text(value="all four")
+                    }
+                }
+            }
+        }
+        markup.run(style={color=#336699, fontSize=20px, fontWeight=markup.Weight.bold}) {
+            markup.text(value="styled")
+        }
+        markup.monospace {
+            markup.token(kind=markup.Token.keyword) {
+                markup.text(value="func")
+            }
+        }
+        markup.image(src="/icon.png", alt="an icon")
+    }
+}
+
+// The blocks are nodes, so a document is an ordinary vbox of them and a list
+// holds whatever an item holds -- including another list, which is what makes
+// the nesting depth worth counting.
+component document() ui.node {
+    ui.vbox {
+        markup.heading1 {
+            markup.text(value="Title")
+        }
+        markup.quote {
+            markup.text(value="quoted")
+        }
+        markup.codeBlock {
+            markup.text(value="func main()")
+        }
+        markup.caption {
+            markup.text(value="a caption")
+        }
+        markup.list {
+            markup.listItem {
+                markup.paragraph {
+                    markup.text(value="one")
+                }
+                markup.list(ordered=true) {
+                    markup.listItem(marker="1.") {
+                        markup.paragraph {
+                            markup.text(value="nested")
+                        }
+                    }
+                }
+            }
+            markup.listItem(task=markup.Task.done) {
+                markup.paragraph {
+                    markup.text(value="a task")
+                }
+            }
+        }
+    }
+}
+
+// A component joins the family by naming it, and a slot that names no family
+// accepts the one its component belongs to -- so `content` here is spans
+// without saying so, and the wrapper is usable anywhere a span is.
+component shout(content ...component markup.span) markup.span {
+    markup.bold {
+        content
+    }
+}
+
+// And by inference: this one names no family, renders a member of one, and is
+// a member of that family as a result.
+component quiet() {
+    markup.run(style={fontStyle=markup.Slant.italic}) {
+        markup.text(value="quiet")
+    }
+}
+
+component usesBoth() ui.node {
+    markup.paragraph {
+        shout {
+            markup.text(value="loud")
+        }
+        quiet
+    }
+}
