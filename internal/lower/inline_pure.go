@@ -505,7 +505,24 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 	// it: a shape composed out of other shapes is a wrapper like any other,
 	// and passCanvas emits whatever reaches it, composed away or not.
 	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
-		hostsTree(comp)
+		hostsLoweredTree(comp)
+}
+
+// hostsLoweredTree reports whether a component hosts a tree that a *pass*
+// takes out of the rendered tree, which is the only reason hosting one has to
+// keep a declaration standing: passCanvas looks for the node the shapes hang
+// off, so a canvas whose override had been composed away would be a
+// `html.canvas` with shape children and no draw function.
+//
+// One tree answers yes, and that it is one is the point. Hosting a family is
+// otherwise an ordinary thing for a component to do -- `richText` hosts the
+// inline family the way `vbox` hosts widgets -- and reading it as "a codegen
+// renders this" meant a platform could not implement such a component in its
+// own package at all: the override was written, never substituted, and the
+// emitter met a node it had never heard of. Every member of the markup family
+// is implemented in `html.sngl` because of this line.
+func hostsLoweredTree(comp *ir.Component) bool {
+	return ir.IsDrawShapeTree(treeHosted(comp))
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the

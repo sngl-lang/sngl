@@ -180,13 +180,6 @@ func treeHosted(comp *ir.Component) *ir.StructDef {
 	return nil
 }
 
-// hostsTree reports whether a component's default slot accepts a segmented
-// tree, which is what makes it a rendered position rather than a wrapper the
-// inliner may compose away.
-func hostsTree(comp *ir.Component) bool {
-	return treeHosted(comp) != nil
-}
-
 // buildDrawFunc generates a draw function for a canvas node's shape children.
 func buildDrawFunc(canvas *ir.NodeInst, funcs *[]*ir.Func, name string) *ir.Func {
 	ctx := &ir.Param{Name: "ctx", Type: ir.TypDyn}
