@@ -1,0 +1,24 @@
+// A parse error is reported where it was written, and a unit literal earlier
+// in the file does not move it.
+//
+// The egg parser reads a byte stream in which each token is its TokenType's
+// byte value followed by a separator, and `UNIT_LITERAL` is 0x0A -- a
+// newline. So the `20px` below writes a line break into that stream, the
+// scanner starts counting columns again after it, and an error position
+// mapped back through the column alone named a token from further up the
+
+// brace that is actually wrong.
+
+import ui "sngl:ui"
+
+component sized() ui.node {
+    ui.vbox(style={gap=20px}) {
+        ui.text(value="a")
+    }
+}
+
+component broken() ui.node {
+    ui.vbox {
+        ui.text(value="func main() {}") // ERROR(parse) "invalid expression in interpolation"
+    }
+}
