@@ -1123,6 +1123,16 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	// a fresh one, so the program's -- still filling, since the load happened
 	// from inside it -- has to come back.
 	savedShellMarks := c.shellMarks
+	// A package loads lazily, so the load may interrupt a body of the
+	// program's: an import resolved from inside a function body leaves
+	// funcDepth set, and the loaded package's own component bodies are then
+	// checked as though they were written in that function. `run` in
+	// markup's `bold` was refused as a visual node in a function body, and
+	// which fixture hit it depended on where the first import of the package
+	// happened to sit.
+	savedFuncDepth, savedLoopDepth := c.funcDepth, c.loopDepth
+	savedComp := c.currentComponent
+	c.funcDepth, c.loopDepth, c.currentComponent = 0, 0, nil
 	restoreFile := c.saveFile()
 	c.docs = docs
 	// A library package is its own declaration set: a name the program already
@@ -1139,6 +1149,8 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
 		c.pkgDecls = savedPkgDecls
 		c.shellMarks = savedShellMarks
+		c.funcDepth, c.loopDepth = savedFuncDepth, savedLoopDepth
+		c.currentComponent = savedComp
 	}
 }
 

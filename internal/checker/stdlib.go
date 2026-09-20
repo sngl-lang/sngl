@@ -635,16 +635,19 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// registered, as a program's are: registerComponent does that for every
 	// tier, so this only has to check what is already there.
 	//
-	// Restricted to the target tiers: sngl:ui's components carry bodies too
-	// (the _example_* documentation fixtures), and checking those here would
-	// resolve them against the library's scope rather than a program's.
-	if targetTier(pkgName) {
-		for _, irComp := range stdlibPkg.Components {
-			if strings.Contains(irComp.Name, ".") || !irComp.AST.Body.IsDefined() {
-				continue
-			}
-			c.checkComponentBody(irComp)
+	// Every tier, not only the target ones. A body is what a component
+	// renders, and a bodied component nobody checks renders *nothing*: the
+	// conversion happens here or not at all, so `sngl:ui/markup`'s blocks
+	// reached every backend as empty declarations and `md.list { … }` emitted
+	// its children and neither body. The library's own scope is the right one
+	// to resolve them against -- it is the scope they were written in -- which
+	// is also what makes the first check of them catch a `Role` member the
+	// enum never declared.
+	for _, irComp := range stdlibPkg.Components {
+		if strings.Contains(irComp.Name, ".") || !irComp.AST.Body.IsDefined() {
+			continue
 		}
+		c.checkComponentBody(irComp)
 	}
 
 	// Phase 3: refine stdlib context types from their default expressions.

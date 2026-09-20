@@ -57,7 +57,7 @@ component richText(
 // wrong until it has implemented six heading sizes; setting it here means a
 // target implements escaping and inherits a document that reads correctly.
 // A host that has its own idea about a heading is free to let the role win.
-enum Role { paragraph, heading, quote, code, caption }
+enum Role { paragraph, heading1, heading2, heading3, heading4, heading5, heading6, quote, code, caption }
 
 // A literal run of text -- the leaf every other span eventually holds.
 //
