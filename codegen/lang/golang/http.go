@@ -147,11 +147,6 @@ func routeEmittableFuncs(pkg *ir.Package) []*ir.Func {
 	if main := mainComponent(pkg); main != nil {
 		add(main.Funcs)
 	}
-	for _, w := range pkg.Windows {
-		if w != nil {
-			add(w.Funcs)
-		}
-	}
 	return out
 }
 

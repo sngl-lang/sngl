@@ -354,13 +354,28 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
+// hasRouteParam reports whether this window's href was a URL template.
+//
+// Asked of the href rather than of a list of the window's vars: a route param
+// is declared on the window's container like every other declaration a window
+// body makes, so which route binds one is answered by the href that reads it.
+// The checker has by then desugared `"/u/{id}"` into a concatenation naming
+// that var, which is exactly what this finds.
 func hasRouteParam(w *Window) bool {
-	for _, v := range w.Vars {
-		if v.RouteParam {
-			return true
-		}
+	href := w.Prop(WindowHref)
+	if href == nil {
+		return false
 	}
-	return false
+	found := false
+	_ = Walk(href, func(n Node) error {
+		if id, ok := n.(*Ident); ok {
+			if v, isVar := id.Sym.(*Var); isVar && v.RouteParam {
+				found = true
+			}
+		}
+		return nil
+	})
+	return found
 }
 
 func (c *converter) convertWindow(w *Window) *ast.VisualNode {
@@ -389,16 +404,6 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 		vn.Args = ast.ArgList{IsMultiline: len(args) > 3, Args: args}
 	}
 	var bodyStmts []ast.Stmt
-	for _, v := range w.Vars {
-		if v.IsConst {
-			bodyStmts = append(bodyStmts, c.convertConstDecl(v))
-		} else {
-			bodyStmts = append(bodyStmts, c.convertVarDecl(v))
-		}
-	}
-	for _, f := range w.Funcs {
-		bodyStmts = append(bodyStmts, c.convertFuncDef(f))
-	}
 	bodyStmts = append(bodyStmts, c.convertBodyStmts(w.Body)...)
 	if len(bodyStmts) > 0 {
 		vn.Block = ast.StmtBlock{

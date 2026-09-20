@@ -438,16 +438,6 @@ func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk
 		x.Children = walk(x.Children)
 	case *ir.Window:
 		x.Body = walk(x.Body)
-		for _, fn := range x.Funcs {
-			fn.Block = walk(fn.Block)
-		}
-		for _, v := range x.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					h.Func.Block = walk(h.Func.Block)
-				}
-			}
-		}
 		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
 			x.ErrorHandler.Func.Block = walk(x.ErrorHandler.Func.Block)
 		}

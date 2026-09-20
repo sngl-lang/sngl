@@ -182,7 +182,6 @@ func bodiedPackage() *Package {
 		}},
 		Windows: []*Window{{
 			Body:         body("Window.Body"),
-			Funcs:        []*Func{fn("Window.Funcs")},
 			ErrorHandler: h("Window.ErrorHandler"),
 		}},
 	}

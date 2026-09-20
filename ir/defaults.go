@@ -258,12 +258,6 @@ func normalizeWindow(w *Window) {
 			normalizeExpr(p.Value)
 		}
 	}
-	for _, v := range w.Vars {
-		normalizeVar(v)
-	}
-	for _, f := range w.Funcs {
-		normalizeFunc(f)
-	}
 	w.Body = normalizeStmts(w.Body)
 }
 

@@ -727,9 +727,6 @@ func (st *effectState) allOwnerFuncs() []*ir.Func {
 	for _, c := range st.pkg.Components {
 		funcs = append(funcs, c.Funcs...)
 	}
-	for _, w := range st.pkg.Windows {
-		funcs = append(funcs, w.Funcs...)
-	}
 	// Plus the func behind every lambda they hold: html's `timer` is
 	// `setInterval(func() { tick() }, d)`, so an awaiting tick is spliced into
 	// that closure and the arrow itself is what needs `async`.

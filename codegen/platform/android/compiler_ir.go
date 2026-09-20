@@ -344,17 +344,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			mainOwnFuncs[fn] = true
 		}
 	}
-	// A window's funcs are the main composable's too: its state is in the same
-	// `remember`ed set of locals -- ctx.ModelState() puts a window's vars
-	// there -- so a func reading one has to be declared inside it. Emitted
-	// beside it, `bump()` named a `count` nothing at file scope had declared,
-	// which is what a program whose root is a window rather than `component
-	// main` now always is.
-	for _, w := range ctx.Windows() {
-		for _, fn := range w.Funcs {
-			mainOwnFuncs[fn] = true
-		}
-	}
 	// Two sets, not one: a func belongs inside exactly one composable, and the
 	// main one emits only its own. Merging them put every component's func in
 	// MainScreen as well as in the composable that owns its state.

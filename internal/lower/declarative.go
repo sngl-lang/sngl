@@ -36,7 +36,7 @@ func lowerDeclarative(pkg *ir.Package, caps Caps, _ Options) error {
 		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
 	}
 	for _, w := range pkg.Windows {
-		w.Body = st.processStmts(w.Body, &w.Funcs)
+		w.Body = st.processStmts(w.Body, &pkg.Funcs)
 	}
 	return nil
 }
@@ -237,7 +237,7 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
 			out = append(out, n)
 		case *ir.Window:
-			n.Body = st.processStmts(n.Body, &n.Funcs)
+			n.Body = st.processStmts(n.Body, funcs)
 			out = append(out, n)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:

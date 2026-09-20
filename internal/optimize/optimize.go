@@ -518,12 +518,6 @@ func foldWindow(w *ir.Window, ctx *evalCtx) {
 			w.Props[i].Value = foldExpr(w.Props[i].Value, ctx)
 		}
 	}
-	for _, v := range w.Vars {
-		foldVar(v, ctx)
-	}
-	for _, f := range w.Funcs {
-		f.Block = foldStmts(f.Block, ctx)
-	}
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 		w.ErrorHandler.Func.Block = foldStmts(w.ErrorHandler.Func.Block, ctx)
 	}

@@ -214,8 +214,11 @@ func componentHoist(c *ir.Component) hoistTarget {
 	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs}
 }
 
-func windowHoist(w *ir.Window) hoistTarget {
-	return hoistTarget{vars: &w.Vars, funcs: &w.Funcs}
+func windowHoist(pkg *ir.Package) hoistTarget {
+	// A window's container, which is the package: a window is a rendering
+	// root and owns nothing, so what an inlined callee declares inside one
+	// belongs where the window's own declarations went.
+	return hoistTarget{vars: &pkg.Vars, funcs: &pkg.Funcs}
 }
 
 func (st *inlineCompState) run() error {
@@ -255,21 +258,13 @@ func (st *inlineCompState) run() error {
 		// instantiated inside windows must also be inlined.
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
-			st.hoist = windowHoist(w)
+			st.hoist = windowHoist(st.pkg)
 			wbody, wch, err := st.inlineStmts(w.Body)
 			if err != nil {
 				return err
 			}
 			w.Body = wbody
 			anyWinCh = anyWinCh || wch
-			for i := 0; i < len(w.Funcs); i++ {
-				fbody, fch, err := st.inlineStmts(w.Funcs[i].Block)
-				if err != nil {
-					return err
-				}
-				w.Funcs[i].Block = fbody
-				anyWinCh = anyWinCh || fch
-			}
 		}
 		if !ch && !anyFuncCh && !anyWinCh {
 			break
@@ -737,14 +732,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		n.Body = body
 		anyFuncCh := false
-		for _, f := range n.Funcs {
-			fbody, fch, err := st.inlineStmtsCtx(f.Block, reactiveCtx{})
-			if err != nil {
-				return nil, false, err
-			}
-			f.Block = fbody
-			anyFuncCh = anyFuncCh || fch
-		}
 		return []ir.Stmt{n}, ch || anyFuncCh, nil
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:

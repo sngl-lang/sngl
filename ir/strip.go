@@ -249,20 +249,8 @@ func (s *stripper) stripWindow(w *Window) {
 	for i := range w.Props {
 		s.stripExpr(w.Props[i].Value)
 	}
-	if w.Vars == nil {
-		w.Vars = []*Var{}
-	}
-	if w.Funcs == nil {
-		w.Funcs = []*Func{}
-	}
 	if w.Body == nil {
 		w.Body = []Stmt{}
-	}
-	for _, v := range w.Vars {
-		s.stripVar(v)
-	}
-	for _, f := range w.Funcs {
-		s.stripFunc(f)
 	}
 	s.stripStmts(w.Body)
 }

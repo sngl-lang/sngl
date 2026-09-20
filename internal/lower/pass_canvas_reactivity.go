@@ -28,8 +28,7 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 		injectCanvasRedraws(comp.Body, comp.Vars, stateVars, &comp.Funcs)
 	}
 	for _, w := range pkg.Windows {
-		stateVars := mergeVarSets(pkgVars, mutableVars(w.Vars))
-		injectCanvasRedraws(w.Body, w.Vars, stateVars, &w.Funcs)
+		injectCanvasRedraws(w.Body, nil, pkgVars, &pkg.Funcs)
 	}
 	return nil
 }

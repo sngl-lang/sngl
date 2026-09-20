@@ -451,16 +451,6 @@ func (v *irValidator) walkWindow(w *ir.Window) {
 			v.walkExpr(p.Value)
 		}
 	}
-	for i, va := range w.Vars {
-		v.push(fmt.Sprintf("vars[%d]", i))
-		v.walkVar(va, va.IsConst)
-		v.pop()
-	}
-	for i, fn := range w.Funcs {
-		v.push(fmt.Sprintf("funcs[%d]", i))
-		v.walkFunc(fn, false)
-		v.pop()
-	}
 	v.push("body")
 	v.walkStmts(w.Body)
 	v.pop()

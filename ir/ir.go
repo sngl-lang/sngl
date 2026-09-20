@@ -811,9 +811,7 @@ type Window struct {
 	//
 	// It also carries the window's type, which is where a NodeInst keeps one:
 	// nothing reads a type off the window itself any more.
-	Handle       *Var `json:"-"`
-	Vars         []*Var
-	Funcs        []*Func
+	Handle       *Var          `json:"-"`
 	Body         []Stmt        // type-checked body statements
 	Checked      bool          // true if body was already checked in context (e.g., inside a for-loop)
 	ErrorHandler *EventHandler // optional @error handler; outermost error boundary for this window

@@ -367,9 +367,6 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	}
 	for _, w := range pkg.Windows {
 		walk(w.Body)
-		for _, f := range w.Funcs {
-			walk(f.Block)
-		}
 	}
 	return out
 }

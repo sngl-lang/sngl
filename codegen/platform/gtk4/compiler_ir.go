@@ -753,11 +753,6 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 	}
 	for _, w := range pkg.Windows {
 		walk(w.Body)
-		for _, fn := range w.Funcs {
-			if fn != nil {
-				walk(fn.Block)
-			}
-		}
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
@@ -961,11 +956,6 @@ func gtk4ComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	// A window owns funcs the way a component does, and its state is in the
 	// same Model -- so one of its funcs is a method too. This has to agree
 	// with golang.ModelFreeFuncs, which is what told the call sites.
-	for _, w := range pkg.Windows {
-		for _, fn := range w.Funcs {
-			out[fn] = true
-		}
-	}
 	return out
 }
 

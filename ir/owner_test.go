@@ -10,10 +10,9 @@ func TestOwnersReportsEveryKind(t *testing.T) {
 	pkgVar := &Var{Name: "pkgVar"}
 	pkgConst := &Var{Name: "pkgConst", IsConst: true}
 	compVar := &Var{Name: "compVar"}
-	winVar := &Var{Name: "winVar"}
 
 	comp := &Component{Name: "counter", Vars: []*Var{compVar}, Body: []Stmt{&Return{}}}
-	win := &Window{Name: "home", Vars: []*Var{winVar}, Body: []Stmt{&Return{}}}
+	win := &Window{Name: "home", Body: []Stmt{&Return{}}}
 	pkg := &Package{
 		Vars:       []*Var{pkgVar},
 		Consts:     []*Var{pkgConst},
@@ -49,10 +48,12 @@ func TestOwnersReportsEveryKind(t *testing.T) {
 		t.Errorf("component owner Vars = %v; want just compVar", c.Vars)
 	}
 
+	// A window is listed and owns nothing: it is a rendering root rather than
+	// a storage level, so what its body declares belongs to its container.
 	if w := got[2]; w.Win != win || w.IsPackage() || w.Name() != "home" {
 		t.Errorf("owner 2 = %q; want the window", w.Name())
-	} else if len(w.Vars) != 1 || w.Vars[0] != winVar {
-		t.Errorf("window owner Vars = %v; want just winVar", w.Vars)
+	} else if len(w.Vars) != 0 || len(w.Funcs) != 0 {
+		t.Errorf("window owner declares %v/%v; want nothing", w.Vars, w.Funcs)
 	}
 }
 
@@ -165,12 +166,13 @@ func TestOwnerAddVarsReachesTheDeclaration(t *testing.T) {
 		}
 	}
 
-	for _, got := range []struct {
-		where string
-		vars  []*Var
-	}{{"package", pkg.Vars}, {"component", comp.Vars}, {"window", win.Vars}} {
-		if len(got.vars) != 1 || got.vars[0].Name != "added" {
-			t.Errorf("%s vars = %v; want the one added var", got.where, got.vars)
-		}
+	if len(comp.Vars) != 1 || comp.Vars[0].Name != "added" {
+		t.Errorf("component vars = %v; want the one added var", comp.Vars)
+	}
+	// Two: its own, and the window's. A window owns nothing, so what a pass
+	// adds while walking one belongs to the window's container -- which for a
+	// root-only construct is the package.
+	if len(pkg.Vars) != 2 {
+		t.Errorf("package vars = %d; want its own plus the window's", len(pkg.Vars))
 	}
 }

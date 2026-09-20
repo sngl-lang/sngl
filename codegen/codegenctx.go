@@ -2,7 +2,6 @@ package codegen
 
 import (
 	"maps"
-	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -68,50 +67,8 @@ func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	}
 	if w := ctx.EntryWindow(); w != nil {
 		c = c.ForWindow(w)
-	} else if shared := ctx.sharedWindowScope(); shared != nil {
-		c = c.ForWindow(shared)
 	}
 	return c
-}
-
-// sharedWindowScope is the declarations *every* window owns, as a stand-in
-// window to resolve names against. Nil when there are none.
-//
-// A declaration owned by all of them is one *ir.Var reachable from every window
-// (passRootWindow mounts a root component's state there, #215), so scoping to
-// it chooses between no windows -- which is what EntryWindow returning nil past
-// one is guarding against.
-//
-// The stand-in is never rendered and carries no body: ExprCtx reads Vars and
-// Funcs off it and nothing else does.
-func (ctx *CodegenCtx) sharedWindowScope() *ir.Window {
-	if ctx.Pkg == nil || len(ctx.Pkg.Windows) < 2 {
-		return nil
-	}
-	first := ctx.Pkg.Windows[0]
-	inAll := func(has func(w *ir.Window) bool) bool {
-		for _, w := range ctx.Pkg.Windows[1:] {
-			if !has(w) {
-				return false
-			}
-		}
-		return true
-	}
-	shared := &ir.Window{}
-	for _, v := range first.Vars {
-		if inAll(func(w *ir.Window) bool { return slices.Contains(w.Vars, v) }) {
-			shared.Vars = append(shared.Vars, v)
-		}
-	}
-	for _, f := range first.Funcs {
-		if inAll(func(w *ir.Window) bool { return slices.Contains(w.Funcs, f) }) {
-			shared.Funcs = append(shared.Funcs, f)
-		}
-	}
-	if len(shared.Vars) == 0 && len(shared.Funcs) == 0 {
-		return nil
-	}
-	return shared
 }
 
 // EntryWindow is the window a single-model target scopes to, or nil where the

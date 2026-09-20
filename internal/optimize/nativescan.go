@@ -94,12 +94,6 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		scanStmts(comp.Body, visit)
 	}
 	for _, w := range pkg.Windows {
-		for _, v := range w.Vars {
-			scanVar(v)
-		}
-		for _, f := range w.Funcs {
-			scanStmts(f.Block, visit)
-		}
 		scanStmts(w.Body, visit)
 	}
 	return found

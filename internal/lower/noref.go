@@ -85,11 +85,6 @@ func lowerNoRef(pkg *ir.Package, _ Caps, _ Options) error {
 			rewriteFuncSignature(f, rw)
 		}
 	}
-	for _, w := range pkg.Windows {
-		for _, f := range w.Funcs {
-			rewriteFuncSignature(f, rw)
-		}
-	}
 	if err := assertNoRefSurvives(pkg); err != nil {
 		return err
 	}
@@ -142,14 +137,6 @@ func assertNoRefSurvives(pkg *ir.Package) error {
 			check(f.Return)
 		}
 	}
-	for _, w := range pkg.Windows {
-		for _, f := range w.Funcs {
-			for _, p := range f.Params {
-				check(p.Type)
-			}
-			check(f.Return)
-		}
-	}
 	if found {
 		return fmt.Errorf("lower: NoRef invariant violated — TypeRef survived the pass")
 	}
@@ -183,9 +170,6 @@ func collectAllVars(pkg *ir.Package) []*ir.Var {
 	out = append(out, pkg.Vars...)
 	for _, c := range pkg.Components {
 		out = append(out, c.Vars...)
-	}
-	for _, w := range pkg.Windows {
-		out = append(out, w.Vars...)
 	}
 	return out
 }

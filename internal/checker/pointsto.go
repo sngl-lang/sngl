@@ -43,12 +43,6 @@ func (w *pointsToWalker) walkPackage(pkg *ir.Package) {
 		w.walkStmts(c.Body)
 	}
 	for _, win := range pkg.Windows {
-		for _, v := range win.Vars {
-			w.walkVarInit(v)
-		}
-		for _, fn := range win.Funcs {
-			w.walkFunc(fn)
-		}
 		w.walkStmts(win.Body)
 	}
 }

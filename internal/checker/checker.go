@@ -3136,16 +3136,23 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := &ir.Window{Name: vn.ID, Handle: c.windowHandle(vn)}
 	w.AST = vn
-	// URL template params like `{name}` in href become string vars on the
-	// window, in scope for the href literal itself as well as the body — so
-	// they are read off the AST and declared before the scope below is pushed,
-	// ahead of anything that checks the href expression.
+	// URL template params like `{name}` in href become string vars in scope
+	// for the href literal itself as well as the body — so they are read off
+	// the AST and declared before the scope below is pushed, ahead of anything
+	// that checks the href expression.
+	//
+	// They belong to the window's container like every other declaration a
+	// window body makes; being in scope here is the checker's business and is
+	// what the pushed scope below is for. What marks one is RouteParam, and
+	// which route binds it is answered by the href that names it.
+	var params []*ir.Var
 	for _, name := range hrefPathParams(vn) {
-		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString, RouteParam: true})
+		params = append(params, &ir.Var{Name: name, Type: TypString, RouteParam: true})
 	}
+	c.declPkg().Vars = append(c.declPkg().Vars, params...)
 	c.pushScope()
 	defer c.popScope()
-	for _, v := range w.Vars {
+	for _, v := range params {
 		c.declare(vn.Pos, v)
 	}
 	// Checked against the declaration like any other component's node. A
@@ -4082,23 +4089,8 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	c.pushScope()
 	defer c.popScope()
 
-	for _, v := range w.Vars {
-		c.declare(varPos(v), v)
-	}
-	for _, fn := range w.Funcs {
-		if fn.Nested {
-			continue
-		}
-		c.declare(funcDeclPos(fn), fn)
-	}
 	if w.AST != nil {
 		c.declareNodeIDs(&w.AST.Block)
-	}
-	for _, fn := range w.Funcs {
-		if fn.Nested {
-			continue
-		}
-		c.checkFuncBody(fn)
 	}
 
 	if w.AST != nil && w.AST.Block.IsDefined() {
@@ -4119,11 +4111,10 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 }
 
 // windowStateVars is a window's own state: `w.Vars` plus the vars its body
-// declares. Both, because the checker sees a body `var` as an ir.LocalVar
-// statement and passHoistState is what moves those onto `w.Vars` later -- so
-// reading `w.Vars` alone finds nothing here.
+// The checker sees a body `var` as an ir.LocalVar statement; passHoistState
+// is what later moves those onto the window's container.
 func windowStateVars(w *ir.Window) []*ir.Var {
-	out := append([]*ir.Var{}, w.Vars...)
+	var out []*ir.Var
 	for _, s := range w.Body {
 		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
 			out = append(out, lv.Sym)

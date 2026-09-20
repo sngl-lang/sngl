@@ -387,11 +387,6 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 		out[v.Name] = true
 	}
 	if win != nil {
-		for _, v := range win.Vars {
-			if v != nil && !v.IsConst {
-				out[v.Name] = true
-			}
-		}
 	}
 	return out
 }

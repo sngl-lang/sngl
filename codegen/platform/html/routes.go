@@ -154,13 +154,6 @@ func reactiveSlotFunc(pkg *ir.Package) *ir.Func {
 			}
 		}
 	}
-	for _, w := range pkg.Windows {
-		for _, fn := range w.Funcs {
-			if fn != nil && fn.SlotRender {
-				return fn
-			}
-		}
-	}
 	return nil
 }
 
@@ -178,11 +171,6 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 		check := func(h *ir.EventHandler) {
 			if h != nil && h.Func != nil && handlerPlacement(pkg, h.Func) == Backend {
 				backend = true
-			}
-		}
-		for _, v := range win.Vars {
-			for _, h := range v.Handlers {
-				check(h)
 			}
 		}
 		walkInstances(win.Body, func(n *ir.NodeInst) {
@@ -354,11 +342,6 @@ func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Fun
 			Mutations:        h.Func.Block,
 			LogicalMutations: logicalMutations(h.Func.Block),
 		})
-	}
-	for _, v := range win.Vars {
-		for _, h := range v.Handlers {
-			add(h)
-		}
 	}
 	walkInstances(win.Body, func(n *ir.NodeInst) {
 		for i := range n.Handlers {

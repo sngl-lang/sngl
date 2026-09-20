@@ -94,11 +94,6 @@ func pkgUsesErrorHandling(pkg *ir.Package) bool {
 		// lowering synthesized are where the raises are: an effect group's
 		// settle raises when it does not converge. Reading the body alone left
 		// the error payload undeclared in a program whose only raise was there.
-		for _, f := range w.Funcs {
-			if f.CanError || stmtsUseErrorHandling(f.Block) {
-				return true
-			}
-		}
 	}
 	for _, comp := range pkg.Components {
 		if stmtsUseErrorHandling(comp.Body) {

@@ -1,9 +1,12 @@
 package ir
 
 // Owner is a declaration that owns state: the vars it declares and the body
-// that reads them. There are three kinds -- the package itself, a component,
-// and a window -- and the point of naming them together is that nothing else
-// about them differs at this level.
+// that reads them. There are two kinds -- the package itself and a component.
+//
+// A window is listed too, and owns nothing: it is a rendering root rather than
+// a storage level, so its declarations belong to whatever contains it. What it
+// still contributes is a Body every pass has to walk and the @error handler it
+// subscribes to, which is why it is here at all. Both go when ir.Window does.
 //
 // Body's doc comment states the invariant they share: "a var belongs to the
 // body that declares it, and a body swapped in without its vars reads names
@@ -69,6 +72,10 @@ func (o Owner) Stmts() []Stmt {
 // What is not the wrong trade is writing the Comp/Win/package switch once,
 // here, beside the enumeration that already names the three -- passEffect had
 // it twice and passBoundaryFailed a third time.
+// A window falls through to the package, which is its container: `window` is
+// root-only, so a declaration a window body makes belongs to the package
+// unless a root-family component renders it, and by the time a pass adds one
+// the lift has put every window on the package.
 func (o Owner) AddVars(vars ...*Var) {
 	if len(vars) == 0 {
 		return
@@ -76,8 +83,6 @@ func (o Owner) AddVars(vars ...*Var) {
 	switch {
 	case o.Comp != nil:
 		o.Comp.Vars = append(o.Comp.Vars, vars...)
-	case o.Win != nil:
-		o.Win.Vars = append(o.Win.Vars, vars...)
 	case o.Pkg != nil:
 		o.Pkg.Vars = append(o.Pkg.Vars, vars...)
 	}
@@ -90,8 +95,6 @@ func (o Owner) AddFuncs(funcs ...*Func) {
 	switch {
 	case o.Comp != nil:
 		o.Comp.Funcs = append(o.Comp.Funcs, funcs...)
-	case o.Win != nil:
-		o.Win.Funcs = append(o.Win.Funcs, funcs...)
 	case o.Pkg != nil:
 		o.Pkg.Funcs = append(o.Pkg.Funcs, funcs...)
 	}
@@ -139,7 +142,7 @@ func Owners(pkg *Package) []Owner {
 			return
 		}
 		seen[w] = true
-		o := Owner{Pkg: pkg, Win: w, Vars: w.Vars, Funcs: w.Funcs, Body: &w.Body}
+		o := Owner{Pkg: pkg, Win: w, Body: &w.Body}
 		if w.ErrorHandler != nil {
 			o.Handlers = []*EventHandler{w.ErrorHandler}
 		}

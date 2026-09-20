@@ -224,9 +224,6 @@ func followQueries(pkg *ir.Package, followed map[*ir.Call][]*ir.Var) error {
 	for _, c := range pkg.Components {
 		c.Vars = keep(c.Vars)
 	}
-	for _, w := range pkg.Windows {
-		w.Vars = keep(w.Vars)
-	}
 	return nil
 }
 

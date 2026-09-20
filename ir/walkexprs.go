@@ -372,12 +372,6 @@ func (w *rewriter) window(win *Window) {
 	for i := range win.Props {
 		win.Props[i].Value = w.expr(win.Props[i].Value)
 	}
-	for _, v := range win.Vars {
-		w.varDecl(v)
-	}
-	for _, f := range win.Funcs {
-		w.fn(f)
-	}
 	if win.ErrorHandler != nil {
 		w.fn(win.ErrorHandler.Func)
 	}

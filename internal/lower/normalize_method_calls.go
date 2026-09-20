@@ -57,11 +57,6 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 		if err := walk(w.Body); err != nil {
 			return err
 		}
-		for _, fn := range w.Funcs {
-			if err := walk(fn.Block); err != nil {
-				return err
-			}
-		}
 	}
 	return nil
 }

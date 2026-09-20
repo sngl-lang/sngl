@@ -738,11 +738,6 @@ func modelMountFuncs(ctx *codegen.CodegenCtx) []*ir.Func {
 			owned[fn] = true
 		}
 	}
-	for _, w := range ctx.Pkg.Windows {
-		for _, fn := range w.Funcs {
-			owned[fn] = true
-		}
-	}
 	var out []*ir.Func
 	for _, fn := range ctx.Pkg.Mounts {
 		if owned[fn] {
@@ -756,11 +751,6 @@ func componentFuncSet(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for _, comp := range pkg.Components {
 		for _, fn := range comp.Funcs {
-			out[fn] = true
-		}
-	}
-	for _, w := range pkg.Windows {
-		for _, fn := range w.Funcs {
 			out[fn] = true
 		}
 	}

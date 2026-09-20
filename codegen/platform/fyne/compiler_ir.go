@@ -615,11 +615,6 @@ func fyneComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	}
 	// A window owns funcs the way a component does and its state is in the
 	// same Model, so one of its funcs is a Model method too.
-	for _, w := range pkg.Windows {
-		for _, fn := range w.Funcs {
-			out[fn] = true
-		}
-	}
 	return out
 }
 

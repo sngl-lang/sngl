@@ -1060,12 +1060,6 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 			continue
 		}
 		visit(w.Body)
-		for _, fn := range w.Funcs {
-			if fn != nil {
-				visit(fn.Block)
-			}
-		}
-		visitHandlers(w.Vars)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			visit(w.ErrorHandler.Func.Block)
 		}

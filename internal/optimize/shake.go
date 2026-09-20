@@ -115,7 +115,12 @@ func filterVars(vars []*ir.Var, used map[ir.Symbol]bool) []*ir.Var {
 func filterFuncs(funcs []*ir.Func, used map[ir.Symbol]bool) []*ir.Func {
 	var out []*ir.Func
 	for _, f := range funcs {
-		if used[f] || f.IsTest {
+		// A synthesized func is the lowering's, and what calls it is usually
+		// the platform's own scaffolding rather than IR this walk can read --
+		// a focus helper called from the Model's key handling, a slot render
+		// called from a factory. It used to be rooted by sitting in a window's
+		// Funcs; the window owns nothing now, so the flag is what says it.
+		if used[f] || f.IsTest || f.Synthesized {
 			out = append(out, f)
 		} else {
 			slog.Debug("shaken: func", "name", f.Name)
@@ -218,12 +223,6 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 		walk(comp)
 	}
 	for _, w := range pkg.Windows {
-		for _, v := range w.Vars {
-			walk(v)
-		}
-		for _, f := range w.Funcs {
-			walk(f)
-		}
 		walkStmts(w.Body, used, walk)
 	}
 	// Test functions are roots.
@@ -309,12 +308,6 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	case *ir.Window:
 		for i := range n.Props {
 			walkExpr(n.Props[i].Value, used, walk)
-		}
-		for _, v := range n.Vars {
-			walk(v)
-		}
-		for _, f := range n.Funcs {
-			walk(f)
 		}
 		walkStmts(n.Body, used, walk)
 	case *ir.ContextProvider:

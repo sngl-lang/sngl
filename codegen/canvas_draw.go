@@ -91,7 +91,7 @@ func Canvases(pkg *ir.Package) []Canvas {
 	}
 	for _, w := range pkg.Windows {
 		if w != nil {
-			owner(nil, w.Body, w.Funcs)
+			owner(nil, w.Body, nil)
 		}
 	}
 	owner(nil, nil, pkg.Funcs)

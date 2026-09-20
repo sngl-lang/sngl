@@ -130,10 +130,15 @@ type compOwner struct{ c *ir.Component }
 func (o compOwner) addVar(v *ir.Var)   { o.c.Vars = append(o.c.Vars, v) }
 func (o compOwner) addFunc(f *ir.Func) { o.c.Funcs = append(o.c.Funcs, f) }
 
-type windowOwner struct{ w *ir.Window }
+// A window owns nothing: what a pass synthesizes while walking one belongs to
+// the window's container, which for a root-only construct is the package.
+type windowOwner struct {
+	w   *ir.Window
+	pkg *ir.Package
+}
 
-func (o windowOwner) addVar(v *ir.Var)   { o.w.Vars = append(o.w.Vars, v) }
-func (o windowOwner) addFunc(f *ir.Func) { o.w.Funcs = append(o.w.Funcs, f) }
+func (o windowOwner) addVar(v *ir.Var)   { o.pkg.Vars = append(o.pkg.Vars, v) }
+func (o windowOwner) addFunc(f *ir.Func) { o.pkg.Funcs = append(o.pkg.Funcs, f) }
 
 func (st *reactivityState) freshNodeID() string {
 	id := "__n" + strconv.Itoa(st.idCounter)
@@ -167,7 +172,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		st.collectFromStmts(comp.Body)
 	}
 	for _, w := range allWindows(pkg) {
-		st.owner = windowOwner{w}
+		st.owner = windowOwner{w: w, pkg: pkg}
 		st.collectFromStmts(w.Body)
 	}
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
@@ -207,7 +212,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 			st.synthesizeRemoteSettle()
 		}
 		for _, w := range allWindows(pkg) {
-			st.owner = windowOwner{w}
+			st.owner = windowOwner{w: w, pkg: pkg}
 			st.synthesizeRemoteSettle()
 		}
 	}()
@@ -231,22 +236,8 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		}
 	}
 	for _, w := range allWindows(pkg) {
-		st.owner = windowOwner{w}
+		st.owner = windowOwner{w: w, pkg: pkg}
 		w.Body = st.rewriteAndInject(w.Body)
-		for _, f := range w.Funcs {
-			if injected[f] {
-				continue
-			}
-			injected[f] = true
-			f.Block = st.rewriteAndInject(f.Block)
-		}
-		for _, v := range w.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					h.Func.Block = st.rewriteAndInject(h.Func.Block)
-				}
-			}
-		}
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
@@ -455,7 +446,7 @@ func (st *reactivityState) slotCall(slotID string, parentRef ir.Expr) *ir.CallSt
 			}
 		}
 	case windowOwner:
-		for _, f := range o.w.Funcs {
+		for _, f := range o.pkg.Funcs {
 			if f.Name == want {
 				fn = f
 				break
@@ -520,7 +511,7 @@ func (st *reactivityState) findSlotVar(name string) *ir.Var {
 			}
 		}
 	case windowOwner:
-		for _, v := range o.w.Vars {
+		for _, v := range o.pkg.Vars {
 			if v.Name == name {
 				return v
 			}
@@ -543,11 +534,6 @@ func collectReactiveVars(pkg *ir.Package) map[*ir.Var]bool {
 	add(pkg.Vars)
 	for _, comp := range pkg.Components {
 		add(comp.Vars)
-	}
-	// allWindows and not pkg.Windows: a window a component body renders owns
-	// mutable state too.
-	for _, w := range allWindows(pkg) {
-		add(w.Vars)
 	}
 	return out
 }
@@ -1541,7 +1527,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 	case compOwner:
 		ownerFuncs = &o.c.Funcs
 	case windowOwner:
-		ownerFuncs = &o.w.Funcs
+		ownerFuncs = &o.pkg.Funcs
 	}
 	// The append target is the slot func's `parent` param; carry its Sym so
 	// codegen resolves it as the local parameter rather than a Model field.

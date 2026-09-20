@@ -206,7 +206,4 @@ func (c *checker) orderNestedFuncs() {
 	for _, comp := range c.pkg.Components {
 		reorder(comp.Funcs)
 	}
-	for _, w := range c.pkg.Windows {
-		reorder(w.Funcs)
-	}
 }

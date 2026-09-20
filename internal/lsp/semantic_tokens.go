@@ -192,12 +192,6 @@ func (w *irTokenWalker) window(win *ir.Window) {
 	for i := range win.Props {
 		w.expr(win.Props[i].Value)
 	}
-	for _, v := range win.Vars {
-		w.expr(v.Init)
-	}
-	for _, f := range win.Funcs {
-		w.fn_(f)
-	}
 	w.stmts(win.Body)
 	if win.ErrorHandler != nil {
 		w.fn_(win.ErrorHandler.Func)

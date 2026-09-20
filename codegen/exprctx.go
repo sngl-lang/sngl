@@ -141,29 +141,9 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 		return nil, NameLocal
 	}
 
-	// Window-scoped declarations. A window's state is its own, the way a
-	// component's is: passHoistState puts it in Window.Vars so that a read of
-	// it resolves here rather than falling through to package scope and out
-	// the bottom as an unknown name -- which is what made it render as a bare
-	// identifier no target had declared.
-	if ctx.Window != nil {
-		for _, v := range ctx.Window.Vars {
-			if v.Name == name {
-				if v.IsConst {
-					return v, NameConst
-				}
-				return v, NameStateVar
-			}
-		}
-		for _, f := range ctx.Window.Funcs {
-			if f.Name == name {
-				if IsComputed(f) {
-					return f, NameComputed
-				}
-				return f, NameFunc
-			}
-		}
-	}
+	// A window's own `var` and `func` are the package's: a window is a
+	// rendering root and owns nothing, so a read of one falls through to
+	// package scope below, where the hoist put it.
 
 	// Component-scoped declarations.
 	if ctx.Component != nil {
@@ -399,9 +379,6 @@ func StateFieldNames(pkg *ir.Package) map[string]bool {
 		}
 	}
 	add(pkg.Vars)
-	for _, w := range pkg.Windows {
-		add(w.Vars)
-	}
 	for _, c := range pkg.Components {
 		add(c.Vars)
 	}

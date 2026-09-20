@@ -183,14 +183,6 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 // while the same ternary a level in lowers. Where that temp belongs is the open
 // question, and a window that is a NodeInst in pkg.Body answers it for free.
 func walkWindow(w *ir.Window, fns walkFuncs) {
-	for _, v := range w.Vars {
-		walkVar(v, fns)
-	}
-	for _, f := range w.Funcs {
-		if fns.stmts != nil {
-			f.Block = fns.stmts(f.Block)
-		}
-	}
 	if fns.stmts != nil {
 		w.Body = fns.stmts(w.Body)
 	}

@@ -1,8 +1,6 @@
 package lower
 
 import (
-	"slices"
-
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -28,9 +26,10 @@ import (
 // where every consumer already reads it: the window owns the body, the package
 // owns the state, and ir.Owners reports both.
 //
-// A *component's* is a different question, and the answer is hoistRootState
-// below: it has no pkg.Vars to have been left in, and the component it was
-// declared on is an empty shell once its windows are lifted out of it (#215).
+// A *component's* stays on the component, which is the container the windows
+// it renders were written in: a window is a rendering root and owns nothing,
+// so nothing moves. It used to be hoisted *into* each window, which is the
+// same relationship read backwards.
 //
 // Known gap: a *statement* that is not a window is dropped with the body it was
 // written in, on both paths. A `time.timer(…)` at the root of a file or of a
@@ -60,89 +59,11 @@ func applyRootWindow(pkg *ir.Package, _ Caps, _ Options) error {
 			continue
 		}
 		own := liftWindows(comp.Body)
-		hoistRootState(comp, own)
 		lifted = append(lifted, own...)
 		comp.Body = nil
 	}
 	pkg.Windows = append(lifted, pkg.Windows...)
 	return nil
-}
-
-// hoistRootState moves the vars and funcs a root component declared into every
-// window it lifts, because that is where they are mounted: the component is an
-// empty shell by the end of this pass, and a declaration left on one reaches no
-// backend. Which of copy-or-share that means is the platform's answer, and
-// CLAUDE.md is where it is written down.
-//
-// Pointers move rather than being copied, so the references the body already
-// holds keep pointing at them. Nothing here dedupes -- ir.Owners reports one
-// Owner per window with the same *ir.Var, deliberately -- so a consumer that
-// folds several owners into one Model is the one that has to
-// (CodegenCtx.ModelState), and a consumer that walks per owner has to inject
-// once (passReactivity's `injected`).
-//
-// A timer is not moved, and there is nothing to move: a timer primitive is an
-// ordinary node in comp.Body, and applyRootWindow drops the body -- see its
-// own note.
-func hoistRootState(comp *ir.Component, windows []*ir.Window) {
-	if comp == nil || len(windows) == 0 {
-		return
-	}
-	if len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
-		return
-	}
-	// Once, before the loop: stripping a receiver is a mutation of the shared
-	// *ir.Func, so asking again for the second window finds nothing to strip
-	// and leaves that window's call sites still naming the component.
-	moved := stripComponentReceivers(comp)
-	for _, w := range windows {
-		w.Vars = append(w.Vars, comp.Vars...)
-		w.Funcs = append(w.Funcs, comp.Funcs...)
-		clearCallReceivers(w, moved)
-	}
-	comp.Vars, comp.Funcs = nil, nil
-}
-
-// stripComponentReceivers makes the moved funcs window funcs rather than
-// methods of a component that no longer exists, and reports which they were.
-//
-// A component-body `func` is a method (`Receiver == comp.Name`, an implicit
-// `this`), and a window-body one is an ordinary func -- the two spellings a
-// backend already distinguishes. Left as a method, `biggest()` came out of the
-// html route emitter as a free `MainBiggest(s)` beside the `s.Biggest()` method
-// it had also emitted, because the receiver still named the shell. The body
-// needs no rewriting: it reaches the owner's state through the emitter's scope
-// and never through `this`.
-func stripComponentReceivers(comp *ir.Component) map[*ir.Func]bool {
-	moved := make(map[*ir.Func]bool, len(comp.Funcs))
-	for _, fn := range comp.Funcs {
-		if fn == nil || fn.Receiver != comp.Name {
-			continue
-		}
-		moved[fn] = true
-		fn.Receiver = ""
-		fn.RecvParam = nil
-		// ir.Param.Receiver is the flag rather than the name: the checker sets
-		// it on exactly the synthetic parameter it prepended.
-		fn.Params = slices.DeleteFunc(slices.Clone(fn.Params), func(p *ir.Param) bool {
-			return p != nil && p.Receiver
-		})
-	}
-	return moved
-}
-
-// clearCallReceivers drops the receiver at every call site in w that named one
-// of the funcs stripComponentReceivers just made receiverless.
-func clearCallReceivers(w *ir.Window, moved map[*ir.Func]bool) {
-	if len(moved) == 0 {
-		return
-	}
-	_ = ir.Walk(w, func(n ir.Node) error {
-		if call, ok := n.(*ir.Call); ok && moved[call.Func] {
-			call.Receiver = nil
-		}
-		return nil
-	})
 }
 
 // liftWindows is every window a block holds, including those a build-time
