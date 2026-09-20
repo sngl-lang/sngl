@@ -496,13 +496,23 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
 		return false
 	}
-	// Only inline components declared in this package, or a stdlib component
-	// this build's platform extension specialized: passPlatformExtensionBody
-	// swapped that body and its vars into the component, and state declared
-	// there is per-instance for exactly the reasons a user component's var
-	// is. A pure override never reaches here — passInlinePure substituted it
-	// already — so this is the impure override's path to the same renames.
-	if !st.isLocalComponent(comp) && !st.specializedHere(comp) {
+	// Only inline components declared in this package, a stdlib component
+	// this build's platform extension specialized, or a stdlib component
+	// carrying a body of its own.
+	//
+	// The specialized case is passPlatformExtensionBody's: it swapped that
+	// body and its vars into the component, and state declared there is
+	// per-instance for exactly the reasons a user component's var is. A pure
+	// override never reaches here — passInlinePure substituted it already —
+	// so this is the impure override's path to the same renames.
+	//
+	// The third is a library component that answers for itself on every
+	// target: `sngl:ui/markup`'s blocks are a `richText` with a role set, and
+	// `list` is a `vbox` with a bullet column. Left out, the node survived to
+	// codegen carrying a body no backend reads, so the declaration rendered
+	// its children and nothing of its own — which is what a bodied lib
+	// component did on every target until now.
+	if !st.isLocalComponent(comp) && !st.specializedHere(comp) && !comp.Stdlib {
 		return false
 	}
 	return true
