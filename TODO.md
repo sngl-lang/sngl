@@ -131,14 +131,16 @@ own blocks name.
 
 ## 5. Tests
 
-- [ ] Golden per target: `testdata/markup_inline.txtar` once one platform
-      emits, growing a target per implementation. Assert on the golden, not a
-      grep, and `deny` the absences (no `innerHTML`, no unescaped `<`).
+- [x] Golden per target: `testdata/markup_inline.txtar`, html only so far and
+      growing a target per implementation. It asserts on the golden rather than
+      a grep and `deny`s the two absences that matter -- no `innerHTML`, and
+      nothing emitted under the family's own names.
 - [ ] A `cmd/sngl/testdata/*.txt` that **runs** a document — the escaping and
       the whitespace rule are claims about output a golden cannot execute.
       Chromium for html, the interpreter for `none`.
-- [ ] Positive checker fixture for the family, which cannot exist until a
-      target implements `richText` (the bodyless rule fires first).
+- [ ] Positive checker fixture for the family. It can exist now that html
+      implements `richText`; `markup_inline.txtar` is a golden and the checker
+      harness does not run those.
 - [ ] Round-trip: a document imported twice is the same SNGL.
 
 ## 6. Acceptance
@@ -154,7 +156,9 @@ own blocks name.
 
 - [ ] CLAUDE.md: a section on the markup family, why it is inline-only, and the
       literal-whitespace rule.
-- [ ] `lib/lib.go`'s package list gains `ui/markup/`.
+- [x] `lib/lib.go` needs nothing: its embed pattern is `*/*.sngl */*/*.sngl`
+      and `Packages()` reads the embedded directory, so a nested package is
+      already covered.
 - [ ] Delete this file.
 
 ---
