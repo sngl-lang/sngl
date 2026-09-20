@@ -327,16 +327,38 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 			continue
 		}
 		if sf.Name == "flex" {
-			if mod := cc.flexModifier(cc.kc.EvalExpr(sf.Value)); mod != "" {
+			if mod := cc.flexModifier(cc.styleValue(sf.Value)); mod != "" {
 				parts = append(parts, mod)
 			}
 			continue
 		}
-		if mod := composeModifier(sf.Name, cc.kc.EvalExpr(sf.Value)); mod != "" {
+		if mod := composeModifier(sf.Name, cc.styleValue(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
 	}
 	return strings.Join(parts, ".")
+}
+
+// styleValue is a style field as the Compose argument reading it wants it.
+//
+// A measurement is the one kind that cannot go through EvalExpr: `8px` is a
+// unit value, which Kotlin spells as the `Measurement` data class this target
+// emits, and every place a Style field lands appends `.dp` or `.sp` to it.
+// `Measurement(px = 8.0).dp` names no extension Compose declares, so a padding
+// or a font size written with its unit failed to compile while the same number
+// written bare worked -- which is why no fixture had caught it.
+//
+// Reduced to its magnitude here rather than given a `.dp` of its own in
+// Kotlin: `px` is the only base this platform reads, as it is everywhere else
+// android answers a measurement, and a helper would make the other four look
+// answered.
+func (cc *irComposeContext) styleValue(e ir.Expr) string {
+	if lit, ok := e.(*ir.Literal); ok {
+		if mag, _, ok := ir.UnitMagnitude(lit); ok {
+			return ir.FormatUnitMagnitude(mag)
+		}
+	}
+	return cc.kc.EvalExpr(e)
 }
 
 // flexModifier is what a child asking for a share of its parent becomes.
@@ -384,7 +406,7 @@ func (cc *irComposeContext) cornerShapeExpr(n *ir.NodeInst, styleProp string) st
 		if sf.Name != "borderRadius" {
 			continue
 		}
-		v := cc.kc.EvalExpr(sf.Value)
+		v := cc.styleValue(sf.Value)
 		if v == "" || v == "0" || v == "0.0" {
 			continue
 		}
@@ -437,7 +459,7 @@ func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) stri
 	}
 	var styleParts []string
 	for _, sf := range styleFields {
-		val := cc.kc.EvalExpr(sf.Value)
+		val := cc.styleValue(sf.Value)
 		switch sf.Name {
 		case "fontSize":
 			styleParts = append(styleParts, fmt.Sprintf("fontSize = %s.sp", val))
