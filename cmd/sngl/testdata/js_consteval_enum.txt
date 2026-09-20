@@ -22,9 +22,11 @@ sngl generate --lang=none --platform=html --out=out app.sngl
 exists out/index.html
 
 # The value is what proves the right member was picked: 1 could only have come
-# back as Green, and "warn" as Warn. It is read through a component var: a
-# member compares equal to a member by name, so the three conditions below fold
-# and leave the consts themselves with no reader.
+# back as Green, and "warn" as Warn. It is read through a window var, and the
+# text node below is what reads *that*: a member compares equal to a member by
+# name, so the three conditions fold and leave the consts with no reader, and a
+# var nothing reads is dead state the shaker removes. Without the text node the
+# greps pass on an initializer for a binding the page never uses.
 grep 'col = 1' out/index.html
 grep 'lvl = "warn"' out/index.html
 ! grep '"Green"' out/index.html
@@ -60,6 +62,8 @@ window {
     if s == lib.Code.Minus {
         text(value="minus wins")
     }
+
+    text(value="{col} {lvl} {code}")
 }
 -- lib/index.ts --
 export enum Color {

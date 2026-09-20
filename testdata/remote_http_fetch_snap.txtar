@@ -51,9 +51,9 @@ var blank http.Response = http.Response{Status: 0, Body: "", Headers: map[string
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	blank     http.Response
 	url       string
 	res       *remote.Value[http.Response]
+	blank     http.Response
 	__focusID int
 
 	width, height int
@@ -62,11 +62,11 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.blank = http.Response{Status: 0, Body: "", Headers: map[string]string{}}
 	m.url = "https://example.com/"
 	m.res = remote.Query[http.Response](remote.Default, "http.fetch", ([]any)([]string{m.url}), func() (http.Response, error) {
 		return (func() http.Response { return func() http.Response { v, _ := http.Get(m.url); return v }() })(), nil
 	})
+	m.blank = http.Response{Status: 0, Body: "", Headers: map[string]string{}}
 	m.__focusID = 0
 	return m
 }
@@ -183,4 +183,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:107f169d3eb6f4e51a89bd18fa7c6ca6
+broken sha256:0fbf9395a41a64207ca5f799ea3e1608

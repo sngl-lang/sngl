@@ -55,8 +55,8 @@ var blank http.Response = http.Response{Status: 0, Body: "", Headers: map[string
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	blank     http.Response
 	url       string
+	blank     http.Response
 	__focusID int
 
 	width, height int
@@ -65,8 +65,8 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.blank = http.Response{Status: 0, Body: "", Headers: map[string]string{}}
 	m.url = "https://example.com/"
+	m.blank = http.Response{Status: 0, Body: "", Headers: map[string]string{}}
 	m.__focusID = 0
 	return m
 }
@@ -168,4 +168,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-broken sha256:698bde1b936805c670e3675cde6f3750
+broken sha256:00b2717ea3d366748286c4ad9a77480d

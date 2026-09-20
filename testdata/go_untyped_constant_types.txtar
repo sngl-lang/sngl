@@ -21,6 +21,13 @@ that interface against a `float64` is false however equal the numbers are --
 is what makes it worth pinning. goFloatLiteral keeps the point on a whole
 float so the element holds a float64.
 
+The `scale` guard is there for one reason: a pure zero-argument func folds at
+its call site, and the comparison then exists only inside a method nothing
+calls. The `deny` below was inspecting dead code -- the view already said
+`+ "same"`, and the method survived only because a window's funcs were a shake
+root. Reading state makes `boxed` readonly rather than pure, so the comparison
+reaches the program that runs.
+
 The pair is also why neither fix replaces the other: the annotation cannot
 reach the element, and the spelling cannot name float32.
 
@@ -47,6 +54,9 @@ window {
     func boxed() string {
         var xs list<dyn> = [2.0, "a"]
         var f float = 2.0
+        if scale < 0.0 {
+            return "neg"
+        }
         return xs[0] == f ? "same" : "differ"
     }
 
@@ -93,6 +103,9 @@ func (m Model) mix() float32 {
 func (m Model) boxed() string {
 	xs := []any{2.0, "a"}
 	var f float64 = 2.0
+	if m.scale < 0.0 {
+		return "neg"
+	}
 	var __lt0 string
 	if xs[0] == f {
 		__lt0 = "same"
@@ -142,7 +155,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.mix()) + " ") + "same")))
+	content = lipgloss.NewStyle().Render(fmt.Sprint(((fmt.Sprint(m.mix()) + " ") + m.boxed())))
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -157,4 +170,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:0f2a6d71305beb26c790982bb8f1e94a
+pass sha256:54532b00ce794782db6b928a088d572f
