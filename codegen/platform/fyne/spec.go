@@ -113,6 +113,7 @@ type fyneStyle struct {
 	FontSize     float64
 	BorderRadius float64
 	Bold         bool
+	Italic       bool
 }
 
 // fyneColor is an RGBA colour, comparable so a set of styles dedupes to a set
@@ -281,6 +282,9 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 			// reach here, since a caller may generate from unoptimized IR.
 			// Fyne has two faces, so everything but bold is the regular one.
 			st.Bold = enumOrString(f.Value) == "bold"
+			continue
+		case "fontStyle":
+			st.Italic = enumOrString(f.Value) == "italic"
 			continue
 		}
 		var into *float64

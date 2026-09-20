@@ -37,6 +37,7 @@ type themeValue struct {
 	TextSize     float64
 	Radius       float64
 	Bold         bool
+	Italic       bool
 	backgroundOK bool
 	foregroundOK bool
 }
@@ -49,6 +50,7 @@ func themeOf(st fyneStyle) (themeValue, bool) {
 		TextSize: st.FontSize,
 		Radius:   st.BorderRadius,
 		Bold:     st.Bold,
+		Italic:   st.Italic,
 	}
 	if st.Background != nil {
 		tv.Background, tv.backgroundOK = st.Background, true
@@ -56,7 +58,7 @@ func themeOf(st fyneStyle) (themeValue, bool) {
 	if st.Color != nil {
 		tv.Foreground, tv.foregroundOK = st.Color, true
 	}
-	return tv, tv.backgroundOK || tv.foregroundOK || tv.TextSize > 0 || tv.Radius > 0 || tv.Bold
+	return tv, tv.backgroundOK || tv.foregroundOK || tv.TextSize > 0 || tv.Radius > 0 || tv.Bold || tv.Italic
 }
 
 // key is the comparable identity of a theme: two nodes styled alike share one.
@@ -68,7 +70,7 @@ func (t themeValue) key() string {
 	if t.foregroundOK {
 		fmt.Fprintf(&b, "fg=%v;", *t.Foreground)
 	}
-	fmt.Fprintf(&b, "text=%v;radius=%v;bold=%t", t.TextSize, t.Radius, t.Bold)
+	fmt.Fprintf(&b, "text=%v;radius=%v;bold=%t;italic=%t", t.TextSize, t.Radius, t.Bold, t.Italic)
 	return b.String()
 }
 
@@ -130,6 +132,9 @@ func emitThemeDecls(themes []themeValue) string {
 		if t.Bold {
 			b.WriteString(", Bold: true")
 		}
+		if t.Italic {
+			b.WriteString(", Italic: true")
+		}
 		b.WriteString("}\n")
 	}
 	return b.String()
@@ -140,9 +145,19 @@ const themeAlias = "fynetheme"
 
 // themeImports are what the emitted theme declarations reference. The type
 // itself now comes from a runtime package rather than being written into every
-// generated program, so image/color is only needed for the colour literals.
-func themeImports() []string {
-	return slices.Clone([]string{"image/color", "fyne.io/fyne/v2/theme", ThemeImportPath})
+// generated program, so image/color is only needed for the colour literals --
+// and only when one of these themes actually writes one. A program whose
+// themes name a size, a radius or a face and no colour emitted the import
+// anyway, which Go refuses outright; every fixture happened to have a colour
+// somewhere until one asked for a slant alone.
+func themeImports(themes []themeValue) []string {
+	out := []string{"fyne.io/fyne/v2/theme", ThemeImportPath}
+	for _, t := range themes {
+		if t.backgroundOK || t.foregroundOK {
+			return slices.Concat([]string{"image/color"}, out)
+		}
+	}
+	return slices.Clone(out)
 }
 
 // themed wraps a styled widget in the container.ThemeOverride carrying its

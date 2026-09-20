@@ -427,7 +427,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 	if decls := emitThemeDecls(themes); decls != "" {
 		td.LangHelpers += decls
-		for _, path := range themeImports() {
+		for _, path := range themeImports(themes) {
 			gc.RequireImport(path)
 		}
 	}
