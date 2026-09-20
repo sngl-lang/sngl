@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -207,6 +206,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 	// element carried it -- so an <input> got a child and never got its value.
 	var textBinding *ir.Arg
 	var rawBinding *ir.Arg
+	wroteStyle := false
 	for _, p := range rb.elementAttrs(n) {
 		switch contentProp(p.Name) {
 		case textContentKind:
@@ -216,11 +216,16 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 			rawBinding = p
 			continue
 		}
-		if p.Name == "style" {
-			// A style struct is a set of CSS declarations; written through as
-			// a value it is not a string at all.
-			if css := htmlutil.BuildCSSStyleIR([]ir.Arg{*p}); css != "" {
-				rb.writeRaw(` style="` + css + `"`)
+		if p.Name == "style" || p.Name == spanStyleProp {
+			// Both are sets of CSS declarations rather than attribute values;
+			// written through as values neither is a string at all. They are
+			// also one attribute, so whichever comes first in the props writes
+			// the pair and the other is skipped.
+			if !wroteStyle {
+				wroteStyle = true
+				if css := nodeInlineCSS(n); css != "" {
+					rb.writeRaw(` style="` + css + `"`)
+				}
 			}
 			continue
 		}

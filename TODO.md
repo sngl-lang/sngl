@@ -68,7 +68,13 @@ own blocks name.
       `textContent` write in the handler that moved `n`. That is the payoff
       for keeping the tree: the canvas needs `passCanvasReactivity` only
       because `passCanvas` hoists its shapes out of the tree first (#252).
-- [ ] **html, `--lang go`** — route mode, same overrides.
+- [x] **html, `--lang go`** — route mode, same overrides, and the same markup
+      byte for byte. Not free: route mode renders through a second emitter
+      that refuses a prop which is neither a literal nor state-dependent, and
+      a run's style is neither -- it is a set of CSS declarations. Both
+      renderers now ask `nodeInlineCSS` for an element's inline CSS, which is
+      also what stops a node carrying a box style and a run style from
+      emitting `style` twice. Both targets are in `markup_inline.txtar`.
 - [ ] **none** (interpreter) — needed for `sngl test`.
 - [ ] **gtk4** — Pango markup in a `GtkLabel`. Escape `&`, `<`, `>`; `<b>`,
       `<i>`, `<u>`, `<s>`, `<tt>`, `<a href>`, `<span foreground=>`. This is

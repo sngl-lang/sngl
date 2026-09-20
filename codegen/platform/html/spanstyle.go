@@ -12,6 +12,25 @@ import (
 // and never emitted as an attribute.
 const spanStyleProp = "spanStyle"
 
+// nodeInlineCSS is everything an element's style attribute holds: the box
+// style any node may carry, and the run style a span carries.
+//
+// One function because it is one attribute. Written as two, an element holding
+// both -- a `richText` is not one today, but nothing stops one -- emits `style`
+// twice and the browser keeps the last, which is the box style silently
+// winning over the words. It is also what keeps the client render and the
+// server render from drifting: both ask this.
+func nodeInlineCSS(n *ir.NodeInst) string {
+	css := htmlutil.BuildCSSStyleIR(n.Props)
+	if span := spanStyleCSS(n); span != "" {
+		if css != "" {
+			css += ";"
+		}
+		css += span
+	}
+	return css
+}
+
 // spanStyleCSS is the CSS a run's `SpanStyle` stands for.
 //
 // It is read here rather than mapped in `html.sngl` because the question is

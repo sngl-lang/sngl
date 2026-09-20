@@ -1776,13 +1776,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			initOnly: true,
 		})
 	}
-	style := g.buildCSSStyle(n)
-	if css := spanStyleCSS(n); css != "" {
-		if style != "" {
-			style += ";"
-		}
-		style += css
-	}
+	style := nodeInlineCSS(n)
 	if css := canvasScalingCSS(n); css != "" {
 		if style != "" {
 			style += ";"
