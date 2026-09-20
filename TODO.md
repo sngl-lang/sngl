@@ -232,8 +232,11 @@ own blocks name.
 
 ## 3. Markdown parser and the `md:` scheme
 
-- [ ] Go parser producing an mdast-shaped tree. Decide vendored vs. own —
-      CommonMark is a large spec and the subset a document needs is not.
+- [ ] Walk goldmark's AST. Not a decision to make: goldmark v1.7.8 is already
+      a direct dependency with GFM on, in `internal/docsite/markdown.go`,
+      which renders the doc site. Its tree is its own `ast.Node` and not
+      mdast — and its nodes carry source *segments*, so the text is read back
+      out of the original buffer rather than held on the node.
 - [ ] `codegen/scheme/markdown`, registered like `file` and `http`, resolving
       `import doc "md:./getting_started.md"`.
 - [ ] Emit SNGL: a `vbox` of block components interleaved with other
@@ -259,8 +262,13 @@ own blocks name.
       break (`"\n"`), soft break (the importer decides space or newline). An
       image's alt text flattens to its words; nothing else about it survives.
 - [ ] Syntax highlighting inside a fence: tokenize, emit `token` spans inside a
-      `monospace`. SNGL's own lexer highlights `sngl` fences; decide what
-      answers for `go`, `bash`, `json`.
+      `monospace`. Chroma already answers every language, and
+      `internal/highlight` already registers the SNGL lexer with it -- which
+      is what `internal/docsite.Highlight` uses. What is new is the mapping:
+      the doc site turns a chroma token type into a CSS class, and the
+      importer has to turn one into a `markup.Token` member instead. That is
+      the narrower vocabulary, so it is a fold rather than a translation, and
+      `Token.plain` is what an unclassified token becomes.
 - [ ] **Live fences.** A fence whose content should become components rather
       than text — the thing that lets a tutorial show a running example beside
       its source. Needs a directive spelling (` ```sngl run `? an attribute?),
