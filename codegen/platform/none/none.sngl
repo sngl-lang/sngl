@@ -9,6 +9,8 @@ import build "sngl:build"
 import . "sngl:internal/marks"
 import tree "sngl:tree"
 import shapes "sngl:ui/draw"
+import ui "sngl:ui"
+import markup "sngl:ui/markup"
 
 // The `none` node of a build directive: the interpreter as a build target.
 component none() build.platform {}
@@ -58,3 +60,79 @@ component shapes.path[platform] {}
 component shapes.canvasText[platform] {}
 
 component shapes.canvasImage[platform] {}
+
+// --- Rich text ---
+//
+// The span family, implemented the way the shapes above are and for the same
+// reason: the interpreter has no surface, so what an implementation here owes
+// is the *tree* rather than a rendering of it. `sngl test` asserts on that
+// tree and a snapshot prints it, so a flow reaches a test as the words the
+// author wrote, nested as they were written.
+//
+// Two primitives and a table of overrides, which is the division html makes.
+// `text` and `image` need neither: they carry no content, so an empty body
+// leaves the member itself standing with its props, and the member's own name
+// is the most useful thing a snapshot can print for one.
+//
+// What the other four need is a node that survives the expansion. A member
+// whose body inserts its content is a component with a body, and a snapshot
+// prints a component's expansion rather than the component -- so a `run` whose
+// body were the bare content would put its words in the tree and lose the
+// style that is the whole of what a run says.
+
+// A flow of spans, as a node. `richText` cannot insert its own content: the
+// component is a `ui.node` and its slot is the span family, so a span at the
+// root of its body is the ordinary membership error. This is the one
+// declaration here that joins the widget family and hosts the span one, which
+// is the pair html declares for the same reason.
+//
+// It takes the role and not the style. Both are on the `richText` node above
+// it either way -- the tree holds every member it mounted, and only the
+// snapshot skips an expanded one -- and a printed document in which every
+// paragraph carried forty style fields is one nobody reads. The role is what a
+// flow *means*, which is the half a test asserts on.
+#[intrinsic("none:flow")]
+component flow(
+    role markup.Role,
+    content ...component markup.span,
+) ui.node
+
+// One span, and the three things a member varies that its own name does not
+// already say. Each override below writes the one prop it has, so a snapshot
+// prints `inline(href=…)` for a link and nothing extra for the words inside
+// it.
+#[intrinsic("none:inline")]
+component inline(
+    style markup.SpanStyle,
+    href string,
+    kind markup.Token,
+    content ...component markup.span,
+) markup.span
+
+component markup.richText[platform] {
+    flow(role=role) {
+        content
+    }
+}
+
+component markup.text[platform] {}
+
+component markup.image[platform] {}
+
+component markup.run[platform] {
+    inline(style=style) {
+        content
+    }
+}
+
+component markup.link[platform] {
+    inline(href=href) {
+        content
+    }
+}
+
+component markup.token[platform] {
+    inline(kind=kind) {
+        content
+    }
+}

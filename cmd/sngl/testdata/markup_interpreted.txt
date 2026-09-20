@@ -1,0 +1,78 @@
+# A flow of rich text, as the interpreter holds it.
+#
+# `none` renders nothing, so what it owes the family is the tree: `sngl test`
+# asserts on it and `t.snapshot` prints it, and a document reaching a test as
+# the words the author wrote is the whole of what an implementation here means.
+# Which is why `codegen/platform/none/none.sngl` declares `flow` and `inline`
+# rather than leaving every member an empty body the way the shapes are left:
+# a member whose body inserts its content is a component with a body, and a
+# snapshot prints a component's expansion rather than the component -- so a
+# `run` with a bare body would put its words in the tree and lose the style
+# that is the whole of what a run says.
+#
+# Three things are asserted and each could go wrong elsewhere:
+#
+#   - The words are literal. The interpreter has no host to collapse
+#     whitespace, so the two spaces and the newline are simply the string --
+#     and the `<em>` is four characters and not an element, which is what
+#     makes html the one target with escaping to do.
+#   - Nesting survives. `link { monospace { … } }` is two spans deep, which is
+#     what a flattened run list would have lost.
+#   - What a member says that its name does not. A run's style, a link's href
+#     and a token's kind each reach the tree as a prop.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=none app.sngl
+stdout 'PASS'
+exists app.sngl.snapshots/tree.sngl
+
+grep 'flow\(role="paragraph"\)' app.sngl.snapshots/tree.sngl
+grep 'flow\(role="code"\)' app.sngl.snapshots/tree.sngl
+grep 'md.text\(value="<em>not markup</em>  two spaces' app.sngl.snapshots/tree.sngl
+grep 'inline\(href="https://example.com/"\)' app.sngl.snapshots/tree.sngl
+grep 'inline\(kind="keyword"\)' app.sngl.snapshots/tree.sngl
+grep 'fontWeight = "bold"' app.sngl.snapshots/tree.sngl
+grep 'md.image\(src="/icon.png", alt="an icon"\)' app.sngl.snapshots/tree.sngl
+
+# And the snapshot is stable: a second run compares against what the first
+# wrote rather than writing it again.
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=none app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+output { none { none } }
+
+component main node {
+    vbox {
+        md.paragraph {
+            md.text(value="<em>not markup</em>  two spaces\nand a newline")
+            md.bold {
+                md.text(value=" bold")
+            }
+            md.link(href="https://example.com/") {
+                md.monospace {
+                    md.text(value="mono link")
+                }
+            }
+            md.image(src="/icon.png", alt="an icon")
+        }
+        md.codeBlock {
+            md.token(kind=md.Token.keyword) {
+                md.text(value="func")
+            }
+        }
+    }
+}
+
+func testTree(t Test, c main) {
+    t.snapshot("tree")
+}
+
+window {
+    main
+}
