@@ -408,15 +408,40 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 //
 // win may be nil, which is every caller that asks the package-wide question.
 func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar {
-	var out []codegen.StateVar
+	vars := routeVars(pkg, win)
+	out := make([]codegen.StateVar, 0, len(vars))
+	for _, v := range vars {
+		if v.Synthesized || v.IsConst {
+			continue
+		}
+		out = append(out, codegen.StateVar{Name: v.Name, Type: v.Type})
+	}
+	return out
+}
+
+// routeVars is the declarations a route carries, deduplicated by name and in
+// the order the State struct lists them: the package's, the main component's,
+// and the ones the route's own window owns.
+//
+// Separate from routeStateVars because a var is two things to a route. Its
+// *type* becomes a State field, which is what that projection is for; its
+// *handlers* are backend actions, and collectActions needs the declaration
+// itself to reach them. The handler scan used to walk `win.Vars` alone, and
+// was deleted outright rather than repointed when a window stopped owning
+// declarations -- so a backend `@change` on a package var minted no action
+// and nothing POSTed it.
+//
+// win may be nil, which is every caller that asks the package-wide question.
+func routeVars(pkg *ir.Package, win *codegen.WindowCtx) []*ir.Var {
+	var out []*ir.Var
 	seen := map[string]bool{}
 	add := func(vars []*ir.Var) {
 		for _, v := range vars {
-			if v == nil || v.Synthesized || v.IsConst || seen[v.Name] {
+			if v == nil || seen[v.Name] {
 				continue
 			}
 			seen[v.Name] = true
-			out = append(out, codegen.StateVar{Name: v.Name, Type: v.Type})
+			out = append(out, v)
 		}
 	}
 	if pkg != nil {

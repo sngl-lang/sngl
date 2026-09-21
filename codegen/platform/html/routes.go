@@ -173,6 +173,11 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 				backend = true
 			}
 		}
+		for _, v := range routeVars(pkg, win) {
+			for _, h := range v.Handlers {
+				check(h)
+			}
+		}
 		walkInstances(win.Body, func(n *ir.NodeInst) {
 			for i := range n.Handlers {
 				check(&n.Handlers[i])
@@ -342,6 +347,14 @@ func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Fun
 			Mutations:        h.Func.Block,
 			LogicalMutations: logicalMutations(h.Func.Block),
 		})
+	}
+	// Vars first, and the order is the contract: an action's index is the
+	// POST switch case that runs it, so moving a handler in this walk moves
+	// the case a form's hidden `_action` has to name.
+	for _, v := range routeVars(pkg, win) {
+		for _, h := range v.Handlers {
+			add(h)
+		}
 	}
 	walkInstances(win.Body, func(n *ir.NodeInst) {
 		for i := range n.Handlers {
