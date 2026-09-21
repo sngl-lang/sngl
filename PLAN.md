@@ -299,6 +299,58 @@ the build output rather than the render.
 package body renders at least one root-family member" -- the tree answering a
 tree question instead of a check that knows a construct's name.
 
+### What is actually left, measured after step 7
+
+The opening paragraph above is stale. `BuiltinWindow` is no longer three uses
+in the checker: `ir.IsWindowNode` reads it and is the one predicate that
+replaced 72 `case *ir.Window:` arms. Of the checker's six sites, four are
+bookkeeping (`bindBuiltinRole` stores the declaration, two duplicate-id scans,
+the build dispatch). **Two are decisions, and both are the same one twice:**
+
+- `declareNodeIDsStmt` does not descend into a window, because a window hoists
+  its own ids.
+- `declareNodeIDsStmt` skips a window id under a `for`, and
+  `collectForLoopWindowIDsStmt` declares `list<window>` outside the loop
+  instead.
+
+So what the mark still decides is **that a window owns an id namespace**, and
+that is the reduction §8 wants: a window owns one because it is a rendering
+root, which is the *tree*'s answer (the root family) and not the mark's. The
+one bit the tree does not give is that a root-family *component* has that tree
+too, so telling the primitive from a component that renders one needs
+bodyless-ness or the mark.
+
+**The namespace is already half-gone, inconsistently.** A window's
+declarations go to the package -- a body `func` is hoisted there at check
+time, a body `var` by passHoistState -- while its ids stay in a scope
+checkWindow pushes. Scoped at check time, shared at storage time, renamed by
+nobody: two windows each declaring `var n` check clean and bubbletea emits
+`n int` twice in one Model, which does not compile. A component instantiation
+does not have this problem, because the inliner renames its state per instance
+(`__instN`). Removing the last of the specialness is what gets a window that
+rename, and the runtime-instance machinery with it.
+
+**The window-loop machinery it would replace is already vestigial.**
+`expandForWindows` is reached by no program that contains a window: replacing
+its unroll with a panic leaves every golden and all 165 CLI scripts green, and
+the only test that fires it is `TestOptimize_PropPropagatesAsConst`, whose
+`component main node` holds no window and unrolls a `text`. What it does is
+"unroll a const loop in a component called `main`" -- a leftover of the
+harness convention step 5 ended. The real window-loop unroll rides on the
+ordinary const-loop unroll over `pkg.Body`, which runs only for a target with
+no host language.
+
+Which leaves a hole worth knowing about before the design is picked:
+`for var it = items { window #page(title=it) { … } }` on **bubbletea** is not
+unrolled, `ir.Owners` lifts the window out of the loop, and the body keeps a
+read of `it` that nothing declares -- `fmt.Sprint(it)`, one occurrence in the
+file. It does not compile. Pre-existing (same output at `d2526c58`), and it is
+exactly the case a window would stop having if it reached the instance
+machinery every other node reaches. The one thing that would not fall out for
+free is the `list<window>` binding, which needs a compile-time list; for html
+static, N pages must be N files anyway, so that unroll survives as a platform
+fact rather than a window fact.
+
 ## Staging
 
 Each step green, each with its own fixture, a golden refresh read rather than
