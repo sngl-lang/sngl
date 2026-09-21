@@ -376,17 +376,26 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 // stateVarNames is the set of names a route's markup may depend on: the
 // server State struct's fields, plus the window's own vars.
 //
-// A window's vars are what its URL template declares -- `/p/{pkg}` puts `pkg`
-// in scope for the body (checker.go, buildWindow). Those are known per request
+// Plus what the window's URL template declares -- `/p/{pkg}` puts `pkg` in
+// scope for the body (checker.go, buildWindow). Those are known per request
 // exactly as state is, so an expression over one renders into a hole. Left
 // out, `class=active ? "active" : ""` where `active` came from the path was
 // neither a literal nor state-dependent, and the route was refused.
+//
+// They come from the href rather than from a var list, which is the one rule
+// ir.RouteParams states: a route param is the package's var like every other
+// declaration a window body makes, and routeStateVars above deliberately drops
+// it -- it is a handler local bound from the request, not a field of the
+// per-session State. So the two questions are asked separately of one source.
 func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
 	for _, v := range routeStateVars(pkg, win) {
 		out[v.Name] = true
 	}
 	if win != nil {
+		for _, v := range ir.RouteParams(win.Window) {
+			out[v.Name] = true
+		}
 	}
 	return out
 }

@@ -354,28 +354,39 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
-// hasRouteParam reports whether this window's href was a URL template.
+// RouteParams is the vars this window's href template declares, in the order
+// the href names them.
 //
 // Asked of the href rather than of a list of the window's vars: a route param
 // is declared on the window's container like every other declaration a window
 // body makes, so which route binds one is answered by the href that reads it.
 // The checker has by then desugared `"/u/{id}"` into a concatenation naming
 // that var, which is exactly what this finds.
-func hasRouteParam(w *Window) bool {
+func RouteParams(w *Window) []*Var {
+	if w == nil {
+		return nil
+	}
 	href := w.Prop(WindowHref)
 	if href == nil {
-		return false
+		return nil
 	}
-	found := false
+	var out []*Var
+	seen := map[*Var]bool{}
 	_ = Walk(href, func(n Node) error {
 		if id, ok := n.(*Ident); ok {
-			if v, isVar := id.Sym.(*Var); isVar && v.RouteParam {
-				found = true
+			if v, isVar := id.Sym.(*Var); isVar && v.RouteParam && !seen[v] {
+				seen[v] = true
+				out = append(out, v)
 			}
 		}
 		return nil
 	})
-	return found
+	return out
+}
+
+// hasRouteParam reports whether this window's href was a URL template.
+func hasRouteParam(w *Window) bool {
+	return len(RouteParams(w)) > 0
 }
 
 func (c *converter) convertWindow(w *Window) *ast.VisualNode {

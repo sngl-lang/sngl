@@ -341,6 +341,19 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
+	// routeParams is the vars a window's `href` template declared, keyed by
+	// the node that wrote it. buildWindow synthesizes them and checkWindowBody
+	// puts them back in scope, and those are two different scopes -- the first
+	// is pushed for the href expression itself and popped before the body is
+	// reached -- so the link between the two has to be held somewhere.
+	//
+	// Here rather than on ir.Window: a window is a rendering root and owns no
+	// declarations, and these are the package's like every other var a window
+	// body brings. Which route binds one is answered downstream by the href
+	// that names it (ir.hasRouteParam), so nothing after the checker needs the
+	// grouping. Keyed by the AST node so it survives ir.Window itself.
+	routeParams map[*ast.VisualNode][]*ir.Var
+
 	outputDecl *ast.VisualNode
 
 	// pendingPkgBody holds the statements written at the package's top level,
@@ -561,6 +574,7 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		visited:      cfg.visitedStack(),
 		dirPkgs:      cfg.dirPkgCache(),
 		pkgWindowIDs: make(map[string]bool),
+		routeParams:  make(map[*ast.VisualNode][]*ir.Var),
 		libs:         cfg.libCache(),
 	}
 	// Allocated before the library loads, because those now run the same
@@ -3150,6 +3164,9 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 		params = append(params, &ir.Var{Name: name, Type: TypString, RouteParam: true})
 	}
 	c.declPkg().Vars = append(c.declPkg().Vars, params...)
+	if len(params) > 0 {
+		c.routeParams[vn] = params
+	}
 	c.pushScope()
 	defer c.popScope()
 	for _, v := range params {
@@ -4090,6 +4107,29 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	defer c.popScope()
 
 	if w.AST != nil {
+		// The href template's params, back in the scope the body is checked
+		// in. buildWindow declared them in a scope of its own so the href
+		// expression could read them, and that scope is popped by the time
+		// this runs -- they used to survive the gap by sitting in w.Vars, and
+		// with a window owning nothing `/p/{pkg}` left `pkg` in the body
+		// resolving to whatever else the name reached. On a window carrying
+		// `#pkg` that is its own node handle, so the page compiled `"/p/" +
+		// pkg` as string plus window and the build failed there.
+		//
+		// Ahead of declareNodeIDs, which is what decides the two collisions a
+		// param can be in, and both answers are the ones w.Vars gave before.
+		// This window's own `#id` was bound by the *containing* body's
+		// declareNodeIDs, so the param shadows it here by the ordinary
+		// inner-scope rule -- `window #pkg(href="/p/{pkg}")` reads `pkg` in
+		// its body as the string. A *child's* `#id` lands in this same scope,
+		// and declaring the params first is what leaves the param standing.
+		//
+		// Neither is a rule anyone chose; they fall out of an id and a param
+		// sharing one namespace with nothing declaring either. See the note on
+		// routeParams for what a declared contract would replace this with.
+		for _, v := range c.routeParams[w.AST] {
+			c.declare(w.AST.Pos, v)
+		}
 		c.declareNodeIDs(&w.AST.Block)
 	}
 
