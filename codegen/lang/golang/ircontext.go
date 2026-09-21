@@ -1137,13 +1137,12 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return result
 	}
 
-	// Which owner's Funcs hold the method decides the spelling below, so it is
-	// resolved once here rather than by each branch's own name search.
+	// Resolved once here rather than by each branch's own name search.
 	var pkg *ir.Package
 	if gc.Ctx != nil {
 		pkg = gc.Ctx.Pkg
 	}
-	_, owner, resolved := codegen.OwnerMethod(pkg, receiverName, method)
+	_, resolved := codegen.OwnerMethod(pkg, receiverName, method)
 
 	// Go allows no methods on int/float/string/bool, so a user-attached method
 	// on one lifts to a free `TypeNameMethodName` function.
@@ -1158,9 +1157,21 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// inliner hoisted onto main or onto a window, whose receiver still names
 	// the component it was written in -- a declaration pkg.Components no
 	// longer lists -- while the definition is a member of the emitting scope.
-	// Which owner holds it is what says so.
+	//
+	// What says so is the *receiver*, not which owner holds the func. It was
+	// the owner while a window owned funcs: a clone hoisted into a window body
+	// was a window's, and only a genuine top-level method on a user type was
+	// the package's. A window owns nothing now, so both are pkg.Funcs and
+	// `!owner.IsPackage()` could not tell them apart -- `step__inst0` came out
+	// of the call site as the free `MainStep__inst0(m, n)` beside the
+	// `func (m *Model) step__inst0` the same build emitted.
+	//
+	// LiftsToFreeFunc is that question and is already the emit loops' answer,
+	// so the definition and the call site now read one rule. A receiver naming
+	// nothing the package declares is the hoisted clone: the component it
+	// names is gone, and there is no Go type to attach the method to.
 	if gc.Ctx != nil && (gc.Ctx.Component != nil && gc.Ctx.Component.Name == receiverName ||
-		resolved && !owner.IsPackage()) {
+		resolved && !LiftsToFreeFunc(pkg, receiverName)) {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.
