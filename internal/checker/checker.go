@@ -3206,7 +3206,6 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w.Component = c.windowComp
 	w.Params = c.windowParamsVar(spec)
 	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
-	c.checkWindowPathParams(vn, w)
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
 			w.ErrorHandler = c.buildErrorHandler(&eh)
@@ -4396,86 +4395,6 @@ func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 		return nil
 	}
 	return v
-}
-
-// checkWindowPathParams holds a window's path to the struct that says what it
-// hands its body: every `{name}` in the path names a field of the params
-// struct, and that field is something a route can parse out of text.
-//
-// Neither half was askable before the struct. The placeholders *were* the
-// declaration, so a misspelling silently declared a var nothing else named,
-// and every parameter was a string because there was nothing to say
-// otherwise.
-//
-// One-directional on purpose: a field the path does not name is left at the
-// struct's zero rather than reported, because the path is one source of a
-// request's values and the struct is meant to carry the others too.
-func (c *checker) checkWindowPathParams(vn *ast.VisualNode, w *ir.Window) {
-	lit, isLit := w.Prop(ir.WindowHref).(*ir.Literal)
-	if !isLit || lit.Type == nil || lit.Type.Kind != ir.TypeString {
-		return
-	}
-	var sd *ir.StructDef
-	if w.Params != nil {
-		sd, _ = structDeclOf(w.Params.Type)
-	}
-	for _, name := range extractBraceParams(lit.Value) {
-		f := findStructField(sd, name)
-		if f == nil {
-			c.error(vn.Pos, "the path names {%s}, but the window's params have no field %q", name, name)
-			continue
-		}
-		if !routeParamParseable(f.Type) {
-			c.error(vn.Pos, "path parameter {%s} arrives as text, and field %q is %s, which a route cannot parse it into", name, name, f.Type)
-		}
-	}
-}
-
-func findStructField(sd *ir.StructDef, name string) *ir.StructField {
-	if sd == nil {
-		return nil
-	}
-	for _, f := range sd.Fields {
-		if f.Name == name {
-			return f
-		}
-	}
-	return nil
-}
-
-// routeParamParseable reports whether a path segment can be read into a field
-// of this type. The list is the scalars every target can parse from a string
-// and nothing else -- a struct or a list has no spelling in a URL path, and
-// inventing one here would be the compiler choosing an encoding.
-func routeParamParseable(t *ir.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ir.TypeString, ir.TypeInt, ir.TypeFloat, ir.TypeBool:
-		return true
-	}
-	return false
-}
-
-func extractBraceParams(s string) []string {
-	var out []string
-	for {
-		i := strings.Index(s, "{")
-		if i < 0 {
-			break
-		}
-		j := strings.Index(s[i:], "}")
-		if j < 0 {
-			break
-		}
-		name := s[i+1 : i+j]
-		if name != "" {
-			out = append(out, name)
-		}
-		s = s[i+j+1:]
-	}
-	return out
 }
 
 // validateStringDomainLiteral checks whether a string literal is valid for a
