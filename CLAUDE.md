@@ -219,10 +219,9 @@ each keeps the order it had: a window's `@error` after its view body, and the
 declared funcs across every owner before any handler.
 `codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
 windows rather than the owners — reads the same list.
-`walk.go`'s `walkPackage` is the one left: several of its passes carry an
-`*ir.Window` arm in their own statement switch, so handing it the owners would
-walk a nested window's body twice, and unifying it means deleting those arms in
-the same change.
+`walk.go`'s `walkPackage` is the one left: it walks the package's funcs, its
+components, `pkg.Windows` and `pkg.Body` by hand, where the owners would give
+it all four.
 
 **A lambda body is the fourth kind of block**, and it is the one none of these
 reaches by walking declarations: it hangs off an *expression*. `blocks.go`
@@ -692,23 +691,45 @@ dozen passes and five platforms already walked it -- and paid for it by
 clearing the bodies it emptied, which dropped every statement in them that was
 not a window (`testdata/timer_at_package_root.txtar`).
 
+**A window is an `ir.NodeInst`**, and `ir.Window` is an alias for it rather
+than a type. The name is kept because "which of these nodes is a window" is a
+question nineteen consumers ask and `*ir.Window` is what they have always
+spelled the answer as — but it buys no type safety, a plain vbox satisfies it,
+and `ir.IsWindowNode` is the actual test. That predicate reads the
+`#[builtin("window")]` mark off the declaration, never the name, for the reason
+every other builtin lookup gives.
+
+What the separate struct cost was **72 `case *ir.Window:` arms** across the
+lowering, the optimizer, the interpreter and four platforms, each a second
+answer to a question the `*ir.NodeInst` arm beside it had already answered.
+Forty-eight were a strict subset of that arm; the rest are `ir.IsWindowNode`
+guards at the head of it now, next to the code they except — a window is its
+own reactivity owner, is not flattened into `CreateNode`, allocates no element
+var for its id, and may not appear in a view tree, which is what the `panic`s
+android, bubbletea, html and the interpreter keep.
+
+Three fields ride on `NodeInst` and are nil on every other node —
+`ErrorHandler`, `Params`, `LocalRefs` — which is the price, and it is three nil
+fields against 72 arms. None is a *body owner*: `Vars` and `Funcs` stay off
+`NodeInst`. `Checked` did not come along at all, being the checker's
+bookkeeping about its own progress and so a set there.
+
 **And a window's props are the declaration's, not the compiler's.**
 `lib/ui/window.sngl` declares `title`, `href` and `favicon` like any other
-component declares a prop, so `ir.Window` holds them as the `Props []Arg` a
-`NodeInst` carries and `ir.Window.Comp` is the declaration they were measured
-against. Naming the three as Go fields cost 22 files a hardcoded triple, and
-two of them — `buildWindow` and `convertWindow` — a hand-maintained list that
-had to agree; a fourth prop would have needed every one of them edited before
-it reached a backend. What a Go consumer still spells is `ir.WindowTitle` and
-its two siblings, which name the *prop it reads* rather than redeclaring one:
-html asks for the href, gtk4 for the title, and neither is a list of what a
-window has.
+component declares a prop, so they are the `Props []Arg` any node carries and
+`Component` is the declaration they were measured against. Naming the three as
+Go fields cost 22 files a hardcoded triple, and two of them — `buildWindow` and
+the window's own convert path — a hand-maintained list that had to agree; a
+fourth prop would have needed every one of them edited before it reached a
+backend. What a Go consumer still spells is `ir.WindowTitle` and its two
+siblings, which name the *prop it reads* rather than redeclaring one: html asks
+for the href, gtk4 for the title, and neither is a list of what a window has.
 
-**A window's `#id` binds a node handle**, which is the half of that collapse
-that is done. `declareNodeID` had the split written out: every node id bound an
-`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the `*ir.Window` itself
-— so `ir.Window` was an `ir.Symbol` and "what does a node id name" had two
-answers. It binds the same handle now, `ir.Window.Handle` points at it, and
+**A window's `#id` binds a node handle**, and it is `NodeInst.ID` like every
+other node's. `declareNodeID` had the split written out: every node id bound an
+`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the window itself
+— so a window was an `ir.Symbol` and "what does a node id name" had two
+answers. It binds the same handle now, `Handle` points at it, and
 `SymName`/`SymType` are gone, so the compiler refuses any attempt to declare a
 window as a symbol. That is what found the three consumers rather than leaving
 them to a grep: `output(entry = home)` matches by handle and falls back to the
@@ -716,7 +737,10 @@ name for a window a component renders, folding `home.title` reaches the window
 through `ir.WindowForHandle`, and `hoistedWindow`/`bindWindow` are deleted —
 the handle is the stable thing a reference resolves to, so `buildWindow` builds
 a fresh window every call. `ir.Window.Typ` went with them, having only ever
-answered `SymType`.
+answered `SymType`. The window's `Name` is the target the program wrote
+(`ui.window`) and its `ID` is the `#id`, which is the one rename the type merge
+could not have the compiler check: both fields existed, and reading the wrong
+one compiles.
 
 **A read off a window's id folds to the window's own prop expression**, and it
 is folded again against the context the *read* sits in rather than the one the
@@ -768,9 +792,7 @@ the gate as the pass did. #243 is untouched by that: bubbletea still cannot
 lower a timer to an effect -- Elm lets nothing outside `Update` touch the model,
 and `Init()` needs a period and a body, which the closure an `@mount` hands over
 cannot carry -- and it still reads `CommonAnalysis.Timers`, which still carries
-both. Until `Funcs` has a home, `checkTreeMembership` keeps a `*ir.Window` arm
-beside its `*ir.NodeInst` one, now reading the same two fields off the same kind
-of pointer.
+both.
 
 **A root component is an ordinary component**, and its state reaches a backend
 the way every other component's does: something instantiates it,
@@ -907,7 +929,7 @@ misspelled placeholder declared a var rather than being reported.
 `checkWindowPathParams` asks the last two now, holding every `{name}` to a
 field of the struct and that field to a type a route can parse text into.
 
-`ir.Window.Params` is the cell it lands in, and it is an `*ir.Var` rather than
+`NodeInst.Params` is the cell it lands in, and it is an `*ir.Var` rather than
 the `*ir.Param` a population declares: what a target does with it is what it
 does with state — one cell filled in before the body renders. A Go route
 handler binds it from the request (`writeRouteParamBindings`), and a target
@@ -917,10 +939,10 @@ the population, or drops it where the body wrote none — so a window that
 never asks for its parameters carries no cell for them, and no bare name is
 ever bound in a window body.
 
-A window does not reach `checkSlotPopulations`, because `ir.Window` is not a
-`NodeInst` and its body is `w.Body` rather than a slot's content.
-`bindWindowParams` is that peel written once for the one construct, and it
-goes away with `ir.Window`.
+A window does not reach `checkSlotPopulations`, because the checker builds one
+through `buildWindow`/`checkWindowBody` rather than through the ordinary node
+path — the type merged, that path has not. `bindWindowParams` is that peel
+written once for the one construct, and it goes away when it does.
 
 **`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the
