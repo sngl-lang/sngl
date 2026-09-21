@@ -415,6 +415,13 @@ func walkCallExpr(call *ir.Call, used map[ir.Symbol]bool, walk func(ir.Symbol)) 
 		walk(call.Func)
 	}
 	walkExpr(call.Receiver, used, walk)
+	// Callee is where a call to something other than a declaration keeps its
+	// target: `h.run()` on a func-valued struct field is a Select on `h`, and
+	// Func is nil. Missed here, nothing reached `h` and the var was shaken
+	// while the handler that calls it kept naming it -- `await h__inst0.run()`
+	// against a `state` object with no such field, in emitted JS that a golden
+	// records as passing because nothing runs it.
+	walkExpr(call.Callee, used, walk)
 	for _, a := range call.Args {
 		walkExpr(a.Value, used, walk)
 	}
