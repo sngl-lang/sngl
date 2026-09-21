@@ -939,10 +939,27 @@ the population, or drops it where the body wrote none — so a window that
 never asks for its parameters carries no cell for them, and no bare name is
 ever bound in a window body.
 
-A window does not reach `checkSlotPopulations`, because the checker builds one
-through `buildWindow`/`checkWindowBody` rather than through the ordinary node
-path — the type merged, that path has not. `bindWindowParams` is that peel
-written once for the one construct, and it goes away when it does.
+**A window's body reaches `checkSlotPopulations` like every other node's.**
+`checkWindowBody` hands it `w.Params` as the cell the rest slot's single
+parameter binds — a route's parameters being state rather than a block-scoped
+name, which is the whole of why the binding is supplied rather than minted:
+`DepTracker.ModelVars` and the rest are keyed by `*ir.Var`, so a fresh
+`*ir.Param` there would leave every read of one resolving to nobody. Its *type*
+is its own and not the declaration's, because the caller minted it from the
+specialization, where the slot's `T` is bound to what the call site passed.
+
+It used to read its own population out of the block: sixty-five lines
+restating "no such slot", "already populated" and "populated by name and bare",
+and missing the ones it did not think to restate — slot arity, and a population
+naming an override target, which `testdata/error_window_population.sngl` pins.
+What is left of that peel is `windowBodyBlock`, which answers only *which lines*
+the body is, and exists because a window hoists its own node ids before the
+body is read.
+
+`buildWindow` is the half still standing: a window's props, its `@error` and
+its path check are built there rather than by `checkVisualNodeIR`. Collapsing
+that one needs an answer about the id scope, which is what `isWindowNode`'s own
+doc calls the last thing that makes a window special to the checker.
 
 **`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the

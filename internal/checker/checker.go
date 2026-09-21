@@ -7,7 +7,6 @@ import (
 	"path"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -4120,120 +4119,83 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 
 func (c *checker) checkWindowBody(w *ir.Window) {
 	vn := w.VisualNode()
-	if vn != nil {
-		defer c.fileOf(vn.Pos)()
+	if vn == nil {
+		return
 	}
+	defer c.fileOf(vn.Pos)()
 	prevWindow := c.currentWindow
 	c.currentWindow = w
 	defer func() { c.currentWindow = prevWindow }()
 	c.pushScope()
 	defer c.popScope()
 
-	block := &ast.StmtBlock{}
-	if vn != nil {
-		block = c.bindWindowParams(w, vn)
-		if w.Params != nil {
-			c.declare(vn.Pos, w.Params)
+	// The ids first: a reference to one resolves anywhere in the body, so they
+	// are hoisted before the body is read. Which block that is depends on how
+	// the body was written, which is the one thing about a window's population
+	// that is not checkSlotPopulations' business.
+	c.declareNodeIDs(windowBodyBlock(vn, c.windowComp))
+
+	// **A window's body is the population of its rest slot**, and the peel is
+	// the one every other node's children get. `w.Params` is handed down as
+	// the cell that population's parameter binds, because a route's parameters
+	// are state rather than a block-scoped name.
+	//
+	// **A window's parameters are reached through that population and only
+	// through it.** `component content(v) { … }` is where the name `v` is
+	// written, the same as for any other scoped slot, and children written
+	// bare see no parameters at all -- there is nowhere in a spread to write a
+	// name, so there is nothing for the arguments to be collected into. A body
+	// that wants them switches forms. Reading the names off the declaration
+	// instead would put a binding in a body that never named one, and would
+	// put it there for every window in the language.
+	//
+	// So a window that writes no population has no cell either: w.Params is
+	// dropped, and nothing downstream binds a route parameter for a page that
+	// does not read one.
+	slots, bare := c.checkSlotPopulationsBound(vn, c.windowComp, w.Params)
+	if rest := c.windowComp.RestSlot(); rest != nil && slots[rest.Name] != nil {
+		w.Children = slots[rest.Name].Body
+	} else {
+		w.Params = nil
+		if !bare.IsDefined() {
+			return
 		}
-		c.declareNodeIDs(block)
+		w.Children = c.checkBlockIR(&bare)
 	}
 
-	if vn != nil && block.IsDefined() {
-		w.Children = c.checkBlockIR(block)
-		// A window is its own IR construct, so its children never reach the
-		// slot check every other node's go through. What it accepts is still
-		// the declaration's answer: `content ...component ui.node`.
-		// A window is written at the root of a file, where there is no owner,
-		// or in a component body, where a slot insertion in it is that
-		// component's -- and checkVisualNodeIR reaches this with one.
-		owner, body, at := c.currentComponent, w.Children, vn.Pos
-		c.deferTreeCheck(func() {
-			c.checkTreeMembership(owner, at, body,
-				slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
-		})
-		c.checkWindowVarHandlers(w)
-	}
+	// A window is its own IR construct, so its children never reach the
+	// slot check every other node's go through. What it accepts is still
+	// the declaration's answer: `content ...component ui.node`.
+	// A window is written at the root of a file, where there is no owner,
+	// or in a component body, where a slot insertion in it is that
+	// component's -- and checkVisualNodeIR reaches this with one.
+	owner, body, at := c.currentComponent, w.Children, vn.Pos
+	c.deferTreeCheck(func() {
+		c.checkTreeMembership(owner, at, body,
+			slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
+	})
+	c.checkWindowVarHandlers(w)
 }
 
-// bindWindowParams reads the population of the window's rest slot out of its
-// block and returns the block whose statements the window renders: the
-// population's body where one was written, and the window's own block where
-// none was.
+// windowBodyBlock is the block whose node ids belong to this window: the
+// population of its rest slot where one was written, and the window's own
+// block where none was.
 //
-// **A window's parameters are reached through that population and only
-// through it.** `component content(v) { … }` is where the name `v` is
-// written, the same as for any other scoped slot, and children written bare
-// see no parameters at all -- there is nowhere in a spread to write a name,
-// so there is nothing for the arguments to be collected into. A body that
-// wants them switches forms. Reading the names off the declaration instead
-// would put a binding in a body that never named one, and would put it there
-// for every window in the language.
-//
-// So a window that writes no population has no cell either: w.Params is
-// dropped, and nothing downstream binds a route parameter for a page that
-// does not read one.
-func (c *checker) bindWindowParams(w *ir.Window, vn *ast.VisualNode) *ast.StmtBlock {
-	rest := c.windowComp.RestSlot()
+// It is a peel the population check runs again, and it is here because the ids
+// are hoisted before that check reads the body. Everything else the peel used
+// to decide -- which slot, whether it is duplicated, whether the bare children
+// contradict it -- is checkSlotPopulations'; this answers only "which lines".
+func windowBodyBlock(vn *ast.VisualNode, comp *ir.Component) *ast.StmtBlock {
+	rest := comp.RestSlot()
 	if rest == nil {
-		w.Params = nil
 		return &vn.Block
 	}
-	var pop *ast.ComponentDecl
-	kept := vn.Block
-	kept.Stmts = nil
 	for _, st := range vn.Block.Stmts {
-		cd, isDecl := st.(*ast.ComponentDecl)
-		if !isDecl {
-			kept.Stmts = append(kept.Stmts, st)
-			continue
-		}
-		switch {
-		case cd.Name != rest.Name:
-			c.error(cd.Pos, "component %s has no slot %q", c.windowComp.Name, cd.Name)
-		case pop != nil:
-			c.error(cd.Pos, "slot %q is already populated on component %s", cd.Name, c.windowComp.Name)
-		default:
-			pop = cd
+		if cd, ok := st.(*ast.ComponentDecl); ok && cd.Name == rest.Name {
+			return &cd.Body
 		}
 	}
-	if pop == nil {
-		w.Params = nil
-		return &vn.Block
-	}
-	if len(kept.Stmts) > 0 {
-		c.error(vn.Pos, "slot %q is populated by name and by the children written bare on component %s", rest.Name, c.windowComp.Name)
-	}
-	c.bindWindowParamsName(pop, rest, w)
-	return &pop.Body
-}
-
-// bindWindowParamsName names the params cell from the population's parameter
-// list. The declaration's slot carries the type; the population carries the
-// name, and may write the type again to be measured against it -- the same
-// bind-mode reading checkSlotContent gives an ordinary population.
-func (c *checker) bindWindowParamsName(pop *ast.ComponentDecl, rest *ir.SlotDecl, w *ir.Window) {
-	params := pop.Props.Props
-	if len(params) != len(rest.Params) {
-		c.error(pop.Pos, "slot %q binds %d parameter(s), but declares %d", rest.Name, len(params), len(rest.Params))
-	}
-	if pop.ChildrenType != nil {
-		c.error(pop.Pos, "slot %q: a population names no tree; what it accepts is the declaration's", rest.Name)
-	}
-	if len(params) == 0 || w.Params == nil {
-		w.Params = nil
-		return
-	}
-	a, ok := params[0].(ast.Param)
-	if !ok || a.Bidirectional {
-		c.error(pop.Pos, "slot %q: a population binds plain names", rest.Name)
-		w.Params = nil
-		return
-	}
-	if a.Default != nil {
-		c.error(a.Pos, "slot %q: parameter %q takes no default value; the insertion supplies it", rest.Name, a.Name)
-	}
-	w.Params.Name = a.Name
-	w.Params.Type = c.bindParamType(a.Type, w.Params.Type, bindParamWhat(a.Name, "slot "+strconv.Quote(rest.Name)))
+	return &vn.Block
 }
 
 // windowStateVars is a window's own state: `w.Vars` plus the vars its body
