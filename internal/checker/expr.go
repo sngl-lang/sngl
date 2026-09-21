@@ -3245,13 +3245,22 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			if c.rejectNodeInFuncBody(x.Pos, name) {
 				return nil
 			}
-			// Resolve the addressed component (stdlib `input`, user
-			// component, …) so later passes — including the test-side
-			// event-arg typer — can see what payload `@<event>` takes.
-			// Resolve before checkAndSplitArgs so spread props on
-			// user-defined components can be matched against prop names.
-			var elemComp *ir.Component
-			if sym, ok := c.scope.Lookup(name); ok {
+			// The addressed component (stdlib `input`, user component, …),
+			// so later passes -- including the test-side event-arg typer --
+			// can see what payload `@<event>` takes. Resolved before
+			// checkAndSplitArgs so spread props on user-defined components
+			// can be matched against prop names.
+			//
+			// Whatever the resolution above found, because it is the same
+			// resolution the with-a-block path runs and it is the only one
+			// that reaches a namespaced member. This branch used to redo it
+			// with a bare `c.scope.Lookup(name)`, which a qualified name
+			// never matches -- so `ui.text #row(…)` came out with a nil
+			// Component and `Name: "ui.text"`, a name no platform declares.
+			elemComp := comp
+			if elemComp != nil {
+				name = compName
+			} else if sym, ok := c.scope.Lookup(name); ok {
 				if sd, ok := sym.(*ir.Component); ok {
 					elemComp = sd
 				}
@@ -3663,11 +3672,31 @@ func namePositionalProps(comp *ir.Component, props []ir.Arg) []ir.Arg {
 // tag — either `text #id(...)` (a call carrying an element-ref id) or a bare
 // tag ident like `button(...)` that carries event handlers. Returns the tag
 // name, the #id (possibly empty), and whether this looks like an element call.
+// callTargetName is the dotted name a call's callee spells, and "" for a
+// callee that is neither an ident nor a qualified one. ast.VisualNode answers
+// the same question about its own target with TargetName.
+func callTargetName(fn ast.Expr) string {
+	switch f := fn.(type) {
+	case *ast.IdentExpr:
+		return f.Name
+	case *ast.SelectExpr:
+		if id, ok := f.Operand.(*ast.IdentExpr); ok {
+			return id.Name + "." + f.Field
+		}
+	}
+	return ""
+}
+
 func elementRefCallInfo(call *ast.CallExpr) (string, string, bool) {
-	// `text #id(...)` — a bare tag ident carrying an element-ref id.
+	// `text #id(...)` — a tag carrying an element-ref id, qualified or bare.
+	// `ui.text #row(…)` is the same node as `text #row(…)`, and matching only
+	// a bare ident made the two differ: the qualified one was not an element
+	// call at all, so declareNodeIDs bound no handle for it and a handler
+	// naming it was `undefined: row` under an aliased import and fine under a
+	// dot import.
 	if call.ID != "" {
-		if ident, ok := call.Func.(*ast.IdentExpr); ok {
-			return ident.Name, call.ID, true
+		if name := callTargetName(call.Func); name != "" {
+			return name, call.ID, true
 		}
 	}
 	switch f := call.Func.(type) {
