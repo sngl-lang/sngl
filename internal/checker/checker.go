@@ -3017,6 +3017,18 @@ func (c *checker) isWindowNode(name string) bool {
 	return c.builtinNodeKind(name) == ir.BuiltinWindow
 }
 
+// crossesTreeFamily reports whether the node this name instantiates hosts a
+// family other than its own -- a window over widgets, a canvas over shapes.
+// See ir.CrossesTreeFamily for what that means for an id.
+func (c *checker) crossesTreeFamily(name string) bool {
+	sym, ok := c.resolveComponentSymbol(name)
+	if !ok {
+		return false
+	}
+	comp, _ := sym.(*ir.Component)
+	return ir.CrossesTreeFamily(comp)
+}
+
 // visualNodeTarget extracts the target name from a VisualNode.
 // Returns "name" for bare identifiers and "pkg.Name" for qualified targets
 // (e.g. html.div, docui.Sidebar).
@@ -4249,9 +4261,12 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
 			return
 		}
 		c.declareNodeID(n.ID, target, isWindow)
-		// Descend into the node's own children, but not into a nested
-		// window — a window has its own scope and hoists its ids itself.
-		if !isWindow {
+		// Descend into the node's own children, unless the node crosses tree
+		// families: what is under one of those is a second rendering surface,
+		// and a handle does not carry across. Such a node hoists the ids
+		// beneath it into a scope of its own, which is where a read from
+		// inside resolves and why one from outside does not.
+		if !c.crossesTreeFamily(target) {
 			c.declareNodeIDsIn(&n.Block, inLoop)
 		}
 	case *ast.CallStmt:

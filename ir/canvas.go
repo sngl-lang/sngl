@@ -15,6 +15,16 @@ package ir
 // the slot, not the return position, which is what IsShapeContainer puts
 // together.
 func TreeHosted(comp *Component) *StructDef {
+	if sd := RestSlotTree(comp); sd != nil && IsSegmentedTree(sd) {
+		return sd
+	}
+	return nil
+}
+
+// RestSlotTree is the family a component's rest slot accepts, whichever family
+// that is, and nil for a component that declares no rest slot or whose slot
+// names no tree.
+func RestSlotTree(comp *Component) *StructDef {
 	if comp == nil {
 		return nil
 	}
@@ -22,11 +32,34 @@ func TreeHosted(comp *Component) *StructDef {
 		if !s.Rest || s.Content == nil || s.Content.Kind != TypeStruct {
 			continue
 		}
-		if sd, ok := s.Content.Decl.(*StructDef); ok && IsSegmentedTree(sd) {
+		if sd, ok := s.Content.Decl.(*StructDef); ok && sd.IsTree {
 			return sd
 		}
 	}
 	return nil
+}
+
+// CrossesTreeFamily reports whether a component hosts a family other than the
+// one it belongs to: a `window`, which is a `root` whose children are `node`s,
+// and a `canvas`, which is a `node` whose children are `shape`s. A `vbox`
+// hosts its own family and does not.
+//
+// **A family change is where a node id stops carrying.** What a handle names
+// is a thing on one rendering surface, and a family change is what a second
+// surface looks like from here: two windows are two pages, and a canvas is a
+// drawing rather than more widgets. So ids hoist to the nearest node that
+// crosses, and a read from the other side of one is undefined rather than
+// silently empty -- `ui.text(value="{dot.r}")` beside a canvas holding
+// `circle #dot` checked clean and rendered nothing, because a shape has no
+// runtime identity at all: passShapeDraw splices it into draw calls and the
+// node is gone.
+//
+// Asked of the tree rather than of `#[builtin("window")]`, because it is the
+// tree's answer -- the mark says which IR construct a declaration dispatches
+// to, not what its children can see.
+func CrossesTreeFamily(comp *Component) bool {
+	hosted := RestSlotTree(comp)
+	return hosted != nil && comp != nil && comp.Tree != nil && hosted != comp.Tree
 }
 
 // IsShapeContainer reports whether a NodeInst hosts shapes without being one:

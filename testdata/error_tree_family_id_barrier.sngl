@@ -1,0 +1,28 @@
+// A node id does not carry across a change of tree family.
+//
+// What a handle names is a thing on one rendering surface, and a family change
+// is what a second surface looks like from here: a canvas is a drawing rather
+// than more widgets, and a window is a page rather than the root it sits in.
+// So the ids beneath a node that hosts a family other than its own do not
+// hoist past it.
+//
+// The canvas is the case that makes the rule plain rather than merely tidy: a
+// shape has no runtime identity at all. passShapeDraw splices `circle #dot`
+// into `DrawContext.save(ctx)` and the draw calls, so the node is gone before
+// any backend sees it -- and the read below checked clean and rendered an
+// empty span, on every target, with nothing said.
+//
+// Asked of the tree and not of `#[builtin("window")]`: the mark says which IR
+// construct a declaration dispatches to, and what a node's children can see is
+// the tree's answer.
+
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window #w(title="t") {
+    draw.canvas(width=100px, height=100px) {
+        draw.circle #dot(cx=10.0, cy=10.0, r=5.0)
+    }
+
+    ui.text(value="r is {dot.r}") // ERROR(check) "undefined: dot"
+}
