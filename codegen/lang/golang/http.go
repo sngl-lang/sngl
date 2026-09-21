@@ -157,9 +157,20 @@ func writeRouteFuncs(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRo
 	fmt.Fprintln(b)
 }
 
-// routeEmittableFuncs is the component- and window-scoped funcs a route file
-// carries, computeds included: route mode emits neither anywhere else, and a
-// computed is reached by the same `s.Name()` call a plain func is.
+// routeEmittableFuncs is every user func a route file carries, computeds
+// included: route mode emits funcs nowhere else, and a computed is reached by
+// the same `s.Name()` call a plain func is.
+//
+// Every one of them, because that is what the call site already assumes:
+// evalIdent's NameFunc arm spells any user func as `s.Name(…)` in route mode,
+// there being one namespace here and it is the State's. Asking the main
+// component alone was a proxy for "component- and window-scoped", and it
+// emptied out when a root component's declarations went to the package
+// (#215's hoist) -- `keep` and `biggest` were called as `s.Keep`/`s.Biggest`
+// against a file that declared neither.
+//
+// A host identifier is not a user func and is never emitted; a method on a
+// user type is not one either, and route mode has no emitter for those.
 func routeEmittableFuncs(pkg *ir.Package) []*ir.Func {
 	var out []*ir.Func
 	seen := map[*ir.Func]bool{}
@@ -168,13 +179,17 @@ func routeEmittableFuncs(pkg *ir.Package) []*ir.Func {
 			if fn == nil || seen[fn] || len(fn.Block) == 0 {
 				continue
 			}
-			if fn.IsTest {
+			if fn.IsTest || fn.Receiver != "" {
+				continue
+			}
+			if fn.Foreign.Name != "" && !fn.Foreign.Marked {
 				continue
 			}
 			seen[fn] = true
 			out = append(out, fn)
 		}
 	}
+	add(pkg.Funcs)
 	if main := mainComponent(pkg); main != nil {
 		add(main.Funcs)
 	}
