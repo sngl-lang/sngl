@@ -3160,7 +3160,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// checkVisualNodeIR resolves a node that has a body; qualified
 		// `pkg.Foo(...)` resolves through the namespace's package.
 		var comp *ir.Component
-		var compName string
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			if sym, ok := c.lookupComponentInScope(x.Pos, id.Name); ok {
 				if c.rejectUnexported(x.Pos, sym) {
@@ -3168,7 +3167,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 				if co, ok := sym.(*ir.Component); ok {
 					comp = co
-					compName = id.Name
 				}
 			}
 		} else if sel, ok := x.Call.Func.(*ast.SelectExpr); ok {
@@ -3188,7 +3186,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 								}
 								if co, ok := fsym.(*ir.Component); ok {
 									comp = co
-									compName = nsIdent.Name + "." + sel.Field
 								}
 							}
 						}
@@ -3202,9 +3199,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 						// lowering skips, leaving reactive attributes frozen.
 						if comp == nil {
 							if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
-								if co, ok := resolved.(*ir.Component); ok {
-									comp = co
-									compName = sel.Field
+								if _, ok := resolved.(*ir.Component); ok {
+									comp = resolved.(*ir.Component)
 								}
 							}
 						}
@@ -3212,88 +3208,23 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
-		// An element-ref declaration (`Comp #id(...)`) is handled uniformly by
-		// the elementRefCallInfo path below, which preserves the #id and applies
-		// the same stdlib-lenient / user-component-strict arg checking.
-		if comp != nil && x.Call.ID == "" {
-			// A bodyless node parses as a call, so the boundary has to be read
-			// on this path too -- `text(value=v)` in a function body is the
-			// same dropped node `vbox { }` is.
-			if c.rejectNodeInFuncBody(x.Pos, compName) {
-				return nil
-			}
-			c.validateCallStmtComponentArgs(x.Call, comp)
-			c.checkRequiredSlots(x.Pos, comp, nil)
-			if slot := comp.RestSlot(); slot != nil {
-				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
-			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(comp, x.Call.Args))
-			return &ir.NodeInst{
-				AST:       x,
-				Name:      compName,
-				Component: comp,
-				Props:     bindWildcardName(comp, compName, props),
-				Handlers:  handlers,
-				Bindings:  bindings,
-				Key:       c.keyArgExpr(x.Call.Args),
-			}
-		}
-		// Children-less element references (`text #id(...)`, `button(@click)`)
-		// parse as CallStmt but semantically behave like visual nodes — emit
-		// NodeInst so event handlers and the #id are preserved in IR.
-		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
-			if c.rejectNodeInFuncBody(x.Pos, name) {
-				return nil
-			}
-			// The addressed component (stdlib `input`, user component, …),
-			// so later passes -- including the test-side event-arg typer --
-			// can see what payload `@<event>` takes. Resolved before
-			// checkAndSplitArgs so spread props on user-defined components
-			// can be matched against prop names.
-			//
-			// Whatever the resolution above found, because it is the same
-			// resolution the with-a-block path runs and it is the only one
-			// that reaches a namespaced member. This branch used to redo it
-			// with a bare `c.scope.Lookup(name)`, which a qualified name
-			// never matches -- so `ui.text #row(…)` came out with a nil
-			// Component and `Name: "ui.text"`, a name no platform declares.
-			elemComp := comp
-			if elemComp != nil {
-				name = compName
-			} else if sym, ok := c.scope.Lookup(name); ok {
-				if sd, ok := sym.(*ir.Component); ok {
-					elemComp = sd
-				}
-			}
-			// Pass the component to checkAndSplitArgs only for user-defined
-			// components. Stdlib components use nil to preserve lenient
-			// arg-checking behavior (events use platform-specific types).
-			argsComp := elemComp
-			if argsComp != nil && argsComp.Stdlib {
-				argsComp = nil
-			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(argsComp, x.Call.Args))
-
-			// A stdlib element passes nil above so event args stay leniently
-			// typed, and nil is also what makes checkAndSplitArgs leave a
-			// positional prop unnamed -- "no component context; can't match
-			// prop names". So `text #t({}, "hi")` reached the IR with no props
-			// at all, and every reader dropped them: `c.t.value` was empty and
-			// a snapshot printed `text()`. The names are recoverable here,
-			// where the component is known, without disturbing the leniency.
-			if argsComp == nil && elemComp != nil {
-				props = namePositionalProps(elemComp, props)
-			}
-			return &ir.NodeInst{
-				AST:       x,
-				Name:      name,
-				Component: elemComp,
-				Props:     props,
-				Handlers:  handlers,
-				Bindings:  bindings,
-				ID:        id,
-				Handle:    c.nodeHandleSym(id),
-				Key:       c.keyArgExpr(x.Call.Args),
+		// A call whose target names a node *is* a node, and a node is
+		// checkVisualNodeIR's: the same resolution, the same prop check, the
+		// same slot and tree rules as one written with a block. `foo(1)`
+		// cannot be told from a function call until the name is resolved, so
+		// the disambiguation is here -- but the answer is an ast.VisualNode
+		// either way, which is what the rootish conversion above already did
+		// for a builtin kind and a slot insertion.
+		_, _, isElem := elementRefCallInfo(x.Call)
+		if comp != nil || isElem {
+			if target, ok := x.Call.Func.(ast.TargetExpr); ok {
+				return c.checkVisualNodeIR(&ast.VisualNode{
+					Pos:       x.Pos,
+					Target:    target,
+					ID:        x.Call.ID,
+					Args:      x.Call.Args,
+					HasParens: true,
+				})
 			}
 		}
 		callExpr := c.checkExpr(x.Call)
@@ -3641,31 +3572,6 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 		}
 	}
 	return false
-}
-
-// namePositionalProps gives each unnamed prop the name of the declared prop it
-// binds to, matching checkAndSplitArgs's own rule: a positional argument takes
-// the next declared prop, and a named one consumes no position. A wildcard prop
-// has no position, so it is not among them.
-func namePositionalProps(comp *ir.Component, props []ir.Arg) []ir.Arg {
-	var ordered []*ir.Prop
-	for _, p := range comp.Props {
-		if p.Wildcard == "" {
-			ordered = append(ordered, p)
-		}
-	}
-	positional := 0
-	for i := range props {
-		if props[i].Name != "" {
-			continue
-		}
-		if positional >= len(ordered) {
-			break
-		}
-		props[i].Name = ordered[positional].Name
-		positional++
-	}
-	return props
 }
 
 // elementRefCallInfo recognizes CallStmts whose callee represents an element

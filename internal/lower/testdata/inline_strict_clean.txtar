@@ -10,5 +10,5 @@ component main node {
 import . "sngl:ui"
 import teststub "sngl:platform/teststub"
 component main node {
-    sngl.text(value="hi")
+    text(value="hi")
 }
