@@ -20,6 +20,10 @@ file did not compile. A golden cannot state that a computed value is right, so
 the arithmetic is asserted by executing the generated code; this fixture
 pins the shape that carries it.
 
+Every one of the five is read. A var nothing reads is shaken, and the two that
+carry this archive's explanations -- the reduction and the mixed record -- are
+exactly the two a program would have no other reason to keep.
+
 The suffix does not vanish where a host needs it: CSS still wants `7px`, and
 the base named `pct` is spelled `%` there because `%` is not a legal SNGL
 identifier. That rename is html's, not the language's.
@@ -57,6 +61,8 @@ component main node {
     var total time.duration = short + long
 
     text(value=string(samebase))
+    text(value=string(reduced))
+    text(value=string(mixed))
     text(value=string(total))
 }
 
@@ -75,14 +81,6 @@ import (
 	"os"
 	"time"
 )
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
 
 func snglStrMeasurement(v Measurement) string {
 	s := ""
@@ -290,8 +288,14 @@ func (m Model) View() tea.View {
 	part0 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.samebase__inst0)))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrDuration(m.total__inst0)))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.reduced__inst0)))
 	parts = append(parts, part1)
+	var part2 string
+	part2 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrMeasurement(m.mixed__inst0)))
+	parts = append(parts, part2)
+	var part3 string
+	part3 = lipgloss.NewStyle().Render(fmt.Sprint(snglStrDuration(m.total__inst0)))
+	parts = append(parts, part3)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -359,6 +363,8 @@ fun MainScreen() {
 
     Column {
         Text(text = ((samebase__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((reduced__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
+        Text(text = ((mixed__inst0).let { __u -> listOf(Pair(__u.px, "px"), Pair(__u.em, "em"), Pair(__u.vw, "vw"), Pair(__u.vh, "vh"), Pair(__u.pct, "pct")).filter { it.first != 0.0 }.joinToString(" + ") { _snglFloatStr(it.first) + it.second }.ifEmpty { "0px" } }), modifier = Modifier.safeDrawingPadding())
         Text(text = ((total__inst0).toString() + "ms"), modifier = Modifier.safeDrawingPadding())
     }
 }
@@ -379,6 +385,10 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n1" data-sngl-id="__n1">
 </span>
+<span id="__n2" data-sngl-id="__n2">
+</span>
+<span id="__n3" data-sngl-id="__n3">
+</span>
 
 <script>
 (() => {
@@ -388,17 +398,21 @@ body { font-family: system-ui, sans-serif; }
   state.total__inst0 = state.short__inst0 + state.long__inst0;
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   function __sngl_init() {
     __n0.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.samebase__inst0);
-    __n1.textContent = String(state.total__inst0) + "ms";
+    __n1.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.reduced__inst0);
+    __n2.textContent = ((__u) => [[__u.px, "px"], [__u.em, "em"], [__u.vw, "vw"], [__u.vh, "vh"], [__u.pct, "pct"]].filter((t) => t[0] !== 0).map((t) => String(t[0]) + t[1]).join(" + ") || "0px")(state.mixed__inst0);
+    __n3.textContent = String(state.total__inst0) + "ms";
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:429a964c96ff5db3899c207be0df2138
+pass sha256:5d05b22832d4f0b87c11da1596ebfe41
 -- run/kotlin/android --
-pass sha256:c058f1872994f55d908de501df96e968
+pass sha256:23431c51a015a73cb3bdb4d338747559
 -- run/none/html --
-pass sha256:87c6b3674aebfbcea31cff627b85adb1
+pass sha256:2f0cf93d897e556fdc240afd690e07de

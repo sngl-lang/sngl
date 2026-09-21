@@ -58,8 +58,7 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	name__inst0 string
-	__focusID   int
+	__focusID int
 
 	widget0 textinput.Model
 
@@ -69,7 +68,6 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.name__inst0 = ""
 	m.__focusID = 0
 	m.widget0 = textinput.New()
 	m.widget0.Focus()
@@ -101,21 +99,6 @@ func (m *Model) __focusPrev() {
 	}
 }
 
-func (m Model) Name__inst0() string {
-	return m.name__inst0
-}
-
-func (m Model) SetName__inst0(v string) Model {
-	m.name__inst0 = v
-	return m
-}
-
-type setName__inst0Msg struct{ value string }
-
-func SetName__inst0Cmd(v string) tea.Cmd {
-	return func() tea.Msg { return setName__inst0Msg{value: v} }
-}
-
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -125,8 +108,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setName__inst0Msg:
-		m = m.SetName__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -384,7 +365,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1dbf968311011669d8110739ec091032
+pass sha256:da836b7d189e02eda435a7be4c870d98
 -- run/go/fyne --
 pass sha256:d1b50f9046bd19436b6bb9ddfa6c3e14
 -- run/go/gtk4 --

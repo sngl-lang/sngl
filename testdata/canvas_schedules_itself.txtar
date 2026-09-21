@@ -92,14 +92,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type PathCmd struct {
 	Op  string
 	X   float64
@@ -564,6 +556,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4f6dcd642c89c3f7495e10b267a097aa
+pass sha256:036e33b9b4b0224f7fe862320960bb50
 -- run/none/html --
 pass sha256:cef4ea71283aee667932043990cf1251

@@ -159,7 +159,6 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	progress__inst0 float64
-	__root          *fyne.Container
 	__slot0         []fyne.CanvasObject
 
 	__n3 *fyne.Container
@@ -170,7 +169,6 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.progress__inst0 = 0.25
-	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	return m
 }
@@ -358,10 +356,10 @@ func boolToInt(b bool) int {
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
 	progress__inst0 float64
-	__root          *C.GtkBox
 	__slot0         []*C.GtkWidget
 	__n3            *C.GtkBox
 	__n0            *C.GtkLabel
+	__root          *C.GtkBox
 }
 
 // New creates a Model with default values. Binds initialize
@@ -369,7 +367,6 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.progress__inst0 = 0.25
-	m.__root = nil
 	m.__slot0 = nil
 	return m
 }
@@ -526,9 +523,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:852bbb4bba95308380f624ab88b680c5
 -- run/go/fyne --
-pass sha256:f0a2fdaace6b6eb55dc62b67a11703ed
+pass sha256:ebaed855398462bf72c46eb1aa05d9cc
 -- run/go/gtk4 --
-pass sha256:a619bb401618e00d5beac5769fcefe39
+pass sha256:0b6b7ffc216b8b7cab074d63cd0d4c98
 -- run/kotlin/android --
 pass sha256:7180128bb046c1c6cfb0ca94066b2868
 -- run/none/html --

@@ -128,14 +128,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type timerTickMsg0 struct{}
 type timerTickMsg1 struct{}
 
@@ -286,14 +278,6 @@ import (
 	"os"
 	"time"
 )
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
 
 type ErrorEvent struct {
 	Message string
@@ -669,14 +653,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 	"time"
 )
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
 
 type ErrorEvent struct {
 	Message string
@@ -1144,11 +1120,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:ad1564ad5563a8f8a5b2717931aebc4f
+pass sha256:b7da3f052edbe39a5fb03f20e59075be
 -- run/go/fyne --
-pass sha256:12dba51576f42d6993d485745c414b63
+pass sha256:ed3994702146fd740cd3289df7c2268f
 -- run/go/gtk4 --
-pass sha256:a52289faa0918f0f87d16918d92c4a22
+pass sha256:716474be646510ce863e402addb6f3f5
 -- run/kotlin/android --
 pass sha256:5538cdfdc7c825360dfd5d352259a706
 -- run/none/html --

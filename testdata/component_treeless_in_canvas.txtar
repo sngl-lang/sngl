@@ -60,14 +60,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -294,14 +286,6 @@ import (
 	"os"
 	"time"
 )
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
 
 type PathCmd struct {
 	Op  string
@@ -761,14 +745,6 @@ import (
 	"time"
 	"unsafe"
 )
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
 
 type PathCmd struct {
 	Op  string
@@ -1371,11 +1347,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6907d64ec848eae4c06b716c580b5ce0
+pass sha256:ca8bdde4d98a0aa2228c6bf9baabc58e
 -- run/go/fyne --
-pass sha256:97d8d6e68b68f70c6ad7f9ead12dc66f
+pass sha256:38033c7ae2c4175c564998ddc0425a47
 -- run/go/gtk4 --
-pass sha256:c5681a4f58f693e4f43fe437c41c7e77
+pass sha256:54480a2337cbfba87d66a5a2971e6dde
 -- run/kotlin/android --
 pass sha256:402bd9076adb5313d5dc01f4dce88a35
 -- run/none/html --

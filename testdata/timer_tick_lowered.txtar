@@ -76,14 +76,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type timerTickMsg0 struct{}
 
 // Model is the Bubble Tea model for this SNGL UI.
@@ -209,14 +201,6 @@ import (
 	"slices"
 	"time"
 )
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
 
 type ErrorEvent struct {
 	Message string
@@ -440,6 +424,6 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:39e9c83760870817ba3eb30911882fae
+pass sha256:437b0c42e52e472699a65a5f9c4939ef
 -- run/go/fyne --
-pass sha256:832b47b78546582a2e80d36a8eb4207e
+pass sha256:1012bfbc07b24d23fa8b11c2ea360bd7

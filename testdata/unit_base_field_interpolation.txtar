@@ -87,14 +87,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -413,7 +405,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:113f73e49c72af0b3575594d7f1ef691
+pass sha256:1e38977cade627ae90d5338d1520cca5
 -- run/kotlin/android --
 pass sha256:56000d5e68b8d9a80f24bfe826a8db64
 -- run/none/html --

@@ -89,14 +89,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -324,14 +316,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -483,6 +467,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:942bfc8b6ed6e47646839a5ec5d0adea
+pass sha256:d3e73c8e992d5ac0bb1e87fd0f706ca8
 -- run/go/gtk4 --
-pass sha256:44582c1d513d05e30c97b0a26035ee66
+pass sha256:f5660f7b71c244853ea51b90b7a5cb51

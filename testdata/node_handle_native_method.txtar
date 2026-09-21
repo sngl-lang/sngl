@@ -184,14 +184,6 @@ import (
 	"unsafe"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -331,4 +323,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:0f511ed206f0c6930e4c25e9650c776e
+pass sha256:6c96ff45b46abe7c92aff06a77306960

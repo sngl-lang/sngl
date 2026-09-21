@@ -560,7 +560,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if !componentFuncs[fn] && !stateFuncs[fn] {
+		//
+		// A func still carrying a receiver is never one of these, whatever
+		// the two sets say. Past LiftsToFreeFunc above the receiver names a
+		// component, so the func is a method of the Model the component was
+		// inlined into -- which is what the call site spells. componentFuncs
+		// misses the inliner's clone, because the clone lives in pkg.Funcs
+		// rather than on any component, and a clone that touched no state was
+		// not in stateFuncs either: `func (m *main) Paint__inst0` came out
+		// beside the `m.paint__inst0(…)` calling it. fyne and gtk4 ask the
+		// same question here and always did.
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}

@@ -69,14 +69,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	d__inst0   time.Duration
@@ -308,7 +300,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-broken sha256:0dc54215672f52d59d8e28219cc2bd80
+broken sha256:25617df5d86bfcdbe2c5ba01a6fa7039
 -- run/kotlin/android --
 pass sha256:e9837647bbf633c849818d314b11bd3e
 -- run/none/html --

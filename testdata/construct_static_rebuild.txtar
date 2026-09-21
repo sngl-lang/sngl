@@ -91,7 +91,7 @@ body { font-family: system-ui, sans-serif; }
     let __prop_more = more;
     let __prop___depth = __depth;
     let n = __prop_start;
-    let __slot02 = [];
+    let __slot0 = [];
     let __inst1_live = [];
     let __inst1_was_start = [];
     function __set_more(__v) {
@@ -103,9 +103,9 @@ body { font-family: system-ui, sans-serif; }
       __renderSlot0(__root);
     }
     function __renderSlot0(parent) {
-      let __place0_prev = __slot02;
+      let __place0_prev = __slot0;
       let __place0_i = 0;
-      __slot02 = [];
+      __slot0 = [];
       let __inst1_next = [];
       let __inst1_i = 0;
       let __inst1_now_start = [];
@@ -138,7 +138,7 @@ body { font-family: system-ui, sans-serif; }
           } else {
             parent.insertBefore(__n2__el, __place0_i_ref0);
           }
-          __slot02.push(__n2__el);
+          __slot0.push(__n2__el);
         }
       }
       for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -150,7 +150,7 @@ body { font-family: system-ui, sans-serif; }
       __inst1_live = __inst1_next;
       __inst1_was_start = __inst1_now_start;
       for (const __place0_prev_e of __place0_prev) {
-        if (__slot02.indexOf(__place0_prev_e) < 0) {
+        if (__slot0.indexOf(__place0_prev_e) < 0) {
           parent.removeChild(__place0_prev_e);
         }
       }
@@ -187,7 +187,6 @@ body { font-family: system-ui, sans-serif; }
       __set___depth
     };
   }
-  var __slot0 = [];
   function String(v) {
     return "" + v;
   }
@@ -209,4 +208,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2e01092a25a0c7dd04fc52ff8f93cf2b
+pass sha256:c036c9bd2e05faea12cfea448cff6c77

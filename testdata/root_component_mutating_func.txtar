@@ -17,6 +17,7 @@ not choose.
 Both windows are patched, because both read `total` and the var is one cell on
 a single-Model target. Each is patched once.
 
+deny * `(?i)\bmain_?add\b` -- the hoisted func is the windows', so no target spells it as a method of the component it was written on
 deny out/go/fyne/model.go `m\.__n1\.SetText[^\n]*\n\tm\.__n0\.SetText` -- the updater block runs to __n1 and stops; a second block starting again at __n0 is the double injection this fixture is for
 deny out/none/html/index.html `__n1\.textContent[^\n]*\n\s*__n0\.textContent` -- as above, for the page's handler
 deny out/none/html/b.html `__n1\.textContent[^\n]*\n\s*__n0\.textContent` -- and for the second page, which carries the same func

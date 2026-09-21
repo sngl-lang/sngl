@@ -13,6 +13,10 @@ Describing a host drawing context in SNGL is what needs it (#213): the shape
 overrides call the context's own methods, and the emitted JavaScript is the
 same code the platform used to build by hand.
 
+`paint` is called rather than merely declared, because a func nothing calls is
+shaken and an archive that shows neither the call nor the declaration asserts
+nothing about how either is spelled -- the denies below included.
+
 deny out/none/html/index.html `[^.]\barc\(` -- a bare arc() is a call to a global nobody declared
 deny out/none/html/index.html `arc\(c,` -- the receiver belongs before the dot, not in the arguments
 
@@ -37,13 +41,17 @@ func Ctx.fill()
 
 component main() ui.node {
     var n = 0
+    var c Ctx
 
     func paint(c Ctx) {
         c.arc(1.0, 2.0, 3.0, 0.0, 6.28)
         c.fill()
     }
 
-    ui.button(text="draw", @click { n += 1 })
+    ui.button(text="draw", @click {
+        n += 1
+        paint(c)
+    })
 }
 
 ui.window {
@@ -69,7 +77,8 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n__inst0: 0 };
+  var state = { n__inst0: 0, c__inst0: null };
+  state.c__inst0 = {};
   function Ctx() {
     return {};
   }
@@ -80,9 +89,10 @@ body { font-family: system-ui, sans-serif; }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.n__inst0 += 1;
+    main_paint__inst0(state, state.c__inst0);
   });
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2d81068d28048171203d55514bd4f3de
+pass sha256:af36689dbedf659eed3ffd5858620bba

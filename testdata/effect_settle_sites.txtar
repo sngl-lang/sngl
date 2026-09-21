@@ -90,14 +90,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -435,4 +427,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:33cd6dd6f69260b6b6742ff1e74c494f
+pass sha256:9b28a5f8cafee8c13de9657f5d580915

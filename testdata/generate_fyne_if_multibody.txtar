@@ -46,7 +46,6 @@ import (
 // Model holds the state for this SNGL UI.
 type Model struct {
 	visible bool
-	__root  *fyne.Container
 	__slot0 []fyne.CanvasObject
 
 	__n3 *fyne.Container
@@ -56,7 +55,6 @@ type Model struct {
 func New() *Model {
 	m := &Model{}
 	m.visible = true
-	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	return m
 }
@@ -108,4 +106,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:be2ebd4bfdeda6c046e3d3ae264e339e
+pass sha256:dda197a31377c6026d2db9c9387b6973

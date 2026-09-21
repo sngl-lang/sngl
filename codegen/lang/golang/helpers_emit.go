@@ -18,10 +18,20 @@ import (
 // and its import are recorded here and every platform picks them up
 // automatically.
 type HelperSet struct {
+	// The parse helpers, one per date/time family member. Each is recorded
+	// where a value of that type is *built* -- a literal, or a conversion's
+	// target -- because that is the only place Go needs something to build
+	// one from a string. A type annotation needs the `time` package spelled
+	// and nothing else, which is NeedTimeImport below.
 	NeedDate     bool
 	NeedTime     bool
 	NeedDateTime bool
-	NeedDuration bool
+	// NeedTimeImport is any mention of the family at all, annotation
+	// included. It was the same four flags doing both jobs, and fyne's timer
+	// is what separated them: its `*time.Ticker` carries a
+	// `go.chan<time.datetime>`, which is a type nothing ever parses, so six
+	// timer fixtures emitted a `mustParseDateTime` no line called.
+	NeedTimeImport bool
 	// `int(s)` and `float(s)` are conversions the language allows and Go does
 	// not: `float64("3.5")` builds no number, and `int("42")` is a rune. They
 	// go through strconv, and a string that is not a number reads as zero —
@@ -103,17 +113,14 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 		return h
 	}
 	for _, v := range pkg.Vars {
-		recordTypeHelpers(&h, v.Type)
-		recordExprHelpers(&h, v.Init)
+		recordInitHelpers(&h, v.Type, v.Init)
 	}
 	for _, c := range pkg.Consts {
-		recordTypeHelpers(&h, c.Type)
-		recordExprHelpers(&h, c.Init)
+		recordInitHelpers(&h, c.Type, c.Init)
 	}
 	for _, comp := range pkg.Components {
 		for _, v := range comp.Vars {
-			recordTypeHelpers(&h, v.Type)
-			recordExprHelpers(&h, v.Init)
+			recordInitHelpers(&h, v.Type, v.Init)
 		}
 		for _, f := range comp.Funcs {
 			recordFuncHelpers(&h, f)
@@ -130,9 +137,9 @@ func HelpersNeeded(pkg *ir.Package) HelperSet {
 	ir.WalkExprs(pkg, func(e ir.Expr) error {
 		switch n := e.(type) {
 		case *ir.Literal:
-			recordTypeHelpers(&h, n.Type)
+			recordValueHelpers(&h, n.Type)
 		case *ir.Conversion:
-			recordTypeHelpers(&h, n.Type)
+			recordValueHelpers(&h, n.Type)
 			if ir.IsOptionWrap(n) {
 				h.NeedSome = true
 			}
@@ -175,7 +182,7 @@ func packageBuildsASequence(pkg *ir.Package) bool {
 // helpers. Returns nil when no helpers are needed.
 func (h HelperSet) Imports() []string {
 	var imps []string
-	if h.NeedDate || h.NeedTime || h.NeedDateTime || h.NeedDuration {
+	if h.NeedTimeImport {
 		imps = append(imps, "time")
 	}
 	if h.NeedParseInt || h.NeedParseFloat {
@@ -283,17 +290,6 @@ func (h HelperSet) Emit() string {
 
 `)
 	}
-	if h.NeedDuration {
-		b.WriteString(`func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
-`)
-	}
 	if h.NeedDate {
 		b.WriteString(`func mustParseDate(s string) time.Time {
 	t, err := time.Parse("2006-01-02", s)
@@ -334,7 +330,39 @@ func (h HelperSet) Emit() string {
 	return b.String()
 }
 
+// recordTypeHelpers records what a type *annotation* needs, which is the
+// `time` import and nothing else: a Go `time.Time` field needs the package
+// spelled, and nothing there parses anything.
 func recordTypeHelpers(h *HelperSet, t *ir.Type) {
+	if t == nil {
+		return
+	}
+	if namesTimePackage(t) {
+		h.NeedTimeImport = true
+	}
+	for _, el := range t.Elems {
+		recordTypeHelpers(h, el)
+	}
+}
+
+// recordInitHelpers mirrors LowerVarInit: a binding whose declared type is a
+// date, time or datetime and whose initializer is a literal is spelled with
+// the parse helper, and the type it parses into is the *binding's* rather
+// than the literal's -- the fold that settled `date("2026-05-09")` leaves a
+// plain string behind, so neither half says on its own that a helper is
+// wanted.
+func recordInitHelpers(h *HelperSet, t *ir.Type, init ir.Expr) {
+	recordTypeHelpers(h, t)
+	if _, isLit := init.(*ir.Literal); isLit {
+		recordValueHelpers(h, t)
+	}
+	recordExprHelpers(h, init)
+}
+
+// recordValueHelpers is the same question asked where a value of the type is
+// *built* -- a literal, or a conversion's target -- which is what the parse
+// helpers are for.
+func recordValueHelpers(h *HelperSet, t *ir.Type) {
 	if t == nil {
 		return
 	}
@@ -345,14 +373,23 @@ func recordTypeHelpers(h *HelperSet, t *ir.Type) {
 		h.NeedTime = true
 	case ir.IsDateTimeStruct(t):
 		h.NeedDateTime = true
-	case t.Kind == ir.TypeUnit:
-		if ud, ok := t.Decl.(*ir.UnitDef); ok && ud.Builtin == ir.BuiltinDuration {
-			h.NeedDuration = true
-		}
 	}
 	for _, el := range t.Elems {
-		recordTypeHelpers(h, el)
+		recordValueHelpers(h, el)
 	}
+	recordTypeHelpers(h, t)
+}
+
+// namesTimePackage reports whether t is spelled with Go's `time` package.
+func namesTimePackage(t *ir.Type) bool {
+	if ir.IsDateStruct(t) || ir.IsTimeStruct(t) || ir.IsDateTimeStruct(t) {
+		return true
+	}
+	if t.Kind == ir.TypeUnit {
+		ud, ok := t.Decl.(*ir.UnitDef)
+		return ok && ud.Builtin == ir.BuiltinDuration
+	}
+	return false
 }
 
 func recordExprHelpers(h *HelperSet, e ir.Expr) {
@@ -361,7 +398,7 @@ func recordExprHelpers(h *HelperSet, e ir.Expr) {
 	}
 	switch n := e.(type) {
 	case *ir.Conversion:
-		recordTypeHelpers(h, n.Type)
+		recordValueHelpers(h, n.Type)
 		switch StringToNumberHelper(n) {
 		case "snglParseInt":
 			h.NeedParseInt = true
@@ -370,7 +407,7 @@ func recordExprHelpers(h *HelperSet, e ir.Expr) {
 		}
 		recordExprHelpers(h, n.Operand)
 	case *ir.Literal:
-		recordTypeHelpers(h, n.Type)
+		recordValueHelpers(h, n.Type)
 	case *ir.Binary:
 		recordExprHelpers(h, n.Left)
 		recordExprHelpers(h, n.Right)
@@ -455,8 +492,7 @@ func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
 				recordExprHelpers(h, n.Call)
 			}
 		case *ir.LocalVar:
-			recordTypeHelpers(h, n.Type)
-			recordExprHelpers(h, n.Init)
+			recordInitHelpers(h, n.Type, n.Init)
 		case *ir.Return:
 			recordExprHelpers(h, n.Value)
 		case *ir.If:
