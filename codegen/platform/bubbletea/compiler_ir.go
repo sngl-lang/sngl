@@ -715,19 +715,23 @@ func emitIRFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 // left in pkg.Funcs is top level: declared beside them rather than inside one,
 // so nothing of a component's is in scope for it.
 //
-// A window owns funcs the way a component does -- passFocusOrder's
-// __focusNext/__focusPrev among them -- and they read the Model, so leaving
-// them out emitted them free and the focus helpers lost their receiver.
 // modelMountFuncs is the effect settles New() has to run: the ones owned by
 // whoever the Model is.
 //
 // The lowering appends each as a statement to its owner's body, which every
 // mutation-model target executes. A RenderModel's body became View(), which is
 // a pure function of the state and skips imperative statements outright, so the
-// call reached nothing and no effect on this platform ever mounted. An owner
-// other than the root is a component that survived inlining and is not part of
-// this Model, so its settle is not a method here to call -- the same filter
-// ModelState draws state through.
+// call reached nothing and no effect on this platform ever mounted.
+//
+// What has to be excluded is a component that survived inlining: it is not
+// part of this Model, so its settle is not a method here to call -- the same
+// filter ModelState draws state through. So the question is asked that way
+// round, of componentFuncSet, rather than by listing the owners that *are* the
+// Model. Those used to be the root declaration and every window; a window owns
+// nothing now, so a settle synthesized while walking one is an ordinary package
+// func -- and listing owners meant listing none of them, which left New() with
+// no `m.__effects0_settle()` in it and no effect mounting on this platform at
+// all.
 func modelMountFuncs(ctx *codegen.CodegenCtx) []*ir.Func {
 	if ctx == nil || ctx.Pkg == nil {
 		return nil
@@ -738,9 +742,13 @@ func modelMountFuncs(ctx *codegen.CodegenCtx) []*ir.Func {
 			owned[fn] = true
 		}
 	}
+	// A root declaration's own funcs are in componentFuncSet too, so the
+	// explicit set is asked first: the harness that clears the windows to
+	// isolate one component still mounts that component's effects.
+	surviving := componentFuncSet(ctx.Pkg)
 	var out []*ir.Func
 	for _, fn := range ctx.Pkg.Mounts {
-		if owned[fn] {
+		if owned[fn] || !surviving[fn] {
 			out = append(out, fn)
 		}
 	}
