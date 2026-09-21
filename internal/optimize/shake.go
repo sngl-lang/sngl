@@ -237,21 +237,25 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 			walk(v)
 		}
 	}
-	// The teardown entry point. Nothing in the IR calls it -- each platform
-	// emits the call from its own scaffolding, off this same field -- so the
-	// reference the package holds is the only one there is, and walking it is
-	// what keeps the per-effect `__effectN_teardown` the body calls alive too.
+	// The entry points the lowering left for a platform to call. Nothing in
+	// the IR calls any of them -- each platform emits the call from its own
+	// scaffolding, off these same fields -- so the reference the package
+	// holds is the only one there is, and walking it is what keeps what the
+	// body calls alive too: the per-effect `__effectN_teardown`, the updaters
+	// a settle re-runs.
 	//
-	// It reached this walk at all only because Optimize runs a second time
-	// after Lower, which is where passEffect synthesizes it; before that it
-	// survived by sitting in a window's Funcs, and in pkg.Funcs it was
-	// filtered like anything else nothing names.
+	// They reach this walk at all only because Optimize runs a second time
+	// after Lower, which is where they are synthesized; before that they
+	// survived by sitting in a window's Funcs, and in pkg.Funcs they are
+	// filtered like anything else nothing names. Teardown was rooted on its
+	// own and the other two were not, so `__remoteSettled` was shaken while
+	// fyne's `OnSettle` subscription still named it.
 	//
 	// Guarded rather than handed straight to walk: a nil *ir.Func in an
 	// ir.Symbol is not a nil interface, so the `sym == nil` gate at the top
 	// lets it through to the *ir.Func arm and the field read panics.
-	if pkg.Teardown != nil {
-		walk(pkg.Teardown)
+	for _, fn := range pkg.EntryPoints() {
+		walk(fn)
 	}
 
 	return used

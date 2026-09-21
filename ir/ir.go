@@ -178,6 +178,27 @@ type Package struct {
 	Mounts []*Func `json:"-"`
 }
 
+// EntryPoints are the handlers a platform calls from its own scaffolding
+// rather than from anything in the IR: the teardown, the store's settle, and
+// the effect mounts. Each is recorded rather than named because whether it
+// exists and what it is called are the lowering's answers -- which is exactly
+// what makes them invisible to any walk that follows calls, the tree-shaker
+// included.
+//
+// Nil entries are skipped, so a caller may walk the result without guarding.
+func (p *Package) EntryPoints() []*Func {
+	if p == nil {
+		return nil
+	}
+	out := make([]*Func, 0, 2+len(p.Mounts))
+	for _, fn := range append([]*Func{p.Teardown, p.RemoteSettle}, p.Mounts...) {
+		if fn != nil {
+			out = append(out, fn)
+		}
+	}
+	return out
+}
+
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
 type AsyncKickerEntry struct {
 	Func         *Func    // the $compute_X kicker func (async, void)
