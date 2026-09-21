@@ -257,15 +257,20 @@ type irAndroidComputed struct {
 // bindForVar describes one reactive var as Compose state. Shared by the main
 // component's binds and by a surviving component's own vars, which are the
 // same declaration reached through a different scope.
-func bindForVar(v *ir.Var) irAndroidBind {
-	ktType := kotlin.IRTypeToKt(v.Type)
-	initVal := irVarInitKt(v)
-	isList := v.Type != nil && v.Type.Kind == ir.TypeList
+func bindForVar(v *ir.Var) irAndroidBind { return bindFor(v.Name, v.Type, v.Init) }
+
+// bindFor is bindForVar for a binding with no declaration behind it -- a
+// window's route parameters, which the slot population declares and the
+// request fills.
+func bindFor(name string, typ *ir.Type, init ir.Expr) irAndroidBind {
+	ktType := kotlin.IRTypeToKt(typ)
+	initVal := irBindInitKt(typ, init)
+	isList := typ != nil && typ.Kind == ir.TypeList
 	// Judged on the node, not on the text IRLiteralToKt returned: a composite
 	// whose fields all failed to emit still looks emitted.
 	var initEx ir.Expr
-	if _, isLit := v.Init.(*ir.Literal); v.Init != nil && !isLit {
-		initEx = v.Init
+	if _, isLit := init.(*ir.Literal); init != nil && !isLit {
+		initEx = init
 	}
 	// An empty map arrives as `mapOf()` either way and Kotlin infers
 	// Map<Nothing, Nothing> from both spellings -- see #176.
@@ -273,7 +278,7 @@ func bindForVar(v *ir.Var) irAndroidBind {
 		initVal = ""
 	}
 	return irAndroidBind{
-		name:   v.Name,
+		name:   name,
 		ktType: ktType,
 		init:   initVal,
 		initEx: initEx,
@@ -302,11 +307,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 	}
 
 	for _, ov := range ctx.ModelState() {
-		v := ov.Var
-		if v.IsConst {
+		if ov.IsConst() {
 			continue
 		}
-		info.binds = append(info.binds, bindForVar(v))
+		info.binds = append(info.binds, bindFor(ov.Name(), ov.Type(), ov.Init()))
 	}
 
 	// A surviving component's own funcs are declared inside its composable,
@@ -1087,11 +1091,13 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 
 // --- helpers ---
 
-func irVarInitKt(v *ir.Var) string {
-	if v.Init == nil {
-		return ktZeroValue(v.Type)
+func irVarInitKt(v *ir.Var) string { return irBindInitKt(v.Type, v.Init) }
+
+func irBindInitKt(typ *ir.Type, init ir.Expr) string {
+	if init == nil {
+		return ktZeroValue(typ)
 	}
-	return kotlin.IRLiteralToKt(v.Init)
+	return kotlin.IRLiteralToKt(init)
 }
 
 func irFuncReturnKt(f *ir.Func) string {

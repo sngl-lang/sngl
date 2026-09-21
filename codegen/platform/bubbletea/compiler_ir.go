@@ -213,21 +213,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// NoInlineComponents inlined every non-main component into main, so there
 	// are no remaining child-component vars to collect.
 	for _, ov := range ctx.ModelState() {
-		v := ov.Var
 		// A const is a Model field as well, so `c.<name>` and `m.<name>`
 		// reach it; a top-level one also gets a file-scope `var` for the
 		// free functions, which are not Model methods.
-		goType := golang.VarGoType(v)
-		initVal := irVarInit(v, gc)
+		goType := golang.BindGoType(ov.Type(), ov.Init())
+		initVal := golang.LowerBindInit(ov.Type(), ov.Init(), gc)
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
-			name:        v.Name,
+			name:        ov.Name(),
 			goType:      goType,
 			init:        initVal,
-			isConst:     v.IsConst,
-			synthesized: v.Synthesized,
+			isConst:     ov.IsConst(),
+			synthesized: ov.Synthesized(),
 		})
 	}
 
@@ -827,8 +826,8 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		// the window is in it: read as pkg.Vars plus the root component's, a
 		// `@change` on such a var reached the setter as nothing at all.
 		for _, ov := range ctx.ModelState() {
-			v := ov.Var
-			if v.Name != bind.name {
+			v := ov.Var()
+			if v == nil || v.Name != bind.name {
 				continue
 			}
 			for _, h := range v.Handlers {
@@ -1421,7 +1420,7 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
 		for v := range codegen.MutatedFields(nil, nil, stmt) {
-			mutated[v.Name] = true
+			mutated[v.SymName()] = true
 		}
 	}
 	for _, w := range widgets {

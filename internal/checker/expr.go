@@ -3803,8 +3803,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 	switch kind {
 	case ir.BuiltinWindow:
-		w := c.buildWindow(vn)
-		c.checkWindowBody(w)
+		w := c.windowShell(vn)
+		c.checkWindow(w)
 		c.checkedWindows[w] = true
 		return w
 	case ir.BuiltinErrorBoundary:
@@ -5191,23 +5191,6 @@ func findSlot(comp *ir.Component, name string) *ir.SlotDecl {
 // directly in a child node's block *is* a population; the same form at the root
 // of a component body is a nested declaration, and that position is pass1's.
 func (c *checker) checkSlotPopulations(vn *ast.VisualNode, comp *ir.Component) (map[string]*ir.SlotContent, ast.StmtBlock) {
-	return c.checkSlotPopulationsBound(vn, comp, nil)
-}
-
-// checkSlotPopulationsBound is checkSlotPopulations with the *rest* slot's
-// single parameter bound to a cell the caller already holds.
-//
-// One caller passes a non-nil bound, and it is the window: its route
-// parameters are state rather than a block-scoped name, one cell per window
-// that whatever serves the page fills in before the body renders. Every other
-// population binds what it declares, which is what a nil bound asks for.
-//
-// The alternative was for a window to read its own population out of the
-// block, which is what it did: sixty-five lines restating the rules below --
-// unknown slot, duplicate population, populated-by-name-and-bare, no
-// ChildrenType, no bidirectional, no default -- and missing the two it did not
-// think to (slot arity, and a population naming an override target).
-func (c *checker) checkSlotPopulationsBound(vn *ast.VisualNode, comp *ir.Component, bound *ir.Var) (map[string]*ir.SlotContent, ast.StmtBlock) {
 	rest := vn.Block
 	rest.Stmts = nil
 	var content map[string]*ir.SlotContent
@@ -5239,11 +5222,7 @@ func (c *checker) checkSlotPopulationsBound(vn *ast.VisualNode, comp *ir.Compone
 		if content == nil {
 			content = map[string]*ir.SlotContent{}
 		}
-		cell := bound
-		if !decl.Rest {
-			cell = nil
-		}
-		content[cd.Name] = c.checkSlotContent(cd, decl, comp, cell)
+		content[cd.Name] = c.checkSlotContent(cd, decl, comp)
 	}
 	if comp == nil {
 		return nil, rest
@@ -5271,7 +5250,7 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 // checkSlotContent checks one population. The bound names are the caller's own,
 // matched by position against the declaration's types, and are ordinary
 // block-scoped bindings.
-func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, owner *ir.Component, bound *ir.Var) *ir.SlotContent {
+func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
 	params := cd.Props.Props
 	if len(params) != len(decl.Params) {
 		c.error(cd.Pos, "slot %q binds %d parameter(s), but declares %d", cd.Name, len(params), len(decl.Params))
@@ -5294,29 +5273,11 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 		if a.Default != nil {
 			c.error(a.Pos, "slot %q: parameter %q takes no default value; the insertion supplies it", cd.Name, a.Name)
 		}
-		what := bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name))
-		// A caller-supplied cell takes the name the population wrote and is
-		// what the body's reads resolve to -- which is the whole of why it is
-		// supplied: the consumers of a window's route parameters are keyed by
-		// *ir.Var, so a fresh *ir.Param here would leave every read of one
-		// resolving to nobody. It is not added to sc.Params: the caller holds
-		// it, and a window's content is peeled into its children rather than
-		// left in the slot for a lowering to insert.
-		//
-		// Its own type is the `want`, not the declaration's: the caller minted
-		// the cell from the *specialization*, where the slot's `T` is bound to
-		// what the call site passed, and `decl` here is the generic. Read the
-		// generic instead and `params=PageParams{}` arrives as `any`.
-		if i == 0 && bound != nil {
-			bound.Name = a.Name
-			bound.Type = c.bindParamType(a.Type, bound.Type, what)
-			c.declare(a.Pos, bound)
-			continue
-		}
 		var want *ir.Type
 		if i < len(decl.Params) {
 			want = decl.Params[i].Type
 		}
+		what := bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name))
 		p := &ir.Param{Name: a.Name, Type: c.bindParamType(a.Type, want, what)}
 		c.declare(a.Pos, p)
 		sc.Params = append(sc.Params, p)

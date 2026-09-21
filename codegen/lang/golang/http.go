@@ -426,7 +426,7 @@ func routePathExpr(r codegen.HTTPRoute, gc *GoIRContext) string {
 // string: the redirect writes the page the browser should ask for next, and a
 // field the struct typed as a number has to be spelled back the way the path
 // spelled it. Empty where the struct has no such field.
-func routeParamString(pv *ir.Var, name string, gc *GoIRContext) string {
+func routeParamString(pv *ir.Param, name string, gc *GoIRContext) string {
 	sd, _ := pv.Type.Decl.(*ir.StructDef)
 	field := routeParamField(sd, name)
 	if field == nil {

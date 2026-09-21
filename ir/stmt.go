@@ -58,18 +58,19 @@ type NodeInst struct {
 	ErrorHandler *EventHandler `json:",omitempty"`
 	// Params is the binding a window's scoped rest slot hands its body: one
 	// struct value holding what the route knows per request, typed by the
-	// `params` prop the call site wrote. Nil where the declaration's slot binds
-	// nothing.
+	// `params` prop the call site wrote. Nil where the body wrote no
+	// population, and so asked for nothing.
 	//
 	// The fields are the path's `{name}` placeholders, which is why nothing
-	// here reads the href: the struct is the contract and the path is a plain
-	// string that has to satisfy it.
+	// here reads the href: the struct is the contract, and the path is a plain
+	// string html holds to it.
 	//
-	// A Var rather than the Param the slot declares, because what a target does
-	// with it is what it does with state: one cell, filled in before the body
-	// is rendered. A route handler binds it from the request; a target with no
-	// request leaves it at the struct's zero, which is the Init.
-	Params *Var `json:"-"`
+	// The *ir.Param the population declares, like every other population's
+	// binding. That a target *stores* it -- one cell filled in before the body
+	// renders, a Model field on a target with no request -- is codegen's
+	// answer and is written down there (CodegenCtx.ModelState); the checker
+	// makes no distinction, having none to make.
+	Params *Param `json:"-"`
 	// LocalRefs is populated by lower's passNodeEscape (MutationModel platforms
 	// only): the set of synthesized widget ref ids (__nN) created in this
 	// node's children that do NOT escape to any other scope. A node has one

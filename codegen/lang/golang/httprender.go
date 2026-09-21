@@ -62,7 +62,7 @@ func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRConte
 // routeParamsVar is the binding a route's path parameters arrive in: one
 // struct value, named and typed by the window's scoped slot. Nil for a route
 // whose window declared none.
-func routeParamsVar(r codegen.HTTPRoute) *ir.Var {
+func routeParamsVar(r codegen.HTTPRoute) *ir.Param {
 	if r.Window == nil {
 		return nil
 	}

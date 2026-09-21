@@ -222,8 +222,10 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 	for _, comp := range pkg.Components {
 		walk(comp)
 	}
+	// The window itself and not only its body: a window carries its route
+	// parameters and its @error, and neither is reachable from the children.
 	for _, w := range pkg.Windows {
-		walkStmts(w.Children, used, walk)
+		walkStmt(w, used, walk)
 	}
 	// Test functions are roots.
 	for _, f := range pkg.Funcs {
@@ -288,6 +290,16 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		}
 		for _, h := range n.Handlers {
 			walkFunc(h.Func, used, walk)
+		}
+		if n.ErrorHandler != nil {
+			walkFunc(n.ErrorHandler.Func, used, walk)
+		}
+		// A window's route parameters name a struct the program may declare
+		// and never construct: the request fills the cell, and a target with
+		// no request renders its zero. Nothing else reaches that declaration,
+		// so without this the page read `v.pkg` off a type no file declared.
+		if n.Params != nil {
+			walkType(n.Params.Type, used, walk)
 		}
 		walkStmts(n.Children, used, walk)
 	case *ir.CallStmt:

@@ -176,8 +176,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// component's vars would re-add the originals and collide their
 	// synthesized __root/__slot scratch fields.
 	for _, tv := range ctx.ModelState() {
-		v := tv.Var
-		if v.Synthesized {
+		// nil for a binding no declaration made: a window's route parameters,
+		// which the slot population declares and the request fills. The
+		// special cases below are all things a body or a pass declared, so
+		// they are asked only where there is a declaration to ask.
+		v := tv.Var()
+		if v != nil && v.Synthesized {
 			if v.Name == "__root" {
 				// The __root sentinel is initialized lazily inside BuildUI:
 				// cgo calls aren't valid in struct init.
@@ -228,13 +232,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if tv.Comp != nil {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.Comp))
 		}
-		goType := golang.VarGoType(v)
-		initVal := irVarInit(v, varGC)
+		goType := golang.BindGoType(tv.Type(), tv.Init())
+		initVal := golang.LowerBindInit(tv.Type(), tv.Init(), varGC)
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
-			name:   v.Name,
+			name:   tv.Name(),
 			goType: goType,
 			init:   initVal,
 			// Consts skip getter/setter: the field name would collide with
@@ -242,7 +246,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// name Go cannot export -- every `__`-prefixed one, which is
 			// every name a lowering pass synthesized, and nothing outside the
 			// program reads one.
-			noAccessors: v.IsConst || golang.ExportName(v.Name) == v.Name,
+			noAccessors: tv.IsConst() || golang.ExportName(tv.Name()) == tv.Name(),
 		})
 	}
 

@@ -62,8 +62,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// NoInlineComponents inlined every non-main component into main, so there
 	// are no remaining child-component vars to collect.
 	for _, ov := range ctx.ModelState() {
-		v := ov.Var
-		if v.IsConst {
+		// nil for a binding no declaration made: a window's route parameters,
+		// which the slot population declares and the request fills. None of
+		// the special cases below can be one -- a const, a synthesized var and
+		// a slot ref are all things a body or a pass declared -- so they are
+		// asked only where there is a declaration to ask.
+		v := ov.Var()
+		if v != nil && v.IsConst {
 			// Consts skip getter/setter: the field name would collide with
 			// the accessor (APP_NAME field + APP_NAME() method).
 			info.binds = append(info.binds, irBind{
@@ -74,7 +79,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			})
 			continue
 		}
-		if v.Synthesized {
+		if v != nil && v.Synthesized {
 			if v.Name == "__root" {
 				// The __root sentinel is built through a native call so that
 				// rendering this init registers the container import.
@@ -121,14 +126,14 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				continue
 			}
 		}
-		goType := golang.VarGoType(v)
+		goType := golang.BindGoType(ov.Type(), ov.Init())
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
-			name:   v.Name,
+			name:   ov.Name(),
 			goType: goType,
-			init:   v.Init,
+			init:   ov.Init(),
 			varRef: v,
 			// A name Go cannot export gets no accessor, because the accessor
 			// would be spelled the same as the field and not compile. That is
@@ -136,9 +141,10 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// synthesized -- and nothing outside the program reads one, so
 			// there is no accessor to want. The `__slot<N>` case above is this
 			// rule, written before there was a second var it applied to.
-			noAccessors: golang.ExportName(v.Name) == v.Name,
+			noAccessors: golang.ExportName(ov.Name()) == ov.Name(),
 		})
-		if len(v.Handlers) > 0 {
+		// A parameter carries no @change: nothing in the page assigns it.
+		if v != nil && len(v.Handlers) > 0 {
 			info.dataEvents[v.Name] = v.Handlers
 		}
 	}

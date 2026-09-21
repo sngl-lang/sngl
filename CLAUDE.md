@@ -929,37 +929,50 @@ misspelled placeholder declared a var rather than being reported.
 `checkWindowPathParams` asks the last two now, holding every `{name}` to a
 field of the struct and that field to a type a route can parse text into.
 
-`NodeInst.Params` is the cell it lands in, and it is an `*ir.Var` rather than
-the `*ir.Param` a population declares: what a target does with it is what it
-does with state — one cell filled in before the body renders. A Go route
-handler binds it from the request (`writeRouteParamBindings`), and a target
-with no request leaves it at the struct's zero. `buildWindow` mints it
-unnamed, because the name is the caller's; `bindWindowParams` names it from
-the population, or drops it where the body wrote none — so a window that
-never asks for its parameters carries no cell for them, and no bare name is
-ever bound in a window body.
+`NodeInst.Params` is the cell it lands in, and it is the `*ir.Param` the
+population declares — an ordinary slot binding, because there is no
+distinction for the checker to make. That a target *stores* it is codegen's
+answer: `CodegenCtx.ModelState` is "which bindings a single-Model target puts
+in its Model", and an `ir.Symbol` rather than an `*ir.Var` for exactly this
+reason — not everything stored is a declaration a body made. `OwnedVar`
+answers the five questions the four Model emitters ask, of which a parameter
+answers `Name` and `Type` and is neither const nor synthesized, and whose
+`Init` is its type's zero because nothing in the program writes one. A Go
+route handler binds it from the request (`writeRouteParamBindings`); a target
+with no request renders that zero.
 
-**A window's body reaches `checkSlotPopulations` like every other node's.**
-`checkWindowBody` hands it `w.Params` as the cell the rest slot's single
-parameter binds — a route's parameters being state rather than a block-scoped
-name, which is the whole of why the binding is supplied rather than minted:
-`DepTracker.ModelVars` and the rest are keyed by `*ir.Var`, so a fresh
-`*ir.Param` there would leave every read of one resolving to nobody. Its *type*
-is its own and not the declaration's, because the caller minted it from the
-specialization, where the slot's `T` is bound to what the call site passed.
+Two things follow from the zero being codegen's. The shake roots the window
+*node* rather than its children, so `Params.Type` and the `@error` are
+reachable — the struct a route's parameters name is otherwise declared and
+never constructed, and went. And the window that writes no population carries
+no cell at all, so nothing downstream binds a route parameter for a page that
+does not read one.
 
-It used to read its own population out of the block: sixty-five lines
-restating "no such slot", "already populated" and "populated by name and bare",
-and missing the ones it did not think to restate — slot arity, and a population
-naming an override target, which `testdata/error_window_population.sngl` pins.
-What is left of that peel is `windowBodyBlock`, which answers only *which lines*
-the body is, and exists because a window hoists its own node ids before the
-body is read.
+**A window's body reaches `checkSlotPopulations` like every other node's**,
+and `w.Params` is that population's own parameter. It used to read its own
+population out of the block: sixty-five lines restating "no such slot",
+"already populated" and "populated by name and bare", and missing the ones it
+did not think to restate — slot arity, and a population naming an override
+target, which `testdata/error_window_population.sngl` pins. What is left of
+that peel is `windowBodyBlock`, which answers only *which lines* the body is,
+and exists because a window hoists its own node ids before the body is read.
 
-`buildWindow` is the half still standing: a window's props, its `@error` and
-its path check are built there rather than by `checkVisualNodeIR`. Collapsing
-that one needs an answer about the id scope, which is what `isWindowNode`'s own
-doc calls the last thing that makes a window special to the checker.
+**And a window is built in pass2**, like every other node. `windowShell` is
+what pass1 reserves — the target name, the `#id`, the handle — because
+`output(entry = home)` and a sibling window need something to resolve against
+before any body is read; `checkWindow` reads the props, the `@error` and the
+body. Building the whole thing in pass1 checked its arguments against a scope
+pass1 had not finished filling, so `window #home(title = greeting())` above
+`func greeting()` was `undefined: greeting` while the same window one level
+into a component body checked clean
+(`cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`). One local
+specialization also means the bound `T` needs no carrying, which is what the
+params cell used to be for.
+
+What is still the checker's alone is the **id scope**: a window pushes one and
+hoists its own `#id`s into it, which `declareNodeIDsStmt` says by not
+descending into a window, and which `isWindowNode`'s own doc calls the reason
+it exists.
 
 **`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the

@@ -10,16 +10,16 @@ import (
 // All set fields are keyed on *ir.Var pointers, not names, so that same-named
 // vars in different scopes don't collide.
 type DepTracker struct {
-	ModelVars     map[*ir.Var]struct{}
+	ModelVars     map[ir.Symbol]struct{}
 	ComputedFuncs map[*ir.Func]struct{}
-	ComputedDeps  map[*ir.Func]map[*ir.Var]struct{}
+	ComputedDeps  map[*ir.Func]map[ir.Symbol]struct{}
 
 	// Components resolves `this.<field>` when the owning component is known.
 	Components []*ir.Component
 }
 
 // NewDepTracker retains the caller's maps rather than copying them.
-func NewDepTracker(modelVars map[*ir.Var]struct{}, computedFuncs map[*ir.Func]struct{}, computedDeps map[*ir.Func]map[*ir.Var]struct{}) *DepTracker {
+func NewDepTracker(modelVars map[ir.Symbol]struct{}, computedFuncs map[*ir.Func]struct{}, computedDeps map[*ir.Func]map[ir.Symbol]struct{}) *DepTracker {
 	return &DepTracker{
 		ModelVars:     modelVars,
 		ComputedFuncs: computedFuncs,
@@ -30,9 +30,9 @@ func NewDepTracker(modelVars map[*ir.Var]struct{}, computedFuncs map[*ir.Func]st
 // NewDepTrackerFromPkg derives a DepTracker from an ir.Package. Computed funcs
 // are the zero-param pure funcs, their deps taken from Func.Reads.
 func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
-	model := make(map[*ir.Var]struct{})
+	model := make(map[ir.Symbol]struct{})
 	computed := make(map[*ir.Func]struct{})
-	computedDeps := make(map[*ir.Func]map[*ir.Var]struct{})
+	computedDeps := make(map[*ir.Func]map[ir.Symbol]struct{})
 
 	if pkg == nil {
 		return &DepTracker{ModelVars: model, ComputedFuncs: computed, ComputedDeps: computedDeps}
@@ -51,7 +51,7 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 				continue
 			}
 			computed[f] = struct{}{}
-			deps := make(map[*ir.Var]struct{})
+			deps := make(map[ir.Symbol]struct{})
 			for _, r := range f.Reads {
 				deps[r] = struct{}{}
 			}
@@ -80,7 +80,7 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 // ExprDeps returns the set of model vars that a tracked expression reads,
 // expanded transitively through computed funcs. currentComp resolves implicit
 // `this` and may be nil outside a component.
-func (dt *DepTracker) ExprDeps(currentComp *ir.Component, expr ir.Expr) map[*ir.Var]struct{} {
+func (dt *DepTracker) ExprDeps(currentComp *ir.Component, expr ir.Expr) map[ir.Symbol]struct{} {
 	if expr == nil {
 		return nil
 	}
@@ -91,8 +91,8 @@ func (dt *DepTracker) ExprDeps(currentComp *ir.Component, expr ir.Expr) map[*ir.
 
 // ExpandDeps copies the input set and unions in the dependencies of every
 // computed func whose own deps overlap. It does not iterate to a fixed point.
-func (dt *DepTracker) ExpandDeps(deps map[*ir.Var]struct{}) map[*ir.Var]struct{} {
-	result := make(map[*ir.Var]struct{}, len(deps))
+func (dt *DepTracker) ExpandDeps(deps map[ir.Symbol]struct{}) map[ir.Symbol]struct{} {
+	result := make(map[ir.Symbol]struct{}, len(deps))
 	for v := range deps {
 		result[v] = struct{}{}
 	}
@@ -113,7 +113,7 @@ func (dt *DepTracker) ExpandDeps(deps map[*ir.Var]struct{}) map[*ir.Var]struct{}
 }
 
 // MutatedFields includes writes that reach a var through called helpers.
-func MutatedFields(currentComp *ir.Component, dt *DepTracker, s ir.Stmt) map[*ir.Var]struct{} {
+func MutatedFields(currentComp *ir.Component, dt *DepTracker, s ir.Stmt) map[ir.Symbol]struct{} {
 	if s == nil || dt == nil {
 		return nil
 	}
@@ -129,8 +129,8 @@ type depExtractor struct {
 	tracker      *DepTracker
 	bindings     map[string]ir.Expr
 	visited      map[*ir.Func]struct{}
-	deps         map[*ir.Var]struct{}
-	mutated      map[*ir.Var]struct{}
+	deps         map[ir.Symbol]struct{}
+	mutated      map[ir.Symbol]struct{}
 	implicitThis *ir.Component
 	tracking     bool
 
@@ -143,8 +143,8 @@ func newExtractor(dt *DepTracker, currentComp *ir.Component, tracking bool) *dep
 	return &depExtractor{
 		tracker:      dt,
 		visited:      make(map[*ir.Func]struct{}),
-		deps:         make(map[*ir.Var]struct{}),
-		mutated:      make(map[*ir.Var]struct{}),
+		deps:         make(map[ir.Symbol]struct{}),
+		mutated:      make(map[ir.Symbol]struct{}),
 		implicitThis: currentComp,
 		tracking:     tracking,
 	}
@@ -183,14 +183,14 @@ func peelRoot(e ir.Expr) (root *ir.Ident, field string) {
 }
 
 // resolveVar returns the *ir.Var an expression ultimately accesses, or nil.
-func (w *depExtractor) resolveVar(e ir.Expr) *ir.Var {
+func (w *depExtractor) resolveVar(e ir.Expr) ir.Symbol {
 	return w.resolveVarGuarded(e, nil)
 }
 
 // resolveVarGuarded tracks in seen the names whose bindings are currently
 // being expanded, so a self-referencing binding falls through to the
 // non-binding branches instead of blowing the stack.
-func (w *depExtractor) resolveVarGuarded(e ir.Expr, seen map[string]struct{}) *ir.Var {
+func (w *depExtractor) resolveVarGuarded(e ir.Expr, seen map[string]struct{}) ir.Symbol {
 	root, field := peelRoot(e)
 	if root == nil {
 		return nil
@@ -212,8 +212,11 @@ func (w *depExtractor) resolveVarGuarded(e ir.Expr, seen map[string]struct{}) *i
 	if root.Name == ir.ReceiverParam && w.implicitThis != nil && field != "" {
 		return lookupCompVar(w.implicitThis, field)
 	}
-	if v, ok := root.Sym.(*ir.Var); ok {
-		return v
+	switch sym := root.Sym.(type) {
+	case *ir.Var:
+		return sym
+	case *ir.Param:
+		return sym
 	}
 	if comp, ok := root.Sym.(*ir.Component); ok && field != "" {
 		return lookupCompVar(comp, field)

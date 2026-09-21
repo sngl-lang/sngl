@@ -2862,7 +2862,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	name := visualNodeTarget(vn)
 	if c.isWindowNode(name) {
-		w := c.buildWindow(vn)
+		w := c.windowShell(vn)
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
 		return
@@ -3141,77 +3141,31 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 	return out
 }
 
-// windowParamsVar is the cell a window's scoped rest slot binds: the route's
-// per-request input, typed by the declaration's slot parameter with T already
-// substituted.
+// windowShell is the window a registration reserves: what the node *is*, and
+// nothing it has to read an expression for.
 //
-// A var rather than the *ir.Param the slot declares, for the reason
-// ir.Window.Params gives: every target already stores state, and this is one
-// more cell it fills before rendering. The Init is the struct's zero, which is
-// what a target with no request renders against.
+// Registration is pass1, and an expression checked there cannot see a
+// declaration pass1 has not reached yet -- `window(title = greeting())` above
+// `func greeting()` was `undefined: greeting`, where the same window one level
+// into a component body checked clean. So the props, the @error and the body
+// are all checkWindow's, in pass2, which is where every other node's are.
 //
-// It comes back **unnamed**, because the name is the caller's and is written
-// in the body: `component content(v) { … }`. checkWindowBody names it from
-// that population, or drops it where the body wrote none -- a window whose
-// body never asked for its parameters reaches no target with a cell for them.
-func (c *checker) windowParamsVar(spec *ir.Component) *ir.Var {
-	rest := spec.RestSlot()
-	if rest == nil || len(rest.Params) != 1 {
-		return nil
-	}
-	t := rest.Params[0].Type
-	v := &ir.Var{Type: t}
-	// The struct's zero, written out, for the same reason an uninitialised
-	// `var c Counter` gets one: left nil, a target renders the cell as
-	// whatever its own nothing is, and the page read `state.v.pkg` off an
-	// empty string.
-	if sd, ok := structDeclOf(t); ok {
-		v.Init = &ir.StructLit{Type: t, Def: sd, Fields: withFieldDefaults(sd, nil)}
-	}
-	return v
-}
-
-// buildWindow builds the window a `window #id` node declares.
-//
-// The window is fresh every time and the *handle* is what persists: a
-// reference made before the body is checked and one made after both resolve to
-// the binding declareNodeIDs hoisted, which is a var rather than this. That is
+// The shell is fresh every time and the *handle* is what persists: a reference
+// made before the body is checked and one made after both resolve to the
+// binding declareNodeIDs hoisted, which is a var rather than this. That is
 // what lets the window itself stop being a symbol.
-func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{Name: visualNodeTarget(vn), ID: vn.ID, Handle: c.windowHandle(vn)}
-	w.AST = vn
-	// The window's route parameters are a declared prop and not a reading of
-	// its href: `params` is a struct value, T is inferred from it, and the
-	// body reads the fields through the scoped rest slot's binding. So the
-	// href is an ordinary string here, and a path placeholder names a field
-	// rather than an identifier the checker has to synthesize and keep in
-	// scope across two passes.
-	spec := c.bindComponentTypeParams(c.windowComp, windowPropArgs(vn.Args))
-	// Checked against the declaration like any other component's node. A
-	// window took whatever it was given: `window(width=320)` named a prop the
-	// #[builtin("window")] component does not declare, and nothing said so --
-	// so it read as a prop gtk4 ignored rather than one nobody declared.
-	c.validateVisualNodeProps(vn, spec)
-	// checkAndSplitArgs is the one path that measures an argument against its
-	// declared prop type. A window read its three props by name instead, so
-	// `title=42` checked clean and html emitted a page with no <title>.
-	//
-	// The bindings are empty by construction: no window prop is declared
-	// bidirectional, so `:title` is reported by extractBindings rather than
-	// returned.
-	// The generic declaration, not the specialization: that is what
-	// NodeInst.Component holds, and for the same reason -- a specialization is
-	// for checking this call site and is a component nothing else has heard
-	// of. What the body needs from it is the one binding, kept below.
-	w.Component = c.windowComp
-	w.Params = c.windowParamsVar(spec)
-	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
-	for _, a := range vn.Args.Args {
-		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
-			w.ErrorHandler = c.buildErrorHandler(&eh)
-		}
+func (c *checker) windowShell(vn *ast.VisualNode) *ir.Window {
+	return &ir.Window{
+		AST:  vn,
+		Name: visualNodeTarget(vn),
+		ID:   vn.ID,
+		// The generic declaration, not the specialization checkWindow binds:
+		// that is what NodeInst.Component holds for every node, because a
+		// specialization is for checking one call site and is a component
+		// nothing else has heard of.
+		Component: c.windowComp,
+		Handle:    c.windowHandle(vn),
 	}
-	return w
 }
 
 // buildErrorBoundary builds an ir.ErrorBoundary from an errorBoundary visual
@@ -3413,7 +3367,7 @@ func (c *checker) pass2() {
 	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
 	for _, w := range c.pkg.Windows {
 		if !c.checkedWindows[w] {
-			c.checkWindowBody(w)
+			c.checkWindow(w)
 		}
 	}
 	// A window body may declare one too.
@@ -4116,12 +4070,48 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	})
 }
 
-func (c *checker) checkWindowBody(w *ir.Window) {
+// checkWindow checks everything a `window #id(…) { … }` node says: its props
+// against the declaration, its @error, and its body.
+//
+// All of it in pass2, which is what separates a window from a node the checker
+// meets as a statement only in *where the shell came from*. A window at the
+// root of a file is registered in pass1 so that `output(entry = home)` and a
+// sibling window have something to resolve against; what it holds is read
+// here, where a declaration further down the file is in scope.
+func (c *checker) checkWindow(w *ir.Window) {
 	vn := w.VisualNode()
 	if vn == nil {
 		return
 	}
 	defer c.fileOf(vn.Pos)()
+
+	// The specialization is what the call site is checked against, minted once
+	// -- binding walks the argument expressions, and a second walk reports
+	// each of their diagnostics twice. The window's route parameters are a
+	// declared prop and not a reading of its href: `params` is a struct value,
+	// T is inferred from it, and the body reads the fields through the scoped
+	// rest slot's binding.
+	spec := c.bindComponentTypeParams(c.windowComp, windowPropArgs(vn.Args))
+	// Checked against the declaration like any other component's node. A
+	// window took whatever it was given: `window(width=320)` named a prop the
+	// #[builtin("window")] component does not declare, and nothing said so --
+	// so it read as a prop gtk4 ignored rather than one nobody declared.
+	c.validateVisualNodeProps(vn, spec)
+	// checkAndSplitArgs is the one path that measures an argument against its
+	// declared prop type. A window read its three props by name instead, so
+	// `title=42` checked clean and html emitted a page with no <title>.
+	//
+	// The bindings are empty by construction: no window prop is declared
+	// bidirectional, so `:title` is reported by extractBindings rather than
+	// returned. The handlers are held back by windowPropArgs, because an
+	// @error is a boundary's handler rather than a widget's event.
+	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
+	for _, a := range vn.Args.Args {
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
+			w.ErrorHandler = c.buildErrorHandler(&eh)
+		}
+	}
+
 	prevWindow := c.currentWindow
 	c.currentWindow = w
 	defer func() { c.currentWindow = prevWindow }()
@@ -4132,12 +4122,13 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	// are hoisted before the body is read. Which block that is depends on how
 	// the body was written, which is the one thing about a window's population
 	// that is not checkSlotPopulations' business.
-	c.declareNodeIDs(windowBodyBlock(vn, c.windowComp))
+	c.declareNodeIDs(windowBodyBlock(vn, spec))
 
 	// **A window's body is the population of its rest slot**, and the peel is
-	// the one every other node's children get. `w.Params` is handed down as
-	// the cell that population's parameter binds, because a route's parameters
-	// are state rather than a block-scoped name.
+	// the one every other node's children get. Its parameter is an ordinary
+	// *ir.Param like any other population's -- what a target does with it is
+	// the target's answer, and codegen is where "a route's parameters are one
+	// more cell the Model holds" is written down.
 	//
 	// **A window's parameters are reached through that population and only
 	// through it.** `component content(v) { … }` is where the name `v` is
@@ -4148,14 +4139,16 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	// instead would put a binding in a body that never named one, and would
 	// put it there for every window in the language.
 	//
-	// So a window that writes no population has no cell either: w.Params is
-	// dropped, and nothing downstream binds a route parameter for a page that
-	// does not read one.
-	slots, bare := c.checkSlotPopulationsBound(vn, c.windowComp, w.Params)
-	if rest := c.windowComp.RestSlot(); rest != nil && slots[rest.Name] != nil {
-		w.Children = slots[rest.Name].Body
+	// So a window that writes no population has no cell either, and nothing
+	// downstream binds a route parameter for a page that does not read one.
+	slots, bare := c.checkSlotPopulations(vn, spec)
+	if rest := spec.RestSlot(); rest != nil && slots[rest.Name] != nil {
+		sc := slots[rest.Name]
+		w.Children = sc.Body
+		if len(sc.Params) > 0 {
+			w.Params = sc.Params[0]
+		}
 	} else {
-		w.Params = nil
 		if !bare.IsDefined() {
 			return
 		}

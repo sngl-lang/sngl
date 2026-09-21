@@ -1478,14 +1478,16 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 // through this list.
 //
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
-func (g *htmlGen) stateVars() []*ir.Var {
-	var out []*ir.Var
+func (g *htmlGen) stateVars() []codegen.OwnedVar {
+	var out []codegen.OwnedVar
 	// The route's per-request input, which is this window's and no owner's:
 	// the page reads it as state because that is what it is to a document --
 	// a cell filled in before anything renders. A client-only route has
-	// nothing to fill it with and renders against the struct's zero.
+	// nothing to fill it with and renders against the struct's zero. It is
+	// the slot population's own *ir.Param, which is why this list is symbols:
+	// nothing in the program declares it, so there is no Var to be had.
 	if g.irWindow != nil && g.irWindow.Params != nil {
-		out = append(out, g.irWindow.Params)
+		out = append(out, codegen.OwnedVar{Sym: g.irWindow.Params, Win: g.irWindow})
 	}
 	for _, o := range g.shared.ownerList(g.pkg) {
 		if o.Comp != nil && o.Comp != g.rootComp {
@@ -1496,7 +1498,7 @@ func (g *htmlGen) stateVars() []*ir.Var {
 		}
 		for _, v := range o.Vars {
 			if !v.Synthesized {
-				out = append(out, v)
+				out = append(out, codegen.OwnedVar{Sym: v, Comp: o.Comp, Win: o.Win})
 			}
 		}
 	}
@@ -2121,14 +2123,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	var deferredInits []struct{ name, value string }
 	stateVars := g.stateVars()
 	for _, dv := range stateVars {
-		val := g.literalToJS(dv.Init)
-		if codegen.IRIsLiteral(dv.Init) {
-			stateFields = append(stateFields, dv.Name+": "+val)
+		val := g.literalToJS(dv.Init())
+		if codegen.IRIsLiteral(dv.Init()) {
+			stateFields = append(stateFields, dv.Name()+": "+val)
 		} else {
 			// Seeded so the object shape is correct for code that walks the
 			// keys before init completes.
-			stateFields = append(stateFields, dv.Name+": null")
-			deferredInits = append(deferredInits, struct{ name, value string }{dv.Name, val})
+			stateFields = append(stateFields, dv.Name()+": null")
+			deferredInits = append(deferredInits, struct{ name, value string }{dv.Name(), val})
 		}
 	}
 	for _, s := range g.inlinedStateInits {
@@ -2248,8 +2250,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	g.emitCanvasSetups(b)
 
 	for _, dv := range stateVars {
+		v := dv.Var()
+		if v == nil {
+			// A route's parameter has no setter: nothing in the page assigns
+			// it, and a @change is something a declaration carries.
+			continue
+		}
 		needsSetter := g.preview
-		for _, h := range dv.Handlers {
+		for _, h := range v.Handlers {
 			if h.Name == "change" {
 				needsSetter = true
 				break
@@ -2257,7 +2265,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		}
 		if !needsSetter && g.pkg != nil {
 			for _, k := range g.pkg.AsyncKickers {
-				if slices.Contains(k.Deps, dv.Name) {
+				if slices.Contains(k.Deps, v.Name) {
 					needsSetter = true
 					break
 				}
@@ -2266,7 +2274,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if !needsSetter {
 			continue
 		}
-		g.emitSetter(b, dv)
+		g.emitSetter(b, v)
 	}
 	if len(stateFields) > 0 {
 		b.WriteString("\n")
@@ -2927,10 +2935,10 @@ func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
 	return g.remapMutated(names, g.dataRenames)
 }
 
-func varSetToNames(vs map[*ir.Var]struct{}) map[string]bool {
+func varSetToNames(vs map[ir.Symbol]struct{}) map[string]bool {
 	out := make(map[string]bool, len(vs))
 	for v := range vs {
-		out[v.Name] = true
+		out[v.SymName()] = true
 	}
 	return out
 }
@@ -2963,8 +2971,10 @@ func (s *windowShared) modelVarsByName(pkg *ir.Package) map[string]*ir.Var {
 	s.derivePackage(pkg)
 	if s.modelVars == nil {
 		s.modelVars = make(map[string]*ir.Var, len(s.dt.ModelVars))
-		for v := range s.dt.ModelVars {
-			s.modelVars[v.Name] = v
+		for sym := range s.dt.ModelVars {
+			if v, ok := sym.(*ir.Var); ok {
+				s.modelVars[v.Name] = v
+			}
 		}
 	}
 	return s.modelVars
@@ -2982,11 +2992,11 @@ func (r *varRegistry) lookup(name string) *ir.Var {
 	return v
 }
 
-func (r *varRegistry) namesToVarSet(names map[string]bool) map[*ir.Var]struct{} {
+func (r *varRegistry) namesToVarSet(names map[string]bool) map[ir.Symbol]struct{} {
 	if len(names) == 0 {
 		return nil
 	}
-	out := make(map[*ir.Var]struct{}, len(names))
+	out := make(map[ir.Symbol]struct{}, len(names))
 	for n, ok := range names {
 		if !ok {
 			continue
@@ -3222,7 +3232,7 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
 		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
-			mutated[v.Name] = true
+			mutated[v.SymName()] = true
 		}
 	}
 	g.ctx.EventVar = savedEvent

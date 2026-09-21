@@ -31,7 +31,7 @@ func OptimizeMutation(m *MutationModel) {
 	m.Updaters = mergeUpdaters(m.Updaters)
 
 	// Pass 4: Collect vars referenced by updaters (the reactive targets).
-	activeVars := make(map[*ir.Var]struct{})
+	activeVars := make(map[ir.Symbol]struct{})
 	for _, u := range m.Updaters {
 		maps.Copy(activeVars, u.Deps)
 	}
@@ -39,7 +39,7 @@ func OptimizeMutation(m *MutationModel) {
 	// Pass 5: Prune dead computed fields (based on updater deps + timer vars).
 	usedForComputeds := make(map[string]bool)
 	for v := range activeVars {
-		usedForComputeds[v.Name] = true
+		usedForComputeds[v.SymName()] = true
 	}
 	for _, t := range m.Timers {
 		if t.ActiveVar != "" {
@@ -74,7 +74,7 @@ func OptimizeRender(m *RenderModel) {
 	usedFields := make(map[string]bool)
 	for _, h := range m.Handlers {
 		for v := range h.Mutated {
-			usedFields[v.Name] = true
+			usedFields[v.SymName()] = true
 		}
 	}
 	for _, t := range m.Timers {
@@ -82,7 +82,7 @@ func OptimizeRender(m *RenderModel) {
 			usedFields[t.ActiveVar] = true
 		}
 		for v := range t.Mutated {
-			usedFields[v.Name] = true
+			usedFields[v.SymName()] = true
 		}
 	}
 
@@ -96,7 +96,7 @@ func StaticFields(handlers []Handler, timers []TimerHandler, modelFields map[str
 	mutated := make(map[string]bool)
 	for _, h := range handlers {
 		for v := range h.Mutated {
-			mutated[v.Name] = true
+			mutated[v.SymName()] = true
 		}
 	}
 	for _, t := range timers {
@@ -104,7 +104,7 @@ func StaticFields(handlers []Handler, timers []TimerHandler, modelFields map[str
 			mutated[t.ActiveVar] = true
 		}
 		for v := range t.Mutated {
-			mutated[v.Name] = true
+			mutated[v.SymName()] = true
 		}
 	}
 	static := make(map[string]bool)
@@ -162,10 +162,10 @@ func mergeUpdaters(us []Updater) []Updater {
 		return name
 	}
 
-	depsKey := func(deps map[*ir.Var]struct{}) string {
+	depsKey := func(deps map[ir.Symbol]struct{}) string {
 		sorted := make([]string, 0, len(deps))
 		for v := range deps {
-			sorted = append(sorted, v.Name)
+			sorted = append(sorted, v.SymName())
 		}
 		// Simple sort for determinism
 		for i := range sorted {
