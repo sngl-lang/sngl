@@ -1175,8 +1175,15 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		// A method-form call threads the receiver as args[0]; a zero-arg
 		// computed referenced by name carries none, and still dispatches
 		// through `m` rather than lifting to a free func.
+		//
+		// Which receiver, though, is whichever one the call wrote. In an
+		// ordinary body that is the Model; in a test body the instance is a
+		// local the test named, so `screen.tick()` dispatches through
+		// `screen` -- rawFieldAccess is the set the test lowering binds, and
+		// asking only whether args[0] spells the Model gave `m.tick(screen)`
+		// against a receiver no test file declares.
 		name := gc.StateFieldName(method)
-		if len(args) >= 1 && args[0] == gc.RecvName() {
+		if len(args) >= 1 && (args[0] == gc.RecvName() || gc.rawFieldAccess(n.Args[0].Value)) {
 			return args[0] + "." + name + "(" + strings.Join(args[1:], ", ") + ")"
 		}
 		return gc.RecvName() + "." + name + "(" + strings.Join(args, ", ") + ")"
