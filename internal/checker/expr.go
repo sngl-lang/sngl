@@ -3952,7 +3952,9 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	if vn == c.outputDecl || outerOutputDepth > 0 {
 		c.outputDepth = outerOutputDepth + 1
 	}
+	popSlotParams := c.pushRestSlotParams(vn.Pos, spec)
 	children := c.checkBlockIR(&childBlock)
+	popSlotParams()
 	c.outputDepth = outerOutputDepth
 	if spec != nil && spec.AST != nil {
 		ct := spec.ChildrenType
@@ -5141,6 +5143,12 @@ func ownerSlot(owner *ir.Component, name string) *ir.SlotDecl {
 // against the declaration's types, and the fallback block.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.Stmt {
 	inst := &ir.SlotInst{AST: vn, Name: slot.Name, Rest: slot.Rest}
+	if slot.Rest {
+		// Bare children have no binding site of their own, so the
+		// declaration's parameters are what they read -- and the insertion is
+		// the only thing the splicer holds by then. See ir.SlotBody.
+		inst.Params = slot.Params
+	}
 	var args []ast.Expr
 	for _, a := range vn.Args.Args {
 		arg, ok := a.(ast.Arg)

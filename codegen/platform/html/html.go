@@ -185,15 +185,24 @@ document.addEventListener('DOMContentLoaded', () => main());
 }
 
 // rejectDynamicHrefs errors in static mode: {param} routes need a server.
+//
+// Two shapes say a path is dynamic and the first is no longer the whole
+// question. An href the optimizer could not settle to a string is still one.
+// But a path's placeholders are ordinary characters in a plain string now,
+// where they used to be an interpolation the checker desugared -- so
+// `/p/{pkg}` is a perfectly good literal, and read for that alone the static
+// build wrote a directory called `{pkg}` and said nothing.
 func rejectDynamicHrefs(ctx *codegen.CodegenCtx) error {
 	for _, win := range ctx.Windows() {
 		href := win.Window.Prop(ir.WindowHref)
 		if href == nil {
 			continue
 		}
-		if _, ok := codegen.IRLiteralString(href); !ok {
-			return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
+		path, ok := codegen.IRLiteralString(href)
+		if ok && len(extractRouteParams(path)) == 0 {
+			continue
 		}
+		return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
 	}
 	return nil
 }
@@ -1473,6 +1482,13 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
 func (g *htmlGen) stateVars() []*ir.Var {
 	var out []*ir.Var
+	// The route's per-request input, which is this window's and no owner's:
+	// the page reads it as state because that is what it is to a document --
+	// a cell filled in before anything renders. A client-only route has
+	// nothing to fill it with and renders against the struct's zero.
+	if g.irWindow != nil && g.irWindow.Params != nil {
+		out = append(out, g.irWindow.Params)
+	}
 	for _, o := range g.shared.ownerList(g.pkg) {
 		if o.Comp != nil && o.Comp != g.rootComp {
 			continue

@@ -1,13 +1,17 @@
-# route_package_window with its parameter renamed `id`, which is what the GET
-# handler already called the session id. `sess`, `ok` and `s` are three more of
-# the same: an href may claim any of them, and only `w` and `r` had been
-# prefixed out of the way.
+# The route parameter binding is allocated against the handler's own locals.
 #
-# `{s}` was the worst of them, because it rewrote a signature rather than a
-# statement -- `func renderHandlePage(s *handlePageState, s string) string`.
+# `sess`, `ok`, `s`, `id`: an href used to be able to claim any of them, since
+# the parameter's name was a placeholder the program wrote, and only `w` and
+# `r` had been prefixed out of the way. `{s}` was the worst, because it
+# rewrote a signature rather than a statement --
+# `func renderHandlePage(s *handlePageState, s string) string`.
 #
-# The handler's own bindings are allocated around the program's name now, so
-# the parameter keeps `id` and the session id becomes `id2`.
+# The name is the window declaration's now, not the program's: the params
+# arrive as one struct bound to the slot's own parameter. So there is one name
+# to allocate around rather than one per placeholder, and a program that wants
+# `s` in its path gets a field called `s`, which is nobody's local. The
+# reservation stays because the declaration may rename the binding, and that
+# is a breaking change to callers rather than to this file.
 #
 # This has to compile, not parse: a redeclaration is valid Go syntax, so
 # `format.Source` accepted it and `sngl generate` exited 0.
@@ -16,9 +20,12 @@ sngl generate --lang go --platform html -o out app.sngl
 
 exec go build ./...
 
-grep 'id := __r.PathValue\("id"\)' out/server.go
-grep 'id2, ok := snglSessionID' out/server.go
-grep 'renderHandlePage\(s, id\)' out/server.go
+# The struct's fields carry the names the path wrote, the handler's locals are
+# untouched by them, and the binding is what the render function takes.
+grep 'v.S = __r.PathValue\("s"\)' out/server.go
+grep 'v.Id = __r.PathValue\("id"\)' out/server.go
+grep 'id, ok := snglSessionID' out/server.go
+grep 'renderHandlePage\(s, v\)' out/server.go
 
 -- go.mod --
 module paramname
@@ -35,9 +42,14 @@ import . "sngl:ui"
 import "go:paramname/srv"
 import "sngl:platform/html"
 
+struct PageParams {
+    id string
+    s string
+}
+
 var hits = 0
 
-window #page(title="t", href="/p/{id}") {
+window #page(title="t", href=`/p/{id}/{s}`, params=PageParams{}) {
     html.button(innerText="go", @click { hits = srv.Bump(hits) })
-    html.span(innerText="{id}{hits}")
+    html.span(innerText="{v.id}{v.s}{hits}")
 }

@@ -151,6 +151,16 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 			add(c, o)
 		}
 	}
+	// A window's route parameters are the one cell no owner declares: the
+	// window's scoped slot binds them and whatever serves the page fills them
+	// in. A target with no request never fills one and renders the struct's
+	// zero -- but it still reads the binding, so the Model has to hold it or
+	// the read names a field nothing declared.
+	for _, w := range ctx.Windows() {
+		if w.Window != nil && w.Window.Params != nil {
+			add(w.Window.Params, ir.Owner{Win: w.Window})
+		}
+	}
 	return out
 }
 

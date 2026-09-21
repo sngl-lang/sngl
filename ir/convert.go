@@ -354,56 +354,19 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
-// RouteParams is the vars this window's href template declares, in the order
-// the href names them.
-//
-// Asked of the href rather than of a list of the window's vars: a route param
-// is declared on the window's container like every other declaration a window
-// body makes, so which route binds one is answered by the href that reads it.
-// The checker has by then desugared `"/u/{id}"` into a concatenation naming
-// that var, which is exactly what this finds.
-func RouteParams(w *Window) []*Var {
-	if w == nil {
-		return nil
-	}
-	href := w.Prop(WindowHref)
-	if href == nil {
-		return nil
-	}
-	var out []*Var
-	seen := map[*Var]bool{}
-	_ = Walk(href, func(n Node) error {
-		if id, ok := n.(*Ident); ok {
-			if v, isVar := id.Sym.(*Var); isVar && v.RouteParam && !seen[v] {
-				seen[v] = true
-				out = append(out, v)
-			}
-		}
-		return nil
-	})
-	return out
-}
-
-// hasRouteParam reports whether this window's href was a URL template.
-func hasRouteParam(w *Window) bool {
-	return len(RouteParams(w)) > 0
-}
-
 func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	vn := &ast.VisualNode{
 		Target: &ast.IdentExpr{Name: "window"},
 		ID:     w.Name,
 	}
 	// The props print in the order they were written, like any other node's.
-	// A routed href is the one that is dropped: the checker desugars
-	// `"/u/{id}"` to a concatenation and synthesizes `id` as a window var, and
-	// there is no IR node left to reprint the template from -- so the href
-	// would name `id` above the body that declares it, and the dump would not
-	// check back in.
-	routed := hasRouteParam(w)
+	// The href among them: it is a plain string, so there is nothing for a
+	// reprint to lose. It used to be dropped, because the checker desugared
+	// `"/u/{id}"` into a concatenation naming a var it had synthesized, and
+	// the reprint would then name that var above the body declaring it.
 	var args []ast.ArgOrEventHandler
 	for _, p := range w.Props {
-		if p.Value == nil || (routed && p.Name == WindowHref) {
+		if p.Value == nil {
 			continue
 		}
 		args = append(args, ast.Arg{Name: p.Name, Value: c.convertExpr(p.Value)})

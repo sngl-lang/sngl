@@ -542,9 +542,7 @@ func collectReactiveVars(pkg *ir.Package) map[*ir.Var]bool {
 	out := make(map[*ir.Var]bool)
 	add := func(vars []*ir.Var) {
 		for _, v := range vars {
-			// A route parameter is bound from the URL the request arrived on,
-			// so nothing the page runs can re-fire a slot keyed on one.
-			if v != nil && !v.IsConst && !v.RouteParam {
+			if v != nil && !v.IsConst {
 				out[v] = true
 			}
 		}

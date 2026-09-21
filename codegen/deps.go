@@ -58,6 +58,17 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 			computedDeps[f] = deps
 		}
 	}
+	// A window's route parameters are not a declaration any owner made -- the
+	// window's slot binds them and the request fills them in -- so Owners has
+	// nothing to yield. They are tracked for the same reason state is: an
+	// expression reading one has a dependency, and an updater with no
+	// dependencies is pruned, which left a bound href with nothing to write
+	// it and an element whose id was then stripped as unreferenced.
+	for _, w := range pkg.Windows {
+		if w != nil && w.Params != nil {
+			model[w.Params] = struct{}{}
+		}
+	}
 	return &DepTracker{
 		ModelVars:     model,
 		ComputedFuncs: computed,

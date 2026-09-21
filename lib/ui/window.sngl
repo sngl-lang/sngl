@@ -19,9 +19,19 @@ import tree "sngl:tree"
 struct root {}
 
 // A top-level window — the entry point of a UI. `href` is the route the
-// window is served at (URL template params like `{name}` bind as string
-// vars in scope for the body); `title` names it; `favicon` is its icon.
-// `@error` is the window's outermost error boundary.
+// window is served at; `title` names it; `favicon` is its icon. `@error` is
+// the window's outermost error boundary.
+//
+// `params` is what the route hands the body per request, as one struct value,
+// and `T` is inferred from it: a path with `{name}` placeholders in it is
+// served with a field of that name filled in from the URL. A window that takes
+// none writes nothing, and `T` falls back to the struct with no fields.
+//
+// The body reads them through the slot's own binding, `v`, which is why the
+// path is a plain string here where it used to be an interpolation: the names
+// in it are the struct's fields rather than identifiers in scope, so a path
+// param and a node `#id` no longer share one namespace with nothing declaring
+// either. Write the path with a backticked string, or escape the braces.
 //
 // Reading `name.href` / `name.title` off a `window #name` declaration
 // lets links survive a window's path change without copying the path
@@ -31,10 +41,11 @@ struct root {}
 // A program must declare at least one: the package body renders nothing on
 // its own, so a program with no window has nowhere to draw.
 #[marks.builtin("window")]
-component window(
+component window<T = struct {}>(
     title string,
     href string,
     favicon string,
+    params T,
     @error error,
-    content ...component node,
+    content ...component(v T) node,
 ) root {}

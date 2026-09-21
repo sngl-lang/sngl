@@ -1,0 +1,55 @@
+# A path parameter with a type other than string.
+#
+# The parameters are a declared struct, so a field says what it is and the
+# route parses the segment into it. Nothing could say this before: the
+# placeholders in the href *were* the declaration, and the checker synthesized
+# a string var per name, so a page number arrived as text and every use of it
+# converted.
+#
+# A segment that does not parse leaves the field at the struct's zero rather
+# than failing the request. That is the same answer a missing field gets, and
+# the route has no other: the mux has already matched, so there is a page to
+# render and the only question is what it renders with.
+#
+# It has to compile, which is the whole point of the type: `v.Page + 1` is Go
+# integer arithmetic, and a grep over the generated source would not have said
+# whether the binding produced an int at all.
+
+sngl generate --lang go --platform html -o out app.sngl
+
+exec go build ./...
+
+grep 'v.Slug = __r.PathValue\("slug"\)' out/server.go
+grep 'strconv.Atoi\(__r.PathValue\("page"\)\)' out/server.go
+grep 'Page int' out/server.go
+
+# The redirect names the page the browser should ask for next, so a numeric
+# parameter is spelled back the way the path spelled it.
+grep 'url.PathEscape\(strconv.Itoa\(v.Page\)\)' out/server.go
+
+-- go.mod --
+module typedparam
+
+go 1.24
+
+-- srv/srv.go --
+package srv
+
+func Bump(n int) int { return n + 1 }
+
+-- app.sngl --
+import . "sngl:ui"
+import "go:typedparam/srv"
+import "sngl:platform/html"
+
+struct PageParams {
+    slug string
+    page int
+}
+
+var hits = 0
+
+window #page(title="t", href=`/p/{slug}/{page}`, params=PageParams{}) {
+    html.button(innerText="go", @click { hits = srv.Bump(hits) })
+    html.span(innerText="{v.slug} {v.page + 1} {hits}")
+}

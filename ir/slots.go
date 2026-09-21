@@ -75,9 +75,11 @@ func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
 // deciding for itself. The two copies of the walk above had already drifted
 // once; this is the same hazard one level down.
 //
-// sc is non-nil only for content that arrived through the named-slot map, and
-// carries the parameter names a scoped slot binds its arguments to. A nil
-// callsite is a component instantiated with nothing supplied at all.
+// sc carries the parameter names a scoped slot binds its arguments to: the
+// population's own for content that arrived through the named-slot map, and
+// the declaration's for bare children, which have no binding site to have
+// written names at. A nil callsite is a component instantiated with nothing
+// supplied at all.
 func SlotBody(si *SlotInst, callsite *NodeInst) (body []Stmt, sc *SlotContent, supplied bool) {
 	if callsite == nil {
 		return si.Children, nil, false
@@ -86,9 +88,13 @@ func SlotBody(si *SlotInst, callsite *NodeInst) (body []Stmt, sc *SlotContent, s
 		return c.Body, c, true
 	}
 	// The rest slot's content arrives as ordinary children rather than through
-	// the map.
+	// the map, and a scoped one binds the parameters its declaration wrote --
+	// there being no population to have written names of its own.
 	if si.Rest && len(callsite.Children) > 0 {
-		return callsite.Children, nil, true
+		if len(si.Params) == 0 {
+			return callsite.Children, nil, true
+		}
+		return callsite.Children, &SlotContent{Params: si.Params}, true
 	}
 	return si.Children, nil, false
 }

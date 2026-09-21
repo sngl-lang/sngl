@@ -1,0 +1,36 @@
+# A path parameter needs a server, and the static build says so.
+#
+# It used to be able to ask whether the href was a literal: the checker
+# desugared `"/p/{pkg}"` into a concatenation, so anything with a placeholder
+# in it was not one. The path is a plain string now and the placeholders are
+# ordinary characters, so `/p/{pkg}` is a perfectly good literal -- read for
+# that alone the static build wrote a directory named `{pkg}` and said nothing
+# at all.
+
+! sngl generate --lang none --platform html -o out app.sngl
+stderr 'window "home" has a dynamic href'
+! exists out/p
+
+# A path with no placeholders is still a page.
+sngl generate --lang none --platform html -o out plain.sngl
+exists out/index.html
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:platform/html"
+
+struct PageParams {
+    pkg string
+}
+
+ui.window #home(title="t", href=`/p/{pkg}`, params=PageParams{}) {
+    ui.text(value="pkg is {v.pkg}")
+}
+
+-- plain.sngl --
+import ui "sngl:ui"
+import "sngl:platform/html"
+
+ui.window #home(title="t", href="/index.html") {
+    ui.text(value="plain")
+}

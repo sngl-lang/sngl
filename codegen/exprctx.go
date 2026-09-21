@@ -144,6 +144,14 @@ func (ctx *ExprCtx) Resolve(name string) (ir.Symbol, NameKind) {
 	// A window's own `var` and `func` are the package's: a window is a
 	// rendering root and owns nothing, so a read of one falls through to
 	// package scope below, where the hoist put it.
+	//
+	// Its route parameters are the exception, and are not a declaration the
+	// body made: they are the binding the window's scoped slot hands what it
+	// renders, one cell per window rather than one per program, so package
+	// scope has nothing to find.
+	if ctx.Window != nil && ctx.Window.Params != nil && ctx.Window.Params.Name == name {
+		return ctx.Window.Params, NameStateVar
+	}
 
 	// Component-scoped declarations.
 	if ctx.Component != nil {

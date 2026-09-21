@@ -849,11 +849,42 @@ written bare. Its name is the author's (`content`, `shapes`, `panes`,
 `children` where nothing better is true), and it is inserted by that name like
 any other slot. A component declares at most one; one that declares none
 accepts no children, which is where `component X does not accept children`
-comes from. It names no invocation parameters — bare children are written once,
-with nothing to bind them to — and supplying both a population by name and bare
-children populates it twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot()`
-the lookup; the old answer was the name `_`, which is why nothing keys on a
-slot's name any more.
+comes from. Supplying both a population by name and bare children populates it
+twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot()` the lookup; the
+old answer was the name `_`, which is why nothing keys on a slot's name any
+more.
+
+**A rest slot may be scoped, and its bare children read the parameters by the
+names the declaration wrote.** That is the one place a slot's parameter name
+is not merely contract but the whole binding: a named population writes its
+own names at its own binding site, and bare children have no site to write
+them at. So `children ...component(v T) node` puts `v` in scope for the
+children, and an unnamed parameter there is refused because nothing could
+reach it. It used to be refused outright — "bare children are written once,
+with nothing to bind them to" — and a second, unscoped rest slot beside it is
+not the way out, since a component declares at most one and bare children
+would then have nowhere unambiguous to land.
+
+`lib/ui/window.sngl` is the user: a window's route parameters arrive as one
+struct value in the `params` prop, `T` is inferred from it, and the body reads
+them through the slot's binding. That is what makes a path a plain string
+rather than an interpolation — the names in `/p/{pkg}` are the struct's fields,
+not identifiers in scope. Before it, the checker read the placeholders off the
+href and synthesized an `*ir.Var` per name: a placeholder and a node `#id`
+shared one namespace with nothing declaring either, so which one a body's `pkg`
+reached fell out of scope-push order; nothing could say a parameter was
+anything but a string; and a misspelled placeholder declared a var rather than
+being reported. `checkWindowPathParams` asks the last two now, holding every
+`{name}` to a field of the struct and that field to a type a route can parse
+text into.
+
+`ir.Window.Params` is the cell it lands in, and it is an `*ir.Var` rather than
+the `*ir.Param` the slot declares: what a target does with it is what it does
+with state — one cell filled in before the body renders. A Go route handler
+binds it from the request (`writeRouteParamBindings`), and a target with no
+request leaves it at the struct's zero. Nothing binds it at all where the
+params struct has no fields, which is what `T`'s `struct {}` default means and
+is what keeps a program's own `v` from being shadowed inside every window.
 
 **`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the

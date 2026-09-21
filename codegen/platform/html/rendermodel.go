@@ -376,26 +376,22 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 // stateVarNames is the set of names a route's markup may depend on: the
 // server State struct's fields, plus the window's own vars.
 //
-// Plus what the window's URL template declares -- `/p/{pkg}` puts `pkg` in
-// scope for the body (checker.go, buildWindow). Those are known per request
+// Plus the window's route parameters, which arrive as one struct value bound
+// to the slot binding its declaration names. Those are known per request
 // exactly as state is, so an expression over one renders into a hole. Left
 // out, `class=active ? "active" : ""` where `active` came from the path was
 // neither a literal nor state-dependent, and the route was refused.
 //
-// They come from the href rather than from a var list, which is the one rule
-// ir.RouteParams states: a route param is the package's var like every other
-// declaration a window body makes, and routeStateVars above deliberately drops
-// it -- it is a handler local bound from the request, not a field of the
-// per-session State. So the two questions are asked separately of one source.
+// It is one name rather than one per placeholder, and it is not a field of
+// the per-session State: the struct is a handler local bound from the request,
+// which is why routeStateVars below does not yield it.
 func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
 	for _, v := range routeStateVars(pkg, win) {
 		out[v.Name] = true
 	}
-	if win != nil {
-		for _, v := range ir.RouteParams(win.Window) {
-			out[v.Name] = true
-		}
+	if win != nil && win.Window != nil && win.Window.Params != nil {
+		out[win.Window.Params.Name] = true
 	}
 	return out
 }
@@ -416,10 +412,7 @@ func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar 
 	seen := map[string]bool{}
 	add := func(vars []*ir.Var) {
 		for _, v := range vars {
-			// RouteParam: a window's `{x}` var is bound from the URL the
-			// request arrived on, so it is a handler local rather than a field
-			// of the per-session State the window's other vars become.
-			if v == nil || v.Synthesized || v.IsConst || v.RouteParam || seen[v.Name] {
+			if v == nil || v.Synthesized || v.IsConst || seen[v.Name] {
 				continue
 			}
 			seen[v.Name] = true

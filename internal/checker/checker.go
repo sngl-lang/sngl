@@ -341,19 +341,6 @@ type checker struct {
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
 
-	// routeParams is the vars a window's `href` template declared, keyed by
-	// the node that wrote it. buildWindow synthesizes them and checkWindowBody
-	// puts them back in scope, and those are two different scopes -- the first
-	// is pushed for the href expression itself and popped before the body is
-	// reached -- so the link between the two has to be held somewhere.
-	//
-	// Here rather than on ir.Window: a window is a rendering root and owns no
-	// declarations, and these are the package's like every other var a window
-	// body brings. Which route binds one is answered downstream by the href
-	// that names it (ir.hasRouteParam), so nothing after the checker needs the
-	// grouping. Keyed by the AST node so it survives ir.Window itself.
-	routeParams map[*ast.VisualNode][]*ir.Var
-
 	outputDecl *ast.VisualNode
 
 	// pendingPkgBody holds the statements written at the package's top level,
@@ -574,7 +561,6 @@ func newChecker(docs []*ast.Document, cfg *Config) *checker {
 		visited:      cfg.visitedStack(),
 		dirPkgs:      cfg.dirPkgCache(),
 		pkgWindowIDs: make(map[string]bool),
-		routeParams:  make(map[*ast.VisualNode][]*ir.Var),
 		libs:         cfg.libCache(),
 	}
 	// Allocated before the library loads, because those now run the same
@@ -2614,13 +2600,37 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if !rest {
 		return slot
 	}
-	if len(slot.Params) > 0 {
-		// Its content is written as ordinary children, once, so there is no
-		// per-invocation binding site to collect a parameter at.
-		c.error(pd.Pos, "rest slot %q takes no parameters: bare children are written once, with nothing to bind them to", pd.Name)
-		slot.Params = nil
+	// A rest slot may be scoped, and the declaration's own parameter names are
+	// what its bare children read: they are written once, with no binding site
+	// to collect a name at, so the contract has to supply one. That is the
+	// same rule a named population already lives under from the other side --
+	// a slot's structural match is by name -- and it is what lets a window
+	// hand its route parameters to the body it renders. A second, unscoped
+	// rest slot beside it is not an option: a component declares at most one,
+	// so bare children would have nowhere unambiguous to land.
+	for _, p := range slot.Params {
+		if p.Name == "" {
+			c.error(pd.Pos, "rest slot %q: each parameter needs a name, which is what its bare children read it by", pd.Name)
+		}
 	}
 	return slot
+}
+
+// pushRestSlotParams declares a scoped rest slot's parameters for the bare
+// children that populate it, and returns the pop. See buildSlotDecl for why
+// the names are the declaration's rather than the call site's.
+func (c *checker) pushRestSlotParams(pos ast.Pos, comp *ir.Component) func() {
+	rest := comp.RestSlot()
+	if rest == nil || len(rest.Params) == 0 {
+		return func() {}
+	}
+	c.pushScope()
+	for _, p := range rest.Params {
+		if p.Name != "" {
+			c.declare(pos, p)
+		}
+	}
+	return c.popScope
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
@@ -3141,6 +3151,38 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 	return out
 }
 
+// windowParamsVar is the cell a window's scoped rest slot binds: the route's
+// per-request input, named and typed by the declaration's slot parameter.
+//
+// A var rather than the *ir.Param the slot declares, for the reason
+// ir.Window.Params gives: every target already stores state, and this is one
+// more cell it fills before rendering. The Init is the struct's zero, which is
+// what a target with no request renders against.
+func (c *checker) windowParamsVar(vn *ast.VisualNode, spec *ir.Component) *ir.Var {
+	rest := spec.RestSlot()
+	if rest == nil || len(rest.Params) != 1 || rest.Params[0].Name == "" {
+		return nil
+	}
+	p := rest.Params[0]
+	// A struct with no fields is a window that declared no parameters, which
+	// is what T falls back to. There is nothing for a body to read off one, so
+	// no name is bound -- which is also what keeps a program that already has
+	// a `v` of its own from being shadowed inside every window it writes.
+	sd, ok := structDeclOf(p.Type)
+	if !ok || len(sd.Fields) == 0 {
+		return nil
+	}
+	// The struct's zero, written out, for the same reason an uninitialised
+	// `var c Counter` gets one: left nil, a target renders the cell as
+	// whatever its own nothing is, and the page read `state.v.pkg` off an
+	// empty string.
+	return &ir.Var{
+		Name: p.Name,
+		Type: p.Type,
+		Init: &ir.StructLit{Type: p.Type, Def: sd, Fields: withFieldDefaults(sd, nil)},
+	}
+}
+
 // buildWindow builds the window a `window #id` node declares.
 //
 // The window is fresh every time and the *handle* is what persists: a
@@ -3150,33 +3192,18 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	w := &ir.Window{Name: vn.ID, Handle: c.windowHandle(vn)}
 	w.AST = vn
-	// URL template params like `{name}` in href become string vars in scope
-	// for the href literal itself as well as the body — so they are read off
-	// the AST and declared before the scope below is pushed, ahead of anything
-	// that checks the href expression.
-	//
-	// They belong to the window's container like every other declaration a
-	// window body makes; being in scope here is the checker's business and is
-	// what the pushed scope below is for. What marks one is RouteParam, and
-	// which route binds it is answered by the href that names it.
-	var params []*ir.Var
-	for _, name := range hrefPathParams(vn) {
-		params = append(params, &ir.Var{Name: name, Type: TypString, RouteParam: true})
-	}
-	c.declPkg().Vars = append(c.declPkg().Vars, params...)
-	if len(params) > 0 {
-		c.routeParams[vn] = params
-	}
-	c.pushScope()
-	defer c.popScope()
-	for _, v := range params {
-		c.declare(vn.Pos, v)
-	}
+	// The window's route parameters are a declared prop and not a reading of
+	// its href: `params` is a struct value, T is inferred from it, and the
+	// body reads the fields through the scoped rest slot's binding. So the
+	// href is an ordinary string here, and a path placeholder names a field
+	// rather than an identifier the checker has to synthesize and keep in
+	// scope across two passes.
+	spec := c.bindComponentTypeParams(c.windowComp, windowPropArgs(vn.Args))
 	// Checked against the declaration like any other component's node. A
 	// window took whatever it was given: `window(width=320)` named a prop the
 	// #[builtin("window")] component does not declare, and nothing said so --
 	// so it read as a prop gtk4 ignored rather than one nobody declared.
-	c.validateVisualNodeProps(vn, c.windowComp)
+	c.validateVisualNodeProps(vn, spec)
 	// checkAndSplitArgs is the one path that measures an argument against its
 	// declared prop type. A window read its three props by name instead, so
 	// `title=42` checked clean and html emitted a page with no <title>.
@@ -3184,8 +3211,14 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// The bindings are empty by construction: no window prop is declared
 	// bidirectional, so `:title` is reported by extractBindings rather than
 	// returned.
+	// The generic declaration, not the specialization: that is what
+	// NodeInst.Component holds, and for the same reason -- a specialization is
+	// for checking this call site and is a component nothing else has heard
+	// of. What the body needs from it is the one binding, kept below.
 	w.Comp = c.windowComp
-	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), c.windowComp)
+	w.Params = c.windowParamsVar(vn, spec)
+	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
+	c.checkWindowPathParams(vn, w)
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
 			w.ErrorHandler = c.buildErrorHandler(&eh)
@@ -4107,28 +4140,14 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	defer c.popScope()
 
 	if w.AST != nil {
-		// The href template's params, back in the scope the body is checked
-		// in. buildWindow declared them in a scope of its own so the href
-		// expression could read them, and that scope is popped by the time
-		// this runs -- they used to survive the gap by sitting in w.Vars, and
-		// with a window owning nothing `/p/{pkg}` left `pkg` in the body
-		// resolving to whatever else the name reached. On a window carrying
-		// `#pkg` that is its own node handle, so the page compiled `"/p/" +
-		// pkg` as string plus window and the build failed there.
-		//
-		// Ahead of declareNodeIDs, which is what decides the two collisions a
-		// param can be in, and both answers are the ones w.Vars gave before.
-		// This window's own `#id` was bound by the *containing* body's
-		// declareNodeIDs, so the param shadows it here by the ordinary
-		// inner-scope rule -- `window #pkg(href="/p/{pkg}")` reads `pkg` in
-		// its body as the string. A *child's* `#id` lands in this same scope,
-		// and declaring the params first is what leaves the param standing.
-		//
-		// Neither is a rule anyone chose; they fall out of an id and a param
-		// sharing one namespace with nothing declaring either. See the note on
-		// routeParams for what a declared contract would replace this with.
-		for _, v := range c.routeParams[w.AST] {
-			c.declare(w.AST.Pos, v)
+		// The binding the window's scoped rest slot hands its body: one
+		// struct value, holding whatever the route knows per request. It is a
+		// declared name rather than a synthesized one, so a path placeholder
+		// and a node `#id` are no longer two things claiming one namespace
+		// with nothing declaring either -- `window #pkg(href=`/p/{pkg}`)`
+		// reads `pkg` as its own handle and `v.pkg` as the path's.
+		if w.Params != nil {
+			c.declare(w.AST.Pos, w.Params)
 		}
 		c.declareNodeIDs(&w.AST.Block)
 	}
@@ -4350,34 +4369,64 @@ func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 	return v
 }
 
-// hrefPathParams extracts URL template placeholders like {name} from a
-// window's href. Both plain literals ("/{name}") and interpolation exprs
-// (parser-lifted "/" + name) are handled. Returns the bare identifier name
-// for each {x} placeholder.
-func hrefPathParams(vn *ast.VisualNode) []string {
-	if vn == nil {
-		return nil
+// checkWindowPathParams holds a window's path to the struct that says what it
+// hands its body: every `{name}` in the path names a field of the params
+// struct, and that field is something a route can parse out of text.
+//
+// Neither half was askable before the struct. The placeholders *were* the
+// declaration, so a misspelling silently declared a var nothing else named,
+// and every parameter was a string because there was nothing to say
+// otherwise.
+//
+// One-directional on purpose: a field the path does not name is left at the
+// struct's zero rather than reported, because the path is one source of a
+// request's values and the struct is meant to carry the others too.
+func (c *checker) checkWindowPathParams(vn *ast.VisualNode, w *ir.Window) {
+	lit, isLit := w.Prop(ir.WindowHref).(*ir.Literal)
+	if !isLit || lit.Type == nil || lit.Type.Kind != ir.TypeString {
+		return
 	}
-	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name != "href" {
+	var sd *ir.StructDef
+	if w.Params != nil {
+		sd, _ = structDeclOf(w.Params.Type)
+	}
+	for _, name := range extractBraceParams(lit.Value) {
+		f := findStructField(sd, name)
+		if f == nil {
+			c.error(vn.Pos, "the path names {%s}, but the window's params have no field %q", name, name)
 			continue
 		}
-		switch v := arg.Value.(type) {
-		case *ast.LiteralExpr:
-			href, _ := v.StringValue()
-			return extractBraceParams(href)
-		case *ast.InterpolationExpr:
-			var out []string
-			for _, part := range v.Parts {
-				if id, ok := part.(*ast.IdentExpr); ok {
-					out = append(out, id.Name)
-				}
-			}
-			return out
+		if !routeParamParseable(f.Type) {
+			c.error(vn.Pos, "path parameter {%s} arrives as text, and field %q is %s, which a route cannot parse it into", name, name, f.Type)
+		}
+	}
+}
+
+func findStructField(sd *ir.StructDef, name string) *ir.StructField {
+	if sd == nil {
+		return nil
+	}
+	for _, f := range sd.Fields {
+		if f.Name == name {
+			return f
 		}
 	}
 	return nil
+}
+
+// routeParamParseable reports whether a path segment can be read into a field
+// of this type. The list is the scalars every target can parse from a string
+// and nothing else -- a struct or a list has no spelling in a URL path, and
+// inventing one here would be the compiler choosing an encoding.
+func routeParamParseable(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeString, ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		return true
+	}
+	return false
 }
 
 func extractBraceParams(s string) []string {

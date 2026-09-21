@@ -58,6 +58,7 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 
 	var routeBody bytes.Buffer
 	writeHandler(&routeBody, req)
+	writeRouteParamTypes(&routeBody, req)
 	if hasActions {
 		emitSessionStore(&routeBody, gc)
 	}
@@ -97,6 +98,36 @@ func (t *Translator) CompileHTTP(req *codegen.HTTPRequest) ([]*codegen.OutputFil
 	}
 
 	return []*codegen.OutputFile{codegen.BytesFile("server.go", formatted)}, nil
+}
+
+// writeRouteParamTypes declares the structs a route's path parameters arrive
+// in. Route mode emits no user type declarations of its own -- a Go platform's
+// generator is what writes those, and there is no platform here -- so the one
+// type the handlers themselves name has to be written where they are.
+//
+// Deduplicated by declaration: two routes may take the same params struct, and
+// two structs of one name are two declarations the checker has already
+// renamed apart.
+func writeRouteParamTypes(b *bytes.Buffer, req *codegen.HTTPRequest) {
+	seen := map[*ir.StructDef]bool{}
+	for _, r := range req.Routes {
+		pv := routeParamsVar(r)
+		if pv == nil {
+			continue
+		}
+		sd, _ := pv.Type.Decl.(*ir.StructDef)
+		if sd == nil || seen[sd] {
+			continue
+		}
+		seen[sd] = true
+		fmt.Fprintf(b, "// %s is what route %q takes from the request.\n", IRTypeToGo(pv.Type), r.Path)
+		fmt.Fprintf(b, "type %s struct {\n", IRTypeToGo(pv.Type))
+		for _, f := range sd.Fields {
+			fmt.Fprintf(b, "\t%s %s\n", ExportName(f.Name), IRTypeToGo(f.Type))
+		}
+		fmt.Fprintln(b, "}")
+		fmt.Fprintln(b)
+	}
 }
 
 // writeRouteFuncs emits the user functions a route's markup or actions call,
@@ -199,9 +230,9 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 	fmt.Fprintln(b, "\t}")
 	fmt.Fprintf(b, "\t%s, %s := %s(%s)\n", loc.session, loc.state, loader, loc.sessionID)
 	fmt.Fprintf(b, "\tdefer %s.mu.Unlock()\n", loc.session)
-	writeRouteParamBindings(b, r, loc)
+	writeRouteParamBindings(b, r, gc, loc)
 	fmt.Fprintf(b, "\t%s.Write([]byte(%s(%s)))\n", loc.writer, renderFn,
-		strings.Join(append([]string{loc.state}, r.Params...), ", "))
+		strings.Join(append([]string{loc.state}, routeRenderArgs(r)...), ", "))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
 
@@ -215,7 +246,7 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 	fmt.Fprintln(b, "\t}")
 	fmt.Fprintf(b, "\t%s, %s := %s(%s)\n", loc.session, loc.state, loader, loc.sessionID)
 	fmt.Fprintf(b, "\tdefer %s.mu.Unlock()\n", loc.session)
-	writeRouteParamBindings(b, r, loc)
+	writeRouteParamBindings(b, r, gc, loc)
 	fmt.Fprintf(b, "\tswitch %s.FormValue(\"_action\") {\n", loc.request)
 	for i, act := range r.Actions {
 		fmt.Fprintf(b, "\tcase %q:\n", fmt.Sprintf("%d", i))
@@ -230,6 +261,15 @@ func writeRouteHandler(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTP
 		loc.writer, loc.request, routePathExpr(r, gc))
 	fmt.Fprintln(b, `}`)
 	fmt.Fprintln(b)
+}
+
+// routeRenderArgs is what the render function takes beyond the state
+// receiver: the parameter binding, where the route has one.
+func routeRenderArgs(r codegen.HTTPRoute) []string {
+	if p := routeParamsVar(r); p != nil {
+		return []string{p.Name}
+	}
+	return nil
 }
 
 // The spellings the handler and render emitters prefer; routeLocals decides
@@ -247,10 +287,10 @@ const (
 // routeLocals is what one route's GET handler, POST handler and render
 // function call the bindings they declare for themselves.
 //
-// A route parameter reaches the generated code verbatim -- the href writes
-// `{id}` and the IR that reads it renders the bare `id`, with no substitution
-// to rename it through -- so the program's name is the fixed one here and
-// every name below bends around it.
+// A route's parameter binding reaches the generated code verbatim -- the IR
+// that reads it renders the bare name the window's slot declared, with no
+// substitution to rename it through -- so the program's name is the fixed one
+// here and every name below bends around it.
 type routeLocals struct {
 	writer, request       string
 	sessionID, sessionOK  string
@@ -258,7 +298,11 @@ type routeLocals struct {
 }
 
 func newRouteLocals(r codegen.HTTPRoute) routeLocals {
-	reg := names.New(r.Params...)
+	var taken []string
+	if p := routeParamsVar(r); p != nil {
+		taken = append(taken, p.Name)
+	}
+	reg := names.New(taken...)
 	return routeLocals{
 		writer:    reg.Unique(routeWriterVar),
 		request:   reg.Unique(routeRequestVar),
@@ -270,21 +314,68 @@ func newRouteLocals(r codegen.HTTPRoute) routeLocals {
 	}
 }
 
-// writeRouteParamBindings binds each of the route's path parameters from the
-// request. Per-request input rather than per-session state, which is why they
-// are locals here and not fields on State.
-func writeRouteParamBindings(b *bytes.Buffer, r codegen.HTTPRoute, loc routeLocals) {
-	for _, p := range r.Params {
-		fmt.Fprintf(b, "\t%s := %s.PathValue(%q)\n", p, loc.request, p)
-		fmt.Fprintf(b, "\t_ = %s\n", p)
+// writeRouteParamBindings binds the route's path parameters from the request,
+// as the one struct value the window's slot hands its body. Per-request input
+// rather than per-session state, which is why it is a local here and not a
+// field on State.
+//
+// Field by field rather than as a composite literal: a path segment is text,
+// and a field the struct typed as something else needs a conversion statement
+// that no literal has room for. A field the path does not name keeps the
+// struct's zero, which is what says the path is one source of a request's
+// values and not the only one.
+func writeRouteParamBindings(b *bytes.Buffer, r codegen.HTTPRoute, gc *GoIRContext, loc routeLocals) {
+	pv := routeParamsVar(r)
+	if pv == nil {
+		return
 	}
+	fmt.Fprintf(b, "\tvar %s %s\n", pv.Name, IRTypeToGo(pv.Type))
+	sd, _ := pv.Type.Decl.(*ir.StructDef)
+	for _, name := range r.Params {
+		field := routeParamField(sd, name)
+		if field == nil {
+			continue
+		}
+		read := fmt.Sprintf("%s.PathValue(%q)", loc.request, name)
+		lhs := pv.Name + "." + ExportName(name)
+		switch IRTypeToGo(field.Type) {
+		case "string":
+			fmt.Fprintf(b, "\t%s = %s\n", lhs, read)
+		case "int":
+			gc.RequireImport("strconv")
+			fmt.Fprintf(b, "\tif __v, __err := strconv.Atoi(%s); __err == nil {\n\t\t%s = __v\n\t}\n", read, lhs)
+		case "float64":
+			gc.RequireImport("strconv")
+			fmt.Fprintf(b, "\tif __v, __err := strconv.ParseFloat(%s, 64); __err == nil {\n\t\t%s = __v\n\t}\n", read, lhs)
+		case "bool":
+			gc.RequireImport("strconv")
+			fmt.Fprintf(b, "\tif __v, __err := strconv.ParseBool(%s); __err == nil {\n\t\t%s = __v\n\t}\n", read, lhs)
+		}
+	}
+	fmt.Fprintf(b, "\t_ = %s\n", pv.Name)
+}
+
+// routeParamField is the struct field a path placeholder fills. The checker
+// has already refused a placeholder naming none, so a miss here is a route
+// whose href the platform read differently from the checker.
+func routeParamField(sd *ir.StructDef, name string) *ir.StructField {
+	if sd == nil {
+		return nil
+	}
+	for _, f := range sd.Fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
 }
 
 // routePathExpr is the route's path with each parameter's value substituted in.
 // The mux pattern spells `{pkg}`, and a redirect has to name the page the
 // browser should ask for next rather than the pattern that matched it.
 func routePathExpr(r codegen.HTTPRoute, gc *GoIRContext) string {
-	if len(r.Params) == 0 {
+	pv := routeParamsVar(r)
+	if len(r.Params) == 0 || pv == nil {
 		return strconv.Quote(r.Path)
 	}
 	gc.RequireImport("net/url")
@@ -299,14 +390,43 @@ func routePathExpr(r codegen.HTTPRoute, gc *GoIRContext) string {
 	for seg := range strings.SplitSeq(strings.TrimPrefix(r.Path, "/"), "/") {
 		lit.WriteByte('/')
 		if len(seg) > 2 && strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
-			flush()
-			parts = append(parts, fmt.Sprintf("url.PathEscape(%s)", seg[1:len(seg)-1]))
-			continue
+			// A placeholder the params struct has no field for is written
+			// through as the pattern wrote it. The checker refuses one where
+			// the href is a literal, which is where the rule can be stated;
+			// a path the platform assembled from an expression is not, and
+			// naming a field nobody declared would not compile.
+			if read := routeParamString(pv, seg[1:len(seg)-1], gc); read != "" {
+				flush()
+				parts = append(parts, fmt.Sprintf("url.PathEscape(%s)", read))
+				continue
+			}
 		}
 		lit.WriteString(seg)
 	}
 	flush()
 	return strings.Join(parts, " + ")
+}
+
+// routeParamString is one path parameter read back out of the binding, as a
+// string: the redirect writes the page the browser should ask for next, and a
+// field the struct typed as a number has to be spelled back the way the path
+// spelled it. Empty where the struct has no such field.
+func routeParamString(pv *ir.Var, name string, gc *GoIRContext) string {
+	sd, _ := pv.Type.Decl.(*ir.StructDef)
+	field := routeParamField(sd, name)
+	if field == nil {
+		return ""
+	}
+	read := pv.Name + "." + ExportName(name)
+	switch IRTypeToGo(field.Type) {
+	case "string":
+		return read
+	case "int":
+		gc.RequireImport("strconv")
+		return "strconv.Itoa(" + read + ")"
+	}
+	gc.RequireImport("fmt")
+	return "fmt.Sprint(" + read + ")"
 }
 
 // writeClientRouteHandler emits the legacy baked static-page GET handler for a

@@ -1,9 +1,10 @@
 // The three rules the rest slot carries beyond an ordinary slot's.
 //
 // `...` says a slot collects the children written bare, so there is one of
-// them per component; those children are written once, with no per-invocation
-// site to bind a parameter at; and they are the same content an explicit
-// population by name supplies, so writing both populates the slot twice.
+// them per component; a scoped one is read by the names its own declaration
+// writes, since bare children have no binding site of their own to name them
+// at; and they are the same content an explicit population by name supplies,
+// so writing both populates the slot twice.
 
 import . "sngl:ui"
 
@@ -14,7 +15,7 @@ component twice(head ...component, tail ...component) node { // ERROR(check) "de
     }
 }
 
-component scoped(children ...component(string)) node { // ERROR(check) "rest slot \"children\" takes no parameters"
+component scoped(children ...component(string)) node { // ERROR(check) "each parameter needs a name"
     vbox {
         children
     }
