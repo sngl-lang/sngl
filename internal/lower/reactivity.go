@@ -178,20 +178,6 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
 
-	// Package-level funcs (e.g. lifted lambdas) are not owned by a
-	// component or window; process them without an owner.
-	//
-	// An owned one is in pkg.Funcs *as well*: the checker registers a body
-	// func in both. Injected here and again by its owner's loop below, the
-	// updaters landed in one Block twice -- and once per window for a func
-	// passRootWindow mounted on several.
-	owned := ownedFuncs(pkg)
-	for _, f := range pkg.Funcs {
-		if owned[f] {
-			continue
-		}
-		f.Block = st.injectIntoStmts(f.Block)
-	}
 	// One injection per func, whoever reaches it first. A func mounted on
 	// several windows is one body, and the updaters a walk adds are the whole
 	// package's rather than that owner's -- so a second pass over it appends a
@@ -241,6 +227,38 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
+	}
+	// Package-level funcs last, because the walks above are what create most
+	// of them. A reactive `if` or `for` in a window body is lifted into a
+	// synthesized `__renderSlotN` whose Block is the *uninjected* statements,
+	// and that func is added to its owner while the body is being walked -- so
+	// injecting into pkg.Funcs before the walks reaches a list the slot
+	// renders are not in yet, and every updater inside one is dropped.
+	//
+	// `picked = it` in a `@click` inside a `for` lost its `__n0.text =
+	// picked` on fyne, gtk4 and html, and lost it silently: the handler still
+	// compiles and still writes the var, and nothing redraws.
+	//
+	// It used to be reached by the loop over a window's own Funcs, which ran
+	// after that window's body and so saw what the body had just added. A
+	// window owns nothing now, so the same funcs are the package's and the
+	// package's loop is where they have to be met.
+	//
+	// rewriteAndInject rather than injectIntoStmts, which is what the window
+	// loop did for the same reason: a lifted block may itself hold a reactive
+	// structure, and only the first of the two rewrites one. A genuinely
+	// top-level func is unaffected -- an `if` in an imperative body carries no
+	// LoweredSlotID, so there is nothing for the rewrite half to match.
+	//
+	// An owned func is skipped: the checker registers a component-body func in
+	// pkg.Funcs *as well*, and its owner's loop above has already injected.
+	owned := ownedFuncs(pkg)
+	for _, f := range pkg.Funcs {
+		if owned[f] || injected[f] {
+			continue
+		}
+		injected[f] = true
+		f.Block = st.rewriteAndInject(f.Block)
 	}
 	// After the walks, because a registry only exists once the slot render
 	// that opened it has been built.
