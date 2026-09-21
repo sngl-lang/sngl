@@ -379,11 +379,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			emitIRSlotFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode)
 			continue
 		}
-		if componentFuncs[fn] {
-			emitIRFyneComponentFunc(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode)
-			continue
-		}
-		emitIRFyneFunc(&funcBuf, fn, gc)
+		emitIRFyneModelMethod(&funcBuf, fn, gc, &widgetFields, nodeSpecs, addWidgetImport, canvasByNode)
 	}
 
 	// The draw routines are codegen's own and are in no func list, so they
@@ -646,12 +642,23 @@ func emitIRFyneFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext)
 	b.WriteByte('\n')
 }
 
-// emitIRFyneComponentFunc emits a component's own func — an action a handler
-// calls — as a Model method. Its body goes through the same widget-aware
-// translation a promoted handler's does, because it touches the same things:
-// state, and the element refs that are Model fields. Emitted through the plain
-// renderer instead, `__n0.Text = …` named a variable that does not exist.
-func emitIRFyneComponentFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta) {
+// emitIRFyneModelMethod emits a func the Model dispatches through — a
+// component's own action, a top-level func that touches state, a clone the
+// inliner hoisted — as a Model method. Its body goes through the same
+// widget-aware translation a promoted handler's does, because it touches the
+// same things: state, and the element refs that are Model fields. Emitted
+// through the plain renderer instead, `__n0.Text = …` names a variable that
+// does not exist, unqualified and untranslated, where the Spec's setter should
+// have made it `m.__n0.SetText(…)`.
+//
+// Every Model method takes this path. It used to be component funcs alone,
+// with a plain-renderer fallback beside it, and which of the two a func got
+// was decided by an owner-membership test: a window's funcs were component-like
+// and a package's were not. That was always too narrow -- passReactivity
+// injects updaters into a top-level func's body as readily as into a
+// component's -- and a window owning nothing widened the gap to every effect
+// entry point, since those are the package's funcs now.
+func emitIRFyneModelMethod(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, widgetFields *[]irWidgetField, nodeSpecs map[string]*fyneSpec, importSink func(string), canvasByNode map[*ir.NodeInst]*canvasMeta) {
 	if len(fn.Block) == 0 {
 		return
 	}
@@ -672,21 +679,6 @@ func emitIRFyneComponentFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRCon
 		Block:    codegen.WalkLowered(context.Background(), fn.Block, tr),
 	}
 	for _, line := range gc.EmitFuncDef(synthesized) {
-		b.WriteString(line)
-		b.WriteByte('\n')
-	}
-	b.WriteByte('\n')
-}
-
-func emitIRFyneFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	if len(fn.Block) == 0 {
-		return
-	}
-	fnCopy := *fn
-	if fnCopy.Receiver == "" {
-		fnCopy.Receiver = "Model"
-	}
-	for _, line := range gc.EmitFuncDef(&fnCopy) {
 		b.WriteString(line)
 		b.WriteByte('\n')
 	}
