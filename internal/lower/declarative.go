@@ -35,6 +35,7 @@ func lowerDeclarative(pkg *ir.Package, caps Caps, _ Options) error {
 	for _, comp := range pkg.Components {
 		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
 	}
+	pkg.Body = st.processStmts(pkg.Body, &pkg.Funcs)
 	for _, w := range pkg.Windows {
 		w.Body = st.processStmts(w.Body, &pkg.Funcs)
 	}

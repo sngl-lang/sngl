@@ -1086,7 +1086,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 				}
 			}
 		}
-		for _, w := range pkg.Windows {
+		for _, w := range ir.AllWindows(pkg) {
 			walk(w.Body)
 		}
 	}

@@ -356,7 +356,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// question is asked of the body instead of of the list -- which is also
 	// what ctx.RootDecl() stopped answering for an ordinary program, `main`
 	// having lost its harness convention.
-	for fn := range codegen.PackageStateFuncs(ctx.Pkg) {
+	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
+	for fn := range stateReaching {
 		mainOwnFuncs[fn] = true
 	}
 	// Two sets, not one: a func belongs inside exactly one composable, and the
@@ -394,7 +395,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if fn.Receiver != "" && kotlin.ReceiverIsUserType(ctx.Pkg, fn.Receiver) {
 				continue
 			}
-			if !needsStateScope(fn, stateNames) {
+			if !needsStateScope(fn, stateNames, stateReaching) {
 				continue
 			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
@@ -712,7 +713,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) {
 				continue
 			}
-			if !needsStateScope(fn, stateNames) {
+			if !needsStateScope(fn, stateNames, stateReaching) {
 				continue
 			}
 			if fn.Return != nil && fn.Return.Kind == ir.TypeDyn {
@@ -830,7 +831,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			// function at top level, so `Calc.pending` calling the pure
 			// `format` found it only inside the composable, or as
 			// `state.format` in test mode.
-			if componentOwnFuncs[fn] && needsStateScope(fn, stateNames) {
+			if componentOwnFuncs[fn] && needsStateScope(fn, stateNames, stateReaching) {
 				continue
 			}
 			emitIRKtFunc(&body, fn, kc)
@@ -1185,12 +1186,21 @@ func literalStructLit(n *ir.StructLit) string {
 // `step__mark__inst0` -- which assigns the composable's `log__inst0` -- read
 // as touching nothing and was emitted beside the composable.
 //
+// A walk of one body answers for that body and not for what it calls, so the
+// transitive half is `reaches` -- codegen.PackageStateFuncs, which closes the
+// same question over the call graph. A receiver used to stand in for it: a
+// component's func carried one, so `step__inst0`, whose body names no state
+// and only calls `step__mark__inst0`, was inside the composable for having a
+// receiver rather than for reaching state. The inliner drops that receiver
+// when it hoists the clone to the package, and Kotlin then had `step__inst0`
+// at file scope calling a local `fun` of MainScreen.
+//
 // Everything else does not, and hoisting it anyway is not free: a method on a
 // user type is an extension function at top level, so a `Calc.pending` calling
 // the pure `format` found it only as `state.format`, against a `state` nothing
 // in that scope declares.
-func needsStateScope(fn *ir.Func, state map[string]struct{}) bool {
-	if fn.Receiver != "" {
+func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Func]bool) bool {
+	if fn.Receiver != "" || reaches[fn] {
 		return true
 	}
 	found := false

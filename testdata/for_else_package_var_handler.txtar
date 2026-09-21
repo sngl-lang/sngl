@@ -6,9 +6,9 @@ list, while a component's and a window's were. So this else block reached
 codegen undesugared and every backend dropped it in silence, which is the exact
 failure `for_else_imperative.txtar` exists to deny one level down.
 
-It is not a shape nothing produces: `passRootWindow` leaves a package's vars
-where the checker put them, deliberately, so a top-level `var` with a handler
-survives to the end of the pipeline with its handler attached.
+It is not a shape nothing produces: nothing moves a package's vars off the
+package, so a top-level `var` with a handler survives to the end of the
+pipeline with its handler attached.
 
 The enumeration now asks `ir.Owners`, which says a package owns its vars the
 way a component and a window own theirs, so the pass reaches it because the

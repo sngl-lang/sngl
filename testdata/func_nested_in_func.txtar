@@ -343,7 +343,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.textContent = String(state.n__inst0) + state.log__inst0;
     return k * 2;
   }
-  function main_step__inst0(state2, a) {
+  function step__inst0(a) {
     return step__mark__inst0(a) + 1;
   }
   function reset__mark__inst0(k) {
@@ -351,7 +351,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.textContent = String(state.n__inst0) + state.log__inst0;
     return k - 1;
   }
-  function main_reset__inst0(state2, a) {
+  function reset__inst0(a) {
     return reset__mark__inst0(a);
   }
   function String(v) {
@@ -361,11 +361,11 @@ body { font-family: system-ui, sans-serif; }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $0.addEventListener("click", function() {
-    state.n__inst0 = main_step__inst0(state, state.n__inst0);
+    state.n__inst0 = step__inst0(state.n__inst0);
     __n0.textContent = String(state.n__inst0) + state.log__inst0;
   });
   $1.addEventListener("click", function() {
-    state.n__inst0 = main_reset__inst0(state, state.n__inst0);
+    state.n__inst0 = reset__inst0(state.n__inst0);
     __n0.textContent = String(state.n__inst0) + state.log__inst0;
   });
   function __sngl_init() {
@@ -380,4 +380,4 @@ pass sha256:eefcf14838574bd0d083b64e87bc0a73
 -- run/kotlin/android --
 pass sha256:a4ce222d34ff41aafab0e43a1897f592
 -- run/none/html --
-pass sha256:0078081d5e39d973f2a2b4f3429ce446
+pass sha256:9ea7059763190fbb73dba76fab451dda

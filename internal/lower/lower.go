@@ -30,7 +30,6 @@ type pass struct {
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
 	passHoistBodyTypes,
-	passRootWindow,
 	passHoistState,
 	passForeignPrimitive,
 	passPlatformExtensionBody,
@@ -365,6 +364,7 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	for _, f := range pkg.Funcs {
 		walk(f.Block)
 	}
+	walk(pkg.Body)
 	for _, w := range pkg.Windows {
 		walk(w.Body)
 	}
@@ -456,6 +456,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 			walk(f.Block)
 		}
 	}
+	walk(pkg.Body)
 	for _, w := range pkg.Windows {
 		walk(w.Body)
 	}

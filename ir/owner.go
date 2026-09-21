@@ -118,8 +118,8 @@ func (o Owner) Name() string {
 // the package, then each component, then each window -- including the windows
 // a body renders, which are statements in that body rather than entries in
 // pkg.Windows. A body is searched whether it belongs to the package, to a
-// component or to a window already found, because passRootWindow has not
-// necessarily run and a window is a statement anywhere the root tree reaches.
+// component or to a window already found, because a window is a statement
+// anywhere the root tree reaches and nothing lifts one out.
 //
 // It reports all of them, deduped by window pointer and by nothing else.
 // Which subset a consumer wants is that consumer's question, and the answers
@@ -219,6 +219,27 @@ func WindowHandles(pkg *Package) map[*Var]*Window {
 			out = map[*Var]*Window{}
 		}
 		out[o.Win.Handle] = o.Win
+	}
+	return out
+}
+
+// AllWindows is every window pkg holds, in the order Owners reports them: the
+// ones registered at the root of a file, then the ones a body renders.
+//
+// A window is a statement wherever the root family reaches, so the field alone
+// has never been the whole answer -- a `for` at the top of a file puts one in
+// pkg.Body, and a component that names the root family puts one in its own.
+// Both were lifted onto the field by a lowering pass; nothing lifts them now,
+// so every consumer that wants the windows asks this.
+func AllWindows(pkg *Package) []*Window {
+	if pkg == nil {
+		return nil
+	}
+	var out []*Window
+	for _, o := range Owners(pkg) {
+		if o.Win != nil {
+			out = append(out, o.Win)
+		}
 	}
 	return out
 }

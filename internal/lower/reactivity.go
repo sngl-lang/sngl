@@ -171,7 +171,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 		st.owner = compOwner{comp}
 		st.collectFromStmts(comp.Body)
 	}
-	for _, w := range allWindows(pkg) {
+	for _, w := range ir.AllWindows(pkg) {
 		st.owner = windowOwner{w: w, pkg: pkg}
 		st.collectFromStmts(w.Body)
 	}
@@ -197,7 +197,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 			st.owner = compOwner{comp}
 			st.synthesizeRemoteSettle()
 		}
-		for _, w := range allWindows(pkg) {
+		for _, w := range ir.AllWindows(pkg) {
 			st.owner = windowOwner{w: w, pkg: pkg}
 			st.synthesizeRemoteSettle()
 		}
@@ -221,7 +221,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 			}
 		}
 	}
-	for _, w := range allWindows(pkg) {
+	for _, w := range ir.AllWindows(pkg) {
 		st.owner = windowOwner{w: w, pkg: pkg}
 		w.Body = st.rewriteAndInject(w.Body)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
@@ -267,8 +267,8 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 }
 
 // ownedFuncs is every func a component or window owns, by pointer. The same
-// *ir.Func may be owned twice over (passRootWindow mounts a root component's
-// on every window it lifts) and is one entry either way.
+// *ir.Func may be owned twice over -- the checker registers a component-body
+// func in pkg.Funcs as well -- and is one entry either way.
 func ownedFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for _, o := range ir.Owners(pkg) {

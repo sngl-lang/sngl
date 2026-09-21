@@ -751,7 +751,7 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 			}
 		}
 	}
-	for _, w := range pkg.Windows {
+	for _, w := range ir.AllWindows(pkg) {
 		walk(w.Body)
 	}
 	for _, fn := range pkg.Funcs {
@@ -813,7 +813,7 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 			}
 		}
 	}
-	for _, w := range pkg.Windows {
+	for _, w := range ir.AllWindows(pkg) {
 		walk(w.Body)
 	}
 	for _, fn := range pkg.Funcs {

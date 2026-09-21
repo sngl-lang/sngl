@@ -40,6 +40,7 @@ func lowerRefLoop(pkg *ir.Package, _ Caps, _ Options) error {
 		}
 		st.varHandlers(c.Vars)
 	}
+	st.stmts(pkg.Body)
 	for _, w := range pkg.Windows {
 		st.stmts(w.Body)
 	}

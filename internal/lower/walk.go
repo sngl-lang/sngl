@@ -139,6 +139,12 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 	for _, w := range pkg.Windows {
 		walkWindow(w, fns)
 	}
+	// The package's own body is a view body like a component's: a window under
+	// a top-level `for` is a statement in it and reaches these passes nowhere
+	// else.
+	if fns.stmts != nil {
+		pkg.Body = fns.stmts(pkg.Body)
+	}
 }
 
 func walkVar(v *ir.Var, fns walkFuncs) {

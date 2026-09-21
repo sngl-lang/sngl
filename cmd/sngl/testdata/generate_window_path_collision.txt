@@ -12,3 +12,5 @@ component main root {
     window #a(title="A", href="/dup.html") { text(value="a") }
     window #b(title="B", href="/dup.html") { text(value="b") }
 }
+
+main()

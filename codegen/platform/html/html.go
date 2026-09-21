@@ -978,7 +978,7 @@ func (g *htmlGen) prewalkNodes() {
 			}
 		}
 	}
-	for _, w := range g.pkg.Windows {
+	for _, w := range ir.AllWindows(g.pkg) {
 		if w == nil {
 			continue
 		}
@@ -1064,7 +1064,7 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 		}
 		visitHandlers(c.Vars)
 	}
-	for _, w := range g.pkg.Windows {
+	for _, w := range ir.AllWindows(g.pkg) {
 		if w == nil {
 			continue
 		}
@@ -3606,7 +3606,7 @@ func (g *htmlGen) bodyCalls() []string {
 	for _, c := range g.pageComponents() {
 		collect(c.Body)
 	}
-	for _, w := range pkg.Windows {
+	for _, w := range ir.AllWindows(pkg) {
 		collect(w.Body)
 	}
 	collect(pkg.Body)

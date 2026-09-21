@@ -176,8 +176,8 @@ func TestFullExample(t *testing.T) {
 		"<!DOCTYPE html>",
 		"state = {",
 		"state.count",
-		`function main_greeting__inst0(`,
-		`function main_isAdult__inst0(`,
+		`function greeting__inst0(`,
+		`function isAdult__inst0(`,
 		"document.",
 		"addEventListener",
 	}
@@ -215,8 +215,8 @@ func TestFullFixture(t *testing.T) {
 		"state = {",
 		"state.count",
 		"state.name",
-		`function main_greeting__inst0(`,
-		`function main_doubled__inst0(`,
+		`function greeting__inst0(`,
+		`function doubled__inst0(`,
 	}
 	for _, check := range checks {
 		if !strings.Contains(html, check) {

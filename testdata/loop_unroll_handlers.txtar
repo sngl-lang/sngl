@@ -66,22 +66,22 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { chosen__inst0: "" };
-  function main_pick__inst0(state2, label) {
-    state2.chosen__inst0 = label;
-    __n0.textContent = state2.chosen__inst0;
+  function pick__inst0(label) {
+    state.chosen__inst0 = label;
+    __n0.textContent = state.chosen__inst0;
   }
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
-    main_pick__inst0(state, "a");
+    pick__inst0("a");
   });
   $2.addEventListener("click", function() {
-    main_pick__inst0(state, "b");
+    pick__inst0("b");
   });
   $3.addEventListener("click", function() {
-    main_pick__inst0(state, "c");
+    pick__inst0("c");
   });
   function __sngl_init() {
     __n0.textContent = state.chosen__inst0;
@@ -91,4 +91,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3aecad4f0987dc21a2ae7f253cca445c
+pass sha256:d37be40960406cccd271d2bd367dbb34

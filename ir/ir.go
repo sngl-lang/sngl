@@ -211,29 +211,40 @@ type AsyncKickerEntry struct {
 // library to import. A window is what says so: it is the only renderable
 // member of the root tree, so a package without one has nothing to open.
 func (p *Package) IsProgram() bool {
+	if p == nil {
+		return false
+	}
 	if len(p.Windows) > 0 {
 		return true
 	}
+	// Reachability from the package body, not membership in any body: a
+	// root-family component is an ordinary declaration, so nothing lifts its
+	// windows and one nobody instantiates renders nothing. Asked of every
+	// component regardless, a file holding a spare root component and no way
+	// to reach it built -- and each backend then met an *ir.Window in the
+	// middle of a component method, which fyne and bubbletea panic on.
 	found := false
-	WalkStmts(p.Body, func(s Stmt) error {
-		if _, ok := s.(*Window); ok {
-			found = true
-			return SkipDir
-		}
-		return nil
-	})
-	for _, c := range p.Components {
-		if found {
-			break
-		}
-		WalkStmts(c.Body, func(s Stmt) error {
-			if _, ok := s.(*Window); ok {
+	seen := map[*Component]bool{}
+	var scan func(stmts []Stmt)
+	scan = func(stmts []Stmt) {
+		_ = WalkStmts(stmts, func(s Stmt) error {
+			if found {
+				return SkipDir
+			}
+			switch n := s.(type) {
+			case *Window:
 				found = true
 				return SkipDir
+			case *NodeInst:
+				if n.Component != nil && !seen[n.Component] {
+					seen[n.Component] = true
+					scan(n.Component.Body)
+				}
 			}
 			return nil
 		})
 	}
+	scan(p.Body)
 	return found
 }
 

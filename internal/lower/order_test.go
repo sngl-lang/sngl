@@ -82,7 +82,6 @@ var alwaysOn = []string{
 	"Query",
 	"RecursionDepth",
 	"RefLoop",
-	"RootWindow",
 	"StampUsage",
 	"ViewForElse",
 	"WindowNesting",

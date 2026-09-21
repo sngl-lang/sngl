@@ -169,6 +169,7 @@ func Normalize(pkg *Package) {
 	for _, w := range pkg.Windows {
 		normalizeWindow(w)
 	}
+	pkg.Body = normalizeStmts(pkg.Body)
 }
 
 func normalizeStructDef(s *StructDef) {

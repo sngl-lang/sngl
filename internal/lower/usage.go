@@ -86,6 +86,9 @@ func pkgUsesAlert(pkg *ir.Package) bool {
 // construct: a window/boundary @error handler, a fallible-call handler, a
 // raise, or a func that can error.
 func pkgUsesErrorHandling(pkg *ir.Package) bool {
+	if stmtsUseErrorHandling(pkg.Body) {
+		return true
+	}
 	for _, w := range pkg.Windows {
 		if w.ErrorHandler != nil || stmtsUseErrorHandling(w.Body) {
 			return true
@@ -151,7 +154,7 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 				return true
 			}
 		case *ir.Window:
-			if stmtsUseErrorHandling(x.Body) {
+			if x.ErrorHandler != nil || stmtsUseErrorHandling(x.Body) {
 				return true
 			}
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,

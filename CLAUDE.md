@@ -208,9 +208,9 @@ What *was* reachable is the case neither copy had: **the handlers on a package
 var.** Both files named the package's funcs and its body and stopped, while a
 component's and a window's vars were walked in both — so a `for … else` in the
 `@change` of a top-level `var` reached `passForElse` not at all and every
-backend dropped the else in silence. `passRootWindow` leaves a package's vars
-where the checker put them, deliberately, so the shape survives the whole
-pipeline; `testdata/for_else_package_var_handler.txtar` is it.
+backend dropped the else in silence. Nothing moves a package's vars off the
+package, so the shape survives the whole pipeline;
+`testdata/for_else_package_var_handler.txtar` is it.
 
 Both orders are load-bearing and neither is this file's any more.
 `passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
@@ -675,10 +675,22 @@ instantiations of one component catch separately.
 whole of what makes a window top-level — no syntactic rule names the
 construct. So a `node` at the root of a file is the ordinary
 tree-membership error, an `if` or a `for` there still works (neither is a
-node), and a component that names `root` itself renders windows, which
-`passRootWindow` lifts onto `pkg.Windows`. `output` is exempt: it is read as a
+node), and a component that names `root` itself renders windows, which reach
+the build when something instantiates it. `output` is exempt: it is read as a
 build directive before any tree question is asked, and `sngl:builtin` cannot
 import `sngl:ui`, where the root tree lives.
+
+**Which windows there are is `ir.AllWindows`**, and the field is only half the
+answer. The checker registers a window written at the root of a file on
+`pkg.Windows`; one under an `if` or a `for` there stays a statement in
+`pkg.Body`, and one a component renders stays a statement in that component's
+body. `ir.AllWindows` reads `ir.Owners`, which reports all three deduped by
+pointer, and the lowering, every platform and the checker's own entry-window
+lookup ask it rather than the field. A lowering pass used to lift the second
+and third onto the field before anything else ran, on the argument that two
+dozen passes and five platforms already walked it -- and paid for it by
+clearing the bodies it emptied, which dropped every statement in them that was
+not a window (`testdata/timer_at_package_root.txtar`).
 
 **And a window's props are the declaration's, not the compiler's.**
 `lib/ui/window.sngl` declares `title`, `href` and `favicon` like any other
@@ -760,28 +772,38 @@ both. Until `Funcs` has a home, `checkTreeMembership` keeps a `*ir.Window` arm
 beside its `*ir.NodeInst` one, now reading the same two fields off the same kind
 of pointer.
 
-**A root component's own state is hoisted into the window it lifts**, because
-that is where it is mounted — the component is an empty shell once the lift is
-done, and a `var` or `func` left on one reached no backend at all
-(#215: `component main root { var n = 0; window … }` emitted `var state = {}`).
-A *timer* is not a declaration on the component but a statement in its body, and
-the body is cleared — so one written there, or at the root of a file, is dropped
-in silence. Pre-existing on both paths, not fixed, and noted at
-`applyRootWindow`.
-A window is a state owner every consumer already reads, so nothing downstream
-grew a case; what did have to change is the two places that still asked `main`
-for it, `html`'s `routeStateVars` and `golang`'s `newRouteGC`, which now ask the
-route's own window — the same fix `golang.ModelFreeFuncs` already carries for a
-window's funcs. The hoist drops the receiver with them (`dropComponentReceiver`):
-a component-body `func` is a method and a window-body one is not, and left as a
-method `biggest()` came out of the route emitter as a free `MainBiggest(s)`
-beside the `s.Biggest()` it had also emitted.
+**A root component is an ordinary component**, and its state reaches a backend
+the way every other component's does: something instantiates it,
+`passNoInlineComponents` splices the body into the body that wrote the
+instantiation, and the splice renames what the component declared per
+instantiation. `component main ui.root { var hits = 0; window … }` with
+`main()` at the root of the file emits `hits__inst0`;
+`testdata/root_component_state.txtar` is that on four targets.
 
-**Several windows each get it, and the platform says what that means.** The
-same `*ir.Var` is mounted on every window the component lifts, so a target
-whose windows are one process shares one cell — bubbletea, fyne and gtk4 each
-put it in one Model — and a target whose windows are separate documents copies
-it, html writing its own `state` into each page. That divergence is the point
+**So a root component nobody instantiates renders nothing**, and that is a rule
+rather than an oversight — the last remnant of the `main`-by-convention harness,
+now gone. A program made of nothing but one is refused by
+`internal/build.Emit`, which asks `ir.Package.IsProgram`: reachability from the
+package body through the components it instantiates, not membership in any
+body. Asked the other way, a file carrying a spare root component built, and
+fyne and bubbletea then met an `*ir.Window` in the middle of a component method
+and panicked.
+
+The alternative was a lowering pass that scanned `pkg.Components` for the root
+family, lifted the windows onto `pkg.Windows` and hoisted the vars and funcs
+somewhere they would be emitted — the package, after #215 found that leaving
+them on the emptied shell reached no backend at all. It had to strip the
+receiver as it went, a component-body `func` being a method and a package-level
+one not; the inliner does the same, in `dropReceiver`, because a clone hoisted
+into a window or into the package body is no longer a method of anything and
+route mode skips anything that still carries a receiver
+(`s.Keep__inst0(…)` against a file declaring nothing of the name).
+
+**Several windows each get it, and the platform says what that means.** One
+root component rendering two windows is spliced once, so both read the one
+cell: a target whose windows are one process shares it — bubbletea, fyne and
+gtk4 each put it in one Model — and a target whose windows are separate
+documents copies it, html writing its own `state` into each page. That divergence is the point
 rather than a gap: two pages *are* two states and one process *is* one, and
 forcing either way round in the lowering would be the language overriding the
 platform it compiled to. The author picks a target knowing it. Shared top-level
@@ -949,14 +971,13 @@ inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides
 lower down to have to be exempt.
 `isPrimitiveComponent` reads `Component.Intrinsic` for that, alongside
-`Wildcard` (html's raw element), `Builtin` (a node kind) and a **segmented**
-tree kind (a shape, or the canvas that hosts them) — the marks are the whole
-list, and each says in its own vocabulary that the declaration is rendered
-rather than composed away. Segmented is `ir.IsSegmentedTree`: any tree but the
-widget family, whose members are precisely the ordinary components this pass
-exists to compose away. `Tree != nil` was the test while the widget family was
-not a tree, and reading it after the change exempted every wrapper in the
-language.
+`Wildcard` (html's raw element) and `Builtin` (a node kind) — the marks are the
+whole list, and each says in its own vocabulary that the declaration is
+rendered rather than composed away. A **tree kind** is deliberately not on it:
+belonging to a segmented tree says which family a declaration joins, not that a
+codegen renders it, so a shape composed out of other shapes is a wrapper like
+any other. It was on the list while `passCanvas` existed, because that pass
+looked for the node the shapes hang off; nothing lifts them out now.
 `isPlatformStdlibComponent` is a different question: whether a component came
 from a `sngl:platform/` package the program imports.
 

@@ -401,10 +401,10 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 // route's own window owns. Mirrors htmlGen.stateVars but yields the
 // language-agnostic codegen.StateVar (name + IR type).
 //
-// The window is the usual owner rather than the unusual one: passRootWindow
-// hoists a root component's declarations there (#215). stateVarNames below has
-// always counted a window's vars, so leaving them out here rendered the markup
-// as a hole into a State struct that had no such field.
+// The window is the usual owner rather than the unusual one, a `var` written
+// in a window body being the common case. stateVarNames below has always
+// counted a window's vars, so leaving them out here rendered the markup as a
+// hole into a State struct that had no such field.
 //
 // win may be nil, which is every caller that asks the package-wide question.
 func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar {

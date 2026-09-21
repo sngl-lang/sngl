@@ -89,7 +89,7 @@ func lowerNodeEscape(pkg *ir.Package, _ Caps, _ Options) error {
 			addVarHandlerScopes(v, &scopes)
 		}
 	}
-	for _, w := range pkg.Windows {
+	for _, w := range ir.AllWindows(pkg) {
 		addScope(w.Body, &w.LocalRefs)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			addScope(w.ErrorHandler.Func.Block, &w.ErrorHandler.Func.LocalRefs)

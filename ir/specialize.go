@@ -179,6 +179,7 @@ func specializePkgBodies(pkg *Package, t target, seen map[*Package]struct{}, bod
 			walk(win.Body)
 		}
 	}
+	walk(pkg.Body)
 }
 
 // specializeFunc swaps one function's body for platform into its live Block.

@@ -313,8 +313,11 @@ rubber-stamped.
    node's would. `ir.Window.Vars` and `.Funcs` are deleted; a `var` or `func`
    at the root of a window body lands on the package, or on the component that
    renders the window where a root-family component does. See below.
-5. `pkg.Windows` derived at codegen; `passRootWindow` deleted, root components
-   left to ordinary inlining, the eight fixtures above rewritten.
+5. `pkg.Windows` derived; `passRootWindow` deleted, root components left to
+   ordinary inlining, the fixtures above rewritten. (done -- `ir.AllWindows`
+   off `ir.Owners` is the one enumeration, `pkg.Body` is a live body for the
+   whole pipeline, and `ir.Package.IsProgram` asks reachability rather than
+   membership.)
 6. The 39 statement arms, once a window is no longer a statement kind.
 7. Delete `ir.Window`: a window is a `NodeInst` like any other node.
 8. Delete the `#[builtin("window")]` mark, behind per-platform window

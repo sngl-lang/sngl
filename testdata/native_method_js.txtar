@@ -82,17 +82,17 @@ body { font-family: system-ui, sans-serif; }
   function Ctx() {
     return {};
   }
-  function main_paint__inst0(state2, c) {
+  function paint__inst0(c) {
     c.arc(1, 2, 3, 0, 6.28);
     c.fill();
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.n__inst0 += 1;
-    main_paint__inst0(state, state.c__inst0);
+    paint__inst0(state.c__inst0);
   });
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:af36689dbedf659eed3ffd5858620bba
+pass sha256:eb8ed80eb4dc9d3ce4e38eae4f8b357c

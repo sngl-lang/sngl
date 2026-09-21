@@ -157,6 +157,7 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 		}
 		seedFromStmts(fn.Block)
 	}
+	seedFromStmts(pkg.Body)
 	for _, w := range pkg.Windows {
 		seedFromStmts(w.Body)
 	}
@@ -774,6 +775,10 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		defaults[ctx] = ctx.Default
 	}
 
+	// The package body is a root the same way a window is.
+	pkgBodyActive := copyExprMap(defaults)
+	pkg.Body = lowerInStmts(pkg.Body, pkgBodyActive, reach, hidden)
+	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
 	// Seed window roots with defaults.
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)

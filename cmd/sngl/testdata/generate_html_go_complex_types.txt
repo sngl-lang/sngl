@@ -60,3 +60,5 @@ component main root {
         }
     }
 }
+
+main()

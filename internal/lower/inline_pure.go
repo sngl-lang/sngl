@@ -63,14 +63,21 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 			fn.Block = fnBody
 		}
 	}
+	// The package's own body, and then the windows: both hoist into the
+	// package, a window being a rendering root that owns nothing.
+	st.hoist = &pkg.Vars
+	body, err := st.inlineStmts(pkg.Body)
+	if err != nil {
+		return err
+	}
+	pkg.Body = body
 	for _, w := range pkg.Windows {
-		// The window's container, which is the package: a window owns nothing.
 		st.hoist = &pkg.Vars
-		body, err := st.inlineStmts(w.Body)
+		wbody, err := st.inlineStmts(w.Body)
 		if err != nil {
 			return err
 		}
-		w.Body = body
+		w.Body = wbody
 	}
 	return nil
 }

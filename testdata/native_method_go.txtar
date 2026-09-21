@@ -97,7 +97,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m *Model) paint__inst0(c gfx.Context) {
+func Paint__inst0(c gfx.Context) {
 	c.Circle(1.0, 2.0, 3.0)
 	gfx.Reset(c)
 }
@@ -170,7 +170,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.n__inst0 += 1
-			m.paint__inst0(m.c__inst0)
+			Paint__inst0(m.c__inst0)
 		}
 	}
 	return m, tea.Batch(cmds...)

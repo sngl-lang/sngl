@@ -124,11 +124,11 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 	root := ctx.RootDecl()
 	var out []OwnedVar
 	// Keyed by the *ir.Var, because one declaration may be owned by several
-	// windows: passRootWindow mounts a root component's state on every window
-	// it lifts, and a Model holding two of those windows holds one cell for it
-	// -- which is what "the reference is shared" means on a target whose
-	// windows are one process. Emitted per owner instead, the Model declared
-	// `hits int` twice and did not compile.
+	// windows: a root component that renders two of them is spliced into the
+	// package body as one copy, so both read the same cell -- which is what
+	// "the reference is shared" means on a target whose windows are one
+	// process. Emitted per owner instead, the Model declared `hits int` twice
+	// and did not compile.
 	seen := map[*ir.Var]bool{}
 	add := func(v *ir.Var, o ir.Owner) {
 		if v == nil || seen[v] {

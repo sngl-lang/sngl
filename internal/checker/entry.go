@@ -68,21 +68,9 @@ func (c *checker) resolveEntryWindow(root *ir.NodeInst) {
 }
 
 // packageWindows is every window the program declares: those at the root of a
-// file and those a component body renders.
+// file and those a body renders. ir.AllWindows is the one enumeration of that,
+// shared with the lowering and with every platform, so the two answers to
+// "which windows are there" cannot drift apart.
 func (c *checker) packageWindows() []*ir.Window {
-	out := append([]*ir.Window{}, c.pkg.Windows...)
-	collect := func(stmts []ir.Stmt) {
-		ir.WalkStmts(stmts, func(s ir.Stmt) error {
-			if w, ok := s.(*ir.Window); ok {
-				out = append(out, w)
-				return ir.SkipDir
-			}
-			return nil
-		})
-	}
-	collect(c.pkg.Body)
-	for _, comp := range c.pkg.Components {
-		collect(comp.Body)
-	}
-	return out
+	return ir.AllWindows(c.pkg)
 }

@@ -64,7 +64,7 @@ func NewDepTrackerFromPkg(pkg *ir.Package) *DepTracker {
 	// expression reading one has a dependency, and an updater with no
 	// dependencies is pruned, which left a bound href with nothing to write
 	// it and an element whose id was then stripped as unreferenced.
-	for _, w := range pkg.Windows {
+	for _, w := range ir.AllWindows(pkg) {
 		if w != nil && w.Params != nil {
 			model[w.Params] = struct{}{}
 		}

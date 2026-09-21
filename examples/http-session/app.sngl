@@ -8,7 +8,7 @@ output {
 
 import "go:git.duckfam.us/jonathan/sngl/examples/http-session/session"
 
-component main ui.root {
+component main {
     var sidebarOpen = false
 
     ui.hbox {

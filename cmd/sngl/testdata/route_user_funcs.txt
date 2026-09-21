@@ -5,16 +5,24 @@
 #
 # They are emitted as methods on the route's State, so they dispatch through
 # the same `s` the state fields do.
+#
+# `__inst0` is the instantiation suffix, and it is the whole of what `main()`
+# at the root of the file costs: `main` is an ordinary component now, so the
+# inliner splices it into the package body and renames what it declares per
+# instantiation. The receiver goes with the declaration -- a component-body
+# func is a method and a package-level one is not -- which is what keeps the
+# helper in routeEmittableFuncs, whose filter drops anything still carrying
+# one.
 
 sngl generate --lang go --platform html -o out app.sngl
 
 # The function is there, as a State method, under the name the call uses.
-grep 'State\) Keep\(n int\) bool' out/server.go
-grep 's\.Keep\(' out/server.go
+grep 'State\) Keep__inst0\(n int\) bool' out/server.go
+grep 's\.Keep__inst0\(' out/server.go
 
 # One that reads state works for the same reason: the receiver carries it.
-grep 'State\) Biggest\(\) int' out/server.go
-grep 's\.Biggest\(\)' out/server.go
+grep 'State\) Biggest__inst0\(\) int' out/server.go
+grep 's\.Biggest__inst0\(\)' out/server.go
 
 # And nothing dispatches through a Model that route mode does not have.
 ! grep 'm\.' out/server.go
@@ -52,3 +60,5 @@ component main root {
         html.span(innerText=string(total))
     }
 }
+
+main()

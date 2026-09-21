@@ -139,6 +139,7 @@ func (s *stripper) stripPackage(pkg *Package) {
 	for _, w := range pkg.Windows {
 		s.stripWindow(w)
 	}
+	s.stripStmts(pkg.Body)
 	for _, o := range pkg.Outputs {
 		o.AST = nil
 		o.LangComp = nil

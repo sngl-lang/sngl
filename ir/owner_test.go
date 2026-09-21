@@ -65,8 +65,8 @@ func TestOwnersOfNilPackage(t *testing.T) {
 
 // A window is a statement wherever the root tree reaches, and the package body
 // is one of those places: `if ship { window #a {} }` at the root of a file
-// leaves the window there until passRootWindow lifts it, and every consumer
-// that runs before that pass -- the checker's four -- asks Owners.
+// leaves the window there for the whole build, and every consumer that wants
+// the windows asks Owners rather than the pkg.Windows field.
 func TestOwnersFindsWindowsInAnyBody(t *testing.T) {
 	inPkg := &Window{Name: "fromPkgBody"}
 	inComp := &Window{Name: "fromCompBody"}

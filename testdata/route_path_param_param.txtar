@@ -40,11 +40,9 @@ struct PageParams {
     pkg string
 }
 
-component main ui.root {
-    ui.window #pkg(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-        component content(v) {
-            html.a(href="/p/" + v.pkg, innerText=v.pkg)
-        }
+ui.window #pkg(title="t", href=`/p/{pkg}`, params=PageParams{}) {
+    component content(v) {
+        html.a(href="/p/" + v.pkg, innerText=v.pkg)
     }
 }
 -- out/go/html/server.go --

@@ -37,6 +37,7 @@ func lowerFocusOrder(pkg *ir.Package, _ Caps, _ Options) error {
 	for _, comp := range pkg.Components {
 		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
 	}
+	lowerFocusInOwner(pkg.Body, &pkg.Vars, &pkg.Funcs)
 	for _, w := range pkg.Windows {
 		lowerFocusInOwner(w.Body, &pkg.Vars, &pkg.Funcs)
 	}

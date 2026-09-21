@@ -45,8 +45,8 @@ func applyHoistState(pkg *ir.Package, _ Caps, _ Options) error {
 			hoistWindowsIn(comp.Body, &comp.Vars)
 		}
 	}
-	// Those already lifted onto the package by passRootWindow, whose container
-	// is the package by the time this runs.
+	// A window at the root of a file is in no body, so the walk above does not
+	// reach it; its container is the package either way.
 	for _, w := range pkg.Windows {
 		if w != nil {
 			w.Body, pkg.Vars = promoteLocalVarsToVars(w.Body, pkg.Vars)
@@ -64,17 +64,4 @@ func hoistWindowsIn(stmts []ir.Stmt, into *[]*ir.Var) {
 		}
 		return nil
 	})
-}
-
-// allWindows is every window the package holds: those at the root of a file
-// and those a component body renders. Derived from ir.Owners so the two
-// answers to "which windows are there" cannot drift apart.
-func allWindows(pkg *ir.Package) []*ir.Window {
-	var out []*ir.Window
-	for _, o := range ir.Owners(pkg) {
-		if o.Win != nil {
-			out = append(out, o.Win)
-		}
-	}
-	return out
 }
