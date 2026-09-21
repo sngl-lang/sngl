@@ -312,7 +312,8 @@ rubber-stamped.
 4. **A window's declarations go to its container**, the way any other visual
    node's would. `ir.Window.Vars` and `.Funcs` are deleted; a `var` or `func`
    at the root of a window body lands on the package, or on the component that
-   renders the window where a root-family component does. See below.
+   renders the window where a root-family component does. (done in `31e63e21`
+   and the six commits that repaired its 48 goldens; see below.)
 5. `pkg.Windows` derived; `passRootWindow` deleted, root components left to
    ordinary inlining, the fixtures above rewritten. (done -- `ir.AllWindows`
    off `ir.Owners` is the one enumeration, `pkg.Body` is a live body for the
@@ -328,6 +329,15 @@ rubber-stamped.
    way; it buys no type safety and is documented not to.)
 8. Delete the `#[builtin("window")]` mark, behind per-platform window
    primitives. See below. Delete this file.
+
+   **Not started, and the section below has gone stale.** It opens
+   "`BuiltinWindow` has exactly three non-test uses and all three are in the
+   checker", which step 7 made untrue: `ir.IsWindowNode` reads that mark and
+   is the one predicate that replaced 72 `case *ir.Window:` arms. The checker
+   asks it with no target picked, and half the lowering asks either side of
+   the platform override, so "identify a window by the platform's intrinsic
+   id" has nowhere to stand. The goal is not in question; the route to it is.
+   See `handoff/window-collapse-6.md`.
 
 Emit-when-called is a separable follow-up: `shakeUnused` filters `pkg.Funcs`
 but treats `comp.Funcs` and `w.Funcs` as roots, so those are unconditionally

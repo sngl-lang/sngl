@@ -3740,7 +3740,6 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	case ir.BuiltinWindow:
 		w := c.windowShell(vn)
 		c.checkWindow(w)
-		c.checkedWindows[w] = true
 		return w
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn, builtinComp)

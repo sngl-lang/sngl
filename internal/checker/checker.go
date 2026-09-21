@@ -340,15 +340,6 @@ type checker struct {
 
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
-	// checkedWindows is the windows whose body was checked in context -- one
-	// written inside a component body, or inside a `for` at the root of a
-	// file. pass2 walks pkg.Windows afterwards and would check those twice.
-	//
-	// A set here rather than a flag on the window, because "has the checker
-	// been over this yet" is the checker's bookkeeping and nothing after it
-	// can act on the answer. It was ir.Window.Checked, which the stripper then
-	// had to clear so a round-trip comparison did not see it.
-	checkedWindows map[*ir.Window]bool
 
 	outputDecl *ast.VisualNode
 
@@ -561,17 +552,16 @@ type pendingConstInit struct {
 func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	symtab := NewSymbolTable()
 	c := &checker{
-		doc:            firstDoc(docs),
-		docs:           docs,
-		cfg:            cfg,
-		pkg:            &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
-		symtab:         symtab,
-		scope:          symtab.Root,
-		visited:        cfg.visitedStack(),
-		dirPkgs:        cfg.dirPkgCache(),
-		pkgWindowIDs:   make(map[string]bool),
-		checkedWindows: make(map[*ir.Window]bool),
-		libs:           cfg.libCache(),
+		doc:          firstDoc(docs),
+		docs:         docs,
+		cfg:          cfg,
+		pkg:          &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
+		symtab:       symtab,
+		scope:        symtab.Root,
+		visited:      cfg.visitedStack(),
+		dirPkgs:      cfg.dirPkgCache(),
+		pkgWindowIDs: make(map[string]bool),
+		libs:         cfg.libCache(),
 	}
 	// Allocated before the library loads, because those now run the same
 	// pass1 a program's package does, and pass1 enters a file per document.
@@ -3364,11 +3354,13 @@ func (c *checker) pass2() {
 
 	c.hoistPkgBodyWindowIDs()
 
-	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
+	// The windows pass1 registered. A window written as a *statement* is
+	// checked where it stands and never reaches this list, so there is
+	// nothing here to have been checked already -- ir.Window.Checked, and the
+	// checker-side set that replaced it, guarded against a double-check the
+	// two paths cannot produce.
 	for _, w := range c.pkg.Windows {
-		if !c.checkedWindows[w] {
-			c.checkWindow(w)
-		}
+		c.checkWindow(w)
 	}
 	// A window body may declare one too.
 	c.checkComponentBodies()
