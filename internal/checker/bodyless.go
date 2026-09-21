@@ -152,7 +152,7 @@ func (c *checker) reachedLibComponents() map[*ir.Component]bool {
 		}
 		reach(c.pkg.Body)
 		for _, w := range c.pkg.Windows {
-			reach(w.Body)
+			reach(w.Children)
 		}
 	}
 

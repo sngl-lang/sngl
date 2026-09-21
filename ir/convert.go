@@ -110,10 +110,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertComponent(comp))
 	}
 	for _, w := range pkg.Windows {
-		if w.Checked && w.Name == "" && len(w.Body) == 0 {
-			continue // component-scoped stub; content is in the component body
-		}
-		stmts = append(stmts, c.convertWindow(w))
+		stmts = append(stmts, c.convertNodeInst(w))
 	}
 	for _, ctx := range pkg.Contexts {
 		// Standard-library contexts arrive with the import, not from this
@@ -354,59 +351,11 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
-func (c *converter) convertWindow(w *Window) *ast.VisualNode {
-	vn := &ast.VisualNode{
-		Target: &ast.IdentExpr{Name: "window"},
-		ID:     w.Name,
-	}
-	// The props print in the order they were written, like any other node's.
-	// The href among them: it is a plain string, so there is nothing for a
-	// reprint to lose. It used to be dropped, because the checker desugared
-	// `"/u/{id}"` into a concatenation naming a var it had synthesized, and
-	// the reprint would then name that var above the body declaring it.
-	var args []ast.ArgOrEventHandler
-	for _, p := range w.Props {
-		if p.Value == nil {
-			continue
-		}
-		args = append(args, ast.Arg{Name: p.Name, Value: c.convertExpr(p.Value)})
-	}
-	if w.ErrorHandler != nil {
-		args = append(args, c.convertEventHandler(w.ErrorHandler))
-	}
-	if len(args) > 0 {
-		vn.Args = ast.ArgList{IsMultiline: len(args) > 3, Args: args}
-	}
-	var bodyStmts []ast.Stmt
-	bodyStmts = append(bodyStmts, c.convertBodyStmts(w.Body)...)
-	// A window that reads its route parameters wrote the population its
-	// binding was named in, and the body belongs inside that rather than
-	// bare: printed bare, the name the body reads is declared nowhere and the
-	// dump does not check back in.
-	if w.Params != nil && len(bodyStmts) > 0 {
-		cd := &ast.ComponentDecl{
-			Name:      windowContentSlot(w),
-			HasParens: true,
-			Props:     ast.PropList{Props: []ast.ParamOrEventDecl{ast.Param{Name: w.Params.Name}}},
-			Body:      ast.StmtBlock{IsMultiline: true, Stmts: bodyStmts, Pos: ast.Pos{Line: 1}},
-		}
-		bodyStmts = []ast.Stmt{cd}
-	}
-	if len(bodyStmts) > 0 {
-		vn.Block = ast.StmtBlock{
-			IsMultiline: len(bodyStmts) > 0,
-			Stmts:       bodyStmts,
-			Pos:         ast.Pos{Line: 1},
-		}
-	}
-	return vn
-}
-
 // windowContentSlot is what the window declaration calls the slot its body
 // populates. Read off the declaration rather than spelled here, for the
 // reason ErrorBoundary.FailedSlot gives: the library is free to rename it.
 func windowContentSlot(w *Window) string {
-	if rest := w.Comp.RestSlot(); rest != nil {
+	if rest := w.Component.RestSlot(); rest != nil {
 		return rest.Name
 	}
 	return "content"
@@ -609,8 +558,6 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		return &ast.BreakStmt{Pos: posOfBreak(s)}
 	case *Continue:
 		return &ast.ContinueStmt{Pos: posOfContinue(s)}
-	case *Window:
-		return c.convertWindow(s)
 	case *ContextProvider:
 		return c.convertContextProvider(s)
 	case *CanvasRedrawStmt:
@@ -690,6 +637,9 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 	for _, h := range n.Handlers {
 		args = append(args, c.convertEventHandler(&h))
 	}
+	if n.ErrorHandler != nil {
+		args = append(args, c.convertEventHandler(n.ErrorHandler))
+	}
 	if len(args) > 0 {
 		vn.Args = ast.ArgList{
 			IsMultiline: len(args) > 3,
@@ -701,6 +651,18 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		vn.Block = c.convertStmtBlock(n.Children)
 		vn.Block.Stmts = append(c.convertSlotContents(n), vn.Block.Stmts...)
 		vn.Block.IsMultiline = true
+	}
+	// A window that reads its route parameters wrote the population its
+	// binding was named in, and the body belongs inside that rather than
+	// bare: printed bare, the name the body reads is declared nowhere and the
+	// dump does not check back in.
+	if n.Params != nil && len(vn.Block.Stmts) > 0 {
+		vn.Block.Stmts = []ast.Stmt{&ast.ComponentDecl{
+			Name:      windowContentSlot(n),
+			HasParens: true,
+			Props:     ast.PropList{Props: []ast.ParamOrEventDecl{ast.Param{Name: n.Params.Name}}},
+			Body:      ast.StmtBlock{IsMultiline: true, Stmts: vn.Block.Stmts, Pos: ast.Pos{Line: 1}},
+		}}
 	}
 	return vn
 }

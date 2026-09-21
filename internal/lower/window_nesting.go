@@ -41,17 +41,17 @@ func lowerWindowNesting(pkg *ir.Package, _ Caps, _ Options) error {
 		seen[w] = true
 	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if w, ok := n.(*ir.Window); ok && !seen[w] {
+		if w, ok := n.(*ir.NodeInst); ok && ir.IsWindowNode(w) && !seen[w] {
 			seen[w] = true
 			outer = append(outer, w)
 		}
 		return nil
 	})
 	for _, w := range outer {
-		for _, inner := range w.Body {
+		for _, inner := range w.Children {
 			var found *ir.Window
 			_ = ir.Walk(inner, func(n ir.Node) error {
-				if nested, ok := n.(*ir.Window); ok && found == nil {
+				if nested, ok := n.(*ir.NodeInst); ok && ir.IsWindowNode(nested) && found == nil {
 					found = nested
 				}
 				return nil

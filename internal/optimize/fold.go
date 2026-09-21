@@ -296,13 +296,6 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 			n.Value = foldExpr(n.Value, ctx)
 		}
 		n.Children = foldStmts(n.Children, ctx)
-	case *ir.Window:
-		for i := range n.Props {
-			if n.Props[i].Value != nil {
-				n.Props[i].Value = foldExpr(n.Props[i].Value, ctx)
-			}
-		}
-		n.Body = foldStmts(n.Body, ctx)
 	case *ir.Toggle:
 		n.Target = foldExpr(n.Target, ctx)
 	case *ir.ErrorBoundary:
@@ -350,6 +343,12 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	}
 	for i := range n.Handlers {
 		n.Handlers[i].Func.Block = foldStmts(n.Handlers[i].Func.Block, ctx)
+	}
+	// A window's @error is a handler like the rest, and reached from nowhere
+	// else: it hung off ir.Window, whose own fold arm walked the props and the
+	// body and not this.
+	if n.ErrorHandler != nil && n.ErrorHandler.Func != nil {
+		n.ErrorHandler.Func.Block = foldStmts(n.ErrorHandler.Func.Block, ctx)
 	}
 	// A named slot's population is a body like the children are. Visited by
 	// name because Slots is a map: folding itself does not care, but a pass

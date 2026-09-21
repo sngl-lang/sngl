@@ -72,13 +72,6 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 					n.Call.Args[i].Value = rewrite(n.Call.Args[i].Value)
 				}
 			}
-		case *ir.Window:
-			for i := range n.Props {
-				if n.Props[i].Value != nil {
-					n.Props[i].Value = rewrite(n.Props[i].Value)
-				}
-			}
-			n.Body = rewriteStmtExprs(n.Body, rewrite)
 		case *ir.Toggle:
 			n.Target = rewrite(n.Target)
 		case *ir.ContextProvider:
@@ -190,7 +183,7 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 // question, and a window that is a NodeInst in pkg.Body answers it for free.
 func walkWindow(w *ir.Window, fns walkFuncs) {
 	if fns.stmts != nil {
-		w.Body = fns.stmts(w.Body)
+		w.Children = fns.stmts(w.Children)
 	}
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil && fns.stmts != nil {
 		w.ErrorHandler.Func.Block = fns.stmts(w.ErrorHandler.Func.Block)

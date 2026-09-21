@@ -366,7 +366,7 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	}
 	walk(pkg.Body)
 	for _, w := range pkg.Windows {
-		walk(w.Body)
+		walk(w.Children)
 	}
 	return out
 }
@@ -445,8 +445,6 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 				walk(n.Children)
 			case *ir.ContextProvider:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			}
 		}
 	}
@@ -458,7 +456,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 	}
 	walk(pkg.Body)
 	for _, w := range pkg.Windows {
-		walk(w.Body)
+		walk(w.Children)
 	}
 	return out
 }

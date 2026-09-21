@@ -50,8 +50,6 @@ func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
 			n.Children = rewritePropBindingStmts(n.Children)
 		case *ir.ErrorBoundary:
 			n.Children = rewritePropBindingStmts(n.Children)
-		case *ir.Window:
-			n.Body = rewritePropBindingStmts(n.Body)
 		case *ir.ContextProvider:
 			n.Children = rewritePropBindingStmts(n.Children)
 		}
@@ -163,10 +161,6 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 			}
 		case *ir.ErrorBoundary:
 			if bodyHasEmitFor(n.Children, name) {
-				return true
-			}
-		case *ir.Window:
-			if bodyHasEmitFor(n.Body, name) {
 				return true
 			}
 		}
@@ -436,11 +430,6 @@ func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk
 		}
 	case *ir.ContextProvider:
 		x.Children = walk(x.Children)
-	case *ir.Window:
-		x.Body = walk(x.Body)
-		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
-			x.ErrorHandler.Func.Block = walk(x.ErrorHandler.Func.Block)
-		}
 	}
 	return s
 }

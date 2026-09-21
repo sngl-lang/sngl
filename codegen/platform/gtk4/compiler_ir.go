@@ -728,8 +728,6 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 				*ir.Break, *ir.Continue:
 				// No CreateNode call to harvest.
@@ -752,7 +750,7 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 		}
 	}
 	for _, w := range ir.AllWindows(pkg) {
-		walk(w.Body)
+		walk(w.Children)
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
@@ -800,8 +798,6 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			}
 		}
 	}
@@ -814,7 +810,7 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 		}
 	}
 	for _, w := range ir.AllWindows(pkg) {
-		walk(w.Body)
+		walk(w.Children)
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {

@@ -166,14 +166,14 @@ func TestContextProviderBasic(t *testing.T) {
 	}
 	win := pkg.Windows[0]
 	var prov *ir.ContextProvider
-	for _, s := range win.Body {
+	for _, s := range win.Children {
 		if p, ok := s.(*ir.ContextProvider); ok {
 			prov = p
 			break
 		}
 	}
 	if prov == nil {
-		t.Fatalf("no ContextProvider found in window body; got: %v", stmtTypes(win.Body))
+		t.Fatalf("no ContextProvider found in window body; got: %v", stmtTypes(win.Children))
 	}
 	if prov.Ref == nil || prov.Ref.Name != "theme" {
 		t.Errorf("Ref = %+v, want context named \"theme\"", prov.Ref)

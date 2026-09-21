@@ -246,11 +246,6 @@ func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
 		substituteParamsInStmts(n.Children, subs)
 	case *ir.ErrorBoundary:
 		substituteParamsInStmts(n.Children, subs)
-	case *ir.Window:
-		for i := range n.Props {
-			n.Props[i].Value = substituteParams(n.Props[i].Value, subs)
-		}
-		substituteParamsInStmts(n.Body, subs)
 	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No params to substitute.
 	default:
@@ -391,11 +386,6 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 				visitStmts(n.Else)
 			case *ir.SlotInst:
 				visitStmts(n.Children)
-			case *ir.Window:
-				for i := range n.Props {
-					visitExpr(n.Props[i].Value)
-				}
-				visitStmts(n.Body)
 			case *ir.Assign:
 				visitExpr(n.Value)
 			case *ir.LocalVar:

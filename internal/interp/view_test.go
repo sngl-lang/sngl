@@ -288,8 +288,6 @@ func allIDs(pkg *ir.Package) []string {
 				walk(n.Children)
 			case *ir.ErrorBoundary:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			case *ir.ContextProvider:
 				walk(n.Children)
 			}

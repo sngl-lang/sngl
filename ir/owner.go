@@ -109,7 +109,9 @@ func (o Owner) Name() string {
 	case o.Comp != nil:
 		return o.Comp.Name
 	case o.Win != nil:
-		return o.Win.Name
+		// The window's `#id` and not `window`: what a consumer wants from an
+		// owner's name is the thing the program called it.
+		return o.Win.ID
 	}
 	return ""
 }
@@ -142,7 +144,7 @@ func Owners(pkg *Package) []Owner {
 			return
 		}
 		seen[w] = true
-		o := Owner{Pkg: pkg, Win: w, Body: &w.Body}
+		o := Owner{Pkg: pkg, Win: w, Body: &w.Children}
 		if w.ErrorHandler != nil {
 			o.Handlers = []*EventHandler{w.ErrorHandler}
 		}
@@ -157,7 +159,7 @@ func Owners(pkg *Package) []Owner {
 	// walk it a second time to reach what the worklist reaches anyway.
 	search := func(stmts []Stmt) {
 		_ = WalkStmts(stmts, func(s Stmt) error {
-			if w, ok := s.(*Window); ok {
+			if w, ok := s.(*NodeInst); ok && IsWindowNode(w) {
 				addWin(w)
 				return SkipDir
 			}
@@ -186,7 +188,7 @@ func Owners(pkg *Package) []Owner {
 	if !pkg.WindowsFlat {
 		for i := 0; i < len(out); i++ {
 			if out[i].Win != nil {
-				search(out[i].Win.Body)
+				search(out[i].Win.Children)
 			}
 		}
 	}

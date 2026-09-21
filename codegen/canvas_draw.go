@@ -92,7 +92,7 @@ func Canvases(pkg *ir.Package) []Canvas {
 	owner(nil, pkg.Body, nil)
 	for _, w := range pkg.Windows {
 		if w != nil {
-			owner(nil, w.Body, nil)
+			owner(nil, w.Children, nil)
 		}
 	}
 	owner(nil, nil, pkg.Funcs)
@@ -185,8 +185,6 @@ func collectCanvases(stmts []ir.Stmt, out *[]Canvas) {
 			if v.CanvasNode != nil {
 				*out = append(*out, Canvas{Node: v.CanvasNode, Local: v})
 			}
-		case *ir.Window:
-			collectCanvases(v.Body, out)
 		case *ir.If:
 			collectCanvases(v.Body, out)
 			collectCanvases(v.Else, out)

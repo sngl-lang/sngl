@@ -173,7 +173,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 	}
 	for _, w := range ir.AllWindows(pkg) {
 		st.owner = windowOwner{w: w, pkg: pkg}
-		st.collectFromStmts(w.Body)
+		st.collectFromStmts(w.Children)
 	}
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
@@ -223,7 +223,7 @@ func lowerReactivity(pkg *ir.Package, caps Caps, opts Options) error {
 	}
 	for _, w := range ir.AllWindows(pkg) {
 		st.owner = windowOwner{w: w, pkg: pkg}
-		w.Body = st.rewriteAndInject(w.Body)
+		w.Children = st.rewriteAndInject(w.Children)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			w.ErrorHandler.Func.Block = st.rewriteAndInject(w.ErrorHandler.Func.Block)
 		}
@@ -374,6 +374,13 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			n.Body = st.rewriteReactiveStructures(n.Body, parentRef)
 			n.Else = st.rewriteReactiveStructures(n.Else, parentRef)
 		case *ir.NodeInst:
+			// A window is driven as its own owner by lowerReactivity, like a
+			// top-level one: its slot vars and render funcs belong to it, so
+			// reaching it from the body it was written in would build them
+			// against the wrong owner.
+			if ir.IsWindowNode(n) {
+				continue
+			}
 			// If any direct child is a reactive If/For we need a stable
 			// element ref for it to thread through to the slot updater.
 			kids := ir.WidgetChildren(n)
@@ -393,9 +400,6 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 			n.Children = st.rewriteReactiveStructures(n.Children, parentRef)
 		case *ir.ErrorBoundary:
 			n.Children = st.rewriteReactiveStructures(n.Children, parentRef)
-		case *ir.Window:
-			// Driven as its own owner by lowerReactivity, like a top-level
-			// one: its slot vars and render funcs belong to it.
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
 			// Leaf/non-structural stmts — no nested reactive If/For to rewrite.
@@ -563,6 +567,11 @@ func (st *reactivityState) collectFromStmts(stmts []ir.Stmt) {
 func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
+		// Not walked from here: lowerReactivity walks every window with itself
+		// as the owner, wherever it was written.
+		if ir.IsWindowNode(n) {
+			return
+		}
 		st.collectFromNode(n)
 	case *ir.If:
 		st.collectFromIf(n)
@@ -592,9 +601,6 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 		st.collectFromStmts(n.Children)
 	case *ir.ErrorBoundary:
 		st.collectFromStmts(n.Children)
-	case *ir.Window:
-		// Not walked from here: lowerReactivity walks every window with itself
-		// as the owner, wherever it was written.
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:
 		// Non-visual stmts — no reactive props/slots to collect from.
@@ -966,6 +972,10 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			n.Body = st.injectIntoStmts(n.Body)
 			n.Else = st.injectIntoStmts(n.Else)
 		case *ir.NodeInst:
+			// See rewriteReactiveStructures: driven as its own owner.
+			if ir.IsWindowNode(n) {
+				continue
+			}
 			if kids := ir.WidgetChildren(n); kids != nil {
 				n.Children = st.injectIntoStmts(kids)
 			}
@@ -981,8 +991,6 @@ func (st *reactivityState) injectIntoStmts(stmts []ir.Stmt) []ir.Stmt {
 			if n.Handler != nil && n.Handler.Func != nil {
 				n.Handler.Func.Block = st.injectIntoStmts(n.Handler.Func.Block)
 			}
-		case *ir.Window:
-			// See rewriteReactiveStructures: driven as its own owner.
 		case *ir.CallStmt, *ir.LocalVar, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle,
 			*ir.ContextProvider, *ir.Break, *ir.Continue:
 			// No child statement list of their own. Any callback they hold --
@@ -1694,6 +1702,11 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Body)
 				walk(n.Else)
 			case *ir.NodeInst:
+				// A window is its own block; lowerReactivity builds that
+				// slot's Func with the window as the owner.
+				if ir.IsWindowNode(n) {
+					return
+				}
 				walk(ir.WidgetChildren(n))
 				for _, h := range n.Handlers {
 					if h.Func != nil {
@@ -1704,9 +1717,6 @@ func (st *reactivityState) buildRenderSlotFor(slotID string, stmts []ir.Stmt) *i
 				walk(n.Children)
 			case *ir.ErrorBoundary:
 				walk(n.Children)
-			case *ir.Window:
-				// Its own block; lowerReactivity builds that slot's Func with
-				// the window as the owner.
 			case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 				*ir.Break, *ir.Continue:
 				// Leaf/non-structural stmts cannot host an If/For with a

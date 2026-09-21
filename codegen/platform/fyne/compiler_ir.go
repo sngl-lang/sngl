@@ -1050,8 +1050,6 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			case *ir.CallStmt:
 				if parent, child, ok := appendChildEdge(n); ok {
 					kids[parent] = append(kids[parent], child)
@@ -1087,7 +1085,7 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 			}
 		}
 		for _, w := range ir.AllWindows(pkg) {
-			walk(w.Body)
+			walk(w.Children)
 		}
 	}
 	for id, sp := range specs {

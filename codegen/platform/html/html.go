@@ -541,17 +541,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		}
 		if staticMode {
 			if prev, dup := seenPaths[name]; dup {
-				pos := ast.Pos{}
-				if win.Window != nil && win.Window.AST != nil {
-					pos = win.Window.AST.Pos
-				}
-				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, pos)
+				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, ir.StmtPos(win.Window))
 			}
-			if win.Window != nil && win.Window.AST != nil {
-				seenPaths[name] = win.Window.AST.Pos
-			} else {
-				seenPaths[name] = ast.Pos{}
-			}
+			seenPaths[name] = ir.StmtPos(win.Window)
 		}
 		gen := newHTMLGenFromCtx(ctx, jsLang, opts, shared)
 		gen.wasmLoader = wasmLoaderHTML
@@ -924,6 +916,13 @@ func (g *htmlGen) prewalkNodes() {
 			if n == nil {
 				return
 			}
+			// A window holds the page rather than an element on it: its id
+			// names no DOM node, so allocating a var for one would declare a
+			// binding against a `document.querySelector` that finds nothing.
+			if ir.IsWindowNode(n) {
+				visitStmts(n.Children)
+				return
+			}
 			if strings.HasPrefix(n.ID, "__n") {
 				g.idToNode[n.ID] = n
 			} else if n.ID != "" {
@@ -953,8 +952,6 @@ func (g *htmlGen) prewalkNodes() {
 		case *ir.For:
 			visitStmts(n.Body)
 			visitStmts(n.Else)
-		case *ir.Window:
-			visitStmts(n.Body)
 		case *ir.SlotInst:
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
@@ -982,7 +979,7 @@ func (g *htmlGen) prewalkNodes() {
 		if w == nil {
 			continue
 		}
-		visitStmts(w.Body)
+		visitStmts(w.Children)
 	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
@@ -1068,7 +1065,7 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 		if w == nil {
 			continue
 		}
-		visit(w.Body)
+		visit(w.Children)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			visit(w.ErrorHandler.Func.Block)
 		}
@@ -1313,6 +1310,9 @@ func isAllocatedID(digits string, nextID int) bool {
 func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
+		if ir.IsWindowNode(n) {
+			panic(fmt.Sprintf("html.renderIRStmt: unexpected nested Window: %#v", n))
+		}
 		g.renderIRNode(b, n, depth)
 	case *ir.SlotInst:
 		for _, child := range g.irSlotChildren {
@@ -1347,8 +1347,6 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		for _, child := range n.Body {
 			g.renderIRStmt(b, child, depth)
 		}
-	case *ir.Window:
-		panic(fmt.Sprintf("html.renderIRStmt: unexpected nested Window: %#v", n))
 	case *ir.ContextProvider:
 		// passNoContext eliminates these before codegen.
 		panic(fmt.Sprintf("html.renderIRStmt: unexpected ContextProvider: %#v", n))
@@ -3182,10 +3180,6 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
 		}
-	case *ir.Window:
-		for _, c := range n.Body {
-			g.collectLoweredRefs(c)
-		}
 	case *ir.ContextProvider:
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
@@ -3607,7 +3601,7 @@ func (g *htmlGen) bodyCalls() []string {
 		collect(c.Body)
 	}
 	for _, w := range ir.AllWindows(pkg) {
-		collect(w.Body)
+		collect(w.Children)
 	}
 	collect(pkg.Body)
 	return out

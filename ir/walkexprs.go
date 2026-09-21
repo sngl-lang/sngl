@@ -29,9 +29,8 @@ var (
 // back.
 //
 // root may be a *Package, *Component, *Func, []Stmt, Stmt, or Expr (panics
-// otherwise); a *Window arrives as a Stmt and needs no case of its own. For a
-// container root (*Package/*Component/*Func/[]Stmt) replacements land in the
-// container; for a bare Stmt/Expr root, replacing the root node itself is not
+// otherwise). For a container root (*Package/*Component/*Func/[]Stmt)
+// replacements land in the container; for a bare Stmt/Expr root, replacing the root node itself is not
 // observable (the root is passed by value) — rewrite its children, or use a
 // container root.
 //
@@ -245,6 +244,9 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 				w.fn(h.Func)
 			}
 		}
+		if n.ErrorHandler != nil {
+			w.fn(n.ErrorHandler.Func)
+		}
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
 		n.Children = w.stmts(n.Children)
@@ -308,8 +310,6 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		}
 		n.Children = w.stmts(n.Children)
 		n.Failed = w.stmts(n.Failed)
-	case *Window:
-		w.window(n)
 	case *ContextProvider:
 		n.Value = w.expr(n.Value)
 		n.Children = w.stmts(n.Children)
@@ -360,22 +360,6 @@ func (w *rewriter) component(c *Component) {
 		w.fn(f)
 	}
 	c.Body = w.stmts(c.Body)
-}
-
-// window walks everything a Window owns. A window is reachable two ways — as a
-// package-level declaration and as a statement inside a for-loop body — and
-// having one body of code for both is what stops the two from drifting apart.
-func (w *rewriter) window(win *Window) {
-	if w.done || win == nil {
-		return
-	}
-	for i := range win.Props {
-		win.Props[i].Value = w.expr(win.Props[i].Value)
-	}
-	if win.ErrorHandler != nil {
-		w.fn(win.ErrorHandler.Func)
-	}
-	win.Body = w.stmts(win.Body)
 }
 
 func (w *rewriter) varDecl(v *Var) {
@@ -432,7 +416,7 @@ func (w *rewriter) pkg(pkg *Package) {
 		w.component(c)
 	}
 	for _, win := range pkg.Windows {
-		w.window(win)
+		w.stmt(win)
 	}
 	// The package's own body, last, so a walk sees declarations before what
 	// renders them -- the same order this walk visits a component in.

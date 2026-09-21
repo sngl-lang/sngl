@@ -521,7 +521,7 @@ func foldWindow(w *ir.Window, ctx *evalCtx) {
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 		w.ErrorHandler.Func.Block = foldStmts(w.ErrorHandler.Func.Block, ctx)
 	}
-	w.Body = foldStmts(w.Body, ctx)
+	w.Children = foldStmts(w.Children, ctx)
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.

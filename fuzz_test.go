@@ -443,8 +443,8 @@ func (v *irValidator) walkComponent(c *ir.Component) {
 }
 
 func (v *irValidator) walkWindow(w *ir.Window) {
-	if w.Name == "" {
-		v.fail("window has no name")
+	if w.ID == "" {
+		v.fail("window has no id")
 	}
 	for _, p := range w.Props {
 		if p.Value != nil {
@@ -452,7 +452,7 @@ func (v *irValidator) walkWindow(w *ir.Window) {
 		}
 	}
 	v.push("body")
-	v.walkStmts(w.Body)
+	v.walkStmts(w.Children)
 	v.pop()
 }
 

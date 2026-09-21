@@ -37,7 +37,7 @@ func lowerDeclarative(pkg *ir.Package, caps Caps, _ Options) error {
 	}
 	pkg.Body = st.processStmts(pkg.Body, &pkg.Funcs)
 	for _, w := range pkg.Windows {
-		w.Body = st.processStmts(w.Body, &pkg.Funcs)
+		w.Children = st.processStmts(w.Children, &pkg.Funcs)
 	}
 	return nil
 }
@@ -159,8 +159,6 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 			st.scanStmts(n.Children)
 		case *ir.ErrorBoundary:
 			st.scanStmts(n.Children)
-		case *ir.Window:
-			st.scanStmts(n.Body)
 		case *ir.Assign, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue, *ir.CanvasRedrawStmt:
 			// Leaf/non-visual stmts — no NodeInst IDs to observe. A redraw
@@ -209,6 +207,14 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			// A window is a rendering root, not a widget to flatten: what it
+			// holds is lowered, and the window itself stays where it was
+			// written for codegen to read as the page it is.
+			if ir.IsWindowNode(n) {
+				n.Children = st.processStmts(n.Children, funcs)
+				out = append(out, n)
+				continue
+			}
 			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
 			if parentID != "" {
 				out = append(out, &ir.CallStmt{
@@ -236,9 +242,6 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 			out = append(out, n)
 		case *ir.ErrorBoundary:
 			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
-			out = append(out, n)
-		case *ir.Window:
-			n.Body = st.processStmts(n.Body, funcs)
 			out = append(out, n)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:

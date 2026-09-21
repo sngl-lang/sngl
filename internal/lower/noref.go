@@ -411,11 +411,6 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 		}
 	case *ir.Toggle:
 		n.Target = r.rewriteAssignTarget(n.Target)
-	case *ir.Window:
-		for i := range n.Props {
-			n.Props[i].Value = r.rewriteExpr(n.Props[i].Value)
-		}
-		r.rewriteStmts(n.Body)
 	case *ir.ContextProvider:
 		n.Value = r.rewriteExpr(n.Value)
 		r.rewriteStmts(n.Children)
@@ -591,13 +586,6 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		}
 	case *ir.Toggle:
 		seedAddressedVarsInExpr(n.Target, set)
-	case *ir.Window:
-		for i := range n.Props {
-			seedAddressedVarsInExpr(n.Props[i].Value, set)
-		}
-		for _, t := range n.Body {
-			seedAddressedVarsInStmt(t, set)
-		}
 	case *ir.ContextProvider:
 		seedAddressedVarsInExpr(n.Value, set)
 		for _, t := range n.Children {

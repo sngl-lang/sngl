@@ -295,11 +295,11 @@ func (st *inlineCompState) run() error {
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
 			st.hoist = windowHoist(st.pkg)
-			wbody, wch, err := st.inlineStmts(w.Body)
+			wbody, wch, err := st.inlineStmts(w.Children)
 			if err != nil {
 				return err
 			}
-			w.Body = wbody
+			w.Children = wbody
 			anyWinCh = anyWinCh || wch
 		}
 		if !ch && !anyFuncCh && !anyWinCh && !pch {
@@ -555,7 +555,7 @@ func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 			if !isEffectNode(n) {
 				renders = true
 			}
-		case *ir.SlotInst, *ir.ErrorBoundary, *ir.Window, *ir.CanvasRedrawStmt:
+		case *ir.SlotInst, *ir.ErrorBoundary, *ir.CanvasRedrawStmt:
 			renders = true
 		}
 		return nil
@@ -636,6 +636,13 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		n.Children = ch
+		// A window is a rendering root and instantiates nothing this pass may
+		// splice: it stays where it was written, with whatever its body held
+		// now inlined. Everything below asks what to do with a *component*
+		// instantiation, and a window is not one.
+		if ir.IsWindowNode(n) {
+			return []ir.Stmt{n}, chCh, nil
+		}
 		anyHandlerCh := false
 		for _, h := range n.Handlers {
 			if h.Func == nil {
@@ -758,17 +765,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			hCh = b
 		}
 		return []ir.Stmt{n}, chCh || hCh, nil
-	case *ir.Window:
-		// Window stmts live in component bodies when `window { }` is declared
-		// inside a component (rather than at document root). Recurse into the
-		// window's body so component NodeInsts nested inside it are inlined.
-		body, ch, err := st.inlineStmtsCtx(n.Body, rc)
-		if err != nil {
-			return nil, false, err
-		}
-		n.Body = body
-		anyFuncCh := false
-		return []ir.Stmt{n}, ch || anyFuncCh, nil
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:
 		// Leaf/imperative stmts — no NodeInsts to inline.

@@ -263,8 +263,6 @@ func collectUsedIRStmts(stmts []ir.Stmt, used map[string]bool) {
 			collectUsedIRStmts(n.Children, used)
 		case *ir.SlotInst:
 			collectUsedIRStmts(n.Children, used)
-		case *ir.Window:
-			collectUsedIRStmts(n.Body, used)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Pure statements have no named visual children.

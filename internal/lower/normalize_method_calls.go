@@ -57,7 +57,7 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 		return err
 	}
 	for _, w := range pkg.Windows {
-		if err := walk(w.Body); err != nil {
+		if err := walk(w.Children); err != nil {
 			return err
 		}
 	}

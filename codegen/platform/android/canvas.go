@@ -80,10 +80,6 @@ func treeHasCanvas(stmts []ir.Stmt) bool {
 			if treeHasCanvas(n.Body) || treeHasCanvas(n.Else) {
 				return true
 			}
-		case *ir.Window:
-			if treeHasCanvas(n.Body) {
-				return true
-			}
 		case *ir.SlotInst:
 			if treeHasCanvas(n.Children) {
 				return true

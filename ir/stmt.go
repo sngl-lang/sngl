@@ -45,6 +45,73 @@ type NodeInst struct {
 	Handle *Var `json:"-"`
 	Key    Expr // key expression for list diffing (nil → implicit index)
 	Ref    Expr // ref binding (nil if none)
+
+	// The three below are a window's and nil on every other node, which is the
+	// price of a window being a NodeInst rather than a type of its own. It is
+	// three nil fields against the 79 `case *ir.Window:` arms the separate type
+	// cost, and none of them is a *body owner* -- Vars, Funcs and Timers stay
+	// off NodeInst, which is the distinction PLAN.md's first fork turns on.
+
+	// ErrorHandler is the @error this node declared: the outermost error
+	// boundary for the tree it renders. Separate from Handlers because those
+	// are the events a platform wires to a widget and nothing wires this one.
+	ErrorHandler *EventHandler `json:",omitempty"`
+	// Params is the binding a window's scoped rest slot hands its body: one
+	// struct value holding what the route knows per request, typed by the
+	// `params` prop the call site wrote. Nil where the declaration's slot binds
+	// nothing.
+	//
+	// The fields are the path's `{name}` placeholders, which is why nothing
+	// here reads the href: the struct is the contract and the path is a plain
+	// string that has to satisfy it.
+	//
+	// A Var rather than the Param the slot declares, because what a target does
+	// with it is what it does with state: one cell, filled in before the body
+	// is rendered. A route handler binds it from the request; a target with no
+	// request leaves it at the struct's zero, which is the Init.
+	Params *Var `json:"-"`
+	// LocalRefs is populated by lower's passNodeEscape (MutationModel platforms
+	// only): the set of synthesized widget ref ids (__nN) created in this
+	// node's children that do NOT escape to any other scope. A node has one
+	// when it is a render scope of its own, which today means a window. See
+	// internal/lower/node_escape.go and Component.LocalRefs.
+	LocalRefs map[string]bool `json:"-"`
+}
+
+// Prop is the value written for name, or nil if the call site did not write
+// it. checkAndSplitArgs binds a positional arg to its declared name before the
+// slice reaches here, so a lookup by name finds what was written positionally.
+//
+// Nil-safe on the receiver, and two callers depend on it:
+// CodegenCtx.Windows synthesizes a WindowCtx with a nil Window for a
+// harness-isolated root component, so html and gtk4 ask a window that is not
+// there rather than guarding first.
+// VisualNode is the source node n was built from, or nil where it was
+// synthesized or came from a call statement.
+//
+// NodeInst.AST is the interface because `Foo()` parses as an *ast.CallStmt and
+// `Foo { }` as an *ast.VisualNode, and both are instantiations. A caller that
+// knows it holds the second -- the checker reading a window's block, which the
+// parser only ever produces the one way -- asks here rather than repeating the
+// assertion.
+func (n *NodeInst) VisualNode() *ast.VisualNode {
+	if n == nil {
+		return nil
+	}
+	vn, _ := n.AST.(*ast.VisualNode)
+	return vn
+}
+
+func (n *NodeInst) Prop(name string) Expr {
+	if n == nil {
+		return nil
+	}
+	for _, p := range n.Props {
+		if p.Name == name {
+			return p.Value
+		}
+	}
+	return nil
 }
 
 // SlotContent is what a call site supplies for one named slot. Params are the

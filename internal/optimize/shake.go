@@ -223,7 +223,7 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 		walk(comp)
 	}
 	for _, w := range pkg.Windows {
-		walkStmts(w.Body, used, walk)
+		walkStmts(w.Children, used, walk)
 	}
 	// Test functions are roots.
 	for _, f := range pkg.Funcs {
@@ -325,11 +325,6 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		walkExpr(n.Iter, used, walk)
 		walkStmts(n.Body, used, walk)
 		walkStmts(n.Else, used, walk)
-	case *ir.Window:
-		for i := range n.Props {
-			walkExpr(n.Props[i].Value, used, walk)
-		}
-		walkStmts(n.Body, used, walk)
 	case *ir.ContextProvider:
 		walkExpr(n.Value, used, walk)
 		walkStmts(n.Children, used, walk)

@@ -85,7 +85,7 @@ window("App") {
 	if len(pkg.Windows) != 1 {
 		t.Fatalf("want 1 window, got %d", len(pkg.Windows))
 	}
-	block := firstClickHandlerBlock(pkg.Windows[0].Body)
+	block := firstClickHandlerBlock(pkg.Windows[0].Children)
 	if block == nil {
 		t.Fatal("no @click handler found")
 	}
@@ -108,7 +108,7 @@ window("App") {
     }
 }
 `)
-	eb := pkg.Windows[0].Body[0].(*ir.ErrorBoundary)
+	eb := pkg.Windows[0].Children[0].(*ir.ErrorBoundary)
 	if eb.Handler == nil {
 		t.Fatal("boundary has no handler")
 	}
@@ -140,7 +140,7 @@ window("App", @error(e) { }) {
 	if w.ErrorHandler == nil {
 		t.Fatal("window missing @error handler")
 	}
-	block := firstClickHandlerBlock(w.Body)
+	block := firstClickHandlerBlock(w.Children)
 	call := findCallStmt(block, "error.raise")
 	if call == nil {
 		t.Fatal("ErrorRaise not found")
@@ -163,7 +163,7 @@ window("App", @error(e) { }) {
     }
 }
 `)
-	eb := pkg.Windows[0].Body[0].(*ir.ErrorBoundary)
+	eb := pkg.Windows[0].Children[0].(*ir.ErrorBoundary)
 	block := firstClickHandlerBlock(eb.Children)
 	call := findCallStmt(block, "error.raise")
 	if call.ResolvedHandler != eb.Handler {
@@ -193,7 +193,7 @@ window("App") {
 	if risky == nil || !risky.CanError {
 		t.Fatalf("risky should be CanError; got %+v", risky)
 	}
-	block := firstClickHandlerBlock(pkg.Windows[0].Body)
+	block := firstClickHandlerBlock(pkg.Windows[0].Children)
 	call := findCallStmt(block, "risky")
 	if call == nil {
 		t.Fatal("risky call not found")

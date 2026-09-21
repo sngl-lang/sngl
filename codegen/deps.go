@@ -417,13 +417,6 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 				w.walkStmt(c)
 			}
 		}
-	case *ir.Window:
-		for i := range n.Props {
-			w.walkExpr(n.Props[i].Value)
-		}
-		for _, c := range n.Body {
-			w.walkStmt(c)
-		}
 	case *ir.ContextProvider:
 		w.walkExpr(n.Value)
 		for _, c := range n.Children {

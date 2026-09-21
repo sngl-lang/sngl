@@ -29,7 +29,7 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	injectCanvasRedraws(pkg.Body, nil, pkgVars, &pkg.Funcs)
 	for _, w := range pkg.Windows {
-		injectCanvasRedraws(w.Body, nil, pkgVars, &pkg.Funcs)
+		injectCanvasRedraws(w.Children, nil, pkgVars, &pkg.Funcs)
 	}
 	return nil
 }
@@ -123,8 +123,6 @@ func collectCanvases(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out *[]canvasE
 		case *ir.For:
 			collectCanvases(n.Body, stateVars, out)
 			collectCanvases(n.Else, stateVars, out)
-		case *ir.Window:
-			collectCanvases(n.Body, stateVars, out)
 		}
 	}
 }
@@ -325,8 +323,6 @@ func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvase
 		case *ir.For:
 			injectIntoNodeHandlers(n.Body, stateVars, canvases)
 			injectIntoNodeHandlers(n.Else, stateVars, canvases)
-		case *ir.Window:
-			injectIntoNodeHandlers(n.Body, stateVars, canvases)
 		}
 	}
 }

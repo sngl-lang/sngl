@@ -148,7 +148,7 @@ func irIdentifierTokens(pkg *ir.Package) []rawToken {
 		w.component(c)
 	}
 	for _, win := range pkg.Windows {
-		w.window(win)
+		w.stmt(win)
 	}
 	return out
 }
@@ -183,19 +183,6 @@ func (w *irTokenWalker) component(c *ir.Component) {
 		w.fn_(f)
 	}
 	w.stmts(c.Body)
-}
-
-func (w *irTokenWalker) window(win *ir.Window) {
-	if win == nil {
-		return
-	}
-	for i := range win.Props {
-		w.expr(win.Props[i].Value)
-	}
-	w.stmts(win.Body)
-	if win.ErrorHandler != nil {
-		w.fn_(win.ErrorHandler.Func)
-	}
 }
 
 func (w *irTokenWalker) fn_(f *ir.Func) {
@@ -254,8 +241,6 @@ func (w *irTokenWalker) stmt(s ir.Stmt) {
 		w.expr(x.Iter)
 		w.stmts(x.Body)
 		w.stmts(x.Else)
-	case *ir.Window:
-		w.window(x)
 	}
 }
 
@@ -270,6 +255,9 @@ func (w *irTokenWalker) nodeInst(n *ir.NodeInst) {
 	}
 	for _, h := range n.Handlers {
 		w.fn_(h.Func)
+	}
+	if n.ErrorHandler != nil {
+		w.fn_(n.ErrorHandler.Func)
 	}
 	for _, a := range n.Props {
 		if a.Name != "" && a.NamePos.IsSet() {

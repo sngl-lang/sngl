@@ -2,6 +2,19 @@ package ir
 
 import "testing"
 
+// testWindow is what buildWindow produces, minus everything these tests do not
+// read: the id the program wrote, and the declaration whose #[builtin("window")]
+// mark is what IsWindowNode matches. A literal without the second is an
+// ordinary node, which is the whole of what makes a window one now.
+func testWindow(id string, body ...Stmt) *Window {
+	return &Window{
+		Name:      "window",
+		ID:        id,
+		Component: &Component{Name: "window", Builtin: BuiltinWindow},
+		Children:  body,
+	}
+}
+
 // Owners is the answer to "which declarations can own state", and the whole
 // point of having one is that a consumer cannot get a different one. So this
 // asserts the three kinds are all reported, each carrying its own vars and its
@@ -12,7 +25,7 @@ func TestOwnersReportsEveryKind(t *testing.T) {
 	compVar := &Var{Name: "compVar"}
 
 	comp := &Component{Name: "counter", Vars: []*Var{compVar}, Body: []Stmt{&Return{}}}
-	win := &Window{Name: "home", Body: []Stmt{&Return{}}}
+	win := testWindow("home", &Return{})
 	pkg := &Package{
 		Vars:       []*Var{pkgVar},
 		Consts:     []*Var{pkgConst},
@@ -68,10 +81,10 @@ func TestOwnersOfNilPackage(t *testing.T) {
 // leaves the window there for the whole build, and every consumer that wants
 // the windows asks Owners rather than the pkg.Windows field.
 func TestOwnersFindsWindowsInAnyBody(t *testing.T) {
-	inPkg := &Window{Name: "fromPkgBody"}
-	inComp := &Window{Name: "fromCompBody"}
-	inWin := &Window{Name: "fromWindowBody"}
-	listed := &Window{Name: "listed", Body: []Stmt{inWin}}
+	inPkg := testWindow("fromPkgBody")
+	inComp := testWindow("fromCompBody")
+	inWin := testWindow("fromWindowBody")
+	listed := testWindow("listed", inWin)
 
 	pkg := &Package{
 		Body:       []Stmt{&If{Body: []Stmt{inPkg}}},
@@ -82,7 +95,7 @@ func TestOwnersFindsWindowsInAnyBody(t *testing.T) {
 	found := map[string]bool{}
 	for _, o := range Owners(pkg) {
 		if o.Win != nil {
-			found[o.Win.Name] = true
+			found[o.Win.ID] = true
 		}
 	}
 	for _, want := range []string{"listed", "fromPkgBody", "fromCompBody", "fromWindowBody"} {
@@ -99,16 +112,16 @@ func TestOwnersFindsWindowsInAnyBody(t *testing.T) {
 func TestOwnersSkipsTheNestedSearchOnceWindowsAreFlat(t *testing.T) {
 	newPkg := func() *Package {
 		return &Package{
-			Body:       []Stmt{&If{Body: []Stmt{&Window{Name: "fromPkgBody"}}}},
-			Components: []*Component{{Name: "root", Body: []Stmt{&Window{Name: "fromCompBody"}}}},
-			Windows:    []*Window{{Name: "listed", Body: []Stmt{&Window{Name: "nested"}}}},
+			Body:       []Stmt{&If{Body: []Stmt{testWindow("fromPkgBody")}}},
+			Components: []*Component{{Name: "root", Body: []Stmt{testWindow("fromCompBody")}}},
+			Windows:    []*Window{testWindow("listed", testWindow("nested"))},
 		}
 	}
 	names := func(pkg *Package) map[string]bool {
 		out := map[string]bool{}
 		for _, o := range Owners(pkg) {
 			if o.Win != nil {
-				out[o.Win.Name] = true
+				out[o.Win.ID] = true
 			}
 		}
 		return out
@@ -137,7 +150,9 @@ func TestOwnersSkipsTheNestedSearchOnceWindowsAreFlat(t *testing.T) {
 // enumeration, it was the half of blocks.go's window arm that went missing.
 func TestOwnersCarriesTheWindowErrorHandler(t *testing.T) {
 	h := &EventHandler{Name: "error", Func: &Func{}}
-	pkg := &Package{Windows: []*Window{{Name: "home", ErrorHandler: h}}}
+	home := testWindow("home")
+	home.ErrorHandler = h
+	pkg := &Package{Windows: []*Window{home}}
 
 	got := Owners(pkg)
 	if len(got) != 2 {
@@ -155,7 +170,7 @@ func TestOwnersCarriesTheWindowErrorHandler(t *testing.T) {
 // consumer gets wrong silently: appending to Owner.Vars reaches a copy.
 func TestOwnerAddVarsReachesTheDeclaration(t *testing.T) {
 	comp := &Component{Name: "counter"}
-	win := &Window{Name: "home"}
+	win := testWindow("home")
 	pkg := &Package{Components: []*Component{comp}, Windows: []*Window{win}}
 
 	for _, o := range Owners(pkg) {

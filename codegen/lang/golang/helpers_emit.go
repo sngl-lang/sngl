@@ -519,8 +519,6 @@ func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
 			if n.Handler != nil && n.Handler.Func != nil {
 				recordFuncHelpers(h, n.Handler.Func)
 			}
-		case *ir.Window:
-			recordStmtHelpers(h, n.Body)
 		case *ir.ContextProvider:
 			recordExprHelpers(h, n.Value)
 			recordStmtHelpers(h, n.Children)

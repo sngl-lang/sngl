@@ -341,6 +341,15 @@ type checker struct {
 
 	// Tracks window #id collisions at package scope.
 	pkgWindowIDs map[string]bool
+	// checkedWindows is the windows whose body was checked in context -- one
+	// written inside a component body, or inside a `for` at the root of a
+	// file. pass2 walks pkg.Windows afterwards and would check those twice.
+	//
+	// A set here rather than a flag on the window, because "has the checker
+	// been over this yet" is the checker's bookkeeping and nothing after it
+	// can act on the answer. It was ir.Window.Checked, which the stripper then
+	// had to clear so a round-trip comparison did not see it.
+	checkedWindows map[*ir.Window]bool
 
 	outputDecl *ast.VisualNode
 
@@ -553,16 +562,17 @@ type pendingConstInit struct {
 func newChecker(docs []*ast.Document, cfg *Config) *checker {
 	symtab := NewSymbolTable()
 	c := &checker{
-		doc:          firstDoc(docs),
-		docs:         docs,
-		cfg:          cfg,
-		pkg:          &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
-		symtab:       symtab,
-		scope:        symtab.Root,
-		visited:      cfg.visitedStack(),
-		dirPkgs:      cfg.dirPkgCache(),
-		pkgWindowIDs: make(map[string]bool),
-		libs:         cfg.libCache(),
+		doc:            firstDoc(docs),
+		docs:           docs,
+		cfg:            cfg,
+		pkg:            &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}},
+		symtab:         symtab,
+		scope:          symtab.Root,
+		visited:        cfg.visitedStack(),
+		dirPkgs:        cfg.dirPkgCache(),
+		pkgWindowIDs:   make(map[string]bool),
+		checkedWindows: make(map[*ir.Window]bool),
+		libs:           cfg.libCache(),
 	}
 	// Allocated before the library loads, because those now run the same
 	// pass1 a program's package does, and pass1 enters a file per document.
@@ -3106,18 +3116,17 @@ func typeAssignable(src, dst *ir.Type) bool {
 	return false
 }
 
-// checkDuplicateWindowID reports an error if w.Name is non-empty and another
-// window with the same Name already exists in seen. Otherwise records w in
-// seen and returns.
+// checkDuplicateWindowID reports an error if w's id is non-empty and another
+// window already carries it. Otherwise records w in seen and returns.
 func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
-	if w == nil || w.Name == "" || seen == nil {
+	if w == nil || w.ID == "" || seen == nil {
 		return
 	}
-	if seen[w.Name] {
-		c.error(w.AST.Pos, "duplicate window id %q", w.Name)
+	if seen[w.ID] {
+		c.error(ir.StmtPos(w), "duplicate window id %q", w.ID)
 		return
 	}
-	seen[w.Name] = true
+	seen[w.ID] = true
 }
 
 // windowPropArgs is vn's arguments without its event handlers: what
@@ -3170,7 +3179,7 @@ func (c *checker) windowParamsVar(spec *ir.Component) *ir.Var {
 // the binding declareNodeIDs hoisted, which is a var rather than this. That is
 // what lets the window itself stop being a symbol.
 func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{Name: vn.ID, Handle: c.windowHandle(vn)}
+	w := &ir.Window{Name: visualNodeTarget(vn), ID: vn.ID, Handle: c.windowHandle(vn)}
 	w.AST = vn
 	// The window's route parameters are a declared prop and not a reading of
 	// its href: `params` is a struct value, T is inferred from it, and the
@@ -3195,7 +3204,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// NodeInst.Component holds, and for the same reason -- a specialization is
 	// for checking this call site and is a component nothing else has heard
 	// of. What the body needs from it is the one binding, kept below.
-	w.Comp = c.windowComp
+	w.Component = c.windowComp
 	w.Params = c.windowParamsVar(spec)
 	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
 	c.checkWindowPathParams(vn, w)
@@ -3405,7 +3414,7 @@ func (c *checker) pass2() {
 
 	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
 	for _, w := range c.pkg.Windows {
-		if !w.Checked {
+		if !c.checkedWindows[w] {
 			c.checkWindowBody(w)
 		}
 	}
@@ -3839,7 +3848,7 @@ func (c *checker) bodyOwnerName() string {
 	case c.currentComponent != nil:
 		return c.currentComponent.Name
 	case c.currentWindow != nil:
-		return c.currentWindow.Name
+		return c.currentWindow.ID
 	}
 	return ""
 }
@@ -4083,7 +4092,7 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // registered in pass1, rebound above
 			default:
 				if s := c.checkStmt(stmt); s != nil {
-					if w, ok := s.(*ir.Window); ok {
+					if w, ok := s.(*ir.NodeInst); ok && ir.IsWindowNode(w) {
 						c.checkDuplicateWindowID(w, seenWindowIDs)
 					}
 					comp.Body = append(comp.Body, s)
@@ -4110,8 +4119,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 }
 
 func (c *checker) checkWindowBody(w *ir.Window) {
-	if w.AST != nil {
-		defer c.fileOf(w.AST.Pos)()
+	vn := w.VisualNode()
+	if vn != nil {
+		defer c.fileOf(vn.Pos)()
 	}
 	prevWindow := c.currentWindow
 	c.currentWindow = w
@@ -4120,23 +4130,23 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	defer c.popScope()
 
 	block := &ast.StmtBlock{}
-	if w.AST != nil {
-		block = c.bindWindowParams(w)
+	if vn != nil {
+		block = c.bindWindowParams(w, vn)
 		if w.Params != nil {
-			c.declare(w.AST.Pos, w.Params)
+			c.declare(vn.Pos, w.Params)
 		}
 		c.declareNodeIDs(block)
 	}
 
-	if w.AST != nil && block.IsDefined() {
-		w.Body = c.checkBlockIR(block)
+	if vn != nil && block.IsDefined() {
+		w.Children = c.checkBlockIR(block)
 		// A window is its own IR construct, so its children never reach the
 		// slot check every other node's go through. What it accepts is still
 		// the declaration's answer: `content ...component ui.node`.
 		// A window is written at the root of a file, where there is no owner,
 		// or in a component body, where a slot insertion in it is that
 		// component's -- and checkVisualNodeIR reaches this with one.
-		owner, body, at := c.currentComponent, w.Body, w.AST.Pos
+		owner, body, at := c.currentComponent, w.Children, vn.Pos
 		c.deferTreeCheck(func() {
 			c.checkTreeMembership(owner, at, body,
 				slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
@@ -4162,16 +4172,16 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 // So a window that writes no population has no cell either: w.Params is
 // dropped, and nothing downstream binds a route parameter for a page that
 // does not read one.
-func (c *checker) bindWindowParams(w *ir.Window) *ast.StmtBlock {
+func (c *checker) bindWindowParams(w *ir.Window, vn *ast.VisualNode) *ast.StmtBlock {
 	rest := c.windowComp.RestSlot()
 	if rest == nil {
 		w.Params = nil
-		return &w.AST.Block
+		return &vn.Block
 	}
 	var pop *ast.ComponentDecl
-	kept := w.AST.Block
+	kept := vn.Block
 	kept.Stmts = nil
-	for _, st := range w.AST.Block.Stmts {
+	for _, st := range vn.Block.Stmts {
 		cd, isDecl := st.(*ast.ComponentDecl)
 		if !isDecl {
 			kept.Stmts = append(kept.Stmts, st)
@@ -4188,10 +4198,10 @@ func (c *checker) bindWindowParams(w *ir.Window) *ast.StmtBlock {
 	}
 	if pop == nil {
 		w.Params = nil
-		return &w.AST.Block
+		return &vn.Block
 	}
 	if len(kept.Stmts) > 0 {
-		c.error(w.AST.Pos, "slot %q is populated by name and by the children written bare on component %s", rest.Name, c.windowComp.Name)
+		c.error(vn.Pos, "slot %q is populated by name and by the children written bare on component %s", rest.Name, c.windowComp.Name)
 	}
 	c.bindWindowParamsName(pop, rest, w)
 	return &pop.Body
@@ -4231,7 +4241,7 @@ func (c *checker) bindWindowParamsName(pop *ast.ComponentDecl, rest *ir.SlotDecl
 // is what later moves those onto the window's container.
 func windowStateVars(w *ir.Window) []*ir.Var {
 	var out []*ir.Var
-	for _, s := range w.Body {
+	for _, s := range w.Children {
 		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
 			out = append(out, lv.Sym)
 		}

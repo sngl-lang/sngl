@@ -84,7 +84,7 @@ func (ctx *CodegenCtx) EntryWindow() *ir.Window {
 	}
 	if name := ctx.Pkg.EntryWindow; name != "" {
 		for _, w := range ctx.Pkg.Windows {
-			if w.Name == name {
+			if w.ID == name {
 				return w
 			}
 		}

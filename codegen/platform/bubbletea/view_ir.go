@@ -256,6 +256,10 @@ func rendersPart(s ir.Stmt) bool {
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
+		if ir.IsWindowNode(s) {
+			// A window only appears at top level; one in a view tree is unexpected.
+			panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
+		}
 		if ir.IsTimerPrimitive(s.Component) {
 			return // see rendersPart
 		}
@@ -282,9 +286,6 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		for _, child := range s.Children {
 			vc.renderStmt(child, resultVar)
 		}
-	case *ir.Window:
-		// Window only appears at top-level; nested Window in view tree is unexpected.
-		panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
 	case *ir.LocalVar:
 		// A LocalVar in the view body is the `var __ltN` decl NoTernary hoists
 		// before the widget consuming it (its FromTernary If assigns it). Emit

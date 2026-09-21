@@ -231,11 +231,11 @@ func (p *Package) IsProgram() bool {
 			if found {
 				return SkipDir
 			}
-			switch n := s.(type) {
-			case *Window:
-				found = true
-				return SkipDir
-			case *NodeInst:
+			if n, ok := s.(*NodeInst); ok {
+				if IsWindowNode(n) {
+					found = true
+					return SkipDir
+				}
 				if n.Component != nil && !seen[n.Component] {
 					seen[n.Component] = true
 					scan(n.Component.Body)
@@ -815,76 +815,31 @@ type EventHandler struct {
 	CanError bool
 }
 
-// Window represents a window declaration at the root or component level.
-type Window struct {
-	AST  *ast.VisualNode
-	Name string
-	// Comp is the #[builtin("window")] declaration this instantiates, and
-	// Props the arguments written against it -- what NodeInst.Component and
-	// NodeInst.Props are, so nothing here names a window prop. Every consumer
-	// that used to walk Href/Title/Favicon by name reads Props, and a prop
-	// added to lib/ui/window.sngl reaches codegen without a Go edit.
-	//
-	// Comp is json:"-" where NodeInst.Component is not, so a JSON dump of a
-	// window does not carry the whole library graph the declaration points
-	// into. The stripper nils both, so the round-trip comparison sees neither.
-	Comp  *Component `json:"-"`
-	Props []Arg
-	// Handle is the binding `#id` declared, and it is an *ir.Var for the same
-	// reason NodeInst.Handle is: what a node id names is one question, and a
-	// window answering it differently was the second half of the split this
-	// type still is. See NodeInst.Handle for why the symbol rather than the
-	// name is the identity. Nil when no id was written, or when the name was
-	// already taken.
-	//
-	// It also carries the window's type, which is where a NodeInst keeps one:
-	// nothing reads a type off the window itself any more.
-	Handle *Var `json:"-"`
-	// Params is the binding the window's scoped rest slot hands its body: one
-	// struct value holding what the route knows per request, typed by the
-	// `params` prop the call site wrote. Nil where the declaration's slot
-	// binds nothing.
-	//
-	// The fields are the path's `{name}` placeholders, which is why nothing
-	// here reads the href: the struct is the contract and the path is a plain
-	// string that has to satisfy it.
-	//
-	// A Var rather than the Param the slot declares, because what a target
-	// does with it is what it does with state: one cell, filled in before the
-	// body is rendered. A route handler binds it from the request; a target
-	// with no request leaves it at the struct's zero, which is the Init.
-	Params       *Var          `json:"-"`
-	Body         []Stmt        // type-checked body statements
-	Checked      bool          // true if body was already checked in context (e.g., inside a for-loop)
-	ErrorHandler *EventHandler // optional @error handler; outermost error boundary for this window
-	// LocalRefs is populated by lower's passNodeEscape (MutationModel
-	// platforms only): the set of synthesized widget ref ids (__nN)
-	// created in this window's Body that do NOT escape to any other
-	// scope. See internal/lower/node_escape.go and Component.LocalRefs.
-	LocalRefs map[string]bool `json:"-"`
-}
-
-// Prop is the value written for name, or nil if the call site did not write
-// it. checkAndSplitArgs binds a positional arg to its declared name before the
-// slice reaches here, so a lookup by name finds what was written positionally.
+// Window is a node that instantiates the #[builtin("window")] declaration.
 //
-// Nil-safe on the receiver, and two callers depend on it:
-// CodegenCtx.Windows synthesizes a WindowCtx with a nil Window for a
-// harness-isolated root component, so html and gtk4 ask a window that is not
-// there rather than guarding first.
-func (w *Window) Prop(name string) Expr {
-	if w == nil {
-		return nil
-	}
-	for _, p := range w.Props {
-		if p.Name == name {
-			return p.Value
-		}
-	}
-	return nil
-}
+// It is an alias and not a type: a window is a NodeInst like every other node,
+// and the name is kept because "which of these nodes is a window" is a
+// question nineteen consumers ask and `*ir.Window` is what they have always
+// spelled the answer as. It buys no type safety -- a plain vbox satisfies it
+// -- so a function taking one is documenting its expectation rather than
+// enforcing it; IsWindowNode is the test.
+//
+// What the separate struct cost was 79 `case *ir.Window:` arms across the
+// lowering, the optimizer, the interpreter and four platforms, each of them a
+// second answer to a question the NodeInst arm beside it had already answered,
+// and each a place a walk could forget a window and say nothing.
+type Window = NodeInst
 
-func (w *Window) stmtNode() {} // Window can appear as a statement in for-loop bodies
+// IsWindowNode reports whether n instantiates the #[builtin("window")]
+// declaration.
+//
+// The mark and never the name, for the reason every other builtin lookup gives:
+// a program may declare its own `window` and it is not this one. It is also the
+// whole of what separates a window from any other node now that the two share a
+// type, so a walk asking "is this a window" asks here.
+func IsWindowNode(n *NodeInst) bool {
+	return n != nil && n.Component != nil && n.Component.Builtin == BuiltinWindow
+}
 
 // The window props the compiler itself reads. Each is declared in
 // lib/ui/window.sngl like any other prop; these are the spelling a Go consumer

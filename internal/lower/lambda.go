@@ -203,11 +203,6 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 		case *ir.Toggle:
 			markMutable(rootSym(n.Target))
 			walkExpr(n.Target)
-		case *ir.Window:
-			for i := range n.Props {
-				walkExpr(n.Props[i].Value)
-			}
-			walkStmts(n.Body)
 		case *ir.ContextProvider:
 			walkExpr(n.Value)
 			walkStmts(n.Children)
@@ -383,11 +378,6 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 		if n.Handler != nil && n.Handler.Func != nil {
 			liftLambdasInStmts(n.Handler.Func.Block, l)
 		}
-	case *ir.Window:
-		for i := range n.Props {
-			n.Props[i].Value = liftLambdas(n.Props[i].Value, l)
-		}
-		liftLambdasInStmts(n.Body, l)
 	case *ir.ContextProvider:
 		n.Value = liftLambdas(n.Value, l)
 		liftLambdasInStmts(n.Children, l)
@@ -668,11 +658,6 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 		if n.Handler != nil && n.Handler.Func != nil {
 			l.rewriteStmts(n.Handler.Func.Block, captureField, captureMutable)
 		}
-	case *ir.Window:
-		for i := range n.Props {
-			n.Props[i].Value = l.rewriteExpr(n.Props[i].Value, captureField, captureMutable)
-		}
-		l.rewriteStmts(n.Body, captureField, captureMutable)
 	case *ir.ContextProvider:
 		n.Value = l.rewriteExpr(n.Value, captureField, captureMutable)
 		l.rewriteStmts(n.Children, captureField, captureMutable)

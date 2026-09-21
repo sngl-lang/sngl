@@ -1176,6 +1176,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		case *ir.ErrorBoundary:
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
+			if ir.IsWindowNode(n) {
+				panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
+			}
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
 			// handler for that event name was transferred onto the node during
@@ -1206,8 +1209,6 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay, invokerSink)
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
-		case *ir.Window:
-			panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Imperative stmts — no nested visual children to walk.

@@ -95,7 +95,7 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 	}
 	scanStmts(pkg.Body, visit)
 	for _, w := range pkg.Windows {
-		scanStmts(w.Body, visit)
+		scanStmts(w.Children, visit)
 	}
 	return found
 }
@@ -159,11 +159,6 @@ func scanStmt(s ir.Stmt, visit func(ir.Expr)) {
 		scanExpr(n.Init, visit)
 	case *ir.CallStmt:
 		scanExpr(n.Call, visit)
-	case *ir.Window:
-		for i := range n.Props {
-			scanExpr(n.Props[i].Value, visit)
-		}
-		scanStmts(n.Body, visit)
 	case *ir.SlotInst:
 		scanStmts(n.Children, visit)
 	case *ir.ContextProvider:

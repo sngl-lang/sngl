@@ -319,7 +319,13 @@ rubber-stamped.
    whole pipeline, and `ir.Package.IsProgram` asks reachability rather than
    membership.)
 6. The 39 statement arms, once a window is no longer a statement kind.
-7. Delete `ir.Window`: a window is a `NodeInst` like any other node.
+   (done -- 72 of them by the time it happened, and they went with 7 rather
+   than before it: a window stops being a statement kind by becoming a
+   NodeInst, so the two steps are one change.)
+7. Delete `ir.Window`: a window is a `NodeInst` like any other node. (done --
+   `type Window = NodeInst`, and `ir.IsWindowNode` is what a walk asks. The
+   name is kept as an alias because nineteen consumers spell the answer that
+   way; it buys no type safety and is documented not to.)
 8. Delete the `#[builtin("window")]` mark, behind per-platform window
    primitives. See below. Delete this file.
 

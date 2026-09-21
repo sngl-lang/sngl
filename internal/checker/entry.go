@@ -55,8 +55,8 @@ func (c *checker) resolveEntryWindow(root *ir.NodeInst) {
 			handle = nil
 		}
 		for _, w := range c.packageWindows() {
-			if (handle != nil && w.Handle == handle) || (handle == nil && w.Name == id.Name) {
-				c.pkg.EntryWindow = w.Name
+			if (handle != nil && w.Handle == handle) || (handle == nil && w.ID == id.Name) {
+				c.pkg.EntryWindow = w.ID
 				return
 			}
 		}

@@ -49,7 +49,7 @@ func (c *checker) analyzeErrors() {
 		if w.ErrorHandler != nil {
 			scope = append(scope, w.ErrorHandler)
 		}
-		walkVisualErrors(w.Body, scope)
+		walkVisualErrors(w.Children, scope)
 	}
 	for _, comp := range pkg.Components {
 		walkVisualErrors(comp.Body, nil)

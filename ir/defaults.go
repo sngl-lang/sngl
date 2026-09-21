@@ -167,7 +167,7 @@ func Normalize(pkg *Package) {
 		normalizeComponent(c)
 	}
 	for _, w := range pkg.Windows {
-		normalizeWindow(w)
+		normalizeStmt(w)
 	}
 	pkg.Body = normalizeStmts(pkg.Body)
 }
@@ -250,18 +250,6 @@ func normalizeComponent(c *Component) {
 	c.Body = normalizeStmts(c.Body)
 }
 
-func normalizeWindow(w *Window) {
-	if w == nil {
-		return
-	}
-	for _, p := range w.Props {
-		if p.Value != nil {
-			normalizeExpr(p.Value)
-		}
-	}
-	w.Body = normalizeStmts(w.Body)
-}
-
 func normalizeStmts(stmts []Stmt) []Stmt {
 	for i := range stmts {
 		stmts[i] = normalizeStmt(stmts[i])
@@ -320,8 +308,6 @@ func normalizeStmt(s Stmt) Stmt {
 		for i := range n.Args {
 			normalizeExpr(n.Args[i].Value)
 		}
-	case *Window:
-		normalizeWindow(n)
 	}
 	return s
 }

@@ -159,7 +159,7 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 	}
 	seedFromStmts(pkg.Body)
 	for _, w := range pkg.Windows {
-		seedFromStmts(w.Body)
+		seedFromStmts(w.Children)
 	}
 	for _, v := range pkg.Vars {
 		seedFromVar(v)
@@ -782,11 +782,11 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	// Seed window roots with defaults.
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
-		w.Body = lowerInStmts(w.Body, windowActive, reach, hidden)
+		w.Children = lowerInStmts(w.Children, windowActive, reach, hidden)
 		// The provider unwrap splices a provider's children up to window-body
 		// level, which can put a fresh LocalVar there after passHoistState
 		// already ran. Promote those too, into the same slice.
-		w.Body, pkg.Vars = promoteLocalVarsToVars(w.Body, pkg.Vars)
+		w.Children, pkg.Vars = promoteLocalVarsToVars(w.Children, pkg.Vars)
 	}
 	// Top-level pkg.Vars: also rooted, seed with defaults.
 	for _, v := range pkg.Vars {
@@ -1049,15 +1049,6 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, reach Reachab
 		case *ir.Toggle:
 			// Toggle may survive into NoContext when NoToggle cap is off.
 			n.Target = lowerInExpr(n.Target, active, reach, hidden)
-			out = append(out, n)
-
-		case *ir.Window:
-			// Window stmts only appear inside for-loop bodies (dynamic
-			// window emission). Thread ctx args through their surface.
-			for i := range n.Props {
-				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, reach, hidden)
-			}
-			n.Body = lowerInStmts(n.Body, active, reach, hidden)
 			out = append(out, n)
 
 		case *ir.Break, *ir.Continue:

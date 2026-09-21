@@ -90,7 +90,7 @@ func pkgUsesErrorHandling(pkg *ir.Package) bool {
 		return true
 	}
 	for _, w := range pkg.Windows {
-		if w.ErrorHandler != nil || stmtsUseErrorHandling(w.Body) {
+		if w.ErrorHandler != nil || stmtsUseErrorHandling(w.Children) {
 			return true
 		}
 		// A window owns funcs the way a component does, and the ones this
@@ -151,10 +151,6 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 			}
 		case *ir.ContextProvider:
 			if stmtsUseErrorHandling(x.Children) {
-				return true
-			}
-		case *ir.Window:
-			if x.ErrorHandler != nil || stmtsUseErrorHandling(x.Body) {
 				return true
 			}
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,

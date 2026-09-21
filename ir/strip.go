@@ -2,7 +2,6 @@ package ir
 
 import (
 	"reflect"
-	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 )
@@ -73,11 +72,6 @@ func (s *stripper) stripPackage(pkg *Package) {
 	// pointer, so a clone's own declarations could never match the original's.
 	pkg.TreeKinds = nil
 
-	// Remove component-scoped window stubs (empty, checked=true).
-	pkg.Windows = slices.DeleteFunc(pkg.Windows, func(w *Window) bool {
-		return w.Checked && w.Name == "" && len(w.Body) == 0
-	})
-
 	// Normalize nil slices to empty for DeepEqual.
 	if pkg.Imports == nil {
 		pkg.Imports = []*Import{}
@@ -137,7 +131,7 @@ func (s *stripper) stripPackage(pkg *Package) {
 		s.stripComponent(c)
 	}
 	for _, w := range pkg.Windows {
-		s.stripWindow(w)
+		s.stripStmt(w)
 	}
 	s.stripStmts(pkg.Body)
 	for _, o := range pkg.Outputs {
@@ -238,22 +232,6 @@ func (s *stripper) stripComponent(c *Component) {
 		s.stripFunc(f)
 	}
 	s.stripStmts(c.Body)
-}
-
-func (s *stripper) stripWindow(w *Window) {
-	w.AST = nil
-	w.Checked = false
-	w.Comp = nil // cross-reference, as NodeInst.Component is
-	if w.Props == nil {
-		w.Props = []Arg{}
-	}
-	for i := range w.Props {
-		s.stripExpr(w.Props[i].Value)
-	}
-	if w.Body == nil {
-		w.Body = []Stmt{}
-	}
-	s.stripStmts(w.Body)
 }
 
 // --- Statements ---

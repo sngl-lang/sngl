@@ -49,7 +49,7 @@ func applyHoistState(pkg *ir.Package, _ Caps, _ Options) error {
 	// reach it; its container is the package either way.
 	for _, w := range pkg.Windows {
 		if w != nil {
-			w.Body, pkg.Vars = promoteLocalVarsToVars(w.Body, pkg.Vars)
+			w.Children, pkg.Vars = promoteLocalVarsToVars(w.Children, pkg.Vars)
 		}
 	}
 	return nil
@@ -59,8 +59,8 @@ func applyHoistState(pkg *ir.Package, _ Caps, _ Options) error {
 // into that block's owner, reaching through what says when and how many.
 func hoistWindowsIn(stmts []ir.Stmt, into *[]*ir.Var) {
 	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
-		if w, ok := s.(*ir.Window); ok {
-			w.Body, *into = promoteLocalVarsToVars(w.Body, *into)
+		if w, ok := s.(*ir.NodeInst); ok && ir.IsWindowNode(w) {
+			w.Children, *into = promoteLocalVarsToVars(w.Children, *into)
 		}
 		return nil
 	})

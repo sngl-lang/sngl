@@ -38,6 +38,12 @@ func oracleByStmts(env *Env, stmts []ir.Stmt, id string, out *[]map[string]any) 
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			// A window renders no node of its own -- see view.go, which this
+			// oracle exists to agree with.
+			if ir.IsWindowNode(n) {
+				oracleByStmts(env, n.Children, id, out)
+				continue
+			}
 			oracleNodeByID(env, n, id, out)
 		case *ir.CallStmt:
 			oracleCallStmtByID(env, n, id, out)
@@ -77,8 +83,6 @@ func oracleByStmts(env *Env, stmts []ir.Stmt, id string, out *[]map[string]any) 
 			oracleByStmts(env, n.Children, id, out)
 		case *ir.ErrorBoundary:
 			oracleByStmts(env, n.Children, id, out)
-		case *ir.Window:
-			oracleByStmts(env, n.Body, id, out)
 		case *ir.ContextProvider:
 			oracleByStmts(env, n.Children, id, out)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt:

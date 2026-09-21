@@ -3805,7 +3805,7 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	case ir.BuiltinWindow:
 		w := c.buildWindow(vn)
 		c.checkWindowBody(w)
-		w.Checked = true
+		c.checkedWindows[w] = true
 		return w
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn, builtinComp)
@@ -5449,15 +5449,6 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// carries the declaration it instantiates separately -- the arm below
 		// reads the same two fields off the same kind of pointer, and the two
 		// collapse when a window becomes a marked NodeInst.
-		case *ir.Window:
-			if s.Comp == nil || s.Comp.Tree == nil || s.Comp.Tree == want {
-				continue
-			}
-			at := pos
-			if s.AST != nil {
-				at = s.AST.Pos
-			}
-			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Comp.Name)
 		case *ir.NodeInst:
 			if s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
 				continue

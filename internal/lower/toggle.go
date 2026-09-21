@@ -61,8 +61,6 @@ func rewriteToggleStmts(stmts []ir.Stmt) []ir.Stmt {
 			if n.Handler != nil && n.Handler.Func != nil {
 				n.Handler.Func.Block = rewriteToggleStmts(n.Handler.Func.Block)
 			}
-		case *ir.Window:
-			n.Body = rewriteToggleStmts(n.Body)
 		case *ir.ContextProvider:
 			n.Children = rewriteToggleStmts(n.Children)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit,

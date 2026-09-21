@@ -210,7 +210,6 @@ var declTypes = map[reflect.Type]bool{
 	reflect.TypeFor[Component](): true,
 	reflect.TypeFor[Context]():   true,
 	reflect.TypeFor[SlotDecl]():  true,
-	reflect.TypeFor[Window]():    true,
 	reflect.TypeFor[StructDef](): true,
 	reflect.TypeFor[EnumDef]():   true,
 	reflect.TypeFor[UnitDef]():   true,

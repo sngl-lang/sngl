@@ -41,5 +41,4 @@ func (*Continue) irNode()         {}
 func (*If) irNode()               {}
 func (*For) irNode()              {}
 func (*ContextProvider) irNode()  {}
-func (*Window) irNode()           {}
 func (*CanvasRedrawStmt) irNode() {}

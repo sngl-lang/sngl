@@ -193,6 +193,14 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			// A window is the surface its children are drawn on rather than a
+			// node drawn on one, so it is walked through: the callers count
+			// depth to indent markup and to decide what a node's parent is,
+			// and neither wants a page in the middle of that.
+			if ir.IsWindowNode(n) {
+				walkVisual(n.Children, fn, depth)
+				continue
+			}
 			if !fn(n, depth) {
 				walkVisual(n.Children, fn, depth+1)
 			}
@@ -207,8 +215,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 			walkVisual(n.Children, fn, depth)
 		case *ir.ContextProvider:
 			walkVisual(n.Children, fn, depth)
-		case *ir.Window:
-			walkVisual(n.Body, fn, depth)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Not a visual statement; nothing to visit.

@@ -85,7 +85,7 @@ func (c *checker) checkAsyncRules() {
 func collectReactiveCallees(pkg *ir.Package) map[*ir.Func]bool {
 	out := make(map[*ir.Func]bool)
 	for _, w := range pkg.Windows {
-		collectCalleesInStmts(out, w.Body)
+		collectCalleesInStmts(out, w.Children)
 	}
 	for _, comp := range pkg.Components {
 		collectCalleesInStmts(out, comp.Body)
@@ -119,8 +119,6 @@ func collectCalleesInStmt(out map[*ir.Func]bool, s ir.Stmt) {
 		collectCalleesInStmts(out, n.Children)
 	case *ir.ErrorBoundary:
 		collectCalleesInStmts(out, n.Children)
-	case *ir.Window:
-		collectCalleesInStmts(out, n.Body)
 	}
 }
 

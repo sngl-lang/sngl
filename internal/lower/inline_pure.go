@@ -73,11 +73,11 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 	pkg.Body = body
 	for _, w := range pkg.Windows {
 		st.hoist = &pkg.Vars
-		wbody, err := st.inlineStmts(w.Body)
+		wbody, err := st.inlineStmts(w.Children)
 		if err != nil {
 			return err
 		}
-		w.Body = wbody
+		w.Children = wbody
 	}
 	return nil
 }
@@ -261,6 +261,17 @@ func (st *inlinePureState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, error) {
 func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
+		// A window instantiates a primitive nothing inlines, and the pass has
+		// no prop or handler of its own to substitute into one: what it holds
+		// is all there is to do.
+		if ir.IsWindowNode(n) {
+			body, err := st.inlineStmts(n.Children)
+			if err != nil {
+				return nil, err
+			}
+			n.Children = body
+			return []ir.Stmt{n}, nil
+		}
 		return st.inlineNodeInst(n)
 	case *ir.If:
 		body, err := st.inlineStmts(n.Body)
@@ -302,13 +313,6 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 			return nil, err
 		}
 		n.Children = ch
-		return []ir.Stmt{n}, nil
-	case *ir.Window:
-		body, err := st.inlineStmts(n.Body)
-		if err != nil {
-			return nil, err
-		}
-		n.Body = body
 		return []ir.Stmt{n}, nil
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:
@@ -719,8 +723,6 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 				visit(n.Children)
 			case *ir.ErrorBoundary:
 				visit(n.Children)
-			case *ir.Window:
-				visit(n.Body)
 			case *ir.ContextProvider:
 				visit(n.Children)
 			}
@@ -833,8 +835,6 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 		case *ir.ErrorBoundary:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
-		case *ir.Window:
-			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
 			// No child statement list of their own; the lambda walk below is
@@ -1090,10 +1090,6 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.ErrorBoundary:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
-		return &clone
-	case *ir.Window:
-		clone := *n
-		clone.Body = deepCloneStmts(n.Body)
 		return &clone
 	case *ir.ContextProvider:
 		clone := *n

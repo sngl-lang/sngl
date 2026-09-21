@@ -24,7 +24,7 @@ func walkIRColorLiterals(pkg *ir.Package, fn func(*ir.StructLit)) {
 		w.component(c)
 	}
 	for _, win := range pkg.Windows {
-		w.window(win)
+		w.stmt(win)
 	}
 }
 
@@ -46,19 +46,6 @@ func (w *irLitWalker) component(c *ir.Component) {
 		w.fn_(f)
 	}
 	w.stmts(c.Body)
-}
-
-func (w *irLitWalker) window(win *ir.Window) {
-	if win == nil {
-		return
-	}
-	for i := range win.Props {
-		w.expr(win.Props[i].Value)
-	}
-	w.stmts(win.Body)
-	if win.ErrorHandler != nil {
-		w.fn_(win.ErrorHandler.Func)
-	}
 }
 
 func (w *irLitWalker) fn_(f *ir.Func) {
@@ -89,6 +76,9 @@ func (w *irLitWalker) stmt(s ir.Stmt) {
 		}
 		for _, h := range x.Handlers {
 			w.fn_(h.Func)
+		}
+		if x.ErrorHandler != nil {
+			w.fn_(x.ErrorHandler.Func)
 		}
 		w.expr(x.Key)
 		w.expr(x.Ref)
@@ -125,8 +115,6 @@ func (w *irLitWalker) stmt(s ir.Stmt) {
 		w.expr(x.Iter)
 		w.stmts(x.Body)
 		w.stmts(x.Else)
-	case *ir.Window:
-		w.window(x)
 	}
 }
 

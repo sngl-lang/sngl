@@ -52,8 +52,6 @@ func walkCanvases(stmts []ir.Stmt) {
 				continue
 			}
 			walkCanvases(v.Children)
-		case *ir.Window:
-			walkCanvases(v.Body)
 		case *ir.If:
 			walkCanvases(v.Body)
 			walkCanvases(v.Else)

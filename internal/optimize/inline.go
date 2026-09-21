@@ -266,12 +266,6 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 				}
 			}
 		}
-	case *ir.Window:
-		for _, s := range n.Body {
-			if callsFuncStmt(s, target) {
-				return true
-			}
-		}
 	case *ir.Assign:
 		return callsFunc(n.Value, target)
 	case *ir.CallStmt:
@@ -697,15 +691,6 @@ func cloneStmt(s ir.Stmt) ir.Stmt {
 		cp := *n
 		cp.Value = cloneExpr(n.Value)
 		cp.Children = cloneStmts(n.Children)
-		return &cp
-	case *ir.Window:
-		cp := *n
-		cp.Props = make([]ir.Arg, len(n.Props))
-		for i, p := range n.Props {
-			p.Value = cloneExpr(p.Value)
-			cp.Props[i] = p
-		}
-		cp.Body = cloneStmts(n.Body)
 		return &cp
 	case *ir.ErrorBoundary:
 		cp := *n
