@@ -344,6 +344,21 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			mainOwnFuncs[fn] = true
 		}
 	}
+	// And the package's own funcs that reach package state. MainScreen holds
+	// that state as `remember`ed locals -- ctx.ModelState() is what it
+	// declares -- so a func reading one has to be declared inside it; beside
+	// it, `log__inst0 = log__inst0 + "!"` names something no file-scope
+	// declaration binds.
+	//
+	// This used to be every window's funcs, which reached the same set from
+	// the other side: a window body's func, and every clone the inliner
+	// hoisted into one, was a window's. A window owns nothing now, so the
+	// question is asked of the body instead of of the list -- which is also
+	// what ctx.RootDecl() stopped answering for an ordinary program, `main`
+	// having lost its harness convention.
+	for fn := range codegen.PackageStateFuncs(ctx.Pkg) {
+		mainOwnFuncs[fn] = true
+	}
 	// Two sets, not one: a func belongs inside exactly one composable, and the
 	// main one emits only its own. Merging them put every component's func in
 	// MainScreen as well as in the composable that owns its state.

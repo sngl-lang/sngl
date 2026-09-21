@@ -32,3 +32,68 @@ func OwnerMethod(pkg *ir.Package, receiver, method string) (*ir.Func, bool) {
 	}
 	return nil, false
 }
+
+// PackageStateFuncs names the top-level funcs whose body reads or writes a
+// package-level var, and everything that reaches one through a call.
+//
+// A target whose package state lives inside one scope -- a Model's fields on
+// bubbletea, fyne and gtk4, a composable's `remember`ed locals on android --
+// has to emit these inside that scope. Emitted beside it, the body names
+// something the file does not declare.
+//
+// The transitive half is load-bearing: a caller left outside spells a call to
+// something declared inside, which is the same undefined name one function
+// further out.
+//
+// Asked here rather than once per language because the question is about the
+// IR and not about a host: what differs is the consequence -- a Go method on
+// Model, a Kotlin local `fun` -- and each target still decides that for itself.
+func PackageStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
+	if pkg == nil {
+		return nil
+	}
+	// Consts are excluded because a target spells one the same inside the
+	// scope and outside it; a state var is reached through the scope.
+	state := map[ir.Symbol]bool{}
+	for _, v := range pkg.Vars {
+		state[v] = true
+	}
+
+	touches := map[*ir.Func]bool{}
+	calls := map[*ir.Func][]*ir.Func{}
+	for _, fn := range pkg.Funcs {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			switch e := n.(type) {
+			case *ir.Ident:
+				if state[e.Sym] {
+					touches[fn] = true
+				}
+				if callee, ok := e.Sym.(*ir.Func); ok {
+					calls[fn] = append(calls[fn], callee)
+				}
+			case *ir.Call:
+				if e.Func != nil {
+					calls[fn] = append(calls[fn], e.Func)
+				}
+			}
+			return nil
+		})
+	}
+
+	for changed := true; changed; {
+		changed = false
+		for fn, callees := range calls {
+			if touches[fn] {
+				continue
+			}
+			for _, callee := range callees {
+				if touches[callee] {
+					touches[fn] = true
+					changed = true
+					break
+				}
+			}
+		}
+	}
+	return touches
+}

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -52,60 +53,15 @@ func ModelFreeFuncs(pkg *ir.Package) map[string]bool {
 // read or write a package-level var, and everything that reaches one through a
 // call.
 //
-// The transitive half is load-bearing: a caller left free spells a call to a
-// Model method, which is the same undefined `m` one function further out.
+// The rule is codegen.PackageStateFuncs and is shared with android, which asks
+// the same question and answers it with a local `fun` inside the composable
+// holding the state. Kept as a name of its own because three Go platforms read
+// it and what they read it *for* is the Model receiver.
 //
 // A method on a user type is in the set too and is answered differently, the
 // receiver slot being spent: ModelParamFuncs narrows to those.
 func ModelStateFuncs(pkg *ir.Package) map[*ir.Func]bool {
-	if pkg == nil {
-		return nil
-	}
-	// Consts are excluded because EvalIdent already asks the scope about one
-	// (NameConst) and spells it bare outside a Model method; a state var
-	// (NameStateVar) is `m.x` unconditionally.
-	state := map[ir.Symbol]bool{}
-	for _, v := range pkg.Vars {
-		state[v] = true
-	}
-
-	touches := map[*ir.Func]bool{}
-	calls := map[*ir.Func][]*ir.Func{}
-	for _, fn := range pkg.Funcs {
-		_ = ir.Walk(fn.Block, func(n ir.Node) error {
-			switch e := n.(type) {
-			case *ir.Ident:
-				if state[e.Sym] {
-					touches[fn] = true
-				}
-				if callee, ok := e.Sym.(*ir.Func); ok {
-					calls[fn] = append(calls[fn], callee)
-				}
-			case *ir.Call:
-				if e.Func != nil {
-					calls[fn] = append(calls[fn], e.Func)
-				}
-			}
-			return nil
-		})
-	}
-
-	for changed := true; changed; {
-		changed = false
-		for fn, callees := range calls {
-			if touches[fn] {
-				continue
-			}
-			for _, callee := range callees {
-				if touches[callee] {
-					touches[fn] = true
-					changed = true
-					break
-				}
-			}
-		}
-	}
-	return touches
+	return codegen.PackageStateFuncs(pkg)
 }
 
 // ModelParamFuncs names the methods on a user type that a Model-receiver
