@@ -1,10 +1,11 @@
 // The three rules the rest slot carries beyond an ordinary slot's.
 //
 // `...` says a slot collects the children written bare, so there is one of
-// them per component; a scoped one is read by the names its own declaration
-// writes, since bare children have no binding site of their own to name them
-// at; and they are the same content an explicit population by name supplies,
-// so writing both populates the slot twice.
+// them per component; a scoped one hands its arguments to the population
+// written by name and to nothing else, because a spread has nowhere to write
+// a name and so nothing to collect them into; and bare children are the same
+// content an explicit population supplies, so writing both populates the slot
+// twice.
 
 import . "sngl:ui"
 
@@ -15,9 +16,9 @@ component twice(head ...component, tail ...component) node { // ERROR(check) "de
     }
 }
 
-component scoped(children ...component(string)) node { // ERROR(check) "each parameter needs a name"
+component scoped(children ...component(n int) node) node {
     vbox {
-        children
+        children(1)
     }
 }
 
@@ -29,6 +30,9 @@ component card(children ...component) node {
 
 component main node {
     vbox {
+        scoped {
+            text(value="{n}") // ERROR(check) "undefined: n"
+        }
         card() { // ERROR(check) "slot \"children\" is populated by name and by the children written bare"
             component children {
                 text(value="by name")

@@ -61,14 +61,16 @@ component main root {
     var hits = 0
 
     window #page(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-        html.button(innerText="go", @click { hits = srv.Bump(hits) })
-        if v.pkg != "" {
-            html.span(innerText="named")
-        } else {
-            html.span(innerText="unnamed")
-        }
-        for var row = srv.Rows(v.pkg) {
-            html.a(href="/r/" + row.name, innerText=row.name)
+        component content(v) {
+            html.button(innerText="go", @click { hits = srv.Bump(hits) })
+            if v.pkg != "" {
+                html.span(innerText="named")
+            } else {
+                html.span(innerText="unnamed")
+            }
+            for var row = srv.Rows(v.pkg) {
+                html.a(href="/r/" + row.name, innerText=row.name)
+            }
         }
     }
 }

@@ -27,11 +27,16 @@ struct root {}
 // served with a field of that name filled in from the URL. A window that takes
 // none writes nothing, and `T` falls back to the struct with no fields.
 //
-// The body reads them through the slot's own binding, `v`, which is why the
-// path is a plain string here where it used to be an interpolation: the names
-// in it are the struct's fields rather than identifiers in scope, so a path
-// param and a node `#id` no longer share one namespace with nothing declaring
-// either. Write the path with a backticked string, or escape the braces.
+// The body that reads them is the population of `content`, written by name
+// the way any scoped slot's is — `component content(v) { … }` — and `v` is
+// the caller's word. A body written as bare children sees no parameters at
+// all: there is nowhere in a spread to write a name for them.
+//
+// That is why the path is a plain string here where it used to be an
+// interpolation: the names in it are the struct's fields rather than
+// identifiers in scope, so a path parameter and a node `#id` no longer share
+// one namespace with nothing declaring either. Write the path with a
+// backticked string, or escape the braces.
 //
 // Reading `name.href` / `name.title` off a `window #name` declaration
 // lets links survive a window's path change without copying the path

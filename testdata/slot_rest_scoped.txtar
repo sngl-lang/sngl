@@ -41,7 +41,9 @@ component row(content ...component(n int) ui.node) ui.node {
 
 ui.window #home(title="t", href="/index.html") {
     row {
-        ui.text(value="n is {n}")
+        component content(n) {
+            ui.text(value="n is {n}")
+        }
     }
 }
 -- out/go/bubbletea/model.go --

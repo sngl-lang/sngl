@@ -1,9 +1,9 @@
 # The same route as route_dynamic_body, written as a package window -- a
 # `window` at the root of a file rather than one a component body renders.
 #
-# A window's path parameters arrive as one struct value bound to the slot its
-# declaration names, and the reactivity lowering counted every window var as
-# mutable state. So the `if` and the `for` over that value became client-side
+# A window's path parameters arrive as one struct value, bound to the name the
+# body's own population writes, and the reactivity lowering counted every
+# window var as mutable state. So the `if` and the `for` over that value became client-side
 # render slots: the declarative tree the route's markup is built from was
 # gone, the loop stopped coming out as a HoleFor, and the __renderSlotN the
 # lowering left behind reached the Go translator as a user function -- which
@@ -64,13 +64,15 @@ struct PageParams {
 var hits = 0
 
 window #page(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-    html.button(innerText="go", @click { hits = srv.Bump(hits) })
-    if v.pkg != "" {
-        html.span(innerText="named")
-    } else {
-        html.span(innerText="unnamed")
-    }
-    for var row = srv.Rows(v.pkg) {
-        html.a(href="/r/" + row.name, innerText=row.name)
+    component content(v) {
+        html.button(innerText="go", @click { hits = srv.Bump(hits) })
+        if v.pkg != "" {
+            html.span(innerText="named")
+        } else {
+            html.span(innerText="unnamed")
+        }
+        for var row = srv.Rows(v.pkg) {
+            html.a(href="/r/" + row.name, innerText=row.name)
+        }
     }
 }

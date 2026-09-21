@@ -24,6 +24,7 @@ sngl dump --stage checked --format sngl route.sngl
 stdout 'title="User"'
 stdout 'href="/u/\\{id\\}"'
 stdout 'params=PageParams\{\}'
+stdout 'component content\(v\)'
 
 cp stdout route_out.sngl
 sngl check route_out.sngl
@@ -46,5 +47,7 @@ struct PageParams {
 }
 
 window #user(title="User", href=`/u/{id}`, params=PageParams{}) {
-    text(value="user {v.id}")
+    component content(v) {
+        text(value="user {v.id}")
+    }
 }

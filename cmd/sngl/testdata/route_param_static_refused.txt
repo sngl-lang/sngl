@@ -24,7 +24,9 @@ struct PageParams {
 }
 
 ui.window #home(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-    ui.text(value="pkg is {v.pkg}")
+    component content(v) {
+        ui.text(value="pkg is {v.pkg}")
+    }
 }
 
 -- plain.sngl --

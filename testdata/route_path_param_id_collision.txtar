@@ -9,7 +9,8 @@ both was the failing case that put the parameters back in the body's scope at
 all.
 
 The parameters are a declared struct now and the body reads them through the
-slot's binding, so `pkg` is the window handle and `v.pkg` is the path's. The
+name its own population wrote, so `pkg` is the window handle and `v.pkg` is
+the path's -- and `v` is the caller's word, not the declaration's. The
 handle read folds to the window's own `href` prop, which is the pattern rather
 than the request's path -- that is what a handle read has always given, and it
 is here to show the two names resolving apart.
@@ -32,7 +33,9 @@ struct PageParams {
 }
 
 ui.window #pkg(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-    html.a(href=pkg.href, innerText=v.pkg)
+    component content(v) {
+        html.a(href=pkg.href, innerText=v.pkg)
+    }
 }
 -- out/go/html/server.go --
 package main

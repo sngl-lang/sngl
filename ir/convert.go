@@ -379,6 +379,19 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 	}
 	var bodyStmts []ast.Stmt
 	bodyStmts = append(bodyStmts, c.convertBodyStmts(w.Body)...)
+	// A window that reads its route parameters wrote the population its
+	// binding was named in, and the body belongs inside that rather than
+	// bare: printed bare, the name the body reads is declared nowhere and the
+	// dump does not check back in.
+	if w.Params != nil && len(bodyStmts) > 0 {
+		cd := &ast.ComponentDecl{
+			Name:      windowContentSlot(w),
+			HasParens: true,
+			Props:     ast.PropList{Props: []ast.ParamOrEventDecl{ast.Param{Name: w.Params.Name}}},
+			Body:      ast.StmtBlock{IsMultiline: true, Stmts: bodyStmts, Pos: ast.Pos{Line: 1}},
+		}
+		bodyStmts = []ast.Stmt{cd}
+	}
 	if len(bodyStmts) > 0 {
 		vn.Block = ast.StmtBlock{
 			IsMultiline: len(bodyStmts) > 0,
@@ -387,6 +400,16 @@ func (c *converter) convertWindow(w *Window) *ast.VisualNode {
 		}
 	}
 	return vn
+}
+
+// windowContentSlot is what the window declaration calls the slot its body
+// populates. Read off the declaration rather than spelled here, for the
+// reason ErrorBoundary.FailedSlot gives: the library is free to rename it.
+func windowContentSlot(w *Window) string {
+	if rest := w.Comp.RestSlot(); rest != nil {
+		return rest.Name
+	}
+	return "content"
 }
 
 // convertContext emits a top-level context declaration as the CallStmt that the

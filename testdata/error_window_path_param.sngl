@@ -19,9 +19,13 @@ struct PageParams {
 }
 
 ui.window #a(title="t", href=`/p/{slug}`, params=PageParams{}) { // ERROR(check) "the path names {slug}, but the window's params have no field \"slug\""
-    ui.text(value=v.pkg)
+    component content(v) {
+        ui.text(value=v.pkg)
+    }
 }
 
 ui.window #b(title="t", href=`/t/{tags}`, params=PageParams{}) { // ERROR(check) "path parameter {tags} arrives as text"
-    ui.text(value=v.pkg)
+    component content(v) {
+        ui.text(value=v.pkg)
+    }
 }

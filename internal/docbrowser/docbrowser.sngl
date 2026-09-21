@@ -46,39 +46,43 @@ if PLATFORM == html.platform {
     }
 
     window #pkg(title="Package — SNGL Docs", href=`/p/{pkg}`, params=PkgParams{}) {
-        hbox {
-            docui.Sidebar(homeHref="/") {
-                for var p = lookup.Packages() {
-                    docui.NavItem(
-                        text=p.title,
-                        href="/p/" + p.path,
-                        active=p.path == v.pkg,
-                    )
+        component content(v) {
+            hbox {
+                docui.Sidebar(homeHref="/") {
+                    for var p = lookup.Packages() {
+                        docui.NavItem(
+                            text=p.title,
+                            href="/p/" + p.path,
+                            active=p.path == v.pkg,
+                        )
+                    }
                 }
-            }
-            vbox(style={padding=24, flex=1}) {
-                docui.EntryView(path=v.pkg, hrefPrefix="/p/" + v.pkg + "/")
+                vbox(style={padding=24, flex=1}) {
+                    docui.EntryView(path=v.pkg, hrefPrefix="/p/" + v.pkg + "/")
+                }
             }
         }
     }
 
     window #decl(title="Decl — SNGL Docs", href=`/p/{pkg}/{name}`, params=PkgParams{}) {
-        hbox {
-            docui.Sidebar(homeHref="/") {
-                for var p = lookup.Packages() {
-                    docui.NavItem(
-                        text=p.title,
-                        href="/p/" + p.path,
-                        active=p.path == v.pkg,
+        component content(v) {
+            hbox {
+                docui.Sidebar(homeHref="/") {
+                    for var p = lookup.Packages() {
+                        docui.NavItem(
+                            text=p.title,
+                            href="/p/" + p.path,
+                            active=p.path == v.pkg,
+                        )
+                    }
+                }
+                vbox(style={padding=24, flex=1}) {
+                    docui.EntryView(
+                        path=v.pkg,
+                        ident1=v.name,
+                        hrefPrefix="/p/" + v.pkg + "/",
                     )
                 }
-            }
-            vbox(style={padding=24, flex=1}) {
-                docui.EntryView(
-                    path=v.pkg,
-                    ident1=v.name,
-                    hrefPrefix="/p/" + v.pkg + "/",
-                )
             }
         }
     }

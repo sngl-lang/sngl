@@ -90,15 +90,9 @@ type SlotInst struct {
 	// Rest mirrors the declaration's: this insertion renders the children a
 	// caller wrote bare, which arrive on NodeInst.Children rather than through
 	// its Slots map.
-	Rest bool   `json:",omitempty"`
-	Args []Expr `json:",omitempty"` // values passed to a scoped slot
-	// Params is what a scoped *rest* slot binds its arguments to. A named
-	// population writes its own names at its own binding site and carries
-	// them on SlotContent; bare children are written once and have none, so
-	// the declaration's parameters are the binding and travel with the
-	// insertion instead.
-	Params   []*Param `json:"-"`
-	Children []Stmt   // fallback: rendered when the caller supplies nothing
+	Rest     bool   `json:",omitempty"`
+	Args     []Expr `json:",omitempty"` // values passed to a scoped slot
+	Children []Stmt // fallback: rendered when the caller supplies nothing
 }
 
 func (*SlotInst) stmtNode() {}

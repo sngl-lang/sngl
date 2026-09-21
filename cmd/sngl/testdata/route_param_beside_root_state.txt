@@ -48,8 +48,10 @@ component main ui.root {
     var hits = 0
 
     ui.window #page(title="t", href=`/p/{id}`, params=PageParams{}) {
-        html.button(innerText="go", @click { hits = srv.Bump(hits) })
-        html.span(innerText="{v.id}")
-        html.span(innerText="{hits}")
+        component content(v) {
+            html.button(innerText="go", @click { hits = srv.Bump(hits) })
+            html.span(innerText="{v.id}")
+            html.span(innerText="{hits}")
+        }
     }
 }

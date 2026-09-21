@@ -50,6 +50,8 @@ struct PageParams {
 var hits = 0
 
 window #page(title="t", href=`/p/{slug}/{page}`, params=PageParams{}) {
-    html.button(innerText="go", @click { hits = srv.Bump(hits) })
-    html.span(innerText="{v.slug} {v.page + 1} {hits}")
+    component content(v) {
+        html.button(innerText="go", @click { hits = srv.Bump(hits) })
+        html.span(innerText="{v.slug} {v.page + 1} {hits}")
+    }
 }

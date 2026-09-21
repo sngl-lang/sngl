@@ -2,9 +2,11 @@ A route's markup is built at compile time, so anything it renders has to be a
 literal or an expression over something known per request.
 
 A window's path parameters are one of those: they arrive as a struct value the
-`params` prop names, the window's rest slot binds it to `v`, and markup over a
-field of it renders into a hole rather than being refused. The dynamic path
-reaches the Go mux as a pattern rather than a fixed string.
+`params` prop names, and the body reaches them the way any body reaches a
+scoped slot's arguments -- by populating the slot by name, which is where `v`
+is written. Markup over a field of it renders into a hole rather than being
+refused, and the dynamic path reaches the Go mux as a pattern rather than a
+fixed string.
 
 The path is a plain string -- written backticked here, since `{pkg}` in a
 double-quoted one is an interpolation. It used to *be* the interpolation, and
@@ -40,7 +42,9 @@ struct PageParams {
 
 component main ui.root {
     ui.window #pkg(title="t", href=`/p/{pkg}`, params=PageParams{}) {
-        html.a(href="/p/" + v.pkg, innerText=v.pkg)
+        component content(v) {
+            html.a(href="/p/" + v.pkg, innerText=v.pkg)
+        }
     }
 }
 -- out/go/html/server.go --

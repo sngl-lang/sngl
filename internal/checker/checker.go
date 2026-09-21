@@ -7,6 +7,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -2600,37 +2601,18 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if !rest {
 		return slot
 	}
-	// A rest slot may be scoped, and the declaration's own parameter names are
-	// what its bare children read: they are written once, with no binding site
-	// to collect a name at, so the contract has to supply one. That is the
-	// same rule a named population already lives under from the other side --
-	// a slot's structural match is by name -- and it is what lets a window
-	// hand its route parameters to the body it renders. A second, unscoped
-	// rest slot beside it is not an option: a component declares at most one,
-	// so bare children would have nowhere unambiguous to land.
-	for _, p := range slot.Params {
-		if p.Name == "" {
-			c.error(pd.Pos, "rest slot %q: each parameter needs a name, which is what its bare children read it by", pd.Name)
-		}
-	}
+	// A rest slot may be scoped, and what reaches its parameters is the
+	// population written by name -- `component content(v) { … }` -- and only
+	// that. Children written bare have no binding site, and the declaration's
+	// own names are not one: a spread has nowhere to write a name, so there
+	// is nothing there to collect the arguments into and a caller that wants
+	// them switches forms. Reading them off the declaration instead would
+	// make a parameter appear in a body that never named it.
+	//
+	// A second, unscoped rest slot for the bare case is not the way out
+	// either: a component declares at most one, so bare children would have
+	// nowhere unambiguous to land.
 	return slot
-}
-
-// pushRestSlotParams declares a scoped rest slot's parameters for the bare
-// children that populate it, and returns the pop. See buildSlotDecl for why
-// the names are the declaration's rather than the call site's.
-func (c *checker) pushRestSlotParams(pos ast.Pos, comp *ir.Component) func() {
-	rest := comp.RestSlot()
-	if rest == nil || len(rest.Params) == 0 {
-		return func() {}
-	}
-	c.pushScope()
-	for _, p := range rest.Params {
-		if p.Name != "" {
-			c.declare(pos, p)
-		}
-	}
-	return c.popScope
 }
 
 func (c *checker) registerComponent(comp *ast.ComponentDecl) {
@@ -3152,35 +3134,33 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 }
 
 // windowParamsVar is the cell a window's scoped rest slot binds: the route's
-// per-request input, named and typed by the declaration's slot parameter.
+// per-request input, typed by the declaration's slot parameter with T already
+// substituted.
 //
 // A var rather than the *ir.Param the slot declares, for the reason
 // ir.Window.Params gives: every target already stores state, and this is one
 // more cell it fills before rendering. The Init is the struct's zero, which is
 // what a target with no request renders against.
-func (c *checker) windowParamsVar(vn *ast.VisualNode, spec *ir.Component) *ir.Var {
+//
+// It comes back **unnamed**, because the name is the caller's and is written
+// in the body: `component content(v) { … }`. checkWindowBody names it from
+// that population, or drops it where the body wrote none -- a window whose
+// body never asked for its parameters reaches no target with a cell for them.
+func (c *checker) windowParamsVar(spec *ir.Component) *ir.Var {
 	rest := spec.RestSlot()
-	if rest == nil || len(rest.Params) != 1 || rest.Params[0].Name == "" {
+	if rest == nil || len(rest.Params) != 1 {
 		return nil
 	}
-	p := rest.Params[0]
-	// A struct with no fields is a window that declared no parameters, which
-	// is what T falls back to. There is nothing for a body to read off one, so
-	// no name is bound -- which is also what keeps a program that already has
-	// a `v` of its own from being shadowed inside every window it writes.
-	sd, ok := structDeclOf(p.Type)
-	if !ok || len(sd.Fields) == 0 {
-		return nil
-	}
+	t := rest.Params[0].Type
+	v := &ir.Var{Type: t}
 	// The struct's zero, written out, for the same reason an uninitialised
 	// `var c Counter` gets one: left nil, a target renders the cell as
 	// whatever its own nothing is, and the page read `state.v.pkg` off an
 	// empty string.
-	return &ir.Var{
-		Name: p.Name,
-		Type: p.Type,
-		Init: &ir.StructLit{Type: p.Type, Def: sd, Fields: withFieldDefaults(sd, nil)},
+	if sd, ok := structDeclOf(t); ok {
+		v.Init = &ir.StructLit{Type: t, Def: sd, Fields: withFieldDefaults(sd, nil)}
 	}
+	return v
 }
 
 // buildWindow builds the window a `window #id` node declares.
@@ -3216,7 +3196,7 @@ func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
 	// for checking this call site and is a component nothing else has heard
 	// of. What the body needs from it is the one binding, kept below.
 	w.Comp = c.windowComp
-	w.Params = c.windowParamsVar(vn, spec)
+	w.Params = c.windowParamsVar(spec)
 	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
 	c.checkWindowPathParams(vn, w)
 	for _, a := range vn.Args.Args {
@@ -4139,21 +4119,17 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 	c.pushScope()
 	defer c.popScope()
 
+	block := &ast.StmtBlock{}
 	if w.AST != nil {
-		// The binding the window's scoped rest slot hands its body: one
-		// struct value, holding whatever the route knows per request. It is a
-		// declared name rather than a synthesized one, so a path placeholder
-		// and a node `#id` are no longer two things claiming one namespace
-		// with nothing declaring either -- `window #pkg(href=`/p/{pkg}`)`
-		// reads `pkg` as its own handle and `v.pkg` as the path's.
+		block = c.bindWindowParams(w)
 		if w.Params != nil {
 			c.declare(w.AST.Pos, w.Params)
 		}
-		c.declareNodeIDs(&w.AST.Block)
+		c.declareNodeIDs(block)
 	}
 
-	if w.AST != nil && w.AST.Block.IsDefined() {
-		w.Body = c.checkBlockIR(&w.AST.Block)
+	if w.AST != nil && block.IsDefined() {
+		w.Body = c.checkBlockIR(block)
 		// A window is its own IR construct, so its children never reach the
 		// slot check every other node's go through. What it accepts is still
 		// the declaration's answer: `content ...component ui.node`.
@@ -4167,6 +4143,87 @@ func (c *checker) checkWindowBody(w *ir.Window) {
 		})
 		c.checkWindowVarHandlers(w)
 	}
+}
+
+// bindWindowParams reads the population of the window's rest slot out of its
+// block and returns the block whose statements the window renders: the
+// population's body where one was written, and the window's own block where
+// none was.
+//
+// **A window's parameters are reached through that population and only
+// through it.** `component content(v) { … }` is where the name `v` is
+// written, the same as for any other scoped slot, and children written bare
+// see no parameters at all -- there is nowhere in a spread to write a name,
+// so there is nothing for the arguments to be collected into. A body that
+// wants them switches forms. Reading the names off the declaration instead
+// would put a binding in a body that never named one, and would put it there
+// for every window in the language.
+//
+// So a window that writes no population has no cell either: w.Params is
+// dropped, and nothing downstream binds a route parameter for a page that
+// does not read one.
+func (c *checker) bindWindowParams(w *ir.Window) *ast.StmtBlock {
+	rest := c.windowComp.RestSlot()
+	if rest == nil {
+		w.Params = nil
+		return &w.AST.Block
+	}
+	var pop *ast.ComponentDecl
+	kept := w.AST.Block
+	kept.Stmts = nil
+	for _, st := range w.AST.Block.Stmts {
+		cd, isDecl := st.(*ast.ComponentDecl)
+		if !isDecl {
+			kept.Stmts = append(kept.Stmts, st)
+			continue
+		}
+		switch {
+		case cd.Name != rest.Name:
+			c.error(cd.Pos, "component %s has no slot %q", c.windowComp.Name, cd.Name)
+		case pop != nil:
+			c.error(cd.Pos, "slot %q is already populated on component %s", cd.Name, c.windowComp.Name)
+		default:
+			pop = cd
+		}
+	}
+	if pop == nil {
+		w.Params = nil
+		return &w.AST.Block
+	}
+	if len(kept.Stmts) > 0 {
+		c.error(w.AST.Pos, "slot %q is populated by name and by the children written bare on component %s", rest.Name, c.windowComp.Name)
+	}
+	c.bindWindowParamsName(pop, rest, w)
+	return &pop.Body
+}
+
+// bindWindowParamsName names the params cell from the population's parameter
+// list. The declaration's slot carries the type; the population carries the
+// name, and may write the type again to be measured against it -- the same
+// bind-mode reading checkSlotContent gives an ordinary population.
+func (c *checker) bindWindowParamsName(pop *ast.ComponentDecl, rest *ir.SlotDecl, w *ir.Window) {
+	params := pop.Props.Props
+	if len(params) != len(rest.Params) {
+		c.error(pop.Pos, "slot %q binds %d parameter(s), but declares %d", rest.Name, len(params), len(rest.Params))
+	}
+	if pop.ChildrenType != nil {
+		c.error(pop.Pos, "slot %q: a population names no tree; what it accepts is the declaration's", rest.Name)
+	}
+	if len(params) == 0 || w.Params == nil {
+		w.Params = nil
+		return
+	}
+	a, ok := params[0].(ast.Param)
+	if !ok || a.Bidirectional {
+		c.error(pop.Pos, "slot %q: a population binds plain names", rest.Name)
+		w.Params = nil
+		return
+	}
+	if a.Default != nil {
+		c.error(a.Pos, "slot %q: parameter %q takes no default value; the insertion supplies it", rest.Name, a.Name)
+	}
+	w.Params.Name = a.Name
+	w.Params.Type = c.bindParamType(a.Type, w.Params.Type, bindParamWhat(a.Name, "slot "+strconv.Quote(rest.Name)))
 }
 
 // windowStateVars is a window's own state: `w.Vars` plus the vars its body
