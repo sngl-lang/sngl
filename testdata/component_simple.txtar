@@ -2,6 +2,13 @@ A component fixture: the source, the code every target generates from it,
 and the record saying a host toolchain built that and ran whatever tests it
 carries.
 
+Two declarations of `count` is the point of the shape: `main` has one and
+`Counter` has one, the inliner substitutes `Counter` into `main` and renames
+each instantiation's state, so what every target declares is `count__inst0`
+beside `count__inst1`. Both have to be *read* for that to be visible -- an
+unread var is shaken, and `main`'s used to survive only because the window it
+was hoisted onto was a shake root.
+
 -- component_simple.sngl --
 import . "sngl:ui"
 
@@ -17,6 +24,7 @@ component Counter(label = "", start = 0) node {
 component main node {
     var count = 0
 
+    text(value=string(count))
     Counter(label="Clicks", start=5)
 }
 
@@ -147,20 +155,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
-	var contentChildren []string
-	var content_0 string
-	content_0 = lipgloss.NewStyle().Render(fmt.Sprint("Clicks"))
-	contentChildren = append(contentChildren, content_0)
-	var content_1 string
-	content_1Focused := (m.__focusID == 0)
-	content_1Prefix := " "
-	if content_1Focused {
-		content_1Prefix = ">"
+	var parts []string
+	var part0 string
+	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.count__inst0)))
+	parts = append(parts, part0)
+	var part1 string
+	var part1Children []string
+	var part1_0 string
+	part1_0 = lipgloss.NewStyle().Render(fmt.Sprint("Clicks"))
+	part1Children = append(part1Children, part1_0)
+	var part1_1 string
+	part1_1Focused := (m.__focusID == 0)
+	part1_1Prefix := " "
+	if part1_1Focused {
+		part1_1Prefix = ">"
 	}
-	content_1 = lipgloss.NewStyle().Render(content_1Prefix + " " + fmt.Sprint("+"))
-	contentChildren = append(contentChildren, content_1)
-	content = lipgloss.JoinHorizontal(lipgloss.Top, contentChildren...)
+	part1_1 = lipgloss.NewStyle().Render(part1_1Prefix + " " + fmt.Sprint("+"))
+	part1Children = append(part1Children, part1_1)
+	part1 = lipgloss.JoinHorizontal(lipgloss.Top, part1Children...)
+	parts = append(parts, part1)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -180,6 +194,7 @@ func main() {
 package main
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -192,9 +207,10 @@ type Model struct {
 	count__inst0 int
 	count__inst1 int
 
-	__n0 *fyne.Container
-	__n1 *widget.Label
-	__n2 *widget.Button
+	__n0 *widget.Label
+	__n1 *fyne.Container
+	__n2 *widget.Label
+	__n3 *widget.Button
 }
 
 // New creates a Model with default values.
@@ -205,7 +221,7 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n2_click_handler() {
+func (m *Model) __n3_click_handler() {
 	m.count__inst1 = (m.count__inst1 + 1)
 }
 
@@ -227,16 +243,20 @@ func (m *Model) SetCount__inst1(v int) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n0 = container.NewHBox()
-	m.__n1 = widget.NewLabel("")
-	m.__n1.SetText("Clicks")
-	m.__n0.Add(m.__n1)
-	m.__n2 = widget.NewButton("", nil)
-	m.__n2.SetText("+")
-	m.__n2.OnTapped = m.__n2_click_handler
-	m.__n0.Add(m.__n2)
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.__n0 = widget.NewLabel("")
+	m.__n0.SetText(fmt.Sprint(m.count__inst0))
+	m.__n1 = container.NewHBox()
+	m.__n2 = widget.NewLabel("")
+	m.__n2.SetText("Clicks")
+	m.__n1.Add(m.__n2)
+	m.__n3 = widget.NewButton("", nil)
+	m.__n3.SetText("+")
+	m.__n3.OnTapped = m.__n3_click_handler
+	m.__n1.Add(m.__n3)
+	var parts []fyne.CanvasObject
+	parts = append(parts, m.__n0)
+	parts = append(parts, m.__n1)
+	return container.NewVBox(parts...)
 }
 
 func main() {
@@ -266,6 +286,7 @@ func main() {
 package main
 
 import (
+	"fmt"
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
@@ -276,6 +297,7 @@ type Model struct {
 	__n0         gtk4rt.Handle
 	__n1         gtk4rt.Handle
 	__n2         gtk4rt.Handle
+	__n3         gtk4rt.Handle
 	__root       gtk4rt.Handle
 }
 
@@ -288,7 +310,7 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __n2_clicked_handler() {
+func (m *Model) __n3_clicked_handler() {
 	m.count__inst1 = (m.count__inst1 + 1)
 }
 
@@ -313,17 +335,20 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n0 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n0, gtk4rt.OrientationHorizontal)
-	gtk4rt.BoxSetSpacing(m.__n0, 6)
-	m.__n1 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n1, "Clicks")
-	gtk4rt.BoxAppend(m.__n0, m.__n1)
-	m.__n2 = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.__n2, "+")
-	gtk4rt.Connect(m.__n2, "clicked", m.__n2_clicked_handler)
-	gtk4rt.BoxAppend(m.__n0, m.__n2)
+	m.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n0, fmt.Sprint(m.count__inst0))
+	m.__n1 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n1, gtk4rt.OrientationHorizontal)
+	gtk4rt.BoxSetSpacing(m.__n1, 6)
+	m.__n2 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n2, "Clicks")
+	gtk4rt.BoxAppend(m.__n1, m.__n2)
+	m.__n3 = gtk4rt.ButtonNew()
+	gtk4rt.ButtonSetLabel(m.__n3, "+")
+	gtk4rt.Connect(m.__n3, "clicked", m.__n3_clicked_handler)
+	gtk4rt.BoxAppend(m.__n1, m.__n3)
 	gtk4rt.BoxAppend(m.__root, m.__n0)
+	gtk4rt.BoxAppend(m.__root, m.__n1)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -373,12 +398,15 @@ fun MainScreen() {
     var count__inst0 by remember { mutableStateOf(0) }
     var count__inst1 by remember { mutableStateOf(5) }
 
-    Row(modifier = Modifier.safeDrawingPadding()) {
-        Text(text = "Clicks", modifier = Modifier)
-        Button(onClick = {
-            count__inst1 = (count__inst1 + 1)
-        }, modifier = Modifier) {
-            Text(text = "+", modifier = Modifier)
+    Column {
+        Text(text = count__inst0.toString(), modifier = Modifier.safeDrawingPadding())
+        Row(modifier = Modifier.safeDrawingPadding()) {
+            Text(text = "Clicks", modifier = Modifier)
+            Button(onClick = {
+                count__inst1 = (count__inst1 + 1)
+            }, modifier = Modifier) {
+                Text(text = "+", modifier = Modifier)
+            }
         }
     }
 }
@@ -395,6 +423,8 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
+<span id="__n0" data-sngl-id="__n0">
+</span>
 <div style="display:flex;flex-direction:row">
   <span>Clicks</span>
   <button id="$2">
@@ -406,20 +436,28 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { count__inst0: 0, count__inst1: 5 };
+  function String(v) {
+    return "" + v;
+  }
   var $2 = document.getElementById("$2");
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $2.addEventListener("click", function() {
     state.count__inst1 = state.count__inst1 + 1;
   });
+  function __sngl_init() {
+    __n0.textContent = String(state.count__inst0);
+  }
+  __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e3b943f6ec5202578409451cd4c3bab0
+pass sha256:70b52054ce73200ef484d8e45f46df2d
 -- run/go/fyne --
-pass sha256:4655a1ce7d88b450c58139f6eaa93707
+pass sha256:0e98dc22ea2788576118f8d9166466c3
 -- run/go/gtk4 --
-pass sha256:313b9f7ea7b4d6c61d01fd674dc44754
+pass sha256:1644b1306ba4eb720c27f7fd5f8135e6
 -- run/kotlin/android --
-pass sha256:9f2280d77e8aec0274551dd359fd1b1a
+pass sha256:29ecf7d988590e5f0e258f3cb777e17e
 -- run/none/html --
-pass sha256:28983729c90618d2369285c49952ac1e
+pass sha256:83b5858233ffc1b516a2b48665c44e42

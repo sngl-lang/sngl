@@ -39,20 +39,10 @@ func lowerRefLoop(pkg *ir.Package, _ Caps, _ Options) error {
 			}
 		}
 		st.varHandlers(c.Vars)
-		for _, t := range c.Timers {
-			if t != nil && t.Handler != nil {
-				st.stmts(t.Handler.Block)
-			}
-		}
 	}
+	st.stmts(pkg.Body)
 	for _, w := range pkg.Windows {
-		st.stmts(w.Body)
-		for _, fn := range w.Funcs {
-			if fn != nil {
-				st.stmts(fn.Block)
-			}
-		}
-		st.varHandlers(w.Vars)
+		st.stmts(w.Children)
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
@@ -112,8 +102,6 @@ func (st *refLoopState) stmt(s ir.Stmt) {
 		}
 	case *ir.ContextProvider:
 		st.stmts(n.Children)
-	case *ir.Window:
-		st.stmts(n.Body)
 	case *ir.Assign, *ir.Toggle, *ir.CallStmt, *ir.Return, *ir.LocalVar, *ir.Emit, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		// Leaf statements: no nested loops to descend into. The element
@@ -321,11 +309,6 @@ func (r *refLoopRewriter) stmt(s ir.Stmt) ir.Stmt {
 	case *ir.ContextProvider:
 		n.Value = r.expr(n.Value)
 		r.stmtSlice(n.Children)
-	case *ir.Window:
-		for i := range n.Props {
-			n.Props[i].Value = r.expr(n.Props[i].Value)
-		}
-		r.stmtSlice(n.Body)
 	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No expressions to rewrite.
 	default:

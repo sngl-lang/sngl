@@ -1,0 +1,37 @@
+// A window's body is the population of its rest slot, and the rules it is held
+// to are the ones every other node's population gets.
+//
+// It used to read its own population out of its block: sixty-five lines
+// restating "no such slot", "already populated" and "populated by name and
+// bare", and missing what it did not think to restate. `component ui.text(v)`
+// below is that -- a population naming an override target rather than a slot,
+// which the shared check has always reported and the window's copy read as a
+// slot called `ui.text` that the declaration did not have.
+
+import ui "sngl:ui"
+
+struct PageParams {
+    pkg string
+}
+
+ui.window #a(title="t") {
+    component ui.text(v) { // ERROR(check) "a population names a slot of window, not an override target"
+        ui.text(value="x")
+    }
+}
+
+ui.window #b(title="t") {
+    component nosuch(v) { // ERROR(check) "component window has no slot \"nosuch\""
+        ui.text(value="x")
+    }
+}
+
+ui.window #c(title="t", href=`/p/{pkg}`, params=PageParams{}) {
+    component content(v) {
+        ui.text(value=v.pkg)
+    }
+
+    component content(v) { // ERROR(check) "slot \"content\" is already populated on component window"
+        ui.text(value=v.pkg)
+    }
+}

@@ -1,6 +1,7 @@
 package lower_test
 
 import (
+	"strings"
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/internal/checker"
@@ -10,7 +11,7 @@ import (
 
 func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	t.Helper()
-	// passCanvas reads its primitives' signatures off sngl:internal/draw, which
+	// passShapeDraw reads its primitives' signatures off sngl:internal/draw, which
 	// a check registers as it loads. This package is built by hand, so it asks
 	// for the load itself.
 	if checker.LibPackage("internal/draw") == nil {
@@ -85,53 +86,70 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 
 // A program with no shape node anywhere is not searched. Without the gate the
 // pass walks every component of every program a canvas-capable target builds.
-func TestPassCanvas_SkipsProgramsWithoutShapes(t *testing.T) {
+func TestShapeDraw_SkipsProgramsWithoutShapes(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 	pkg.TreeKinds = nil
 
 	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
-	if canvasInst.CanvasDraw != nil {
-		t.Error("passCanvas ran on a program that declares no shapes")
+	if !onlyShapeNodes(canvasInst.Children) {
+		t.Error("passShapeDraw ran on a program that declares no shapes")
 	}
 }
 
 // The gate is the declaration, not the import. A package may declare its own
-// shapes, and inlining flattens a canvas out of
-// the package that imported it, so gating on the import list dropped canvases
-// on the floor: the shapes survived as ordinary widget nodes and the generated
-// program failed to build.
-func TestPassCanvas_RunsWithoutADrawImport(t *testing.T) {
+// shapes, and inlining flattens a canvas out of the package that imported it,
+// so gating on the import list dropped canvases on the floor: the shapes
+// survived as ordinary widget nodes and the generated program failed to build.
+func TestShapeDraw_RunsWithoutADrawImport(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 	pkg.Imports = nil
 
 	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
-	if canvasInst.CanvasDraw == nil {
-		t.Error("passCanvas skipped a canvas because the package had no draw import")
+	if onlyShapeNodes(canvasInst.Children) {
+		t.Error("passShapeDraw skipped a canvas because the package had no draw import")
 	}
 }
 
-func TestPassCanvas_GeneratesDrawFunc(t *testing.T) {
+// The shapes become the statements that paint them, where they stood. In place
+// is the whole of the design: they stay ordinary IR, so the optimize pass that
+// runs after lowering folds them and keeps what they call. A version that built
+// a function instead put the body somewhere nothing walked, and the helpers its
+// calls named were shaken away as unreferenced.
+func TestShapeDraw_SplicesTheDrawingInPlace(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 
-	caps := lower.Caps{Canvas: true}
-	if err := lower.Lower(pkg, caps, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
+	if len(canvasInst.Children) == 0 {
+		t.Fatal("expected the canvas to keep the statements that paint it")
+	}
+	for i, st := range canvasInst.Children {
+		if n, ok := st.(*ir.NodeInst); ok && ir.IsDrawShapeTree(n.Component.Tree) {
+			t.Errorf("children[%d] is still the shape %q, not the drawing", i, n.Name)
+		}
+	}
+	// Nothing is synthesized into the IR: no func list anywhere holds a
+	// drawing, which is what let the pass stop owning one.
+	for _, fn := range pkg.Funcs {
+		if fn != nil && fn.Synthesized && strings.HasPrefix(fn.Name, "_canvasDraw") {
+			t.Errorf("a drawing reached pkg.Funcs as %q", fn.Name)
+		}
+	}
+}
 
-	if canvasInst.CanvasDraw == nil {
-		t.Fatal("expected CanvasDraw to be set after passCanvas")
+// onlyShapeNodes reports whether stmts are all still un-spliced shapes, which
+// is what an unsearched canvas keeps.
+func onlyShapeNodes(stmts []ir.Stmt) bool {
+	for _, st := range stmts {
+		n, ok := st.(*ir.NodeInst)
+		if !ok || !ir.IsDrawShapeTree(n.Component.Tree) {
+			return false
+		}
 	}
-	if canvasInst.CanvasDraw.Name != "_canvasDraw0" {
-		t.Errorf("expected draw func name %q, got %q", "_canvasDraw0", canvasInst.CanvasDraw.Name)
-	}
-	if len(canvasInst.Children) != 0 {
-		t.Errorf("expected Children to be cleared, got %d", len(canvasInst.Children))
-	}
-	if len(canvasInst.CanvasDraw.Block) == 0 {
-		t.Error("expected draw function Block to have statements")
-	}
+	return len(stmts) > 0
 }

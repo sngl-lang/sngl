@@ -6,8 +6,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func varSet(vars ...*ir.Var) map[*ir.Var]struct{} {
-	s := make(map[*ir.Var]struct{}, len(vars))
+func varSet(vars ...*ir.Var) map[ir.Symbol]struct{} {
+	s := make(map[ir.Symbol]struct{}, len(vars))
 	for _, v := range vars {
 		s[v] = struct{}{}
 	}
@@ -97,7 +97,7 @@ func TestOptimizeMutation_KeepsHandlers(t *testing.T) {
 		DepTracker: NewDepTracker(
 			varSet(x, unused),
 			map[*ir.Func]struct{}{},
-			map[*ir.Func]map[*ir.Var]struct{}{},
+			map[*ir.Func]map[ir.Symbol]struct{}{},
 		),
 		Updaters: []Updater{
 			{Name: "$u_0_text", Body: "set", Deps: varSet(x)},
@@ -128,7 +128,7 @@ func TestOptimizeMutation_UpdaterRequiresSurviveDropAndDrop(t *testing.T) {
 				Requires: Requirement{Helpers: map[string]bool{"String": true}}},
 			// Dead updater (no deps, not initOnly) — dropped; its requirement
 			// must NOT reach any surviving updater.
-			{Name: "$u_1_text", Body: "$1.textContent = Dead()", Deps: map[*ir.Var]struct{}{},
+			{Name: "$u_1_text", Body: "$1.textContent = Dead()", Deps: map[ir.Symbol]struct{}{},
 				Requires: Requirement{Helpers: map[string]bool{"Dead": true}}},
 		},
 	}

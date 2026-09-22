@@ -11,6 +11,12 @@ This program is that shape: `arm` is never called on either target, so the only
 compile at all -- `undefined: time` -- which a golden alone would not have
 shown, since the text looks right.
 
+`t` is keyed on an effect because a var nothing reads is shaken, and a shaken
+var takes the type with it: the archive then shows no `time.` at all and the
+two denies below hold for the wrong reason. An effect's key is read on every
+settle, and reading it spells the type again rather than calling into the
+package.
+
 A *field* of a native type is the same claim one level in, and is why the walk
 does not stop at a program's own struct: `Box` holds a `Vals`, and the Go
 struct emitted for it spells `url.Values` with nothing else in the file naming
@@ -27,7 +33,7 @@ the per-platform harness's claim, which builds every testdata fixture for its
 own target and is where the missing import surfaced.
 
 deny * `t__inst\d+ +Ticker` -- the field is the Go type the mark names, not the SNGL name
-deny * `\*time\.Ticker\{\}` -- a pointer type has no composite literal
+deny * `[^\]]\*time\.Ticker\{\}` -- a pointer type has no composite literal; the `[]*time.Ticker{}` an effect's bookkeeping declares is a slice's and is fine
 deny * `(?m)^\tM Vals$` -- a native-typed field is the Go type the mark names
 
 -- app.sngl --
@@ -57,8 +63,12 @@ struct Box {
 component main ui.node {
     var t Ticker
     var boxes list<Box> = []
+    var armed = 0
+
+    effect(on=t, @mount(v) { armed = armed + 1 })
 
     ui.text(value=string(boxes.length()))
+    ui.text(value=string(armed))
 }
 
 ui.window(title="import") { main }
@@ -80,10 +90,22 @@ type Box struct {
 	M url.Values
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	t__inst0     *time.Ticker
-	boxes__inst0 []Box
+	t__inst0            *time.Ticker
+	boxes__inst0        []Box
+	armed__inst0        int
+	__effect0_key       *time.Ticker
+	__effect0_live      []*time.Ticker
+	__effect0_desired   []*time.Ticker
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
 
 	width, height int
 }
@@ -93,6 +115,14 @@ func New() Model {
 	m := Model{}
 	m.t__inst0 = nil
 	m.boxes__inst0 = []Box{}
+	m.armed__inst0 = 0
+	m.__effect0_key = nil
+	m.__effect0_live = []*time.Ticker{}
+	m.__effect0_desired = []*time.Ticker{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -100,6 +130,45 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_mount() {
+	m.armed__inst0 = (m.armed__inst0 + 1)
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []*time.Ticker{}
+	m.__effect0_desired = append(m.__effect0_desired, m.t__inst0)
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
 }
 
 func (m Model) T__inst0() *time.Ticker {
@@ -132,6 +201,21 @@ func SetBoxes__inst0Cmd(v []Box) tea.Cmd {
 	return func() tea.Msg { return setBoxes__inst0Msg{value: v} }
 }
 
+func (m Model) Armed__inst0() int {
+	return m.armed__inst0
+}
+
+func (m Model) SetArmed__inst0(v int) Model {
+	m.armed__inst0 = v
+	return m
+}
+
+type setArmed__inst0Msg struct{ value int }
+
+func SetArmed__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setArmed__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -145,6 +229,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetT__inst0(msg.value)
 	case setBoxes__inst0Msg:
 		m = m.SetBoxes__inst0(msg.value)
+	case setArmed__inst0Msg:
+		m = m.SetArmed__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -158,8 +244,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() tea.View {
-	var content string
-	content = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.boxes__inst0))))
+	var parts []string
+	var part0 string
+	part0 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(len(m.boxes__inst0))))
+	parts = append(parts, part0)
+	var part1 string
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.armed__inst0)))
+	parts = append(parts, part1)
+	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
@@ -182,11 +274,17 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"net/url"
 	"os"
 	"time"
 )
+
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
 
 type Box struct {
 	M url.Values
@@ -194,10 +292,18 @@ type Box struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	t__inst0     *time.Ticker
-	boxes__inst0 []Box
+	t__inst0            *time.Ticker
+	boxes__inst0        []Box
+	armed__inst0        int
+	__effect0_key       *time.Ticker
+	__effect0_live      []*time.Ticker
+	__effect0_desired   []*time.Ticker
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
 
 	__n0 *widget.Label
+	__n1 *widget.Label
 }
 
 // New creates a Model with default values.
@@ -205,7 +311,54 @@ func New() *Model {
 	m := &Model{}
 	m.t__inst0 = nil
 	m.boxes__inst0 = []Box{}
+	m.armed__inst0 = 0
+	m.__effect0_key = nil
+	m.__effect0_live = []*time.Ticker{}
+	m.__effect0_desired = []*time.Ticker{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
 	return m
+}
+
+func (m *Model) __effect0_mount() {
+	m.armed__inst0 = (m.armed__inst0 + 1)
+	m.__n1.SetText(fmt.Sprint(m.armed__inst0))
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []*time.Ticker{}
+	m.__effect0_desired = append(m.__effect0_desired, m.t__inst0)
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
 }
 
 func (m *Model) T__inst0() *time.Ticker {
@@ -224,12 +377,25 @@ func (m *Model) SetBoxes__inst0(v []Box) {
 	m.boxes__inst0 = v
 }
 
+func (m *Model) Armed__inst0() int {
+	return m.armed__inst0
+}
+
+func (m *Model) SetArmed__inst0(v int) {
+	m.armed__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = widget.NewLabel("")
 	m.__n0.SetText(fmt.Sprint(len(m.boxes__inst0)))
-	content := fyne.CanvasObject(m.__n0)
-	return content
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(fmt.Sprint(m.armed__inst0))
+	m.__effects0_settle()
+	var parts []fyne.CanvasObject
+	parts = append(parts, m.__n0)
+	parts = append(parts, m.__n1)
+	return container.NewVBox(parts...)
 }
 
 func main() {
@@ -242,6 +408,6 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/bubbletea --
-pass sha256:25da33a08f28fbf9b8f889e6117fbdc9
+pass sha256:7591f489bb68c930b5000a3145605a27
 -- run/go/fyne --
-pass sha256:b05050cd8f28b08a5e729d93e02dcc8c
+pass sha256:88d087e515adc8516a48afc69ebdbc01

@@ -44,6 +44,9 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) erro
 		if path == "" {
 			path = defaultRoutePath(win.Name, i)
 		}
+		if err := checkRouteParams(path, win.Window); err != nil {
+			return fmt.Errorf("html: window %q: %w", win.Name, err)
+		}
 		title, _ := codegen.IRLiteralString(titleExpr)
 		// Single source of truth for action indexing: collectActions enumerates
 		// every backend handler in a stable order and returns both the action
@@ -154,13 +157,6 @@ func reactiveSlotFunc(pkg *ir.Package) *ir.Func {
 			}
 		}
 	}
-	for _, w := range pkg.Windows {
-		for _, fn := range w.Funcs {
-			if fn != nil && fn.SlotRender {
-				return fn
-			}
-		}
-	}
 	return nil
 }
 
@@ -180,7 +176,7 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 				backend = true
 			}
 		}
-		for _, v := range win.Vars {
+		for _, v := range routeVars(pkg, win) {
 			for _, h := range v.Handlers {
 				check(h)
 			}
@@ -253,6 +249,63 @@ func walkHref(e ir.Expr, b *strings.Builder) error {
 }
 
 // extractRouteParams finds {param} placeholders in a route path.
+// checkRouteParams holds a route's path to the struct that says what its
+// window hands the body: every `{name}` in the path names a field of the
+// params struct, and that field is something a route can parse out of text.
+//
+// Here rather than in the checker, because a path is a plain string until
+// something serves it: the checker has no routes, `href` is an ordinary prop
+// on every other target, and reading a route out of one was the compiler
+// knowing what html knows. A window built for bubbletea gets no diagnostic
+// about its path and wants none.
+//
+// One-directional on purpose: a field the path does not name is left at the
+// struct's zero rather than reported, because the path is one source of a
+// request's values and the struct is meant to carry the others too.
+func checkRouteParams(path string, win *ir.Window) error {
+	var sd *ir.StructDef
+	if win != nil && win.Params != nil && win.Params.Type != nil && win.Params.Type.Kind == ir.TypeStruct {
+		sd, _ = win.Params.Type.Decl.(*ir.StructDef)
+	}
+	for _, name := range extractRouteParams(path) {
+		f := routeParamField(sd, name)
+		if f == nil {
+			return fmt.Errorf("the path names {%s}, but the window's params have no field %q", name, name)
+		}
+		if !routeParamParseable(f.Type) {
+			return fmt.Errorf("path parameter {%s} arrives as text, and field %q is %s, which a route cannot parse it into", name, name, f.Type)
+		}
+	}
+	return nil
+}
+
+func routeParamField(sd *ir.StructDef, name string) *ir.StructField {
+	if sd == nil {
+		return nil
+	}
+	for _, f := range sd.Fields {
+		if f.Name == name {
+			return f
+		}
+	}
+	return nil
+}
+
+// routeParamParseable reports whether a path segment can be read into a field
+// of this type. The list is the scalars every target can parse from a string
+// and nothing else -- a struct or a list has no spelling in a URL path, and
+// inventing one here would be the compiler choosing an encoding.
+func routeParamParseable(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeString, ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+		return true
+	}
+	return false
+}
+
 func extractRouteParams(path string) []string {
 	var params []string
 	for seg := range strings.SplitSeq(path, "/") {
@@ -355,7 +408,10 @@ func collectActions(pkg *ir.Package, win *codegen.WindowCtx, targets map[*ir.Fun
 			LogicalMutations: logicalMutations(h.Func.Block),
 		})
 	}
-	for _, v := range win.Vars {
+	// Vars first, and the order is the contract: an action's index is the
+	// POST switch case that runs it, so moving a handler in this walk moves
+	// the case a form's hidden `_action` has to name.
+	for _, v := range routeVars(pkg, win) {
 		for _, h := range v.Handlers {
 			add(h)
 		}
@@ -384,8 +440,6 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 			walkInstances(n.Children, fn)
 		case *ir.ErrorBoundary:
 			walkInstances(n.Children, fn)
-		case *ir.Window:
-			walkInstances(n.Body, fn)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Imperative stmts contain no NodeInst children.

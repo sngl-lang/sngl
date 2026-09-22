@@ -37,8 +37,9 @@ func lowerFocusOrder(pkg *ir.Package, _ Caps, _ Options) error {
 	for _, comp := range pkg.Components {
 		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
 	}
+	lowerFocusInOwner(pkg.Body, &pkg.Vars, &pkg.Funcs)
 	for _, w := range pkg.Windows {
-		lowerFocusInOwner(w.Body, &w.Vars, &w.Funcs)
+		lowerFocusInOwner(w.Children, &pkg.Vars, &pkg.Funcs)
 	}
 	return nil
 }
@@ -152,8 +153,6 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 		case *ir.If:
 			walkForSlots(n.Body, slots)
 			walkForSlots(n.Else, slots)
-		case *ir.Window:
-			walkForSlots(n.Body, slots)
 		case *ir.SlotInst:
 			walkForSlots(n.Children, slots)
 		case *ir.ErrorBoundary:
@@ -270,8 +269,6 @@ func walkInjectFocused(
 			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
 			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, inLoop)
 
-		case *ir.Window:
-			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
 		case *ir.SlotInst:
 			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
 		case *ir.ErrorBoundary:

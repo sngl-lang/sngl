@@ -68,7 +68,7 @@ func renderDocAsHTML(pkg *ir.Package, windowName string) ([]byte, error) {
 	}
 	var found *ir.Window
 	for _, w := range pkg.Windows {
-		if w.Name == windowName {
+		if w.ID == windowName {
 			found = w
 			break
 		}

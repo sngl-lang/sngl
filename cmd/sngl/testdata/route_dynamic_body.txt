@@ -53,18 +53,24 @@ import . "sngl:ui"
 import "go:dynbody/srv"
 import "sngl:platform/html"
 
+struct PageParams {
+    pkg string
+}
+
 component main root {
     var hits = 0
 
-    window #page(title="t", href="/p/{pkg}") {
-        html.button(innerText="go", @click { hits = srv.Bump(hits) })
-        if pkg != "" {
-            html.span(innerText="named")
-        } else {
-            html.span(innerText="unnamed")
-        }
-        for var row = srv.Rows(pkg) {
-            html.a(href="/r/" + row.name, innerText=row.name)
+    window #page(title="t", href=`/p/{pkg}`, params=PageParams{}) {
+        component content(v) {
+            html.button(innerText="go", @click { hits = srv.Bump(hits) })
+            if v.pkg != "" {
+                html.span(innerText="named")
+            } else {
+                html.span(innerText="unnamed")
+            }
+            for var row = srv.Rows(v.pkg) {
+                html.a(href="/r/" + row.name, innerText=row.name)
+            }
         }
     }
 }

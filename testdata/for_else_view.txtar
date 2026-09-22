@@ -255,7 +255,6 @@ import (
 type Model struct {
 	rows__inst0 []string
 	n__inst0    int
-	__root      *fyne.Container
 	__slot0     []fyne.CanvasObject
 	__slot1     []fyne.CanvasObject
 
@@ -268,7 +267,6 @@ func New() *Model {
 	m := &Model{}
 	m.rows__inst0 = []string{}
 	m.n__inst0 = 0
-	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot1 = nil
 	return m
@@ -384,11 +382,11 @@ import (
 type Model struct {
 	rows__inst0 []string
 	n__inst0    int
-	__root      gtk4rt.Handle
 	__slot0     []gtk4rt.Handle
 	__slot1     []gtk4rt.Handle
 	__n4        gtk4rt.Handle
 	__n5        gtk4rt.Handle
+	__root      gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -397,7 +395,6 @@ func New() *Model {
 	m := &Model{}
 	m.rows__inst0 = []string{}
 	m.n__inst0 = 0
-	m.__root = nil
 	m.__slot0 = nil
 	m.__slot1 = nil
 	return m
@@ -753,9 +750,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a0e51c4b587ba1cbaa049903c2954345
 -- run/go/fyne --
-pass sha256:35c01b23334bf6ba590d949f41913204
+pass sha256:468fe22c657c710125ae661543ac2423
 -- run/go/gtk4 --
-pass sha256:3c10b8e498fa52864cc1bbdd183c180f
+pass sha256:fb6956b16a79096cc9f18ac50eb2b181
 -- run/kotlin/android --
 broken sha256:50566a41d383236b4acb37a508b8b5eb
 -- run/none/html --

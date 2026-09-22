@@ -3,23 +3,23 @@
 # The two arrived from different directions and meet in `newRouteGC`. #215
 # hoists a root component's `var` onto the window the component lifts, so the
 # route's expression context is scoped to that window or `hits` renders as a
-# bare name the emitted Go never declares. But a window's vars are also where
-# the checker puts the `{id}` an href declares -- and that one is bound from
-# the URL the request arrived on, per request, not per session.
+# bare name the emitted Go never declares. But the window is also what carries
+# the binding its path parameters arrive in -- and that one is bound from the
+# URL the request arrived on, per request, not per session.
 #
 # So the window scope has to answer for one and not the other: `hits` is a
-# field of the per-session State, `id` is the handler local
-# `writeRouteParamBindings` declares. Scoped without that split, `id` came out
-# as `s.Id` against a State struct that had no business carrying it -- and it
-# compiled, because `routeStateVars` had put the field there too.
+# field of the per-session State, `v` is the handler local
+# `writeRouteParamBindings` declares. Scoped without that split, the parameter
+# came out as a field of a State struct that had no business carrying it --
+# and it compiled, because `routeStateVars` had put the field there too.
 
 sngl generate --lang go --platform html -o out app.sngl
 
 exec go build ./...
 
 # The parameter is the local, the state var is the field.
-grep 'id := __r.PathValue\("id"\)' out/server.go
-grep 'html.EscapeString\(id\)' out/server.go
+grep 'v.Id = __r.PathValue\("id"\)' out/server.go
+grep 'html.EscapeString\(v.Id\)' out/server.go
 grep 's.Hits' out/server.go
 
 # And the parameter is not a field of it.
@@ -40,12 +40,20 @@ import ui "sngl:ui"
 import "go:rootparam/srv"
 import "sngl:platform/html"
 
+struct PageParams {
+    id string
+}
+
 component main ui.root {
     var hits = 0
 
-    ui.window #page(title="t", href="/p/{id}") {
-        html.button(innerText="go", @click { hits = srv.Bump(hits) })
-        html.span(innerText="{id}")
-        html.span(innerText="{hits}")
+    ui.window #page(title="t", href=`/p/{id}`, params=PageParams{}) {
+        component content(v) {
+            html.button(innerText="go", @click { hits = srv.Bump(hits) })
+            html.span(innerText="{v.id}")
+            html.span(innerText="{hits}")
+        }
     }
 }
+
+main()

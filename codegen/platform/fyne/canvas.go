@@ -77,13 +77,8 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 }
 
 // collectCanvases delegates to the shared canvasutil collector.
-func collectCanvases(pkg *ir.Package, funcs []*ir.Func) (map[string]*canvasMeta, map[*ir.Func]*canvasMeta) {
-	return canvasutil.Collect(pkg, funcs)
-}
-
-// canvasByIDFor delegates to the shared canvasutil rebuild.
-func canvasByIDFor(byFunc map[*ir.Func]*canvasMeta) map[string]*canvasMeta {
-	return canvasutil.ByIDFor(byFunc)
+func collectCanvases(draws *codegen.CanvasDraws) (map[string]*canvasMeta, map[*ir.NodeInst]*canvasMeta) {
+	return canvasutil.Collect(draws)
 }
 
 // translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt -- the save
@@ -108,7 +103,7 @@ func methodStmt(receiver ir.Expr, method string, args ...ir.Expr) ir.Stmt {
 //	m.<id>.Image = m.<id>Ctx.Result()
 //	m.<id>.Refresh()
 func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {
-	m := t.canvasMetaForDraw(rs.DrawFunc)
+	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
 	}
@@ -123,7 +118,7 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: t.recvIdent(),
-		Func:     &ir.Func{Name: m.Draw.Name},
+		Func:     &ir.Func{Name: m.DrawName},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
 	return []ir.Stmt{
@@ -138,13 +133,13 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	}
 }
 
-// canvasMetaForDraw resolves the canvasMeta for a draw func via the
+// canvasMetaForNode resolves the canvasMeta for a canvas node via the
 // translator's shared map.
-func (t *fyneTranslator) canvasMetaForDraw(draw *ir.Func) *canvasMeta {
-	if t.canvasByFunc == nil {
+func (t *fyneTranslator) canvasMetaForNode(n *ir.NodeInst) *canvasMeta {
+	if t.canvasByNode == nil {
 		return nil
 	}
-	return t.canvasByFunc[draw]
+	return t.canvasByNode[n]
 }
 
 // canvasCtxField names the *snglcanvas.Context Model field backing a canvas
@@ -225,7 +220,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: t.recvIdent(),
-		Func:     &ir.Func{Name: m.Draw.Name},
+		Func:     &ir.Func{Name: m.DrawName},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
 	newImg := &ir.Call{
@@ -268,7 +263,7 @@ func (t *fyneTranslator) rasterExpr(m *canvasMeta, w, h int) string {
 			"\t\t%s.%s(ctx)\n"+
 			"\t\treturn ctx.Result()\n"+
 			"\t})",
-		recv, canvasSurfaceField(m.ID), w, h, m.Scaling, recv, m.Draw.Name)
+		recv, canvasSurfaceField(m.ID), w, h, m.Scaling, recv, m.DrawName)
 }
 
 // canvasSurfaceField names the reusable drawing target behind a scaled canvas.
@@ -287,15 +282,19 @@ func newFyneSizeCall(w, h int) *ir.Call {
 	}
 }
 
-// emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
-// method `func (m *Model) _canvasDrawN(ctx *snglcanvas.Context)`, translating
-// each canvas-intrinsic CallStmt body statement into Context method calls.
-func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, byFunc map[*ir.Func]*canvasMeta, specs map[string]*fyneSpec, importSink func(string)) {
+// emitIRCanvasDraw wraps one drawing's statements in a Model method
+// `func (m *Model) _canvasDrawN(ctx *snglcanvas.Context)`, translating each
+// canvas-intrinsic CallStmt into Context method calls.
+//
+// The method is this platform's, not a declaration the IR carries: three
+// places invoke a drawing, so the statements are wrapped once here and called
+// by name.
+func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext, byNode map[*ir.NodeInst]*canvasMeta, specs map[string]*fyneSpec, importSink func(string)) {
 	tr := newFyneTranslator(gc, specs, func(string, string) {}, importSink)
-	tr.canvasByFunc = byFunc
-	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	tr.canvasByNode = byNode
+	body := codegen.WalkLowered(context.Background(), cv.Draw, tr)
 	synthesized := &ir.Func{
-		Name:     fn.Name,
+		Name:     cv.Name,
 		Receiver: "Model",
 		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
 		Return:   ir.TypVoid,

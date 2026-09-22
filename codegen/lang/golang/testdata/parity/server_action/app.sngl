@@ -10,15 +10,13 @@ output { go { html } }
 
 import "go:example.com/route-post/api"
 
-component main root {
-    var count = 0
+var count = 0
 
-    window #app(title="t", href="/") {
-        vbox {
-            button(text="Save", @click {
-                count = api.Persist(count + 1)
-            })
-            text(value="count {count}")
-        }
+window #app(title="t", href="/") {
+    vbox {
+        button(text="Save", @click {
+            count = api.Persist(count + 1)
+        })
+        text(value="count {count}")
     }
 }

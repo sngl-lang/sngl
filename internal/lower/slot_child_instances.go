@@ -68,9 +68,10 @@ func lowerSlotChildInstances(pkg *ir.Package, _ Caps, _ Options) error {
 			st.walk(c.Body)
 		}
 	}
+	st.walk(pkg.Body)
 	for _, w := range pkg.Windows {
 		if w != nil {
-			st.walk(w.Body)
+			st.walk(w.Children)
 		}
 	}
 	return nil

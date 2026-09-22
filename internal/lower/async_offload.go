@@ -231,9 +231,6 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 				add(h.Func)
 			}
 		}
-		for _, t := range o.Timers {
-			add(t.Handler)
-		}
 		for _, h := range o.Handlers {
 			add(h.Func)
 		}

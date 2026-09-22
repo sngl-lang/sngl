@@ -25,7 +25,7 @@ func exprSlots() []string {
 	types := []reflect.Type{
 		reflect.TypeFor[Package](), reflect.TypeFor[Component](),
 		reflect.TypeFor[Window](), reflect.TypeFor[Func](),
-		reflect.TypeFor[Var](), reflect.TypeFor[Timer](),
+		reflect.TypeFor[Var](),
 		reflect.TypeFor[Output](), reflect.TypeFor[Context](),
 		reflect.TypeFor[ContextProvider](), reflect.TypeFor[Prop](),
 		reflect.TypeFor[Param](), reflect.TypeFor[StructField](),
@@ -135,11 +135,6 @@ func markedPackage() *Package {
 				&SlotInst{Args: []Expr{mark("SlotInst.Args")}},
 			},
 		}},
-		Timers: []*Timer{{
-			Interval: mark("Timer.Interval"),
-			Enabled:  mark("Timer.Enabled"),
-			Handler:  fn("Timer.Handler"),
-		}},
 		Windows: []*Window{{
 			Props: []Arg{
 				{Name: WindowHref, Value: mark("Window.Props[0]")},
@@ -165,7 +160,7 @@ func TestRewriteVisitsEveryExprSlot(t *testing.T) {
 	// Slots whose marker is placed indirectly: the fixture reaches them
 	// through an owned Func or StructLit rather than by holding an Expr.
 	indirect := map[string]bool{
-		"Lambda.Func": true, "Timer.Handler": true,
+		"Lambda.Func":       true,
 		"EventHandler.Func": true, "Var.Handlers": true,
 		"Window.ErrorHandler": true, "Output.Options": true,
 	}

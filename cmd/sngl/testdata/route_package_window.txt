@@ -1,13 +1,13 @@
 # The same route as route_dynamic_body, written as a package window -- a
 # `window` at the root of a file rather than one a component body renders.
 #
-# A window's `{pkg}` href placeholder becomes a var on the window, and the
-# reactivity lowering counted every window var as mutable state. So the `if`
-# and the `for` over that placeholder became client-side render slots: the
-# declarative tree the route's markup is built from was gone, the loop stopped
-# coming out as a HoleFor, and the __renderSlotN the lowering left behind
-# reached the Go translator as a user function -- which panicked on
-# `lower.CreateNode`, an op no language implements.
+# A window's path parameters arrive as one struct value, bound to the name the
+# body's own population writes, and the reactivity lowering counted every
+# window var as mutable state. So the `if` and the `for` over that value became client-side
+# render slots: the declarative tree the route's markup is built from was
+# gone, the loop stopped coming out as a HoleFor, and the __renderSlotN the
+# lowering left behind reached the Go translator as a user function -- which
+# panicked on `lower.CreateNode`, an op no language implements.
 #
 # A route parameter is bound from the URL the request arrived on and nothing
 # running in the page can assign it, so it is not reactive and the tree stays
@@ -18,7 +18,7 @@ sngl generate --lang go --platform html -o out app.sngl
 # The conditional is a branch in the handler, not both arms concatenated.
 # Unparenthesised: the server is written through format.Source, which drops the
 # parentheses a condition is emitted with.
-grep 'if pkg != ""' out/server.go
+grep 'if v.Pkg != ""' out/server.go
 grep 'named' out/server.go
 grep 'unnamed' out/server.go
 
@@ -28,8 +28,8 @@ grep 'for _, row := range' out/server.go
 # The route parameter is bound from the request and substituted into the
 # redirect, and the whole thing compiles -- which is what a grep over the
 # generated Go was never going to say.
-grep 'pkg := __r.PathValue\("pkg"\)' out/server.go
-grep 'http.Redirect\(__w, __r, "/p/"\+url.PathEscape\(pkg\)' out/server.go
+grep 'v.Pkg = __r.PathValue\("pkg"\)' out/server.go
+grep 'http.Redirect\(__w, __r, "/p/"\+url.PathEscape\(v.Pkg\)' out/server.go
 exec go build ./...
 
 # No DOM patching reached the server: the page is written, not mutated.
@@ -57,16 +57,22 @@ import . "sngl:ui"
 import "go:pkgwin/srv"
 import "sngl:platform/html"
 
+struct PageParams {
+    pkg string
+}
+
 var hits = 0
 
-window #page(title="t", href="/p/{pkg}") {
-    html.button(innerText="go", @click { hits = srv.Bump(hits) })
-    if pkg != "" {
-        html.span(innerText="named")
-    } else {
-        html.span(innerText="unnamed")
-    }
-    for var row = srv.Rows(pkg) {
-        html.a(href="/r/" + row.name, innerText=row.name)
+window #page(title="t", href=`/p/{pkg}`, params=PageParams{}) {
+    component content(v) {
+        html.button(innerText="go", @click { hits = srv.Bump(hits) })
+        if v.pkg != "" {
+            html.span(innerText="named")
+        } else {
+            html.span(innerText="unnamed")
+        }
+        for var row = srv.Rows(v.pkg) {
+            html.a(href="/r/" + row.name, innerText=row.name)
+        }
     }
 }

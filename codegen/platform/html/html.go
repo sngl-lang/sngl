@@ -185,15 +185,24 @@ document.addEventListener('DOMContentLoaded', () => main());
 }
 
 // rejectDynamicHrefs errors in static mode: {param} routes need a server.
+//
+// Two shapes say a path is dynamic and the first is no longer the whole
+// question. An href the optimizer could not settle to a string is still one.
+// But a path's placeholders are ordinary characters in a plain string now,
+// where they used to be an interpolation the checker desugared -- so
+// `/p/{pkg}` is a perfectly good literal, and read for that alone the static
+// build wrote a directory called `{pkg}` and said nothing.
 func rejectDynamicHrefs(ctx *codegen.CodegenCtx) error {
 	for _, win := range ctx.Windows() {
 		href := win.Window.Prop(ir.WindowHref)
 		if href == nil {
 			continue
 		}
-		if _, ok := codegen.IRLiteralString(href); !ok {
-			return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
+		path, ok := codegen.IRLiteralString(href)
+		if ok && len(extractRouteParams(path)) == 0 {
+			continue
 		}
+		return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
 	}
 	return nil
 }
@@ -243,12 +252,16 @@ type windowShared struct {
 	// Filled on the first window, like usedComponents above: the slot retarget
 	// that runs after it rewrites call arguments and declares nothing, so it
 	// changes none of these answers.
-	derived    bool
-	common     *codegen.CommonAnalysis
-	dt         *codegen.DepTracker
-	owners     []ir.Owner
-	canvasByID map[string]*canvasutil.Meta
-	canvasByFn map[*ir.Func]*canvasutil.Meta
+	derived      bool
+	common       *codegen.CommonAnalysis
+	dt           *codegen.DepTracker
+	owners       []ir.Owner
+	canvasByID   map[string]*canvasutil.Meta
+	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
+	// canvasDraws is the one set of drawings this package's generation uses.
+	// One instance, because the draw funcs are keyed by pointer: a second
+	// NewCanvasDraws would build equal funcs that match nothing.
+	canvasDraws *codegen.CanvasDraws
 	// modelVars is derived from dt on first use rather than beside it: only
 	// the mutation model asks for it.
 	modelVars map[string]*ir.Var
@@ -272,7 +285,8 @@ func (s *windowShared) derivePackage(pkg *ir.Package) {
 	}
 	s.dt = codegen.NewDepTrackerFromPkg(pkg)
 	s.owners = ir.Owners(pkg)
-	s.canvasByID, s.canvasByFn = canvasutil.Collect(pkg, nil)
+	s.canvasDraws = codegen.NewCanvasDraws(pkg)
+	s.canvasByID, s.canvasByNode = canvasutil.Collect(s.canvasDraws)
 }
 
 // analysis hands each window a copy.
@@ -306,9 +320,16 @@ func (s *windowShared) ownerList(pkg *ir.Package) []ir.Owner {
 
 // canvases is canvasutil.Collect memoized. Shared, not copied, for the reason
 // depTracker is: the two maps and the Meta behind them are only read.
-func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.Func]*canvasutil.Meta) {
+func (s *windowShared) canvases(pkg *ir.Package) (map[string]*canvasutil.Meta, map[*ir.NodeInst]*canvasutil.Meta) {
 	s.derivePackage(pkg)
-	return s.canvasByID, s.canvasByFn
+	return s.canvasByID, s.canvasByNode
+}
+
+// drawings is the package's canvases, for the paths that meet a canvas as a
+// node rather than as a flattened local.
+func (s *windowShared) drawings(pkg *ir.Package) *codegen.CanvasDraws {
+	s.derivePackage(pkg)
+	return s.canvasDraws
 }
 
 func newWindowShared(projectDir string, projectFS fs.FS) *windowShared {
@@ -520,17 +541,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		}
 		if staticMode {
 			if prev, dup := seenPaths[name]; dup {
-				pos := ast.Pos{}
-				if win.Window != nil && win.Window.AST != nil {
-					pos = win.Window.AST.Pos
-				}
-				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, pos)
+				return nil, fmt.Errorf("html: window output path collision: %q emitted by both %s and %s", name, prev, ir.StmtPos(win.Window))
 			}
-			if win.Window != nil && win.Window.AST != nil {
-				seenPaths[name] = win.Window.AST.Pos
-			} else {
-				seenPaths[name] = ast.Pos{}
-			}
+			seenPaths[name] = ir.StmtPos(win.Window)
 		}
 		gen := newHTMLGenFromCtx(ctx, jsLang, opts, shared)
 		gen.wasmLoader = wasmLoaderHTML
@@ -724,7 +737,8 @@ type htmlGen struct {
 	// canvasByID/canvasByFunc are the flattened canvases of every lowered
 	// body, threaded into every translator by newHTMLTranslator.
 	canvasByID   map[string]*canvasutil.Meta
-	canvasByFunc map[*ir.Func]*canvasutil.Meta
+	canvasByNode map[*ir.NodeInst]*canvasutil.Meta
+	canvasDraws  *codegen.CanvasDraws
 
 	// staticInsts are the factory instances the page builds once, in the order
 	// the static renderer met them.
@@ -789,7 +803,8 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	// renders as markup is an ir.NodeInst and is not among these; what is, is
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
-	g.canvasByID, g.canvasByFunc = shared.canvases(pkg)
+	g.canvasByID, g.canvasByNode = shared.canvases(pkg)
+	g.canvasDraws = shared.drawings(pkg)
 	g.rootComp = mainIRComponent(pkg)
 	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
@@ -901,6 +916,13 @@ func (g *htmlGen) prewalkNodes() {
 			if n == nil {
 				return
 			}
+			// A window holds the page rather than an element on it: its id
+			// names no DOM node, so allocating a var for one would declare a
+			// binding against a `document.querySelector` that finds nothing.
+			if ir.IsWindowNode(n) {
+				visitStmts(n.Children)
+				return
+			}
 			if strings.HasPrefix(n.ID, "__n") {
 				g.idToNode[n.ID] = n
 			} else if n.ID != "" {
@@ -930,8 +952,6 @@ func (g *htmlGen) prewalkNodes() {
 		case *ir.For:
 			visitStmts(n.Body)
 			visitStmts(n.Else)
-		case *ir.Window:
-			visitStmts(n.Body)
 		case *ir.SlotInst:
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
@@ -955,11 +975,11 @@ func (g *htmlGen) prewalkNodes() {
 			}
 		}
 	}
-	for _, w := range g.pkg.Windows {
+	for _, w := range ir.AllWindows(g.pkg) {
 		if w == nil {
 			continue
 		}
-		visitStmts(w.Body)
+		visitStmts(w.Children)
 	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
@@ -1039,24 +1059,13 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 				visit(fn.Block)
 			}
 		}
-		for _, t := range c.Timers {
-			if t != nil && t.Handler != nil {
-				visit(t.Handler.Block)
-			}
-		}
 		visitHandlers(c.Vars)
 	}
-	for _, w := range g.pkg.Windows {
+	for _, w := range ir.AllWindows(g.pkg) {
 		if w == nil {
 			continue
 		}
-		visit(w.Body)
-		for _, fn := range w.Funcs {
-			if fn != nil {
-				visit(fn.Block)
-			}
-		}
-		visitHandlers(w.Vars)
+		visit(w.Children)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			visit(w.ErrorHandler.Func.Block)
 		}
@@ -1301,6 +1310,9 @@ func isAllocatedID(digits string, nextID int) bool {
 func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
+		if ir.IsWindowNode(n) {
+			panic(fmt.Sprintf("html.renderIRStmt: unexpected nested Window: %#v", n))
+		}
 		g.renderIRNode(b, n, depth)
 	case *ir.SlotInst:
 		for _, child := range g.irSlotChildren {
@@ -1335,8 +1347,6 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		for _, child := range n.Body {
 			g.renderIRStmt(b, child, depth)
 		}
-	case *ir.Window:
-		panic(fmt.Sprintf("html.renderIRStmt: unexpected nested Window: %#v", n))
 	case *ir.ContextProvider:
 		// passNoContext eliminates these before codegen.
 		panic(fmt.Sprintf("html.renderIRStmt: unexpected ContextProvider: %#v", n))
@@ -1468,8 +1478,17 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 // through this list.
 //
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
-func (g *htmlGen) stateVars() []*ir.Var {
-	var out []*ir.Var
+func (g *htmlGen) stateVars() []codegen.OwnedVar {
+	var out []codegen.OwnedVar
+	// The route's per-request input, which is this window's and no owner's:
+	// the page reads it as state because that is what it is to a document --
+	// a cell filled in before anything renders. A client-only route has
+	// nothing to fill it with and renders against the struct's zero. It is
+	// the slot population's own *ir.Param, which is why this list is symbols:
+	// nothing in the program declares it, so there is no Var to be had.
+	if g.irWindow != nil && g.irWindow.Params != nil {
+		out = append(out, codegen.OwnedVar{Sym: g.irWindow.Params, Win: g.irWindow})
+	}
 	for _, o := range g.shared.ownerList(g.pkg) {
 		if o.Comp != nil && o.Comp != g.rootComp {
 			continue
@@ -1479,7 +1498,7 @@ func (g *htmlGen) stateVars() []*ir.Var {
 		}
 		for _, v := range o.Vars {
 			if !v.Synthesized {
-				out = append(out, v)
+				out = append(out, codegen.OwnedVar{Sym: v, Comp: o.Comp, Win: o.Win})
 			}
 		}
 	}
@@ -1732,15 +1751,16 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
 		id = g.nodeID(n)
 	}
-	if n.CanvasDraw != nil && id == "" {
+	drawing := g.canvasDraws.ForNode(n)
+	if drawing != nil && id == "" {
 		id = g.nodeID(n)
 		if g.idToNode != nil {
 			g.idToNode[id] = n
 		}
 	}
-	if n.CanvasDraw != nil {
+	if drawing != nil {
 		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
-		cs := canvasSetup{id: id, drawFunc: n.CanvasDraw, w: cw, h: ch, scaling: canvasScalingMode(n)}
+		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n)}
 		g.canvasSetups = append(g.canvasSetups, cs)
 		// Init-only: reactive redraws come from the CanvasRedrawStmt
 		// passCanvasReactivity injects into handler/timer bodies. A scaled
@@ -1758,7 +1778,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	style := g.buildCSSStyle(n)
-	if css := canvasScalingCSS(n); css != "" {
+	if css := canvasScalingCSS(n, drawing != nil); css != "" {
 		if style != "" {
 			style += ";"
 		}
@@ -1857,14 +1877,14 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			// A whitespace-sensitive tag renders its children inline: the
 			// pretty-printer's newlines would be visible in the output.
 			var sub strings.Builder
-			for _, s := range n.Children {
+			for _, s := range ir.WidgetChildren(n) {
 				g.renderIRStmt(&sub, s, 0)
 			}
 			b.WriteString(stripInterTagWhitespace(sub.String()))
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else {
 			b.WriteString("\n")
-			for _, s := range n.Children {
+			for _, s := range ir.WidgetChildren(n) {
 				g.renderIRStmt(b, s, depth+1)
 			}
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
@@ -2103,14 +2123,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	var deferredInits []struct{ name, value string }
 	stateVars := g.stateVars()
 	for _, dv := range stateVars {
-		val := g.literalToJS(dv.Init)
-		if codegen.IRIsLiteral(dv.Init) {
-			stateFields = append(stateFields, dv.Name+": "+val)
+		val := g.literalToJS(dv.Init())
+		if codegen.IRIsLiteral(dv.Init()) {
+			stateFields = append(stateFields, dv.Name()+": "+val)
 		} else {
 			// Seeded so the object shape is correct for code that walks the
 			// keys before init completes.
-			stateFields = append(stateFields, dv.Name+": null")
-			deferredInits = append(deferredInits, struct{ name, value string }{dv.Name, val})
+			stateFields = append(stateFields, dv.Name()+": null")
+			deferredInits = append(deferredInits, struct{ name, value string }{dv.Name(), val})
 		}
 	}
 	for _, s := range g.inlinedStateInits {
@@ -2230,8 +2250,14 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	g.emitCanvasSetups(b)
 
 	for _, dv := range stateVars {
+		v := dv.Var()
+		if v == nil {
+			// A route's parameter has no setter: nothing in the page assigns
+			// it, and a @change is something a declaration carries.
+			continue
+		}
 		needsSetter := g.preview
-		for _, h := range dv.Handlers {
+		for _, h := range v.Handlers {
 			if h.Name == "change" {
 				needsSetter = true
 				break
@@ -2239,7 +2265,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		}
 		if !needsSetter && g.pkg != nil {
 			for _, k := range g.pkg.AsyncKickers {
-				if slices.Contains(k.Deps, dv.Name) {
+				if slices.Contains(k.Deps, v.Name) {
 					needsSetter = true
 					break
 				}
@@ -2248,7 +2274,7 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		if !needsSetter {
 			continue
 		}
-		g.emitSetter(b, dv)
+		g.emitSetter(b, v)
 	}
 	if len(stateFields) > 0 {
 		b.WriteString("\n")
@@ -2371,7 +2397,10 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 	synthVars := g.synthesizedVars()
 	synthFuncs := g.synthesizedFuncs()
-	if len(synthVars) == 0 && len(synthFuncs) == 0 {
+	// The drawings count: they are emitted below and are in no func list, so a
+	// page whose only synthesized code is a canvas would return here and write
+	// none of it.
+	if len(synthVars) == 0 && len(synthFuncs) == 0 && len(g.canvasDraws.All()) == 0 {
 		return
 	}
 	jc := javascript.NewIRContext(g.ctx)
@@ -2393,6 +2422,30 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	}
 	if emittedVar {
 		b.WriteString("\n")
+	}
+
+	// A drawing is wrapped once and called from the canvas setup and from
+	// every repaint, so the statements the tree carries become a function
+	// here. It is this platform's, built at emission: no func list holds one
+	// and nothing in the IR names it.
+	for _, cv := range g.canvasDraws.All() {
+		// A drawing owned by a component the page builds as a factory is
+		// declared inside that factory, where the elements it paints are in
+		// scope. See emitFactory.
+		if cv.Owner != nil && g.isInstanceComponent(cv.Owner) {
+			continue
+		}
+		tr := g.newHTMLTranslator(jc)
+		drawn := &ir.Func{
+			Name:   cv.Name,
+			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Block:  codegen.WalkLowered(context.Background(), cv.Draw, tr),
+		}
+		for _, line := range jc.EmitFuncDef(drawn) {
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+		b.WriteByte('\n')
 	}
 
 	for _, fn := range synthFuncs {
@@ -2437,8 +2490,8 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 //
 // `center` is the default and adds nothing: the element stays the size of its
 // drawing, which is what every canvas did before there was a choice.
-func canvasScalingCSS(n *ir.NodeInst) string {
-	if n == nil || n.CanvasDraw == nil {
+func canvasScalingCSS(n *ir.NodeInst, isCanvas bool) string {
+	if n == nil || !isCanvas {
 		return ""
 	}
 	// Emitted after the width and height the canvas declared, so it wins:
@@ -2882,10 +2935,10 @@ func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
 	return g.remapMutated(names, g.dataRenames)
 }
 
-func varSetToNames(vs map[*ir.Var]struct{}) map[string]bool {
+func varSetToNames(vs map[ir.Symbol]struct{}) map[string]bool {
 	out := make(map[string]bool, len(vs))
 	for v := range vs {
-		out[v.Name] = true
+		out[v.SymName()] = true
 	}
 	return out
 }
@@ -2918,8 +2971,10 @@ func (s *windowShared) modelVarsByName(pkg *ir.Package) map[string]*ir.Var {
 	s.derivePackage(pkg)
 	if s.modelVars == nil {
 		s.modelVars = make(map[string]*ir.Var, len(s.dt.ModelVars))
-		for v := range s.dt.ModelVars {
-			s.modelVars[v.Name] = v
+		for sym := range s.dt.ModelVars {
+			if v, ok := sym.(*ir.Var); ok {
+				s.modelVars[v.Name] = v
+			}
 		}
 	}
 	return s.modelVars
@@ -2937,11 +2992,11 @@ func (r *varRegistry) lookup(name string) *ir.Var {
 	return v
 }
 
-func (r *varRegistry) namesToVarSet(names map[string]bool) map[*ir.Var]struct{} {
+func (r *varRegistry) namesToVarSet(names map[string]bool) map[ir.Symbol]struct{} {
 	if len(names) == 0 {
 		return nil
 	}
-	out := make(map[*ir.Var]struct{}, len(names))
+	out := make(map[ir.Symbol]struct{}, len(names))
 	for n, ok := range names {
 		if !ok {
 			continue
@@ -3026,7 +3081,7 @@ func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stm
 
 func (g *htmlGen) canvasRedrawLine(rs *ir.CanvasRedrawStmt) string {
 	for _, cs := range g.canvasSetups {
-		if cs.drawFunc == rs.DrawFunc {
+		if cs.node == rs.Canvas {
 			return cs.drawCall()
 		}
 	}
@@ -3135,10 +3190,6 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
 		}
-	case *ir.Window:
-		for _, c := range n.Body {
-			g.collectLoweredRefs(c)
-		}
 	case *ir.ContextProvider:
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
@@ -3181,7 +3232,7 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 	mutated := make(map[string]bool)
 	for _, s := range fn.Block {
 		for v := range codegen.MutatedFields(g.currentComp, g.dt, s) {
-			mutated[v.Name] = true
+			mutated[v.SymName()] = true
 		}
 	}
 	g.ctx.EventVar = savedEvent
@@ -3559,8 +3610,8 @@ func (g *htmlGen) bodyCalls() []string {
 	for _, c := range g.pageComponents() {
 		collect(c.Body)
 	}
-	for _, w := range pkg.Windows {
-		collect(w.Body)
+	for _, w := range ir.AllWindows(pkg) {
+		collect(w.Children)
 	}
 	collect(pkg.Body)
 	return out

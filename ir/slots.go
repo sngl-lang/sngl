@@ -41,8 +41,6 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 			n.Failed = sp.Substitute(n.Failed, callsite)
 		case *ContextProvider:
 			n.Children = sp.Substitute(n.Children, callsite)
-		case *Window:
-			n.Body = sp.Substitute(n.Body, callsite)
 		case *Assign, *LocalVar, *Return, *CallStmt, *Emit, *Toggle, *CanvasRedrawStmt,
 			*Break, *Continue:
 			// Leaf stmts -- no nested SlotInsts.
@@ -76,7 +74,9 @@ func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
 // once; this is the same hazard one level down.
 //
 // sc is non-nil only for content that arrived through the named-slot map, and
-// carries the parameter names a scoped slot binds its arguments to. A nil
+// carries the parameter names a scoped slot binds its arguments to. Children
+// written bare have no binding site to have written names at, so they see no
+// parameters at all -- a caller that wants them writes the population. A nil
 // callsite is a component instantiated with nothing supplied at all.
 func SlotBody(si *SlotInst, callsite *NodeInst) (body []Stmt, sc *SlotContent, supplied bool) {
 	if callsite == nil {

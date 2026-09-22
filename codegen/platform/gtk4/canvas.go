@@ -122,7 +122,7 @@ func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 // translateCanvasRedraw rewrites a CanvasRedrawStmt into a
 // gtk_widget_queue_draw on the matching canvas drawing-area Model field.
 func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {
-	m := t.canvasMetaForDraw(rs.DrawFunc)
+	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
 	}
@@ -130,13 +130,13 @@ func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	return []ir.Stmt{&ir.CallStmt{Call: nativeCall("gtk_widget_queue_draw", widget)}}
 }
 
-// canvasMetaForDraw resolves the canvasMeta for a draw func via the
+// canvasMetaForNode resolves the canvasMeta for a canvas node via the
 // translator's shared map.
-func (t *gtk4Translator) canvasMetaForDraw(draw *ir.Func) *canvasMeta {
+func (t *gtk4Translator) canvasMetaForNode(n *ir.NodeInst) *canvasMeta {
 	if t.shared == nil {
 		return nil
 	}
-	return t.shared.canvasByFunc[draw]
+	return t.shared.canvasByNode[n]
 }
 
 // canvasMetaForID resolves the canvasMeta for a flattened canvas node id.
@@ -200,7 +200,7 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	// context rather than spelled `m`.
 	closure := &ir.Ident{
 		Name: fmt.Sprintf("func(cr *C.cairo_t, pw, ph int) { _snglCairoScale(cr, pw, ph, %d, %d, %q); %s.%s(cr) }",
-			w, h, m.Scaling, t.gc.RecvName(), m.Draw.Name),
+			w, h, m.Scaling, t.gc.RecvName(), m.DrawName),
 		Type: ir.TypDyn,
 	}
 	appendCall := &ir.Call{
@@ -222,19 +222,22 @@ func (t *gtk4Translator) emitCanvasCreate(id string) []ir.Stmt {
 	return stmts
 }
 
-// emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
-// method `func (m *Model) _canvasDrawN(cr *C.cairo_t)`, translating each
-// canvas-intrinsic CallStmt body statement into native cairo calls.
-func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, reg *gir.TypeRegistry, shared *emitShared) {
+// emitIRCanvasDraw wraps one drawing's statements in a Model method
+// `func (m *Model) _canvasDrawN(ctx *C.cairo_t)`, translating each
+// canvas-intrinsic CallStmt into native cairo calls.
+//
+// The method is this platform's: three places invoke a drawing, so the
+// statements the tree carries are wrapped once here and called by name.
+func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext, reg *gir.TypeRegistry, shared *emitShared) {
 	// The registry and the shared sink are not optional even though a draw
 	// body reaches mostly cairo intrinsics: *emitShared is nil-safe, so
 	// without the sink a fail() here would be discarded and the build would
 	// emit the broken call anyway, and a needBoolToInt() would silently omit
 	// the helper the emitted code then references.
 	tr := newGtk4Translator(gc, func(string, string) {}).withRegistry(reg).withShared(shared)
-	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+	body := codegen.WalkLowered(context.Background(), cv.Draw, tr)
 	synthesized := &ir.Func{
-		Name:     fn.Name,
+		Name:     cv.Name,
 		Receiver: "Model",
 		// Param name matches the IR draw-func param ("ctx") the
 		// canvas-intrinsic bodies reference; renaming would dangle them.

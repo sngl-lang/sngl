@@ -84,7 +84,7 @@ body { font-family: system-ui, sans-serif; }
     let __depth = props.__depth ?? 0;
     let __prop_n = n;
     let __prop___depth = __depth;
-    let __slot02 = [];
+    let __slot0 = [];
     let __inst1_live = [];
     function __set_n(__v) {
       __prop_n = __v;
@@ -96,9 +96,9 @@ body { font-family: system-ui, sans-serif; }
       __renderSlot0(__root);
     }
     function __renderSlot0(parent) {
-      let __place0_prev = __slot02;
+      let __place0_prev = __slot0;
       let __place0_i = 0;
-      __slot02 = [];
+      __slot0 = [];
       let __inst1_next = [];
       let __inst1_i = 0;
       if (__prop_n > 0) {
@@ -129,7 +129,7 @@ body { font-family: system-ui, sans-serif; }
           } else {
             parent.insertBefore(__n2__el, __place0_i_ref0);
           }
-          __slot02.push(__n2__el);
+          __slot0.push(__n2__el);
         }
       }
       for (const [__inst1_i_d, _] of __inst1_live.entries()) {
@@ -140,7 +140,7 @@ body { font-family: system-ui, sans-serif; }
       }
       __inst1_live = __inst1_next;
       for (const __place0_prev_e of __place0_prev) {
-        if (__slot02.indexOf(__place0_prev_e) < 0) {
+        if (__slot0.indexOf(__place0_prev_e) < 0) {
           parent.removeChild(__place0_prev_e);
         }
       }
@@ -165,7 +165,6 @@ body { font-family: system-ui, sans-serif; }
       __set___depth
     };
   }
-  var __slot0 = [];
   function String(v) {
     return "" + v;
   }
@@ -181,4 +180,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b76b4777870605532c4cefa12e25aaa4
+pass sha256:9a226436086ffe2a556fda80cde132b2

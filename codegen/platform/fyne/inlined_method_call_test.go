@@ -7,8 +7,8 @@ import (
 )
 
 // TestInlinedInstanceMethodDispatchesThroughTheModel compiles the Go emitted
-// for testdata/test_named_component_props.sngl, whose three `Pair(...)` call
-// sites each inline to a clone of the component's `both()` computed.
+// for inlinedPairSrc, whose three `Pair(...)` call sites each inline to a
+// clone of the component's `both()` computed.
 //
 // The clones are hoisted onto main, so fyne emits them as Model methods --
 // `func (m *Model) both__inst0() string`. The call site named the free
@@ -17,7 +17,7 @@ import (
 // on the list; a hoisted clone is in neither, and the component it names has
 // been inlined away.
 func TestInlinedInstanceMethodDispatchesThroughTheModel(t *testing.T) {
-	model := generateFyneModelBuilt(t, fixtureSource(t, "test_named_component_props.sngl"))
+	model := generateFyneModelBuilt(t, inlinedPairSrc)
 
 	for _, want := range []string{
 		"func (m *Model) both__inst0() string {",

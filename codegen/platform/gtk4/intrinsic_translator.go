@@ -30,7 +30,7 @@ type emitShared struct {
 	// on a builder call of its own because a per-site `with` is what three
 	// separate scopes have now been found to have forgotten.
 	canvasByID   map[string]*canvasMeta
-	canvasByFunc map[*ir.Func]*canvasMeta
+	canvasByNode map[*ir.NodeInst]*canvasMeta
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -225,10 +225,6 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 		}
 	case *ir.NodeInst:
 		for _, c := range n.Children {
-			t.collectFromStmt(c)
-		}
-	case *ir.Window:
-		for _, c := range n.Body {
 			t.collectFromStmt(c)
 		}
 	case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,

@@ -344,10 +344,10 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { count__inst2: 0, extra__inst2: 5, runs__inst0__inst2: 0, runs__inst1__inst2: 0 };
-  function outer_bump__inst2(state2) {
-    state2.count__inst2 = state2.count__inst2 + 100;
-    __n0.textContent = "L " + state2.count__inst2 + " " + String(state2.extra__inst2) + " " + String(state2.runs__inst0__inst2);
-    __n1.textContent = "L " + state2.count__inst2 + " " + String(state2.extra__inst2) + " " + String(state2.runs__inst1__inst2);
+  function bump__inst2() {
+    state.count__inst2 = state.count__inst2 + 100;
+    __n0.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
+    __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
   }
   function String(v) {
     return "" + v;
@@ -365,7 +365,7 @@ body { font-family: system-ui, sans-serif; }
     __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
     state.runs__inst0__inst2 = state.runs__inst0__inst2 + 1;
     __n0.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
-    outer_bump__inst2(state);
+    bump__inst2();
   });
   $4.addEventListener("click", function() {
     state.count__inst2 = state.count__inst2 + 10;
@@ -376,7 +376,7 @@ body { font-family: system-ui, sans-serif; }
     __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
     state.runs__inst1__inst2 = state.runs__inst1__inst2 + 1;
     __n1.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst1__inst2);
-    outer_bump__inst2(state);
+    bump__inst2();
   });
   function __sngl_init() {
     __n0.textContent = "L " + state.count__inst2 + " " + String(state.extra__inst2) + " " + String(state.runs__inst0__inst2);
@@ -389,4 +389,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 broken sha256:08cb5623fdcfff350064d74d34cb4504
 -- run/none/html --
-pass sha256:4bc7e4741aa2aa3dae922417ab48629a
+pass sha256:29fd74e7794ce10f3311821bd904f0ce

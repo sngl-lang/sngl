@@ -72,9 +72,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// must be hoisted into the surrounding scope's state container. The
 	// optimizer's body-substitution path doesn't clone state — it only
 	// splices body statements. Leave stateful components to the lowering
-	// pass `passNoInlineComponents`, which properly clones Vars/Funcs/Timers
-	// into main with per-call-site rename suffixes.
-	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 || len(comp.Timers) > 0 {
+	// pass `passNoInlineComponents`, which properly clones Vars/Funcs into
+	// main with per-call-site rename suffixes.
+	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 {
 		return nil
 	}
 
@@ -246,11 +246,6 @@ func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
 		substituteParamsInStmts(n.Children, subs)
 	case *ir.ErrorBoundary:
 		substituteParamsInStmts(n.Children, subs)
-	case *ir.Window:
-		for i := range n.Props {
-			n.Props[i].Value = substituteParams(n.Props[i].Value, subs)
-		}
-		substituteParamsInStmts(n.Body, subs)
 	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No params to substitute.
 	default:
@@ -391,11 +386,6 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 				visitStmts(n.Else)
 			case *ir.SlotInst:
 				visitStmts(n.Children)
-			case *ir.Window:
-				for i := range n.Props {
-					visitExpr(n.Props[i].Value)
-				}
-				visitStmts(n.Body)
 			case *ir.Assign:
 				visitExpr(n.Value)
 			case *ir.LocalVar:

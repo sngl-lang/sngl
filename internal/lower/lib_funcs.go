@@ -140,9 +140,6 @@ func inlineLibConsts(pkg *ir.Package) {
 	for _, c := range pkg.Components {
 		note(c.Vars)
 	}
-	for _, w := range pkg.Windows {
-		note(w.Vars)
-	}
 	rewrite := func(root any) {
 		_ = ir.Rewrite(root, func(n ir.Node) (ir.Node, error) {
 			if v := foreignConst(n, own); v != nil {

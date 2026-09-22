@@ -30,7 +30,6 @@ type pass struct {
 // stated, state it there rather than leaving it to position.
 var passes = []pass{
 	passHoistBodyTypes,
-	passRootWindow,
 	passHoistState,
 	passForeignPrimitive,
 	passPlatformExtensionBody,
@@ -56,12 +55,11 @@ var passes = []pass{
 	passRecursionDepth,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
-	passCanvas,
 	// After passCanvas: the call it promotes may be inside a draw function
 	// synthesized from an override's handler body.
+	passShapeDraw,
 	passLibFuncs,
 	passEffect,
-	passTimerPrimitive,
 	passSlotChildInstances,
 	passInstanceEvents,
 	passComponentProps,
@@ -366,11 +364,9 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	for _, f := range pkg.Funcs {
 		walk(f.Block)
 	}
+	walk(pkg.Body)
 	for _, w := range pkg.Windows {
-		walk(w.Body)
-		for _, f := range w.Funcs {
-			walk(f.Block)
-		}
+		walk(w.Children)
 	}
 	return out
 }
@@ -416,7 +412,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		// bodiless here. Judged so, it never joined the list, so a node of it
 		// that survived inlining had no declaration for a backend to emit --
 		// html called `__cf_timer(...)`, a factory nothing defined.
-		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && len(c.Timers) == 0 && !statefulOverrideFor(c, platform) {
+		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !statefulOverrideFor(c, platform) {
 			return
 		}
 		seen[c] = true
@@ -449,8 +445,6 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 				walk(n.Children)
 			case *ir.ContextProvider:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			}
 		}
 	}
@@ -460,8 +454,9 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 			walk(f.Block)
 		}
 	}
+	walk(pkg.Body)
 	for _, w := range pkg.Windows {
-		walk(w.Body)
+		walk(w.Children)
 	}
 	return out
 }

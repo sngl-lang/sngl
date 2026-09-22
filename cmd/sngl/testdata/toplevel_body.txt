@@ -4,11 +4,12 @@
 # (testdata/error_toplevel_ui_node.sngl). `component main` is not a wrapper a
 # program writes either way (#135, #208).
 #
-# passRootWindow lifts what the body holds onto pkg.Windows before any other
-# pass runs. That is the whole implementation strategy: two dozen lowering
-# passes and five platforms already walk pkg.Windows, and a second shape
-# carrying a body is a second thing each of them has to know -- which is
-# exactly where #133 came from.
+# A window written at the root of a file is registered on pkg.Windows by the
+# checker and one under an `if` or a `for` there stays a statement in the
+# package body; ir.AllWindows is the one enumeration that answers for both, so
+# no consumer has to know which shape it got. Lifting the second onto the field
+# was the previous answer and cost a lowering pass that emptied the body and
+# everything else in it.
 
 sngl generate --platform=html --lang=none --out=w-html win.sngl
 sngl generate --platform=bubbletea --lang=go --out=w-bt win.sngl

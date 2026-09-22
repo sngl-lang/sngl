@@ -440,9 +440,9 @@ body { font-family: system-ui, sans-serif; }
     ;
     return 0;
   }
-  function main_noisy__inst0(state2) {
-    state2.ticks__inst0 = state2.ticks__inst0 + 1;
-    return state2.ticks__inst0;
+  function noisy__inst0() {
+    state.ticks__inst0 = state.ticks__inst0 + 1;
+    return state.ticks__inst0;
   }
   function String(v) {
     return "" + v;
@@ -462,7 +462,7 @@ body { font-family: system-ui, sans-serif; }
     __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   $2.addEventListener("click", function() {
-    state.log__inst0 = main_noisy__inst0(state) + main_noisy__inst0(state);
+    state.log__inst0 = noisy__inst0() + noisy__inst0();
     __n0.textContent = String(state.total__inst0) + String(state.log__inst0);
   });
   function __sngl_init() {
@@ -477,4 +477,4 @@ pass sha256:6ef393c3b6ec727d7fb2627d320d6865
 -- run/kotlin/android --
 pass sha256:2643451dc8bf881af07e975f5020e308
 -- run/none/html --
-pass sha256:0bee4a519cf0d676db90a3e9f442d60a
+pass sha256:8fd578eeef0a83d2fc8527d7630a4f02

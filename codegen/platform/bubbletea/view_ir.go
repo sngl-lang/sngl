@@ -90,16 +90,7 @@ func emitIRView(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, g
 		indent:      1,
 	}
 
-	if len(bodyStmts) == 1 {
-		vc.line("var content string")
-		vc.renderStmt(bodyStmts[0], "content")
-	} else {
-		vc.line("var parts []string")
-		for i, child := range bodyStmts {
-			vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
-		}
-		vc.line(`content := lipgloss.JoinVertical(lipgloss.Left, parts...)`)
-	}
+	vc.renderBody(bodyStmts, "content")
 
 	// Overlay (modal/drawer) box vars are assigned inside their `if open { ... }`
 	// gate during the body render, but composited after content — so declare
@@ -195,21 +186,9 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		slotVar:     slotVar,
 	}
 
-	ccBody := cc.Body
-	if len(ccBody) == 1 {
-		vc.line("var result string")
-		vc.renderStmt(ccBody[0], "result")
-		b.WriteString(vc.buf.String())
-		b.WriteString("\treturn result\n")
-	} else {
-		vc.line("var parts []string")
-		for i, child := range ccBody {
-			vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
-		}
-		vc.line(`result := lipgloss.JoinVertical(lipgloss.Left, parts...)`)
-		b.WriteString(vc.buf.String())
-		b.WriteString("\treturn result\n")
-	}
+	vc.renderBody(cc.Body, "result")
+	b.WriteString(vc.buf.String())
+	b.WriteString("\treturn result\n")
 
 	b.WriteString("}\n\n")
 }
@@ -228,12 +207,41 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
 }
 
+// renderBody emits a body as one value in `single`, or as a list of parts
+// joined into it.
+//
+// The schedules are dropped first. A timer primitive stands in the tree where
+// it was written -- which is what answers the branch and the component
+// boundary around it, and what AnalyzeCommon reads to arm it from Init() --
+// but it draws nothing, so a body is one widget or several by what it renders
+// and not by how many schedules it also placed.
+func (vc *irViewContext) renderBody(stmts []ir.Stmt, single string) {
+	stmts = codegen.WithoutSchedules(stmts)
+	if len(stmts) == 1 {
+		vc.line("var %s string", single)
+		vc.renderStmt(stmts[0], single)
+		return
+	}
+	vc.line("var parts []string")
+	for i, child := range stmts {
+		vc.renderChild(child, fmt.Sprintf("part%d", i), "parts")
+	}
+	vc.line(`%s := lipgloss.JoinVertical(lipgloss.Left, parts...)`, single)
+}
+
 // rendersPart reports whether a view statement produces a string for its
 // parent to join. The rest are emitted as imperative Go where they stand — a
 // hoisted `var __ltN` and its value-only If, a synthesized counter — and
 // joining an empty part for one puts a blank line in the rendered box.
 func rendersPart(s ir.Stmt) bool {
 	switch n := s.(type) {
+	case *ir.NodeInst:
+		// A schedule is not a widget. The timer primitive stays where it was
+		// written so that the branch and the component boundary around it are
+		// answered by the tree; what reads it is AnalyzeCommon, and Init()
+		// arms what it found. Nothing is drawn for it here, and a part joined
+		// for one is a blank line in the box.
+		return !ir.IsTimerPrimitive(n.Component)
 	case *ir.LocalVar:
 		return false
 	case *ir.If:
@@ -248,6 +256,13 @@ func rendersPart(s ir.Stmt) bool {
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
+		if ir.IsWindowNode(s) {
+			// A window only appears at top level; one in a view tree is unexpected.
+			panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
+		}
+		if ir.IsTimerPrimitive(s.Component) {
+			return // see rendersPart
+		}
 		vc.renderNode(s, resultVar)
 	case *ir.If:
 		if s.FromTernary {
@@ -271,9 +286,6 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		for _, child := range s.Children {
 			vc.renderStmt(child, resultVar)
 		}
-	case *ir.Window:
-		// Window only appears at top-level; nested Window in view tree is unexpected.
-		panic(fmt.Sprintf("bubbletea: unexpected nested Window in view tree: %#v", s))
 	case *ir.LocalVar:
 		// A LocalVar in the view body is the `var __ltN` decl NoTernary hoists
 		// before the widget consuming it (its FromTernary If assigns it). Emit
@@ -367,8 +379,8 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 	// Canvas2D node — rasterise inline each frame into a terminal string.
-	if n.CanvasDraw != nil {
-		vc.renderCanvas(n, resultVar)
+	if c := vc.ctx.Canvases.ForNode(n); c != nil {
+		vc.renderCanvas(n, c, resultVar)
 		return
 	}
 

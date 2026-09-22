@@ -368,7 +368,7 @@ func TestLowerProviders_Basic(t *testing.T) {
 	)
 	win := &ir.Window{
 		Name: "home",
-		Body: []ir.Stmt{
+		Children: []ir.Stmt{
 			&ir.ContextProvider{
 				Ref:      ctx,
 				Value:    makeStringLit("dark"),
@@ -387,17 +387,17 @@ func TestLowerProviders_Basic(t *testing.T) {
 	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	// Provider should be gone from window body.
-	if n := countContextProviders(win.Body, ctx); n != 0 {
+	if n := countContextProviders(win.Children, ctx); n != 0 {
 		t.Errorf("after lowerProviders: %d ContextProvider nodes remain in window body", n)
 	}
 
 	// The NodeInst for Inner should have a __ctx_theme arg.
-	if len(win.Body) == 0 {
+	if len(win.Children) == 0 {
 		t.Fatal("window body is empty after lowerProviders")
 	}
-	ni, ok := win.Body[0].(*ir.NodeInst)
+	ni, ok := win.Children[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("win.Body[0] = %T; want *ir.NodeInst", win.Body[0])
+		t.Fatalf("win.Children[0] = %T; want *ir.NodeInst", win.Children[0])
 	}
 	val := findArgInNodeInst(ni, "__ctx_theme")
 	if val == nil {
@@ -421,8 +421,8 @@ func TestLowerProviders_RootDefault(t *testing.T) {
 		},
 	)
 	win := &ir.Window{
-		Name: "home",
-		Body: []ir.Stmt{makeNodeInstComp(inner)},
+		Name:     "home",
+		Children: []ir.Stmt{makeNodeInstComp(inner)},
 	}
 	pkg := &ir.Package{
 		Contexts:   []*ir.Context{ctx},
@@ -434,9 +434,9 @@ func TestLowerProviders_RootDefault(t *testing.T) {
 	addHiddenParams(pkg, reach, nil)
 	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
-	ni, ok := win.Body[0].(*ir.NodeInst)
+	ni, ok := win.Children[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("win.Body[0] = %T; want *ir.NodeInst", win.Body[0])
+		t.Fatalf("win.Children[0] = %T; want *ir.NodeInst", win.Children[0])
 	}
 	val := findArgInNodeInst(ni, "__ctx_theme")
 	if val == nil {
@@ -472,7 +472,7 @@ func TestLowerProviders_NestedShadowing(t *testing.T) {
 
 	win := &ir.Window{
 		Name: "home",
-		Body: []ir.Stmt{
+		Children: []ir.Stmt{
 			&ir.ContextProvider{
 				Ref:   ctx,
 				Value: makeStringLit("outer-val"),
@@ -499,7 +499,7 @@ func TestLowerProviders_NestedShadowing(t *testing.T) {
 	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	// No providers should remain.
-	if n := countContextProviders(win.Body, ctx); n != 0 {
+	if n := countContextProviders(win.Children, ctx); n != 0 {
 		t.Errorf("after lowerProviders: %d ContextProvider nodes remain", n)
 	}
 
@@ -517,16 +517,16 @@ func TestLowerProviders_NestedShadowing(t *testing.T) {
 
 	// After lowerProviders, win.Body should be: [innerShow, outerShow, rootShow]
 	// (providers unwrapped, children spliced inline at each level)
-	if len(win.Body) != 3 {
-		t.Fatalf("win.Body length = %d; want 3 (innerShow, outerShow, rootShow)", len(win.Body))
+	if len(win.Children) != 3 {
+		t.Fatalf("win.Children length = %d; want 3 (innerShow, outerShow, rootShow)", len(win.Children))
 	}
 
-	innerNI, ok0 := win.Body[0].(*ir.NodeInst)
-	outerNI, ok1 := win.Body[1].(*ir.NodeInst)
-	rootNI, ok2 := win.Body[2].(*ir.NodeInst)
+	innerNI, ok0 := win.Children[0].(*ir.NodeInst)
+	outerNI, ok1 := win.Children[1].(*ir.NodeInst)
+	rootNI, ok2 := win.Children[2].(*ir.NodeInst)
 	if !ok0 || !ok1 || !ok2 {
 		t.Fatalf("expected all three body stmts to be *ir.NodeInst, got %T, %T, %T",
-			win.Body[0], win.Body[1], win.Body[2])
+			win.Children[0], win.Children[1], win.Children[2])
 	}
 
 	if got := argLit(innerNI); got != `"inner-val"` {
@@ -551,7 +551,7 @@ func TestApplyNoContext_ClearsContexts(t *testing.T) {
 	)
 	win := &ir.Window{
 		Name: "home",
-		Body: []ir.Stmt{
+		Children: []ir.Stmt{
 			&ir.ContextProvider{
 				Ref:      ctx,
 				Value:    makeStringLit("dark"),
@@ -586,7 +586,7 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 	)
 	win := &ir.Window{
 		Name: "home",
-		Body: []ir.Stmt{
+		Children: []ir.Stmt{
 			&ir.ContextProvider{
 				Ref:      ctx,
 				Value:    makeStringLit("dark"),
@@ -620,17 +620,17 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 	}
 
 	// No ContextProvider remains in window.
-	if n := countContextProviders(win.Body, ctx); n != 0 {
+	if n := countContextProviders(win.Children, ctx); n != 0 {
 		t.Errorf("window still has %d ContextProvider nodes", n)
 	}
 
 	// The Toolbar NodeInst in window has __ctx_theme = "dark".
-	if len(win.Body) == 0 {
+	if len(win.Children) == 0 {
 		t.Fatal("window body empty after pass")
 	}
-	ni, ok := win.Body[0].(*ir.NodeInst)
+	ni, ok := win.Children[0].(*ir.NodeInst)
 	if !ok {
-		t.Fatalf("win.Body[0] = %T; want *ir.NodeInst", win.Body[0])
+		t.Fatalf("win.Children[0] = %T; want *ir.NodeInst", win.Children[0])
 	}
 	val := findArgInNodeInst(ni, "__ctx_theme")
 	if val == nil {
@@ -652,7 +652,7 @@ func TestLowerProviders_InIfAndFor(t *testing.T) {
 	cond := &ir.Literal{Type: ir.TypBool, Value: "true"}
 	win := &ir.Window{
 		Name: "home",
-		Body: []ir.Stmt{
+		Children: []ir.Stmt{
 			&ir.ContextProvider{
 				Ref:   ctx,
 				Value: makeStringLit("themed"),
@@ -676,17 +676,17 @@ func TestLowerProviders_InIfAndFor(t *testing.T) {
 	lowerProviders(pkg, reach, nil, hiddenParamIndex{funcs: map[*ir.Func]map[*ir.Context]*ir.Param{}})
 
 	// Provider gone.
-	if n := countContextProviders(win.Body, ctx); n != 0 {
+	if n := countContextProviders(win.Children, ctx); n != 0 {
 		t.Errorf("ContextProvider still present: %d", n)
 	}
 
 	// Should be one If stmt in win.Body.
-	if len(win.Body) != 1 {
-		t.Fatalf("win.Body len = %d; want 1", len(win.Body))
+	if len(win.Children) != 1 {
+		t.Fatalf("win.Children len = %d; want 1", len(win.Children))
 	}
-	ifStmt, ok := win.Body[0].(*ir.If)
+	ifStmt, ok := win.Children[0].(*ir.If)
 	if !ok {
-		t.Fatalf("win.Body[0] = %T; want *ir.If", win.Body[0])
+		t.Fatalf("win.Children[0] = %T; want *ir.If", win.Children[0])
 	}
 	if len(ifStmt.Body) != 1 {
 		t.Fatalf("if.Body len = %d; want 1", len(ifStmt.Body))
@@ -720,7 +720,7 @@ func TestMultipleContexts(t *testing.T) {
 	)
 	win := &ir.Window{
 		Name: "home",
-		Body: []ir.Stmt{
+		Children: []ir.Stmt{
 			&ir.ContextProvider{
 				Ref:   ctxA,
 				Value: makeStringLit("dark"),
@@ -889,7 +889,7 @@ func TestFuncCallSiteThreaded(t *testing.T) {
 	)
 	win := &ir.Window{
 		Name: "home",
-		Body: []ir.Stmt{
+		Children: []ir.Stmt{
 			&ir.ContextProvider{
 				Ref:      ctx,
 				Value:    makeStringLit("fr"),

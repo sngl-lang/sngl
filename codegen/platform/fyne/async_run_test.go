@@ -121,6 +121,8 @@ component pages() root {
         })
     }
 }
+
+pages()
 `
 
 // A window a component renders owns funcs of its own, and that is where the
@@ -128,9 +130,11 @@ component pages() root {
 // one spelling and left the other blocking on the drawing thread, with no
 // diagnostic either way: the program compiled and the window froze.
 //
-// passRootWindow lifts a root component's windows onto pkg.Windows, so the two
-// spellings are one list by the time a backend sees them -- which is why this
-// asserts the outcome and not the route to it.
+// `pages()` is what renders the component: nothing lifts a root component's
+// windows any more, so the inliner splices the window into the package body
+// and ir.AllWindows is what makes the two spellings one list by the time a
+// backend sees them -- which is why this asserts the outcome and not the route
+// to it.
 //
 // The claim stops at the shape rather than a compile, because this spelling
 // does not compile for a reason of its own: fyne emits the handler as

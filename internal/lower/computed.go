@@ -30,9 +30,6 @@ func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
 	for _, comp := range pkg.Components {
 		collectComputed(comp.Funcs, bodies)
 	}
-	for _, w := range pkg.Windows {
-		collectComputed(w.Funcs, bodies)
-	}
 
 	if len(bodies) == 0 {
 		return nil
@@ -49,9 +46,6 @@ func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
 	pkg.Funcs = filterFuncs(pkg.Funcs, bodies)
 	for _, comp := range pkg.Components {
 		comp.Funcs = filterFuncs(comp.Funcs, bodies)
-	}
-	for _, w := range pkg.Windows {
-		w.Funcs = filterFuncs(w.Funcs, bodies)
 	}
 	return nil
 }

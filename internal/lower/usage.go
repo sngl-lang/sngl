@@ -86,19 +86,17 @@ func pkgUsesAlert(pkg *ir.Package) bool {
 // construct: a window/boundary @error handler, a fallible-call handler, a
 // raise, or a func that can error.
 func pkgUsesErrorHandling(pkg *ir.Package) bool {
+	if stmtsUseErrorHandling(pkg.Body) {
+		return true
+	}
 	for _, w := range pkg.Windows {
-		if w.ErrorHandler != nil || stmtsUseErrorHandling(w.Body) {
+		if w.ErrorHandler != nil || stmtsUseErrorHandling(w.Children) {
 			return true
 		}
 		// A window owns funcs the way a component does, and the ones this
 		// lowering synthesized are where the raises are: an effect group's
 		// settle raises when it does not converge. Reading the body alone left
 		// the error payload undeclared in a program whose only raise was there.
-		for _, f := range w.Funcs {
-			if f.CanError || stmtsUseErrorHandling(f.Block) {
-				return true
-			}
-		}
 	}
 	for _, comp := range pkg.Components {
 		if stmtsUseErrorHandling(comp.Body) {
@@ -153,10 +151,6 @@ func stmtsUseErrorHandling(stmts []ir.Stmt) bool {
 			}
 		case *ir.ContextProvider:
 			if stmtsUseErrorHandling(x.Children) {
-				return true
-			}
-		case *ir.Window:
-			if stmtsUseErrorHandling(x.Body) {
 				return true
 			}
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,

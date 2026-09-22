@@ -143,16 +143,6 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		}
 	case *ir.Toggle:
 		pre, n.Target = st.transformExpr(n.Target)
-	case *ir.Window:
-		for i := range n.Props {
-			if n.Props[i].Value == nil {
-				continue
-			}
-			p, v := st.transformExpr(n.Props[i].Value)
-			pre = append(pre, p...)
-			n.Props[i].Value = v
-		}
-		n.Body = st.transformBlock(n.Body)
 	case *ir.ContextProvider:
 		pre, n.Value = st.transformExpr(n.Value)
 		n.Children = st.transformBlock(n.Children)

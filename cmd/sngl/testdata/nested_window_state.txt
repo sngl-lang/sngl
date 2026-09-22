@@ -15,9 +15,18 @@
 # #214 now asks a component's own body which family it renders into. The
 # assertions below are unchanged by that -- the window is still written inside a
 # component body, which is the half of the pair this fixture is about.
+#
+# `main()` is how that window is rendered: a root component is an ordinary
+# declaration, so nothing lifts its windows and one nobody instantiates draws
+# nothing. The instantiation is also the whole of what separates the two pages
+# now -- the inliner renames what a spliced body declares per instantiation, so
+# the nested spelling's `hits` is `hits__inst0`. That rename is undone below
+# rather than asserted around, because the claim this fixture makes is that the
+# two pages are otherwise the same byte for byte.
 
 sngl generate --platform html -o out_nested nested.sngl
 sngl generate --platform html -o out_root root.sngl
+exec sed -i 's/__inst0//g' out_nested/index.html
 cmpgen out_nested/index.html out_root/index.html
 
 # The window's own var is the page's state, and the handler writes it there.
@@ -43,6 +52,8 @@ component main root {
         }
     }
 }
+
+main()
 
 -- root.sngl --
 import . "sngl:ui"

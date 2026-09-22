@@ -88,36 +88,15 @@ func lowerNodeEscape(pkg *ir.Package, _ Caps, _ Options) error {
 		for _, v := range comp.Vars {
 			addVarHandlerScopes(v, &scopes)
 		}
-		for _, tm := range comp.Timers {
-			if tm.Handler != nil {
-				addScope(tm.Handler.Block, &tm.Handler.LocalRefs)
-			}
-		}
 	}
-	for _, w := range pkg.Windows {
-		addScope(w.Body, &w.LocalRefs)
-		for _, f := range w.Funcs {
-			addScope(f.Block, &f.LocalRefs)
-		}
-		for _, v := range w.Vars {
-			addVarHandlerScopes(v, &scopes)
-		}
+	for _, w := range ir.AllWindows(pkg) {
+		addScope(w.Children, &w.LocalRefs)
 		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 			addScope(w.ErrorHandler.Func.Block, &w.ErrorHandler.Func.LocalRefs)
-		}
-		for _, tm := range w.Timers {
-			if tm.Handler != nil {
-				addScope(tm.Handler.Block, &tm.Handler.LocalRefs)
-			}
 		}
 	}
 	for _, v := range pkg.Vars {
 		addVarHandlerScopes(v, &scopes)
-	}
-	for _, tm := range pkg.Timers {
-		if tm.Handler != nil {
-			addScope(tm.Handler.Block, &tm.Handler.LocalRefs)
-		}
 	}
 
 	// Map each created ref id → its creating scope. A well-formed flattened
@@ -238,16 +217,20 @@ func collectScopeRefsStmt(s ir.Stmt, info *scopeRefInfo) {
 		collectScopeRefs(n.Body, info)
 		collectScopeRefs(n.Else, info)
 	case *ir.NodeInst:
-		// A surviving NodeInst (e.g. canvas shape) — its props/children may
-		// reference refs. Children are still tree-shaped here only in pre-
-		// declarative passes; after passDeclarative they are flattened. Walk
-		// defensively.
+		// A nested window is its own scope; its body's refs are not part of
+		// the enclosing one, and its own set is filled from ir.AllWindows.
+		if ir.IsWindowNode(n) {
+			return
+		}
+		// A surviving NodeInst — its props/children may reference refs.
+		// Children are still tree-shaped here only in pre-declarative passes;
+		// after passDeclarative they are flattened. Walk defensively.
 		for i := range n.Props {
 			collectScopeRefsExpr(n.Props[i].Value, info)
 		}
 		collectScopeRefsExpr(n.Key, info)
 		collectScopeRefsExpr(n.Ref, info)
-		collectScopeRefs(n.Children, info)
+		collectScopeRefs(ir.WidgetChildren(n), info)
 	case *ir.SlotInst:
 		collectScopeRefs(n.Children, info)
 	case *ir.ErrorBoundary:
@@ -260,9 +243,6 @@ func collectScopeRefsStmt(s ir.Stmt, info *scopeRefInfo) {
 		collectScopeRefsExpr(n.Call, info)
 	case *ir.Toggle:
 		collectScopeRefsExpr(n.Target, info)
-	case *ir.Window:
-		// A nested Window is its own scope; its body refs are not part of
-		// the enclosing scope. Its create/use is analyzed via pkg.Windows.
 	case *ir.ContextProvider:
 		collectScopeRefsExpr(n.Value, info)
 		collectScopeRefs(n.Children, info)

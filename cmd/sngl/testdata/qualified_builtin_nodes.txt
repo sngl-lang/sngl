@@ -55,6 +55,9 @@ component main s.root {
 }
 
 output { none { html } }
+
+main()
+
 -- qualslot.sngl --
 import s "sngl:ui"
 
@@ -76,6 +79,9 @@ component main s.root {
 }
 
 output { none { html } }
+
+main()
+
 -- timer.sngl --
 import s "sngl:ui"
 import t "sngl:time"
@@ -124,3 +130,5 @@ component main ui.root {
 }
 
 output { none { html } }
+
+main()

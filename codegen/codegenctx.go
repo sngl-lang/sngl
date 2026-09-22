@@ -2,7 +2,6 @@ package codegen
 
 import (
 	"maps"
-	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -21,6 +20,11 @@ type CodegenCtx struct {
 	// The test launcher sets it per-group so each test binary builds its
 	// Model from the component under test.
 	RootComponent string
+	// Canvases is the drawings in this package and the function each paints
+	// with. Built once here rather than by each platform: the names are method
+	// names, so two platforms computing them separately would be two places to
+	// number them in.
+	Canvases *CanvasDraws
 }
 
 func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
@@ -43,6 +47,7 @@ func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
 		Namer:         NewNamer(),
 		Platform:      platform,
 		RootComponent: root,
+		Canvases:      NewCanvasDraws(req.Pkg),
 	}
 }
 
@@ -62,50 +67,8 @@ func (ctx *CodegenCtx) ScopedExprCtx() *ExprCtx {
 	}
 	if w := ctx.EntryWindow(); w != nil {
 		c = c.ForWindow(w)
-	} else if shared := ctx.sharedWindowScope(); shared != nil {
-		c = c.ForWindow(shared)
 	}
 	return c
-}
-
-// sharedWindowScope is the declarations *every* window owns, as a stand-in
-// window to resolve names against. Nil when there are none.
-//
-// A declaration owned by all of them is one *ir.Var reachable from every window
-// (passRootWindow mounts a root component's state there, #215), so scoping to
-// it chooses between no windows -- which is what EntryWindow returning nil past
-// one is guarding against.
-//
-// The stand-in is never rendered and carries no body: ExprCtx reads Vars and
-// Funcs off it and nothing else does.
-func (ctx *CodegenCtx) sharedWindowScope() *ir.Window {
-	if ctx.Pkg == nil || len(ctx.Pkg.Windows) < 2 {
-		return nil
-	}
-	first := ctx.Pkg.Windows[0]
-	inAll := func(has func(w *ir.Window) bool) bool {
-		for _, w := range ctx.Pkg.Windows[1:] {
-			if !has(w) {
-				return false
-			}
-		}
-		return true
-	}
-	shared := &ir.Window{}
-	for _, v := range first.Vars {
-		if inAll(func(w *ir.Window) bool { return slices.Contains(w.Vars, v) }) {
-			shared.Vars = append(shared.Vars, v)
-		}
-	}
-	for _, f := range first.Funcs {
-		if inAll(func(w *ir.Window) bool { return slices.Contains(w.Funcs, f) }) {
-			shared.Funcs = append(shared.Funcs, f)
-		}
-	}
-	if len(shared.Vars) == 0 && len(shared.Funcs) == 0 {
-		return nil
-	}
-	return shared
 }
 
 // EntryWindow is the window a single-model target scopes to, or nil where the
@@ -121,7 +84,7 @@ func (ctx *CodegenCtx) EntryWindow() *ir.Window {
 	}
 	if name := ctx.Pkg.EntryWindow; name != "" {
 		for _, w := range ctx.Pkg.Windows {
-			if w.Name == name {
+			if w.ID == name {
 				return w
 			}
 		}
@@ -134,15 +97,52 @@ func (ctx *CodegenCtx) EntryWindow() *ir.Window {
 	return nil
 }
 
-// OwnedVar is one var a target puts in its Model, paired with the declaration
-// that owns it. The owner matters to a target that scopes an expression per var
-// -- gtk4 builds a per-var ExprCtx from it -- and to nothing else, which is why
-// the enumeration can be shared even where the emission cannot.
+// OwnedVar is one binding a target puts in its Model, paired with the
+// declaration that owns it. The owner matters to a target that scopes an
+// expression per var -- gtk4 builds a per-var ExprCtx from it -- and to
+// nothing else, which is why the enumeration can be shared even where the
+// emission cannot.
+//
+// Sym is a symbol rather than an *ir.Var because not everything a Model holds
+// is a declaration a body made: a window's route parameters are the *ir.Param
+// its slot population binds, and whatever serves the page fills them in. A
+// target stores the two the same way, which is the whole of what this list
+// says; the accessors below are what a Param answers and a Var answers more
+// of.
 type OwnedVar struct {
-	Var  *ir.Var
+	Sym  ir.Symbol
 	Comp *ir.Component // the component declaring it, if one does
 	Win  *ir.Window    // the window declaring it, if one does
 }
+
+// Name and Type are the two questions every binding answers.
+func (o OwnedVar) Name() string   { return o.Sym.SymName() }
+func (o OwnedVar) Type() *ir.Type { return o.Sym.SymType() }
+
+// Var is the declaration where one was made, and nil for a binding something
+// outside the program supplies. A caller that needs the three questions below
+// should ask them rather than this.
+func (o OwnedVar) Var() *ir.Var { v, _ := o.Sym.(*ir.Var); return v }
+
+// Init is what the cell holds before anything writes it.
+//
+// For a parameter that is its type's zero, written out. Nothing in the program
+// initialises one -- whatever serves the page does, and a target with no
+// request never does -- so left nil the cell renders as whatever that backend
+// calls nothing, and the page read `state.v.pkg` off an empty string. A
+// declaration keeps its own answer, including none: a `var` with no
+// initializer is a question each backend already has a zero for.
+func (o OwnedVar) Init() ir.Expr {
+	if v := o.Var(); v != nil {
+		return v.Init
+	}
+	return ir.ZeroExpr(o.Type())
+}
+
+// IsConst and Synthesized are facts about a declaration, so a parameter is
+// neither: it is written in source, and it is written to.
+func (o OwnedVar) IsConst() bool     { v := o.Var(); return v != nil && v.IsConst }
+func (o OwnedVar) Synthesized() bool { v := o.Var(); return v != nil && v.Synthesized }
 
 // ModelState returns every var a single-Model target puts in its Model, in
 // emission order: the package's vars and consts, then the main component's,
@@ -160,19 +160,19 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 	}
 	root := ctx.RootDecl()
 	var out []OwnedVar
-	// Keyed by the *ir.Var, because one declaration may be owned by several
-	// windows: passRootWindow mounts a root component's state on every window
-	// it lifts, and a Model holding two of those windows holds one cell for it
-	// -- which is what "the reference is shared" means on a target whose
-	// windows are one process. Emitted per owner instead, the Model declared
-	// `hits int` twice and did not compile.
-	seen := map[*ir.Var]bool{}
-	add := func(v *ir.Var, o ir.Owner) {
+	// Keyed by the declaration, because one may be owned by several windows:
+	// a root component that renders two of them is spliced into the package
+	// body as one copy, so both read the same cell -- which is what "the
+	// reference is shared" means on a target whose windows are one process.
+	// Emitted per owner instead, the Model declared `hits int` twice and did
+	// not compile.
+	seen := map[ir.Symbol]bool{}
+	add := func(v ir.Symbol, o ir.Owner) {
 		if v == nil || seen[v] {
 			return
 		}
 		seen[v] = true
-		out = append(out, OwnedVar{Var: v, Comp: o.Comp, Win: o.Win})
+		out = append(out, OwnedVar{Sym: v, Comp: o.Comp, Win: o.Win})
 	}
 	for _, o := range ir.Owners(ctx.Pkg) {
 		// One Model holds one component's state: the root's. The others are
@@ -186,6 +186,16 @@ func (ctx *CodegenCtx) ModelState() []OwnedVar {
 		}
 		for _, c := range o.Consts {
 			add(c, o)
+		}
+	}
+	// A window's route parameters are the one cell no owner declares: the
+	// window's scoped slot binds them and whatever serves the page fills them
+	// in. A target with no request never fills one and renders the struct's
+	// zero -- but it still reads the binding, so the Model has to hold it or
+	// the read names a field nothing declared.
+	for _, w := range ctx.Windows() {
+		if w.Window != nil && w.Window.Params != nil {
+			add(w.Window.Params, ir.Owner{Win: w.Window})
 		}
 	}
 	return out
@@ -213,7 +223,7 @@ func (ctx *CodegenCtx) collectHandlers(stmts []ir.Stmt) []Handler {
 			elemID = ctx.Namer.NextPrefixed("$")
 		}
 		for _, h := range n.Handlers {
-			mutated := make(map[*ir.Var]struct{})
+			mutated := make(map[ir.Symbol]struct{})
 			if h.Func != nil {
 				for _, stmt := range h.Func.Block {
 					maps.Copy(mutated, MutatedFields(nil, ctx.Deps, stmt))
@@ -232,19 +242,14 @@ func (ctx *CodegenCtx) collectHandlers(stmts []ir.Stmt) []Handler {
 
 func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 	var timers []TimerHandler
-	allTimers := append([]*ir.Timer{}, ctx.Pkg.Timers...)
-	if main := ctx.RootDecl(); main != nil {
-		allTimers = append(allTimers, main.Timers...)
-	}
-	for _, w := range ctx.Pkg.Windows {
-		allTimers = append(allTimers, w.Timers...)
+	var allTimers []ScheduledTimer
+	for _, o := range ir.Owners(ctx.Pkg) {
+		allTimers = append(allTimers, CollectTimers(o.Stmts())...)
 	}
 	for i, t := range allTimers {
-		mutated := make(map[*ir.Var]struct{})
-		if t.Handler != nil {
-			for _, stmt := range t.Handler.Block {
-				maps.Copy(mutated, MutatedFields(nil, ctx.Deps, stmt))
-			}
+		mutated := make(map[ir.Symbol]struct{})
+		for _, stmt := range t.Handler.Block {
+			maps.Copy(mutated, MutatedFields(nil, ctx.Deps, stmt))
 		}
 		activeVar := ""
 		if t.Enabled != nil {

@@ -76,22 +76,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
-func mustParseDateTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		panic(err)
-	}
-	return t
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -369,14 +353,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 	"time"
 )
-
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
 
 type ErrorEvent struct {
 	Message string
@@ -792,8 +768,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-broken sha256:99de7e4d6a68ccc16843900001cd22a3
+broken sha256:09f30103cd41c0c119390dfc27023a0d
 -- run/go/gtk4 --
-pass sha256:b74d4c7e7036ea8bd4265495a6e001cf
+pass sha256:65f3c5522f872a29b32dd0d51d693bfa
 -- run/none/html --
 pass sha256:b7c49791fa6c735776b505f5b4919c27

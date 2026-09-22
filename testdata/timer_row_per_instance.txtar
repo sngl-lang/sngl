@@ -27,8 +27,8 @@ whose period changed is destroyed and built again. It is the missing *setter*
 that says so. The `__prop_interval` cell beside it is not a way to write one in
 -- it is how `__effect0_down` reads the prop at all, the parameter being out of
 scope in a function of the row rather than of its factory call. On the four platforms whose
-timer is still a primitive the mark is never consulted, because
-passTimerPrimitive takes their node out of the tree before reactivity sees it.
+timer is still a primitive the mark is never consulted: the node is a schedule
+codegen reads, and nothing about it is a prop reactivity patches.
 
 deny out/none/html/index.html `state.handle` -- the handle is a row's own local, never page state
 deny out/none/html/index.html `__set_interval` -- a period is not written into a live schedule; the row is rebuilt

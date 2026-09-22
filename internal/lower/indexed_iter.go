@@ -111,8 +111,6 @@ func (st *indexedIterState) stmt(s ir.Stmt) (pre []ir.Stmt, out ir.Stmt) {
 		n.Children = st.block(n.Children)
 	case *ir.ContextProvider:
 		n.Children = st.block(n.Children)
-	case *ir.Window:
-		n.Body = st.block(n.Body)
 	}
 	return nil, s
 }

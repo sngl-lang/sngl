@@ -34,6 +34,7 @@ func emitComponentInstance(
 	reg *gir.TypeRegistry,
 	shared *emitShared,
 	wrapped bool,
+	canvases []codegen.Canvas,
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -103,14 +104,7 @@ func emitComponentInstance(
 		if len(params) > 0 && params[0].Receiver {
 			params = params[1:]
 		}
-		if shared.canvasByFunc[fn] != nil {
-			// A canvas draw func is a cairo callback, not an ordinary method:
-			// its one parameter is the context the trampoline hands it, and
-			// the body was written against the name "ctx". Left as a plain
-			// method it came out `func (c *XInstance) _canvasDraw0(ctx any)`,
-			// which its own body's cairo calls do not compile against.
-			params = []*ir.Param{{Name: "ctx", Type: ir.NativePointerOf("cairo_t")}}
-		} else if fn.SlotRender {
+		if fn.SlotRender {
 			// A reactive slot's render func, whose body was written against
 			// the reactivity pass's `parent` name and is typed the way the
 			// Model's own slot funcs type it (see emitIRSlotFunc).
@@ -123,6 +117,29 @@ func emitComponentInstance(
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, mtr),
 		}
 		for _, line := range igc.EmitFuncDef(emitted) {
+			methods.WriteString(line)
+			methods.WriteByte('\n')
+		}
+		methods.WriteByte('\n')
+	}
+
+	// A drawing written in this component's body paints into fields of this
+	// record -- the drawing area and the cairo context it is handed -- so its
+	// routine is a method here rather than on the Model. There is one per
+	// instance, and a Model method would address whichever was built last.
+	for i := range canvases {
+		cv := &canvases[i]
+		if cv.Owner != comp {
+			continue
+		}
+		dtr := newTr(nil)
+		drawn := &ir.Func{
+			Name:   cv.Name,
+			Params: []*ir.Param{{Name: "ctx", Type: ir.NativePointerOf("cairo_t")}},
+			Return: ir.TypVoid,
+			Block:  codegen.WalkLowered(context.Background(), cv.Draw, dtr),
+		}
+		for _, line := range igc.EmitFuncDef(drawn) {
 			methods.WriteString(line)
 			methods.WriteByte('\n')
 		}

@@ -72,8 +72,11 @@ type fyneTranslator struct {
 	// field, so OnComponentRoot reads this before selecting one.
 	plainHandle map[string]bool
 
-	canvasByID   map[string]*canvasMeta
-	canvasByFunc map[*ir.Func]*canvasMeta
+	canvasByID map[string]*canvasMeta
+	// canvasByNode is the same records keyed by the canvas instantiation,
+	// which is what a repaint names -- there being no draw function in the IR
+	// for it to point at.
+	canvasByNode map[*ir.NodeInst]*canvasMeta
 }
 
 func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {

@@ -181,9 +181,9 @@ expressions together takes `walk.go`'s `walkPackage` (`passTernary`,
 `passIndexedIter`, `passNoRef`, `NoDeclarative`'s id scan); a pass wanting the
 *functions* a target may enter takes `async_offload.go`'s `offloadableFuncs`.
 The three enumerate the same owners and each used to say so in its own code,
-which is what let one of them forget a case the other two had. **A window owns
-timers** — `passTimerPrimitive` records a schedule on whichever owner held the
-node, and the inliner has by then put a top-level component's timer in the
+which is what let one of them forget a case the other two had. **A window used
+to own timers** — a lowering pass lifted each schedule onto whichever owner held
+the node, and the inliner has by then put a top-level component's timer in the
 window — and `walkWindow` and `offloadableFuncs` both walked a window's vars,
 funcs and body and not its timers. Nothing in source puts a timer there, so
 both gaps opened only after that pass ran and were invisible to every fixture
@@ -191,7 +191,9 @@ written before it: a ternary in a `@tick` panicked the Go emitter, a
 two-variable `sngl:seq` loop there emitted `for i, x := range` over a pull
 sequence, and a `#[go.async]` call there ran on fyne's drawing thread.
 `testdata/timer_tick_lowered.txtar` and `testdata/timer_tick_async_offload.txtar`
-pin the three.
+pin the three. Neither list exists any more: a timer primitive stays in the
+tree it was written in, so a tick is the `@tick` handler of an ordinary node and
+is reached wherever a node's handlers are.
 
 Two of the three now *ask* `ir.Owner` rather than restating it. `blocks.go`
 and `offloadableFuncs` both iterate `ir.Owners(pkg)`, so a window's timers and
@@ -206,9 +208,9 @@ What *was* reachable is the case neither copy had: **the handlers on a package
 var.** Both files named the package's funcs and its body and stopped, while a
 component's and a window's vars were walked in both — so a `for … else` in the
 `@change` of a top-level `var` reached `passForElse` not at all and every
-backend dropped the else in silence. `passRootWindow` leaves a package's vars
-where the checker put them, deliberately, so the shape survives the whole
-pipeline; `testdata/for_else_package_var_handler.txtar` is it.
+backend dropped the else in silence. Nothing moves a package's vars off the
+package, so the shape survives the whole pipeline;
+`testdata/for_else_package_var_handler.txtar` is it.
 
 Both orders are load-bearing and neither is this file's any more.
 `passCSE` and `passForElse` name their temps `__cseN`/`__ranN` off `blocks.go`'s
@@ -217,10 +219,9 @@ each keeps the order it had: a window's `@error` after its view body, and the
 declared funcs across every owner before any handler.
 `codegen.CodegenCtx.Windows` — the iterator a backend takes when it wants the
 windows rather than the owners — reads the same list.
-`walk.go`'s `walkPackage` is the one left: several of its passes carry an
-`*ir.Window` arm in their own statement switch, so handing it the owners would
-walk a nested window's body twice, and unifying it means deleting those arms in
-the same change.
+`walk.go`'s `walkPackage` is the one left: it walks the package's funcs, its
+components, `pkg.Windows` and `pkg.Body` by hand, where the owners would give
+it all four.
 
 **A lambda body is the fourth kind of block**, and it is the one none of these
 reaches by walking declarations: it hangs off an *expression*. `blocks.go`
@@ -242,7 +243,7 @@ the third, already had an `*ir.Lambda` arm in its rewriter.
 
 That was latent in a second place until a timer became an effect: the tick is
 then a closure handed to a host scheduler, so the same defects came back on
-fyne through an `ir.Lambda` instead of through a window's `Timers`.
+fyne through an `ir.Lambda` instead of through the window list a timer then had.
 `offloadableFuncs` leaves a lambda out for the reason above, with one
 exception -- the lambdas handed to a call that **says it schedules**. What
 calls an ordinary lambda is code the pass can read, and `xs.map(f)` wants the
@@ -371,7 +372,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
-- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node that `passTimerPrimitive` takes back out of the tree. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
+- **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
 - **`lib/math/` → `sngl:math`** — mathematical constants: `pi` and `tau`. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. `float`'s `sin`/`atan2`/`sqrt` belong here too and will move; they are intrinsics with per-language emitters, so that is its own change.
 - **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter<int>` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter<T>` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter<T> position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/async/` → `sngl:async`** — `spawn` and `post`: handing a closure somewhere else to run. They are each other's halves — `spawn` starts work that must not block the caller, `post` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.post` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
@@ -606,8 +607,8 @@ platform's `Timer` primitive.
 
 **A canvas keeps them and draws the rest.** `passCanvas` turns a canvas's shape
 children into a draw function, and then cleared `Children` outright — so the
-bracket went with the shapes, and it runs before `passEffect` and
-`passTimerPrimitive`, which therefore never saw one. A canvas that schedules
+bracket went with the shapes, and it runs before `passEffect`, and before the
+timer lowering that then existed, which therefore never saw one. A canvas that schedules
 its own animation compiled clean and never moved, on every target with a
 canvas, for as long as the rule above has allowed one to be written there.
 `treelessChildren` is what a canvas keeps now, and it mirrors `emitShapes`
@@ -673,28 +674,62 @@ instantiations of one component catch separately.
 whole of what makes a window top-level — no syntactic rule names the
 construct. So a `node` at the root of a file is the ordinary
 tree-membership error, an `if` or a `for` there still works (neither is a
-node), and a component that names `root` itself renders windows, which
-`passRootWindow` lifts onto `pkg.Windows`. `output` is exempt: it is read as a
+node), and a component that names `root` itself renders windows, which reach
+the build when something instantiates it. `output` is exempt: it is read as a
 build directive before any tree question is asked, and `sngl:builtin` cannot
 import `sngl:ui`, where the root tree lives.
 
+**Which windows there are is `ir.AllWindows`**, and the field is only half the
+answer. The checker registers a window written at the root of a file on
+`pkg.Windows`; one under an `if` or a `for` there stays a statement in
+`pkg.Body`, and one a component renders stays a statement in that component's
+body. `ir.AllWindows` reads `ir.Owners`, which reports all three deduped by
+pointer, and the lowering, every platform and the checker's own entry-window
+lookup ask it rather than the field. A lowering pass used to lift the second
+and third onto the field before anything else ran, on the argument that two
+dozen passes and five platforms already walked it -- and paid for it by
+clearing the bodies it emptied, which dropped every statement in them that was
+not a window (`testdata/timer_at_package_root.txtar`).
+
+**A window is an `ir.NodeInst`**, and `ir.Window` is an alias for it rather
+than a type. The name is kept because "which of these nodes is a window" is a
+question nineteen consumers ask and `*ir.Window` is what they have always
+spelled the answer as — but it buys no type safety, a plain vbox satisfies it,
+and `ir.IsWindowNode` is the actual test. That predicate reads the
+`#[builtin("window")]` mark off the declaration, never the name, for the reason
+every other builtin lookup gives.
+
+What the separate struct cost was **72 `case *ir.Window:` arms** across the
+lowering, the optimizer, the interpreter and four platforms, each a second
+answer to a question the `*ir.NodeInst` arm beside it had already answered.
+Forty-eight were a strict subset of that arm; the rest are `ir.IsWindowNode`
+guards at the head of it now, next to the code they except — a window is its
+own reactivity owner, is not flattened into `CreateNode`, allocates no element
+var for its id, and may not appear in a view tree, which is what the `panic`s
+android, bubbletea, html and the interpreter keep.
+
+Three fields ride on `NodeInst` and are nil on every other node —
+`ErrorHandler`, `Params`, `LocalRefs` — which is the price, and it is three nil
+fields against 72 arms. None is a *body owner*: `Vars` and `Funcs` stay off
+`NodeInst`. `Checked` did not come along at all, being the checker's
+bookkeeping about its own progress and so a set there.
+
 **And a window's props are the declaration's, not the compiler's.**
 `lib/ui/window.sngl` declares `title`, `href` and `favicon` like any other
-component declares a prop, so `ir.Window` holds them as the `Props []Arg` a
-`NodeInst` carries and `ir.Window.Comp` is the declaration they were measured
-against. Naming the three as Go fields cost 22 files a hardcoded triple, and
-two of them — `buildWindow` and `convertWindow` — a hand-maintained list that
-had to agree; a fourth prop would have needed every one of them edited before
-it reached a backend. What a Go consumer still spells is `ir.WindowTitle` and
-its two siblings, which name the *prop it reads* rather than redeclaring one:
-html asks for the href, gtk4 for the title, and neither is a list of what a
-window has.
+component declares a prop, so they are the `Props []Arg` any node carries and
+`Component` is the declaration they were measured against. Naming the three as
+Go fields cost 22 files a hardcoded triple, and two of them — `buildWindow` and
+the window's own convert path — a hand-maintained list that had to agree; a
+fourth prop would have needed every one of them edited before it reached a
+backend. What a Go consumer still spells is `ir.WindowTitle` and its two
+siblings, which name the *prop it reads* rather than redeclaring one: html asks
+for the href, gtk4 for the title, and neither is a list of what a window has.
 
-**A window's `#id` binds a node handle**, which is the half of that collapse
-that is done. `declareNodeID` had the split written out: every node id bound an
-`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the `*ir.Window` itself
-— so `ir.Window` was an `ir.Symbol` and "what does a node id name" had two
-answers. It binds the same handle now, `ir.Window.Handle` points at it, and
+**A window's `#id` binds a node handle**, and it is `NodeInst.ID` like every
+other node's. `declareNodeID` had the split written out: every node id bound an
+`*ir.Var` marked `NodeHandle`, and `if isWindow` bound the window itself
+— so a window was an `ir.Symbol` and "what does a node id name" had two
+answers. It binds the same handle now, `Handle` points at it, and
 `SymName`/`SymType` are gone, so the compiler refuses any attempt to declare a
 window as a symbol. That is what found the three consumers rather than leaving
 them to a grep: `output(entry = home)` matches by handle and falls back to the
@@ -702,7 +737,10 @@ name for a window a component renders, folding `home.title` reaches the window
 through `ir.WindowForHandle`, and `hoistedWindow`/`bindWindow` are deleted —
 the handle is the stable thing a reference resolves to, so `buildWindow` builds
 a fresh window every call. `ir.Window.Typ` went with them, having only ever
-answered `SymType`.
+answered `SymType`. The window's `Name` is the target the program wrote
+(`ui.window`) and its `ID` is the `#id`, which is the one rename the type merge
+could not have the compiler check: both fields existed, and reading the wrong
+one compiles.
 
 **A read off a window's id folds to the window's own prop expression**, and it
 is folded again against the context the *read* sits in rather than the one the
@@ -744,36 +782,50 @@ already the `NodeInst` shape) and `passHoistState` moves it. `Funcs` is not the
 same case and cannot follow it: `ir` has no statement for a func declaration,
 `passCanvas` *appends* a synthesized draw func to `w.Funcs` with no source body
 to live in, and sixteen non-test sites read the per-window grouping to decide
-which funcs become that window's methods. `Timers` stays a field by decision
-(#243): three platforms now lower a timer to an effect, but bubbletea cannot —
-Elm lets nothing outside `Update` touch the model, and `Init()` needs a period
-and a body, which is what `ir.Timer` carries and the closure an `@mount` hands
-over cannot. Until those have a home, `checkTreeMembership` keeps a
-`*ir.Window` arm beside its `*ir.NodeInst` one, now reading the same two fields
-off the same kind of pointer.
+which funcs become that window's methods. `Timers` is **gone**, and with it
+`ir.Timer`: the record held an interval, a gate and a tick body, and every one
+of those is readable off the timer-primitive node -- the `interval` and
+`enabled` props and the `@tick` handler -- so it carried nothing the tree did
+not, while costing a field on three owners and a timer arm in nineteen walks.
+`codegen.CollectTimers` reads them, folding the enclosing `if` conditions onto
+the gate as the pass did. #243 is untouched by that: bubbletea still cannot
+lower a timer to an effect -- Elm lets nothing outside `Update` touch the model,
+and `Init()` needs a period and a body, which the closure an `@mount` hands over
+cannot carry -- and it still reads `CommonAnalysis.Timers`, which still carries
+both.
 
-**A root component's own state is hoisted into the window it lifts**, because
-that is where it is mounted — the component is an empty shell once the lift is
-done, and a `var` or `func` left on one reached no backend at all
-(#215: `component main root { var n = 0; window … }` emitted `var state = {}`).
-A *timer* is not a declaration on the component but a statement in its body, and
-the body is cleared — so one written there, or at the root of a file, is dropped
-in silence. Pre-existing on both paths, not fixed, and noted at
-`applyRootWindow`.
-A window is a state owner every consumer already reads, so nothing downstream
-grew a case; what did have to change is the two places that still asked `main`
-for it, `html`'s `routeStateVars` and `golang`'s `newRouteGC`, which now ask the
-route's own window — the same fix `golang.ModelFreeFuncs` already carries for a
-window's funcs. The hoist drops the receiver with them (`dropComponentReceiver`):
-a component-body `func` is a method and a window-body one is not, and left as a
-method `biggest()` came out of the route emitter as a free `MainBiggest(s)`
-beside the `s.Biggest()` it had also emitted.
+**A root component is an ordinary component**, and its state reaches a backend
+the way every other component's does: something instantiates it,
+`passNoInlineComponents` splices the body into the body that wrote the
+instantiation, and the splice renames what the component declared per
+instantiation. `component main ui.root { var hits = 0; window … }` with
+`main()` at the root of the file emits `hits__inst0`;
+`testdata/root_component_state.txtar` is that on four targets.
 
-**Several windows each get it, and the platform says what that means.** The
-same `*ir.Var` is mounted on every window the component lifts, so a target
-whose windows are one process shares one cell — bubbletea, fyne and gtk4 each
-put it in one Model — and a target whose windows are separate documents copies
-it, html writing its own `state` into each page. That divergence is the point
+**So a root component nobody instantiates renders nothing**, and that is a rule
+rather than an oversight — the last remnant of the `main`-by-convention harness,
+now gone. A program made of nothing but one is refused by
+`internal/build.Emit`, which asks `ir.Package.IsProgram`: reachability from the
+package body through the components it instantiates, not membership in any
+body. Asked the other way, a file carrying a spare root component built, and
+fyne and bubbletea then met an `*ir.Window` in the middle of a component method
+and panicked.
+
+The alternative was a lowering pass that scanned `pkg.Components` for the root
+family, lifted the windows onto `pkg.Windows` and hoisted the vars and funcs
+somewhere they would be emitted — the package, after #215 found that leaving
+them on the emptied shell reached no backend at all. It had to strip the
+receiver as it went, a component-body `func` being a method and a package-level
+one not; the inliner does the same, in `dropReceiver`, because a clone hoisted
+into a window or into the package body is no longer a method of anything and
+route mode skips anything that still carries a receiver
+(`s.Keep__inst0(…)` against a file declaring nothing of the name).
+
+**Several windows each get it, and the platform says what that means.** One
+root component rendering two windows is spliced once, so both read the one
+cell: a target whose windows are one process shares it — bubbletea, fyne and
+gtk4 each put it in one Model — and a target whose windows are separate
+documents copies it, html writing its own `state` into each page. That divergence is the point
 rather than a gap: two pages *are* two states and one process *is* one, and
 forcing either way round in the lowering would be the language overriding the
 platform it compiled to. The author picks a target knowing it. Shared top-level
@@ -841,11 +893,86 @@ written bare. Its name is the author's (`content`, `shapes`, `panes`,
 `children` where nothing better is true), and it is inserted by that name like
 any other slot. A component declares at most one; one that declares none
 accepts no children, which is where `component X does not accept children`
-comes from. It names no invocation parameters — bare children are written once,
-with nothing to bind them to — and supplying both a population by name and bare
-children populates it twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot()`
-the lookup; the old answer was the name `_`, which is why nothing keys on a
-slot's name any more.
+comes from. Supplying both a population by name and bare children populates it
+twice. `ir.SlotDecl.Rest` is the flag, `Component.RestSlot()` the lookup; the
+old answer was the name `_`, which is why nothing keys on a slot's name any
+more.
+
+**A rest slot may be scoped, and the population written by name is the only
+thing that reaches its arguments.** `children ...component(v T) node` is
+declared like a named slot's contract, and a caller that wants the arguments
+writes `component children(v) { … }` — the same form and the same
+positional binding an ordinary population gets. Children written bare see
+nothing: a spread has nowhere to write a name, so there is nothing there for
+the arguments to be collected into, and a caller switches forms to obtain
+them. Reading the names off the *declaration* instead was tried and rejected
+(Jonathan's call): it would put a binding in a body that never named one, and
+put it there for every caller in the language. A second, unscoped rest slot
+for the bare case is not the way out either, since a component declares at
+most one and bare children would then have nowhere unambiguous to land.
+
+The form was refused outright before — "bare children are written once, with
+nothing to bind them to" — and allowing it needed no lowering change at all:
+a population already arrives through `NodeInst.Slots`, which is the first
+thing `ir.SlotBody` looks at.
+
+`lib/ui/window.sngl` is the user: a window's route parameters arrive as one
+struct value in the `params` prop, `T` is inferred from it, and the body that
+reads them is the population of the window's `content` slot. That is what
+makes a path a plain string rather than an interpolation — the names in
+`/p/{pkg}` are the struct's fields, not identifiers in scope. Before it, the
+checker read the placeholders off the href and synthesized an `*ir.Var` per
+name: a placeholder and a node `#id` shared one namespace with nothing
+declaring either, so which one a body's `pkg` reached fell out of scope-push
+order; nothing could say a parameter was anything but a string; and a
+misspelled placeholder declared a var rather than being reported.
+`checkWindowPathParams` asks the last two now, holding every `{name}` to a
+field of the struct and that field to a type a route can parse text into.
+
+`NodeInst.Params` is the cell it lands in, and it is the `*ir.Param` the
+population declares — an ordinary slot binding, because there is no
+distinction for the checker to make. That a target *stores* it is codegen's
+answer: `CodegenCtx.ModelState` is "which bindings a single-Model target puts
+in its Model", and an `ir.Symbol` rather than an `*ir.Var` for exactly this
+reason — not everything stored is a declaration a body made. `OwnedVar`
+answers the five questions the four Model emitters ask, of which a parameter
+answers `Name` and `Type` and is neither const nor synthesized, and whose
+`Init` is its type's zero because nothing in the program writes one. A Go
+route handler binds it from the request (`writeRouteParamBindings`); a target
+with no request renders that zero.
+
+Two things follow from the zero being codegen's. The shake roots the window
+*node* rather than its children, so `Params.Type` and the `@error` are
+reachable — the struct a route's parameters name is otherwise declared and
+never constructed, and went. And the window that writes no population carries
+no cell at all, so nothing downstream binds a route parameter for a page that
+does not read one.
+
+**A window's body reaches `checkSlotPopulations` like every other node's**,
+and `w.Params` is that population's own parameter. It used to read its own
+population out of the block: sixty-five lines restating "no such slot",
+"already populated" and "populated by name and bare", and missing the ones it
+did not think to restate — slot arity, and a population naming an override
+target, which `testdata/error_window_population.sngl` pins. What is left of
+that peel is `windowBodyBlock`, which answers only *which lines* the body is,
+and exists because a window hoists its own node ids before the body is read.
+
+**And a window is built in pass2**, like every other node. `windowShell` is
+what pass1 reserves — the target name, the `#id`, the handle — because
+`output(entry = home)` and a sibling window need something to resolve against
+before any body is read; `checkWindow` reads the props, the `@error` and the
+body. Building the whole thing in pass1 checked its arguments against a scope
+pass1 had not finished filling, so `window #home(title = greeting())` above
+`func greeting()` was `undefined: greeting` while the same window one level
+into a component body checked clean
+(`cmd/sngl/testdata/window_prop_reads_a_later_decl.txt`). One local
+specialization also means the bound `T` needs no carrying, which is what the
+params cell used to be for.
+
+What is still the checker's alone is the **id scope**: a window pushes one and
+hoists its own `#id`s into it, which `declareNodeIDsStmt` says by not
+descending into a window, and which `isWindowNode`'s own doc calls the reason
+it exists.
 
 **`...` and a count wrapper compose**, and deliberately: `content ...component tree.one` is "the bare children, of which exactly one". The two say different
 things — `...` says *which* children arrive here (the unnamed ones), the
@@ -896,14 +1023,13 @@ inlines into its caller (`passInlinePure`), and every platform-package
 component must inline or the build fails — so the primitives those overrides
 lower down to have to be exempt.
 `isPrimitiveComponent` reads `Component.Intrinsic` for that, alongside
-`Wildcard` (html's raw element), `Builtin` (a node kind) and a **segmented**
-tree kind (a shape, or the canvas that hosts them) — the marks are the whole
-list, and each says in its own vocabulary that the declaration is rendered
-rather than composed away. Segmented is `ir.IsSegmentedTree`: any tree but the
-widget family, whose members are precisely the ordinary components this pass
-exists to compose away. `Tree != nil` was the test while the widget family was
-not a tree, and reading it after the change exempted every wrapper in the
-language.
+`Wildcard` (html's raw element) and `Builtin` (a node kind) — the marks are the
+whole list, and each says in its own vocabulary that the declaration is
+rendered rather than composed away. A **tree kind** is deliberately not on it:
+belonging to a segmented tree says which family a declaration joins, not that a
+codegen renders it, so a shape composed out of other shapes is a wrapper like
+any other. It was on the list while `passCanvas` existed, because that pass
+looked for the node the shapes hang off; nothing lifts them out now.
 `isPlatformStdlibComponent` is a different question: whether a component came
 from a `sngl:platform/` package the program imports.
 

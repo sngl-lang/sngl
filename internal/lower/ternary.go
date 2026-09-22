@@ -155,25 +155,6 @@ func (st *ternState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 				n.Call.Args[i].Value = v
 			}
 		}
-	case *ir.Window:
-		for i := range n.Props {
-			if n.Props[i].Value == nil {
-				continue
-			}
-			p, v := st.transformExpr(n.Props[i].Value)
-			pre = append(pre, p...)
-			n.Props[i].Value = v
-		}
-		n.Body = st.transformBlock(n.Body)
-		// A window declared inside a component is a statement here rather
-		// than an entry in pkg.Windows, so walkPackage never reaches its
-		// funcs. The canvas lowering puts a draw function there, and its
-		// ternaries went to Go codegen unlowered.
-		for _, f := range n.Funcs {
-			if f != nil {
-				f.Block = st.transformBlock(f.Block)
-			}
-		}
 	case *ir.Toggle:
 		pre, n.Target = st.transformExpr(n.Target)
 	case *ir.ContextProvider:

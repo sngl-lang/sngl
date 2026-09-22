@@ -49,7 +49,7 @@ func (c *checker) analyzeErrors() {
 		if w.ErrorHandler != nil {
 			scope = append(scope, w.ErrorHandler)
 		}
-		walkVisualErrors(w.Body, scope)
+		walkVisualErrors(w.Children, scope)
 	}
 	for _, comp := range pkg.Components {
 		walkVisualErrors(comp.Body, nil)
@@ -69,9 +69,6 @@ func allFuncs(pkg *ir.Package) []*ir.Func {
 	out = append(out, pkg.Funcs...)
 	for _, comp := range pkg.Components {
 		out = append(out, comp.Funcs...)
-	}
-	for _, w := range pkg.Windows {
-		out = append(out, w.Funcs...)
 	}
 	return out
 }

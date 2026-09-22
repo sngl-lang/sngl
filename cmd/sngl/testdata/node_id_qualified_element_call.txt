@@ -1,0 +1,58 @@
+# A childless element call is the same node whichever way its tag is spelled.
+#
+# `text #row(…)` and `ui.text #row(…)` are one node written twice, and they
+# generated different pages. The checker's CallStmt arm resolves the callee
+# itself -- bare ident, `ns.Field` declared, `ns.Field` through a wildcard --
+# and then the branch that handles an `#id` threw that answer away and redid
+# it with a bare `c.scope.Lookup(name)`. A namespaced member is not a scope
+# name, so the qualified spelling came out with a nil Component and
+# `Name: "ui.text"`:
+#
+#   - no declaration, so no prop defaults -- the style binding below is
+#     emitted for one spelling and not the other;
+#   - not an element call at all as far as elementRefCallInfo was concerned,
+#     so declareNodeIDs bound no handle and a handler naming `#row` was
+#     `undefined: row` under an aliased import and fine under a dot import;
+#   - `ui.text` reaching a platform, which android refuses with
+#     `no composable for component "ui.text"`.
+#
+# cmpgen rather than a grep, because the claim is that the two pages are the
+# same page and no single assertion says that.
+
+sngl generate --platform html -o out-qualified qualified.sngl
+sngl generate --platform html -o out-dot dot.sngl
+cmpgen out-qualified/index.html out-dot/index.html
+
+-- qualified.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+ui.window #w(title="t") {
+    ui.text #row(value="a")
+
+    ui.button(text="go", @click {
+        row.value = "x"
+    })
+}
+
+-- dot.sngl --
+import . "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+window #w(title="t") {
+    text #row(value="a")
+
+    button(text="go", @click {
+        row.value = "x"
+    })
+}

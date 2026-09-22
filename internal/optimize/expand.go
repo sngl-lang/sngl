@@ -170,16 +170,11 @@ func expandForStmt(fs *ir.For, ctx *evalCtx) []ir.Stmt {
 }
 
 // collectWindowStructValues recursively walks unrolled statements looking for
-// *ir.Window declarations with a non-empty Name, and appends a const-eval
-// struct value (map[string]any with href/title/favicon) into result keyed by
-// the window's Name.
+// windows with a non-empty id, and appends a const-eval struct value
+// (map[string]any with href/title/favicon) into result keyed by that id.
 func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 	for _, s := range stmts {
 		switch n := s.(type) {
-		case *ir.Window:
-			if n.Name != "" {
-				result[n.Name] = append(result[n.Name], windowStructValue(n))
-			}
 		case *ir.If:
 			collectWindowStructValues(n.Body, result)
 			collectWindowStructValues(n.Else, result)
@@ -193,6 +188,9 @@ func collectWindowStructValues(stmts []ir.Stmt, result map[string][]any) {
 		case *ir.ErrorBoundary:
 			collectWindowStructValues(n.Children, result)
 		case *ir.NodeInst:
+			if ir.IsWindowNode(n) && n.ID != "" {
+				result[n.ID] = append(result[n.ID], windowStructValue(n))
+			}
 			collectWindowStructValues(n.Children, result)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
@@ -270,11 +268,6 @@ func walkStmtExprs(s ir.Stmt, visit func(ir.Expr)) {
 		if n.Call != nil {
 			walkAllExprs(n.Call, visit)
 		}
-	case *ir.Window:
-		for i := range n.Props {
-			walkAllExprs(n.Props[i].Value, visit)
-		}
-		walkForBody(n.Body, visit)
 	case *ir.SlotInst:
 		walkForBody(n.Children, visit)
 	case *ir.ContextProvider:

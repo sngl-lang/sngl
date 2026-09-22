@@ -31,6 +31,9 @@ component main ui.root {
         html.div(innerTxt = "x")
     }
 }
+
+main()
+
 -- badtype.sngl --
 import . "sngl:ui"
 import "sngl:platform/html"
@@ -49,3 +52,5 @@ component main ui.root {
         }
     }
 }
+
+main()

@@ -742,23 +742,23 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { count__inst3: 0, runs__inst0__inst3: 0, runs__inst1__inst3: 0, count__inst4: 0, runs__inst0__inst4: 0, runs__inst1__inst4: 0, hits__inst5: 0, taps__inst2__inst5: 0, hits__inst6: 0, taps__inst2__inst6: 0 };
-  function outer_bump__inst3(state2) {
-    state2.count__inst3 = state2.count__inst3 + 100;
-    __n0.textContent = "a " + String(state2.count__inst3) + " " + String(state2.runs__inst0__inst3);
-    __n1.textContent = "a " + String(state2.count__inst3) + " " + String(state2.runs__inst1__inst3);
+  function bump__inst3() {
+    state.count__inst3 = state.count__inst3 + 100;
+    __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
+    __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
   }
-  function outer_bump__inst4(state2) {
-    state2.count__inst4 = state2.count__inst4 + 100;
-    __n2.textContent = "b " + String(state2.count__inst4) + " " + String(state2.runs__inst0__inst4);
-    __n3.textContent = "b " + String(state2.count__inst4) + " " + String(state2.runs__inst1__inst4);
+  function bump__inst4() {
+    state.count__inst4 = state.count__inst4 + 100;
+    __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
+    __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
   }
-  function methodOnly_hit__inst5(state2) {
-    state2.hits__inst5 = state2.hits__inst5 + 1;
-    __n4.textContent = String(state2.hits__inst5);
+  function hit__inst5() {
+    state.hits__inst5 = state.hits__inst5 + 1;
+    __n4.textContent = String(state.hits__inst5);
   }
-  function methodOnly_hit__inst6(state2) {
-    state2.hits__inst6 = state2.hits__inst6 + 1;
-    __n5.textContent = String(state2.hits__inst6);
+  function hit__inst6() {
+    state.hits__inst6 = state.hits__inst6 + 1;
+    __n5.textContent = String(state.hits__inst6);
   }
   function String(v) {
     return "" + v;
@@ -781,7 +781,7 @@ body { font-family: system-ui, sans-serif; }
     __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
     state.runs__inst0__inst3 = state.runs__inst0__inst3 + 1;
     __n0.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst0__inst3);
-    outer_bump__inst3(state);
+    bump__inst3();
   });
   $5.addEventListener("click", function() {
     state.count__inst3 = state.count__inst3 + 10;
@@ -789,7 +789,7 @@ body { font-family: system-ui, sans-serif; }
     __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
     state.runs__inst1__inst3 = state.runs__inst1__inst3 + 1;
     __n1.textContent = "a " + String(state.count__inst3) + " " + String(state.runs__inst1__inst3);
-    outer_bump__inst3(state);
+    bump__inst3();
   });
   $8.addEventListener("click", function() {
     state.count__inst4 = state.count__inst4 + 1;
@@ -797,7 +797,7 @@ body { font-family: system-ui, sans-serif; }
     __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
     state.runs__inst0__inst4 = state.runs__inst0__inst4 + 1;
     __n2.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst0__inst4);
-    outer_bump__inst4(state);
+    bump__inst4();
   });
   $10.addEventListener("click", function() {
     state.count__inst4 = state.count__inst4 + 10;
@@ -805,14 +805,14 @@ body { font-family: system-ui, sans-serif; }
     __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
     state.runs__inst1__inst4 = state.runs__inst1__inst4 + 1;
     __n3.textContent = "b " + String(state.count__inst4) + " " + String(state.runs__inst1__inst4);
-    outer_bump__inst4(state);
+    bump__inst4();
   });
   $12.addEventListener("click", function() {
-    methodOnly_hit__inst5(state);
+    hit__inst5();
     state.taps__inst2__inst5 = state.taps__inst2__inst5 + 1;
   });
   $14.addEventListener("click", function() {
-    methodOnly_hit__inst6(state);
+    hit__inst6();
     state.taps__inst2__inst6 = state.taps__inst2__inst6 + 1;
   });
   function __sngl_init() {
@@ -832,4 +832,4 @@ pass sha256:b1c16f54d8674e4bc5984594bebc69e7
 -- run/kotlin/android --
 pass sha256:ccb04a76d3578f8cf99575aac5248bb0
 -- run/none/html --
-pass sha256:3170cb691bd883482689494c7bafe8fb
+pass sha256:91b6853f928295ae875c3e684f25e6c1

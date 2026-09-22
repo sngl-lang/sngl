@@ -91,25 +91,11 @@ func pkgHasNativeCall(pkg *ir.Package, cfg *Config) bool {
 		for _, f := range comp.Funcs {
 			scanStmts(f.Block, visit)
 		}
-		for _, t := range comp.Timers {
-			scanTimer(t, visit)
-		}
 		scanStmts(comp.Body, visit)
 	}
+	scanStmts(pkg.Body, visit)
 	for _, w := range pkg.Windows {
-		for _, v := range w.Vars {
-			scanVar(v)
-		}
-		for _, f := range w.Funcs {
-			scanStmts(f.Block, visit)
-		}
-		for _, t := range w.Timers {
-			scanTimer(t, visit)
-		}
-		scanStmts(w.Body, visit)
-	}
-	for _, t := range pkg.Timers {
-		scanTimer(t, visit)
+		scanStmts(w.Children, visit)
 	}
 	return found
 }
@@ -130,16 +116,6 @@ func isEvaluableNativeCall(call *ir.Call, ctx *evalCtx) bool {
 		}
 	}
 	return false
-}
-
-func scanTimer(t *ir.Timer, visit func(ir.Expr)) {
-	if t == nil {
-		return
-	}
-	scanExpr(t.Interval, visit)
-	if t.Handler != nil {
-		scanStmts(t.Handler.Block, visit)
-	}
 }
 
 func scanStmts(stmts []ir.Stmt, visit func(ir.Expr)) {
@@ -183,11 +159,6 @@ func scanStmt(s ir.Stmt, visit func(ir.Expr)) {
 		scanExpr(n.Init, visit)
 	case *ir.CallStmt:
 		scanExpr(n.Call, visit)
-	case *ir.Window:
-		for i := range n.Props {
-			scanExpr(n.Props[i].Value, visit)
-		}
-		scanStmts(n.Body, visit)
 	case *ir.SlotInst:
 		scanStmts(n.Children, visit)
 	case *ir.ContextProvider:

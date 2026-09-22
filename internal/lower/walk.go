@@ -72,13 +72,6 @@ func rewriteStmtExprs(stmts []ir.Stmt, rewrite func(ir.Expr) ir.Expr) []ir.Stmt 
 					n.Call.Args[i].Value = rewrite(n.Call.Args[i].Value)
 				}
 			}
-		case *ir.Window:
-			for i := range n.Props {
-				if n.Props[i].Value != nil {
-					n.Props[i].Value = rewrite(n.Props[i].Value)
-				}
-			}
-			n.Body = rewriteStmtExprs(n.Body, rewrite)
 		case *ir.Toggle:
 			n.Target = rewrite(n.Target)
 		case *ir.ContextProvider:
@@ -139,8 +132,11 @@ func walkPackage(pkg *ir.Package, fns walkFuncs) {
 	for _, w := range pkg.Windows {
 		walkWindow(w, fns)
 	}
-	for _, t := range pkg.Timers {
-		walkTimer(t, fns)
+	// The package's own body is a view body like a component's: a window under
+	// a top-level `for` is a statement in it and reaches these passes nowhere
+	// else.
+	if fns.stmts != nil {
+		pkg.Body = fns.stmts(pkg.Body)
 	}
 }
 
@@ -169,9 +165,6 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 			f.Block = fns.stmts(f.Block)
 		}
 	}
-	for _, t := range c.Timers {
-		walkTimer(t, fns)
-	}
 	if fns.stmts != nil {
 		c.Body = fns.stmts(c.Body)
 	}
@@ -189,36 +182,10 @@ func walkComponent(c *ir.Component, fns walkFuncs) {
 // while the same ternary a level in lowers. Where that temp belongs is the open
 // question, and a window that is a NodeInst in pkg.Body answers it for free.
 func walkWindow(w *ir.Window, fns walkFuncs) {
-	for _, v := range w.Vars {
-		walkVar(v, fns)
-	}
-	for _, f := range w.Funcs {
-		if fns.stmts != nil {
-			f.Block = fns.stmts(f.Block)
-		}
-	}
-	// Only passTimerPrimitive puts a timer on a window; nothing in source does.
-	for _, t := range w.Timers {
-		walkTimer(t, fns)
-	}
 	if fns.stmts != nil {
-		w.Body = fns.stmts(w.Body)
+		w.Children = fns.stmts(w.Children)
 	}
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil && fns.stmts != nil {
 		w.ErrorHandler.Func.Block = fns.stmts(w.ErrorHandler.Func.Block)
-	}
-}
-
-func walkTimer(t *ir.Timer, fns walkFuncs) {
-	if fns.expr != nil {
-		if t.Interval != nil {
-			t.Interval = fns.expr(t.Interval)
-		}
-		if t.Enabled != nil {
-			t.Enabled = fns.expr(t.Enabled)
-		}
-	}
-	if t.Handler != nil && fns.stmts != nil {
-		t.Handler.Block = fns.stmts(t.Handler.Block)
 	}
 }

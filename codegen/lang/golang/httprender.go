@@ -47,15 +47,26 @@ func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRConte
 	if r.Window != nil {
 		ctx = ctx.ForWindow(r.Window)
 	}
-	// A route parameter is a window var too -- the checker synthesizes one per
-	// `{x}` in the href -- but it is bound per request, not per session, so the
-	// window scope above would otherwise project it onto `s.<Field>`. As a
-	// local it renders as the bare name writeRouteParamBindings declares.
-	for _, p := range r.Params {
-		ctx = ctx.WithLocal(p)
+	// The window's route parameters resolve through that window scope, and
+	// they are bound per request rather than per session -- so left alone
+	// they would project onto `s.<Field>` of a State struct that has no such
+	// field. As a local the binding renders as the bare name
+	// writeRouteParamBindings declares.
+	if p := routeParamsVar(r); p != nil {
+		ctx = ctx.WithLocal(p.Name)
 	}
 	gc := &GoIRContext{Ctx: ctx, imports: shared.imports}
 	return gc
+}
+
+// routeParamsVar is the binding a route's path parameters arrive in: one
+// struct value, named and typed by the window's scoped slot. Nil for a route
+// whose window declared none.
+func routeParamsVar(r codegen.HTTPRoute) *ir.Param {
+	if r.Window == nil {
+		return nil
+	}
+	return r.Window.Params
 }
 
 // mainComponent returns the "main" component of pkg, or nil.
@@ -200,12 +211,12 @@ func emitRenderRoute(b *bytes.Buffer, req *codegen.HTTPRequest, r codegen.HTTPRo
 
 	var sig strings.Builder
 	sig.WriteString(loc.state + " *" + stateType)
-	for _, p := range r.Params {
-		sig.WriteString(", " + p + " string")
+	if p := routeParamsVar(r); p != nil {
+		sig.WriteString(", " + p.Name + " " + IRTypeToGo(p.Type))
 	}
 	fmt.Fprintf(b, "func %s(%s) string {\n", fnName, sig.String())
-	for _, p := range r.Params {
-		fmt.Fprintf(b, "\t_ = %s\n", p)
+	if p := routeParamsVar(r); p != nil {
+		fmt.Fprintf(b, "\t_ = %s\n", p.Name)
 	}
 	fmt.Fprintf(b, "\tvar %s strings.Builder\n", loc.build)
 	if r.Render != nil {

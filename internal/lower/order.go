@@ -48,13 +48,6 @@ var orderConstraints = []orderConstraint{
 	{"PropBindings", "NoToggle",
 		"the same, for a binding whose handler toggles its target: NoToggle rewrites the Toggle stmt PropBindings emits"},
 
-	{"InlinePure", "TimerPrimitive",
-		"the primitive is lifted out of the tree it is placed in, so a timer inside a component the inliner has not yet folded into its caller is not in the tree being walked -- which is why a timer in a non-main component never fired"},
-	{"TimerPrimitive", "NoReactivity",
-		"a tick body's writes have to still look like assignments when the updater injection descends, or the widget reading what a tick writes is never patched"},
-	{"TimerPrimitive", "InstanceEvents",
-		"InstanceEvents turns a declared event into the prop the render re-points, and the timer primitive declares @tick"},
-
 	{"RefLoop", "NoReactivity",
 		"the list[idx].field write this leaves has to reach reactivity as a mutation of the list var, or the loop's slot never re-renders"},
 	{"RefLoop", "NoToggle",

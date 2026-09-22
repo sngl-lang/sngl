@@ -213,21 +213,20 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// NoInlineComponents inlined every non-main component into main, so there
 	// are no remaining child-component vars to collect.
 	for _, ov := range ctx.ModelState() {
-		v := ov.Var
 		// A const is a Model field as well, so `c.<name>` and `m.<name>`
 		// reach it; a top-level one also gets a file-scope `var` for the
 		// free functions, which are not Model methods.
-		goType := golang.VarGoType(v)
-		initVal := irVarInit(v, gc)
+		goType := golang.BindGoType(ov.Type(), ov.Init())
+		initVal := golang.LowerBindInit(ov.Type(), ov.Init(), gc)
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
-			name:        v.Name,
+			name:        ov.Name(),
 			goType:      goType,
 			init:        initVal,
-			isConst:     v.IsConst,
-			synthesized: v.Synthesized,
+			isConst:     ov.IsConst(),
+			synthesized: ov.Synthesized(),
 		})
 	}
 
@@ -376,7 +375,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// The canvas stdlib structs are read by the synthesized draw funcs but are
 	// not carried on pkg.Structs for the Go path. Skip a name a user struct
 	// already declares.
-	if hasCanvasNodes(ctx.Pkg) {
+	if len(ctx.Canvases.All()) > 0 {
 		b.WriteString(canvasStdlibDecls(info.Structs))
 	}
 
@@ -523,14 +522,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		b.WriteString("}\n\n")
 	}
 
-	// Routed through the shared canvas Context translator, so they are excluded
-	// from the generic user-func loop below.
-	canvasDraws := canvasDrawFuncSet(ctx.Pkg)
-	emitCanvasSurfaceDecls(&b, ctx.Pkg)
-	emitCanvasDrawFuncs(&b, ctx.Pkg, gc)
-	hasCanvas := hasCanvasNodes(ctx.Pkg)
+	// Routed through the shared canvas Context translator. They are in no
+	// func list, so the generic user-func loop below never meets them and
+	// needs no exclusion -- which is what the name match on `_canvasDraw`
+	// used to be for.
+	emitCanvasSurfaceDecls(&b, ctx.Canvases)
+	emitCanvasDrawFuncs(&b, ctx.Canvases, gc)
+	hasCanvas := len(ctx.Canvases.All()) > 0
 	if hasCanvas {
-		emitCanvasTransmitMethod(&b, ctx.Pkg, gc)
+		emitCanvasTransmitMethod(&b, ctx.Canvases, gc)
 	}
 
 	// Every component this build renders, not only the root: one that
@@ -549,7 +549,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			continue
 		}
 		seenUserFn[fn] = true
-		if fn.IsTest || codegen.IsComputed(fn) || canvasDraws[fn] {
+		if fn.IsTest || codegen.IsComputed(fn) {
 			continue
 		}
 		// golang.LiftsToFreeFunc is the one answer the call site uses too.
@@ -559,7 +559,17 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if !componentFuncs[fn] && !stateFuncs[fn] {
+		//
+		// A func still carrying a receiver is never one of these, whatever
+		// the two sets say. Past LiftsToFreeFunc above the receiver names a
+		// component, so the func is a method of the Model the component was
+		// inlined into -- which is what the call site spells. componentFuncs
+		// misses the inliner's clone, because the clone lives in pkg.Funcs
+		// rather than on any component, and a clone that touched no state was
+		// not in stateFuncs either: `func (m *main) Paint__inst0` came out
+		// beside the `m.paint__inst0(…)` calling it. fyne and gtk4 ask the
+		// same question here and always did.
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] {
 			emitIRFreeFunc(&b, fn, gc)
 			continue
 		}
@@ -714,19 +724,23 @@ func emitIRFreeFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 // left in pkg.Funcs is top level: declared beside them rather than inside one,
 // so nothing of a component's is in scope for it.
 //
-// A window owns funcs the way a component does -- passFocusOrder's
-// __focusNext/__focusPrev among them -- and they read the Model, so leaving
-// them out emitted them free and the focus helpers lost their receiver.
 // modelMountFuncs is the effect settles New() has to run: the ones owned by
 // whoever the Model is.
 //
 // The lowering appends each as a statement to its owner's body, which every
 // mutation-model target executes. A RenderModel's body became View(), which is
 // a pure function of the state and skips imperative statements outright, so the
-// call reached nothing and no effect on this platform ever mounted. An owner
-// other than the root is a component that survived inlining and is not part of
-// this Model, so its settle is not a method here to call -- the same filter
-// ModelState draws state through.
+// call reached nothing and no effect on this platform ever mounted.
+//
+// What has to be excluded is a component that survived inlining: it is not
+// part of this Model, so its settle is not a method here to call -- the same
+// filter ModelState draws state through. So the question is asked that way
+// round, of componentFuncSet, rather than by listing the owners that *are* the
+// Model. Those used to be the root declaration and every window; a window owns
+// nothing now, so a settle synthesized while walking one is an ordinary package
+// func -- and listing owners meant listing none of them, which left New() with
+// no `m.__effects0_settle()` in it and no effect mounting on this platform at
+// all.
 func modelMountFuncs(ctx *codegen.CodegenCtx) []*ir.Func {
 	if ctx == nil || ctx.Pkg == nil {
 		return nil
@@ -737,14 +751,13 @@ func modelMountFuncs(ctx *codegen.CodegenCtx) []*ir.Func {
 			owned[fn] = true
 		}
 	}
-	for _, w := range ctx.Pkg.Windows {
-		for _, fn := range w.Funcs {
-			owned[fn] = true
-		}
-	}
+	// A root declaration's own funcs are in componentFuncSet too, so the
+	// explicit set is asked first: the harness that clears the windows to
+	// isolate one component still mounts that component's effects.
+	surviving := componentFuncSet(ctx.Pkg)
 	var out []*ir.Func
 	for _, fn := range ctx.Pkg.Mounts {
-		if owned[fn] {
+		if owned[fn] || !surviving[fn] {
 			out = append(out, fn)
 		}
 	}
@@ -755,11 +768,6 @@ func componentFuncSet(pkg *ir.Package) map[*ir.Func]bool {
 	out := map[*ir.Func]bool{}
 	for _, comp := range pkg.Components {
 		for _, fn := range comp.Funcs {
-			out[fn] = true
-		}
-	}
-	for _, w := range pkg.Windows {
-		for _, fn := range w.Funcs {
 			out[fn] = true
 		}
 	}
@@ -818,8 +826,8 @@ func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.Cod
 		// the window is in it: read as pkg.Vars plus the root component's, a
 		// `@change` on such a var reached the setter as nothing at all.
 		for _, ov := range ctx.ModelState() {
-			v := ov.Var
-			if v.Name != bind.name {
+			v := ov.Var()
+			if v == nil || v.Name != bind.name {
 				continue
 			}
 			for _, h := range v.Handlers {
@@ -1043,7 +1051,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		b.WriteString("\t}\n")
 	}
 
-	if hasCanvasNodes(ctx.Pkg) {
+	if len(ctx.Canvases.All()) > 0 {
 		// Re-transmit canvas pixels after each update so reactive canvases reflect
 		// new state; the image data goes out of band (the View carries only
 		// placeholder cells). The placement is virtual, so re-transmitting causes
@@ -1167,6 +1175,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		case *ir.ErrorBoundary:
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, inOverlay, invokerSink)
 		case *ir.NodeInst:
+			if ir.IsWindowNode(n) {
+				panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
+			}
 			// Blueprint-driven activation: an inlined Styled primitive that
 			// carries Event records maps each event name to a key. The user's
 			// handler for that event name was transferred onto the node during
@@ -1197,8 +1208,6 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			emitIRButtonHandlersWalk(b, n.Children, info, gc, currentFor, bgGuard, childInOverlay, invokerSink)
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
-		case *ir.Window:
-			panic(fmt.Sprintf("bubbletea: unexpected nested Window in handler walk: %#v", n))
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Imperative stmts — no nested visual children to walk.
@@ -1411,7 +1420,7 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
 		for v := range codegen.MutatedFields(nil, nil, stmt) {
-			mutated[v.Name] = true
+			mutated[v.SymName()] = true
 		}
 	}
 	for _, w := range widgets {

@@ -16,7 +16,12 @@ only the last segment is emitted. `gfx.Reset(c)` in the same output is the
 unflagged form, for contrast -- the same declaration shape, called the other
 way.
 
+`paint` is called rather than merely declared, because a func nothing calls is
+shaken and an archive that shows neither the call nor the declaration asserts
+nothing about how either is spelled -- the deny below included.
+
 deny out/go/bubbletea/model.go `Context\.Circle\(` -- the method expression is what the flag replaces
+deny out/go/bubbletea/model.go `func \(m \*main\)` -- the inlined component method is the Model's; `main` is a receiver type this file never declares, and `unverifiable` means no compiler will say so
 unverifiable out/go/bubbletea -- imports example.com/gfx, a module written to describe a foreign API and deliberately not published
 -- app.sngl --
 import ui "sngl:ui"
@@ -39,13 +44,17 @@ func reset(c Ctx)
 
 component main() ui.node {
     var n = 0
+    var c Ctx
 
     func paint(c Ctx) {
         c.circle(1.0, 2.0, 3.0)
         reset(c)
     }
 
-    ui.button(text="draw", @click { n += 1 })
+    ui.button(text="draw", @click {
+        n += 1
+        paint(c)
+    })
 }
 
 ui.window {
@@ -67,6 +76,7 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	n__inst0  int
+	c__inst0  gfx.Context
 	__focusID int
 
 	width, height int
@@ -76,6 +86,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.n__inst0 = 0
+	m.c__inst0 = gfx.Context{}
 	m.__focusID = 0
 	return m
 }
@@ -86,7 +97,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m *Model) paint__inst0(c gfx.Context) {
+func Paint__inst0(c gfx.Context) {
 	c.Circle(1.0, 2.0, 3.0)
 	gfx.Reset(c)
 }
@@ -118,6 +129,21 @@ func SetN__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setN__inst0Msg{value: v} }
 }
 
+func (m Model) C__inst0() gfx.Context {
+	return m.c__inst0
+}
+
+func (m Model) SetC__inst0(v gfx.Context) Model {
+	m.c__inst0 = v
+	return m
+}
+
+type setC__inst0Msg struct{ value gfx.Context }
+
+func SetC__inst0Cmd(v gfx.Context) tea.Cmd {
+	return func() tea.Msg { return setC__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -129,6 +155,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case setN__inst0Msg:
 		m = m.SetN__inst0(msg.value)
+	case setC__inst0Msg:
+		m = m.SetC__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -142,6 +170,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.n__inst0 += 1
+			Paint__inst0(m.c__inst0)
 		}
 	}
 	return m, tea.Batch(cmds...)

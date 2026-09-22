@@ -6,9 +6,41 @@ import (
 	"testing"
 )
 
-// TestAnInlinedComponentLeavesNoMethodBehind reads
-// testdata/test_named_component_props.sngl, whose `Pair` component is
-// instantiated three times and inlined away entirely.
+// inlinedPairSrc instantiates `Pair` three times, in the three call spellings,
+// so passNoInlineComponents substitutes it three times and clones its `both()`
+// once per instance.
+//
+// `sep` is what keeps the clones: it is state, so the component is impure and
+// `both()` is not a constant. Written over the props alone -- which is
+// testdata/test_named_component_props.sngl, where this test read its source
+// from until the inliner stopped leaving a receiver on a hoisted clone -- the
+// whole call folds to "alpha+beta" at build time and there is no method left
+// for either of these tests to be about.
+const inlinedPairSrc = `
+import . "sngl:ui"
+
+component Pair(first string, second string) node {
+    var sep = "+"
+
+    func both() => first + sep + second
+
+    text(value=both())
+    button(text="flip", @click { sep = "/" })
+}
+
+component main node {
+    Pair("alpha", "beta")            // all positional
+    Pair("gamma", second="delta")    // positional then named
+    Pair(second="zeta", first="eta") // out-of-order named
+}
+
+window {
+    main
+}
+`
+
+// TestAnInlinedComponentLeavesNoMethodBehind compiles inlinedPairSrc, whose
+// `Pair` component is instantiated three times and inlined away entirely.
 //
 // Each instance gets a clone of `both()` with its arguments folded in. The
 // original stays registered in pkg.Funcs -- the checker puts a nested method
@@ -18,7 +50,7 @@ import (
 // exist nowhere any more, read as bare identifiers, on a Model that declares
 // neither.
 func TestAnInlinedComponentLeavesNoMethodBehind(t *testing.T) {
-	model := generateFyneModelBuilt(t, fixtureSource(t, "test_named_component_props.sngl"))
+	model := generateFyneModelBuilt(t, inlinedPairSrc)
 
 	// The clones are the whole of what Pair contributes.
 	for _, want := range []string{

@@ -431,8 +431,8 @@ func TestLowerAsyncReactive_InlineHoist(t *testing.T) {
 		},
 	}
 	win := &ir.Window{
-		Name: "Main",
-		Body: []ir.Stmt{node},
+		Name:     "Main",
+		Children: []ir.Stmt{node},
 	}
 	pkg := &ir.Package{
 		Funcs:          []*ir.Func{fetchHello},
@@ -508,8 +508,8 @@ func TestLowerAsyncReactive_HoistSkipsLocalCapture(t *testing.T) {
 		},
 	}
 	win := &ir.Window{
-		Name: "Main",
-		Body: []ir.Stmt{node},
+		Name:     "Main",
+		Children: []ir.Stmt{node},
 	}
 	pkg := &ir.Package{
 		Funcs:          []*ir.Func{fetchUser},

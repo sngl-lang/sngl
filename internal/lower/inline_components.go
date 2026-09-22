@@ -23,10 +23,10 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 		return nil
 	}
 	// main is nil for every ordinary build: a window is the root, and the
-	// visual tree lives in pkg.Windows. It is a component only where a
-	// harness made one the whole program.
+	// visual tree lives in pkg.Windows or in the package's own body. It is a
+	// component only where a harness made one the whole program.
 	main := rootComponent(pkg, opts)
-	if main == nil && len(pkg.Windows) == 0 {
+	if main == nil && len(pkg.Windows) == 0 && len(pkg.Body) == 0 {
 		// No root to inline into. Every component is its own entry point, so
 		// there is nothing to flatten and nothing is unreachable -- running
 		// the pass anyway would retain an empty keep set and drop them all.
@@ -38,10 +38,11 @@ func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList, instSeq: seqOrOwn(opts.instSeq)}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}}
 	if err := st.run(); err != nil {
 		return err
 	}
+	clearDemotedReceivers(pkg, st.demoted)
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
 	return uniqueNodeIDs(pkg)
@@ -191,8 +192,7 @@ type inlineCompState struct {
 	// is allowed to keep.
 	onList map[*ir.Component]bool
 	// hoist is where an inlined callee's own declarations land. Set per
-	// container as run() walks: a component holds all three slices, a window
-	// holds vars and funcs and borrows pkg.Timers.
+	// container as run() walks.
 	hoist hoistTarget
 	// captureOnly, while spliceNestedCaptures runs, is the set of nested
 	// components that round may splice. Nil for the main walk.
@@ -203,23 +203,48 @@ type inlineCompState struct {
 	platform    string
 	// instSeq is passInlinePure's counter as well; see Options.instSeq.
 	instSeq *int
+	// demoted is the clones dropReceiver made receiverless, so the call sites
+	// renameIdents repointed at them can give their receiver up too.
+	demoted map[*ir.Func]bool
 }
 
 // Pointers rather than values because the append must be visible to the owner.
 type hoistTarget struct {
-	vars   *[]*ir.Var
-	funcs  *[]*ir.Func
-	timers *[]*ir.Timer
+	vars  *[]*ir.Var
+	funcs *[]*ir.Func
+	// method says a func hoisted here is still one: a component-body func is a
+	// method and a package-level func is not, which is the pair of spellings
+	// every backend already distinguishes. A callee's helper spliced into a
+	// window or into the package body has to give up its receiver with the
+	// declaration it was a method of, which this pass has just dropped --
+	// left standing, route mode skipped it for having one and emitted
+	// `s.Keep__inst0(…)` against a file that declared nothing of the name.
+	method bool
 }
 
 func componentHoist(c *ir.Component) hoistTarget {
-	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, timers: &c.Timers}
+	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, method: true}
 }
 
-// A window has no timers of its own: the checker files a timer declared
-// outside a component on the package, so that is where a hoisted one goes too.
-func windowHoist(w *ir.Window, pkg *ir.Package) hoistTarget {
-	return hoistTarget{vars: &w.Vars, funcs: &w.Funcs, timers: &pkg.Timers}
+func windowHoist(pkg *ir.Package) hoistTarget {
+	// A window's container, which is the package: a window is a rendering
+	// root and owns nothing, so what an inlined callee declares inside one
+	// belongs where the window's own declarations went.
+	return hoistTarget{vars: &pkg.Vars, funcs: &pkg.Funcs}
+}
+
+// dropReceiver makes fn an ordinary func rather than a method of a component
+// that no longer exists. The body needs no rewriting: it reaches the state it
+// reads through the renamed clones above and never through `this`.
+//
+// ir.Param.Receiver is the flag rather than the name, as the checker sets it
+// on exactly the synthetic parameter it prepended.
+func dropReceiver(fn *ir.Func) {
+	fn.Receiver = ""
+	fn.RecvParam = nil
+	fn.Params = slices.DeleteFunc(slices.Clone(fn.Params), func(p *ir.Param) bool {
+		return p != nil && p.Receiver
+	})
 }
 
 func (st *inlineCompState) run() error {
@@ -254,28 +279,30 @@ func (st *inlineCompState) run() error {
 				anyFuncCh = anyFuncCh || fch
 			}
 		}
+		// The package's own body, which is where a root-family component is
+		// instantiated: `main()` at the top of a file is a NodeInst here and
+		// nowhere else, and its windows reach a backend only once it has been
+		// spliced in.
+		st.hoist = windowHoist(st.pkg)
+		pbody, pch, err := st.inlineStmts(st.pkg.Body)
+		if err != nil {
+			return err
+		}
+		st.pkg.Body = pbody
 		// Walk pkg.Windows: the visual tree for window-declaring apps lives
 		// in Window.Body / Window.Funcs, not in main.Body. Components
 		// instantiated inside windows must also be inlined.
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
-			st.hoist = windowHoist(w, st.pkg)
-			wbody, wch, err := st.inlineStmts(w.Body)
+			st.hoist = windowHoist(st.pkg)
+			wbody, wch, err := st.inlineStmts(w.Children)
 			if err != nil {
 				return err
 			}
-			w.Body = wbody
+			w.Children = wbody
 			anyWinCh = anyWinCh || wch
-			for i := 0; i < len(w.Funcs); i++ {
-				fbody, fch, err := st.inlineStmts(w.Funcs[i].Block)
-				if err != nil {
-					return err
-				}
-				w.Funcs[i].Block = fbody
-				anyWinCh = anyWinCh || fch
-			}
 		}
-		if !ch && !anyFuncCh && !anyWinCh {
+		if !ch && !anyFuncCh && !anyWinCh && !pch {
 			break
 		}
 	}
@@ -493,7 +520,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 		return false
 	}
 	// Platform primitives and stdlib wrappers with no body cannot be inlined.
-	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return false
 	}
 	// Only inline components declared in this package, or a stdlib component
@@ -515,7 +542,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 // It does not ask what a nested node renders, because a stdlib component is
 // still abstract here -- a descent reads `text` as rendering nothing.
 func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
-	if comp == nil || len(comp.Timers) > 0 {
+	if comp == nil {
 		return false
 	}
 	renders := false
@@ -528,7 +555,7 @@ func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 			if !isEffectNode(n) {
 				renders = true
 			}
-		case *ir.SlotInst, *ir.ErrorBoundary, *ir.Window, *ir.CanvasRedrawStmt:
+		case *ir.SlotInst, *ir.ErrorBoundary, *ir.CanvasRedrawStmt:
 			renders = true
 		}
 		return nil
@@ -609,6 +636,13 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		n.Children = ch
+		// A window is a rendering root and instantiates nothing this pass may
+		// splice: it stays where it was written, with whatever its body held
+		// now inlined. Everything below asks what to do with a *component*
+		// instantiation, and a window is not one.
+		if ir.IsWindowNode(n) {
+			return []ir.Stmt{n}, chCh, nil
+		}
 		anyHandlerCh := false
 		for _, h := range n.Handlers {
 			if h.Func == nil {
@@ -731,25 +765,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			hCh = b
 		}
 		return []ir.Stmt{n}, chCh || hCh, nil
-	case *ir.Window:
-		// Window stmts live in component bodies when `window { }` is declared
-		// inside a component (rather than at document root). Recurse into the
-		// window's body so component NodeInsts nested inside it are inlined.
-		body, ch, err := st.inlineStmtsCtx(n.Body, rc)
-		if err != nil {
-			return nil, false, err
-		}
-		n.Body = body
-		anyFuncCh := false
-		for _, f := range n.Funcs {
-			fbody, fch, err := st.inlineStmtsCtx(f.Block, reactiveCtx{})
-			if err != nil {
-				return nil, false, err
-			}
-			f.Block = fbody
-			anyFuncCh = anyFuncCh || fch
-		}
-		return []ir.Stmt{n}, ch || anyFuncCh, nil
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:
 		// Leaf/imperative stmts — no NodeInsts to inline.
@@ -870,20 +885,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone.Block = deepCloneStmts(f.Block)
 		renames[f] = clone.Name
 		symRenames[f] = clone
+		if !hoist.method {
+			dropReceiver(clone)
+			st.demoted[clone] = true
+		}
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
-	}
-	timerStart := len(*hoist.timers)
-	for _, t := range comp.Timers {
-		clone := *t
-		clone.Interval = deepCloneExpr(t.Interval)
-		clone.Enabled = deepCloneExpr(t.Enabled)
-		if t.Handler != nil {
-			h := *t.Handler
-			h.Block = deepCloneStmts(t.Handler.Block)
-			clone.Handler = &h
-		}
-		*hoist.timers = append(*hoist.timers, &clone)
 	}
 
 	// Apply renames to every hoisted block.
@@ -904,13 +911,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = renameIdents((*hoist.funcs)[i].Block, renames, symRenames)
 	}
-	for i := timerStart; i < len(*hoist.timers); i++ {
-		t := (*hoist.timers)[i]
-		if t.Handler != nil {
-			t.Handler.Block = renameIdents(t.Handler.Block, renames, symRenames)
-		}
-	}
-
 	body := deepCloneStmts(comp.Body)
 	body = renameIdents(body, renames, symRenames)
 
@@ -941,7 +941,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 	body = substituteParams(body, bindings)
 
-	// Prop refs may appear in the hoisted callee-scope Vars/Funcs/Timers too.
+	// Prop refs may appear in the hoisted callee-scope Vars/Funcs too.
 	for i := varStart; i < len(*hoist.vars); i++ {
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
 		for _, h := range (*hoist.vars)[i].Handlers {
@@ -953,15 +953,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		(*hoist.funcs)[i].Block = substituteParams((*hoist.funcs)[i].Block, bindings)
 	}
-	for i := timerStart; i < len(*hoist.timers); i++ {
-		t := (*hoist.timers)[i]
-		t.Interval = substituteParamsExpr(t.Interval, bindings)
-		t.Enabled = substituteParamsExpr(t.Enabled, bindings)
-		if t.Handler != nil {
-			t.Handler.Block = substituteParams(t.Handler.Block, bindings)
-		}
-	}
-
 	body = substituteSlots(body, n)
 	body = substituteEvents(body, n.Handlers)
 
@@ -1095,4 +1086,22 @@ func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
 	}
 	return fmt.Errorf("%s: this loop is not reactive and %q%s brackets a lifetime, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own. This is a lowering rule, so a target that unrolls the loop instead -- html on --lang none -- builds the same source; see #245",
 		at, n.Component.Name, where)
+}
+
+// clearDemotedReceivers drops the receiver at every call site that names a func
+// dropReceiver made receiverless.
+//
+// Once the whole pass has run, rather than as each call is spliced: a call
+// reaches its callee through ir.Call.Func, which renameIdents repoints, so the
+// site that needs fixing may be in a body inlined after the declaration was.
+func clearDemotedReceivers(pkg *ir.Package, demoted map[*ir.Func]bool) {
+	if len(demoted) == 0 {
+		return
+	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if call, ok := n.(*ir.Call); ok && demoted[call.Func] {
+			call.Receiver = nil
+		}
+		return nil
+	})
 }

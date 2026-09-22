@@ -3160,7 +3160,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// checkVisualNodeIR resolves a node that has a body; qualified
 		// `pkg.Foo(...)` resolves through the namespace's package.
 		var comp *ir.Component
-		var compName string
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			if sym, ok := c.lookupComponentInScope(x.Pos, id.Name); ok {
 				if c.rejectUnexported(x.Pos, sym) {
@@ -3168,7 +3167,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 				if co, ok := sym.(*ir.Component); ok {
 					comp = co
-					compName = id.Name
 				}
 			}
 		} else if sel, ok := x.Call.Func.(*ast.SelectExpr); ok {
@@ -3188,7 +3186,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 								}
 								if co, ok := fsym.(*ir.Component); ok {
 									comp = co
-									compName = nsIdent.Name + "." + sel.Field
 								}
 							}
 						}
@@ -3202,9 +3199,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 						// lowering skips, leaving reactive attributes frozen.
 						if comp == nil {
 							if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
-								if co, ok := resolved.(*ir.Component); ok {
-									comp = co
-									compName = sel.Field
+								if _, ok := resolved.(*ir.Component); ok {
+									comp = resolved.(*ir.Component)
 								}
 							}
 						}
@@ -3212,79 +3208,23 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
-		// An element-ref declaration (`Comp #id(...)`) is handled uniformly by
-		// the elementRefCallInfo path below, which preserves the #id and applies
-		// the same stdlib-lenient / user-component-strict arg checking.
-		if comp != nil && x.Call.ID == "" {
-			// A bodyless node parses as a call, so the boundary has to be read
-			// on this path too -- `text(value=v)` in a function body is the
-			// same dropped node `vbox { }` is.
-			if c.rejectNodeInFuncBody(x.Pos, compName) {
-				return nil
-			}
-			c.validateCallStmtComponentArgs(x.Call, comp)
-			c.checkRequiredSlots(x.Pos, comp, nil)
-			if slot := comp.RestSlot(); slot != nil {
-				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
-			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(comp, x.Call.Args))
-			return &ir.NodeInst{
-				AST:       x,
-				Name:      compName,
-				Component: comp,
-				Props:     bindWildcardName(comp, compName, props),
-				Handlers:  handlers,
-				Bindings:  bindings,
-				Key:       c.keyArgExpr(x.Call.Args),
-			}
-		}
-		// Children-less element references (`text #id(...)`, `button(@click)`)
-		// parse as CallStmt but semantically behave like visual nodes — emit
-		// NodeInst so event handlers and the #id are preserved in IR.
-		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
-			if c.rejectNodeInFuncBody(x.Pos, name) {
-				return nil
-			}
-			// Resolve the addressed component (stdlib `input`, user
-			// component, …) so later passes — including the test-side
-			// event-arg typer — can see what payload `@<event>` takes.
-			// Resolve before checkAndSplitArgs so spread props on
-			// user-defined components can be matched against prop names.
-			var elemComp *ir.Component
-			if sym, ok := c.scope.Lookup(name); ok {
-				if sd, ok := sym.(*ir.Component); ok {
-					elemComp = sd
-				}
-			}
-			// Pass the component to checkAndSplitArgs only for user-defined
-			// components. Stdlib components use nil to preserve lenient
-			// arg-checking behavior (events use platform-specific types).
-			argsComp := elemComp
-			if argsComp != nil && argsComp.Stdlib {
-				argsComp = nil
-			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(argsComp, x.Call.Args))
-
-			// A stdlib element passes nil above so event args stay leniently
-			// typed, and nil is also what makes checkAndSplitArgs leave a
-			// positional prop unnamed -- "no component context; can't match
-			// prop names". So `text #t({}, "hi")` reached the IR with no props
-			// at all, and every reader dropped them: `c.t.value` was empty and
-			// a snapshot printed `text()`. The names are recoverable here,
-			// where the component is known, without disturbing the leniency.
-			if argsComp == nil && elemComp != nil {
-				props = namePositionalProps(elemComp, props)
-			}
-			return &ir.NodeInst{
-				AST:       x,
-				Name:      name,
-				Component: elemComp,
-				Props:     props,
-				Handlers:  handlers,
-				Bindings:  bindings,
-				ID:        id,
-				Handle:    c.nodeHandleSym(id),
-				Key:       c.keyArgExpr(x.Call.Args),
+		// A call whose target names a node *is* a node, and a node is
+		// checkVisualNodeIR's: the same resolution, the same prop check, the
+		// same slot and tree rules as one written with a block. `foo(1)`
+		// cannot be told from a function call until the name is resolved, so
+		// the disambiguation is here -- but the answer is an ast.VisualNode
+		// either way, which is what the rootish conversion above already did
+		// for a builtin kind and a slot insertion.
+		_, _, isElem := elementRefCallInfo(x.Call)
+		if comp != nil || isElem {
+			if target, ok := x.Call.Func.(ast.TargetExpr); ok {
+				return c.checkVisualNodeIR(&ast.VisualNode{
+					Pos:       x.Pos,
+					Target:    target,
+					ID:        x.Call.ID,
+					Args:      x.Call.Args,
+					HasParens: true,
+				})
 			}
 		}
 		callExpr := c.checkExpr(x.Call)
@@ -3634,40 +3574,35 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 	return false
 }
 
-// namePositionalProps gives each unnamed prop the name of the declared prop it
-// binds to, matching checkAndSplitArgs's own rule: a positional argument takes
-// the next declared prop, and a named one consumes no position. A wildcard prop
-// has no position, so it is not among them.
-func namePositionalProps(comp *ir.Component, props []ir.Arg) []ir.Arg {
-	var ordered []*ir.Prop
-	for _, p := range comp.Props {
-		if p.Wildcard == "" {
-			ordered = append(ordered, p)
-		}
-	}
-	positional := 0
-	for i := range props {
-		if props[i].Name != "" {
-			continue
-		}
-		if positional >= len(ordered) {
-			break
-		}
-		props[i].Name = ordered[positional].Name
-		positional++
-	}
-	return props
-}
-
 // elementRefCallInfo recognizes CallStmts whose callee represents an element
 // tag — either `text #id(...)` (a call carrying an element-ref id) or a bare
 // tag ident like `button(...)` that carries event handlers. Returns the tag
 // name, the #id (possibly empty), and whether this looks like an element call.
+// callTargetName is the dotted name a call's callee spells, and "" for a
+// callee that is neither an ident nor a qualified one. ast.VisualNode answers
+// the same question about its own target with TargetName.
+func callTargetName(fn ast.Expr) string {
+	switch f := fn.(type) {
+	case *ast.IdentExpr:
+		return f.Name
+	case *ast.SelectExpr:
+		if id, ok := f.Operand.(*ast.IdentExpr); ok {
+			return id.Name + "." + f.Field
+		}
+	}
+	return ""
+}
+
 func elementRefCallInfo(call *ast.CallExpr) (string, string, bool) {
-	// `text #id(...)` — a bare tag ident carrying an element-ref id.
+	// `text #id(...)` — a tag carrying an element-ref id, qualified or bare.
+	// `ui.text #row(…)` is the same node as `text #row(…)`, and matching only
+	// a bare ident made the two differ: the qualified one was not an element
+	// call at all, so declareNodeIDs bound no handle for it and a handler
+	// naming it was `undefined: row` under an aliased import and fine under a
+	// dot import.
 	if call.ID != "" {
-		if ident, ok := call.Func.(*ast.IdentExpr); ok {
-			return ident.Name, call.ID, true
+		if name := callTargetName(call.Func); name != "" {
+			return name, call.ID, true
 		}
 	}
 	switch f := call.Func.(type) {
@@ -3803,9 +3738,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 	switch kind {
 	case ir.BuiltinWindow:
-		w := c.buildWindow(vn)
-		c.checkWindowBody(w)
-		w.Checked = true
+		w := c.windowShell(vn)
+		c.checkWindow(w)
 		return w
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn, builtinComp)
@@ -5277,8 +5211,8 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 		if i < len(decl.Params) {
 			want = decl.Params[i].Type
 		}
-		typ := c.bindParamType(a.Type, want, bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name)))
-		p := &ir.Param{Name: a.Name, Type: typ}
+		what := bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name))
+		p := &ir.Param{Name: a.Name, Type: c.bindParamType(a.Type, want, what)}
 		c.declare(a.Pos, p)
 		sc.Params = append(sc.Params, p)
 	}
@@ -5449,15 +5383,6 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// carries the declaration it instantiates separately -- the arm below
 		// reads the same two fields off the same kind of pointer, and the two
 		// collapse when a window becomes a marked NodeInst.
-		case *ir.Window:
-			if s.Comp == nil || s.Comp.Tree == nil || s.Comp.Tree == want {
-				continue
-			}
-			at := pos
-			if s.AST != nil {
-				at = s.AST.Pos
-			}
-			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Comp.Name)
 		case *ir.NodeInst:
 			if s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
 				continue

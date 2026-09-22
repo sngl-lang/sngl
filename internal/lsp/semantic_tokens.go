@@ -148,10 +148,7 @@ func irIdentifierTokens(pkg *ir.Package) []rawToken {
 		w.component(c)
 	}
 	for _, win := range pkg.Windows {
-		w.window(win)
-	}
-	for _, t := range pkg.Timers {
-		w.timer(t)
+		w.stmt(win)
 	}
 	return out
 }
@@ -185,38 +182,7 @@ func (w *irTokenWalker) component(c *ir.Component) {
 	for _, f := range c.Funcs {
 		w.fn_(f)
 	}
-	for _, t := range c.Timers {
-		w.timer(t)
-	}
 	w.stmts(c.Body)
-}
-
-func (w *irTokenWalker) window(win *ir.Window) {
-	if win == nil {
-		return
-	}
-	for i := range win.Props {
-		w.expr(win.Props[i].Value)
-	}
-	for _, v := range win.Vars {
-		w.expr(v.Init)
-	}
-	for _, f := range win.Funcs {
-		w.fn_(f)
-	}
-	w.stmts(win.Body)
-	if win.ErrorHandler != nil {
-		w.fn_(win.ErrorHandler.Func)
-	}
-}
-
-func (w *irTokenWalker) timer(t *ir.Timer) {
-	if t == nil {
-		return
-	}
-	w.expr(t.Interval)
-	w.expr(t.Enabled)
-	w.fn_(t.Handler)
 }
 
 func (w *irTokenWalker) fn_(f *ir.Func) {
@@ -275,8 +241,6 @@ func (w *irTokenWalker) stmt(s ir.Stmt) {
 		w.expr(x.Iter)
 		w.stmts(x.Body)
 		w.stmts(x.Else)
-	case *ir.Window:
-		w.window(x)
 	}
 }
 
@@ -291,6 +255,9 @@ func (w *irTokenWalker) nodeInst(n *ir.NodeInst) {
 	}
 	for _, h := range n.Handlers {
 		w.fn_(h.Func)
+	}
+	if n.ErrorHandler != nil {
+		w.fn_(n.ErrorHandler.Func)
 	}
 	for _, a := range n.Props {
 		if a.Name != "" && a.NamePos.IsSet() {

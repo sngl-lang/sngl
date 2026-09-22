@@ -17,6 +17,6 @@ window #about(true) { // ERROR(check) "cannot use bool as string for prop \"titl
 }
 
 // Past the last prop there is nothing left to bind to.
-window #contact("Contact", "/contact", "f.ico", "extra") { // ERROR(check) "too many positional arguments"
+window #contact("Contact", "/contact", "f.ico", "", "extra") { // ERROR(check) "too many positional arguments"
     text(value="hi")
 }

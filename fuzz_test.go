@@ -253,10 +253,10 @@ func summarize(pkg *ir.Package) string {
 	if pkg == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("imports=%d structs=%d enums=%d units=%d consts=%d vars=%d funcs=%d comps=%d windows=%d timers=%d outputs=%d",
+	return fmt.Sprintf("imports=%d structs=%d enums=%d units=%d consts=%d vars=%d funcs=%d comps=%d windows=%d outputs=%d",
 		len(pkg.Imports), len(pkg.Structs), len(pkg.Enums), len(pkg.Units),
 		len(pkg.Consts), len(pkg.Vars), len(pkg.Funcs), len(pkg.Components),
-		len(pkg.Windows), len(pkg.Timers), len(pkg.Outputs))
+		len(pkg.Windows), len(pkg.Outputs))
 }
 
 // validateIR walks pkg and asserts that the checker populated every field
@@ -328,11 +328,6 @@ func (v *irValidator) walkPackage(pkg *ir.Package) {
 	for i, w := range pkg.Windows {
 		v.push(fmt.Sprintf("windows[%d]", i))
 		v.walkWindow(w)
-		v.pop()
-	}
-	for i, t := range pkg.Timers {
-		v.push(fmt.Sprintf("timers[%d]", i))
-		v.walkTimer(t)
 		v.pop()
 	}
 }
@@ -442,52 +437,23 @@ func (v *irValidator) walkComponent(c *ir.Component) {
 		v.walkFunc(fn, false)
 		v.pop()
 	}
-	for i, t := range c.Timers {
-		v.push(fmt.Sprintf("timers[%d]", i))
-		v.walkTimer(t)
-		v.pop()
-	}
 	v.push("body")
 	v.walkStmts(c.Body)
 	v.pop()
 }
 
 func (v *irValidator) walkWindow(w *ir.Window) {
-	if w.Name == "" {
-		v.fail("window has no name")
+	if w.ID == "" {
+		v.fail("window has no id")
 	}
 	for _, p := range w.Props {
 		if p.Value != nil {
 			v.walkExpr(p.Value)
 		}
 	}
-	for i, va := range w.Vars {
-		v.push(fmt.Sprintf("vars[%d]", i))
-		v.walkVar(va, va.IsConst)
-		v.pop()
-	}
-	for i, fn := range w.Funcs {
-		v.push(fmt.Sprintf("funcs[%d]", i))
-		v.walkFunc(fn, false)
-		v.pop()
-	}
 	v.push("body")
-	v.walkStmts(w.Body)
+	v.walkStmts(w.Children)
 	v.pop()
-}
-
-func (v *irValidator) walkTimer(t *ir.Timer) {
-	if t.Interval == nil {
-		v.fail("timer has no interval")
-	} else {
-		v.walkExpr(t.Interval)
-	}
-	if t.Enabled != nil {
-		v.walkExpr(t.Enabled)
-	}
-	if t.Handler != nil {
-		v.walkFunc(t.Handler, true)
-	}
 }
 
 func (v *irValidator) walkStmts(stmts []ir.Stmt) {

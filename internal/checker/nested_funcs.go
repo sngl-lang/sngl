@@ -48,9 +48,10 @@ func (c *checker) checkNestedFunc(x *ast.FuncDef) {
 		case c.currentComponent != nil:
 			c.currentComponent.Funcs = append(c.currentComponent.Funcs, fn)
 		case c.currentWindow != nil:
-			// Registered in both collections, the way a component's nested
-			// methods are: pkg.Funcs is what a call site resolves through.
-			c.currentWindow.Funcs = append(c.currentWindow.Funcs, fn)
+			// A window is a rendering root, not a storage level, so a func
+			// written in one belongs to the window's container the way any
+			// other visual node's declaration would. window being root-only,
+			// that is the package.
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
 		case c.pkg != nil:
 			c.declPkg().Funcs = append(c.declPkg().Funcs, fn)
@@ -204,8 +205,5 @@ func (c *checker) orderNestedFuncs() {
 	reorder(c.pkg.Funcs)
 	for _, comp := range c.pkg.Components {
 		reorder(comp.Funcs)
-	}
-	for _, w := range c.pkg.Windows {
-		reorder(w.Funcs)
 	}
 }

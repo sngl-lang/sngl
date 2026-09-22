@@ -23,13 +23,11 @@ output {
 
 const packages list<string> = []
 
-component main ui.root {
-    ui.window #home(title="Docs", href="/") {
-        html.nav {
-            html.span(innerText="still here")
-            for var p = packages {
-                html.li(class="row", innerText=p)
-            }
+ui.window #home(title="Docs", href="/") {
+    html.nav {
+        html.span(innerText="still here")
+        for var p = packages {
+            html.li(class="row", innerText=p)
         }
     }
 }

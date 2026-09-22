@@ -18,15 +18,15 @@ func makeComp(name string, vars ...*ir.Var) *ir.Component {
 }
 
 // asSet returns a set with the given vars.
-func asSet(vars ...*ir.Var) map[*ir.Var]struct{} {
-	s := make(map[*ir.Var]struct{}, len(vars))
+func asSet(vars ...*ir.Var) map[ir.Symbol]struct{} {
+	s := make(map[ir.Symbol]struct{}, len(vars))
 	for _, v := range vars {
 		s[v] = struct{}{}
 	}
 	return s
 }
 
-func equalVarSet(a, b map[*ir.Var]struct{}) bool {
+func equalVarSet(a, b map[ir.Symbol]struct{}) bool {
 	if len(a) != len(b) {
 		return false
 	}

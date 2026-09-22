@@ -25,6 +25,13 @@ keyed by signature alone the program got back builtin's declaration and its own
 package never received one, so every target emitted five uses of a type it had
 not declared.
 
+It is keyed on an `effect` for that reason and for one more: `emptyWidth(e) => 0`
+ignores its argument and folds, so a program whose only read of `empty` is that
+call leaves the var dead and the shake takes the declaration with it. The whole
+paragraph above then pins nothing, while the archive still reads as though it
+does -- and the Kotlin defect below reads as fixed. An effect's key is read on
+every settle and cannot be folded away.
+
 deny out/go/bubbletea/model.go `(?s)type __anon_a_b_\w+ struct.*type __anon_a_b_` -- four spellings of one signature are one declaration, not two that happen to look alike
 deny out/go/bubbletea/model.go `struct\{\}\{` -- a literal names its declared type; `struct{}{A: 1, B: 2}` is what a decl-less anonymous struct emitted, and it does not compile
 broken out/kotlin/android -- an empty anonymous struct emits a Kotlin `data class` with no primary constructor parameter, which the language forbids
@@ -64,11 +71,15 @@ component main node {
             b int
         }{a=5, b=6}
         total = sumPair(pair) + sumPair(swapped) + sumPair(shorthand) + sumPair(written)
+        mounts = 0
     )
+
+    effect(on=empty, @mount(v) { mounts = mounts + 1 })
 
     text(value=string(total))
     text(value=string(pair.a))
     text(value=string(sumPair(pair) + emptyWidth(empty)))
+    text(value=string(mounts))
 }
 
 window {
@@ -94,14 +105,26 @@ type __anon_a_b_8dc8a4 struct {
 type __anon_e3b0c4 struct {
 }
 
+type ErrorEvent struct {
+	Message string
+	Kind    string
+}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	empty__inst0     __anon_e3b0c4
-	pair__inst0      __anon_a_b_8dc8a4
-	swapped__inst0   __anon_a_b_8dc8a4
-	shorthand__inst0 __anon_a_b_8dc8a4
-	written__inst0   __anon_a_b_8dc8a4
-	total__inst0     int
+	empty__inst0        __anon_e3b0c4
+	pair__inst0         __anon_a_b_8dc8a4
+	swapped__inst0      __anon_a_b_8dc8a4
+	shorthand__inst0    __anon_a_b_8dc8a4
+	written__inst0      __anon_a_b_8dc8a4
+	total__inst0        int
+	mounts__inst0       int
+	__effect0_key       __anon_e3b0c4
+	__effect0_live      []__anon_e3b0c4
+	__effect0_desired   []__anon_e3b0c4
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_steps    int
 
 	width, height int
 }
@@ -115,6 +138,14 @@ func New() Model {
 	m.shorthand__inst0 = __anon_a_b_8dc8a4{A: 1, B: 2}
 	m.written__inst0 = __anon_a_b_8dc8a4{A: 5, B: 6}
 	m.total__inst0 = ((((m.pair__inst0.A + m.pair__inst0.B) + (m.swapped__inst0.A + m.swapped__inst0.B)) + (m.shorthand__inst0.A + m.shorthand__inst0.B)) + (m.written__inst0.A + m.written__inst0.B))
+	m.mounts__inst0 = 0
+	m.__effect0_key = __anon_e3b0c4{}
+	m.__effect0_live = []__anon_e3b0c4{}
+	m.__effect0_desired = []__anon_e3b0c4{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_steps = 0
+	m.__effects0_settle()
 	return m
 }
 
@@ -122,6 +153,45 @@ func New() Model {
 func (m *Model) SetTerminalSize(w, h int) {
 	m.width = w
 	m.height = h
+}
+
+func (m *Model) __effect0_mount() {
+	m.mounts__inst0 = (m.mounts__inst0 + 1)
+}
+
+func (m *Model) __effect0_down() {
+	m.__effect0_desired = []__anon_e3b0c4{}
+	m.__effect0_desired = append(m.__effect0_desired, m.empty__inst0)
+}
+
+func (m *Model) __effect0_up() {
+	for __effect0_i, __effect0_k := range m.__effect0_desired {
+		if __effect0_i >= len(m.__effect0_live) {
+			m.__effect0_key = __effect0_k
+			m.__effect0_mount()
+		}
+	}
+	m.__effect0_live = m.__effect0_desired
+}
+
+func (m *Model) __effects0_settle() {
+	if m.__effects0_settling {
+		m.__effects0_pending = true
+	} else {
+		m.__effects0_settling = true
+		m.__effects0_pending = true
+		m.__effects0_steps = 0
+		for m.__effects0_pending && (m.__effects0_steps < 512) {
+			m.__effects0_pending = false
+			m.__effects0_steps = (m.__effects0_steps + 1)
+			m.__effect0_down()
+			m.__effect0_up()
+		}
+		m.__effects0_settling = false
+		if m.__effects0_pending {
+			panic(ErrorEvent{Message: "effects did not settle in 512 passes; an effect is rekeying itself", Kind: "effect"})
+		}
+	}
 }
 
 func (m Model) Empty__inst0() __anon_e3b0c4 {
@@ -214,6 +284,21 @@ func SetTotal__inst0Cmd(v int) tea.Cmd {
 	return func() tea.Msg { return setTotal__inst0Msg{value: v} }
 }
 
+func (m Model) Mounts__inst0() int {
+	return m.mounts__inst0
+}
+
+func (m Model) SetMounts__inst0(v int) Model {
+	m.mounts__inst0 = v
+	return m
+}
+
+type setMounts__inst0Msg struct{ value int }
+
+func SetMounts__inst0Cmd(v int) tea.Cmd {
+	return func() tea.Msg { return setMounts__inst0Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -235,6 +320,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetWritten__inst0(msg.value)
 	case setTotal__inst0Msg:
 		m = m.SetTotal__inst0(msg.value)
+	case setMounts__inst0Msg:
+		m = m.SetMounts__inst0(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -258,6 +345,9 @@ func (m Model) View() tea.View {
 	var part2 string
 	part2 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((m.pair__inst0.A + m.pair__inst0.B) + 0))))
 	parts = append(parts, part2)
+	var part3 string
+	part3 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.mounts__inst0)))
+	parts = append(parts, part3)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -322,11 +412,22 @@ fun MainScreen() {
     var shorthand__inst0 by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 1, b = 2)) }
     var written__inst0 by remember { mutableStateOf(__anon_a_b_8dc8a4(a = 5, b = 6)) }
     var total__inst0 by remember { mutableStateOf(((((pair__inst0.a + pair__inst0.b) + (swapped__inst0.a + swapped__inst0.b)) + (shorthand__inst0.a + shorthand__inst0.b)) + (written__inst0.a + written__inst0.b))) }
+    var mounts__inst0 by remember { mutableStateOf(0) }
 
     Column {
+        DisposableEffect(empty__inst0) {
+            val __snglEffectKey = empty__inst0
+            run {
+                val v = __snglEffectKey
+                mounts__inst0 = (mounts__inst0 + 1)
+            }
+            onDispose {
+            }
+        }
         Text(text = total__inst0.toString(), modifier = Modifier.safeDrawingPadding())
         Text(text = pair__inst0.a.toString(), modifier = Modifier.safeDrawingPadding())
         Text(text = ((pair__inst0.a + pair__inst0.b) + 0).toString(), modifier = Modifier.safeDrawingPadding())
+        Text(text = mounts__inst0.toString(), modifier = Modifier.safeDrawingPadding())
     }
 }
 -- out/none/html/index.html --
@@ -348,11 +449,13 @@ body { font-family: system-ui, sans-serif; }
 </span>
 <span id="__n2" data-sngl-id="__n2">
 </span>
+<span id="__n3" data-sngl-id="__n3">
+</span>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { empty__inst0: null, pair__inst0: null, swapped__inst0: null, shorthand__inst0: null, written__inst0: null, total__inst0: null };
+  var state = { empty__inst0: null, pair__inst0: null, swapped__inst0: null, shorthand__inst0: null, written__inst0: null, total__inst0: null, mounts__inst0: 0 };
   state.empty__inst0 = {};
   state.pair__inst0 = { a: 1, b: 2 };
   state.swapped__inst0 = { b: 4, a: 3 };
@@ -365,24 +468,69 @@ body { font-family: system-ui, sans-serif; }
   function __anon_e3b0c4() {
     return {};
   }
+  function __effect0_mount() {
+    state.mounts__inst0 = state.mounts__inst0 + 1;
+    __n3.textContent = String(state.mounts__inst0);
+  }
+  var __effect0_key = {};
+  var __effect0_live = [];
+  var __effect0_desired = [];
+  var __effects0_settling = false;
+  var __effects0_pending = false;
+  var __effects0_steps = 0;
+  function __effect0_down() {
+    __effect0_desired = [];
+    __effect0_desired.push(state.empty__inst0);
+  }
+  function __effect0_up() {
+    for (const [__effect0_i, __effect0_k] of __effect0_desired.entries()) {
+      if (__effect0_i >= __effect0_live.length) {
+        __effect0_key = __effect0_k;
+        __effect0_mount();
+      }
+    }
+    __effect0_live = __effect0_desired;
+  }
+  function __effects0_settle() {
+    if (__effects0_settling) {
+      __effects0_pending = true;
+    } else {
+      __effects0_settling = true;
+      __effects0_pending = true;
+      __effects0_steps = 0;
+      while (__effects0_pending && __effects0_steps < 512) {
+        __effects0_pending = false;
+        __effects0_steps = __effects0_steps + 1;
+        __effect0_down();
+        __effect0_up();
+      }
+      __effects0_settling = false;
+      if (__effects0_pending) {
+        throw Object.assign(new Error("effects did not settle in 512 passes; an effect is rekeying itself"), { kind: "effect" });
+      }
+    }
+  }
   function String(v) {
     return "" + v;
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   function __sngl_init() {
     __n0.textContent = String(state.total__inst0);
     __n1.textContent = String(state.pair__inst0.a);
     __n2.textContent = String(state.pair__inst0.a + state.pair__inst0.b + 0);
+    __n3.textContent = String(state.mounts__inst0);
   }
   __sngl_init();
+  __effects0_settle();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:928360ba1eac5b1c5ef593dfd40b577b
+pass sha256:5199585b01c1ee5e51ba52b8af956235
 -- run/kotlin/android --
-broken sha256:8b674b8d5137e202bbe5257f8be8a971
+broken sha256:34a790979ba39882fd892b7ebf42a00d
 -- run/none/html --
-pass sha256:3d977ca561d3cfd00b8da0363ba40c4a
+pass sha256:fd09b70f32c6e15c939cf8db54e75afc
