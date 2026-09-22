@@ -1,0 +1,29 @@
+// A node id only ever shadows another node handle. A prop, a var, a func or
+// any other outer symbol of the same name wins outright, and wins from inside
+// the scope too -- which is the rule declareNodeID has always stated and this
+// pins from the side the counted hoist can break.
+//
+// It is the shape that caught one: the re-hoist checkBlockIR does so that a
+// read from inside a scope stays the plain handle was descending into the
+// `if`, so it claimed `label` at the window body *before* that block's own
+// `var label` statement was checked, and a working program stopped compiling
+// with "label is already declared in this scope". declareOwnNodeIDs reaches
+// through a node's children, which are the same scope, and stops at an `if` or
+// a `for`, which are not -- each of those opens a block that hoists its own.
+
+import ui "sngl:ui"
+
+ui.window #w(title="t") {
+    var show = true
+    var label = "outer"
+
+    ui.vbox {
+        if show {
+            ui.text #label(value="node")
+
+            ui.text(value="inside: {label}")
+        }
+
+        ui.text(value="outside: {label}")
+    }
+}

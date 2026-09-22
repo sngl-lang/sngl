@@ -2925,9 +2925,10 @@ func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
 	c.pushScope()
 	defer c.popScope()
 	// The enclosing scope holds this block's node ids wrapped in the count it
-	// confers (declareNodeIDsIn). Hoisting them again here, at their own
-	// depth, is what makes a read from inside the block the plain handle.
-	c.declareNodeIDsIn(block, nil)
+	// confers (declareNodeIDsIn). Hoisting this block's own again here, at
+	// their own depth, is what makes a read from inside the block the plain
+	// handle.
+	c.declareOwnNodeIDs(block)
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
 		if vd, ok := stmt.(*ast.VarDecl); ok {

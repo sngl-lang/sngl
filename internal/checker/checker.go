@@ -4279,6 +4279,33 @@ func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, counts []nodeCount) {
 	}
 }
 
+// declareOwnNodeIDs hoists only the ids at this block's own depth: it reaches
+// through a node's children, which are the same scope, and stops at an `if` or
+// a `for`, which are not. The block each of those opens hoists its own when
+// checkBlockIR reaches it, so descending here would claim the name twice --
+// and claim it *before* the block's own statements are checked, which is what
+// made a `#label` inside an `if` collide with a sibling `var label` that
+// previously won the name outright.
+func (c *checker) declareOwnNodeIDs(block *ast.StmtBlock) {
+	if block == nil || !block.IsDefined() {
+		return
+	}
+	for _, s := range block.Stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			target := visualNodeTarget(n)
+			c.declareNodeID(n.ID, target, c.isWindowNode(target), nil)
+			if !c.crossesTreeFamily(target) {
+				c.declareOwnNodeIDs(&n.Block)
+			}
+		case *ast.CallStmt:
+			if target, id, isElem := elementRefCallInfo(n.Call); isElem {
+				c.declareNodeID(id, target, false, nil)
+			}
+		}
+	}
+}
+
 func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
