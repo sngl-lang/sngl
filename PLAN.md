@@ -447,6 +447,76 @@ substituted and the primitive does not exist yet. The barrier is a structural
 rule and keeps its subject and its fixture. It retires later or never, once the
 reconstruction covers the cases it guards.
 
+### The primitive is five declarations, and one of them is a language's
+
+Worth stating plainly, because the count above ("all three canvas platforms")
+undercounts and the extra one is the interesting case. `sngl:language/go`
+declares `#[marks.intrinsic("go:draw")] component draw(@draw DrawEvent) shapes.shape` and the seven shapes against it, and its own comment says
+what that buys: *"every Go target that draws with pixels shares this surface,
+so fyne and bubbletea inherit these by not overriding them. gtk4 and android
+are `--lang go` too and do override -- cairo and Compose are their own -- and a
+platform override wins."*
+
+`codegen/platform/{fyne,bubbletea}/*.sngl` declare no shape overrides at all.
+So the five primitives are `go:draw`, `html:draw`, and gtk4's and android's,
+plus `none`'s empty pair -- and a capability written on `go:draw` answers for
+two platforms at once, through the override precedence the language already
+has rather than through anything the capability invents. That is the strongest
+evidence yet that the grain is the primitive declaration and not the platform.
+
+### The bracket is the last drawing the compiler spells
+
+`passShapeDraw` emits exactly two intrinsic ids of its own, both through
+`canvasCall`: `CanvasSave` and `CanvasRestore`, the bracket around a composed
+shape that makes `group(style=…) { … }` pass its style to its children and
+stop there. Everything else in a draw function is a shape override's `@draw`
+handler body, spliced by `primitiveDrawBody` with its payload parameter
+rebound to the draw function's `ctx`.
+
+**Jonathan's observation is that the `@draw` pattern is the way to retire those
+two as well**, so the lowering names no intrinsic id at all. The shape it wants
+is a bracket declared in `sngl:ui/draw` and overridden per target with two
+primitives around a slot insertion:
+
+```sngl
+// sngl:ui/draw -- bodyless, as every shape is
+component scope(style CanvasStyle, content ...component shape) shape
+
+// sngl:language/go
+component shapes.scope[language] {
+    draw(@draw(e) { e.ctx.save(); applyStyle(e.ctx, style) })
+    content
+    draw(@draw(e) { e.ctx.restore() })
+}
+```
+
+Two questions to settle before that is a plan. `emitShape` brackets **every**
+composed shape rather than an explicit one, so either every composed shape in
+`lib/ui/draw` writes the bracket itself -- in portable SNGL, which cannot name
+`e.ctx.save()` -- or the lowering keeps inserting it and inserts *this
+declaration* instead of a hardcoded id, which is a smaller change and still
+leaves one name in Go. And a slot insertion between two primitives has to
+survive `emitShapes`, which walks children and would meet the two `draw` nodes
+and the slot's contents as three siblings; that is the part to try first,
+because it is either free or fatal.
+
+### What the merged `@draw` work left behind
+
+Seven of the nine intrinsics in `lib/internal/draw` were emitted by nothing:
+`CanvasDrawRect`, `CanvasDrawCircle`, `CanvasDrawEllipse`, `CanvasDrawLine`,
+`CanvasDrawPath`, `CanvasDrawText`, `CanvasDrawImage`. They date from the
+lowering pass that read a canvas's children and wrote the drawing itself, and
+they survived the move to overrides because `DeclarePlatformImplements` says a
+platform *can* answer an id, which is not the same as anything asking. The
+platform canvas tests name several of them in negative assertions
+("untranslated intrinsics must not leak"), which passed trivially once nothing
+produced them. `CanvasApplyStyle` was the same in the other direction: html and
+gtk4 carried translation arms for an id that was never declared at all.
+
+Deleted, along with the arms. `canvasutil/gocontext.go` had already been
+cleaned and says so -- *"Two ids reach here: the save and restore that bracket
+a composed shape"* -- so this is the rest of that.
+
 ### Landed: the whole-target half
 
 Steps 1 to 4 below. `lib/x/gen/` declares the three marks and two enums;

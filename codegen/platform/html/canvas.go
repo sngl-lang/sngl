@@ -3,7 +3,6 @@ package html
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
@@ -28,22 +27,6 @@ func init() {
 	// a[0]=ctx
 	reg("CanvasSave", func(a []string) string { return a[0] + ".save()" })
 	reg("CanvasRestore", func(a []string) string { return a[0] + ".restore()" })
-
-	// a[0]=ctx, a[1]=style (CanvasStyle struct)
-	// JS struct literals only contain fields explicitly set in the source;
-	// CanvasStyle fields with SNGL defaults may be absent (undefined) in the
-	// JS object. Guard each assignment and use || fallbacks for scalar fields.
-	reg("CanvasApplyStyle", func(a []string) string {
-		ctx, s := a[0], a[1]
-		return strings.Join([]string{
-			"if(" + s + ".fill){" + ctx + ".fillStyle=_snglColor(" + s + ".fill);}",
-			"if(" + s + ".stroke){" + ctx + ".strokeStyle=_snglColor(" + s + ".stroke);}",
-			ctx + ".lineWidth=" + s + ".strokeWidth||1;",
-			ctx + ".lineCap=" + s + ".lineCap||\"butt\";",
-			ctx + ".lineJoin=" + s + ".lineJoin||\"miter\";",
-			"if(" + s + ".fontSize){" + ctx + ".font=(" + s + ".fontSize)+\"px \"+(" + s + ".fontFamily||\"sans-serif\");}",
-		}, "")
-	})
 }
 
 // canvasSetup records a canvas element that needs its draw function wired up.

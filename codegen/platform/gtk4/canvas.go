@@ -21,9 +21,13 @@ func init() { codegen.DeclarePlatformImplements("gtk4", "sngl:internal/draw") }
 
 // Canvas2D rendering for gtk4 via cairo.
 //
-// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func whose body is a sequence of canvas
-// intrinsic CallStmts (CanvasSave / CanvasApplyStyle / CanvasDrawRect / ...).
+// passShapeDraw (internal/lower) turns a `canvas`+shapes subtree into a
+// synthesized `_canvasDrawN(ctx)` func. Two kinds of statement reach it: the
+// bracket around a composed shape (CanvasSave / CanvasRestore, the only canvas
+// intrinsics anything still emits), and whatever a shape override's own
+// `@draw` handler was written as -- for gtk4 that is cairo natives, since
+// `component shapes.circle[platform]` here paints with them directly.
+//
 // passDeclarative then flattens the canvas NodeInst to a
 // `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
 // dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight (recovered
@@ -107,14 +111,6 @@ func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
 		return []ir.Stmt{cairoCall("cairo_save", cr)}
 	case "CanvasRestore":
 		return []ir.Stmt{cairoCall("cairo_restore", cr)}
-	case "CanvasApplyStyle":
-		// Nothing. cairo's state is never where a style lived here: this bound
-		// a local that the following draw primitive read, and the primitives
-		// are gone -- every shape is a platform override now, and each sets
-		// its own source before it paints. A composed shape's bracket still
-		// reaches this, and binding a local nothing reads would be an unused
-		// variable in the emitted Go.
-		return nil
 	}
 	return []ir.Stmt{cs}
 }

@@ -25,9 +25,15 @@ type canvasMeta = canvasutil.Meta
 
 // Canvas2D rendering for fyne.
 //
-// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func whose body is a sequence of canvas
-// intrinsic CallStmts (CanvasSave / CanvasApplyStyle / CanvasDrawRect / ...).
+// passShapeDraw (internal/lower) turns a `canvas`+shapes subtree into a
+// synthesized `_canvasDrawN(ctx)` func. Two kinds of statement reach it: the
+// bracket around a composed shape (CanvasSave / CanvasRestore, the only canvas
+// intrinsics anything still emits), and whatever a shape override's own
+// `@draw` handler was written as. fyne declares no shape overrides of its own
+// and inherits `sngl:language/go`'s, which paint through `#[go.native]`
+// methods on the pkg/go/canvas runtime -- so what arrives here is ordinary
+// method calls that need no canvas translation at all.
+//
 // passDeclarative then flattens the canvas NodeInst to a
 // `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
 // dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight.

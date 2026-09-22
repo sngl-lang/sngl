@@ -19,12 +19,14 @@ func init() { codegen.DeclarePlatformImplements("bubbletea", "sngl:internal/draw
 
 // Canvas2D rendering for bubbletea.
 //
-// bubbletea keeps the declarative visual tree (it does NOT set NoDeclarative),
-// so a canvas arrives in the view body as an *ir.NodeInst with n.CanvasDraw
-// set (the synthesized `_canvasDrawN(ctx)` func produced by passCanvas) and
-// width/height props still on the node. passCanvas's draw func body is a
-// sequence of canvas-intrinsic CallStmts (CanvasApplyStyle / CanvasDrawRect /
-// ...).
+// bubbletea keeps the declarative visual tree (it holds Declarative), so a
+// canvas arrives in the view body as an *ir.NodeInst with n.CanvasDraw set
+// (the synthesized `_canvasDrawN(ctx)` func passShapeDraw produced) and
+// width/height props still on the node. That func's body is the bracket
+// intrinsics (CanvasSave / CanvasRestore) around each composed shape, plus
+// whatever each shape override's own `@draw` handler was written as.
+// bubbletea declares no shape overrides and inherits `sngl:language/go`'s,
+// which paint through `#[go.native]` methods on the pkg/go/canvas runtime.
 //
 // bubbletea is a RenderModel: View() re-runs on every update, so the canvas is
 // rasterised inline in View() each frame — no persistent widget, no reactive

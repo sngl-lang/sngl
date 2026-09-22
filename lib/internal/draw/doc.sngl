@@ -1,7 +1,18 @@
-// Package draw declares the 2D drawing primitives passCanvas emits into the
-// draw function it extracts from a canvas. They are the intrinsic half of
-// sngl:ui/draw, which declares the canvas and the shapes a program writes.
+// Package draw declares the bracket a composed shape's drawing sits inside:
+// save the target's drawing state, and restore it afterwards, so a group's
+// style reaches its children and stops at them.
 //
-// Each declaration here is a signature with no body: the result is produced
-// by the target's native implementation of the marked id, so a backend that
-// does not implement one has nothing to fall back to.
+// Each declaration is a signature with no body: the result is produced by the
+// target's native implementation of the marked id, so a backend that does not
+// implement one has nothing to fall back to.
+//
+// It used to declare a call per shape as well -- CanvasDrawCircle,
+// CanvasDrawRect and five more -- from when a lowering pass read a canvas's
+// children and wrote the drawing itself. A shape is an override on a platform
+// primitive now (`component shapes.circle[language] { draw(@draw(e) { … }) }`),
+// so what paints a circle is written in SNGL and reaches the output as that
+// handler's own body. The seven were left behind: declared, emitted by
+// nothing, and kept resolvable by the platforms that claim this package.
+//
+// These two are what the *lowering* still writes, in `canvasCall`, and they
+// are the last drawing the compiler spells rather than the tree.

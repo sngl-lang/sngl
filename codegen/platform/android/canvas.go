@@ -19,9 +19,14 @@ func init() { codegen.DeclarePlatformImplements("android", "sngl:internal/draw")
 
 // Canvas2D rendering for android via Jetpack Compose's DrawScope.
 //
-// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func whose body is a sequence of canvas
-// intrinsic CallStmts (CanvasSave / CanvasApplyStyle / CanvasDrawRect / ...).
+// passShapeDraw (internal/lower) turns a `canvas`+shapes subtree into a
+// synthesized `_canvasDrawN(ctx)` func. Two kinds of statement reach it: the
+// bracket around a composed shape (CanvasSave / CanvasRestore, the only canvas
+// intrinsics anything still emits, and both no-ops here -- a DrawScope manages
+// its state per primitive), and whatever a shape override's own `@draw`
+// handler was written as, which for android is Compose draw calls from
+// `component shapes.circle[platform]`.
+//
 // android is declarative (it keeps the NodeInst tree), so the canvas node
 // reaches renderNode with n.CanvasDraw set. We emit a Compose
 //
