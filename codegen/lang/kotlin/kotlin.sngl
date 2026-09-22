@@ -14,7 +14,24 @@ import build "sngl:build"
 import gen "sngl:x/gen"
 
 // The `kotlin` node of a build directive: `output { kotlin { android() } }`.
-#[gen.can(toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements)]
+#[gen.can(
+    toggle,
+    ternary,
+    lambda,
+    ref,
+    unitType,
+    enumType,
+    asyncReactive,
+    asyncCalls,
+    computed,
+    listLambdas,
+    reactivity,
+    declarative,
+    inlineComponents,
+    implicitRecv,
+    structSpread,
+    viewStatements,
+)]
 component kotlin(platforms ...component build.platform) build.language {}
 
 // Names the Kotlin identifier a declaration *is*. The counterpart of

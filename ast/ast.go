@@ -52,6 +52,21 @@ type MacroAttr struct {
 	Alias string // import alias, e.g. "canvas" in #[canvas.shape]
 	Name  string // macro name, e.g. "shape" in #[canvas.shape]
 	Args  []Expr // optional arguments
+	// IsMultiline says the author wrote the argument list across lines, which
+	// the formatter keeps: a capability list runs to twenty names and reads as
+	// nothing on one line. Same rule a prop list follows, for the same reason.
+	IsMultiline bool `json:",omitempty"`
+	// Leading are the comments written on their own lines above this mark and
+	// below the one before it. A declaration's marks are collected onto the
+	// declaration, so without this a comment written between two of them has
+	// nowhere to be and was emitted after the whole declaration -- the prose
+	// explaining a mark ended up below the thing it explained.
+	Leading []*Comment `json:",omitempty"`
+	// Trailing is the comment written after this mark on its own line. Only a
+	// mark with another below it carries one: a comment after the *last* mark
+	// is held by the formatter instead, since it is also where a declaration's
+	// own trailing comment would sit.
+	Trailing *Comment `json:",omitempty"`
 }
 
 // Document is the top-level container for a .sngl file.

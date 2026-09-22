@@ -36,7 +36,15 @@ import gen "sngl:x/gen"
 // a DOM parent can put a child at a position, so a keyed run moves one child
 // rather than rebuilding from the first change.
 #[gen.can(ternary, listLambdas, asyncCalls, insertBefore)]
-#[gen.cannot(viewStatements, asyncSpawn, asyncReactive, implicitRecv, inlineComponents, reactivity, structSpread)]
+#[gen.cannot(
+    viewStatements,
+    asyncSpawn,
+    asyncReactive,
+    implicitRecv,
+    inlineComponents,
+    reactivity,
+    structSpread,
+)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component html(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).

@@ -486,11 +486,26 @@ component naming `ui.node`, and one naming nothing whose family is inferred.
 `unitType`. The parser rejects the obvious spelling in an enum body, which is
 not a rule anyone would have predicted from `Features.Enum`.
 
-**A mark is written on one line.** `sngl fmt` joins a wrapped one, and moves a
-comment written *between* two marks to after the declaration -- so the prose
-goes above the first mark, where it reads as the declaration's own. Nothing in
-the suite checks that `lib/` and the target packages are formatted, which is
-why this is a convention to keep rather than a test that would have caught it.
+**Two formatter bugs, found by writing the marks and now fixed.** A comment
+written *between* two marks came out below the whole declaration -- the prose
+explaining a mark ended up under the thing it explained. A declaration's marks
+are collected onto the declaration and its position is the first mark's, so
+`placeComments` could not see inside the run: every comment after the first
+mark is later than the statement and fell through to after it. `ast.MacroAttr`
+carries `Leading` and `Trailing` now, and `placeAttrComments` fills them.
+
+And a mark whose argument list was written across lines was joined onto one.
+`IsMultiline` on the mark says what the author did, the way a prop list's
+already does, and the EBNF gained the optional trailing comma every other list
+in the language already allows. A capability list runs to twenty names; joined,
+it is a line nobody can scan, which is what the target packages were carrying
+until this was fixed.
+
+Neither was caught by anything, because nothing in the suite checks that
+`lib/` and the target packages are formatted. Four cases in
+`format_comments_test.go` cover them; three fail when the fix is reverted, and
+the fourth -- a comment above the *first* of several marks -- was already
+correct and is a guard.
 
 `lib/lib.go` embeds `*/*.sngl */*/*.sngl`, which reaches `x/gen` and not
 `x/gen/cache`. That pattern needs a third level before the second member of the

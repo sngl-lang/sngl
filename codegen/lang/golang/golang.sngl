@@ -17,7 +17,21 @@ import gen "sngl:x/gen"
 // screen. Nor can it hold a typed lambda behind an interface surface. What it
 // does have is the goroutine passAsyncOffload moves that call onto, which is
 // what makes `async.spawn` sayable here and nowhere else.
-#[gen.can(toggle, lambda, ref, unitType, enumType, computed, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, asyncSpawn)]
+#[gen.can(
+    toggle,
+    lambda,
+    ref,
+    unitType,
+    enumType,
+    computed,
+    reactivity,
+    declarative,
+    inlineComponents,
+    implicitRecv,
+    structSpread,
+    viewStatements,
+    asyncSpawn,
+)]
 component go(
     // Go toolchain version emitted in generated go.mod files. Unset takes the
     // host's own go.mod line, and 1.23 where there is none.

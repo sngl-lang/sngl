@@ -5070,7 +5070,7 @@ state2:
 //
 //	# ── Document ─────────────────────────────────────────────────────────────────
 //
-//	MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rparen ] rbracket .
+//	MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } [ comma ] ] rparen ] rbracket .
 //
 //	State 0
 //		on  attr_open
@@ -5104,13 +5104,10 @@ state2:
 //	State 7
 //		Accept
 //	State 8
+//		on  comma
+//			shift and goto state 5
 //		on  rparen
 //			shift and goto state 6
-//		on  comma
-//			shift and goto state 9
-//	State 9
-//		on  amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit
-//			call Expr and goto state 8
 //
 // MacroAttr is used internally from Parse.
 func (p *Parser) MacroAttr() (r []int32) {
@@ -5190,20 +5187,12 @@ state7:
 state8:
 	accept, errorSet = false, 144
 	switch Symbol(p.tok.Ch) {
+	case comma:
+		r = append(r, p.shift())
+		goto state5
 	case rparen:
 		r = append(r, p.shift())
 		goto state6
-	case comma:
-		r = append(r, p.shift())
-		goto state9
-	}
-	return p.stop(r, accept, errorSet)
-state9:
-	accept, errorSet = false, 12
-	switch Symbol(p.tok.Ch) {
-	case amp, bang, float_lit, hash, i18n_str_full, i18n_str_start, i18n_triple_full, i18n_triple_start, ident, int_lit, kw_const, kw_func, kw_import, kw_struct, lbrace, lbracket, lparen, minus, raw_str, star, str_full, str_start, triple_full, triple_start, unit_lit:
-		r = p.add(r, p.Expr())
-		goto state8
 	}
 	return p.stop(r, accept, errorSet)
 }

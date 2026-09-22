@@ -20,6 +20,9 @@ func TestFormatKeepsCommentsWhereTheyWereWritten(t *testing.T) {
 		{"in an enum body", "enum E {\n    // the good one\n    ok\n    err // the other\n}"},
 		{"in a parameter list", "component a(\n    // the tag\n    tag string,\n    other string = \"\", // why\n) {}"},
 		{"on a mark", "#[some.mark] // why\nvar x = 1"},
+		{"between two marks", "#[a.one]\n// why the next\n#[a.two]\nvar x = 1"},
+		{"trailing a mark that is not the last", "#[a.one] // why\n#[a.two]\nvar x = 1"},
+		{"above the first of several marks", "// about all of it\n#[a.one]\n#[a.two]\nvar x = 1"},
 		{"among i18n cases", "var m = $\"{n, plural,\n    // none of them\n    =0{none}\n    other{# items}\n}\""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -51,4 +54,20 @@ func TestFormatAlignsTrailingComments(t *testing.T) {
 	assertFormat(t,
 		"var alpha = 1 // one\nvar b = 2 // two\n\nvar c = 3      // alone",
 		"var alpha = 1 // one\nvar b = 2     // two\n\nvar c = 3 // alone")
+}
+
+// A mark's argument list keeps the lines its author gave it, the way a prop
+// list does. A capability list runs to twenty names, and joining one gives a
+// line no reader can scan -- which is what the formatter used to do, silently,
+// to source that had been written to be read.
+func TestFormatKeepsAMarkMultiline(t *testing.T) {
+	assertFormat(t,
+		"#[a.can(\n    one,\n    two,\n)]\nvar x = 1",
+		"#[a.can(\n    one,\n    two,\n)]\nvar x = 1")
+}
+
+// And a mark written on one line stays on one line: the flag records what the
+// author did, and does not turn every mark into a list.
+func TestFormatKeepsAMarkOnOneLine(t *testing.T) {
+	assertFormat(t, "#[a.can(one, two)]\nvar x = 1", "#[a.can(one, two)]\nvar x = 1")
 }

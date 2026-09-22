@@ -203,7 +203,7 @@ MsgBody = i18n_case_full
 
 # ── Document ─────────────────────────────────────────────────────────────────
 
-MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } ] rparen ] rbracket .
+MacroAttr = attr_open ident [ dot ident ] [ lparen [ Expr { comma Expr } [ comma ] ] rparen ] rbracket .
 
 # A native value — one expression an encoder wrote, see checker.CheckNativeValue
 # — is the second thing a Document can be. Only the native-value lexer emits the

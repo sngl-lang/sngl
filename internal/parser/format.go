@@ -1490,8 +1490,15 @@ func (f *formatter) writeDisabledDecl(d *ast.DisabledDecl) {
 
 func (f *formatter) writeAttrs(attrs []ast.MacroAttr) {
 	for i, attr := range attrs {
+		for _, c := range attr.Leading {
+			f.writeComment(c)
+			f.newline()
+		}
 		f.writeAttr(attr)
-		if i == len(attrs)-1 && f.attrTrailer != nil {
+		switch {
+		case attr.Trailing != nil:
+			f.writeTrailing(attr.Trailing)
+		case i == len(attrs)-1 && f.attrTrailer != nil:
 			f.writeTrailing(f.attrTrailer)
 			f.attrTrailer = nil
 		}
@@ -1508,11 +1515,22 @@ func (f *formatter) writeAttr(attr ast.MacroAttr) {
 	f.write(attr.Name)
 	if len(attr.Args) > 0 {
 		f.write("(")
-		for i, arg := range attr.Args {
-			if i > 0 {
-				f.write(", ")
+		if attr.IsMultiline {
+			f.newline()
+			f.indent++
+			for _, arg := range attr.Args {
+				f.writeExpr(arg)
+				f.write(",")
+				f.newline()
 			}
-			f.writeExpr(arg)
+			f.indent--
+		} else {
+			for i, arg := range attr.Args {
+				if i > 0 {
+					f.write(", ")
+				}
+				f.writeExpr(arg)
+			}
 		}
 		f.write(")")
 	}
