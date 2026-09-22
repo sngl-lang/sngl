@@ -6,7 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -31,30 +30,6 @@ func (g *Generator) Description() string {
 // because there is nothing to generate -- see runInterpreted in cmd/sngl.
 func (g *Generator) SupportedLangs() []string { return []string{"go", "none"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
-func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
-	f := lang.Capabilities()
-	// NoReactivity: lowering injects explicit `nX.<prop> = <expr>` Assigns
-	// after every mutation of a tracked Var.
-	f.Reactivity = false
-	// NoDeclarative: lowering flattens the entire visual tree into
-	// create/append/attachHandler intrinsic-call sequences. fyne consumes
-	// the flat output via WalkLowered + fyneTranslator.
-	f.Declarative = false
-	f.InlineComponents = false
-	f.StructSpread = false
-	f.StructComponents = true
-	f.StdlibContextParam = true
-	// Canvas2D: fyne renders shape subtrees to a software raster (gg) drawn
-	// into a *canvas.Image. ReactiveCanvas re-rasterises + Refreshes when a
-	// state var read by a draw func mutates.
-	f.Canvas = true
-	f.ReactiveCanvas = true
-	// fyne.Do queues onto the goroutine running the driver, which is the one
-	// that owns every widget -- so a blocking call can be moved off it and its
-	// answer written back. See async.go for the emitter.
-	f.AsyncPost = true
-	return f
-}
 
 // Generate writes fyne source files directly into sink. This is the
 // sink-based path platforms migrate to during the codegen unification.

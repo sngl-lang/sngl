@@ -47,7 +47,7 @@ func TestEveryLoweringCapIsRequestedBySomeTarget(t *testing.T) {
 			if p == nil {
 				continue
 			}
-			caps := reflect.ValueOf(p.Capabilities(l).ToLowerCaps())
+			caps := reflect.ValueOf(codegen.CapsOrNone(l.LanguageIdentifier(), p.PlatformIdentifier()).ToLowerCaps())
 			ct := caps.Type()
 			for i := range ct.NumField() {
 				if caps.Field(i).Kind() == reflect.Bool && caps.Field(i).Bool() {

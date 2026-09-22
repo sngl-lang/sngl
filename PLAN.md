@@ -438,13 +438,20 @@ reconstruction covers the cases it guards.
 
 ### Landed: the whole-target half
 
-Steps 1 to 4 below, less the deletion. `lib/x/gen/` declares the three marks
-and two enums; `internal/checker/marks_impl.go` stores what they said on
-`ir.Component.Gen`; `lower.FeaturesFrom` maps the names onto `Features`; all
-six platforms and four languages declare themselves; and every caller now
-reads the source through `codegen.CapsFor`. The Go methods are still there and
-still tested against the declarations, which is what makes deleting them a
-separate commit rather than a leap.
+Steps 1 to 4 below. `lib/x/gen/` declares the three marks and two enums;
+`internal/checker/marks_impl.go` stores what they said on `ir.Component.Gen`;
+`lower.FeaturesFrom` maps the names onto `Features`; all six platforms and four
+languages declare themselves; every caller reads the source through
+`codegen.CapsFor`; and `Capabilities()` is gone from both interfaces along with
+its ten implementations and the 82 call sites that asked. It landed in two
+commits with the equivalence test in between, so the source path was held to
+the method for one commit before the method was deleted.
+
+`AllFeatures()` survives the polarity it contradicts, in one place: the
+interpreted path, which wants every capability on the argument that a gated
+pass is compensation for something a backend cannot do and there is no backend
+there. That is a fair use of it and not a target declaring itself. It goes with
+step 5.
 
 Five things the implementation settled that the design above had wrong or had
 not asked.

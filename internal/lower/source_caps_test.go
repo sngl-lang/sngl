@@ -3,7 +3,6 @@ package lower_test
 import (
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -28,33 +27,6 @@ func buildNode(t *testing.T, pkg, name string) *ir.Component {
 	}
 	t.Fatalf("%s declares no component %q for the build tree", pkg, name)
 	return nil
-}
-
-// TestSourceCapsMatchTheGoMethod is the whole safety argument for moving
-// capabilities into source: every registered pair must lower identically
-// whichever half answered. Delete it only with Capabilities() itself.
-func TestSourceCapsMatchTheGoMethod(t *testing.T) {
-	for _, pname := range codegen.Platforms() {
-		plat := codegen.LookupPlatform(pname)
-		platComp := buildNode(t, "platform/"+pname, pname)
-		for _, lname := range plat.SupportedLangs() {
-			lang := codegen.LookupLang(lname)
-			if lang == nil {
-				t.Fatalf("platform %s supports language %q, which is not registered", pname, lname)
-			}
-			langComp := buildNode(t, "language/"+lname, lname)
-			t.Run(lname+"/"+pname, func(t *testing.T) {
-				got, err := lower.FeaturesFrom(langComp, platComp)
-				if err != nil {
-					t.Fatal(err)
-				}
-				want := plat.Capabilities(lang)
-				if got != want {
-					t.Errorf("source and method disagree\n  source: %+v\n  method: %+v", got, want)
-				}
-			})
-		}
-	}
 }
 
 // TestGenVocabularyIsMapped holds the SNGL enums and the Go tables together.

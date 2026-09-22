@@ -13,7 +13,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -54,11 +53,6 @@ func NativeAlias(importPath string) string {
 // LangTranslator translates SNGL expressions into a target language's syntax.
 type LangTranslator interface {
 	ir.Language
-
-	// Capabilities returns the SNGL constructs this language can natively emit.
-	// The platform receives these features and may restrict them further before
-	// lowering runs. See lower.Features and lower.AllFeatures.
-	Capabilities() lower.Features
 
 	GenerateIdentifier(name *ir.Ident) string
 
@@ -150,13 +144,6 @@ type FileEmitter interface {
 type PlatformGenerator interface {
 	ir.Platform
 	SupportedLangs() []string
-
-	// Capabilities receives the active language and returns the combined set of
-	// features the platform+language pair can natively emit. The platform
-	// should start from lang.Capabilities(), restrict what it cannot consume,
-	// and add StructComponents / StdlibContextParam when required. The lang
-	// argument may be type-asserted to check for optional language extensions.
-	Capabilities(lang LangTranslator) lower.Features
 
 	Generate(req *Request, sink Sink) error
 }

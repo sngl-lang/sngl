@@ -1,10 +1,11 @@
 package html
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
 	"os"
 	"strings"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/ir"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
@@ -39,7 +40,7 @@ func generateHTMLFromSample(t *testing.T, s testutil.Sample) string {
 	}
 
 	gen := &Generator{}
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),
@@ -89,7 +90,7 @@ func generateHTML(t *testing.T, path string) string {
 	}
 
 	gen := &Generator{}
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),
@@ -253,7 +254,7 @@ ui.window {
 
 	lang := codegen.LookupLang("none")
 	gen := &Generator{}
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),

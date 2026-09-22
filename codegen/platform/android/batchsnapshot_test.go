@@ -1,9 +1,10 @@
 package android
 
 import (
-	"git.duckfam.us/jonathan/sngl/ir"
 	"strings"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/ir"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"

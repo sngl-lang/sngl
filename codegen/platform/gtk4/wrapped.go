@@ -2,9 +2,10 @@ package gtk4
 
 import (
 	"fmt"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 	"regexp"
 	"strings"
+
+	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )

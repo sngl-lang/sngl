@@ -183,7 +183,7 @@ func generateWithBundledGIR(t *testing.T, src string) string {
 		}
 	}
 	lang := codegen.LookupLang("go")
-	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: platformName}); err != nil {
+	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps(), lower.Options{Platform: platformName}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()

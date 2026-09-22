@@ -102,7 +102,7 @@ func compileAsyncHTML(t *testing.T, src string, fsys fs.FS) []byte {
 	}
 
 	gen := &Generator{}
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

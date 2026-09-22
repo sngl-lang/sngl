@@ -45,3 +45,19 @@ func buildNode(pkg, name string) (*ir.Component, error) {
 	}
 	return nil, fmt.Errorf("sngl:%s declares no component %q, so the target says nothing about what it generates", pkg, name)
 }
+
+// CapsOrNone is CapsFor for a caller with no way to report: it answers the
+// zero Features when either package cannot be resolved.
+//
+// Which is not a fallback invented here. It is the polarity the marks declare,
+// applied to a target that said nothing at all -- every lowering pass runs,
+// which is the answer that leaves a program correct. A registered target
+// cannot reach it anyway: its build node is part of the plugin, and a build
+// that could not resolve one would have failed selecting the target.
+func CapsOrNone(language, platform string) lower.Features {
+	f, err := CapsFor(language, platform)
+	if err != nil {
+		return lower.Features{}
+	}
+	return f
+}

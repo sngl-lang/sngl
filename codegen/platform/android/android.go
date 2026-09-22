@@ -8,7 +8,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/kotlin"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -79,37 +78,6 @@ func (g *Generator) Description() string {
 }
 func (g *Generator) SupportedLangs() []string { return []string{"kotlin", "go"} }
 func (g *Generator) PreviewCSS() string       { return previewCSS }
-func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
-	f := lang.Capabilities()
-	// NoInlineComponents: hoist user-component vars/funcs/timers into main
-	// with per-instance renames. Android's RenderModel emits a Composable
-	// per surviving component; after inlining only main + recursive
-	// components remain, eliminating cross-component state plumbing.
-	f.InlineComponents = false
-	f.StructSpread = false
-	f.StructComponents = true
-	f.StdlibContextParam = true
-	// Canvas2D: passCanvas extracts the canvas+shapes subtree into a
-	// synthesized _canvasDrawN(ctx) func of canvas intrinsics, which we
-	// translate inline into a Compose Canvas {} DrawScope lambda.
-	f.Canvas = true
-	// ReactiveCanvas stays FALSE: the draw lambda reads Compose state vars
-	// directly (radius, computed styles), so Compose recomposes and
-	// redraws the Canvas automatically when that state changes — no
-	// explicit redraw call (CanvasRedrawStmt) is needed. Leaving
-	// passCanvasReactivity off avoids injecting redraws that have no
-	// Compose-native target.
-	f.ReactiveCanvas = false
-	// Effects: Compose brackets a keyed lifetime itself. DisposableEffect is
-	// the same construct an `effect` declares -- a block on entering the
-	// composition, an onDispose on leaving, and a key whose change ends one
-	// lifetime and begins the next -- so the node arrives here intact rather
-	// than as the calls passEffect would build. It is also the one shape a
-	// synthesized teardown could not have: Compose owns the composition, and
-	// an Activity has no model to call a method on.
-	f.Effects = true
-	return f
-}
 
 // Generate writes android platform output directly into sink. This is
 // the sink-based path platforms migrate to during the codegen unification.

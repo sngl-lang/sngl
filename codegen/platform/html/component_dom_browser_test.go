@@ -151,7 +151,7 @@ func renderComponentHTML(t *testing.T, src string) string {
 	}
 
 	gen := &Generator{}
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
 	// Mirror the CLI generate pipeline (cmd/sngl/pipeline.go): optimize →
 	// lower → optimize. Wiring Platforms above + these passes is what makes
 	// stdlib components render through their `platform html { }` bodies (the

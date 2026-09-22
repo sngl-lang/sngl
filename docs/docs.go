@@ -506,7 +506,7 @@ func compilePreview(source string) string {
 		return ""
 	}
 
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
 		return ""
 	}

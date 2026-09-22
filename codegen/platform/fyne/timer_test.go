@@ -41,7 +41,7 @@ window {
 	// The platform's own capabilities rather than a hand-written pair: the
 	// timer is an effect now, and a Caps literal that forgets NoEffects leaves
 	// the node standing and nothing emits a schedule at all.
-	if err := lower.Lower(pkg, g.Capabilities(lang).ToLowerCaps(), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
+	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps(), lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()
