@@ -178,7 +178,11 @@ func runDump(cmd *cobra.Command, args []string) error {
 		slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
-				caps := codegen.CapsOrNone(lang.LanguageIdentifier(), plat.PlatformIdentifier()).ToLowerCaps()
+				features, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+				if err != nil {
+					return err
+				}
+				caps := features.ToLowerCaps()
 				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
@@ -206,7 +210,11 @@ func runDump(cmd *cobra.Command, args []string) error {
 		slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
-				caps := codegen.CapsOrNone(lang.LanguageIdentifier(), plat.PlatformIdentifier()).ToLowerCaps()
+				features, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+				if err != nil {
+					return err
+				}
+				caps := features.ToLowerCaps()
 				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
@@ -241,7 +249,11 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 	if lang == nil {
 		return fmt.Errorf("unknown language %q", target.Lang)
 	}
-	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), plat.PlatformIdentifier()).ToLowerCaps()
+	features, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+	if err != nil {
+		return err
+	}
+	caps := features.ToLowerCaps()
 
 	if listOnly, _ := cmd.Flags().GetBool("list"); listOnly {
 		enabled := lower.EnabledPasses(caps)
@@ -314,7 +326,11 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), plat.PlatformIdentifier()).ToLowerCaps()
+	features, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+	if err != nil {
+		return err
+	}
+	caps := features.ToLowerCaps()
 	start = time.Now()
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return err
