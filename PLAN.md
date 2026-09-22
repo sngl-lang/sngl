@@ -217,59 +217,235 @@ false for `window` independently of the mark, its test being
 makes the declaration bodyless, `comp.Bodyless` is the honest spelling of that
 test.
 
-## 4. Per-family lowering capabilities, and `sngl:x/codegen`
+## 4. Capabilities in source, and `sngl:x/codegen`
 
-Next session's subject. It comes out of the canvas half of the id barrier: a
-shape's *props* resolve, so `ui.text(value="{dot.r}")` beside a canvas holding
-`circle #dot` type-checks and renders nothing, on every target. The barrier
-stops the id from hoisting, which ends the silence but does not answer the
-question the program asked.
+`lower.Features` is 23 booleans answered by a `Capabilities()` method compiled
+into each plugin, merged as `f := lang.Capabilities()` and then restricted by
+the platform. Three things are wrong with that shape, and only the last is
+what this section started from:
 
-**The idea that does not work, and why.** The tree-family mark on
-`draw.shape` could tell the lowering to replace such an access with the
-expression the prop was assigned -- reconstructing the value rather than
-reading it back from a node that no longer exists by then (`passShapeDraw`
-splices a shape into draw calls before any backend sees it). That is wrong
-because it is not the tree's answer to give: whether a family's members have
-runtime identity, and what reading one costs, is **platform dependent**. A
-shape is spliced away on one target and might be a retained scene-graph object
-on another.
+- It is a **Go interface**, so a target that is a command rather than a
+  compiled-in package cannot answer it.
+  `codegen.PlatformRendersViewStatically` already makes the argument in its own
+  doc comment -- it reads `Features` rather than type-asserting an optional
+  interface precisely because *"a type assertion is capability detection and
+  cannot cross a process boundary"*. That reasoning applies to the whole
+  record, not just to the one question it was written for.
+- It is **two vocabularies for one fact** -- `Features` positive, `Caps`
+  negative -- with a hand-written `ToLowerCaps` and `Merge` between them, each
+  naming every field, and a `String` naming them a third time.
+- It is **per target and nothing finer**, so a tree family cannot differ from
+  the target that renders it. Which is where this came from: a shape's props
+  resolve, so `ui.text(value="{dot.r}")` beside `circle #dot` type-checks and
+  renders nothing on every target.
 
-**So the capability belongs on the platform override, written as a macro.** A
-mark on `component draw.circle[platform]` says what that target can do with a
-member of that family -- which gives both language- and platform-specific
-answers, keeps the fact in the source next to the implementation it describes,
-and keeps it on the tree rather than in a Go table the checker consults. It is
-the same move `#[go.native]`'s `schedules`/`method`/`pure` flags make: nothing
-about a target's implementation is inferred, so the declaration says it.
+### The tier
 
-**`sngl:x/codegen` is where those primitives are declared.** A new library
-package for the vocabulary a platform package uses to describe its own code
-generation, alongside `sngl:macro`'s `foreign`/`wildcard`/`construct` and
-`sngl:internal/marks`. The `x/` tier is new and the boundary it draws wants
-settling early: `sngl:macro` is the public mark vocabulary and
-`sngl:internal/marks` is the compiler's own, so `sngl:x/codegen` is a third
-thing -- the vocabulary a *target package* writes about itself.
+`sngl:x/codegen`, at `lib/x/codegen/`, macros and their flag enum and nothing
+else. The boundary against the two mark packages that exist: `sngl:macro` is
+what a package says about **the declarations it exports**,
+`sngl:internal/marks` is what the compiler says about **itself**, and this is
+what a target package says about **its own code generation**. Its audience is
+exactly the plugin set -- a language or platform package, in this repository or
+outside it -- which is why it is not under `internal/`.
 
-Questions to take into that session rather than answer here:
+The flag enum is declared in the package itself rather than in
+`sngl:internal/ir` beside the others. The reason that one exists is that a
+mark's package gets dot-imported and a dot import lifts what it declares, so
+an enum next to the mark would land in the scope of every program that imports
+the package that imports it. This one is written qualified --
+`#[codegen.can(...)]`, as the repository's own source now writes every mark --
+so nothing is lifted and the vocabulary belongs with the marks it is the
+vocabulary of.
 
-- What the capability set actually is. "Can a handle to a member of this
-  family be read back at runtime" is the one this came from; a canvas says no
-  and a widget says yes. Whether that is one boolean, a small enum, or a
-  per-prop answer is unknown, and one real second user should be found before
-  the shape is fixed.
-- Whether it subsumes the canvas half of `ir.CrossesTreeFamily`. If a platform
-  declares that a shape has no readable identity, the barrier becomes that
-  declaration's consequence rather than a rule in `declareNodeIDsStmt` -- and
-  `error_tree_family_id_barrier.sngl` becomes a fixture about the capability.
-  This is the payoff that would justify the tier.
-- What a program gets when no target declares the capability either way. The
-  checker runs with no target picked for the LSP and `sngl fmt`, which is the
-  same constraint that kept window identification out of section 2.
-- Whether `option<T>` from section 1 ever becomes readable. Section 1 refuses
-  every read of a counted handle because no target can act on one; a
-  capability that says "this platform can" is the thing that would let a target
-  answer, and the two designs should be made to meet rather than drift.
+Three marks, and the split between them is one `caps.go` already admits to in
+prose:
+
+- `#[codegen.can(...)]` and `#[codegen.cannot(...)]` say what the target emits
+  natively.
+- `#[codegen.wants(...)]` asks for a pass. `StructComponents`,
+  `StdlibContextParam`, `FocusOrder`, `Canvas`, `ReactiveCanvas`,
+  `InsertBefore` and `Effects` are all of this kind -- `Features`' own comment
+  calls them *"platform-opt-in passes rather than language limitations"* --
+  and spelling them with the same word as a capability is what kept that
+  distinction a comment rather than a spelling. A platform asking for `canvas`
+  is not confessing that it cannot do something.
+
+`ViewStatements` is a fourth kind again and keeps `can`: it requests no pass at
+all, which is why `ToLowerCaps` deliberately drops it, and its one reader is
+the optimizer.
+
+### Polarity: nothing until it is said
+
+`AllFeatures()` says *everything, minus what you withdraw*. `Features`' doc
+comment says the opposite two paragraphs earlier -- *"the zero value is safe:
+every flag defaults to false (needs lowering), so new platforms automatically
+get all lowering passes until they opt in"* -- and both are true of today's
+code, the first for a language and the second for the platform-only flags. A
+declaration is where that gets decided once, and the decision is the second:
+**a capability not written is not held.**
+
+A new target's file is longer for it, and that is the trade taken knowingly. A
+target that forgets a line gets a lowering pass it did not need; under the
+other polarity it gets emitted code the host compiler rejects. And it is the
+only polarity that survives the plugin this is all for: a command that answers
+nothing at all, or that answers a vocabulary older than the compiler asking,
+is then a target every pass runs for rather than a target claiming everything.
+
+Both directions stay spellable, because the platform having the last word is
+load-bearing today: Go withdraws `ternary`, `listLambdas` and `asyncCalls`, and
+html takes all three back, since the language emits the server half of route
+mode and not the markup. `#[codegen.can]` on the platform overrules
+`#[codegen.cannot]` on the language, per capability. One capability named both
+ways on one declaration is an error rather than a precedence rule nobody can
+remember.
+
+`AllFeatures()` retires with the polarity, and so does the case it documents
+in its own comment: `AsyncSpawn` is *"deliberately absent"* from it, because a
+language that has not registered the emitter must not claim the capability.
+Under the new polarity that is not an exception -- it is what every capability
+does.
+
+### Two grains, two carriers
+
+| grain         | carrier                                            | readable from          |
+|---------------|----------------------------------------------------|------------------------|
+| whole target  | the build node: `component html(…) build.platform` | before any pass        |
+| per primitive | the `#[intrinsic]` component                       | after `passInlinePure` |
+
+The second row is the constraint the whole design turns on, and it belongs in
+`sngl:x/codegen`'s package comment because it is the one thing a future
+capability can get wrong in silence. "Which primitive does this node become"
+is not a question until the overrides have been substituted, which is
+`passInlinePure` -- slot 22 of 33, and ungated, so the answer exists on every
+target from there on. A capability-gated pass earlier than that can ask the
+first row only.
+
+### The whole-target half
+
+The build node is the carrier, and it costs no new lookup path: `ir.Output`
+already holds `LangComp` and `PlatComp` as `*ir.Component`, so
+`internal/build.Emit` reads the capabilities off the output it is already
+holding. It also puts a target's capabilities beside its build options, which
+is the other half of what that declaration already says about itself.
+
+```sngl
+#[codegen.cannot(ternary, listLambdas, asyncCalls, asyncReactive)]
+#[codegen.can(asyncSpawn)]
+component go(
+    goVersion string,
+    …
+) build.language {}
+```
+
+The merge is the rule the Go code already follows, stated rather than
+implemented: the language answers, the platform overrides per capability.
+
+One caller changes shape rather than moving.
+`codegen.PlatformRendersViewStatically` takes a platform and a language *by
+name*, which is no longer enough to answer -- the answer is on a declaration,
+and finding it needs the package. Its single caller is
+`internal/optimize/optimize.go`, which holds the `*ir.Package` and so holds
+`Outputs`; the function becomes one that takes the `*ir.Output`.
+
+### The per-primitive half
+
+The placement the last write-up proposed -- a mark on each
+`component shapes.circle[platform]` -- is wrong, and the source says why:
+there are seven shape overrides per platform on three platforms, which is
+twenty-one copies of one fact and an agreement rule to invent for when two
+disagree. What the source also says is where the fact actually belongs. Every
+canvas platform funnels its **entire** shape family through exactly one
+intrinsic component, itself a member of the family:
+
+```sngl
+#[intrinsic("html:draw")] component draw(@draw DrawEvent) shapes.shape  // html
+                          component draw(@draw DrawEvent) shapes.shape  // gtk4
+                          component draw(@draw DrawEvent) shapes.shape  // android
+```
+
+Every `shapes.X[platform]` override lowers to that node. So the mark on the
+primitive is one statement of one fact, beside the implementation, with nothing
+to keep in agreement.
+
+**That retires "per family" as the grain.** The capability is per primitive,
+and a family-level question is answered by the primitives its members lower
+to. One-per-family is a property of `shape` and not a law -- android's widget
+family has `Column`, `Row`, `Text` and `Spacer`, fyne's has `Widget`,
+`Container` and `Wrapper` -- and html is the case that settles it, declaring
+`element`, which retains what it renders, beside `draw`, which does not. One
+platform, one family, two answers. A grain that could not hold both would be
+answering the wrong question.
+
+The two other placements are worse for one reason each. The tree struct --
+`#[tree.kind] struct shape` -- is one declaration for every target, and whether
+a rendered thing can be read back is the target's answer, which was the whole
+finding that moved this off `#[tree.kind]` in the first place. The wrapper --
+`canvas`, `window` -- is the host and not the thing hosted: it would say that
+everything inside a canvas is unreadable, which is true today only because
+every shape primitive happens to say so.
+
+**The first capability is readable identity**, which is what the canvas half of
+the id barrier asked for: can a handle to a node this primitive rendered be
+read back while the program runs. `html:draw` says no; `html:element` says yes.
+
+**What it buys is a pass, not a rule retired.** For a primitive with no
+readable identity, `dot.r` is rewritten to the expression the prop was assigned
+-- reconstructing the value rather than reading it off a node that will not
+exist -- and for one with identity the read is left alone. The window for that
+pass already exists: after `passInlinePure` (22) the primitive is known, before
+`passShapeDraw` (27) the shape node is still there. Nothing has to move, which
+is the check the placement needed before it could be chosen.
+
+So `ir.CrossesTreeFamily` **stays**, and this is a reversal of what section 4
+called its load-bearing question. The checker cannot ask a primitive-level
+capability at all -- not because of the no-target case that kept window
+identification out of section 2, but because at check time no override has been
+substituted and the primitive does not exist yet. The barrier is a structural
+rule and keeps its subject and its fixture. It retires later or never, once the
+reconstruction covers the cases it guards.
+
+### Migration
+
+The safety argument is step 3 and nothing else.
+
+1. `lib/x/codegen/`, the three marks and their enum, handlers in
+   `internal/checker/marks_impl.go`, landing on a record on `ir.Component`.
+2. `lower.FeaturesFor(*ir.Output)`, falling back to the Go method wherever a
+   declaration says nothing -- so the migration is per target rather than a cut.
+3. Declare all six platforms and four languages in source. **A test asserts
+   source-derived equals method-derived for every registered pair.** Every
+   capability is a pass that runs or does not, so a disagreement is a golden
+   that moves; the test is what says which ones were meant to.
+4. Delete `Capabilities()` from both interfaces and fix the callers that ask
+   out of band: `internal/snapshot` (four sites), `internal/playground` (two),
+   `internal/build`, and `PlatformRendersViewStatically` as described above.
+5. Collapse `Features` and `Caps` into one record, which is the point at which
+   `ToLowerCaps`, `Merge`, `String` and `AllFeatures` all go. Doing it while
+   the vocabulary is being moved anyway is cheaper than doing it twice; doing
+   it *before* step 3 would move the equivalence test's goalposts, so it is
+   last.
+
+### What it does not do
+
+It does not make a plugin a configuration file. After this, a target is still
+compiled in for its intrinsic emitters, its model emitter, `PackageFS`,
+`SupportedLangs` and the four optional interfaces -- one method of about ten,
+and the only one that is pure data. Filed as #253, which lists what is left and
+the four questions that need answers before that is a plan rather than a
+direction.
+
+Two questions this leaves open on purpose:
+
+- **What the second per-primitive capability is.** One real second user should
+  be found before the shape of the per-primitive record is fixed; readable
+  identity alone would be better as a boolean than as a vocabulary.
+- **Whether `option<T>` from section 1 ever becomes readable.** Section 1
+  refuses every read of a counted handle because no target can act on one. A
+  capability saying a target can is the thing that would let one answer, and it
+  is the same capability as readable identity asked of a window rather than of
+  a shape -- so the two meet here rather than drift, but nothing in this plan
+  makes them meet yet.
 
 ## Carried forward, unfixed
 
