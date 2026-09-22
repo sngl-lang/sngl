@@ -649,10 +649,19 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.
+	//
+	// The handle travels with it. It is the id's other half -- the binding
+	// every read of the id resolves to -- and leaving it behind severed the
+	// two for every node whose component inlines, which is every stdlib
+	// component on every platform with an override. uniqueNodeIDs then had a
+	// nil Handle to key on, so its refusal of a read that cannot say which
+	// copy it meant never fired for one, and a rename had nothing to repoint
+	// the reads through.
 	if callsite.ID != "" {
 		for _, s := range body {
 			if ni, ok := s.(*ir.NodeInst); ok {
 				ni.ID = callsite.ID
+				ni.Handle = callsite.Handle
 				break
 			}
 		}

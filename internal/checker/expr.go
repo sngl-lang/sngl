@@ -547,17 +547,14 @@ func (c *checker) reportCountedHandleRead(x *ast.IdentExpr, sym ir.Symbol, t *ir
 	if !ok || !v.NodeHandle || t == nil {
 		return
 	}
-	var scope string
 	switch t.Kind {
-	case ir.TypeOption:
-		scope = "an if"
-	case ir.TypeList:
-		scope = "a for"
+	case ir.TypeOption, ir.TypeList:
 	default:
 		return
 	}
-	c.error(x.Pos, "%s is rendered inside %s, so out here it is %s rather than one node; read it inside %s",
-		x.Name, scope, t, scope)
+	k := c.handleCount[v]
+	c.error(x.Pos, "%s is rendered inside %s, so out here it is %s rather than one node; %s",
+		x.Name, k.scopeNoun(), t, k.scopeAdvice())
 }
 
 // exported reports whether a looked-up symbol is exported. Symbols that
@@ -2919,16 +2916,32 @@ func (c *checker) checkBlock(block *ast.StmtBlock) {
 }
 
 func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
+	return c.checkBlockScoped(block, false, nil)
+}
+
+// checkScopeBlockIR is checkBlockIR for the two blocks that are a scope in the
+// language rather than only in this checker: an `if` body and a `for` body.
+// Their node ids are hoisted into the scope it pushes, which is what makes a
+// read from inside one the plain handle where a read from outside carries the
+// count -- and what lets an id there shadow an outer binding, as any nested
+// declaration does.
+//
+// Every other block pushes a scope too, a node's children included, but is not
+// one: `vbox { text #label }` beside a `var label` is the same scope written
+// with braces in it, and hoisting there let the id shadow a var it sits under.
+func (c *checker) checkScopeBlockIR(block *ast.StmtBlock, headNames ...string) []ir.Stmt {
+	return c.checkBlockScoped(block, true, headNames)
+}
+
+func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames []string) []ir.Stmt {
 	if block == nil || !block.IsDefined() {
 		return nil
 	}
 	c.pushScope()
 	defer c.popScope()
-	// The enclosing scope holds this block's node ids wrapped in the count it
-	// confers (declareNodeIDsIn). Hoisting this block's own again here, at
-	// their own depth, is what makes a read from inside the block the plain
-	// handle.
-	c.declareOwnNodeIDs(block)
+	if isScope {
+		c.declareOwnNodeIDs(block, headNames...)
+	}
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
 		if vd, ok := stmt.(*ast.VarDecl); ok {
@@ -3284,7 +3297,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		narrowingsFrom(condExpr, true, thenFacts)
 		var thenRegion []ir.Stmt
 		restoreThen := c.pushNarrowings(thenFacts, &thenRegion, nil)
-		body := c.checkBlockIR(&x.Body)
+		body := c.checkScopeBlockIR(&x.Body)
 		thenRegion = body
 		restoreThen()
 
@@ -3294,7 +3307,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			narrowingsFrom(condExpr, false, elseFacts)
 			var elseRegion []ir.Stmt
 			restoreElse := c.pushNarrowings(elseFacts, &elseRegion, nil)
-			elseBody = c.checkBlockIR(&x.Else)
+			elseBody = c.checkScopeBlockIR(&x.Else)
 			elseRegion = elseBody
 			restoreElse()
 		}
@@ -3435,7 +3448,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.loopDepth++
-		body := c.checkBlockIR(&x.Body)
+		body := c.checkScopeBlockIR(&x.Body, x.Key, x.Value)
 		c.loopDepth--
 		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
@@ -3443,7 +3456,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// loop: an escape written there acts on whichever loop encloses
 			// it, which is why loopEscapes reads a nested loop's else and not
 			// its body.
-			elseBody = c.checkBlockIR(&x.Else)
+			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
 		c.popScope()
 		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
@@ -4964,11 +4977,11 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	}
 	c.pushScope()
 	c.loopDepth++
-	body := c.checkBlockIR(&x.Body)
+	body := c.checkScopeBlockIR(&x.Body)
 	c.loopDepth--
 	var elseBody []ir.Stmt
 	if cond != nil && x.Else.IsDefined() {
-		elseBody = c.checkBlockIR(&x.Else)
+		elseBody = c.checkScopeBlockIR(&x.Else)
 	}
 	c.popScope()
 	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}

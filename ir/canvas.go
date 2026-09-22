@@ -47,12 +47,20 @@ func RestSlotTree(comp *Component) *StructDef {
 // **A family change is where a node id stops carrying.** What a handle names
 // is a thing on one rendering surface, and a family change is what a second
 // surface looks like from here: two windows are two pages, and a canvas is a
-// drawing rather than more widgets. So ids hoist to the nearest node that
-// crosses, and a read from the other side of one is undefined rather than
-// silently empty -- `ui.text(value="{dot.r}")` beside a canvas holding
-// `circle #dot` checked clean and rendered nothing, because a shape has no
-// runtime identity at all: passShapeDraw splices it into draw calls and the
-// node is gone.
+// drawing rather than more widgets.
+//
+// The two are no longer answered the same way, and this is the half that stops
+// outright. A *window* counts instead: a read from another window is
+// `option<T>`, because the surface may not be open, which says the same thing
+// with a type. A *canvas* has nothing to be optional about -- passShapeDraw
+// splices a shape into draw calls before any backend sees the node, so there
+// is no handle either way -- and a shape's props do resolve, so a typed
+// `dot.r` would check clean and render nothing, which is exactly the silence
+// this ended: `ui.text(value="{dot.r}")` beside a canvas holding `circle #dot`
+// passed and rendered an empty span, on every target.
+//
+// So declareNodeIDsStmt asks after a window first and reaches this for every
+// other crossing.
 //
 // Asked of the tree rather than of `#[builtin("window")]`, because it is the
 // tree's answer -- the mark says which IR construct a declaration dispatches

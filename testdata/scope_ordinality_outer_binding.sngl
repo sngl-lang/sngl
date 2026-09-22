@@ -1,29 +1,31 @@
-// A node id only ever shadows another node handle. A prop, a var, a func or
-// any other outer symbol of the same name wins outright, and wins from inside
-// the scope too -- which is the rule declareNodeID has always stated and this
-// pins from the side the counted hoist can break.
+// A node id gives way to a binding written beside it, and to the head of the
+// scope it is in. Those are the two it does not take; an outer binding of any
+// kind it does shadow, which error_scope_ordinality_shadow.sngl is.
 //
-// It is the shape that caught one: the re-hoist checkBlockIR does so that a
-// read from inside a scope stays the plain handle was descending into the
-// `if`, so it claimed `label` at the window body *before* that block's own
-// `var label` statement was checked, and a working program stopped compiling
-// with "label is already declared in this scope". declareOwnNodeIDs reaches
-// through a node's children, which are the same scope, and stops at an `if` or
-// a `for`, which are not -- each of those opens a block that hoists its own.
+// A sibling `var label` wins outright. The hoist runs before the block's own
+// statements are checked, so measuring the scope would find nothing there yet
+// and the var would then collide with the id rather than win over it --
+// blockDeclaredNames is what reads the block instead of the scope.
+//
+// A loop's variables are the same rule applied to the head: `#item` beside
+// `for var item` would take the name the body was written against, and
+// `value=item` would silently become the node rather than the element. They
+// are declared one scope out, where a LookupLocal here cannot see them, so
+// they are passed in.
 
 import ui "sngl:ui"
 
 ui.window #w(title="t") {
-    var show = true
     var label = "outer"
+    var items = ["a", "b"]
 
     ui.vbox {
-        if show {
-            ui.text #label(value="node")
+        ui.text #label(value="node")
 
-            ui.text(value="inside: {label}")
+        ui.text(value="beside: {label}")
+
+        for var item = items {
+            ui.text #item(value=item)
         }
-
-        ui.text(value="outside: {label}")
     }
 }

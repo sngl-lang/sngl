@@ -66,13 +66,52 @@ Fixtures: `testdata/error_scope_ordinality.sngl` (both reads) and
 `checkBlockIR` re-hoist is removed, which is what makes the re-hoist
 load-bearing rather than defensive).
 
-Windows are deliberately untouched: `declareNodeID` still types a window handle
-as `c.windowType`, `countsRepeat` preserves the old `inLoop` question exactly
-(a `for` repeats, an `if` does not), and the tree-family barrier still refuses
-the cross-window read. What is left of this section is that — the third row of
-the table, plus folding `collectForLoopWindowIDsStmt` into the general `for`
-arm and turning `testdata/error_tree_family_id_barrier.sngl` into a positive
-fixture.
+### Landed: the window half
+
+A window is a scope like an `if` and confers the same count, for the reason
+Jonathan gave when the target-dependence was raised as an objection: the type
+is `option` everywhere, user code handles the absence, and html simply never
+has the value. So there is no target-dependent diagnostic in the checker at
+all — the read is refused uniformly, exactly as for `if` and `for`, until the
+language can unwrap one.
+
+`countWindow` is a count of its own only so the message can name what was
+crossed; the type it wraps in is the same option. `hoistWindowInteriorIDs` is
+a pass because a window at the root of a file is *registered* in pass1 rather
+than left in `pkg.Body`, so `declareNodeIDsStmt` — which counts a window it
+meets as a statement — never walks one. It runs before the window bodies are
+checked, since a handler in the second window is what reads the first's ids,
+and `checkWindow` then hoists the same ids plain into the window's own scope,
+shadowing these.
+
+**The barrier splits rather than retires.** A window counts; every other
+family change still stops outright, which today means a canvas. That is not
+the "no runtime identity" argument — Jonathan is right that a shape having no
+API to interact with would make the distinction moot. It is that a shape's
+*props* resolve: a typed `dot.r` checks clean and renders nothing, which is
+the silence `error_tree_family_id_barrier.sngl` was written to end, and
+`option<circle>` would restate it rather than fix it. `ir.CrossesTreeFamily`
+keeps its job for that half and says so.
+
+Fixtures: `testdata/error_scope_ordinality_window.sngl` is the cross-window
+read; `testdata/error_tree_family_id_barrier.sngl` keeps its subject
+unchanged — its program was always canvas-only, so the plan's expectation that
+it would become a positive fixture was wrong about what it covered.
+
+Two windows writing one id is the flat namespace it has always been: the first
+claims the name, the second is skipped, and the type names the first window's
+component. Only the message is affected, since every read of a counted handle
+is refused either way. **There is still no way to say which window you meant**
+— that is the one thing this does not answer.
+
+### Left of section 1
+
+`collectForLoopWindowIDsStmt` is not folded into the general `for` arm.
+Folding it would make the `list<window>` it binds a `NodeHandle`, which the
+read diagnostic then refuses — and that list is legitimately read, being what
+`expandForWindows` fills in. It is a real cleanup and it needs the unroll's
+contract looked at, not a one-line move. `declareNodeID` also still types a
+window handle itself as `c.windowType`, uncounted.
 
 ### The decision to take with it, not after
 

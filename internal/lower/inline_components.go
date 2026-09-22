@@ -105,9 +105,28 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 	if pkg == nil {
 		return nil
 	}
-	for _, o := range ir.Owners(pkg) {
+	owners := ir.Owners(pkg)
+	// The package's own names are held against every owner, not just against
+	// the package. passHoistState moves a single-window program's state onto
+	// the package while the nodes stay on the window, so the var and the id
+	// that collide are reached under two different owners -- and html emits
+	// both into one page regardless.
+	shared := ownerNames(packageOwner(owners))
+	for _, o := range owners {
 		read := handleReads(o.Stmts())
-		seen := map[string]int{}
+		reads := handleIdents(o.Stmts())
+		// The owner's own names are taken before any id is. A node id shares
+		// one emitted namespace with the vars, consts and funcs the owner
+		// declares -- html spells a state var `state.label` and a node handle
+		// by its bare id, so `#label` beside `var label` came out as
+		// `state.label.textContent = …`, writing through the var's cell as if
+		// it were the element. The id is the one of the two that can move: a
+		// var's name is read by everything the program wrote, while a handle
+		// is reached through its binding.
+		seen := ownerNames(o)
+		for name := range shared {
+			seen[name] = 1
+		}
 		rendered := map[*ir.Var]*ir.NodeInst{}
 		var dup error
 		// Every body the owner has, because an id is ambiguous wherever the
@@ -124,7 +143,7 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 			k := seen[n.ID]
 			seen[n.ID] = k + 1
 			if k > 0 {
-				n.ID = n.ID + "__" + strconv.Itoa(k)
+				renameNodeID(n, n.ID+"__"+strconv.Itoa(k), reads)
 			}
 			// The refusal is keyed by *symbol*, which is a narrower question
 			// and a different one. A read is an ident bound to one var, and
@@ -150,6 +169,68 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 		}
 	}
 	return nil
+}
+
+// ownerNames is the names an owner's own declarations already hold in the
+// emitted namespace, as the seen-count a node id is measured against: at one
+// each, so the first id to want one is already a duplicate and moves.
+// packageOwner is the owner that is neither a component nor a window, which is
+// the package itself. ir.Owners always yields one.
+func packageOwner(owners []ir.Owner) ir.Owner {
+	for _, o := range owners {
+		if o.Comp == nil && o.Win == nil {
+			return o
+		}
+	}
+	return ir.Owner{}
+}
+
+func ownerNames(o ir.Owner) map[string]int {
+	out := map[string]int{}
+	for _, v := range o.Vars {
+		out[v.Name] = 1
+	}
+	for _, v := range o.Consts {
+		out[v.Name] = 1
+	}
+	for _, f := range o.Funcs {
+		out[f.Name] = 1
+	}
+	return out
+}
+
+// renameNodeID moves a node id and everything that spells it: the handle the
+// checker bound, and every read of that handle. An emitter spells a read from
+// the ident's own Name, so renaming the node alone left `tag__1` in the tree
+// and `tag` in the code that reads it -- one name for the element and another
+// for the reference to it, on every target.
+func renameNodeID(n *ir.NodeInst, name string, reads map[*ir.Var][]*ir.Ident) {
+	n.ID = name
+	if n.Handle == nil {
+		return
+	}
+	for _, id := range reads[n.Handle] {
+		id.Name = name
+	}
+	n.Handle.Name = name
+}
+
+// handleIdents is every read of every `#id` handle, keyed by the binding. The
+// singular handleReads below keeps one read per handle for a diagnostic to
+// point at; this keeps them all, because a rename has to reach each one.
+func handleIdents(stmts []ir.Stmt) map[*ir.Var][]*ir.Ident {
+	out := map[*ir.Var][]*ir.Ident{}
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		id, ok := e.(*ir.Ident)
+		if !ok {
+			return nil
+		}
+		if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
+			out[v] = append(out[v], id)
+		}
+		return nil
+	})
+	return out
 }
 
 // handleReads is every `#id` handle the statements read back by name, keyed by

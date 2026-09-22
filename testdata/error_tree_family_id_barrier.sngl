@@ -1,10 +1,12 @@
-// A node id does not carry across a change of tree family.
+// A node id does not carry across a change of tree family -- where the family
+// is a canvas.
 //
 // What a handle names is a thing on one rendering surface, and a family change
-// is what a second surface looks like from here: a canvas is a drawing rather
-// than more widgets, and a window is a page rather than the root it sits in.
-// So the ids beneath a node that hosts a family other than its own do not
-// hoist past it.
+// is what a second surface looks like from here. A *window* is now counted
+// rather than refused: a read of one window's id from another is `option<T>`,
+// which says "the surface may not be open" with a type
+// (error_scope_ordinality_window.sngl). A canvas is the half that still stops
+// outright, and this is why.
 //
 // The canvas is the case that makes the rule plain rather than merely tidy: a
 // shape has no runtime identity at all. passShapeDraw splices `circle #dot`
