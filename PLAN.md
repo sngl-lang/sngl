@@ -38,6 +38,42 @@ working precedent — it stops being a window special case and becomes the
 general one. The earlier claim that a runtime list would have to be invented
 was measured against ordinary nodes and is wrong about windows.
 
+### Landed: the ordinary-node half
+
+`if` → `option<T>`, `for` → `list<T>`, and a for-else → `option<T>` rather than
+a list, since it runs at most once. `declareNodeIDsIn` carries the chain of
+scopes crossed as `[]nodeCount` and `countedHandleType` wraps the handle in
+them innermost-first, so an `if` inside a `for` composes to
+`list<option<T>>`.
+
+The count is what a scope says about a handle read from *outside* it. Read
+from inside, the handle is the one node it has always been — which is a
+working program today, and html already renders it correctly. So `checkBlockIR`
+hoists each block's own ids again, at their own depth, into the scope it
+pushes, and that inner binding shadows the counted one. `declareNodeID` now
+measures `LookupLocal` before `Lookup` for exactly that: it still declines to
+shadow a prop, var, func or outer symbol, and the one thing it does shadow is a
+node handle an enclosing scope bound for the same node.
+
+The read is refused rather than the type shipped. `option` and `list` are both
+absent from `hasNoLegitimateFields`, so `maybe.value` off one degrades to `dyn`
+and the two broken builds would have become two silent no-ops — which is the
+"decision to take with it" below, answered the recommended way. The diagnostic
+is positioned at the read, which is the line that has to move.
+
+Fixtures: `testdata/error_scope_ordinality.sngl` (both reads) and
+`testdata/scope_ordinality_inside.sngl` (the positive half — it fails if the
+`checkBlockIR` re-hoist is removed, which is what makes the re-hoist
+load-bearing rather than defensive).
+
+Windows are deliberately untouched: `declareNodeID` still types a window handle
+as `c.windowType`, `countsRepeat` preserves the old `inLoop` question exactly
+(a `for` repeats, an `if` does not), and the tree-family barrier still refuses
+the cross-window read. What is left of this section is that — the third row of
+the table, plus folding `collectForLoopWindowIDsStmt` into the general `for`
+arm and turning `testdata/error_tree_family_id_barrier.sngl` into a positive
+fixture.
+
 ### The decision to take with it, not after
 
 Typing the handle is half the job. All three rows above are loud failures

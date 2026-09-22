@@ -1,0 +1,39 @@
+// A handle reached through a scope carries that scope's count. Through an `if`
+// it is an `option`, because the node may not have been rendered; through a
+// `for` it is a `list`, because there is one per iteration. Neither is a
+// handle a target can act on.
+//
+// Both reads below type-checked clean and every backend then emitted the bare
+// name: html declares the element inside the slot render and reads an
+// undeclared name outside it, bubbletea emits the read as the only occurrence
+// of the name in the generated Go. The count is what makes the read a
+// question the checker can answer.
+//
+// Reported at the read rather than left to the type, because `option` and
+// `list` are both absent from hasNoLegitimateFields -- so `maybe.value` off
+// one degrades to dyn and a loud failure becomes a silent no-op.
+
+import ui "sngl:ui"
+
+ui.window #w(title="t") {
+    var show = true
+    var items = ["a", "b"]
+
+    ui.vbox {
+        if show {
+            ui.text #maybe(value="hi")
+        }
+
+        for var it = items {
+            ui.text #row(value=it)
+        }
+
+        ui.button(text="a", @click {
+            maybe.value = "x" // ERROR(check) "maybe is rendered inside an if, so out here it is option<text> rather than one node; read it inside an if"
+        })
+
+        ui.button(text="b", @click {
+            row.value = "x" // ERROR(check) "row is rendered inside a for, so out here it is list<text> rather than one node; read it inside a for"
+        })
+    }
+}

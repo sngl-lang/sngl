@@ -1,0 +1,29 @@
+// The count is what a scope says about a handle read from *outside* it. Read
+// from inside, the handle is the one node it has always been, and the ids of
+// each block are hoisted again into the scope checkBlockIR pushes for it --
+// which is what makes the inner binding shadow the counted one.
+//
+// The positive half of error_scope_ordinality.sngl. Without the re-hoist both
+// reads below are the error that fixture asserts, which is a working program
+// refused: html already renders this one correctly.
+
+import ui "sngl:ui"
+
+ui.window #w(title="t") {
+    var show = true
+    var items = ["a", "b"]
+
+    ui.vbox {
+        if show {
+            ui.text #maybe(value="hi")
+
+            ui.button(text="a", @click { maybe.value = "x" })
+        }
+
+        for var it = items {
+            ui.text #row(value=it)
+
+            ui.button(text="b", @click { row.value = "x" })
+        }
+    }
+}

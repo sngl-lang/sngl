@@ -2905,7 +2905,7 @@ func (c *checker) checkPackageBody() {
 	c.pushScope()
 	defer c.popScope()
 	for _, st := range c.pendingPkgBody {
-		c.declareNodeIDsStmt(st, false)
+		c.declareNodeIDsStmt(st, nil)
 	}
 	for _, st := range c.pendingPkgBody {
 		if checked := c.checkStmt(st); checked != nil {
@@ -4236,64 +4236,115 @@ func (c *checker) checkWindowVarHandlers(w *ir.Window) {
 // mechanism that lets lowered IR — whose synthesized node handles (`__nN`,
 // `__root`) are referenced by bare name — round-trip through reparse + check.
 func (c *checker) declareNodeIDs(block *ast.StmtBlock) {
-	c.declareNodeIDsIn(block, false)
+	c.declareNodeIDsIn(block, nil)
 }
 
-// declareNodeIDsIn hoists the node ids in block. inLoop marks a body that a
-// `for` repeats: a window id there names the list of windows the loop
-// produces, which collectForLoopWindowIDs binds, not a single window.
-func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, inLoop bool) {
+// nodeCount is what one scope says about a handle reached through it from
+// outside. An `if` may not have run, so the handle is an `option`; a `for` may
+// have run any number of times, so it is a `list`. A for-else is the first and
+// not the second: it runs at most once, when the loop did not run at all.
+type nodeCount int
+
+const (
+	countOption nodeCount = iota
+	countList
+)
+
+// withCount is counts plus one, copied rather than appended in place. The walk
+// below is depth-first and hands the result to a callee that appends to it
+// again, so sharing a backing array would let a deeper level overwrite the
+// count a shallower one is still holding.
+func withCount(counts []nodeCount, k nodeCount) []nodeCount {
+	out := make([]nodeCount, len(counts)+1)
+	copy(out, counts)
+	out[len(counts)] = k
+	return out
+}
+
+// declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
+// crossed to reach it, outermost first, and is what the handle's type is
+// wrapped in: a node written inside a `for` inside an `if` reads from outside
+// both as `option<list<T>>`.
+//
+// Each block's own ids are hoisted again, at their own depth, into the scope
+// checkBlockIR pushes for it — so a read from *inside* the scope is the plain
+// handle it has always been, shadowing the wrapped binding this leaves
+// outside.
+func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, counts []nodeCount) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
 	for _, s := range block.Stmts {
-		c.declareNodeIDsStmt(s, inLoop)
+		c.declareNodeIDsStmt(s, counts)
 	}
 }
 
-func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
+func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
 		target := visualNodeTarget(n)
 		isWindow := c.isWindowNode(target)
-		if isWindow && inLoop {
+		if isWindow && countsRepeat(counts) {
 			// The loop hoists this id as a list of windows.
 			return
 		}
-		c.declareNodeID(n.ID, target, isWindow)
+		c.declareNodeID(n.ID, target, isWindow, counts)
 		// Descend into the node's own children, unless the node crosses tree
 		// families: what is under one of those is a second rendering surface,
 		// and a handle does not carry across. Such a node hoists the ids
 		// beneath it into a scope of its own, which is where a read from
 		// inside resolves and why one from outside does not.
 		if !c.crossesTreeFamily(target) {
-			c.declareNodeIDsIn(&n.Block, inLoop)
+			c.declareNodeIDsIn(&n.Block, counts)
 		}
 	case *ast.CallStmt:
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
 		if target, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id, target, false)
+			c.declareNodeID(id, target, false, counts)
 		}
 	case *ast.IfStmt:
-		c.declareNodeIDsIn(&n.Body, inLoop)
-		c.declareNodeIDsIn(&n.Else, inLoop)
+		c.declareNodeIDsIn(&n.Body, withCount(counts, countOption))
+		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))
 	case *ast.ForStmt:
-		c.declareNodeIDsIn(&n.Body, true)
-		c.declareNodeIDsIn(&n.Else, true)
+		c.declareNodeIDsIn(&n.Body, withCount(counts, countList))
+		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))
 	}
+}
+
+// countsRepeat reports whether any scope crossed repeats its body, which is
+// the question a window asks: one inside a `for` is hoisted by
+// collectForLoopWindowIDs as the list of windows the loop produces, and one
+// inside an `if` is the single window it always was.
+func countsRepeat(counts []nodeCount) bool {
+	for _, k := range counts {
+		if k == countList {
+			return true
+		}
+	}
+	return false
 }
 
 // declareNodeID binds one node id. target names the component the node
 // instantiates.
-func (c *checker) declareNodeID(id, target string, isWindow bool) {
+func (c *checker) declareNodeID(id, target string, isWindow bool, counts []nodeCount) {
 	if id == "" {
 		return
 	}
 	// Skip if the name already resolves (a prop, var, func, or outer symbol);
-	// node ids never shadow an existing binding.
-	if _, ok := c.scope.Lookup(id); ok {
+	// node ids never shadow an existing binding. The one thing they do shadow
+	// is a node handle an enclosing scope bound for the same node, which is
+	// this same id hoisted at its count: inside the scope it is the plain
+	// handle, outside it carries the count. Measured with LookupLocal first,
+	// so two siblings sharing an id in one block still resolve to the first.
+	if _, ok := c.scope.LookupLocal(id); ok {
 		return
+	}
+	if sym, ok := c.scope.Lookup(id); ok {
+		v, isVar := sym.(*ir.Var)
+		if !isVar || !v.NodeHandle {
+			return
+		}
 	}
 	// A component's methods are registered under the component as receiver, not
 	// in scope by bare name: inferIdent reaches them only when the scope lookup
@@ -4310,7 +4361,11 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	// bound and a scope lookup is whatever the program wrote.
 	typ := c.nodeHandleType(target)
 	if isWindow {
+		// A window's count is still collectForLoopWindowIDs' to say; the
+		// general rule reaches ordinary nodes only.
 		typ = c.windowType
+	} else {
+		typ = countedHandleType(typ, counts)
 	}
 	c.declare(ast.Pos{}, &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true})
 }
@@ -4325,6 +4380,21 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 		}
 	}
 	return dynFallback("node id names an instance of %q, which resolves to no component", target)
+}
+
+// countedHandleType wraps a handle in the counts of the scopes it was reached
+// through, innermost first: counts is outermost-first, so the last entry is
+// the scope nearest the node and binds tightest.
+func countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
+	for i := len(counts) - 1; i >= 0; i-- {
+		switch counts[i] {
+		case countOption:
+			typ = ir.OptionOf(typ)
+		case countList:
+			typ = ir.ListOf(typ)
+		}
+	}
+	return typ
 }
 
 // componentNamed resolves a visual node's target, bare or `pkg.Name`.

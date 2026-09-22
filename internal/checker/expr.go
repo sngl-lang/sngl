@@ -514,6 +514,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	if t == nil {
 		t = dynNoSymType(sym, "symbol %q (%T) has no type", x.Name, sym)
 	}
+	c.reportCountedHandleRead(x, sym, t)
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
 	// Unary{Deref}, mirroring Select-operand deref) so reads type-check as the
@@ -524,6 +525,39 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		return &ir.Unary{Type: t.Elems[0], Op: ast.UnaryDeref, Operand: ident}
 	}
 	return ident
+}
+
+// reportCountedHandleRead reports a node handle read from outside the scope it
+// was rendered in. declareNodeIDsIn hoists such an id wrapped in that scope's
+// count -- `option` through an `if`, `list` through a `for` -- and neither is a
+// handle any target can act on: every backend emitted the bare name, html
+// declaring it inside the slot render and reading it outside, bubbletea
+// emitting the read as the only occurrence of the name in the file.
+//
+// It is reported at the read rather than shipped as a type, because the type
+// alone is silent: option and list are both absent from hasNoLegitimateFields,
+// so `maybe.value` off one degrades to dyn and the three broken builds become
+// three no-ops. The read is also the line that has to move.
+//
+// Only a node handle is asked. A `for` over windows binds a real list<window>
+// that the unroll fills in (collectForLoopWindowIDs), and that var carries no
+// NodeHandle.
+func (c *checker) reportCountedHandleRead(x *ast.IdentExpr, sym ir.Symbol, t *ir.Type) {
+	v, ok := sym.(*ir.Var)
+	if !ok || !v.NodeHandle || t == nil {
+		return
+	}
+	var scope string
+	switch t.Kind {
+	case ir.TypeOption:
+		scope = "an if"
+	case ir.TypeList:
+		scope = "a for"
+	default:
+		return
+	}
+	c.error(x.Pos, "%s is rendered inside %s, so out here it is %s rather than one node; read it inside %s",
+		x.Name, scope, t, scope)
 }
 
 // exported reports whether a looked-up symbol is exported. Symbols that
@@ -2890,6 +2924,10 @@ func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
 	}
 	c.pushScope()
 	defer c.popScope()
+	// The enclosing scope holds this block's node ids wrapped in the count it
+	// confers (declareNodeIDsIn). Hoisting them again here, at their own
+	// depth, is what makes a read from inside the block the plain handle.
+	c.declareNodeIDsIn(block, nil)
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
 		if vd, ok := stmt.(*ast.VarDecl); ok {
