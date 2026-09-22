@@ -1,7 +1,0 @@
-import marks "sngl:internal/marks"
-
-#[marks.intrinsic("CanvasSave", mutates)]
-func CanvasSave(ctx dyn)
-
-#[marks.intrinsic("CanvasRestore", mutates)]
-func CanvasRestore(ctx dyn)

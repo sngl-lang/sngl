@@ -11,22 +11,16 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The 2D primitives are translated in this package rather than through an
-// IntrinsicEmitter, which renders one expression and could not carry the
-// statements and pending style these need. Declaring the package is how that
-// implementation becomes visible to the completeness check.
-func init() { codegen.DeclarePlatformImplements("bubbletea", "sngl:internal/draw") }
-
 // Canvas2D rendering for bubbletea.
 //
 // bubbletea keeps the declarative visual tree (it holds Declarative), so a
 // canvas arrives in the view body as an *ir.NodeInst with n.CanvasDraw set
 // (the synthesized `_canvasDrawN(ctx)` func passShapeDraw produced) and
-// width/height props still on the node. That func's body is the bracket
-// intrinsics (CanvasSave / CanvasRestore) around each composed shape, plus
-// whatever each shape override's own `@draw` handler was written as.
-// bubbletea declares no shape overrides and inherits `sngl:language/go`'s,
-// which paint through `#[go.native]` methods on the pkg/go/canvas runtime.
+// width/height props still on the node. Every statement in that func is what a
+// shape override's own `@draw` handler was written as: bubbletea declares no
+// shape overrides and inherits `sngl:language/go`'s, which paint through
+// `#[go.native]` methods on the pkg/go/canvas runtime. No canvas intrinsic
+// reaches here, so nothing in this package translates one.
 //
 // bubbletea is a RenderModel: View() re-runs on every update, so the canvas is
 // rasterised inline in View() each frame — no persistent widget, no reactive
@@ -35,8 +29,9 @@ func init() { codegen.DeclarePlatformImplements("bubbletea", "sngl:internal/draw
 // string (kitty escapes when supported, else truecolor half-blocks) that is
 // woven into the lipgloss View output like any other node's string fragment.
 //
-// The canvas intrinsics are translated via the shared canvasutil.GoContextStmts
-// helper (also used by fyne) into Context method calls — never reimplemented.
+// There are no canvas intrinsics left to translate. The shared
+// canvasutil.GoContextStmts helper that turned the last two into Context
+// method calls is gone with them.
 
 const (
 	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
@@ -251,23 +246,20 @@ func emitCanvasDrawFuncs(b *strings.Builder, draws *codegen.CanvasDraws, gc *gol
 	}
 }
 
-// translateCanvasBody rewrites the canvas intrinsics in stmts into Context
-// method calls, descending into the conditionals and loops the splice keeps in
-// a draw body -- reading only the top level left a shape written inside an
-// `if` as a call to a Go function nobody emits, which panicked the build.
+// translateCanvasBody rebuilds a draw body, descending into the conditionals
+// and loops the splice keeps in one -- reading only the top level left a shape
+// written inside an `if` as a call to a Go function nobody emits, which
+// panicked the build.
 //
-// Matched on the "Canvas" prefix rather than on carrying any intrinsic at all:
-// GoContextStmts answers for this package's ids and returns nil for anything
-// else, so handing it another intrinsic deleted the statement.
+// It translates nothing any more. Every statement in a draw body is what a
+// shape override's `@draw` handler was written as, which for this target is
+// `#[go.native]` method calls on the pkg/go/canvas runtime that the ordinary
+// Go emitter already handles. The walk stays because the descent is still
+// needed: a nested body has to be rebuilt for the copy this returns.
 func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 	var out []ir.Stmt
 	for _, stmt := range stmts {
 		switch n := stmt.(type) {
-		case *ir.CallStmt:
-			if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
-				out = append(out, canvasutil.GoContextStmts(n)...)
-				continue
-			}
 		case *ir.If:
 			out = append(out, &ir.If{
 				AST:  n.AST,

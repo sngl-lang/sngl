@@ -10,24 +10,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func init() {
-	// Keyed to the platform, not to "js". These render onto a canvas 2D
-	// context, which only an html build has — registering them per language
-	// claimed every js build can draw, which no other js platform can.
-	reg := func(id string, fn func(a []string) string) {
-		codegen.RegisterPlatformIntrinsic("html", id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
-			a := make([]string, len(args))
-			for i, e := range args {
-				a[i] = tr(e)
-			}
-			return fn(a), nil
-		})
-	}
-
-	// a[0]=ctx
-	reg("CanvasSave", func(a []string) string { return a[0] + ".save()" })
-	reg("CanvasRestore", func(a []string) string { return a[0] + ".restore()" })
-}
+// This package registered two platform intrinsics here, CanvasSave and
+// CanvasRestore, keyed to the platform rather than to "js" because only an
+// html build draws onto a 2D context. Both are gone with the lowering that
+// emitted them: a draw function is each shape override's own `@draw` body, and
+// html's overrides paint through `#[js.native]` calls the JS translator
+// already writes.
 
 // canvasSetup records a canvas element that needs its draw function wired up.
 type canvasSetup struct {

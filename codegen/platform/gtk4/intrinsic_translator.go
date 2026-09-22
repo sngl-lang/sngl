@@ -1096,10 +1096,6 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 		t.topLevel = append(t.topLevel, t.slotRoot)
 	}
 	switch n := stmt.(type) {
-	case *ir.CallStmt:
-		if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
-			return t.translateCanvasIntrinsic(n)
-		}
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	}

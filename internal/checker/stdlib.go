@@ -168,7 +168,6 @@ func (c *checker) loadStdlib() (builtinPkg, stdPkg *ir.Package) {
 	// load even when nothing imported it. Nothing here puts those names in
 	// scope -- a program still imports sngl:time to write a timer.
 	c.libPkg(timePkg)
-	c.libPkg(drawIntrinsicsPkg)
 	return builtinPkg, c.libPkg("ui")
 }
 
@@ -708,11 +707,6 @@ const i18nPkg = "i18n"
 // timePkg declares the clock: the `timer` node kind a visual tree dispatches
 // on, and the `duration` a foreign importer hands out.
 const timePkg = "time"
-
-// drawIntrinsicsPkg declares the primitives passCanvas emits. No SNGL source
-// imports it, so loadStdlib is the only thing that loads it -- and without the
-// load, the signatures the pass reads off these declarations do not exist.
-const drawIntrinsicsPkg = "internal/draw"
 
 // irPkg is the compiler's own package, and macroTypeName the return type it
 // declares that makes a function a macro.

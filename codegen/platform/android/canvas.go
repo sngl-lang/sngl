@@ -11,21 +11,15 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The 2D primitives are translated in this package rather than through an
-// IntrinsicEmitter, which renders one expression and could not carry the
-// statements and pending style these need. Declaring the package is how that
-// implementation becomes visible to the completeness check.
-func init() { codegen.DeclarePlatformImplements("android", "sngl:internal/draw") }
-
 // Canvas2D rendering for android via Jetpack Compose's DrawScope.
 //
 // passShapeDraw (internal/lower) turns a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func. Two kinds of statement reach it: the
-// bracket around a composed shape (CanvasSave / CanvasRestore, the only canvas
-// intrinsics anything still emits, and both no-ops here -- a DrawScope manages
-// its state per primitive), and whatever a shape override's own `@draw`
-// handler was written as, which for android is Compose draw calls from
-// `component shapes.circle[platform]`.
+// synthesized `_canvasDrawN(ctx)` func, whose every statement is what a shape
+// override's own `@draw` handler was written as -- for android, Compose draw
+// calls from `component shapes.circle[platform]`. The lowering contributes
+// nothing of its own: the CanvasSave/CanvasRestore bracket it used to put
+// around a composed shape is gone, and was a pair of no-ops here anyway, a
+// DrawScope managing its state per primitive.
 //
 // android is declarative (it keeps the NodeInst tree), so the canvas node
 // reaches renderNode with n.CanvasDraw set. We emit a Compose
@@ -37,11 +31,10 @@ func init() { codegen.DeclarePlatformImplements("android", "sngl:internal/draw")
 // so recomposition redraws the Canvas automatically — that's why android sets
 // ReactiveCanvas=false and CanvasRedrawStmt is a no-op (see compose_ir.go).
 //
-// The canvas intrinsics are NOT registered in the lang-keyed intrinsic registry
-// (RegisterIntrinsic("kotlin", ...)) — that registry is for import-free Kotlin
-// builtins and would be wrong for the Compose-specific 2D API. They are
-// translated here, inside the android emitter, the same way gtk4/fyne translate
-// the same intrinsics inside their own platform packages.
+// There are no canvas intrinsics left to register anywhere. Where a platform
+// once had to translate them itself — the lang-keyed registry being wrong for
+// a Compose-specific 2D API — the drawing is now written in SNGL and reaches
+// the emitter as ordinary Compose calls.
 
 // canvasComposeImports are the Compose graphics imports the DrawScope
 // translation needs. Registered when any canvas is rendered.
@@ -226,9 +219,14 @@ func (cc *irComposeContext) emitDrawStmts(stmts []ir.Stmt) {
 			// what left an override's `if` with an empty body.
 			if s.Call.Func.Intrinsic == "" {
 				cc.line("%s", cc.kc.EvalExpr(s.Call))
-				continue
 			}
-			cc.emitCanvasIntrinsic(s.Call)
+			// A call that *does* carry an intrinsic id is dropped, which is
+			// what this did before the canvas ids went: emitCanvasIntrinsic
+			// answered CanvasSave and CanvasRestore with no-ops -- a DrawScope
+			// manages its state per primitive -- and had no default arm, so
+			// anything else fell through it in silence. Nothing in a draw body
+			// carries one today; the drop is kept rather than turned into an
+			// emit so that this change moves no output.
 		case *ir.LocalVar:
 			// A shape override binds one -- a Path it fills before drawing --
 			// and dropping it left the draw call naming a value nothing
@@ -305,20 +303,6 @@ func (cc *irComposeContext) receiverIsComponent(name string) bool {
 // API (Offset/Size/radius all take Float; SNGL floats are Double).
 func (cc *irComposeContext) f(e ir.Expr) string {
 	return "(" + cc.kc.EvalExpr(e) + ").toFloat()"
-}
-
-// emitCanvasIntrinsic translates one canvas-intrinsic Call into DrawScope lines.
-func (cc *irComposeContext) emitCanvasIntrinsic(call *ir.Call) {
-	id := call.Func.Intrinsic
-	// All canvas intrinsics take ctx as arg 0; the DrawScope is the implicit
-	// receiver, so ctx itself is unused in the Compose translation.
-	switch id {
-	case "CanvasSave":
-		// DrawScope clip/transform state is managed per-primitive; the
-		// save/restore brackets passCanvas emits have no DrawScope analog
-		// (each draw* is independent). No-op.
-	case "CanvasRestore":
-	}
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib

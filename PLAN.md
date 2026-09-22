@@ -513,16 +513,32 @@ Jonathan's *"put it in SNGL"* reached by subtraction rather than by writing the
 SNGL the way every other shape does, and the two questions come back -- the
 slot-between-two-primitives one still unanswered and still cheap to try.
 
-**What is left is mechanical and is not done.** `CanvasSave` and
-`CanvasRestore` are now declared and emitted by nothing, exactly as the seven
-were, and so are the five dispatch arms that translate them: `canvasutil`'s
-`GoContextStmts` (fyne, bubbletea), gtk4's and fyne's
-`translateCanvasIntrinsic`, android's `emitCanvasIntrinsic`, html's two `reg`
-calls. With those go `lib/internal/draw` itself, the eager `c.libPkg(drawIntrinsicsPkg)`
-that exists only so `canvasCall` could look a signature up, and the four
-`DeclarePlatformImplements(…, "sngl:internal/draw")`. Six sites through five
-platforms' dispatch, which is why it is named here rather than swept in at the
-end of the change that made them dead.
+**And then swept.** `CanvasSave` and `CanvasRestore` went the way of the seven,
+and with them every site that existed to serve them: `canvasutil/gocontext.go`
+whole, gtk4's and fyne's `translateCanvasIntrinsic`, android's
+`emitCanvasIntrinsic`, html's two `reg` calls, the four dispatch arms that
+routed a `Canvas`-prefixed id to them, `lib/internal/draw` itself, the eager
+`c.libPkg(drawIntrinsicsPkg)` that existed only so `canvasCall` could look a
+signature up, and the four `DeclarePlatformImplements(…, "sngl:internal/draw")`.
+
+**No target translates a canvas intrinsic any more, because there is none.** A
+draw function is what each shape override's `@draw` handler was written as,
+which every backend already knows how to emit: `#[go.native]` methods on the
+canvas runtime for fyne and bubbletea, `#[cnative]` cairo for gtk4, Compose
+calls for android, `#[js.native]` for html.
+
+Two things survive with no caller and are kept on purpose.
+`DeclarePlatformImplements` is one -- its only user was this package, and its
+sibling `DeclareLangImplements` is live on the other axis -- and its doc says
+so rather than describing a package that no longer exists. `translateCanvasBody`
+in bubbletea is the other: it translates nothing now, but the *descent* is
+still needed, since a nested body has to be rebuilt for the copy it returns.
+
+One behaviour is deliberately preserved rather than improved: android drops a
+draw-body call that carries any intrinsic id, which is what `emitCanvasIntrinsic`
+did by having no default arm. Nothing carries one today. Turning the drop into
+an emit is a separate question and would move output; a comment at the site
+says both halves.
 
 ### What the merged `@draw` work left behind
 

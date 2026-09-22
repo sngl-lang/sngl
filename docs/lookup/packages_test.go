@@ -206,12 +206,16 @@ func TestLookupSnglOmitsInternalTier(t *testing.T) {
 
 // Naming one still resolves, as an internal Go package does.
 func TestLookupInternalPackageByName(t *testing.T) {
-	res, err := lookup.Lookup("sngl:internal/draw")
+	// sngl:internal/ir rather than the draw package this used to name, which
+	// is gone: its last two intrinsics went with the lowering that emitted
+	// them. Asserting on Functions keeps the check real -- ir declares macros
+	// and the flag enums, and an index with none of them resolved to nothing.
+	res, err := lookup.Lookup("sngl:internal/ir")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Index == nil || len(res.Index.Functions) == 0 {
-		t.Fatal("sngl:internal/draw resolved to nothing")
+	if res.Index == nil || len(res.Index.Macros)+len(res.Index.Enums) == 0 {
+		t.Fatal("sngl:internal/ir resolved to nothing")
 	}
 }
 
