@@ -28,8 +28,14 @@ import marks "sngl:internal/marks"
 import shapes "sngl:ui/draw"
 import math "sngl:math"
 import go "sngl:language/go"
+import gen "sngl:x/gen"
 
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
+// A GLib idle callback runs on the thread that owns every widget, so a blocking
+// call can be moved off it and its answer written back.
+#[gen.can(asyncPost)]
+#[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
+#[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component gtk4(
     // Go package name for the generated files.
     package string,

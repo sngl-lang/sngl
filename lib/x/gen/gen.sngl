@@ -1,0 +1,38 @@
+import ir "sngl:internal/ir"
+
+// A SNGL construct a target may emit without help.
+//
+// Each member names a lowering pass that does *not* run when the target claims
+// it. The list is closed, and grows only when a pass is added: a capability
+// nothing gates is a word with no consequence.
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, insertBefore, asyncPost, asyncSpawn, effects }
+
+// A lowering pass a target asks for.
+//
+// Distinct from a capability, and the distinction is the one `caps.go` made in
+// prose and could not spell: these request a rewrite the target *wants*
+// rather than confessing to something it cannot do. A platform asking for
+// `canvas` is not admitting a limitation.
+enum Pass { structComponents, stdlibContextParam, focusOrder, canvas, reactiveCanvas }
+
+// Says the target emits each named construct natively, so the pass that would
+// lower it does not run.
+//
+// On a language node it is the language's own answer; on a platform node it
+// overrules the language's, per capability, which is what lets html take back
+// the ternary Go withdrew — the language emits route mode's server half and
+// not the markup, so a restriction that exists because Go lacks a construct
+// does not apply to what html itself renders.
+func can(caps list<Capability>) ir.Macro
+
+// Says the target cannot emit each named construct, so the pass that lowers it
+// runs.
+//
+// Redundant against the default, which already holds nothing, and written
+// anyway where a target is refusing something it would otherwise inherit: a
+// platform overruling a language's `can`. Naming one capability both ways on
+// one declaration is an error rather than a precedence rule.
+func cannot(caps list<Capability>) ir.Macro
+
+// Asks for each named lowering pass.
+func wants(passes list<Pass>) ir.Macro

@@ -222,20 +222,21 @@ func PlatformUnavailable(name string) error {
 // PlatformRendersViewStatically reports whether the named platform writes a
 // view body into the output as markup rather than as statements a host runs.
 //
-// It reads lower.Features rather than type-asserting an optional interface on
+// It reads the capability rather than type-asserting an optional interface on
 // the platform, because a type assertion is capability *detection* and cannot
 // cross a process boundary: an out-of-process generator plugin can answer a
-// method, but nothing here can assert its type. Features is data the platform
-// already declares, so one call answers this over RPC as well as in process.
+// method, but nothing here can assert its type. The capability is now written
+// in the platform's own package, which is that argument carried the rest of the
+// way -- there is no method to answer at all.
 //
-// An unregistered platform, or one with no language to ask about, answers
-// false -- a caller with neither has none of this problem.
+// A pair whose packages do not resolve answers false -- a caller with neither
+// has none of this problem.
 func PlatformRendersViewStatically(platform, language string) bool {
-	p, l := LookupPlatform(platform), LookupLang(language)
-	if p == nil || l == nil {
+	f, err := CapsFor(language, platform)
+	if err != nil {
 		return false
 	}
-	return !p.Capabilities(l).ViewStatements
+	return !f.ViewStatements
 }
 
 // PlatformDocs returns the SNGL declarations p contributes — the source of its

@@ -1,0 +1,20 @@
+// Package gen is what a target package says about what it generates.
+//
+// A language or platform package declares a node of the build-target tree —
+// `component go(…) build.language`, `component html(…) build.platform` — and
+// the marks here are written on that declaration: which SNGL constructs the
+// target emits natively, and which lowering passes it asks for. They used to
+// be a Go method compiled into the plugin, which a target that is a command
+// rather than a linked-in package cannot answer.
+//
+// The audience is the plugin set, in this repository or outside it, which is
+// why the tier is not under `internal/`. It is not `sngl:build`, whose
+// audience is the same: that package is the build-target *tree*, and what
+// generating for a target involves is a different subject with more than one
+// member in it.
+//
+// **A capability not written is not held.** There is no base set to subtract
+// from: a target that says nothing gets every lowering pass, which is the
+// answer that leaves a program correct rather than one that claims a host can
+// emit something it cannot. It is also what a plugin answering nothing at all
+// gets, which is the case the whole tier exists for.

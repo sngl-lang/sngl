@@ -8,6 +8,10 @@
 
 import . "sngl:macro"
 import build "sngl:build"
+import gen "sngl:x/gen"
 
 // The `none` node of a build directive: `output { none { html() } }`.
+// The interpreter emits everything: every gated pass is compensation for
+// something a backend cannot do, and there is no backend here.
+#[gen.can(toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements)]
 component none(platforms ...component build.platform) build.language {}

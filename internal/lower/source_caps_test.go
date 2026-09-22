@@ -1,0 +1,82 @@
+package lower_test
+
+import (
+	"testing"
+
+	"git.duckfam.us/jonathan/sngl/codegen"
+	"git.duckfam.us/jonathan/sngl/internal/checker"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
+	"git.duckfam.us/jonathan/sngl/ir"
+
+	_ "git.duckfam.us/jonathan/sngl/internal/testtargets"
+)
+
+// buildNode is the component a target package declares for the build-target
+// tree -- `component html(…) build.platform`. It is named for the target, which
+// is how a build directive reaches it, so the identifier the plugin registers
+// under is the name to look up.
+func buildNode(t *testing.T, pkg, name string) *ir.Component {
+	t.Helper()
+	p := checker.LibPackage(pkg)
+	if p == nil {
+		t.Fatalf("no package %q", pkg)
+	}
+	for _, c := range p.Components {
+		if c.Name == name {
+			return c
+		}
+	}
+	t.Fatalf("%s declares no component %q for the build tree", pkg, name)
+	return nil
+}
+
+// TestSourceCapsMatchTheGoMethod is the whole safety argument for moving
+// capabilities into source: every registered pair must lower identically
+// whichever half answered. Delete it only with Capabilities() itself.
+func TestSourceCapsMatchTheGoMethod(t *testing.T) {
+	for _, pname := range codegen.Platforms() {
+		plat := codegen.LookupPlatform(pname)
+		platComp := buildNode(t, "platform/"+pname, pname)
+		for _, lname := range plat.SupportedLangs() {
+			lang := codegen.LookupLang(lname)
+			if lang == nil {
+				t.Fatalf("platform %s supports language %q, which is not registered", pname, lname)
+			}
+			langComp := buildNode(t, "language/"+lname, lname)
+			t.Run(lname+"/"+pname, func(t *testing.T) {
+				got, err := lower.FeaturesFrom(langComp, platComp)
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := plat.Capabilities(lang)
+				if got != want {
+					t.Errorf("source and method disagree\n  source: %+v\n  method: %+v", got, want)
+				}
+			})
+		}
+	}
+}
+
+// TestGenVocabularyIsMapped holds the SNGL enums and the Go tables together.
+// A member nothing maps is a word a target can write that gates no pass, which
+// is the failure the mark table exists to prevent one layer up.
+func TestGenVocabularyIsMapped(t *testing.T) {
+	pkg := checker.LibPackage("x/gen")
+	if pkg == nil {
+		t.Fatal("no package sngl:x/gen")
+	}
+	seen := map[string]bool{}
+	for _, ed := range pkg.Enums {
+		for _, m := range ed.Members {
+			seen[ed.Name] = true
+			if !lower.GenNameIsMapped(ed.Name, m.Name) {
+				t.Errorf("sngl:x/gen declares %s.%s, which no Features field holds", ed.Name, m.Name)
+			}
+		}
+	}
+	for _, want := range []string{"Capability", "Pass"} {
+		if !seen[want] {
+			t.Errorf("sngl:x/gen declares no enum %s; the marks have no vocabulary", want)
+		}
+	}
+}

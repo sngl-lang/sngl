@@ -23,9 +23,17 @@ import tree "sngl:tree"
 import build "sngl:build"
 import shapes "sngl:ui/draw"
 import kt "sngl:language/kotlin"
+import gen "sngl:x/gen"
 
 // The `android` node of a build directive:
 // `output { kotlin { android(main = true) } }`.
+// Compose brackets a keyed lifetime itself: DisposableEffect is the same
+// construct an `effect` declares, so the node arrives intact rather than as the
+// calls passEffect would build. No reactiveCanvas -- the draw lambda reads
+// Compose state directly, so a recomposition already redraws.
+#[gen.can(effects)]
+#[gen.cannot(inlineComponents, structSpread)]
+#[gen.wants(structComponents, stdlibContextParam, canvas)]
 component android(
     // Kotlin package / Android application ID.
     package string,

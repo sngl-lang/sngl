@@ -24,6 +24,18 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 	named := comp.ChildrenType
 	comp.ChildrenType = nil
 
+	// Where a sngl:x/gen mark may be written, asked here for the reason the
+	// shape rule below is: the mark applies while the declaration is still
+	// registering, and the return position it has to be measured against is
+	// read at this point.
+	//
+	// A build reads the capabilities off the two nodes its target pair was
+	// selected by, so one written anywhere else resolves and is asked nothing
+	// -- which is the failure the mark table exists to prevent.
+	if comp.Gen != nil && !ir.IsBuildTargetTree(treeStruct(named)) {
+		c.error(decl.Pos, "component %s: #[gen] belongs on a build-target node, whose return position is build.language or build.platform", comp.Name)
+	}
+
 	if named == nil {
 		if comp.Treeless || c.treeOptional(decl, comp) {
 			return

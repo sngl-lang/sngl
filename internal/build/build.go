@@ -177,7 +177,11 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		return Result{Target: target, Pkg: tpkg}, nil
 	}
 
-	caps := plat.Capabilities(lang).ToLowerCaps()
+	features, err := codegen.CapsFor(target.Lang, target.Platform)
+	if err != nil {
+		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
+	}
+	caps := features.ToLowerCaps()
 	start = time.Now()
 	if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)

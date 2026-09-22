@@ -1,0 +1,22 @@
+// A sngl:x/gen mark says what a build target generates, and a build reads it
+// off the two nodes its target pair was selected by. Written on anything else
+// it resolves and is asked nothing, which is the one thing a mark must not do.
+import gen "sngl:x/gen"
+import ui "sngl:ui"
+
+#[gen.can(ternary)] // ERROR(check) "#[gen] belongs on a build-target node"
+component card() ui.node {
+    ui.text(value="hi")
+}
+
+// And one with no return position at all: its family is inferred from the
+// body, which is never the build tree.
+#[gen.wants(canvas)] // ERROR(check) "#[gen] belongs on a build-target node"
+component panel() {
+    ui.text(value="hi")
+}
+
+ui.window #home(title="t") {
+    card()
+    panel()
+}

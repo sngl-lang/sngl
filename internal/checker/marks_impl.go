@@ -28,6 +28,9 @@ var markImpls = map[markKey]markImpl{
 	{"language/go", "native"}:       markGoNative,
 	{"language/go", "async"}:        markGoAsync,
 	{"language/js", "native"}:       markJSNative,
+	{"x/gen", "can"}:                markGenCan,
+	{"x/gen", "cannot"}:             markGenCannot,
+	{"x/gen", "wants"}:              markGenWants,
 }
 
 // markGoAsync implements #[go.async]: a call to this function blocks.
@@ -787,4 +790,71 @@ func claimForeign(dst *ir.Foreign, fm ir.Foreign, name string) error {
 	}
 	*dst = fm
 	return nil
+}
+
+// markGenCan, markGenCannot and markGenWants implement the sngl:x/gen marks:
+// what a target emits natively, what it refuses, and which lowering passes it
+// asks for.
+//
+// Three marks rather than one with a polarity argument, because they are three
+// different statements and a reader of a target package should not have to
+// decode which one is being made. The names are stored as written -- the enum
+// they were checked against is the vocabulary, and what each one gates is the
+// lowering's to know.
+func markGenCan(m *mark) error    { return markGen(m, "can") }
+func markGenCannot(m *mark) error { return markGen(m, "cannot") }
+func markGenWants(m *mark) error  { return markGen(m, "wants") }
+
+func markGen(m *mark, kind string) error {
+	comp, ok := m.sym.(*ir.Component)
+	if !ok {
+		return fmt.Errorf("#[gen.%s] cannot mark %s; it belongs on the build-tree node a target package declares", kind, ast.DeclFormName(m.decl))
+	}
+	// Which component it may be written on is checked in finishTreeMarks, not
+	// here: a mark applies as the declaration registers, and the return
+	// position it has to be measured against is read after that.
+	arg := "caps"
+	if kind == "wants" {
+		arg = "passes"
+	}
+	names := m.args.Idents(arg)
+	if len(names) == 0 {
+		return fmt.Errorf("#[gen.%s] names nothing", kind)
+	}
+	if comp.Gen == nil {
+		comp.Gen = &ir.GenCaps{}
+	}
+	switch kind {
+	case "can":
+		comp.Gen.Can = append(comp.Gen.Can, names...)
+	case "cannot":
+		comp.Gen.Cannot = append(comp.Gen.Cannot, names...)
+	case "wants":
+		comp.Gen.Wants = append(comp.Gen.Wants, names...)
+	}
+	// Both ways on one declaration is an error rather than a precedence rule
+	// nobody can remember. Across declarations it is the whole point: a
+	// platform's `cannot` overrules the language's `can`.
+	for _, n := range comp.Gen.Can {
+		if slices.Contains(comp.Gen.Cannot, n) {
+			return fmt.Errorf("#[gen] names %q both ways on one declaration", n)
+		}
+	}
+	for _, set := range [][]string{comp.Gen.Can, comp.Gen.Cannot, comp.Gen.Wants} {
+		if n, dup := firstDuplicate(set); dup {
+			return fmt.Errorf("#[gen] names %q twice", n)
+		}
+	}
+	return nil
+}
+
+func firstDuplicate(names []string) (string, bool) {
+	seen := make(map[string]bool, len(names))
+	for _, n := range names {
+		if seen[n] {
+			return n, true
+		}
+		seen[n] = true
+	}
+	return "", false
 }

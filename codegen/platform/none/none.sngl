@@ -9,8 +9,10 @@ import build "sngl:build"
 import . "sngl:internal/marks"
 import tree "sngl:tree"
 import shapes "sngl:ui/draw"
+import gen "sngl:x/gen"
 
 // The `none` node of a build directive: the interpreter as a build target.
+#[gen.cannot(structSpread)]
 component none() build.platform {}
 
 // A deadline that recurs. The interpreter's clock finds these in the rendered

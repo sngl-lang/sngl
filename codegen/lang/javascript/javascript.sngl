@@ -9,10 +9,12 @@
 import . "sngl:macro"
 import ir "sngl:internal/ir"
 import build "sngl:build"
+import gen "sngl:x/gen"
 
 // The `js` node of a build directive: `output { js { html() } }`. It carries
 // no props, which is a fact rather than an omission -- this target takes no
 // build options -- and a misplaced option is reported against it.
+#[gen.can(toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements)]
 component js(platforms ...component build.platform) build.language {}
 
 // Names the JavaScript identifier a declaration *is*, rather than one it

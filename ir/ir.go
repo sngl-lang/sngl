@@ -673,6 +673,11 @@ type Component struct {
 	// second argument. Without it the name a wildcard matched reaches nothing:
 	// the component was resolved by a name it has no way to read.
 	WildcardInto string `json:",omitempty"`
+	// Gen is what the sngl:x/gen marks said about what this declaration
+	// generates: a target's build node carries the capabilities of the target,
+	// and a platform primitive carries what its own rendered nodes support.
+	// Nil for the components that are neither, which is nearly all of them.
+	Gen *GenCaps `json:",omitempty"`
 	// Pkg is the declaring package URI; see StructDef.Pkg.
 	Pkg string
 	// TypeParams are the component's generic parameters, in declaration
