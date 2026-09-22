@@ -217,7 +217,7 @@ false for `window` independently of the mark, its test being
 makes the declaration bodyless, `comp.Bodyless` is the honest spelling of that
 test.
 
-## 4. Capabilities in source, and `sngl:x/codegen`
+## 4. Capabilities in source, and `sngl:x/gen`
 
 `lower.Features` is 23 booleans answered by a `Capabilities()` method compiled
 into each plugin, merged as `f := lang.Capabilities()` and then restricted by
@@ -241,29 +241,55 @@ what this section started from:
 
 ### The tier
 
-`sngl:x/codegen`, at `lib/x/codegen/`, macros and their flag enum and nothing
-else. The boundary against the two mark packages that exist: `sngl:macro` is
-what a package says about **the declarations it exports**,
-`sngl:internal/marks` is what the compiler says about **itself**, and this is
-what a target package says about **its own code generation**. Its audience is
-exactly the plugin set -- a language or platform package, in this repository or
-outside it -- which is why it is not under `internal/`.
+`sngl:x/gen`, at `lib/x/gen/`, macros and their flag enum and nothing else.
+The boundary against the two mark packages that exist: `sngl:macro` is what a
+package says about **the declarations it exports**, `sngl:internal/marks` is
+what the compiler says about **itself**, and this is what a target package says
+about **what it generates**. Its audience is exactly the plugin set -- a
+language or platform package, in this repository or outside it -- which is why
+it is not under `internal/`.
+
+**`sngl:build` was the alternative and it is a near miss**, worth recording
+because the reasons it nearly won are the reasons the tier has to earn its
+place. Its audience is already exactly right: it is imported by
+`lib/builtin/output.sngl` and by all ten target packages and by nothing else,
+and its own doc comment already says *"Nothing here is written by an
+application"*. Every target package already imports it, for the return type of
+the very declaration a whole-target mark lands on. The load-order objection
+that kept these declarations out of `sngl:ui` -- `sngl:builtin` imports
+`sngl:build`, so a macro there taking `list<Capability>` would need `list<T>`
+from `sngl:builtin` -- does not materialize: an enum and a `list`-taking macro
+were added to `lib/build/build.sngl` and a program, `sngl:platform/html` and
+`sngl:build` all checked clean.
+
+What decides it is the **second member**. `sngl:x/gen/cache` is the caching
+inputs for generated files, and those are not the build-target tree by any
+reading -- folding capabilities into `sngl:build` would leave the next one
+homeless and the tier invented anyway, one package later. Two members is what
+makes `x/gen` a tier rather than a package with an unusually long path, and
+the subject they share is the one `sngl:build` does not have: not what a target
+*is*, but what generating for it involves. The layout follows `sngl:ui` and
+`sngl:ui/draw` -- a package and a specialised surface under it, one directory
+each.
+
+The name is SNGL's rather than the compiler's. `codegen` is the Go word, which
+no SNGL source says; `gen` is what the CLI verb is called.
 
 The flag enum is declared in the package itself rather than in
 `sngl:internal/ir` beside the others. The reason that one exists is that a
 mark's package gets dot-imported and a dot import lifts what it declares, so
 an enum next to the mark would land in the scope of every program that imports
 the package that imports it. This one is written qualified --
-`#[codegen.can(...)]`, as the repository's own source now writes every mark --
-so nothing is lifted and the vocabulary belongs with the marks it is the
+`#[gen.can(...)]`, as the repository's own source now writes every mark -- so
+nothing is lifted and the vocabulary belongs with the marks it is the
 vocabulary of.
 
 Three marks, and the split between them is one `caps.go` already admits to in
 prose:
 
-- `#[codegen.can(...)]` and `#[codegen.cannot(...)]` say what the target emits
+- `#[gen.can(...)]` and `#[gen.cannot(...)]` say what the target emits
   natively.
-- `#[codegen.wants(...)]` asks for a pass. `StructComponents`,
+- `#[gen.wants(...)]` asks for a pass. `StructComponents`,
   `StdlibContextParam`, `FocusOrder`, `Canvas`, `ReactiveCanvas`,
   `InsertBefore` and `Effects` are all of this kind -- `Features`' own comment
   calls them *"platform-opt-in passes rather than language limitations"* --
@@ -274,6 +300,11 @@ prose:
 `ViewStatements` is a fourth kind again and keeps `can`: it requests no pass at
 all, which is why `ToLowerCaps` deliberately drops it, and its one reader is
 the optimizer.
+
+The same three serve both grains, which is the other thing the name bought:
+`#[gen.can(identity)]` on a primitive reads as what it is, where the same mark
+spelled for the build tree would have been claiming that a shape is a build
+target.
 
 ### Polarity: nothing until it is said
 
@@ -295,8 +326,8 @@ is then a target every pass runs for rather than a target claiming everything.
 Both directions stay spellable, because the platform having the last word is
 load-bearing today: Go withdraws `ternary`, `listLambdas` and `asyncCalls`, and
 html takes all three back, since the language emits the server half of route
-mode and not the markup. `#[codegen.can]` on the platform overrules
-`#[codegen.cannot]` on the language, per capability. One capability named both
+mode and not the markup. `#[gen.can]` on the platform overrules
+`#[gen.cannot]` on the language, per capability. One capability named both
 ways on one declaration is an error rather than a precedence rule nobody can
 remember.
 
@@ -314,7 +345,7 @@ does.
 | per primitive | the `#[intrinsic]` component                       | after `passInlinePure` |
 
 The second row is the constraint the whole design turns on, and it belongs in
-`sngl:x/codegen`'s package comment because it is the one thing a future
+`sngl:x/gen`'s package comment because it is the one thing a future
 capability can get wrong in silence. "Which primitive does this node become"
 is not a question until the overrides have been substituted, which is
 `passInlinePure` -- slot 22 of 33, and ungated, so the answer exists on every
@@ -330,8 +361,8 @@ holding. It also puts a target's capabilities beside its build options, which
 is the other half of what that declaration already says about itself.
 
 ```sngl
-#[codegen.cannot(ternary, listLambdas, asyncCalls, asyncReactive)]
-#[codegen.can(asyncSpawn)]
+#[gen.cannot(ternary, listLambdas, asyncCalls, asyncReactive)]
+#[gen.can(asyncSpawn)]
 component go(
     goVersion string,
     …
@@ -409,7 +440,7 @@ reconstruction covers the cases it guards.
 
 The safety argument is step 3 and nothing else.
 
-1. `lib/x/codegen/`, the three marks and their enum, handlers in
+1. `lib/x/gen/`, the three marks and their enum, handlers in
    `internal/checker/marks_impl.go`, landing on a record on `ir.Component`.
 2. `lower.FeaturesFor(*ir.Output)`, falling back to the Go method wherever a
    declaration says nothing -- so the migration is per target rather than a cut.
