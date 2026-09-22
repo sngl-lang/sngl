@@ -497,24 +497,24 @@ component shapes.path[platform] {
         // Where the path is, which `arcTo` needs and cairo will not hand back
         // without an out-parameter. Every other command ends at its own point,
         // so tracking it here costs one assignment each.
-        var at = shapes.Point{x = 0.0, y = 0.0}
+        var at = shapes.Point{x=0.0, y=0.0}
 
         e.ctx.save()
         for var c = cmds {
             if c.op == "moveTo" {
                 e.ctx.moveTo(c.x, c.y)
-                at = shapes.Point{x = c.x, y = c.y}
+                at = shapes.Point{x=c.x, y=c.y}
             }
             if c.op == "lineTo" {
                 e.ctx.lineTo(c.x, c.y)
-                at = shapes.Point{x = c.x, y = c.y}
+                at = shapes.Point{x=c.x, y=c.y}
             }
             if c.op == "bezierTo" {
                 e.ctx.curveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
-                at = shapes.Point{x = c.x, y = c.y}
+                at = shapes.Point{x=c.x, y=c.y}
             }
             if c.op == "arcTo" {
-                at = arcTo(e.ctx, at, shapes.Point{x = c.cx1, y = c.cy1}, shapes.Point{x = c.x, y = c.y}, c.r)
+                at = arcTo(e.ctx, at, shapes.Point{x=c.cx1, y=c.cy1}, shapes.Point{x=c.x, y=c.y}, c.r)
             }
             if c.op == "close" {
                 e.ctx.closePath()

@@ -501,11 +501,16 @@ in the language already allows. A capability list runs to twenty names; joined,
 it is a line nobody can scan, which is what the target packages were carrying
 until this was fixed.
 
-Neither was caught by anything, because nothing in the suite checks that
-`lib/` and the target packages are formatted. Four cases in
-`format_comments_test.go` cover them; three fail when the fix is reverted, and
-the fourth -- a comment above the *first* of several marks -- was already
-correct and is a guard.
+Neither was caught by anything, because nothing in the suite checked that
+`lib/` and the target packages are formatted -- the claim `testdata/` has
+always been held to and the library never was. Four cases in
+`format_comments_test.go` cover the two defects; three fail when the fix is
+reverted, and the fourth -- a comment above the *first* of several marks --
+was already correct and is a guard. `TestLibrarySourceIsFormatted` is the
+missing claim, over all 86 files, and it found three already adrift on
+struct-literal spacing. The existing fixture helpers would not have caught
+either defect: they assert that a comment *survives* a format, not that it
+comes back where it was written.
 
 `lib/lib.go` embeds `*/*.sngl */*/*.sngl`, which reaches `x/gen` and not
 `x/gen/cache`. That pattern needs a third level before the second member of the
