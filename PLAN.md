@@ -490,15 +490,39 @@ component shapes.scope[language] {
 }
 ```
 
-Two questions to settle before that is a plan. `emitShape` brackets **every**
-composed shape rather than an explicit one, so either every composed shape in
-`lib/ui/draw` writes the bracket itself -- in portable SNGL, which cannot name
-`e.ctx.save()` -- or the lowering keeps inserting it and inserts *this
-declaration* instead of a hardcoded id, which is a smaller change and still
-leaves one name in Go. And a slot insertion between two primitives has to
-survive `emitShapes`, which walks children and would meet the two `draw` nodes
-and the slot's contents as three siblings; that is the part to try first,
-because it is either free or fatal.
+**Neither question had to be answered, because the bracket was unreachable.**
+A probe -- `panic` at the top of `canvasCall`, then the whole suite -- named
+exactly two callers, both hand-built unit tests in
+`internal/lower/shape_draw_test.go`. No program on any target reaches it, and
+`testdata/canvas_composed_user_shape.txtar` had already pinned why in prose:
+*"such a declaration never reaches passCanvas at all… `passNoInlineComponents`
+composes it away first -- every platform sets `InlineComponents=false`, and
+that pass asks nothing about trees."* The interpreted path holds
+`inlineComponents` and so would keep a composed shape, but it requests no
+`canvas` want, so `passShapeDraw` does not run for it either.
+
+And the `group(style=…)` the bracket was for **does not exist**: `sngl:ui/draw`
+declares seven shapes and every one is a signature. So the branch was written
+for a feature that was never added, could not be reached if it had been, and
+produced the only statements one unit test was asserting on.
+
+Deleted, with `canvasCall`. The lowering now emits no canvas intrinsic at all:
+what a draw function holds is each shape override's own `@draw` body, which is
+Jonathan's *"put it in SNGL"* reached by subtraction rather than by writing the
+`scope` component above. When a composed shape does land, it brackets itself in
+SNGL the way every other shape does, and the two questions come back -- the
+slot-between-two-primitives one still unanswered and still cheap to try.
+
+**What is left is mechanical and is not done.** `CanvasSave` and
+`CanvasRestore` are now declared and emitted by nothing, exactly as the seven
+were, and so are the five dispatch arms that translate them: `canvasutil`'s
+`GoContextStmts` (fyne, bubbletea), gtk4's and fyne's
+`translateCanvasIntrinsic`, android's `emitCanvasIntrinsic`, html's two `reg`
+calls. With those go `lib/internal/draw` itself, the eager `c.libPkg(drawIntrinsicsPkg)`
+that exists only so `canvasCall` could look a signature up, and the four
+`DeclarePlatformImplements(…, "sngl:internal/draw")`. Six sites through five
+platforms' dispatch, which is why it is named here rather than swept in at the
+end of the change that made them dead.
 
 ### What the merged `@draw` work left behind
 

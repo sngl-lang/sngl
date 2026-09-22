@@ -1,7 +1,6 @@
 package lower
 
 import (
-	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -156,32 +155,21 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 		*body = append(*body, ni)
 		return
 	}
-	// A shape the target implemented itself brackets its own drawing: the
-	// override is the body, and what it saves, styles and restores is its
-	// business. Emitting a bracket around it too gave every overridden shape
-	// two nested saves and applied the style twice -- and it is the bracket a
-	// hand-written override has to be able to leave out to match native
-	// performance.
+	// Nothing is bracketed here. Every shape that draws brackets itself, in
+	// the override that draws it -- `shapes.circle[language]` saves, applies
+	// its style and restores -- and that is the bracket a hand-written
+	// override has to be able to leave out to match native performance.
 	//
-	// A composed shape still gets one, because its style is what its children
-	// inherit; that is what makes `group(style=…) { … }` work. A platform
-	// primitive never gets one either, and for the same reason from the other
-	// side: it *is* the drawing, and every save, style and restore around it
-	// was written in the override that called it.
-	isPrimitive := ni.Component != nil && ni.Component.Intrinsic != "" &&
-		ir.IsSegmentedTree(ni.Component.Tree)
-	// `len(Body) == 0` matters as much as the specialization: a component can
-	// be specialized for this target and still have nothing in it -- a harness
-	// that checks without merging this platform's extensions leaves the
-	// override empty -- and such a shape falls through to the name-matched
-	// translation, which needs the bracket. Reading SpecializedFor alone gave
-	// it neither, and the shape drew with no style at all.
-	selfBrackets := ni.Component != nil && ni.Component.SpecializedFor != "" && len(ni.Component.Body) > 0
-	bracket := !isPrimitive && !selfBrackets
-	if bracket {
-		*body = append(*body, canvasCall(env.ctx, "CanvasSave"))
-	}
-
+	// The compiler used to wrap a *composed* shape in a CanvasSave/CanvasRestore
+	// pair of its own, on the argument that a group's style is what its
+	// children inherit. Two things were wrong with it. No program could reach
+	// it: `passNoInlineComponents` composes a user shape away before this pass
+	// is asked anything, which every target requests and which
+	// `testdata/canvas_composed_user_shape.txtar` had already pinned. And the
+	// `group(style=…)` it was for does not exist -- `sngl:ui/draw` declares no
+	// composed shape at all. When one lands it brackets itself in SNGL, the way
+	// every other shape does, and the lowering stays out of it.
+	//
 	// A platform primitive carries the drawing itself: its handler body is
 	// what the target paints, written against the context the handler binds.
 	// Spliced here with that parameter rebound to the draw function's own ctx,
@@ -195,9 +183,6 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 		*body = append(*body, drawn...)
 		if len(ni.Children) > 0 {
 			emitShapes(ni.Children, body, env)
-		}
-		if bracket {
-			*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
 		}
 		return
 	}
@@ -219,10 +204,6 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 
 	if len(ni.Children) > 0 {
 		emitShapes(ni.Children, body, env)
-	}
-
-	if bracket {
-		*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
 	}
 }
 
@@ -363,26 +344,6 @@ func foldPayloadReads(stmts []ir.Stmt) []ir.Stmt {
 		return e
 	})
 	return w.stmts(stmts)
-}
-
-// canvasCall builds a CallStmt invoking a canvas intrinsic.
-func canvasCall(ctx *ir.Param, intrinsicName string, extraArgs ...ir.Expr) *ir.CallStmt {
-	def := ir.LookupIntrinsic(intrinsicName)
-	if def == nil {
-		panic(fmt.Sprintf("codegen: unknown canvas intrinsic %q", intrinsicName))
-	}
-	fn := &ir.Func{
-		Name:      def.Name,
-		Intrinsic: def.Name,
-		Params:    def.Params,
-		Return:    def.Return,
-	}
-	args := make([]ir.CallArg, 0, 1+len(extraArgs))
-	args = append(args, ir.CallArg{Name: "ctx", Value: ctxExpr(ctx)})
-	for _, a := range extraArgs {
-		args = append(args, ir.CallArg{Value: a})
-	}
-	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn, Args: args}}
 }
 
 // ctxExpr returns an Ident for the ctx draw-function parameter.
