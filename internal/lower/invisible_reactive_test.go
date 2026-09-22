@@ -19,7 +19,7 @@ func lowerOne(t *testing.T, src string) *ir.Package {
 	if len(errs) > 0 {
 		t.Fatalf("check: %v", errs)
 	}
-	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{Platform: "html", RootComponent: "main"}); err != nil {
+	if err := lowerInlineComponents(pkg, without("inlineComponents"), Options{Platform: "html", RootComponent: "main"}); err != nil {
 		t.Fatalf("inline: %v", err)
 	}
 	return pkg

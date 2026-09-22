@@ -46,11 +46,11 @@ func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, erro
 	if noneLang == nil || htmlPlat == nil {
 		return nil, fmt.Errorf("html/none codegen not registered")
 	}
-	features, err := codegen.CapsFor("none", "html")
+	feats, err := codegen.CapsFor("none", "html")
 	if err != nil {
 		return nil, err
 	}
-	caps := features.ToLowerCaps()
+	caps := feats
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}

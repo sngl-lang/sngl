@@ -15,11 +15,11 @@ import (
 // bodies can be rewritten to Emit nodes before they're further desugared.
 var passPropBindings = pass{
 	name:    "PropBindings",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerAllPropBindings,
 }
 
-func lowerAllPropBindings(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerAllPropBindings(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

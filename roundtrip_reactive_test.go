@@ -31,7 +31,11 @@ func TestReactiveLoweredRoundTrip(t *testing.T) {
 	if hasError(diags) {
 		t.Fatalf("initial check: %s", joinDiags(diags))
 	}
-	if err := lower.Lower(pkg, lower.Caps{NoReactivity: true}, lower.Options{}); err != nil {
+	// Everything claimed but reactivity, so passReactivity is the one pass
+	// under test and nothing else rewrites the tree out from under it.
+	feats := lower.NoLowering()
+	feats.Reactivity = false
+	if err := lower.Lower(pkg, feats, lower.Options{}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 

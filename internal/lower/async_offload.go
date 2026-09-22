@@ -61,11 +61,11 @@ const (
 // because they sit after the assignment, with no rule of their own.
 var passAsyncOffload = pass{
 	name:    "NoAsyncCalls",
-	enabled: func(c Caps) bool { return c.NoAsyncCalls },
+	enabled: func(c Features) bool { return !c.AsyncCalls },
 	apply:   applyAsyncOffload,
 }
 
-func applyAsyncOffload(pkg *ir.Package, caps Caps, opts Options) error {
+func applyAsyncOffload(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}

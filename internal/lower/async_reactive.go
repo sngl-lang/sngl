@@ -13,7 +13,7 @@ import (
 
 var passAsyncReactive = pass{
 	name:    "NoAsyncReactive",
-	enabled: func(c Caps) bool { return c.NoAsyncReactive },
+	enabled: func(c Features) bool { return !c.AsyncReactive },
 	apply:   lowerAsyncReactive,
 }
 
@@ -23,7 +23,7 @@ var passAsyncReactive = pass{
 //     synthetic anonymous zero-arg computed funcs (__hoist_N).
 //  2. Lower every reactive async computed (named + just-hoisted) to a
 //     settle-state-var (__async_X) + kicker ($compute_X).
-func lowerAsyncReactive(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerAsyncReactive(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

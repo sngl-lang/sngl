@@ -49,7 +49,7 @@ func compileLesson(source string) (string, error) {
 	}
 	gen := codegen.LookupPlatform("html")
 	lang := codegen.LookupLang("none")
-	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
 		return "", err
 	}

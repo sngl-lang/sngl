@@ -45,7 +45,7 @@ func generateGTK4ModelBuilt(t *testing.T, src string) string {
 		t.Fatalf("optimize: %v", err)
 	}
 	g := &Generator{}
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps(), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
+	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
@@ -91,7 +91,7 @@ func generateGTK4FilesBuilt(t *testing.T, src string) map[string]string {
 		t.Fatalf("optimize: %v", err)
 	}
 	g := &Generator{}
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps(), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
+	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {

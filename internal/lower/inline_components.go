@@ -14,11 +14,11 @@ import (
 // docs/superpowers/specs/2026-05-16-component-inlining-design.md.
 var passNoInlineComponents = pass{
 	name:    "NoInlineComponents",
-	enabled: func(c Caps) bool { return c.NoInlineComponents },
+	enabled: func(c Features) bool { return !c.InlineComponents },
 	apply:   lowerInlineComponents,
 }
 
-func lowerInlineComponents(pkg *ir.Package, _ Caps, opts Options) error {
+func lowerInlineComponents(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}

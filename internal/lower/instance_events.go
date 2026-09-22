@@ -38,7 +38,7 @@ var passInstanceEvents = pass{
 	apply:   lowerInstanceEvents,
 }
 
-func lowerInstanceEvents(pkg *ir.Package, _ Caps, opts Options) error {
+func lowerInstanceEvents(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}

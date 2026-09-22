@@ -27,11 +27,11 @@ import (
 // sees has already had high-level shapes (toggles, ternaries) lowered.
 var passInlinePure = pass{
 	name:    "InlinePure",
-	enabled: func(c Caps) bool { return true }, // always on (strict path gated internally)
+	enabled: func(c Features) bool { return true }, // always on (strict path gated internally)
 	apply:   lowerInlinePure,
 }
 
-func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
+func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}

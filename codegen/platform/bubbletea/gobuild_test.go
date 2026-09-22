@@ -48,7 +48,7 @@ func generateBubbleteaModel(t *testing.T, src string) string {
 		t.Fatalf("optimize: %v", err)
 	}
 	g := &Generator{}
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps(), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
+	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	if err := optimize.Optimize(pkg, optCfg); err != nil {

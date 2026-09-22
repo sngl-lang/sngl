@@ -28,7 +28,7 @@ import (
 // existing Model-field behavior, so reactive updates are unaffected.
 var passNodeEscape = pass{
 	name:    "NodeEscape",
-	enabled: func(c Caps) bool { return c.NoDeclarative },
+	enabled: func(c Features) bool { return !c.Declarative },
 	apply:   lowerNodeEscape,
 }
 
@@ -54,7 +54,7 @@ func newScopeRefInfo(sink *map[string]bool) *scopeRefInfo {
 	}
 }
 
-func lowerNodeEscape(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerNodeEscape(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

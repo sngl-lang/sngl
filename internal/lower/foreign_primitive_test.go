@@ -22,7 +22,7 @@ func TestAForeignPlatformPrimitiveIsRejectedUnlessClaimed(t *testing.T) {
 		main := &ir.Component{Name: "main"}
 		main.Body = []ir.Stmt{&ir.NodeInst{Name: "Switch", Component: foreign}}
 		pkg := &ir.Package{Components: []*ir.Component{foreign, main}, Symbols: ir.NewSymbolTable()}
-		return lower.Lower(pkg, lower.Caps{}, lower.Options{
+		return lower.Lower(pkg, lower.Features{}, lower.Options{
 			Platform:        "html",
 			ClaimsIntrinsic: claims,
 		})
@@ -58,7 +58,7 @@ func TestAForeignPlatformPrimitiveIsRejectedUnlessClaimed(t *testing.T) {
 	main := &ir.Component{Name: "main"}
 	main.Body = []ir.Stmt{&ir.NodeInst{Name: "Div", Component: own}}
 	pkg := &ir.Package{Components: []*ir.Component{own, main}, Symbols: ir.NewSymbolTable()}
-	if err := lower.Lower(pkg, lower.Caps{}, lower.Options{Platform: "html"}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{}, lower.Options{Platform: "html"}); err != nil {
 		t.Errorf("html refused its own primitive: %v", err)
 	}
 }

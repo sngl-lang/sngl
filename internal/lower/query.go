@@ -33,7 +33,7 @@ import (
 // platform copies, and neither branch of this is gated on a capability.
 var passQuery = pass{
 	name:    "Query",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerQueries,
 }
 
@@ -41,7 +41,7 @@ var passQuery = pass{
 // language backend implements against its own pkg/<lang>/remote runtime.
 const remoteQueryIntrinsic = "RemoteQuery"
 
-func lowerQueries(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerQueries(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

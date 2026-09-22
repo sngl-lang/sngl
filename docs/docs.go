@@ -506,11 +506,11 @@ func compilePreview(source string) string {
 		return ""
 	}
 
-	features, err := codegen.CapsFor(lang.LanguageIdentifier(), gen.PlatformIdentifier())
+	feats, err := codegen.CapsFor(lang.LanguageIdentifier(), gen.PlatformIdentifier())
 	if err != nil {
 		return ""
 	}
-	caps := features.ToLowerCaps()
+	caps := feats
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
 		return ""
 	}

@@ -61,7 +61,7 @@ func checkOptimizeLower(t *testing.T, src string) *ir.Package {
 	if err := optimize.Optimize(pkg, &optimize.Config{}); err != nil {
 		t.Fatalf("optimize: %v", err)
 	}
-	if err := lower.Lower(pkg, lower.Caps{}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{}, lower.Options{}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	return pkg

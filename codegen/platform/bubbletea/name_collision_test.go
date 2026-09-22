@@ -80,7 +80,7 @@ func TestGeneratedGoWithACollidingNestedFuncCompiles(t *testing.T) {
 		}
 	}
 	g := &Generator{}
-	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps(), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
+	if err := lower.Lower(pkg, codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()), lower.Options{Platform: "bubbletea", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	mem := codegen.NewMemSink()

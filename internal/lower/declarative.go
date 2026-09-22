@@ -11,7 +11,7 @@ import (
 
 var passDeclarative = pass{
 	name:    "NoDeclarative",
-	enabled: func(c Caps) bool { return c.NoDeclarative },
+	enabled: func(c Features) bool { return !c.Declarative },
 	apply:   lowerDeclarative,
 }
 
@@ -26,7 +26,7 @@ var passDeclarative = pass{
 // lifter. With NoLambda off the body's free vars stay free — which is fine
 // for closure-supporting targets (e.g. Go) that emit the handler as a
 // nested closure under its owning component/window.
-func lowerDeclarative(pkg *ir.Package, caps Caps, _ Options) error {
+func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -63,8 +63,8 @@ type declarativeState struct {
 	instanceRecords bool
 }
 
-func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
-	st := &declarativeState{liftHandlers: caps.NoLambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}}
+func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
+	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -599,11 +599,12 @@ func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentRef ir.Expr, f
 // passReactivity slot generators. liftHandlers=false because the slot
 // re-render attaches handlers fresh each call; no separate closure
 // capture state is needed.
-func newDeclarativeStateForSlot(pkg *ir.Package, caps Caps) *declarativeState {
-	// Only the caps that decide shape travel: the slot path always keeps
-	// handlers as closures, and whether an instance is a record is the
-	// target's answer rather than the slot's.
-	st := newDeclarativeState(pkg, Caps{NoLambda: false, NoReactivity: caps.NoReactivity, NoDeclarative: caps.NoDeclarative})
+func newDeclarativeStateForSlot(pkg *ir.Package, caps Features) *declarativeState {
+	// Only the capabilities that decide shape travel: the slot path always
+	// keeps handlers as closures -- which is Lambda held, not withheld --
+	// and whether an instance is a record is the target's answer rather than
+	// the slot's.
+	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative})
 	st.inlineHandlers = true
 	// Seed the counter past every __nN already allocated package-wide
 	// — including those inside sibling slot Funcs created by earlier

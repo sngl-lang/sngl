@@ -40,7 +40,7 @@ window {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -144,7 +144,7 @@ window {
 	pkg := checkForFyne(t, src)
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
-	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier()).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

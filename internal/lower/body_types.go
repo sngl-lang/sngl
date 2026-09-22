@@ -24,7 +24,7 @@ import (
 // are.
 var passHoistBodyTypes = pass{
 	name:    "HoistBodyTypes",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   hoistBodyTypes,
 }
 
@@ -37,7 +37,7 @@ type bodyType struct {
 	methods map[string]*ir.Func
 }
 
-func hoistBodyTypes(pkg *ir.Package, _ Caps, _ Options) error {
+func hoistBodyTypes(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

@@ -12,7 +12,7 @@ import (
 
 var passLambda = pass{
 	name:    "NoLambda",
-	enabled: func(c Caps) bool { return c.NoLambda },
+	enabled: func(c Features) bool { return !c.Lambda },
 	apply:   lowerLambda,
 }
 
@@ -230,7 +230,7 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 // lowerLambda lifts closures to top-level functions plus captured-state
 // structs. Walks every *ir.Lambda in the package and replaces it with an
 // *ir.Closure produced by lifter.Lift. Asserts no Lambda survives the pass.
-func lowerLambda(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerLambda(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

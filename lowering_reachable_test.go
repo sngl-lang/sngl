@@ -1,7 +1,6 @@
 package sngl_test
 
 import (
-	"reflect"
 	"slices"
 	"testing"
 
@@ -13,7 +12,13 @@ import (
 	_ "git.duckfam.us/jonathan/sngl/codegen/platform"
 )
 
-// unrequestedCaps is every Caps flag no registered target asks for.
+// unrequestedCaps is every lowering pass no registered target asks for.
+//
+// By pass rather than by capability field, which is what the two records
+// becoming one forced and what it should always have said: "requested" used to
+// mean a Caps field set true, and under the polarity a capability is asked for
+// by being *withheld* while a want or a grant is asked for by being set. Three
+// readings of one question. EnabledPasses answers it once.
 //
 // A pass behind one of these runs in no build, so nothing compiles or executes
 // what it emits and the only judge left is ir.Validate, which has opinions
@@ -47,21 +52,19 @@ func TestEveryLoweringCapIsRequestedBySomeTarget(t *testing.T) {
 			if p == nil {
 				continue
 			}
-			caps := reflect.ValueOf(codegen.CapsOrNone(l.LanguageIdentifier(), p.PlatformIdentifier()).ToLowerCaps())
-			ct := caps.Type()
-			for i := range ct.NumField() {
-				if caps.Field(i).Kind() == reflect.Bool && caps.Field(i).Bool() {
-					requested[ct.Field(i).Name] = true
-				}
+			for _, name := range lower.EnabledPasses(codegen.CapsOrNone(l.LanguageIdentifier(), p.PlatformIdentifier())) {
+				requested[name] = true
 			}
 		}
 	}
 
+	// Every pass that runs for the target claiming nothing but is asked for by
+	// no registered pair. The ungated ones run for everybody and so are never
+	// in the difference.
 	var got []string
-	all := reflect.TypeFor[lower.Caps]()
-	for f := range all.Fields() {
-		if f.Type.Kind() == reflect.Bool && !requested[f.Name] {
-			got = append(got, f.Name)
+	for _, name := range lower.EnabledPasses(lower.Features{}) {
+		if !requested[name] {
+			got = append(got, name)
 		}
 	}
 	slices.Sort(got)

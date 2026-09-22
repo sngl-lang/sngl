@@ -9,14 +9,14 @@ import (
 
 var passEnum = pass{
 	name:    "NoEnum",
-	enabled: func(c Caps) bool { return c.NoEnum },
+	enabled: func(c Features) bool { return !c.Enum },
 	apply:   lowerEnum,
 }
 
 // lowerEnum rewrites enum-member references to int literals (ordinal in
 // declaration order). Does not delete enum declarations from pkg.Enums —
 // that is DCE's job.
-func lowerEnum(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerEnum(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

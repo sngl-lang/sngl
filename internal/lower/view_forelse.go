@@ -21,11 +21,11 @@ import (
 // below holds it to.
 var passViewForElse = pass{
 	name:    "ViewForElse",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerViewForElse,
 }
 
-func lowerViewForElse(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerViewForElse(pkg *ir.Package, _ Features, _ Options) error {
 	var unmeasured *ir.For
 	for _, block := range viewBlocks(pkg) {
 		rewriteViewForElse(block, &unmeasured)

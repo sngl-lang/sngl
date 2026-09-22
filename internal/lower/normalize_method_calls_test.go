@@ -25,7 +25,7 @@ func TestNoImplicitRecv_SynthesizesComponentSelf(t *testing.T) {
 
 	pkg := &ir.Package{Components: []*ir.Component{main}}
 
-	if err := lowerNoImplicitRecv(pkg, Caps{NoImplicitRecv: true}, Options{}); err != nil {
+	if err := lowerNoImplicitRecv(pkg, without("implicitRecv"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -61,7 +61,7 @@ func TestNoImplicitRecv_LeavesExplicitRecvUnchanged(t *testing.T) {
 
 	pkg := &ir.Package{Components: []*ir.Component{main}}
 
-	if err := lowerNoImplicitRecv(pkg, Caps{NoImplicitRecv: true}, Options{}); err != nil {
+	if err := lowerNoImplicitRecv(pkg, without("implicitRecv"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -92,7 +92,7 @@ func TestNoImplicitRecv_IgnoresFreeFunctionCalls(t *testing.T) {
 	main := &ir.Component{Name: "main", Body: []ir.Stmt{&ir.Return{Value: call}}}
 	pkg := &ir.Package{Components: []*ir.Component{main}, Funcs: []*ir.Func{add}}
 
-	if err := lowerNoImplicitRecv(pkg, Caps{NoImplicitRecv: true}, Options{}); err != nil {
+	if err := lowerNoImplicitRecv(pkg, without("implicitRecv"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 

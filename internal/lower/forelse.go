@@ -41,11 +41,11 @@ import (
 // the only way either pass reaches a handler on android.
 var passForElse = pass{
 	name:    "ForElse",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerForElse,
 }
 
-func lowerForElse(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerForElse(pkg *ir.Package, _ Features, _ Options) error {
 	st := &forElseState{}
 	for _, block := range imperativeBlocks(pkg) {
 		st.imperative(block)

@@ -17,7 +17,7 @@ import (
 
 var passShapeDraw = pass{
 	name:    "Canvas",
-	enabled: func(c Caps) bool { return c.Canvas },
+	enabled: func(c Features) bool { return c.Canvas },
 	apply:   lowerShapeDraw,
 }
 
@@ -27,7 +27,7 @@ var passShapeDraw = pass{
 // same context in their own scopes.
 var canvasCtxParam = &ir.Param{Name: "ctx", Type: ir.TypDyn}
 
-func lowerShapeDraw(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerShapeDraw(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil || !pkg.UsesDrawShapes() {
 		return nil
 	}

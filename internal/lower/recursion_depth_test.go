@@ -54,7 +54,7 @@ func TestRecursionDepthBoundsASiteInSlotContent(t *testing.T) {
 	}}
 	pkg := &ir.Package{Components: []*ir.Component{panel, endless}}
 
-	if err := lowerRecursionDepth(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerRecursionDepth(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerRecursionDepth: %v", err)
 	}
 	bounded, bare := boundedSites(endless, endless)
@@ -72,7 +72,7 @@ func TestRecursionDepthBoundsEachSiteOnce(t *testing.T) {
 	self.Body = []ir.Stmt{&ir.NodeInst{Name: "self", Component: self}}
 	pkg := &ir.Package{Components: []*ir.Component{self}}
 
-	if err := lowerRecursionDepth(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerRecursionDepth(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerRecursionDepth: %v", err)
 	}
 	bounded, bare := boundedSites(self, self)

@@ -142,11 +142,11 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		if langT == nil {
 			return nil, fmt.Errorf("lang %q not registered", lang)
 		}
-		features, err := codegen.CapsFor(lang, platform)
+		feats, err := codegen.CapsFor(lang, platform)
 		if err != nil {
 			return nil, err
 		}
-		caps := features.ToLowerCaps()
+		caps := feats
 		if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
 			return nil, fmt.Errorf("lower: %w", err)
 		}
@@ -193,11 +193,11 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 	if langT == nil {
 		return nil, fmt.Errorf("lang %q not registered", lang)
 	}
-	features, err := codegen.CapsFor(lang, platform)
+	feats, err := codegen.CapsFor(lang, platform)
 	if err != nil {
 		return nil, err
 	}
-	caps := features.ToLowerCaps()
+	caps := feats
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
@@ -325,11 +325,11 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
 				}
-				batchFeatures, err := codegen.CapsFor(lang, platform)
+				batchFeats, err := codegen.CapsFor(lang, platform)
 				if err != nil {
 					return nil, err
 				}
-				batchCaps := batchFeatures.ToLowerCaps()
+				batchCaps := batchFeats
 				if err := lower.Lower(pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 				}
@@ -410,15 +410,15 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: optimize: %w", p.entry.ID, platform, err)
 			}
-			batchFeatures, err := codegen.CapsFor(lang, platform)
+			batchFeats, err := codegen.CapsFor(lang, platform)
 			if err != nil {
 				return nil, err
 			}
-			batchCaps := batchFeatures.ToLowerCaps()
+			batchCaps := batchFeats
 			if err := lower.Lower(pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}
-			if batchCaps != (lower.Caps{}) {
+			if batchCaps != lower.NoLowering() {
 				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: optimize2: %w", p.entry.ID, platform, err)
 				}

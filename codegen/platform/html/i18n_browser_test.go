@@ -49,7 +49,7 @@ func compileI18nHTML(t *testing.T, src string) []byte {
 	}
 
 	gen := &Generator{}
-	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
 	// Mirror the CLI generate pipeline (cmd/sngl/pipeline.go): optimize →
 	// lower → optimize. Wiring Platforms above + these passes is what makes
 	// stdlib components (text, button) render through their `platform html { }`

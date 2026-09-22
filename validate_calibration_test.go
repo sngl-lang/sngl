@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	sngl "git.duckfam.us/jonathan/sngl"
+	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -49,19 +50,24 @@ func TestValidateNoFalsePositives(t *testing.T) {
 	}
 }
 
-// allLoweringCaps requests every lowering pass at once. No real target asks
-// for exactly this set, but a target asking for a subset produces a subset of
-// the IR shapes, so validating the union covers each pass's output.
-func allLoweringCaps() sngl.Caps {
-	return sngl.Caps{
-		NoToggle: true, NoTernary: true, NoLambda: true, NoRef: true,
-		NoUnit: true, NoEnum: true, NoAsyncReactive: true, NoComputed: true,
-		StructComponents: true, StdlibContextParam: true,
-		FocusOrder: true, Canvas: true, ReactiveCanvas: true,
-		NoReactivity: true, NoDeclarative: true,
-		NoListLambdas: true, NoInlineComponents: true, NoImplicitRecv: true,
-		NoStructSpread: true,
-	}
+// allLoweringCaps requests almost every lowering pass at once. No real target
+// asks for exactly this set, but a target asking for a subset produces a
+// subset of the IR shapes, so validating the union covers each pass's output.
+//
+// Not simply the zero Features, which under the polarity would be every pass:
+// that adds passAsyncOffload, and without a target granting AsyncPost or
+// AsyncSpawn to land the answer on, passAsyncCapable refuses the program
+// rather than lowering it. The set below is the one this test has always run,
+// written the way the record now reads.
+func allLoweringCaps() sngl.Features {
+	f := sngl.Features(lower.NoLowering())
+	f.Toggle, f.Ternary, f.Lambda, f.Ref = false, false, false, false
+	f.Unit, f.Enum, f.AsyncReactive, f.Computed = false, false, false, false
+	f.Reactivity, f.Declarative, f.ListLambdas = false, false, false
+	f.InlineComponents, f.ImplicitRecv, f.StructSpread = false, false, false
+	f.StructComponents, f.StdlibContextParam = true, true
+	f.FocusOrder, f.Canvas, f.ReactiveCanvas = true, true, true
+	return f
 }
 
 // TestValidateNoFalsePositivesAfterLower is TestValidateNoFalsePositives for

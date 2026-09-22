@@ -9,7 +9,7 @@ import (
 
 var passNoRef = pass{
 	name:    "NoRef",
-	enabled: func(c Caps) bool { return c.NoRef },
+	enabled: func(c Features) bool { return !c.Ref },
 	apply:   lowerNoRef,
 }
 
@@ -28,7 +28,7 @@ var passNoRef = pass{
 //     plain v; *p becomes p.value; reads of an addressed Var route through
 //     a Select on .value; ref<T> types appearing in struct fields and func
 //     params/returns are replaced with the corresponding box-struct type.
-func lowerNoRef(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

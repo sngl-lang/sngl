@@ -98,7 +98,7 @@ component main node {
 
 	// Lower with the matching active platform — swap pass should move the
 	// stashed body into Component.Body.
-	if err := lower.Lower(pkg, lower.Caps{}, lower.Options{Platform: "extstub"}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{}, lower.Options{Platform: "extstub"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	if len(stdText.Body) == 0 {
@@ -229,7 +229,8 @@ component main node {
 	// RootComponent names `main` because this program declares no window: a
 	// window is the root now, and a harness that wants a component to be one
 	// says so — the same thing `sngl test` does for a component under test.
-	caps := lower.Caps{NoInlineComponents: true}
+	caps := lower.NoLowering()
+	caps.InlineComponents = false
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "stubA", RootComponent: "main"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

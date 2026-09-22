@@ -90,7 +90,7 @@ func TestShapeDraw_SkipsProgramsWithoutShapes(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 	pkg.TreeKinds = nil
 
-	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
 	if !onlyShapeNodes(canvasInst.Children) {
@@ -106,7 +106,7 @@ func TestShapeDraw_RunsWithoutADrawImport(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 	pkg.Imports = nil
 
-	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
 	if onlyShapeNodes(canvasInst.Children) {
@@ -122,7 +122,7 @@ func TestShapeDraw_RunsWithoutADrawImport(t *testing.T) {
 func TestShapeDraw_SplicesTheDrawingInPlace(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 
-	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
 	if len(canvasInst.Children) == 0 {

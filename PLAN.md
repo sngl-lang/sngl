@@ -550,6 +550,41 @@ The safety argument is step 3 and nothing else.
    it *before* step 3 would move the equivalence test's goalposts, so it is
    last.
 
+### Landed: one record
+
+Step 5. `Caps` is gone, and with it `ToLowerCaps`, `Merge` and `AllFeatures`.
+`Features` is the whole vocabulary, `Features.String` names the capabilities
+held rather than the passes that will run, and `EnabledPasses` answers the
+second — which the two had been saying as one list read two ways.
+
+**The zero value changed meaning, and that is the change.** `Caps{}` said *no
+gated pass runs*; `Features{}` says *every one does*. Opposite zeros, so the
+131 literals were translated by what each meant rather than renamed —
+`NoLowering()` is the constructor for the old zero, and it is a test's answer
+rather than a target's, since a target declares what it can do. What that
+bought is the polarity above made structural: the record's own zero is now the
+backwards-compatible answer, so a capability added to the struct and forgotten
+by a target is a pass that runs rather than a claim nobody made.
+
+`InterpreterFeatures` is the one place a build wants that shape, and it is
+`NoLowering` less `Effects` for a reason worth writing down: nothing in
+`internal/interp` answers an `ir.Effect` node, so passEffect has to run. That
+was previously hidden in `AllFeatures()` omitting the field, which read as an
+oversight and was load-bearing.
+
+Six tests were written against the old polarity and had to be turned round
+rather than renamed. `soleGate` now flips each field away from what
+`NoLowering` holds — one driver for three kinds of field, where setting one
+true on a zero value used to serve all of them. `parseCapsHeader` starts from
+`NoLowering` so a fixture's `caps: NoLambda` still asks for one pass and not
+thirty; no fixture header changed. `TestEveryLoweringCapIsRequestedBySomeTarget`
+asks the question by *pass* now, which is what it always meant and which the
+three readings of "requested" — withheld capability, set want, set grant — had
+made unaskable by field.
+
+The user-facing change is `dump --stage lowered --list`, whose `caps:` line
+reads positively: what the target can do, which is what its package declares.
+
 ### What it does not do
 
 It does not make a plugin a configuration file. After this, a target is still

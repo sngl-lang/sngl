@@ -81,7 +81,7 @@ func cardComponent(t *testing.T, pkg *ir.Package) *ir.Component {
 // mark is what decides and not the pass giving up on the component.
 func TestConstructPropGetsNoSetter(t *testing.T) {
 	pkg := constructInstancePkg(t)
-	if err := lowerComponentProps(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerComponentProps(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatalf("lower props: %v", err)
 	}
 	card := cardComponent(t, pkg)
@@ -104,13 +104,13 @@ func TestConstructPropGetsNoSetter(t *testing.T) {
 // invisible.
 func TestUnwritableUnmarkedPropIsReported(t *testing.T) {
 	pkg := constructInstancePkg(t)
-	if err := lowerComponentProps(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerComponentProps(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatalf("lower props: %v", err)
 	}
 	for _, p := range cardComponent(t, pkg).Props {
 		p.Construct = false
 	}
-	err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{})
+	err := lowerReactivity(pkg, without("reactivity"), Options{})
 	if err == nil {
 		t.Fatal("want a diagnostic for a prop that can be neither written nor rebuilt")
 	}
@@ -145,7 +145,7 @@ component main node {
 // staticConstructCaps are the caps every platform that builds instances
 // declares: the mark that makes a component an instance is the inliner's, and
 // passComponentProps gives cells only to what carries it.
-var staticConstructCaps = Caps{NoReactivity: true, NoInlineComponents: true}
+var staticConstructCaps = without("reactivity", "inlineComponents")
 
 // A #[construct] prop written from state rebuilds the instance where it
 // stands, on a platform that can put a child back at a position.

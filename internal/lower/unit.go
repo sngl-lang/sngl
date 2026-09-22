@@ -9,7 +9,7 @@ import (
 
 var passUnit = pass{
 	name:    "NoUnit",
-	enabled: func(c Caps) bool { return c.NoUnit },
+	enabled: func(c Features) bool { return !c.Unit },
 	apply:   lowerUnit,
 }
 
@@ -17,7 +17,7 @@ var passUnit = pass{
 // its suffix Factor. Identifiers and computed expressions retain their
 // original Type *Type values; downstream consumers should treat the
 // rewritten Literal's TypInt as authoritative.
-func lowerUnit(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerUnit(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

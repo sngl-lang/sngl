@@ -23,7 +23,7 @@ component main node {
 		t.Fatal(err)
 	}
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -48,7 +48,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -87,7 +87,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -129,7 +129,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -158,7 +158,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -204,7 +204,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatalf("lowerReactivity: %v", err)
 	}
 	comp := pkg.Components[0]
@@ -238,7 +238,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -270,7 +270,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -294,7 +294,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -337,7 +337,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -377,7 +377,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -434,7 +434,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -461,7 +461,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -499,7 +499,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -527,7 +527,7 @@ component main node {
 `
 	doc, _ := parser.Parse("t.sngl", []byte(src))
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 	comp := pkg.Components[0]
@@ -561,7 +561,7 @@ component main node {
 		t.Fatal(perr)
 	}
 	pkg, _ := checker.Check(doc, &checker.Config{IsMain: true})
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatalf("nested reactive structure should lower cleanly, got: %v", err)
 	}
 }

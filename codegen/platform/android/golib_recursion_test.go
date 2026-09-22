@@ -38,7 +38,7 @@ ui.window {
 	}
 	gen := &Generator{}
 	kotlinLang := codegen.LookupLang("kotlin")
-	if err := lower.Lower(pkg, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()).ToLowerCaps(), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
+	if err := lower.Lower(pkg, codegen.CapsOrNone(kotlinLang.LanguageIdentifier(), gen.PlatformIdentifier()), lower.Options{Platform: gen.PlatformIdentifier()}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	ctx := codegen.NewCodegenCtx(&codegen.Request{Doc: doc, Pkg: pkg}, "android")

@@ -34,11 +34,11 @@ import (
 // the passed case, where nothing is known about the bounds.
 var passIndexedIter = pass{
 	name:    "IndexedIter",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerIndexedIter,
 }
 
-func lowerIndexedIter(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerIndexedIter(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

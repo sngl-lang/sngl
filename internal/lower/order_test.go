@@ -88,37 +88,45 @@ var alwaysOn = []string{
 }
 
 func TestAlwaysOnPasses(t *testing.T) {
-	// The empty Caps is the target that asks for nothing, so what survives the
-	// filter is exactly the ungated set -- which states both halves at once: a
-	// pass missing here has grown a gate, and an extra one has lost its.
-	got := slices.Clone(EnabledPasses(Caps{}))
+	// NoLowering is the target that claims everything and asks for nothing, so
+	// what survives the filter is exactly the ungated set -- which states both
+	// halves at once: a pass missing here has grown a gate, and an extra one
+	// has lost its.
+	//
+	// It used to be the empty Features, back when empty meant "no pass
+	// requested". Under the polarity that is now every pass.
+	got := slices.Clone(EnabledPasses(NoLowering()))
 	slices.Sort(got)
 	if !slices.Equal(got, alwaysOn) {
-		t.Errorf("EnabledPasses(Caps{}) = %v\nwant %v", got, alwaysOn)
+		t.Errorf("EnabledPasses(NoLowering()) = %v\nwant %v", got, alwaysOn)
 	}
 }
 
 // soleGate is what each capability asks for on its own: the passes
-// EnabledPasses adds when that Caps field is the only one set. Most rows are
-// the one pass named after the flag; the rows that are not are where a
-// capability's cost is more than its name says, and each carries why.
+// EnabledPasses adds when that Features field is the only one differing from a
+// target that claims everything. Most rows are the one pass named after the
+// field; the rows that are not are where a capability's cost is more than its
+// name says, and each carries why.
+//
+// The pass names still read "No…" where the field no longer does. A pass name
+// is what `dump --list` prints and what a fixture header asks for, so it
+// outlived the record its gate was named after.
 //
 // This is the other half of what the old filtered list said, and no ordering
 // constraint can say it -- a gate is what a pass asks of a target, not what it
 // asks of another pass. Unlike that list it is indexed by capability rather
 // than by position, so a row is wrong only when the gate it names changed.
 var soleGate = map[string][]string{
-	"NoToggle":        {"NoToggle"},
-	"NoTernary":       {"NoTernary"},
-	"NoLambda":        {"NoLambda"},
-	"NoRef":           {"NoRef"},
-	"NoUnit":          {"NoUnit"},
-	"NoEnum":          {"NoEnum"},
-	"NoAsyncReactive": {"NoAsyncReactive"},
-	"NoComputed":      {"NoComputed"},
-	"NoTimer":         {"NoTimer"},
-	"NoListLambdas":   {"NoListLambdas"},
-	"NoAsyncCalls":    {"NoAsyncCalls"},
+	"Toggle":        {"NoToggle"},
+	"Ternary":       {"NoTernary"},
+	"Lambda":        {"NoLambda"},
+	"Ref":           {"NoRef"},
+	"Unit":          {"NoUnit"},
+	"Enum":          {"NoEnum"},
+	"AsyncReactive": {"NoAsyncReactive"},
+	"Computed":      {"NoComputed"},
+	"ListLambdas":   {"NoListLambdas"},
+	"AsyncCalls":    {"NoAsyncCalls"},
 
 	// Both context flags request the one pass: a target asking for either a
 	// component receiver or a threaded stdlib param needs the context rewrite,
@@ -126,25 +134,30 @@ var soleGate = map[string][]string{
 	"StructComponents":   {"Context"},
 	"StdlibContextParam": {"Context"},
 
-	// hasInstanceRuntime reads NoReactivity and nothing else, so a target that
+	// hasInstanceRuntime reads Reactivity and nothing else, so a target that
 	// keeps its reactivity gets none of the instance machinery.
-	"NoReactivity": {"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity"},
+	"Reactivity": {"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity"},
 
 	// NodeEscape has no flag of its own: the escape analysis only has
 	// something to analyse once the tree is flat.
-	"NoDeclarative": {"NoDeclarative", "NodeEscape"},
+	"Declarative": {"NoDeclarative", "NodeEscape"},
 
-	"NoInlineComponents": {"NoInlineComponents"},
-	"NoImplicitRecv":     {"NoImplicitRecv"},
-	"NoStructSpread":     {"NoStructSpread"},
-	"FocusOrder":         {"FocusOrder"},
-	"Canvas":             {"Canvas"},
+	"InlineComponents": {"NoInlineComponents"},
+	"ImplicitRecv":     {"NoImplicitRecv"},
+	"StructSpread":     {"NoStructSpread"},
+	"FocusOrder":       {"FocusOrder"},
+	"Canvas":           {"Canvas"},
 
-	// The pass and the flag are named for opposite sides of the same fact:
+	// Gates nothing. It is the one capability the lowering never reads: the
+	// optimizer asks it, to decide whether a constant loop is unrolled.
+	"ViewStatements": nil,
+
+	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
-	// pass that injects it. NoEffects is the same shape.
+	// pass that injects it. Effects is the same shape inverted -- withholding
+	// it is what asks for the pass.
 	"ReactiveCanvas": {"CanvasReactivity"},
-	"NoEffects":      {"Effect"},
+	"Effects":        {"Effect"},
 
 	// Alone it turns on nothing: retaining a slot child buys the placement
 	// match and nothing else, so it is only ever asked alongside an instance
@@ -162,7 +175,7 @@ var soleGate = map[string][]string{
 	"AsyncSpawn": nil,
 }
 
-func gatedPasses(c Caps) []string {
+func gatedPasses(c Features) []string {
 	always := make(map[string]bool, len(alwaysOn))
 	for _, n := range alwaysOn {
 		always[n] = true
@@ -177,22 +190,29 @@ func gatedPasses(c Caps) []string {
 	return out
 }
 
-// TestEachCapabilityGatesItsPasses walks the Caps fields themselves, so a new
-// capability with no row here fails rather than passing unexamined.
+// TestEachCapabilityGatesItsPasses walks the Features fields themselves, so a
+// new capability with no row here fails rather than passing unexamined.
+//
+// Each field is *flipped* from what NoLowering holds rather than set true,
+// which is what makes one driver serve three kinds of field: a capability is
+// true there and withdrawing it asks for a pass, while a want or a grant is
+// false there and setting it does. Under the old record every field read the
+// same way round and setting one on the zero value was enough.
 func TestEachCapabilityGatesItsPasses(t *testing.T) {
-	rt := reflect.TypeFor[Caps]()
+	rt := reflect.TypeFor[Features]()
 	for i := range rt.NumField() {
 		f := rt.Field(i)
 		want, ok := soleGate[f.Name]
 		if !ok {
-			t.Errorf("Caps.%s gates no passes here; add a row to soleGate saying what it asks for", f.Name)
+			t.Errorf("Features.%s gates no passes here; add a row to soleGate saying what it asks for", f.Name)
 			continue
 		}
-		v := reflect.New(rt).Elem()
-		v.Field(i).SetBool(true)
+		base := NoLowering()
+		v := reflect.ValueOf(&base).Elem()
+		v.Field(i).SetBool(!v.Field(i).Bool())
 		t.Run(f.Name, func(t *testing.T) {
-			if got := gatedPasses(v.Interface().(Caps)); !slices.Equal(got, want) {
-				t.Errorf("Caps{%s: true} enables %v; want %v", f.Name, got, want)
+			if got := gatedPasses(base); !slices.Equal(got, want) {
+				t.Errorf("flipping Features.%s enables %v; want %v", f.Name, got, want)
 			}
 		})
 	}
@@ -203,10 +223,12 @@ func TestEachCapabilityGatesItsPasses(t *testing.T) {
 // there is no identity for a retained slot child to be asked about.
 func TestASlotChildNeedsBothCapabilities(t *testing.T) {
 	want := []string{"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity", "SlotChildInstances"}
-	if got := gatedPasses(Caps{NoReactivity: true, InsertBefore: true}); !slices.Equal(got, want) {
+	if got := gatedPasses(withInsertBefore("reactivity")); !slices.Equal(got, want) {
 		t.Errorf("gated passes = %v; want %v", got, want)
 	}
-	if got := gatedPasses(Caps{InsertBefore: true}); len(got) != 0 {
+	alone := NoLowering()
+	alone.InsertBefore = true
+	if got := gatedPasses(alone); len(got) != 0 {
 		t.Errorf("InsertBefore alone enables %v; want nothing", got)
 	}
 }

@@ -1,12 +1,18 @@
-# `dump --stage lowered --list` reports what a target resolves to: the caps its
-# platform and language ask for, and the passes those caps enable. This checks
-# the CLI answers for every shipping platform, and states the four facts about
-# targets the printout is the evidence for.
+# `dump --stage lowered --list` reports what a target resolves to: the
+# capabilities its platform and language declare, and the passes those enable.
+# This checks the CLI answers for every shipping platform, and states the four
+# facts about targets the printout is the evidence for.
 #
-# NoAsyncCalls is on every Go target, because Go cannot suspend a function.
-# AsyncPost is on the two that can get back to the thread they draw on, and
-# bubbletea's absence from that list is why the same program it takes here is
-# refused as soon as it contains a blocking call -- see go_async_no_post.txt.
+# The caps line reads positively -- it names what the target *can* do, which is
+# what its package declares with `#[gen.can]`. It used to name what the target
+# could not, back when the lowering held a second inverted record; the passes
+# line is unchanged, and is still where "what will run" is read.
+#
+# AsyncCalls is absent from every Go target, because Go cannot suspend a
+# function. AsyncPost is on the two that can get back to the thread they draw
+# on, and bubbletea's absence from that list is why the same program it takes
+# here is refused as soon as it contains a blocking call -- see
+# go_async_no_post.txt.
 #
 # The pass ORDER is not asserted here. It belongs to internal/lower, which
 # states it as pairwise constraints carrying their reasons (orderConstraints);
@@ -14,13 +20,13 @@
 # attached to any link, and it was silenced by moving a name until it passed.
 #
 # The caps lines are anchored. They were prefixes before, which is why nothing
-# noticed when html grew ReactiveCanvas, NoEffects and InsertBefore. Anchoring
+# noticed when html grew ReactiveCanvas, Effects and InsertBefore. Anchoring
 # them is also what lets the chains go: which passes a target runs is the caps
 # line here composed with internal/lower's TestEachCapabilityGatesItsPasses,
 # and each half of that is checked where it is decided.
 
 sngl dump --stage lowered --lang go --platform bubbletea --list main.sngl
-stdout '^caps: NoTernary,NoAsyncReactive,NoAsyncCalls,AsyncSpawn,NoListLambdas,StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,NoImplicitRecv,FocusOrder,Canvas,NoEffects$'
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,Reactivity,Declarative,ViewStatements,AsyncSpawn,StructComponents,StdlibContextParam,FocusOrder,Canvas$'
 stdout '^passes: \w+( → \w+)+$'
 stdout ' → Effect → '
 
@@ -36,7 +42,7 @@ stdout ' → Effect → '
 # appends tears its children down every render, so there is no identity for
 # anything to ask about.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout '^caps: NoTernary,NoAsyncReactive,NoAsyncCalls,AsyncPost,AsyncSpawn,NoListLambdas,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoDeclarative,Canvas,ReactiveCanvas,NoEffects$'
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 ! stdout 'SlotChildInstances'
 cp stdout fyne.txt
 
@@ -45,11 +51,11 @@ cmp stdout fyne.txt
 
 # html emits HTML and JS; the language emits only the server half of route
 # mode. So a restriction that exists because the language lacks a construct is
-# not html's -- NoTernary and NoListLambdas are absent here for the same reason
-# they are absent under --lang none, even though Go asks for both. html+go and
+# not html's -- Ternary and ListLambdas are *held* here for the same reason
+# they are held under --lang none, even though Go withholds both. html+go and
 # html+none lower identically, which is again the cmp and not a repeated chain.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: NoAsyncReactive,StructComponents,StdlibContextParam,NoReactivity,NoInlineComponents,NoStructSpread,NoImplicitRecv,Canvas,ReactiveCanvas,NoEffects,InsertBefore$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InsertBefore,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 stdout ' → SlotChildInstances → '
 cp stdout htmlgo.txt
 
@@ -57,11 +63,11 @@ sngl dump --stage lowered --lang none --platform html --list main.sngl
 cmp stdout htmlgo.txt
 
 # android is the one target with no Effect pass: Compose brackets a keyed
-# lifetime itself, so it asks for the node (Features.Effects) rather than the
+# lifetime itself, so it holds Effects and gets the node rather than the
 # calls the pass would lower it to. The other four match ' → Effect → ' above,
 # so the pattern is one that does match when the pass is there.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout '^caps: StructComponents,StdlibContextParam,NoInlineComponents,NoStructSpread,Canvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,Effects,StructComponents,StdlibContextParam,Canvas$'
 ! stdout ' → Effect → '
 
 # Unknown pass name surfaces a non-zero exit.
