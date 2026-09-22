@@ -217,6 +217,60 @@ false for `window` independently of the mark, its test being
 makes the declaration bodyless, `comp.Bodyless` is the honest spelling of that
 test.
 
+## 4. Per-family lowering capabilities, and `sngl:x/codegen`
+
+Next session's subject. It comes out of the canvas half of the id barrier: a
+shape's *props* resolve, so `ui.text(value="{dot.r}")` beside a canvas holding
+`circle #dot` type-checks and renders nothing, on every target. The barrier
+stops the id from hoisting, which ends the silence but does not answer the
+question the program asked.
+
+**The idea that does not work, and why.** The tree-family mark on
+`draw.shape` could tell the lowering to replace such an access with the
+expression the prop was assigned -- reconstructing the value rather than
+reading it back from a node that no longer exists by then (`passShapeDraw`
+splices a shape into draw calls before any backend sees it). That is wrong
+because it is not the tree's answer to give: whether a family's members have
+runtime identity, and what reading one costs, is **platform dependent**. A
+shape is spliced away on one target and might be a retained scene-graph object
+on another.
+
+**So the capability belongs on the platform override, written as a macro.** A
+mark on `component draw.circle[platform]` says what that target can do with a
+member of that family -- which gives both language- and platform-specific
+answers, keeps the fact in the source next to the implementation it describes,
+and keeps it on the tree rather than in a Go table the checker consults. It is
+the same move `#[go.native]`'s `schedules`/`method`/`pure` flags make: nothing
+about a target's implementation is inferred, so the declaration says it.
+
+**`sngl:x/codegen` is where those primitives are declared.** A new library
+package for the vocabulary a platform package uses to describe its own code
+generation, alongside `sngl:macro`'s `foreign`/`wildcard`/`construct` and
+`sngl:internal/marks`. The `x/` tier is new and the boundary it draws wants
+settling early: `sngl:macro` is the public mark vocabulary and
+`sngl:internal/marks` is the compiler's own, so `sngl:x/codegen` is a third
+thing -- the vocabulary a *target package* writes about itself.
+
+Questions to take into that session rather than answer here:
+
+- What the capability set actually is. "Can a handle to a member of this
+  family be read back at runtime" is the one this came from; a canvas says no
+  and a widget says yes. Whether that is one boolean, a small enum, or a
+  per-prop answer is unknown, and one real second user should be found before
+  the shape is fixed.
+- Whether it subsumes the canvas half of `ir.CrossesTreeFamily`. If a platform
+  declares that a shape has no readable identity, the barrier becomes that
+  declaration's consequence rather than a rule in `declareNodeIDsStmt` -- and
+  `error_tree_family_id_barrier.sngl` becomes a fixture about the capability.
+  This is the payoff that would justify the tier.
+- What a program gets when no target declares the capability either way. The
+  checker runs with no target picked for the LSP and `sngl fmt`, which is the
+  same constraint that kept window identification out of section 2.
+- Whether `option<T>` from section 1 ever becomes readable. Section 1 refuses
+  every read of a counted handle because no target can act on one; a
+  capability that says "this platform can" is the thing that would let a target
+  answer, and the two designs should be made to meet rather than drift.
+
 ## Carried forward, unfixed
 
 Each was reproduced on `main` and is listed on !169.
