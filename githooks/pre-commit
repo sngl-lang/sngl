@@ -1,0 +1,62 @@
+#!/bin/sh
+# Refuse a commit that `go tool verify` would reject for a mechanical reason.
+#
+# Two of verify's seven steps fail on changes that are never a judgement call --
+# `go fix` rewriting a loop into a slices helper, `mdox fmt` rewrapping a
+# paragraph -- and both are invisible until CI says so. They are the two that
+# fail most often, which is the whole reason this exists.
+#
+# Only these two. A hook that ran the suite would be a hook people disable, and
+# the other five steps either cost real time (test) or fail for reasons worth
+# reading a diff over (vet, mod tidy).
+#
+# Staged files only, which is the pre-commit contract: an unformatted file
+# someone else left is CI's business, not this commit's. It also keeps the hook
+# to about a second on a warm build cache -- `go fix` is scoped to the packages
+# the staged files are in, not `./...`.
+#
+# Install: git config core.hooksPath githooks
+# Skip once: git commit --no-verify
+
+set -e
+
+staged() { git diff --cached --name-only --diff-filter=ACM -- "$@"; }
+
+fail() {
+	echo
+	echo "pre-commit: $1"
+	echo "  fix:  $2"
+	echo "  skip: git commit --no-verify"
+	exit 1
+}
+
+# go fix, over the packages holding staged .go files. A deleted or renamed-away
+# file leaves a directory with no Go in it, which `go fix` reports as an error
+# rather than skipping -- hence the -d test.
+go_files=$(staged '*.go')
+if [ -n "$go_files" ]; then
+	pkgs=$(printf '%s\n' "$go_files" | xargs -n1 dirname | sort -u |
+		while read -r d; do [ -d "$d" ] && printf './%s\n' "$d"; done)
+	if [ -n "$pkgs" ]; then
+		# `go fix -diff` exits non-zero when it has a diff *and* when it cannot
+		# build, so the output is what tells the two apart: a rewrite it would
+		# make, or whatever went wrong. Either way the commit stops.
+		# shellcheck disable=SC2086
+		out=$(go fix -diff $pkgs 2>&1) || true
+		if [ -n "$out" ]; then
+			printf '%s\n' "$out" | head -40
+			fail "go fix would rewrite staged code, or could not read it (above)" "go fix ./..."
+		fi
+	fi
+fi
+
+# mdox, over staged markdown. --check reports rather than writes.
+md_files=$(staged '*.md')
+if [ -n "$md_files" ]; then
+	# shellcheck disable=SC2086
+	if ! out=$(go tool mdox fmt --soft-wraps --check $md_files 2>&1); then
+		printf '%s\n' "$out" | head -20
+		fail "mdox would reformat staged markdown (above)" \
+			"go tool mdox fmt --soft-wraps $(printf '%s ' $md_files)"
+	fi
+fi

@@ -283,6 +283,11 @@ go fmt .                       # format Go (run from package dir)
 go tool docsgen                # build docs site to _site/
 ```
 
+`githooks/pre-commit` refuses a commit over the two `verify` steps that fail for
+purely mechanical reasons — `go fix` rewriting a loop, `mdox fmt` reformatting a
+paragraph — because neither is visible until CI says so. It checks staged files
+only and takes about a second. Install it with `git config core.hooksPath githooks`; `git commit --no-verify` skips it.
+
 WASM build (used by docsgen for playground):
 
 ```bash
