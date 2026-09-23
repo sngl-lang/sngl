@@ -658,8 +658,17 @@ declare a widget wrapped wrong on purpose: no shipping widget in `fyne.sngl` is
 missing a setter, which is what makes the `setters` list a contract rather than
 a hint.
 
-`ir.CrossesTreeFamily` keeps one caller, `declareOwnNodeIDsIn`, and wants the
-same treatment; `testdata/error_tree_family_id_barrier.sngl` is now
+**`ir.CrossesTreeFamily` is gone**, and the second half of that is what made it
+so. `declareNodeIDsStmt` stopped calling it when the barrier went, but
+`declareOwnNodeIDsIn` -- the re-hoist that gives a block its own ids back --
+kept stopping at a family change. So an id written in a canvas *inside an `if`*
+was hoisted with the `if`'s count at the outer scope and never re-declared in
+the `if`'s own, and a read from inside that same `if` was told to *"read it
+inside the if"*, which is where it already was. Unfollowable advice rather than
+a leftover. With both halves reaching through, the predicate has no caller and
+neither does the checker's wrapper.
+
+`testdata/error_tree_family_id_barrier.sngl` is now
 `canvas_shape_prop_read.sngl`, a positive fixture, which is what the original
 plan predicted and the window half then denied.
 

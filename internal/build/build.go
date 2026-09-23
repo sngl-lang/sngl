@@ -182,12 +182,11 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	if err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
-	caps := feats
 	start = time.Now()
-	if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	if err := lower.Lower(tpkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
-	slog.Info("lower", "dir", o.Dir, "caps", caps.String(), "duration", time.Since(start))
+	slog.Info("lower", "dir", o.Dir, "caps", feats.String(), "duration", time.Since(start))
 
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --

@@ -12,12 +12,20 @@ import (
 // `sngl:x/gen`'s marks and read by codegen.CapsFor.
 //
 // **A capability not written is not held.** The zero value claims nothing, so
-// every capability-gated pass runs for it. That is what lets the language
-// grow: a new construct arrives with a pass that converts it away, and every
-// target that has not heard of it keeps working unedited, opting in when its
-// own code generator can do better than the pass. Under the other polarity,
-// silence would mean "I emit this" on every declaration written before the
-// construct existed, and adding one would break every target at once.
+// the pass that rewrites each withheld construct runs for it. That is what lets
+// the language grow: a new construct arrives with a pass that converts it away,
+// and every target that has not heard of it keeps working unedited, opting in
+// when its own code generator can do better than the pass. Under the other
+// polarity, silence would mean "I emit this" on every declaration written
+// before the construct existed, and adding one would break every target at
+// once.
+//
+// Not *every* gated pass, and the exceptions are the fields that read the other
+// way round. The five `#[gen.wants]` requests are asked for by being set, so
+// silence correctly leaves them off; and InsertBefore is a grant rather than a
+// withdrawal, so passSlotChildInstances -- which wants it beside a withheld
+// Reactivity -- is off for the zero value too. order_test.go's soleGate records
+// all six as gating nothing on their own.
 //
 // There used to be a second record, Caps, saying the same thing inverted --
 // NoTernary against Ternary -- with ToLowerCaps, Merge and String each naming

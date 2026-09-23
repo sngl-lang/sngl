@@ -56,6 +56,12 @@ import gen "sngl:x/gen"
 // fyne.Do queues onto the goroutine running the driver, which is the one that
 // owns every widget.
 #[gen.can(asyncPost)]
+// Withholding reactivity is what asks for the explicit `nX.<prop> = <expr>`
+// after every mutation of a tracked var, which is how a Fyne widget is told
+// anything; withholding declarative flattens the tree into the
+// create/append/attachHandler calls this platform consumes through
+// WalkLowered. A toolkit that owns its widgets and has no diffing of its own
+// needs both.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component fyne(

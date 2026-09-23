@@ -98,7 +98,7 @@ component main node {
 
 	// Lower with the matching active platform — swap pass should move the
 	// stashed body into Component.Body.
-	if err := lower.Lower(pkg, lower.Features{}, lower.Options{Platform: "extstub"}); err != nil {
+	if err := lower.Lower(pkg, lower.NoLowering(), lower.Options{Platform: "extstub"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	if len(stdText.Body) == 0 {

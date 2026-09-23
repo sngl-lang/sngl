@@ -3061,18 +3061,6 @@ func (c *checker) isWindowNode(name string) bool {
 	return c.builtinNodeKind(name) == ir.BuiltinWindow
 }
 
-// crossesTreeFamily reports whether the node this name instantiates hosts a
-// family other than its own -- a window over widgets, a canvas over shapes.
-// See ir.CrossesTreeFamily for what that means for an id.
-func (c *checker) crossesTreeFamily(name string) bool {
-	sym, ok := c.resolveComponentSymbol(name)
-	if !ok {
-		return false
-	}
-	comp, _ := sym.(*ir.Component)
-	return ir.CrossesTreeFamily(comp)
-}
-
 // visualNodeTarget extracts the target name from a VisualNode.
 // Returns "name" for bare identifiers and "pkg.Name" for qualified targets
 // (e.g. html.div, docui.Sidebar).
@@ -4394,9 +4382,13 @@ func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]
 			if !declared[n.ID] {
 				c.declareNodeID(n.ID, target, c.isWindowNode(target), nil, shadowOuter)
 			}
-			if !c.crossesTreeFamily(target) {
-				c.declareOwnNodeIDsIn(&n.Block, declared)
-			}
+			// Through a canvas as through anything else. Stopping at a family
+			// change here while declareNodeIDsStmt no longer does left an id
+			// written in a canvas inside an `if` hoisted with the `if`'s count
+			// at the outer scope and never re-declared in the `if`'s own -- so
+			// a read from inside that same `if` was told to "read it inside
+			// the if", which is where it already was.
+			c.declareOwnNodeIDsIn(&n.Block, declared)
 		case *ast.CallStmt:
 			if target, id, isElem := elementRefCallInfo(n.Call); isElem && !declared[id] {
 				c.declareNodeID(id, target, false, nil, shadowOuter)

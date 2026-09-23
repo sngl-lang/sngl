@@ -36,7 +36,7 @@ component main node {
 			t.Fatalf("check: %s", d.Msg)
 		}
 	}
-	if err := lower.Lower(pkg, lower.Features{}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.NoLowering(), lower.Options{}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 	for _, e := range ir.Validate(pkg) {

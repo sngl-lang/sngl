@@ -1,13 +1,23 @@
 package ir
 
 // A drawing is a tree, and what makes a canvas a canvas is the family its rest
-// slot accepts. These are the three facts both the lowering and codegen ask
-// about one, which is why they are here and not in either.
+// slot accepts. These are the facts both the lowering and codegen ask about
+// one, which is why they are here and not in either.
 //
 // There used to be a lowering pass that answered them privately, lifted a
 // canvas's shapes out of the tree into a synthesized function and hung it off
 // the node. The shapes stay where they were written now; what reads them is
 // codegen, the way it reads any other family it renders.
+//
+// A fourth used to live here: CrossesTreeFamily, which reported a component
+// hosting a family other than its own -- a window over widgets, a canvas over
+// shapes -- and was where a node id stopped carrying. Both halves of that have
+// been answered since. A window *counts*, conferring `option<T>` on a handle
+// read from outside it, because the surface may not be open. And a canvas no
+// longer stops the hoist at all: the id is ordinary, and it is the *read* that
+// passNodePropReads answers with the expression the prop was given, because a
+// shape is spliced into the calls that paint it and there is nothing left to
+// ask. Refusing the id said the same thing by saying nothing.
 
 // TreeHosted is the segmented tree a component's rest slot accepts, or nil.
 //
@@ -37,37 +47,6 @@ func RestSlotTree(comp *Component) *StructDef {
 		}
 	}
 	return nil
-}
-
-// CrossesTreeFamily reports whether a component hosts a family other than the
-// one it belongs to: a `window`, which is a `root` whose children are `node`s,
-// and a `canvas`, which is a `node` whose children are `shape`s. A `vbox`
-// hosts its own family and does not.
-//
-// **A family change is where a node id stops carrying.** What a handle names
-// is a thing on one rendering surface, and a family change is what a second
-// surface looks like from here: two windows are two pages, and a canvas is a
-// drawing rather than more widgets.
-//
-// The two are no longer answered the same way, and this is the half that stops
-// outright. A *window* counts instead: a read from another window is
-// `option<T>`, because the surface may not be open, which says the same thing
-// with a type. A *canvas* has nothing to be optional about -- passShapeDraw
-// splices a shape into draw calls before any backend sees the node, so there
-// is no handle either way -- and a shape's props do resolve, so a typed
-// `dot.r` would check clean and render nothing, which is exactly the silence
-// this ended: `ui.text(value="{dot.r}")` beside a canvas holding `circle #dot`
-// passed and rendered an empty span, on every target.
-//
-// So declareNodeIDsStmt asks after a window first and reaches this for every
-// other crossing.
-//
-// Asked of the tree rather than of `#[builtin("window")]`, because it is the
-// tree's answer -- the mark says which IR construct a declaration dispatches
-// to, not what its children can see.
-func CrossesTreeFamily(comp *Component) bool {
-	hosted := RestSlotTree(comp)
-	return hosted != nil && comp != nil && comp.Tree != nil && hosted != comp.Tree
 }
 
 // IsShapeContainer reports whether a NodeInst hosts shapes without being one:

@@ -146,8 +146,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int) ([]byt
 		if err != nil {
 			return nil, err
 		}
-		caps := feats
-		if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
+		if err := lower.Lower(pkg, feats, lower.Options{Platform: platform}); err != nil {
 			return nil, fmt.Errorf("lower: %w", err)
 		}
 		// Unconditional. It used to run only when the target had capabilities to lower
@@ -197,8 +196,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int) ([
 	if err != nil {
 		return nil, err
 	}
-	caps := feats
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: platform}); err != nil {
+	if err := lower.Lower(pkg, feats, lower.Options{Platform: platform}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower
@@ -329,8 +327,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				if err != nil {
 					return nil, err
 				}
-				batchCaps := batchFeats
-				if err := lower.Lower(pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
+				if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 				}
 				batchDocs = append(batchDocs, codegen.BatchDoc{
@@ -414,11 +411,10 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			if err != nil {
 				return nil, err
 			}
-			batchCaps := batchFeats
-			if err := lower.Lower(pkg, batchCaps, lower.Options{Platform: platform}); err != nil {
+			if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}
-			if batchCaps != lower.NoLowering() {
+			if batchFeats != lower.NoLowering() {
 				if err := optimize.Optimize(pkg, batchOptCfg); err != nil {
 					return nil, fmt.Errorf("snapshot %s/%s: optimize2: %w", p.entry.ID, platform, err)
 				}

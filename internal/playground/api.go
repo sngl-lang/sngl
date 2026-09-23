@@ -183,12 +183,11 @@ func Compile(source string) string {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	compileCaps := compileFeats
-	if err := lower.Lower(pkg, compileCaps, lower.Options{Platform: "html"}); err != nil {
+	if err := lower.Lower(pkg, compileFeats, lower.Options{Platform: "html"}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if compileCaps != lower.NoLowering() {
+	if compileFeats != lower.NoLowering() {
 		if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
 			result["error"] = err.Error()
 			return jsonStr(result)
@@ -312,12 +311,11 @@ func Generate(source, platform, lang string) string {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	genCaps := genFeats
-	if err := lower.Lower(pkg, genCaps, lower.Options{Platform: platform}); err != nil {
+	if err := lower.Lower(pkg, genFeats, lower.Options{Platform: platform}); err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if genCaps != lower.NoLowering() {
+	if genFeats != lower.NoLowering() {
 		if err := optimize.Optimize(pkg, genOptCfg); err != nil {
 			result["error"] = err.Error()
 			return jsonStr(result)

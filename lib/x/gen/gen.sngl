@@ -2,9 +2,16 @@ import ir "sngl:internal/ir"
 
 // A SNGL construct a target may emit without help.
 //
-// Each member names a lowering pass that does *not* run when the target claims
-// it. The list is closed, and grows only when a pass is added: a capability
-// nothing gates is a word with no consequence.
+// Most name a lowering pass that does *not* run when the target claims it, and
+// the list is closed: a capability nothing reads is a word with no consequence.
+//
+// Four are read somewhere other than a pass gate, and are here because a target
+// still has to be able to say them. `viewStatements` is the optimizer's, which
+// asks it before unrolling a constant loop. `insertBefore`, `asyncPost` and
+// `asyncSpawn` are grants rather than withdrawals -- the platform's container
+// can place a child, the platform can reach its drawing thread, the language
+// can spawn -- and a pass reads each to choose what to emit rather than whether
+// to run.
 enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, insertBefore, asyncPost, asyncSpawn, effects }
 
 // What a *primitive* can do with the nodes it renders, as against what a

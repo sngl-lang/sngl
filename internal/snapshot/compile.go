@@ -50,8 +50,7 @@ func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	caps := feats
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
+	if err := lower.Lower(pkg, feats, lower.Options{Platform: "html"}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower

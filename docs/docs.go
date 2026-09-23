@@ -510,8 +510,7 @@ func compilePreview(source string) string {
 	if err != nil {
 		return ""
 	}
-	caps := feats
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
+	if err := lower.Lower(pkg, feats, lower.Options{Platform: "html"}); err != nil {
 		return ""
 	}
 

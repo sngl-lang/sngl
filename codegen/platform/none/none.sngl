@@ -12,6 +12,15 @@ import shapes "sngl:ui/draw"
 import gen "sngl:x/gen"
 
 // The `none` node of a build directive: the interpreter as a build target.
+//
+// The one withdrawal, and it is the interpreter's only one because every other
+// gated pass compensates for something a backend cannot emit -- and there is no
+// backend here. This one is different in kind: `internal/interp` *does*
+// evaluate a spread itself (`eval.go` merges the source struct's fields), so
+// the flattening is not something the runtime needs. It is kept because the
+// withdrawal predates this package and nothing records why; the whole suite
+// passes without it, which makes removing it a change to make deliberately
+// rather than in passing.
 #[gen.cannot(structSpread)]
 component none() build.platform {}
 

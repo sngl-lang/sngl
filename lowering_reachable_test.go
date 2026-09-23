@@ -58,11 +58,17 @@ func TestEveryLoweringCapIsRequestedBySomeTarget(t *testing.T) {
 		}
 	}
 
-	// Every pass that runs for the target claiming nothing but is asked for by
-	// no registered pair. The ungated ones run for everybody and so are never
-	// in the difference.
+	// Every gated pass no registered pair asks for.
+	//
+	// The universe is the passes that run for a target claiming nothing *or*
+	// asking for everything, less the ones that run for everybody. The zero
+	// Features alone is not the universe and reading it as one silently halved
+	// this test: a `#[gen.wants]` pass is turned on by being *asked for*, so
+	// the zero value can never enable one, and Canvas, CanvasReactivity,
+	// FocusOrder, Context and SlotChildInstances could not have appeared here
+	// however few targets wanted them.
 	var got []string
-	for _, name := range lower.EnabledPasses(lower.Features{}) {
+	for _, name := range gatedPassUniverse() {
 		if !requested[name] {
 			got = append(got, name)
 		}
@@ -73,4 +79,37 @@ func TestEveryLoweringCapIsRequestedBySomeTarget(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Errorf("caps no registered target requests:\n got %v\nwant %v", got, want)
 	}
+}
+
+// gatedPassUniverse is every pass a target can turn on: those the zero
+// Features enables (a capability withheld) plus those every `#[gen.wants]`
+// enables (a pass asked for), less the ones that run whatever a target says.
+//
+// Built from the two extremes rather than written out, so a pass added under
+// either polarity joins it with nothing to update here -- which is the property
+// the list of unrequested names above depends on to mean anything.
+func gatedPassUniverse() []string {
+	always := map[string]bool{}
+	for _, name := range lower.EnabledPasses(lower.NoLowering()) {
+		always[name] = true
+	}
+	wantsAll := lower.NoLowering()
+	wantsAll.StructComponents = true
+	wantsAll.StdlibContextParam = true
+	wantsAll.FocusOrder = true
+	wantsAll.Canvas = true
+	wantsAll.ReactiveCanvas = true
+
+	seen := map[string]bool{}
+	var out []string
+	for _, feats := range []lower.Features{{}, wantsAll} {
+		for _, name := range lower.EnabledPasses(feats) {
+			if always[name] || seen[name] {
+				continue
+			}
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	return out
 }

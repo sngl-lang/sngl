@@ -34,6 +34,11 @@ import gen "sngl:x/gen"
 // A GLib idle callback runs on the thread that owns every widget, so a blocking
 // call can be moved off it and its answer written back.
 #[gen.can(asyncPost)]
+// Withholding reactivity is what asks for the explicit `nID.<prop> = <expr>`
+// after every mutation of a tracked var, which this platform translates to
+// `gtk_<widget>_set_<prop>(...)`; withholding declarative flattens the tree
+// into the calls that build it. The same pair fyne takes, and for the same
+// reason: GTK owns its widgets and diffs nothing.
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component gtk4(

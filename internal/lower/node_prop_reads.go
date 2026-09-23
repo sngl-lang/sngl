@@ -211,13 +211,6 @@ func rendersWithoutIdentity(n *ir.NodeInst) bool {
 	return prim != nil && !ir.HoldsIdentity(prim)
 }
 
-func identName(e ir.Expr) string {
-	if id, ok := e.(*ir.Ident); ok {
-		return id.Name
-	}
-	return "?"
-}
-
 // refuseNodePropCycle reports a node prop that reads its way back to itself.
 //
 // `circle #a(r=b.r)` beside `circle #b(r=a.r)` is a question with no answer:
