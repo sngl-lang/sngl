@@ -96,7 +96,6 @@ own blocks name.
   GTK is handed. Nothing is flattened; what the platform builds is the
   string.
 
-  ```
   A flow is one `GtkLabel` and a span is no widget at all, so neither
   primitive names a GIR class and the span nodes emit nothing. The markup
   is a Go *expression* -- a literal run escaped where it is written, a run
@@ -111,7 +110,6 @@ own blocks name.
   target has ever answered, gtk4 having no per-widget styling. So a
   heading is large and bold here and a code sample still has no
   background.
-  ```
 - [X] **fyne** — `widget.RichText`, via `pkg/go/fynetext`. Two primitives and
   a table of overrides, and the ordinary fyne path downstream of them: a
   constructor, a Model field, `Add`, a setter per reactive prop, because a
@@ -123,7 +121,6 @@ own blocks name.
   the style reaches the constructor as a builder chain rather than a record
   so only the first name needs the alias this file gave the runtime package.
 
-  ```
   Three things Fyne does not do for itself are in the runtime package, and
   each is a widget implementation rather than a language gap:
 
@@ -148,7 +145,6 @@ own blocks name.
   `HyperlinkSegment`, which carries its words and no style: what was said
   inside the link is lost, and the link is followed when it is tapped.
   `image` renders its description, Fyne's image segment being a block.
-  ```
 - [X] **bubbletea** — lipgloss. `Flow` and `Span` in `bubbletea.sngl`, a
   table of overrides, and the cascade resolved in `markup.go`: lipgloss
   renders a string and hands back a string, so the nesting is flattened at
@@ -159,14 +155,12 @@ own blocks name.
   flow's typography seeds the words and only its box style reaches the
   block.
 
-  ```
   Three answers a terminal gives differently. One face and one size, so
   `monospace` needs no override at all and a heading is bold rather than
   large. No way to follow a link, so the URL is dropped and the words are
   underlined, which is the trade `ui.link` already makes. And `image`
   renders its description in brackets, the form `ui.image` renders its own
   placeholder in.
-  ```
 - [X] **android** — `AnnotatedString` + `SpanStyle`, `LinkAnnotation.Url` for
   href, and the best-matched host of the six. Compose's `SpanStyle`
   carries color, size, family, weight and slant, leaves every one unset by
@@ -175,7 +169,6 @@ own blocks name.
   `inherit` members mean. So nothing is flattened and the *host* resolves
   the cascade, as it does on gtk4.
 
-  ```
   A span is a piece of an `AnnotatedString` *value* rather than a
   composable, so this looks like gtk4: a flow is one `Text` and neither
   primitive is a call. It needs no pre-pass, though -- android is a
@@ -205,7 +198,6 @@ own blocks name.
 
   With this, `testdata/markup_flow.sngl` no longer carries its
   `// SKIP(codegen)`: every registered platform implements the family.
-  ```
 
 ### Token palette
 
@@ -214,7 +206,6 @@ own blocks name.
   targets want values rather than classes, so it may not be one kind of
   thing on every target.
 
-  ```
   bubbletea is the first target to answer it and answers it the same way
   html does, in the vocabulary it has: one of the terminal's own sixteen
   colors, which is a palette the reader already picked. Three kinds --
@@ -242,7 +233,6 @@ own blocks name.
   and one of which cannot, is the shape the answer is taking -- and the
   open half is a host with real colours reading them from somewhere an
   application writes.
-  ```
 
 ## 3. Markdown parser and the `md:` scheme
 
@@ -259,14 +249,12 @@ be dumped and read. `testdata/markdown_import.txtar` is the golden and
   of the original buffer.
 - [X] `codegen/scheme/markdown`, registered like `file` and `http`.
 
-  ```
   One thing the plan did not have: the document is a file of the *project*,
   not something the scheme fetches, so it has to be read through the
   filesystem the program is checked against -- an in-memory package (a
   golden archive, the playground) has no other. `codegen.ProjectFSScheme`
   is that, the FS-side counterpart of `FSAwareScheme`, and `ResolveFS`
   stays the fallback for a caller with no FS.
-  ```
 - [X] Emit SNGL: a `vbox` of block components. The component is named
   `document` whatever the file is called -- deriving it from the filename
   would make the call site depend on a path the alias already stands for.
@@ -439,7 +427,6 @@ needs is below, found by reading the two files rather than by attempting them.
 - [ ] Rewrite `internal/learn/getting_started.sngl` as markdown with live
   `sngl` fences.
 
-  ```
   **What is in the way: the tutorial's prose is inside its conditionals.**
   It holds `var runPlatform`, four buttons that set it, and a run of
   `if runPlatform == "bubbletea" { CodeBlock(...) Paragraph(...) }` --
@@ -464,11 +451,9 @@ needs is below, found by reading the two files rather than by attempting them.
     inside one.
   - **Drop the interactivity** and show every platform's instructions,
     which is what most tutorials do and what markdown is shaped for.
-  ```
 
 - [ ] Delete `internal/docui/markdown.sngl` and its `innerHTML` path.
 
-  ```
   **`md:` does not replace it, and neither would §4 on its own.** The name
   is misleading: `docui.Markdown` renders no markdown. Its `src` is
   *already-rendered HTML*, produced Go-side -- `lookup.DeclPage.Body` says
@@ -486,7 +471,6 @@ needs is below, found by reading the two files rather than by attempting them.
   const string that results, folded per iteration of the loop. Worth doing
   and worth costing separately -- it is the `innerHTML` path's real
   replacement and it is not this branch's.
-  ```
 
 - [ ] Reconsider the rest of `internal/docui` — `Heading1`, `Paragraph`,
   `CodeBlock`, `Table` are the block vocabulary the importer now emits, so
