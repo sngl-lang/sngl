@@ -272,6 +272,13 @@ type checker struct {
 	// of the bargain only once every body has been checked.
 	refCoercions []refCoercion
 
+	// defaultPlaceholders maps the stand-in a field default holds until
+	// fillStructFieldDefaults checks it back to its field, and
+	// placeholderLits are the literals that copied one before then -- a
+	// package var's initializer is checked in pass1, the defaults in pass2.
+	defaultPlaceholders map[ir.Expr]*ir.StructField
+	placeholderLits     []*ir.StructLit
+
 	// Unit suffix reverse lookup.
 
 	// bodyComps is every component declared inside a body, in registration
@@ -2187,8 +2194,9 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			// so every consumer sees what a written `Counter{}` already gives
 			// them: left empty, `var c Counter` read back undefined on the web
 			// and its declared defaults everywhere else.
-			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
-				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
+			lit := &ir.StructLit{Type: typ, Def: sd}
+			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+				initExpr = lit
 			}
 		}
 		for _, name := range spec.Names {
@@ -2252,8 +2260,9 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 		} else if sd, ok := structDeclOf(typ); ok {
 			// See registerVars: a struct var with no initializer is that
 			// struct's zero value, which is its fields' defaults.
-			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
-				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
+			lit := &ir.StructLit{Type: typ, Def: sd}
+			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+				initExpr = lit
 			}
 		}
 		for _, name := range spec.Names {
@@ -3353,6 +3362,7 @@ func (c *checker) checkStructFieldDefaults() {
 	for _, sd := range c.declPkg().Structs {
 		c.fillStructFieldDefaults(sd)
 	}
+	c.resolvePlaceholderLits()
 }
 
 // fillStructFieldDefaults checks each declared default against its field type

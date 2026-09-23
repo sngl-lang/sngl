@@ -2245,8 +2245,9 @@ func (c *checker) inferStructLit(x *ast.StructExpr) ir.Expr {
 		if c.expected != nil && c.expected.Kind == ir.TypeStruct && c.expected.Decl == sd {
 			typ = c.expected
 		}
-		fields = withFieldDefaults(sd, fields)
-		return &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
+		lit := &ir.StructLit{AST: x, Type: typ, Def: sd, Fields: fields}
+		c.fillOmittedFields(lit)
+		return lit
 	}
 	// Nothing named a type, so the literal's own values do.
 	anonFields, ok := c.anonFieldsFromInits(fields)
@@ -4083,31 +4084,62 @@ func structDeclOf(t *ir.Type) (*ir.StructDef, bool) {
 	return sd, true
 }
 
-// withFieldDefaults appends the declared default of every field the literal
-// omits, so the value is complete before anything reads it. Doing it here
-// rather than in each evaluator is what makes `color{r=255}` carry its alpha
-// in the interpreter, the const folder and all four backends alike — they had
+// fillOmittedFields appends the declared default of every field lit omits, so
+// the value is complete before anything reads it. Doing it here rather than in
+// each evaluator is what makes `color{r=255}` carry its alpha in the
+// interpreter, the const folder and all four backends alike — they had
 // disagreed, and the two that agreed were both wrong.
-func withFieldDefaults(sd *ir.StructDef, fields []ir.FieldInit) []ir.FieldInit {
-	if sd == nil {
-		return fields
+func (c *checker) fillOmittedFields(lit *ir.StructLit) {
+	if lit.Def == nil {
+		return
 	}
-	written := make(map[string]bool, len(fields))
-	for _, f := range fields {
+	written := make(map[string]bool, len(lit.Fields))
+	for _, f := range lit.Fields {
 		if f.Spread {
 			// A spread supplies whatever the runtime value holds, so which
 			// fields it covers is not known here.
-			return fields
+			return
 		}
 		written[f.Name] = true
 	}
-	for _, f := range sd.Fields {
+	pending := false
+	for _, f := range lit.Def.Fields {
 		if f.Default == nil || written[f.Name] {
 			continue
 		}
-		fields = append(fields, ir.FieldInit{Name: f.Name, Value: f.Default})
+		lit.Fields = append(lit.Fields, ir.FieldInit{Name: f.Name, Value: f.Default})
+		if _, ok := c.defaultPlaceholders[f.Default]; ok {
+			pending = true
+		}
 	}
-	return fields
+	if pending {
+		c.placeholderLits = append(c.placeholderLits, lit)
+	}
+}
+
+// resolvePlaceholderLits gives every literal that copied a default before it
+// was checked the default that replaced it, keeping the ones whose struct is
+// still unfilled for a later call.
+func (c *checker) resolvePlaceholderLits() {
+	kept := c.placeholderLits[:0]
+	for _, lit := range c.placeholderLits {
+		pending := false
+		for i, fi := range lit.Fields {
+			field, ok := c.defaultPlaceholders[fi.Value]
+			if !ok {
+				continue
+			}
+			if field.Default == fi.Value {
+				pending = true
+				continue
+			}
+			lit.Fields[i].Value = field.Default
+		}
+		if pending {
+			kept = append(kept, lit)
+		}
+	}
+	c.placeholderLits = kept
 }
 
 func componentPropType(comp *ir.Component, name string) *ir.Type {

@@ -589,15 +589,22 @@ Three are silent.
   the template before `expandCall` substitutes it. `component site<T>(layout component(title string, href string) T) T` with the window written in the
   population writes two pages with the right `<title>` and body each.
 
-- **D -- a struct literal that omits a field with a declared default emits an
-  empty value.** `Frontmatter{title="Home"}` against
-  `struct Frontmatter { title string = "" weight int = 0 }` comes out as
-  `{title: "Home", weight: }` in JavaScript and the same shape in Go. Caught by
-  esbuild and by `format.Source`, not by us. Unrelated to any of the above, and
-  it will hit any `Frontmatter` struct on the first page that omits a key.
+- [X] **D -- a struct literal that omitted a field with a declared default
+  emitted an empty value.** `Frontmatter{title="Home"}` as a *package* var
+  came out as `{title: "Home", weight: }`. Not a backend bug: a package var's
+  initializer is checked in pass1 and field defaults in pass2, so the literal
+  copied the typed, valueless placeholder the field held until then. The
+  checker now records a literal that copied one and gives it the checked
+  default once `checkStructFieldDefaults` has run, so every target is fixed in
+  one place. `testdata/struct_literal_omitted_default.txtar` covers html,
+  bubbletea and android, with all three `run/` records passing (android
+  through gradle with the SDK installed locally), and `deny`s the empty
+  spelling on each; with the checker change stashed it fails at esbuild.
+  The unwritten `var zero Frontmatter` went through the same placeholder and
+  is in the fixture, as is a default naming a const declared below the var.
 
-Order: **D**, then **A**. Both are still open after the merge, and both
-reproduce as described. With B and C gone, the importer is free to emit either
+Order: **D**, then **A**. D is closed; A still reproduces as described. With B
+and C gone, the importer is free to emit either
 form: it writes the windows, or it hands `T` to the program's layout.
 
 ## 9. The window collapse -- landed on main, merged here
