@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/internal/imports"
@@ -444,6 +445,9 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 						walk(h.Func.Block)
 					}
 				}
+				for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+					walk(n.Slots[name].Body)
+				}
 			case *ir.If:
 				walk(n.Body)
 				walk(n.Else)
@@ -452,6 +456,9 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 				walk(n.Else)
 			case *ir.SlotInst:
 				walk(n.Children)
+				for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+					walk(n.Slots[name].Body)
+				}
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 			case *ir.ContextProvider:
