@@ -25,7 +25,7 @@ func exprSlots() []string {
 	types := []reflect.Type{
 		reflect.TypeFor[Package](), reflect.TypeFor[Component](),
 		reflect.TypeFor[Window](), reflect.TypeFor[Func](),
-		reflect.TypeFor[Var](), reflect.TypeFor[Timer](),
+		reflect.TypeFor[Var](),
 		reflect.TypeFor[Output](), reflect.TypeFor[Context](),
 		reflect.TypeFor[ContextProvider](), reflect.TypeFor[Prop](),
 		reflect.TypeFor[Param](), reflect.TypeFor[StructField](),
@@ -135,11 +135,6 @@ func markedPackage() *Package {
 				&SlotInst{Args: []Expr{mark("SlotInst.Args")}},
 			},
 		}},
-		Timers: []*Timer{{
-			Interval: mark("Timer.Interval"),
-			Enabled:  mark("Timer.Enabled"),
-			Handler:  fn("Timer.Handler"),
-		}},
 		Windows: []*Window{{
 			Props: []Arg{
 				{Name: WindowHref, Value: mark("Window.Props[0]")},
@@ -151,37 +146,38 @@ func markedPackage() *Package {
 }
 
 func TestRewriteVisitsEveryExprSlot(t *testing.T) {
-	pkg := markedPackage()
-	seen := map[string]bool{}
-	if err := Walk(pkg, func(n Node) error {
-		if lit, ok := n.(*Literal); ok && lit.Value != "" {
-			seen[lit.Value] = true
+	for _, tr := range traversals {
+		seen := map[string]bool{}
+		if err := tr.walk(markedPackage(), func(n Node) error {
+			if lit, ok := n.(*Literal); ok && lit.Value != "" {
+				seen[lit.Value] = true
+			}
+			return nil
+		}); err != nil {
+			t.Fatalf("%s: %v", tr.name, err)
 		}
-		return nil
-	}); err != nil {
-		t.Fatalf("Walk: %v", err)
-	}
 
-	// Slots whose marker is placed indirectly: the fixture reaches them
-	// through an owned Func or StructLit rather than by holding an Expr.
-	indirect := map[string]bool{
-		"Lambda.Func": true, "Timer.Handler": true,
-		"EventHandler.Func": true, "Var.Handlers": true,
-		"Window.ErrorHandler": true, "Output.Options": true,
-	}
-
-	for _, slot := range exprSlots() {
-		if !seen[slot] {
-			t.Errorf("ir.Rewrite never visited %s\n"+
-				"\tEvery Expr-typed field must be reached by the walk, or named as a\n"+
-				"\tdeliberate reference in the opt-out list on Rewrite's doc comment.\n"+
-				"\tIf this is a new field: wire it into walkexprs.go and add a marker\n"+
-				"\tto markedPackage in this file.", slot)
+		// Slots whose marker is placed indirectly: the fixture reaches them
+		// through an owned Func or StructLit rather than by holding an Expr.
+		indirect := map[string]bool{
+			"Lambda.Func":       true,
+			"EventHandler.Func": true, "Var.Handlers": true,
+			"Window.ErrorHandler": true, "Output.Options": true,
 		}
-	}
-	for slot := range indirect {
-		if !seen[slot] {
-			t.Errorf("ir.Rewrite never reached the body owned by %s", slot)
+
+		for _, slot := range exprSlots() {
+			if !seen[slot] {
+				t.Errorf("ir.%s never visited %s\n"+
+					"\tEvery Expr-typed field must be reached by the walk, or named as a\n"+
+					"\tdeliberate reference in the opt-out list on Rewrite's doc comment.\n"+
+					"\tIf this is a new field: wire it into walkexprs.go and walk.go, and\n"+
+					"\tadd a marker to markedPackage in this file.", tr.name, slot)
+			}
+		}
+		for slot := range indirect {
+			if !seen[slot] {
+				t.Errorf("ir.%s never reached the body owned by %s", tr.name, slot)
+			}
 		}
 	}
 }

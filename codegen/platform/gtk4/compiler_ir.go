@@ -176,8 +176,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	// component's vars would re-add the originals and collide their
 	// synthesized __root/__slot scratch fields.
 	for _, tv := range ctx.ModelState() {
-		v := tv.Var
-		if v.Synthesized {
+		// nil for a binding no declaration made: a window's route parameters,
+		// which the slot population declares and the request fills. The
+		// special cases below are all things a body or a pass declared, so
+		// they are asked only where there is a declaration to ask.
+		v := tv.Var()
+		if v != nil && v.Synthesized {
 			if v.Name == "__root" {
 				// The __root sentinel is initialized lazily inside BuildUI:
 				// cgo calls aren't valid in struct init.
@@ -228,13 +232,13 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if tv.Comp != nil {
 			varGC = golang.NewIRContext(ctx.ExprCtx.ForComponent(tv.Comp))
 		}
-		goType := golang.VarGoType(v)
-		initVal := irVarInit(v, varGC)
+		goType := golang.BindGoType(tv.Type(), tv.Init())
+		initVal := golang.LowerBindInit(tv.Type(), tv.Init(), varGC)
 		if strings.HasPrefix(goType, "time.") {
 			gc.RequireImport("time")
 		}
 		info.binds = append(info.binds, irBind{
-			name:   v.Name,
+			name:   tv.Name(),
 			goType: goType,
 			init:   initVal,
 			// Consts skip getter/setter: the field name would collide with
@@ -242,7 +246,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 			// name Go cannot export -- every `__`-prefixed one, which is
 			// every name a lowering pass synthesized, and nothing outside the
 			// program reads one.
-			noAccessors: v.IsConst || golang.ExportName(v.Name) == v.Name,
+			noAccessors: tv.IsConst() || golang.ExportName(tv.Name()) == tv.Name(),
 		})
 	}
 
@@ -310,8 +314,23 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 
 	// Shared into every translator so OnCreateNode builds the GtkDrawingArea +
 	// cairo trampoline and OnDefault wires reactive redraws.
-	c.shared.canvasByID, c.shared.canvasByFunc = canvasutil.Collect(c.ctx.Pkg, c.ctx.AllFuncs())
+	c.shared.canvasByID, c.shared.canvasByNode = canvasutil.Collect(c.ctx.Canvases)
 	hasCanvas := len(c.shared.canvasByID) > 0
+	// The draw funcs are codegen's own and are in no func list, so they are
+	// emitted from the drawings rather than fished out of the loop below --
+	// which is what the `canvasByFunc[fn] != nil` arm there used to do.
+	emitCanvasDrawFuncs := func(b *strings.Builder) {
+		all := c.ctx.Canvases.All()
+		for i := range all {
+			// A drawing inside a component with a record of its own is that
+			// record's; emitComponentInstance emits it with the instance
+			// receiver.
+			if isInstanceComponent(all[i].Owner) {
+				continue
+			}
+			emitIRCanvasDraw(b, &all[i], gc, c.registry, c.shared)
+		}
+	}
 
 	var widgetFields []widgetField
 	// lower.passPlatformExtensionBody is always on, so every platform override
@@ -357,12 +376,8 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		// stateFuncs is the set ModelFreeFuncs kept from the call sites; see
 		// its doc for what a package var costs a free function.
-		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && c.shared.canvasByFunc[fn] == nil && fn.LoweredFromTag == "" && !fn.Synthesized {
+		if fn.Receiver == "" && !componentFuncs[fn] && !stateFuncs[fn] && fn.LoweredFromTag == "" && !fn.Synthesized {
 			emitGTK4FreeFunc(&funcBuf, fn, gc)
-			continue
-		}
-		if c.shared.canvasByFunc[fn] != nil {
-			emitIRCanvasDraw(&funcBuf, fn, gc, c.registry, c.shared)
 			continue
 		}
 		if fn.Synthesized {
@@ -375,6 +390,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		}
 		emitGTK4Func(&funcBuf, fn, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
 	}
+	emitCanvasDrawFuncs(&funcBuf)
 
 	createTargets := collectCreateComponentTargets(c.ctx.Pkg)
 	for _, cc := range c.ctx.NonRootComponents() {
@@ -382,7 +398,7 @@ func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []
 		// its own; its widget fields and its state stay off the Model, which
 		// is the whole point. See emitComponentInstance.
 		if isInstanceComponent(cc.Component) {
-			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped)
+			emitComponentInstance(&funcBuf, cc, gc, c.ctx.Pkg, c.registry, c.shared, c.wrapped, c.ctx.Canvases.All())
 			continue
 		}
 		if createTargets[cc.Component] {
@@ -716,8 +732,6 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 				*ir.Break, *ir.Continue:
 				// No CreateNode call to harvest.
@@ -739,13 +753,8 @@ func collectNodeCTypes(pkg *ir.Package) map[string]string {
 			}
 		}
 	}
-	for _, w := range pkg.Windows {
-		walk(w.Body)
-		for _, fn := range w.Funcs {
-			if fn != nil {
-				walk(fn.Block)
-			}
-		}
+	for _, w := range ir.AllWindows(pkg) {
+		walk(w.Children)
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
@@ -793,8 +802,6 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			}
 		}
 	}
@@ -806,8 +813,8 @@ func collectCreateComponentTargets(pkg *ir.Package) map[*ir.Component]bool {
 			}
 		}
 	}
-	for _, w := range pkg.Windows {
-		walk(w.Body)
+	for _, w := range ir.AllWindows(pkg) {
+		walk(w.Children)
 	}
 	for _, fn := range pkg.Funcs {
 		if fn != nil {
@@ -949,11 +956,6 @@ func gtk4ComponentFuncs(pkg *ir.Package) map[*ir.Func]bool {
 	// A window owns funcs the way a component does, and its state is in the
 	// same Model -- so one of its funcs is a method too. This has to agree
 	// with golang.ModelFreeFuncs, which is what told the call sites.
-	for _, w := range pkg.Windows {
-		for _, fn := range w.Funcs {
-			out[fn] = true
-		}
-	}
 	return out
 }
 

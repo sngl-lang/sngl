@@ -87,6 +87,10 @@ type fyneSpec struct {
 	// after the node's CreateNode, which is the only place they are known to
 	// be in scope.
 	CtorProps map[string]ir.Expr
+	// CtorOnly names the props the constructor reads and no setter can write
+	// again. The write that seeded CtorProps is answered by the constructor;
+	// any other write to one of these reaches the screen not at all.
+	CtorOnly map[string]bool
 	// Axis is "horizontal"/"vertical" on a container that lays children out
 	// along one, empty otherwise.
 	Axis string

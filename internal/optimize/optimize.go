@@ -147,8 +147,14 @@ type evalCtx struct {
 	// one that reads itself stops rather than recursing. Same shape and same
 	// place as foldingProp, for the same reason.
 	evaluatingConst map[*ir.Var]bool
-	values          map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
-	inlining        map[*ir.Component]int // recursion guard for component call inlining
+	// sharedConsts are the root package's consts a reference keeps naming
+	// (sharedAggregateConsts); copyShared is set while folding a position
+	// that copies them anyway (foldOwned). writes is shared by every child.
+	sharedConsts map[*ir.Var]bool
+	copyShared   bool
+	writes       *writesAnalysis
+	values       map[ir.Symbol]any     // const vars, params, and loop vars → evaluated values
+	inlining     map[*ir.Component]int // recursion guard for component call inlining
 	// inlineCapped records that maxInlineDepth stopped a component expansion
 	// rather than the recursion folding to its base case. A pointer so it
 	// survives child(), which copies the struct: the outermost call of a
@@ -201,6 +207,8 @@ type optimizerRun struct {
 	fileAssets []FileAsset
 	err        error // first fatal eval error across root + imports
 	native     *nativeEval
+	root       *ir.Package
+	writes     *writesAnalysis
 }
 
 // maxEvalRounds bounds the round loop. Every round either caches a value for
@@ -317,6 +325,8 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 		cfg:    cfg,
 		done:   map[*ir.Package]bool{},
 		native: native,
+		root:   pkg,
+		writes: newWritesAnalysis(),
 	}
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).
@@ -394,7 +404,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		// Skip native-scheme shells: they hold no SNGL bodies that the
 		// optimizer can act on.
 		if imp.Native != nil && len(imp.Pkg.Components) == 0 &&
-			len(imp.Pkg.Windows) == 0 && len(imp.Pkg.Timers) == 0 {
+			len(imp.Pkg.Windows) == 0 {
 			continue
 		}
 		if subCtx := r.foldPkg(imp.Pkg); subCtx != nil {
@@ -417,6 +427,13 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		foldingProp:     make(map[windowProp]bool),
 		evaluatingConst: make(map[*ir.Var]bool),
 		inlineCapped:    new(bool),
+		writes:          r.writes,
+	}
+	// Only the root's: a backend emits the package it compiles, and an
+	// imported package's const reached through an inlined body has no
+	// declaration in the output to name.
+	if pkg == r.root {
+		ctx.sharedConsts = sharedAggregateConsts(pkg)
 	}
 
 	// Phase 1: Evaluate all top-level consts.
@@ -426,7 +443,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 			if val, ok := evalExpr(c.Init, ctx); ok {
 				ctx.values[c] = val
 			}
-			c.Init = foldExpr(c.Init, ctx)
+			c.Init = foldOwned(c.Init, ctx)
 		}
 	}
 	slog.Debug("optimize: consts", "duration", time.Since(start))
@@ -442,7 +459,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	for _, s := range pkg.Structs {
 		for _, f := range s.Fields {
 			if f.Default != nil {
-				f.Default = foldExpr(f.Default, ctx)
+				f.Default = foldOwned(f.Default, ctx)
 			}
 		}
 	}
@@ -457,7 +474,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	// runs after this; folding it here is the only chance it gets.
 	for _, c := range pkg.Contexts {
 		if c.Default != nil {
-			c.Default = foldExpr(c.Default, ctx)
+			c.Default = foldOwned(c.Default, ctx)
 		}
 	}
 	for _, o := range pkg.Outputs {
@@ -474,9 +491,6 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 	for _, w := range pkg.Windows {
 		foldWindow(w, ctx)
 	}
-	for _, t := range pkg.Timers {
-		foldTimer(t, ctx)
-	}
 	slog.Debug("optimize: fold", "duration", time.Since(start))
 
 	if ctx.err != nil && r.err == nil {
@@ -487,7 +501,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 
 func foldVar(v *ir.Var, ctx *evalCtx) {
 	if v.Init != nil {
-		v.Init = foldExpr(v.Init, ctx)
+		v.Init = foldOwned(v.Init, ctx)
 	}
 	for _, h := range v.Handlers {
 		h.Func.Block = foldStmts(h.Func.Block, ctx)
@@ -497,7 +511,7 @@ func foldVar(v *ir.Var, ctx *evalCtx) {
 func foldComponent(comp *ir.Component, ctx *evalCtx) {
 	for _, p := range comp.Props {
 		if p.Default != nil {
-			p.Default = foldExpr(p.Default, ctx)
+			p.Default = foldOwned(p.Default, ctx)
 		}
 	}
 	for _, v := range comp.Vars {
@@ -505,9 +519,6 @@ func foldComponent(comp *ir.Component, ctx *evalCtx) {
 	}
 	for _, f := range comp.Funcs {
 		f.Block = foldStmts(f.Block, ctx)
-	}
-	for _, t := range comp.Timers {
-		foldTimer(t, ctx)
 	}
 	comp.Body = foldStmts(comp.Body, ctx)
 }
@@ -524,31 +535,10 @@ func foldWindow(w *ir.Window, ctx *evalCtx) {
 			w.Props[i].Value = foldExpr(w.Props[i].Value, ctx)
 		}
 	}
-	for _, v := range w.Vars {
-		foldVar(v, ctx)
-	}
-	for _, f := range w.Funcs {
-		f.Block = foldStmts(f.Block, ctx)
-	}
 	if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
 		w.ErrorHandler.Func.Block = foldStmts(w.ErrorHandler.Func.Block, ctx)
 	}
-	for _, t := range w.Timers {
-		foldTimer(t, ctx)
-	}
-	w.Body = foldStmts(w.Body, ctx)
-}
-
-func foldTimer(t *ir.Timer, ctx *evalCtx) {
-	if t.Interval != nil {
-		t.Interval = foldExpr(t.Interval, ctx)
-	}
-	if t.Enabled != nil {
-		t.Enabled = foldExpr(t.Enabled, ctx)
-	}
-	if t.Handler != nil {
-		t.Handler.Block = foldStmts(t.Handler.Block, ctx)
-	}
+	w.Children = foldStmts(w.Children, ctx)
 }
 
 // getNativeImports lazily builds the native imports map from the IR package.

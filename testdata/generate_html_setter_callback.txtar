@@ -55,11 +55,11 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { name__inst0: "World", count__inst0: 0 };
-  function main_update__inst0(state2, newName, newCount) {
-    state2.name__inst0 = newName;
-    __n0.textContent = state2.name__inst0;
-    state2.count__inst0 = newCount;
-    __n1.textContent = String(state2.count__inst0);
+  function update__inst0(newName, newCount) {
+    state.name__inst0 = newName;
+    __n0.textContent = state.name__inst0;
+    state.count__inst0 = newCount;
+    __n1.textContent = String(state.count__inst0);
   }
   function String(v) {
     return "" + v;
@@ -68,7 +68,7 @@ body { font-family: system-ui, sans-serif; }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   $0.addEventListener("click", function() {
-    main_update__inst0(state, "Hello", 5);
+    update__inst0("Hello", 5);
   });
   function __sngl_init() {
     __n0.textContent = state.name__inst0;
@@ -79,4 +79,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6838b41d586d5be265c98423f170604b
+pass sha256:abaf30869dcba2b59034fe5d444b12f8

@@ -140,7 +140,7 @@ func TestInlineComponents_SkipsReactiveForBody(t *testing.T) {
 
 	pkg := &ir.Package{Components: []*ir.Component{card, main}}
 
-	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+	if err := lowerInlineComponents(pkg, without("inlineComponents"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -175,7 +175,7 @@ func TestInlineComponents_SkipsRecursiveComponent(t *testing.T) {
 
 	pkg := &ir.Package{Components: []*ir.Component{tree, main}}
 
-	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+	if err := lowerInlineComponents(pkg, without("inlineComponents"), Options{}); err != nil {
 		t.Fatal(err)
 	}
 

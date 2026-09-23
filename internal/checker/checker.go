@@ -44,6 +44,22 @@ type Config struct {
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
 	Replaces map[string]string
+	// Lowered says this document was printed from lowered IR rather than
+	// written by anyone, so the rules about what a *program* may say do not
+	// apply to it.
+	//
+	// One rule needs it today: a node's prop may not be assigned. That is a
+	// statement about programs -- a prop is what the tree says it is -- and
+	// the lowering's whole job is to turn it into the `__n0.value = expr` a
+	// host actually runs. In IR the two are told apart by Var.Synthesized;
+	// printed and re-parsed, `text #__n0(…)` is an ordinary node with an
+	// ordinary id, and nothing in the text says which side of the pipeline
+	// wrote it.
+	//
+	// So the caller says. Only a caller that lowered the IR itself can, which
+	// is the round-trip tests and `sngl dump --stage lowered`; a program
+	// reaching the checker through any other path is held to the rule.
+	Lowered bool
 	// LibSources substitutes the source of a library package, keyed by lib
 	// path ("platform/teststub"). It exists for the in-test platform stubs,
 	// which register a plugin with no lib/ directory behind it; production
@@ -429,6 +445,9 @@ type checker struct {
 	// channel, so its declaration is where the payload is written down.
 	boundaryComp *ir.Component
 	windowType   *ir.Type
+	// handleCount is the outermost scope a counted node handle was reached
+	// through, for the diagnostic reportCountedHandleRead writes.
+	handleCount map[*ir.Var]nodeCount
 	// currentWindow is the window whose body is being checked, so a func or a
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
@@ -2637,12 +2656,17 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if !rest {
 		return slot
 	}
-	if len(slot.Params) > 0 {
-		// Its content is written as ordinary children, once, so there is no
-		// per-invocation binding site to collect a parameter at.
-		c.error(pd.Pos, "rest slot %q takes no parameters: bare children are written once, with nothing to bind them to", pd.Name)
-		slot.Params = nil
-	}
+	// A rest slot may be scoped, and what reaches its parameters is the
+	// population written by name -- `component content(v) { … }` -- and only
+	// that. Children written bare have no binding site, and the declaration's
+	// own names are not one: a spread has nowhere to write a name, so there
+	// is nothing there to collect the arguments into and a caller that wants
+	// them switches forms. Reading them off the declaration instead would
+	// make a parameter appear in a body that never named it.
+	//
+	// A second, unscoped rest slot for the bare case is not the way out
+	// either: a component declares at most one, so bare children would have
+	// nowhere unambiguous to land.
 	return slot
 }
 
@@ -2884,7 +2908,7 @@ func (c *checker) collectComponentVarDecl(stmt ast.Stmt) []*ir.Var {
 func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	name := visualNodeTarget(vn)
 	if c.isWindowNode(name) {
-		w := c.buildWindow(vn)
+		w := c.windowShell(vn)
 		c.checkDuplicateWindowID(w, c.pkgWindowIDs)
 		c.pkg.Windows = append(c.pkg.Windows, w)
 		return
@@ -2937,7 +2961,7 @@ func (c *checker) checkPackageBody() {
 	c.pushScope()
 	defer c.popScope()
 	for _, st := range c.pendingPkgBody {
-		c.declareNodeIDsStmt(st, false)
+		c.declareNodeIDsStmt(st, nil)
 	}
 	for _, st := range c.pendingPkgBody {
 		if checked := c.checkStmt(st); checked != nil {
@@ -2976,6 +3000,31 @@ func (c *checker) hoistPkgBodyWindowIDs() {
 			}
 			c.pkgBodyWindowIDs[v.Name] = v
 		}
+	}
+}
+
+// hoistWindowInteriorIDs declares the ids inside each registered window as
+// `option<T>` in the package scope, so a read of one from another window's
+// handler is the count it carries rather than a name nothing declares.
+//
+// It is a pass of its own because a window written at the root of a file is
+// *registered* in pass1 rather than left in pkg.Body, so declareNodeIDsStmt --
+// which counts a window it meets as a statement -- never walks one. It runs
+// before the window bodies are checked, since a handler in the second window
+// is what reads the first window's ids, and checkWindow then hoists the same
+// ids plain into the window's own scope, shadowing these.
+//
+// Two windows writing one id is the flat namespace it has always been: the
+// first claims the name and the second is skipped, so the type names the first
+// window's component. Only the message is affected -- every read of a counted
+// handle is refused either way.
+func (c *checker) hoistWindowInteriorIDs() {
+	for _, w := range c.pkg.Windows {
+		vn := w.VisualNode()
+		if vn == nil {
+			continue
+		}
+		c.declareNodeIDsIn(windowBodyBlock(vn, c.windowComp), []nodeCount{countWindow})
 	}
 }
 
@@ -3137,18 +3186,17 @@ func typeAssignable(src, dst *ir.Type) bool {
 	return false
 }
 
-// checkDuplicateWindowID reports an error if w.Name is non-empty and another
-// window with the same Name already exists in seen. Otherwise records w in
-// seen and returns.
+// checkDuplicateWindowID reports an error if w's id is non-empty and another
+// window already carries it. Otherwise records w in seen and returns.
 func (c *checker) checkDuplicateWindowID(w *ir.Window, seen map[string]bool) {
-	if w == nil || w.Name == "" || seen == nil {
+	if w == nil || w.ID == "" || seen == nil {
 		return
 	}
-	if seen[w.Name] {
-		c.error(w.AST.Pos, "duplicate window id %q", w.Name)
+	if seen[w.ID] {
+		c.error(ir.StmtPos(w), "duplicate window id %q", w.ID)
 		return
 	}
-	seen[w.Name] = true
+	seen[w.ID] = true
 }
 
 // windowPropArgs is vn's arguments without its event handlers: what
@@ -3164,48 +3212,31 @@ func windowPropArgs(args ast.ArgList) ast.ArgList {
 	return out
 }
 
-// buildWindow builds the window a `window #id` node declares.
+// windowShell is the window a registration reserves: what the node *is*, and
+// nothing it has to read an expression for.
 //
-// The window is fresh every time and the *handle* is what persists: a
-// reference made before the body is checked and one made after both resolve to
-// the binding declareNodeIDs hoisted, which is a var rather than this. That is
+// Registration is pass1, and an expression checked there cannot see a
+// declaration pass1 has not reached yet -- `window(title = greeting())` above
+// `func greeting()` was `undefined: greeting`, where the same window one level
+// into a component body checked clean. So the props, the @error and the body
+// are all checkWindow's, in pass2, which is where every other node's are.
+//
+// The shell is fresh every time and the *handle* is what persists: a reference
+// made before the body is checked and one made after both resolve to the
+// binding declareNodeIDs hoisted, which is a var rather than this. That is
 // what lets the window itself stop being a symbol.
-func (c *checker) buildWindow(vn *ast.VisualNode) *ir.Window {
-	w := &ir.Window{Name: vn.ID, Handle: c.windowHandle(vn)}
-	w.AST = vn
-	// URL template params like `{name}` in href become string vars on the
-	// window, in scope for the href literal itself as well as the body — so
-	// they are read off the AST and declared before the scope below is pushed,
-	// ahead of anything that checks the href expression.
-	for _, name := range hrefPathParams(vn) {
-		w.Vars = append(w.Vars, &ir.Var{Name: name, Type: TypString, RouteParam: true})
+func (c *checker) windowShell(vn *ast.VisualNode) *ir.Window {
+	return &ir.Window{
+		AST:  vn,
+		Name: visualNodeTarget(vn),
+		ID:   vn.ID,
+		// The generic declaration, not the specialization checkWindow binds:
+		// that is what NodeInst.Component holds for every node, because a
+		// specialization is for checking one call site and is a component
+		// nothing else has heard of.
+		Component: c.windowComp,
+		Handle:    c.windowHandle(vn),
 	}
-	c.pushScope()
-	defer c.popScope()
-	for _, v := range w.Vars {
-		c.declare(vn.Pos, v)
-	}
-	// Checked against the declaration like any other component's node. A
-	// window took whatever it was given: `window(width=320)` named a prop the
-	// #[builtin("window")] component does not declare, and nothing said so --
-	// so it read as a prop gtk4 ignored rather than one nobody declared.
-	c.validateVisualNodeProps(vn, c.windowComp)
-	// checkAndSplitArgs is the one path that measures an argument against its
-	// declared prop type. A window read its three props by name instead, so
-	// `title=42` checked clean and html emitted a page with no <title>.
-	//
-	// The bindings are empty by construction: no window prop is declared
-	// bidirectional, so `:title` is reported by extractBindings rather than
-	// returned.
-	w.Comp = c.windowComp
-	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), c.windowComp)
-	c.reportSelfReferentialProps(vn.Pos, vn.ID, w.Handle, w.Props)
-	for _, a := range vn.Args.Args {
-		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
-			w.ErrorHandler = c.buildErrorHandler(&eh)
-		}
-	}
-	return w
 }
 
 // buildErrorBoundary builds an ir.ErrorBoundary from an errorBoundary visual
@@ -3403,12 +3434,15 @@ func (c *checker) pass2() {
 	c.checkComponentBodies()
 
 	c.hoistPkgBodyWindowIDs()
+	c.hoistWindowInteriorIDs()
 
-	// Check window bodies (skip those already checked in context, e.g., inside for-loops).
+	// The windows pass1 registered. A window written as a *statement* is
+	// checked where it stands and never reaches this list, so there is
+	// nothing here to have been checked already -- ir.Window.Checked, and the
+	// checker-side set that replaced it, guarded against a double-check the
+	// two paths cannot produce.
 	for _, w := range c.pkg.Windows {
-		if !w.Checked {
-			c.checkWindowBody(w)
-		}
+		c.checkWindow(w)
 	}
 	// A window body may declare one too.
 	c.checkComponentBodies()
@@ -3418,12 +3452,6 @@ func (c *checker) pass2() {
 
 	c.checkPackageBody()
 	c.checkOutputTree()
-
-	// Check timer handler bodies (component timers are checked inside
-	// checkComponentBody so they can see component vars in scope).
-	for _, t := range c.pkg.Timers {
-		c.checkTimerBody(t)
-	}
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
@@ -3846,7 +3874,7 @@ func (c *checker) bodyOwnerName() string {
 	case c.currentComponent != nil:
 		return c.currentComponent.Name
 	case c.currentWindow != nil:
-		return c.currentWindow.Name
+		return c.currentWindow.ID
 	}
 	return ""
 }
@@ -4090,21 +4118,13 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 				continue // registered in pass1, rebound above
 			default:
 				if s := c.checkStmt(stmt); s != nil {
-					if w, ok := s.(*ir.Window); ok {
+					if w, ok := s.(*ir.NodeInst); ok && ir.IsWindowNode(w) {
 						c.checkDuplicateWindowID(w, seenWindowIDs)
 					}
 					comp.Body = append(comp.Body, s)
 				}
 			}
 		}
-	}
-
-	// Check timer handler bodies inside the component scope so they can
-	// reference component-level vars/funcs. Timers themselves were attached
-	// to comp.Timers during the body pass above via the timer visual-node
-	// special case.
-	for _, t := range comp.Timers {
-		c.checkTimerBody(t)
 	}
 
 	// The body is captured rather than re-read: checkPendingExtensions swaps an
@@ -4124,59 +4144,133 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 	})
 }
 
-func (c *checker) checkWindowBody(w *ir.Window) {
-	if w.AST != nil {
-		defer c.fileOf(w.AST.Pos)()
+// checkWindow checks everything a `window #id(…) { … }` node says: its props
+// against the declaration, its @error, and its body.
+//
+// All of it in pass2, which is what separates a window from a node the checker
+// meets as a statement only in *where the shell came from*. A window at the
+// root of a file is registered in pass1 so that `output(entry = home)` and a
+// sibling window have something to resolve against; what it holds is read
+// here, where a declaration further down the file is in scope.
+func (c *checker) checkWindow(w *ir.Window) {
+	vn := w.VisualNode()
+	if vn == nil {
+		return
 	}
+	defer c.fileOf(vn.Pos)()
+
+	// The specialization is what the call site is checked against, minted once
+	// -- binding walks the argument expressions, and a second walk reports
+	// each of their diagnostics twice. The window's route parameters are a
+	// declared prop and not a reading of its href: `params` is a struct value,
+	// T is inferred from it, and the body reads the fields through the scoped
+	// rest slot's binding.
+	spec := c.bindComponentTypeParams(c.windowComp, windowPropArgs(vn.Args))
+	// Checked against the declaration like any other component's node. A
+	// window took whatever it was given: `window(width=320)` named a prop the
+	// #[builtin("window")] component does not declare, and nothing said so --
+	// so it read as a prop gtk4 ignored rather than one nobody declared.
+	c.validateVisualNodeProps(vn, spec)
+	// checkAndSplitArgs is the one path that measures an argument against its
+	// declared prop type. A window read its three props by name instead, so
+	// `title=42` checked clean and html emitted a page with no <title>.
+	//
+	// The bindings are empty by construction: no window prop is declared
+	// bidirectional, so `:title` is reported by extractBindings rather than
+	// returned. The handlers are held back by windowPropArgs, because an
+	// @error is a boundary's handler rather than a widget's event.
+	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
+	c.reportSelfReferentialProps(vn.Pos, vn.ID, w.Handle, w.Props)
+	for _, a := range vn.Args.Args {
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
+			w.ErrorHandler = c.buildErrorHandler(&eh)
+		}
+	}
+
 	prevWindow := c.currentWindow
 	c.currentWindow = w
 	defer func() { c.currentWindow = prevWindow }()
 	c.pushScope()
 	defer c.popScope()
 
-	for _, v := range w.Vars {
-		c.declare(varPos(v), v)
-	}
-	for _, fn := range w.Funcs {
-		if fn.Nested {
-			continue
+	// The ids first: a reference to one resolves anywhere in the body, so they
+	// are hoisted before the body is read. Which block that is depends on how
+	// the body was written, which is the one thing about a window's population
+	// that is not checkSlotPopulations' business.
+	c.declareNodeIDs(windowBodyBlock(vn, spec))
+
+	// **A window's body is the population of its rest slot**, and the peel is
+	// the one every other node's children get. Its parameter is an ordinary
+	// *ir.Param like any other population's -- what a target does with it is
+	// the target's answer, and codegen is where "a route's parameters are one
+	// more cell the Model holds" is written down.
+	//
+	// **A window's parameters are reached through that population and only
+	// through it.** `component content(v) { … }` is where the name `v` is
+	// written, the same as for any other scoped slot, and children written
+	// bare see no parameters at all -- there is nowhere in a spread to write a
+	// name, so there is nothing for the arguments to be collected into. A body
+	// that wants them switches forms. Reading the names off the declaration
+	// instead would put a binding in a body that never named one, and would
+	// put it there for every window in the language.
+	//
+	// So a window that writes no population has no cell either, and nothing
+	// downstream binds a route parameter for a page that does not read one.
+	slots, bare := c.checkSlotPopulations(vn, spec)
+	if rest := spec.RestSlot(); rest != nil && slots[rest.Name] != nil {
+		sc := slots[rest.Name]
+		w.Children = sc.Body
+		if len(sc.Params) > 0 {
+			w.Params = sc.Params[0]
 		}
-		c.declare(funcDeclPos(fn), fn)
-	}
-	if w.AST != nil {
-		c.declareNodeIDs(&w.AST.Block)
-	}
-	for _, fn := range w.Funcs {
-		if fn.Nested {
-			continue
+	} else {
+		if !bare.IsDefined() {
+			return
 		}
-		c.checkFuncBody(fn)
+		w.Children = c.checkBlockIR(&bare)
 	}
 
-	if w.AST != nil && w.AST.Block.IsDefined() {
-		w.Body = c.checkBlockIR(&w.AST.Block)
-		// A window is its own IR construct, so its children never reach the
-		// slot check every other node's go through. What it accepts is still
-		// the declaration's answer: `content ...component ui.node`.
-		// A window is written at the root of a file, where there is no owner,
-		// or in a component body, where a slot insertion in it is that
-		// component's -- and checkVisualNodeIR reaches this with one.
-		owner, body, at := c.currentComponent, w.Body, w.AST.Pos
-		c.deferTreeCheck(func() {
-			c.checkTreeMembership(owner, at, body,
-				slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
-		})
-		c.checkWindowVarHandlers(w)
+	// A window is its own IR construct, so its children never reach the
+	// slot check every other node's go through. What it accepts is still
+	// the declaration's answer: `content ...component ui.node`.
+	// A window is written at the root of a file, where there is no owner,
+	// or in a component body, where a slot insertion in it is that
+	// component's -- and checkVisualNodeIR reaches this with one.
+	owner, body, at := c.currentComponent, w.Children, vn.Pos
+	c.deferTreeCheck(func() {
+		c.checkTreeMembership(owner, at, body,
+			slotTree(c.windowComp, c.windowComp.RestSlot()), "in window")
+	})
+	c.checkWindowVarHandlers(w)
+}
+
+// windowBodyBlock is the block whose node ids belong to this window: the
+// population of its rest slot where one was written, and the window's own
+// block where none was.
+//
+// It is a peel the population check runs again, and it is here because the ids
+// are hoisted before that check reads the body. Everything else the peel used
+// to decide -- which slot, whether it is duplicated, whether the bare children
+// contradict it -- is checkSlotPopulations'; this answers only "which lines".
+func windowBodyBlock(vn *ast.VisualNode, comp *ir.Component) *ast.StmtBlock {
+	rest := comp.RestSlot()
+	if rest == nil {
+		return &vn.Block
 	}
+	for _, st := range vn.Block.Stmts {
+		if cd, ok := st.(*ast.ComponentDecl); ok && cd.Name == rest.Name {
+			return &cd.Body
+		}
+	}
+	return &vn.Block
 }
 
 // windowStateVars is a window's own state: `w.Vars` plus the vars its body
-// declares. Both, because the checker sees a body `var` as an ir.LocalVar
-// statement and passHoistState is what moves those onto `w.Vars` later -- so
-// reading `w.Vars` alone finds nothing here.
+// The checker sees a body `var` as an ir.LocalVar statement; passHoistState
+// is what later moves those onto the window's container.
 func windowStateVars(w *ir.Window) []*ir.Var {
-	out := append([]*ir.Var{}, w.Vars...)
-	for _, s := range w.Body {
+	var out []*ir.Var
+	for _, s := range w.Children {
 		if lv, ok := s.(*ir.LocalVar); ok && lv.Sym != nil {
 			out = append(out, lv.Sym)
 		}
@@ -4213,61 +4307,275 @@ func (c *checker) checkWindowVarHandlers(w *ir.Window) {
 // mechanism that lets lowered IR — whose synthesized node handles (`__nN`,
 // `__root`) are referenced by bare name — round-trip through reparse + check.
 func (c *checker) declareNodeIDs(block *ast.StmtBlock) {
-	c.declareNodeIDsIn(block, false)
+	c.declareNodeIDsIn(block, nil)
 }
 
-// declareNodeIDsIn hoists the node ids in block. inLoop marks a body that a
-// `for` repeats: a window id there names the list of windows the loop
-// produces, which collectForLoopWindowIDs binds, not a single window.
-func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, inLoop bool) {
+// nodeCount is what one scope says about a handle reached through it from
+// outside. An `if` may not have run, so the handle is an `option`; a `for` may
+// have run any number of times, so it is a `list`. A for-else is the first and
+// not the second: it runs at most once, when the loop did not run at all.
+type nodeCount int
+
+const (
+	countOption nodeCount = iota
+	countList
+	// countWindow is an `if`'s count with a window's reason: a window may not
+	// be open, and on a target whose windows are separate documents it never
+	// is from the other side. It is a kind of its own only so the diagnostic
+	// can name what was crossed -- the type it wraps in is the same option.
+	countWindow
+)
+
+// scopeNoun names what a count crossed, and scopeAdvice says what to do about
+// it -- for the diagnostic reportCountedHandleRead writes at the read.
+func (k nodeCount) scopeNoun() string {
+	switch k {
+	case countList:
+		return "a for"
+	case countWindow:
+		return "another window"
+	default:
+		return "an if"
+	}
+}
+
+func (k nodeCount) scopeAdvice() string {
+	switch k {
+	case countList:
+		return "read it inside the loop"
+	case countWindow:
+		return "a window may not be open, and on a target whose windows are separate documents it never is from out here"
+	default:
+		return "read it inside the if"
+	}
+}
+
+// withCount is counts plus one, copied rather than appended in place. The walk
+// below is depth-first and hands the result to a callee that appends to it
+// again, so sharing a backing array would let a deeper level overwrite the
+// count a shallower one is still holding.
+func withCount(counts []nodeCount, k nodeCount) []nodeCount {
+	out := make([]nodeCount, len(counts)+1)
+	copy(out, counts)
+	out[len(counts)] = k
+	return out
+}
+
+// declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
+// crossed to reach it, outermost first, and is what the handle's type is
+// wrapped in: a node written inside a `for` inside an `if` reads from outside
+// both as `option<list<T>>`.
+//
+// Each block's own ids are hoisted again, at their own depth, into the scope
+// checkBlockIR pushes for it — so a read from *inside* the scope is the plain
+// handle it has always been, shadowing the wrapped binding this leaves
+// outside.
+func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, counts []nodeCount) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
 	for _, s := range block.Stmts {
-		c.declareNodeIDsStmt(s, inLoop)
+		c.declareNodeIDsStmt(s, counts)
 	}
 }
 
-func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
+// declareOwnNodeIDs hoists only the ids at this block's own depth: it reaches
+// through a node's children, which are the same scope, and stops at an `if` or
+// a `for`, which are not. The block each of those opens hoists its own when
+// checkBlockIR reaches it, so descending here would claim the name twice --
+// and claim it *before* the block's own statements are checked, which is what
+// made a `#label` inside an `if` collide with a sibling `var label` that
+// previously won the name outright.
+// headNames are the names the enclosing construct's own head binds -- a loop's
+// variables. They are declared in the scope the head pushed, one out from the
+// body, so a LookupLocal here would miss them; and they are what the body was
+// written against, so `for var item = items { text #item(value=item) }` must
+// keep reading the element. An id is the thing that gives way, as it does to a
+// sibling declaration.
+func (c *checker) declareOwnNodeIDs(block *ast.StmtBlock, headNames ...string) {
+	if block == nil || !block.IsDefined() {
+		return
+	}
+	declared := blockDeclaredNames(block)
+	for _, n := range headNames {
+		if n == "" {
+			continue
+		}
+		if declared == nil {
+			declared = map[string]bool{}
+		}
+		declared[n] = true
+	}
+	c.declareOwnNodeIDsIn(block, declared)
+}
+
+func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]bool) {
+	if block == nil || !block.IsDefined() {
+		return
+	}
+	for _, s := range block.Stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			target := visualNodeTarget(n)
+			if !declared[n.ID] {
+				c.declareNodeID(n.ID, target, c.isWindowNode(target), nil, shadowOuter)
+			}
+			// Through a canvas as through anything else. Stopping at a family
+			// change here while declareNodeIDsStmt no longer does left an id
+			// written in a canvas inside an `if` hoisted with the `if`'s count
+			// at the outer scope and never re-declared in the `if`'s own -- so
+			// a read from inside that same `if` was told to "read it inside
+			// the if", which is where it already was.
+			c.declareOwnNodeIDsIn(&n.Block, declared)
+		case *ast.CallStmt:
+			if target, id, isElem := elementRefCallInfo(n.Call); isElem && !declared[id] {
+				c.declareNodeID(id, target, false, nil, shadowOuter)
+			}
+		}
+	}
+}
+
+// blockDeclaredNames is the names this block's own statements declare. A node
+// id written beside one of them declines to it, which is the rule a same-scope
+// `var label` beside a `#label` has always had: the hoist runs before the
+// statements are checked, so measuring the scope would find nothing there yet
+// and the var would then collide with the id rather than win over it.
+//
+// Only this block's own statements, not a nested one's: an id inside an `if`
+// is in a scope of its own and shadows an outer binding, which is the whole
+// point of hoisting it there.
+func blockDeclaredNames(block *ast.StmtBlock) map[string]bool {
+	if block == nil || !block.IsDefined() {
+		return nil
+	}
+	var out map[string]bool
+	add := func(name string) {
+		if name == "" {
+			return
+		}
+		if out == nil {
+			out = map[string]bool{}
+		}
+		out[name] = true
+	}
+	specs := func(ss []ast.VarSpec) {
+		for _, sp := range ss {
+			for _, n := range sp.Names {
+				add(n)
+			}
+		}
+	}
+	for _, s := range block.Stmts {
+		switch n := s.(type) {
+		case *ast.VarDecl:
+			specs(n.Specs)
+		case *ast.ConstDecl:
+			specs(n.Specs)
+		case *ast.FuncDef:
+			add(n.Name)
+		case *ast.StructDef:
+			add(n.Name)
+		case *ast.EnumDef:
+			add(n.Name)
+		case *ast.UnitDef:
+			add(n.Name)
+		case *ast.ComponentDecl:
+			add(n.Name)
+		}
+	}
+	return out
+}
+
+func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
 		target := visualNodeTarget(n)
 		isWindow := c.isWindowNode(target)
-		if isWindow && inLoop {
+		if isWindow && countsRepeat(counts) {
 			// The loop hoists this id as a list of windows.
 			return
 		}
-		c.declareNodeID(n.ID, target, isWindow)
-		// Descend into the node's own children, but not into a nested
-		// window — a window has its own scope and hoists its ids itself.
-		if !isWindow {
-			c.declareNodeIDsIn(&n.Block, inLoop)
+		c.declareNodeID(n.ID, target, isWindow, counts, yieldToOuter)
+		switch {
+		case isWindow:
+			// A window is a second rendering surface, and what is under one is
+			// reached from outside it at the count that surface confers: it
+			// may not be open. The window hoists these same ids plain into its
+			// own scope (checkWindow), which is what a read from inside
+			// resolves to and why only a read from outside carries the count.
+			c.declareNodeIDsIn(&n.Block, withCount(counts, countWindow))
+		default:
+			// Every other family change hoists like any other scope. A canvas
+			// used to stop the hoist outright, because a shape is spliced into
+			// the calls that paint it before any backend sees one and a typed
+			// `dot.r` therefore rendered nothing -- but refusing the id was
+			// restating that silence rather than answering it. passNodePropReads
+			// answers it: a prop read off a node the target keeps nothing of is
+			// the expression the prop was given, and which nodes those are is
+			// what a primitive says with `#[gen.renders(identity)]`.
+			c.declareNodeIDsIn(&n.Block, counts)
 		}
 	case *ast.CallStmt:
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
 		if target, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id, target, false)
+			c.declareNodeID(id, target, false, counts, yieldToOuter)
 		}
 	case *ast.IfStmt:
-		c.declareNodeIDsIn(&n.Body, inLoop)
-		c.declareNodeIDsIn(&n.Else, inLoop)
+		c.declareNodeIDsIn(&n.Body, withCount(counts, countOption))
+		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))
 	case *ast.ForStmt:
-		c.declareNodeIDsIn(&n.Body, true)
-		c.declareNodeIDsIn(&n.Else, true)
+		c.declareNodeIDsIn(&n.Body, withCount(counts, countList))
+		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))
 	}
+}
+
+// countsRepeat reports whether any scope crossed repeats its body, which is
+// the question a window asks: one inside a `for` is hoisted by
+// collectForLoopWindowIDs as the list of windows the loop produces, and one
+// inside an `if` is the single window it always was.
+func countsRepeat(counts []nodeCount) bool {
+	return slices.Contains(counts, countList)
 }
 
 // declareNodeID binds one node id. target names the component the node
 // instantiates.
-func (c *checker) declareNodeID(id, target string, isWindow bool) {
+// idMode says what a node id may take the name from, and the two hoists differ
+// because they put the binding in different places.
+//
+// shadowOuter is the id in the scope it was written in: it is lexically here,
+// so it wins over anything an enclosing scope bound -- a var, a const, a
+// package declaration -- exactly as a nested binding of any other kind does.
+// What it declines to is a name this same block declares (blockDeclaredNames),
+// which is the sibling `var label` beside `#label` that has always won.
+//
+// yieldToOuter is the counted hoist, which puts the id in a scope the node is
+// *not* in so that a read from out there carries the scope's count. That
+// binding exists only to be refused, so it must not take a name an outer scope
+// legitimately holds: `#greeting` inside an `if` may not stop a package
+// `const greeting` resolving out here, where the node is not.
+type idMode int
+
+const (
+	shadowOuter idMode = iota
+	yieldToOuter
+)
+
+func (c *checker) declareNodeID(id, target string, isWindow bool, counts []nodeCount, mode idMode) {
 	if id == "" {
 		return
 	}
-	// Skip if the name already resolves (a prop, var, func, or outer symbol);
-	// node ids never shadow an existing binding.
-	if _, ok := c.scope.Lookup(id); ok {
+	if _, ok := c.scope.LookupLocal(id); ok {
 		return
+	}
+	if sym, ok := c.scope.Lookup(id); ok && mode == yieldToOuter {
+		// The one thing a counted hoist still shadows is a node handle an
+		// enclosing scope bound, which is this same id hoisted at a shallower
+		// count -- a window's interior id met again through an `if`, say.
+		v, isVar := sym.(*ir.Var)
+		if !isVar || !v.NodeHandle {
+			return
+		}
 	}
 	// A component's methods are registered under the component as receiver, not
 	// in scope by bare name: inferIdent reaches them only when the scope lookup
@@ -4284,9 +4592,24 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	// bound and a scope lookup is whatever the program wrote.
 	typ := c.nodeHandleType(target)
 	if isWindow {
+		// A window's count is still collectForLoopWindowIDs' to say; the
+		// general rule reaches ordinary nodes only.
 		typ = c.windowType
+	} else {
+		typ = countedHandleType(typ, counts)
 	}
-	c.declare(ast.Pos{}, &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true})
+	v := &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true}
+	if len(counts) > 0 {
+		// The outermost count is what a reader out here crossed first, and so
+		// what the diagnostic names. Kept beside the var rather than on it:
+		// nothing but the message reads it, and ir.Var already carries three
+		// fields for the sake of one node kind.
+		if c.handleCount == nil {
+			c.handleCount = map[*ir.Var]nodeCount{}
+		}
+		c.handleCount[v] = counts[0]
+	}
+	c.declare(ast.Pos{}, v)
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
@@ -4299,6 +4622,21 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 		}
 	}
 	return dynFallback("node id names an instance of %q, which resolves to no component", target)
+}
+
+// countedHandleType wraps a handle in the counts of the scopes it was reached
+// through, innermost first: counts is outermost-first, so the last entry is
+// the scope nearest the node and binds tightest.
+func countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
+	for _, count := range slices.Backward(counts) {
+		switch count {
+		case countOption, countWindow:
+			typ = ir.OptionOf(typ)
+		case countList:
+			typ = ir.ListOf(typ)
+		}
+	}
+	return typ
 }
 
 // componentNamed resolves a visual node's target, bare or `pkg.Name`.
@@ -4369,67 +4707,6 @@ func (c *checker) windowHandle(vn *ast.VisualNode) *ir.Var {
 		return nil
 	}
 	return v
-}
-
-// hrefPathParams extracts URL template placeholders like {name} from a
-// window's href. Both plain literals ("/{name}") and interpolation exprs
-// (parser-lifted "/" + name) are handled. Returns the bare identifier name
-// for each {x} placeholder.
-func hrefPathParams(vn *ast.VisualNode) []string {
-	if vn == nil {
-		return nil
-	}
-	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name != "href" {
-			continue
-		}
-		switch v := arg.Value.(type) {
-		case *ast.LiteralExpr:
-			href, _ := v.StringValue()
-			return extractBraceParams(href)
-		case *ast.InterpolationExpr:
-			var out []string
-			for _, part := range v.Parts {
-				if id, ok := part.(*ast.IdentExpr); ok {
-					out = append(out, id.Name)
-				}
-			}
-			return out
-		}
-	}
-	return nil
-}
-
-func extractBraceParams(s string) []string {
-	var out []string
-	for {
-		i := strings.Index(s, "{")
-		if i < 0 {
-			break
-		}
-		j := strings.Index(s[i:], "}")
-		if j < 0 {
-			break
-		}
-		name := s[i+1 : i+j]
-		if name != "" {
-			out = append(out, name)
-		}
-		s = s[i+j+1:]
-	}
-	return out
-}
-
-func (c *checker) checkTimerBody(t *ir.Timer) {
-	if t.AST == nil || !t.AST.Block.IsDefined() {
-		return
-	}
-	defer c.fileOf(t.AST.Pos)()
-	c.pushScope()
-	defer c.popScope()
-	defer c.enterFuncBody()()
-	t.Handler.Block = c.checkBlockIR(&t.AST.Block)
 }
 
 // validateStringDomainLiteral checks whether a string literal is valid for a

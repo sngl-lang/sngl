@@ -35,10 +35,10 @@ func TestReactivity_ComponentInSlotEmitsCreateComponent(t *testing.T) {
 
 	pkg := &ir.Package{Components: []*ir.Component{card, main}}
 
-	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+	if err := lowerInlineComponents(pkg, without("inlineComponents"), Options{}); err != nil {
 		t.Fatalf("inline: %v", err)
 	}
-	if err := lowerReactivity(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerReactivity(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatalf("reactivity: %v", err)
 	}
 

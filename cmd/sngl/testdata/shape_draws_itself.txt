@@ -1,0 +1,41 @@
+# A shape that draws itself is refused, rather than expanding forever.
+#
+# passShapeDraw expands a composed shape's body into the calls that paint it,
+# and a recursive one meets the same call again. It ran until the process died,
+# with nothing said -- `sngl generate` on the program below never returned.
+#
+# The other inliners leave a recursive component standing and let the target
+# instantiate it at run time. That is not open here: a drawing is the list of
+# calls that paint it, and there is no node left for a target to instantiate.
+#
+# A script test because the refusal needs a target picked -- the pass is gated
+# on the `canvas` want, which a build resolves and a fixture has no way to say.
+#
+# `n = 3` rather than `n = depth` would fold the recursion away at build time
+# and never reach the pass, which is the second half of the claim: a bounded
+# recursion still compiles.
+
+! sngl generate --lang none --platform html --out out .
+stderr 'nest draws itself'
+stderr 'no depth to stop at'
+
+-- app.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+// A var, so the recursion is not folded away before lowering sees it.
+var depth = 3
+
+component nest(n int) draw.shape {
+    draw.circle(cx=1.0, cy=1.0, r=1.0)
+
+    if n > 0 {
+        nest(n=n - 1)
+    }
+}
+
+ui.window #w(title="t") {
+    draw.canvas(width=10px, height=10px) {
+        nest(n=depth)
+    }
+}

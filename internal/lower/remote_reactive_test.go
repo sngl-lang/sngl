@@ -105,7 +105,7 @@ func keyElems(t *testing.T, call *ir.Call) []ir.Expr {
 // call and its contents on another, and by here it is the contents either way.
 func TestARefInAKeyIsErased(t *testing.T) {
 	f := makeQueryFixture(followedKey)
-	if err := lowerQueries(f.pkg, Caps{}, Options{}); err != nil {
+	if err := lowerQueries(f.pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerQueries: %v", err)
 	}
 	elem := keyElems(t, f.call)[0]
@@ -121,7 +121,7 @@ func TestARefInAKeyIsErased(t *testing.T) {
 // already re-evaluated.
 func TestAFollowedQueryVarBecomesItsLookup(t *testing.T) {
 	f := makeQueryFixture(followedKey)
-	if err := lowerQueries(f.pkg, Caps{}, Options{}); err != nil {
+	if err := lowerQueries(f.pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerQueries: %v", err)
 	}
 
@@ -150,7 +150,7 @@ func TestAFollowedQueryVarBecomesItsLookup(t *testing.T) {
 // it `&` would say nothing.
 func TestASnapshotQueryVarStaysAVar(t *testing.T) {
 	f := makeQueryFixture(snapshotKey)
-	if err := lowerQueries(f.pkg, Caps{}, Options{}); err != nil {
+	if err := lowerQueries(f.pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerQueries: %v", err)
 	}
 	found := false
@@ -168,7 +168,7 @@ func TestASnapshotQueryVarStaysAVar(t *testing.T) {
 // a settle state var to start one.
 func TestAQueryRegistersNoKicker(t *testing.T) {
 	f := makeQueryFixture(followedKey)
-	if err := lowerQueries(f.pkg, Caps{}, Options{}); err != nil {
+	if err := lowerQueries(f.pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerQueries: %v", err)
 	}
 	if len(f.pkg.AsyncKickers) != 0 {

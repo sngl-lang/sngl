@@ -12,12 +12,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The 2D primitives are translated in this package rather than through an
-// IntrinsicEmitter, which renders one expression and could not carry the
-// statements and pending style these need. Declaring the package is how that
-// implementation becomes visible to the completeness check.
-func init() { codegen.DeclarePlatformImplements("fyne", "sngl:internal/draw") }
-
 // canvasMeta aliases the shared platform-neutral canvas metadata type. The
 // collection + Go stdlib struct decls live in codegen/canvasutil (shared with
 // gtk4); the gg-specific translation stays in this package.
@@ -25,22 +19,27 @@ type canvasMeta = canvasutil.Meta
 
 // Canvas2D rendering for fyne.
 //
-// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func whose body is a sequence of canvas
-// intrinsic CallStmts (CanvasSave / CanvasApplyStyle / CanvasDrawRect / ...).
+// passShapeDraw (internal/lower) replaces a canvas's shape children in place
+// with the statements that paint them -- nothing is synthesized, and the
+// `_canvasDrawN` name is codegen's own. Every one of those statements is what a
+// shape override's own `@draw` handler was written as. fyne declares no shape
+// overrides and inherits `sngl:language/go`'s, which paint through
+// `#[go.native]` methods on the pkg/go/canvas runtime -- so what arrives here
+// is ordinary method calls the Go emitter already handles, and this package
+// translates no canvas intrinsic at all.
+//
 // passDeclarative then flattens the canvas NodeInst to a
 // `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
-// dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight.
+// dimensions onto the record canvasutil.Collect reads.
 //
 // fyne renders via the shared pkg/go/canvas runtime (software raster over
 // github.com/fogleman/gg): ctx is a *snglcanvas.Context, the canvas widget is a
 // *canvas.Image built from ctx.Result(). Reactive redraws re-rasterise and call
 // Refresh().
 //
-// The canvas intrinsics are NOT registered in the lang-keyed intrinsic
-// registry (that one is shared and JS-specific). They are translated via the
-// shared canvasutil.GoContextStmts helper (also used by bubbletea) into
-// Context method calls.
+// There are no canvas intrinsics left to translate. The shared
+// canvasutil.GoContextStmts helper that turned the last two into Context
+// method calls is gone with them.
 
 // snglCanvasImportPath is the SNGL Go canvas runtime; snglCanvasAlias is the
 // forced import alias (the path's default "canvas" collides with fyne's own
@@ -77,21 +76,8 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 }
 
 // collectCanvases delegates to the shared canvasutil collector.
-func collectCanvases(pkg *ir.Package, funcs []*ir.Func) (map[string]*canvasMeta, map[*ir.Func]*canvasMeta) {
-	return canvasutil.Collect(pkg, funcs)
-}
-
-// canvasByIDFor delegates to the shared canvasutil rebuild.
-func canvasByIDFor(byFunc map[*ir.Func]*canvasMeta) map[string]*canvasMeta {
-	return canvasutil.ByIDFor(byFunc)
-}
-
-// translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt -- the save
-// and restore bracketing a composed shape -- into pkg/go/canvas Context calls.
-// The drawing itself is `sngl:language/go`'s overrides, written in SNGL against
-// the same runtime.
-func (t *fyneTranslator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
-	return canvasutil.GoContextStmts(cs)
+func collectCanvases(draws *codegen.CanvasDraws) (map[string]*canvasMeta, map[*ir.NodeInst]*canvasMeta) {
+	return canvasutil.Collect(draws)
 }
 
 // methodStmt builds `receiver.Method(args...)` as a CallStmt.
@@ -108,7 +94,7 @@ func methodStmt(receiver ir.Expr, method string, args ...ir.Expr) ir.Stmt {
 //	m.<id>.Image = m.<id>Ctx.Result()
 //	m.<id>.Refresh()
 func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {
-	m := t.canvasMetaForDraw(rs.DrawFunc)
+	m := t.canvasMetaForNode(rs.Canvas)
 	if m == nil {
 		return nil
 	}
@@ -123,7 +109,7 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: t.recvIdent(),
-		Func:     &ir.Func{Name: m.Draw.Name},
+		Func:     &ir.Func{Name: m.DrawName},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
 	return []ir.Stmt{
@@ -138,13 +124,13 @@ func (t *fyneTranslator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stm
 	}
 }
 
-// canvasMetaForDraw resolves the canvasMeta for a draw func via the
+// canvasMetaForNode resolves the canvasMeta for a canvas node via the
 // translator's shared map.
-func (t *fyneTranslator) canvasMetaForDraw(draw *ir.Func) *canvasMeta {
-	if t.canvasByFunc == nil {
+func (t *fyneTranslator) canvasMetaForNode(n *ir.NodeInst) *canvasMeta {
+	if t.canvasByNode == nil {
 		return nil
 	}
-	return t.canvasByFunc[draw]
+	return t.canvasByNode[n]
 }
 
 // canvasCtxField names the *snglcanvas.Context Model field backing a canvas
@@ -225,7 +211,7 @@ func (t *fyneTranslator) emitCanvasCreate(id string) []ir.Stmt {
 	drawCall := &ir.Call{
 		Type:     ir.TypVoid,
 		Receiver: t.recvIdent(),
-		Func:     &ir.Func{Name: m.Draw.Name},
+		Func:     &ir.Func{Name: m.DrawName},
 		Args:     []ir.CallArg{{Value: dcField}},
 	}
 	newImg := &ir.Call{
@@ -268,7 +254,7 @@ func (t *fyneTranslator) rasterExpr(m *canvasMeta, w, h int) string {
 			"\t\t%s.%s(ctx)\n"+
 			"\t\treturn ctx.Result()\n"+
 			"\t})",
-		recv, canvasSurfaceField(m.ID), w, h, m.Scaling, recv, m.Draw.Name)
+		recv, canvasSurfaceField(m.ID), w, h, m.Scaling, recv, m.DrawName)
 }
 
 // canvasSurfaceField names the reusable drawing target behind a scaled canvas.
@@ -287,15 +273,19 @@ func newFyneSizeCall(w, h int) *ir.Call {
 	}
 }
 
-// emitIRCanvasDraw emits a synthesized `_canvasDrawN(ctx)` func as a Model
-// method `func (m *Model) _canvasDrawN(ctx *snglcanvas.Context)`, translating
-// each canvas-intrinsic CallStmt body statement into Context method calls.
-func emitIRCanvasDraw(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, byFunc map[*ir.Func]*canvasMeta, specs map[string]*fyneSpec, importSink func(string)) {
-	tr := newFyneTranslator(gc, specs, func(string, string) {}, importSink)
-	tr.canvasByFunc = byFunc
-	body := codegen.WalkLowered(context.Background(), fn.Block, tr)
+// emitIRCanvasDraw wraps one drawing's statements in a Model method
+// `func (m *Model) _canvasDrawN(ctx *snglcanvas.Context)`, translating each
+// canvas-intrinsic CallStmt into Context method calls.
+//
+// The method is this platform's, not a declaration the IR carries: three
+// places invoke a drawing, so the statements are wrapped once here and called
+// by name.
+func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext, byNode map[*ir.NodeInst]*canvasMeta, specs map[string]*fyneSpec, importSink func(string), failSink func(error)) {
+	tr := newFyneTranslator(gc, specs, func(string, string) {}, importSink, failSink)
+	tr.canvasByNode = byNode
+	body := codegen.WalkLowered(context.Background(), cv.Draw, tr)
 	synthesized := &ir.Func{
-		Name:     fn.Name,
+		Name:     cv.Name,
 		Receiver: "Model",
 		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
 		Return:   ir.TypVoid,

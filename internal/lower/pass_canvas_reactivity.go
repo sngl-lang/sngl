@@ -6,12 +6,15 @@ import (
 
 var passCanvasReactivity = pass{
 	name:    "CanvasReactivity",
-	enabled: func(c Caps) bool { return c.ReactiveCanvas },
+	enabled: func(c Features) bool { return c.ReactiveCanvas },
 	apply:   lowerCanvasReactivity,
 }
 
-func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
-	if !pkg.UsesDrawShapes() {
+func lowerCanvasReactivity(pkg *ir.Package, _ Features, _ Options) error {
+	// Not gated on pkg.UsesDrawShapes(): passShapeDraw runs first and leaves
+	// no shape in the tree, so the gate answers no for every canvas there is.
+	// collectCanvases finds nothing in a program with no drawing anyway.
+	if pkg == nil {
 		return nil
 	}
 	// A package-level var is state a body may write like any other, and
@@ -24,9 +27,9 @@ func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
 		stateVars := mergeVarSets(pkgVars, mutableVars(comp.Vars))
 		injectCanvasRedraws(comp.Body, comp.Vars, stateVars, &comp.Funcs)
 	}
+	injectCanvasRedraws(pkg.Body, nil, pkgVars, &pkg.Funcs)
 	for _, w := range pkg.Windows {
-		stateVars := mergeVarSets(pkgVars, mutableVars(w.Vars))
-		injectCanvasRedraws(w.Body, w.Vars, stateVars, &w.Funcs)
+		injectCanvasRedraws(w.Children, nil, pkgVars, &pkg.Funcs)
 	}
 	return nil
 }
@@ -75,10 +78,7 @@ func injectCanvasRedraws(stmts []ir.Stmt, vars []*ir.Var, stateVars map[*ir.Var]
 			mutated := handlerMutatedVars(h.Func, stateVars)
 			for _, e := range canvases {
 				if varsOverlap(mutated, e.deps) {
-					h.Func.Block = append(h.Func.Block, &ir.CanvasRedrawStmt{
-						Canvas:   e.canvas,
-						DrawFunc: e.canvas.CanvasDraw,
-					})
+					h.Func.Block = append(h.Func.Block, &ir.CanvasRedrawStmt{Canvas: e.canvas})
 				}
 			}
 		}
@@ -102,13 +102,13 @@ type canvasEntry struct {
 }
 
 // collectCanvases walks stmts recursively and appends each canvas NodeInst
-// (CanvasDraw != nil) with its reactive dep set to out.
+// with its reactive dep set to out.
 func collectCanvases(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out *[]canvasEntry) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if n.CanvasDraw != nil {
-				deps := drawFuncStateVars(n.CanvasDraw, stateVars)
+			if ir.IsShapeContainer(n) {
+				deps := canvasStateVars(n, stateVars)
 				if len(deps) > 0 {
 					*out = append(*out, canvasEntry{canvas: n, deps: deps})
 				}
@@ -123,24 +123,41 @@ func collectCanvases(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out *[]canvasE
 		case *ir.For:
 			collectCanvases(n.Body, stateVars, out)
 			collectCanvases(n.Else, stateVars, out)
-		case *ir.Window:
-			collectCanvases(n.Body, stateVars, out)
 		}
 	}
 }
 
-// drawFuncStateVars collects the state vars read by a synthesized canvas draw
-// func by walking its draw calls.
+// canvasStateVars is the state a drawing reads, so a write to any of it is a
+// write the canvas has to be repainted for.
 //
-// Nested statements count: a canvas whose shapes come from a `for` puts every
-// one of its calls inside the loop, and reading only the top level found no
-// dependency at all — so the page drew the display once and never again.
-func drawFuncStateVars(fn *ir.Func, stateVars map[*ir.Var]bool) map[*ir.Var]bool {
+// Read off the shape tree rather than off a draw function, there being no draw
+// function until codegen builds one. It reaches a composed shape's declaration
+// body as well as the call site's own props: a shape a program declares may
+// read the component's state directly, and a walk of the call sites alone sees
+// only what was passed in.
+func canvasStateVars(canvas *ir.NodeInst, stateVars map[*ir.Var]bool) map[*ir.Var]bool {
 	out := make(map[*ir.Var]bool)
+	seen := map[*ir.Component]bool{}
 	var walk func(stmts []ir.Stmt)
 	walk = func(stmts []ir.Stmt) {
 		for _, s := range stmts {
 			switch n := s.(type) {
+			case *ir.NodeInst:
+				for _, p := range n.Props {
+					gatherStateVarRefs(p.Value, stateVars, out)
+				}
+				for _, h := range n.Handlers {
+					if h.Func != nil {
+						walk(h.Func.Block)
+					}
+				}
+				// Once per declaration: a shape drawn twenty times reads the
+				// same names, and a shape that renders itself would not stop.
+				if n.Component != nil && len(n.Component.Body) > 0 && !seen[n.Component] {
+					seen[n.Component] = true
+					walk(n.Component.Body)
+				}
+				walk(n.Children)
 			case *ir.CallStmt:
 				if n.Call == nil {
 					continue
@@ -156,10 +173,14 @@ func drawFuncStateVars(fn *ir.Func, stateVars map[*ir.Var]bool) map[*ir.Var]bool
 				gatherStateVarRefs(n.Iter, stateVars, out)
 				walk(n.Body)
 				walk(n.Else)
+			case *ir.ErrorBoundary:
+				walk(n.Children)
+			case *ir.ContextProvider:
+				walk(n.Children)
 			}
 		}
 	}
-	walk(fn.Block)
+	walk(canvas.Children)
 	return out
 }
 
@@ -281,7 +302,7 @@ func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvase
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if n.CanvasDraw != nil {
+			if ir.IsShapeContainer(n) {
 				continue // canvas nodes themselves don't have user handlers
 			}
 			for i := range n.Handlers {
@@ -291,10 +312,7 @@ func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvase
 				mutated := handlerMutatedVars(n.Handlers[i].Func, stateVars)
 				for _, e := range canvases {
 					if varsOverlap(mutated, e.deps) {
-						n.Handlers[i].Func.Block = append(n.Handlers[i].Func.Block, &ir.CanvasRedrawStmt{
-							Canvas:   e.canvas,
-							DrawFunc: e.canvas.CanvasDraw,
-						})
+						n.Handlers[i].Func.Block = append(n.Handlers[i].Func.Block, &ir.CanvasRedrawStmt{Canvas: e.canvas})
 					}
 				}
 			}
@@ -305,8 +323,6 @@ func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvase
 		case *ir.For:
 			injectIntoNodeHandlers(n.Body, stateVars, canvases)
 			injectIntoNodeHandlers(n.Else, stateVars, canvases)
-		case *ir.Window:
-			injectIntoNodeHandlers(n.Body, stateVars, canvases)
 		}
 	}
 }
@@ -358,10 +374,7 @@ func redrawIfWrites(block *[]ir.Stmt, stateVars map[*ir.Var]bool, canvases []can
 	gatherBlockMutations(*block, stateVars, mutated)
 	for _, e := range canvases {
 		if varsOverlap(mutated, e.deps) {
-			*block = append(*block, &ir.CanvasRedrawStmt{
-				Canvas:   e.canvas,
-				DrawFunc: e.canvas.CanvasDraw,
-			})
+			*block = append(*block, &ir.CanvasRedrawStmt{Canvas: e.canvas})
 		}
 	}
 }

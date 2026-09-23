@@ -1294,8 +1294,8 @@ func TestAnonymousWindowHasEmptyName(t *testing.T) {
 	if len(pkg.Windows) != 1 {
 		t.Fatalf("got %d windows, want 1", len(pkg.Windows))
 	}
-	if got := pkg.Windows[0].Name; got != "" {
-		t.Fatalf("want empty Name, got %q", got)
+	if got := pkg.Windows[0].ID; got != "" {
+		t.Fatalf("want empty id, got %q", got)
 	}
 }
 

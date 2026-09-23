@@ -5,7 +5,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/none/testrunner"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -18,11 +17,6 @@ func (g *Generator) Description() string {
 	return "Marker platform for headless test execution — generates no code."
 }
 func (g *Generator) SupportedLangs() []string { return nil }
-func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
-	f := lang.Capabilities()
-	f.StructSpread = false
-	return f
-}
 
 // Generate rejects code generation requests. The none platform is a marker
 // for headless test execution; it emits no files.

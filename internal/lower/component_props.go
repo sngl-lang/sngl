@@ -38,7 +38,7 @@ var passComponentProps = pass{
 	apply:   lowerComponentProps,
 }
 
-func lowerComponentProps(pkg *ir.Package, _ Caps, opts Options) error {
+func lowerComponentProps(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -114,13 +114,6 @@ func promoteProps(c *ir.Component) {
 			if h.Func != nil {
 				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
 			}
-		}
-	}
-	for _, t := range c.Timers {
-		t.Interval = renameInExpr(t.Interval, renames, symRenames)
-		t.Enabled = renameInExpr(t.Enabled, renames, symRenames)
-		if t.Handler != nil {
-			t.Handler.Block = renameIdents(t.Handler.Block, renames, symRenames)
 		}
 	}
 

@@ -2,7 +2,6 @@ package android
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -12,19 +11,20 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The 2D primitives are translated in this package rather than through an
-// IntrinsicEmitter, which renders one expression and could not carry the
-// statements and pending style these need. Declaring the package is how that
-// implementation becomes visible to the completeness check.
-func init() { codegen.DeclarePlatformImplements("android", "sngl:internal/draw") }
-
 // Canvas2D rendering for android via Jetpack Compose's DrawScope.
 //
-// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func whose body is a sequence of canvas
-// intrinsic CallStmts (CanvasSave / CanvasApplyStyle / CanvasDrawRect / ...).
+// passShapeDraw (internal/lower) replaces a canvas's shape children in place
+// with the statements that paint them -- nothing is synthesized, and the
+// `_canvasDrawN` name is codegen's own. Every one of those statements is what a
+// shape override's own `@draw` handler was written as -- for android, Compose draw
+// calls from `component shapes.circle[platform]`. The lowering contributes
+// nothing of its own: the CanvasSave/CanvasRestore bracket it used to put
+// around a composed shape is gone, and was a pair of no-ops here anyway, a
+// DrawScope managing its state per primitive.
+//
 // android is declarative (it keeps the NodeInst tree), so the canvas node
-// reaches renderNode with n.CanvasDraw set. We emit a Compose
+// reaches renderNode, and ctx.Canvases.ForNode finds its drawing. We emit a
+// Compose
 //
 //	Canvas(modifier = Modifier.size(w.dp, h.dp)) { /* this: DrawScope */ ... }
 //
@@ -33,11 +33,10 @@ func init() { codegen.DeclarePlatformImplements("android", "sngl:internal/draw")
 // so recomposition redraws the Canvas automatically — that's why android sets
 // ReactiveCanvas=false and CanvasRedrawStmt is a no-op (see compose_ir.go).
 //
-// The canvas intrinsics are NOT registered in the lang-keyed intrinsic registry
-// (RegisterIntrinsic("kotlin", ...)) — that registry is for import-free Kotlin
-// builtins and would be wrong for the Compose-specific 2D API. They are
-// translated here, inside the android emitter, the same way gtk4/fyne translate
-// the same intrinsics inside their own platform packages.
+// There are no canvas intrinsics left to register anywhere. Where a platform
+// once had to translate them itself — the lang-keyed registry being wrong for
+// a Compose-specific 2D API — the drawing is now written in SNGL and reaches
+// the emitter as ordinary Compose calls.
 
 // canvasComposeImports are the Compose graphics imports the DrawScope
 // translation needs. Registered when any canvas is rendered.
@@ -59,51 +58,18 @@ var canvasComposeImports = []string{
 	"androidx.compose.ui.graphics.toArgb",
 }
 
-// packageHasCanvas reports whether any component/window func is a synthesized
-// canvas draw func — i.e. the program contains at least one canvas. Used to
-// decide whether to emit the canvas stdlib data classes.
-func packageHasCanvas(pkg *ir.Package) bool {
-	if pkg == nil {
-		return false
-	}
-	if slices.ContainsFunc(pkg.Funcs, isCanvasDrawFunc) {
-		return true
-	}
-	for _, comp := range pkg.Components {
-		if slices.ContainsFunc(comp.Funcs, isCanvasDrawFunc) {
-			return true
-		}
-	}
-	for _, w := range pkg.Windows {
-		if slices.ContainsFunc(w.Funcs, isCanvasDrawFunc) {
-			return true
-		}
-	}
-	// A canvas node carries its draw func on the NodeInst, and this platform
-	// renders it inline from there rather than emitting the func -- so a
-	// program whose only canvas is inside a component body has no
-	// `_canvasDraw` anywhere the loops above look. Asking the tree is asking
-	// the same question renderCanvas answers.
-	for _, comp := range pkg.Components {
-		if comp != nil && treeHasCanvas(comp.Body) {
-			return true
-		}
-	}
-	for _, w := range pkg.Windows {
-		if w != nil && treeHasCanvas(w.Body) {
-			return true
-		}
-	}
-	return false
+// packageHasCanvas reports whether the program contains at least one canvas.
+// Used to decide whether to emit the canvas stdlib data classes.
+func packageHasCanvas(draws *codegen.CanvasDraws) bool {
+	return len(draws.All()) > 0
 }
 
-// treeHasCanvas reports whether any node in stmts is a canvas passCanvas gave
-// a draw func to.
+// treeHasCanvas reports whether any node in stmts is a canvas.
 func treeHasCanvas(stmts []ir.Stmt) bool {
 	for _, st := range stmts {
 		switch n := st.(type) {
 		case *ir.NodeInst:
-			if n.CanvasDraw != nil || treeHasCanvas(n.Children) {
+			if ir.IsShapeContainer(n) || treeHasCanvas(n.Children) {
 				return true
 			}
 		case *ir.If:
@@ -112,10 +78,6 @@ func treeHasCanvas(stmts []ir.Stmt) bool {
 			}
 		case *ir.For:
 			if treeHasCanvas(n.Body) || treeHasCanvas(n.Else) {
-				return true
-			}
-		case *ir.Window:
-			if treeHasCanvas(n.Body) {
 				return true
 			}
 		case *ir.SlotInst:
@@ -129,14 +91,6 @@ func treeHasCanvas(stmts []ir.Stmt) bool {
 		}
 	}
 	return false
-}
-
-// isCanvasDrawFunc reports whether fn is a synthesized canvas draw func
-// (`_canvasDrawN` produced by passCanvas). Such funcs hold canvas-intrinsic
-// CallStmts that only the canvas translation below understands, so the
-// generic Kotlin func-emission path must skip them.
-func isCanvasDrawFunc(fn *ir.Func) bool {
-	return fn != nil && fn.Synthesized && strings.HasPrefix(fn.Name, "_canvasDraw")
 }
 
 // canvasIntProp extracts the integer pixel value of a numeric/measurement prop
@@ -162,9 +116,13 @@ func canvasIntProp(n *ir.NodeInst, name string) int {
 }
 
 // renderCanvas emits the Compose Canvas composable for a canvas NodeInst whose
-// CanvasDraw func was set by passCanvas, translating the draw body inline into
+// codegen built the draw func for it, and the body is translated inline into
 // the DrawScope lambda.
 func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
+	drawing := cc.ctx.Canvases.ForNode(n)
+	if drawing == nil {
+		return
+	}
 	for _, imp := range canvasComposeImports {
 		cc.kc.RequireImport(imp)
 	}
@@ -199,12 +157,12 @@ func (cc *irComposeContext) renderCanvas(n *ir.NodeInst) {
 	default:
 		cc.line("Canvas(modifier = Modifier.size(%d.dp, %d.dp)%s) {", w, h, tag)
 		cc.indent++
-		cc.emitDrawBody(n.CanvasDraw)
+		cc.emitDrawBody(drawing.Draw)
 		cc.indent--
 		cc.line("}")
 		return
 	}
-	cc.emitDrawBody(n.CanvasDraw)
+	cc.emitDrawBody(drawing.Draw)
 	cc.indent--
 	cc.line("}")
 	cc.indent--
@@ -238,15 +196,13 @@ func canvasScalingProp(n *ir.NodeInst) string {
 	return ""
 }
 
-// emitDrawBody translates a synthesized `_canvasDrawN` block into DrawScope
-// Kotlin lines. passCanvas emits a fixed per-shape structure: Save,
-// [ApplyStyle], DrawPrimitive, Restore. ApplyStyle binds the style the
-// following primitive's fill/stroke reference.
-func (cc *irComposeContext) emitDrawBody(fn *ir.Func) {
-	if fn == nil {
-		return
-	}
-	cc.emitDrawStmts(fn.Block)
+// emitDrawBody writes a drawing into the DrawScope lambda as Kotlin lines.
+//
+// There is no fixed per-shape structure to expect: what a drawing holds is
+// whatever each shape override's `@draw` handler was written as, which for
+// android is Compose draw calls.
+func (cc *irComposeContext) emitDrawBody(stmts []ir.Stmt) {
+	cc.emitDrawStmts(stmts)
 }
 
 // emitDrawStmts walks a draw body. An `if` or a `for` is not a shape, it is
@@ -266,9 +222,14 @@ func (cc *irComposeContext) emitDrawStmts(stmts []ir.Stmt) {
 			// what left an override's `if` with an empty body.
 			if s.Call.Func.Intrinsic == "" {
 				cc.line("%s", cc.kc.EvalExpr(s.Call))
-				continue
 			}
-			cc.emitCanvasIntrinsic(s.Call)
+			// A call that *does* carry an intrinsic id is dropped, which is
+			// what this did before the canvas ids went: emitCanvasIntrinsic
+			// answered CanvasSave and CanvasRestore with no-ops -- a DrawScope
+			// manages its state per primitive -- and had no default arm, so
+			// anything else fell through it in silence. Nothing in a draw body
+			// carries one today; the drop is kept rather than turned into an
+			// emit so that this change moves no output.
 		case *ir.LocalVar:
 			// A shape override binds one -- a Path it fills before drawing --
 			// and dropping it left the draw call naming a value nothing
@@ -318,16 +279,6 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 	cc.line("}")
 }
 
-// evalStyleArg evaluates a CanvasApplyStyle argument to a Kotlin CanvasStyle
-// expression. passCanvas emits style references to component funcs as explicit
-// receiver calls (`main.circleStyle()`). android emits those component funcs as
-// either computed properties (`val circleStyle by ... derivedStateOf`) or as
-// state methods, so a generic method-call translation can't resolve them. Here
-// we map the call to the bare name (computed → property read, plain func →
-// call), routing through IdentRewrites so test-mode `state.` prefixing applies.
-// Inline `CanvasStyle{...}` literals (no receiver call) fall through to
-// EvalExpr unchanged.
-
 // receiverIsComponent reports whether name matches a component in the package.
 func (cc *irComposeContext) receiverIsComponent(name string) bool {
 	if cc.ctx == nil || cc.ctx.Pkg == nil {
@@ -345,20 +296,6 @@ func (cc *irComposeContext) receiverIsComponent(name string) bool {
 // API (Offset/Size/radius all take Float; SNGL floats are Double).
 func (cc *irComposeContext) f(e ir.Expr) string {
 	return "(" + cc.kc.EvalExpr(e) + ").toFloat()"
-}
-
-// emitCanvasIntrinsic translates one canvas-intrinsic Call into DrawScope lines.
-func (cc *irComposeContext) emitCanvasIntrinsic(call *ir.Call) {
-	id := call.Func.Intrinsic
-	// All canvas intrinsics take ctx as arg 0; the DrawScope is the implicit
-	// receiver, so ctx itself is unused in the Compose translation.
-	switch id {
-	case "CanvasSave":
-		// DrawScope clip/transform state is managed per-primitive; the
-		// save/restore brackets passCanvas emits have no DrawScope analog
-		// (each draw* is independent). No-op.
-	case "CanvasRestore":
-	}
 }
 
 // canvasKotlinDecls returns the Kotlin data classes for the canvas stdlib

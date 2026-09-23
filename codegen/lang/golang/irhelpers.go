@@ -27,13 +27,18 @@ func FuncReturnGoType(f *ir.Func) string {
 
 // VarGoType renders the Go type of a var: its declared type, or the inferred
 // type of its initializer. Falls back to "any".
-func VarGoType(v *ir.Var) string {
-	if v.Type != nil {
-		return IRTypeToGo(v.Type)
+func VarGoType(v *ir.Var) string { return BindGoType(v.Type, v.Init) }
+
+// BindGoType is VarGoType for a binding with no declaration behind it -- a
+// window's route parameters, which the slot population declares and the
+// request fills.
+func BindGoType(t *ir.Type, init ir.Expr) string {
+	if t != nil {
+		return IRTypeToGo(t)
 	}
-	if v.Init != nil {
-		if t := v.Init.ExprType(); t != nil {
-			return IRTypeToGo(t)
+	if init != nil {
+		if et := init.ExprType(); et != nil {
+			return IRTypeToGo(et)
 		}
 	}
 	return "any"

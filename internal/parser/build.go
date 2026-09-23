@@ -130,7 +130,9 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 	}
 
 	var args []ast.Expr
+	multiline := false
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
+		lparenLine := it.token().Line
 		it.skip() // lparen
 		for !it.done() {
 			if it.isNonTerminal() {
@@ -138,6 +140,10 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 			} else {
 				tok := it.token()
 				if tok.Type == RPAREN {
+					// The author broke the list across lines, so it stays
+					// broken: a capability list runs to twenty names, and
+					// joining one gives a line no reader can scan.
+					multiline = tok.Line > lparenLine
 					it.skip()
 					break
 				}
@@ -146,11 +152,13 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 		}
 	}
 	// consume rbracket
+	endPos := pos
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == RBRACKET {
+		endPos = b.posFromToken(it.token())
 		it.skip()
 	}
 
-	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args}
+	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args, IsMultiline: multiline, EndPos: ast.Pos(endPos)}
 }
 
 // buildParamAttrs consumes the leading { MacroAttr } of a Param or CompParam.
@@ -307,6 +315,7 @@ func (b *builder) placeComments(stmts []ast.Stmt, ci *int, endLine int) []ast.St
 		} else {
 			take(line)
 		}
+		b.placeAttrComments(s, ci)
 		merged = append(merged, s)
 
 		blocks, commit := stmtBlocks(s)
@@ -323,6 +332,86 @@ func (b *builder) placeComments(stmts []ast.Stmt, ci *int, endLine int) []ast.St
 	}
 	take(endLine)
 	return merged
+}
+
+// placeAttrComments gives the comments written among a declaration's marks to
+// the marks they were written above.
+//
+// A declaration's marks are collected onto the declaration and its position is
+// the first mark's, so the ordering placeComments does against a statement
+// cannot see inside the run: every comment after the first mark is later than
+// the statement and falls through to after it. The prose explaining a mark
+// came out below the declaration it explained.
+//
+// A comment after the *last* mark is deliberately not taken. That is where a
+// declaration's own trailing comment sits too, and the formatter already holds
+// it for the reason `#[options] // ERROR(check) ...` exists: the directive
+// names the line the diagnostic lands on.
+func (b *builder) placeAttrComments(s ast.Stmt, ci *int) {
+	a, ok := s.(ast.Attributed)
+	if !ok {
+		return
+	}
+	attrs := a.MacroAttrs()
+	for i := range attrs {
+		if i == len(attrs)-1 {
+			break
+		}
+		for *ci < len(b.comments) && b.comments[*ci].Line <= attrs[i+1].Pos.Line {
+			tok := b.comments[*ci]
+			if tok.Line == attrs[i+1].Pos.Line {
+				break // the mark's own line; nothing above it is left
+			}
+			*ci++
+			if b.claimed[*ci-1] {
+				continue
+			}
+			c := b.commentToStmt(tok)
+			// Inside mark i's own argument list, which a multiline mark has
+			// lines for: it belongs to the argument it sits after, not to the
+			// mark below.
+			if tok.Line > attrs[i].Pos.Line && tok.Line < attrs[i].EndPos.Line {
+				b.claimArgComment(&attrs[i], tok, c)
+				continue
+			}
+			if c.Inline && tok.Line == attrs[i].EndPos.Line {
+				attrs[i].Trailing = c
+				continue
+			}
+			attrs[i+1].Leading = append(attrs[i+1].Leading, c)
+		}
+	}
+	// The last mark's own argument list, which the pairwise loop above never
+	// reaches: there is no attrs[i+1] to bound the scan with, so it is bounded
+	// by that mark's own closing line instead.
+	if n := len(attrs); n > 0 {
+		last := &attrs[n-1]
+		for *ci < len(b.comments) && b.comments[*ci].Line < last.EndPos.Line {
+			tok := b.comments[*ci]
+			if tok.Line <= last.Pos.Line {
+				break
+			}
+			*ci++
+			if b.claimed[*ci-1] {
+				continue
+			}
+			b.claimArgComment(last, tok, b.commentToStmt(tok))
+		}
+	}
+}
+
+// claimArgComment gives a comment written inside a mark's argument list to the
+// argument it follows.
+func (b *builder) claimArgComment(attr *ast.MacroAttr, tok Token, c *ast.Comment) {
+	if attr.ArgTrailing == nil {
+		attr.ArgTrailing = make([]*ast.Comment, len(attr.Args))
+	}
+	for i := len(attr.Args) - 1; i >= 0; i-- {
+		if p := attr.Args[i].ExprPos(); p != nil && p.Line <= tok.Line {
+			attr.ArgTrailing[i] = c
+			return
+		}
+	}
 }
 
 func (b *builder) commentToStmt(tok Token) *ast.Comment {

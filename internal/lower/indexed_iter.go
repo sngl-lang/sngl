@@ -34,11 +34,11 @@ import (
 // the passed case, where nothing is known about the bounds.
 var passIndexedIter = pass{
 	name:    "IndexedIter",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerIndexedIter,
 }
 
-func lowerIndexedIter(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerIndexedIter(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -111,8 +111,6 @@ func (st *indexedIterState) stmt(s ir.Stmt) (pre []ir.Stmt, out ir.Stmt) {
 		n.Children = st.block(n.Children)
 	case *ir.ContextProvider:
 		n.Children = st.block(n.Children)
-	case *ir.Window:
-		n.Body = st.block(n.Body)
 	}
 	return nil, s
 }

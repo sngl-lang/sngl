@@ -514,6 +514,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	if t == nil {
 		t = dynNoSymType(sym, "symbol %q (%T) has no type", x.Name, sym)
 	}
+	c.reportCountedHandleRead(x, sym, t)
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
 	// Unary{Deref}, mirroring Select-operand deref) so reads type-check as the
@@ -524,6 +525,36 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		return &ir.Unary{Type: t.Elems[0], Op: ast.UnaryDeref, Operand: ident}
 	}
 	return ident
+}
+
+// reportCountedHandleRead reports a node handle read from outside the scope it
+// was rendered in. declareNodeIDsIn hoists such an id wrapped in that scope's
+// count -- `option` through an `if`, `list` through a `for` -- and neither is a
+// handle any target can act on: every backend emitted the bare name, html
+// declaring it inside the slot render and reading it outside, bubbletea
+// emitting the read as the only occurrence of the name in the file.
+//
+// It is reported at the read rather than shipped as a type, because the type
+// alone is silent: option and list are both absent from hasNoLegitimateFields,
+// so `maybe.value` off one degrades to dyn and the three broken builds become
+// three no-ops. The read is also the line that has to move.
+//
+// Only a node handle is asked. A `for` over windows binds a real list<window>
+// that the unroll fills in (collectForLoopWindowIDs), and that var carries no
+// NodeHandle.
+func (c *checker) reportCountedHandleRead(x *ast.IdentExpr, sym ir.Symbol, t *ir.Type) {
+	v, ok := sym.(*ir.Var)
+	if !ok || !v.NodeHandle || t == nil {
+		return
+	}
+	switch t.Kind {
+	case ir.TypeOption, ir.TypeList:
+	default:
+		return
+	}
+	k := c.handleCount[v]
+	c.error(x.Pos, "%s is rendered inside %s, so out here it is %s rather than one node; %s",
+		x.Name, k.scopeNoun(), t, k.scopeAdvice())
 }
 
 // exported reports whether a looked-up symbol is exported. Symbols that
@@ -2885,11 +2916,32 @@ func (c *checker) checkBlock(block *ast.StmtBlock) {
 }
 
 func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
+	return c.checkBlockScoped(block, false, nil)
+}
+
+// checkScopeBlockIR is checkBlockIR for the two blocks that are a scope in the
+// language rather than only in this checker: an `if` body and a `for` body.
+// Their node ids are hoisted into the scope it pushes, which is what makes a
+// read from inside one the plain handle where a read from outside carries the
+// count -- and what lets an id there shadow an outer binding, as any nested
+// declaration does.
+//
+// Every other block pushes a scope too, a node's children included, but is not
+// one: `vbox { text #label }` beside a `var label` is the same scope written
+// with braces in it, and hoisting there let the id shadow a var it sits under.
+func (c *checker) checkScopeBlockIR(block *ast.StmtBlock, headNames ...string) []ir.Stmt {
+	return c.checkBlockScoped(block, true, headNames)
+}
+
+func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames []string) []ir.Stmt {
 	if block == nil || !block.IsDefined() {
 		return nil
 	}
 	c.pushScope()
 	defer c.popScope()
+	if isScope {
+		c.declareOwnNodeIDs(block, headNames...)
+	}
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
 		if vd, ok := stmt.(*ast.VarDecl); ok {
@@ -2993,6 +3045,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
+		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
 		c.requireValueType(valueType, x.Pos)
 		if x.Op == ast.AssignSet {
 			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
@@ -3033,6 +3086,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
+		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
 		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
 			return nil
 		}
@@ -3160,7 +3214,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		// checkVisualNodeIR resolves a node that has a body; qualified
 		// `pkg.Foo(...)` resolves through the namespace's package.
 		var comp *ir.Component
-		var compName string
 		if id, ok := x.Call.Func.(*ast.IdentExpr); ok {
 			if sym, ok := c.lookupComponentInScope(x.Pos, id.Name); ok {
 				if c.rejectUnexported(x.Pos, sym) {
@@ -3168,7 +3221,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 				if co, ok := sym.(*ir.Component); ok {
 					comp = co
-					compName = id.Name
 				}
 			}
 		} else if sel, ok := x.Call.Func.(*ast.SelectExpr); ok {
@@ -3188,7 +3240,6 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 								}
 								if co, ok := fsym.(*ir.Component); ok {
 									comp = co
-									compName = nsIdent.Name + "." + sel.Field
 								}
 							}
 						}
@@ -3202,9 +3253,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 						// lowering skips, leaving reactive attributes frozen.
 						if comp == nil {
 							if resolved := c.nsMember(sel.Pos, ns, sel.Field); resolved != nil {
-								if co, ok := resolved.(*ir.Component); ok {
-									comp = co
-									compName = sel.Field
+								if _, ok := resolved.(*ir.Component); ok {
+									comp = resolved.(*ir.Component)
 								}
 							}
 						}
@@ -3212,80 +3262,23 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
-		// An element-ref declaration (`Comp #id(...)`) is handled uniformly by
-		// the elementRefCallInfo path below, which preserves the #id and applies
-		// the same stdlib-lenient / user-component-strict arg checking.
-		if comp != nil && x.Call.ID == "" {
-			// A bodyless node parses as a call, so the boundary has to be read
-			// on this path too -- `text(value=v)` in a function body is the
-			// same dropped node `vbox { }` is.
-			if c.rejectNodeInFuncBody(x.Pos, compName) {
-				return nil
-			}
-			c.validateCallStmtComponentArgs(x.Call, comp)
-			c.checkRequiredSlots(x.Pos, comp, nil)
-			if slot := comp.RestSlot(); slot != nil {
-				c.checkSlotArity(x.Pos, slot, 0, "component "+comp.Name)
-			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(comp, x.Call.Args))
-			return &ir.NodeInst{
-				AST:       x,
-				Name:      compName,
-				Component: comp,
-				Props:     bindWildcardName(comp, compName, props),
-				Handlers:  handlers,
-				Bindings:  bindings,
-				Key:       c.keyArgExpr(x.Call.Args),
-			}
-		}
-		// Children-less element references (`text #id(...)`, `button(@click)`)
-		// parse as CallStmt but semantically behave like visual nodes — emit
-		// NodeInst so event handlers and the #id are preserved in IR.
-		if name, id, isElem := elementRefCallInfo(x.Call); isElem {
-			if c.rejectNodeInFuncBody(x.Pos, name) {
-				return nil
-			}
-			// Resolve the addressed component (stdlib `input`, user
-			// component, …) so later passes — including the test-side
-			// event-arg typer — can see what payload `@<event>` takes.
-			// Resolve before checkAndSplitArgs so spread props on
-			// user-defined components can be matched against prop names.
-			var elemComp *ir.Component
-			if sym, ok := c.scope.Lookup(name); ok {
-				if sd, ok := sym.(*ir.Component); ok {
-					elemComp = sd
-				}
-			}
-			// Pass the component to checkAndSplitArgs only for user-defined
-			// components. Stdlib components use nil to preserve lenient
-			// arg-checking behavior (events use platform-specific types).
-			argsComp := elemComp
-			if argsComp != nil && argsComp.Stdlib {
-				argsComp = nil
-			}
-			props, handlers, bindings := c.checkAndSplitArgs(x.Call.Args, c.bindComponentTypeParams(argsComp, x.Call.Args))
-
-			// A stdlib element passes nil above so event args stay leniently
-			// typed, and nil is also what makes checkAndSplitArgs leave a
-			// positional prop unnamed -- "no component context; can't match
-			// prop names". So `text #t({}, "hi")` reached the IR with no props
-			// at all, and every reader dropped them: `c.t.value` was empty and
-			// a snapshot printed `text()`. The names are recoverable here,
-			// where the component is known, without disturbing the leniency.
-			if argsComp == nil && elemComp != nil {
-				props = namePositionalProps(elemComp, props)
-			}
-			c.reportSelfReferentialProps(x.Pos, id, c.nodeHandleSym(id), props)
-			return &ir.NodeInst{
-				AST:       x,
-				Name:      name,
-				Component: elemComp,
-				Props:     props,
-				Handlers:  handlers,
-				Bindings:  bindings,
-				ID:        id,
-				Handle:    c.nodeHandleSym(id),
-				Key:       c.keyArgExpr(x.Call.Args),
+		// A call whose target names a node *is* a node, and a node is
+		// checkVisualNodeIR's: the same resolution, the same prop check, the
+		// same slot and tree rules as one written with a block. `foo(1)`
+		// cannot be told from a function call until the name is resolved, so
+		// the disambiguation is here -- but the answer is an ast.VisualNode
+		// either way, which is what the rootish conversion above already did
+		// for a builtin kind and a slot insertion.
+		_, _, isElem := elementRefCallInfo(x.Call)
+		if comp != nil || isElem {
+			if target, ok := x.Call.Func.(ast.TargetExpr); ok {
+				return c.checkVisualNodeIR(&ast.VisualNode{
+					Pos:       x.Pos,
+					Target:    target,
+					ID:        x.Call.ID,
+					Args:      x.Call.Args,
+					HasParens: true,
+				})
 			}
 		}
 		callExpr := c.checkExpr(x.Call)
@@ -3306,7 +3299,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		narrowingsFrom(condExpr, true, thenFacts)
 		var thenRegion []ir.Stmt
 		restoreThen := c.pushNarrowings(thenFacts, &thenRegion, nil)
-		body := c.checkBlockIR(&x.Body)
+		body := c.checkScopeBlockIR(&x.Body)
 		thenRegion = body
 		restoreThen()
 
@@ -3316,7 +3309,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			narrowingsFrom(condExpr, false, elseFacts)
 			var elseRegion []ir.Stmt
 			restoreElse := c.pushNarrowings(elseFacts, &elseRegion, nil)
-			elseBody = c.checkBlockIR(&x.Else)
+			elseBody = c.checkScopeBlockIR(&x.Else)
 			elseRegion = elseBody
 			restoreElse()
 		}
@@ -3457,7 +3450,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.loopDepth++
-		body := c.checkBlockIR(&x.Body)
+		body := c.checkScopeBlockIR(&x.Body, x.Key, x.Value)
 		c.loopDepth--
 		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
@@ -3465,7 +3458,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// loop: an escape written there acts on whichever loop encloses
 			// it, which is why loopEscapes reads a nested loop's else and not
 			// its body.
-			elseBody = c.checkBlockIR(&x.Else)
+			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
 		c.popScope()
 		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
@@ -3635,40 +3628,35 @@ func (c *checker) resolveQualifiedIdent(name string) bool {
 	return false
 }
 
-// namePositionalProps gives each unnamed prop the name of the declared prop it
-// binds to, matching checkAndSplitArgs's own rule: a positional argument takes
-// the next declared prop, and a named one consumes no position. A wildcard prop
-// has no position, so it is not among them.
-func namePositionalProps(comp *ir.Component, props []ir.Arg) []ir.Arg {
-	var ordered []*ir.Prop
-	for _, p := range comp.Props {
-		if p.Wildcard == "" {
-			ordered = append(ordered, p)
-		}
-	}
-	positional := 0
-	for i := range props {
-		if props[i].Name != "" {
-			continue
-		}
-		if positional >= len(ordered) {
-			break
-		}
-		props[i].Name = ordered[positional].Name
-		positional++
-	}
-	return props
-}
-
 // elementRefCallInfo recognizes CallStmts whose callee represents an element
 // tag — either `text #id(...)` (a call carrying an element-ref id) or a bare
 // tag ident like `button(...)` that carries event handlers. Returns the tag
 // name, the #id (possibly empty), and whether this looks like an element call.
+// callTargetName is the dotted name a call's callee spells, and "" for a
+// callee that is neither an ident nor a qualified one. ast.VisualNode answers
+// the same question about its own target with TargetName.
+func callTargetName(fn ast.Expr) string {
+	switch f := fn.(type) {
+	case *ast.IdentExpr:
+		return f.Name
+	case *ast.SelectExpr:
+		if id, ok := f.Operand.(*ast.IdentExpr); ok {
+			return id.Name + "." + f.Field
+		}
+	}
+	return ""
+}
+
 func elementRefCallInfo(call *ast.CallExpr) (string, string, bool) {
-	// `text #id(...)` — a bare tag ident carrying an element-ref id.
+	// `text #id(...)` — a tag carrying an element-ref id, qualified or bare.
+	// `ui.text #row(…)` is the same node as `text #row(…)`, and matching only
+	// a bare ident made the two differ: the qualified one was not an element
+	// call at all, so declareNodeIDs bound no handle for it and a handler
+	// naming it was `undefined: row` under an aliased import and fine under a
+	// dot import.
 	if call.ID != "" {
-		if ident, ok := call.Func.(*ast.IdentExpr); ok {
-			return ident.Name, call.ID, true
+		if name := callTargetName(call.Func); name != "" {
+			return name, call.ID, true
 		}
 	}
 	switch f := call.Func.(type) {
@@ -3804,9 +3792,8 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	}
 	switch kind {
 	case ir.BuiltinWindow:
-		w := c.buildWindow(vn)
-		c.checkWindowBody(w)
-		w.Checked = true
+		w := c.windowShell(vn)
+		c.checkWindow(w)
 		return w
 	case ir.BuiltinErrorBoundary:
 		return c.buildErrorBoundary(vn, builtinComp)
@@ -4993,11 +4980,11 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	}
 	c.pushScope()
 	c.loopDepth++
-	body := c.checkBlockIR(&x.Body)
+	body := c.checkScopeBlockIR(&x.Body)
 	c.loopDepth--
 	var elseBody []ir.Stmt
 	if cond != nil && x.Else.IsDefined() {
-		elseBody = c.checkBlockIR(&x.Else)
+		elseBody = c.checkScopeBlockIR(&x.Else)
 	}
 	c.popScope()
 	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}
@@ -5279,8 +5266,8 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 		if i < len(decl.Params) {
 			want = decl.Params[i].Type
 		}
-		typ := c.bindParamType(a.Type, want, bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name)))
-		p := &ir.Param{Name: a.Name, Type: typ}
+		what := bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name))
+		p := &ir.Param{Name: a.Name, Type: c.bindParamType(a.Type, want, what)}
 		c.declare(a.Pos, p)
 		sc.Params = append(sc.Params, p)
 	}
@@ -5451,15 +5438,6 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// carries the declaration it instantiates separately -- the arm below
 		// reads the same two fields off the same kind of pointer, and the two
 		// collapse when a window becomes a marked NodeInst.
-		case *ir.Window:
-			if s.Comp == nil || s.Comp.Tree == nil || s.Comp.Tree == want {
-				continue
-			}
-			at := pos
-			if s.AST != nil {
-				at = s.AST.Pos
-			}
-			c.error(at, "expected %s component %s, got %s", want.Name, where, s.Comp.Name)
 		case *ir.NodeInst:
 			if s.Component == nil || s.Component.Tree == nil || s.Component.Tree == want {
 				continue
@@ -5483,4 +5461,53 @@ func errorEventName(t *ir.Type) string {
 		return "error"
 	}
 	return t.String()
+}
+
+// refuseNodePropAssign reports an imperative write to a node's prop.
+//
+// A prop is declarative: `ui.text(value=greeting)` says what the node shows
+// for as long as it is rendered, and reactivity re-evaluates it when
+// `greeting` changes. Writing `label.value = "bye"` puts a second source of
+// truth beside that one, which the next render of the first overwrites -- so
+// the program that looks like it worked is the program whose write is silently
+// undone. Changing the state the prop reads is the way to say it, and it is
+// the only way that survives a re-render.
+//
+// So the answer is the same on every target and does not wait for one. It used
+// to be neither: the write type-checked, and what became of it was whatever
+// each backend made of a field it had never been told about -- `label.Value`
+// on fyne, against a `widget.Label` that spells it `Text`, and with no
+// receiver at all; on html an assignment the platform dropped without a word
+// once the reference reached it.
+//
+// What a *lowering* writes is untouched. passReactivity and passDeclarative
+// emit `__n0.text = expr` by the hundred, and those are how a prop reaches the
+// host; they are built after this check and never meet it.
+func (c *checker) refuseNodePropAssign(target ir.Expr, pos ast.Pos, verb string) {
+	sel, ok := target.(*ir.Select)
+	if !ok {
+		return
+	}
+	id, ok := sel.Operand.(*ir.Ident)
+	if !ok {
+		return
+	}
+	v, ok := id.Sym.(*ir.Var)
+	if !ok || !v.NodeHandle {
+		return
+	}
+	// A handle a lowering pass made is exempt, because the rule is about what a
+	// *program* may write: passReactivity and passDeclarative emit
+	// `__n0.value = expr` by the hundred, and that is how a prop reaches the
+	// host at all.
+	//
+	// Config.Lowered is the same exemption for a document *printed* from that
+	// IR and checked again. The flag is lost in the text -- `text #__n0(…)`
+	// re-parses as an ordinary node with an ordinary id -- so the caller that
+	// lowered it says so instead.
+	if v.Synthesized || c.cfg.Lowered {
+		return
+	}
+	c.error(pos, "cannot %s %s.%s: a node's prop is what the tree says it is, not a cell to write; change the state it reads instead",
+		verb, id.Name, sel.Field)
 }

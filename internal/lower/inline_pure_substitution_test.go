@@ -43,7 +43,7 @@ func TestInlinePure_TransfersUnemittedHandler(t *testing.T) {
 	}
 	pkg := &ir.Package{Components: []*ir.Component{btn, main}}
 
-	if err := lowerInlinePure(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerInlinePure(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 
@@ -101,7 +101,7 @@ func TestInlinePure_EmittedHandlerNotDoubleTransferred(t *testing.T) {
 	}
 	pkg := &ir.Package{Components: []*ir.Component{btn, main}}
 
-	if err := lowerInlinePure(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerInlinePure(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 
@@ -136,7 +136,7 @@ func TestInlinePure_NonBubbleteaUnemittedHandlerTransferred(t *testing.T) {
 	}
 	pkg := &ir.Package{Components: []*ir.Component{card, main}}
 
-	if err := lowerInlinePure(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerInlinePure(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 
@@ -204,7 +204,7 @@ func TestInlinePure_OmittedParamGetsZeroValue(t *testing.T) {
 	}
 	pkg := &ir.Package{Components: []*ir.Component{wrap, main}}
 
-	if err := lowerInlinePure(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerInlinePure(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 

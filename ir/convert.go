@@ -110,13 +110,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 		stmts = append(stmts, c.convertComponent(comp))
 	}
 	for _, w := range pkg.Windows {
-		if w.Checked && w.Name == "" && len(w.Body) == 0 {
-			continue // component-scoped stub; content is in the component body
-		}
-		stmts = append(stmts, c.convertWindow(w))
-	}
-	for _, t := range pkg.Timers {
-		stmts = append(stmts, c.convertTimer(t))
+		stmts = append(stmts, c.convertNodeInst(w))
 	}
 	for _, ctx := range pkg.Contexts {
 		// Standard-library contexts arrive with the import, not from this
@@ -340,9 +334,6 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		}
 		bodyStmts = append(bodyStmts, fd)
 	}
-	for _, t := range comp.Timers {
-		bodyStmts = append(bodyStmts, c.convertTimer(t))
-	}
 	if len(comp.Body) > 0 {
 		bodyBlock := c.convertStmtBlock(comp.Body)
 		bodyStmts = append(bodyStmts, bodyBlock.Stmts...)
@@ -360,84 +351,14 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 	return cd
 }
 
-func hasRouteParam(w *Window) bool {
-	for _, v := range w.Vars {
-		if v.RouteParam {
-			return true
-		}
+// windowContentSlot is what the window declaration calls the slot its body
+// populates. Read off the declaration rather than spelled here, for the
+// reason ErrorBoundary.FailedSlot gives: the library is free to rename it.
+func windowContentSlot(w *Window) string {
+	if rest := w.Component.RestSlot(); rest != nil {
+		return rest.Name
 	}
-	return false
-}
-
-func (c *converter) convertWindow(w *Window) *ast.VisualNode {
-	vn := &ast.VisualNode{
-		Target: &ast.IdentExpr{Name: "window"},
-		ID:     w.Name,
-	}
-	// The props print in the order they were written, like any other node's.
-	// A routed href is the one that is dropped: the checker desugars
-	// `"/u/{id}"` to a concatenation and synthesizes `id` as a window var, and
-	// there is no IR node left to reprint the template from -- so the href
-	// would name `id` above the body that declares it, and the dump would not
-	// check back in.
-	routed := hasRouteParam(w)
-	var args []ast.ArgOrEventHandler
-	for _, p := range w.Props {
-		if p.Value == nil || (routed && p.Name == WindowHref) {
-			continue
-		}
-		args = append(args, ast.Arg{Name: p.Name, Value: c.convertExpr(p.Value)})
-	}
-	if w.ErrorHandler != nil {
-		args = append(args, c.convertEventHandler(w.ErrorHandler))
-	}
-	if len(args) > 0 {
-		vn.Args = ast.ArgList{IsMultiline: len(args) > 3, Args: args}
-	}
-	var bodyStmts []ast.Stmt
-	for _, v := range w.Vars {
-		if v.IsConst {
-			bodyStmts = append(bodyStmts, c.convertConstDecl(v))
-		} else {
-			bodyStmts = append(bodyStmts, c.convertVarDecl(v))
-		}
-	}
-	for _, f := range w.Funcs {
-		bodyStmts = append(bodyStmts, c.convertFuncDef(f))
-	}
-	// Only passTimerPrimitive puts a timer on a window, so this prints in
-	// `dump --stage lowered` and nowhere else.
-	for _, t := range w.Timers {
-		bodyStmts = append(bodyStmts, c.convertTimer(t))
-	}
-	for _, s := range w.Body {
-		bodyStmts = append(bodyStmts, c.convertStmt(s))
-	}
-	if len(bodyStmts) > 0 {
-		vn.Block = ast.StmtBlock{
-			IsMultiline: len(bodyStmts) > 0,
-			Stmts:       bodyStmts,
-			Pos:         ast.Pos{Line: 1},
-		}
-	}
-	return vn
-}
-
-func (c *converter) convertTimer(t *Timer) *ast.VisualNode {
-	vn := &ast.VisualNode{
-		Target: &ast.IdentExpr{Name: "timer"},
-	}
-	if t.Interval != nil {
-		vn.Args = ast.ArgList{
-			Args: []ast.ArgOrEventHandler{
-				ast.Arg{Value: c.convertExpr(t.Interval)},
-			},
-		}
-	}
-	if len(t.Handler.Block) > 0 {
-		vn.Block = c.convertStmtBlock(t.Handler.Block)
-	}
-	return vn
+	return "content"
 }
 
 // convertContext emits a top-level context declaration as the CallStmt that the
@@ -637,8 +558,6 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		return &ast.BreakStmt{Pos: posOfBreak(s)}
 	case *Continue:
 		return &ast.ContinueStmt{Pos: posOfContinue(s)}
-	case *Window:
-		return c.convertWindow(s)
 	case *ContextProvider:
 		return c.convertContextProvider(s)
 	case *CanvasRedrawStmt:
@@ -646,9 +565,12 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 		// so it has no source form; printed as the call it behaves like, so
 		// that `dump --stage lowered` over a reactive canvas prints rather
 		// than panics.
+		// Named for the canvas, not for a draw function: which function
+		// paints it is codegen's to decide, and by this stage there is none
+		// to print.
 		name := "canvas"
-		if s.DrawFunc != nil {
-			name = s.DrawFunc.Name
+		if s.Canvas != nil && s.Canvas.ID != "" {
+			name = s.Canvas.ID
 		}
 		return &ast.CallStmt{Call: &ast.CallExpr{
 			Func: &ast.IdentExpr{Name: "__canvasRedraw"},
@@ -661,13 +583,29 @@ func (c *converter) convertStmt(s Stmt) ast.Stmt {
 	}
 }
 
-func (c *converter) convertStmtBlock(stmts []Stmt) ast.StmtBlock {
-	block := ast.StmtBlock{}
+// convertBodyStmts is one statement list, converted. Shared with the window
+// body's own loop, which had a second copy of it and so printed a flattened
+// canvas as an empty one.
+func (c *converter) convertBodyStmts(stmts []Stmt) []ast.Stmt {
+	var out []ast.Stmt
 	for _, s := range stmts {
 		if as := c.convertStmt(s); as != nil {
-			block.Stmts = append(block.Stmts, as)
+			out = append(out, as)
+		}
+		// A flattened canvas keeps the statements that paint it on the node
+		// the flattening replaced, which convertStmt cannot reach: it answers
+		// with one statement and these are several. Printed after the
+		// createNode they belong to, so `dump --stage lowered` shows the
+		// drawing rather than an empty canvas.
+		if lv, ok := s.(*LocalVar); ok && lv.CanvasNode != nil {
+			out = append(out, c.convertBodyStmts(lv.CanvasNode.Children)...)
 		}
 	}
+	return out
+}
+
+func (c *converter) convertStmtBlock(stmts []Stmt) ast.StmtBlock {
+	block := ast.StmtBlock{Stmts: c.convertBodyStmts(stmts)}
 	block.IsMultiline = len(block.Stmts) > 0
 	// Set Pos so IsDefined() returns true.
 	block.Pos = ast.Pos{Line: 1}
@@ -699,6 +637,9 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 	for _, h := range n.Handlers {
 		args = append(args, c.convertEventHandler(&h))
 	}
+	if n.ErrorHandler != nil {
+		args = append(args, c.convertEventHandler(n.ErrorHandler))
+	}
 	if len(args) > 0 {
 		vn.Args = ast.ArgList{
 			IsMultiline: len(args) > 3,
@@ -710,6 +651,18 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 		vn.Block = c.convertStmtBlock(n.Children)
 		vn.Block.Stmts = append(c.convertSlotContents(n), vn.Block.Stmts...)
 		vn.Block.IsMultiline = true
+	}
+	// A window that reads its route parameters wrote the population its
+	// binding was named in, and the body belongs inside that rather than
+	// bare: printed bare, the name the body reads is declared nowhere and the
+	// dump does not check back in.
+	if n.Params != nil && len(vn.Block.Stmts) > 0 {
+		vn.Block.Stmts = []ast.Stmt{&ast.ComponentDecl{
+			Name:      windowContentSlot(n),
+			HasParens: true,
+			Props:     ast.PropList{Props: []ast.ParamOrEventDecl{ast.Param{Name: n.Params.Name}}},
+			Body:      ast.StmtBlock{IsMultiline: true, Stmts: vn.Block.Stmts, Pos: ast.Pos{Line: 1}},
+		}}
 	}
 	return vn
 }

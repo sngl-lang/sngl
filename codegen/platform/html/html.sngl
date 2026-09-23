@@ -21,9 +21,32 @@ import build "sngl:build"
 import shapes "sngl:ui/draw"
 import markup "sngl:ui/markup"
 import math "sngl:math"
+import gen "sngl:x/gen"
 
 // The `html` node of a build directive: `output { js { html() } }`. Its props
 // are the build options this platform accepts.
+// Both modes write the tree as markup -- static mode to a file, route mode into
+// a handler -- so a view body is never host-language statements.
+//
+// A platform has the last word, and html renders HTML and JS: the language emits
+// route mode's server half, not the markup or the script. So a restriction that
+// exists because Go lacks a construct does not apply to what html itself writes --
+// a ternary in a class attribute, a `.filter` in a server action, a blocking call
+// in a handler that already runs on its own goroutine. The goroutine itself is
+// withdrawn again: what html spawns work onto is the browser, which has none. And
+// a DOM parent can put a child at a position, so a keyed run moves one child
+// rather than rebuilding from the first change.
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore)]
+#[gen.cannot(
+    viewStatements,
+    asyncSpawn,
+    asyncReactive,
+    implicitRecv,
+    inlineComponents,
+    reactivity,
+    structSpread,
+)]
+#[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
 component html(
     // Render in preview mode (iframe-friendly; stable element IDs for live reload).
     preview bool,
@@ -66,6 +89,11 @@ component html(
 // says which host accepts them, which is what an SVG subtree is. Until then it
 // is written through `element(tag=..., attrs={...})`, which the diagnostics
 // below point at.
+// A DOM element is still there while the page runs, so a `#id` on one names
+// something a read can ask. That the emitter has no way to ask it yet is a
+// separate defect; claiming otherwise here would have a prop read answered
+// with the value the markup was written with.
+#[gen.renders(identity)]
 #[wildcard("[a-z][a-z0-9]*", "tag")]
 component element(
     // The name this resolved from — `html.div` binds "div" — and the tag to

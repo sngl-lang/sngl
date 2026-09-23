@@ -13,7 +13,7 @@ import (
 
 var passAsyncReactive = pass{
 	name:    "NoAsyncReactive",
-	enabled: func(c Caps) bool { return c.NoAsyncReactive },
+	enabled: func(c Features) bool { return !c.AsyncReactive },
 	apply:   lowerAsyncReactive,
 }
 
@@ -23,7 +23,7 @@ var passAsyncReactive = pass{
 //     synthetic anonymous zero-arg computed funcs (__hoist_N).
 //  2. Lower every reactive async computed (named + just-hoisted) to a
 //     settle-state-var (__async_X) + kicker ($compute_X).
-func lowerAsyncReactive(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerAsyncReactive(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -94,9 +94,10 @@ func isReactiveAsyncComputed(fn *ir.Func) bool {
 // async-bearing subtree is hoisted; its interior is not separately hoisted.
 func hoistInlineAsyncReactive(pkg *ir.Package) error {
 	h := &hoister{pkg: pkg}
+	hoistInStmts(h, pkg.Body)
 	// Walk windows.
 	for _, w := range pkg.Windows {
-		hoistInStmts(h, w.Body)
+		hoistInStmts(h, w.Children)
 	}
 	// Walk components.
 	for _, comp := range pkg.Components {
@@ -143,8 +144,6 @@ func hoistInStmt(h *hoister, s ir.Stmt) {
 		hoistInStmts(h, n.Children)
 	case *ir.ErrorBoundary:
 		hoistInStmts(h, n.Children)
-	case *ir.Window:
-		hoistInStmts(h, n.Body)
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:
 		// Hoister targets only NodeInst prop expressions; non-visual stmts

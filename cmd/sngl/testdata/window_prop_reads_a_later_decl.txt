@@ -1,0 +1,57 @@
+# A window's props are checked in pass2, like every other node's.
+#
+# They were checked in pass1, because a window at the root of a file is
+# *registered* there -- `output(entry = home)` and a sibling window need
+# something to resolve against before any body is read. Building the whole
+# window at that point checked its arguments against a scope pass1 had not
+# finished filling, so a declaration further down the file was not there yet:
+#
+#     window #home(title = greeting()) { … }
+#     func greeting() => "hello"          // undefined: greeting
+#
+# The same window one level into a component body checked clean, which is the
+# tell -- that path is pass2's. Registration reserves a shell now and
+# checkWindow reads the rest.
+#
+# Both files here are the same program, and the second is what made the first
+# a bug rather than a rule.
+
+sngl check root.sngl
+stdout 'ok'
+
+sngl check nested.sngl
+stdout 'ok'
+
+-- root.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+ui.window #home(title=greeting()) {
+    ui.text(value="x")
+}
+
+func greeting() => "hello"
+
+-- nested.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+component main ui.root {
+    ui.window #home(title=greeting()) {
+        ui.text(value="x")
+    }
+}
+
+func greeting() => "hello"
+
+main()

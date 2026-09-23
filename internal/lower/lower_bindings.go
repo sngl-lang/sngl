@@ -15,11 +15,11 @@ import (
 // bodies can be rewritten to Emit nodes before they're further desugared.
 var passPropBindings = pass{
 	name:    "PropBindings",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerAllPropBindings,
 }
 
-func lowerAllPropBindings(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerAllPropBindings(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -50,8 +50,6 @@ func rewritePropBindingStmts(stmts []ir.Stmt) []ir.Stmt {
 			n.Children = rewritePropBindingStmts(n.Children)
 		case *ir.ErrorBoundary:
 			n.Children = rewritePropBindingStmts(n.Children)
-		case *ir.Window:
-			n.Body = rewritePropBindingStmts(n.Body)
 		case *ir.ContextProvider:
 			n.Children = rewritePropBindingStmts(n.Children)
 		}
@@ -163,10 +161,6 @@ func bodyHasEmitFor(stmts []ir.Stmt, name string) bool {
 			}
 		case *ir.ErrorBoundary:
 			if bodyHasEmitFor(n.Children, name) {
-				return true
-			}
-		case *ir.Window:
-			if bodyHasEmitFor(n.Body, name) {
 				return true
 			}
 		}
@@ -386,11 +380,6 @@ func rewritePropMutationsToEmit(comp *ir.Component, propName string, propType *i
 		}
 	}
 	// Walk timer handler blocks.
-	for _, t := range comp.Timers {
-		if t.Handler != nil {
-			t.Handler.Block = walk(t.Handler.Block)
-		}
-	}
 }
 
 // rewriteStmtPropMutation converts Assign/Toggle targeting propName into an
@@ -441,21 +430,6 @@ func rewriteStmtPropMutation(s ir.Stmt, propName string, propType *ir.Type, walk
 		}
 	case *ir.ContextProvider:
 		x.Children = walk(x.Children)
-	case *ir.Window:
-		x.Body = walk(x.Body)
-		for _, fn := range x.Funcs {
-			fn.Block = walk(fn.Block)
-		}
-		for _, v := range x.Vars {
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					h.Func.Block = walk(h.Func.Block)
-				}
-			}
-		}
-		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
-			x.ErrorHandler.Func.Block = walk(x.ErrorHandler.Func.Block)
-		}
 	}
 	return s
 }

@@ -48,7 +48,7 @@ func (s *Server) cmdOpenPreview(id json.RawMessage, args []json.RawMessage) {
 		return
 	}
 	// For now, return the first window. (TODO: enclosing-window-at-position.)
-	windowName := pkg.Windows[0].Name
+	windowName := pkg.Windows[0].ID
 
 	port := s.preview.Port()
 	if port == 0 {

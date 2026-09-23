@@ -41,5 +41,61 @@ func (*Continue) irNode()         {}
 func (*If) irNode()               {}
 func (*For) irNode()              {}
 func (*ContextProvider) irNode()  {}
-func (*Window) irNode()           {}
 func (*CanvasRedrawStmt) irNode() {}
+
+// TransparentBlocks are the statement lists a construct carries a question
+// into, for the four that are *how* the nodes under them got there rather than
+// nodes in their own right: an `If` and a `For`, which say when and how many;
+// an `ErrorBoundary`, which says what happens when one raises; and a
+// `ContextProvider`, which sets a value for what is under it.
+//
+// Nil for anything else, which is what "not transparent" means.
+//
+// CLAUDE.md records this walk being written five times with a different member
+// missing from each. The checker's treeTransparent is deliberately not this: it
+// returns a second list as well, the blocks that may *supply* a family rather
+// than merely be held to one, and that distinction belongs where the rule it
+// serves is written.
+func TransparentBlocks(st Stmt) [][]Stmt {
+	switch s := st.(type) {
+	case *If:
+		return [][]Stmt{s.Body, s.Else}
+	case *For:
+		return [][]Stmt{s.Body, s.Else}
+	case *ErrorBoundary:
+		return [][]Stmt{s.Children, s.Failed}
+	case *ContextProvider:
+		return [][]Stmt{s.Children}
+	}
+	return nil
+}
+
+// AttachNodeID gives a call site's `#id` and its handle to the first node the
+// substituted body renders, and reports whether it found one.
+//
+// Both inliners need it and neither had it right. The optimizer's
+// inlineComponentCall transferred nothing at all, so a `#id` on a component it
+// composed away was simply gone -- and a read of it then reached a backend as a
+// field nothing declares. lower's passInlinePure transferred to the first
+// *top-level* NodeInst, so a body that opens with an `if` lost it the same way.
+//
+// The handle travels with the name because it is the name's other half: every
+// read of the id resolves to that binding, and separating them leaves a rename
+// with nothing to repoint and uniqueNodeIDs with nothing to key on.
+func AttachNodeID(body []Stmt, id string, handle *Var) bool {
+	for _, s := range body {
+		if ni, ok := s.(*NodeInst); ok {
+			ni.ID = id
+			ni.Handle = handle
+			return true
+		}
+		// Through the four, because a component whose body opens with a
+		// conditional still renders whatever is inside it.
+		for _, block := range TransparentBlocks(s) {
+			if AttachNodeID(block, id, handle) {
+				return true
+			}
+		}
+	}
+	return false
+}

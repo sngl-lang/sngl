@@ -28,11 +28,11 @@ exists app.sngl.snapshots/tree.sngl
 
 grep 'flow\(role="paragraph"\)' app.sngl.snapshots/tree.sngl
 grep 'flow\(role="code"\)' app.sngl.snapshots/tree.sngl
-grep 'md.text\(value="<em>not markup</em>  two spaces' app.sngl.snapshots/tree.sngl
+grep 'text\(value="<em>not markup</em>  two spaces' app.sngl.snapshots/tree.sngl
 grep 'inline\(href="https://example.com/"\)' app.sngl.snapshots/tree.sngl
 grep 'inline\(kind="keyword"\)' app.sngl.snapshots/tree.sngl
 grep 'fontWeight = "bold"' app.sngl.snapshots/tree.sngl
-grep 'md.image\(src="/icon.png", alt="an icon"\)' app.sngl.snapshots/tree.sngl
+grep 'image\(src="/icon.png", alt="an icon"\)' app.sngl.snapshots/tree.sngl
 
 # And the snapshot is stable: a second run compares against what the first
 # wrote rather than writing it again.

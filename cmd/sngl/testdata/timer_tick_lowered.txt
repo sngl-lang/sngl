@@ -18,10 +18,13 @@ exists tick/model.go
 sngl generate --lang go --platform bubbletea --out click click.sngl
 exists click/model.go
 
-# The dump printed a window's vars, funcs and body and dropped its timers, so
-# the stage after the one that puts a timer there showed no timer at all.
-sngl dump --stage lowered --after TimerPrimitive --lang go --platform bubbletea tick.sngl
-stdout 'timer\(50ms\) \{'
+# And the schedule is in the tree the dump prints, which is what lets the
+# lowering have one path for it. It used to be lifted onto its owner by a pass
+# of its own, into a list the dump did not print for a window at all -- so the
+# stage after the lift showed no timer anywhere. The gate is printed with it:
+# `enabled` is the primitive's own prop, and nothing wrote one here.
+sngl dump --stage lowered --after Effect --lang go --platform bubbletea tick.sngl
+stdout 'Timer\(interval=50ms, enabled=true, @tick \{'
 
 -- tick.sngl --
 import ui "sngl:ui"

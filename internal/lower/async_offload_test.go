@@ -40,7 +40,7 @@ func blockingHandlerPkg() (*ir.Package, *ir.Func) {
 // for it.
 func TestABlockingCallSplitsTheBodyInThree(t *testing.T) {
 	pkg, handler := blockingHandlerPkg()
-	caps := Caps{NoAsyncCalls: true, AsyncPost: true}
+	caps := withAsyncPost("asyncCalls")
 	if err := applyAsyncOffload(pkg, caps, Options{Platform: "fyne"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestABlockingCallSplitsTheBodyInThree(t *testing.T) {
 // stands would freeze the interface and report nothing.
 func TestABlockingCallIsRefusedWithNowhereToPostIt(t *testing.T) {
 	pkg, _ := blockingHandlerPkg()
-	err := applyAsyncOffload(pkg, Caps{NoAsyncCalls: true}, Options{Platform: "bubbletea"})
+	err := applyAsyncOffload(pkg, without("asyncCalls"), Options{Platform: "bubbletea"})
 	if err == nil {
 		t.Fatal("a blocking call was accepted by a platform that cannot post back to its own thread")
 	}
@@ -140,7 +140,7 @@ func TestTheShapesTheSplitCannotTakeSayWhichTheyAre(t *testing.T) {
 		{"inside a branch", branched, "inside an if or for"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := applyAsyncOffload(tc.mk(), Caps{NoAsyncCalls: true, AsyncPost: true}, Options{Platform: "fyne"})
+			err := applyAsyncOffload(tc.mk(), withAsyncPost("asyncCalls"), Options{Platform: "fyne"})
 			if err == nil {
 				t.Fatal("a shape the split cannot take was accepted; the offload would have moved work the program did not ask to move")
 			}

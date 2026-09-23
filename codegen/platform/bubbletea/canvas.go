@@ -11,20 +11,15 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The 2D primitives are translated in this package rather than through an
-// IntrinsicEmitter, which renders one expression and could not carry the
-// statements and pending style these need. Declaring the package is how that
-// implementation becomes visible to the completeness check.
-func init() { codegen.DeclarePlatformImplements("bubbletea", "sngl:internal/draw") }
-
 // Canvas2D rendering for bubbletea.
 //
-// bubbletea keeps the declarative visual tree (it does NOT set NoDeclarative),
-// so a canvas arrives in the view body as an *ir.NodeInst with n.CanvasDraw
-// set (the synthesized `_canvasDrawN(ctx)` func produced by passCanvas) and
-// width/height props still on the node. passCanvas's draw func body is a
-// sequence of canvas-intrinsic CallStmts (CanvasApplyStyle / CanvasDrawRect /
-// ...).
+// bubbletea keeps the declarative visual tree (it holds Declarative), so a
+// canvas arrives in the view body as an *ir.NodeInst, whose drawing
+// ctx.Canvases.ForNode finds and whose width and height are still props on the
+// node. Every statement in that drawing is what a shape override's own `@draw` handler was written as: bubbletea declares no
+// shape overrides and inherits `sngl:language/go`'s, which paint through
+// `#[go.native]` methods on the pkg/go/canvas runtime. No canvas intrinsic
+// reaches here, so nothing in this package translates one.
 //
 // bubbletea is a RenderModel: View() re-runs on every update, so the canvas is
 // rasterised inline in View() each frame — no persistent widget, no reactive
@@ -33,8 +28,9 @@ func init() { codegen.DeclarePlatformImplements("bubbletea", "sngl:internal/draw
 // string (kitty escapes when supported, else truecolor half-blocks) that is
 // woven into the lipgloss View output like any other node's string fragment.
 //
-// The canvas intrinsics are translated via the shared canvasutil.GoContextStmts
-// helper (also used by fyne) into Context method calls — never reimplemented.
+// There are no canvas intrinsics left to translate. The shared
+// canvasutil.GoContextStmts helper that turned the last two into Context
+// method calls is gone with them.
 
 const (
 	snglCanvasImportPath = "git.duckfam.us/jonathan/sngl/pkg/go/canvas"
@@ -110,27 +106,6 @@ func intProp(n *ir.NodeInst, name string) int {
 	return 0
 }
 
-// canvasDrawFuncSet returns the set of canvas draw funcs referenced by canvas
-// NodeInsts in the visual tree, so the generic user-func loop can skip them.
-func canvasDrawFuncSet(pkg *ir.Package) map[*ir.Func]bool {
-	set := map[*ir.Func]bool{}
-	collect := func(body []ir.Stmt) {
-		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
-			if n.CanvasDraw != nil {
-				set[n.CanvasDraw] = true
-			}
-			return false
-		})
-	}
-	for _, c := range pkg.Components {
-		collect(c.Body)
-	}
-	for _, w := range pkg.Windows {
-		collect(w.Body)
-	}
-	return set
-}
-
 // canvasStdlibDecls returns the Go decls for the canvas stdlib structs
 // (Color/CanvasStyle/PathCmd), omitting any whose name a user struct already
 // declares (those emit their own type decl).
@@ -145,35 +120,13 @@ func canvasStdlibDecls(structs []*ir.StructDef) string {
 	return canvasutil.StructDeclsExcluding(declared)
 }
 
-// hasCanvasNodes reports whether any canvas NodeInst (CanvasDraw != nil) appears
-// in the package's component/window bodies.
-func hasCanvasNodes(pkg *ir.Package) bool {
-	found := false
-	walk := func(body []ir.Stmt) {
-		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
-			if n.CanvasDraw != nil {
-				found = true
-			}
-			return false
-		})
-	}
-	for _, c := range pkg.Components {
-		walk(c.Body)
-	}
-	for _, w := range pkg.Windows {
-		walk(w.Body)
-	}
-	return found
-}
-
 // renderCanvas weaves a canvas node into the View string output: allocate a
 // snglcanvas.Context sized to the canvas, run the draw func to rasterise the
 // shapes, then render the resulting image into a terminal string fragment via
 // pkg/go/tui. The string is assigned to resultVar like any other node's
 // rendered output, so it joins into the surrounding lipgloss layout normally.
-func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
-	w, h := nodeCanvasDims(n)
-	cols, rows := terminalCells(w, h)
+func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultVar string) {
+	cols, rows := terminalCells(c.Width, c.Height)
 	vc.requireImport(snglCanvasImportPath)
 	vc.requireImport(tuiImportPath)
 	vc.requireImport("image")
@@ -185,7 +138,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
 	// like any other leaf node's output. Only wrap it in the node's lipgloss
 	// style when one is actually set — an empty NewStyle().Render() pads the
 	// multi-line half-block grid with background cells, mangling the art.
-	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(n.CanvasDraw), canvasRasteriser(n, w, h))
+	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(c), canvasRasteriser(c))
 	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
 	if style != "lipgloss.NewStyle()" {
 		vc.line("%s = %s.Render(%s)", resultVar, style, render)
@@ -202,17 +155,17 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, resultVar string) {
 // A terminal canvas never rescales -- the cell grid is computed from the
 // declared size -- so the surface is asked for the size it already has and the
 // buffer survives every frame after the first.
-func canvasRasteriser(n *ir.NodeInst, w, h int) string {
+func canvasRasteriser(c *codegen.Canvas) string {
 	return fmt.Sprintf("func() image.Image { __c := %s.Begin(%d, %d, 0, 0, \"\"); m.%s(__c); return __c.Result() }",
-		canvasSurfaceVar(n.CanvasDraw), w, h, n.CanvasDraw.Name)
+		canvasSurfaceVar(c), c.Width, c.Height, c.Name)
 }
 
 // canvasSurfaceVar names the package-level surface backing a draw func. It is a
 // package var rather than a Model field because bubbletea's Model is a value:
 // an Update returns a copy, so a buffer parked in a field would be reallocated
 // on the frame after every keypress -- the allocation this exists to remove.
-func canvasSurfaceVar(fn *ir.Func) string {
-	return strings.Replace(fn.Name, "canvasDraw", "canvasSurface", 1)
+func canvasSurfaceVar(c *codegen.Canvas) string {
+	return strings.Replace(c.Name, "canvasDraw", "canvasSurface", 1)
 }
 
 // emitCanvasSurfaceDecls declares one reusable drawing surface per canvas.
@@ -220,43 +173,30 @@ func canvasSurfaceVar(fn *ir.Func) string {
 // tui calls the rasteriser on every frame it cannot serve from cache, and a
 // context allocated per call throws the whole image away per keypress -- most
 // of a megabyte for a readout across a wide terminal.
-func emitCanvasSurfaceDecls(b *strings.Builder, pkg *ir.Package) {
-	seen := map[*ir.Func]bool{}
-	emit := func(body []ir.Stmt) {
-		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
-			if n.CanvasDraw == nil || seen[n.CanvasDraw] {
-				return false
-			}
-			seen[n.CanvasDraw] = true
-			fmt.Fprintf(b, "var %s %s.Surface\n", canvasSurfaceVar(n.CanvasDraw), snglCanvasAlias)
-			return false
-		})
+func emitCanvasSurfaceDecls(b *strings.Builder, draws *codegen.CanvasDraws) {
+	all := draws.All()
+	for i := range all {
+		fmt.Fprintf(b, "var %s %s.Surface\n", canvasSurfaceVar(&all[i]), snglCanvasAlias)
 	}
-	for _, c := range pkg.Components {
-		emit(c.Body)
-	}
-	for _, w := range pkg.Windows {
-		emit(w.Body)
-	}
-	if len(seen) > 0 {
+	if len(all) > 0 {
 		b.WriteByte('\n')
 	}
 }
 
 // canvasImageID derives a stable, nonzero kitty image ID from a canvas draw
-// func. passCanvas names them `_canvasDraw0`, `_canvasDraw1`, … — globally
+// func. codegen names them `_canvasDraw0`, `_canvasDraw1`, … — globally
 // unique per canvas in the package — so the trailing index + 1 gives each
 // on-screen canvas a distinct image ID (kitty IDs must be > 0, and two images
 // sharing an ID would clobber each other's transmitted data).
-func canvasImageID(fn *ir.Func) int {
-	if fn == nil {
+func canvasImageID(c *codegen.Canvas) int {
+	if c == nil {
 		return 1
 	}
-	i := len(fn.Name)
-	for i > 0 && fn.Name[i-1] >= '0' && fn.Name[i-1] <= '9' {
+	i := len(c.Name)
+	for i > 0 && c.Name[i-1] >= '0' && c.Name[i-1] <= '9' {
 		i--
 	}
-	if n, err := strconv.Atoi(fn.Name[i:]); err == nil {
+	if n, err := strconv.Atoi(c.Name[i:]); err == nil {
 		return n + 1
 	}
 	return 1
@@ -274,33 +214,19 @@ const canvasTransmitMethodName = "__canvasTransmit"
 // image data is written raw to the tty, out of the cell compositor that would
 // otherwise drop the APC graphics sequence. Returns nil when nothing was
 // transmitted (e.g. half-block terminals), so the half-block path is unaffected.
-func emitCanvasTransmitMethod(b *strings.Builder, pkg *ir.Package, gc *golang.GoIRContext) {
+func emitCanvasTransmitMethod(b *strings.Builder, draws *codegen.CanvasDraws, gc *golang.GoIRContext) {
 	gc.RequireImport("strings")
 	gc.RequireImport("image")
 	fmt.Fprintf(b, "func (m Model) %s() tea.Cmd {\n", canvasTransmitMethodName)
 	b.WriteString("\tvar __ctb strings.Builder\n")
-	seen := map[*ir.Func]bool{}
-	emit := func(body []ir.Stmt) {
-		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
-			if n.CanvasDraw == nil || seen[n.CanvasDraw] {
-				return false
-			}
-			seen[n.CanvasDraw] = true
-			w, h := nodeCanvasDims(n)
-			cols, rows := terminalCells(w, h)
-			id := canvasImageID(n.CanvasDraw)
-			// KittyTransmit calls the rasteriser only when it actually needs to
-			// re-encode (kitty + pixels changed), so a static or off-screen canvas
-			// costs nothing here.
-			fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, id, canvasRasteriser(n, w, h))
-			return false
-		})
-	}
-	for _, c := range pkg.Components {
-		emit(c.Body)
-	}
-	for _, w := range pkg.Windows {
-		emit(w.Body)
+	all := draws.All()
+	for i := range all {
+		c := &all[i]
+		cols, rows := terminalCells(c.Width, c.Height)
+		// KittyTransmit calls the rasteriser only when it actually needs to
+		// re-encode (kitty + pixels changed), so a static or off-screen canvas
+		// costs nothing here.
+		fmt.Fprintf(b, "\t__ctb.WriteString(tui.KittyTransmit(%d, %d, %d, %s))\n", cols, rows, canvasImageID(c), canvasRasteriser(c))
 	}
 	b.WriteString("\tif __ctb.Len() == 0 {\n\t\treturn nil\n\t}\n")
 	b.WriteString("\treturn tea.Raw(__ctb.String())\n")
@@ -309,46 +235,29 @@ func emitCanvasTransmitMethod(b *strings.Builder, pkg *ir.Package, gc *golang.Go
 
 // emitCanvasDrawFuncs emits one `func (m *Model) _canvasDrawN(ctx
 // *snglcanvas.Context)` per canvas NodeInst found in the visual tree. The body
-// is the draw func's canvas-intrinsic CallStmts, each translated to ctx method
-// calls via the shared canvasutil.GoContextStmts helper and rendered through
-// the Go IR context.
-func emitCanvasDrawFuncs(b *strings.Builder, pkg *ir.Package, gc *golang.GoIRContext) {
-	seen := map[*ir.Func]bool{}
-	emit := func(body []ir.Stmt) {
-		codegen.WalkVisualTree(body, func(n *ir.NodeInst, _ int) bool {
-			if n.CanvasDraw == nil || seen[n.CanvasDraw] {
-				return false
-			}
-			seen[n.CanvasDraw] = true
-			emitCanvasDrawFunc(b, n.CanvasDraw, gc)
-			return false
-		})
-	}
-	for _, c := range pkg.Components {
-		emit(c.Body)
-	}
-	for _, w := range pkg.Windows {
-		emit(w.Body)
+// is the drawing as passShapeDraw left it -- `#[go.native]` method calls on the
+// canvas runtime, which the Go IR context renders like any other call.
+func emitCanvasDrawFuncs(b *strings.Builder, draws *codegen.CanvasDraws, gc *golang.GoIRContext) {
+	all := draws.All()
+	for i := range all {
+		emitCanvasDrawFunc(b, &all[i], gc)
 	}
 }
 
-// translateCanvasBody rewrites the canvas intrinsics in stmts into Context
-// method calls, descending into the conditionals and loops passCanvas keeps in
-// a draw body -- reading only the top level left a shape written inside an
-// `if` as a call to a Go function nobody emits, which panicked the build.
+// translateCanvasBody rebuilds a draw body, descending into the conditionals
+// and loops the splice keeps in one -- reading only the top level left a shape
+// written inside an `if` as a call to a Go function nobody emits, which
+// panicked the build.
 //
-// Matched on the "Canvas" prefix rather than on carrying any intrinsic at all:
-// GoContextStmts answers for this package's ids and returns nil for anything
-// else, so handing it another intrinsic deleted the statement.
+// It translates nothing any more. Every statement in a draw body is what a
+// shape override's `@draw` handler was written as, which for this target is
+// `#[go.native]` method calls on the pkg/go/canvas runtime that the ordinary
+// Go emitter already handles. The walk stays because the descent is still
+// needed: a nested body has to be rebuilt for the copy this returns.
 func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 	var out []ir.Stmt
 	for _, stmt := range stmts {
 		switch n := stmt.(type) {
-		case *ir.CallStmt:
-			if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
-				out = append(out, canvasutil.GoContextStmts(n)...)
-				continue
-			}
 		case *ir.If:
 			out = append(out, &ir.If{
 				AST:  n.AST,
@@ -371,10 +280,10 @@ func translateCanvasBody(stmts []ir.Stmt) []ir.Stmt {
 
 // emitCanvasDrawFunc emits a single draw func as a Model method, translating
 // each canvas-intrinsic body CallStmt into Context method calls.
-func emitCanvasDrawFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
-	body := translateCanvasBody(fn.Block)
+func emitCanvasDrawFunc(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext) {
+	body := translateCanvasBody(cv.Draw)
 	synthesized := &ir.Func{
-		Name:     fn.Name,
+		Name:     cv.Name,
 		Receiver: "Model",
 		Params:   []*ir.Param{{Name: "ctx", Type: canvasCtxType()}},
 		Return:   ir.TypVoid,

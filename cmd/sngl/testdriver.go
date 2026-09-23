@@ -324,12 +324,15 @@ func prepareForLaunch(pkg *ir.Package, plat codegen.PlatformGenerator, lang code
 	if err := optimize.Optimize(pkg, optCfg); err != nil {
 		return fmt.Errorf("optimize for tests: %w", err)
 	}
-	caps := plat.Capabilities(lang).ToLowerCaps()
+	feats, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+	if err != nil {
+		return fmt.Errorf("lower for tests: %w", err)
+	}
 	// The same options every other caller lowers with. Without the language,
 	// passPlatformExtensionBody picks a different body for a component that
 	// overrides on both axes, so the program under test was not the program
 	// `sngl generate` builds.
-	if err := lower.Lower(pkg, caps, lower.Options{
+	if err := lower.Lower(pkg, feats, lower.Options{
 		Platform:        plat.PlatformIdentifier(),
 		Language:        langIdent(lang),
 		RootComponent:   root,

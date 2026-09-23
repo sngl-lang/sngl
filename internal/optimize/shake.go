@@ -115,7 +115,12 @@ func filterVars(vars []*ir.Var, used map[ir.Symbol]bool) []*ir.Var {
 func filterFuncs(funcs []*ir.Func, used map[ir.Symbol]bool) []*ir.Func {
 	var out []*ir.Func
 	for _, f := range funcs {
-		if used[f] || f.IsTest {
+		// A synthesized func is the lowering's, and what calls it is usually
+		// the platform's own scaffolding rather than IR this walk can read --
+		// a focus helper called from the Model's key handling, a slot render
+		// called from a factory. It used to be rooted by sitting in a window's
+		// Funcs; the window owns nothing now, so the flag is what says it.
+		if used[f] || f.IsTest || f.Synthesized {
 			out = append(out, f)
 		} else {
 			slog.Debug("shaken: func", "name", f.Name)
@@ -205,9 +210,6 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 			for _, f := range s.Funcs {
 				walk(f)
 			}
-			for _, t := range s.Timers {
-				walkTimer(t, used, walk)
-			}
 			walkStmts(s.Body, used, walk)
 		}
 	}
@@ -220,20 +222,10 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 	for _, comp := range pkg.Components {
 		walk(comp)
 	}
+	// The window itself and not only its body: a window carries its route
+	// parameters and its @error, and neither is reachable from the children.
 	for _, w := range pkg.Windows {
-		for _, v := range w.Vars {
-			walk(v)
-		}
-		for _, f := range w.Funcs {
-			walk(f)
-		}
-		for _, t := range w.Timers {
-			walkTimer(t, used, walk)
-		}
-		walkStmts(w.Body, used, walk)
-	}
-	for _, t := range pkg.Timers {
-		walkTimer(t, used, walk)
+		walkStmt(w, used, walk)
 	}
 	// Test functions are roots.
 	for _, f := range pkg.Funcs {
@@ -247,17 +239,28 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 			walk(v)
 		}
 	}
+	// The entry points the lowering left for a platform to call. Nothing in
+	// the IR calls any of them -- each platform emits the call from its own
+	// scaffolding, off these same fields -- so the reference the package
+	// holds is the only one there is, and walking it is what keeps what the
+	// body calls alive too: the per-effect `__effectN_teardown`, the updaters
+	// a settle re-runs.
+	//
+	// They reach this walk at all only because Optimize runs a second time
+	// after Lower, which is where they are synthesized; before that they
+	// survived by sitting in a window's Funcs, and in pkg.Funcs they are
+	// filtered like anything else nothing names. Teardown was rooted on its
+	// own and the other two were not, so `__remoteSettled` was shaken while
+	// fyne's `OnSettle` subscription still named it.
+	//
+	// Guarded rather than handed straight to walk: a nil *ir.Func in an
+	// ir.Symbol is not a nil interface, so the `sym == nil` gate at the top
+	// lets it through to the *ir.Func arm and the field read panics.
+	for _, fn := range pkg.EntryPoints() {
+		walk(fn)
+	}
 
 	return used
-}
-
-func walkTimer(t *ir.Timer, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
-	if t.Interval != nil {
-		walkExpr(t.Interval, used, walk)
-	}
-	if t.Handler != nil {
-		walkFunc(t.Handler, used, walk)
-	}
 }
 
 func walkFunc(f *ir.Func, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
@@ -288,6 +291,16 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		for _, h := range n.Handlers {
 			walkFunc(h.Func, used, walk)
 		}
+		if n.ErrorHandler != nil {
+			walkFunc(n.ErrorHandler.Func, used, walk)
+		}
+		// A window's route parameters name a struct the program may declare
+		// and never construct: the request fills the cell, and a target with
+		// no request renders its zero. Nothing else reaches that declaration,
+		// so without this the page read `v.pkg` off a type no file declared.
+		if n.Params != nil {
+			walkType(n.Params.Type, used, walk)
+		}
 		walkStmts(n.Children, used, walk)
 	case *ir.CallStmt:
 		if n.Call != nil {
@@ -307,6 +320,13 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	case *ir.LocalVar:
 		walkType(n.Type, used, walk)
 		walkExpr(n.Init, used, walk)
+		// A flattened canvas carries the statements that paint it on the node
+		// it replaced. They call what the platform package's shapes call --
+		// fyne's applyStyle, gtk4's paint -- and reaching them is what keeps
+		// those declarations from being shaken as unreferenced.
+		if n.CanvasNode != nil {
+			walkStmts(n.CanvasNode.Children, used, walk)
+		}
 	case *ir.Return:
 		walkExpr(n.Value, used, walk)
 	case *ir.If:
@@ -317,17 +337,6 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 		walkExpr(n.Iter, used, walk)
 		walkStmts(n.Body, used, walk)
 		walkStmts(n.Else, used, walk)
-	case *ir.Window:
-		for i := range n.Props {
-			walkExpr(n.Props[i].Value, used, walk)
-		}
-		for _, v := range n.Vars {
-			walk(v)
-		}
-		for _, f := range n.Funcs {
-			walk(f)
-		}
-		walkStmts(n.Body, used, walk)
 	case *ir.ContextProvider:
 		walkExpr(n.Value, used, walk)
 		walkStmts(n.Children, used, walk)
@@ -417,6 +426,13 @@ func walkCallExpr(call *ir.Call, used map[ir.Symbol]bool, walk func(ir.Symbol)) 
 		walk(call.Func)
 	}
 	walkExpr(call.Receiver, used, walk)
+	// Callee is where a call to something other than a declaration keeps its
+	// target: `h.run()` on a func-valued struct field is a Select on `h`, and
+	// Func is nil. Missed here, nothing reached `h` and the var was shaken
+	// while the handler that calls it kept naming it -- `await h__inst0.run()`
+	// against a `state` object with no such field, in emitted JS that a golden
+	// records as passing because nothing runs it.
+	walkExpr(call.Callee, used, walk)
 	for _, a := range call.Args {
 		walkExpr(a.Value, used, walk)
 	}

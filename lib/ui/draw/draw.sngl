@@ -43,8 +43,8 @@ struct PathCmd {
 // family nobody joins.
 //
 // The builtin mark is the one thing this family has that an ordinary one does
-// not: passCanvas emits this package's own primitives, so the compiler has to
-// name the tree those rules are about. It names it by the mark rather than by
+// not: passShapeDraw turns a canvas's children into the calls that paint them,
+// so the compiler has to name the tree those rules are about. It names it by the mark rather than by
 // the pair "sngl:ui/draw" and "shape", so a program declaring `struct shape`
 // of its own is a different family and is not painted.
 #[tree.kind]
@@ -220,7 +220,7 @@ func tangentArc(from Point, corner Point, to Point, r float) Arc {
     }
     var half = float.abs(turn) / 2.0
     if r <= 0.0 || half < 0.0001 || half > 1.5706 {
-        return Arc{degenerate = true, tangent1 = corner, tangent2 = corner, center = corner}
+        return Arc{degenerate=true, tangent1=corner, tangent2=corner, center=corner}
     }
 
     // Tangent points sit `r / tan(half)` along each ray from the corner, and
@@ -234,5 +234,5 @@ func tangentArc(from Point, corner Point, to Point, r float) Arc {
     if turn > 0.0 {
         sweep = -sweep
     }
-    return Arc{tangent1 = t1, tangent2 = t2, center = c, start = Point.angle(c, t1), sweep = sweep}
+    return Arc{tangent1=t1, tangent2=t2, center=c, start=Point.angle(c, t1), sweep=sweep}
 }

@@ -23,7 +23,7 @@ import (
 // directly than the calls this pass builds; Features.Effects is how it asks.
 var passEffect = pass{
 	name:    "Effect",
-	enabled: func(c Caps) bool { return c.NoEffects },
+	enabled: func(c Features) bool { return !c.Effects },
 	apply:   lowerEffects,
 }
 
@@ -47,7 +47,7 @@ const TeardownFunc = "__snglTeardown"
 // there is no case here for "an effect inside reactive control flow": the
 // position is read off the enclosing `if`/`for` when the settle function is
 // built, and never asked about again.
-func lowerEffects(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerEffects(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -247,19 +247,6 @@ func (st *effectState) stmts(stmts []ir.Stmt, o *ir.Owner, frames []effectFrame)
 				return nil, err
 			}
 			n.Children = kids
-			out = append(out, n)
-		case *ir.Window:
-			// A window written in a component body is a statement, not one of
-			// pkg.Windows, so the owner walking it is that component -- which
-			// is also where passReactivity puts the slot state for anything
-			// inside it. Without this case an effect in such a window reached
-			// no pass at all and every backend emitted `CreateNode("effect")`.
-			// It adds no frame: a window's body is not conditional.
-			body, err := st.stmts(n.Body, o, frames)
-			if err != nil {
-				return nil, err
-			}
-			n.Body = body
 			out = append(out, n)
 		default:
 			out = append(out, s)
@@ -727,9 +714,6 @@ func (st *effectState) allOwnerFuncs() []*ir.Func {
 	for _, c := range st.pkg.Components {
 		funcs = append(funcs, c.Funcs...)
 	}
-	for _, w := range st.pkg.Windows {
-		funcs = append(funcs, w.Funcs...)
-	}
 	// Plus the func behind every lambda they hold: html's `timer` is
 	// `setInterval(func() { tick() }, d)`, so an awaiting tick is spliced into
 	// that closure and the arrow itself is what needs `async`.
@@ -985,7 +969,7 @@ func (st *effectState) buildGroups() {
 		case g.comp != nil:
 			g.comp.Body = append(g.comp.Body, callOf(g.settle))
 		case g.win != nil:
-			g.win.Body = append(g.win.Body, callOf(g.settle))
+			g.win.Children = append(g.win.Children, callOf(g.settle))
 		default:
 			st.pkg.Body = append(st.pkg.Body, callOf(g.settle))
 		}

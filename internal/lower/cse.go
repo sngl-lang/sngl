@@ -49,11 +49,11 @@ import (
 // imperativeBlocks for why.
 var passCSE = pass{
 	name:    "CSE",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerCSE,
 }
 
-func lowerCSE(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerCSE(pkg *ir.Package, _ Features, _ Options) error {
 	st := &cseState{}
 	for _, block := range imperativeBlocks(pkg) {
 		st.imperative(block)

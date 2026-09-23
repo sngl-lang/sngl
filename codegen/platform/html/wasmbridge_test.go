@@ -99,7 +99,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 
 	// All four funcs are forced client-side via html.frontend, so they are
 	// WASM-eligible; the ref-bearing ones must still be filtered out. Wire
-	// the call funcs' Foreign.Path to the import path so frontendNativeFuncs
+	// the call funcs' Foreign.Path to the import path so scanPlacement
 	// recognizes them.
 	frontendUse := func(name string) ir.Stmt {
 		return &ir.CallStmt{Call: intrinsicCall("html.frontend",
@@ -123,7 +123,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 		}},
 	}
 
-	got := collectWASMPackages(pkg, nil, ".")
+	got := collectWASMPackages(pkg, scanPlacement(pkg).frontend, nil, ".")
 	if len(got) != 1 {
 		t.Fatalf("expected 1 wasm package, got %d", len(got))
 	}
@@ -172,7 +172,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 				&ir.CallStmt{Call: call()},
 			}}},
 		}
-		if got := collectWASMPackages(pkg, nil, "."); len(got) != 0 {
+		if got := collectWASMPackages(pkg, scanPlacement(pkg).frontend, nil, "."); len(got) != 0 {
 			t.Fatalf("bare go: call must ship no WASM, got %d packages", len(got))
 		}
 	})
@@ -184,7 +184,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 				&ir.CallStmt{Call: intrinsicCall("html.frontend", call())},
 			}}},
 		}
-		got := collectWASMPackages(pkg, nil, ".")
+		got := collectWASMPackages(pkg, scanPlacement(pkg).frontend, nil, ".")
 		if len(got) != 1 || len(got[0].funcs) != 1 || got[0].funcs[0].Name != "Persist" {
 			t.Fatalf("html.frontend(go_call) must ship the package's WASM, got %+v", got)
 		}

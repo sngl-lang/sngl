@@ -132,8 +132,17 @@ func parseExpectedErrorHeader(comment string) string {
 	return ""
 }
 
-func parseCapsHeader(comment string) (Caps, error) {
-	var c Caps
+// parseCapsHeader reads a fixture's `caps:` line, which names the passes it
+// wants run -- `caps: NoLambda, NoRef`.
+//
+// It starts from NoLowering rather than the zero value, and that is the whole
+// of what the Features/Caps collapse changed here: the header names passes,
+// which under the old record was the same thing as naming fields, and under
+// the new one is its opposite. A fixture asking for one pass must not get the
+// other thirty, so the names withdraw capabilities from a target that claims
+// everything. No fixture header changed.
+func parseCapsHeader(comment string) (Features, error) {
+	c := NoLowering()
 	for line := range strings.SplitSeq(comment, "\n") {
 		line = strings.TrimSpace(line)
 		line = strings.TrimPrefix(line, "#")
@@ -146,41 +155,44 @@ func parseCapsHeader(comment string) (Caps, error) {
 		})
 		for _, name := range fields {
 			if err := setCapByName(&c, name); err != nil {
-				return Caps{}, err
+				return Features{}, err
 			}
 		}
 	}
 	return c, nil
 }
 
-func setCapByName(c *Caps, name string) error {
+// setCapByName turns on the pass a fixture named, by withdrawing the
+// capability that gates it. The two `StructComponents` spellings are wants and
+// so are set rather than withdrawn.
+func setCapByName(c *Features, name string) error {
 	switch name {
 	case "NoToggle":
-		c.NoToggle = true
+		c.Toggle = false
 	case "NoTernary":
-		c.NoTernary = true
+		c.Ternary = false
 	case "NoLambda":
-		c.NoLambda = true
+		c.Lambda = false
 	case "NoRef":
-		c.NoRef = true
+		c.Ref = false
 	case "NoUnit":
-		c.NoUnit = true
+		c.Unit = false
 	case "NoEnum":
-		c.NoEnum = true
+		c.Enum = false
 	case "NoComputed":
-		c.NoComputed = true
+		c.Computed = false
 	case "NoContext", "StructComponents":
 		c.StructComponents = true
 	case "StdlibContextParam":
 		c.StdlibContextParam = true
 	case "NoReactivity":
-		c.NoReactivity = true
+		c.Reactivity = false
 	case "NoDeclarative":
-		c.NoDeclarative = true
+		c.Declarative = false
 	case "NoListLambdas":
-		c.NoListLambdas = true
+		c.ListLambdas = false
 	case "NoInlineComponents":
-		c.NoInlineComponents = true
+		c.InlineComponents = false
 	default:
 		return errCapsName(name)
 	}

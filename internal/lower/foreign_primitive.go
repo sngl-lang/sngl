@@ -26,8 +26,8 @@ var passForeignPrimitive = pass{
 	name: "ForeignPrimitive",
 	// Not capability-gated: this is about what the target can name at all,
 	// not about a language feature it lacks.
-	enabled: func(Caps) bool { return true },
-	apply: func(pkg *ir.Package, _ Caps, opts Options) error {
+	enabled: func(Features) bool { return true },
+	apply: func(pkg *ir.Package, _ Features, opts Options) error {
 		if opts.Platform == "" {
 			// No target, so no target's namespace to be foreign to. The
 			// platform-agnostic readers (LSP, fmt, doc) see every primitive.

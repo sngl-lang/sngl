@@ -22,7 +22,7 @@ func TestInlinePure_StrictKeepsIntrinsic(t *testing.T) {
 		Imports:    []*ir.Import{{Path: "sngl:platform/android", Pkg: platformPkg}},
 	}
 
-	if err := lowerInlinePure(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerInlinePure(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerInlinePure: %v", err)
 	}
 	if len(main.Body) != 1 {
@@ -35,7 +35,7 @@ func TestInlinePure_StrictKeepsIntrinsic(t *testing.T) {
 
 	// Unmarked, the same declaration is a wrapper the pass must reject.
 	intrinsic.Intrinsic = ""
-	if err := lowerInlinePure(pkg, Caps{}, Options{}); err == nil {
+	if err := lowerInlinePure(pkg, Features{}, Options{}); err == nil {
 		t.Fatal("lowerInlinePure accepted a bodyless unmarked platform component; the mark is what excuses it")
 	}
 }

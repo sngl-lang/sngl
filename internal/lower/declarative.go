@@ -11,7 +11,7 @@ import (
 
 var passDeclarative = pass{
 	name:    "NoDeclarative",
-	enabled: func(c Caps) bool { return c.NoDeclarative },
+	enabled: func(c Features) bool { return !c.Declarative },
 	apply:   lowerDeclarative,
 }
 
@@ -26,7 +26,7 @@ var passDeclarative = pass{
 // lifter. With NoLambda off the body's free vars stay free — which is fine
 // for closure-supporting targets (e.g. Go) that emit the handler as a
 // nested closure under its owning component/window.
-func lowerDeclarative(pkg *ir.Package, caps Caps, _ Options) error {
+func lowerDeclarative(pkg *ir.Package, caps Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -35,8 +35,9 @@ func lowerDeclarative(pkg *ir.Package, caps Caps, _ Options) error {
 	for _, comp := range pkg.Components {
 		comp.Body = st.processStmts(comp.Body, &comp.Funcs)
 	}
+	pkg.Body = st.processStmts(pkg.Body, &pkg.Funcs)
 	for _, w := range pkg.Windows {
-		w.Body = st.processStmts(w.Body, &w.Funcs)
+		w.Children = st.processStmts(w.Children, &pkg.Funcs)
 	}
 	return nil
 }
@@ -62,8 +63,8 @@ type declarativeState struct {
 	instanceRecords bool
 }
 
-func newDeclarativeState(pkg *ir.Package, caps Caps) *declarativeState {
-	st := &declarativeState{liftHandlers: caps.NoLambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}}
+func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
+	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -139,7 +140,7 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			st.observeID(n.ID)
-			st.scanStmts(n.Children)
+			st.scanStmts(ir.WidgetChildren(n))
 		case *ir.LocalVar:
 			// LocalVar __nN = lower.CreateNode(...) — already-lowered
 			// node from a sibling pass (e.g. reactivity's slot synth).
@@ -158,8 +159,6 @@ func (st *declarativeState) scanStmts(stmts []ir.Stmt) {
 			st.scanStmts(n.Children)
 		case *ir.ErrorBoundary:
 			st.scanStmts(n.Children)
-		case *ir.Window:
-			st.scanStmts(n.Body)
 		case *ir.Assign, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue, *ir.CanvasRedrawStmt:
 			// Leaf/non-visual stmts — no NodeInst IDs to observe. A redraw
@@ -208,6 +207,14 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			// A window is a rendering root, not a widget to flatten: what it
+			// holds is lowered, and the window itself stays where it was
+			// written for codegen to read as the page it is.
+			if ir.IsWindowNode(n) {
+				n.Children = st.processStmts(n.Children, funcs)
+				out = append(out, n)
+				continue
+			}
 			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
 			if parentID != "" {
 				out = append(out, &ir.CallStmt{
@@ -235,9 +242,6 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 			out = append(out, n)
 		case *ir.ErrorBoundary:
 			n.Children = st.processStmtsForParent(n.Children, funcs, parentID)
-			out = append(out, n)
-		case *ir.Window:
-			n.Body = st.processStmts(n.Body, &n.Funcs)
 			out = append(out, n)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
@@ -321,9 +325,10 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		varType = &ir.Type{Kind: ir.TypeComponent, Decl: n.Component}
 	}
 
-	// 1. createNode — thread canvas draw func + dimensions through the
-	// flattening so widget-emitting platforms can build a raster-backed
-	// canvas widget (the NodeInst's CanvasDraw is otherwise discarded here).
+	// 1. createNode — a canvas rides across on the statement that replaces it,
+	// so a widget-emitting platform can still build a raster-backed canvas.
+	// Its shapes are a family of their own and were never flattened; without
+	// the back-pointer the flattening is where the drawing is lost.
 	lv := &ir.LocalVar{
 		Name: id,
 		Type: varType,
@@ -336,11 +341,8 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			},
 		},
 	}
-	if n.CanvasDraw != nil {
-		lv.CanvasDraw = n.CanvasDraw
-		lv.CanvasWidth = nodeIntProp(n, "width")
-		lv.CanvasHeight = nodeIntProp(n, "height")
-		lv.CanvasScaling = nodeEnumProp(n, "scalingMode")
+	if ir.IsShapeContainer(n) {
+		lv.CanvasNode = n
 	}
 	stmts = append(stmts, lv)
 
@@ -410,8 +412,10 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		})
 	}
 
-	// 4. children — recurse, then appendChild parent → child.
-	for _, c := range n.Children {
+	// 4. children — recurse, then appendChild parent → child. A canvas's are
+	// shapes and are not flattened: they are not widgets, there is nothing to
+	// create for one, and an id spent on one shifts every id after it.
+	for _, c := range ir.WidgetChildren(n) {
 		switch cn := c.(type) {
 		case *ir.NodeInst:
 			stmts = append(stmts, st.lowerNodeIntoStmts(cn, funcs)...)
@@ -445,7 +449,7 @@ func hasRealComponentBody(comp *ir.Component) bool {
 	if comp == nil {
 		return false
 	}
-	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0 || len(comp.Timers) > 0
+	return len(comp.Body) > 0 || len(comp.Vars) > 0 || len(comp.Funcs) > 0
 }
 
 // lowerComponentNodeIntoStmts emits the flat sequence for a NodeInst whose
@@ -595,11 +599,12 @@ func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentRef ir.Expr, f
 // passReactivity slot generators. liftHandlers=false because the slot
 // re-render attaches handlers fresh each call; no separate closure
 // capture state is needed.
-func newDeclarativeStateForSlot(pkg *ir.Package, caps Caps) *declarativeState {
-	// Only the caps that decide shape travel: the slot path always keeps
-	// handlers as closures, and whether an instance is a record is the
-	// target's answer rather than the slot's.
-	st := newDeclarativeState(pkg, Caps{NoLambda: false, NoReactivity: caps.NoReactivity, NoDeclarative: caps.NoDeclarative})
+func newDeclarativeStateForSlot(pkg *ir.Package, caps Features) *declarativeState {
+	// Only the capabilities that decide shape travel: the slot path always
+	// keeps handlers as closures -- which is Lambda held, not withheld --
+	// and whether an instance is a record is the target's answer rather than
+	// the slot's.
+	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative})
 	st.inlineHandlers = true
 	// Seed the counter past every __nN already allocated package-wide
 	// — including those inside sibling slot Funcs created by earlier

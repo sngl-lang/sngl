@@ -43,6 +43,16 @@ func (cc *irComposeContext) line(format string, args ...any) {
 func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	switch s := stmt.(type) {
 	case *ir.NodeInst:
+		if ir.IsWindowNode(s) {
+			panic(fmt.Sprintf("android: unexpected nested Window in compose tree: %#v", s))
+		}
+		// A schedule is not a composable. The timer primitive stays in the
+		// tree so the branch around it is answered there; AnalyzeCommon reads
+		// it and the LaunchedEffect it becomes is emitted with the model,
+		// not here.
+		if ir.IsTimerPrimitive(s.Component) {
+			return
+		}
 		cc.renderNode(s)
 	case *ir.If:
 		cc.renderIf(s)
@@ -54,8 +64,6 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 		for _, child := range s.Children {
 			cc.renderStmt(child)
 		}
-	case *ir.Window:
-		panic(fmt.Sprintf("android: unexpected nested Window in compose tree: %#v", s))
 	case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		// Imperative stmts have no Compose rendering.
@@ -117,7 +125,7 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		cc.renderEffect(n)
 		return
 	}
-	if n.CanvasDraw != nil {
+	if ir.IsShapeContainer(n) {
 		cc.renderCanvas(n)
 		return
 	}

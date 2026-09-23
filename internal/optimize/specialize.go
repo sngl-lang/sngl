@@ -2,6 +2,7 @@ package optimize
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -72,9 +73,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// must be hoisted into the surrounding scope's state container. The
 	// optimizer's body-substitution path doesn't clone state — it only
 	// splices body statements. Leave stateful components to the lowering
-	// pass `passNoInlineComponents`, which properly clones Vars/Funcs/Timers
-	// into main with per-call-site rename suffixes.
-	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 || len(comp.Timers) > 0 {
+	// pass `passNoInlineComponents`, which properly clones Vars/Funcs into
+	// main with per-call-site rename suffixes.
+	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 {
 		return nil
 	}
 
@@ -95,10 +96,16 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// into the child context — non-const props remain runtime parameters
 	// and don't unlock any inlining benefit, but they don't block it either.
 	propValues := make(map[string]any, len(n.Props))
+	// A prop naming a shared const is substituted as that reference rather
+	// than bound as its value, so the body's own reads of it stay references.
+	propRefs := map[string]ir.Expr{}
 	for _, p := range n.Props {
-		v := foldExpr(p.Value, ctx)
+		v := foldPropArg(n, p.Name, p.Value, ctx)
 		if val, ok := evalExpr(v, ctx); ok {
 			propValues[p.Name] = val
+			if ctx.keepsReference(v, val) {
+				propRefs[p.Name] = v
+			}
 		}
 	}
 	// If no provided prop folded to a const, the body's for-loop won't
@@ -127,6 +134,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	childCtx := ctx.childInPkg(bodyPkg)
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
 	for name, val := range propValues {
+		if _, ref := propRefs[name]; ref {
+			continue
+		}
 		if sym, ok := paramSyms[name]; ok {
 			childCtx.values[sym] = val
 		}
@@ -190,16 +200,17 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// before foldStmts so a substituted expr that turns out constant still folds.
 	subs := make(map[*ir.Param]ir.Expr)
 	for _, p := range n.Props {
-		if _, isConst := propValues[p.Name]; isConst {
+		value := p.Value
+		if ref, ok := propRefs[p.Name]; ok {
+			value = ref
+		} else if _, isConst := propValues[p.Name]; isConst {
 			continue
 		}
 		if param, ok := paramSyms[p.Name]; ok {
-			subs[param] = p.Value
+			subs[param] = value
 		}
 	}
-	for param, def := range defaultSubs {
-		subs[param] = def
-	}
+	maps.Copy(subs, defaultSubs)
 	if len(subs) > 0 {
 		substituteParamsInStmts(cloned, subs)
 	}
@@ -229,6 +240,14 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	ctx.fileAssets = childCtx.fileAssets
 	if ctx.err == nil {
 		ctx.err = childCtx.err
+	}
+	// The call site's `#id` goes onto the node the body renders, as it does in
+	// lower's own inliner. Transferring nothing left a read of that id naming a
+	// binding no longer attached to anything: on a Go target
+	// `fmt.Sprint(m.dot.R)` against a Model that declares no `dot`, and on html
+	// an element the page never fills.
+	if n.ID != "" {
+		ir.AttachNodeID(folded, n.ID, n.Handle)
 	}
 	return folded
 }
@@ -291,11 +310,6 @@ func substituteParamsInStmt(s ir.Stmt, subs map[*ir.Param]ir.Expr) {
 		substituteParamsInStmts(n.Children, subs)
 	case *ir.ErrorBoundary:
 		substituteParamsInStmts(n.Children, subs)
-	case *ir.Window:
-		for i := range n.Props {
-			n.Props[i].Value = substituteParams(n.Props[i].Value, subs)
-		}
-		substituteParamsInStmts(n.Body, subs)
 	case *ir.CanvasRedrawStmt, *ir.Break, *ir.Continue:
 		// No params to substitute.
 	default:
@@ -436,11 +450,6 @@ func bodyHasFoldableParamUse(stmts []ir.Stmt, propNames map[string]bool) bool {
 				visitStmts(n.Else)
 			case *ir.SlotInst:
 				visitStmts(n.Children)
-			case *ir.Window:
-				for i := range n.Props {
-					visitExpr(n.Props[i].Value)
-				}
-				visitStmts(n.Body)
 			case *ir.Assign:
 				visitExpr(n.Value)
 			case *ir.LocalVar:

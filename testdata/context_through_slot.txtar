@@ -72,9 +72,7 @@ import (
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
 	__ctx_depth__inst0 int
-	__ctx_depth__inst1 int
 	__ctx_depth__inst2 int
-	__ctx_depth__inst3 int
 
 	width, height int
 }
@@ -83,9 +81,7 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.__ctx_depth__inst0 = 2
-	m.__ctx_depth__inst1 = 1
 	m.__ctx_depth__inst2 = 1
-	m.__ctx_depth__inst3 = 0
 	return m
 }
 
@@ -195,9 +191,7 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = {};
   var __ctx_depth__inst0 = 2;
-  var __ctx_depth__inst1 = 1;
   var __ctx_depth__inst2 = 1;
-  var __ctx_depth__inst3 = 0;
   function String(v) {
     return "" + v;
   }
@@ -212,6 +206,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:e42b2802c99ff5ae461f7dd3f40ca2b7
+pass sha256:c7255684af5c162dfa50a6c9f4f79b89
 -- run/none/html --
-pass sha256:cd9c9d3796fe74ff04214f2c29bdd7dc
+pass sha256:4754a444efb97909de2d87d157dce884

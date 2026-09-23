@@ -42,7 +42,7 @@ func init() {
 	dumpCmd.Flags().String("platform", "", "target platform")
 	dumpCmd.Flags().StringSlice("opt", nil, "generator options (key=value, for codegen stage)")
 	dumpCmd.Flags().String("after", "", "dump IR after named pass (lowered stage only; 'none' = pre-lower state)")
-	dumpCmd.Flags().Bool("list", false, "print resolved caps and pass list, then exit (lowered stage only)")
+	dumpCmd.Flags().Bool("list", false, "print resolved feats and pass list, then exit (lowered stage only)")
 }
 
 var dumpOmitSet map[string]bool
@@ -178,8 +178,11 @@ func runDump(cmd *cobra.Command, args []string) error {
 		slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
-				caps := plat.Capabilities(lang).ToLowerCaps()
-				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+				feats, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+				if err != nil {
+					return err
+				}
+				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -206,8 +209,11 @@ func runDump(cmd *cobra.Command, args []string) error {
 		slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 		if plat := codegen.LookupPlatform(target.Platform); plat != nil {
 			if lang := codegen.LookupLang(target.Lang); lang != nil {
-				caps := plat.Capabilities(lang).ToLowerCaps()
-				if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+				feats, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+				if err != nil {
+					return err
+				}
+				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 					return err
 				}
 			}
@@ -241,11 +247,14 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 	if lang == nil {
 		return fmt.Errorf("unknown language %q", target.Lang)
 	}
-	caps := plat.Capabilities(lang).ToLowerCaps()
+	feats, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+	if err != nil {
+		return err
+	}
 
 	if listOnly, _ := cmd.Flags().GetBool("list"); listOnly {
-		enabled := lower.EnabledPasses(caps)
-		fmt.Printf("caps: %s\n", caps.String())
+		enabled := lower.EnabledPasses(feats)
+		fmt.Printf("caps: %s\n", feats.String())
 		if len(enabled) == 0 {
 			fmt.Println("passes: (none)")
 		} else {
@@ -266,10 +275,10 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 
 	stopAfter, _ := cmd.Flags().GetString("after")
 	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{StopAfter: stopAfter, Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	if err := lower.Lower(pkg, feats, lower.Options{StopAfter: stopAfter, Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
 		return err
 	}
-	slog.Info("lower", "dir", dir, "caps", caps.String(), "stopAfter", stopAfter, "duration", time.Since(start))
+	slog.Info("lower", "dir", dir, "caps", feats.String(), "stopAfter", stopAfter, "duration", time.Since(start))
 
 	return dumpDocument(f, ir.Convert(pkg))
 }
@@ -314,12 +323,15 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	}
 	slog.Info("optimize", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
 
-	caps := plat.Capabilities(lang).ToLowerCaps()
-	start = time.Now()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	feats, err := codegen.CapsFor(lang.LanguageIdentifier(), plat.PlatformIdentifier())
+	if err != nil {
 		return err
 	}
-	slog.Info("lower", "dir", dir, "caps", caps.String(), "duration", time.Since(start))
+	start = time.Now()
+	if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+		return err
+	}
+	slog.Info("lower", "dir", dir, "caps", feats.String(), "duration", time.Since(start))
 
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --

@@ -6,7 +6,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -25,18 +24,6 @@ func (g *Generator) Description() string {
 	return "Terminal UI, written in Go using the Bubble Tea framework."
 }
 func (g *Generator) SupportedLangs() []string { return []string{"go"} }
-func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
-	f := lang.Capabilities()
-	f.InlineComponents = false
-	f.ImplicitRecv = false
-	f.StructSpread = false
-	f.StructComponents = true
-	f.StdlibContextParam = true
-	f.FocusOrder = true
-	f.Canvas = true
-	f.ReactiveCanvas = false // RenderModel: View() re-runs each update, re-rasterizing the canvas; no explicit redraw
-	return f
-}
 
 func (g *Generator) PreviewCSS() string { return previewCSS }
 

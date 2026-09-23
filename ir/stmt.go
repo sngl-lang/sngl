@@ -42,10 +42,77 @@ type NodeInst struct {
 	//
 	// Not serialized: it points back into the symbol graph, and a reparse of a
 	// printed tree re-declares the handle from the `#id` it prints.
-	Handle     *Var  `json:"-"`
-	Key        Expr  // key expression for list diffing (nil → implicit index)
-	Ref        Expr  // ref binding (nil if none)
-	CanvasDraw *Func // non-nil for canvas containers after passCanvas
+	Handle *Var `json:"-"`
+	Key    Expr // key expression for list diffing (nil → implicit index)
+	Ref    Expr // ref binding (nil if none)
+
+	// The three below are a window's and nil on every other node, which is the
+	// price of a window being a NodeInst rather than a type of its own. It is
+	// three nil fields against the 79 `case *ir.Window:` arms the separate type
+	// cost, and none of them is a *body owner* -- Vars, Funcs and Timers stay
+	// off NodeInst, which is the distinction PLAN.md's first fork turns on.
+
+	// ErrorHandler is the @error this node declared: the outermost error
+	// boundary for the tree it renders. Separate from Handlers because those
+	// are the events a platform wires to a widget and nothing wires this one.
+	ErrorHandler *EventHandler `json:",omitempty"`
+	// Params is the binding a window's scoped rest slot hands its body: one
+	// struct value holding what the route knows per request, typed by the
+	// `params` prop the call site wrote. Nil where the body wrote no
+	// population, and so asked for nothing.
+	//
+	// The fields are the path's `{name}` placeholders, which is why nothing
+	// here reads the href: the struct is the contract, and the path is a plain
+	// string html holds to it.
+	//
+	// The *ir.Param the population declares, like every other population's
+	// binding. That a target *stores* it -- one cell filled in before the body
+	// renders, a Model field on a target with no request -- is codegen's
+	// answer and is written down there (CodegenCtx.ModelState); the checker
+	// makes no distinction, having none to make.
+	Params *Param `json:"-"`
+	// LocalRefs is populated by lower's passNodeEscape (MutationModel platforms
+	// only): the set of synthesized widget ref ids (__nN) created in this
+	// node's children that do NOT escape to any other scope. A node has one
+	// when it is a render scope of its own, which today means a window. See
+	// internal/lower/node_escape.go and Component.LocalRefs.
+	LocalRefs map[string]bool `json:"-"`
+}
+
+// Prop is the value written for name, or nil if the call site did not write
+// it. checkAndSplitArgs binds a positional arg to its declared name before the
+// slice reaches here, so a lookup by name finds what was written positionally.
+//
+// Nil-safe on the receiver, and two callers depend on it:
+// CodegenCtx.Windows synthesizes a WindowCtx with a nil Window for a
+// harness-isolated root component, so html and gtk4 ask a window that is not
+// there rather than guarding first.
+// VisualNode is the source node n was built from, or nil where it was
+// synthesized or came from a call statement.
+//
+// NodeInst.AST is the interface because `Foo()` parses as an *ast.CallStmt and
+// `Foo { }` as an *ast.VisualNode, and both are instantiations. A caller that
+// knows it holds the second -- the checker reading a window's block, which the
+// parser only ever produces the one way -- asks here rather than repeating the
+// assertion.
+func (n *NodeInst) VisualNode() *ast.VisualNode {
+	if n == nil {
+		return nil
+	}
+	vn, _ := n.AST.(*ast.VisualNode)
+	return vn
+}
+
+func (n *NodeInst) Prop(name string) Expr {
+	if n == nil {
+		return nil
+	}
+	for _, p := range n.Props {
+		if p.Name == name {
+			return p.Value
+		}
+	}
+	return nil
 }
 
 // SlotContent is what a call site supplies for one named slot. Params are the
@@ -166,19 +233,17 @@ type LocalVar struct {
 	// node handles passDeclarative emits, which are addressed as element refs
 	// rather than by symbol.
 	Sym *Var
-	// CanvasDraw is set by passDeclarative when flattening a canvas
-	// NodeInst (whose own CanvasDraw was set by passCanvas) into a
-	// `lower.CreateNode("canvas")` LocalVar. It carries the synthesized
-	// draw func through flattening so widget-emitting platforms (fyne,
-	// gtk4) can wire a raster-backed canvas widget. CanvasWidth/Height
-	// carry the canvas's pixel dimensions (from its width/height props).
-	CanvasDraw   *Func
-	CanvasWidth  int
-	CanvasHeight int
-	// CanvasScaling is the `scalingMode` prop: what a platform does with the
-	// picture when the room it lays the canvas out in is not the size the
-	// shapes were placed at. Empty means the declaration's default.
-	CanvasScaling string
+	// CanvasNode is the canvas instantiation this createNode flattened, kept
+	// only when it is one.
+	//
+	// passDeclarative's whole job is to destroy the tree, so a drawing needs
+	// something to ride across on -- its shapes are not widgets and are not
+	// flattened with it. The node is the smallest such thing and carries
+	// everything a platform asks of a canvas: the shapes, and the width,
+	// height and scalingMode props. It used to be four fields holding a
+	// synthesized draw func and three prop values copied out, which is the
+	// same carrier written out longhand.
+	CanvasNode *NodeInst
 }
 
 func (*LocalVar) stmtNode() {}
@@ -415,8 +480,7 @@ func constInt(e Expr) (int, bool) {
 // bodies that mutate state vars read by a canvas draw function. Each platform
 // translates this to its native "clear and redraw the canvas" operation.
 type CanvasRedrawStmt struct {
-	Canvas   *NodeInst // the canvas element (has CanvasDraw set)
-	DrawFunc *Func     // the synthesized draw function
+	Canvas *NodeInst // the canvas element
 }
 
 func (*CanvasRedrawStmt) stmtNode() {}

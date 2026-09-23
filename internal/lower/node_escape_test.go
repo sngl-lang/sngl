@@ -83,7 +83,7 @@ func TestNodeEscape_RecursiveComponentRefsAreLocal(t *testing.T) {
 
 	pkg := &ir.Package{Components: []*ir.Component{tree, main}}
 
-	caps := Caps{NoDeclarative: true}
+	caps := without("declarative")
 	if err := lowerNodeEscape(pkg, caps, Options{}); err != nil {
 		t.Fatalf("node escape: %v", err)
 	}

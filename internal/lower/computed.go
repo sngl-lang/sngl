@@ -8,7 +8,7 @@ import (
 
 var passComputed = pass{
 	name:    "NoComputed",
-	enabled: func(c Caps) bool { return c.NoComputed },
+	enabled: func(c Features) bool { return !c.Computed },
 	apply:   lowerComputed,
 }
 
@@ -20,7 +20,7 @@ var passComputed = pass{
 // Return statement: Func.Block = []ir.Stmt{*ir.Return{Value: expr}}.
 //
 // Multi-statement computeds are not inlined.
-func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerComputed(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -29,9 +29,6 @@ func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
 	collectComputed(pkg.Funcs, bodies)
 	for _, comp := range pkg.Components {
 		collectComputed(comp.Funcs, bodies)
-	}
-	for _, w := range pkg.Windows {
-		collectComputed(w.Funcs, bodies)
 	}
 
 	if len(bodies) == 0 {
@@ -49,9 +46,6 @@ func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
 	pkg.Funcs = filterFuncs(pkg.Funcs, bodies)
 	for _, comp := range pkg.Components {
 		comp.Funcs = filterFuncs(comp.Funcs, bodies)
-	}
-	for _, w := range pkg.Windows {
-		w.Funcs = filterFuncs(w.Funcs, bodies)
 	}
 	return nil
 }

@@ -25,13 +25,13 @@ type RenderModel struct {
 
 // Updater is a registered reactive update function with its dependencies.
 type Updater struct {
-	Name     string               // e.g., "$u_0_text", "updateLabel0"
-	Kind     string               // "text", "attr", "if", "list", "else", "disabled", etc.
-	Node     *ir.NodeInst         // the node this updater targets
-	Expr     ir.Expr              // the reactive expression being watched
-	Body     string               // platform-specific code body (filled during emit)
-	Deps     map[*ir.Var]struct{} // root state var dependencies
-	InitOnly bool                 // run only on initial sync; mutation updates are emitted inline elsewhere
+	Name     string                 // e.g., "$u_0_text", "updateLabel0"
+	Kind     string                 // "text", "attr", "if", "list", "else", "disabled", etc.
+	Node     *ir.NodeInst           // the node this updater targets
+	Expr     ir.Expr                // the reactive expression being watched
+	Body     string                 // platform-specific code body (filled during emit)
+	Deps     map[ir.Symbol]struct{} // root state dependencies
+	InitOnly bool                   // run only on initial sync; mutation updates are emitted inline elsewhere
 	// Requires rides on the Updater so that an updater OptimizeMutation drops
 	// contributes no helpers or imports, and merged updaters union theirs.
 	Requires Requirement
@@ -80,15 +80,15 @@ func (r *Requirement) union(other Requirement) {
 }
 
 type Handler struct {
-	NodeID  string               // element/widget identifier
-	Event   string               // "click", "input", "change"
-	Body    ir.Stmt              // mutation IR (ir.Assign, ir.CallStmt, etc.)
-	Mutated map[*ir.Var]struct{} // vars this handler mutates
+	NodeID  string                 // element/widget identifier
+	Event   string                 // "click", "input", "change"
+	Body    ir.Stmt                // mutation IR (ir.Assign, ir.CallStmt, etc.)
+	Mutated map[ir.Symbol]struct{} // state this handler mutates
 }
 
 type TimerHandler struct {
 	TimerInfo
-	Mutated map[*ir.Var]struct{} // vars mutated by the timer body
+	Mutated map[ir.Symbol]struct{} // state mutated by the timer body
 }
 
 func NewMutationModel(a *CommonAnalysis, deps *DepTracker) *MutationModel {

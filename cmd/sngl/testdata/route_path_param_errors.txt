@@ -1,0 +1,93 @@
+# A route's path is held to the struct that says what its window hands the
+# body: every `{name}` names a field, and that field is something a route can
+# parse out of text.
+#
+# Both questions belong to html and not to the checker. A path is a plain
+# string until something serves it -- `href` is an ordinary prop on every other
+# target, and `{pkg}` is only a placeholder because a route reads it that way.
+# The checker asked them anyway, which is the compiler knowing what html knows:
+# a window built for bubbletea got a diagnostic about a path nothing routes.
+#
+# So these are build errors now, and they arrive only for the target that has
+# routes. That also makes them reachable by `--lang none`, which serves the
+# page as a file: the placeholder is refused there for a different reason
+# (route_param_static_refused.txt), so this asks --lang go.
+#
+# One-directional on purpose: `page` below is a field the path does not name,
+# and that is not an error. The path is one source of a request's values and
+# the struct is meant to carry the others.
+
+! sngl generate --lang go --platform html -o out-missing missing.sngl
+stderr 'the path names \{slug\}, but the window''s params have no field "slug"'
+
+! sngl generate --lang go --platform html -o out-unparseable unparseable.sngl
+stderr 'path parameter \{tags\} arrives as text, and field "tags" is list<string>, which a route cannot parse it into'
+
+# The field the path does not name is left alone.
+sngl generate --lang go --platform html -o out-ok ok.sngl
+
+-- missing.sngl --
+import "sngl:platform/html"
+import ui "sngl:ui"
+
+output {
+    go {
+        html
+    }
+}
+
+struct PageParams {
+    pkg string
+    page int
+    tags list<string>
+}
+
+ui.window #a(title="t", href=`/p/{slug}`, params=PageParams{}) {
+    component content(v) {
+        html.span(innerText=v.pkg)
+    }
+}
+
+-- unparseable.sngl --
+import "sngl:platform/html"
+import ui "sngl:ui"
+
+output {
+    go {
+        html
+    }
+}
+
+struct PageParams {
+    pkg string
+    page int
+    tags list<string>
+}
+
+ui.window #b(title="t", href=`/t/{tags}`, params=PageParams{}) {
+    component content(v) {
+        html.span(innerText=v.pkg)
+    }
+}
+
+-- ok.sngl --
+import "sngl:platform/html"
+import ui "sngl:ui"
+
+output {
+    go {
+        html
+    }
+}
+
+struct PageParams {
+    pkg string
+    page int
+    tags list<string>
+}
+
+ui.window #c(title="t", href=`/p/{pkg}`, params=PageParams{}) {
+    component content(v) {
+        html.span(innerText=v.pkg)
+    }
+}

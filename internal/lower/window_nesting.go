@@ -22,11 +22,11 @@ import (
 // Always on, and not a capability: it answers for every target.
 var passWindowNesting = pass{
 	name:    "WindowNesting",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerWindowNesting,
 }
 
-func lowerWindowNesting(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerWindowNesting(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -41,17 +41,17 @@ func lowerWindowNesting(pkg *ir.Package, _ Caps, _ Options) error {
 		seen[w] = true
 	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if w, ok := n.(*ir.Window); ok && !seen[w] {
+		if w, ok := n.(*ir.NodeInst); ok && ir.IsWindowNode(w) && !seen[w] {
 			seen[w] = true
 			outer = append(outer, w)
 		}
 		return nil
 	})
 	for _, w := range outer {
-		for _, inner := range w.Body {
+		for _, inner := range w.Children {
 			var found *ir.Window
 			_ = ir.Walk(inner, func(n ir.Node) error {
-				if nested, ok := n.(*ir.Window); ok && found == nil {
+				if nested, ok := n.(*ir.NodeInst); ok && ir.IsWindowNode(nested) && found == nil {
 					found = nested
 				}
 				return nil
@@ -63,8 +63,9 @@ func lowerWindowNesting(pkg *ir.Package, _ Caps, _ Options) error {
 	}
 	// Every window's body has just been searched and none held a window, which
 	// is the question ir.Owners walks each of them to answer. Nothing after
-	// this pass constructs a window -- passRootWindow, which does, is two
-	// dozen passes earlier -- so the answer holds for the rest of the build.
+	// this pass constructs or moves a window -- the inliner, which splices one
+	// into the body that instantiated its component, runs just before -- so the
+	// answer holds for the rest of the build.
 	pkg.WindowsFlat = true
 	return nil
 }

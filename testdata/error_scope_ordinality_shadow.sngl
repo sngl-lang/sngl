@@ -1,0 +1,30 @@
+// Within the `if`, `label` is the node. A node id is a binding in the scope it
+// was written in, so it shadows an outer one of the same name exactly as a
+// nested declaration of any other kind does -- and a node handle has no
+// string() method, which is what makes the shadow observable here rather than
+// only in the emitted names.
+//
+// The read outside the `if` is the var, unchanged: the counted hoist that puts
+// `label` in the enclosing scope for the diagnostic must not take a name an
+// outer scope legitimately holds, which is why the two hoists differ in what
+// they will shadow (shadowOuter against yieldToOuter).
+//
+// What the shadow then costs in the emitted namespace -- where a var and a
+// node id are flat against each other -- is node_id_shadows_and_renames.txtar.
+
+import ui "sngl:ui"
+
+ui.window #w(title="t") {
+    var show = true
+    var label = "outer"
+
+    ui.vbox {
+        if show {
+            ui.text #label(value="node")
+
+            ui.text(value="inside: {label}") // ERROR(check) "cannot interpolate text: type has no string() method"
+        }
+
+        ui.text(value="outside: {label}")
+    }
+}

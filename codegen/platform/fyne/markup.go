@@ -51,6 +51,7 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 			Type: fyneNative{Path: fynetextPath, Name: "Style"},
 			Raw:  spanStyleChain(props),
 		}}
+		sp.CtorOnly = map[string]bool{"kind": true, "spanStyle": true}
 		sp.Setters["text"] = "SetText"
 		sp.Setters["href"] = "SetHref"
 	default:

@@ -121,14 +121,14 @@ func StmtPos(s Stmt) ast.Pos {
 		// concrete node, which is why it was missing: a diagnostic about a
 		// node -- an effect in the wrong scope, a prop a backend cannot emit
 		// -- had nowhere to say where the node was written.
-		if n.AST != nil {
+		//
+		// Nil-checked because a window is one of these and a WindowCtx may
+		// carry none: CodegenCtx.Windows synthesizes one for a harness-isolated
+		// root component, and html asks that window where it was written.
+		if n != nil && n.AST != nil {
 			if p := n.AST.StmtPos(); p != nil {
 				return *p
 			}
-		}
-	case *Window:
-		if n.AST != nil {
-			return n.AST.Pos
 		}
 	case *If:
 		if n.AST != nil {

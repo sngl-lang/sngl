@@ -33,7 +33,7 @@ func TestEveryPlatformPairsInsertBefore(t *testing.T) {
 	}
 	declares := func(gen codegen.PlatformGenerator) bool {
 		for _, lang := range codegen.Langs() {
-			if lt := codegen.LookupLang(lang); lt != nil && gen.Capabilities(lt).InsertBefore {
+			if lt := codegen.LookupLang(lang); lt != nil && codegen.CapsOrNone(lt.LanguageIdentifier(), gen.PlatformIdentifier()).InsertBefore {
 				return true
 			}
 		}

@@ -112,8 +112,9 @@ func (c *blockCollector) add(b *[]ir.Stmt) {
 }
 
 // owner covers one declaration's imperative blocks: its own functions, the
-// handlers on its vars and timers, its own @error, and the handlers hanging
-// off the nodes in its view.
+// handlers on its vars, its own @error, and the handlers hanging off the nodes
+// in its view -- a timer's @tick among them, the timer primitive being an
+// ordinary node.
 func (c *blockCollector) owner(o ir.Owner) {
 	for _, f := range o.Funcs {
 		c.addImperative(&f.Block)
@@ -123,11 +124,6 @@ func (c *blockCollector) owner(o ir.Owner) {
 			if h.Func != nil {
 				c.addImperative(&h.Func.Block)
 			}
-		}
-	}
-	for _, t := range o.Timers {
-		if t.Handler != nil {
-			c.addImperative(&t.Handler.Block)
 		}
 	}
 	c.viewIn(o.Body)

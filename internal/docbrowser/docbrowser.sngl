@@ -15,6 +15,14 @@ import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "../docui"
 import "sngl:platform/html"
 
+// The route parameters each window takes. `PkgParams` serves two paths, the
+// second of which fills `name` as well -- a field a path does not name keeps
+// the struct's zero, which is what lets one struct describe both.
+struct PkgParams {
+    pkg string
+    name string
+}
+
 var path = "sngl"
 var ident1 = ""
 var ident2 = ""
@@ -37,40 +45,44 @@ if PLATFORM == html.platform {
         }
     }
 
-    window #pkg(title="Package — SNGL Docs", href="/p/{pkg}") {
-        hbox {
-            docui.Sidebar(homeHref="/") {
-                for var p = lookup.Packages() {
-                    docui.NavItem(
-                        text=p.title,
-                        href="/p/" + p.path,
-                        active=p.path == pkg,
-                    )
+    window #pkg(title="Package — SNGL Docs", href=`/p/{pkg}`, params=PkgParams{}) {
+        component content(v) {
+            hbox {
+                docui.Sidebar(homeHref="/") {
+                    for var p = lookup.Packages() {
+                        docui.NavItem(
+                            text=p.title,
+                            href="/p/" + p.path,
+                            active=p.path == v.pkg,
+                        )
+                    }
                 }
-            }
-            vbox(style={padding=24, flex=1}) {
-                docui.EntryView(path=pkg, hrefPrefix="/p/" + pkg + "/")
+                vbox(style={padding=24, flex=1}) {
+                    docui.EntryView(path=v.pkg, hrefPrefix="/p/" + v.pkg + "/")
+                }
             }
         }
     }
 
-    window #decl(title="Decl — SNGL Docs", href="/p/{pkg}/{name}") {
-        hbox {
-            docui.Sidebar(homeHref="/") {
-                for var p = lookup.Packages() {
-                    docui.NavItem(
-                        text=p.title,
-                        href="/p/" + p.path,
-                        active=p.path == pkg,
+    window #decl(title="Decl — SNGL Docs", href=`/p/{pkg}/{name}`, params=PkgParams{}) {
+        component content(v) {
+            hbox {
+                docui.Sidebar(homeHref="/") {
+                    for var p = lookup.Packages() {
+                        docui.NavItem(
+                            text=p.title,
+                            href="/p/" + p.path,
+                            active=p.path == v.pkg,
+                        )
+                    }
+                }
+                vbox(style={padding=24, flex=1}) {
+                    docui.EntryView(
+                        path=v.pkg,
+                        ident1=v.name,
+                        hrefPrefix="/p/" + v.pkg + "/",
                     )
                 }
-            }
-            vbox(style={padding=24, flex=1}) {
-                docui.EntryView(
-                    path=pkg,
-                    ident1=name,
-                    hrefPrefix="/p/" + pkg + "/",
-                )
             }
         }
     }

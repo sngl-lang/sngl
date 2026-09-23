@@ -30,7 +30,7 @@ type emitShared struct {
 	// on a builder call of its own because a per-site `with` is what three
 	// separate scopes have now been found to have forgotten.
 	canvasByID   map[string]*canvasMeta
-	canvasByFunc map[*ir.Func]*canvasMeta
+	canvasByNode map[*ir.NodeInst]*canvasMeta
 
 	// The flow and span trees, collected package-wide before the walk. Here
 	// for the reason the canvas maps are: a span is no widget, so its words
@@ -237,10 +237,6 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 		}
 	case *ir.NodeInst:
 		for _, c := range n.Children {
-			t.collectFromStmt(c)
-		}
-	case *ir.Window:
-		for _, c := range n.Body {
 			t.collectFromStmt(c)
 		}
 	case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
@@ -825,6 +821,19 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	if !hasProp {
 		if entry.Setter == "" {
+			if t.canvasMetaForID(bare) != nil {
+				// A canvas's own width and height, which emitCanvasCreate
+				// already read off the drawing to size the GtkDrawingArea.
+				// They arrive here as ordinary props because that is what they
+				// are in the tree; there is nothing further to write.
+				return nil
+			}
+			// GIR describes no property of this name on the class, and the
+			// setter table names none either -- so there is nothing to write
+			// and the value reaches the widget not at all. Reported for the
+			// reason the construct-only and unsettable cases above are: a
+			// write that goes missing is a rendering bug with nothing said.
+			t.shared.fail(fmt.Errorf("gtk4: %s has no property or setter named %q: GIR describes none for the class and gtkSetterTable names none, so the value reaches the widget not at all", cType, prop))
 			return nil
 		}
 		// The parse merges interface properties but not inherited ones, so the
@@ -1144,10 +1153,6 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 		t.topLevel = append(t.topLevel, t.slotRoot)
 	}
 	switch n := stmt.(type) {
-	case *ir.CallStmt:
-		if n.Call != nil && n.Call.Func != nil && strings.HasPrefix(n.Call.Func.Intrinsic, "Canvas") {
-			return t.translateCanvasIntrinsic(n)
-		}
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	}

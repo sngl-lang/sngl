@@ -3,11 +3,11 @@
 # never read Title, Href, Favicon or ErrorHandler -- the props the IR does hold
 # and html does emit -- so every one of them vanished from the dump.
 #
-# A routed href is the one that still does not print, and route.sngl is why. The
-# checker desugars `"/u/{id}"` to a concatenation and synthesizes `id` as a
-# window var, so a reprinted href would name `id` above the body that declares
-# it. Reconstructing the template is the fix; until then the round trip is what
-# is preserved, and the other props print either way.
+# A routed href prints with the rest, and route.sngl is why it used not to:
+# the checker desugared `"/u/{id}"` into a concatenation naming a var it had
+# synthesized, so a reprinted href named `id` above the body that declared it.
+# The path is a plain string now and the parameters are a declared struct, so
+# there is nothing left to reconstruct.
 
 sngl dump --stage checked --format sngl win.sngl
 stdout 'window #home\('
@@ -22,8 +22,9 @@ stdout 'out.sngl: ok'
 
 sngl dump --stage checked --format sngl route.sngl
 stdout 'title="User"'
-stdout 'var id string'
-! grep 'href' stdout
+stdout 'href="/u/\\{id\\}"'
+stdout 'params=PageParams\{\}'
+stdout 'component content\(v\)'
 
 cp stdout route_out.sngl
 sngl check route_out.sngl
@@ -41,6 +42,12 @@ window #home(title="Hi", href="/home", favicon="f.ico", @error(e) {
 -- route.sngl --
 import . "sngl:ui"
 
-window #user(title="User", href="/u/{id}") {
-    text(value="user {id}")
+struct PageParams {
+    id string
+}
+
+window #user(title="User", href=`/u/{id}`, params=PageParams{}) {
+    component content(v) {
+        text(value="user {v.id}")
+    }
 }

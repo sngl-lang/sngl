@@ -55,7 +55,7 @@ func check(t *testing.T, src string) *ir.Package {
 			t.Fatalf("check: %s: %s", d.Pos, d.Msg)
 		}
 	}
-	if err := lower.Lower(pkg, lower.AllFeatures().ToLowerCaps(), lower.Options{
+	if err := lower.Lower(pkg, lower.InterpreterFeatures(), lower.Options{
 		Platform:        "fyne",
 		ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat),
 	}); err != nil {

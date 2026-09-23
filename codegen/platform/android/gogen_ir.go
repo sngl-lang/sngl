@@ -19,8 +19,8 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	// package. Reported here rather than written out: before the shapes became
 	// overrides the same combination panicked in the Go backend on an
 	// untranslated canvas intrinsic, so this is a loud failure staying loud.
-	if fn := firstCanvasDrawFunc(ctx.Pkg); fn != nil {
-		return fmt.Errorf("android draws a canvas through Compose, which is Kotlin: build this program with --lang kotlin, or remove the canvas (%s)", fn.Name)
+	if name := firstCanvasName(ctx.Canvases); name != "" {
+		return fmt.Errorf("android draws a canvas through Compose, which is Kotlin: build this program with --lang kotlin, or remove the canvas (%s)", name)
 	}
 	src, err := CompileIR(ctx, cfg)
 	if err != nil {
@@ -120,6 +120,10 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		}
 		emitGoLibIRFunc(&discard, fn, gc)
 	}
+	var consts strings.Builder
+	for _, c := range goLibConsts(ctx.Pkg, allFuncs) {
+		fmt.Fprintf(&consts, "\nvar %s %s = %s\n", c.Name, golang.IRTypeToGo(c.Type), golang.LowerVarInit(c, gc))
+	}
 
 	// Build output: package clause, conditional import block, then code.
 	var b strings.Builder
@@ -131,6 +135,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		}
 		b.WriteString(")\n")
 	}
+	b.WriteString(consts.String())
 
 	// Pass 2: emit actual code. A computed is skipped by the same filter and
 	// deliberately has no pass of its own: this module holds free functions and
@@ -151,6 +156,36 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	return []byte(b.String())
 }
 
+// goLibConsts are the package consts a go-lib func reads. Only those: the
+// module declares no types, so a const of a struct type nothing here reads
+// would name one it lacks.
+func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
+	read := map[*ir.Var]bool{}
+	for _, fn := range funcs {
+		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+			continue
+		}
+		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+			continue
+		}
+		_ = ir.Walk(fn, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && v.IsConst {
+					read[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	var out []*ir.Var
+	for _, c := range pkg.Consts {
+		if read[c] && c.Init != nil {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	if len(fn.Block) == 0 {
 		return
@@ -166,26 +201,12 @@ func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 	}
 }
 
-// firstCanvasDrawFunc returns a synthesized canvas draw func from anywhere in
-// the package, or nil. passCanvas puts one on the package, on a component and
-// on a window, which is why this asks all three.
-func firstCanvasDrawFunc(pkg *ir.Package) *ir.Func {
-	if pkg == nil {
-		return nil
+// firstCanvasName is what to call any one of the program's drawings, or "".
+// Which one does not matter: the caller only names it in a diagnostic.
+func firstCanvasName(draws *codegen.CanvasDraws) string {
+	all := draws.All()
+	if len(all) == 0 {
+		return ""
 	}
-	lists := [][]*ir.Func{pkg.Funcs}
-	for _, comp := range pkg.Components {
-		lists = append(lists, comp.Funcs)
-	}
-	for _, w := range pkg.Windows {
-		lists = append(lists, w.Funcs)
-	}
-	for _, fns := range lists {
-		for _, fn := range fns {
-			if isCanvasDrawFunc(fn) {
-				return fn
-			}
-		}
-	}
-	return nil
+	return all[0].Name
 }

@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -18,26 +17,6 @@ type Translator struct{}
 func (t *Translator) LanguageIdentifier() string { return "go" }
 func (t *Translator) Description() string {
 	return "Generate Go source. Supports HTTP route mode and WASM bindings."
-}
-func (t *Translator) Capabilities() lower.Features {
-	f := lower.AllFeatures()
-	// Go has no ternary expression; lower a ? b : c to an if/else with a temp var.
-	f.Ternary = false
-	// Go can't represent typed lambdas behind an interface{} surface
-	// (no type-asserting a `func(int) bool`). Lower xs.filter/map to loops.
-	f.ListLambdas = false
-	// Go cannot suspend a function: a blocking call runs on the goroutine that
-	// made it. Lower it to a goroutine and a post back to the caller's thread.
-	f.AsyncCalls = false
-	// ...which is also what makes the goroutine spellable: async.go registers
-	// the emitter, so a program may say `async.spawn` itself.
-	f.AsyncSpawn = true
-	// Nor can it hold a blocking call in a reactive expression. The pass that
-	// answers that -- a settled state field and a kicker that fills it -- was
-	// written for html's JS and produces exactly the void entry point
-	// passAsyncOffload then moves off the UI thread.
-	f.AsyncReactive = false
-	return f
 }
 
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string {

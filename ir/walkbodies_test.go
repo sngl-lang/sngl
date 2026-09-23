@@ -59,7 +59,6 @@ var irNodeTypes = map[string]reflect.Type{
 	"If":               reflect.TypeFor[If](),
 	"For":              reflect.TypeFor[For](),
 	"ContextProvider":  reflect.TypeFor[ContextProvider](),
-	"Window":           reflect.TypeFor[Window](),
 	"CanvasRedrawStmt": reflect.TypeFor[CanvasRedrawStmt](),
 }
 
@@ -70,7 +69,6 @@ var carrierTypes = map[string]reflect.Type{
 	"Component":    reflect.TypeFor[Component](),
 	"Func":         reflect.TypeFor[Func](),
 	"Var":          reflect.TypeFor[Var](),
-	"Timer":        reflect.TypeFor[Timer](),
 	"EventHandler": reflect.TypeFor[EventHandler](),
 	"SlotContent":  reflect.TypeFor[SlotContent](),
 }
@@ -168,54 +166,56 @@ func bodiedPackage() *Package {
 				&ContextProvider{Children: body("ContextProvider.Children")},
 				&SlotInst{Children: body("SlotInst.Children")},
 				&NodeInst{
-					Children: body("NodeInst.Children"),
-					Handlers: []EventHandler{*h("NodeInst.Handlers")},
-					Slots:    map[string]*SlotContent{"s": {Body: body("SlotContent.Body")}},
+					Children:     body("NodeInst.Children"),
+					Handlers:     []EventHandler{*h("NodeInst.Handlers")},
+					ErrorHandler: h("NodeInst.ErrorHandler"),
+					Slots:        map[string]*SlotContent{"s": {Body: body("SlotContent.Body")}},
 				},
 				&Return{Value: &Call{ErrorHandler: h("Call.ErrorHandler")}},
 				&Return{Value: &Lambda{Func: fn("Lambda.Func")}},
 			},
 		}},
 		Components: []*Component{{
-			Body:   body("Component.Body"),
-			Funcs:  []*Func{fn("Component.Funcs")},
-			Vars:   []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
-			Timers: []*Timer{{Handler: fn("Timer.Handler")}},
+			Body:  body("Component.Body"),
+			Funcs: []*Func{fn("Component.Funcs")},
+			Vars:  []*Var{{Handlers: []*EventHandler{h("Var.Handlers")}}},
 		}},
-		Timers: []*Timer{{Handler: fn("Timer.Handler")}},
-		Windows: []*Window{{
-			Body:         body("Window.Body"),
-			Funcs:        []*Func{fn("Window.Funcs")},
-			ErrorHandler: h("Window.ErrorHandler"),
-		}},
+		// A window is a NodeInst, so its own slots are the ones marked above.
+		// It is here so that the walk has one to reach through pkg.Windows,
+		// which bodySlots does not list -- the field holds nodes rather than
+		// bodies.
+		Windows: []*Window{{Children: body("Package.Windows")}},
 	}
 }
 
 func TestRewriteVisitsEveryOwnedBody(t *testing.T) {
-	seen := map[string]bool{}
-	if err := Walk(bodiedPackage(), func(n Node) error {
-		if lit, ok := n.(*Literal); ok && lit.Value != "" {
-			seen[lit.Value] = true
+	for _, tr := range traversals {
+		seen := map[string]bool{}
+		if err := tr.walk(bodiedPackage(), func(n Node) error {
+			if lit, ok := n.(*Literal); ok && lit.Value != "" {
+				seen[lit.Value] = true
+			}
+			return nil
+		}); err != nil {
+			t.Fatalf("%s: %v", tr.name, err)
 		}
-		return nil
-	}); err != nil {
-		t.Fatalf("Walk: %v", err)
-	}
-	// These carry no marker of their own because every other marker is
-	// reached through them: the walk's entry points, and the handler record
-	// whose Func holds each handler marker. Skipping any of them loses the
-	// markers underneath, so they stay covered.
-	reachedThrough := map[string]bool{
-		"Package.Funcs": true, "Func.Block": true, "EventHandler.Func": true,
-	}
-	for _, slot := range bodySlots() {
-		if reachedThrough[slot] || seen[slot] {
-			continue
+		// These carry no marker of their own because every other marker is
+		// reached through them: the walk's entry points, and the handler record
+		// whose Func holds each handler marker. Skipping any of them loses the
+		// markers underneath, so they stay covered.
+		reachedThrough := map[string]bool{
+			"Package.Funcs": true, "Func.Block": true, "EventHandler.Func": true,
 		}
-		t.Errorf("ir.Rewrite never visited %s\n"+
-			"\tEvery field holding IR a node owns must be reached by the walk, or\n"+
-			"\tnamed in referenceSlots as IR owned somewhere else. If this is a new\n"+
-			"\tfield: wire it into walkexprs.go and add a marker to bodiedPackage.", slot)
+		for _, slot := range bodySlots() {
+			if reachedThrough[slot] || seen[slot] {
+				continue
+			}
+			t.Errorf("ir.%s never visited %s\n"+
+				"\tEvery field holding IR a node owns must be reached by the walk, or\n"+
+				"\tnamed in referenceSlots as IR owned somewhere else. If this is a new\n"+
+				"\tfield: wire it into walkexprs.go and walk.go, and add a marker to\n"+
+				"\tbodiedPackage.", tr.name, slot)
+		}
 	}
 }
 

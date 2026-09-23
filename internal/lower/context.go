@@ -8,7 +8,7 @@ import (
 )
 
 // passContext lowers context declarations into hidden state. Runs when
-// either Caps.StructComponents or Caps.StdlibContextParam is set; today
+// either Features.StructComponents or Features.StdlibContextParam is set; today
 // both flags co-trigger the full lowering, but they exist independently
 // so a future split can run the component-side and stdlib-side rewrites
 // in isolation.
@@ -36,7 +36,7 @@ import (
 // (synthesized props must be visible as reactive deps).
 var passContext = pass{
 	name:    "Context",
-	enabled: func(c Caps) bool { return c.StructComponents || c.StdlibContextParam },
+	enabled: func(c Features) bool { return c.StructComponents || c.StdlibContextParam },
 	apply:   applyNoContext,
 }
 
@@ -55,7 +55,7 @@ var passContext = pass{
 //  5. Seed window roots with ctx.Default so consumers without an enclosing
 //     provider receive the default value.
 //  6. Clear pkg.Contexts (no longer needed by codegen).
-func applyNoContext(pkg *ir.Package, _ Caps, _ Options) error {
+func applyNoContext(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -173,11 +173,6 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 				seedFromStmts(fn.Block)
 			}
 		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				seedFromStmts(t.Handler.Block)
-			}
-		}
 	}
 	for _, fn := range pkg.Funcs {
 		if !hasBody(fn) {
@@ -185,16 +180,9 @@ func collectReachableExternalFuncs(pkg *ir.Package) []*ir.Func {
 		}
 		seedFromStmts(fn.Block)
 	}
+	seedFromStmts(pkg.Body)
 	for _, w := range pkg.Windows {
-		seedFromStmts(w.Body)
-		for _, v := range w.Vars {
-			seedFromVar(v)
-		}
-		for _, fn := range w.Funcs {
-			if hasBody(fn) {
-				seedFromStmts(fn.Block)
-			}
-		}
+		seedFromStmts(w.Children)
 	}
 	for _, v := range pkg.Vars {
 		seedFromVar(v)
@@ -304,11 +292,6 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 				calls = append(calls, callsInBody(fn.Block, nil)...)
 			}
 		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				calls = append(calls, callsInBody(t.Handler.Block, nil)...)
-			}
-		}
 		return calls
 	}
 	// Direct ContextReads can also live in Vars/Funcs/Timers — mark those.
@@ -326,11 +309,6 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		for _, fn := range comp.Funcs {
 			if hasBody(fn) {
 				collectContextReads(fn.Block, out)
-			}
-		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				collectContextReads(t.Handler.Block, out)
 			}
 		}
 		return out
@@ -735,11 +713,6 @@ func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidde
 					fn.Block = w.stmts(fn.Block)
 				}
 			}
-			for _, t := range comp.Timers {
-				if t.Handler != nil {
-					t.Handler.Block = w.stmts(t.Handler.Block)
-				}
-			}
 		}
 		// pkg.Funcs (user-defined) bind reads to the pkg-level hidden Var.
 		// extraFuncs (stdlib wrappers) bind reads to their hidden Param.
@@ -955,27 +928,18 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		slots: computeSlotEnvs(pkg),
 	}
 
+	// The package body is a root the same way a window is.
+	pkgBodyActive := copyExprMap(defaults)
+	pkg.Body = lowerInStmts(pkg.Body, pkgBodyActive, pc)
+	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
 	// Seed window roots with defaults.
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
-		w.Body = lowerInStmts(w.Body, windowActive, pc)
+		w.Children = lowerInStmts(w.Children, windowActive, pc)
 		// The provider unwrap splices a provider's children up to window-body
 		// level, which can put a fresh LocalVar there after passHoistState
 		// already ran. Promote those too, into the same slice.
-		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
-		for _, v := range w.Vars {
-			v.Init = lowerInExpr(v.Init, windowActive, pc)
-			for _, h := range v.Handlers {
-				if h.Func != nil {
-					h.Func.Block = lowerInStmts(h.Func.Block, windowActive, pc)
-				}
-			}
-		}
-		for _, fn := range w.Funcs {
-			if hasBody(fn) {
-				fn.Block = lowerInStmts(fn.Block, windowActive, pc)
-			}
-		}
+		w.Children, pkg.Vars = promoteLocalVarsToVars(w.Children, pkg.Vars)
 	}
 	// Top-level pkg.Vars: also rooted, seed with defaults.
 	for _, v := range pkg.Vars {
@@ -1017,11 +981,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		for _, fn := range comp.Funcs {
 			if hasBody(fn) {
 				fn.Block = lowerInStmts(fn.Block, compActive, pc)
-			}
-		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				t.Handler.Block = lowerInStmts(t.Handler.Block, compActive, pc)
 			}
 		}
 	}
@@ -1259,28 +1218,6 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 		case *ir.Toggle:
 			// Toggle may survive into NoContext when NoToggle cap is off.
 			n.Target = lowerInExpr(n.Target, active, pc)
-			out = append(out, n)
-
-		case *ir.Window:
-			// Window stmts only appear inside for-loop bodies (dynamic
-			// window emission). Thread ctx args through their surface.
-			for i := range n.Props {
-				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, pc)
-			}
-			n.Body = lowerInStmts(n.Body, active, pc)
-			for _, v := range n.Vars {
-				v.Init = lowerInExpr(v.Init, active, pc)
-				for _, h := range v.Handlers {
-					if h.Func != nil {
-						h.Func.Block = lowerInStmts(h.Func.Block, active, pc)
-					}
-				}
-			}
-			for _, fn := range n.Funcs {
-				if hasBody(fn) {
-					fn.Block = lowerInStmts(fn.Block, active, pc)
-				}
-			}
 			out = append(out, n)
 
 		case *ir.Break, *ir.Continue:

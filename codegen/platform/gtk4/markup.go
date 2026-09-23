@@ -111,8 +111,6 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
 			}
 		}
 	}

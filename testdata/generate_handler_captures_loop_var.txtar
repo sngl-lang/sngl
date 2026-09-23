@@ -58,7 +58,6 @@ import (
 type Model struct {
 	items__inst0  []string
 	picked__inst0 string
-	__root        *fyne.Container
 	__slot0       []fyne.CanvasObject
 
 	__n2 *fyne.Container
@@ -70,7 +69,6 @@ func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
 	m.picked__inst0 = ""
-	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	return m
 }
@@ -117,8 +115,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	var parts []fyne.CanvasObject
 	parts = append(parts, m.__n2)
 	parts = append(parts, m.__n0)
-	m.__root.Objects = parts
-	return m.__root
+	return container.NewVBox(parts...)
 }
 
 func main() {
@@ -155,10 +152,10 @@ import (
 type Model struct {
 	items__inst0  []string
 	picked__inst0 string
-	__root        gtk4rt.Handle
 	__slot0       []gtk4rt.Handle
 	__n2          gtk4rt.Handle
 	__n0          gtk4rt.Handle
+	__root        gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
@@ -167,7 +164,6 @@ func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
 	m.picked__inst0 = ""
-	m.__root = nil
 	m.__slot0 = nil
 	return m
 }
@@ -228,6 +224,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:2348788ef5b5cebdb30a3942d7f76f16
+pass sha256:ef6bc8b8f951f346dfb954cdd5145b08
 -- run/go/gtk4 --
-pass sha256:3c9a898be61bd99ff492c94ebebab7f7
+pass sha256:8ac288e087991f1972f8e16829ceb236

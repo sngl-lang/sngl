@@ -44,14 +44,20 @@ body { font-family: system-ui, sans-serif; }
 
 <script>
 (() => {
+  // sngl-virt:/sngl/api/index.ts
+  async function fetchHello() {
+    return "hi";
+  }
+
   // sngl-entry.js
-  var state = {};
+  var state = { handler: null };
+  state.handler = fetchHello;
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", async function() {
-    await handler();
+    await state.handler();
   });
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:5e5a74457c5e2c4851fa068f51e310ae
+pass sha256:f28137960ab07a977f02716eb867b23d

@@ -43,14 +43,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -251,4 +243,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:2cdc379f6eb98c806689073e0c024f36
+pass sha256:24ff6a94471b0b2658dbe0aaedc8b054

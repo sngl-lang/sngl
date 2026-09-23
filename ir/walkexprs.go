@@ -23,15 +23,15 @@ var (
 // Rewrite is the base traversal. It visits every node reachable from root in a
 // single pre-order pass; visit returns the (possibly replaced) node plus a
 // control error. The returned node is written back into its parent slot, so a
-// callback that returns its input unchanged is a read-only visit (that is what
-// Walk is). A replacement MUST be the same kind as the input — an Expr for an
+// callback that returns its input unchanged is a read-only visit, though Walk
+// is the one to use for that: it reaches the same nodes without writing any
+// back. A replacement MUST be the same kind as the input — an Expr for an
 // expression slot, a Stmt for a statement slot — or the walk panics writing it
 // back.
 //
 // root may be a *Package, *Component, *Func, []Stmt, Stmt, or Expr (panics
-// otherwise); a *Window arrives as a Stmt and needs no case of its own. For a
-// container root (*Package/*Component/*Func/[]Stmt) replacements land in the
-// container; for a bare Stmt/Expr root, replacing the root node itself is not
+// otherwise). For a container root (*Package/*Component/*Func/[]Stmt)
+// replacements land in the container; for a bare Stmt/Expr root, replacing the root node itself is not
 // observable (the root is passed by value) — rewrite its children, or use a
 // container root.
 //
@@ -79,33 +79,6 @@ func Rewrite(root any, visit func(Node) (Node, error)) error {
 	w := rewriter{visit: visit}
 	w.root(root)
 	return w.err
-}
-
-// Walk visits every node reachable from root in pre-order (read-only): the
-// callback cannot replace nodes. A convenience over Rewrite with an identity
-// replacement.
-func Walk(root any, visit func(Node) error) error {
-	return Rewrite(root, func(n Node) (Node, error) { return n, visit(n) })
-}
-
-// WalkStmts is a read-only walk whose callback fires only on statements.
-func WalkStmts(root any, fn func(Stmt) error) error {
-	return Walk(root, func(n Node) error {
-		if s, ok := n.(Stmt); ok {
-			return fn(s)
-		}
-		return nil
-	})
-}
-
-// WalkExprs is a read-only walk whose callback fires only on expressions.
-func WalkExprs(root any, fn func(Expr) error) error {
-	return Walk(root, func(n Node) error {
-		if e, ok := n.(Expr); ok {
-			return fn(e)
-		}
-		return nil
-	})
 }
 
 // RewriteExprs rewrites only expressions; statements pass through unchanged.
@@ -245,6 +218,9 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 				w.fn(h.Func)
 			}
 		}
+		if n.ErrorHandler != nil {
+			w.fn(n.ErrorHandler.Func)
+		}
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
 		n.Children = w.stmts(n.Children)
@@ -277,6 +253,12 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		}
 	case *LocalVar:
 		n.Init = w.expr(n.Init)
+		// See LocalVar.CanvasNode: a flattened canvas keeps the statements that
+		// paint it on the node the flattening replaced, and they are IR like
+		// any other.
+		if n.CanvasNode != nil {
+			n.CanvasNode.Children = w.stmts(n.CanvasNode.Children)
+		}
 	case *Return:
 		n.Value = w.expr(n.Value)
 	case *If:
@@ -302,8 +284,6 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		}
 		n.Children = w.stmts(n.Children)
 		n.Failed = w.stmts(n.Failed)
-	case *Window:
-		w.window(n)
 	case *ContextProvider:
 		n.Value = w.expr(n.Value)
 		n.Children = w.stmts(n.Children)
@@ -353,35 +333,7 @@ func (w *rewriter) component(c *Component) {
 	for _, f := range c.Funcs {
 		w.fn(f)
 	}
-	for _, t := range c.Timers {
-		w.timer(t)
-	}
 	c.Body = w.stmts(c.Body)
-}
-
-// window walks everything a Window owns. A window is reachable two ways — as a
-// package-level declaration and as a statement inside a for-loop body — and
-// having one body of code for both is what stops the two from drifting apart.
-func (w *rewriter) window(win *Window) {
-	if w.done || win == nil {
-		return
-	}
-	for i := range win.Props {
-		win.Props[i].Value = w.expr(win.Props[i].Value)
-	}
-	for _, v := range win.Vars {
-		w.varDecl(v)
-	}
-	for _, f := range win.Funcs {
-		w.fn(f)
-	}
-	if win.ErrorHandler != nil {
-		w.fn(win.ErrorHandler.Func)
-	}
-	for _, t := range win.Timers {
-		w.timer(t)
-	}
-	win.Body = w.stmts(win.Body)
 }
 
 func (w *rewriter) varDecl(v *Var) {
@@ -394,19 +346,6 @@ func (w *rewriter) varDecl(v *Var) {
 			w.fn(h.Func)
 		}
 	}
-}
-
-func (w *rewriter) timer(t *Timer) {
-	if w.done || t == nil {
-		return
-	}
-	if t.Interval != nil {
-		t.Interval = w.expr(t.Interval)
-	}
-	if t.Enabled != nil {
-		t.Enabled = w.expr(t.Enabled)
-	}
-	w.fn(t.Handler)
 }
 
 func (w *rewriter) pkg(pkg *Package) {
@@ -450,11 +389,8 @@ func (w *rewriter) pkg(pkg *Package) {
 	for _, c := range pkg.Components {
 		w.component(c)
 	}
-	for _, t := range pkg.Timers {
-		w.timer(t)
-	}
 	for _, win := range pkg.Windows {
-		w.window(win)
+		w.stmt(win)
 	}
 	// The package's own body, last, so a walk sees declarations before what
 	// renders them -- the same order this walk visits a component in.

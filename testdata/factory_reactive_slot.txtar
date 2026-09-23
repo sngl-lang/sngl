@@ -72,7 +72,6 @@ import (
 type Model struct {
 	items__inst0 []string
 	__root       *fyne.Container
-	__slot0      []fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
 	__inst0_live []*CardInstance
 }
@@ -82,7 +81,6 @@ func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
 	m.__root = container.NewVBox()
-	m.__slot0 = nil
 	m.__slot1 = nil
 	m.__inst0_live = []*CardInstance{}
 	return m
@@ -221,7 +219,6 @@ import (
 type Model struct {
 	items__inst0 []string
 	__root       gtk4rt.Handle
-	__slot0      []gtk4rt.Handle
 	__slot1      []gtk4rt.Handle
 	__inst0_live []*CardInstance
 }
@@ -232,7 +229,6 @@ func New() *Model {
 	m := &Model{}
 	m.items__inst0 = []string{"a", "b"}
 	m.__root = nil
-	m.__slot0 = nil
 	m.__slot1 = nil
 	m.__inst0_live = []*CardInstance{}
 	return m
@@ -350,6 +346,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:d2d40882a07bc77b86446a5169459c24
+pass sha256:b3ff75a205a46bfcefa1f4b51015f213
 -- run/go/gtk4 --
-pass sha256:6e615eb81a2e8a705597a53687d51780
+pass sha256:ce1ef6d95fa9d70b0ba9e7315d5501e0

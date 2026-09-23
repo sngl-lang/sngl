@@ -20,7 +20,9 @@ component one(content ...component tr.one) node {
 }
 
 component main node {
-    one() // ERROR(check) "takes exactly one node, got 0"
+    // The childless form says what the `one() { }` form has always said: it
+    // is one node either way, and one check.
+    one() // ERROR(check) "component one requires exactly one child"
 
     // Exactly one has no spelling for being absent — option<T> and a bare type
     // are what permit that.

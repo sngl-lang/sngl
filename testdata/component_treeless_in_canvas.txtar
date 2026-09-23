@@ -60,14 +60,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type Measurement struct {
 	Px  float64
 	Em  float64
@@ -295,14 +287,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type PathCmd struct {
 	Op  string
 	X   float64
@@ -383,13 +367,6 @@ func ApplyStyle(ctx *snglcanvas.Context, style CanvasStyle) {
 	ctx.SetStrokeWidth(style.StrokeWidth)
 	ctx.SetFont(style.FontSize, style.FontFamily)
 	ctx.SetLineStyle(style.LineCap, style.LineJoin)
-}
-
-func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
-	ctx.Save()
-	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	ctx.Circle(20.0, 20.0, float64(m.frame))
-	ctx.Restore()
 }
 
 func (m *Model) __effect0_mount() {
@@ -522,6 +499,13 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __snglTeardown() {
 	m.__effect1_teardown()
+}
+
+func (m *Model) _canvasDraw0(ctx *snglcanvas.Context) {
+	ctx.Save()
+	ApplyStyle(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	ctx.Circle(20.0, 20.0, float64(m.frame))
+	ctx.Restore()
 }
 
 func (m *Model) Frame() int {
@@ -762,14 +746,6 @@ import (
 	"unsafe"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 type PathCmd struct {
 	Op  string
 	X   float64
@@ -911,14 +887,6 @@ func LineJoin(name string) C.cairo_line_join_t {
 	return C.cairo_line_join_t(C.int(0))
 }
 
-func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
-	C.cairo_save(ctx)
-	C.cairo_new_sub_path(ctx)
-	C.cairo_arc(ctx, C.double(20.0), C.double(20.0), C.double(float64(m.frame)), C.double(0.0), C.double(6.283185307179586))
-	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	C.cairo_restore(ctx)
-}
-
 func (m *Model) __effect0_mount() {
 	m.frame = 4
 	C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(m.__n1)))
@@ -1017,6 +985,14 @@ func (m *Model) __effects0_settle() {
 
 func (m *Model) __snglTeardown() {
 	m.__effect1_teardown()
+}
+
+func (m *Model) _canvasDraw0(ctx *C.cairo_t) {
+	C.cairo_save(ctx)
+	C.cairo_new_sub_path(ctx)
+	C.cairo_arc(ctx, C.double(20.0), C.double(20.0), C.double(float64(m.frame)), C.double(0.0), C.double(6.283185307179586))
+	Paint(ctx, CanvasStyle{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{A: 0, R: 0, G: 0, B: 0}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
+	C.cairo_restore(ctx)
 }
 
 func (m *Model) Frame() int {
@@ -1371,11 +1347,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6907d64ec848eae4c06b716c580b5ce0
+pass sha256:ca8bdde4d98a0aa2228c6bf9baabc58e
 -- run/go/fyne --
-pass sha256:9b0dde8f751088e207548b58773c734a
+pass sha256:38033c7ae2c4175c564998ddc0425a47
 -- run/go/gtk4 --
-pass sha256:d3afcc0374879917251a359f56791c0c
+pass sha256:54480a2337cbfba87d66a5a2971e6dde
 -- run/kotlin/android --
 pass sha256:402bd9076adb5313d5dc01f4dce88a35
 -- run/none/html --

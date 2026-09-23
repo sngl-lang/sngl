@@ -300,6 +300,16 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			// A window renders no node of its own -- see the key walk, which
+			// has to agree with this one path for path.
+			if ir.IsWindowNode(n) {
+				nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("window@%d", next("window"))))
+				if err != nil {
+					return nil, err
+				}
+				out = append(out, nodes...)
+				continue
+			}
 			nodes, err := m.nodeInst(env, n, join(seg(n.Name, n.ID, next(n.Name))))
 			if err != nil {
 				return nil, err
@@ -370,13 +380,6 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 				err = env.invokeHandler(n.Handler, raised.Event)
 				nodes = nil
 			}
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, nodes...)
-
-		case *ir.Window:
-			nodes, err := m.stmts(env, n.Body, join(fmt.Sprintf("window@%d", next("window"))))
 			if err != nil {
 				return nil, err
 			}

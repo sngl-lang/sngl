@@ -13,9 +13,8 @@ import (
 // which is not compilable Go. Only the emitted source shows that, hence the
 // assertion on it — and the value is read into a var so it survives as an
 // initializer rather than folding into the string measuring it. The var is the
-// package's: a component that renders a window names the root family, and a
-// root component's own state has no route into the Model, since passRootWindow
-// empties its body and dead-code elimination takes the declaration with it.
+// package's because the window is: nothing here declares a root component, so
+// there is no splice to rename the declaration and the assertion can name it.
 func TestDynConstKeepsItsDeclarationInEmittedGo(t *testing.T) {
 	const src = `import . "sngl:ui"
 import . "sngl:ui"

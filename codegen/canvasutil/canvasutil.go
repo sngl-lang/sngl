@@ -1,18 +1,18 @@
 // Package canvasutil holds the platform-neutral Canvas2D helpers shared by
 // every Go-emitting platform (fyne, gtk4, and future Go canvas backends).
 //
-// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func whose body is canvas-intrinsic
-// CallStmts; passDeclarative then flattens the canvas NodeInst to a
-// `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
-// dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight.
+// codegen.Canvases finds the drawings and builds the `_canvasDrawN(ctx)` func
+// each one paints with; passDeclarative has by then flattened the canvas
+// NodeInst to a `lower.CreateNode("canvas")` LocalVar carrying a back-pointer
+// to it.
 //
 // Two pieces generalise across Go platforms and live here:
 //
-//  1. recovering the flattened canvas metadata (Collect / Meta), and
+//  1. the flattened canvas metadata in the shape these platforms read it
+//     (Collect / Meta), and
 //  2. emitting the Go stdlib struct decls for Color/CanvasStyle/PathCmd,
-//     which the synthesized draw funcs reference but which aren't carried on
-//     pkg.Structs for the Go path.
+//     which the draw funcs reference but which aren't carried on pkg.Structs
+//     for the Go path.
 //
 // The native 2D translation (gg for fyne, cairo for gtk4) stays in each
 // platform package: it differs per backend and must not be shared.
@@ -21,16 +21,22 @@ package canvasutil
 import (
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // Meta records a flattened canvas element discovered via a
-// `LocalVar id = lower.CreateNode("canvas")` carrying a draw func.
+// `LocalVar id = lower.CreateNode("canvas")` carrying its canvas node.
 type Meta struct {
-	ID     string // synthesized node id (e.g. "__n0") → platform widget field
-	Draw   *ir.Func
-	Width  int
-	Height int
+	ID string // synthesized node id (e.g. "__n0") → platform widget field
+	// Node is the canvas instantiation, which is what a CanvasRedrawStmt
+	// names. Draw is the statements that paint it, and DrawName what this
+	// platform calls the routine it wraps them in.
+	Node     *ir.NodeInst
+	Draw     []ir.Stmt
+	DrawName string
+	Width    int
+	Height   int
 	// Scaling is the `scalingMode` prop: what to do with the picture when the
 	// room the canvas is laid out in is not the size its shapes were placed
 	// at. Empty is the declaration's default, which is Center.
@@ -45,60 +51,27 @@ const (
 	ScaleStretch = "stretch"
 )
 
-// Collect walks every Func block + component/window body for
-// `LocalVar.CanvasDraw != nil` entries (canvas CreateNode locals threaded
-// through declarative flattening) and returns them keyed by node id and by
-// draw func. Both maps share the same *Meta pointers.
-func Collect(pkg *ir.Package, funcs []*ir.Func) (byID map[string]*Meta, byFunc map[*ir.Func]*Meta) {
+// Collect is the *flattened* drawings, in the two shapes these platforms look
+// them up by: the node id they address the widget with, and the canvas node a
+// repaint names.
+//
+// Flattened only. A canvas the page renders as markup has no createNode local
+// and so no id to address a widget by -- html allocates one while it writes
+// the element -- and an entry for it here reaches the init path as an empty
+// name: `_snglCanvasDraw(, 40, 40, …)`, which esbuild rejects. Those are
+// reached through codegen.CanvasDraws.ForNode instead.
+func Collect(draws *codegen.CanvasDraws) (byID map[string]*Meta, byNode map[*ir.NodeInst]*Meta) {
 	byID = map[string]*Meta{}
-	byFunc = map[*ir.Func]*Meta{}
-	var walk func([]ir.Stmt)
-	walk = func(stmts []ir.Stmt) {
-		for _, s := range stmts {
-			switch n := s.(type) {
-			case *ir.LocalVar:
-				if n.CanvasDraw != nil {
-					m := &Meta{ID: n.Name, Draw: n.CanvasDraw, Width: n.CanvasWidth, Height: n.CanvasHeight, Scaling: n.CanvasScaling}
-					byID[n.Name] = m
-					byFunc[n.CanvasDraw] = m
-				}
-			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.For:
-				walk(n.Body)
-				walk(n.Else)
-			case *ir.NodeInst:
-				walk(n.Children)
-			case *ir.Window:
-				walk(n.Body)
-			}
+	byNode = map[*ir.NodeInst]*Meta{}
+	for _, c := range draws.All() {
+		if c.Local == nil {
+			continue
 		}
+		m := &Meta{ID: c.ID, Node: c.Node, Draw: c.Draw, DrawName: c.Name, Width: c.Width, Height: c.Height, Scaling: c.Scaling}
+		byID[m.ID] = m
+		byNode[c.Node] = m
 	}
-	for _, fn := range funcs {
-		if fn != nil {
-			walk(fn.Block)
-		}
-	}
-	if pkg != nil {
-		for _, comp := range pkg.Components {
-			walk(comp.Body)
-		}
-		for _, w := range pkg.Windows {
-			walk(w.Body)
-		}
-	}
-	return byID, byFunc
-}
-
-// ByIDFor rebuilds the id→Meta map from the func→Meta map (both share the
-// same *Meta pointers).
-func ByIDFor(byFunc map[*ir.Func]*Meta) map[string]*Meta {
-	out := make(map[string]*Meta, len(byFunc))
-	for _, m := range byFunc {
-		out[m.ID] = m
-	}
-	return out
+	return byID, byNode
 }
 
 // StructDecls holds the hardcoded Go decl per stdlib struct name, keyed by

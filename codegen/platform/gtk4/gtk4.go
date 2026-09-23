@@ -12,7 +12,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/codegen/platform/gtk4/gir"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -102,28 +101,6 @@ func (g *Generator) SupportedLangs() []string { return []string{"go"} }
 func (g *Generator) Unavailable() error {
 	_, err := g.gir()
 	return err
-}
-func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
-	f := lang.Capabilities()
-	// NoReactivity injects `nID.<prop> = <expr>` Assigns after every
-	// mutation of a tracked Var. The gtk4 renderer translates those
-	// to gtk_<widget>_set_<prop>(C-args) calls — same approach fyne uses.
-	f.Reactivity = false
-	f.Declarative = false
-	f.InlineComponents = false
-	f.StructSpread = false
-	f.StructComponents = true
-	f.StdlibContextParam = true
-	// Canvas2D: gtk4 renders shape subtrees via cairo inside a
-	// GtkDrawingArea draw callback. ReactiveCanvas injects CanvasRedrawStmt
-	// (→ gtk_widget_queue_draw) into handler/timer bodies that mutate a var
-	// a draw func reads.
-	f.Canvas = true
-	f.ReactiveCanvas = true
-	// A GLib idle source runs on the thread holding the main loop, which is
-	// the thread GTK requires for every widget call. See async.go.
-	f.AsyncPost = true
-	return f
 }
 
 // gir lazy-loads the widget registry, caching both the registry and the

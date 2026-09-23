@@ -9,7 +9,7 @@ import (
 
 var passFlattenStructSpread = pass{
 	name:    "NoStructSpread",
-	enabled: func(c Caps) bool { return c.NoStructSpread },
+	enabled: func(c Features) bool { return !c.StructSpread },
 	apply:   lowerFlattenStructSpread,
 }
 
@@ -17,7 +17,7 @@ var passFlattenStructSpread = pass{
 // spread fields into flat literals (last-write-wins). Spreads whose operand is
 // not itself a struct literal (opaque runtime values) are left intact for a
 // later runtime-merge pass; today's backends handle those as they do now.
-func lowerFlattenStructSpread(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerFlattenStructSpread(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

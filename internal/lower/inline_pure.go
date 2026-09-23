@@ -27,11 +27,11 @@ import (
 // sees has already had high-level shapes (toggles, ternaries) lowered.
 var passInlinePure = pass{
 	name:    "InlinePure",
-	enabled: func(c Caps) bool { return true }, // always on (strict path gated internally)
+	enabled: func(c Features) bool { return true }, // always on (strict path gated internally)
 	apply:   lowerInlinePure,
 }
 
-func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
+func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -63,13 +63,21 @@ func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
 			fn.Block = fnBody
 		}
 	}
+	// The package's own body, and then the windows: both hoist into the
+	// package, a window being a rendering root that owns nothing.
+	st.hoist = &pkg.Vars
+	body, err := st.inlineStmts(pkg.Body)
+	if err != nil {
+		return err
+	}
+	pkg.Body = body
 	for _, w := range pkg.Windows {
-		st.hoist = &w.Vars
-		body, err := st.inlineStmts(w.Body)
+		st.hoist = &pkg.Vars
+		wbody, err := st.inlineStmts(w.Children)
 		if err != nil {
 			return err
 		}
-		w.Body = body
+		w.Children = wbody
 	}
 	return nil
 }
@@ -194,7 +202,7 @@ func (st *inlinePureState) isPure(c *ir.Component) bool {
 	if c == nil {
 		return false
 	}
-	if len(c.Funcs) > 0 || len(c.Timers) > 0 {
+	if len(c.Funcs) > 0 {
 		return false
 	}
 	if len(c.Vars) == 0 {
@@ -253,6 +261,17 @@ func (st *inlinePureState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, error) {
 func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
+		// A window instantiates a primitive nothing inlines, and the pass has
+		// no prop or handler of its own to substitute into one: what it holds
+		// is all there is to do.
+		if ir.IsWindowNode(n) {
+			body, err := st.inlineStmts(n.Children)
+			if err != nil {
+				return nil, err
+			}
+			n.Children = body
+			return []ir.Stmt{n}, nil
+		}
 		return st.inlineNodeInst(n)
 	case *ir.If:
 		body, err := st.inlineStmts(n.Body)
@@ -294,13 +313,6 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 			return nil, err
 		}
 		n.Children = ch
-		return []ir.Stmt{n}, nil
-	case *ir.Window:
-		body, err := st.inlineStmts(n.Body)
-		if err != nil {
-			return nil, err
-		}
-		n.Body = body
 		return []ir.Stmt{n}, nil
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Emit, *ir.Toggle, *ir.ContextProvider,
 		*ir.Break, *ir.Continue:
@@ -369,12 +381,13 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 		return nil, fmt.Errorf("platform stdlib wrapper %q must be pure (declares %s) at %s", comp.Name, impurityReason(comp), compPos(comp))
 	}
 
-	// Renders nothing *and* holds nothing: a component with state, a function
-	// or a timer is not empty even with no visual body, and dropping it takes
-	// its timer and its state with it. canInline asks the same four questions
-	// (inline_components.go), and asking only about Body here is how a
-	// timer-only component vanished from every platform with no diagnostic.
-	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 && len(comp.Timers) == 0 {
+	// Renders nothing *and* holds nothing: a component with state or a function
+	// is not empty even with no visual body, and dropping it takes that state
+	// with it. canInline asks the same questions (inline_components.go), and
+	// asking only about Body here is how a timer-only component vanished from
+	// every platform with no diagnostic -- a timer is a node in the body now,
+	// so Body is what answers for one.
+	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		// A user component declaring nothing at all renders nothing, so the
 		// node goes rather than reaching a codegen that has to guess what an
 		// empty component means — each platform guessed differently, and two
@@ -482,12 +495,9 @@ func impurityReason(comp *ir.Component) string {
 	if len(comp.Funcs) > 0 {
 		parts = append(parts, fmt.Sprintf("func %q", comp.Funcs[0].Name))
 	}
-	if len(comp.Timers) > 0 {
-		parts = append(parts, "timer")
-	}
 	if len(parts) == 0 {
 		// Unreachable: the caller asks only when isPure said no, and isPure
-		// says no only for one of the three above.
+		// says no only for one of the two above.
 		return "state"
 	}
 	return strings.Join(parts, ", ")
@@ -503,26 +513,16 @@ func isPrimitiveComponent(comp *ir.Component) bool {
 	// A tree kind is deliberately not on this list. Belonging to a segmented
 	// tree says which family a declaration joins, not that a codegen renders
 	// it: a shape composed out of other shapes is a wrapper like any other,
-	// and passCanvas emits whatever reaches it, composed away or not.
-	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != "" ||
-		hostsLoweredTree(comp)
-}
-
-// hostsLoweredTree reports whether a component hosts a tree that a *pass*
-// takes out of the rendered tree, which is the only reason hosting one has to
-// keep a declaration standing: passCanvas looks for the node the shapes hang
-// off, so a canvas whose override had been composed away would be a
-// `html.canvas` with shape children and no draw function.
-//
-// One tree answers yes, and that it is one is the point. Hosting a family is
-// otherwise an ordinary thing for a component to do -- `richText` hosts the
-// inline family the way `vbox` hosts widgets -- and reading it as "a codegen
-// renders this" meant a platform could not implement such a component in its
-// own package at all: the override was written, never substituted, and the
-// emitter met a node it had never heard of. Every member of the markup family
-// is implemented in `html.sngl` because of this line.
-func hostsLoweredTree(comp *ir.Component) bool {
-	return ir.IsDrawShapeTree(treeHosted(comp))
+	// and the canvas emitter draws whatever reaches it, composed away or not.
+	//
+	// Hosting a family used to be on this list, and only passCanvas wanted it
+	// there: that pass looked for the node the shapes hang off, so a canvas
+	// whose override had been composed away was an `html.canvas` with shape
+	// children and no draw function. Nothing lifts them out now, so hosting a
+	// family is the ordinary thing it reads as -- `richText` hosts the inline
+	// family the way `vbox` hosts widgets -- and a platform may implement such
+	// a component in its own package like any other.
+	return comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ""
 }
 
 // isPlatformStdlibComponent reports whether comp came from one of the
@@ -649,13 +649,16 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.
+	//
+	// The handle travels with it. It is the id's other half -- the binding
+	// every read of the id resolves to -- and leaving it behind severed the
+	// two for every node whose component inlines, which is every stdlib
+	// component on every platform with an override. uniqueNodeIDs then had a
+	// nil Handle to key on, so its refusal of a read that cannot say which
+	// copy it meant never fired for one, and a rename had nothing to repoint
+	// the reads through.
 	if callsite.ID != "" {
-		for _, s := range body {
-			if ni, ok := s.(*ir.NodeInst); ok {
-				ni.ID = callsite.ID
-				break
-			}
-		}
+		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
 	}
 
 	// Event-handler transfer (platform-independent rule): any pure wrapper
@@ -723,8 +726,6 @@ func emittedHandlerNames(stmts []ir.Stmt) map[string]struct{} {
 				visit(n.Children)
 			case *ir.ErrorBoundary:
 				visit(n.Children)
-			case *ir.Window:
-				visit(n.Body)
 			case *ir.ContextProvider:
 				visit(n.Children)
 			}
@@ -837,8 +838,6 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 		case *ir.ErrorBoundary:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
-		case *ir.Window:
-			n.Body = substituteEventsUnder(n.Body, handlers, enclosing, under)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
 			*ir.Break, *ir.Continue:
 			// No child statement list of their own; the lambda walk below is
@@ -1094,10 +1093,6 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.ErrorBoundary:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
-		return &clone
-	case *ir.Window:
-		clone := *n
-		clone.Body = deepCloneStmts(n.Body)
 		return &clone
 	case *ir.ContextProvider:
 		clone := *n

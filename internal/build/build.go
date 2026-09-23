@@ -159,14 +159,15 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	}
 
 	if IsInterpreted(target) {
-		// Full capabilities: every gated pass is compensation for something a
-		// backend cannot emit, and the interpreter can emit everything -- in
-		// particular Declarative, whose absence dissolves the visual tree the
-		// interpreter mounts. What still runs is the desugaring no target does
-		// without, such as turning `:value=x` into a prop and a handler. No
-		// platform, so no override is inlined: a host is asked for `text`, not
-		// `Label`.
-		icaps := lower.AllFeatures().ToLowerCaps()
+		// The interpreter's own capabilities rather than a target's: every
+		// gated pass is compensation for something a backend cannot emit, and
+		// there is no backend -- in particular Declarative, whose absence
+		// dissolves the visual tree the interpreter mounts. What still runs is
+		// the desugaring no target does without, such as turning `:value=x`
+		// into a prop and a handler, plus passEffect, which is what
+		// InterpreterFeatures withholds and says why. No platform, so no
+		// override is inlined: a host is asked for `text`, not `Label`.
+		icaps := lower.InterpreterFeatures()
 		if err := lower.Lower(tpkg, icaps, lower.Options{
 			Platform:        target.Platform,
 			RootComponent:   root,
@@ -177,12 +178,15 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 		return Result{Target: target, Pkg: tpkg}, nil
 	}
 
-	caps := plat.Capabilities(lang).ToLowerCaps()
-	start = time.Now()
-	if err := lower.Lower(tpkg, caps, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+	feats, err := codegen.CapsFor(target.Lang, target.Platform)
+	if err != nil {
 		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 	}
-	slog.Info("lower", "dir", o.Dir, "caps", caps.String(), "duration", time.Since(start))
+	start = time.Now()
+	if err := lower.Lower(tpkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, RootComponent: root, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat)}); err != nil {
+		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
+	}
+	slog.Info("lower", "dir", o.Dir, "caps", feats.String(), "duration", time.Since(start))
 
 	// Unconditional. It used to run only when the target had capabilities to lower
 	// for, on the reading that a build lowering nothing had nothing new to fold --

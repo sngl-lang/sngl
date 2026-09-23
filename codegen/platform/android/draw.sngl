@@ -241,23 +241,23 @@ component shapes.path[platform] {
         var p = newPath()
         // Where the path is, which the tangent arc measures from and Compose
         // will not hand back.
-        var at = shapes.Point{x = 0.0, y = 0.0}
+        var at = shapes.Point{x=0.0, y=0.0}
 
         for var c = cmds {
             if c.op == "moveTo" {
                 pathMoveTo(p, f32(c.x), f32(c.y))
-                at = shapes.Point{x = c.x, y = c.y}
+                at = shapes.Point{x=c.x, y=c.y}
             }
             if c.op == "lineTo" {
                 pathLineTo(p, f32(c.x), f32(c.y))
-                at = shapes.Point{x = c.x, y = c.y}
+                at = shapes.Point{x=c.x, y=c.y}
             }
             if c.op == "bezierTo" {
                 pathCubicTo(p, f32(c.cx1), f32(c.cy1), f32(c.cx2), f32(c.cy2), f32(c.x), f32(c.y))
-                at = shapes.Point{x = c.x, y = c.y}
+                at = shapes.Point{x=c.x, y=c.y}
             }
             if c.op == "arcTo" {
-                var a = shapes.tangentArc(at, shapes.Point{x = c.cx1, y = c.cy1}, shapes.Point{x = c.x, y = c.y}, c.r)
+                var a = shapes.tangentArc(at, shapes.Point{x=c.cx1, y=c.cy1}, shapes.Point{x=c.x, y=c.y}, c.r)
                 if a.degenerate {
                     pathLineTo(p, f32(c.cx1), f32(c.cy1))
                 } else {

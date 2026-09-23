@@ -14,6 +14,7 @@ import (
 	_ "fyne.io/fyne/v2/container"
 	_ "fyne.io/fyne/v2/test"
 	_ "fyne.io/fyne/v2/widget"
+
 	// gg backs Canvas2D rendering in emitted fyne code (referenced only as
 	// string literals in canvas.go).
 	_ "github.com/fogleman/gg"

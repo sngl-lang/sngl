@@ -26,11 +26,11 @@ import (
 // ident to its per-instance state expression (`state` for JS, `m` for Go).
 var passNoImplicitRecv = pass{
 	name:    "NoImplicitRecv",
-	enabled: func(c Caps) bool { return c.NoImplicitRecv },
+	enabled: func(c Features) bool { return !c.ImplicitRecv },
 	apply:   lowerNoImplicitRecv,
 }
 
-func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerNoImplicitRecv(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -47,27 +47,18 @@ func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
 				return err
 			}
 		}
-		for _, t := range comp.Timers {
-			if t.Handler != nil {
-				if err := walk(t.Handler.Block); err != nil {
-					return err
-				}
-			}
-		}
 	}
 	for _, fn := range pkg.Funcs {
 		if err := walk(fn.Block); err != nil {
 			return err
 		}
 	}
+	if err := walk(pkg.Body); err != nil {
+		return err
+	}
 	for _, w := range pkg.Windows {
-		if err := walk(w.Body); err != nil {
+		if err := walk(w.Children); err != nil {
 			return err
-		}
-		for _, fn := range w.Funcs {
-			if err := walk(fn.Block); err != nil {
-				return err
-			}
 		}
 	}
 	return nil

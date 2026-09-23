@@ -43,7 +43,7 @@ var passSlotChildInstances = pass{
 	// one nothing asks about, and the registry that maintains it would be pure
 	// overhead. A synthesized row holds no state of its own -- retention buys
 	// exactly the placement match and nothing else.
-	enabled: func(c Caps) bool { return hasInstanceRuntime(c) && c.InsertBefore },
+	enabled: func(c Features) bool { return hasInstanceRuntime(c) && c.InsertBefore },
 	apply:   lowerSlotChildInstances,
 }
 
@@ -55,7 +55,7 @@ type slotChildSynth struct {
 	n        int
 }
 
-func lowerSlotChildInstances(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerSlotChildInstances(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -68,9 +68,10 @@ func lowerSlotChildInstances(pkg *ir.Package, _ Caps, _ Options) error {
 			st.walk(c.Body)
 		}
 	}
+	st.walk(pkg.Body)
 	for _, w := range pkg.Windows {
 		if w != nil {
-			st.walk(w.Body)
+			st.walk(w.Children)
 		}
 	}
 	return nil

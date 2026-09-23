@@ -122,10 +122,6 @@ func (c *checker) treeEvidence(stmts []ir.Stmt, pending map[*ir.Component]bool, 
 		switch s := st.(type) {
 		case *ir.SlotInst:
 			nested(s.Children)
-		case *ir.Window:
-			if c.windowComp != nil {
-				note(c.windowComp.Tree)
-			}
 		case *ir.NodeInst:
 			switch {
 			case s.Component == nil:

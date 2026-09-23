@@ -184,6 +184,11 @@ func (env *Env) Exec(s ir.Stmt) error {
 		}
 		return &returnSignal{value: v}
 	case *ir.NodeInst:
+		// A window is a top-level construct; reaching one inside a statement
+		// stream means something nested it incorrectly.
+		if ir.IsWindowNode(n) {
+			panic(fmt.Sprintf("testrunner.Exec: unexpected nested Window: %#v", n))
+		}
 		// Visual nodes don't execute in statement position in the headless
 		// interpreter (they're rendered elsewhere). Skipping preserves
 		// forward-compat with boundary/window structures appearing as
@@ -193,10 +198,6 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return nil
 	case *ir.SlotInst:
 		return nil
-	case *ir.Window:
-		// Window is a top-level construct; reaching it inside a
-		// statement stream means something nested it incorrectly.
-		panic(fmt.Sprintf("testrunner.Exec: unexpected nested Window: %#v", n))
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("testrunner.Exec: ContextProvider should be lowered before exec: %#v", n))
 	case *ir.CanvasRedrawStmt:

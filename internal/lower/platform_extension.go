@@ -17,11 +17,11 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // them with (empty for stdlib abstract components).
 var passPlatformExtensionBody = pass{
 	name:    "PlatformExtensionBody",
-	enabled: func(c Caps) bool { return true },
+	enabled: func(c Features) bool { return true },
 	apply:   lowerPlatformExtensionBody,
 }
 
-func lowerPlatformExtensionBody(pkg *ir.Package, _ Caps, opts Options) error {
+func lowerPlatformExtensionBody(pkg *ir.Package, _ Features, opts Options) error {
 	ir.SpecializeForTarget(pkg, opts.Platform, opts.Language)
 	return nil
 }

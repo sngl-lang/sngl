@@ -43,11 +43,11 @@ const recursionDepthProp = "__depth"
 // exactly as it was.
 var passRecursionDepth = pass{
 	name:    "RecursionDepth",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerRecursionDepth,
 }
 
-func lowerRecursionDepth(pkg *ir.Package, _ Caps, opts Options) error {
+func lowerRecursionDepth(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}

@@ -9,7 +9,7 @@ import (
 
 var passToggle = pass{
 	name:    "NoToggle",
-	enabled: func(c Caps) bool { return c.NoToggle },
+	enabled: func(c Features) bool { return !c.Toggle },
 	apply:   lowerToggle,
 }
 
@@ -18,7 +18,7 @@ var passToggle = pass{
 // Target and Value; this is safe because Toggle targets are path
 // expressions (Ident / Select / Index) the rest of the pipeline already
 // treats as immutable.
-func lowerToggle(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerToggle(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -60,18 +60,6 @@ func rewriteToggleStmts(stmts []ir.Stmt) []ir.Stmt {
 			n.Children = rewriteToggleStmts(n.Children)
 			if n.Handler != nil && n.Handler.Func != nil {
 				n.Handler.Func.Block = rewriteToggleStmts(n.Handler.Func.Block)
-			}
-		case *ir.Window:
-			n.Body = rewriteToggleStmts(n.Body)
-			for _, fn := range n.Funcs {
-				fn.Block = rewriteToggleStmts(fn.Block)
-			}
-			for _, v := range n.Vars {
-				for _, h := range v.Handlers {
-					if h.Func != nil {
-						h.Func.Block = rewriteToggleStmts(h.Func.Block)
-					}
-				}
 			}
 		case *ir.ContextProvider:
 			n.Children = rewriteToggleStmts(n.Children)

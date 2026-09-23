@@ -1,27 +1,35 @@
 // Package lower performs capability-driven IR-to-IR transformations between
-// the optimizer and codegen. Each lowering pass is gated by a Caps flag:
-// passes whose flag is true rewrite high-level constructs into simpler
-// primitives that the target platform/language can natively emit.
+// the optimizer and codegen. Each lowering pass is gated by a Features field:
+// a target that claims a construct keeps it, and a target that says nothing
+// gets the pass that rewrites it into something simpler.
 package lower
 
-import "strings"
+import (
+	"strings"
+)
 
-// Features declares which high-level SNGL constructs a language or platform
-// can natively emit. A flag set to true means no lowering is needed for that
-// construct; false means the corresponding lowering pass must run.
+// Features is what a target says it can do, declared in its own package by
+// `sngl:x/gen`'s marks and read by codegen.CapsFor.
 //
-// The zero value is safe: every flag defaults to false (needs lowering), so
-// new platforms automatically get all lowering passes until they opt in.
+// **A capability not written is not held.** The zero value claims nothing, so
+// the pass that rewrites each withheld construct runs for it. That is what lets
+// the language grow: a new construct arrives with a pass that converts it away,
+// and every target that has not heard of it keeps working unedited, opting in
+// when its own code generator can do better than the pass. Under the other
+// polarity, silence would mean "I emit this" on every declaration written
+// before the construct existed, and adding one would break every target at
+// once.
 //
-// Languages return Features from Capabilities(). Platforms receive the
-// language's Features and return the combined set, restricting any constructs
-// the platform cannot consume.
+// Not *every* gated pass, and the exceptions are the fields that read the other
+// way round. The five `#[gen.wants]` requests are asked for by being set, so
+// silence correctly leaves them off; and InsertBefore is a grant rather than a
+// withdrawal, so passSlotChildInstances -- which wants it beside a withheld
+// Reactivity -- is off for the zero value too. order_test.go's soleGate records
+// all six as gating nothing on their own.
 //
-// Call ToLowerCaps() to convert to the Caps shape required by Lower().
-//
-// StructComponents and StdlibContextParam are platform-opt-in passes rather
-// than language limitations: setting them to true requests the corresponding
-// lowering even when the language could handle the construct directly.
+// There used to be a second record, Caps, saying the same thing inverted --
+// NoTernary against Ternary -- with ToLowerCaps, Merge and String each naming
+// every field. One record is one list.
 type Features struct {
 	Toggle        bool // can emit x!! natively
 	Ternary       bool // can emit a ? b : c natively
@@ -35,56 +43,35 @@ type Features struct {
 	// Go has neither, so on Go the call runs on the goroutine that made it --
 	// which on a UI target is the goroutine drawing the screen.
 	//
-	// False requests passAsyncOffload, which moves the call to a goroutine and
-	// posts the answer back through the target's own scheduler. A platform for
-	// which no goroutine is the wrong one -- an html route handler already runs
-	// on its own -- sets it back to true, the way html re-enables Ternary.
+	// Withheld, passAsyncOffload moves the call to a goroutine and posts the
+	// answer back through the target's own scheduler. A platform for which no
+	// goroutine is the wrong one -- an html route handler already runs on its
+	// own -- claims it back, the way html reclaims Ternary.
 	AsyncCalls       bool
 	Computed         bool // can handle computed vars natively
 	ListLambdas      bool // can emit xs.filter(f) / xs.map(f) natively
-	Reactivity       bool // can handle reactive deps natively (false → explicit updater stmts)
-	Declarative      bool // can handle declarative visual tree (false → flat create/update/delete calls)
-	InlineComponents bool // can handle inline component references (false → inline into main)
-	ImplicitRecv     bool // can handle implicit receiver (false → explicit Args[0])
-	StructSpread     bool // can handle struct-literal spreads (false → flatten)
+	Reactivity       bool // can handle reactive deps natively (else explicit updater stmts)
+	Declarative      bool // can handle a declarative visual tree (else flat create/update/delete calls)
+	InlineComponents bool // can handle inline component references (else inlined into main)
+	ImplicitRecv     bool // can handle an implicit receiver (else explicit Args[0])
+	StructSpread     bool // can emit struct-literal spreads (else flattened)
 
 	// ViewStatements declares that a view body reaches the output as
-	// host-language statements the target runs. False says it is written out
-	// as markup -- html, in both its modes -- and then a `for` over a
+	// host-language statements the target runs. Withheld says it is written
+	// out as markup -- html, in both its modes -- and then a `for` over a
 	// compile-time-constant iterable has nowhere to run: nothing iterates it,
 	// and it renders its body once with its variable bound to nothing.
 	// The optimizer reads it to decide whether to unroll such a loop.
 	//
-	// Unlike every other field here it requests no lowering pass, so
-	// ToLowerCaps does not carry it into Caps: what a target declares about
-	// itself is a wider question than which passes run for it, and Caps
-	// answers only the second.
+	// Unlike every other capability here it gates no pass: what a target
+	// declares about itself is a wider question than which passes run for it.
 	ViewStatements bool
 
-	// StructComponents requests that components compile to structs with methods
-	// rather than functions/closures. Set by platforms that use this model.
-	StructComponents bool
-	// StdlibContextParam requests a hidden trailing parameter threaded through
-	// every stdlib func reachable from user code that reads a context.
-	StdlibContextParam bool
-	// FocusOrder requests focus-tracking lowering: the pass walks the visual
-	// tree, assigns integer IDs to focusable nodes, and injects __focusID,
-	// __focusNext, and __focusPrev into the component. Platforms that render
-	// their own widgets (canvas, TUI) opt in; native-widget platforms that
-	// delegate focus to the OS do not.
-	FocusOrder bool
-	// Canvas requests canvas-drawing lowering: passCanvas walks shape-children
-	// bodies and transforms them into draw functions with intrinsic calls.
-	// Set by platforms that support Canvas2D rendering (e.g. HTML5 canvas).
-	Canvas bool
-	// ReactiveCanvas requests passCanvasReactivity: injects CanvasRedrawStmt
-	// into handler/timer bodies that mutate vars read by a canvas draw func.
-	ReactiveCanvas bool
 	// InsertBefore says the platform's container can put a child at a
 	// position, not only at the end -- so a keyed reconciliation may move one
-	// child instead of rebuilding the run. Opt-in: a toolkit whose container
-	// appends is not wrong for lacking it, and the rebuild it keeps is
-	// correct, just less direct. A platform declaring this must implement
+	// child instead of rebuilding the run. A toolkit whose container appends
+	// is not wrong for lacking it, and the rebuild it keeps is correct, just
+	// less direct. A platform claiming this must implement
 	// codegen.ChildInserter.
 	InsertBefore bool
 	// AsyncPost says the platform can run a closure back on the thread it
@@ -93,7 +80,7 @@ type Features struct {
 	// and passAsyncOffload refuses the program rather than writing a state
 	// update onto a goroutine that does not own the widgets.
 	//
-	// A platform declaring it must register an emitter for that id; codegen's
+	// A platform claiming it must register an emitter for that id; codegen's
 	// tests check the two against each other.
 	AsyncPost bool
 	// AsyncSpawn says the language can run a closure without waiting for it,
@@ -101,22 +88,47 @@ type Features struct {
 	// `go func(){}()`. It sits on the language axis where AsyncPost sits on
 	// the platform's, because starting work is a property of the host language
 	// and getting back to the drawing thread is a property of the surface.
-	//
-	// Deliberately absent from AllFeatures: a language that has not registered
-	// the emitter must not claim the capability, and the diagnostic naming it
-	// is better than the Go compiler reporting an undefined method.
 	AsyncSpawn bool
-	// Effects says the platform emits an `effect` node itself and wants it left
-	// standing. A framework whose own model already brackets a lifetime keyed
-	// on a value -- Compose's DisposableEffect is one -- expresses the
+	// Effects says the platform emits an `effect` node itself and wants it
+	// left standing. A framework whose own model already brackets a lifetime
+	// keyed on a value -- Compose's DisposableEffect is one -- expresses the
 	// construct better than the calls passEffect lowers it to, and gets the
 	// node instead: its two handlers and its key are all the declaration says.
 	Effects bool
+
+	// The five below are requests rather than capabilities, which is the split
+	// `sngl:x/gen` spells as `#[gen.wants]`: each asks for a pass the target
+	// wants run, so a platform asking for Canvas is not confessing to
+	// anything. They read the other way round from every field above -- true
+	// runs the pass.
+
+	// StructComponents requests that components compile to structs with
+	// methods rather than functions or closures.
+	StructComponents bool
+	// StdlibContextParam requests a hidden trailing parameter threaded through
+	// every stdlib func reachable from user code that reads a context.
+	StdlibContextParam bool
+	// FocusOrder requests focus-tracking lowering: the pass walks the visual
+	// tree, assigns integer IDs to focusable nodes, and injects __focusID,
+	// __focusNext and __focusPrev into the component. Platforms that render
+	// their own widgets (canvas, TUI) ask for it; native-widget platforms that
+	// delegate focus to the OS do not.
+	FocusOrder bool
+	// Canvas requests canvas-drawing lowering: passShapeDraw walks
+	// shape-children bodies and turns them into draw functions of intrinsic
+	// calls.
+	Canvas bool
+	// ReactiveCanvas requests passCanvasReactivity: it injects CanvasRedrawStmt
+	// into handler and timer bodies that mutate vars a canvas draw func reads.
+	ReactiveCanvas bool
 }
 
-// AllFeatures returns a Features with every capability enabled. Use as a
-// starting point for full-featured languages: disable only what you can't emit.
-func AllFeatures() Features {
+// NoLowering is the Features under which no capability-gated pass runs: every
+// construct claimed, nothing granted, nothing requested.
+//
+// It is a test's answer and not a target's. A real target says what it can do,
+// and the one place a build wants this shape is the interpreted path below.
+func NoLowering() Features {
 	return Features{
 		Toggle:           true,
 		Ternary:          true,
@@ -134,205 +146,66 @@ func AllFeatures() Features {
 		ImplicitRecv:     true,
 		StructSpread:     true,
 		ViewStatements:   true,
+		Effects:          true,
 	}
 }
 
-// ToLowerCaps converts Features to the Caps shape consumed by Lower().
-func (f Features) ToLowerCaps() Caps {
-	return Caps{
-		NoToggle:           !f.Toggle,
-		NoTernary:          !f.Ternary,
-		NoLambda:           !f.Lambda,
-		NoRef:              !f.Ref,
-		NoUnit:             !f.Unit,
-		NoEnum:             !f.Enum,
-		NoAsyncReactive:    !f.AsyncReactive,
-		NoAsyncCalls:       !f.AsyncCalls,
-		NoComputed:         !f.Computed,
-		NoListLambdas:      !f.ListLambdas,
-		NoReactivity:       !f.Reactivity,
-		NoDeclarative:      !f.Declarative,
-		NoInlineComponents: !f.InlineComponents,
-		NoImplicitRecv:     !f.ImplicitRecv,
-		NoStructSpread:     !f.StructSpread,
-		StructComponents:   f.StructComponents,
-		StdlibContextParam: f.StdlibContextParam,
-		FocusOrder:         f.FocusOrder,
-		Canvas:             f.Canvas,
-		ReactiveCanvas:     f.ReactiveCanvas,
-		AsyncPost:          f.AsyncPost,
-		AsyncSpawn:         f.AsyncSpawn,
-		NoEffects:          !f.Effects,
-		InsertBefore:       f.InsertBefore,
-	}
+// InterpreterFeatures is what a target with no host language holds: every
+// gated pass is compensation for something a backend cannot emit, and there is
+// no backend -- in particular Declarative, whose absence dissolves the visual
+// tree the interpreter mounts.
+//
+// Effects is the exception, and it is NoLowering's one difference: nothing in
+// internal/interp answers an `ir.Effect` node, so passEffect has to turn one
+// into the calls that run its bracket before the interpreter sees it.
+func InterpreterFeatures() Features {
+	f := NoLowering()
+	f.Effects = false
+	return f
 }
 
-// Caps declares which high-level SNGL constructs the target cannot consume
-// directly. A flag set to true requests the corresponding lowering pass.
-// Derived from Features.ToLowerCaps(); prefer Features in public APIs.
-type Caps struct {
-	NoToggle        bool // x!! → x = !x
-	NoTernary       bool // a ? b : c → if/else stmt with temp var
-	NoLambda        bool // closures → top-level funcs + captured-state struct
-	NoRef           bool // ref<T> → synthesized one-field reference-semantic struct
-	NoUnit          bool // unit values → underlying int
-	NoEnum          bool // enum members → int constants
-	NoAsyncReactive bool // async in reactive contexts → settled state-field + kicker
-	NoAsyncCalls    bool // a blocking call → a goroutine, and the answer posted back
-	AsyncPost       bool // the platform can run a closure back on its drawing thread
-	AsyncSpawn      bool // the language can run a closure without waiting for it
-	NoComputed      bool // computed vars → inlined exprs or memoized funcs
-	// StructComponents declares that components compile to structs with
-	// methods rather than functions/closures. User-declared `context #foo`
-	// blocks must be lowered into hidden Vars on each component in
-	// Reach(ctx) and hidden Params on each user func in Reach(ctx) — the
-	// component receiver carries the context value rather than a
-	// closure-captured variable. Target languages with function-shaped
-	// components (today: JS via html) can in principle keep user contexts
-	// as closure captures; today they still set this for parity with
-	// StdlibContextParam, but the two flags exist so a future migration
-	// can flip just one off.
-	StructComponents bool
-
-	// StdlibContextParam threads a hidden trailing parameter through every
-	// stdlib func reachable from user code that reads a context. Today this
-	// covers the i18n stdlib wrappers (i18n.tr et al.) reading the active
-	// locale. Even closure-based component targets need this because stdlib
-	// funcs live outside the user closure scope.
-	StdlibContextParam bool
-	NoReactivity       bool // reactive deps → explicit updater stmts after each mutation
-	NoDeclarative      bool // visual node tree → flat stream of create/update/delete IR calls
-	NoListLambdas      bool // xs.filter(f) / xs.map(f) → explicit accumulator + for-loop.
-	NoInlineComponents bool // user-defined non-recursive components → inlined into main (per-instance renamed vars/funcs/timers/body)
-	NoImplicitRecv     bool // method calls with implicit receiver → explicit Args[0]
-	NoStructSpread     bool // struct-literal spreads (`{...x}`) → flattened literal / merge<Struct> call
-	// FocusOrder requests focus-tracking lowering. See Features.FocusOrder.
-	FocusOrder bool
-	// Canvas requests passCanvas lowering. See Features.Canvas.
-	Canvas bool
-	// ReactiveCanvas requests passCanvasReactivity: after passCanvas extracts
-	// draw funcs and passReactivity wires state deps, this pass injects
-	// CanvasRedrawStmt into any handler/timer body that mutates a var read by
-	// a canvas draw func. Platforms translate CanvasRedrawStmt to their native
-	// "clear and redraw" operation.
-	ReactiveCanvas bool
-	// NoEffects requests passEffect: an `effect` node becomes the calls that
-	// run its bracket. False leaves the node for the platform to emit. See
-	// Features.Effects.
-	NoEffects bool
-	// InsertBefore permits the InsertBefore node operation: the platform can
-	// put a child at a position rather than only at the end. See
-	// Features.InsertBefore; the platform must implement codegen.ChildInserter.
-	InsertBefore bool
-}
-
-// Merge returns the field-wise OR of c and other. Either side disabling a
-// feature requests the corresponding lowering pass.
-func (c Caps) Merge(other Caps) Caps {
-	return Caps{
-		NoToggle:           c.NoToggle || other.NoToggle,
-		NoTernary:          c.NoTernary || other.NoTernary,
-		NoLambda:           c.NoLambda || other.NoLambda,
-		NoRef:              c.NoRef || other.NoRef,
-		NoUnit:             c.NoUnit || other.NoUnit,
-		NoEnum:             c.NoEnum || other.NoEnum,
-		NoAsyncReactive:    c.NoAsyncReactive || other.NoAsyncReactive,
-		NoComputed:         c.NoComputed || other.NoComputed,
-		StructComponents:   c.StructComponents || other.StructComponents,
-		StdlibContextParam: c.StdlibContextParam || other.StdlibContextParam,
-		FocusOrder:         c.FocusOrder || other.FocusOrder,
-		Canvas:             c.Canvas || other.Canvas,
-		ReactiveCanvas:     c.ReactiveCanvas || other.ReactiveCanvas,
-		NoEffects:          c.NoEffects || other.NoEffects,
-		// Either, like every other capability here: a merge puts a language's
-		// limits beside a platform's, and this is a statement about the
-		// platform's container that no language has an opinion on. Requiring
-		// both would have the language's silence veto it.
-		InsertBefore:       c.InsertBefore || other.InsertBefore,
-		NoReactivity:       c.NoReactivity || other.NoReactivity,
-		NoDeclarative:      c.NoDeclarative || other.NoDeclarative,
-		NoListLambdas:      c.NoListLambdas || other.NoListLambdas,
-		NoInlineComponents: c.NoInlineComponents || other.NoInlineComponents,
-		NoImplicitRecv:     c.NoImplicitRecv || other.NoImplicitRecv,
-		NoStructSpread:     c.NoStructSpread || other.NoStructSpread,
-	}
-}
-
-// String returns a comma-separated list of enabled flags in pass-execution
-// order (NoUnit first, NoDeclarative last). Empty string when no flags set.
-func (c Caps) String() string {
+// String lists the capabilities held, comma-separated, in the order the fields
+// are declared. Empty when the target claims none, which is what a plugin that
+// answered nothing looks like.
+//
+// It says what the target can do, not which passes will run for it --
+// EnabledPasses answers the second, and the two are no longer the same list
+// read two ways.
+func (f Features) String() string {
 	var parts []string
-	if c.NoUnit {
-		parts = append(parts, "NoUnit")
-	}
-	if c.NoEnum {
-		parts = append(parts, "NoEnum")
-	}
-	if c.NoTernary {
-		parts = append(parts, "NoTernary")
-	}
-	if c.NoAsyncReactive {
-		parts = append(parts, "NoAsyncReactive")
-	}
-	if c.NoAsyncCalls {
-		parts = append(parts, "NoAsyncCalls")
-	}
-	if c.AsyncPost {
-		parts = append(parts, "AsyncPost")
-	}
-	if c.AsyncSpawn {
-		parts = append(parts, "AsyncSpawn")
-	}
-	if c.NoComputed {
-		parts = append(parts, "NoComputed")
-	}
-	if c.NoLambda {
-		parts = append(parts, "NoLambda")
-	}
-	if c.NoListLambdas {
-		parts = append(parts, "NoListLambdas")
-	}
-	if c.NoRef {
-		parts = append(parts, "NoRef")
-	}
-	if c.NoToggle {
-		parts = append(parts, "NoToggle")
-	}
-	if c.StructComponents {
-		parts = append(parts, "StructComponents")
-	}
-	if c.StdlibContextParam {
-		parts = append(parts, "StdlibContextParam")
-	}
-	if c.NoReactivity {
-		parts = append(parts, "NoReactivity")
-	}
-	if c.NoInlineComponents {
-		parts = append(parts, "NoInlineComponents")
-	}
-	if c.NoStructSpread {
-		parts = append(parts, "NoStructSpread")
-	}
-	if c.NoImplicitRecv {
-		parts = append(parts, "NoImplicitRecv")
-	}
-	if c.NoDeclarative {
-		parts = append(parts, "NoDeclarative")
-	}
-	if c.FocusOrder {
-		parts = append(parts, "FocusOrder")
-	}
-	if c.Canvas {
-		parts = append(parts, "Canvas")
-	}
-	if c.ReactiveCanvas {
-		parts = append(parts, "ReactiveCanvas")
-	}
-	if c.NoEffects {
-		parts = append(parts, "NoEffects")
-	}
-	if c.InsertBefore {
-		parts = append(parts, "InsertBefore")
+	for _, c := range []struct {
+		name string
+		held bool
+	}{
+		{"Toggle", f.Toggle},
+		{"Ternary", f.Ternary},
+		{"Lambda", f.Lambda},
+		{"Ref", f.Ref},
+		{"Unit", f.Unit},
+		{"Enum", f.Enum},
+		{"AsyncReactive", f.AsyncReactive},
+		{"AsyncCalls", f.AsyncCalls},
+		{"Computed", f.Computed},
+		{"ListLambdas", f.ListLambdas},
+		{"Reactivity", f.Reactivity},
+		{"Declarative", f.Declarative},
+		{"InlineComponents", f.InlineComponents},
+		{"ImplicitRecv", f.ImplicitRecv},
+		{"StructSpread", f.StructSpread},
+		{"ViewStatements", f.ViewStatements},
+		{"InsertBefore", f.InsertBefore},
+		{"AsyncPost", f.AsyncPost},
+		{"AsyncSpawn", f.AsyncSpawn},
+		{"Effects", f.Effects},
+		{"StructComponents", f.StructComponents},
+		{"StdlibContextParam", f.StdlibContextParam},
+		{"FocusOrder", f.FocusOrder},
+		{"Canvas", f.Canvas},
+		{"ReactiveCanvas", f.ReactiveCanvas},
+	} {
+		if c.held {
+			parts = append(parts, c.name)
+		}
 	}
 	return strings.Join(parts, ",")
 }

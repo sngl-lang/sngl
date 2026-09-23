@@ -381,22 +381,22 @@ func isDOMPatchStmt(s ir.Stmt) bool {
 // stateVarNames is the set of names a route's markup may depend on: the
 // server State struct's fields, plus the window's own vars.
 //
-// A window's vars are what its URL template declares -- `/p/{pkg}` puts `pkg`
-// in scope for the body (checker.go, buildWindow). Those are known per request
+// Plus the window's route parameters, which arrive as one struct value bound
+// to the slot binding its declaration names. Those are known per request
 // exactly as state is, so an expression over one renders into a hole. Left
 // out, `class=active ? "active" : ""` where `active` came from the path was
 // neither a literal nor state-dependent, and the route was refused.
+//
+// It is one name rather than one per placeholder, and it is not a field of
+// the per-session State: the struct is a handler local bound from the request,
+// which is why routeStateVars below does not yield it.
 func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 	out := map[string]bool{}
 	for _, v := range routeStateVars(pkg, win) {
 		out[v.Name] = true
 	}
-	if win != nil {
-		for _, v := range win.Vars {
-			if v != nil && !v.IsConst {
-				out[v.Name] = true
-			}
-		}
+	if win != nil && win.Window != nil && win.Window.Params != nil {
+		out[win.Window.Params.Name] = true
 	}
 	return out
 }
@@ -406,25 +406,47 @@ func stateVarNames(pkg *ir.Package, win *codegen.WindowCtx) map[string]bool {
 // route's own window owns. Mirrors htmlGen.stateVars but yields the
 // language-agnostic codegen.StateVar (name + IR type).
 //
-// The window is the usual owner rather than the unusual one: passRootWindow
-// hoists a root component's declarations there (#215). stateVarNames below has
-// always counted a window's vars, so leaving them out here rendered the markup
-// as a hole into a State struct that had no such field.
+// The window is the usual owner rather than the unusual one, a `var` written
+// in a window body being the common case. stateVarNames below has always
+// counted a window's vars, so leaving them out here rendered the markup as a
+// hole into a State struct that had no such field.
 //
 // win may be nil, which is every caller that asks the package-wide question.
 func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar {
-	var out []codegen.StateVar
+	vars := routeVars(pkg, win)
+	out := make([]codegen.StateVar, 0, len(vars))
+	for _, v := range vars {
+		if v.Synthesized || v.IsConst {
+			continue
+		}
+		out = append(out, codegen.StateVar{Name: v.Name, Type: v.Type})
+	}
+	return out
+}
+
+// routeVars is the declarations a route carries, deduplicated by name and in
+// the order the State struct lists them: the package's, the main component's,
+// and the ones the route's own window owns.
+//
+// Separate from routeStateVars because a var is two things to a route. Its
+// *type* becomes a State field, which is what that projection is for; its
+// *handlers* are backend actions, and collectActions needs the declaration
+// itself to reach them. The handler scan used to walk `win.Vars` alone, and
+// was deleted outright rather than repointed when a window stopped owning
+// declarations -- so a backend `@change` on a package var minted no action
+// and nothing POSTed it.
+//
+// win may be nil, which is every caller that asks the package-wide question.
+func routeVars(pkg *ir.Package, win *codegen.WindowCtx) []*ir.Var {
+	var out []*ir.Var
 	seen := map[string]bool{}
 	add := func(vars []*ir.Var) {
 		for _, v := range vars {
-			// RouteParam: a window's `{x}` var is bound from the URL the
-			// request arrived on, so it is a handler local rather than a field
-			// of the per-session State the window's other vars become.
-			if v == nil || v.Synthesized || v.IsConst || v.RouteParam || seen[v.Name] {
+			if v == nil || seen[v.Name] {
 				continue
 			}
 			seen[v.Name] = true
-			out = append(out, codegen.StateVar{Name: v.Name, Type: v.Type})
+			out = append(out, v)
 		}
 	}
 	if pkg != nil {

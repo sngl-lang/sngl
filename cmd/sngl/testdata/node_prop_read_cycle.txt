@@ -1,0 +1,31 @@
+# Two node props that read each other have no answer.
+#
+# A prop read off a `#id` whose node the target keeps nothing of is answered
+# with the expression the prop was given, and answering runs to a fixed point
+# because one answer can uncover the next -- `circle #b(r=a.r)` is a read that
+# only becomes readable once `a`'s own props are known.
+#
+# A cycle has no fixed point to reach. It is detected before any substitution
+# rather than discovered by running out of stack, which is what a depth guard
+# would have done: the graph is known, so the question can be asked outright.
+#
+# The same shape one layer down -- a window prop that reads itself -- is only
+# guarded in consteval today, and is the reason PLAN.md says a checker rule
+# about self-reference is the real answer to both.
+
+! sngl generate --lang none --platform html --out out .
+stderr 'reads its own value back'
+stderr 'nothing to answer with'
+
+-- app.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window #w(title="t") {
+    draw.canvas(width=10px, height=10px) {
+        draw.circle #a(cx=1.0, cy=1.0, r=b.r)
+        draw.circle #b(cx=2.0, cy=2.0, r=a.r)
+    }
+
+    ui.text(value="a is {a.r}")
+}

@@ -24,7 +24,11 @@ window {
 }
 `
 	pkg := checkForFyne(t, src)
-	if err := lower.Lower(pkg, lower.Caps{NoReactivity: true, NoDeclarative: true}, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
+	// fyne's two: explicit updaters and a flattened tree. Everything else
+	// claimed, so the intrinsic calls under test are the only thing arriving.
+	feats := lower.NoLowering()
+	feats.Reactivity, feats.Declarative = false, false
+	if err := lower.Lower(pkg, feats, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
 

@@ -46,8 +46,10 @@ func TestPlatformEmitterAnswersWhereTheLanguageCannot(t *testing.T) {
 // write lines into a stateful Compose context.
 //
 // Naming the package rather than the ids is what keeps it from drifting — a
-// primitive added to that package is covered with nothing to update here. This is
-// what let the completeness check stop exempting sngl:internal/draw by name.
+// primitive added to that package is covered with nothing to update here. This
+// is what let the completeness check stop exempting sngl:internal/draw by name,
+// back when that package existed; it is also all that exercises the mechanism
+// now, its only real user having gone with the drawing primitives.
 func TestDeclaredPackageSatisfiesTheCompletenessCheck(t *testing.T) {
 	const pkg = "sngl:testonly/surface"
 	def := &ir.IntrinsicDef{Name: "TestOnly.declaredByPackage", Pkg: pkg}

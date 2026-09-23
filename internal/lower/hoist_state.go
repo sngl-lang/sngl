@@ -2,8 +2,8 @@ package lower
 
 import "git.duckfam.us/jonathan/sngl/ir"
 
-// passHoistState makes a window's top-level `var` a declaration of that window
-// rather than a local of its body.
+// passHoistState makes a window's top-level `var` a declaration of the thing
+// that contains the window, rather than a local of its body.
 //
 // The checker collects a component's `var` into comp.Vars, which is what makes
 // it state; a window's it leaves as an *ir.LocalVar statement in the body. No
@@ -14,16 +14,22 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // emitted Kotlin referring to an undeclared name, and html emitted nothing at
 // all.
 //
+// The container and not the window, because a window is a rendering root and
+// not a storage level: the three single-process targets put every window's
+// state in one Model already, and html writing a copy into each page is that
+// platform instantiating one declaration rather than a level of its own.
+// `window` is root-only, so the container is the package unless a root-family
+// component renders it.
+//
 // Normalising here rather than in the checker keeps a window body a block as
-// written and gives every consumer one place to read window state from, which
-// is the same place it already reads a component's.
+// written.
 var passHoistState = pass{
 	name:    "HoistState",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   applyHoistState,
 }
 
-func applyHoistState(pkg *ir.Package, _ Caps, _ Options) error {
+func applyHoistState(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -33,21 +39,29 @@ func applyHoistState(pkg *ir.Package, _ Caps, _ Options) error {
 	// same rule, and a pass that knows two of the three owners is how the
 	// window case went missing in the first place.
 	pkg.Body, pkg.Vars = promoteLocalVarsToVars(pkg.Body, pkg.Vars)
-	for _, w := range allWindows(pkg) {
-		w.Body, w.Vars = promoteLocalVarsToVars(w.Body, w.Vars)
+	hoistWindowsIn(pkg.Body, &pkg.Vars)
+	for _, comp := range pkg.Components {
+		if comp != nil {
+			hoistWindowsIn(comp.Body, &comp.Vars)
+		}
+	}
+	// A window at the root of a file is in no body, so the walk above does not
+	// reach it; its container is the package either way.
+	for _, w := range pkg.Windows {
+		if w != nil {
+			w.Children, pkg.Vars = promoteLocalVarsToVars(w.Children, pkg.Vars)
+		}
 	}
 	return nil
 }
 
-// allWindows is every window the package holds, in ir.Owners' order: those at
-// the root of a file and those a component body renders. Derived from Owners
-// so the two answers to "which declarations own state" cannot drift apart.
-func allWindows(pkg *ir.Package) []*ir.Window {
-	var out []*ir.Window
-	for _, o := range ir.Owners(pkg) {
-		if o.Win != nil {
-			out = append(out, o.Win)
+// hoistWindowsIn promotes the top-level vars of every window a block renders
+// into that block's owner, reaching through what says when and how many.
+func hoistWindowsIn(stmts []ir.Stmt, into *[]*ir.Var) {
+	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+		if w, ok := s.(*ir.NodeInst); ok && ir.IsWindowNode(w) {
+			w.Children, *into = promoteLocalVarsToVars(w.Children, *into)
 		}
-	}
-	return out
+		return nil
+	})
 }

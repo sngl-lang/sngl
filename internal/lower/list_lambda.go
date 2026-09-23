@@ -11,7 +11,7 @@ import (
 // explicit accumulator + for-loop that calls the lambda directly,
 // removing the generic `list.filter` / `list.map` builtin from the
 // codegen surface. Targets that can't represent `func(any) any`-style
-// type-erased lambdas (today: Go) opt in via Caps.NoListLambdas; other
+// type-erased lambdas (today: Go) withhold Features.ListLambdas; other
 // languages with native filter/map (JS Array, Kotlin Iterable) leave
 // the builtin alone.
 //
@@ -28,11 +28,11 @@ import (
 // passed args, etc.) read from that fully-built list.
 var passNoListLambdas = pass{
 	name:    "NoListLambdas",
-	enabled: func(c Caps) bool { return c.NoListLambdas },
+	enabled: func(c Features) bool { return !c.ListLambdas },
 	apply:   lowerListLambdas,
 }
 
-func lowerListLambdas(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerListLambdas(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -143,16 +143,6 @@ func (st *listLambdaState) transformStmt(s ir.Stmt) ([]ir.Stmt, ir.Stmt) {
 		}
 	case *ir.Toggle:
 		pre, n.Target = st.transformExpr(n.Target)
-	case *ir.Window:
-		for i := range n.Props {
-			if n.Props[i].Value == nil {
-				continue
-			}
-			p, v := st.transformExpr(n.Props[i].Value)
-			pre = append(pre, p...)
-			n.Props[i].Value = v
-		}
-		n.Body = st.transformBlock(n.Body)
 	case *ir.ContextProvider:
 		pre, n.Value = st.transformExpr(n.Value)
 		n.Children = st.transformBlock(n.Children)

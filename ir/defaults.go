@@ -167,11 +167,9 @@ func Normalize(pkg *Package) {
 		normalizeComponent(c)
 	}
 	for _, w := range pkg.Windows {
-		normalizeWindow(w)
+		normalizeStmt(w)
 	}
-	for _, t := range pkg.Timers {
-		normalizeTimer(t)
-	}
+	pkg.Body = normalizeStmts(pkg.Body)
 }
 
 func normalizeStructDef(s *StructDef) {
@@ -249,43 +247,7 @@ func normalizeComponent(c *Component) {
 	for _, f := range c.Funcs {
 		normalizeFunc(f)
 	}
-	for _, t := range c.Timers {
-		normalizeTimer(t)
-	}
 	c.Body = normalizeStmts(c.Body)
-}
-
-func normalizeWindow(w *Window) {
-	if w == nil {
-		return
-	}
-	for _, p := range w.Props {
-		if p.Value != nil {
-			normalizeExpr(p.Value)
-		}
-	}
-	for _, v := range w.Vars {
-		normalizeVar(v)
-	}
-	for _, f := range w.Funcs {
-		normalizeFunc(f)
-	}
-	w.Body = normalizeStmts(w.Body)
-}
-
-func normalizeTimer(t *Timer) {
-	if t == nil {
-		return
-	}
-	if t.Interval != nil {
-		normalizeExpr(t.Interval)
-	}
-	if t.Enabled != nil {
-		normalizeExpr(t.Enabled)
-	}
-	if t.Handler != nil {
-		normalizeFunc(t.Handler)
-	}
 }
 
 func normalizeStmts(stmts []Stmt) []Stmt {
@@ -346,8 +308,6 @@ func normalizeStmt(s Stmt) Stmt {
 		for i := range n.Args {
 			normalizeExpr(n.Args[i].Value)
 		}
-	case *Window:
-		normalizeWindow(n)
 	}
 	return s
 }

@@ -103,14 +103,6 @@ import (
 	"time"
 )
 
-func mustParseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
 func snglStrMeasurement(v Measurement) string {
 	s := ""
 	if v.Px != 0 {
@@ -171,7 +163,6 @@ type Model struct {
 	ticks__inst0   Tick
 	half__inst0    time.Duration
 	over__inst0    time.Duration
-	fixed__inst0   time.Duration
 
 	width, height int
 }
@@ -184,7 +175,6 @@ func New() Model {
 	m.ticks__inst0 = Tick(4)
 	m.half__inst0 = time.Duration(500) * time.Millisecond
 	m.over__inst0 = time.Duration(1100) * time.Millisecond
-	m.fixed__inst0 = time.Duration(250) * time.Millisecond
 	return m
 }
 
@@ -421,7 +411,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { mix__inst0: null, reduced__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, ticks__inst0: 4, half__inst0: 500, over__inst0: 1100, fixed__inst0: 250 };
+  var state = { mix__inst0: null, reduced__inst0: { px: 0, em: 32, vw: 0, vh: 0, pct: 0 }, ticks__inst0: 4, half__inst0: 500, over__inst0: 1100 };
   state.mix__inst0 = { px: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.px + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.px, em: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.em + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.em, vw: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vw + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vw, vh: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.vh + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.vh, pct: { px: 3, em: 0, vw: 0, vh: 0, pct: 0 }.pct + { px: 0, em: 2, vw: 0, vh: 0, pct: 0 }.pct };
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -440,8 +430,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5297817174383465cda1a56e4e45da92
+pass sha256:ccaa61ec94adab945b4d00da83ceaac2
 -- run/kotlin/android --
 pass sha256:a0e2f7013592e878da9f5aacfb630034
 -- run/none/html --
-pass sha256:9b259b35fdaf957636da9c53ff2ca288
+pass sha256:7f403182faa48b4a5f43eba52a10dcfa

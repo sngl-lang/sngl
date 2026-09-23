@@ -178,12 +178,16 @@ func Compile(source string) string {
 		result["error"] = "html/none codegen not registered"
 		return jsonStr(result)
 	}
-	compileCaps := gen.Capabilities(lang).ToLowerCaps()
-	if err := lower.Lower(pkg, compileCaps, lower.Options{Platform: "html"}); err != nil {
+	compileFeats, err := codegen.CapsFor("none", "html")
+	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if compileCaps != (lower.Caps{}) {
+	if err := lower.Lower(pkg, compileFeats, lower.Options{Platform: "html"}); err != nil {
+		result["error"] = err.Error()
+		return jsonStr(result)
+	}
+	if compileFeats != lower.NoLowering() {
 		if err := optimize.Optimize(pkg, compileOptCfg); err != nil {
 			result["error"] = err.Error()
 			return jsonStr(result)
@@ -302,12 +306,16 @@ func Generate(source, platform, lang string) string {
 		result["error"] = "unknown lang: " + lang
 		return jsonStr(result)
 	}
-	genCaps := gen.Capabilities(lt).ToLowerCaps()
-	if err := lower.Lower(pkg, genCaps, lower.Options{Platform: platform}); err != nil {
+	genFeats, err := codegen.CapsFor(lang, platform)
+	if err != nil {
 		result["error"] = err.Error()
 		return jsonStr(result)
 	}
-	if genCaps != (lower.Caps{}) {
+	if err := lower.Lower(pkg, genFeats, lower.Options{Platform: platform}); err != nil {
+		result["error"] = err.Error()
+		return jsonStr(result)
+	}
+	if genFeats != lower.NoLowering() {
 		if err := optimize.Optimize(pkg, genOptCfg); err != nil {
 			result["error"] = err.Error()
 			return jsonStr(result)

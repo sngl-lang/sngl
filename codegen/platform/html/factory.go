@@ -204,6 +204,26 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		}
 	}
 
+	// A drawing written in this component's body paints into elements this
+	// factory creates, so its routine is declared here where they are in
+	// scope. Emitted at page scope instead, it closed over nothing and every
+	// instance drew a blank canvas.
+	for i := range g.canvasDraws.All() {
+		cv := &g.canvasDraws.All()[i]
+		if cv.Owner != comp {
+			continue
+		}
+		dtr := g.newHTMLTranslator(jc)
+		drawn := &ir.Func{
+			Name:   cv.Name,
+			Params: []*ir.Param{{Name: "ctx", Type: ir.TypDyn}},
+			Block:  codegen.WalkLowered(context.Background(), cv.Draw, dtr),
+		}
+		for _, line := range jc.EmitFuncDef(drawn) {
+			b.WriteString("\t" + line + "\n")
+		}
+	}
+
 	tr := g.newHTMLTranslator(jc)
 	body := codegen.WalkLowered(context.Background(), comp.Body, tr)
 	for _, stmt := range body {

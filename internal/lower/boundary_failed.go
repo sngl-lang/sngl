@@ -39,11 +39,11 @@ import (
 // a boundary that has none.
 var passBoundaryFailed = pass{
 	name:    "BoundaryFailed",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerBoundaryFailed,
 }
 
-func lowerBoundaryFailed(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerBoundaryFailed(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -69,6 +69,12 @@ func (st *boundaryFailedState) stmts(stmts []ir.Stmt) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
+			// A window written inside a component body owns its own state, and
+			// ir.Owners hands it to us separately -- descending here would
+			// hang the flag on the wrong declaration.
+			if ir.IsWindowNode(n) {
+				continue
+			}
 			st.stmts(n.Children)
 			for _, sc := range n.Slots {
 				if sc != nil {
@@ -85,10 +91,6 @@ func (st *boundaryFailedState) stmts(stmts []ir.Stmt) {
 			st.stmts(n.Children)
 		case *ir.ContextProvider:
 			st.stmts(n.Children)
-		case *ir.Window:
-			// A window written inside a component body owns its own state, and
-			// ir.Owners hands it to us separately -- descending here would
-			// hang the flag on the wrong declaration.
 		case *ir.ErrorBoundary:
 			st.stmts(n.Children)
 			st.stmts(n.Failed)

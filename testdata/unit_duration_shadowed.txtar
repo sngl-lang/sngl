@@ -6,10 +6,9 @@ never by its name -- which is what makes every one of them shadowable by a user
 declaration of the same name. Three places in codegen asked `u.Name ==
 "duration"` instead, so the `unit duration { blip }` below was handed Go's
 `time.Duration`: `3blip` compiled to `time.Duration(3) * time.Millisecond`,
-`float(d)` divided by a millisecond, the `time` import and the
-`mustParseDuration` helper were emitted for it, and Kotlin held it as a `Long`
-rather than a `Double`. A `blip` is not a millisecond and the program never
-said it was.
+`float(d)` divided by a millisecond, the `time` import was emitted for it, and
+Kotlin held it as a `Long` rather than a `Double`. A `blip` is not a
+millisecond and the program never said it was.
 
 What it should be, and is here, is the ordinary single-base unit it looks like:
 `type Duration float64` in Go and a plain `Double` in Kotlin, with `float(d)`
@@ -20,7 +19,7 @@ reading the magnitude straight out.
 stdlib `time.duration` still dividing at the cast.
 
 deny out/go/bubbletea/model.go `time\.Duration` -- a blip is not a nanosecond count; the program's own unit must not become Go's
-deny out/go/bubbletea/model.go `mustParseDuration` -- the duration helper belongs to the marked stdlib unit, not to this one
+deny out/go/bubbletea/model.go `"time"` -- the import came with the misidentification; a unit of the program's own names no Go package
 deny out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt `3L` -- Kotlin holds a duration as a Long of ms; this unit is a plain Double
 
 -- app.sngl --

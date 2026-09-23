@@ -7,6 +7,14 @@ threads it through every function that reads one. A function it skips keeps
 an ir.ContextRead, which no language emitter has a case for — the build panics
 rather than producing anything. Skipping the marked one is what an imported
 declaration deserves, because an import has no body here at all.
+
+What the output does *not* carry is the `"dark"` the provider sets. `label` is
+a top-level func rather than a component's, so NoContext threads it the
+package-level cell and the page renders `theme=light`. That was already true
+-- the `__ctx_theme__inst0 = "dark"` beside it was read by nobody -- and what
+changed is only that the shake now removes the cell as well. The provider
+reaching a top-level reader is its own question and this archive does not
+answer it; it is here so that the body is walked at all.
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:macro"
@@ -47,8 +55,7 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	__ctx_theme        string
-	__ctx_theme__inst0 string
+	__ctx_theme string
 
 	width, height int
 }
@@ -57,7 +64,6 @@ type Model struct {
 func New() Model {
 	m := Model{}
 	m.__ctx_theme = "light"
-	m.__ctx_theme__inst0 = "dark"
 	return m
 }
 
@@ -109,4 +115,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:52d7134fb9cfbc1daba65fbd66720151
+pass sha256:b785f54f1ff013b77686cb408f2df476

@@ -87,22 +87,27 @@ func Check(doc *ast.Document, dir string) (pkg *ir.Package, diags []ir.Diagnosti
 	})
 }
 
-// Caps is the capability struct used by Lower. Re-exported so callers don't
-// need to import internal/lower directly.
-type Caps = lower.Caps
+// Features is what a target says it can generate, as its own package declares
+// it. Re-exported so callers don't need to import internal/lower directly.
+//
+// It was `Caps`, the inverted twin of this record, and the rename is the one
+// break the two-records-into-one change makes to this file's surface: there is
+// no Caps to alias any more, and aliasing Features under the old name would
+// have every caller reading `NoTernary` off a field called `Ternary`.
+type Features = lower.Features
 
 // Lower runs the lowering pipeline on a checked + optimized IR Package.
-// caps comes from merging the target platform's and language's
-// Capabilities(). Mutates pkg in place.
+// feats is what the target pair declared, which codegen.CapsFor reads off
+// their packages. Mutates pkg in place.
 //
 // The lowering passes carry 60+ `panic("unhandled %T")` guards; a panic on an
 // unexpected node is converted to an error so the CLI/LSP report an internal
 // error rather than crashing.
-func Lower(pkg *ir.Package, caps Caps) (err error) {
+func Lower(pkg *ir.Package, feats Features) (err error) {
 	defer func() {
 		if p := recover(); p != nil {
 			err = fmt.Errorf("internal lowering error: %v", p)
 		}
 	}()
-	return lower.Lower(pkg, caps, lower.Options{})
+	return lower.Lower(pkg, feats, lower.Options{})
 }

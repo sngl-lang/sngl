@@ -17,8 +17,12 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	if e == nil {
 		return nil
 	}
+	if ctx != nil && ctx.copyShared && isScalar(e.ExprType()) {
+		ctx.copyShared = false
+		defer func() { ctx.copyShared = true }()
+	}
 
-	if val, ok := evalExpr(e, ctx); ok {
+	if val, ok := evalExpr(e, ctx); ok && !ctx.keepsReference(e, val) {
 		if expr := irFromValue(val, e.ExprType()); expr != nil {
 			return expr
 		}
@@ -83,7 +87,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 			x.Receiver = foldExpr(x.Receiver, ctx)
 		}
 		for i := range x.Args {
-			x.Args[i].Value = foldExpr(x.Args[i].Value, ctx)
+			x.Args[i].Value = foldCallArg(x, i, ctx)
 		}
 	case *ir.Conversion:
 		x.Operand = foldExpr(x.Operand, ctx)
@@ -197,7 +201,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 	// merely tidy: evalConversion refuses an option *wrap* outright, so
 	// `float(option<float>(2.0)) / 10.0` evaluated to nothing whole while both
 	// its operands folded -- and gtk4 emitted the division for cgo to do.
-	if val, ok := evalExpr(e, ctx); ok {
+	if val, ok := evalExpr(e, ctx); ok && !ctx.keepsReference(e, val) {
 		if expr := irFromValue(val, e.ExprType()); expr != nil {
 			return expr
 		}
@@ -261,42 +265,41 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		n.Body = foldStmts(n.Body, ctx)
 		n.Else = foldStmts(n.Else, ctx)
 	case *ir.Assign:
-		n.Value = foldExpr(n.Value, ctx)
+		n.Value = foldOwned(n.Value, ctx)
 	case *ir.CallStmt:
 		if n.Call != nil {
 			if n.Call.Receiver != nil {
 				n.Call.Receiver = foldExpr(n.Call.Receiver, ctx)
 			}
 			for i := range n.Call.Args {
-				n.Call.Args[i].Value = foldExpr(n.Call.Args[i].Value, ctx)
+				n.Call.Args[i].Value = foldCallArg(n.Call, i, ctx)
 			}
 		}
 	case *ir.LocalVar:
 		if n.Init != nil {
-			n.Init = foldExpr(n.Init, ctx)
+			n.Init = foldOwned(n.Init, ctx)
+		}
+		// The statements that paint a flattened canvas, which are ordinary
+		// statements with ordinary constants in them: a shape's style test
+		// against a colour nobody set folds away here or the target draws it.
+		if n.CanvasNode != nil {
+			n.CanvasNode.Children = foldStmts(n.CanvasNode.Children, ctx)
 		}
 	case *ir.Return:
 		if n.Value != nil {
-			n.Value = foldExpr(n.Value, ctx)
+			n.Value = foldOwned(n.Value, ctx)
 		}
 	case *ir.Emit:
 		for i := range n.Args {
-			n.Args[i].Value = foldExpr(n.Args[i].Value, ctx)
+			n.Args[i].Value = foldOwned(n.Args[i].Value, ctx)
 		}
 	case *ir.SlotInst:
 		n.Children = foldStmts(n.Children, ctx)
 	case *ir.ContextProvider:
 		if n.Value != nil {
-			n.Value = foldExpr(n.Value, ctx)
+			n.Value = foldOwned(n.Value, ctx)
 		}
 		n.Children = foldStmts(n.Children, ctx)
-	case *ir.Window:
-		for i := range n.Props {
-			if n.Props[i].Value != nil {
-				n.Props[i].Value = foldExpr(n.Props[i].Value, ctx)
-			}
-		}
-		n.Body = foldStmts(n.Body, ctx)
 	case *ir.Toggle:
 		n.Target = foldExpr(n.Target, ctx)
 	case *ir.ErrorBoundary:
@@ -340,10 +343,16 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 			lam.Func.Block = foldStmts(lam.Func.Block, ctx)
 			continue
 		}
-		n.Props[i].Value = foldExpr(n.Props[i].Value, ctx)
+		n.Props[i].Value = foldPropArg(n, n.Props[i].Name, n.Props[i].Value, ctx)
 	}
 	for i := range n.Handlers {
 		n.Handlers[i].Func.Block = foldStmts(n.Handlers[i].Func.Block, ctx)
+	}
+	// A window's @error is a handler like the rest, and reached from nowhere
+	// else: it hung off ir.Window, whose own fold arm walked the props and the
+	// body and not this.
+	if n.ErrorHandler != nil && n.ErrorHandler.Func != nil {
+		n.ErrorHandler.Func.Block = foldStmts(n.ErrorHandler.Func.Block, ctx)
 	}
 	// A named slot's population is a body like the children are. Visited by
 	// name because Slots is a map: folding itself does not care, but a pass

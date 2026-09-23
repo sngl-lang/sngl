@@ -1,9 +1,12 @@
 package ir
 
 // Owner is a declaration that owns state: the vars it declares and the body
-// that reads them. There are three kinds -- the package itself, a component,
-// and a window -- and the point of naming them together is that nothing else
-// about them differs at this level.
+// that reads them. There are two kinds -- the package itself and a component.
+//
+// A window is listed too, and owns nothing: it is a rendering root rather than
+// a storage level, so its declarations belong to whatever contains it. What it
+// still contributes is a Body every pass has to walk and the @error handler it
+// subscribes to, which is why it is here at all. Both go when ir.Window does.
 //
 // Body's doc comment states the invariant they share: "a var belongs to the
 // body that declares it, and a body swapped in without its vars reads names
@@ -33,7 +36,6 @@ type Owner struct {
 	Vars   []*Var
 	Consts []*Var
 	Funcs  []*Func
-	Timers []*Timer
 
 	// Handlers is what the declaration itself subscribes to, which today is a
 	// window's @error and nothing else -- a component catches with a boundary,
@@ -70,6 +72,10 @@ func (o Owner) Stmts() []Stmt {
 // What is not the wrong trade is writing the Comp/Win/package switch once,
 // here, beside the enumeration that already names the three -- passEffect had
 // it twice and passBoundaryFailed a third time.
+// A window falls through to the package, which is its container: `window` is
+// root-only, so a declaration a window body makes belongs to the package
+// unless a root-family component renders it, and by the time a pass adds one
+// the lift has put every window on the package.
 func (o Owner) AddVars(vars ...*Var) {
 	if len(vars) == 0 {
 		return
@@ -77,8 +83,6 @@ func (o Owner) AddVars(vars ...*Var) {
 	switch {
 	case o.Comp != nil:
 		o.Comp.Vars = append(o.Comp.Vars, vars...)
-	case o.Win != nil:
-		o.Win.Vars = append(o.Win.Vars, vars...)
 	case o.Pkg != nil:
 		o.Pkg.Vars = append(o.Pkg.Vars, vars...)
 	}
@@ -91,8 +95,6 @@ func (o Owner) AddFuncs(funcs ...*Func) {
 	switch {
 	case o.Comp != nil:
 		o.Comp.Funcs = append(o.Comp.Funcs, funcs...)
-	case o.Win != nil:
-		o.Win.Funcs = append(o.Win.Funcs, funcs...)
 	case o.Pkg != nil:
 		o.Pkg.Funcs = append(o.Pkg.Funcs, funcs...)
 	}
@@ -107,7 +109,9 @@ func (o Owner) Name() string {
 	case o.Comp != nil:
 		return o.Comp.Name
 	case o.Win != nil:
-		return o.Win.Name
+		// The window's `#id` and not `window`: what a consumer wants from an
+		// owner's name is the thing the program called it.
+		return o.Win.ID
 	}
 	return ""
 }
@@ -116,8 +120,8 @@ func (o Owner) Name() string {
 // the package, then each component, then each window -- including the windows
 // a body renders, which are statements in that body rather than entries in
 // pkg.Windows. A body is searched whether it belongs to the package, to a
-// component or to a window already found, because passRootWindow has not
-// necessarily run and a window is a statement anywhere the root tree reaches.
+// component or to a window already found, because a window is a statement
+// anywhere the root tree reaches and nothing lifts one out.
 //
 // It reports all of them, deduped by window pointer and by nothing else.
 // Which subset a consumer wants is that consumer's question, and the answers
@@ -130,9 +134,9 @@ func Owners(pkg *Package) []Owner {
 		return nil
 	}
 	out := make([]Owner, 0, 1+len(pkg.Components)+len(pkg.Windows))
-	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Timers: pkg.Timers, Body: &pkg.Body})
+	out = append(out, Owner{Pkg: pkg, Vars: pkg.Vars, Consts: pkg.Consts, Funcs: pkg.Funcs, Body: &pkg.Body})
 	for _, c := range pkg.Components {
-		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Timers: c.Timers, Body: &c.Body})
+		out = append(out, Owner{Pkg: pkg, Comp: c, Vars: c.Vars, Funcs: c.Funcs, Body: &c.Body})
 	}
 	seen := make(map[*Window]bool, len(pkg.Windows))
 	addWin := func(w *Window) {
@@ -140,7 +144,7 @@ func Owners(pkg *Package) []Owner {
 			return
 		}
 		seen[w] = true
-		o := Owner{Pkg: pkg, Win: w, Vars: w.Vars, Funcs: w.Funcs, Timers: w.Timers, Body: &w.Body}
+		o := Owner{Pkg: pkg, Win: w, Body: &w.Children}
 		if w.ErrorHandler != nil {
 			o.Handlers = []*EventHandler{w.ErrorHandler}
 		}
@@ -155,7 +159,7 @@ func Owners(pkg *Package) []Owner {
 	// walk it a second time to reach what the worklist reaches anyway.
 	search := func(stmts []Stmt) {
 		_ = WalkStmts(stmts, func(s Stmt) error {
-			if w, ok := s.(*Window); ok {
+			if w, ok := s.(*NodeInst); ok && IsWindowNode(w) {
 				addWin(w)
 				return SkipDir
 			}
@@ -184,7 +188,7 @@ func Owners(pkg *Package) []Owner {
 	if !pkg.WindowsFlat {
 		for i := 0; i < len(out); i++ {
 			if out[i].Win != nil {
-				search(out[i].Win.Body)
+				search(out[i].Win.Children)
 			}
 		}
 	}
@@ -217,6 +221,27 @@ func WindowHandles(pkg *Package) map[*Var]*Window {
 			out = map[*Var]*Window{}
 		}
 		out[o.Win.Handle] = o.Win
+	}
+	return out
+}
+
+// AllWindows is every window pkg holds, in the order Owners reports them: the
+// ones registered at the root of a file, then the ones a body renders.
+//
+// A window is a statement wherever the root family reaches, so the field alone
+// has never been the whole answer -- a `for` at the top of a file puts one in
+// pkg.Body, and a component that names the root family puts one in its own.
+// Both were lifted onto the field by a lowering pass; nothing lifts them now,
+// so every consumer that wants the windows asks this.
+func AllWindows(pkg *Package) []*Window {
+	if pkg == nil {
+		return nil
+	}
+	var out []*Window
+	for _, o := range Owners(pkg) {
+		if o.Win != nil {
+			out = append(out, o.Win)
+		}
 	}
 	return out
 }

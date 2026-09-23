@@ -46,8 +46,11 @@ func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, erro
 	if noneLang == nil || htmlPlat == nil {
 		return nil, fmt.Errorf("html/none codegen not registered")
 	}
-	caps := htmlPlat.Capabilities(noneLang).ToLowerCaps()
-	if err := lower.Lower(pkg, caps, lower.Options{Platform: "html"}); err != nil {
+	feats, err := codegen.CapsFor("none", "html")
+	if err != nil {
+		return nil, err
+	}
+	if err := lower.Lower(pkg, feats, lower.Options{Platform: "html"}); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower

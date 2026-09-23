@@ -19,7 +19,7 @@ func TestHoistBodyTypesDisambiguatesOneOwnerName(t *testing.T) {
 		{Name: "L"}, // top level: it keeps the name whatever order registration used
 		first, second, third,
 	}}
-	if err := hoistBodyTypes(pkg, Caps{}, Options{}); err != nil {
+	if err := hoistBodyTypes(pkg, Features{}, Options{}); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"L", "L__helper", "L__helper__2", "L__helper__3"}
@@ -39,7 +39,7 @@ func TestHoistBodyTypesIsIdempotent(t *testing.T) {
 		{Name: "Row", BodyOwner: "card"},
 	}}
 	for range 2 {
-		if err := hoistBodyTypes(pkg, Caps{}, Options{}); err != nil {
+		if err := hoistBodyTypes(pkg, Features{}, Options{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -60,7 +60,7 @@ func TestHoistBodyTypesLeavesAnUncontestedNameAlone(t *testing.T) {
 		Enums:   []*ir.EnumDef{ed},
 		Units:   []*ir.UnitDef{ud},
 	}
-	if err := hoistBodyTypes(pkg, Caps{}, Options{}); err != nil {
+	if err := hoistBodyTypes(pkg, Features{}, Options{}); err != nil {
 		t.Fatal(err)
 	}
 	if sd.Name != "Cell" || ed.Name != "Phase" || ud.Name != "Tick" {
@@ -81,7 +81,7 @@ func TestHoistBodyTypesReservesFuncsAndComponents(t *testing.T) {
 		Funcs:      []*ir.Func{{Name: "total"}, {Name: "shout", Receiver: "Local"}},
 		Components: []*ir.Component{{Name: "card"}},
 	}
-	if err := hoistBodyTypes(pkg, Caps{}, Options{}); err != nil {
+	if err := hoistBodyTypes(pkg, Features{}, Options{}); err != nil {
 		t.Fatal(err)
 	}
 	if fnName.Name != "total__sum" {
@@ -107,7 +107,7 @@ func TestHoistBodyTypesRenamesTheReceiver(t *testing.T) {
 		Methods:   map[string]*ir.Func{"shout": shout},
 	}
 	pkg := &ir.Package{Structs: []*ir.StructDef{{Name: "Local"}, sd}}
-	if err := hoistBodyTypes(pkg, Caps{}, Options{}); err != nil {
+	if err := hoistBodyTypes(pkg, Features{}, Options{}); err != nil {
 		t.Fatal(err)
 	}
 	if shout.Receiver != "Local__second" {
