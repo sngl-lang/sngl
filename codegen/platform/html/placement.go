@@ -125,33 +125,28 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 	return Frontend
 }
 
-// checkPlacementDirectives validates the html.frontend/html.backend directives
-// across the whole package, returning the first build error found:
-//
-//   - html.backend(<const expr>): forcing a plain constant expression to the
-//     server means generating a lazy-loaded static file, which is not
-//     implemented. A func value wrapped by html.backend becomes an
-//     HTTP route and is allowed.
-//   - html.frontend(<server-only value>): forcing a value client-side that is
-//     explicitly pinned server-side (it wraps an html.backend(...) subtree) is
-//     a contradiction and cannot be honored.
-//
-// Note (6.3 simplification): a bare go: call under html.frontend is allowed —
-// it compiles to WASM (Phase 5). The only "server-only value" this v1 rule
-// recognizes is one explicitly pinned with a nested html.backend directive.
-// Inferring server-only *state* (vars mutated solely by backend routes) is left
-// for a later pass.
-func checkPlacementDirectives(pkg *ir.Package) error {
-	return scanPlacement(pkg).err
-}
-
-// placementScan is what one walk of the package says about its placement
-// directives. Generate asks both questions of the same IR before anything
-// rewrites it, so the walk is shared.
+// placementScan is what one walk of the package says about its
+// html.frontend/html.backend directives. Generate asks both questions of the
+// same IR.
 type placementScan struct {
-	// err is checkPlacementDirectives' answer: the first misused directive.
+	// err is the first misused directive, a build error:
+	//
+	//   - html.backend(<const expr>): forcing a plain constant expression to
+	//     the server means generating a lazy-loaded static file, which is not
+	//     implemented. A func value wrapped by html.backend becomes an HTTP
+	//     route and is allowed.
+	//   - html.frontend(<server-only value>): forcing a value client-side that
+	//     is explicitly pinned server-side (it wraps an html.backend(...)
+	//     subtree) is a contradiction and cannot be honored.
+	//
+	// A bare go: call under html.frontend is allowed -- it compiles to WASM.
+	// The only "server-only value" recognized is one explicitly pinned with a
+	// nested html.backend directive; inferring server-only *state* is left for
+	// a later pass.
 	err error
-	// frontend is frontendNativeFuncs' answer.
+	// frontend is the native funcs used inside an html.frontend(...) wrapper,
+	// the ones the author forced client-side. They are the only non-js: funcs
+	// eligible for WASM; js: funcs run as bundled JS and are excluded.
 	frontend map[nativeFuncKey]bool
 }
 
@@ -221,15 +216,6 @@ func isFuncValue(e ir.Expr) bool {
 type nativeFuncKey struct {
 	importPath string
 	name       string
-}
-
-// frontendNativeFuncs collects, across the whole package, the set of native
-// funcs that are used inside an html.frontend(...) wrapper — i.e. funcs the
-// author explicitly forced to run client-side. These are the ONLY non-js:
-// funcs eligible for WASM compilation; bare (default-backend) usage ships no
-// WASM. js: funcs are excluded (they run as bundled JS, never WASM).
-func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
-	return scanPlacement(pkg).frontend
 }
 
 // collectFrontendNatives adds the native funcs sub calls to out, stopping at a

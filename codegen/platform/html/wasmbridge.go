@@ -23,7 +23,7 @@ type wasmPackage struct {
 // compiled to WASM and exposed via window.__sngl_externs ONLY when the author
 // forces it client-side with html.frontend(...). collectWASMPackages therefore
 // includes a func only if it appears in frontend, which is
-// frontendNativeFuncs(pkg). A package with no frontend-forced funcs
+// scanPlacement(pkg).frontend. A package with no frontend-forced funcs
 // contributes no WASM at all.
 func collectWASMPackages(pkg *ir.Package, frontend map[nativeFuncKey]bool, fsys fs.FS, projectDir string) []wasmPackage {
 	if pkg == nil {

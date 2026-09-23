@@ -219,8 +219,7 @@ type compilation struct {
 	// codegenCtx then serves.
 	ctx *codegen.CodegenCtx
 
-	// frontendNatives is the placement scan Generate already ran, or nil for
-	// a caller that did not, which BuildMutationModel then scans for itself.
+	// frontendNatives is the frontend set from Generate's placement scan.
 	frontendNatives map[nativeFuncKey]bool
 }
 
@@ -439,11 +438,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	if projectFS == nil && projectDir != "" {
 		projectFS = os.DirFS(projectDir)
 	}
-	frontend := c.frontendNatives
-	if frontend == nil {
-		frontend = frontendNativeFuncs(req.Pkg)
-	}
-	wasmPkgs := collectWASMPackages(req.Pkg, frontend, projectFS, projectDir)
+	wasmPkgs := collectWASMPackages(req.Pkg, c.frontendNatives, projectFS, projectDir)
 	if len(wasmPkgs) > 0 {
 		wasmExecURL := ""
 		var loaderScripts []string
