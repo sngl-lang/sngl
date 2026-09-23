@@ -67,14 +67,19 @@ import (
 	"strings"
 )
 
+var two []string = []string{"a", "b"}
+
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
+	two []string
+
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
+	m.two = []string{"a", "b"}
 	return m
 }
 
@@ -113,7 +118,7 @@ func (m Model) View() tea.View {
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Items []string
-	for _, y := range []string{"a", "b"} {
+	for _, y := range m.two {
 		_ = y
 		var content_1Item string
 		content_1Item = lipgloss.NewStyle().Render(fmt.Sprint(y))
@@ -162,6 +167,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:36f6968fa9ede45c6a5d2a6632b9458c
+pass sha256:38ed3e68d3c466b714476d9f5e58b1a3
 -- run/none/html --
 pass sha256:57f50490ff530f826c6688443c085cd5
