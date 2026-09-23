@@ -793,6 +793,30 @@ type SlotDecl struct {
 	// a caller writes bare, rather than being populated by name. At most one
 	// per component, and a component without one accepts no children at all.
 	Rest bool `json:",omitempty"`
+	// Slots are the invocation list's component-typed entries: content an
+	// insertion populates by name and a population binds by position. Index
+	// is where an entry sits in its slot's invocation list, which Params and
+	// Slots each hold only their half of.
+	Slots []*SlotDecl `json:",omitempty"`
+	Index int         `json:",omitempty"`
+}
+
+// Arity is how many names a population of the slot binds.
+func (s *SlotDecl) Arity() int { return len(s.Params) + len(s.Slots) }
+
+// EntryAt is the component entry at position i of the invocation list, or nil
+// when i is a value; value is then that value's index into Params.
+func (s *SlotDecl) EntryAt(i int) (entry *SlotDecl, value int) {
+	value = i
+	for _, e := range s.Slots {
+		if e.Index == i {
+			return e, -1
+		}
+		if e.Index < i {
+			value--
+		}
+	}
+	return nil, value
 }
 
 // SlotCard is how many nodes a slot accepts.

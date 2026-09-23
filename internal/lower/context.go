@@ -1180,6 +1180,9 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 
 		case *ir.SlotInst:
 			n.Children = lowerInStmts(n.Children, active, pc)
+			for _, sc := range n.Slots {
+				sc.Body = lowerInStmts(sc.Body, active, pc)
+			}
 			out = append(out, n)
 
 		case *ir.ErrorBoundary:

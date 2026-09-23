@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
@@ -359,6 +360,9 @@ func collectHandlerFuncs(stmts []ir.Stmt, add func(*ir.Func)) {
 			collectHandlerFuncs(n.Else, add)
 		case *ir.SlotInst:
 			collectHandlerFuncs(n.Children, add)
+			for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+				collectHandlerFuncs(n.Slots[name].Body, add)
+			}
 		case *ir.ErrorBoundary:
 			if n.Handler != nil {
 				add(n.Handler.Func)

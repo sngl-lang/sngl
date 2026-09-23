@@ -327,6 +327,9 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 	case *ir.SlotInst:
 		n.Children = foldStmts(n.Children, ctx)
+		for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+			n.Slots[name].Body = foldStmts(n.Slots[name].Body, ctx)
+		}
 	case *ir.ContextProvider:
 		if n.Value != nil {
 			n.Value = foldOwned(n.Value, ctx)

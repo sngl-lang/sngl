@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -278,6 +279,11 @@ type checker struct {
 	// package var's initializer is checked in pass1, the defaults in pass2.
 	defaultPlaceholders map[ir.Expr]*ir.StructField
 	placeholderLits     []*ir.StructLit
+
+	// entryScopes holds, per population being checked, the names it bound to
+	// its slot's component entries. An insertion resolves against them before
+	// the component's own slots, innermost first.
+	entryScopes []map[string]*ir.SlotDecl
 
 	// Unit suffix reverse lookup.
 
@@ -2656,9 +2662,19 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
-	for _, p := range ct.Params {
+	for i, p := range ct.Params {
 		if vt, ok := p.Type.(*ast.VariadicType); ok {
-			c.error(vt.Pos, "slot %q takes no `...`: the block written at an insertion is its fallback, so an insertion has no bare children to collect", pd.Name)
+			c.error(vt.Pos, "slot %q takes no `...`: the block written at an insertion is its fallback, so an insertion has no bare children to collect; declare a component entry, `%s component`, and populate it by name at the insertion", pd.Name, cmp.Or(p.Name, "content"))
+			continue
+		}
+		if entry, ok := p.Type.(*ast.ComponentType); ok {
+			if p.Name == "" {
+				c.error(entry.Pos, "a component entry of slot %q needs a name: the insertion populates it by name", pd.Name)
+				continue
+			}
+			e := c.buildSlotDecl(ast.Param{Name: p.Name, Pos: entry.Pos}, entry, false)
+			e.Index = i
+			slot.Slots = append(slot.Slots, e)
 			continue
 		}
 		slot.Params = append(slot.Params, &ir.Param{Name: p.Name, Type: c.resolveType(p.Type)})

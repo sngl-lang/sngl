@@ -3186,7 +3186,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// name, and nothing else may be written there.
 			isRootish := c.outputDepth > 0 ||
 				c.builtinNodeKind(id.Name) != ir.BuiltinNone ||
-				c.enclosingSlot(id.Name) != nil
+				c.enclosingSlot(id.Name) != nil ||
+				c.boundEntry(id.Name) != nil
 			if isRootish {
 				vn := &ast.VisualNode{
 					Pos:    x.Pos,
@@ -3809,8 +3810,11 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 	// a slot wins inside the body that declares it, which is what makes the
 	// insertion unmarked; a slot sharing a component's name shadows it there,
 	// as an inner-scope binding does anywhere else.
+	if entry := c.boundEntry(name); entry != nil {
+		return c.checkSlotInsertion(vn, entry, name, true)
+	}
 	if slot := c.enclosingSlot(name); slot != nil {
-		return c.checkSlotInsertion(vn, slot)
+		return c.checkSlotInsertion(vn, slot, name, false)
 	}
 
 	// Look up component — supports bare ("Foo") and qualified ("pkg.Foo") names.
@@ -5158,10 +5162,31 @@ func ownerSlot(owner *ir.Component, name string) *ir.SlotDecl {
 	return nil
 }
 
+// boundEntry is the component entry a population being checked bound name to,
+// or nil. Innermost population first, so a nested one shadows its enclosers.
+func (c *checker) boundEntry(name string) *ir.SlotDecl {
+	if name == "" || c.funcDepth > 0 {
+		return nil
+	}
+	for _, scope := range slices.Backward(c.entryScopes) {
+		if e := scope[name]; e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
 // checkSlotInsertion checks an insertion point: its arguments, positional
-// against the declaration's types, and the fallback block.
-func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.Stmt {
-	inst := &ir.SlotInst{AST: vn, Name: slot.Name, Rest: slot.Rest}
+// against the declaration's types, the populations of the slot's component
+// entries, and the fallback block. written is the name the insertion was
+// written under, which for an entry is the population's and not the entry's.
+func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, written string, entry bool) ir.Stmt {
+	inst := &ir.SlotInst{AST: vn, Name: written, Rest: slot.Rest}
+	if entry {
+		inst.Entry = slot
+	} else {
+		inst.Decl = slot
+	}
 	var args []ast.Expr
 	for _, a := range vn.Args.Args {
 		arg, ok := a.(ast.Arg)
@@ -5169,13 +5194,13 @@ func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.S
 			continue
 		}
 		if arg.Name != "" {
-			c.error(vn.Pos, "slot %q takes positional arguments: it declares types, and the names belong to whoever populates it", slot.Name)
+			c.error(vn.Pos, "slot %q takes positional arguments: it declares types, and the names belong to whoever populates it", written)
 			continue
 		}
 		args = append(args, arg.Value)
 	}
 	if len(args) != len(slot.Params) {
-		c.error(vn.Pos, "slot %q takes %d argument(s), got %d", slot.Name, len(slot.Params), len(args))
+		c.error(vn.Pos, "slot %q takes %d argument(s), got %d", written, len(slot.Params), len(args))
 	}
 	for i, a := range args {
 		var want *ir.Type
@@ -5185,13 +5210,45 @@ func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl) ir.S
 		e := c.checkExprExpecting(a, want)
 		if want != nil {
 			if got := exprType(e); got != nil && !got.IsAssignableTo(want) {
-				c.error(*a.ExprPos(), "cannot use %s as %s for argument %d of slot %q", got, want, i+1, slot.Name)
+				c.error(*a.ExprPos(), "cannot use %s as %s for argument %d of slot %q", got, want, i+1, written)
 			}
 		}
 		inst.Args = append(inst.Args, e)
 	}
-	inst.Children = c.checkBlockIR(&vn.Block)
+	fallback := vn.Block
+	fallback.Stmts = nil
+	for _, s := range vn.Block.Stmts {
+		cd, ok := s.(*ast.ComponentDecl)
+		if !ok {
+			fallback.Stmts = append(fallback.Stmts, s)
+			continue
+		}
+		e := findEntry(slot, cd.Name)
+		switch {
+		case cd.Target != nil || strings.IndexByte(cd.Name, '.') > 0:
+			c.error(cd.Pos, "a population names a component entry of slot %q, not an override target", written)
+		case e == nil:
+			c.error(cd.Pos, "slot %q has no component entry %q", written, cd.Name)
+		case inst.Slots[cd.Name] != nil:
+			c.error(cd.Pos, "entry %q of slot %q is already populated", cd.Name, written)
+		default:
+			if inst.Slots == nil {
+				inst.Slots = map[string]*ir.SlotContent{}
+			}
+			inst.Slots[cd.Name] = c.checkSlotContent(cd, e, c.currentComponent)
+		}
+	}
+	inst.Children = c.checkBlockIR(&fallback)
 	return inst
+}
+
+func findEntry(slot *ir.SlotDecl, name string) *ir.SlotDecl {
+	for _, e := range slot.Slots {
+		if e.Name == name {
+			return e
+		}
+	}
+	return nil
 }
 
 func findSlot(comp *ir.Component, name string) *ir.SlotDecl {
@@ -5273,13 +5330,14 @@ func (c *checker) checkRequiredSlots(pos ast.Pos, comp *ir.Component, content ma
 // block-scoped bindings.
 func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, owner *ir.Component) *ir.SlotContent {
 	params := cd.Props.Props
-	if len(params) != len(decl.Params) {
-		c.error(cd.Pos, "slot %q binds %d parameter(s), but declares %d", cd.Name, len(params), len(decl.Params))
+	if len(params) != decl.Arity() {
+		c.error(cd.Pos, "slot %q binds %d parameter(s), but declares %d", cd.Name, len(params), decl.Arity())
 	}
 	if cd.ChildrenType != nil {
 		c.error(cd.Pos, "slot %q: a population names no tree; what it accepts is the declaration's", cd.Name)
 	}
 	sc := &ir.SlotContent{}
+	var entries map[string]*ir.SlotDecl
 	c.pushScope()
 	for i, entry := range params {
 		a, ok := entry.(ast.Param)
@@ -5294,16 +5352,28 @@ func (c *checker) checkSlotContent(cd *ast.ComponentDecl, decl *ir.SlotDecl, own
 		if a.Default != nil {
 			c.error(a.Pos, "slot %q: parameter %q takes no default value; the insertion supplies it", cd.Name, a.Name)
 		}
+		if e, _ := decl.EntryAt(i); e != nil && i < decl.Arity() {
+			if a.Type != nil {
+				c.error(a.Pos, "slot %q: %q binds the component entry %q, which is inserted rather than typed, so it takes no type", cd.Name, a.Name, e.Name)
+			}
+			if entries == nil {
+				entries = map[string]*ir.SlotDecl{}
+			}
+			entries[a.Name] = e
+			continue
+		}
 		var want *ir.Type
-		if i < len(decl.Params) {
-			want = decl.Params[i].Type
+		if _, v := decl.EntryAt(i); i < decl.Arity() && v < len(decl.Params) {
+			want = decl.Params[v].Type
 		}
 		what := bindParamWhat(a.Name, "slot "+strconv.Quote(cd.Name))
 		p := &ir.Param{Name: a.Name, Type: c.bindParamType(a.Type, want, what)}
 		c.declare(a.Pos, p)
 		sc.Params = append(sc.Params, p)
 	}
+	c.entryScopes = append(c.entryScopes, entries)
 	sc.Body = c.checkBlockIR(&cd.Body)
+	c.entryScopes = c.entryScopes[:len(c.entryScopes)-1]
 	c.popScope()
 	c.checkSlotArity(cd.Pos, decl, len(sc.Body), "slot \""+cd.Name+"\"")
 	written, at := c.currentComponent, cd.Pos
@@ -5463,7 +5533,11 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
 		case *ir.SlotInst:
-			if got := slotTree(owner, ownerSlot(owner, s.Name)); got != nil && got != want {
+			decl := s.Entry
+			if decl == nil {
+				decl = ownerSlot(owner, s.Name)
+			}
+			if got := slotTree(owner, decl); got != nil && got != want {
 				c.error(pos, "expected %s component %s, got the %s slot %s", want.Name, where, got.Name, s.Name)
 			}
 		// A window is the checker's own IR rather than a NodeInst, so it

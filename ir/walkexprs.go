@@ -224,16 +224,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		n.Key = w.expr(n.Key)
 		n.Ref = w.expr(n.Ref)
 		n.Children = w.stmts(n.Children)
-		// By name, because Slots is a map and a pass that numbers what it
-		// finds -- a synthesized component, a temp, an event -- would name it
-		// differently on each run. Source order is not recoverable here, so
-		// the order is at least the same one twice.
-		for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
-			sc := n.Slots[name]
-			if sc != nil {
-				sc.Body = w.stmts(sc.Body)
-			}
-		}
+		w.slots(n.Slots)
 	case *CallStmt:
 		if n.Call != nil {
 			// The Call is an expression slot — visiting it descends into its
@@ -274,6 +265,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 			n.Args[i] = w.expr(n.Args[i])
 		}
 		n.Children = w.stmts(n.Children)
+		w.slots(n.Slots)
 	case *ErrorBoundary:
 		// The @error handler is the boundary's own, the way a window's is:
 		// Call.ResolvedHandler only aliases it, so walking it here is the one
@@ -293,6 +285,18 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		panic(fmt.Sprintf("ir.Rewrite: unhandled ir.Stmt %T", n))
 	}
 	return s
+}
+
+// slots rewrites each population's body by name, because Slots is a map and a
+// pass that numbers what it finds -- a synthesized component, a temp, an event
+// -- would name it differently on each run. Source order is not recoverable
+// here, so the order is at least the same one twice.
+func (w *rewriter) slots(slots map[string]*SlotContent) {
+	for _, name := range slices.Sorted(maps.Keys(slots)) {
+		if sc := slots[name]; sc != nil {
+			sc.Body = w.stmts(sc.Body)
+		}
+	}
 }
 
 func (w *rewriter) stmts(stmts []Stmt) []Stmt {

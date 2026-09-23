@@ -161,6 +161,15 @@ type SlotInst struct {
 	Rest     bool   `json:",omitempty"`
 	Args     []Expr `json:",omitempty"` // values passed to a scoped slot
 	Children []Stmt // fallback: rendered when the caller supplies nothing
+	// Slots are this insertion's populations of the slot's component entries,
+	// keyed by entry name. Written in the body holding the insertion, and
+	// rendered wherever the population inserts the entry.
+	Slots map[string]*SlotContent `json:",omitempty"`
+	// Decl is the slot this inserts. Entry is set instead when the insertion
+	// renders one of a population's component entries: Name is then what the
+	// population bound it to, and Entry is the entry it names.
+	Decl  *SlotDecl `json:"-"`
+	Entry *SlotDecl `json:"-"`
 }
 
 func (*SlotInst) stmtNode() {}

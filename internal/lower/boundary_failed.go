@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"maps"
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -89,6 +91,9 @@ func (st *boundaryFailedState) stmts(stmts []ir.Stmt) {
 			st.stmts(n.Else)
 		case *ir.SlotInst:
 			st.stmts(n.Children)
+			for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+				st.stmts(n.Slots[name].Body)
+			}
 		case *ir.ContextProvider:
 			st.stmts(n.Children)
 		case *ir.ErrorBoundary:

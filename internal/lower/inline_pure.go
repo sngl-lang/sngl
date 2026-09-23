@@ -168,6 +168,9 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 				visit(n.Else)
 			case *ir.SlotInst:
 				visit(n.Children)
+				for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+					visit(n.Slots[name].Body)
+				}
 			case *ir.ErrorBoundary:
 				visit(n.Children)
 			case *ir.ContextProvider:
@@ -306,6 +309,13 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 			return nil, err
 		}
 		n.Children = ch
+		for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+			body, err := st.inlineStmts(n.Slots[name].Body)
+			if err != nil {
+				return nil, err
+			}
+			n.Slots[name].Body = body
+		}
 		return []ir.Stmt{n}, nil
 	case *ir.ErrorBoundary:
 		ch, err := st.inlineStmts(n.Children)
@@ -1011,17 +1021,7 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.NodeInst:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
-		if n.Slots != nil {
-			// Shallow-copying the map would alias each SlotContent across call
-			// sites, so the first instance's renames would land on all of them.
-			clone.Slots = make(map[string]*ir.SlotContent, len(n.Slots))
-			for name, sc := range n.Slots {
-				clone.Slots[name] = &ir.SlotContent{
-					Params: slices.Clone(sc.Params),
-					Body:   deepCloneStmts(sc.Body),
-				}
-			}
-		}
+		clone.Slots = deepCloneSlots(n.Slots)
 		clone.Handlers = make([]ir.EventHandler, len(n.Handlers))
 		for i, h := range n.Handlers {
 			hc := h
@@ -1056,6 +1056,7 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.SlotInst:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
+		clone.Slots = deepCloneSlots(n.Slots)
 		return &clone
 	case *ir.Emit:
 		clone := *n
@@ -1262,4 +1263,21 @@ func (w *exprWalker) expr(e ir.Expr) ir.Expr {
 func (w *exprWalker) stmts(stmts []ir.Stmt) []ir.Stmt {
 	_ = ir.Rewrite(stmts, w.visit)
 	return stmts
+}
+
+// deepCloneSlots copies each population. Shallow-copying the map would alias
+// each SlotContent across call sites, so the first instance's renames would
+// land on all of them.
+func deepCloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
+	if slots == nil {
+		return nil
+	}
+	out := make(map[string]*ir.SlotContent, len(slots))
+	for name, sc := range slots {
+		out[name] = &ir.SlotContent{
+			Params: slices.Clone(sc.Params),
+			Body:   deepCloneStmts(sc.Body),
+		}
+	}
+	return out
 }
