@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"syscall"
@@ -56,6 +57,7 @@ func init() {
 			Level: level,
 		})))
 
+		tuneGC(cmd)
 		return nil
 	}
 
@@ -105,6 +107,29 @@ func isUnderGoCache(selfPath string) bool {
 		}
 		dir = parent
 	}
+}
+
+// longLived marks a command that stays up serving requests, so tuneGC leaves
+// its collector alone.
+const longLived = "sngl.longLived"
+
+// oneShotGCPercent is the collector target for a command that runs a build and
+// exits. A compile allocates tens of megabytes it holds to the end, and at the
+// default of 100 the collector ran through about 40% of `sngl generate`'s CPU
+// re-marking that live heap: 400 halved the CPU of a four-target build of
+// examples/showcase and took a fifth off its wall time. The heap it trades for
+// is freed at exit anyway.
+const oneShotGCPercent = 400
+
+// tuneGC raises the collector target for a one-shot command. A server --
+// `sngl lsp`, `sngl preview` -- keeps the default, since it lives long enough
+// for a 4x heap to matter and short builds are not what it spends its time on.
+// An explicit GOGC wins over both.
+func tuneGC(cmd *cobra.Command) {
+	if os.Getenv("GOGC") != "" || cmd.Annotations[longLived] != "" {
+		return
+	}
+	debug.SetGCPercent(oneShotGCPercent)
 }
 
 // SNGL_NO_PROXY prevents infinite recursion through the exec below.

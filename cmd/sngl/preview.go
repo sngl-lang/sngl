@@ -26,10 +26,11 @@ import (
 )
 
 var previewCmd = &cobra.Command{
-	Use:   "preview [file.sngl]",
-	Short: "Live-preview an SNGL app",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runPreview,
+	Use:         "preview [file.sngl]",
+	Annotations: map[string]string{longLived: "true"},
+	Short:       "Live-preview an SNGL app",
+	Args:        cobra.ExactArgs(1),
+	RunE:        runPreview,
 }
 
 func init() {
