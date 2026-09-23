@@ -105,14 +105,26 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 	if pkg == nil {
 		return nil
 	}
+	type duplicate struct {
+		handle *ir.Var
+		first  *ir.NodeInst
+	}
 	for _, o := range ir.Owners(pkg) {
-		read := handleReads(o.Stmts())
+		// A read may come after the copy it makes ambiguous, so the reads are
+		// collected in the same walk and the duplicates judged after it.
+		read := map[*ir.Var]*ir.Ident{}
 		seen := map[string]int{}
 		rendered := map[*ir.Var]*ir.NodeInst{}
-		var dup error
+		var dups []duplicate
 		// Every body the owner has, because an id is ambiguous wherever the
 		// two nodes that share it are written.
 		_ = ir.Walk(o.Stmts(), func(node ir.Node) error {
+			if id, ok := node.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle && read[v] == nil {
+					read[v] = id
+				}
+				return nil
+			}
 			n, ok := node.(*ir.NodeInst)
 			if !ok || n.ID == "" {
 				return nil
@@ -137,37 +149,19 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 				return nil
 			}
 			if first, ok := rendered[n.Handle]; ok {
-				if r := read[n.Handle]; r != nil && dup == nil {
-					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r), n.Handle.Name, nodePos(first))
-				}
+				dups = append(dups, duplicate{n.Handle, first})
 				return nil
 			}
 			rendered[n.Handle] = n
 			return nil
 		})
-		if dup != nil {
-			return dup
+		for _, d := range dups {
+			if r := read[d.handle]; r != nil {
+				return fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r), d.handle.Name, nodePos(d.first))
+			}
 		}
 	}
 	return nil
-}
-
-// handleReads is every `#id` handle the statements read back by name, keyed by
-// the binding rather than by the name, and valued at one of the reads so the
-// diagnostic can point at source the user recognises.
-func handleReads(stmts []ir.Stmt) map[*ir.Var]*ir.Ident {
-	out := map[*ir.Var]*ir.Ident{}
-	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		id, ok := e.(*ir.Ident)
-		if !ok {
-			return nil
-		}
-		if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle && out[v] == nil {
-			out[v] = id
-		}
-		return nil
-	})
-	return out
 }
 
 // identPos is where an ident was written, or "<unknown>" for one a pass

@@ -23,63 +23,54 @@ func stampUsage(pkg *ir.Package, _ Caps, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	pkg.UsesI18n = pkgUsesI18n(pkg)
-	pkg.UsesAlert = pkgUsesAlert(pkg)
+	u := scanUsage(pkg)
+	pkg.UsesI18n = u.i18n
+	pkg.UsesAlert = u.alert
 	pkg.UsesErrorHandling = pkgUsesErrorHandling(pkg)
-	pkg.UsesRemote = pkgUsesRemote(pkg)
+	pkg.UsesRemote = u.remote
 	return nil
 }
 
-// pkgUsesRemote matches any query lookup. A program that holds one has boxes
-// that settle after the render that started them, so its entry point has to ask
-// the store to tell it.
-func pkgUsesRemote(pkg *ir.Package) bool {
-	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) error {
-		if c, isCall := e.(*ir.Call); isCall && c.Func != nil && c.Func.Intrinsic == remoteQueryIntrinsic {
-			found = true
-			return ir.SkipAll
-		}
-		return nil
-	})
-	return found
+// usage is what one expression walk of the package answers.
+type usage struct {
+	// i18n: an i18n entry-point call (ir.IsI18nCall), or a bare
+	// i18n.<pluralKey> Select surviving in a plural-map literal.
+	i18n bool
+	// alert: a call whose receiver is the Alert stdlib namespace.
+	alert bool
+	// remote: a query lookup. A program that holds one has boxes that settle
+	// after the render that started them, so its entry point has to ask the
+	// store to tell it.
+	remote bool
 }
 
-// pkgUsesI18n matches any i18n entry-point call (ir.IsI18nCall) plus bare
-// i18n.<pluralKey> Selects that survive in plural-map literals — the superset
-// the Go backend already used, now shared by every backend.
-func pkgUsesI18n(pkg *ir.Package) bool {
-	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) error {
+func scanUsage(pkg *ir.Package) usage {
+	var u usage
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
 		switch n := e.(type) {
 		case *ir.Call:
 			if ir.IsI18nCall(n) {
-				found = true
-				return ir.SkipAll
+				u.i18n = true
+			}
+			if n.Func != nil {
+				if n.Func.Receiver == "Alert" {
+					u.alert = true
+				}
+				if n.Func.Intrinsic == remoteQueryIntrinsic {
+					u.remote = true
+				}
 			}
 		case *ir.Select:
 			if ir.IsI18nPluralKey(n) {
-				found = true
-				return ir.SkipAll
+				u.i18n = true
 			}
 		}
-		return nil
-	})
-	return found
-}
-
-// pkgUsesAlert matches any call whose receiver is the Alert stdlib namespace
-// (Alert.toast/info/warn/error).
-func pkgUsesAlert(pkg *ir.Package) bool {
-	found := false
-	ir.WalkExprs(pkg, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Receiver == "Alert" {
-			found = true
+		if u.i18n && u.alert && u.remote {
 			return ir.SkipAll
 		}
 		return nil
 	})
-	return found
+	return u
 }
 
 // pkgUsesErrorHandling reports whether the package contains any error-handling

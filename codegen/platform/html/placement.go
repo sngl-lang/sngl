@@ -142,33 +142,49 @@ func handlerPlacement(pkg *ir.Package, fn *ir.Func) Placement {
 // Inferring server-only *state* (vars mutated solely by backend routes) is left
 // for a later pass.
 func checkPlacementDirectives(pkg *ir.Package) error {
+	return scanPlacement(pkg).err
+}
+
+// placementScan is what one walk of the package says about its placement
+// directives. Generate asks both questions of the same IR before anything
+// rewrites it, so the walk is shared.
+type placementScan struct {
+	// err is checkPlacementDirectives' answer: the first misused directive.
+	err error
+	// frontend is frontendNativeFuncs' answer.
+	frontend map[nativeFuncKey]bool
+}
+
+func scanPlacement(pkg *ir.Package) placementScan {
+	s := placementScan{frontend: map[nativeFuncKey]bool{}}
 	if pkg == nil {
-		return nil
+		return s
 	}
-	// The callback returns its build error directly; InspectPackage stops the
-	// walk and surfaces it (a non-sentinel error).
-	return ir.WalkExprs(pkg, func(e ir.Expr) error {
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
 		c, ok := e.(*ir.Call)
-		if !ok || c.Func == nil || len(c.Args) == 0 {
+		if !ok || c.Func == nil {
 			return nil
 		}
-		arg := c.Args[0].Value
 		switch c.Func.Intrinsic {
 		case htmlBackendIntrinsic:
 			// A func value → HTTP route (supported). Anything else is a
 			// constant/data expression: const→file backend, not implemented.
-			if !isFuncValue(arg) {
-				return fmt.Errorf("html: html.backend(...) wrapping a constant expression compiles to a lazy-loaded static file, which is not yet implemented — only html.backend of a func/handler (an HTTP route) is supported")
+			if s.err == nil && len(c.Args) > 0 && !isFuncValue(c.Args[0].Value) {
+				s.err = fmt.Errorf("html: html.backend(...) wrapping a constant expression compiles to a lazy-loaded static file, which is not yet implemented — only html.backend of a func/handler (an HTTP route) is supported")
 			}
 		case htmlFrontendIntrinsic:
 			// A value explicitly pinned server-side (nested html.backend)
 			// cannot also be forced client-side.
-			if wrapsBackendDirective(arg) {
-				return fmt.Errorf("html: html.frontend(...) wraps a value pinned to the server with html.backend(...) — a value cannot run both client-side and server-side; remove one of the directives")
+			if s.err == nil && len(c.Args) > 0 && wrapsBackendDirective(c.Args[0].Value) {
+				s.err = fmt.Errorf("html: html.frontend(...) wraps a value pinned to the server with html.backend(...) — a value cannot run both client-side and server-side; remove one of the directives")
+			}
+			for _, a := range c.Args {
+				collectFrontendNatives(pkg, a.Value, s.frontend)
 			}
 		}
 		return nil
 	})
+	return s
 }
 
 // wrapsBackendDirective reports whether e (or any subexpression) is an
@@ -213,35 +229,25 @@ type nativeFuncKey struct {
 // funcs eligible for WASM compilation; bare (default-backend) usage ships no
 // WASM. js: funcs are excluded (they run as bundled JS, never WASM).
 func frontendNativeFuncs(pkg *ir.Package) map[nativeFuncKey]bool {
-	out := map[nativeFuncKey]bool{}
-	if pkg == nil {
-		return out
-	}
-	collect := func(sub ir.Expr) {
-		ir.WalkExprs(sub, func(x ir.Expr) error {
-			c, ok := x.(*ir.Call)
-			if !ok || c.Func == nil {
-				return nil
-			}
-			// A nested directive re-pins its own subtree; stop here and let
-			// the top-level scan reach it independently.
-			switch c.Func.Intrinsic {
-			case htmlFrontendIntrinsic, htmlBackendIntrinsic:
-				return ir.SkipDir
-			}
-			if s := funcImportScheme(pkg, c.Func); s != "" && s != "js" {
-				out[nativeFuncKey{importPath: c.Func.Foreign.Path, name: c.Func.Name}] = true
-			}
+	return scanPlacement(pkg).frontend
+}
+
+// collectFrontendNatives adds the native funcs sub calls to out, stopping at a
+// nested directive: it re-pins its own subtree, and the package scan reaches
+// it independently.
+func collectFrontendNatives(pkg *ir.Package, sub ir.Expr, out map[nativeFuncKey]bool) {
+	ir.WalkExprs(sub, func(x ir.Expr) error {
+		c, ok := x.(*ir.Call)
+		if !ok || c.Func == nil {
 			return nil
-		})
-	}
-	ir.WalkExprs(pkg, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Intrinsic == htmlFrontendIntrinsic {
-			for _, a := range c.Args {
-				collect(a.Value)
-			}
 		}
-		return nil // never short-circuit: scan the whole package
+		switch c.Func.Intrinsic {
+		case htmlFrontendIntrinsic, htmlBackendIntrinsic:
+			return ir.SkipDir
+		}
+		if s := funcImportScheme(pkg, c.Func); s != "" && s != "js" {
+			out[nativeFuncKey{importPath: c.Func.Foreign.Path, name: c.Func.Name}] = true
+		}
+		return nil
 	})
-	return out
 }

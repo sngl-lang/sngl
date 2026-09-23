@@ -121,12 +121,13 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		}
 	}
 
-	if err := checkPlacementDirectives(req.Pkg); err != nil {
-		return err
+	placement := scanPlacement(req.Pkg)
+	if placement.err != nil {
+		return placement.err
 	}
 
 	if req.Lang.LanguageIdentifier() == "none" {
-		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html")}
+		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html"), frontendNatives: placement.frontend}
 		if err := rejectDynamicHrefs(c.ctx); err != nil {
 			return err
 		}
@@ -156,7 +157,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		return nil
 	}
 	if _, ok := req.Lang.(codegen.HTTPCompiler); ok {
-		return g.generateRoutes(req, sink)
+		return g.generateRoutes(req, sink, placement.frontend)
 	}
 	return fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
 }
@@ -217,6 +218,10 @@ type compilation struct {
 	// answer. Nil for a caller that builds a compilation directly, which
 	// codegenCtx then serves.
 	ctx *codegen.CodegenCtx
+
+	// frontendNatives is the placement scan Generate already ran, or nil for
+	// a caller that did not, which BuildMutationModel then scans for itself.
+	frontendNatives map[nativeFuncKey]bool
 }
 
 // codegenCtx is c.ctx, or a fresh one for a caller that supplied none.
@@ -434,7 +439,11 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 	if projectFS == nil && projectDir != "" {
 		projectFS = os.DirFS(projectDir)
 	}
-	wasmPkgs := collectWASMPackages(req.Pkg, projectFS, projectDir)
+	frontend := c.frontendNatives
+	if frontend == nil {
+		frontend = frontendNativeFuncs(req.Pkg)
+	}
+	wasmPkgs := collectWASMPackages(req.Pkg, frontend, projectFS, projectDir)
 	if len(wasmPkgs) > 0 {
 		wasmExecURL := ""
 		var loaderScripts []string

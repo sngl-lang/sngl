@@ -123,7 +123,7 @@ func TestCollectWASMPackages_SkipsRefSignatures(t *testing.T) {
 		}},
 	}
 
-	got := collectWASMPackages(pkg, nil, ".")
+	got := collectWASMPackages(pkg, frontendNativeFuncs(pkg), nil, ".")
 	if len(got) != 1 {
 		t.Fatalf("expected 1 wasm package, got %d", len(got))
 	}
@@ -172,7 +172,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 				&ir.CallStmt{Call: call()},
 			}}},
 		}
-		if got := collectWASMPackages(pkg, nil, "."); len(got) != 0 {
+		if got := collectWASMPackages(pkg, frontendNativeFuncs(pkg), nil, "."); len(got) != 0 {
 			t.Fatalf("bare go: call must ship no WASM, got %d packages", len(got))
 		}
 	})
@@ -184,7 +184,7 @@ func TestFrontendWasmOptIn(t *testing.T) {
 				&ir.CallStmt{Call: intrinsicCall("html.frontend", call())},
 			}}},
 		}
-		got := collectWASMPackages(pkg, nil, ".")
+		got := collectWASMPackages(pkg, frontendNativeFuncs(pkg), nil, ".")
 		if len(got) != 1 || len(got[0].funcs) != 1 || got[0].funcs[0].Name != "Persist" {
 			t.Fatalf("html.frontend(go_call) must ship the package's WASM, got %+v", got)
 		}
