@@ -56,6 +56,25 @@ type MacroAttr struct {
 	// the formatter keeps: a capability list runs to twenty names and reads as
 	// nothing on one line. Same rule a prop list follows, for the same reason.
 	IsMultiline bool `json:",omitempty"`
+	// ArgTrailing is the comment written after each argument, indexed as Args
+	// is and nil where an argument carries none.
+	//
+	// A mark's arguments are bare enum members, and a multiline list is exactly
+	// where a reader wants a word per member -- which is what the target
+	// packages now write, their capability lists running to twenty names. There
+	// was nowhere to hold one: `Args` is `[]Expr`, so a comment among them was
+	// swept up as the *next mark's* leading comment and re-emitted below the
+	// list, or below the declaration when there was no next mark.
+	ArgTrailing []*Comment `json:"-"`
+	// EndPos is the `]` this mark closes on, which is Pos for a mark written on
+	// one line and a later line for one written across several.
+	//
+	// Both halves of the trailing-comment question are asked against it. A
+	// comment is this mark's trailing one when it sits on the *closing* line,
+	// not the opening one -- and asking the opening line moved every comment
+	// after a multiline `)]` onto the mark below, so prose explaining one mark
+	// read as prose explaining the next.
+	EndPos Pos `json:"-"`
 	// Leading are the comments written on their own lines above this mark and
 	// below the one before it. A declaration's marks are collected onto the
 	// declaration, so without this a comment written between two of them has

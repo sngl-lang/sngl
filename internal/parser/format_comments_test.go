@@ -71,3 +71,36 @@ func TestFormatKeepsAMarkMultiline(t *testing.T) {
 func TestFormatKeepsAMarkOnOneLine(t *testing.T) {
 	assertFormat(t, "#[a.can(one, two)]\nvar x = 1", "#[a.can(one, two)]\nvar x = 1")
 }
+
+// A comment written inside a multiline mark's argument list stays with the
+// argument it follows, and one after the closing `)]` stays with that mark.
+//
+// Both were relocated: `ast.MacroAttr.Args` is `[]Expr` with nowhere to hold a
+// comment, so one among the arguments was swept up as the *next* mark's leading
+// comment; and both trailing checks compared against the mark's *opening* line,
+// which a multiline mark is not on. The second is why prose explaining one mark
+// read as prose explaining the next.
+//
+// It matters because the target packages carry capability lists of seven to
+// twenty names -- exactly where a word per name belongs -- and
+// TestLibrarySourceIsFormatted makes whatever the formatter does the mandatory
+// spelling.
+func TestFormatKeepsCommentsAmongMarkArguments(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{"after an argument", "#[a.can(\n    one, // why\n    two,\n)]\nvar x = 1"},
+		{"after the last argument", "#[a.can(\n    one,\n    two, // why\n)]\nvar x = 1"},
+		{"after a multiline mark", "#[a.can(\n    one,\n)] // why\n#[a.two]\nvar x = 1"},
+		{"after the only mark, multiline", "#[a.can(\n    one,\n)] // why\nvar x = 1"},
+		// Aligned, because two trailing comments in a run line up one space past
+		// the longest -- the formatter's existing rule, and the reason this case
+		// is written as it comes out rather than as it was typed.
+		{"both at once", "#[a.can(\n    one, // inner\n)]       // outer\n#[a.two]\nvar x = 1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assertFormat(t, tc.src, tc.src)
+		})
+	}
+}

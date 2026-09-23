@@ -251,7 +251,7 @@ func (f *formatter) formatStmtSeq(stmts []ast.Stmt) {
 	}
 }
 
-// markLine is the line a statement's last mark was written on, or 0 when it
+// markLine is the line a statement's last mark *closes* on, or 0 when it
 // carries none.
 func markLine(s ast.Stmt) int {
 	a, ok := s.(ast.Attributed)
@@ -262,7 +262,7 @@ func markLine(s ast.Stmt) int {
 	if len(attrs) == 0 {
 		return 0
 	}
-	return attrs[len(attrs)-1].Pos.Line
+	return attrs[len(attrs)-1].EndPos.Line
 }
 
 // trailingComment returns the comment written after stmts[i] on its line.
@@ -1518,9 +1518,12 @@ func (f *formatter) writeAttr(attr ast.MacroAttr) {
 		if attr.IsMultiline {
 			f.newline()
 			f.indent++
-			for _, arg := range attr.Args {
+			for i, arg := range attr.Args {
 				f.writeExpr(arg)
 				f.write(",")
+				if i < len(attr.ArgTrailing) && attr.ArgTrailing[i] != nil {
+					f.writeTrailing(attr.ArgTrailing[i])
+				}
 				f.newline()
 			}
 			f.indent--

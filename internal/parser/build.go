@@ -152,11 +152,13 @@ func (b *builder) buildMacroAttr(it nodeIter) ast.MacroAttr {
 		}
 	}
 	// consume rbracket
+	endPos := pos
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == RBRACKET {
+		endPos = b.posFromToken(it.token())
 		it.skip()
 	}
 
-	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args, IsMultiline: multiline}
+	return ast.MacroAttr{Pos: pos, Alias: alias, Name: name, Args: args, IsMultiline: multiline, EndPos: ast.Pos(endPos)}
 }
 
 // buildParamAttrs consumes the leading { MacroAttr } of a Param or CompParam.
@@ -365,11 +367,49 @@ func (b *builder) placeAttrComments(s ast.Stmt, ci *int) {
 				continue
 			}
 			c := b.commentToStmt(tok)
-			if c.Inline && tok.Line == attrs[i].Pos.Line {
+			// Inside mark i's own argument list, which a multiline mark has
+			// lines for: it belongs to the argument it sits after, not to the
+			// mark below.
+			if tok.Line > attrs[i].Pos.Line && tok.Line < attrs[i].EndPos.Line {
+				b.claimArgComment(&attrs[i], tok, c)
+				continue
+			}
+			if c.Inline && tok.Line == attrs[i].EndPos.Line {
 				attrs[i].Trailing = c
 				continue
 			}
 			attrs[i+1].Leading = append(attrs[i+1].Leading, c)
+		}
+	}
+	// The last mark's own argument list, which the pairwise loop above never
+	// reaches: there is no attrs[i+1] to bound the scan with, so it is bounded
+	// by that mark's own closing line instead.
+	if n := len(attrs); n > 0 {
+		last := &attrs[n-1]
+		for *ci < len(b.comments) && b.comments[*ci].Line < last.EndPos.Line {
+			tok := b.comments[*ci]
+			if tok.Line <= last.Pos.Line {
+				break
+			}
+			*ci++
+			if b.claimed[*ci-1] {
+				continue
+			}
+			b.claimArgComment(last, tok, b.commentToStmt(tok))
+		}
+	}
+}
+
+// claimArgComment gives a comment written inside a mark's argument list to the
+// argument it follows.
+func (b *builder) claimArgComment(attr *ast.MacroAttr, tok Token, c *ast.Comment) {
+	if attr.ArgTrailing == nil {
+		attr.ArgTrailing = make([]*ast.Comment, len(attr.Args))
+	}
+	for i := len(attr.Args) - 1; i >= 0; i-- {
+		if p := attr.Args[i].ExprPos(); p != nil && p.Line <= tok.Line {
+			attr.ArgTrailing[i] = c
+			return
 		}
 	}
 }
