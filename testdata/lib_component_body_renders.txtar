@@ -17,7 +17,12 @@ nested list therefore draws a different bullet from the one it sits in -- a
 body reading a context through a slot, which only works because the body is
 there to read it.
 
+On bubbletea the bullet is a ternary Go cannot write, hoisted to `__ltN` and
+folded once the item is inlined. The fold left a bare assignment, which a view
+body draws nothing for, so the bullet rendered as the temp's zero.
+
 deny * `\blistDepth\b` -- the context name is not a symbol any target declares
+deny out/go/bubbletea/model.go `var __lt\d+ string\n` -- a hoisted ternary temp is declared with its value, not assigned after
 -- doc.sngl --
 import ui "sngl:ui"
 import md "sngl:ui/markup"
@@ -156,50 +161,50 @@ func (m Model) View() tea.View {
 	var contentChildren []string
 	var content_0 string
 	var content_0Children []string
-	var __lt0 string
+	__lt0 := BulletAt(m.__ctx_listDepth__inst0)
+	var content_0_1 string
+	content_0_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+	content_0Children = append(content_0Children, content_0_1)
 	var content_0_2 string
-	content_0_2 = lipgloss.NewStyle().Render(fmt.Sprint(__lt0))
+	var content_0_2Children []string
+	var content_0_2_0 string
+	content_0_2_0 = lipgloss.NewStyle().Render(fmt.Sprint("one"))
+	content_0_2Children = append(content_0_2Children, content_0_2_0)
+	content_0_2 = lipgloss.JoinVertical(lipgloss.Left, content_0_2Children...)
 	content_0Children = append(content_0Children, content_0_2)
-	var content_0_3 string
-	var content_0_3Children []string
-	var content_0_3_0 string
-	content_0_3_0 = lipgloss.NewStyle().Render(fmt.Sprint("one"))
-	content_0_3Children = append(content_0_3Children, content_0_3_0)
-	content_0_3 = lipgloss.JoinVertical(lipgloss.Left, content_0_3Children...)
-	content_0Children = append(content_0Children, content_0_3)
 	content_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_0Children...)
 	contentChildren = append(contentChildren, content_0)
 	var content_1 string
 	var content_1Children []string
-	var __lt1 string
+	__lt1 := BulletAt(m.__ctx_listDepth__inst3)
+	var content_1_1 string
+	content_1_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+	content_1Children = append(content_1Children, content_1_1)
 	var content_1_2 string
-	content_1_2 = lipgloss.NewStyle().Render(fmt.Sprint(__lt1))
+	var content_1_2Children []string
+	var content_1_2_0 string
+	var content_1_2_0Children []string
+	var content_1_2_0_0 string
+	var content_1_2_0_0Children []string
+	__lt2 := BulletAt(m.__ctx_listDepth__inst1)
+	var content_1_2_0_0_1 string
+	content_1_2_0_0_1 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
+	content_1_2_0_0Children = append(content_1_2_0_0Children, content_1_2_0_0_1)
+	var content_1_2_0_0_2 string
+	var content_1_2_0_0_2Children []string
+	var content_1_2_0_0_2_0 string
+	content_1_2_0_0_2_0 = lipgloss.NewStyle().Render(fmt.Sprint("nested"))
+	content_1_2_0_0_2Children = append(content_1_2_0_0_2Children, content_1_2_0_0_2_0)
+	content_1_2_0_0_2 = lipgloss.JoinVertical(lipgloss.Left, content_1_2_0_0_2Children...)
+	content_1_2_0_0Children = append(content_1_2_0_0Children, content_1_2_0_0_2)
+	content_1_2_0_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_1_2_0_0Children...)
+	content_1_2_0Children = append(content_1_2_0Children, content_1_2_0_0)
+	content_1_2_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_2_0Children...)
+	content_1_2_0 = lipgloss.NewStyle().
+		PaddingLeft(2).Render(content_1_2_0)
+	content_1_2Children = append(content_1_2Children, content_1_2_0)
+	content_1_2 = lipgloss.JoinVertical(lipgloss.Left, content_1_2Children...)
 	content_1Children = append(content_1Children, content_1_2)
-	var content_1_3 string
-	var content_1_3Children []string
-	var content_1_3_0 string
-	var content_1_3_0Children []string
-	var content_1_3_0_0 string
-	var content_1_3_0_0Children []string
-	var __lt2 string
-	var content_1_3_0_0_2 string
-	content_1_3_0_0_2 = lipgloss.NewStyle().Render(fmt.Sprint(__lt2))
-	content_1_3_0_0Children = append(content_1_3_0_0Children, content_1_3_0_0_2)
-	var content_1_3_0_0_3 string
-	var content_1_3_0_0_3Children []string
-	var content_1_3_0_0_3_0 string
-	content_1_3_0_0_3_0 = lipgloss.NewStyle().Render(fmt.Sprint("nested"))
-	content_1_3_0_0_3Children = append(content_1_3_0_0_3Children, content_1_3_0_0_3_0)
-	content_1_3_0_0_3 = lipgloss.JoinVertical(lipgloss.Left, content_1_3_0_0_3Children...)
-	content_1_3_0_0Children = append(content_1_3_0_0Children, content_1_3_0_0_3)
-	content_1_3_0_0 = lipgloss.JoinHorizontal(lipgloss.Top, content_1_3_0_0Children...)
-	content_1_3_0Children = append(content_1_3_0Children, content_1_3_0_0)
-	content_1_3_0 = lipgloss.JoinVertical(lipgloss.Left, content_1_3_0Children...)
-	content_1_3_0 = lipgloss.NewStyle().
-		PaddingLeft(2).Render(content_1_3_0)
-	content_1_3Children = append(content_1_3Children, content_1_3_0)
-	content_1_3 = lipgloss.JoinVertical(lipgloss.Left, content_1_3Children...)
-	content_1Children = append(content_1Children, content_1_3)
 	content_1 = lipgloss.JoinHorizontal(lipgloss.Top, content_1Children...)
 	contentChildren = append(contentChildren, content_1)
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
@@ -285,6 +290,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:d3ca7f90557ce392220a5519ca926a2f
+pass sha256:2f000f8a8677bf7e3b7e009cdd4d57f4
 -- run/none/html --
 pass sha256:e11262e3e80aab54375a3270a3a16785

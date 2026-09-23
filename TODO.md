@@ -32,10 +32,8 @@ What the experiment did establish, and what is now in main:
   `md.list` and the six headings were dead source. Two commits: the loader
   checks component bodies on every tier, and the inliner splices a stdlib
   component that carries a body. `testdata/lib_component_body_renders.txtar`
-  pins it, bullet and all -- except on bubbletea, where it does not: the
-  bullet's ternary is hoisted to `var __lt0 string` plus an `if` that assigns
-  it, the view emitter drops the `if`, and the golden records an empty bullet.
-  Open.
+  pins it, bullet and all. On bubbletea that took a third fix: the folded
+  ternary left a bare assignment the view drew nothing for.
 - Hosting a family marked a component as "rendered by a codegen", so a
   platform could not implement one in its own package: the override was
   written, never substituted, and the emitter met a node it had never heard

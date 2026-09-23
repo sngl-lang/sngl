@@ -235,10 +235,15 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 		if ifs, ok := s.(*ir.If); ok {
 			cond := foldExpr(ifs.Cond, ctx)
 			if lit, ok := cond.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
+				branch := ifs.Else
 				if lit.Value == "true" {
-					out = append(out, foldStmts(ifs.Body, ctx)...)
+					branch = ifs.Body
+				}
+				branch = foldStmts(branch, ctx)
+				if ifs.FromTernary {
+					out = initTernaryTemp(out, branch)
 				} else {
-					out = append(out, foldStmts(ifs.Else, ctx)...)
+					out = append(out, branch...)
 				}
 				continue
 			}
@@ -250,6 +255,33 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 		}
 	}
 	return out
+}
+
+// initTernaryTemp appends the surviving branch of a folded NoTernary `if`,
+// turning its final assignment into the initializer of the `var __ltN` that
+// passTernary declared immediately before the `if`.
+//
+// Left as a bare assignment it is a statement in a view body, which a
+// RenderModel emitter draws nothing for: bubbletea skipped it and rendered the
+// temp's zero, so a markup bullet came out empty. A declaration with its value
+// is something every emitter already writes.
+func initTernaryTemp(out, branch []ir.Stmt) []ir.Stmt {
+	if len(out) == 0 || len(branch) == 0 {
+		return append(out, branch...)
+	}
+	decl, ok := out[len(out)-1].(*ir.LocalVar)
+	set, ok2 := branch[len(branch)-1].(*ir.Assign)
+	if !ok || !ok2 || decl.Init != nil || set.Op != ast.AssignSet {
+		return append(out, branch...)
+	}
+	if id, ok := set.Target.(*ir.Ident); !ok || id.Sym == nil || id.Sym != decl.Sym {
+		return append(out, branch...)
+	}
+	// The branch's own hoists compute the value, so the declaration moves
+	// below them; nothing between it and the `if` could have read the temp.
+	out = append(out[:len(out)-1], branch[:len(branch)-1]...)
+	decl.Init = set.Value
+	return append(out, decl)
 }
 
 // foldStmt folds constants and eliminates dead branches in a statement.
