@@ -291,18 +291,15 @@ func (c *checker) providedDocs(name string) []*ast.Document {
 	// where the registry answers, for readers that have no config to carry.
 	//
 	// Memoized for the life of this checker and no longer. ProvidedDocs
-	// re-reads and re-parses on every call, and one check asks about the same
-	// package around 26 times -- hasLibPkg on each lookup, targetPkgScope,
-	// libDocs, libPkg, mergeTargetExtensions. Parsing gtk4's synthesized
-	// widget package that many times was the single largest cost in the
-	// checker's own test package.
+	// re-reads the target's files on every call (the parse behind them is
+	// shared, parseProvided), and one check asks about the same package
+	// around 26 times -- hasLibPkg on each lookup, targetPkgScope, libDocs,
+	// libPkg, mergeTargetExtensions.
 	//
-	// Per-checker is the scope the freshness constraint asks for: what must
-	// not be shared is documents across *checks*, since a check splices
-	// platform bodies into them and a target may be reconfigured between
-	// checks. Within one check the callers are meant to see the same ASTs --
-	// they previously got a different *ast.Document for the same package
-	// depending on which of them asked.
+	// Per-checker because a target may be reconfigured between checks, and a
+	// check must see one answer throughout: the callers are meant to see the
+	// same ASTs -- they previously got a different *ast.Document for the same
+	// package depending on which of them asked.
 	if docs, ok := c.providedCache[name]; ok {
 		return slices.Clone(docs)
 	}
@@ -370,12 +367,6 @@ func ProvidedDocs(t any) []*ast.Document {
 	if !ok {
 		return nil
 	}
-	// Parsed fresh every call. A check splices platform bodies into the
-	// documents it is given, and a target may be reconfigured to serve a
-	// different package (gtk4 against another GIR), so neither the ASTs nor
-	// the fs.FS behind them can be shared between checks. Callers that want
-	// one parse memoize at their own scope: PackageSource for the readers
-	// outside a check, checker.providedDocs for the length of one.
 	// The package a file's name is qualified by, from the target's own
 	// identity: `ProvidedDocs` is handed the target and not its URI.
 	prefix := "target"
@@ -404,13 +395,43 @@ func ProvidedDocs(t any) []*ast.Document {
 		}
 		// Qualified for the reason the embedded tiers are: a target's own
 		// source must not share a file name with the program's.
-		doc, err := parser.Parse(prefix+"/"+e.Name(), data)
-		if err != nil {
-			panic(fmt.Sprintf("sngl: parsing target-provided file %q: %v", e.Name(), err))
-		}
-		docs = append(docs, doc)
+		docs = append(docs, parseProvided(prefix+"/"+e.Name(), data))
 	}
 	return docs
+}
+
+// providedParses memoizes parseProvided for the life of the process.
+var (
+	providedParseMu sync.Mutex
+	providedParses  = map[providedKey]*ast.Document{}
+)
+
+// providedKey is a file by name and content. The content is part of the key
+// because a target can be reconfigured to serve a different package -- gtk4
+// against another GIR generates another widget file under the same name --
+// and that has to be a new parse, while the same bytes are the same AST.
+type providedKey struct{ name, data string }
+
+// parseProvided parses one file of a target's package, once per content.
+//
+// Shared across checks the way the embedded tiers (parseStdlibDocs) always
+// have been: nothing downstream of the parser writes to an AST, which
+// TestProvidedDocsSurviveChecks holds it to. Re-parsing was a tenth of the
+// bytes a build allocated -- html.sngl alone is 31KB of source, read again by
+// every check that targets html.
+func parseProvided(name string, data []byte) *ast.Document {
+	key := providedKey{name, string(data)}
+	providedParseMu.Lock()
+	defer providedParseMu.Unlock()
+	if doc, ok := providedParses[key]; ok {
+		return doc
+	}
+	doc, err := parser.Parse(name, data)
+	if err != nil {
+		panic(fmt.Sprintf("sngl: parsing target-provided file %q: %v", name, err))
+	}
+	providedParses[key] = doc
+	return doc
 }
 
 func (c *checker) hasLibPkg(name string) bool {
