@@ -7,6 +7,27 @@ import ir "sngl:internal/ir"
 // nothing gates is a word with no consequence.
 enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, insertBefore, asyncPost, asyncSpawn, effects }
 
+// What a *primitive* can do with the nodes it renders, as against what a
+// target can do with the language. Written on an `#[intrinsic]` component
+// rather than on a build-target node, which is the finer grain the tier
+// exists for: html renders `element`, which retains what it draws, beside
+// `draw`, which does not -- one platform, one family, two answers.
+enum Rendered {
+    // A `#id` on a node this primitive renders names something that is still
+    // there while the program runs, so a read of one of its props asks the
+    // host. Withheld -- the default, as everywhere here -- the node is gone by
+    // the time anything could hold it, and a prop read is answered at build
+    // time with the expression the prop was given.
+    //
+    // A widget claims it: a text field the user typed into holds a value the
+    // program never wrote, and reconstructing the declared one would render
+    // something that was true once. A drawing does not: `passShapeDraw`
+    // splices a shape into the calls that paint it, so `circle #dot(r=5.0)`
+    // leaves nothing for `dot.r` to read, and 5.0 is not an approximation of
+    // the answer -- with no object to mutate, it *is* the answer.
+    identity
+}
+
 // A lowering pass a target asks for.
 //
 // Distinct from a capability, and the distinction is the one `caps.go` made in
@@ -36,3 +57,11 @@ func cannot(caps list<Capability>) ir.Macro
 
 // Asks for each named lowering pass.
 func wants(passes list<Pass>) ir.Macro
+
+// Says the nodes this primitive renders support each named thing.
+//
+// The one mark here written on something other than a build-target node, and
+// the only one that takes `Rendered` rather than `Capability` -- so naming a
+// target capability here, or a rendered one in `can`, is refused by the
+// argument check with a list of what the enum does accept.
+func renders(these list<Rendered>) ir.Macro

@@ -150,6 +150,7 @@ struct Spec {
 // they carry no body, so the inliner leaves them in place, and the emitter
 // recognises them by the id rather than by their names.
 
+#[gen.renders(identity)]
 #[intrinsic("fyne:Widget")]
 component Widget(
     spec Spec,
@@ -164,6 +165,7 @@ component Widget(
     @input ui.InputEvent,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("fyne:Container")]
 component Container(
     spec Spec,
@@ -179,6 +181,7 @@ component Container(
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("fyne:Wrapper")]
 component Wrapper(
     spec Spec,

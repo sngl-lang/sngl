@@ -95,6 +95,7 @@ component android(
 // Kotlin package: the platform codegen emits the call, not the language
 // translator.
 
+#[gen.renders(identity)]
 #[intrinsic("android:Column")]
 component Column(
     modifier ui.Style,
@@ -102,6 +103,7 @@ component Column(
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Box")]
 component Box(
     modifier ui.Style,
@@ -109,6 +111,7 @@ component Box(
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Row")]
 component Row(
     modifier ui.Style,
@@ -117,12 +120,14 @@ component Row(
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Spacer")]
 component Spacer(
     modifier ui.Style,
     chain list<string>,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Text")]
 component Text(
     text string,
@@ -133,11 +138,13 @@ component Text(
     args list<string>,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:HorizontalDivider")]
 component HorizontalDivider(
     modifier ui.Style,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:CircularProgressIndicator")]
 component CircularProgressIndicator(
     modifier ui.Style,
@@ -148,6 +155,7 @@ component CircularProgressIndicator(
 // choosing a number for "unknown". It is a `() -> Float`, which is why the
 // prop is a func returning `float32`: `float` is a Kotlin Double, and the
 // declaration is what says otherwise.
+#[gen.renders(identity)]
 #[intrinsic("android:LinearProgressIndicator")]
 component LinearProgressIndicator(
     progress func() float32,
@@ -157,6 +165,7 @@ component LinearProgressIndicator(
 // `colors` is the same Style the modifier gets. A Button paints its own
 // surface, so a background in the modifier lands behind the pill rather than
 // on it -- the colour has to go through the widget's own colour set.
+#[gen.renders(identity)]
 #[intrinsic("android:Button")]
 component Button(
     onClick func(),
@@ -166,36 +175,42 @@ component Button(
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Badge")]
 component Badge(
     modifier ui.Style,
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Card")]
 component Card(
     modifier ui.Style,
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:TabRow")]
 component TabRow(
     selectedTabIndex int,
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Checkbox")]
 component Checkbox(
     checked bool,
     onCheckedChange func(bool),
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Switch")]
 component Switch(
     checked bool,
     onCheckedChange func(bool),
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:RadioButton")]
 component RadioButton(
     selected bool,
@@ -206,6 +221,7 @@ component RadioButton(
 // because Compose takes content there, not text. An override that leaves it
 // empty gets no `label` argument at all, which is not the same widget as one
 // labelled with nothing.
+#[gen.renders(identity)]
 #[intrinsic("android:OutlinedTextField")]
 component OutlinedTextField(
     value string,
@@ -218,12 +234,14 @@ component OutlinedTextField(
     label component ui.node,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Dialog")]
 component Dialog(
     onDismissRequest func(),
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("android:Surface")]
 component Surface(
     args list<string>,

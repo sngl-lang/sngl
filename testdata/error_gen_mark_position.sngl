@@ -4,14 +4,14 @@
 import gen "sngl:x/gen"
 import ui "sngl:ui"
 
-#[gen.can(ternary)] // ERROR(check) "#[gen] belongs on a build-target node"
+#[gen.can(ternary)] // ERROR(check) "belong on a build-target node"
 component card() ui.node {
     ui.text(value="hi")
 }
 
 // And one with no return position at all: its family is inferred from the
 // body, which is never the build tree.
-#[gen.wants(canvas)] // ERROR(check) "#[gen] belongs on a build-target node"
+#[gen.wants(canvas)] // ERROR(check) "belong on a build-target node"
 component panel() {
     ui.text(value="hi")
 }
@@ -19,4 +19,11 @@ component panel() {
 ui.window #home(title="t") {
     card()
     panel()
+}
+
+// And the other way round: what a primitive renders is its own to say, so the
+// mark that says it belongs on an #[intrinsic] declaration and nowhere else.
+#[gen.renders(identity)] // ERROR(check) "belongs on an #[intrinsic] or #[wildcard] declaration"
+component plain() ui.node {
+    ui.text(value="hi")
 }

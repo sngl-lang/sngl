@@ -37,7 +37,7 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl:internal/marks\"\nimport ui \"sngl:ui\"\n")
+	b.WriteString("import . \"sngl:internal/marks\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\n")
 	declared := map[string]bool{}
 	for _, name := range names {
 		info := reg.Classes[name]
@@ -45,7 +45,13 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			continue
 		}
 		declared[info.CType] = true
-		fmt.Fprintf(&b, "\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
+		// A GTK widget is a GObject the program can hold: a `#id` on one names
+		// something still there while it runs, so a prop read off that handle
+		// asks the widget rather than being answered at build time with what
+		// the prop was given. Written on every generated declaration because
+		// it is true of every one of them -- these are widgets by
+		// construction, the GIR classes this platform wraps.
+		fmt.Fprintf(&b, "\n#[gen.renders(identity)]\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
 		taken := map[string]bool{stylePropName: true, restSlotName: true}
 		for _, p := range info.Props {
 			// A construct-only property is not declared: the widget exists

@@ -557,6 +557,69 @@ Deleted, along with the arms. `canvasutil/gocontext.go` had already been
 cleaned and says so -- *"Two ids reach here: the save and restore that bracket
 a composed shape"* -- so this is the rest of that.
 
+### Landed: the per-primitive half
+
+Jonathan's framing, and it is the one that works: **the handle hoists like any
+other, and it is the prop *access* the lowering rewrites.** The barrier had it
+the other way round -- refuse the id, so nothing can be written -- which
+restated the silence rather than ending it. What the tier buys is that the
+rewrite is driven by the tree: a primitive says what its own nodes support, and
+the pass asks.
+
+`#[gen.renders(identity)]`, from a second enum `Rendered`, written on an
+`#[intrinsic]` component. Two enums rather than one so that naming a target
+capability on a primitive is caught by the argument check with a list of what
+`Rendered` does accept, and vice versa -- no new rule, the existing enum
+validation. `passNodePropReads` then answers `dot.r` with the expression the
+prop was given, wherever the target is *known* to render the node as something
+nothing can hold.
+
+Four things the implementation settled.
+
+**Where the pass runs is fixed at both ends, and I had it backwards.** It must
+be *after* `passPlatformExtensionBody`, because which primitive a declaration
+renders is the override this target supplied -- and *before* `passInlinePure`,
+because that pass carries a call site's `ID` and `Handle` onto the first node
+of the override body, after which the handle names the primitive and `r=5.0`
+is nowhere. The window is slots 5 to 22, not 22 to 27.
+
+**A primitive is rarely one level down.** fyne's `ui.text` renders `Label`,
+which is an ordinary component carrying a `Spec`, and only *its* body reaches
+`Widget`. `ir.RenderedPrimitive` follows component bodies as well as children,
+with a seen-set for the cycle a recursive component makes. Reading one level
+answered nil for every widget on that platform.
+
+**Nil is "cannot tell", not "no identity".** A component with no override for
+the target being built renders no primitive, and treating that as the absence
+of the capability made a single-platform harness refuse an ordinary write to a
+`ui.text` handle. The transform now applies only where the tree positively says
+the node is gone.
+
+**The walk is `ir.Rewrite`, not a switch of the pass's own.** A read sits
+anywhere an expression can -- the one this started from was inside an
+interpolation, two levels into a node's prop -- and every hand-rolled descent
+in `internal/lower` is a list of the shapes its author thought of. `ir.Rewrite`
+has its kind coverage enforced by a panic and its slot coverage by a test.
+
+Writes are refused in the lowering, for the reason the read is answered there:
+a primitive that claims identity has a node to assign to, and which primitive a
+declaration renders is not known until the override is in. `cmd/sngl/testdata/shape_prop_write.txt`
+is that, a script test because the refusal needs a target picked.
+
+`ir.CrossesTreeFamily` keeps one caller, `declareOwnNodeIDsIn`, and wants the
+same treatment; `testdata/error_tree_family_id_barrier.sngl` is now
+`canvas_shape_prop_read.sngl`, a positive fixture, which is what the original
+plan predicted and the window half then denied.
+
+**The asymmetry this exposes and does not fix.** A widget prop read claims
+identity and is left alone -- and does not compile on the Go mutation
+platforms, because `GoIRContext.Select` ends at
+`operand + "." + ExportName(field)`: `label.value` is `m.label.Value` against a
+`widget.Label` that spells it `Text`. That predates this pass, which is why
+`canvas_shape_prop_read.txtar` is html-only and the Go half is a second archive
+holding the shape read alone. Closing it needs a language-to-platform *read*
+hook to match `Setter`, which does not exist.
+
 ### Landed: the whole-target half
 
 Steps 1 to 4 below. `lib/x/gen/` declares the three marks and two enums;

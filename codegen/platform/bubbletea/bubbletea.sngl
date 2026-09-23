@@ -79,6 +79,7 @@ struct Event {
 // one: they carry no body, and the id is what the view renderer recognises them
 // by instead of their names.
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Layout")]
 component Layout(
     join JoinDir,
@@ -88,6 +89,7 @@ component Layout(
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Styled")]
 component Styled(
     content string,
@@ -96,6 +98,7 @@ component Styled(
     style ui.Style,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Widget")]
 component Widget(
     model Model,
@@ -115,6 +118,7 @@ component Widget(
     max float,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Overlay")]
 component Overlay(
     placement string,

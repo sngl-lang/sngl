@@ -1,0 +1,29 @@
+// A prop read off a shape's `#id` is answered with what the prop was given.
+//
+// The id hoists like any other: what a `#id` binds is a handle, and a family
+// change is no longer a reason to refuse one. What differs is the *read*. A
+// shape is spliced into the calls that paint it before any backend sees it, so
+// there is nothing at run time for `dot.r` to ask -- and `passNodePropReads`
+// answers it at build time with `5.0` instead. Not an approximation: with no
+// object to mutate, what the prop was given is what the prop holds.
+//
+// Which nodes those are is the tree's to say. A primitive claims
+// `#[gen.renders(identity)]` when a `#id` on what it draws names something
+// still there while the program runs -- every widget primitive does, and the
+// four `draw` primitives do not. So the same read off `ui.text #label` is left
+// alone for the platform to emit, and only this one is answered here.
+//
+// This used to be `error_tree_family_id_barrier.sngl`, which refused the id
+// rather than answering the read: a typed `dot.r` checked clean and rendered
+// nothing, and refusing the hoist restated that silence instead of ending it.
+
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window #w(title="t") {
+    draw.canvas(width=100px, height=100px) {
+        draw.circle #dot(cx=10.0, cy=10.0, r=5.0)
+    }
+
+    ui.text(value="r is {dot.r}")
+}

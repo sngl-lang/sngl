@@ -39,6 +39,11 @@ var passes = []pass{
 	passHoistState,
 	passForeignPrimitive,
 	passPlatformExtensionBody,
+	// After it, because which primitive a declaration renders is the override
+	// this target supplied; before passInlinePure, which carries a `#id` onto
+	// that override's first node and so takes the handle off the declaration
+	// whose props the read is answered from.
+	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
 	passViewForElse,

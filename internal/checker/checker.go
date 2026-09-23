@@ -4458,14 +4458,15 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 			// own scope (checkWindow), which is what a read from inside
 			// resolves to and why only a read from outside carries the count.
 			c.declareNodeIDsIn(&n.Block, withCount(counts, countWindow))
-		case c.crossesTreeFamily(target):
-			// Every other family change stops the hoist outright rather than
-			// counting it, which today means a canvas: a shape is spliced into
-			// draw calls before any backend sees it (passShapeDraw), so there
-			// is no handle to be optional about. A shape's props do resolve,
-			// so a typed `dot.r` would check clean and render nothing -- which
-			// is the silence this stops, restated rather than fixed.
 		default:
+			// Every other family change hoists like any other scope. A canvas
+			// used to stop the hoist outright, because a shape is spliced into
+			// the calls that paint it before any backend sees one and a typed
+			// `dot.r` therefore rendered nothing -- but refusing the id was
+			// restating that silence rather than answering it. passNodePropReads
+			// answers it: a prop read off a node the target keeps nothing of is
+			// the expression the prop was given, and which nodes those are is
+			// what a primitive says with `#[gen.renders(identity)]`.
 			c.declareNodeIDsIn(&n.Block, counts)
 		}
 	case *ast.CallStmt:

@@ -31,6 +31,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "can"}:                markGenCan,
 	{"x/gen", "cannot"}:             markGenCannot,
 	{"x/gen", "wants"}:              markGenWants,
+	{"x/gen", "renders"}:            markGenRenders,
 }
 
 // markGoAsync implements #[go.async]: a call to this function blocks.
@@ -801,21 +802,25 @@ func claimForeign(dst *ir.Foreign, fm ir.Foreign, name string) error {
 // decode which one is being made. The names are stored as written -- the enum
 // they were checked against is the vocabulary, and what each one gates is the
 // lowering's to know.
-func markGenCan(m *mark) error    { return markGen(m, "can") }
-func markGenCannot(m *mark) error { return markGen(m, "cannot") }
-func markGenWants(m *mark) error  { return markGen(m, "wants") }
+func markGenCan(m *mark) error     { return markGen(m, "can") }
+func markGenCannot(m *mark) error  { return markGen(m, "cannot") }
+func markGenWants(m *mark) error   { return markGen(m, "wants") }
+func markGenRenders(m *mark) error { return markGen(m, "renders") }
 
 func markGen(m *mark, kind string) error {
 	comp, ok := m.sym.(*ir.Component)
 	if !ok {
-		return fmt.Errorf("#[gen.%s] cannot mark %s; it belongs on the build-tree node a target package declares", kind, ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[gen.%s] cannot mark %s; it belongs on the build-tree node a target package declares, or on an #[intrinsic] primitive", kind, ast.DeclFormName(m.decl))
 	}
 	// Which component it may be written on is checked in finishTreeMarks, not
 	// here: a mark applies as the declaration registers, and the return
 	// position it has to be measured against is read after that.
 	arg := "caps"
-	if kind == "wants" {
+	switch kind {
+	case "wants":
 		arg = "passes"
+	case "renders":
+		arg = "these"
 	}
 	names := m.args.Idents(arg)
 	if len(names) == 0 {
@@ -831,6 +836,8 @@ func markGen(m *mark, kind string) error {
 		comp.Gen.Cannot = append(comp.Gen.Cannot, names...)
 	case "wants":
 		comp.Gen.Wants = append(comp.Gen.Wants, names...)
+	case "renders":
+		comp.Gen.Renders = append(comp.Gen.Renders, names...)
 	}
 	// Both ways on one declaration is an error rather than a precedence rule
 	// nobody can remember. Across declarations it is the whole point: a
@@ -840,7 +847,7 @@ func markGen(m *mark, kind string) error {
 			return fmt.Errorf("#[gen] names %q both ways on one declaration", n)
 		}
 	}
-	for _, set := range [][]string{comp.Gen.Can, comp.Gen.Cannot, comp.Gen.Wants} {
+	for _, set := range [][]string{comp.Gen.Can, comp.Gen.Cannot, comp.Gen.Wants, comp.Gen.Renders} {
 		if n, dup := firstDuplicate(set); dup {
 			return fmt.Errorf("#[gen] names %q twice", n)
 		}

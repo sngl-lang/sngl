@@ -88,6 +88,11 @@ component html(
 // says which host accepts them, which is what an SVG subtree is. Until then it
 // is written through `element(tag=..., attrs={...})`, which the diagnostics
 // below point at.
+// A DOM element is still there while the page runs, so a `#id` on one names
+// something a read can ask. That the emitter has no way to ask it yet is a
+// separate defect; claiming otherwise here would have a prop read answered
+// with the value the markup was written with.
+#[gen.renders(identity)]
 #[wildcard("[a-z][a-z0-9]*", "tag")]
 component element(
     // The name this resolved from — `html.div` binds "div" — and the tag to

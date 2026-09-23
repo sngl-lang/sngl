@@ -1,0 +1,25 @@
+# A prop read off a shape's `#id` is answered with what the prop was given; a
+# *write* has nothing to be answered with, and is refused.
+#
+# In the lowering rather than the checker, because the answer is the target's:
+# a primitive that claims `#[gen.renders(identity)]` has a node to assign to,
+# and which primitive a declaration renders is not known until that target's
+# override has been swapped in. A script test rather than a fixture for the
+# same reason -- the refusal needs a target picked.
+
+! sngl generate --lang go --platform fyne --out out .
+stderr 'cannot assign to dot\.r'
+stderr 'keeps nothing to write to'
+
+-- app.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+ui.window #w(title="t") {
+    draw.canvas(width=100px, height=100px) {
+        draw.circle #dot(cx=10.0, cy=10.0, r=5.0)
+    }
+    ui.button(text="grow", @click {
+        dot.r = 9.0
+    })
+}
