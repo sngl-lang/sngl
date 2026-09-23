@@ -227,9 +227,11 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 	for _, w := range pkg.Windows {
 		walkStmt(w, used, walk)
 	}
-	// Test functions are roots.
+	// Test functions are roots, and so is every synthesized func, which
+	// filterFuncs keeps whether or not anything names it: kept and not
+	// walked, a focus helper outlived the __focusID it reads.
 	for _, f := range pkg.Funcs {
-		if f.IsTest {
+		if f.IsTest || f.Synthesized {
 			walk(f)
 		}
 	}

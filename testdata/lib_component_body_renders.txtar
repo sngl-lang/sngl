@@ -69,9 +69,7 @@ type Measurement struct {
 type Model struct {
 	__ctx_listDepth__inst0 int
 	__ctx_listDepth__inst1 int
-	__ctx_listDepth__inst2 int
 	__ctx_listDepth__inst3 int
-	__ctx_listDepth__inst4 int
 	__focusID              int
 
 	width, height int
@@ -82,9 +80,7 @@ func New() Model {
 	m := Model{}
 	m.__ctx_listDepth__inst0 = 1
 	m.__ctx_listDepth__inst1 = 2
-	m.__ctx_listDepth__inst2 = 1
 	m.__ctx_listDepth__inst3 = 1
-	m.__ctx_listDepth__inst4 = 0
 	m.__focusID = 0
 	return m
 }
@@ -275,9 +271,7 @@ body { font-family: system-ui, sans-serif; }
   }
   var __ctx_listDepth__inst0 = 1;
   var __ctx_listDepth__inst1 = 2;
-  var __ctx_listDepth__inst2 = 1;
   var __ctx_listDepth__inst3 = 1;
-  var __ctx_listDepth__inst4 = 0;
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
@@ -291,6 +285,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:0a97d105ff92277775ac7ed75135edbd
+pass sha256:d3ca7f90557ce392220a5519ca926a2f
 -- run/none/html --
-pass sha256:2c5d9ccfd960325acc676019dc3ab023
+pass sha256:e11262e3e80aab54375a3270a3a16785
