@@ -530,11 +530,14 @@ The islands found a defect, fixed in its own commit: the lowering's walk for
 the imported components a build renders skipped slot populations, so a
 stateful island reached only through a page's content stayed a node and html
 drew `<text>` (`testdata/foreign_component_in_population.txtar`). It also
-showed one that is **not fixed**: two instances of one imported stateful
-component on html share a node id, and each reads its prop before the
-binding is declared (`state.n_1 = start_1` above `var start_1 = 1`). The same
-component declared locally is correct. A site whose pages each instantiate a
-shared component from `docs/*.sngl` will hit it.
+showed a second, also fixed: two instances of one imported stateful component
+shared a node id on html and read their prop before the binding was declared
+(`state.n_1 = start_1` above `var start_1 = 1`), and on bubbletea did not
+compile. The inliner substituted only what the package itself declared, so an
+imported component was left standing for each backend to render as an
+instance it never elected; it is now inlined like a local one.
+`testdata/imported_component_instances.txtar` covers html, bubbletea and
+android with passing run records, and fails with the inliner change reverted.
 
 ### Components are not values, and are not going to be
 

@@ -38,7 +38,7 @@ func lowerInlineComponents(pkg *ir.Package, _ Features, opts Options) error {
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, local: opts.localComponents, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}}
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -249,9 +249,6 @@ func identPos(id *ir.Ident) string {
 type inlineCompState struct {
 	pkg  *ir.Package
 	main *ir.Component
-	// local is what the package being lowered declares, as opposed to what it
-	// renders. Nil falls back to reading pkg.Components.
-	local map[*ir.Component]bool
 	// onList is pkg.Components as the pass found it: what the prune at the end
 	// is allowed to keep.
 	onList map[*ir.Component]bool
@@ -627,9 +624,11 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	if len(comp.Body) == 0 && len(comp.Vars) == 0 && len(comp.Funcs) == 0 {
 		return false
 	}
-	// Only inline components declared in this package, a stdlib component
-	// this build's platform extension specialized, or a stdlib component
-	// carrying a body of its own.
+	// Only inline components declared in this package or an imported one this
+	// build renders, a stdlib component this build's platform extension
+	// specialized, or a stdlib component carrying a body of its own. An
+	// imported component is on the list because Lower put it there, and its
+	// state is per-instance for the same reasons a local one's is.
 	//
 	// The specialized case is passPlatformExtensionBody's: it swapped that
 	// body and its vars into the component, and state declared there is
@@ -643,7 +642,7 @@ func (st *inlineCompState) inlinable(comp *ir.Component) bool {
 	// codegen carrying a body no backend reads, so the declaration rendered
 	// its children and nothing of its own — which is what a bodied lib
 	// component did on every target until now.
-	if !st.isLocalComponent(comp) && !st.specializedHere(comp) && !comp.Stdlib {
+	if !st.onList[comp] && !st.specializedHere(comp) && !comp.Stdlib {
 		return false
 	}
 	return true
@@ -686,17 +685,6 @@ func (st *inlineCompState) specializedHere(comp *ir.Component) bool {
 	}
 	_, ok := comp.PlatformOverrides[st.platform]
 	return ok
-}
-
-// isLocalComponent reports whether comp is declared in the package being
-// lowered. Read from the set Lower captured before it widened pkg.Components
-// to every component this build renders: an imported component is lowered like
-// any other now, but it is still not this package's to inline away.
-func (st *inlineCompState) isLocalComponent(comp *ir.Component) bool {
-	if st.local != nil {
-		return st.local[comp]
-	}
-	return slices.Contains(st.pkg.Components, comp)
 }
 
 func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error) {

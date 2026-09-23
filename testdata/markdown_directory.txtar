@@ -112,14 +112,13 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n_1: null };
-  state.n_1 = 2;
+  var state = { n__inst0: 1, n__inst1: 2 };
   function String(v) {
     return "" + v;
   }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n1.textContent = "guide island " + String(state.n_1);
+    __n1.textContent = "guide island " + String(state.n__inst1);
   }
   __sngl_init();
 })();
@@ -150,7 +149,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = {};
+  var state = { n__inst0: 1, n__inst1: 2 };
 })();
 </script>
 </body></html>
@@ -182,18 +181,17 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n_1: null };
-  state.n_1 = 1;
+  var state = { n__inst0: 1, n__inst1: 2 };
   function String(v) {
     return "" + v;
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = "home island " + String(state.n_1);
+    __n0.textContent = "home island " + String(state.n__inst0);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:36d6108246acd73f1f357796fb93dd5f
+pass sha256:b49d708c1ffafe9ea6c48854cc9d3eb0

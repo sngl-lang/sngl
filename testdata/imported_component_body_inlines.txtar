@@ -71,10 +71,7 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { __ctx_listDepth_1: null, __ctx_listDepth__inst0_1: null, __ctx_listDepth__inst1_1: null };
-  state.__ctx_listDepth_1 = 0;
-  state.__ctx_listDepth__inst0_1 = state.__ctx_listDepth_1 + 1;
-  state.__ctx_listDepth__inst1_1 = state.__ctx_listDepth_1;
+  var state = {};
   function bulletAt(depth) {
     if (depth <= 1) {
       ;
@@ -83,13 +80,15 @@ body { font-family: system-ui, sans-serif; }
     ;
     return ["\u2022", "\u25E6", "\u25AA"][(depth - 1) % 3];
   }
+  var __ctx_listDepth__inst0 = 0;
+  var __ctx_listDepth__inst1 = __ctx_listDepth__inst0 + 1;
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = bulletAt(state.__ctx_listDepth__inst0_1);
+    __n0.textContent = bulletAt(__ctx_listDepth__inst1);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ea488add2eb9f7bc1a9e06ccf2ef8b07
+pass sha256:6ca78a8c27f3b944d1c972549be267af

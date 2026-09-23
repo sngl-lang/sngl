@@ -134,13 +134,6 @@ type Options struct {
 	// this is how it says so. Nil means it claims none.
 	ClaimsIntrinsic func(id string) bool
 
-	// localComponents is the set the package itself declares, captured before
-	// Lower widens pkg.Components to everything this build renders. Inlining
-	// asks a different question from the rest of the pipeline -- whose
-	// declaration is this? -- and that question is still about the package.
-	// Set by Lower; a caller's value is overwritten.
-	localComponents map[*ir.Component]bool
-
 	// instSeq numbers the `__instN` suffix each substituted component's state
 	// is renamed with. Shared, because two passes substitute into one emitted
 	// namespace -- passInlinePure takes a platform override, passNoInlineComponents
@@ -201,7 +194,6 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	// list means at the end is what this build renders.
 	added := reachableForeignComponents(pkg, local, opts.Platform)
 	pkg.Components = append(slices.Clone(declared), added...)
-	opts.localComponents = local
 	addedSet := make(map[*ir.Component]bool, len(added))
 	for _, c := range added {
 		addedSet[c] = true

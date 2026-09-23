@@ -12,11 +12,13 @@ this target and being asked ahead of the rename table rather than through it.
 So the page declared `state.__ctx_depth_1` and read a bare `__ctx_depth` that
 nothing bound: a ReferenceError at startup, under markup that rendered right.
 
-Reachable through an imported component, which is the one html leaves standing
-here -- a local one is inlined into the window, where its synthesized vars
-become top-level bindings and a bare read is correct.
+It was reachable through an imported component, which html used to leave
+standing. The lowering now inlines an imported component like a local one, so
+this input reaches the other half of the rule: an inlined body's synthesized
+vars become top-level bindings renamed per instance, and a read of that
+renamed name is spelled bare, which is correct.
 
-deny * `[^.]__ctx_depth[^_]` -- every mention is the promoted `state.__ctx_depth_1`; a bare one is a name nothing binds
+deny * `[^.]__ctx_depth[^_]` -- every mention is the instance's `__ctx_depth__inst0`; the unrenamed name is one nothing binds
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -61,18 +63,18 @@ body { font-family: system-ui, sans-serif; }
 <script>
 (() => {
   // sngl-entry.js
-  var state = { __ctx_depth_1: null };
-  state.__ctx_depth_1 = 0;
+  var state = {};
+  var __ctx_depth__inst0 = 0;
   function String(v) {
     return "" + v;
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
-    __n0.textContent = "depth " + String(state.__ctx_depth_1 + 1);
+    __n0.textContent = "depth " + String(__ctx_depth__inst0 + 1);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:0e564fb61bcb55b96817d69448564ea5
+pass sha256:0131582e9a1456a35cd997c5b316e986
