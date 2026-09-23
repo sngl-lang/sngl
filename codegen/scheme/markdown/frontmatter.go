@@ -27,12 +27,12 @@ func splitFrontmatter(src []byte) ([]constDecl, []byte, int, error) {
 	if !ok {
 		return nil, src, 0, nil
 	}
-	end := bytes.Index(rest, []byte("\n---"))
-	if end < 0 {
+	before, after, ok := bytes.Cut(rest, []byte("\n---"))
+	if !ok {
 		return nil, src, 0, fmt.Errorf("frontmatter opened with --- and is never closed")
 	}
-	block := rest[:end]
-	body := rest[end+len("\n---"):]
+	block := before
+	body := after
 	if i := bytes.IndexByte(body, '\n'); i >= 0 {
 		body = body[i+1:]
 	} else {

@@ -1,7 +1,6 @@
 package lower
 
 import (
-
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
