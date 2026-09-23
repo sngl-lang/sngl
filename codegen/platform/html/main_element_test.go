@@ -67,7 +67,7 @@ func generateMainPage(t *testing.T, src string) string {
 	if len(diags) > 0 {
 		t.Fatalf("check: %v", diags[0])
 	}
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),

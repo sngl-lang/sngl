@@ -24,6 +24,26 @@ func (c *checker) finishTreeMarks(decl *ast.ComponentDecl, comp *ir.Component, p
 	named := comp.ChildrenType
 	comp.ChildrenType = nil
 
+	// Where a sngl:x/gen mark may be written, asked here for the reason the
+	// shape rule below is: the mark applies while the declaration is still
+	// registering, and the return position it has to be measured against is
+	// read at this point.
+	//
+	// Two grains, two homes. What a *target* can do is read off the two
+	// build-tree nodes its pair was selected by; what a *primitive* renders is
+	// read off that primitive. A mark written anywhere else resolves and is
+	// asked nothing, which is the failure the mark table exists to prevent.
+	if g := comp.Gen; g != nil {
+		if len(g.Can)+len(g.Cannot)+len(g.Wants) > 0 && !ir.IsBuildTargetTree(treeStruct(named)) {
+			c.error(decl.Pos, "component %s: #[gen.can], #[gen.cannot] and #[gen.wants] say what a target can do, and belong on a build-target node -- one whose return position is build.language or build.platform", comp.Name)
+		}
+		// A wildcard is a primitive too, and html is why: its widgets are one
+		// `element` every tag resolves to rather than a declaration each.
+		if len(g.Renders) > 0 && comp.Intrinsic == "" && comp.Wildcard == "" {
+			c.error(decl.Pos, "component %s: #[gen.renders] says what a primitive's own nodes support, and belongs on an #[intrinsic] or #[wildcard] declaration", comp.Name)
+		}
+	}
+
 	if named == nil {
 		if comp.Treeless || c.treeOptional(decl, comp) {
 			return

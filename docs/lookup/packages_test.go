@@ -186,22 +186,36 @@ func TestLookupSnglOmitsInternalTier(t *testing.T) {
 	if strings.Contains(res.Index.Description, "internal/") {
 		t.Errorf("description lists the internal tier: %q", res.Index.Description)
 	}
-	for _, f := range res.Index.Functions {
-		switch f.Name {
-		case "CanvasApplyStyle", "CanvasDrawRect", "Translate":
-			t.Errorf("intrinsic %q from the internal tier is in the sngl index", f.Name)
+	// Over Packages, which is what this index carries: `sngl` names the tree
+	// rather than a package with members, so DeclIndex.Packages is set instead
+	// of the declaration sections.
+	//
+	// It used to walk Index.Functions, which for this target is always empty —
+	// so the loop asserted nothing at all, for any name. Two of the three it
+	// named were gone or had never been declared, which is how that stayed
+	// invisible: a leak would have had to be of a name nothing could emit.
+	if len(res.Index.Packages) == 0 {
+		t.Fatal("the sngl index lists no packages; this test would pass vacuously")
+	}
+	for _, p := range res.Index.Packages {
+		if strings.HasPrefix(p.Path, "internal/") || strings.HasPrefix(p.Path, "sngl:internal/") {
+			t.Errorf("the compiler's own tier is in the sngl index: %q", p.Path)
 		}
 	}
 }
 
 // Naming one still resolves, as an internal Go package does.
 func TestLookupInternalPackageByName(t *testing.T) {
-	res, err := lookup.Lookup("sngl:internal/draw")
+	// sngl:internal/ir rather than the draw package this used to name, which
+	// is gone: its last two intrinsics went with the lowering that emitted
+	// them. Asserting on Functions keeps the check real -- ir declares macros
+	// and the flag enums, and an index with none of them resolved to nothing.
+	res, err := lookup.Lookup("sngl:internal/ir")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Index == nil || len(res.Index.Functions) == 0 {
-		t.Fatal("sngl:internal/draw resolved to nothing")
+	if res.Index == nil || len(res.Index.Macros)+len(res.Index.Enums) == 0 {
+		t.Fatal("sngl:internal/ir resolved to nothing")
 	}
 }
 

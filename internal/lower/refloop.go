@@ -22,11 +22,11 @@ import (
 // list's dependents and re-renders the loop's slot.
 var passRefLoop = pass{
 	name:    "RefLoop",
-	enabled: func(Caps) bool { return true }, // core loop semantics
+	enabled: func(Features) bool { return true }, // core loop semantics
 	apply:   lowerRefLoop,
 }
 
-func lowerRefLoop(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerRefLoop(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

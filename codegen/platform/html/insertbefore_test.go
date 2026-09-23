@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 )
 
 // The capability and the implementation must agree. Declaring one without the
@@ -14,7 +13,7 @@ import (
 // method lowering never reaches.
 func TestInsertBeforeCapabilityMatchesTranslator(t *testing.T) {
 	_, implements := any((*htmlTranslator)(nil)).(codegen.ChildInserter)
-	declared := (&Generator{}).Capabilities(&javascript.Translator{}).InsertBefore
+	declared := codegen.CapsOrNone("js", "html").InsertBefore
 	if declared != implements {
 		t.Errorf("Features.InsertBefore = %v but htmlTranslator implements codegen.ChildInserter = %v; declare both or neither", declared, implements)
 	}

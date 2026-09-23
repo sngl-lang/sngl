@@ -37,7 +37,7 @@ func TestInstanceEventsRewritesAnEmitInSlotContent(t *testing.T) {
 	}
 	pkg := &ir.Package{Components: []*ir.Component{{Name: "main"}, picker}}
 
-	if err := lowerInstanceEvents(pkg, Caps{NoReactivity: true}, Options{}); err != nil {
+	if err := lowerInstanceEvents(pkg, without("reactivity"), Options{}); err != nil {
 		t.Fatalf("lowerInstanceEvents: %v", err)
 	}
 

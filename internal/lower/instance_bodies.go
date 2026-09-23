@@ -42,9 +42,9 @@ var passInstanceBodies = pass{
 //
 // With no target at all there is nothing to render, which is the state an LSP
 // or a format pass lowers in.
-func hasInstanceRuntime(c Caps) bool { return c.NoReactivity }
+func hasInstanceRuntime(c Features) bool { return !c.Reactivity }
 
-func lowerInstanceBodies(pkg *ir.Package, caps Caps, opts Options) error {
+func lowerInstanceBodies(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}

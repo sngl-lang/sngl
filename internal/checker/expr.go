@@ -514,6 +514,7 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 	if t == nil {
 		t = dynNoSymType(sym, "symbol %q (%T) has no type", x.Name, sym)
 	}
+	c.reportCountedHandleRead(x, sym, t)
 	ident := &ir.Ident{AST: x, Type: t, Name: x.Name, Sym: sym}
 	// An &-bound loop variable has type ref<T>. Auto-deref it to T (an explicit
 	// Unary{Deref}, mirroring Select-operand deref) so reads type-check as the
@@ -524,6 +525,36 @@ func (c *checker) inferIdent(x *ast.IdentExpr) ir.Expr {
 		return &ir.Unary{Type: t.Elems[0], Op: ast.UnaryDeref, Operand: ident}
 	}
 	return ident
+}
+
+// reportCountedHandleRead reports a node handle read from outside the scope it
+// was rendered in. declareNodeIDsIn hoists such an id wrapped in that scope's
+// count -- `option` through an `if`, `list` through a `for` -- and neither is a
+// handle any target can act on: every backend emitted the bare name, html
+// declaring it inside the slot render and reading it outside, bubbletea
+// emitting the read as the only occurrence of the name in the file.
+//
+// It is reported at the read rather than shipped as a type, because the type
+// alone is silent: option and list are both absent from hasNoLegitimateFields,
+// so `maybe.value` off one degrades to dyn and the three broken builds become
+// three no-ops. The read is also the line that has to move.
+//
+// Only a node handle is asked. A `for` over windows binds a real list<window>
+// that the unroll fills in (collectForLoopWindowIDs), and that var carries no
+// NodeHandle.
+func (c *checker) reportCountedHandleRead(x *ast.IdentExpr, sym ir.Symbol, t *ir.Type) {
+	v, ok := sym.(*ir.Var)
+	if !ok || !v.NodeHandle || t == nil {
+		return
+	}
+	switch t.Kind {
+	case ir.TypeOption, ir.TypeList:
+	default:
+		return
+	}
+	k := c.handleCount[v]
+	c.error(x.Pos, "%s is rendered inside %s, so out here it is %s rather than one node; %s",
+		x.Name, k.scopeNoun(), t, k.scopeAdvice())
 }
 
 // exported reports whether a looked-up symbol is exported. Symbols that
@@ -2885,11 +2916,32 @@ func (c *checker) checkBlock(block *ast.StmtBlock) {
 }
 
 func (c *checker) checkBlockIR(block *ast.StmtBlock) []ir.Stmt {
+	return c.checkBlockScoped(block, false, nil)
+}
+
+// checkScopeBlockIR is checkBlockIR for the two blocks that are a scope in the
+// language rather than only in this checker: an `if` body and a `for` body.
+// Their node ids are hoisted into the scope it pushes, which is what makes a
+// read from inside one the plain handle where a read from outside carries the
+// count -- and what lets an id there shadow an outer binding, as any nested
+// declaration does.
+//
+// Every other block pushes a scope too, a node's children included, but is not
+// one: `vbox { text #label }` beside a `var label` is the same scope written
+// with braces in it, and hoisting there let the id shadow a var it sits under.
+func (c *checker) checkScopeBlockIR(block *ast.StmtBlock, headNames ...string) []ir.Stmt {
+	return c.checkBlockScoped(block, true, headNames)
+}
+
+func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames []string) []ir.Stmt {
 	if block == nil || !block.IsDefined() {
 		return nil
 	}
 	c.pushScope()
 	defer c.popScope()
+	if isScope {
+		c.declareOwnNodeIDs(block, headNames...)
+	}
 	var out []ir.Stmt
 	for _, stmt := range block.Stmts {
 		if vd, ok := stmt.(*ast.VarDecl); ok {
@@ -2993,6 +3045,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
+		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
 		c.requireValueType(valueType, x.Pos)
 		if x.Op == ast.AssignSet {
 			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
@@ -3033,6 +3086,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
+		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
 		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
 			return nil
 		}
@@ -3245,7 +3299,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		narrowingsFrom(condExpr, true, thenFacts)
 		var thenRegion []ir.Stmt
 		restoreThen := c.pushNarrowings(thenFacts, &thenRegion, nil)
-		body := c.checkBlockIR(&x.Body)
+		body := c.checkScopeBlockIR(&x.Body)
 		thenRegion = body
 		restoreThen()
 
@@ -3255,7 +3309,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			narrowingsFrom(condExpr, false, elseFacts)
 			var elseRegion []ir.Stmt
 			restoreElse := c.pushNarrowings(elseFacts, &elseRegion, nil)
-			elseBody = c.checkBlockIR(&x.Else)
+			elseBody = c.checkScopeBlockIR(&x.Else)
 			elseRegion = elseBody
 			restoreElse()
 		}
@@ -3396,7 +3450,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			}
 		}
 		c.loopDepth++
-		body := c.checkBlockIR(&x.Body)
+		body := c.checkScopeBlockIR(&x.Body, x.Key, x.Value)
 		c.loopDepth--
 		var elseBody []ir.Stmt
 		if x.Else.IsDefined() {
@@ -3404,7 +3458,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 			// loop: an escape written there acts on whichever loop encloses
 			// it, which is why loopEscapes reads a nested loop's else and not
 			// its body.
-			elseBody = c.checkBlockIR(&x.Else)
+			elseBody = c.checkScopeBlockIR(&x.Else, x.Key, x.Value)
 		}
 		c.popScope()
 		loop := &ir.For{AST: x, Key: x.Key, Value: x.Value, KeySym: keySym, ValueSym: valueSym, Iter: iterExpr, ElemType: elemType, Body: body, Else: elseBody, HoistedWindowIDs: hoistedIDs, RefElem: elemRef}
@@ -4925,11 +4979,11 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	}
 	c.pushScope()
 	c.loopDepth++
-	body := c.checkBlockIR(&x.Body)
+	body := c.checkScopeBlockIR(&x.Body)
 	c.loopDepth--
 	var elseBody []ir.Stmt
 	if cond != nil && x.Else.IsDefined() {
-		elseBody = c.checkBlockIR(&x.Else)
+		elseBody = c.checkScopeBlockIR(&x.Else)
 	}
 	c.popScope()
 	return &ir.For{AST: x, Iter: cond, ElemType: TypDyn, Body: body, Else: elseBody}
@@ -5406,4 +5460,53 @@ func errorEventName(t *ir.Type) string {
 		return "error"
 	}
 	return t.String()
+}
+
+// refuseNodePropAssign reports an imperative write to a node's prop.
+//
+// A prop is declarative: `ui.text(value=greeting)` says what the node shows
+// for as long as it is rendered, and reactivity re-evaluates it when
+// `greeting` changes. Writing `label.value = "bye"` puts a second source of
+// truth beside that one, which the next render of the first overwrites -- so
+// the program that looks like it worked is the program whose write is silently
+// undone. Changing the state the prop reads is the way to say it, and it is
+// the only way that survives a re-render.
+//
+// So the answer is the same on every target and does not wait for one. It used
+// to be neither: the write type-checked, and what became of it was whatever
+// each backend made of a field it had never been told about -- `label.Value`
+// on fyne, against a `widget.Label` that spells it `Text`, and with no
+// receiver at all; on html an assignment the platform dropped without a word
+// once the reference reached it.
+//
+// What a *lowering* writes is untouched. passReactivity and passDeclarative
+// emit `__n0.text = expr` by the hundred, and those are how a prop reaches the
+// host; they are built after this check and never meet it.
+func (c *checker) refuseNodePropAssign(target ir.Expr, pos ast.Pos, verb string) {
+	sel, ok := target.(*ir.Select)
+	if !ok {
+		return
+	}
+	id, ok := sel.Operand.(*ir.Ident)
+	if !ok {
+		return
+	}
+	v, ok := id.Sym.(*ir.Var)
+	if !ok || !v.NodeHandle {
+		return
+	}
+	// A handle a lowering pass made is exempt, because the rule is about what a
+	// *program* may write: passReactivity and passDeclarative emit
+	// `__n0.value = expr` by the hundred, and that is how a prop reaches the
+	// host at all.
+	//
+	// Config.Lowered is the same exemption for a document *printed* from that
+	// IR and checked again. The flag is lost in the text -- `text #__n0(…)`
+	// re-parses as an ordinary node with an ordinary id -- so the caller that
+	// lowered it says so instead.
+	if v.Synthesized || c.cfg.Lowered {
+		return
+	}
+	c.error(pos, "cannot %s %s.%s: a node's prop is what the tree says it is, not a cell to write; change the state it reads instead",
+		verb, id.Name, sel.Field)
 }

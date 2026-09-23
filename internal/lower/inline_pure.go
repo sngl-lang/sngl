@@ -27,11 +27,11 @@ import (
 // sees has already had high-level shapes (toggles, ternaries) lowered.
 var passInlinePure = pass{
 	name:    "InlinePure",
-	enabled: func(c Caps) bool { return true }, // always on (strict path gated internally)
+	enabled: func(c Features) bool { return true }, // always on (strict path gated internally)
 	apply:   lowerInlinePure,
 }
 
-func lowerInlinePure(pkg *ir.Package, caps Caps, opts Options) error {
+func lowerInlinePure(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -649,13 +649,16 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// ID preservation: transfer callsite.ID to the first top-level
 	// NodeInst of the substituted body.
+	//
+	// The handle travels with it. It is the id's other half -- the binding
+	// every read of the id resolves to -- and leaving it behind severed the
+	// two for every node whose component inlines, which is every stdlib
+	// component on every platform with an override. uniqueNodeIDs then had a
+	// nil Handle to key on, so its refusal of a read that cannot say which
+	// copy it meant never fired for one, and a rename had nothing to repoint
+	// the reads through.
 	if callsite.ID != "" {
-		for _, s := range body {
-			if ni, ok := s.(*ir.NodeInst); ok {
-				ni.ID = callsite.ID
-				break
-			}
-		}
+		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
 	}
 
 	// Event-handler transfer (platform-independent rule): any pure wrapper

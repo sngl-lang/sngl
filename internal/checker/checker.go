@@ -44,6 +44,22 @@ type Config struct {
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
 	Replaces map[string]string
+	// Lowered says this document was printed from lowered IR rather than
+	// written by anyone, so the rules about what a *program* may say do not
+	// apply to it.
+	//
+	// One rule needs it today: a node's prop may not be assigned. That is a
+	// statement about programs -- a prop is what the tree says it is -- and
+	// the lowering's whole job is to turn it into the `__n0.value = expr` a
+	// host actually runs. In IR the two are told apart by Var.Synthesized;
+	// printed and re-parsed, `text #__n0(…)` is an ordinary node with an
+	// ordinary id, and nothing in the text says which side of the pipeline
+	// wrote it.
+	//
+	// So the caller says. Only a caller that lowered the IR itself can, which
+	// is the round-trip tests and `sngl dump --stage lowered`; a program
+	// reaching the checker through any other path is held to the rule.
+	Lowered bool
 	// LibSources substitutes the source of a library package, keyed by lib
 	// path ("platform/teststub"). It exists for the in-test platform stubs,
 	// which register a plugin with no lib/ directory behind it; production
@@ -429,6 +445,9 @@ type checker struct {
 	// channel, so its declaration is where the payload is written down.
 	boundaryComp *ir.Component
 	windowType   *ir.Type
+	// handleCount is the outermost scope a counted node handle was reached
+	// through, for the diagnostic reportCountedHandleRead writes.
+	handleCount map[*ir.Var]nodeCount
 	// currentWindow is the window whose body is being checked, so a func or a
 	// var written there is attached to it rather than to the package. nil
 	// outside a window body.
@@ -2905,7 +2924,7 @@ func (c *checker) checkPackageBody() {
 	c.pushScope()
 	defer c.popScope()
 	for _, st := range c.pendingPkgBody {
-		c.declareNodeIDsStmt(st, false)
+		c.declareNodeIDsStmt(st, nil)
 	}
 	for _, st := range c.pendingPkgBody {
 		if checked := c.checkStmt(st); checked != nil {
@@ -2944,6 +2963,31 @@ func (c *checker) hoistPkgBodyWindowIDs() {
 			}
 			c.pkgBodyWindowIDs[v.Name] = v
 		}
+	}
+}
+
+// hoistWindowInteriorIDs declares the ids inside each registered window as
+// `option<T>` in the package scope, so a read of one from another window's
+// handler is the count it carries rather than a name nothing declares.
+//
+// It is a pass of its own because a window written at the root of a file is
+// *registered* in pass1 rather than left in pkg.Body, so declareNodeIDsStmt --
+// which counts a window it meets as a statement -- never walks one. It runs
+// before the window bodies are checked, since a handler in the second window
+// is what reads the first window's ids, and checkWindow then hoists the same
+// ids plain into the window's own scope, shadowing these.
+//
+// Two windows writing one id is the flat namespace it has always been: the
+// first claims the name and the second is skipped, so the type names the first
+// window's component. Only the message is affected -- every read of a counted
+// handle is refused either way.
+func (c *checker) hoistWindowInteriorIDs() {
+	for _, w := range c.pkg.Windows {
+		vn := w.VisualNode()
+		if vn == nil {
+			continue
+		}
+		c.declareNodeIDsIn(windowBodyBlock(vn, c.windowComp), []nodeCount{countWindow})
 	}
 }
 
@@ -3015,18 +3059,6 @@ func (c *checker) resolveComponentSymbol(name string) (ir.Symbol, bool) {
 // hoists its own element ids, so a few sites care about it by name.
 func (c *checker) isWindowNode(name string) bool {
 	return c.builtinNodeKind(name) == ir.BuiltinWindow
-}
-
-// crossesTreeFamily reports whether the node this name instantiates hosts a
-// family other than its own -- a window over widgets, a canvas over shapes.
-// See ir.CrossesTreeFamily for what that means for an id.
-func (c *checker) crossesTreeFamily(name string) bool {
-	sym, ok := c.resolveComponentSymbol(name)
-	if !ok {
-		return false
-	}
-	comp, _ := sym.(*ir.Component)
-	return ir.CrossesTreeFamily(comp)
 }
 
 // visualNodeTarget extracts the target name from a VisualNode.
@@ -3365,6 +3397,7 @@ func (c *checker) pass2() {
 	c.checkComponentBodies()
 
 	c.hoistPkgBodyWindowIDs()
+	c.hoistWindowInteriorIDs()
 
 	// The windows pass1 registered. A window written as a *statement* is
 	// checked where it stands and never reaches this list, so there is
@@ -4236,64 +4269,275 @@ func (c *checker) checkWindowVarHandlers(w *ir.Window) {
 // mechanism that lets lowered IR — whose synthesized node handles (`__nN`,
 // `__root`) are referenced by bare name — round-trip through reparse + check.
 func (c *checker) declareNodeIDs(block *ast.StmtBlock) {
-	c.declareNodeIDsIn(block, false)
+	c.declareNodeIDsIn(block, nil)
 }
 
-// declareNodeIDsIn hoists the node ids in block. inLoop marks a body that a
-// `for` repeats: a window id there names the list of windows the loop
-// produces, which collectForLoopWindowIDs binds, not a single window.
-func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, inLoop bool) {
+// nodeCount is what one scope says about a handle reached through it from
+// outside. An `if` may not have run, so the handle is an `option`; a `for` may
+// have run any number of times, so it is a `list`. A for-else is the first and
+// not the second: it runs at most once, when the loop did not run at all.
+type nodeCount int
+
+const (
+	countOption nodeCount = iota
+	countList
+	// countWindow is an `if`'s count with a window's reason: a window may not
+	// be open, and on a target whose windows are separate documents it never
+	// is from the other side. It is a kind of its own only so the diagnostic
+	// can name what was crossed -- the type it wraps in is the same option.
+	countWindow
+)
+
+// scopeNoun names what a count crossed, and scopeAdvice says what to do about
+// it -- for the diagnostic reportCountedHandleRead writes at the read.
+func (k nodeCount) scopeNoun() string {
+	switch k {
+	case countList:
+		return "a for"
+	case countWindow:
+		return "another window"
+	default:
+		return "an if"
+	}
+}
+
+func (k nodeCount) scopeAdvice() string {
+	switch k {
+	case countList:
+		return "read it inside the loop"
+	case countWindow:
+		return "a window may not be open, and on a target whose windows are separate documents it never is from out here"
+	default:
+		return "read it inside the if"
+	}
+}
+
+// withCount is counts plus one, copied rather than appended in place. The walk
+// below is depth-first and hands the result to a callee that appends to it
+// again, so sharing a backing array would let a deeper level overwrite the
+// count a shallower one is still holding.
+func withCount(counts []nodeCount, k nodeCount) []nodeCount {
+	out := make([]nodeCount, len(counts)+1)
+	copy(out, counts)
+	out[len(counts)] = k
+	return out
+}
+
+// declareNodeIDsIn hoists the node ids in block. counts is the chain of scopes
+// crossed to reach it, outermost first, and is what the handle's type is
+// wrapped in: a node written inside a `for` inside an `if` reads from outside
+// both as `option<list<T>>`.
+//
+// Each block's own ids are hoisted again, at their own depth, into the scope
+// checkBlockIR pushes for it — so a read from *inside* the scope is the plain
+// handle it has always been, shadowing the wrapped binding this leaves
+// outside.
+func (c *checker) declareNodeIDsIn(block *ast.StmtBlock, counts []nodeCount) {
 	if block == nil || !block.IsDefined() {
 		return
 	}
 	for _, s := range block.Stmts {
-		c.declareNodeIDsStmt(s, inLoop)
+		c.declareNodeIDsStmt(s, counts)
 	}
 }
 
-func (c *checker) declareNodeIDsStmt(s ast.Stmt, inLoop bool) {
+// declareOwnNodeIDs hoists only the ids at this block's own depth: it reaches
+// through a node's children, which are the same scope, and stops at an `if` or
+// a `for`, which are not. The block each of those opens hoists its own when
+// checkBlockIR reaches it, so descending here would claim the name twice --
+// and claim it *before* the block's own statements are checked, which is what
+// made a `#label` inside an `if` collide with a sibling `var label` that
+// previously won the name outright.
+// headNames are the names the enclosing construct's own head binds -- a loop's
+// variables. They are declared in the scope the head pushed, one out from the
+// body, so a LookupLocal here would miss them; and they are what the body was
+// written against, so `for var item = items { text #item(value=item) }` must
+// keep reading the element. An id is the thing that gives way, as it does to a
+// sibling declaration.
+func (c *checker) declareOwnNodeIDs(block *ast.StmtBlock, headNames ...string) {
+	if block == nil || !block.IsDefined() {
+		return
+	}
+	declared := blockDeclaredNames(block)
+	for _, n := range headNames {
+		if n == "" {
+			continue
+		}
+		if declared == nil {
+			declared = map[string]bool{}
+		}
+		declared[n] = true
+	}
+	c.declareOwnNodeIDsIn(block, declared)
+}
+
+func (c *checker) declareOwnNodeIDsIn(block *ast.StmtBlock, declared map[string]bool) {
+	if block == nil || !block.IsDefined() {
+		return
+	}
+	for _, s := range block.Stmts {
+		switch n := s.(type) {
+		case *ast.VisualNode:
+			target := visualNodeTarget(n)
+			if !declared[n.ID] {
+				c.declareNodeID(n.ID, target, c.isWindowNode(target), nil, shadowOuter)
+			}
+			// Through a canvas as through anything else. Stopping at a family
+			// change here while declareNodeIDsStmt no longer does left an id
+			// written in a canvas inside an `if` hoisted with the `if`'s count
+			// at the outer scope and never re-declared in the `if`'s own -- so
+			// a read from inside that same `if` was told to "read it inside
+			// the if", which is where it already was.
+			c.declareOwnNodeIDsIn(&n.Block, declared)
+		case *ast.CallStmt:
+			if target, id, isElem := elementRefCallInfo(n.Call); isElem && !declared[id] {
+				c.declareNodeID(id, target, false, nil, shadowOuter)
+			}
+		}
+	}
+}
+
+// blockDeclaredNames is the names this block's own statements declare. A node
+// id written beside one of them declines to it, which is the rule a same-scope
+// `var label` beside a `#label` has always had: the hoist runs before the
+// statements are checked, so measuring the scope would find nothing there yet
+// and the var would then collide with the id rather than win over it.
+//
+// Only this block's own statements, not a nested one's: an id inside an `if`
+// is in a scope of its own and shadows an outer binding, which is the whole
+// point of hoisting it there.
+func blockDeclaredNames(block *ast.StmtBlock) map[string]bool {
+	if block == nil || !block.IsDefined() {
+		return nil
+	}
+	var out map[string]bool
+	add := func(name string) {
+		if name == "" {
+			return
+		}
+		if out == nil {
+			out = map[string]bool{}
+		}
+		out[name] = true
+	}
+	specs := func(ss []ast.VarSpec) {
+		for _, sp := range ss {
+			for _, n := range sp.Names {
+				add(n)
+			}
+		}
+	}
+	for _, s := range block.Stmts {
+		switch n := s.(type) {
+		case *ast.VarDecl:
+			specs(n.Specs)
+		case *ast.ConstDecl:
+			specs(n.Specs)
+		case *ast.FuncDef:
+			add(n.Name)
+		case *ast.StructDef:
+			add(n.Name)
+		case *ast.EnumDef:
+			add(n.Name)
+		case *ast.UnitDef:
+			add(n.Name)
+		case *ast.ComponentDecl:
+			add(n.Name)
+		}
+	}
+	return out
+}
+
+func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 	switch n := s.(type) {
 	case *ast.VisualNode:
 		target := visualNodeTarget(n)
 		isWindow := c.isWindowNode(target)
-		if isWindow && inLoop {
+		if isWindow && countsRepeat(counts) {
 			// The loop hoists this id as a list of windows.
 			return
 		}
-		c.declareNodeID(n.ID, target, isWindow)
-		// Descend into the node's own children, unless the node crosses tree
-		// families: what is under one of those is a second rendering surface,
-		// and a handle does not carry across. Such a node hoists the ids
-		// beneath it into a scope of its own, which is where a read from
-		// inside resolves and why one from outside does not.
-		if !c.crossesTreeFamily(target) {
-			c.declareNodeIDsIn(&n.Block, inLoop)
+		c.declareNodeID(n.ID, target, isWindow, counts, yieldToOuter)
+		switch {
+		case isWindow:
+			// A window is a second rendering surface, and what is under one is
+			// reached from outside it at the count that surface confers: it
+			// may not be open. The window hoists these same ids plain into its
+			// own scope (checkWindow), which is what a read from inside
+			// resolves to and why only a read from outside carries the count.
+			c.declareNodeIDsIn(&n.Block, withCount(counts, countWindow))
+		default:
+			// Every other family change hoists like any other scope. A canvas
+			// used to stop the hoist outright, because a shape is spliced into
+			// the calls that paint it before any backend sees one and a typed
+			// `dot.r` therefore rendered nothing -- but refusing the id was
+			// restating that silence rather than answering it. passNodePropReads
+			// answers it: a prop read off a node the target keeps nothing of is
+			// the expression the prop was given, and which nodes those are is
+			// what a primitive says with `#[gen.renders(identity)]`.
+			c.declareNodeIDsIn(&n.Block, counts)
 		}
 	case *ast.CallStmt:
 		// `text #out(...)` / `button(@click)` parse as call statements but
 		// carry an element-ref id semantically.
 		if target, id, isElem := elementRefCallInfo(n.Call); isElem {
-			c.declareNodeID(id, target, false)
+			c.declareNodeID(id, target, false, counts, yieldToOuter)
 		}
 	case *ast.IfStmt:
-		c.declareNodeIDsIn(&n.Body, inLoop)
-		c.declareNodeIDsIn(&n.Else, inLoop)
+		c.declareNodeIDsIn(&n.Body, withCount(counts, countOption))
+		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))
 	case *ast.ForStmt:
-		c.declareNodeIDsIn(&n.Body, true)
-		c.declareNodeIDsIn(&n.Else, true)
+		c.declareNodeIDsIn(&n.Body, withCount(counts, countList))
+		c.declareNodeIDsIn(&n.Else, withCount(counts, countOption))
 	}
+}
+
+// countsRepeat reports whether any scope crossed repeats its body, which is
+// the question a window asks: one inside a `for` is hoisted by
+// collectForLoopWindowIDs as the list of windows the loop produces, and one
+// inside an `if` is the single window it always was.
+func countsRepeat(counts []nodeCount) bool {
+	return slices.Contains(counts, countList)
 }
 
 // declareNodeID binds one node id. target names the component the node
 // instantiates.
-func (c *checker) declareNodeID(id, target string, isWindow bool) {
+// idMode says what a node id may take the name from, and the two hoists differ
+// because they put the binding in different places.
+//
+// shadowOuter is the id in the scope it was written in: it is lexically here,
+// so it wins over anything an enclosing scope bound -- a var, a const, a
+// package declaration -- exactly as a nested binding of any other kind does.
+// What it declines to is a name this same block declares (blockDeclaredNames),
+// which is the sibling `var label` beside `#label` that has always won.
+//
+// yieldToOuter is the counted hoist, which puts the id in a scope the node is
+// *not* in so that a read from out there carries the scope's count. That
+// binding exists only to be refused, so it must not take a name an outer scope
+// legitimately holds: `#greeting` inside an `if` may not stop a package
+// `const greeting` resolving out here, where the node is not.
+type idMode int
+
+const (
+	shadowOuter idMode = iota
+	yieldToOuter
+)
+
+func (c *checker) declareNodeID(id, target string, isWindow bool, counts []nodeCount, mode idMode) {
 	if id == "" {
 		return
 	}
-	// Skip if the name already resolves (a prop, var, func, or outer symbol);
-	// node ids never shadow an existing binding.
-	if _, ok := c.scope.Lookup(id); ok {
+	if _, ok := c.scope.LookupLocal(id); ok {
 		return
+	}
+	if sym, ok := c.scope.Lookup(id); ok && mode == yieldToOuter {
+		// The one thing a counted hoist still shadows is a node handle an
+		// enclosing scope bound, which is this same id hoisted at a shallower
+		// count -- a window's interior id met again through an `if`, say.
+		v, isVar := sym.(*ir.Var)
+		if !isVar || !v.NodeHandle {
+			return
+		}
 	}
 	// A component's methods are registered under the component as receiver, not
 	// in scope by bare name: inferIdent reaches them only when the scope lookup
@@ -4310,9 +4554,24 @@ func (c *checker) declareNodeID(id, target string, isWindow bool) {
 	// bound and a scope lookup is whatever the program wrote.
 	typ := c.nodeHandleType(target)
 	if isWindow {
+		// A window's count is still collectForLoopWindowIDs' to say; the
+		// general rule reaches ordinary nodes only.
 		typ = c.windowType
+	} else {
+		typ = countedHandleType(typ, counts)
 	}
-	c.declare(ast.Pos{}, &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true})
+	v := &ir.Var{Name: id, Type: typ, IsConst: true, NodeHandle: true}
+	if len(counts) > 0 {
+		// The outermost count is what a reader out here crossed first, and so
+		// what the diagnostic names. Kept beside the var rather than on it:
+		// nothing but the message reads it, and ir.Var already carries three
+		// fields for the sake of one node kind.
+		if c.handleCount == nil {
+			c.handleCount = map[*ir.Var]nodeCount{}
+		}
+		c.handleCount[v] = counts[0]
+	}
+	c.declare(ast.Pos{}, v)
 }
 
 // nodeHandleType is what a handle to a rendered instance of target reads at --
@@ -4325,6 +4584,21 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 		}
 	}
 	return dynFallback("node id names an instance of %q, which resolves to no component", target)
+}
+
+// countedHandleType wraps a handle in the counts of the scopes it was reached
+// through, innermost first: counts is outermost-first, so the last entry is
+// the scope nearest the node and binds tightest.
+func countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
+	for _, count := range slices.Backward(counts) {
+		switch count {
+		case countOption, countWindow:
+			typ = ir.OptionOf(typ)
+		case countList:
+			typ = ir.ListOf(typ)
+		}
+	}
+	return typ
 }
 
 // componentNamed resolves a visual node's target, bare or `pkg.Name`.

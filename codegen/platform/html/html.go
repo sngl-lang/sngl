@@ -20,7 +20,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -34,59 +33,6 @@ type Generator struct{}
 func (g *Generator) PlatformIdentifier() string { return "html" }
 func (g *Generator) Description() string {
 	return "Web output. Static site by default, or a language-driven HTTP server when paired with a language that implements HTTPCompiler."
-}
-
-func (g *Generator) Capabilities(lang codegen.LangTranslator) lower.Features {
-	f := lang.Capabilities()
-	// Both modes write the tree as markup: static mode writes a file, route
-	// mode writes the same markup into a handler, and the only loop either can
-	// emit is a hole over an expression that varies with the request.
-	f.ViewStatements = false
-	// A platform has the last word, and html's output is HTML and JS: the
-	// language emits the server half of route mode, not the markup or the
-	// script. So a restriction that exists because the *language* lacks a
-	// construct does not apply to what html itself renders -- Go has no
-	// ternary and asks for NoTernary, which rewrote `class=cond ? "a" : ""`
-	// into a temporary the render model could not see through, for an
-	// expression the JS that fills the hole writes verbatim.
-	//
-	// ListLambdas is the same: Go withdraws it for a lambda behind an
-	// interface surface, but the emitter writes an inline one directly (a
-	// typed IIFE over the slice), so a `.filter` in a server action compiles
-	// either way -- and lowering it built the same kind of temporary.
-	f.Ternary = true
-	f.ListLambdas = true
-	// And AsyncCalls for a third time. Go withdraws it because a blocking call
-	// runs on the goroutine that made it, which on a UI toolkit is the one
-	// drawing; html has no such goroutine -- a route handler already runs on
-	// its own, and blocking there is what a handler is for.
-	f.AsyncCalls = true
-	// And AsyncSpawn the other way. The language grants it -- Go registers the
-	// emitter for the id -- but html's client half is JavaScript whatever
-	// `--lang` says, so `async.spawn` in a `@click` was written into the inline
-	// script as a bare `spawn(...)`: an undefined identifier, and a
-	// ReferenceError at click time. A platform whose handlers are not in the
-	// language cannot take the language's word for this.
-	//
-	// It costs a server-side spawn in route mode, where the Go is real and the
-	// call would compile. That is a refusal naming the target rather than a
-	// page that breaks when clicked, and a per-body capability is what
-	// answering it properly needs.
-	f.AsyncSpawn = false
-	f.AsyncReactive = false
-	f.ImplicitRecv = false
-	f.InlineComponents = false
-	f.Reactivity = false
-	f.StructSpread = false
-	f.StructComponents = true
-	f.StdlibContextParam = true
-	// The DOM puts a child at a position, so a keyed reconciliation may move
-	// one node instead of rebuilding the run. htmlTranslator answers the op;
-	// the two are checked against each other in codegen's tests.
-	f.InsertBefore = true
-	f.Canvas = true
-	f.ReactiveCanvas = true
-	return f
 }
 
 // SupportedLangs returns "none" (static-site default) plus any registered

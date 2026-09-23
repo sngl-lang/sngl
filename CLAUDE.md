@@ -283,6 +283,11 @@ go fmt .                       # format Go (run from package dir)
 go tool docsgen                # build docs site to _site/
 ```
 
+`githooks/pre-commit` refuses a commit over the two `verify` steps that fail for
+purely mechanical reasons — `go fix` rewriting a loop, `mdox fmt` reformatting a
+paragraph — because neither is visible until CI says so. It checks staged files
+only and takes about a second. Install it with `git config core.hooksPath githooks`; `git commit --no-verify` skips it.
+
 WASM build (used by docsgen for playground):
 
 ```bash
@@ -380,6 +385,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the caching inputs for a generated file, is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A library package documents itself with a **package comment**: a run of line
@@ -1191,18 +1197,36 @@ as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
 `gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it and
 it is hand-declared as a `#[cnative]` method reached through the handle.
 
-**That receiver is the only read off a handle that works on the Go mutation
-platforms.** A *prop* read does not compile on either: `GoIRContext.Select`
-ends at `operand + "." + ExportName(field)`, inventing a Go field by
-title-casing the SNGL prop, so `box.value` is `m.box.Value` against a
-`widget.Entry` that spells it `Text` — and against a gtk4 handle that is an
-`unsafe.Pointer` with no fields at all. The asymmetry is the tell: the *write*
-side routes through the platform (fyne's `Spec` `Setter`, gtk4's
-`OnPropAssign`) and there is no getter counterpart, so `#id` handles are
-write-only there. Closing it is not `Setter`'s mirror — it needs a
-language↔platform read hook that does not exist, and on gtk4 a getter is a call
-(`gtk4rt.EntryGetText`) whose name GIR would have to supply per property, not a
-field.
+**A node's prop may not be written at all**, which `refuseNodePropAssign`
+reports on both the assignment and the toggle paths. A prop is declarative:
+`ui.text(value=greeting)` says what the node shows for as long as it is
+rendered, and reactivity re-evaluates it when `greeting` changes. A write
+beside that is a second source of truth the next render undoes, so the program
+that looks like it worked is the one whose write is silently gone — change the
+state the prop reads instead. Nothing in the repository depended on it: every
+assignment to a `#id` handle was a fixture testing whether one could be
+written.
+
+What a *lowering* writes is untouched, and is how a prop reaches a host at all:
+`passReactivity` and `passDeclarative` emit `__n0.value = expr` by the hundred.
+The two are told apart by `ir.Var.Synthesized` — and, where lowered IR is
+printed and checked again, by `checker.Config.Lowered`, since `text #__n0(…)`
+re-parses as an ordinary node with an ordinary id and nothing in the text says
+which side of the pipeline wrote it. Only a caller that lowered the IR itself
+may set that flag.
+
+**So a handle's remaining use is reading**, and a *prop* read does not compile
+on the Go mutation platforms: `GoIRContext.Select` ends at
+`operand + "." + ExportName(field)`, inventing a Go field by title-casing the
+SNGL prop, so `box.value` is `m.box.Value` against a `widget.Entry` that spells
+it `Text` — and against a gtk4 handle that is an `unsafe.Pointer` with no
+fields at all. On html it reaches the emitter and renders an empty element
+nothing fills. The one read that does work is a `#[cnative]` method's receiver,
+above. Closing the rest needs a language↔platform read hook that does not
+exist, and on gtk4 a getter is a call (`gtk4rt.EntryGetText`) whose name GIR
+would have to supply per property, not a field. Until then a read is answered
+at build time wherever the tree says the node is gone — see
+`#[gen.renders(identity)]` under `sngl:x/gen`.
 
 **Two nodes may share an id, but a handle that is *read* may not be rendered
 twice.** The two halves are asked differently and deliberately so.

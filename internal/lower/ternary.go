@@ -10,7 +10,7 @@ import (
 
 var passTernary = pass{
 	name:    "NoTernary",
-	enabled: func(c Caps) bool { return c.NoTernary },
+	enabled: func(c Features) bool { return !c.Ternary },
 	apply:   lowerTernary,
 }
 
@@ -28,7 +28,7 @@ var passTernary = pass{
 // the build-path prop and its updater no longer alias one Ternary node and
 // each lowers independently here. Canvas draw funcs, extracted earlier by
 // passCanvas, are reached through the package's Funcs like any other body.
-func lowerTernary(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerTernary(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

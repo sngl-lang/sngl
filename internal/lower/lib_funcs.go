@@ -20,11 +20,11 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // pass synthesized from an override's handler body.
 var passLibFuncs = pass{
 	name:    "LibFuncs",
-	enabled: func(c Caps) bool { return true },
+	enabled: func(c Features) bool { return true },
 	apply:   lowerLibFuncs,
 }
 
-func lowerLibFuncs(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

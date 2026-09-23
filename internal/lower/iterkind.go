@@ -18,11 +18,11 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // is still in the iterable to recognise depends on which pass touched it last.
 var passIterKind = pass{
 	name:    "IterKind",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   stampIterKind,
 }
 
-func stampIterKind(pkg *ir.Package, _ Caps, _ Options) error {
+func stampIterKind(pkg *ir.Package, _ Features, _ Options) error {
 	ir.WalkStmts(pkg, func(s ir.Stmt) error {
 		if f, ok := s.(*ir.For); ok {
 			f.Counted = ir.CountedSeq(f)

@@ -58,12 +58,13 @@ func RegisterIntrinsic(lang, id string, e IntrinsicEmitter) {
 // platform renders onto, so only builds targeting that platform can emit it at
 // all.
 //
-// The 2D drawing primitives are the case that needs it. gtk4 emits CanvasSave
-// in Go and android emits it in Kotlin, but neither language can emit it on its
-// own — a bubbletea build in Go has no canvas — so registering them per language
-// would claim a capability that is false for every other platform sharing that
-// language. html's canvas emitters were registered against "js" for want of
-// somewhere better, and said the same untrue thing more quietly.
+// The 2D drawing primitives were the case that needed it: a canvas id had to be
+// emitted in Go on gtk4 and in Kotlin on android, and neither language could
+// claim it on its own — a bubbletea build in Go has no canvas — so registering
+// per language would have claimed a capability false for every other platform
+// sharing that language. Those ids are gone now, a shape being an override that
+// paints through its own `@draw` handler, and no platform intrinsic of that
+// kind is registered any more.
 //
 // A transport is the other case, and the reason this exists now: whether a
 // program can reach gRPC depends on there being a binding for the target, and
@@ -110,20 +111,23 @@ func PlatformIntrinsicIDs(platform string) []string {
 // declared in a library package, naming the package rather than the ids.
 //
 // It exists because some emitters cannot be an IntrinsicEmitter and should not
-// be made into one. The 2D drawing primitives are translated inside each
-// platform, and for good reason: gtk4 returns []ir.Stmt and carries a pending
-// style across calls, android writes lines into a stateful Compose context.
-// Both are statement-producing and stateful, where an IntrinsicEmitter renders
-// one expression. Reshaping them to fit would cost more than it told anyone.
-//
-// So the emitter stays where it is and this records the fact it cannot state:
-// which side of a build can emit the id. That is not the duplication the
-// signature tables were — a declaration says what an id *is*, and this says who
-// can emit it, which no declaration can answer.
+// be made into one: a statement-producing, stateful translation, where an
+// IntrinsicEmitter renders one expression. So the emitter stays where it is and
+// this records the fact it cannot state — which side of a build can emit the
+// id. That is not the duplication the signature tables were: a declaration says
+// what an id *is*, and this says who can emit it, which no declaration can
+// answer.
 //
 // Naming the package rather than the ids is what keeps it from drifting: a
-// primitive added to sngl:internal/draw is covered by every platform that
-// already implements drawing, with nothing to update here.
+// primitive added to that package is covered by every platform that declared
+// it, with nothing to update here.
+//
+// **Nothing in this repository calls it today.** Its one user was
+// `sngl:internal/draw`, whose 2D primitives four platforms translated inside
+// themselves — and that package is gone, a shape being an override on a
+// platform primitive now, painted by its own `@draw` handler. Kept because
+// `DeclareLangImplements` beside it is live and answers the same question on
+// the other axis, and because the next stateful translation will want it.
 func DeclarePlatformImplements(platform, pkg string) {
 	intrinsicMu.Lock()
 	defer intrinsicMu.Unlock()

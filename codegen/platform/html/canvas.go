@@ -3,7 +3,6 @@ package html
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/canvasutil"
@@ -11,40 +10,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-func init() {
-	// Keyed to the platform, not to "js". These render onto a canvas 2D
-	// context, which only an html build has — registering them per language
-	// claimed every js build can draw, which no other js platform can.
-	reg := func(id string, fn func(a []string) string) {
-		codegen.RegisterPlatformIntrinsic("html", id, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
-			a := make([]string, len(args))
-			for i, e := range args {
-				a[i] = tr(e)
-			}
-			return fn(a), nil
-		})
-	}
-
-	// a[0]=ctx
-	reg("CanvasSave", func(a []string) string { return a[0] + ".save()" })
-	reg("CanvasRestore", func(a []string) string { return a[0] + ".restore()" })
-
-	// a[0]=ctx, a[1]=style (CanvasStyle struct)
-	// JS struct literals only contain fields explicitly set in the source;
-	// CanvasStyle fields with SNGL defaults may be absent (undefined) in the
-	// JS object. Guard each assignment and use || fallbacks for scalar fields.
-	reg("CanvasApplyStyle", func(a []string) string {
-		ctx, s := a[0], a[1]
-		return strings.Join([]string{
-			"if(" + s + ".fill){" + ctx + ".fillStyle=_snglColor(" + s + ".fill);}",
-			"if(" + s + ".stroke){" + ctx + ".strokeStyle=_snglColor(" + s + ".stroke);}",
-			ctx + ".lineWidth=" + s + ".strokeWidth||1;",
-			ctx + ".lineCap=" + s + ".lineCap||\"butt\";",
-			ctx + ".lineJoin=" + s + ".lineJoin||\"miter\";",
-			"if(" + s + ".fontSize){" + ctx + ".font=(" + s + ".fontSize)+\"px \"+(" + s + ".fontFamily||\"sans-serif\");}",
-		}, "")
-	})
-}
+// This package registered two platform intrinsics here, CanvasSave and
+// CanvasRestore, keyed to the platform rather than to "js" because only an
+// html build draws onto a 2D context. Both are gone with the lowering that
+// emitted them: a draw function is each shape override's own `@draw` body, and
+// html's overrides paint through `#[js.native]` calls the JS translator
+// already writes.
 
 // canvasSetup records a canvas element that needs its draw function wired up.
 type canvasSetup struct {

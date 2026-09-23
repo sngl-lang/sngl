@@ -6,11 +6,11 @@ import (
 
 var passCanvasReactivity = pass{
 	name:    "CanvasReactivity",
-	enabled: func(c Caps) bool { return c.ReactiveCanvas },
+	enabled: func(c Features) bool { return c.ReactiveCanvas },
 	apply:   lowerCanvasReactivity,
 }
 
-func lowerCanvasReactivity(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerCanvasReactivity(pkg *ir.Package, _ Features, _ Options) error {
 	// Not gated on pkg.UsesDrawShapes(): passShapeDraw runs first and leaves
 	// no shape in the tree, so the gate answers no for every canvas there is.
 	// collectCanvases finds nothing in a program with no drawing anyway.

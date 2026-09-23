@@ -1,0 +1,31 @@
+// A node id gives way to a binding written beside it, and to the head of the
+// scope it is in. Those are the two it does not take; an outer binding of any
+// kind it does shadow, which error_scope_ordinality_shadow.sngl is.
+//
+// A sibling `var label` wins outright. The hoist runs before the block's own
+// statements are checked, so measuring the scope would find nothing there yet
+// and the var would then collide with the id rather than win over it --
+// blockDeclaredNames is what reads the block instead of the scope.
+//
+// A loop's variables are the same rule applied to the head: `#item` beside
+// `for var item` would take the name the body was written against, and
+// `value=item` would silently become the node rather than the element. They
+// are declared one scope out, where a LookupLocal here cannot see them, so
+// they are passed in.
+
+import ui "sngl:ui"
+
+ui.window #w(title="t") {
+    var label = "outer"
+    var items = ["a", "b"]
+
+    ui.vbox {
+        ui.text #label(value="node")
+
+        ui.text(value="beside: {label}")
+
+        for var item = items {
+            ui.text #item(value=item)
+        }
+    }
+}

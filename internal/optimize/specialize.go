@@ -197,6 +197,14 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if ctx.err == nil {
 		ctx.err = childCtx.err
 	}
+	// The call site's `#id` goes onto the node the body renders, as it does in
+	// lower's own inliner. Transferring nothing left a read of that id naming a
+	// binding no longer attached to anything: on a Go target
+	// `fmt.Sprint(m.dot.R)` against a Model that declares no `dot`, and on html
+	// an element the page never fills.
+	if n.ID != "" {
+		ir.AttachNodeID(folded, n.ID, n.Handle)
+	}
 	return folded
 }
 

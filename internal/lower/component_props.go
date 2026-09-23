@@ -38,7 +38,7 @@ var passComponentProps = pass{
 	apply:   lowerComponentProps,
 }
 
-func lowerComponentProps(pkg *ir.Package, _ Caps, opts Options) error {
+func lowerComponentProps(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}

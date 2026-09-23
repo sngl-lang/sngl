@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -23,8 +22,6 @@ func (t *Translator) Description() string {
 // SnglI18nKotlinPackage is the fully-qualified Kotlin package name for the
 // SNGL i18n runtime shipped in pkg/kotlin/i18n/.
 const SnglI18nKotlinPackage = "us.duckfam.git.jonathan.sngl.i18n"
-
-func (t *Translator) Capabilities() lower.Features { return lower.AllFeatures() }
 
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
 	return name.Name

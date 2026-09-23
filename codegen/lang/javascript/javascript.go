@@ -5,7 +5,6 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -16,9 +15,8 @@ func init() {
 // Translator implements codegen.LangTranslator for JavaScript.
 type Translator struct{}
 
-func (t *Translator) LanguageIdentifier() string   { return "js" }
-func (t *Translator) Description() string          { return "Generate JavaScript source." }
-func (t *Translator) Capabilities() lower.Features { return lower.AllFeatures() }
+func (t *Translator) LanguageIdentifier() string { return "js" }
+func (t *Translator) Description() string        { return "Generate JavaScript source." }
 
 func (t *Translator) GenerateIdentifier(name *ir.Ident) string {
 	return name.Name

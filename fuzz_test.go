@@ -98,15 +98,29 @@ func FuzzExpression(f *testing.F) {
 		f.Add(e)
 	}
 
-	// Cap subsets that preserve the runtime value representation used by
-	// the testrunner interpreter. NoUnit / NoEnum collapse those values
-	// into ints, which would trivially diverge from the baseline encoding,
-	// so they are excluded here.
-	capSubsets := []lower.Caps{
-		{},
-		{NoTernary: true},
-		{NoToggle: true},
-		{NoTernary: true, NoToggle: true, NoComputed: true},
+	// Capability subsets that preserve the runtime value representation the
+	// testrunner interpreter uses. Withdrawing Unit or Enum collapses those
+	// values into ints, which would trivially diverge from the baseline
+	// encoding, so neither is withdrawn here.
+	//
+	// Each starts from NoLowering and takes one thing away, so a subset runs
+	// the pass it names and no others -- the zero Features would run all of
+	// them, Unit and Enum included.
+	withdraw := func(take ...func(*lower.Features)) lower.Features {
+		f := lower.NoLowering()
+		for _, t := range take {
+			t(&f)
+		}
+		return f
+	}
+	noTernary := func(f *lower.Features) { f.Ternary = false }
+	noToggle := func(f *lower.Features) { f.Toggle = false }
+	noComputed := func(f *lower.Features) { f.Computed = false }
+	capSubsets := []lower.Features{
+		lower.NoLowering(),
+		withdraw(noTernary),
+		withdraw(noToggle),
+		withdraw(noTernary, noToggle, noComputed),
 	}
 
 	f.Fuzz(func(t *testing.T, exprSrc string) {
@@ -618,7 +632,7 @@ func (v *irValidator) walkExpr(e ir.Expr) {
 
 // --- expression eval helpers ---
 
-func evalWrapped(src string, caps lower.Caps) (any, error) {
+func evalWrapped(src string, caps lower.Features) (any, error) {
 	doc, err := parser.Parse("fuzz_eval.sngl", []byte(withStdSrc(src)))
 	if err != nil {
 		return nil, fmt.Errorf("parse: %w", err)
@@ -684,10 +698,12 @@ func FuzzLoweredDocument(f *testing.F) {
 	for _, src := range loadTestdataSeeds() {
 		f.Add(src)
 	}
-	caps := lower.Caps{
-		NoReactivity:  true,
-		NoDeclarative: true,
-	}
+	// The two fyne and gtk4 withhold: explicit updaters and a flattened tree,
+	// which between them produce the IR shapes furthest from what the parser
+	// wrote. Everything else claimed, so this is those two passes and not all
+	// of them.
+	caps := lower.NoLowering()
+	caps.Reactivity, caps.Declarative = false, false
 	f.Fuzz(func(t *testing.T, src string) {
 		doc1, ok := safeParseDoc(src)
 		if !ok {
@@ -710,7 +726,7 @@ func FuzzLoweredDocument(f *testing.F) {
 		if err != nil {
 			t.Fatalf("lowered ir.Convert output failed to parse: %v\n--- generated ---\n%s", err, convSrc)
 		}
-		_, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true})
+		_, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true, Lowered: true})
 		if hasError(convDiags) {
 			t.Fatalf("lowered ir.Convert output failed to type-check:\n--- generated ---\n%s\n--- diags ---\n%s",
 				convSrc, joinDiags(convDiags))

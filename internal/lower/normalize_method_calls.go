@@ -26,11 +26,11 @@ import (
 // ident to its per-instance state expression (`state` for JS, `m` for Go).
 var passNoImplicitRecv = pass{
 	name:    "NoImplicitRecv",
-	enabled: func(c Caps) bool { return c.NoImplicitRecv },
+	enabled: func(c Features) bool { return !c.ImplicitRecv },
 	apply:   lowerNoImplicitRecv,
 }
 
-func lowerNoImplicitRecv(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerNoImplicitRecv(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

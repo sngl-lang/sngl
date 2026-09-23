@@ -9,7 +9,7 @@ import (
 
 var passToggle = pass{
 	name:    "NoToggle",
-	enabled: func(c Caps) bool { return c.NoToggle },
+	enabled: func(c Features) bool { return !c.Toggle },
 	apply:   lowerToggle,
 }
 
@@ -18,7 +18,7 @@ var passToggle = pass{
 // Target and Value; this is safe because Toggle targets are path
 // expressions (Ident / Select / Index) the rest of the pipeline already
 // treats as immutable.
-func lowerToggle(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerToggle(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

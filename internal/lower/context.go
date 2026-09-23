@@ -8,7 +8,7 @@ import (
 )
 
 // passContext lowers context declarations into hidden state. Runs when
-// either Caps.StructComponents or Caps.StdlibContextParam is set; today
+// either Features.StructComponents or Features.StdlibContextParam is set; today
 // both flags co-trigger the full lowering, but they exist independently
 // so a future split can run the component-side and stdlib-side rewrites
 // in isolation.
@@ -36,7 +36,7 @@ import (
 // (synthesized props must be visible as reactive deps).
 var passContext = pass{
 	name:    "Context",
-	enabled: func(c Caps) bool { return c.StructComponents || c.StdlibContextParam },
+	enabled: func(c Features) bool { return c.StructComponents || c.StdlibContextParam },
 	apply:   applyNoContext,
 }
 
@@ -55,7 +55,7 @@ var passContext = pass{
 //  5. Seed window roots with ctx.Default so consumers without an enclosing
 //     provider receive the default value.
 //  6. Clear pkg.Contexts (no longer needed by codegen).
-func applyNoContext(pkg *ir.Package, _ Caps, _ Options) error {
+func applyNoContext(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

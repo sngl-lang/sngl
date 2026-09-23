@@ -8,7 +8,7 @@ import (
 
 var passComputed = pass{
 	name:    "NoComputed",
-	enabled: func(c Caps) bool { return c.NoComputed },
+	enabled: func(c Features) bool { return !c.Computed },
 	apply:   lowerComputed,
 }
 
@@ -20,7 +20,7 @@ var passComputed = pass{
 // Return statement: Func.Block = []ir.Stmt{*ir.Return{Value: expr}}.
 //
 // Multi-statement computeds are not inlined.
-func lowerComputed(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerComputed(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

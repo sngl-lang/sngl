@@ -22,11 +22,11 @@ import (
 // Always on, and not a capability: it answers for every target.
 var passWindowNesting = pass{
 	name:    "WindowNesting",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   lowerWindowNesting,
 }
 
-func lowerWindowNesting(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerWindowNesting(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

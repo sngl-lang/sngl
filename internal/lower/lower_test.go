@@ -10,7 +10,7 @@ import (
 
 func TestPassRegistry_StubsAreNoOps(t *testing.T) {
 	for _, p := range passes {
-		if err := p.apply(nil, Caps{}, Options{}); err != nil {
+		if err := p.apply(nil, Features{}, Options{}); err != nil {
 			t.Errorf("pass %s stub returned error: %v", p.name, err)
 		}
 	}
@@ -18,7 +18,7 @@ func TestPassRegistry_StubsAreNoOps(t *testing.T) {
 
 func TestLower_NoCapsIsNoop(t *testing.T) {
 	pkg := &ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
-	if err := Lower(pkg, Caps{}, Options{}); err != nil {
+	if err := Lower(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("Lower: %v", err)
 	}
 }
@@ -28,11 +28,11 @@ func TestLower_RunsEnabledPassesInOrder(t *testing.T) {
 	orig := passes
 	t.Cleanup(func() { passes = orig })
 	passes = []pass{
-		{name: "NoUnit", enabled: func(c Caps) bool { return c.NoUnit }, apply: func(*ir.Package, Caps, Options) error { ran = append(ran, "NoUnit"); return nil }},
-		{name: "NoEnum", enabled: func(c Caps) bool { return c.NoEnum }, apply: func(*ir.Package, Caps, Options) error { ran = append(ran, "NoEnum"); return nil }},
-		{name: "NoToggle", enabled: func(c Caps) bool { return c.NoToggle }, apply: func(*ir.Package, Caps, Options) error { ran = append(ran, "NoToggle"); return nil }},
+		{name: "NoUnit", enabled: func(c Features) bool { return !c.Unit }, apply: func(*ir.Package, Features, Options) error { ran = append(ran, "NoUnit"); return nil }},
+		{name: "NoEnum", enabled: func(c Features) bool { return !c.Enum }, apply: func(*ir.Package, Features, Options) error { ran = append(ran, "NoEnum"); return nil }},
+		{name: "NoToggle", enabled: func(c Features) bool { return !c.Toggle }, apply: func(*ir.Package, Features, Options) error { ran = append(ran, "NoToggle"); return nil }},
 	}
-	if err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Caps{NoUnit: true, NoToggle: true}, Options{}); err != nil {
+	if err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, without("unitType", "toggle"), Options{}); err != nil {
 		t.Fatalf("Lower: %v", err)
 	}
 	want := []string{"NoUnit", "NoToggle"}
@@ -51,11 +51,11 @@ func TestLower_StopAfter(t *testing.T) {
 	orig := passes
 	t.Cleanup(func() { passes = orig })
 	passes = []pass{
-		{name: "NoUnit", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package, Caps, Options) error { ran = append(ran, "NoUnit"); return nil }},
-		{name: "NoEnum", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package, Caps, Options) error { ran = append(ran, "NoEnum"); return nil }},
-		{name: "NoToggle", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package, Caps, Options) error { ran = append(ran, "NoToggle"); return nil }},
+		{name: "NoUnit", enabled: func(c Features) bool { return true }, apply: func(*ir.Package, Features, Options) error { ran = append(ran, "NoUnit"); return nil }},
+		{name: "NoEnum", enabled: func(c Features) bool { return true }, apply: func(*ir.Package, Features, Options) error { ran = append(ran, "NoEnum"); return nil }},
+		{name: "NoToggle", enabled: func(c Features) bool { return true }, apply: func(*ir.Package, Features, Options) error { ran = append(ran, "NoToggle"); return nil }},
 	}
-	if err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Caps{}, Options{StopAfter: "NoEnum"}); err != nil {
+	if err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Features{}, Options{StopAfter: "NoEnum"}); err != nil {
 		t.Fatalf("Lower: %v", err)
 	}
 	want := []string{"NoUnit", "NoEnum"}
@@ -74,9 +74,9 @@ func TestLower_StopAfterNone(t *testing.T) {
 	orig := passes
 	t.Cleanup(func() { passes = orig })
 	passes = []pass{
-		{name: "NoUnit", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package, Caps, Options) error { ran = append(ran, "NoUnit"); return nil }},
+		{name: "NoUnit", enabled: func(c Features) bool { return true }, apply: func(*ir.Package, Features, Options) error { ran = append(ran, "NoUnit"); return nil }},
 	}
-	if err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Caps{NoUnit: true}, Options{StopAfter: "none"}); err != nil {
+	if err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, without("unitType"), Options{StopAfter: "none"}); err != nil {
 		t.Fatalf("Lower: %v", err)
 	}
 	if len(ran) != 0 {
@@ -85,7 +85,7 @@ func TestLower_StopAfterNone(t *testing.T) {
 }
 
 func TestLower_StopAfterUnknown(t *testing.T) {
-	err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Caps{}, Options{StopAfter: "NoBogus"})
+	err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Features{}, Options{StopAfter: "NoBogus"})
 	if err == nil {
 		t.Fatal("Lower: want error for unknown StopAfter, got nil")
 	}
@@ -99,9 +99,9 @@ func TestLower_PropagatesPassError(t *testing.T) {
 	t.Cleanup(func() { passes = orig })
 	wantErr := fmt.Errorf("kaboom")
 	passes = []pass{
-		{name: "NoUnit", enabled: func(c Caps) bool { return true }, apply: func(*ir.Package, Caps, Options) error { return wantErr }},
+		{name: "NoUnit", enabled: func(c Features) bool { return true }, apply: func(*ir.Package, Features, Options) error { return wantErr }},
 	}
-	err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, Caps{NoUnit: true}, Options{})
+	err := Lower(&ir.Package{LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}, without("unitType"), Options{})
 	if err == nil || !strings.Contains(err.Error(), "kaboom") {
 		t.Fatalf("Lower err = %v; want wrapped %q", err, wantErr)
 	}

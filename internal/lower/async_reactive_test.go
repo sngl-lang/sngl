@@ -61,7 +61,7 @@ func makeAsyncComputedPkg() (*ir.Package, *ir.Func, *ir.Func) {
 func TestLowerAsyncReactive_NamedComputedTransformation(t *testing.T) {
 	pkg, _, greeting := makeAsyncComputedPkg()
 
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
+	if err := lowerAsyncReactive(pkg, without("asyncReactive"), Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive: %v", err)
 	}
 
@@ -177,7 +177,7 @@ func TestLowerAsyncReactive_NonAsyncComputedIsSkipped(t *testing.T) {
 	}
 	origBlock := syncFn.Block
 
-	if err := lowerAsyncReactive(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerAsyncReactive(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive: %v", err)
 	}
 	if len(pkg.Vars) != 0 {
@@ -192,7 +192,7 @@ func TestLowerAsyncReactive_NonAsyncComputedIsSkipped(t *testing.T) {
 }
 
 func TestLowerAsyncReactive_NilPackage(t *testing.T) {
-	if err := lowerAsyncReactive(nil, Caps{NoAsyncReactive: true}, Options{}); err != nil {
+	if err := lowerAsyncReactive(nil, without("asyncReactive"), Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive(nil): %v", err)
 	}
 }
@@ -314,7 +314,7 @@ func makeAsyncComputedWithStatePkg() (*ir.Package, *ir.Var, *ir.Func) {
 func TestLowerAsyncReactive_KickerDeps(t *testing.T) {
 	pkg, _, _ := makeAsyncComputedWithStatePkg()
 
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
+	if err := lowerAsyncReactive(pkg, without("asyncReactive"), Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive: %v", err)
 	}
 
@@ -334,7 +334,7 @@ func TestLowerAsyncReactive_KickerNoDeps(t *testing.T) {
 	// greeting() has no state-var reads — just await fetchHello() with no args.
 	pkg, _, _ := makeAsyncComputedPkg()
 
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
+	if err := lowerAsyncReactive(pkg, without("asyncReactive"), Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive: %v", err)
 	}
 
@@ -370,7 +370,7 @@ func TestLowerAsyncReactive_MultipleComputeds(t *testing.T) {
 		AddressedVars:  map[*ir.Var]bool{},
 	}
 
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
+	if err := lowerAsyncReactive(pkg, without("asyncReactive"), Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive: %v", err)
 	}
 
@@ -441,7 +441,7 @@ func TestLowerAsyncReactive_InlineHoist(t *testing.T) {
 		AddressedVars:  map[*ir.Var]bool{},
 	}
 
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
+	if err := lowerAsyncReactive(pkg, without("asyncReactive"), Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive: %v", err)
 	}
 
@@ -518,7 +518,7 @@ func TestLowerAsyncReactive_HoistSkipsLocalCapture(t *testing.T) {
 		AddressedVars:  map[*ir.Var]bool{},
 	}
 
-	if err := lowerAsyncReactive(pkg, Caps{NoAsyncReactive: true}, Options{}); err != nil {
+	if err := lowerAsyncReactive(pkg, without("asyncReactive"), Options{}); err != nil {
 		t.Fatalf("lowerAsyncReactive: %v", err)
 	}
 

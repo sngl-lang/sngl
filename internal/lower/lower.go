@@ -8,14 +8,20 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// pass is one lowering pass: a name (matching its Caps field), a predicate
-// over Caps for whether it runs, and the apply function that mutates pkg in
-// place. apply receives the full Caps so cross-cap-aware passes can branch
-// (e.g. NoDeclarative checks NoLambda before lifting promoted handlers).
+// pass is one lowering pass: a name, a predicate over Features for whether it
+// runs, and the apply function that mutates pkg in place. apply receives the
+// whole record so a pass can branch on a capability other than its own --
+// passDeclarative asks whether Lambda is held before lifting promoted
+// handlers.
+//
+// The name is the pass's, not a field's. It was the Caps field the predicate
+// read, which is why half of them still begin with "No": a name a target reads
+// in `dump --list` outlives the record it was taken from, and renaming them is
+// a change to that output rather than to this type.
 type pass struct {
 	name    string
-	enabled func(Caps) bool
-	apply   func(*ir.Package, Caps, Options) error
+	enabled func(Features) bool
+	apply   func(*ir.Package, Features, Options) error
 }
 
 // passes is the fixed execution order. Earlier passes may not depend on
@@ -33,6 +39,11 @@ var passes = []pass{
 	passHoistState,
 	passForeignPrimitive,
 	passPlatformExtensionBody,
+	// After it, because which primitive a declaration renders is the override
+	// this target supplied; before passInlinePure, which carries a `#id` onto
+	// that override's first node and so takes the handle off the declaration
+	// whose props the read is answered from.
+	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
 	passViewForElse,
@@ -55,9 +66,9 @@ var passes = []pass{
 	passRecursionDepth,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
-	// After passCanvas: the call it promotes may be inside a draw function
-	// synthesized from an override's handler body.
 	passShapeDraw,
+	// After passShapeDraw: the call it promotes may be inside a drawing, which
+	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
 	passEffect,
 	passSlotChildInstances,
@@ -150,12 +161,12 @@ func seqOrOwn(seq *int) *int {
 }
 
 // Lower applies all enabled lowering passes to pkg in execution order,
-// mutating pkg in place. caps determines which passes run; opts.StopAfter
+// mutating pkg in place. feats determines which passes run; opts.StopAfter
 // optionally short-circuits the pipeline after a named pass.
 //
 // Returns an error wrapping the failing pass's name when any pass fails or
 // when opts.StopAfter names a pass that does not exist.
-func Lower(pkg *ir.Package, caps Caps, opts Options) error {
+func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	if opts.StopAfter == "none" {
 		return nil
 	}
@@ -236,10 +247,10 @@ func Lower(pkg *ir.Package, caps Caps, opts Options) error {
 	pkg.Vars = slices.DeleteFunc(pkg.Vars, ir.IsHostValue)
 
 	for _, p := range passes {
-		if !p.enabled(caps) {
+		if !p.enabled(feats) {
 			continue
 		}
-		if err := p.apply(pkg, caps, opts); err != nil {
+		if err := p.apply(pkg, feats, opts); err != nil {
 			return fmt.Errorf("lower: pass %s: %w", p.name, err)
 		}
 		if opts.StopAfter != "" && p.name == opts.StopAfter {
@@ -472,11 +483,11 @@ func PassNames() []string {
 }
 
 // EnabledPasses returns the ordered list of pass names that would run for
-// the given caps. Used by `dump lowered --list`.
-func EnabledPasses(caps Caps) []string {
+// the given capabilities. Used by `dump lowered --list`.
+func EnabledPasses(feats Features) []string {
 	var out []string
 	for _, p := range passes {
-		if p.enabled(caps) {
+		if p.enabled(feats) {
 			out = append(out, p.name)
 		}
 	}

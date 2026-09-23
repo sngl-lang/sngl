@@ -23,7 +23,7 @@ import (
 // directly than the calls this pass builds; Features.Effects is how it asks.
 var passEffect = pass{
 	name:    "Effect",
-	enabled: func(c Caps) bool { return c.NoEffects },
+	enabled: func(c Features) bool { return !c.Effects },
 	apply:   lowerEffects,
 }
 
@@ -47,7 +47,7 @@ const TeardownFunc = "__snglTeardown"
 // there is no case here for "an effect inside reactive control flow": the
 // position is read off the enclosing `if`/`for` when the settle function is
 // built, and never asked about again.
-func lowerEffects(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerEffects(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

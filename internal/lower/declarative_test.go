@@ -20,10 +20,10 @@ func TestDeclarative_RecursiveComponentEmitsCreateComponent(t *testing.T) {
 
 	pkg := &ir.Package{Components: []*ir.Component{tree, main}}
 
-	if err := lowerInlineComponents(pkg, Caps{NoInlineComponents: true}, Options{}); err != nil {
+	if err := lowerInlineComponents(pkg, without("inlineComponents"), Options{}); err != nil {
 		t.Fatalf("inline: %v", err)
 	}
-	if err := lowerDeclarative(pkg, Caps{NoDeclarative: true}, Options{}); err != nil {
+	if err := lowerDeclarative(pkg, without("declarative"), Options{}); err != nil {
 		t.Fatalf("declarative: %v", err)
 	}
 

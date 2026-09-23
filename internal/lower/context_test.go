@@ -175,13 +175,13 @@ func identifiesHiddenParam(e ir.Expr, ctx *ir.Context) bool {
 
 func TestApplyNoContext_EmptyContexts(t *testing.T) {
 	pkg := &ir.Package{}
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext on pkg with no contexts: %v", err)
 	}
 }
 
 func TestApplyNoContext_NilPkg(t *testing.T) {
-	if err := applyNoContext(nil, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(nil, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext(nil): %v", err)
 	}
 }
@@ -565,7 +565,7 @@ func TestApplyNoContext_ClearsContexts(t *testing.T) {
 		Windows:    []*ir.Window{win},
 	}
 
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
 	if pkg.Contexts != nil {
@@ -600,7 +600,7 @@ func TestApplyNoContext_FullPipeline(t *testing.T) {
 		Windows:    []*ir.Window{win},
 	}
 
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
 
@@ -740,7 +740,7 @@ func TestMultipleContexts(t *testing.T) {
 		Windows:    []*ir.Window{win},
 	}
 
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
 
@@ -848,7 +848,7 @@ func TestFuncHiddenParam(t *testing.T) {
 		Contexts: []*ir.Context{ctx},
 		Funcs:    []*ir.Func{fn},
 	}
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
 	if findFuncParam(fn, "__ctx_locale") != nil {
@@ -903,7 +903,7 @@ func TestFuncCallSiteThreaded(t *testing.T) {
 		Funcs:      []*ir.Func{tr},
 		Windows:    []*ir.Window{win},
 	}
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
 	// User pkg.Func tr has no hidden Param under the new model, so call
@@ -933,7 +933,7 @@ func TestFuncCallSiteThreadedFromFunc(t *testing.T) {
 		Contexts: []*ir.Context{ctx},
 		Funcs:    []*ir.Func{leaf, caller},
 	}
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
 	if findFuncParam(caller, "__ctx_locale") != nil {
@@ -965,7 +965,7 @@ func TestFuncBodyContextReadRewritten(t *testing.T) {
 		Contexts: []*ir.Context{ctx},
 		Funcs:    []*ir.Func{fn},
 	}
-	if err := applyNoContext(pkg, Caps{}, Options{}); err != nil {
+	if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("applyNoContext: %v", err)
 	}
 	// No ContextRead should remain in fn.Block.

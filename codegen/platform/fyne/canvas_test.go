@@ -40,7 +40,7 @@ window {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	caps := g.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -84,14 +84,14 @@ window {
 	}
 
 	// Negative: the bespoke gg path is gone; no gg context or color helper.
+	//
+	// The five `Canvas*` intrinsic names this used to list are gone from the
+	// compiler entirely -- a shape paints through its own `@draw` handler now --
+	// so asserting they do not leak asserted nothing at all. What remains are
+	// names something could still emit.
 	for _, leak := range []string{
 		"gg.NewContext",
 		"_snglColor",
-		// untranslated canvas intrinsics must not leak.
-		"CanvasDrawRect",
-		"CanvasDrawCircle",
-		"CanvasApplyStyle",
-		"CanvasSave",
 		"lower.CreateNode",
 	} {
 		if strings.Contains(out, leak) {
@@ -144,7 +144,7 @@ window {
 	pkg := checkForFyne(t, src)
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
-	caps := g.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "fyne", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}

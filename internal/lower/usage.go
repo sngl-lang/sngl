@@ -15,11 +15,11 @@ import (
 // final-pass placement guarantees that.
 var passStampUsage = pass{
 	name:    "StampUsage",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   stampUsage,
 }
 
-func stampUsage(pkg *ir.Package, _ Caps, _ Options) error {
+func stampUsage(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

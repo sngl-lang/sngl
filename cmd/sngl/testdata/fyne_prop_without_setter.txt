@@ -1,0 +1,48 @@
+# A prop fyne has no setter for fails the build.
+#
+# A prop *is* its write by the time it reaches a platform: passReactivity and
+# passDeclarative turn `text(value=greeting)` into `__n0.value = greeting`, and
+# fyne's OnPropAssign is where that becomes `SetText`. A prop the widget's Spec
+# names no setter for therefore does not render a stale value -- it does not
+# render at all, and returning no statements said so to nobody.
+#
+# gtk4 has reported its own unsettable props all along. This is fyne given the
+# same, and the whole of what makes the Spec's `setters` list a contract rather
+# than a hint: a widget wrapped with a value prop and no setter beside it is an
+# incomplete declaration, which is a thing to fix rather than to discover by
+# looking at the screen.
+#
+# The stub declares one, because no shipping widget in fyne.sngl is missing a
+# setter -- which is the point. Testing it needs a widget written wrong on
+# purpose.
+
+! sngl generate --lang go --platform fyne --out out .
+stderr 'has no setter for "text"'
+stderr 'reaches the screen not at all'
+
+-- app.sngl --
+import ui "sngl:ui"
+import fyne "sngl:platform/fyne"
+
+// A Fyne widget wrapped without the setter its value prop needs.
+component broken(value string) ui.node {
+    fyne.Widget(
+        spec=fyne.Spec{
+            new = fyne.Native{path="fyne.io/fyne/v2/widget", name="NewLabel"},
+            args = [fyne.Arg{raw=`""`}],
+            goType = fyne.Native{path="fyne.io/fyne/v2/widget", name="*Label"},
+            setters = [],
+        },
+        text=value,
+    ) {}
+}
+
+ui.window #w(title="t") {
+    var greeting = "hello"
+
+    broken(value=greeting)
+
+    ui.button(text="x", @click {
+        greeting = "bye"
+    })
+}

@@ -45,7 +45,7 @@ window {
 			t.Fatalf("check: %s", d.Error())
 		}
 	}
-	caps := gen.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), gen.PlatformIdentifier())
 	if err := optimize.Optimize(pkg, &optimize.Config{
 		Platform: gen.PlatformIdentifier(),
 		Language: lang.LanguageIdentifier(),

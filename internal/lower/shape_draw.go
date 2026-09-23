@@ -17,7 +17,7 @@ import (
 
 var passShapeDraw = pass{
 	name:    "Canvas",
-	enabled: func(c Caps) bool { return c.Canvas },
+	enabled: func(c Features) bool { return c.Canvas },
 	apply:   lowerShapeDraw,
 }
 
@@ -27,14 +27,15 @@ var passShapeDraw = pass{
 // same context in their own scopes.
 var canvasCtxParam = &ir.Param{Name: "ctx", Type: ir.TypDyn}
 
-func lowerShapeDraw(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerShapeDraw(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil || !pkg.UsesDrawShapes() {
 		return nil
 	}
+	var failed error
 	for _, o := range ir.Owners(pkg) {
-		walkCanvases(o.Stmts())
+		walkCanvases(o.Stmts(), &failed)
 	}
-	return nil
+	return failed
 }
 
 // walkCanvases finds the drawings in a statement list and splices each.
@@ -43,28 +44,28 @@ func lowerShapeDraw(pkg *ir.Package, _ Caps, _ Options) error {
 // canvas is often one arm of a target test, and a boundary or a context
 // override is how the nodes under it got there rather than a node. Stopping at
 // NodeInsts left such a canvas unspliced and its shapes rendered as widgets.
-func walkCanvases(stmts []ir.Stmt) {
+func walkCanvases(stmts []ir.Stmt, failed *error) {
 	for _, s := range stmts {
 		switch v := s.(type) {
 		case *ir.NodeInst:
 			if ir.IsShapeContainer(v) {
-				spliceCanvas(v)
+				spliceCanvas(v, failed)
 				continue
 			}
-			walkCanvases(v.Children)
+			walkCanvases(v.Children, failed)
 		case *ir.If:
-			walkCanvases(v.Body)
-			walkCanvases(v.Else)
+			walkCanvases(v.Body, failed)
+			walkCanvases(v.Else, failed)
 		case *ir.For:
-			walkCanvases(v.Body)
-			walkCanvases(v.Else)
+			walkCanvases(v.Body, failed)
+			walkCanvases(v.Else, failed)
 		case *ir.ErrorBoundary:
 			// Children alone: passBoundaryFailed has already rewritten the
 			// pair into a reactive `if` over its flag, so walking Failed would
 			// find the fallback a second time.
-			walkCanvases(v.Children)
+			walkCanvases(v.Children, failed)
 		case *ir.ContextProvider:
-			walkCanvases(v.Children)
+			walkCanvases(v.Children, failed)
 		}
 	}
 }
@@ -79,12 +80,14 @@ func walkCanvases(stmts []ir.Stmt) {
 // applyStyle and gtk4's paint were shaken away as unreferenced, and a
 // zero-alpha stroke test that should have folded to false emitted a second
 // drawRect on android.
-func spliceCanvas(canvas *ir.NodeInst) {
+func spliceCanvas(canvas *ir.NodeInst, failed *error) {
 	var body []ir.Stmt
 	emitShapes(canvas.Children, &body, drawEnv{
-		ctx:    canvasCtxParam,
-		width:  nodeIntProp(canvas, "width"),
-		height: nodeIntProp(canvas, "height"),
+		ctx:      canvasCtxParam,
+		width:    nodeIntProp(canvas, "width"),
+		height:   nodeIntProp(canvas, "height"),
+		inFlight: map[*ir.Component]bool{},
+		failed:   failed,
 	})
 	canvas.Children = body
 }
@@ -97,6 +100,16 @@ func spliceCanvas(canvas *ir.NodeInst) {
 type drawEnv struct {
 	ctx           *ir.Param
 	width, height int
+	// inFlight is the shapes whose bodies this drawing is currently inside, so
+	// a shape that renders itself is caught rather than expanded forever. A map
+	// rather than a copied set because drawEnv is passed by value into every
+	// nested call: a copy would forget what its caller was inside, which is the
+	// whole question.
+	inFlight map[*ir.Component]bool
+	// failed is the first recursion found. Held here rather than returned,
+	// because the five functions between this and lowerShapeDraw have no error
+	// in their signatures and a drawing is the only thing they can fail at.
+	failed *error
 }
 
 func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
@@ -156,32 +169,21 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 		*body = append(*body, ni)
 		return
 	}
-	// A shape the target implemented itself brackets its own drawing: the
-	// override is the body, and what it saves, styles and restores is its
-	// business. Emitting a bracket around it too gave every overridden shape
-	// two nested saves and applied the style twice -- and it is the bracket a
-	// hand-written override has to be able to leave out to match native
-	// performance.
+	// Nothing is bracketed here. Every shape that draws brackets itself, in
+	// the override that draws it -- `shapes.circle[language]` saves, applies
+	// its style and restores -- and that is the bracket a hand-written
+	// override has to be able to leave out to match native performance.
 	//
-	// A composed shape still gets one, because its style is what its children
-	// inherit; that is what makes `group(style=…) { … }` work. A platform
-	// primitive never gets one either, and for the same reason from the other
-	// side: it *is* the drawing, and every save, style and restore around it
-	// was written in the override that called it.
-	isPrimitive := ni.Component != nil && ni.Component.Intrinsic != "" &&
-		ir.IsSegmentedTree(ni.Component.Tree)
-	// `len(Body) == 0` matters as much as the specialization: a component can
-	// be specialized for this target and still have nothing in it -- a harness
-	// that checks without merging this platform's extensions leaves the
-	// override empty -- and such a shape falls through to the name-matched
-	// translation, which needs the bracket. Reading SpecializedFor alone gave
-	// it neither, and the shape drew with no style at all.
-	selfBrackets := ni.Component != nil && ni.Component.SpecializedFor != "" && len(ni.Component.Body) > 0
-	bracket := !isPrimitive && !selfBrackets
-	if bracket {
-		*body = append(*body, canvasCall(env.ctx, "CanvasSave"))
-	}
-
+	// The compiler used to wrap a *composed* shape in a CanvasSave/CanvasRestore
+	// pair of its own, on the argument that a group's style is what its
+	// children inherit. Two things were wrong with it. No program could reach
+	// it: `passNoInlineComponents` composes a user shape away before this pass
+	// is asked anything, which every target requests and which
+	// `testdata/canvas_composed_user_shape.txtar` had already pinned. And the
+	// `group(style=…)` it was for does not exist -- `sngl:ui/draw` declares no
+	// composed shape at all. When one lands it brackets itself in SNGL, the way
+	// every other shape does, and the lowering stays out of it.
+	//
 	// A platform primitive carries the drawing itself: its handler body is
 	// what the target paints, written against the context the handler binds.
 	// Spliced here with that parameter rebound to the draw function's own ctx,
@@ -196,17 +198,19 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 		if len(ni.Children) > 0 {
 			emitShapes(ni.Children, body, env)
 		}
-		if bracket {
-			*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
-		}
 		return
 	}
 
-	// A component with a body renders from it -- a composed shape, or the
-	// override a target supplied. It is exempt from component inlining, since
-	// a tree kind marks a declaration as rendered rather than composed away,
-	// so its body is expanded here with the call site's arguments substituted
-	// for its props.
+	// A component with a body renders from it: the override a target supplied,
+	// expanded here with the call site's arguments substituted for its props.
+	//
+	// A *user*-declared shape does not reach this. A tree kind is deliberately
+	// not on `isPrimitiveComponent`'s list -- a shape composed out of other
+	// shapes is a wrapper like any other -- so passNoInlineComponents composes
+	// one away before this pass runs. That is what
+	// `testdata/canvas_composed_user_shape.txtar` pins, and it is why the
+	// bracket this function used to put around a composed shape was
+	// unreachable.
 	//
 	// A shape with no body and no override for this target draws nothing, and
 	// says so where it is declared: that is what the bodyless-component rule
@@ -214,15 +218,28 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// shape names, which rendered any shape it did not recognise as nothing at
 	// all, silently.
 	if ni.Component != nil && len(ni.Component.Body) > 0 {
+		// A shape that renders itself has no finite drawing: expanding its body
+		// meets the same call again, and this pass has no depth to stop at the
+		// way an inliner does. Refused where it is written.
+		//
+		// The other inliners leave a recursive component standing and let the
+		// target instantiate it at run time, which is not open here: a drawing
+		// is a list of paint calls, and there is no node left for a target to
+		// instantiate.
+		if env.inFlight[ni.Component] {
+			if *env.failed == nil {
+				*env.failed = fmt.Errorf("%s: shape %s draws itself: a drawing is the calls that paint it, so there is no depth to stop at",
+					nodePos(ni), ni.Component.Name)
+			}
+			return
+		}
+		env.inFlight[ni.Component] = true
 		emitShapes(shapeBody(ni), body, env)
+		delete(env.inFlight, ni.Component)
 	}
 
 	if len(ni.Children) > 0 {
 		emitShapes(ni.Children, body, env)
-	}
-
-	if bracket {
-		*body = append(*body, canvasCall(env.ctx, "CanvasRestore"))
 	}
 }
 
@@ -363,26 +380,6 @@ func foldPayloadReads(stmts []ir.Stmt) []ir.Stmt {
 		return e
 	})
 	return w.stmts(stmts)
-}
-
-// canvasCall builds a CallStmt invoking a canvas intrinsic.
-func canvasCall(ctx *ir.Param, intrinsicName string, extraArgs ...ir.Expr) *ir.CallStmt {
-	def := ir.LookupIntrinsic(intrinsicName)
-	if def == nil {
-		panic(fmt.Sprintf("codegen: unknown canvas intrinsic %q", intrinsicName))
-	}
-	fn := &ir.Func{
-		Name:      def.Name,
-		Intrinsic: def.Name,
-		Params:    def.Params,
-		Return:    def.Return,
-	}
-	args := make([]ir.CallArg, 0, 1+len(extraArgs))
-	args = append(args, ir.CallArg{Name: "ctx", Value: ctxExpr(ctx)})
-	for _, a := range extraArgs {
-		args = append(args, ir.CallArg{Value: a})
-	}
-	return &ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: fn, Args: args}}
 }
 
 // ctxExpr returns an Ident for the ctx draw-function parameter.

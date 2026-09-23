@@ -18,11 +18,11 @@ import "git.duckfam.us/jonathan/sngl/ir"
 // prevent; a spurious one costs a shallow clone.
 var passMutatedVars = pass{
 	name:    "MutatedVars",
-	enabled: func(c Caps) bool { return true },
+	enabled: func(c Features) bool { return true },
 	apply:   lowerMutatedVars,
 }
 
-func lowerMutatedVars(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerMutatedVars(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

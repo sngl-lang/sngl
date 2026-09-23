@@ -12,8 +12,14 @@ import . "sngl:macro"
 import . "sngl:internal/marks"
 import tree "sngl:tree"
 import build "sngl:build"
+import gen "sngl:x/gen"
 
 // The `bubbletea` node of a build directive: `output { go { bubbletea() } }`.
+// focusOrder: a TUI draws its own widgets, so nothing else tracks which one has
+// the keyboard. No reactiveCanvas: View() re-runs on every update and
+// re-rasterises with it, so an explicit redraw would be the second of two.
+#[gen.cannot(inlineComponents, implicitRecv, structSpread)]
+#[gen.wants(structComponents, stdlibContextParam, focusOrder, canvas)]
 component bubbletea(
     // Go package name for the generated files.
     package string,
@@ -73,6 +79,7 @@ struct Event {
 // one: they carry no body, and the id is what the view renderer recognises them
 // by instead of their names.
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Layout")]
 component Layout(
     join JoinDir,
@@ -82,6 +89,7 @@ component Layout(
     children ...component,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Styled")]
 component Styled(
     content string,
@@ -90,6 +98,7 @@ component Styled(
     style ui.Style,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Widget")]
 component Widget(
     model Model,
@@ -109,6 +118,7 @@ component Widget(
     max float,
 ) ui.node
 
+#[gen.renders(identity)]
 #[intrinsic("bubbletea:Overlay")]
 component Overlay(
     placement string,

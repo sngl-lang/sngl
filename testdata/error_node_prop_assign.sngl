@@ -1,0 +1,35 @@
+// A node's prop may not be written.
+//
+// `ui.text(value=greeting)` says what the node shows for as long as it is
+// rendered, and reactivity re-evaluates it when `greeting` changes. A write
+// beside that is a second source of truth the next render undoes -- so the
+// program that looks like it worked is the one whose write is silently gone.
+// Changing the state the prop reads is the way to say it, and the only way
+// that survives a re-render.
+//
+// Refused in the checker, so the answer is the same on every target and does
+// not wait for one. It used to be neither: the write type-checked, and what
+// became of it was whatever each backend made of a field it had never been
+// told about -- `label.Value` on fyne against a `widget.Label` that spells it
+// `Text`, and with no receiver at all.
+//
+// What a *lowering* writes is untouched: passReactivity and passDeclarative
+// emit `__n0.text = expr` by the hundred, and those are how a prop reaches the
+// host. They are built after this check and never meet it.
+
+import ui "sngl:ui"
+
+ui.window #w(title="t") {
+    var greeting = "hello"
+
+    ui.text #label(value=greeting)
+    ui.checkbox #flag(checked=true)
+
+    ui.button(text="write", @click {
+        label.value = "bye" // ERROR(check) "cannot assign to label.value"
+    })
+
+    ui.button(text="toggle", @click {
+        flag.checked!! // ERROR(check) "cannot toggle flag.checked"
+    })
+}

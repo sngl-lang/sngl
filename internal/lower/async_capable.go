@@ -33,11 +33,11 @@ import (
 // they cannot act on.
 var passAsyncCapable = pass{
 	name:    "AsyncCapable",
-	enabled: func(Caps) bool { return true },
+	enabled: func(Features) bool { return true },
 	apply:   applyAsyncCapable,
 }
 
-func applyAsyncCapable(pkg *ir.Package, caps Caps, opts Options) error {
+func applyAsyncCapable(pkg *ir.Package, caps Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -78,7 +78,7 @@ func asyncIntrinsicCalls(s ir.Stmt) []*ir.Call {
 // refuseAsyncIntrinsic names the half of the build that has to change, because
 // the two are answered by different ones: a platform reaches the thread it
 // draws on, a language starts work that does not block.
-func refuseAsyncIntrinsic(c *ir.Call, s ir.Stmt, caps Caps, opts Options) error {
+func refuseAsyncIntrinsic(c *ir.Call, s ir.Stmt, caps Features, opts Options) error {
 	switch c.Func.Intrinsic {
 	case AsyncPostIntrinsic:
 		if caps.AsyncPost {

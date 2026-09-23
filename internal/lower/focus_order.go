@@ -10,7 +10,7 @@ import (
 
 var passFocusOrder = pass{
 	name:    "FocusOrder",
-	enabled: func(c Caps) bool { return c.FocusOrder },
+	enabled: func(c Features) bool { return c.FocusOrder },
 	apply:   lowerFocusOrder,
 }
 
@@ -30,7 +30,7 @@ type loopSlotInfo struct {
 	keyVar    *ir.LoopVar // synthetic loop key (integer index)
 }
 
-func lowerFocusOrder(pkg *ir.Package, _ Caps, _ Options) error {
+func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}

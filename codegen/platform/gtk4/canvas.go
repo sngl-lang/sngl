@@ -13,20 +13,19 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// The 2D primitives are translated in this package rather than through an
-// IntrinsicEmitter, which renders one expression and could not carry the
-// statements and pending style these need. Declaring the package is how that
-// implementation becomes visible to the completeness check.
-func init() { codegen.DeclarePlatformImplements("gtk4", "sngl:internal/draw") }
-
 // Canvas2D rendering for gtk4 via cairo.
 //
-// passCanvas (internal/lower) extracts a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func whose body is a sequence of canvas
-// intrinsic CallStmts (CanvasSave / CanvasApplyStyle / CanvasDrawRect / ...).
+// passShapeDraw (internal/lower) replaces a canvas's shape children in place
+// with the statements that paint them -- nothing is synthesized, and the
+// `_canvasDrawN` name is codegen's own. Every one of those statements is what a
+// shape override's own `@draw` handler was written as -- for gtk4, cairo natives,
+// since `component shapes.circle[platform]` here paints with them directly.
+// The lowering contributes nothing of its own: there is no canvas intrinsic
+// left for this package to translate.
+//
 // passDeclarative then flattens the canvas NodeInst to a
 // `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
-// dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight (recovered
+// dimensions onto the record canvasutil.Collect reads.(recovered
 // here via canvasutil.Collect).
 //
 // gtk4 renders with a GtkDrawingArea: the draw func is a `void (*)(cr ...)`
@@ -35,10 +34,10 @@ func init() { codegen.DeclarePlatformImplements("gtk4", "sngl:internal/draw") }
 // the synthesized draw func is a *C.cairo_t. Reactive redraws call
 // gtk_widget_queue_draw on the drawing area.
 //
-// The canvas intrinsics are NOT registered in the lang-keyed intrinsic
-// registry (that one is JS-specific and would collide with another Go
-// platform). They are translated here, inside the gtk4 translator — the same
-// way gtk4 rewrites widget calls — because cairo's 2D API is gtk4-specific.
+// There are no canvas intrinsics left to translate. cairo's 2D API is still
+// gtk4-specific, but it is named from SNGL now -- `component
+// shapes.circle[platform]` calls `#[cnative]` declarations directly -- so the
+// translator rewrites them the way it rewrites any other widget call.
 
 // canvasMeta aliases the shared platform-neutral canvas metadata type.
 type canvasMeta = canvasutil.Meta
@@ -91,32 +90,6 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 func cairoCall(name string, cr ir.Expr, args ...ir.Expr) ir.Stmt {
 	all := append([]ir.Expr{cr}, args...)
 	return &ir.CallStmt{Call: nativeCall(name, all...)}
-}
-
-// translateCanvasIntrinsic rewrites one canvas-intrinsic CallStmt (inside a
-// draw func body) into native cairo calls. What reaches here is the bracket
-// passCanvas puts around a composed shape -- Save and Restore -- since the
-// drawing itself is the shape's own override by the time this runs.
-func (t *gtk4Translator) translateCanvasIntrinsic(cs *ir.CallStmt) []ir.Stmt {
-	call := cs.Call
-	id := call.Func.Intrinsic
-	cr := call.Args[0].Value
-
-	switch id {
-	case "CanvasSave":
-		return []ir.Stmt{cairoCall("cairo_save", cr)}
-	case "CanvasRestore":
-		return []ir.Stmt{cairoCall("cairo_restore", cr)}
-	case "CanvasApplyStyle":
-		// Nothing. cairo's state is never where a style lived here: this bound
-		// a local that the following draw primitive read, and the primitives
-		// are gone -- every shape is a platform override now, and each sets
-		// its own source before it paints. A composed shape's bracket still
-		// reaches this, and binding a local nothing reads would be an unused
-		// variable in the emitted Go.
-		return nil
-	}
-	return []ir.Stmt{cs}
 }
 
 // translateCanvasRedraw rewrites a CanvasRedrawStmt into a

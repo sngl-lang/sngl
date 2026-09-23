@@ -4,19 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/lower"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 	t.Helper()
-	// passShapeDraw reads its primitives' signatures off sngl:internal/draw, which
-	// a check registers as it loads. This package is built by hand, so it asks
-	// for the load itself.
-	if checker.LibPackage("internal/draw") == nil {
-		t.Fatal("sngl:internal/draw did not load")
-	}
 	styleTyp := &ir.Type{Kind: ir.TypeStruct}
 	childListType := ir.ListOf(&ir.Type{Kind: ir.TypeComponent})
 
@@ -30,9 +23,16 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 		}}
 	}
 
+	// A platform primitive, because that is the only kind of shape that draws:
+	// the painting is a `@draw` handler its call site supplies, which
+	// primitiveDrawBody splices with the handler's payload rebound to the draw
+	// function's ctx. A bodyless non-primitive -- what this used to build --
+	// paints nothing, and the only statements it produced were the bracket the
+	// lowering no longer writes.
 	rectComp := &ir.Component{
 		Name:         "rect",
 		Tree:         shapeTree,
+		Intrinsic:    "test:draw",
 		Slots:        shapeSlot(),
 		ChildrenType: childListType,
 		Props: []*ir.Prop{
@@ -62,6 +62,18 @@ func buildCanvasPkg(t *testing.T) (*ir.Package, *ir.NodeInst) {
 			{Name: "w", Value: &ir.Literal{Type: ir.TypFloat, Value: "100"}},
 			{Name: "h", Value: &ir.Literal{Type: ir.TypFloat, Value: "50"}},
 		},
+		// What the target paints, as an override's `@draw` would have written
+		// it: one call against the context the handler binds.
+		Handlers: []ir.EventHandler{{
+			Name: "draw",
+			Func: &ir.Func{
+				Params: []*ir.Param{{Name: "e", Type: ir.TypDyn}},
+				Block: []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
+					Type: ir.TypVoid,
+					Func: &ir.Func{Name: "paintRect"},
+				}}},
+			},
+		}},
 	}
 	canvasInst := &ir.NodeInst{
 		Name:      "canvas",
@@ -90,7 +102,7 @@ func TestShapeDraw_SkipsProgramsWithoutShapes(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 	pkg.TreeKinds = nil
 
-	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
 	if !onlyShapeNodes(canvasInst.Children) {
@@ -106,7 +118,7 @@ func TestShapeDraw_RunsWithoutADrawImport(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 	pkg.Imports = nil
 
-	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
 	if onlyShapeNodes(canvasInst.Children) {
@@ -122,7 +134,7 @@ func TestShapeDraw_RunsWithoutADrawImport(t *testing.T) {
 func TestShapeDraw_SplicesTheDrawingInPlace(t *testing.T) {
 	pkg, canvasInst := buildCanvasPkg(t)
 
-	if err := lower.Lower(pkg, lower.Caps{Canvas: true}, lower.Options{}); err != nil {
+	if err := lower.Lower(pkg, lower.Features{Canvas: true}, lower.Options{}); err != nil {
 		t.Fatalf("lower error: %v", err)
 	}
 	if len(canvasInst.Children) == 0 {

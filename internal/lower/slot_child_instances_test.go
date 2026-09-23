@@ -40,7 +40,7 @@ func TestSlotChildInstancesReachesSlotContent(t *testing.T) {
 	}}
 	pkg := &ir.Package{Components: []*ir.Component{main}}
 
-	if err := lowerSlotChildInstances(pkg, Caps{}, Options{}); err != nil {
+	if err := lowerSlotChildInstances(pkg, Features{}, Options{}); err != nil {
 		t.Fatalf("lowerSlotChildInstances: %v", err)
 	}
 	if got := len(pkg.Components); got != 3 {

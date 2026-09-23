@@ -45,7 +45,7 @@ window {
 	if lang == nil {
 		t.Fatal("go lang not registered")
 	}
-	caps := g.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
@@ -97,12 +97,13 @@ window {
 		}
 	}
 
-	// Negative: untranslated canvas intrinsics must not leak.
+	// Negative: an untranslated IR shape must not leak.
+	//
+	// The four `Canvas*` intrinsic names this used to list are gone from the
+	// compiler entirely -- a shape paints through its own `@draw` handler now --
+	// so asserting they do not leak asserted nothing. These two are still
+	// emittable and so still worth denying.
 	for _, leak := range []string{
-		"CanvasDrawRect",
-		"CanvasDrawCircle",
-		"CanvasApplyStyle",
-		"CanvasSave",
 		"CanvasRedrawStmt",
 		"lower.CreateNode",
 	} {
@@ -140,7 +141,7 @@ window {
 	}
 	g := &Generator{}
 	lang := codegen.LookupLang("go")
-	caps := g.Capabilities(lang).ToLowerCaps()
+	caps := codegen.CapsOrNone(lang.LanguageIdentifier(), g.PlatformIdentifier())
 	if err := lower.Lower(pkg, caps, lower.Options{Platform: "gtk4", Language: "go"}); err != nil {
 		t.Fatalf("lower: %v", err)
 	}
