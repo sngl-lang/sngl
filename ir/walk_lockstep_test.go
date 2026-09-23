@@ -192,23 +192,72 @@ func assertWalkMatchesRewrite(t *testing.T, label string, root any) {
 			t.Errorf("%s/%s: Walk and Rewrite diverge at visit %d: Walk %s, Rewrite %s (Walk %d visits, Rewrite %d)",
 				label, c.name, i, describe(got, i), describe(want, i), len(got), len(want))
 		}
-	}
-	var exprs, rexprs []Expr
-	_ = WalkExprs(root, func(e Expr) error { exprs = append(exprs, e); return nil })
-	_ = RewriteExprs(root, func(e Expr) (Expr, error) { rexprs = append(rexprs, e); return e, nil })
-	if !slices.Equal(exprs, rexprs) {
-		t.Errorf("%s: WalkExprs visited %d expressions, Rewrite %d, or in another order", label, len(exprs), len(rexprs))
-	}
-	var stmts, rstmts []Stmt
-	_ = WalkStmts(root, func(s Stmt) error { stmts = append(stmts, s); return nil })
-	_ = Rewrite(root, func(n Node) (Node, error) {
-		if s, ok := n.(Stmt); ok {
-			rstmts = append(rstmts, s)
+		var exprs, rexprs []Expr
+		_ = WalkExprs(root, func(e Expr) error {
+			exprs = append(exprs, e)
+			return c.ctl(len(exprs)-1, e)
+		})
+		_ = RewriteExprs(root, func(e Expr) (Expr, error) {
+			rexprs = append(rexprs, e)
+			return e, c.ctl(len(rexprs)-1, e)
+		})
+		if !slices.Equal(exprs, rexprs) {
+			t.Errorf("%s/%s: WalkExprs visited %d expressions, Rewrite %d, or in another order", label, c.name, len(exprs), len(rexprs))
 		}
-		return n, nil
-	})
-	if !slices.Equal(stmts, rstmts) {
-		t.Errorf("%s: WalkStmts visited %d statements, Rewrite %d, or in another order", label, len(stmts), len(rstmts))
+		var stmts, rstmts []Stmt
+		_ = WalkStmts(root, func(s Stmt) error {
+			stmts = append(stmts, s)
+			return c.ctl(len(stmts)-1, s)
+		})
+		_ = Rewrite(root, func(n Node) (Node, error) {
+			s, ok := n.(Stmt)
+			if !ok {
+				return n, nil
+			}
+			rstmts = append(rstmts, s)
+			return n, c.ctl(len(rstmts)-1, s)
+		})
+		if !slices.Equal(stmts, rstmts) {
+			t.Errorf("%s/%s: WalkStmts visited %d statements, Rewrite %d, or in another order", label, c.name, len(stmts), len(rstmts))
+		}
+	}
+}
+
+// TestWalkReadsSlotsAfterTheVisit pins the one ordering a mutating callback
+// depends on: a node's slots are read after its own visit, so what the
+// callback put there is walked and what it replaced is not.
+func TestWalkReadsSlotsAfterTheVisit(t *testing.T) {
+	for _, tr := range traversals {
+		oldChild, newChild := mark("old child"), mark("new child")
+		oldProp, newProp := mark("old prop"), mark("new prop")
+		oldBody, newBody := mark("old body"), mark("new body")
+		node := &NodeInst{
+			Props:    []Arg{{Value: oldProp}},
+			Children: []Stmt{&Return{Value: oldChild}},
+		}
+		cond := &If{Body: []Stmt{&Return{Value: oldBody}}}
+		seen := map[Node]bool{}
+		_ = tr.walk([]Stmt{node, cond}, func(n Node) error {
+			seen[n] = true
+			switch n {
+			case node:
+				node.Props = []Arg{{Value: newProp}}
+				node.Children = []Stmt{&Return{Value: newChild}}
+			case cond:
+				cond.Body = []Stmt{&Return{Value: newBody}}
+			}
+			return nil
+		})
+		for _, m := range []Expr{newChild, newProp, newBody} {
+			if !seen[m] {
+				t.Errorf("%s: never visited %q, which the callback put in place", tr.name, m.(*Literal).Value)
+			}
+		}
+		for _, m := range []Expr{oldChild, oldProp, oldBody} {
+			if seen[m] {
+				t.Errorf("%s: visited %q, which the callback had replaced", tr.name, m.(*Literal).Value)
+			}
+		}
 	}
 }
 

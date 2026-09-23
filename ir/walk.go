@@ -13,7 +13,9 @@ import (
 //
 // A slot is read after the visit of the node that holds it, so a callback may
 // replace a node's own fields and the walk descends into what it put there,
-// as Rewrite does. TestWalkMatchesRewrite holds the two traversals together.
+// as Rewrite does. TestWalkMatchesRewrite pins the visit order against
+// Rewrite's under no-op callbacks; TestWalkReadsSlotsAfterTheVisit pins the
+// read-after-visit rule for Children, Props and an If's Body.
 func Walk(root any, visit func(Node) error) error {
 	w := walker{visit: visit}
 	w.root(root)
