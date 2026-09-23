@@ -4497,12 +4497,7 @@ func (c *checker) declareNodeIDsStmt(s ast.Stmt, counts []nodeCount) {
 // collectForLoopWindowIDs as the list of windows the loop produces, and one
 // inside an `if` is the single window it always was.
 func countsRepeat(counts []nodeCount) bool {
-	for _, k := range counts {
-		if k == countList {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(counts, countList)
 }
 
 // declareNodeID binds one node id. target names the component the node
@@ -4595,8 +4590,8 @@ func (c *checker) nodeHandleType(target string) *ir.Type {
 // through, innermost first: counts is outermost-first, so the last entry is
 // the scope nearest the node and binds tightest.
 func countedHandleType(typ *ir.Type, counts []nodeCount) *ir.Type {
-	for i := len(counts) - 1; i >= 0; i-- {
-		switch counts[i] {
+	for _, count := range slices.Backward(counts) {
+		switch count {
 		case countOption, countWindow:
 			typ = ir.OptionOf(typ)
 		case countList:

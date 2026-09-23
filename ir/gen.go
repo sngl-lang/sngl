@@ -1,5 +1,7 @@
 package ir
 
+import "slices"
+
 // GenCaps is what the `sngl:x/gen` marks said about a declaration: the
 // constructs a target emits natively, the ones it refuses, and the lowering
 // passes it asks for.
@@ -36,12 +38,7 @@ func HoldsIdentity(comp *Component) bool {
 	if g == nil {
 		return false
 	}
-	for _, n := range g.Renders {
-		if n == RenderedIdentity {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(g.Renders, RenderedIdentity)
 }
 
 // RenderedPrimitive is the `#[intrinsic]` component comp eventually renders, or
