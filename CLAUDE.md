@@ -1828,7 +1828,7 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 - Test runners resolve testdata via relative paths from their package directory
 - Error directive comments in test files (e.g., `// ERROR(check) "invalid color literal"` — phase is `parse`, `check`, etc.) drive expected-failure assertions via `internal/testutil`
 
-**A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `internal/checker`, `internal/parser`, `internal/optimize` and `internal/lspcore` keep running it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
+**A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `TestFixtures` still parses, formats, checks and folds it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
 
 **Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
 
@@ -1878,7 +1878,7 @@ Neither harness fixes a fixture whose input never reaches the branch it means
 to exercise: generated output is identical either way. Confirm a new fixture
 *fails* when the behaviour is reverted.
 
-**Know which harness sees platforms.** `internal/checker`'s two testdata-driven tests (`TestCheckTestdata`, `TestCheckProjectTestdata`) check against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. The other `TestdataSamples` consumers — `internal/optimize`, `internal/parser`, `internal/lspcore` — still check with none registered, and no fixture gets the real import resolver (directory imports resolve through a test stub). For those, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
+**Know which harness sees platforms.** `TestFixtures` (root package, `internal/fixtures`) is the one walk over `testdata/*.sngl`: each fixture is read, parsed, formatted, checked, folded and LSP-marked once, as its own directives ask. It checks against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. No fixture gets the real import resolver — directory imports resolve through the stub in `internal/fixtures/resolver.go`. For that, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
@@ -1891,6 +1891,39 @@ beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
 code imports, and the compiler must not be in that graph.
 
 When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
+
+### Performance
+
+What the compiler costs is measured in total work — CPU and bytes allocated —
+not only wall time: it runs beside everything else on a developer's machine,
+so a change that finishes sooner by doing the same work on more cores (running
+targets in parallel) is not a saving.
+
+- **Profile.** `SNGL_CPUPROFILE=f.prof` / `SNGL_MEMPROFILE=f.prof` on any
+  command; env vars rather than flags so a tool driving a build need not
+  thread one through. Set `SNGL_NO_PROXY=1` when timing the installed binary,
+  or the first run measures `go tool` rebuilding it. A benchmark over
+  `examples/` in a gitignored `tmp/` package (`build.ParsePackageFS` →
+  `build.Check` → `build.Emit`, slog discarded) gives the warm per-phase
+  numbers a one-shot CLI profile is too short to show.
+- **An AST is immutable once parsed.** Nothing after the parser writes to one,
+  which is what lets the embedded library tiers (`parseStdlibDocs`) and a
+  target's served package (`parseProvided`, keyed by file name and content)
+  be parsed once per process and shared by every check.
+  `TestProvidedDocsSurviveBuilds` builds every golden fixture and then compares
+  each shared document with a fresh parse; a phase that needs a modified tree
+  builds IR or a new node, never an edit.
+- **A library package is loaded against the targets it belongs to.**
+  `CheckLibPackage` selects a target package's own target (`ownTarget`);
+  selecting none loads every registered target's overrides, gtk4's GIR
+  included.
+- **One-shot commands run with GC at 400** (`tuneGC` in `cmd/sngl/main.go`);
+  a command that stays up carries the `longLived` annotation and keeps the
+  default. An explicit `GOGC` wins.
+- **Cloning is the largest remaining cost.** `build.Emit` clones the checked
+  package for every target but the last, and `ir.ClonePackage` copies by
+  reflection everything reachable — library IR included, since per-target
+  override bodies are written onto the shared library declarations.
 
 ### Debugging
 
