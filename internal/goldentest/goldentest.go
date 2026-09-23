@@ -130,17 +130,22 @@ func Run(t *testing.T, glob string, update, force bool) {
 	if len(files) == 0 {
 		t.Fatalf("no fixtures match %s", glob)
 	}
+	ran, walkedPkgs := 0, 0
 	for _, file := range files {
 		name := strings.TrimSuffix(filepath.Base(file), ".txtar")
 		t.Run(name, func(t *testing.T) {
-			runFixture(t, file, update, force)
+			ran++
+			runFixture(t, file, update, force, &walkedPkgs)
 		})
+	}
+	if ran > 0 && walkedPkgs == 0 {
+		t.Errorf("%d fixtures ran and no package had ir.Walk compared against ir.Rewrite", ran)
 	}
 }
 
 // No t.Helper: with one, every failure from any of the four checks below
 // reports this function's caller, and which check fired is the useful part.
-func runFixture(t *testing.T, path string, update, force bool) {
+func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read: %v", err)
@@ -176,10 +181,11 @@ func runFixture(t *testing.T, path string, update, force bool) {
 	// options on top, so the assertions are compiled and run rather than
 	// merely the program.
 	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
-	got, boilerplate, err := generate(src, opts, true)
+	got, boilerplate, walked, err := generate(src, opts, true)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
+	*walkedPkgs += walked
 
 	// Verification comes before the golden is written, so a -update run that
 	// cannot compile what it generated leaves the archive as it found it.
@@ -301,7 +307,7 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 // opts and main are the overlay a verification build adds; the golden itself
 // is generated with neither, so what the archive shows is what `sngl generate`
 // writes.
-func generate(src map[string][]byte, opts map[string]string, main bool) (files map[string][]byte, boilerplate map[string]bool, err error) {
+func generate(src map[string][]byte, opts map[string]string, main bool) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -309,7 +315,7 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (files m
 
 	doc, err := build.ParsePackageFS(fsys)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	pkg, err := build.Check(doc, build.CheckConfig{
 		Dir:      ".",
@@ -318,8 +324,13 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (files m
 		IsMain:   true,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("check: %w", err)
+		return nil, nil, 0, fmt.Errorf("check: %w", err)
 	}
+	// Before Emit: a single-target build lowers pkg in place.
+	if err := walkDivergence(pkg); err != nil {
+		return nil, nil, 0, fmt.Errorf("checked IR: %w", err)
+	}
+	walked++
 
 	// Name and Dir match what `sngl generate <file>` passes for a package in
 	// the working directory, and OutDir is its default. A golden is meant to
@@ -334,7 +345,7 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (files m
 		Main:      main,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	out := map[string][]byte{}
@@ -348,11 +359,15 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (files m
 	for _, res := range results {
 		dir := goldenPrefix + res.Target.Lang + "/" + res.Target.Platform
 		if seen[dir] {
-			return nil, nil, fmt.Errorf("output declares %s/%s twice; its two builds would overwrite each other's golden", res.Target.Lang, res.Target.Platform)
+			return nil, nil, 0, fmt.Errorf("output declares %s/%s twice; its two builds would overwrite each other's golden", res.Target.Lang, res.Target.Platform)
 		}
 		seen[dir] = true
+		if err := walkDivergence(res.Pkg); err != nil {
+			return nil, nil, 0, fmt.Errorf("%s/%s lowered IR: %w", res.Target.Lang, res.Target.Platform, err)
+		}
+		walked++
 		if len(res.Files) == 0 {
-			return nil, nil, fmt.Errorf("target %s/%s generated no files", res.Target.Lang, res.Target.Platform)
+			return nil, nil, 0, fmt.Errorf("target %s/%s generated no files", res.Target.Lang, res.Target.Platform)
 		}
 		for name, data := range res.Files {
 			if len(data) > 0 && data[len(data)-1] != '\n' {
@@ -365,7 +380,7 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (files m
 			}
 		}
 	}
-	return out, boiler, nil
+	return out, boiler, walked, nil
 }
 
 func firstRootSNGL(src map[string][]byte) string {

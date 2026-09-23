@@ -23,8 +23,9 @@ var (
 // Rewrite is the base traversal. It visits every node reachable from root in a
 // single pre-order pass; visit returns the (possibly replaced) node plus a
 // control error. The returned node is written back into its parent slot, so a
-// callback that returns its input unchanged is a read-only visit (that is what
-// Walk is). A replacement MUST be the same kind as the input — an Expr for an
+// callback that returns its input unchanged is a read-only visit, though Walk
+// is the one to use for that: it reaches the same nodes without writing any
+// back. A replacement MUST be the same kind as the input — an Expr for an
 // expression slot, a Stmt for a statement slot — or the walk panics writing it
 // back.
 //
@@ -78,33 +79,6 @@ func Rewrite(root any, visit func(Node) (Node, error)) error {
 	w := rewriter{visit: visit}
 	w.root(root)
 	return w.err
-}
-
-// Walk visits every node reachable from root in pre-order (read-only): the
-// callback cannot replace nodes. A convenience over Rewrite with an identity
-// replacement.
-func Walk(root any, visit func(Node) error) error {
-	return Rewrite(root, func(n Node) (Node, error) { return n, visit(n) })
-}
-
-// WalkStmts is a read-only walk whose callback fires only on statements.
-func WalkStmts(root any, fn func(Stmt) error) error {
-	return Walk(root, func(n Node) error {
-		if s, ok := n.(Stmt); ok {
-			return fn(s)
-		}
-		return nil
-	})
-}
-
-// WalkExprs is a read-only walk whose callback fires only on expressions.
-func WalkExprs(root any, fn func(Expr) error) error {
-	return Walk(root, func(n Node) error {
-		if e, ok := n.(Expr); ok {
-			return fn(e)
-		}
-		return nil
-	})
 }
 
 // RewriteExprs rewrites only expressions; statements pass through unchanged.

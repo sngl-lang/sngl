@@ -113,7 +113,6 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 	// both into one page regardless.
 	shared := ownerNames(packageOwner(owners))
 	for _, o := range owners {
-		read := handleReads(o.Stmts())
 		reads := handleIdents(o.Stmts())
 		// The owner's own names are taken before any id is. A node id shares
 		// one emitted namespace with the vars, consts and funcs the owner
@@ -156,8 +155,8 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 				return nil
 			}
 			if first, ok := rendered[n.Handle]; ok {
-				if r := read[n.Handle]; r != nil && dup == nil {
-					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r), n.Handle.Name, nodePos(first))
+				if r := reads[n.Handle]; len(r) > 0 && dup == nil {
+					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.Name, nodePos(first))
 				}
 				return nil
 			}
@@ -215,9 +214,11 @@ func renameNodeID(n *ir.NodeInst, name string, reads map[*ir.Var][]*ir.Ident) {
 	n.Handle.Name = name
 }
 
-// handleIdents is every read of every `#id` handle, keyed by the binding. The
-// singular handleReads below keeps one read per handle for a diagnostic to
-// point at; this keeps them all, because a rename has to reach each one.
+// handleIdents is every read of every `#id` handle, keyed by the binding and in
+// the order the walk reached them. All of them, because a rename has to reach
+// each one; in order, because the duplicate diagnostic points at the first, and
+// a read may come after the copy that makes it ambiguous. Collecting them ahead
+// of the walk that renames is what lets that walk be the only other one.
 func handleIdents(stmts []ir.Stmt) map[*ir.Var][]*ir.Ident {
 	out := map[*ir.Var][]*ir.Ident{}
 	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
@@ -227,24 +228,6 @@ func handleIdents(stmts []ir.Stmt) map[*ir.Var][]*ir.Ident {
 		}
 		if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle {
 			out[v] = append(out[v], id)
-		}
-		return nil
-	})
-	return out
-}
-
-// handleReads is every `#id` handle the statements read back by name, keyed by
-// the binding rather than by the name, and valued at one of the reads so the
-// diagnostic can point at source the user recognises.
-func handleReads(stmts []ir.Stmt) map[*ir.Var]*ir.Ident {
-	out := map[*ir.Var]*ir.Ident{}
-	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
-		id, ok := e.(*ir.Ident)
-		if !ok {
-			return nil
-		}
-		if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle && out[v] == nil {
-			out[v] = id
 		}
 		return nil
 	})

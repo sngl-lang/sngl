@@ -12,13 +12,13 @@ import (
 // via the same compilation used for lang=none, then hands the routes and a
 // RenderHTML callback to the language's HTTPCompiler. The language owns all
 // framework specifics — mux syntax, server entry point, imports.
-func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink) error {
+func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, frontendNatives map[nativeFuncKey]bool) error {
 	compiler, ok := req.Lang.(codegen.HTTPCompiler)
 	if !ok {
 		return fmt.Errorf("html: language %q does not implement HTTPCompiler", req.Lang.LanguageIdentifier())
 	}
 
-	c := &compilation{ctx: codegen.NewCodegenCtx(req, "html")}
+	c := &compilation{ctx: codegen.NewCodegenCtx(req, "html"), frontendNatives: frontendNatives}
 	if _, err := c.BuildMutationModel(req, c.ctx.Analysis); err != nil {
 		return err
 	}

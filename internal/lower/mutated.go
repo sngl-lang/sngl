@@ -53,29 +53,26 @@ func lowerMutatedVars(pkg *ir.Package, _ Features, _ Options) error {
 		}
 	}
 	visit := func(root any) {
-		_ = ir.WalkStmts(root, func(st ir.Stmt) error {
-			switch s := st.(type) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			switch s := n.(type) {
 			case *ir.Assign:
 				mark(s.Target)
 			case *ir.Toggle:
 				mark(s.Target)
-			}
-			return nil
-		})
-		_ = ir.WalkExprs(root, func(e ir.Expr) error {
-			call, ok := e.(*ir.Call)
-			if !ok || call.Func == nil || !call.Func.MutatesReceiver {
-				return nil
-			}
-			// The declaration says this call writes through its argument, so
-			// every argument is treated as written: which one it means is the
-			// first, but a receiver reaches here as an argument or as
-			// Call.Receiver depending on the pass that built it.
-			if call.Receiver != nil {
-				mark(call.Receiver)
-			}
-			for _, a := range call.Args {
-				mark(a.Value)
+			case *ir.Call:
+				if s.Func == nil || !s.Func.MutatesReceiver {
+					return nil
+				}
+				// The declaration says this call writes through its argument,
+				// so every argument is treated as written: which one it means
+				// is the first, but a receiver reaches here as an argument or
+				// as Call.Receiver depending on the pass that built it.
+				if s.Receiver != nil {
+					mark(s.Receiver)
+				}
+				for _, a := range s.Args {
+					mark(a.Value)
+				}
 			}
 			return nil
 		})

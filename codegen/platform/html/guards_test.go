@@ -73,7 +73,7 @@ func TestStaticBackendHandlerErrors(t *testing.T) {
 }
 
 // directivePkg wraps a single expression in a text binding inside main, so
-// checkPlacementDirectives sees it during the package walk.
+// scanPlacement sees it during the package walk.
 func directivePkg(binding ir.Expr) *ir.Package {
 	text := &ir.NodeInst{
 		Name:  "text",
@@ -88,7 +88,7 @@ func directivePkg(binding ir.Expr) *ir.Package {
 // (non-func) expression is a clear not-yet-implemented error.
 func TestBackendConstExprErrors(t *testing.T) {
 	binding := intrinsicCall("html.backend", &ir.Literal{Value: "42", Type: ir.TypInt})
-	err := checkPlacementDirectives(directivePkg(binding))
+	err := scanPlacement(directivePkg(binding)).err
 	if err == nil {
 		t.Fatal("expected error for html.backend(const), got nil")
 	}
@@ -103,7 +103,7 @@ func TestBackendConstExprErrors(t *testing.T) {
 func TestFrontendOnBackendValueErrors(t *testing.T) {
 	inner := intrinsicCall("html.backend", &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc}})
 	binding := intrinsicCall("html.frontend", inner)
-	err := checkPlacementDirectives(directivePkg(binding))
+	err := scanPlacement(directivePkg(binding)).err
 	if err == nil {
 		t.Fatal("expected error for html.frontend(html.backend(...)), got nil")
 	}
@@ -122,7 +122,7 @@ func TestFrontendGoCallAllowed(t *testing.T) {
 			Value: intrinsicCall("html.frontend", goCall("example.com/api")),
 		}}},
 	}}}
-	if err := checkPlacementDirectives(pkg); err != nil {
+	if err := scanPlacement(pkg).err; err != nil {
 		t.Fatalf("html.frontend(go_call) is the WASM opt-in and must not error, got: %v", err)
 	}
 }

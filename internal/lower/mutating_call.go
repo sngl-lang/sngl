@@ -28,22 +28,28 @@ import (
 // after every pass, on the IR a backend is about to walk.
 func verifyMutationsAreStatements(pkg *ir.Package) error {
 	stmtCalls := map[*ir.Call]bool{}
-	_ = ir.WalkStmts(pkg, func(s ir.Stmt) error {
-		if cs, ok := s.(*ir.CallStmt); ok && cs.Call != nil {
-			stmtCalls[cs.Call] = true
+	var mutating []*ir.Call
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.CallStmt:
+			if x.Call != nil {
+				stmtCalls[x.Call] = true
+			}
+		case *ir.Call:
+			if mutatingCallReceiver(x) != nil {
+				mutating = append(mutating, x)
+			}
 		}
 		return nil
 	})
-	var err error
-	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
-		c, ok := e.(*ir.Call)
-		if !ok || stmtCalls[c] || mutatingCallReceiver(c) == nil {
-			return nil
+	// Judged after the walk, not during it: a pass may have left one Call
+	// both as a statement and in an expression visited before that statement.
+	for _, c := range mutating {
+		if !stmtCalls[c] {
+			return fmt.Errorf("%s mutates its receiver and yields nothing, which no target can spell as an expression; write it as a statement of its own", intrinsicName(c))
 		}
-		err = fmt.Errorf("%s mutates its receiver and yields nothing, which no target can spell as an expression; write it as a statement of its own", intrinsicName(c))
-		return ir.SkipAll
-	})
-	return err
+	}
+	return nil
 }
 
 func intrinsicName(c *ir.Call) string {

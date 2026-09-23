@@ -189,30 +189,33 @@ func bodiedPackage() *Package {
 }
 
 func TestRewriteVisitsEveryOwnedBody(t *testing.T) {
-	seen := map[string]bool{}
-	if err := Walk(bodiedPackage(), func(n Node) error {
-		if lit, ok := n.(*Literal); ok && lit.Value != "" {
-			seen[lit.Value] = true
+	for _, tr := range traversals {
+		seen := map[string]bool{}
+		if err := tr.walk(bodiedPackage(), func(n Node) error {
+			if lit, ok := n.(*Literal); ok && lit.Value != "" {
+				seen[lit.Value] = true
+			}
+			return nil
+		}); err != nil {
+			t.Fatalf("%s: %v", tr.name, err)
 		}
-		return nil
-	}); err != nil {
-		t.Fatalf("Walk: %v", err)
-	}
-	// These carry no marker of their own because every other marker is
-	// reached through them: the walk's entry points, and the handler record
-	// whose Func holds each handler marker. Skipping any of them loses the
-	// markers underneath, so they stay covered.
-	reachedThrough := map[string]bool{
-		"Package.Funcs": true, "Func.Block": true, "EventHandler.Func": true,
-	}
-	for _, slot := range bodySlots() {
-		if reachedThrough[slot] || seen[slot] {
-			continue
+		// These carry no marker of their own because every other marker is
+		// reached through them: the walk's entry points, and the handler record
+		// whose Func holds each handler marker. Skipping any of them loses the
+		// markers underneath, so they stay covered.
+		reachedThrough := map[string]bool{
+			"Package.Funcs": true, "Func.Block": true, "EventHandler.Func": true,
 		}
-		t.Errorf("ir.Rewrite never visited %s\n"+
-			"\tEvery field holding IR a node owns must be reached by the walk, or\n"+
-			"\tnamed in referenceSlots as IR owned somewhere else. If this is a new\n"+
-			"\tfield: wire it into walkexprs.go and add a marker to bodiedPackage.", slot)
+		for _, slot := range bodySlots() {
+			if reachedThrough[slot] || seen[slot] {
+				continue
+			}
+			t.Errorf("ir.%s never visited %s\n"+
+				"\tEvery field holding IR a node owns must be reached by the walk, or\n"+
+				"\tnamed in referenceSlots as IR owned somewhere else. If this is a new\n"+
+				"\tfield: wire it into walkexprs.go and walk.go, and add a marker to\n"+
+				"\tbodiedPackage.", tr.name, slot)
+		}
 	}
 }
 

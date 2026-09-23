@@ -22,13 +22,13 @@ type wasmPackage struct {
 // and is NOT shipped to the browser. WASM exposure is opt-in: a func is
 // compiled to WASM and exposed via window.__sngl_externs ONLY when the author
 // forces it client-side with html.frontend(...). collectWASMPackages therefore
-// includes a func only if it appears in frontendNativeFuncs(pkg). A package
-// with no frontend-forced funcs contributes no WASM at all.
-func collectWASMPackages(pkg *ir.Package, fsys fs.FS, projectDir string) []wasmPackage {
+// includes a func only if it appears in frontend, which is
+// scanPlacement(pkg).frontend. A package with no frontend-forced funcs
+// contributes no WASM at all.
+func collectWASMPackages(pkg *ir.Package, frontend map[nativeFuncKey]bool, fsys fs.FS, projectDir string) []wasmPackage {
 	if pkg == nil {
 		return nil
 	}
-	frontend := frontendNativeFuncs(pkg)
 	if len(frontend) == 0 {
 		// Every package below is admitted only by a lookup in frontend, so an
 		// empty one admits nothing — and returning here spares the scan a
