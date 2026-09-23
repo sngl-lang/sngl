@@ -8,9 +8,8 @@ import (
 )
 
 var lspCmd = &cobra.Command{
-	Use:         "lsp",
-	Annotations: map[string]string{longLived: "true"},
-	Short:       "Start the SNGL language server",
+	Use:   "lsp",
+	Short: "Start the SNGL language server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		srv := lsp.New()
 		tcp, _ := cmd.Flags().GetString("tcp")

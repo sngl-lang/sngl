@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"syscall"
@@ -57,7 +56,6 @@ func init() {
 			Level: level,
 		})))
 
-		tuneGC(cmd)
 		return nil
 	}
 
@@ -106,41 +104,6 @@ func isUnderGoCache(selfPath string) bool {
 			return false
 		}
 		dir = parent
-	}
-}
-
-// longLived marks a command that stays up serving requests, so tuneGC leaves
-// its collector alone.
-const longLived = "sngl.longLived"
-
-// oneShotGCPercent is the collector target for a command that runs a build and
-// exits. A compile allocates tens of megabytes it holds to the end, and at the
-// default of 100 the collector ran through about 40% of `sngl generate`'s CPU
-// re-marking that live heap: 400 halved the CPU of a four-target build of
-// examples/showcase and took a fifth off its wall time.
-const oneShotGCPercent = 400
-
-// oneShotMemoryLimit bounds what oneShotGCPercent trades. A target of 400 lets
-// the heap reach five times what is live, which for a small build is tens of
-// megabytes and for the docs site -- over 200MB live -- was 1.3GB. Past the
-// limit the collector runs as often as it must to stay under it, so a big
-// build pays in CPU instead: the docs site ran in less CPU *and* less memory
-// than at the default (5.3s and 580MB against 6.3s and 700MB).
-const oneShotMemoryLimit = 512 << 20
-
-// tuneGC raises the collector target for a one-shot command, under a memory
-// limit. A server -- `sngl lsp`, `sngl preview` -- keeps the defaults, since it
-// lives long enough for a larger heap to matter and short builds are not what
-// it spends its time on. An explicit GOGC or GOMEMLIMIT wins over each.
-func tuneGC(cmd *cobra.Command) {
-	if cmd.Annotations[longLived] != "" {
-		return
-	}
-	if os.Getenv("GOGC") == "" {
-		debug.SetGCPercent(oneShotGCPercent)
-	}
-	if os.Getenv("GOMEMLIMIT") == "" {
-		debug.SetMemoryLimit(oneShotMemoryLimit)
 	}
 }
 

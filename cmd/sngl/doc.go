@@ -46,10 +46,9 @@ var docBuildCmd = &cobra.Command{
 }
 
 var docServeCmd = &cobra.Command{
-	Use:         "serve",
-	Annotations: map[string]string{longLived: "true"},
-	Short:       "Build and serve the documentation site locally",
-	RunE:        runDocServe,
+	Use:   "serve",
+	Short: "Build and serve the documentation site locally",
+	RunE:  runDocServe,
 }
 
 func init() {
