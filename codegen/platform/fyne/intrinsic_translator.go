@@ -57,11 +57,10 @@ type fyneTranslator struct {
 	// Model's own __root is the wrapper its BuildUI already returns.
 	slotRoot string
 
-	// Canvas2D state. canvasByID/canvasByFunc map flattened canvas elements
-	// (LocalVar.CanvasDraw) to their Model widget field + draw func, shared
-	// into every translator that may create a canvas or emit a redraw. The
-	// drawing itself is stateless here — canvasutil.GoContextStmts translates
-	// each intrinsic into Context method calls.
+	// Canvas2D state. canvasByID/canvasByNode map a flattened canvas element to
+	// its Model widget field and draw func, shared into every translator that
+	// may create a canvas or emit a redraw. The drawing itself needs nothing
+	// here: it is the shape overrides' own `#[go.native]` calls by now.
 	// invokerSink records one (id, event) pair per handler attached, for the
 	// test-invoker methods emitted after the walk. nil in scopes with no test
 	// surface -- a slot func, a canvas draw.

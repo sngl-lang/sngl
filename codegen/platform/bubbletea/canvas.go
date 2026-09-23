@@ -14,10 +14,9 @@ import (
 // Canvas2D rendering for bubbletea.
 //
 // bubbletea keeps the declarative visual tree (it holds Declarative), so a
-// canvas arrives in the view body as an *ir.NodeInst with n.CanvasDraw set
-// (the synthesized `_canvasDrawN(ctx)` func passShapeDraw produced) and
-// width/height props still on the node. Every statement in that func is what a
-// shape override's own `@draw` handler was written as: bubbletea declares no
+// canvas arrives in the view body as an *ir.NodeInst, whose drawing
+// ctx.Canvases.ForNode finds and whose width and height are still props on the
+// node. Every statement in that drawing is what a shape override's own `@draw` handler was written as: bubbletea declares no
 // shape overrides and inherits `sngl:language/go`'s, which paint through
 // `#[go.native]` methods on the pkg/go/canvas runtime. No canvas intrinsic
 // reaches here, so nothing in this package translates one.
@@ -236,9 +235,8 @@ func emitCanvasTransmitMethod(b *strings.Builder, draws *codegen.CanvasDraws, gc
 
 // emitCanvasDrawFuncs emits one `func (m *Model) _canvasDrawN(ctx
 // *snglcanvas.Context)` per canvas NodeInst found in the visual tree. The body
-// is the draw func's canvas-intrinsic CallStmts, each translated to ctx method
-// calls via the shared canvasutil.GoContextStmts helper and rendered through
-// the Go IR context.
+// is the drawing as passShapeDraw left it -- `#[go.native]` method calls on the
+// canvas runtime, which the Go IR context renders like any other call.
 func emitCanvasDrawFuncs(b *strings.Builder, draws *codegen.CanvasDraws, gc *golang.GoIRContext) {
 	all := draws.All()
 	for i := range all {

@@ -84,14 +84,14 @@ window {
 	}
 
 	// Negative: the bespoke gg path is gone; no gg context or color helper.
+	//
+	// The five `Canvas*` intrinsic names this used to list are gone from the
+	// compiler entirely -- a shape paints through its own `@draw` handler now --
+	// so asserting they do not leak asserted nothing at all. What remains are
+	// names something could still emit.
 	for _, leak := range []string{
 		"gg.NewContext",
 		"_snglColor",
-		// untranslated canvas intrinsics must not leak.
-		"CanvasDrawRect",
-		"CanvasDrawCircle",
-		"CanvasApplyStyle",
-		"CanvasSave",
 		"lower.CreateNode",
 	} {
 		if strings.Contains(out, leak) {

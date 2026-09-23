@@ -58,12 +58,13 @@ func RegisterIntrinsic(lang, id string, e IntrinsicEmitter) {
 // platform renders onto, so only builds targeting that platform can emit it at
 // all.
 //
-// The 2D drawing primitives are the case that needs it. gtk4 emits CanvasSave
-// in Go and android emits it in Kotlin, but neither language can emit it on its
-// own — a bubbletea build in Go has no canvas — so registering them per language
-// would claim a capability that is false for every other platform sharing that
-// language. html's canvas emitters were registered against "js" for want of
-// somewhere better, and said the same untrue thing more quietly.
+// The 2D drawing primitives were the case that needed it: a canvas id had to be
+// emitted in Go on gtk4 and in Kotlin on android, and neither language could
+// claim it on its own — a bubbletea build in Go has no canvas — so registering
+// per language would have claimed a capability false for every other platform
+// sharing that language. Those ids are gone now, a shape being an override that
+// paints through its own `@draw` handler, and no platform intrinsic of that
+// kind is registered any more.
 //
 // A transport is the other case, and the reason this exists now: whether a
 // program can reach gRPC depends on there being a binding for the target, and

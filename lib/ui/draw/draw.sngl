@@ -43,8 +43,8 @@ struct PathCmd {
 // family nobody joins.
 //
 // The builtin mark is the one thing this family has that an ordinary one does
-// not: passCanvas emits this package's own primitives, so the compiler has to
-// name the tree those rules are about. It names it by the mark rather than by
+// not: passShapeDraw turns a canvas's children into the calls that paint them,
+// so the compiler has to name the tree those rules are about. It names it by the mark rather than by
 // the pair "sngl:ui/draw" and "shape", so a program declaring `struct shape`
 // of its own is a different family and is not painted.
 #[tree.kind]

@@ -66,9 +66,9 @@ var passes = []pass{
 	passRecursionDepth,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
-	// After passCanvas: the call it promotes may be inside a draw function
-	// synthesized from an override's handler body.
 	passShapeDraw,
+	// After passShapeDraw: the call it promotes may be inside a drawing, which
+	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
 	passEffect,
 	passSlotChildInstances,

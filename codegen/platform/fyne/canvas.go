@@ -19,9 +19,10 @@ type canvasMeta = canvasutil.Meta
 
 // Canvas2D rendering for fyne.
 //
-// passShapeDraw (internal/lower) turns a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func, whose every statement is what a shape
-// override's own `@draw` handler was written as. fyne declares no shape
+// passShapeDraw (internal/lower) replaces a canvas's shape children in place
+// with the statements that paint them -- nothing is synthesized, and the
+// `_canvasDrawN` name is codegen's own. Every one of those statements is what a
+// shape override's own `@draw` handler was written as. fyne declares no shape
 // overrides and inherits `sngl:language/go`'s, which paint through
 // `#[go.native]` methods on the pkg/go/canvas runtime -- so what arrives here
 // is ordinary method calls the Go emitter already handles, and this package
@@ -29,7 +30,7 @@ type canvasMeta = canvasutil.Meta
 //
 // passDeclarative then flattens the canvas NodeInst to a
 // `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
-// dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight.
+// dimensions onto the record canvasutil.Collect reads.
 //
 // fyne renders via the shared pkg/go/canvas runtime (software raster over
 // github.com/fogleman/gg): ctx is a *snglcanvas.Context, the canvas widget is a

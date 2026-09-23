@@ -13,16 +13,18 @@ import (
 
 // Canvas2D rendering for android via Jetpack Compose's DrawScope.
 //
-// passShapeDraw (internal/lower) turns a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func, whose every statement is what a shape
-// override's own `@draw` handler was written as -- for android, Compose draw
+// passShapeDraw (internal/lower) replaces a canvas's shape children in place
+// with the statements that paint them -- nothing is synthesized, and the
+// `_canvasDrawN` name is codegen's own. Every one of those statements is what a
+// shape override's own `@draw` handler was written as -- for android, Compose draw
 // calls from `component shapes.circle[platform]`. The lowering contributes
 // nothing of its own: the CanvasSave/CanvasRestore bracket it used to put
 // around a composed shape is gone, and was a pair of no-ops here anyway, a
 // DrawScope managing its state per primitive.
 //
 // android is declarative (it keeps the NodeInst tree), so the canvas node
-// reaches renderNode with n.CanvasDraw set. We emit a Compose
+// reaches renderNode, and ctx.Canvases.ForNode finds its drawing. We emit a
+// Compose
 //
 //	Canvas(modifier = Modifier.size(w.dp, h.dp)) { /* this: DrawScope */ ... }
 //
@@ -194,10 +196,11 @@ func canvasScalingProp(n *ir.NodeInst) string {
 	return ""
 }
 
-// emitDrawBody translates a synthesized `_canvasDrawN` block into DrawScope
-// Kotlin lines. passCanvas emits a fixed per-shape structure: Save,
-// [ApplyStyle], DrawPrimitive, Restore. ApplyStyle binds the style the
-// following primitive's fill/stroke reference.
+// emitDrawBody writes a drawing into the DrawScope lambda as Kotlin lines.
+//
+// There is no fixed per-shape structure to expect: what a drawing holds is
+// whatever each shape override's `@draw` handler was written as, which for
+// android is Compose draw calls.
 func (cc *irComposeContext) emitDrawBody(stmts []ir.Stmt) {
 	cc.emitDrawStmts(stmts)
 }
@@ -275,16 +278,6 @@ func (cc *irComposeContext) emitDrawIf(s *ir.If) {
 	}
 	cc.line("}")
 }
-
-// evalStyleArg evaluates a CanvasApplyStyle argument to a Kotlin CanvasStyle
-// expression. passCanvas emits style references to component funcs as explicit
-// receiver calls (`main.circleStyle()`). android emits those component funcs as
-// either computed properties (`val circleStyle by ... derivedStateOf`) or as
-// state methods, so a generic method-call translation can't resolve them. Here
-// we map the call to the bare name (computed → property read, plain func →
-// call), routing through IdentRewrites so test-mode `state.` prefixing applies.
-// Inline `CanvasStyle{...}` literals (no receiver call) fall through to
-// EvalExpr unchanged.
 
 // receiverIsComponent reports whether name matches a component in the package.
 func (cc *irComposeContext) receiverIsComponent(name string) bool {

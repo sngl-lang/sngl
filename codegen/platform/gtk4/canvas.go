@@ -15,16 +15,17 @@ import (
 
 // Canvas2D rendering for gtk4 via cairo.
 //
-// passShapeDraw (internal/lower) turns a `canvas`+shapes subtree into a
-// synthesized `_canvasDrawN(ctx)` func, whose every statement is what a shape
-// override's own `@draw` handler was written as -- for gtk4, cairo natives,
+// passShapeDraw (internal/lower) replaces a canvas's shape children in place
+// with the statements that paint them -- nothing is synthesized, and the
+// `_canvasDrawN` name is codegen's own. Every one of those statements is what a
+// shape override's own `@draw` handler was written as -- for gtk4, cairo natives,
 // since `component shapes.circle[platform]` here paints with them directly.
 // The lowering contributes nothing of its own: there is no canvas intrinsic
 // left for this package to translate.
 //
 // passDeclarative then flattens the canvas NodeInst to a
 // `lower.CreateNode("canvas")` LocalVar, threading the draw func + pixel
-// dimensions onto LocalVar.CanvasDraw / CanvasWidth / CanvasHeight (recovered
+// dimensions onto the record canvasutil.Collect reads.(recovered
 // here via canvasutil.Collect).
 //
 // gtk4 renders with a GtkDrawingArea: the draw func is a `void (*)(cr ...)`

@@ -187,11 +187,16 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 		return
 	}
 
-	// A component with a body renders from it -- a composed shape, or the
-	// override a target supplied. It is exempt from component inlining, since
-	// a tree kind marks a declaration as rendered rather than composed away,
-	// so its body is expanded here with the call site's arguments substituted
-	// for its props.
+	// A component with a body renders from it: the override a target supplied,
+	// expanded here with the call site's arguments substituted for its props.
+	//
+	// A *user*-declared shape does not reach this. A tree kind is deliberately
+	// not on `isPrimitiveComponent`'s list -- a shape composed out of other
+	// shapes is a wrapper like any other -- so passNoInlineComponents composes
+	// one away before this pass runs. That is what
+	// `testdata/canvas_composed_user_shape.txtar` pins, and it is why the
+	// bracket this function used to put around a composed shape was
+	// unreachable.
 	//
 	// A shape with no body and no override for this target draws nothing, and
 	// says so where it is declared: that is what the bodyless-component rule
