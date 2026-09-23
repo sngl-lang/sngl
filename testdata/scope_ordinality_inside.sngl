@@ -6,6 +6,12 @@
 // The positive half of error_scope_ordinality.sngl. Without the re-hoist both
 // reads below are the error that fixture asserts, which is a working program
 // refused: html already renders this one correctly.
+//
+// Reads, not writes. This used to prove the point by assigning `maybe.value`,
+// which the checker now refuses wherever it is written: a prop is what the
+// tree says it is, and a write beside it is a second source of truth the next
+// render undoes. What the fixture is about is unchanged -- whether the handle
+// resolves at all from inside the scope that counts it.
 
 import ui "sngl:ui"
 
@@ -17,13 +23,13 @@ ui.window #w(title="t") {
         if show {
             ui.text #maybe(value="hi")
 
-            ui.button(text="a", @click { maybe.value = "x" })
+            ui.text(value="maybe says {maybe.value}")
         }
 
         for var it = items {
             ui.text #row(value=it)
 
-            ui.button(text="b", @click { row.value = "x" })
+            ui.text(value="row says {row.value}")
         }
     }
 }

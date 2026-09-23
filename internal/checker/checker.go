@@ -44,6 +44,22 @@ type Config struct {
 	// outer (main) package. Entries here override any `=>` mapping declared
 	// in the package being checked.
 	Replaces map[string]string
+	// Lowered says this document was printed from lowered IR rather than
+	// written by anyone, so the rules about what a *program* may say do not
+	// apply to it.
+	//
+	// One rule needs it today: a node's prop may not be assigned. That is a
+	// statement about programs -- a prop is what the tree says it is -- and
+	// the lowering's whole job is to turn it into the `__n0.value = expr` a
+	// host actually runs. In IR the two are told apart by Var.Synthesized;
+	// printed and re-parsed, `text #__n0(…)` is an ordinary node with an
+	// ordinary id, and nothing in the text says which side of the pipeline
+	// wrote it.
+	//
+	// So the caller says. Only a caller that lowered the IR itself can, which
+	// is the round-trip tests and `sngl dump --stage lowered`; a program
+	// reaching the checker through any other path is held to the rule.
+	Lowered bool
 	// LibSources substitutes the source of a library package, keyed by lib
 	// path ("platform/teststub"). It exists for the in-test platform stubs,
 	// which register a plugin with no lib/ directory behind it; production

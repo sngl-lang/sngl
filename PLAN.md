@@ -601,10 +601,41 @@ interpolation, two levels into a node's prop -- and every hand-rolled descent
 in `internal/lower` is a list of the shapes its author thought of. `ir.Rewrite`
 has its kind coverage enforced by a panic and its slot coverage by a test.
 
-Writes are refused in the lowering, for the reason the read is answered there:
-a primitive that claims identity has a node to assign to, and which primitive a
-declaration renders is not known until the override is in. `cmd/sngl/testdata/shape_prop_write.txt`
-is that, a script test because the refusal needs a target picked.
+**Writes are refused outright, in the checker.** They were briefly refused in
+the lowering and only for a shape, on the reasoning that a primitive claiming
+identity has a node to assign to -- which was answering the wrong question.
+Jonathan's: *"Imperatively assigning a prop shouldn't be permitted."* A prop is
+declarative. `ui.text(value=greeting)` says what the node shows for as long as
+it is rendered, and reactivity re-evaluates it when `greeting` changes; a write
+beside that is a second source of truth the next render undoes, so the program
+that looks like it worked is the one whose write is silently gone.
+
+Nothing depended on it. Every `.sngl`, golden and script in the repository was
+searched for an assignment whose left side is a `#id` handle: four sites, all
+fixtures testing whether it can be done. No example, no `lib/`, no target
+package, no program.
+
+What each target did with one is the other half of the argument. On fyne
+`label.value = "bye"` emitted `label.Value = "bye"` -- a `widget.Label` field
+that does not exist, with no receiver either, since a program's own `#id` never
+carried `IsElementRef` and so reached no platform hook at all. Marking it
+routes the write to `OnPropAssign`, which answers an unmapped prop with nil:
+the write then *vanishes silently*, which is worse than not compiling. Neither
+is a thing to keep.
+
+So: `refuseNodePropAssign`, on both the assignment and the toggle paths, with
+`testdata/error_node_prop_assign.sngl` holding the pair.
+`scope_ordinality_inside.sngl` proved the re-hoist with a write and proves it
+with a read now; its subject is unchanged, being whether the handle resolves at
+all from inside the scope that counts it. What a *lowering* writes is
+untouched: `passReactivity` and `passDeclarative` emit `__n0.text = expr` by
+the hundred, built after the check and never meeting it.
+
+One defect this leaves standing, now only on the read side:
+`OnPropAssign` returning nil for a prop the platform has no mapping for. The
+synthesized writes are the ones that reach it, and one of those going missing
+is a rendering bug with nothing said. It wants a diagnostic whether or not the
+read hook is ever built.
 
 `ir.CrossesTreeFamily` keeps one caller, `declareOwnNodeIDsIn`, and wants the
 same treatment; `testdata/error_tree_family_id_barrier.sngl` is now

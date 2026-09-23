@@ -18,7 +18,7 @@ regardless.
 
 `#tag` is the same question asked of two node ids rather than of a var and an
 id. The inner one shadows the outer inside the `if`, uniqueNodeIDs renames it
-for the namespace, and the read in the handler beside it has to follow that
+for the namespace, and the read beside it has to follow that
 rename -- an emitter spells a read from the ident's own name, so renaming the
 node alone left one name for the element and another for every reference to it.
 The handle is what links them, and passInlinePure was dropping it: it carried
@@ -54,7 +54,7 @@ ui.window #w(title="t") {
 
             ui.text #tag(value="inner")
 
-            ui.button(text="b", @click { tag.value = "x" })
+            ui.text(value="reads {tag.value}")
         }
 
         ui.text(value="{label}")
@@ -74,7 +74,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<div id="__n3" data-sngl-id="__n3" style="display:flex;flex-direction:column">
+<div id="__n2" data-sngl-id="__n2" style="display:flex;flex-direction:column">
   <span>outer tag</span>
   <span data-sngl-slot="0" style="display:contents"></span>
   <span id="__n0" data-sngl-id="__n0">
@@ -115,16 +115,8 @@ body { font-family: system-ui, sans-serif; }
         parent.insertBefore(tag__1, __place0_i_ref1);
       }
       __slot0.push(tag__1);
-      let __n1 = document.createElement("button");
-      __n1.disabled = false;
-      __n1.addEventListener("click", () => {
-        tag__1.value = "x";
-      });
-      __n1.addEventListener("contextmenu", () => {
-      });
-      let __n2 = document.createElement("span");
-      __n2.textContent = "b";
-      __n1.appendChild(__n2);
+      let __n1 = document.createElement("span");
+      __n1.textContent = "reads " + tag__1.value;
       let __place0_i_ref2 = null;
       if (__place0_i < __place0_prev.length) {
         __place0_i_ref2 = __place0_prev[__place0_i];
@@ -153,4 +145,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a14cfeafb2a9c1623df1ef605c699368
+pass sha256:bb55a7669f0657d2e48dbf002b21a81c

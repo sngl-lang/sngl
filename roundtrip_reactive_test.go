@@ -48,7 +48,7 @@ func TestReactiveLoweredRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reparse lowered output failed: %v\n--- output ---\n%s", err, out)
 	}
-	if _, diags := checker.Check(reparsed, &checker.Config{IsMain: true}); hasError(diags) {
+	if _, diags := checker.Check(reparsed, &checker.Config{IsMain: true, Lowered: true}); hasError(diags) {
 		t.Fatalf("recheck lowered output failed: %s\n--- output ---\n%s", joinDiags(diags), out)
 	}
 }

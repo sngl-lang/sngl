@@ -3045,6 +3045,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				}
 			}
 		}
+		c.refuseNodePropAssign(targetExpr, x.Pos, "assign to")
 		c.requireValueType(valueType, x.Pos)
 		if x.Op == ast.AssignSet {
 			if targetType.Kind != ir.TypeDyn && valueType.Kind != ir.TypeDyn && !valueType.IsAssignableTo(targetType) {
@@ -3085,6 +3086,7 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		if t != nil && t.Kind != ir.TypeBool && t.Kind != ir.TypeDyn && t.Kind != ir.TypeInvalid {
 			c.error(x.Pos, "toggle target must be bool, got %s", t)
 		}
+		c.refuseNodePropAssign(targetExpr, x.Pos, "toggle")
 		if c.rejectStmtInViewBody(x.Pos, targetDescription("a toggle", "of", x.Target)) {
 			return nil
 		}
@@ -5458,4 +5460,53 @@ func errorEventName(t *ir.Type) string {
 		return "error"
 	}
 	return t.String()
+}
+
+// refuseNodePropAssign reports an imperative write to a node's prop.
+//
+// A prop is declarative: `ui.text(value=greeting)` says what the node shows
+// for as long as it is rendered, and reactivity re-evaluates it when
+// `greeting` changes. Writing `label.value = "bye"` puts a second source of
+// truth beside that one, which the next render of the first overwrites -- so
+// the program that looks like it worked is the program whose write is silently
+// undone. Changing the state the prop reads is the way to say it, and it is
+// the only way that survives a re-render.
+//
+// So the answer is the same on every target and does not wait for one. It used
+// to be neither: the write type-checked, and what became of it was whatever
+// each backend made of a field it had never been told about -- `label.Value`
+// on fyne, against a `widget.Label` that spells it `Text`, and with no
+// receiver at all; on html an assignment the platform dropped without a word
+// once the reference reached it.
+//
+// What a *lowering* writes is untouched. passReactivity and passDeclarative
+// emit `__n0.text = expr` by the hundred, and those are how a prop reaches the
+// host; they are built after this check and never meet it.
+func (c *checker) refuseNodePropAssign(target ir.Expr, pos ast.Pos, verb string) {
+	sel, ok := target.(*ir.Select)
+	if !ok {
+		return
+	}
+	id, ok := sel.Operand.(*ir.Ident)
+	if !ok {
+		return
+	}
+	v, ok := id.Sym.(*ir.Var)
+	if !ok || !v.NodeHandle {
+		return
+	}
+	// A handle a lowering pass made is exempt, because the rule is about what a
+	// *program* may write: passReactivity and passDeclarative emit
+	// `__n0.value = expr` by the hundred, and that is how a prop reaches the
+	// host at all.
+	//
+	// Config.Lowered is the same exemption for a document *printed* from that
+	// IR and checked again. The flag is lost in the text -- `text #__n0(…)`
+	// re-parses as an ordinary node with an ordinary id -- so the caller that
+	// lowered it says so instead.
+	if v.Synthesized || c.cfg.Lowered {
+		return
+	}
+	c.error(pos, "cannot %s %s.%s: a node's prop is what the tree says it is, not a cell to write; change the state it reads instead",
+		verb, id.Name, sel.Field)
 }

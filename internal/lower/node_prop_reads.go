@@ -1,8 +1,6 @@
 package lower
 
 import (
-	"fmt"
-
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -46,27 +44,20 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
 	// hand-rolled descent in this package is a list of the shapes its author
 	// thought of. That one is the shared traversal, its kind coverage enforced
 	// by a panic and its slot coverage by a test.
-	var failed error
-	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
-		switch x := n.(type) {
-		case *ir.Assign:
-			// Before the read rewrite reaches the target, which would answer
-			// the left-hand side with a value and leave an assignment to a
-			// literal.
-			if err := refuseNodePropWrite(x, handles); err != nil && failed == nil {
-				failed = err
-			}
-		case *ir.Select:
-			if e := rewriteNodePropRead(x, handles); e != nil {
+	//
+	// Reads only. A *write* to a node's prop is refused by the checker, for
+	// every target at once: a prop is what the tree says it is, and a write
+	// beside it is a second source of truth the next render undoes. So nothing
+	// reaches here to answer, and this pass has no left-hand side to be careful
+	// about.
+	return ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
+		if sel, ok := n.(*ir.Select); ok {
+			if e := rewriteNodePropRead(sel, handles); e != nil {
 				return e, ir.SkipDir
 			}
 		}
 		return n, nil
 	})
-	if err != nil {
-		return err
-	}
-	return failed
 }
 
 // nodeHandles maps each `#id` binding to the node it names.
@@ -169,27 +160,6 @@ func nodePropExpr(n *ir.NodeInst, name string) ir.Expr {
 		return ir.DeclaredDefault(p.Type)
 	}
 	return nil
-}
-
-// refuseNodePropWrites reports an assignment to a prop of a node the target
-// keeps nothing of.
-//
-// A read is answered with what the prop was given; a write has nothing to be
-// answered with. Reported here rather than in the checker because the answer is
-// the target's: a primitive that claims identity has a node to assign to, and
-// which primitive a declaration renders is not known until its override has
-// been swapped in.
-func refuseNodePropWrite(as *ir.Assign, handles map[*ir.Var]*ir.NodeInst) error {
-	sel, ok := as.Target.(*ir.Select)
-	if !ok {
-		return nil
-	}
-	node := handleNodeOf(sel.Operand, handles)
-	if node == nil || !rendersWithoutIdentity(node) {
-		return nil
-	}
-	return fmt.Errorf("%s: cannot assign to %s.%s: this target renders %s and keeps nothing to write to",
-		nodePos(node), identName(sel.Operand), sel.Field, node.Name)
 }
 
 // rendersWithoutIdentity reports whether this target is known to render n as

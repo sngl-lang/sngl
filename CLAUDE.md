@@ -1192,18 +1192,36 @@ as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
 `gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it and
 it is hand-declared as a `#[cnative]` method reached through the handle.
 
-**That receiver is the only read off a handle that works on the Go mutation
-platforms.** A *prop* read does not compile on either: `GoIRContext.Select`
-ends at `operand + "." + ExportName(field)`, inventing a Go field by
-title-casing the SNGL prop, so `box.value` is `m.box.Value` against a
-`widget.Entry` that spells it `Text` — and against a gtk4 handle that is an
-`unsafe.Pointer` with no fields at all. The asymmetry is the tell: the *write*
-side routes through the platform (fyne's `Spec` `Setter`, gtk4's
-`OnPropAssign`) and there is no getter counterpart, so `#id` handles are
-write-only there. Closing it is not `Setter`'s mirror — it needs a
-language↔platform read hook that does not exist, and on gtk4 a getter is a call
-(`gtk4rt.EntryGetText`) whose name GIR would have to supply per property, not a
-field.
+**A node's prop may not be written at all**, which `refuseNodePropAssign`
+reports on both the assignment and the toggle paths. A prop is declarative:
+`ui.text(value=greeting)` says what the node shows for as long as it is
+rendered, and reactivity re-evaluates it when `greeting` changes. A write
+beside that is a second source of truth the next render undoes, so the program
+that looks like it worked is the one whose write is silently gone — change the
+state the prop reads instead. Nothing in the repository depended on it: every
+assignment to a `#id` handle was a fixture testing whether one could be
+written.
+
+What a *lowering* writes is untouched, and is how a prop reaches a host at all:
+`passReactivity` and `passDeclarative` emit `__n0.value = expr` by the hundred.
+The two are told apart by `ir.Var.Synthesized` — and, where lowered IR is
+printed and checked again, by `checker.Config.Lowered`, since `text #__n0(…)`
+re-parses as an ordinary node with an ordinary id and nothing in the text says
+which side of the pipeline wrote it. Only a caller that lowered the IR itself
+may set that flag.
+
+**So a handle's remaining use is reading**, and a *prop* read does not compile
+on the Go mutation platforms: `GoIRContext.Select` ends at
+`operand + "." + ExportName(field)`, inventing a Go field by title-casing the
+SNGL prop, so `box.value` is `m.box.Value` against a `widget.Entry` that spells
+it `Text` — and against a gtk4 handle that is an `unsafe.Pointer` with no
+fields at all. On html it reaches the emitter and renders an empty element
+nothing fills. The one read that does work is a `#[cnative]` method's receiver,
+above. Closing the rest needs a language↔platform read hook that does not
+exist, and on gtk4 a getter is a call (`gtk4rt.EntryGetText`) whose name GIR
+would have to supply per property, not a field. Until then a read is answered
+at build time wherever the tree says the node is gone — see
+`#[gen.renders(identity)]` under `sngl:x/gen`.
 
 **Two nodes may share an id, but a handle that is *read* may not be rendered
 twice.** The two halves are asked differently and deliberately so.

@@ -726,7 +726,7 @@ func FuzzLoweredDocument(f *testing.F) {
 		if err != nil {
 			t.Fatalf("lowered ir.Convert output failed to parse: %v\n--- generated ---\n%s", err, convSrc)
 		}
-		_, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true})
+		_, convDiags := checker.Check(convReparsed, &checker.Config{IsMain: true, Lowered: true})
 		if hasError(convDiags) {
 			t.Fatalf("lowered ir.Convert output failed to type-check:\n--- generated ---\n%s\n--- diags ---\n%s",
 				convSrc, joinDiags(convDiags))

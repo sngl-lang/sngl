@@ -11,7 +11,7 @@
 #   - no declaration, so no prop defaults -- the style binding below is
 #     emitted for one spelling and not the other;
 #   - not an element call at all as far as elementRefCallInfo was concerned,
-#     so declareNodeIDs bound no handle and a handler naming `#row` was
+#     so declareNodeIDs bound no handle and a read of `#row` was
 #     `undefined: row` under an aliased import and fine under a dot import;
 #   - `ui.text` reaching a platform, which android refuses with
 #     `no composable for component "ui.text"`.
@@ -35,9 +35,7 @@ output {
 ui.window #w(title="t") {
     ui.text #row(value="a")
 
-    ui.button(text="go", @click {
-        row.value = "x"
-    })
+    ui.text(value="reads {row.value}")
 }
 
 -- dot.sngl --
@@ -52,7 +50,5 @@ output {
 window #w(title="t") {
     text #row(value="a")
 
-    button(text="go", @click {
-        row.value = "x"
-    })
+    text(value="reads {row.value}")
 }
