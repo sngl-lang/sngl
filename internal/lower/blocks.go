@@ -1,8 +1,6 @@
 package lower
 
 import (
-	"maps"
-	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -159,7 +157,7 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 			// on it are the caller's imperative blocks like any other. By
 			// name because Slots is a map, and this order is what numbers a
 			// temp passCSE binds.
-			for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+			for _, name := range ir.SlotNames(n.Slots) {
 				if sc := n.Slots[name]; sc != nil {
 					c.viewIn(&sc.Body)
 				}
