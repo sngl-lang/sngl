@@ -95,10 +95,16 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// into the child context — non-const props remain runtime parameters
 	// and don't unlock any inlining benefit, but they don't block it either.
 	propValues := make(map[string]any, len(n.Props))
+	// A prop naming a shared const is substituted as that reference rather
+	// than bound as its value, so the body's own reads of it stay references.
+	propRefs := map[string]ir.Expr{}
 	for _, p := range n.Props {
-		v := foldExpr(p.Value, ctx)
+		v := foldPropArg(n, p.Name, p.Value, ctx)
 		if val, ok := evalExpr(v, ctx); ok {
 			propValues[p.Name] = val
+			if ctx.keepsReference(v, val) {
+				propRefs[p.Name] = v
+			}
 		}
 	}
 	// If no provided prop folded to a const, the body's for-loop won't
@@ -127,6 +133,9 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	childCtx := ctx.childInPkg(bodyPkg)
 	childCtx.inlining[comp] = ctx.inlining[comp] + 1
 	for name, val := range propValues {
+		if _, ref := propRefs[name]; ref {
+			continue
+		}
 		if sym, ok := paramSyms[name]; ok {
 			childCtx.values[sym] = val
 		}
@@ -148,11 +157,14 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	// before foldStmts so a substituted expr that turns out constant still folds.
 	subs := make(map[*ir.Param]ir.Expr)
 	for _, p := range n.Props {
-		if _, isConst := propValues[p.Name]; isConst {
+		value := p.Value
+		if ref, ok := propRefs[p.Name]; ok {
+			value = ref
+		} else if _, isConst := propValues[p.Name]; isConst {
 			continue
 		}
 		if param, ok := paramSyms[p.Name]; ok {
-			subs[param] = p.Value
+			subs[param] = value
 		}
 	}
 	if len(subs) > 0 {
