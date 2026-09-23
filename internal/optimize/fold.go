@@ -2,9 +2,7 @@ package optimize
 
 import (
 	"fmt"
-	"maps"
 	"math"
-	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -327,7 +325,7 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 	case *ir.SlotInst:
 		n.Children = foldStmts(n.Children, ctx)
-		for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+		for _, name := range ir.SlotNames(n.Slots) {
 			n.Slots[name].Body = foldStmts(n.Slots[name].Body, ctx)
 		}
 	case *ir.ContextProvider:
@@ -392,7 +390,7 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	// A named slot's population is a body like the children are. Visited by
 	// name because Slots is a map: folding itself does not care, but a pass
 	// sharing this walk's order should not depend on Go's.
-	for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+	for _, name := range ir.SlotNames(n.Slots) {
 		if sc := n.Slots[name]; sc != nil {
 			sc.Body = foldStmts(sc.Body, ctx)
 		}

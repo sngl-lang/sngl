@@ -2,7 +2,6 @@ package lower
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 
@@ -153,7 +152,7 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 					read(b.Target)
 				}
 				visit(n.Children)
-				for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+				for _, name := range ir.SlotNames(n.Slots) {
 					if sc := n.Slots[name]; sc != nil {
 						visit(sc.Body)
 					}
@@ -168,7 +167,7 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 				visit(n.Else)
 			case *ir.SlotInst:
 				visit(n.Children)
-				for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+				for _, name := range ir.SlotNames(n.Slots) {
 					visit(n.Slots[name].Body)
 				}
 			case *ir.ErrorBoundary:
@@ -309,7 +308,7 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 			return nil, err
 		}
 		n.Children = ch
-		for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+		for _, name := range ir.SlotNames(n.Slots) {
 			body, err := st.inlineStmts(n.Slots[name].Body)
 			if err != nil {
 				return nil, err
@@ -351,7 +350,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// no platform primitive has. Sorted, for the reason ir.Walk gives over the
 	// same map: a pass that numbers what it finds must find it in one order
 	// twice.
-	for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+	for _, name := range ir.SlotNames(n.Slots) {
 		sc := n.Slots[name]
 		if sc == nil {
 			continue

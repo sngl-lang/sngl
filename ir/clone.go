@@ -33,6 +33,23 @@ func ClonePackage(pkg *Package) *Package {
 	return newCloner().clone(reflect.ValueOf(pkg)).Interface().(*Package)
 }
 
+// ClonePackageFor is ClonePackage for a clone that one target will build: of
+// each declaration's override bodies, only the ones that target can pick are
+// copied, so the clone carries no other target's.
+//
+// A library component carries a body for every target the build names, and a
+// clone per target copied all of them for a target that reads one. Nothing in
+// a target's build reads another's: the swap (SpecializeForTarget) picks this
+// target's entry, and every reader after it asks for this target's key.
+func ClonePackageFor(pkg *Package, platform, language string) *Package {
+	if pkg == nil {
+		return nil
+	}
+	c := newCloner()
+	c.only = &target{platform, language}
+	return c.clone(reflect.ValueOf(pkg)).Interface().(*Package)
+}
+
 // CloneExpr returns a deep, independent copy of one expression, on the same
 // terms as ClonePackage. Its use is a value that several call sites splice into
 // one tree: later phases mutate IR in place, so they must not share a node.
@@ -108,6 +125,9 @@ type cloner struct {
 	// e.g. a *Var in pkg.Vars and referenced again via Ident.Sym — clones
 	// once and all references share the single clone.
 	seen map[uintptr]reflect.Value
+	// only, when set, is the target the clone is for: an override map keeps
+	// only the entry that target picks. See ClonePackageFor.
+	only *target
 }
 
 func (c *cloner) clone(v reflect.Value) reflect.Value {
@@ -159,6 +179,12 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 			// hop only: the declarations reached from inside that body are
 			// references like any other.
 			c.deepNext = carriesFuncBody(v.Type()) && v.Type().Field(i).Name == "Func"
+			if c.only != nil && carriesOverrides(v.Type()) {
+				if key, ok := c.overrideKey(v.Type().Field(i).Name); ok {
+					out.Field(i).Set(c.cloneOverride(v.Field(i), key))
+					continue
+				}
+			}
 			out.Field(i).Set(c.clone(v.Field(i)))
 		}
 		c.deepNext = false
@@ -196,6 +222,41 @@ func (c *cloner) clone(v reflect.Value) reflect.Value {
 		// Primitives, funcs, chans: value copy is the identity here.
 		return v
 	}
+}
+
+// carriesOverrides reports whether t is a declaration with per-target
+// override maps.
+func carriesOverrides(t reflect.Type) bool {
+	return t == reflect.TypeFor[Component]() || t == reflect.TypeFor[Func]()
+}
+
+// overrideKey is the entry of the named override map this clone's target
+// picks, and whether the field is an override map at all.
+func (c *cloner) overrideKey(field string) (string, bool) {
+	switch field {
+	case "PlatformOverrides":
+		return c.only.platform, true
+	case "LanguageOverrides":
+		return c.only.language, true
+	}
+	return "", false
+}
+
+// cloneOverride copies the one entry of an override map that key names, or
+// none: an empty key is an axis the target does not name, which pick never
+// reads.
+func (c *cloner) cloneOverride(m reflect.Value, key string) reflect.Value {
+	if m.IsNil() || key == "" {
+		return reflect.Zero(m.Type())
+	}
+	k := reflect.ValueOf(key)
+	body := m.MapIndex(k)
+	if !body.IsValid() {
+		return reflect.Zero(m.Type())
+	}
+	out := reflect.MakeMapWithSize(m.Type(), 1)
+	out.SetMapIndex(k, c.clone(body))
+	return out
 }
 
 // declTypes is what CloneExprSharingDecls shares: the kinds an expression

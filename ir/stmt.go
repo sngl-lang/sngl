@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -15,6 +16,24 @@ import (
 type Stmt interface {
 	Node
 	stmtNode()
+}
+
+// SlotNames is the names in slots, sorted: the order every pass visits a
+// node's slot content in, since a pass that numbers what it finds must find it
+// in one order twice and Go's map order is not one. Nearly every node has no
+// named slot, and slices.Sorted(maps.Keys(m)) allocates its iterators even
+// then -- once per node per pass, which was one allocation in thirteen of a
+// build -- so the empty case returns without allocating.
+func SlotNames(slots map[string]*SlotContent) []string {
+	if len(slots) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(slots))
+	for name := range slots {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
 }
 
 // NodeInst is a resolved component or platform-element instantiation.
