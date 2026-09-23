@@ -9,8 +9,7 @@ import (
 // Walk visits every node reachable from root in pre-order, read-only: the
 // callback cannot replace nodes. It reaches exactly what Rewrite reaches, in
 // the same order and under the same SkipDir/SkipAll rules -- see Rewrite for
-// which slots are owned and which are references -- but writes nothing back,
-// so a walk costs no write barriers and no replaced slots.
+// which slots are owned and which are references -- but writes nothing back.
 //
 // A slot is read after the visit of the node that holds it, so a callback may
 // replace a node's own fields and the walk descends into what it put there,
@@ -36,8 +35,7 @@ func WalkExprs(root any, fn func(Expr) error) error {
 }
 
 // walker is rewriter without the write-back. Exactly one of the three visit
-// funcs is set; a node the set one does not take is descended into, which is
-// what a nil return from the typed wrappers used to do.
+// funcs is set; a node the set one does not take is descended into.
 type walker struct {
 	visit     func(Node) error
 	visitExpr func(Expr) error
