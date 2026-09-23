@@ -121,7 +121,7 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.EvalCache, o Options) (Result, error) {
 	tpkg := pkg
 	if clone {
-		tpkg = ir.ClonePackage(pkg)
+		tpkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 	}
 
 	if target.Options == nil {
