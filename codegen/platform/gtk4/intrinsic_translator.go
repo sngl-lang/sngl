@@ -777,6 +777,19 @@ func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	}
 	if !hasProp {
 		if entry.Setter == "" {
+			if t.canvasMetaForID(bare) != nil {
+				// A canvas's own width and height, which emitCanvasCreate
+				// already read off the drawing to size the GtkDrawingArea.
+				// They arrive here as ordinary props because that is what they
+				// are in the tree; there is nothing further to write.
+				return nil
+			}
+			// GIR describes no property of this name on the class, and the
+			// setter table names none either -- so there is nothing to write
+			// and the value reaches the widget not at all. Reported for the
+			// reason the construct-only and unsettable cases above are: a
+			// write that goes missing is a rendering bug with nothing said.
+			t.shared.fail(fmt.Errorf("gtk4: %s has no property or setter named %q: GIR describes none for the class and gtkSetterTable names none, so the value reaches the widget not at all", cType, prop))
 			return nil
 		}
 		// The parse merges interface properties but not inherited ones, so the

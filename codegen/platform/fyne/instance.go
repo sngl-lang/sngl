@@ -35,6 +35,7 @@ func emitComponentInstance(
 	canvasByID map[string]*canvasMeta,
 	canvasByNode map[*ir.NodeInst]*canvasMeta,
 	canvases []codegen.Canvas,
+	failSink func(error),
 ) {
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
@@ -55,7 +56,7 @@ func emitComponentInstance(
 		fields = append(fields, irWidgetField{name: name, goType: goType})
 	}
 
-	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink).
+	tr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).
 		withLocalRefs(comp.LocalRefs).withSlotRoot(instanceRootVar)
 	tr.canvasByID, tr.canvasByNode = canvasByID, canvasByNode
 	bodyStmts := codegen.WalkLowered(context.Background(), comp.Body, tr)
@@ -80,7 +81,7 @@ func emitComponentInstance(
 		if fn == nil || len(fn.Block) == 0 {
 			continue
 		}
-		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink).withLocalRefs(fn.LocalRefs)
+		mtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink).withLocalRefs(fn.LocalRefs)
 		mtr.canvasByNode = canvasByNode
 		params := fn.Params
 		if len(params) > 0 && params[0].Receiver {
@@ -116,7 +117,7 @@ func emitComponentInstance(
 		if cv.Owner != comp {
 			continue
 		}
-		dtr := newFyneTranslator(igc, nodeSpecs, sink, importSink)
+		dtr := newFyneTranslator(igc, nodeSpecs, sink, importSink, failSink)
 		dtr.canvasByID, dtr.canvasByNode = canvasByID, canvasByNode
 		drawn := &ir.Func{
 			Name:   cv.Name,

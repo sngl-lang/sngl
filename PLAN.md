@@ -631,11 +631,32 @@ all from inside the scope that counts it. What a *lowering* writes is
 untouched: `passReactivity` and `passDeclarative` emit `__n0.text = expr` by
 the hundred, built after the check and never meeting it.
 
-One defect this leaves standing, now only on the read side:
-`OnPropAssign` returning nil for a prop the platform has no mapping for. The
-synthesized writes are the ones that reach it, and one of those going missing
-is a rendering bug with nothing said. It wants a diagnostic whether or not the
-read hook is ever built.
+### Landed: a prop with no setter fails the build
+
+The defect the ban left standing, and the reason it mattered: after the ban the
+*only* writes reaching a platform are the lowering's own, so one going missing
+is a rendering bug with nothing said and no program to blame.
+
+`OnPropAssign` returned nil for three different things -- a prop the platform
+deliberately says nothing about, a node this scope does not own, and a prop it
+has no way to write -- and the third is the one that must not be silent. fyne
+gained the error sink gtk4 has carried all along in `emitShared.fail`, as a
+constructor argument rather than a `withX` option, because a scope given none
+drops what it is told, which is the failure being closed. gtk4 gained the arm
+it was missing, for a prop GIR describes and `gtkSetterTable` does not name.
+
+Two exemptions had to be written down, and both were found by turning the
+report on rather than by reading the code. fyne's `spec` and `style` are the
+platform's own props -- the record naming the widget to build, and the style the
+override bodies forward onto the widget root -- so `structuralProp` says so, the
+same exemption gtk4 already makes for its `style`. And a gtk4 canvas's `width`
+and `height` are read by `emitCanvasCreate` off the drawing, reaching
+`OnPropAssign` afterwards as ordinary props with nothing left to write.
+
+`cmd/sngl/testdata/fyne_prop_without_setter.txt` is the fixture, and it has to
+declare a widget wrapped wrong on purpose: no shipping widget in `fyne.sngl` is
+missing a setter, which is what makes the `setters` list a contract rather than
+a hint.
 
 `ir.CrossesTreeFamily` keeps one caller, `declareOwnNodeIDsIn`, and wants the
 same treatment; `testdata/error_tree_family_id_barrier.sngl` is now

@@ -3,6 +3,7 @@ package fyne
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -65,6 +66,9 @@ type fyneTranslator struct {
 	// test-invoker methods emitted after the walk. nil in scopes with no test
 	// surface -- a slot func, a canvas draw.
 	invokerSink func(fyneEventInvoker)
+	// failSink is where a prop this platform cannot emit is reported. See
+	// withFailSink.
+	failSink func(error)
 
 	// plainHandle names the instance ids whose handle is the widget the render
 	// returned rather than a record carrying it, as OnCreateComponent decided
@@ -79,12 +83,13 @@ type fyneTranslator struct {
 	canvasByNode map[*ir.NodeInst]*canvasMeta
 }
 
-func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, fieldSink func(name, goType string), importSink func(path string)) *fyneTranslator {
+func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, fieldSink func(name, goType string), importSink func(path string), failSink func(error)) *fyneTranslator {
 	return &fyneTranslator{
 		gc:         gc,
 		specs:      specs,
 		fieldSink:  fieldSink,
 		importSink: importSink,
+		failSink:   failSink,
 		fieldIDs:   map[string]bool{},
 	}
 }
@@ -122,6 +127,17 @@ type fyneEventInvoker struct {
 func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTranslator {
 	t.invokerSink = sink
 	return t
+}
+
+// fail records that a prop assignment cannot be emitted.
+//
+// The sink is a constructor argument rather than a `withX` option, because a
+// scope given none drops what it is told -- which is exactly the failure this
+// exists to end. gtk4 has carried the same thing all along in emitShared.fail.
+func (t *fyneTranslator) fail(err error) {
+	if t.failSink != nil {
+		t.failSink(err)
+	}
 }
 
 func (t *fyneTranslator) withLocalRefs(local map[string]bool) *fyneTranslator {
@@ -529,10 +545,38 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	bareID := codegen.IdentBareName(node)
 	sp, ok := t.specs[bareID]
 	if !ok {
+		// Not a widget this scope built -- a canvas, or a node another
+		// translator owns. Nothing to say about it here.
+		return nil
+	}
+	if structuralProp(prop) {
+		// This platform's own props, not the widget's: `spec` is the record
+		// that says which Fyne widget to build, and `style` is forwarded onto
+		// the widget root by the override bodies. Neither is a value with a
+		// setter behind it, which is the same exemption gtk4 makes for its
+		// `style`.
 		return nil
 	}
 	methodName, ok := sp.Setters[prop]
 	if !ok {
+		// The write is what a prop *is* by the time it reaches a platform:
+		// passReactivity and passDeclarative turn `text(value=greeting)` into
+		// `__n0.value = greeting`, and this is where that becomes
+		// `SetText`. A prop the Spec names no setter for therefore does not
+		// render as a stale value -- it does not render at all, and returning
+		// no statements said so to nobody.
+		//
+		// Reported rather than dropped, which is the rule gtk4 has followed
+		// all along for its own unsettable props. A prop declared on a widget
+		// in fyne.sngl with no `Setter` beside it is the declaration being
+		// incomplete, and that is a thing to fix rather than to discover by
+		// looking at the screen.
+		named := "none at all"
+		if len(sp.Setters) > 0 {
+			named = strings.Join(slices.Sorted(maps.Keys(sp.Setters)), ", ")
+		}
+		t.fail(fmt.Errorf("fyne: %s has no setter for %q, so the value reaches the screen not at all; its Spec names %s",
+			sp.GoType.Name, prop, named))
 		return nil
 	}
 	nodeRef := t.nodeRefFor(bareID)
@@ -637,4 +681,19 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 		fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s()\n\t}\n}\n\n",
 			inv.IDLabel, inv.Field, inv.IDLabel, inv.Field)
 	}
+}
+
+// structuralProp reports whether prop is one of this platform's own props
+// rather than a value the widget shows.
+//
+// `spec` is the record naming the Fyne widget to construct, read by
+// OnCreateNode; `style` is forwarded onto the widget root by the override
+// bodies. Neither has a setter and neither should: they are how a declaration
+// reaches the emitter, not something the emitter writes.
+//
+// Named here rather than left to fall through the setter lookup, because that
+// lookup now reports what it cannot emit -- and these are the two it was
+// always right to say nothing about.
+func structuralProp(prop string) bool {
+	return prop == "spec" || prop == "style"
 }

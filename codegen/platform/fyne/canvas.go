@@ -279,8 +279,8 @@ func newFyneSizeCall(w, h int) *ir.Call {
 // The method is this platform's, not a declaration the IR carries: three
 // places invoke a drawing, so the statements are wrapped once here and called
 // by name.
-func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext, byNode map[*ir.NodeInst]*canvasMeta, specs map[string]*fyneSpec, importSink func(string)) {
-	tr := newFyneTranslator(gc, specs, func(string, string) {}, importSink)
+func emitIRCanvasDraw(b *strings.Builder, cv *codegen.Canvas, gc *golang.GoIRContext, byNode map[*ir.NodeInst]*canvasMeta, specs map[string]*fyneSpec, importSink func(string), failSink func(error)) {
+	tr := newFyneTranslator(gc, specs, func(string, string) {}, importSink, failSink)
 	tr.canvasByNode = byNode
 	body := codegen.WalkLowered(context.Background(), cv.Draw, tr)
 	synthesized := &ir.Func{
