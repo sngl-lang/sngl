@@ -66,7 +66,7 @@ func TestConvertIsDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		again, err := Convert([]byte(sample), "guide.md")
 		if err != nil {
 			t.Fatal(err)

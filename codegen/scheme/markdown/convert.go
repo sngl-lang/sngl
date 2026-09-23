@@ -24,54 +24,79 @@ const DocumentComponent = "document"
 // Convert turns markdown into the source of a SNGL package holding one
 // component. name is the markdown file's own name and appears in the header.
 func Convert(src []byte, name string) (string, error) {
-	front, body, lineOffset, err := splitFrontmatter(src)
+	state := newDocState(name)
+	front, blocks, err := state.page(src, name)
 	if err != nil {
-		return "", fmt.Errorf("md: %s: %w", name, err)
+		return "", err
 	}
-	// The same goldmark the doc site parses with, GFM and all: two readings of
-	// one document is a difference nobody would look for.
-	doc := goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser().Parse(text.NewReader(body))
 
-	// The document's own component body is written first, because walking it
-	// is what discovers the imports a live fence hoists and the declarations a
-	// `package` fence contributes -- and both of those are written above it.
-	state := &docState{
-		name:        name,
-		lineOffset:  lineOffset,
-		seenImports: map[importDecl]bool{},
-	}
-	var err0 error
-	inner := &emitter{src: body, depth: 2, err: &err0, doc: state}
-	inner.blocks(doc, false)
-
-	e := &emitter{src: body, err: &err0, doc: state}
+	e := &emitter{doc: state}
 	e.linef("// Generated from %s by the md: import scheme; DO NOT EDIT.", name)
 	e.line("")
-	e.line(`import ui "sngl:ui"`)
-	e.line(`import markup "sngl:ui/markup"`)
-	for _, imp := range state.imports {
-		e.line(imp.line())
-	}
+	e.header()
 	if len(front) > 0 {
 		e.line("")
 		for _, c := range front {
 			e.linef("const %s = %s", c.name, c.value)
 		}
 	}
-	for _, decl := range state.decls {
+	e.decls()
+	e.line("")
+	e.component(DocumentComponent, blocks)
+	return e.b.String(), nil
+}
+
+func newDocState(name string) *docState {
+	return &docState{name: name, seenImports: map[importDecl]bool{}}
+}
+
+// page renders one document's blocks as the body of the component that holds
+// them, and returns its frontmatter alongside. The blocks are written before
+// anything above them, because walking them is what discovers the imports a
+// live fence hoists and the declarations a `package` fence contributes.
+func (d *docState) page(src []byte, name string) ([]constDecl, string, error) {
+	front, body, lineOffset, err := splitFrontmatter(src)
+	if err != nil {
+		return nil, "", fmt.Errorf("md: %s: %w", name, err)
+	}
+	d.name, d.lineOffset = name, lineOffset
+	// The same goldmark the doc site parses with, GFM and all: two readings of
+	// one document is a difference nobody would look for.
+	doc := goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser().Parse(text.NewReader(body))
+	var err0 error
+	inner := &emitter{src: body, depth: 2, err: &err0, doc: d}
+	inner.blocks(doc, false)
+	if err0 != nil {
+		return nil, "", fmt.Errorf("md: %s: %w", name, err0)
+	}
+	return front, inner.b.String(), nil
+}
+
+// header writes the imports every generated package holds, then the ones
+// live fences hoisted.
+func (e *emitter) header() {
+	e.line(`import ui "sngl:ui"`)
+	e.line(`import markup "sngl:ui/markup"`)
+	for _, imp := range e.doc.imports {
+		e.line(imp.line())
+	}
+}
+
+// decls writes what the documents' `package` fences contributed.
+func (e *emitter) decls() {
+	for _, decl := range e.doc.decls {
 		e.line("")
 		e.emitLines(decl)
 	}
-	e.line("")
-	e.line("component " + DocumentComponent + " ui.node {")
+}
+
+// component writes one page's component around blocks rendered by page.
+func (e *emitter) component(name, blocks string) {
+	e.line("component " + name + " ui.node {")
 	e.line("    ui.vbox(style={gap=12}) {")
-	e.b.WriteString(inner.b.String())
+	e.b.WriteString(blocks)
 	e.line("    }")
 	e.line("}")
-	if err0 != nil {
-		return "", fmt.Errorf("md: %s: %w", name, err0)
-	}
-	return e.b.String(), nil
 }
 
 // docState is what the walk discovers about the whole document rather than

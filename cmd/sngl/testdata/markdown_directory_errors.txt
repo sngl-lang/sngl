@@ -1,0 +1,119 @@
+# What the md: importer says about a directory it cannot turn into a site.
+# Each is a question about the tree of files rather than about one document,
+# so each names the files involved.
+
+# A page's content is either `guide.md` or `guide/index.md`, never both.
+! sngl check both/app.sngl
+stderr 'guide.md'
+stderr 'guide/index.md'
+stderr 'both hold the page'
+
+# The root page is the directory's index.md, and a site has one.
+! sngl check noindex/app.sngl
+stderr 'has no index.md'
+
+# A directory with no page of its own cannot be the parent of its children.
+! sngl check orphan/app.sngl
+stderr 'docs/guide'
+stderr 'add guide.md or guide/index.md'
+
+# With no declared Frontmatter, a key is typed by its first scalar, and a page
+# writing another type for it is named rather than guessed at.
+! sngl check mixed/app.sngl
+stderr 'b.md'
+stderr 'weight'
+stderr 'int in index.md'
+
+# Two paths may not become one component name.
+! sngl check collide/app.sngl
+stderr 'a-b.md'
+stderr 'a_b.md'
+stderr 'a_b'
+
+# A page may not take a name the package already gives something else.
+! sngl check reserved/app.sngl
+stderr 'site.md'
+stderr 'reserved'
+
+-- both/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- both/docs/index.md --
+Home.
+-- both/docs/guide.md --
+Guide.
+-- both/docs/guide/index.md --
+Guide again.
+-- noindex/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- noindex/docs/guide.md --
+Guide.
+-- orphan/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- orphan/docs/index.md --
+Home.
+-- orphan/docs/guide/intro.md --
+Intro.
+-- mixed/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- mixed/docs/index.md --
+---
+weight: 1
+---
+
+Home.
+-- mixed/docs/b.md --
+---
+weight: heavy
+---
+
+B.
+-- collide/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- collide/docs/index.md --
+Home.
+-- collide/docs/a-b.md --
+One.
+-- collide/docs/a_b.md --
+Two.
+-- reserved/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- reserved/docs/index.md --
+Home.
+-- reserved/docs/site.md --
+Site.
