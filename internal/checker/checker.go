@@ -2657,6 +2657,10 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
 	for _, p := range ct.Params {
+		if vt, ok := p.Type.(*ast.VariadicType); ok {
+			c.error(vt.Pos, "slot %q takes no `...`: the block written at an insertion is its fallback, so an insertion has no bare children to collect", pd.Name)
+			continue
+		}
 		slot.Params = append(slot.Params, &ir.Param{Name: p.Name, Type: c.resolveType(p.Type)})
 	}
 	if pd.Default != nil {

@@ -572,13 +572,21 @@ recursive `children list<Page>` is fine.
 Four defects, all found by measuring the design rather than by attempting it.
 Three are silent.
 
-- **A -- children at a slot insertion are dropped, with no diagnostic.**
-  `layout("One") { ui.text(value="body") }` type-checks and the text vanishes.
-  This is the enabling half of the design: it is how a page's blocks reach the
-  layout. The spelling already parses, so implementing it is not a new syntax
-  decision -- only the semantics are missing. The population has to be able to
-  name them too, which today is an arity error (`slot "layout" binds 2 parameter(s), but declares 1`), so the slot's *declaration* grows the
-  children contract and the insertion supplies them.
+- [ ] **A -- a page's blocks cannot reach the layout.** Not a silent drop, as
+  this entry first said: the block written at an insertion is that slot's
+  *fallback* (`ir.SlotInst.Children`, `testdata/slot_named.sngl`), and a
+  populated slot renders its population instead. Verified with two windows
+  over one `site`: the one that populates `page` renders the population, the
+  one that does not renders the block. So the bare block is taken, and
+  refusing it would have broken three fallback fixtures.
+
+  Settled (Jonathan's call): a slot's invocation list may declare a
+  component-typed entry, `layout component(fm Frontmatter, content component ui.node) T`,
+  and the insertion populates it by name, the way a call site populates a
+  component's slot -- `layout(fm) { component content { … } }`. The bare
+  block stays the fallback. `...` in an invocation list is refused, with a
+  message saying why: `testdata/error_slot_invocation_rest.sngl`, which
+  failed on the old generic `...` diagnostic before the check was written.
 
 - [X] **B -- a slot population on a root component dropped everything.** Fixed
   by main's window collapse, verified after the merge: `component site(layout …) ui.root` whose two windows each insert `layout(…)` writes `one.html` and
