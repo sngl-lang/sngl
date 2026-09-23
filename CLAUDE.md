@@ -1917,9 +1917,15 @@ targets in parallel) is not a saving.
   `CheckLibPackage` selects a target package's own target (`ownTarget`);
   selecting none loads every registered target's overrides, gtk4's GIR
   included.
-- **One-shot commands run with GC at 400** (`tuneGC` in `cmd/sngl/main.go`);
-  a command that stays up carries the `longLived` annotation and keeps the
-  default. An explicit `GOGC` wins.
+- **One-shot commands run with GC at 400 under a 512MiB soft limit**
+  (`tuneGC` in `cmd/sngl/main.go`). The target alone let the docs site's heap
+  reach five times its ~220MB live set; the limit makes a big build pay in
+  collections instead. A command that stays up carries the `longLived`
+  annotation and keeps the defaults. An explicit `GOGC`/`GOMEMLIMIT` wins.
+- **The docs site (`go tool docsgen`) is the stress case**: one html build
+  writing ~1200 files, where per-page costs dominate. Its compile step is
+  `sngl generate --platform html --lang none website.sngl` once
+  `internal/playground/assets/sngl.wasm` is staged.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
   package for every target but the last, and `ir.ClonePackage` copies by
   reflection everything reachable — library IR included, since per-target
