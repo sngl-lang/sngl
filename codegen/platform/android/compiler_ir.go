@@ -622,6 +622,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("}\n\n")
 	}
 
+	for _, c := range ctx.Pkg.Consts {
+		if c.Init == nil {
+			continue
+		}
+		fmt.Fprintf(&body, "val %s: %s = %s\n\n", c.Name, kotlin.IRTypeToKt(c.Type), kc.EvalExpr(c.Init))
+	}
+
 	// State hoisting (test mode): emit a MainScreenState class
 	// with the binds as `var x by mutableStateOf(...)`. The
 	// composable takes one as a parameter so tests can hold a

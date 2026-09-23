@@ -189,6 +189,10 @@ type windowShared struct {
 	usedComponents map[string]bool
 	prewalked      map[string]*ir.NodeInst
 	slotsRewritten bool
+	// constAssets are the consts written once for every page (sharedConst),
+	// and constFiles the scripts that carry them.
+	constAssets map[*ir.Var]*sharedConstAsset
+	constFiles  []htmlAssetFile
 
 	// The rest are the package-derived analysis each window used to rebuild
 	// for itself. Each is a function of the package alone and each walks the
@@ -463,6 +467,9 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		return ctx.BuildMutation(nil), nil
 	}
 	staticMode := req.Lang.LanguageIdentifier() == "none"
+	// One page gains nothing from a second file, and a preview is shown as one
+	// document with nowhere to fetch a second from.
+	shareConsts := staticMode && !opts.Preview && len(irWindows) > 1
 	var mainStmts []ir.Stmt
 	seenPaths := map[string]ast.Pos{}
 	for i, win := range irWindows {
@@ -495,6 +502,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.wasmLoader = wasmLoaderHTML
 		gen.wasmPkgs = wasmPkgs
 		gen.stylesheet = stylesheetURL
+		gen.shareConsts = shareConsts
 		gen.irBodyStmts = win.Body
 		gen.irWindowFuncs = win.Funcs
 		gen.irWindowVars = win.Vars
@@ -527,6 +535,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			mainStmts = win.Body
 		}
 	}
+	c.assetFiles = append(c.assetFiles, shared.constFiles...)
 	return ctx.BuildMutation(mainStmts), nil
 }
 
@@ -599,6 +608,12 @@ type htmlGen struct {
 	minify bool
 
 	maps bool
+
+	// shareConsts is a static site of more than one page, where each is its
+	// own document and a const they read is worth a file of its own
+	// (sharesConst).
+	shareConsts bool
+	noCacheBust bool
 
 	// outDir is what the inline source map's `sources` resolve against. It
 	// only makes them a good label: a window with `href="/about"` lands a
@@ -736,6 +751,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		preview:        opts.Preview,
 		testMode:       opts.Test,
 		minify:         opts.Minify,
+		noCacheBust:    opts.NoCacheBust,
 		idToNode:       make(map[string]*ir.NodeInst),
 		refToVar:       make(map[string]string),
 		loweredRefs:    make(map[string]bool),
@@ -1130,7 +1146,7 @@ func (g *htmlGen) generate() (string, error) {
 
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
-	script := scriptBuf.String()
+	sharedTags, script := g.linkSharedConsts(scriptBuf.String())
 
 	// The i18n runtime is prepended as an IIFE so the generated calls resolve
 	// without forcing the main script through a separate esbuild pass.
@@ -1177,7 +1193,9 @@ func (g *htmlGen) generate() (string, error) {
 			return "", err
 		}
 		script = bundled
-		b.WriteString("\n<script>\n")
+		b.WriteString("\n")
+		b.WriteString(sharedTags)
+		b.WriteString("<script>\n")
 		b.WriteString(script)
 		b.WriteString("</script>\n")
 	}
@@ -2061,6 +2079,18 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	// Ahead of the state, whose initializers may read one.
+	consts := g.pkgConsts()
+	for _, c := range consts {
+		if g.sharesConst(c) {
+			continue
+		}
+		fmt.Fprintf(b, "const %s = %s;\n", c.Name, g.literalToJS(c.Init))
+	}
+	if len(consts) > 0 {
+		b.WriteString("\n")
+	}
+
 	// A var whose initializer reads other state is emitted as a separate
 	// `state.X = ...;` after the object literal, so the sibling read does not
 	// hit a temporal-dead-zone reference.
@@ -2227,15 +2257,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	}
 
 	b.WriteString("\n")
-
-	consts := g.pkgConsts()
-	for _, c := range consts {
-		val := g.literalToJS(c.Init)
-		fmt.Fprintf(b, "const %s = %s;\n", c.Name, val)
-	}
-	if len(consts) > 0 {
-		b.WriteString("\n")
-	}
 
 	// g.ctx.Helpers is the unified map, so it also carries flags written by
 	// the JsIRContext path during emitScript.

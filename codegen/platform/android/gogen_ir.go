@@ -120,6 +120,10 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		}
 		emitGoLibIRFunc(&discard, fn, gc)
 	}
+	var consts strings.Builder
+	for _, c := range goLibConsts(ctx.Pkg, allFuncs) {
+		fmt.Fprintf(&consts, "\nvar %s %s = %s\n", c.Name, golang.IRTypeToGo(c.Type), golang.LowerVarInit(c, gc))
+	}
 
 	// Build output: package clause, conditional import block, then code.
 	var b strings.Builder
@@ -131,6 +135,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 		}
 		b.WriteString(")\n")
 	}
+	b.WriteString(consts.String())
 
 	// Pass 2: emit actual code. A computed is skipped by the same filter and
 	// deliberately has no pass of its own: this module holds free functions and
@@ -149,6 +154,36 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	}
 
 	return []byte(b.String())
+}
+
+// goLibConsts are the package consts a go-lib func reads. Only those: the
+// module declares no types, so a const of a struct type nothing here reads
+// would name one it lacks.
+func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
+	read := map[*ir.Var]bool{}
+	for _, fn := range funcs {
+		if fn.IsTest || fn.Receiver != "" || codegen.IsComputed(fn) {
+			continue
+		}
+		if fn.Return == nil || fn.Return.Kind == ir.TypeDyn {
+			continue
+		}
+		_ = ir.Walk(fn, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && v.IsConst {
+					read[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	var out []*ir.Var
+	for _, c := range pkg.Consts {
+		if read[c] && c.Init != nil {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func emitGoLibIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
