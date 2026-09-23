@@ -1,0 +1,51 @@
+# A list const read by a state initializer, executed rather than read.
+#
+# A read of a list const is a reference to its declaration now rather than a
+# literal copy, so the declaration has to exist before the first thing that
+# reads it. On html that is the state object, which a page's script writes
+# first, and the consts came after it: `shown` read `names` while it was
+# still undefined, and the page threw before it rendered. A golden shows the
+# order and only a browser shows what the order does, so this runs it; the
+# other two runs are the same program on backends that bind a const before
+# any state.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+[!chromium] skip 'the JavaScript half needs a real Chromium'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+}
+
+const names = ["a", "b", "c"]
+
+component main ui.node {
+    var pick = 2
+    var shown = names[pick]
+
+    ui.text(value=shown)
+}
+
+func testReadsTheList(t Test, c main) {
+    t.assert(c.shown == "c")
+}
+
+ui.window {
+    main
+}
