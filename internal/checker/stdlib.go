@@ -1658,6 +1658,7 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 		LibSources: map[string][]*ast.Document{name: PackageSource(name)},
 		Languages:  langs,
 		Platforms:  plats,
+		Targets:    ownTarget(name),
 	}
 	c := newChecker(nil, cfg)
 	pkg := c.libPkg(name)
@@ -1667,6 +1668,24 @@ func CheckLibPackage(name string) (*ir.Package, []ir.Diagnostic) {
 	c.runTreeChecks()
 	libPkgCache[name] = libPkgEntry{pkg: pkg, diags: c.diags}
 	return pkg, c.diags
+}
+
+// ownTarget is the build a target package is loaded as: the target it
+// belongs to, and no other. Selecting nothing would fall through to every
+// registered target's overrides (targetPackages), which is a full load of each
+// target package -- gtk4's introspection data included -- to answer a question
+// about one. `codegen.CapsFor` asks it of every target a build names, so that
+// was most of a cold `sngl generate`. A package that belongs to no target
+// still loads against all of them: a reader of sngl:ui wants every override.
+func ownTarget(name string) []ir.StaticTarget {
+	target, kind, ok := targetTierName(name)
+	if !ok {
+		return nil
+	}
+	if kind == ir.BuiltinLanguage {
+		return []ir.StaticTarget{{Language: target}}
+	}
+	return []ir.StaticTarget{{Platform: target}}
 }
 
 // Packages lists the `sngl:` packages this process can reach: the public
