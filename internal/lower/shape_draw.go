@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"fmt"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -30,10 +31,11 @@ func lowerShapeDraw(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil || !pkg.UsesDrawShapes() {
 		return nil
 	}
+	var failed error
 	for _, o := range ir.Owners(pkg) {
-		walkCanvases(o.Stmts())
+		walkCanvases(o.Stmts(), &failed)
 	}
-	return nil
+	return failed
 }
 
 // walkCanvases finds the drawings in a statement list and splices each.
@@ -42,28 +44,28 @@ func lowerShapeDraw(pkg *ir.Package, _ Features, _ Options) error {
 // canvas is often one arm of a target test, and a boundary or a context
 // override is how the nodes under it got there rather than a node. Stopping at
 // NodeInsts left such a canvas unspliced and its shapes rendered as widgets.
-func walkCanvases(stmts []ir.Stmt) {
+func walkCanvases(stmts []ir.Stmt, failed *error) {
 	for _, s := range stmts {
 		switch v := s.(type) {
 		case *ir.NodeInst:
 			if ir.IsShapeContainer(v) {
-				spliceCanvas(v)
+				spliceCanvas(v, failed)
 				continue
 			}
-			walkCanvases(v.Children)
+			walkCanvases(v.Children, failed)
 		case *ir.If:
-			walkCanvases(v.Body)
-			walkCanvases(v.Else)
+			walkCanvases(v.Body, failed)
+			walkCanvases(v.Else, failed)
 		case *ir.For:
-			walkCanvases(v.Body)
-			walkCanvases(v.Else)
+			walkCanvases(v.Body, failed)
+			walkCanvases(v.Else, failed)
 		case *ir.ErrorBoundary:
 			// Children alone: passBoundaryFailed has already rewritten the
 			// pair into a reactive `if` over its flag, so walking Failed would
 			// find the fallback a second time.
-			walkCanvases(v.Children)
+			walkCanvases(v.Children, failed)
 		case *ir.ContextProvider:
-			walkCanvases(v.Children)
+			walkCanvases(v.Children, failed)
 		}
 	}
 }
@@ -78,12 +80,14 @@ func walkCanvases(stmts []ir.Stmt) {
 // applyStyle and gtk4's paint were shaken away as unreferenced, and a
 // zero-alpha stroke test that should have folded to false emitted a second
 // drawRect on android.
-func spliceCanvas(canvas *ir.NodeInst) {
+func spliceCanvas(canvas *ir.NodeInst, failed *error) {
 	var body []ir.Stmt
 	emitShapes(canvas.Children, &body, drawEnv{
-		ctx:    canvasCtxParam,
-		width:  nodeIntProp(canvas, "width"),
-		height: nodeIntProp(canvas, "height"),
+		ctx:      canvasCtxParam,
+		width:    nodeIntProp(canvas, "width"),
+		height:   nodeIntProp(canvas, "height"),
+		inFlight: map[*ir.Component]bool{},
+		failed:   failed,
 	})
 	canvas.Children = body
 }
@@ -96,6 +100,16 @@ func spliceCanvas(canvas *ir.NodeInst) {
 type drawEnv struct {
 	ctx           *ir.Param
 	width, height int
+	// inFlight is the shapes whose bodies this drawing is currently inside, so
+	// a shape that renders itself is caught rather than expanded forever. A map
+	// rather than a copied set because drawEnv is passed by value into every
+	// nested call: a copy would forget what its caller was inside, which is the
+	// whole question.
+	inFlight map[*ir.Component]bool
+	// failed is the first recursion found. Held here rather than returned,
+	// because the five functions between this and lowerShapeDraw have no error
+	// in their signatures and a drawing is the only thing they can fail at.
+	failed *error
 }
 
 func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
@@ -204,7 +218,24 @@ func emitShape(ni *ir.NodeInst, body *[]ir.Stmt, env drawEnv) {
 	// shape names, which rendered any shape it did not recognise as nothing at
 	// all, silently.
 	if ni.Component != nil && len(ni.Component.Body) > 0 {
+		// A shape that renders itself has no finite drawing: expanding its body
+		// meets the same call again, and this pass has no depth to stop at the
+		// way an inliner does. Refused where it is written.
+		//
+		// The other inliners leave a recursive component standing and let the
+		// target instantiate it at run time, which is not open here: a drawing
+		// is a list of paint calls, and there is no node left for a target to
+		// instantiate.
+		if env.inFlight[ni.Component] {
+			if *env.failed == nil {
+				*env.failed = fmt.Errorf("%s: shape %s draws itself: a drawing is the calls that paint it, so there is no depth to stop at",
+					nodePos(ni), ni.Component.Name)
+			}
+			return
+		}
+		env.inFlight[ni.Component] = true
 		emitShapes(shapeBody(ni), body, env)
+		delete(env.inFlight, ni.Component)
 	}
 
 	if len(ni.Children) > 0 {

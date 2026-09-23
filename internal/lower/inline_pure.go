@@ -658,13 +658,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 	// copy it meant never fired for one, and a rename had nothing to repoint
 	// the reads through.
 	if callsite.ID != "" {
-		for _, s := range body {
-			if ni, ok := s.(*ir.NodeInst); ok {
-				ni.ID = callsite.ID
-				ni.Handle = callsite.Handle
-				break
-			}
-		}
+		ir.AttachNodeID(body, callsite.ID, callsite.Handle)
 	}
 
 	// Event-handler transfer (platform-independent rule): any pure wrapper

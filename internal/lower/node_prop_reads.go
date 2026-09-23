@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"fmt"
+
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -50,14 +52,44 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, _ Options) error {
 	// beside it is a second source of truth the next render undoes. So nothing
 	// reaches here to answer, and this pass has no left-hand side to be careful
 	// about.
-	return ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
-		if sel, ok := n.(*ir.Select); ok {
-			if e := rewriteNodePropRead(sel, handles); e != nil {
-				return e, ir.SkipDir
+	//
+	// A cycle first, because the substitution below would chase one forever.
+	if err := refuseNodePropCycle(handles); err != nil {
+		return err
+	}
+
+	// To a fixed point, because a prop may itself have been given a read of
+	// another node's prop -- `circle #b(r=a.r)` -- so one answer uncovers the
+	// next. A single pass answered only the reads whose node the traversal had
+	// already reached, which made the output depend on where the reading
+	// statement was written relative to the node: the same program rendered
+	// `b is 5` with the read after the canvas and an empty span with it before.
+	// A declarative position has no order to appeal to, so the answer must not
+	// have one either.
+	for {
+		changed := false
+		if err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
+			sel, ok := n.(*ir.Select)
+			if !ok {
+				return n, nil
 			}
+			e := rewriteNodePropRead(sel, handles)
+			if e == nil {
+				return n, nil
+			}
+			changed = true
+			// Skipped, not descended: the replacement is answered by the next
+			// round, where every node has been reached. Descending here would
+			// answer it at a depth this round has no information about, which
+			// is the order-dependence again one level down.
+			return e, ir.SkipDir
+		}); err != nil {
+			return err
 		}
-		return n, nil
-	})
+		if !changed {
+			return nil
+		}
+	}
 }
 
 // nodeHandles maps each `#id` binding to the node it names.
@@ -184,4 +216,71 @@ func identName(e ir.Expr) string {
 		return id.Name
 	}
 	return "?"
+}
+
+// refuseNodePropCycle reports a node prop that reads its way back to itself.
+//
+// `circle #a(r=b.r)` beside `circle #b(r=a.r)` is a question with no answer:
+// each prop is the other, and the fixed point above would substitute one into
+// the other forever. A program can write it, so it is reported rather than
+// hung on -- the same shape `evalCtx.foldingProp` guards for a window prop that
+// reads itself, and reported here for the reason that one is not: this is a
+// whole-graph question, and the graph is known.
+//
+// Only the reads this pass would answer are edges. A read of a node the target
+// retains is left standing and is not one, so a widget reading another widget
+// is not a cycle -- it is two live reads, whatever else is wrong with them.
+func refuseNodePropCycle(handles map[*ir.Var]*ir.NodeInst) error {
+	// The edge set: node -> the nodes its props read.
+	edges := map[*ir.NodeInst][]*ir.NodeInst{}
+	for _, node := range handles {
+		if !rendersWithoutIdentity(node) {
+			continue
+		}
+		for i := range node.Props {
+			ir.WalkExprs(node.Props[i].Value, func(e ir.Expr) error {
+				sel, ok := e.(*ir.Select)
+				if !ok {
+					return nil
+				}
+				if to := handleNodeOf(sel.Operand, handles); to != nil {
+					edges[node] = append(edges[node], to)
+				}
+				return nil
+			})
+		}
+	}
+
+	const (
+		unvisited = 0
+		onStack   = 1
+		done      = 2
+	)
+	state := map[*ir.NodeInst]int{}
+	var walk func(*ir.NodeInst) error
+	walk = func(n *ir.NodeInst) error {
+		state[n] = onStack
+		for _, to := range edges[n] {
+			switch state[to] {
+			case onStack:
+				return fmt.Errorf("%s: `#%s` reads its own value back through `#%s`: each prop is the other, so there is nothing to answer with",
+					ir.StmtPos(n), n.ID, to.ID)
+			case unvisited:
+				if err := walk(to); err != nil {
+					return err
+				}
+			}
+		}
+		state[n] = done
+		return nil
+	}
+	for node := range edges {
+		if state[node] != unvisited {
+			continue
+		}
+		if err := walk(node); err != nil {
+			return err
+		}
+	}
+	return nil
 }
