@@ -419,6 +419,45 @@ reach.
 
 ## 6. Acceptance
 
+### Decided 2026-09-24 (Jonathan), not started
+
+Work these in this order:
+
+1. **Anchors are deferred.** File a GitLab ticket: `specification.md` has 27
+   in-page `#` links that rely on goldmark's `WithAutoHeadingID`, and
+   `markup.heading*` carries no id, so the links break once the docs render
+   through markup. Filing the ticket was asked for explicitly.
+2. **A default token palette.** Choose default colors for the eleven `Token`
+   kinds. On html they style the `sngl-tok-<kind>` classes, which nothing
+   styles today. On gtk4 they replace the hand-picked foregrounds. How an
+   application overrides the defaults is still open.
+3. **The order key is a macro.** A mark on the `Frontmatter` field names the
+   key to sort a page's children by (`#[md.order] order int`, or similar). The
+   directory importer already parses the directory's `.sngl` files to find a
+   declared `Frontmatter`, so it can read the mark there and sort `children`
+   by it. Still open: where the mark is declared (it needs a lib package; it
+   does not belong in `sngl:macro`) and how the checker accepts a mark on a
+   struct field.
+4. **An internal importer generates SNGL source from the docs.** This replaces
+   both options above (keep the data Go-side, or parse at compile time).
+   `docui.Markdown` has four call sites in `website.sngl`: `comp.previewHTML`,
+   `comp.highlightedCode`, `d.body` (`lookup.AllDeclPages()`) and `page.body`
+   (`docs.Pages()`). Open questions to settle first:
+   - Which of those four "the docs" covers. The decl pages and the `docs/`
+     pages both read naturally; the preview and highlighted code are not
+     markdown at all.
+   - Where the scheme is registered. `internal/cmd/docsgen` is a `go tool`,
+     but the compile step runs `sngl generate website.sngl`, so a scheme that
+     lives only in docsgen has to run the build in-process.
+   - How its hrefs line up. The directory form writes `guide/index.md` as
+     `/guide.html`, and the site uses `/learn/index.html` and
+     `/docs/sngl/builtin/error.html`. It also requires a page for every
+     intermediate directory. So the importer probably reuses the per-page
+     converter (`docState.page`) and writes its own page list, rather than
+     going through `convertDir`.
+5. **The tutorial's conditional prose needs a brainstorm.** The likely shape is
+   `sngl` blocks, with a context passing in the selected platform.
+
 **Both halves want a decision before they are written.** What each actually
 needs is below, found by reading the two files rather than by attempting them.
 
