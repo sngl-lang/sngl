@@ -65,6 +65,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		if err := validateRawElements(req.Pkg); err != nil {
 			return err
 		}
+		if err := firstUnrenderedNode(req.Pkg); err != nil {
+			return err
+		}
 	}
 
 	placement := scanPlacement(req.Pkg)

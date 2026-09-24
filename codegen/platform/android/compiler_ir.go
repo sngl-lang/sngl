@@ -130,7 +130,7 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	src := emitIR(info, ctx, cfg, false)
-	return src, nil
+	return src, ctx.Err()
 }
 
 // CompileTestIR is the test-runner variant of CompileIR. It emits the
@@ -146,7 +146,7 @@ func CompileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	src := emitIR(info, ctx, cfg, true)
-	return src, nil
+	return src, ctx.Err()
 }
 
 // irAnalysis is the IR-based replacement for analysisResult.

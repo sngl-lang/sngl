@@ -113,6 +113,9 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	// The MemSink keeps this returning bytes, which android's go path and the
 	// tests consume; the caller's emitter adds the generated-by header, so

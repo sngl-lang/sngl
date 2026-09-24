@@ -399,16 +399,11 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 		return
 	}
 
-	// Any other node — a raw terminal element, or a component reference left
-	// over from a non-renderable fixture (e.g. an empty-body component pruned
-	// from Pkg.Components) — renders as a styled/joined terminal string.
-	//
-	// Production codegen always registers platforms, so every stdlib wrapper is
-	// inlined to a primitive above and never reaches here. Some checker-only
-	// test paths (TestFixtures, internal/snapshot TestGenerate) run bubbletea
-	// codegen WITHOUT registered platforms, so stdlib wrappers stay un-inlined
-	// and fall through to this raw-terminal renderer by design — it produces
-	// valid Go. (A loud guard here would break those paths; see #3 review.)
+	if codegen.DeclinesNode(n.Component) {
+		vc.ctx.Fail(codegen.UnimplementedNode(n.Component, n.AST, n.Name, "bubbletea"))
+		return
+	}
+	// A user component pruned from Pkg.Components for an empty body.
 	vc.renderRawTerminal(n, resultVar)
 }
 

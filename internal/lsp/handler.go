@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"git.duckfam.us/jonathan/sngl"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -15,13 +14,7 @@ import (
 // back to its last good render.
 func (s *Server) checkForPreview(fs *fileState) (*ir.Package, error) {
 	dir := filepath.Dir(uriToPath(fs.URI))
-	pkg, diags := sngl.Check(fs.Doc, dir)
-	for _, d := range diags {
-		if d.Severity == ir.Error {
-			return nil, fmt.Errorf("%s", d.Error())
-		}
-	}
-	return pkg, nil
+	return checkPreviewDoc(fs.Doc, dir)
 }
 
 func (s *Server) handleInitialize(id json.RawMessage, params json.RawMessage) {

@@ -288,6 +288,10 @@ func (vc *irViewContext) renderSpan(stmt ir.Stmt, accVar string, c spanCascade) 
 		for _, child := range s.Children {
 			vc.renderSpan(child, accVar, c)
 		}
+	case *ir.SlotInst:
+		if vc.slotVar != "" {
+			vc.line(`%s += %s`, accVar, vc.slotVar)
+		}
 	default:
 		// Anything else in a flow renders nothing: an imperative statement a
 		// lowering pass hoisted here has no words to contribute.

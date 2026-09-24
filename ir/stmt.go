@@ -272,6 +272,9 @@ type LocalVar struct {
 	// synthesized draw func and three prop values copied out, which is the
 	// same carrier written out longhand.
 	CanvasNode *NodeInst
+	// NodeAST is the source of the node a createNode flattened, so a platform
+	// declining it can quote the spelling and position the program wrote.
+	NodeAST ast.Stmt `json:"-"`
 }
 
 func (*LocalVar) stmtNode() {}

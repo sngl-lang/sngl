@@ -163,12 +163,9 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 			return
 		}
 	}
-	// Every stdlib component either has an android override in
-	// codegen/platform/android or a body in renderStdlibComposable, so reaching
-	// here means the compiler lost track of a node — a compiler bug, not a
-	// program error. A panic reports it as one (and gives a fuzzer something
-	// to find); a rendered marker would ship the bug into the app instead.
-	panic(fmt.Sprintf("android: no composable for component %q (platform android has no override and no built-in body)", n.Name))
+	// A library declaration with no android override and no body here: another
+	// platform's element, or a component this one never implemented.
+	cc.ctx.Fail(codegen.UnimplementedNode(n.Component, n.AST, n.Name, "android"))
 }
 
 // emitInputHandlerCall lowers one @change handler attached to select, the

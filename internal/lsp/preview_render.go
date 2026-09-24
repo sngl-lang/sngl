@@ -5,9 +5,12 @@ import (
 	"strings"
 	"sync"
 
-	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/codegen/lang/none"
-	"git.duckfam.us/jonathan/sngl/codegen/platform/html"
+	// The preview renders through these whatever else the binary links.
+	_ "git.duckfam.us/jonathan/sngl/codegen/lang/none"
+	_ "git.duckfam.us/jonathan/sngl/codegen/platform/html"
+
+	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/internal/build"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -77,14 +80,8 @@ func renderDocAsHTML(pkg *ir.Package, windowName string) ([]byte, error) {
 		return nil, fmt.Errorf("window %q not found in package", windowName)
 	}
 
-	gen := &html.Generator{}
-	req := &codegen.Request{
-		Pkg:    pkg,
-		Lang:   &none.Translator{},
-		Source: "preview.sngl",
-	}
-	mem := codegen.NewMemSink()
-	if err := gen.Generate(req, mem); err != nil {
+	results, err := build.Emit(pkg, build.Options{Name: "preview.sngl", Lang: "none", Platform: "html"})
+	if err != nil {
 		return nil, fmt.Errorf("html generate: %w", err)
 	}
 
@@ -92,7 +89,7 @@ func renderDocAsHTML(pkg *ir.Package, windowName string) ([]byte, error) {
 	// whose path matches the window name. Convention: <name>.html for
 	// routes / index.html for the lone window.
 	matchSuffix := windowName + ".html"
-	files := mem.Files()
+	files := results[0].Files
 	var single []byte
 	for name, content := range files {
 		if strings.HasSuffix(name, matchSuffix) || (len(files) == 1 && strings.HasSuffix(name, ".html")) {
@@ -130,4 +127,13 @@ func injectLiveReloadScript(html []byte) []byte {
 	out = append(out, []byte(script)...)
 	out = append(out, html[idx:]...)
 	return out
+}
+
+// previewTarget is what the preview renders, and what it has to check
+// against: a target selected at check time is what puts its overrides in
+// place of the library bodies.
+var previewTarget = []ir.StaticTarget{{Platform: "html", Language: "none"}}
+
+func checkPreviewDoc(doc *ast.Document, dir string) (*ir.Package, error) {
+	return build.Check(doc, build.CheckConfig{Dir: dir, IsMain: true, Targets: previewTarget})
 }

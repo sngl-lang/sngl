@@ -108,6 +108,7 @@ type gtk4Translator struct {
 	// emitIR's whole-program fallback. See wrapped.go.
 	wrapped      bool
 	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	nodeSource   map[string]ast.Stmt      // node id → the source the node was written as
 	// plainHandle names the instance ids whose handle is the widget the render
 	// returned rather than a record carrying it, as OnCreateComponent decided
 	// from the component's own RuntimeInstance mark. Only a record has a Root
@@ -138,6 +139,7 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 		fieldIDs:     map[string]bool{},
 		skipped:      map[string]struct{}{},
 		tagComponent: map[string]*ir.Component{},
+		nodeSource:   map[string]ast.Stmt{},
 	}
 }
 
@@ -213,6 +215,7 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 				if call, ok := n.Init.(*ir.Call); ok && len(call.Args) >= 1 {
 					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
 						t.tagComponent[lit.Value] = comp
+						t.nodeSource[n.Name] = n.NodeAST
 					}
 				}
 			}
@@ -271,7 +274,7 @@ func (t *gtk4Translator) widgetClass(tag string) (string, *gir.ClassInfo) {
 // override that gets inlined away, so one arriving here under its own name is
 // one this platform never implemented. A user component with an empty body
 // says it draws nothing and is left alone.
-func (t *gtk4Translator) unresolvedTagError(tag string) error {
+func (t *gtk4Translator) unresolvedTagError(id, tag string) error {
 	comp := t.tagComponent[tag]
 	if comp == nil {
 		return fmt.Errorf("gtk4: no widget for node %q", tag)
@@ -291,7 +294,7 @@ func (t *gtk4Translator) unresolvedTagError(tag string) error {
 	if _, ok := comp.PlatformOverrides[platformName]; ok {
 		return fmt.Errorf("gtk4: component %q has a gtk4 implementation that did not lower to a widget", tag)
 	}
-	return &codegen.UnimplementedComponent{Component: tag, Platform: platformName}
+	return codegen.UnimplementedNode(comp, t.nodeSource[id], tag, platformName)
 }
 
 func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
@@ -388,7 +391,7 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	if info == nil {
 		// The build has to fail: dropping the node emits a window missing the
 		// widgets its source asked for and says so nowhere.
-		if err := t.unresolvedTagError(tag); err != nil {
+		if err := t.unresolvedTagError(id, tag); err != nil {
 			t.shared.fail(err)
 		}
 		// Recorded so later references are dropped rather than emitting
