@@ -50,8 +50,8 @@ func (e *emitter) fenceModeOf(n *gast.FencedCodeBlock, language string) fenceMod
 	if n.Info == nil {
 		return modeView
 	}
-	fields := strings.Fields(string(n.Info.Segment.Value(e.src)))
-	for _, f := range fields {
+	fields := strings.FieldsSeq(string(n.Info.Segment.Value(e.src)))
+	for f := range fields {
 		spelling, ok := strings.CutPrefix(f, "mode=")
 		if !ok {
 			continue

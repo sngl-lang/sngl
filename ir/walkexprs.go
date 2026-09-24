@@ -3,8 +3,6 @@ package ir
 import (
 	"errors"
 	"fmt"
-	"maps"
-	"slices"
 )
 
 // SkipDir and SkipAll are sentinel errors a visit callback returns to steer the
@@ -228,7 +226,7 @@ func (w *rewriter) stmt(s Stmt) Stmt {
 		// finds -- a synthesized component, a temp, an event -- would name it
 		// differently on each run. Source order is not recoverable here, so
 		// the order is at least the same one twice.
-		for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+		for _, name := range SlotNames(n.Slots) {
 			sc := n.Slots[name]
 			if sc != nil {
 				sc.Body = w.stmts(sc.Body)

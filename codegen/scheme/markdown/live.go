@@ -76,7 +76,7 @@ func (d *docState) addImports(imports []importDecl) {
 // emitLines writes an already-formatted block of SNGL source at this
 // emitter's indentation.
 func (e *emitter) emitLines(src string) {
-	for _, line := range strings.Split(src, "\n") {
+	for line := range strings.SplitSeq(src, "\n") {
 		e.line(line)
 	}
 }

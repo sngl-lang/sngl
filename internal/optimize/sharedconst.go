@@ -113,6 +113,9 @@ func foldPropArg(n *ir.NodeInst, name string, value ir.Expr, ctx *evalCtx) ir.Ex
 type writesAnalysis struct {
 	funcs map[funcParam]bool
 	props map[compProp]bool
+	// platform and language are the build's target: a component's body is
+	// its own and the override this target picks, not every target's.
+	platform, language string
 }
 
 type funcParam struct {
@@ -125,8 +128,8 @@ type compProp struct {
 	name string
 }
 
-func newWritesAnalysis() *writesAnalysis {
-	return &writesAnalysis{funcs: map[funcParam]bool{}, props: map[compProp]bool{}}
+func newWritesAnalysis(platform, language string) *writesAnalysis {
+	return &writesAnalysis{funcs: map[funcParam]bool{}, props: map[compProp]bool{}, platform: platform, language: language}
 }
 
 func (w *writesAnalysis) callWrites(call *ir.Call, i int) bool {
@@ -174,7 +177,7 @@ func callParam(call *ir.Call, i int) int {
 }
 
 func (w *writesAnalysis) propWrites(comp *ir.Component, name string) bool {
-	if comp == nil || w == nil || renderedByPlatform(comp) {
+	if comp == nil || w == nil || w.renderedByPlatform(comp) {
 		return true
 	}
 	key := compProp{comp, name}
@@ -198,10 +201,7 @@ func (w *writesAnalysis) propWrites(comp *ir.Component, name string) bool {
 		return ok && p.Name == name
 	}
 	got := w.escapes(ir.Body{Stmts: comp.Body, Vars: comp.Vars, Funcs: comp.Funcs}, isProp)
-	for _, b := range comp.PlatformOverrides {
-		got = got || w.escapes(b, isProp)
-	}
-	for _, b := range comp.LanguageOverrides {
+	if b, ok := ir.ComponentOverride(comp, w.platform, w.language); ok {
 		got = got || w.escapes(b, isProp)
 	}
 	w.props[key] = got
@@ -209,12 +209,17 @@ func (w *writesAnalysis) propWrites(comp *ir.Component, name string) bool {
 }
 
 // renderedByPlatform reports whether a node's props are read by a platform
-// emitter rather than by a body, which is to say read as literals.
-func renderedByPlatform(comp *ir.Component) bool {
+// emitter rather than by a body, which is to say read as literals. A body
+// another target overrides the component with is not one this build renders.
+func (w *writesAnalysis) renderedByPlatform(comp *ir.Component) bool {
 	if comp.Intrinsic != "" || comp.Wildcard != "" || comp.Builtin != ir.BuiltinNone {
 		return true
 	}
-	return len(comp.Body) == 0 && len(comp.PlatformOverrides) == 0 && len(comp.LanguageOverrides) == 0
+	if len(comp.Body) > 0 {
+		return false
+	}
+	_, ok := ir.ComponentOverride(comp, w.platform, w.language)
+	return !ok
 }
 
 // escapes reports whether root writes the value a matching symbol holds, or

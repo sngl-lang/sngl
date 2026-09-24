@@ -75,6 +75,18 @@ func covers(recorded string, t target) bool {
 	return true
 }
 
+// ComponentOverride is the override body comp carries for the target, by the
+// rule SpecializeForTarget swaps one in with: the platform's entry, else the
+// language's. A reader that needs a target's body before or without the swap
+// asks here rather than ranging over the maps, which hold every target the
+// build names -- and, in a per-target clone (ClonePackageFor), only this one.
+func ComponentOverride(comp *Component, platform, language string) (Body, bool) {
+	if comp == nil {
+		return Body{}, false
+	}
+	return pick(target{platform, language}, comp.PlatformOverrides, comp.LanguageOverrides)
+}
+
 // pick returns the body a target selects from the two override maps, and
 // whether there is one at all.
 func pick[T any](t target, byPlatform, byLanguage map[string]T) (T, bool) {

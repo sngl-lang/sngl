@@ -48,6 +48,7 @@ import (
 	"fmt"
 	"image/color"
 	"net/url"
+	"strings"
 
 	fyne "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -341,11 +342,12 @@ func (f *Flow) linkSegment(s *Span, r resolved) widget.RichTextSegment {
 // textual is every word under this span, in order -- what a segment that
 // cannot hold a tree has to be given instead.
 func (s *Span) textual() string {
-	out := s.Text
+	var out strings.Builder
+	out.WriteString(s.Text)
 	for _, c := range s.children {
-		out += c.textual()
+		out.WriteString(c.textual())
 	}
-	return out
+	return out.String()
 }
 
 // textSegment renders one run of words.

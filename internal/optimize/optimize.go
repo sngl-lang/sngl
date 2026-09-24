@@ -326,7 +326,7 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 		done:   map[*ir.Package]bool{},
 		native: native,
 		root:   pkg,
-		writes: newWritesAnalysis(),
+		writes: newWritesAnalysis(cfg.Platform, cfg.Language),
 	}
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).
