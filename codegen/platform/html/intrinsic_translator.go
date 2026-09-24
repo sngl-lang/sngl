@@ -22,6 +22,10 @@ import (
 type htmlTranslator struct {
 	jc       *javascript.JsIRContext
 	idTags   map[string]string // id ("__n0") → SNGL tag ("text")
+	// creates holds each element's createElement call, whose tag a later
+	// `tag` write replaces: the lowering names the node, and a primitive whose
+	// element is a prop (flow, inline) is not named for it.
+	creates  map[string]*ir.Call
 	topLevel []string          // ids not yet AppendChild'd
 	// idToNode maps an element id to the NodeInst it was built from. A
 	// lowered node op names its node by id and carries nothing else, so this
@@ -57,7 +61,7 @@ type htmlTranslator struct {
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 	return &htmlTranslator{
-		jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
+		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode,
 	}
 }
@@ -156,6 +160,10 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		Func:     &ir.Func{Name: "createElement"},
 		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 	}
+	if t.creates == nil {
+		t.creates = map[string]*ir.Call{}
+	}
+	t.creates[id] = createCall
 	return []ir.Stmt{&ir.LocalVar{
 		Name: id,
 		Type: ir.TypDyn,
@@ -310,9 +318,15 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		}
 	}
 	node = t.nodeRef(node)
-	// The prop the tag name binds to names the element; the tag already
-	// reached OnCreateNode, and there is no attribute to write it as.
+	// The prop the tag name binds to names the element, so it is the
+	// createElement argument and no attribute. A computed one is left to the
+	// name the node was created under, as the page walk leaves it.
 	if prop == tagProp {
+		if id, ok := node.(*ir.Ident); ok {
+			if s, ok := codegen.IRLiteralString(value); ok && s != "" && t.creates[id.Name] != nil {
+				t.creates[id.Name].Args[0].Value = &ir.Literal{Type: ir.TypString, Value: s}
+			}
+		}
 		return nil
 	}
 	// Stylesheet rules, registered by the page walk; no element carries one.
