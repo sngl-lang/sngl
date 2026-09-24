@@ -46,6 +46,17 @@ before Phase 0.
   choice, since a func type already takes a parameter list. The fix is an
   event declared with a parameter list -- `@generate(out gen.Out, importPath string)` -- and a handler binding them by position, the way a func literal
   does, with the one-payload form as the case it already is.
+
+  **Done** in !176 (`fix/event-params`). What it settled, for the plan:
+  `ir.EventDecl.Params` is a FuncSig-shaped list, so an interpreted gen
+  handler gets its arguments by index. An emit passes every parameter or none,
+  and none *forwards* the enclosing handler's parameters. A gen component that
+  fires its own event therefore has to pass `out` and `importPath` explicitly.
+  A bare `@name` is still one loose `dyn` parameter, so the gen components
+  should declare their events with a list (`@generate(out Out, importPath
+  string)`) and never bare. Host-widget dispatch still reads a single payload
+  (`EventDecl.Payload()`), which is fine here because gen handlers never reach
+  a platform emitter.
 - **The root family is declared in `sngl:ui`.** It is the family a package
   body accepts, which is a fact about every package and not about widgets, and
   having it in `sngl:ui` is what forces the exemptions around it: `output` is
