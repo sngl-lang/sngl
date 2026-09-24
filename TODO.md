@@ -460,6 +460,10 @@ Work these in this order:
    The mark is declared in a new **`sngl:ui/markup/md`** (`lib/ui/markup/md/`),
    the home for the `md:` scheme's vocabulary. A mark on a struct field
    needs no checker change: `#[foreign]` and `#[unusable]` already carry one.
+   **Done** (`markdown_directory_order.txtar`; the refusals are in
+   `cmd/sngl/testdata/markdown_directory_errors.txt`). The checker got a
+   handler after all, since a mark with no entry in `markImpls` resolves and
+   does nothing; it only holds the field to an int, float or string.
 4. **The docs site imports `docs/` through `md:`.** `docui.Markdown` has four
    call sites in `website.sngl`: `comp.previewHTML`, `comp.highlightedCode`,
    `d.body` (`lookup.AllDeclPages()`) and `page.body` (`docs.Pages()`). Only
@@ -542,9 +546,9 @@ needs is below, found by reading the two files rather than by attempting them.
 
 - [X] CLAUDE.md: a section on the markup family, why it is inline-only, and the
   literal-whitespace rule.
-- [X] `lib/lib.go` needs nothing: its embed pattern is `*/*.sngl */*/*.sngl`
-  and `Packages()` reads the embedded directory, so a nested package is
-  already covered.
+- [X] `lib/lib.go`'s embed pattern stopped at two levels, so
+  `lib/ui/markup/md/` needed `*/*/*/*.sngl` added; `Packages()` reads the
+  embedded directory and needed nothing.
 - [ ] Delete this file.
 
 ---

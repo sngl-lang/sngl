@@ -86,9 +86,15 @@ func convertDir(fsys fs.FS, label string) (fs.FS, error) {
 		}
 	}
 
-	fields, err := frontmatterFields(out, pages, label)
+	fields, order, err := frontmatterFields(out, pages, label)
 	if err != nil {
 		return nil, err
+	}
+	if order != nil {
+		if err := order.sortChildren(pages, label); err != nil {
+			return nil, err
+		}
+		pages = root.walk()
 	}
 	out[generatedFile] = &fstest.MapFile{Data: []byte(site(state, label, root, pages, fields))}
 	return out, nil
@@ -148,16 +154,16 @@ func pageTree(files []string, label string) (*page, []*page, error) {
 		}
 		parent.children = append(parent.children, p)
 	}
-	var ordered []*page
-	var walk func(*page)
-	walk = func(p *page) {
-		ordered = append(ordered, p)
-		for _, c := range p.children {
-			walk(c)
-		}
+	return root, root.walk(), nil
+}
+
+// walk is the tree in document order: a page, then each child's subtree.
+func (p *page) walk() []*page {
+	out := []*page{p}
+	for _, c := range p.children {
+		out = append(out, c.walk()...)
 	}
-	walk(root)
-	return root, ordered, nil
+	return out
 }
 
 // pageName is a page's path as an identifier: segments joined by `_`, and
@@ -183,8 +189,9 @@ type field struct {
 // frontmatterFields is the struct the importer declares when the directory
 // declares none: the union of the keys the pages wrote, in the order first
 // seen, each typed by the first scalar written for it. A directory that does
-// declare one gets nil, and the checker holds each literal to it.
-func frontmatterFields(pkg fstest.MapFS, pages []*page, label string) ([]field, error) {
+// declare one gets nil, and the checker holds each literal to it; its
+// #[md.order] field, if it marks one, is the key children are sorted by.
+func frontmatterFields(pkg fstest.MapFS, pages []*page, label string) ([]field, *orderKey, error) {
 	for name, f := range pkg {
 		doc, err := parser.Parse(name, f.Data)
 		if err != nil {
@@ -192,7 +199,8 @@ func frontmatterFields(pkg fstest.MapFS, pages []*page, label string) ([]field, 
 		}
 		for _, s := range doc.Stmts {
 			if sd, ok := s.(*snglast.StructDef); ok && sd.Name == "Frontmatter" {
-				return nil, nil
+				key, err := findOrderKey(doc, sd, name, label)
+				return nil, key, err
 			}
 		}
 	}
@@ -202,7 +210,7 @@ func frontmatterFields(pkg fstest.MapFS, pages []*page, label string) ([]field, 
 		for _, c := range p.front {
 			if prev, ok := seen[c.name]; ok {
 				if prev.typ != c.typ {
-					return nil, fmt.Errorf("md: %s/%s: frontmatter key %q is %s here and %s in %s; declare struct Frontmatter to say which", label, p.file, c.name, c.typ, prev.typ, prev.file)
+					return nil, nil, fmt.Errorf("md: %s/%s: frontmatter key %q is %s here and %s in %s; declare struct Frontmatter to say which", label, p.file, c.name, c.typ, prev.typ, prev.file)
 				}
 				continue
 			}
@@ -211,7 +219,7 @@ func frontmatterFields(pkg fstest.MapFS, pages []*page, label string) ([]field, 
 			fields = append(fields, f)
 		}
 	}
-	return fields, nil
+	return fields, nil, nil
 }
 
 var zeros = map[string]string{"string": `""`, "int": "0", "float": "0.0", "bool": "false"}

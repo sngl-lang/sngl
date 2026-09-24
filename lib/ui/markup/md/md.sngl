@@ -1,0 +1,10 @@
+import ir "sngl:internal/ir"
+
+// Names the `Frontmatter` field a page's children are sorted by, ascending.
+//
+// A page that does not write the key sorts by the field's default, which is
+// why that default has to be a literal: the importer orders the tree before
+// anything is checked, so it has nothing to evaluate an expression with. Pages
+// with equal keys keep their path order. The field is an `int`, a `float` or
+// a `string`, and one field of the struct carries the mark.
+func order() ir.Macro

@@ -1,0 +1,7 @@
+// The vocabulary a directory imported through the `md:` scheme writes in its
+// own `.sngl` files, to say what its pages mean to the importer.
+//
+// Every mark here is read by the importer, from source, before the package it
+// generates is checked -- so a mark's argument and the field it sits on are
+// what the importer can read off the declaration as written. The checker
+// holds each to the form it takes and to nothing the importer depends on.

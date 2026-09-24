@@ -1780,6 +1780,13 @@ the doc site uses, so two readings of one document cannot differ.
   in first-seen order, each typed by its first scalar and defaulting to that
   type's zero; a key written with two types is an error naming both files.
 
+  **`#[md.order]` on a declared field sorts each page's children by it**,
+  ascending and stable over path order. The mark is `sngl:ui/markup/md`'s,
+  the home of the scheme's vocabulary, and the importer reads it off the AST
+  before anything is checked — which is why a page omitting the key sorts as
+  the field's default and that default has to be a literal. The checker's
+  handler only holds the field to an int, float or string.
+
 **A `sngl` fence may be live**, spelled `mode=` on the info line, which leaves
 the fence reporting `sngl` and highlighting like any other. `view`, the
 default, shows it. `island` is a component of its own at the fence's position,

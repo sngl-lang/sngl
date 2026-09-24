@@ -15,6 +15,7 @@ type constDecl struct {
 	name  string
 	value string // already spelled as SNGL source
 	typ   string // the SNGL type the scalar spells
+	raw   string // the scalar as YAML wrote it
 }
 
 // splitFrontmatter peels a leading `---` YAML block off src and returns its
@@ -67,7 +68,7 @@ func splitFrontmatter(src []byte) ([]constDecl, []byte, int, error) {
 			// type for one is the importer deciding what the document meant.
 			return nil, nil, 0, fmt.Errorf("frontmatter key %q is not a scalar", name)
 		}
-		out = append(out, constDecl{name: name, value: lit, typ: typ})
+		out = append(out, constDecl{name: name, value: lit, typ: typ, raw: val.Value})
 	}
 	return out, body, lines, nil
 }

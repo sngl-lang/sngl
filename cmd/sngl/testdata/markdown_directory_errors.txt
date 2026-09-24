@@ -35,6 +35,25 @@ stderr 'a_b'
 stderr 'site.md'
 stderr 'reserved'
 
+# A page's children sort by one key.
+! sngl check twokeys/app.sngl
+stderr 'meta.sngl'
+stderr 'on both "a" and "b"'
+
+# The importer sorts before anything is checked, so the default a page that
+# omits the key sorts as has to be a literal.
+! sngl check orderdefault/app.sngl
+stderr 'the default of the order key "weight"'
+
+# A page writing another type for the key is named.
+! sngl check ordertype/app.sngl
+stderr 'guide.md'
+stderr 'the order key "weight" is string here and int in Frontmatter'
+
+# The checker holds the mark to a field whose type is a sort key.
+! sngl check orderbool/app.sngl
+stderr 'a sort key is an int, a float or a string, not bool'
+
 -- both/app.sngl --
 import docs "md:./docs/"
 
@@ -117,3 +136,81 @@ docs.site {
 Home.
 -- reserved/docs/site.md --
 Site.
+-- twokeys/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- twokeys/docs/index.md --
+Home.
+-- orderdefault/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- orderdefault/docs/index.md --
+Home.
+-- ordertype/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- ordertype/docs/index.md --
+Home.
+-- orderbool/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- orderbool/docs/index.md --
+Home.
+-- twokeys/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+struct Frontmatter {
+    #[md.order]
+    a int = 0
+    #[md.order]
+    b int = 0
+}
+-- orderdefault/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+const first = 1
+
+struct Frontmatter {
+    #[md.order]
+    weight int = first
+}
+-- ordertype/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+struct Frontmatter {
+    #[md.order]
+    weight int = 0
+}
+-- ordertype/docs/guide.md --
+---
+weight: heavy
+---
+
+Guide.
+-- orderbool/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+struct Frontmatter {
+    #[md.order]
+    draft bool = false
+}
