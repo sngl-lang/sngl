@@ -751,13 +751,16 @@ component Flow(
 
 // One run of words. `text` and `href` are setters, so a reactive prop reaches
 // the span and the flow rebuilds around it; `spanStyle` and `kind` are read
-// off the literal and become the style the run is constructed with.
+// off the literal and become the style the run is constructed with. `color` is
+// a palette's answer for a token, and wins over the theme's: read off the
+// literal where the build knows it and set where the program does.
 #[intrinsic("fyne:Span")]
 component Span(
     text string,
     href string,
     spanStyle markup.SpanStyle,
     kind markup.Token,
+    color color,
     content ...component markup.span,
 ) markup.span
 
@@ -784,7 +787,7 @@ component markup.link[platform] {
 }
 
 component markup.token[platform] {
-    Span(kind=kind) {
+    Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
 }

@@ -480,6 +480,10 @@ component inline(
     // is the half of this platform that reads it.
     spanStyle markup.SpanStyle,
     class string,
+    // The rule `class` stands for, light and dark, written to the page's
+    // stylesheet rather than onto the element. Read by `classRules`.
+    classStyle markup.SpanStyle,
+    classStyleDark markup.SpanStyle,
     href string,
     src string,
     alt string,
@@ -569,11 +573,18 @@ component markup.image[platform] {
     inline(tag="img", src=src, alt=alt) {}
 }
 
-// A class and not a color: what a keyword looks like is the page's to say, and
-// a document that named one would be unreadable against a theme it never heard
-// of.
+// A class, so what a keyword looks like stays the page's to say: the default
+// palette is the class's rule in the stylesheet, light and dark, and a page's
+// own CSS for `sngl-tok-<kind>` wins over it. A palette the program sets is on
+// the element instead, since it wins over everything.
 component markup.token[platform] {
-    inline(tag="span", class="sngl-tok-" + string(kind)) {
+    inline(
+        tag="span",
+        class="sngl-tok-" + string(kind),
+        classStyle={color=markup.tokenColor(markup.lightPalette, kind)},
+        classStyleDark={color=markup.tokenColor(markup.darkPalette, kind)},
+        spanStyle={color=markup.tokenColor(markup.palette, kind)},
+    ) {
         content
     }
 }

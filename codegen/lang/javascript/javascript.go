@@ -97,6 +97,12 @@ func (t *Translator) TypeToNative(hint string) string {
 }
 
 func (t *Translator) ExportName(name string) string {
+	return SafeIdent(name)
+}
+
+// SafeIdent is name as a JavaScript binding: suffixed when the language
+// reserves it.
+func SafeIdent(name string) string {
 	if jsReservedWords[name] {
 		return name + "_"
 	}

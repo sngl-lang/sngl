@@ -440,10 +440,25 @@ Work these in this order:
      and its scheme choice is its own.
    - **An explicit palette wins everywhere.** Unset, bubbletea, fyne and
      android keep the host theme, and html and gtk4 use the default. Set,
-     all five use it. So the context holds an `option`.
+     all five use it. Done, per kind rather than through an `option`: a
+     `Palette` field with no alpha is a kind the palette leaves to the
+     host, so an application may set only the keyword color.
    - **gtk4 re-assembles its markup reactively** when the palette is not a
-     constant. That makes a label's markup a render slot, and it is also the
-     general fix for a non-literal span style on gtk4.
+     constant. gtk4's side is done -- a color it cannot read is a piece of
+     the markup expression -- and so is html's (`style.color`) and fyne's
+     (`SetColor`), each with an updater. **Blocked** by a context bug that
+     is not the palette's: a provider whose value reads state copies it into
+     the hidden `__ctx_*` field once and never again, on every target that
+     lowers contexts. `label(txt) { … }` with a button writing `txt` shows
+     the first value forever. The fixture to add with the fix is a button
+     assigning `pal = markup.darkPalette` under `markup.palette(pal)`.
+   - **Found on the way, not fixed:** a ternary in a var initializer panics
+     every Go emitter (`var label = on ? "b" : "c"` in a window, on fyne),
+     because `passTernary` skips initializers, having no statement list to
+     hoist into. An immediately-invoked func literal is the likely answer.
+     A context whose default reads a package var (`context #t(initial)`)
+     also fails to build on bubbletea and android: the seeded default names
+     the var where it is not in scope.
 3. **The order key is a macro.** A mark on the `Frontmatter` field names the
    key to sort a page's children by (`#[md.order] order int`). The directory
    importer already parses the directory's `.sngl` files to find a declared

@@ -1,6 +1,7 @@
 package android
 
 import (
+	"fmt"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -204,10 +205,27 @@ func (cc *irComposeContext) renderSpanFor(s *ir.For, dec decoration) {
 // nothing, which is what lets Compose merge the nesting.
 func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (string, decoration) {
 	var parts []string
+	themed := ""
 	if kind := enumMember(codegen.NodeProp(n, "kind")); kind != "" {
 		if role, ok := tokenColors[kind]; ok {
-			parts = append(parts, "color = MaterialTheme.colorScheme."+role)
+			themed = "MaterialTheme.colorScheme." + role
 		}
+	}
+	// A palette the program set wins over the scheme's role, and the unset
+	// color is the palette saying nothing -- at run time too, where the role
+	// is what `let` falls back to.
+	switch pal := codegen.NodeProp(n, "color"); {
+	case pal == nil || codegen.SpanStyleUnsetColor(pal):
+		if themed != "" {
+			parts = append(parts, "color = "+themed)
+		}
+	case codegen.SpanStyleKnownColor(pal):
+		parts = append(parts, "color = "+composeColorExpr(cc.kc.EvalExpr(pal)))
+	default:
+		if themed == "" {
+			themed = "ComposeColor.Unspecified"
+		}
+		parts = append(parts, fmt.Sprintf("color = (%s).let { if (it.a == 0) %s else ComposeColor(it.r, it.g, it.b, it.a) }", cc.kc.EvalExpr(pal), themed))
 	}
 	own := decoration{}
 	sl, _ := codegen.NodeProp(n, "spanStyle").(*ir.StructLit)

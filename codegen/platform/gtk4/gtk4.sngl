@@ -618,15 +618,14 @@ component Flow(
     content ...component markup.span,
 ) ui.node
 
-// One run of words. `spanStyle` and `kind` are read off the literal -- which
+// One run of words. `spanStyle` is read off the literal -- which
 // fields a `SpanStyle` set is a question about the literal, as it is on every
-// other target -- and become the Pango tags wrapped around this run's content.
+// other target -- and becomes the Pango tags wrapped around this run's content.
 #[marks.intrinsic("gtk4:Span")]
 component Span(
     text string,
     href string,
     spanStyle markup.SpanStyle,
-    kind markup.Token,
     content ...component markup.span,
 ) markup.span
 
@@ -654,8 +653,11 @@ component markup.link[platform] {
     }
 }
 
+// Pango takes a foreground and nothing a theme could answer, so the fallback
+// is a palette rather than the host: the light one, since the theme GTK ships
+// with is light.
 component markup.token[platform] {
-    Span(kind=kind) {
+    Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
         content
     }
 }

@@ -523,12 +523,14 @@ component Flow(
 // One run of words. `text` is the literal a leaf carries, `spanStyle` what
 // this run says about its own appearance, and `kind` what a `token` says it
 // is -- read by the emitter, which maps it to one of the terminal's own
-// sixteen colors rather than to a value a document chose.
+// sixteen colors rather than to a value a document chose. `color` is what a
+// palette the program set says instead, and wins where it says anything.
 #[intrinsic("bubbletea:Span")]
 component Span(
     text string,
     spanStyle markup.SpanStyle,
     kind markup.Token,
+    color color,
     content ...component markup.span,
 ) markup.span
 
@@ -559,7 +561,7 @@ component markup.link[platform] {
 }
 
 component markup.token[platform] {
-    Span(kind=kind) {
+    Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
 }

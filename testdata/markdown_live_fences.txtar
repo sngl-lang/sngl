@@ -113,6 +113,12 @@ body { font-family: system-ui, sans-serif; }
   <p style="white-space:pre-wrap"><span>And an ordinary sample, shown and not compiled:</span></p>
   <pre style="background-color:#f5f5f5;border-radius:4px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>const</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>shown</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>=</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>1</span></span></code></pre>
 </div>
+<style>
+.sngl-tok-keyword { color:#cf222e }
+@media (prefers-color-scheme: dark) { .sngl-tok-keyword { color:#ff7b72 } }
+.sngl-tok-number { color:#0550ae }
+@media (prefers-color-scheme: dark) { .sngl-tok-number { color:#79c0ff } }
+</style>
 
 <script>
 (() => {
@@ -132,4 +138,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d0774d7e7c5a046da8e71473d8269178
+pass sha256:eef2e11003ce0bc5e5ba0c84c37713ef

@@ -135,6 +135,12 @@ body { font-family: system-ui, sans-serif; }
     <p style="white-space:pre-wrap"><img alt="a duck" src="duck.png"/></p>
   </div>
 </div>
+<style>
+.sngl-tok-keyword { color:#cf222e }
+@media (prefers-color-scheme: dark) { .sngl-tok-keyword { color:#ff7b72 } }
+.sngl-tok-number { color:#0550ae }
+@media (prefers-color-scheme: dark) { .sngl-tok-number { color:#79c0ff } }
+</style>
 
 <script>
 (() => {
@@ -159,4 +165,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:e71ccb78ab12cd9c05b3acece403e302
+pass sha256:86173924de362b1687d2f452709a0ed7

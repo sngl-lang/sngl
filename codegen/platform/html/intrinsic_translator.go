@@ -315,6 +315,10 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	if prop == tagProp {
 		return nil
 	}
+	// Stylesheet rules, registered by the page walk; no element carries one.
+	if prop == classStyleProp || prop == classStyleDarkProp {
+		return nil
+	}
 	setAttr := func(name string, v ir.Expr) []ir.Stmt {
 		return []ir.Stmt{&ir.CallStmt{Call: &ir.Call{
 			Type:     ir.TypVoid,
@@ -336,6 +340,12 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			}
 			return setAttr(prop, &ir.Literal{Type: ir.TypString, Value: css})
 		}
+	}
+	if prop == spanStyleProp {
+		if sl, ok := value.(*ir.StructLit); ok {
+			return t.spanStyleWrites(node, sl)
+		}
+		return nil
 	}
 	// A wildcard prop is a map of the names it collected, not a name of its
 	// own: writing it as one produces an attribute literally called "attrs"

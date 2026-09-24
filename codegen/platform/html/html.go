@@ -884,6 +884,9 @@ func (g *htmlGen) prewalkNodes() {
 			if g.elemDecl == nil && isElement(n.Component) {
 				g.elemDecl = n.Component
 			}
+			for _, rule := range classRules(n) {
+				g.AddStyle(rule)
+			}
 			visitStmts(n.Children)
 			for _, h := range n.Handlers {
 				if h.Func != nil {
@@ -1751,7 +1754,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 		// Read into the element's CSS by canvasScalingCSS and spanStyleCSS,
 		// and not an attribute any element has.
-		if name == "scalingMode" || name == spanStyleProp {
+		if name == "scalingMode" || name == spanStyleProp || name == classStyleProp || name == classStyleDarkProp {
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
@@ -1796,6 +1799,9 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		if strings.HasPrefix(id, "__n") {
 			fmt.Fprintf(b, " data-sngl-id=%q", id)
 		}
+	}
+	for _, rule := range classRules(n) {
+		g.AddStyle(rule)
 	}
 	if classExpr := props["class"]; codegen.IRIsLiteral(classExpr) {
 		if s, ok := codegen.IRLiteralString(classExpr); ok && s != "" {
@@ -1853,7 +1859,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	lowered := loweredID(id)
 	for _, name := range slices.Sorted(maps.Keys(props)) {
 		expr := props[name]
-		if name == "style" {
+		if name == "style" || name == classStyleProp || name == classStyleDarkProp {
+			continue
+		}
+		if name == spanStyleProp {
+			g.spanColorWrite(id, expr, lowered)
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
@@ -1974,8 +1984,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		var params []string
 		var body []string
 		for _, f := range sd.Fields {
-			params = append(params, f.Name)
-			body = append(body, f.Name)
+			param := javascript.SafeIdent(f.Name)
+			params = append(params, param)
+			if param == f.Name {
+				body = append(body, f.Name)
+			} else {
+				body = append(body, f.Name+": "+param)
+			}
 		}
 		fmt.Fprintf(b, "function %s(%s) { return {%s}; }\n",
 			sd.Name, strings.Join(params, ", "), strings.Join(body, ", "))
@@ -2092,6 +2107,9 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// the JsIRContext path during emitScript.
 	if g.ctx.Helpers["String"] {
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
+	}
+	if g.ctx.Helpers[spanColorHelper] {
+		b.WriteString(spanColorHelperJS + "\n")
 	}
 
 	// Before the refs below, which is where a handler's binding for the

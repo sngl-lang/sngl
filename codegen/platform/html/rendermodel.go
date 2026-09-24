@@ -334,7 +334,7 @@ func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 	var out []*ir.Arg
 	for i := range n.Props {
 		p := &n.Props[i]
-		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp {
+		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp || p.Name == classStyleProp || p.Name == classStyleDarkProp {
 			continue
 		}
 		out = append(out, p)

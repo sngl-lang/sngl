@@ -184,6 +184,7 @@ import (
 	"unsafe"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
+	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 )
 
 // Handle re-exports cbind.Handle so generated code references a single opaque
@@ -585,6 +586,15 @@ func Escape(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// Foreground is a span's ` foreground="…"` attribute for a color the build
+// could not read, or nothing for the color that means the run set none.
+func Foreground(c snglcolor.Color) string {
+	if c.A == 0 {
+		return ""
+	}
+	return fmt.Sprintf(` foreground="#%02X%02X%02X"`, c.R, c.G, c.B)
 }
 
 // LabelSetMarkup sets a label's text from Pango markup, which is what makes a

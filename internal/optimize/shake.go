@@ -47,7 +47,21 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		byName[sd.Name] = sd
 	}
 	var added []*ir.StructDef
+	haveEnum := map[*ir.EnumDef]bool{}
+	for _, ed := range pkg.Enums {
+		haveEnum[ed] = true
+	}
+	var addedEnums []*ir.EnumDef
 	want := func(t *ir.Type) {
+		if t != nil && t.Kind == ir.TypeEnum {
+			// Kotlin emits an enum as a class of its own, so a helper taking
+			// `markup.Token` named a type the file never declared.
+			if ed, ok := t.Decl.(*ir.EnumDef); ok && ed != nil && !haveEnum[ed] && ed.Pkg != "" && ed.Foreign.Name == "" {
+				haveEnum[ed] = true
+				addedEnums = append(addedEnums, ed)
+			}
+			return
+		}
 		if t == nil || t.Kind != ir.TypeStruct {
 			return
 		}
@@ -87,6 +101,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		byName[sd.Name] = sd
 	}
 	pkg.Structs = append(pkg.Structs, added...)
+	pkg.Enums = append(pkg.Enums, addedEnums...)
 	return nil
 }
 

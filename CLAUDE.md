@@ -1709,6 +1709,19 @@ run would say `normal` and un-bold its parent. `Weight` and `Slant` lead with
 `inherit` for that reason, and the cost is that a span cannot turn *off* a
 decoration an enclosing span turned on.
 
+**A token's color is a palette's answer first and the host's second.**
+`markup.palette` is a context holding a `Palette`, one color per `Token` kind,
+where alpha zero means the palette says nothing about that kind. Unset, html and
+gtk4 draw `lightPalette`/`darkPalette` (GitHub's syntax colors, which the docs
+site's chroma style already used) and bubbletea, fyne and android ask their
+theme. html writes the pair as the `sngl-tok-<kind>` class's rules, the dark
+half under `prefers-color-scheme`, so a page's own CSS still wins; gtk4 takes
+the light half. A kind the program sets wins on all five. The unset case is a
+literal by the time it is emitted only because `UnprovidedContext` folds the
+context away. A provided one is state, so every emitter also takes the color as
+a run-time value: `gtk4rt.Foreground`, `style.color`, fyne's `SetColor`, and a
+fallback chain on bubbletea and android.
+
 **Text in the family is literal.** Every character of a `markup.text` renders
 as written — two spaces are two, a `"\n"` ends the line — on every target,
 because what an author wrote between the quotes is the one thing a document

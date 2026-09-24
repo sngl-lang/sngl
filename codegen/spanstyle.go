@@ -31,3 +31,31 @@ func SpanStyleUnsetColor(e ir.Expr) bool {
 	// No alpha written at all is an opaque color: `#336699` fills it in.
 	return false
 }
+
+// SpanStyleInherit reports whether a `markup.SpanStyle` weight or slant is the
+// `inherit` member its enum leads with.
+func SpanStyleInherit(e ir.Expr) bool {
+	switch v := e.(type) {
+	case *ir.Ident:
+		return v.Member == "inherit"
+	case *ir.Select:
+		return v.Field == "inherit"
+	}
+	return false
+}
+
+// SpanStyleKnownColor reports whether a color is one the build can read: a
+// literal whose channels are all written out. `IRIsLiteral` says no to every
+// struct literal, which read a palette's unset color as a run-time one.
+func SpanStyleKnownColor(e ir.Expr) bool {
+	sl, ok := e.(*ir.StructLit)
+	if !ok {
+		return false
+	}
+	for _, f := range sl.Fields {
+		if _, ok := f.Value.(*ir.Literal); !ok {
+			return false
+		}
+	}
+	return true
+}
