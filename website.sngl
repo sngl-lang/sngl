@@ -11,13 +11,15 @@ import "go:git.duckfam.us/jonathan/sngl/docs"
 import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "file:public"
 import pgAssets "file:internal/playground/assets"
+import snapshots "file:lib/snapshots"
 import "internal/docui"
 import "internal/learn"
 import "sngl:platform/html"
 
 const pages = docs.Pages()
-const components = docs.LibraryComponents()
-const curated = docs.CuratedComponents()
+const snapshotFiles = snapshots.names("*.png")
+const components = docs.LibraryComponents(snapshotFiles)
+const curated = docs.CuratedComponents(snapshotFiles)
 const curatedLabel = docs.CuratedRestLabel()
 const curatedHref = docs.CuratedPkgHref()
 const targets = docs.Targets()

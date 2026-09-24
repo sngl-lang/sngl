@@ -359,6 +359,10 @@ type checker struct {
 
 	outputDecl *ast.VisualNode
 
+	// genInputs holds each `cache.inputs` directive written at the root of a
+	// file, recorded in pass1 and checked in pass2 (see genInputs.go).
+	genInputs []*ast.VisualNode
+
 	// pendingPkgBody holds the statements written at the package's top level,
 	// collected in pass1 and checked in pass2. They cannot be checked where
 	// they are found: they read vars and instantiate components that pass1 is
@@ -2916,6 +2920,14 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	switch kind, _ := c.builtinNode(name); kind {
 	case ir.BuiltinOutput:
 		c.registerOutput(vn)
+	case ir.BuiltinGenInputs:
+		// A library package's -- a target serving generated source -- is not
+		// checked: library source is registered here and not body-checked,
+		// and pass2 would check it in the program's scope, where the
+		// library's imports are not. The store holding the file reads it.
+		if !c.inLibSource() {
+			c.genInputs = append(c.genInputs, vn)
+		}
 	default:
 		// An ordinary visual node at the top level is the package's own body:
 		// what the program renders, with the package's vars as its state. Held
@@ -3452,6 +3464,7 @@ func (c *checker) pass2() {
 
 	c.checkPackageBody()
 	c.checkOutputTree()
+	c.checkGenInputs()
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.

@@ -338,6 +338,8 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **android** — generates Android app code; supports `kotlin` and `golang`.
 - **gtk4** — generates CGo GTK4 desktop code; supports `golang` only. Widget metadata is parsed at compile time from a `Gtk-4.0.gir`, resolved by `girRegistry` in one place because the code generator used to resolve its own and the two could disagree: `--opt gir=builtin` selects the bundled subset, any other value is that path and a failure to load it is an error, and an empty value probes the system locations (`/usr/share/gir-1.0/` etc.) and falls back to the bundled subset.
 
+  The GIR reaches the platform as two producer outputs in the generated-file store (`girstore.go`, and see *Performance*): `gtk4.registry`, the parsed registry as SNGL data -- everything the code generator reads back per class, recorded against the GIR file and the probe locations before it that were absent -- and `gtk4.widgets`, the declarations derived from it, whose one input is the registry entry. The second is what `PackageFS` serves, directive included, and what `Unavailable` answers from, because the checker asks every platform on every build; the first is decoded only by a build that targets gtk4. A gob cache of the parsed registry used to do the first job on its own, keyed by the GIR's stat and a reflected schema fingerprint -- the compiler's identity in the store's key is what replaced the fingerprint.
+
   `codegen/platform/gtk4/gir/minimal/Gtk-4.0.gir` is that subset: the ~19 classes `codegen/platform/gtk4/gtk4.sngl` wraps, embedded so a host with no GTK 4 development files can still check, document and generate the stdlib overrides — the generated code needs GTK to *build*, which is a separate matter. It is also what the platform's tests read. Which classes and setter links a system GIR records varies by GTK version, so a test naming host vocabulary asserts GTK's catalogue rather than this platform's behaviour and fails on the wrong machine; the tests assert the parse and merge *rules* over every entry of the fixture instead, each with a guard that the rule was exercised. Adding an override that names a new widget means extending that file, which `TestBundledGIRCoversTheWrappedWidgets` reports.
 
   Snapshot testing uses `gtk_widget_paintable` + `cairo` (CGo); gated behind `//go:build !js`.
@@ -385,7 +387,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not under `lib/` at all — a target carries its own package, described below.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the caching inputs for a generated file, is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A library package documents itself with a **package comment**: a run of line
@@ -1263,6 +1265,17 @@ implementing it and nothing may be inferred from it. `pure` is the sharp edge:
 it lets the compiler evaluate a call at build time, so a wrongly marked
 function runs during a build.
 
+**A pure function's value depends on its arguments and its source and on
+nothing it reads while it runs.** Its result is stored between builds, keyed
+by the call and validated against the Go closure it was built from, and
+nothing records a file opened or a variable read at run time -- so such a
+read is replayed stale after the thing it read changes, which for a folded
+const is a wrong build. Hand the data in as an argument instead:
+`file:`'s `names(pattern)` lists a directory at build time, which is how
+website.sngl gives `docs.LibraryComponents` the snapshots it used to `os.Stat`.
+Reading the compiler's own generated source is the one exception, and only
+because the store reports it.
+
 The mark imports nothing, resolves nothing and validates nothing, and never
 confers type identity — only a scheme importer's `Foreign.Origin` unifies two
 declarations. A marked declaration is still the program's own, which is what
@@ -1925,6 +1938,26 @@ targets in parallel) is not a saving.
   writing ~1200 files, where per-page costs dominate. Its compile step is
   `sngl generate --platform html --lang none website.sngl` once
   `internal/playground/assets/sngl.wasm` is staged.
+- **What another process produces is SNGL, and it is stored.** A step
+  whose output the compiler reads but did not write -- the compile-time
+  evaluator's run, gtk4's GIR -- is a *producer* registered with
+  `internal/gencache`, and what it hands back is a SNGL file whose root
+  `cache.inputs` directive (`sngl:x/gen/cache`) lists every input it read,
+  recorded before reading it. The store is separate from the file: keyed by
+  the request and the compiler's identity (the executable's hash, since a
+  producer's code is an input nothing in a file can record), it re-checks the
+  recorded inputs and hands back the stored file when all still hold. Under
+  `os.UserCacheDir()/sngl/gen`, `SNGL_GENCACHE_DIR` to move it,
+  `SNGL_GENCACHE=off` to run every producer, 512MB and 30 days LRU.
+  An `entry` input names another producer's output by digest, which is how a
+  consteval value depends on the `go.deps` closure of the packages its
+  program imported without restating hundreds of files, and on whatever of the
+  compiler's own generated source the evaluator read (`codegen.GeneratedInputs`,
+  reported as `//gencache` comment records in the results file). A batch
+  producer uses `Lookup`/`Put` rather than `Get`: the evaluator looks each call
+  up and runs its misses as one program. The docs site's warm compile answers
+  every call from the store and runs no subprocess. js: calls are not stored
+  yet, nor are go: import declarations -- both are producers still to move.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
   package for every target but the last, and `ir.ClonePackage` copies by
   reflection everything reachable — library IR included, since per-target

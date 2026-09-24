@@ -3787,6 +3787,10 @@ func (c *checker) checkVisualNodeIR(vn *ast.VisualNode) ir.Stmt {
 		c.error(vn.Pos, "output may only be written at the root of a file: it is the package's build directive, not a node")
 		return nil
 	}
+	if kind == ir.BuiltinGenInputs && !slices.Contains(c.genInputs, vn) {
+		c.error(vn.Pos, "%s may only be written at the root of a file: it says what the file was generated from, not what it renders", name)
+		return nil
+	}
 	if kind != ir.BuiltinNone && c.rejectNodeInFuncBody(vn.Pos, name) {
 		return nil
 	}
