@@ -366,6 +366,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isChanLit(n) {
 		return "nil"
 	}
+	gc.requireForeignStructImport(n)
 	name := structLitTypeName(n)
 	// A native type whose host spelling is a pointer has no composite literal:
 	// `*time.Ticker{}` does not parse. Only the empty literal can reach here
@@ -1526,6 +1527,22 @@ func isChanLit(n *ir.StructLit) bool {
 // structLitTypeName picks the Go type prefix for a struct literal. An
 // anonymous struct materializes an inline `struct { … }`, since Go rejects a
 // bare `{…}` literal.
+// requireForeignStructImport registers the package a literal of a Go type is
+// spelled from: a folded `go:` value reaches the file as `pkg.Item{…}` with no
+// call beside it to have registered pkg.
+func (gc *GoIRContext) requireForeignStructImport(n *ir.StructLit) {
+	sd := n.Def
+	if sd == nil && n.Type != nil {
+		sd, _ = n.Type.Decl.(*ir.StructDef)
+	}
+	if sd == nil || sd.Foreign.Name == "" || sd.Foreign.Marked {
+		return
+	}
+	if p := sd.Foreign.Path; p != "" && p != "C" {
+		gc.RequireImport(p)
+	}
+}
+
 func structLitTypeName(n *ir.StructLit) string {
 	if n == nil {
 		return "struct{}"

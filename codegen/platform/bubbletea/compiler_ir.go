@@ -209,8 +209,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 	pkg := ctx.Pkg
 
-	for _, imp := range golang.BaseImports(pkg) {
-		gc.RequireImport(imp.Path)
+	for _, path := range golang.BaseImports(pkg) {
+		gc.RequireImport(path)
 	}
 
 	// NoInlineComponents inlined every non-main component into main, so there

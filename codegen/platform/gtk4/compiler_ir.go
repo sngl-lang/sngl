@@ -163,8 +163,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	pkg := ctx.Pkg
-	for _, imp := range golang.BaseImports(pkg) {
-		gc.RequireImport(imp.Path)
+	for _, path := range golang.BaseImports(pkg) {
+		gc.RequireImport(path)
 	}
 	// Alert.* lowers to fmt.Fprintf(os.Stderr, ...); see gtk4IRAlertFunc.
 	if info.NeedsToast {
