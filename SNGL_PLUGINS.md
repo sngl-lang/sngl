@@ -66,6 +66,17 @@ before Phase 0.
   `sngl:builtin`, `window` keeps returning it, and the `output` exemption is
   re-examined once it can simply be a member.
 
+  **Done** in !177 (`fix/root-in-builtin`). `output` and `cache.inputs` now
+  name `root`, and `treeOptional` covers only extension bodies. The
+  directives' root-of-a-file rule stays, because a directive is read once
+  before anything runs. That is a separate question from family membership.
+  Found along the way, and relevant to Phase 0: a package-body node that is
+  neither a window nor a directive, such as `meta()` for a
+  `component meta() root {}`, reaches the lowering as
+  `lower.CreateNode("meta")` in the package body. Nothing renders or collects
+  it. This is the gap decision 1's "collected, not rendered" has to close, and
+  the gen nodes will be the first real users of it.
+
 ## Where it starts from
 
 More of the seam is SNGL already than the Go interfaces suggest. What has moved
