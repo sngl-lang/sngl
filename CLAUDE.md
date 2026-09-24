@@ -1762,7 +1762,9 @@ the doc site uses, so two readings of one document cannot differ.
   what an identifier cannot hold (`index`, `guide`, `guide_intro`). The root is
   `index.md` and is required; `guide/intro.md` is a child of `guide`, whose
   content is `guide.md` or `guide/index.md` — both is an error, and neither
-  leaves the child with no parent. A page's href is its path, `/guide/intro.html`.
+  leaves the child with no parent. A page's href follows its file:
+  `/guide/intro.html`, and `/guide/index.html` for `guide/index.md` where
+  `guide.md` is `/guide.html`.
 
   The package declares **`Page`** (`href`, `frontmatter`, `children list<Page>`),
   **`root`**, a const holding the whole tree, and **`site<T>(layout component(page Page, content component ui.node) T) T`**, which inserts

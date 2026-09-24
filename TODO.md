@@ -572,7 +572,8 @@ The shape:
   `guide`, whose content is `guide.md` or `guide/index.md` -- both is an
   error, and a directory with neither cannot be the parent of what is in it.
   The root is the directory's `index.md` and is required. A page's href is its
-  path: `/index.html`, `/guide.html`, `/guide/intro.html`.
+  path: `/index.html`, `/guide.html`, `/guide/intro.html` -- and, since §6 item 4,
+  `/guide/index.html` for `guide/index.md`.
 - Frontmatter is checked against a `struct Frontmatter` the directory
   **declares in one of those `.sngl` files** -- the importer emits
   `Frontmatter{...}` literals and the checker validates them, so the importer

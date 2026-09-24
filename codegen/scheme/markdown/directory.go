@@ -33,9 +33,11 @@ type page struct {
 	children []*page
 }
 
+// href follows the file: guide/index.md is /guide/index.html and guide.md is
+// /guide.html, though both are the page guide.
 func (p *page) href() string {
-	if p.key == "" {
-		return "/index.html"
+	if base := path.Base(strings.TrimSuffix(p.file, path.Ext(p.file))); base == "index" {
+		return "/" + path.Join(p.key, "index.html")
 	}
 	return "/" + p.key + ".html"
 }
