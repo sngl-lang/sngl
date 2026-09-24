@@ -1,7 +1,6 @@
 package lower
 
 import (
-
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -170,9 +169,6 @@ func (c *blockCollector) viewIn(stmts *[]ir.Stmt) {
 			c.viewIn(&n.Else)
 		case *ir.SlotInst:
 			c.viewIn(&n.Children)
-			for _, name := range ir.SlotNames(n.Slots) {
-				c.viewIn(&n.Slots[name].Body)
-			}
 		case *ir.ErrorBoundary:
 			// The boundary's own @error handler, which is a handler body like
 			// any other -- ir.Walk reaches it and analyzeCaptures walks it, so
