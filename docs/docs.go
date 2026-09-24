@@ -87,8 +87,8 @@ func Pages() []Page {
 		}
 
 		href := "/" + slug + ".html"
-		if slug == "" {
-			href = "/index.html"
+		if isIndex {
+			href = "/" + strings.TrimPrefix(slug+"/index.html", "/")
 		}
 
 		pages = append(pages, Page{

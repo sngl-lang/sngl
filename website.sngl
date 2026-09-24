@@ -13,9 +13,9 @@ import "file:public"
 import pgAssets "file:internal/playground/assets"
 import "internal/docui"
 import "internal/learn"
+import mddocs "md:./docs/"
 import "sngl:platform/html"
 
-const pages = docs.Pages()
 const components = docs.LibraryComponents()
 const curated = docs.CuratedComponents()
 const curatedLabel = docs.CuratedRestLabel()
@@ -454,13 +454,17 @@ component site() root {
 	}
 
 	// Documentation pages
-	for var page = pages {
-		window #docPage(title=page.title, href=page.href, favicon=logo) {
-			PageLayout(title=page.title, currentHref=page.href) {
-				if page.href == "/index.html" {
-					PlatformCarousel
+	mddocs.site {
+		component layout(page, content) {
+			if page.href != "/learn/tour.html" {
+				window(title=page.frontmatter.title, href=page.href, favicon=logo) {
+					PageLayout(title=page.frontmatter.title, currentHref=page.href) {
+						if page.href == "/index.html" {
+							PlatformCarousel
+						}
+						content
+					}
 				}
-				docui.Markdown(src=page.body)
 			}
 		}
 	}

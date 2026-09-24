@@ -478,6 +478,16 @@ Work these in this order:
    - If an internal scheme turns out to be needed after all, **docsgen runs
      the build in-process** through `internal/build` and registers the
      scheme first. The scheme does not ship in the `sngl` binary.
+   - **Done, with the public scheme.** `website.sngl` imports
+     `mddocs "md:./docs/"` and its layout makes a window per page, skipping
+     `/learn/tour.html`. `docs.Pages()` follows the same href rule now, so the
+     sidebar's `Learn` and `Reference` links are `/learn/index.html` and
+     `/reference/index.html` (one prose link in `reference/index.md`
+     updated). No internal scheme was needed. Rendering it found two html
+     defects, both fixed: a highlighted sample lost its line breaks, and the
+     browser's default margins doubled the block spacing and dropped a list
+     item's text below its bullet. `docs.Pages()` still renders every body to
+     HTML for the nav and the search index, which nothing reads now.
 5. **The tutorial's conditional prose: a context and a slotted component.**
    A `package` fence declares a component that takes prose as children and
    renders them only when a platform context matches. Each branch is an
