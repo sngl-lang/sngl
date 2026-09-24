@@ -476,7 +476,7 @@ needs is below, found by reading the two files rather than by attempting them.
 
 ## 7. Before merge
 
-- [ ] CLAUDE.md: a section on the markup family, why it is inline-only, and the
+- [X] CLAUDE.md: a section on the markup family, why it is inline-only, and the
   literal-whitespace rule.
 - [X] `lib/lib.go` needs nothing: its embed pattern is `*/*.sngl */*/*.sngl`
   and `Packages()` reads the embedded directory, so a nested package is

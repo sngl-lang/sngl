@@ -375,6 +375,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output` and the error channel. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `root` family and the `window` that is its one member, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
+- **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
@@ -997,6 +998,41 @@ one bound. `scroll`, `tooltip` and fyne's `Wrapper` are all of that shape, and
 load-bearing rather than tolerated. #193 briefly specified it as an error on
 the grounds that both were count bounds; that would have left the contract
 unspellable and is retracted there.
+
+**A slot's invocation list may declare a component entry**, and it is the same
+slot mechanism one level down: `layout component(page Page, content component ui.node) T` says an insertion of `layout` hands its population a
+`content` to insert. The insertion populates it by name, the way a call site
+populates a component's slot — `layout(p) { component content { … } }` — and
+the population binds it by position under a name of its own, like every other
+invocation argument. It exists because a component is not a value
+(`struct Page { content component() ui.node }` is refused), and handing a
+layout the body it wraps is what a directory import needs.
+
+Two rules keep it from meaning something else. **The bare block written at an
+insertion is that slot's fallback** (`ir.SlotInst.Children`), which is what it
+already meant before entries existed, so content reaches a population only
+through an entry. And **`...` is refused in an invocation list**
+(`error_slot_invocation_rest.sngl`), with a message naming the fallback: a rest
+entry would be filled by exactly the block that is already the fallback.
+
+`ir.SlotDecl.Slots` holds the entries, with `Index` their position in the
+list; an insertion's populations are `ir.SlotInst.Slots`, and an insertion *of*
+an entry is a `SlotInst` whose `Entry` names it. `ir.SlotSplicer` substitutes
+entries as it splices a population, so the optimizer and the inliner get them
+at once, and the interpreter mounts the content in the insertion's scope
+(`entryInst`). **Both match an entry by `*SlotDecl` pointer**, which is why a
+generic component's call-site specialization copies its entries for checking
+and records each copy's origin (`checker.entryOrigin`): `SlotInst.Entry`
+carries the declared one, or the splice matches nothing and renders nothing
+(`slot_entry_generic.txtar`).
+
+**A component built at run time may not have a slot populated by name** —
+an entry's population included. No target renders one there: bubbletea and
+android emitted the component with no parameter for the slot, and the mutation
+platforms met the insertion unsubstituted. The inliner refuses it where it
+elects the runtime instance (`refuseRuntimePopulation`,
+`cmd/sngl/testdata/slot_population_runtime_instance.txt`); the interpreter,
+which renders it correctly, runs the checked IR and never asks.
 
 **A population is a `ComponentDecl` read by position.** At the root of a
 component definition's body it is a nested declaration (pass1's
@@ -1640,6 +1676,107 @@ nil used to give per lookup.
 Notable stdlib packages:
 
 - **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.tr(template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
+
+### Markup and the `md:` scheme
+
+**`sngl:ui/markup` is inline and nothing else.** A heading is a `text` with a
+size, a quote a `vbox` with a rule down its side, a list a `vbox` of rows —
+ordinary layout every platform already renders. A bold word inside a sentence
+is not: it has to live in one flow of text with the words around it, and a box
+cannot hold it without breaking the line. So the family is the part of a
+document there was no other way to say, and a document is a `vbox` of
+`richText` flows interleaved with anything else a `ui.node` can be — which is
+also what makes a document extensible without the vocabulary growing.
+
+`span` is an ordinary `#[tree.kind]` family, and that is the design rather
+than a shortcut. A member holds its own family and never a `node`, so
+emphasis around a link and a link inside emphasis are both one flow, and a box
+in the middle of a sentence is a membership error rather than a content model
+written in prose. There is no `passMarkup`: each platform overrides the members
+in its own package and the nesting an author wrote is the tree the host is
+handed. A run list flattened in `ir` was built and reverted, being a second
+representation of a tree. Where the cascade is resolved is each host's answer —
+CSS on html, Pango and Compose's `SpanStyle` merge natively on gtk4 and
+android, fyne flattens at render time because the tree is what a reactive
+program mutates, and bubbletea flattens at compile time because lipgloss
+returns a string with reset sequences in it.
+
+`markup.SpanStyle` is its own struct and not `ui.Style` for two reasons. A run
+has no box, so most of `ui.Style` would type-check on a span and do nothing
+except on html, where a `<span>` takes padding. And flattening needs a third
+state per field: in `ui.Style` an enum's zero is its first member, so an inner
+run would say `normal` and un-bold its parent. `Weight` and `Slant` lead with
+`inherit` for that reason, and the cost is that a span cannot turn *off* a
+decoration an enclosing span turned on.
+
+**Text in the family is literal.** Every character of a `markup.text` renders
+as written — two spaces are two, a `"\n"` ends the line — on every target,
+because what an author wrote between the quotes is the one thing a document
+cannot have a platform reinterpret. Wrapping still happens around it. That is
+why there is no line-break component, a second spelling of `"\n"` being a second
+answer to give, and why html's collapsing is html's to undo (`white-space: pre-wrap`, `markup_rendered.txt` in a real Chromium) rather than the
+author's. The importer follows from it: a soft break in markdown is a space,
+since the wrapping an editor chose must not reach the reader as one, and a hard
+break is `"\n"`.
+
+The block components (`paragraph`, the six headings, `quote`, `codeBlock`,
+`caption`, `list`, `listItem`) are **bodied** — each a `richText` with its
+`role` and style set, or a `vbox` — so a platform implements the two
+primitives and inherits every block. `role` is what a flow is *for*, and a
+prop rather than a component per role, so it reaches every emitter through the
+node they already render.
+
+**`md:` imports markdown as SNGL source.** `codegen/scheme/markdown` is an
+`FSSchemeImporter`, the seam `git:` and `http:` use, rather than a native
+importer: what comes back is `.sngl` source the checker checks like any other
+package, so a bad import can be dumped and read and a round-trip is assertable.
+The document is read through the filesystem the program is checked against
+(`codegen.ProjectFSScheme`), because it is a file of the project and an
+in-memory package has no other. It parses with the same goldmark configuration
+the doc site uses, so two readings of one document cannot differ.
+
+- **A file**, `import doc "md:./guide.md"`, is a package holding one component,
+  **`document`**, whatever the file is called: a name derived from the path
+  would make the call site depend on something the alias already stands for.
+  Frontmatter scalars become consts, in the order written and keeping their
+  type. An html block and a raw inline are dropped — one target's vocabulary,
+  in a document that renders on six.
+- **A directory**, `import docs "md:./docs/"`, is a **site**: one package in
+  which every markdown file under it is a page, and every `.sngl` file
+  *directly* in it is a file of the package, so a site's own declarations sit
+  beside its prose. A page is a component named for its path, `_` standing for
+  what an identifier cannot hold (`index`, `guide`, `guide_intro`). The root is
+  `index.md` and is required; `guide/intro.md` is a child of `guide`, whose
+  content is `guide.md` or `guide/index.md` — both is an error, and neither
+  leaves the child with no parent. A page's href is its path, `/guide/intro.html`.
+
+  The package declares **`Page`** (`href`, `frontmatter`, `children list<Page>`),
+  **`root`**, a const holding the whole tree, and **`site<T>(layout component(page Page, content component ui.node) T) T`**, which inserts
+  `layout` once per page — reading each page out of `root` so the tree is
+  written once — and populates its `content` entry with that page's component.
+  The program writes the layout once and decides what a page is: a `window`
+  per page, a route, a pane. Nothing holds a component, so all of it is
+  compile-time. Those four names are reserved, and a page taking one, or two
+  paths becoming one name, is refused naming the files.
+
+  **`Frontmatter` is the site's own vocabulary.** A `struct Frontmatter`
+  declared in one of the directory's `.sngl` files is what each page's literal
+  is checked against, so the importer does no checking of its own. With none
+  declared the importer synthesizes one: the union of the keys the pages wrote,
+  in first-seen order, each typed by its first scalar and defaulting to that
+  type's zero; a key written with two types is an error naming both files.
+
+**A `sngl` fence may be live**, spelled `mode=` on the info line, which leaves
+the fence reporting `sngl` and highlighting like any other. `view`, the
+default, shows it. `island` is a component of its own at the fence's position,
+with the whole fence as its **body** — so two islands each writing `var n = 0`
+are two cells, by the language's own scoping rather than a mechanism the
+importer built, and an island cannot hold a `window`. `package` contributes
+declarations only; `body` places statements into the page at its position. A
+live fence does not also show its source. Imports are hoisted as written and
+collapsed only when identical, since rewriting an alias would be checking. A
+mistake inside one reports the markdown file and line, because the position the
+checker has is the `import` that read the document.
 
 ### Runtime packages for generated code
 
