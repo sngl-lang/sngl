@@ -673,11 +673,34 @@ Three are silent.
   for the refusals. Reverting the splicer's entry substitution fails the
   golden, and reverting `entryInst` fails the snapshot.
 
-  One thing not built: an entry inserted inside a population the layout
-  writes for *another* component (`frame { component main { body } }`) works
-  because the inliner expands `frame` first. A `frame` that survives to
-  codegen -- a recursion cycle or a runtime instance -- would leave the entry
-  unsubstituted. The fixture has the shape; nothing reaches that branch yet.
+  An entry inserted inside a population the layout writes for *another*
+  component (`frame { component main { body } }`) works because the inliner
+  expands `frame` first. A `frame` that survives to codegen reaches it, and
+  the entry was the smaller half of the defect: **no** named population on a
+  surviving component rendered anywhere, on main as well as here. bubbletea
+  and android emitted the component with no parameter for the slot and
+  dropped it in silence; html, fyne and gtk4 panicked in irwalk on the body's
+  `SlotInst`. It is refused now, in the inliner where it elects the runtime
+  instance, naming the population's own line --
+  `cmd/sngl/testdata/slot_population_runtime_instance.txt`: a recursion
+  cycle, a stateful component in a reactive `for`, and the entry shape, each
+  failing without the refusal. The interpreter renders all three correctly
+  (it runs the checked IR), which is why this is the lowering's refusal and
+  not the checker's. Making it work is a slot parameter per platform, the
+  way bubbletea and android already pass a rest slot's content.
+
+  Two neighbours found on the way, neither fixed here:
+
+  - **A rest slot on a surviving component** panics html, fyne and gtk4 the
+    same way (`irwalk.EvalStmt: unhandled *ir.SlotInst`); bubbletea and
+    android pass the content as a parameter and render it. Loud, not silent.
+  - **html miscompiles a population inside a const-unrolled recursion.**
+    `frame(n=2)` whose body writes `frame(n=n - 1) { text(value="level {n}") }`
+    renders `level 1, level 0` on html `--lang none`, where bubbletea and
+    android render `level 2, level 1`: the content's `n` is bound to the
+    callee's prop rather than the body it was written in. Silent. The same
+    shape without recursion is correct, so it is the optimizer's unrolling
+    and not the splicer.
 
   A generic slot's entries are specialized now, and that was a real bug in
   both directions: `each(v=1)` refused `content(n)` for an int `n` as

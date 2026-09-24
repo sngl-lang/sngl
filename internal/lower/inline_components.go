@@ -2,9 +2,11 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -782,6 +784,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// Left to the main walk: a capturing body cannot be the runtime
 		// instance this branch elects, and the pre-pass already refused it.
 		if st.captureOnly == nil && n.Component != nil && (rc.in || st.cycles[n.Component]) {
+			if err := refuseRuntimePopulation(n, st.cycles[n.Component]); err != nil {
+				return nil, false, err
+			}
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.
@@ -1171,6 +1176,31 @@ func forPos(n *ir.For) string {
 // process. #245 is the real fix -- route a stateful component to a runtime
 // instance whether or not the position is reactive -- and until it lands this
 // is the loud half of what `main` did by accident.
+// refuseRuntimePopulation reports a slot populated by name on an instantiation
+// that survives to codegen. No target renders one there: bubbletea and android
+// emit the component with no parameter for the slot, and the mutation
+// platforms meet the body's insertion unsubstituted.
+func refuseRuntimePopulation(n *ir.NodeInst, inCycle bool) error {
+	if len(n.Slots) == 0 {
+		return nil
+	}
+	why := "inside a reactive if or for"
+	if inCycle {
+		why = "as a member of a recursion cycle"
+	}
+	names := slices.Sorted(maps.Keys(n.Slots))
+	name, at := names[0], nodePos(n)
+	if vn, ok := n.AST.(*ast.VisualNode); ok {
+		for _, s := range vn.Block.Stmts {
+			if cd, isDecl := s.(*ast.ComponentDecl); isDecl && n.Slots[cd.Name] != nil {
+				name, at = cd.Name, cd.Pos.String()
+				break
+			}
+		}
+	}
+	return fmt.Errorf("%s: slot %q of %s is populated by name, but %s is built at run time here, %s, where no target renders a named population", at, name, n.Component.Name, n.Component.Name, why)
+}
+
 func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
 	if !rc.repeated || rc.loopReactive || !sharesLifetimeState(n.Component) {
 		return nil
