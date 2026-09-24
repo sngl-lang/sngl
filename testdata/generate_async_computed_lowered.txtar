@@ -43,7 +43,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span>
+<span id="$0">
 </span>
 
 <script>
@@ -61,9 +61,14 @@ body { font-family: system-ui, sans-serif; }
   async function $compute___hoist_0() {
     state.__async___hoist_0 = await fetchHello("world");
   }
+  var $0 = document.getElementById("$0");
+  function __sngl_init() {
+    $0.textContent = __hoist_0();
+  }
+  __sngl_init();
   $compute___hoist_0();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:efc85aeb809654b91c551e28860cc479
+pass sha256:f44251327f538536be94f459c5c8481c

@@ -1878,8 +1878,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			}
 			// An i18n.tr-rooted prop with no state deps still varies by
 			// locale; initOnly keeps it past OptimizeMutation's empty-deps
-			// prune so it runs on initial render.
-			initOnly := lowered || (len(deps) == 0 && exprUsesI18n(expr))
+			// prune so it runs on initial render. So does one calling a func the
+			// build cannot evaluate: `deeper(0)` where deeper writes state reads
+			// nothing, and pruned it was never written at all.
+			initOnly := lowered || (len(deps) == 0 && (exprUsesI18n(expr) || callsUnfoldable(expr)))
 			g.initWrites = append(g.initWrites, updateFunc{
 				funcName: uname,
 				body:     body,
@@ -3354,4 +3356,18 @@ func (g *htmlGen) bodyCalls() []string {
 	}
 	collect(pkg.Body)
 	return out
+}
+
+// callsUnfoldable reports whether expr calls a func that is not pure, whose
+// value the build therefore could not have written into the markup.
+func callsUnfoldable(expr ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(expr, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Purity != ir.PurityPure {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
