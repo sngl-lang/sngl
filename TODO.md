@@ -423,40 +423,56 @@ reach.
 
 Work these in this order:
 
-1. **Anchors are deferred.** File a GitLab ticket: `specification.md` has 27
+1. **Anchors are deferred.** Filed as #254: `specification.md` has 27
    in-page `#` links that rely on goldmark's `WithAutoHeadingID`, and
    `markup.heading*` carries no id, so the links break once the docs render
-   through markup. Filing the ticket was asked for explicitly.
+   through markup.
 2. **A default token palette.** Choose default colors for the eleven `Token`
    kinds. On html they style the `sngl-tok-<kind>` classes, which nothing
-   styles today. On gtk4 they replace the hand-picked foregrounds. How an
-   application overrides the defaults is still open.
+   styles today. On gtk4 they replace the hand-picked foregrounds. An
+   application overrides them through **a context** in `sngl:ui/markup`
+   holding the palette: set once near the root, read by every code sample
+   under it, the way `theme` works.
+   - **The default is a light/dark pair**, GitHub's Primer syntax colors,
+     which is what chroma's `github` style gives the docs site today. html
+     writes both halves, the dark one under `prefers-color-scheme`. gtk4
+     takes the light half. A palette an application sets is one palette,
+     and its scheme choice is its own.
+   - **An explicit palette wins everywhere.** Unset, bubbletea, fyne and
+     android keep the host theme, and html and gtk4 use the default. Set,
+     all five use it. So the context holds an `option`.
+   - **gtk4 re-assembles its markup reactively** when the palette is not a
+     constant. That makes a label's markup a render slot, and it is also the
+     general fix for a non-literal span style on gtk4.
 3. **The order key is a macro.** A mark on the `Frontmatter` field names the
-   key to sort a page's children by (`#[md.order] order int`, or similar). The
-   directory importer already parses the directory's `.sngl` files to find a
-   declared `Frontmatter`, so it can read the mark there and sort `children`
-   by it. Still open: where the mark is declared (it needs a lib package; it
-   does not belong in `sngl:macro`) and how the checker accepts a mark on a
-   struct field.
-4. **An internal importer generates SNGL source from the docs.** This replaces
-   both options above (keep the data Go-side, or parse at compile time).
-   `docui.Markdown` has four call sites in `website.sngl`: `comp.previewHTML`,
-   `comp.highlightedCode`, `d.body` (`lookup.AllDeclPages()`) and `page.body`
-   (`docs.Pages()`). Open questions to settle first:
-   - Which of those four "the docs" covers. The decl pages and the `docs/`
-     pages both read naturally; the preview and highlighted code are not
-     markdown at all.
-   - Where the scheme is registered. `internal/cmd/docsgen` is a `go tool`,
-     but the compile step runs `sngl generate website.sngl`, so a scheme that
-     lives only in docsgen has to run the build in-process.
-   - How its hrefs line up. The directory form writes `guide/index.md` as
-     `/guide.html`, and the site uses `/learn/index.html` and
-     `/docs/sngl/builtin/error.html`. It also requires a page for every
-     intermediate directory. So the importer probably reuses the per-page
-     converter (`docState.page`) and writes its own page list, rather than
-     going through `convertDir`.
-5. **The tutorial's conditional prose needs a brainstorm.** The likely shape is
-   `sngl` blocks, with a context passing in the selected platform.
+   key to sort a page's children by (`#[md.order] order int`). The directory
+   importer already parses the directory's `.sngl` files to find a declared
+   `Frontmatter`, so it can read the mark there and sort `children` by it.
+   The mark is declared in a new **`sngl:ui/markup/md`** (`lib/ui/markup/md/`),
+   the home for the `md:` scheme's vocabulary. A mark on a struct field
+   needs no checker change: `#[foreign]` and `#[unusable]` already carry one.
+4. **The docs site imports `docs/` through `md:`.** `docui.Markdown` has four
+   call sites in `website.sngl`: `comp.previewHTML`, `comp.highlightedCode`,
+   `d.body` (`lookup.AllDeclPages()`) and `page.body` (`docs.Pages()`). Only
+   **`page.body`** is in scope. The others are picked up if and when they
+   are needed.
+   - **The directory form's href rule changes** so `guide/index.md` is
+     `/guide/index.html`. `guide.md` stays `/guide.html`. The href then
+     follows the file, and `docs/` already has the shape the directory
+     form requires (`index.md`, `learn/index.md`, `reference/index.md`), so
+     the site may be able to import the public `md:./docs/` with no internal
+     importer at all. Its layout skips `learn/tour.md` by href.
+   - If an internal scheme turns out to be needed after all, **docsgen runs
+     the build in-process** through `internal/build` and registers the
+     scheme first. The scheme does not ship in the `sngl` binary.
+5. **The tutorial's conditional prose: a context and a slotted component.**
+   A `package` fence declares a component that takes prose as children and
+   renders them only when a platform context matches. Each branch is an
+   `island` that passes its markdown in, and the buttons set the context.
+   This takes the conditional out of the prose. It rules out the paired
+   fence and the non-interactive rewrite below. The prose inside a branch
+   is written as markup in the fence by hand, which is little enough, or
+   imported from a markdown file elsewhere.
 
 **Both halves want a decision before they are written.** What each actually
 needs is below, found by reading the two files rather than by attempting them.
