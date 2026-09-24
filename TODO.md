@@ -496,11 +496,26 @@ Work these in this order:
    fence and the non-interactive rewrite below. The prose inside a branch
    is written as markup in the fence by hand, which is little enough, or
    imported from a markdown file elsewhere.
+   **Done, with one change: a package var rather than a context.** A
+   context is provided by something enclosing what reads it, and the
+   islands' only common ancestor is the document body the importer writes,
+   so nothing could hold one a button sets. The `package` fence in
+   `docs/learn/getting-started.md` declares `runPlatform`, `generateLang`
+   and `embedLang` and `whenSelected(selected, value, content ...)`; a
+   button island writes a var and a branch island passes its markup in. The
+   page is a page of the `md:./docs/` site, so the separate window, the
+   `docs.Pages()` skip, the nav extra and `internal/learn` are gone, and its
+   `sngl` view fences are checked by `TestDocSNGLBlocks` now in place of
+   `TestGettingStartedSnippetsCheck`. The two embed samples are
+   unhighlighted: a branch writes its code as a `markup.codeBlock` of one
+   `markup.text`. Found on the way, both fixed: markup under a reactive `if`
+   built `<flow>`/`<inline>` on the client, and every page on the site threw
+   at startup booting another window's render slots (on main too).
 
 **Both halves want a decision before they are written.** What each actually
 needs is below, found by reading the two files rather than by attempting them.
 
-- [ ] Rewrite `internal/learn/getting_started.sngl` as markdown with live
+- [X] Rewrite `internal/learn/getting_started.sngl` as markdown with live
   `sngl` fences.
 
   **What is in the way: the tutorial's prose is inside its conditionals.**

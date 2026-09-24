@@ -12,7 +12,6 @@ import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "file:public"
 import pgAssets "file:internal/playground/assets"
 import "internal/docui"
-import "internal/learn"
 import mddocs "md:./docs/"
 import "sngl:platform/html"
 
@@ -480,16 +479,6 @@ component site() root {
 	window(title="Tutorial", href="/tutorial.html", favicon=logo) {
 		PageLayout(title="Tutorial", currentHref="/tutorial.html") {
 			TutorialContent
-		}
-	}
-
-	// Getting Started — rendered from the GettingStarted SNGL component
-	// (getting_started.sngl) instead of the markdown pipeline so the prose,
-	// code blocks, and per-language tabs work on every platform website.sngl
-	// targets, not just html.
-	window(title="Getting Started", href="/learn/getting-started.html", favicon=logo) {
-		PageLayout(title="Getting Started", currentHref="/learn/getting-started.html") {
-			learn.GettingStarted
 		}
 	}
 
