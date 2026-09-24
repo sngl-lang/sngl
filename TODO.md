@@ -450,9 +450,9 @@ Work these in this order:
      state updated its readers at all (`markup_palette_reactive.txtar`).
    - **Found on the way:** a ternary in a var initializer panicked every Go
      emitter; it is now a func literal called in place
-     (`ternary_in_initializer.txtar`). A context whose default reads a package var (`context #t(initial)`)
-     also fails to build on bubbletea and android: the seeded default names
-     the var where it is not in scope.
+     (`ternary_in_initializer.txtar`). A context whose default reads a package
+     var failed to build on every Go target and android, the shake having
+     removed the var (`context_default_reads_var.txtar`).
 3. **The order key is a macro.** A mark on the `Frontmatter` field names the
    key to sort a page's children by (`#[md.order] order int`). The directory
    importer already parses the directory's `.sngl` files to find a declared

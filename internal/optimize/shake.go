@@ -212,6 +212,13 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 					walkExpr(m.Value, used, walk)
 				}
 			}
+		case *ir.Context:
+			// A read of the context is a read of its default wherever nothing
+			// provides one, and the lowering writes the default there after
+			// this walk has run: unwalked, `context #t(initial)` left `initial`
+			// shaken and every Go target and android naming it undeclared.
+			walkType(s.Typ, used, walk)
+			walkExpr(s.Default, used, walk)
 		case *ir.Component:
 			for _, p := range s.Props {
 				walkType(p.Type, used, walk)
