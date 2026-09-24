@@ -1165,6 +1165,7 @@ func (c *checker) addOverrideBody(pos ast.Pos, comp *ir.Component, kind ir.Built
 	}
 	c.pendingExtensions = append(c.pendingExtensions, pendingExtension{
 		comp:      comp,
+		pos:       pos,
 		platform:  target,
 		kind:      kind,
 		body:      body,
@@ -1290,6 +1291,7 @@ func (c *checker) reportOverrideFuncUnreachableReceiver(pe pendingExtension, def
 // are in scope when the platform body resolves identifiers.
 type pendingExtension struct {
 	comp     *ir.Component
+	pos      ast.Pos
 	platform string
 	body     ast.StmtBlock
 	// kind says which axis the target names -- a platform or a language --
@@ -1335,6 +1337,7 @@ func (c *checker) checkPendingExtensions() {
 	// on (e.g. android.sngl's 52 bare `slot` references).
 	savedScope := c.scope
 	defer func() { c.scope = savedScope }()
+	defer c.saveFile()()
 	for _, uri := range order {
 		// Platform bodies are written against the standard library they
 		// extend (bare `slot`, `text`, …), which reaches user scope only by
@@ -1357,6 +1360,7 @@ func (c *checker) checkPendingExtensions() {
 			// body reaches are the ones its own file imported.
 			if pe.user {
 				c.scope = c.symtab.Root
+				c.enterFileOf(pe.pos)
 				c.pushScope()
 			} else {
 				c.scope = libBodyScope

@@ -1,0 +1,46 @@
+# An override resolves through the imports of the file it is written in.
+#
+# Imports bind per file, and a program's override used to be resolved in
+# whichever file's scope was current when overrides were collected -- the last
+# one loaded. So an override whose file sorted before a sibling lost its own
+# imports: here `html` in the target and `t` in the body, neither of which
+# zz.sngl imports.
+
+sngl check main.sngl
+stdout 'main.sngl: ok'
+
+sngl generate --platform=html --lang=none --out=ht main.sngl
+! grep 'base' ht/index.html
+
+-- main.sngl --
+import ui "sngl:ui"
+import "lib"
+
+output {
+    none {
+        html
+    }
+}
+
+ui.window(title="t") {
+    lib.Box()
+}
+-- lib/box.sngl --
+import . "sngl:ui"
+import t "sngl:time"
+import "sngl:platform/html"
+
+component Box() node {
+    text(value="base")
+}
+
+component Box[html.platform] {
+    var d t.duration = 5ms
+    text(value="{d}")
+}
+-- lib/zz.sngl --
+import . "sngl:ui"
+
+component Other() node {
+    text(value="other")
+}
