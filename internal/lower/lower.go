@@ -59,6 +59,7 @@ var passes = []pass{
 	passLambda,
 	passNoListLambdas,
 	passToggle,
+	passUnprovidedContext,
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
