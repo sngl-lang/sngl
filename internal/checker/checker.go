@@ -498,6 +498,12 @@ type checker struct {
 	// from. A copy taken before the fixed point ran holds no family, so the
 	// answer is carried across to it once there is one.
 	specOrigin map[*ir.Component]*ir.Component
+	// entryOrigin is the declared entry each specialized slot entry was
+	// copied from, and entrySpec the specialization an insertion of one was
+	// checked against. An insertion carries the declared entry past the
+	// checker, so the tree check deferred for it reads the copy from here.
+	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
+	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
 	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
 	// package body is checked against it, which is the whole of what makes a

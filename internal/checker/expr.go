@@ -5184,6 +5184,13 @@ func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, writ
 	inst := &ir.SlotInst{AST: vn, Name: written, Rest: slot.Rest}
 	if entry {
 		inst.Entry = slot
+		if decl := c.entryOrigin[slot]; decl != nil {
+			inst.Entry = decl
+			if c.entrySpec == nil {
+				c.entrySpec = map[*ir.SlotInst]*ir.SlotDecl{}
+			}
+			c.entrySpec[inst] = slot
+		}
 	} else {
 		inst.Decl = slot
 	}
@@ -5533,7 +5540,10 @@ func (c *checker) checkTreeMembership(owner *ir.Component, pos ast.Pos, content 
 		// is whatever the caller supplies, so the slot's own tree is what has
 		// to match, and the population is where the content is checked.
 		case *ir.SlotInst:
-			decl := s.Entry
+			decl := c.entrySpec[s]
+			if decl == nil {
+				decl = s.Entry
+			}
 			if decl == nil {
 				decl = ownerSlot(owner, s.Name)
 			}

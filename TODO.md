@@ -668,8 +668,17 @@ Three are silent.
   because the inliner expands `frame` first. A `frame` that survives to
   codegen -- a recursion cycle or a runtime instance -- would leave the entry
   unsubstituted. The fixture has the shape; nothing reaches that branch yet.
-  And a generic slot's entries are not specialized: `content component T`
-  keeps its `T` in a specialized copy.
+
+  A generic slot's entries are specialized now, and that was a real bug in
+  both directions: `each(v=1)` refused `content(n)` for an int `n` as
+  `cannot use int as T`, and an entry typed `component T` with `T = d.shape`
+  carried a circle into a vbox with nothing said -- html drew `<draw>`. The
+  copies are checker-only: `entryOrigin` maps each back to the declared entry,
+  and that is what `SlotInst.Entry` carries, so the splicer's and the
+  interpreter's pointer match is untouched. `testdata/error_slot_entry_specialized.sngl`
+  is both refusals, and `testdata/slot_entry_generic.txtar` (html, bubbletea)
+  splices a generic entry; with the origin mapping removed it renders nothing
+  for the entry, and without the fix it does not check.
 
 - [X] **B -- a slot population on a root component dropped everything.** Fixed
   by main's window collapse, verified after the merge: `component site(layout …) ui.root` whose two windows each insert `layout(…)` writes `one.html` and
