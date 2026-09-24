@@ -172,9 +172,8 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt) {
 // otherwise HoleAttr). A node carrying a backend event handler is wrapped in a
 // server-action <form>.
 func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
-	// Windows and zero-visual nodes are skipped (handled at route level).
-	switch n.Name {
-	case "window", "timer":
+	// A window is handled at route level.
+	if ir.IsWindowNode(n) {
 		return
 	}
 

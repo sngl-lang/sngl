@@ -1381,10 +1381,7 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 		}
 		panic(fmt.Sprintf("html.renderIRNode: component %s reached the emitter neither inlined nor an instance", n.Component.Name))
 	}
-	switch n.Name {
-	case "window":
-		return
-	case "timer":
+	if ir.IsWindowNode(n) {
 		return
 	}
 	g.renderRawElementIR(b, n, depth)
