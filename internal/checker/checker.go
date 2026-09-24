@@ -490,7 +490,7 @@ type checker struct {
 	// answer is carried across to it once there is one.
 	specOrigin map[*ir.Component]*ir.Component
 
-	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
+	// rootTree is the #[builtin("treeRoot")] tree, sngl:builtin's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootTree *ir.StructDef
