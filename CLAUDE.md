@@ -89,6 +89,37 @@ rather than `AST.Body.IsDefined()` — that reports whether a block came from
 as "has a body" made `sngl dump --stage checked` print every empty-bodied
 component back as a signature.
 
+## Event syntax
+
+An event declares the parameters its handlers receive, with a func type's
+parameter list — `@pick(index int, label string)` — and `ir.EventDecl.Params`
+is that list. Three spellings, one mechanism:
+
+- `@pick(index int, label string)` — the list; names are optional, as in a
+  func type, and are documentation rather than contract.
+- `@change T` — the one-parameter case without the parens.
+- `@done()` passes nothing. A bare `@tick` is **not** that: it is one unnamed
+  `dyn` parameter, the loose payload a bare event has always carried, which is
+  why `ir.Convert` prints an empty list as `@done()`.
+
+A handler binds **by position**, the way a func literal does, and may leave
+trailing parameters unbound; binding more than the event passes, or annotating
+one with a type other than its position's, is a positioned error
+(`bindParams`). An emit supplies every declared parameter
+(`checkEmitArgs`) — or **none at all, which forwards**: written in a handler,
+`click()` hands on what that handler received, position for position
+(`bindEventParams`), and it is how every platform override re-fires its host
+widget's event. An event used as a callback (`eventAsFunc`) takes the event's
+parameters exactly, or none.
+
+A host widget's event — a DOM click, a Fyne callback, a boundary's `@error` —
+hands its handler one value, and `EventDecl.Payload()` is the type the code
+dispatching one reads. A parameter list reaches a backend through a *user*
+component's event, where passInlinePure substitutes it and
+passInstanceEvents turns it into a func-typed prop with that signature;
+`testdata/event_params.txtar` and `testdata/event_params_instance.txtar` are
+the two routes.
+
 ## Loop forms
 
 `for` has one head, and its *type* says what the loop does — the grammar does

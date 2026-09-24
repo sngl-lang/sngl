@@ -423,11 +423,18 @@ type ParamOrEventDecl interface {
 func (Param) paramOrEventDecl()     {}
 func (EventDecl) paramOrEventDecl() {}
 
-// EventDecl declares an event on a component: @click, @change Type.
+// EventDecl declares an event on a component and the parameters its handlers
+// receive: `@pick(index int, label string)`, `@change T`, `@done()`.
+//
+// Params is one list whichever way it was written. `@change T` is the
+// one-parameter case without the parens -- a single entry with no name -- and
+// HasParens is what tells the two spellings apart for the formatter, which
+// prints what the author wrote. A bare `@tick` has no entries and no parens.
 type EventDecl struct {
-	Pos  Pos
-	Name string
-	Type TypeExpr // optional type annotation
+	Pos       Pos
+	Name      string
+	Params    []FuncTypeParam
+	HasParens bool
 	// Attrs are the #[...] macro attributes written before the event, read
 	// the same way a Param's are.
 	Attrs    []MacroAttr `json:",omitempty"`
