@@ -300,6 +300,13 @@ func IsComputed(f *ir.Func) bool {
 	if f.AST.Body == nil && f.Return == nil {
 		return false
 	}
+	// A func that writes state is an action that happens to return a value.
+	// Emitted as a computed, fyne built its body with the getter emitter,
+	// which does not translate the updater the write needs: `__n0.Text = …`,
+	// a field no Go type has.
+	if f.Purity == ir.PurityMutates {
+		return false
+	}
 	n := len(f.Params)
 	if f.Receiver != "" {
 		// A receiver-bearing func is a component computed only when it
