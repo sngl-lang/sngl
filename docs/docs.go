@@ -33,7 +33,6 @@ type Page struct {
 	Slug        string // URL slug, e.g. "learn/installation"
 	Href        string // URL path, e.g. "/learn/installation.html"
 	Description string
-	Body        string // rendered HTML from markdown
 	Order       int
 	Section     string // parent directory, e.g. "learn", "reference"; "" for root-level files
 	IsIndex     bool   // true if this page is the section's index.md (or root index.md)
@@ -56,11 +55,7 @@ func Pages() []Page {
 		if err != nil {
 			return nil
 		}
-		fm, body, err := docsite.ParseFrontMatter(data)
-		if err != nil {
-			return nil
-		}
-		html, err := docsite.RenderMarkdown(body)
+		fm, _, err := docsite.ParseFrontMatter(data)
 		if err != nil {
 			return nil
 		}
@@ -96,7 +91,6 @@ func Pages() []Page {
 			Slug:        slug,
 			Href:        href,
 			Description: fm.Description,
-			Body:        string(html),
 			Order:       fm.Order,
 			Section:     section,
 			IsIndex:     isIndex,
