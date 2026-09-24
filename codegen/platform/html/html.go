@@ -641,6 +641,10 @@ type htmlGen struct {
 	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
 	// IR node rather than on the package or main component.
 	irWindowFuncs []*ir.Func
+	// pageSlots are the render slots whose anchor this page wrote. The slot
+	// funcs are collected per owner, and a root component spliced into the
+	// package body owns every window's, so a page boots only its own.
+	pageSlots map[string]bool
 
 	// irWindow is the window this generator emits a document for, or nil when
 	// it is emitting a main component's body. A window is the third place
@@ -738,6 +742,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		refToVar:       make(map[string]string),
 		loweredRefs:    make(map[string]bool),
 		loweredLocals:  make(map[string]bool),
+		pageSlots:      make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
 		shared:         shared,
 	}
@@ -1270,6 +1275,7 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		// content is appended into this anchor at runtime.
 		if n.Call != nil && n.Call.Func != nil {
 			if idx := slotIndexFromRenderFunc(n.Call.Func.Name); idx != "" {
+				g.pageSlots[idx] = true
 				fmt.Fprintf(b, "%s<span data-sngl-slot=\"%s\" style=\"display:contents\"></span>\n",
 					strings.Repeat("  ", depth), idx)
 				return
@@ -2290,7 +2296,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 	// slots nested inside windows/components are initialized too.
 	for _, fn := range synthFuncs {
 		idx := slotIndexFromRenderFunc(fn.Name)
-		if idx == "" {
+		if idx == "" || !g.pageSlots[idx] {
 			continue
 		}
 		anchor := slotAnchorVar(idx)
