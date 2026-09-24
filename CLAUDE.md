@@ -1716,11 +1716,12 @@ gtk4 draw `lightPalette`/`darkPalette` (GitHub's syntax colors, which the docs
 site's chroma style already used) and bubbletea, fyne and android ask their
 theme. html writes the pair as the `sngl-tok-<kind>` class's rules, the dark
 half under `prefers-color-scheme`, so a page's own CSS still wins; gtk4 takes
-the light half. A kind the program sets wins on all five. The unset case is a
-literal by the time it is emitted only because `UnprovidedContext` folds the
-context away. A provided one is state, so every emitter also takes the color as
-a run-time value: `gtk4rt.Foreground`, `style.color`, fyne's `SetColor`, and a
-fallback chain on bubbletea and android.
+the light half. A kind the program sets wins on all five. An unset or constant
+palette is a literal by the time it is emitted -- `UnprovidedContext` folds the
+first, and an inlined body reads a provider's value in place of the context --
+so only a palette read from state reaches an emitter as a run-time value:
+`gtk4rt.Foreground`, `style.color`, fyne's `SetColor`, and a fallback chain on
+bubbletea and android.
 
 **Text in the family is literal.** Every character of a `markup.text` renders
 as written — two spaces are two, a `"\n"` ends the line — on every target,

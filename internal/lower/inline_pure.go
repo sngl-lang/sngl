@@ -597,13 +597,14 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// Deep-clone the wrapper body so substitution mutations don't leak
 	// across call sites.
-	body := deepCloneStmts(comp.Body)
+	provided := providedContextVars(comp, callsite.Props)
+	body := substituteVars(deepCloneStmts(comp.Body), provided)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
 	// so they need no updater and no setter -- but they still need somewhere
 	// to live that outlasts the handler that writes them.
-	if len(comp.Vars) > 0 {
+	if len(comp.Vars) > len(provided) {
 		if st.hoist == nil {
 			return nil, fmt.Errorf("component %q declares state and there is no owner to hoist it onto at %s", comp.Name, compPos(comp))
 		}
@@ -612,21 +613,12 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		symRenames := map[ir.Symbol]ir.Symbol{}
 		start := len(*st.hoist)
 		for _, v := range comp.Vars {
+			if _, ok := provided[v]; ok {
+				continue
+			}
 			clone := cloneVarShallow(v)
 			clone.Name = v.Name + suffix
 			clone.Init = deepCloneExpr(v.Init)
-			// A synthesized context var carries its default, which the call
-			// site overrides through a hidden __ctx_<name> prop. expandCall
-			// says the same thing; missing it here dropped a provider's
-			// override and every instance read the default.
-			if v.Synthesized {
-				for _, arg := range callsite.Props {
-					if arg.Name == v.Name {
-						clone.Init = deepCloneExpr(arg.Value)
-						break
-					}
-				}
-			}
 			renames[v] = clone.Name
 			symRenames[v] = clone
 			*st.hoist = append(*st.hoist, clone)
@@ -638,6 +630,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			// The props too, not just the renames: an init may name a prop
 			// (`var handle = interval`), and after substitution the param it
 			// named does not exist.
+			(*st.hoist)[i].Init = substituteVarsExpr((*st.hoist)[i].Init, provided)
 			(*st.hoist)[i].Init = substituteParamsExpr((*st.hoist)[i].Init, bindings)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
 		}

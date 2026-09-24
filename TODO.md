@@ -446,13 +446,9 @@ Work these in this order:
    - **gtk4 re-assembles its markup reactively** when the palette is not a
      constant. gtk4's side is done -- a color it cannot read is a piece of
      the markup expression -- and so is html's (`style.color`) and fyne's
-     (`SetColor`), each with an updater. **Blocked** by a context bug that
-     is not the palette's: a provider whose value reads state copies it into
-     the hidden `__ctx_*` field once and never again, on every target that
-     lowers contexts. `label(txt) { … }` with a button writing `txt` shows
-     the first value forever. The fixture to add with the fix is a button
-     assigning `pal = markup.darkPalette` under `markup.palette(pal)`.
-   - **Found on the way, not fixed:** a ternary in a var initializer panics
+     (`SetColor`), each with an updater. Done, once a provider reading
+     state updated its readers at all (`markup_palette_reactive.txtar`).
+   - **Found on the way, being fixed:** a ternary in a var initializer panics
      every Go emitter (`var label = on ? "b" : "c"` in a window, on fyne),
      because `passTernary` skips initializers, having no statement list to
      hoist into. An immediately-invoked func literal is the likely answer.

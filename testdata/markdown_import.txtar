@@ -85,8 +85,7 @@ body { font-family: system-ui, sans-serif; }
     <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;padding-left:12px;white-space:pre-wrap"><span>Quoted.</span></blockquote>
     <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
       <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
-        <span id="__n0" data-sngl-id="__n0">
-        </span>
+        <span>•</span>
         <div style="display:flex;flex-direction:column">
           <p style="white-space:pre-wrap"><span>one</span></p>
         </div>
@@ -146,23 +145,8 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
-  function bulletAt(depth) {
-    if (depth <= 1) {
-      ;
-      return "\u2022";
-    }
-    ;
-    return ["\u2022", "\u25E6", "\u25AA"][(depth - 1) % 3];
-  }
-  var __ctx_listDepth__inst0 = 0;
-  var __ctx_listDepth__inst1 = __ctx_listDepth__inst0 + 1;
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  function __sngl_init() {
-    __n0.textContent = bulletAt(__ctx_listDepth__inst1);
-  }
-  __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:86173924de362b1687d2f452709a0ed7
+pass sha256:f9d8698e3e29e8711df8b95359f513f3

@@ -70,11 +70,10 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	__ctx_depth__inst0 int
-	xs__inst0          []int
-	total__inst0       int
-	seen__inst0        int
-	__focusID          int
+	xs__inst0    []int
+	total__inst0 int
+	seen__inst0  int
+	__focusID    int
 
 	width, height int
 }
@@ -82,7 +81,6 @@ type Model struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.__ctx_depth__inst0 = 0
 	m.xs__inst0 = []int{}
 	m.total__inst0 = 0
 	m.seen__inst0 = 0
@@ -189,7 +187,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.total__inst0 = (m.total__inst0 + x)
 			}
-			m.seen__inst0 = m.__ctx_depth__inst0
+			m.seen__inst0 = 0
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -245,7 +243,6 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { xs__inst0: [], total__inst0: 0, seen__inst0: 0 };
-  var __ctx_depth__inst0 = 0;
   function String(v) {
     return "" + v;
   }
@@ -268,7 +265,7 @@ body { font-family: system-ui, sans-serif; }
       __n0.textContent = String(state.total__inst0);
     }
     ;
-    state.seen__inst0 = __ctx_depth__inst0;
+    state.seen__inst0 = 0;
   });
   function __sngl_init() {
     __n0.textContent = String(state.total__inst0);
@@ -278,6 +275,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:83242ee08a2b827a11a7002ee49e552d
+pass sha256:2c76a1228a6ce2fc290da0a71da1f468
 -- run/none/html --
-pass sha256:e83bcb9b2b3b8190b436f9d73b81808c
+pass sha256:0e90a2e93a46b2877ff4c8d35ec5eef0

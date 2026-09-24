@@ -47,6 +47,11 @@ func lowerInlineComponents(pkg *ir.Package, _ Features, opts Options) error {
 	clearDemotedReceivers(pkg, st.demoted)
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	for _, c := range pkg.Components {
+		if c != main {
+			contextProps(c)
+		}
+	}
 	return uniqueNodeIDs(pkg)
 }
 
@@ -955,21 +960,14 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 
 	hoist := st.hoist
 	varStart := len(*hoist.vars)
+	provided := providedContextVars(comp, n.Props)
 	for _, v := range comp.Vars {
+		if _, ok := provided[v]; ok {
+			continue
+		}
 		clone := cloneVarShallow(v)
 		clone.Name = v.Name + suffix
 		clone.Init = deepCloneExpr(v.Init)
-		// Synthesized context Vars (added by passNoContext) can be
-		// overridden at the call site by a hidden __ctx_<name> arg in
-		// n.Props. When present, that arg supersedes ctx.Default.
-		if v.Synthesized {
-			for _, arg := range n.Props {
-				if arg.Name == v.Name {
-					clone.Init = deepCloneExpr(arg.Value)
-					break
-				}
-			}
-		}
 		renames[v] = clone.Name
 		symRenames[v] = clone
 		// The clone is as reactive as the original. st.reactive was computed
@@ -1003,7 +1001,13 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// Apply renames to every hoisted block.
 	for i := varStart; i < len(*hoist.vars); i++ {
 		if (*hoist.vars)[i].Init != nil {
+			(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 			(*hoist.vars)[i].Init = renameInExpr((*hoist.vars)[i].Init, renames, symRenames)
+		}
+		for _, h := range (*hoist.vars)[i].Handlers {
+			if h.Func != nil {
+				h.Func.Block = substituteVars(h.Func.Block, provided)
+			}
 		}
 		// A var handler's body reads and writes the instance's state like any
 		// other block the callee wrote. Left unrenamed it kept pointing at the
@@ -1016,9 +1020,10 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
+		(*hoist.funcs)[i].Block = substituteVars((*hoist.funcs)[i].Block, provided)
 		(*hoist.funcs)[i].Block = renameIdents((*hoist.funcs)[i].Block, renames, symRenames)
 	}
-	body := deepCloneStmts(comp.Body)
+	body := substituteVars(deepCloneStmts(comp.Body), provided)
 	body = renameIdents(body, renames, symRenames)
 
 	bindings := map[string]ir.Expr{}
