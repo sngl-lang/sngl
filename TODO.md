@@ -539,6 +539,16 @@ instance it never elected; it is now inlined like a local one.
 `testdata/imported_component_instances.txtar` covers html, bubbletea and
 android with passing run records, and fails with the inliner change reverted.
 
+That left html's in-place component rendering (`renderIRUserComponent`, with
+`dataRenames`, `componentParams` and `irSlotChildren`) with no input, and it is
+deleted. Verified by coverage rather than reading: `go test -coverpkg=./codegen/platform/html ./...`
+hit none of its lines, nor the `SlotInst` arm that projected `irSlotChildren`,
+and with a panic in its entry neither `go tool docsgen`, every `examples/`
+directory on html, nor hand-written probes -- a recursion cycle, a runtime
+instance in a reactive `for`, route mode under `--lang go` -- reached it. The
+two arms that led there panic now, since a component or slot arriving there
+would otherwise have rendered nothing.
+
 ### Components are not values, and are not going to be
 
 `struct Page { content component() ui.node }` is refused today, with the

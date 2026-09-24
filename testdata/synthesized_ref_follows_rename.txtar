@@ -4,19 +4,20 @@ The context lowering answers a provider with a `__ctx_<name>` var marked
 Synthesized, which html reads twice: once to decide where the binding goes,
 and once to decide how a read of it is spelled. The two have to agree.
 
-They did not for a component whose body html renders in place. Such a
-component's vars are promoted onto `state` under a name unique to that
-instantiation, and a synthesized one is promoted with the rest -- while the
-*read* was spelled bare, `ir.Ident.Synthesized` meaning "no Model receiver" on
-this target and being asked ahead of the rename table rather than through it.
-So the page declared `state.__ctx_depth_1` and read a bare `__ctx_depth` that
-nothing bound: a ReferenceError at startup, under markup that rendered right.
+They did not for a component whose body html rendered in place, which it did
+for an imported component the lowering left standing. Such a component's vars
+were promoted onto `state` under a name unique to that instantiation, and a
+synthesized one was promoted with the rest -- while the *read* was spelled
+bare, `ir.Ident.Synthesized` meaning "no Model receiver" on this target and
+being asked ahead of the rename table rather than through it. So the page
+declared `state.__ctx_depth_1` and read a bare `__ctx_depth` that nothing
+bound: a ReferenceError at startup, under markup that rendered right.
 
-It was reachable through an imported component, which html used to leave
-standing. The lowering now inlines an imported component like a local one, so
-this input reaches the other half of the rule: an inlined body's synthesized
-vars become top-level bindings renamed per instance, and a read of that
-renamed name is spelled bare, which is correct.
+The lowering now inlines an imported component like a local one, and html has
+no in-place path left: a component reaching its emitter is a runtime instance
+or a panic. So this input holds the half of the rule that remains: an inlined
+body's synthesized vars become top-level bindings renamed per instance, and a
+read of that renamed name is spelled bare, which is correct.
 
 deny * `[^.]__ctx_depth[^_]` -- every mention is the instance's `__ctx_depth__inst0`; the unrenamed name is one nothing binds
 

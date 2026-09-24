@@ -163,10 +163,9 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	}}
 }
 
-// OnCreateComponent preserves the LocalVar as-is. html inlines user
-// components via renderIRUserComponent on the static-tree path; on the
-// WalkLowered (JS) path a non-inlinable component instance keeps its
-// original `const id = ...CreateComponent(...)` binding.
+// OnCreateComponent preserves the LocalVar as-is: on the WalkLowered (JS) path
+// a non-inlinable component instance keeps its original
+// `const id = ...CreateComponent(...)` binding.
 func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
 	return []ir.Stmt{&ir.LocalVar{Name: id, Type: ir.TypDyn, Init: call}}
 }

@@ -587,10 +587,6 @@ type htmlGen struct {
 
 	handlers []eventHandler
 
-	componentParams []componentParam
-
-	inlinedStateInits []componentParam
-
 	title string
 
 	stylesheet string
@@ -625,12 +621,6 @@ type htmlGen struct {
 	// The map's sourcesContent is what actually carries the source.
 	outDir string
 
-	componentInvocations int
-
-	// dataRenames maps original component var names to promoted unique names
-	// so handler MutatedFields can be remapped after inlining.
-	dataRenames map[string]string
-
 	// currentComp resolves implicit `this` for exprDeps / MutatedFields.
 	currentComp *ir.Component
 
@@ -641,13 +631,7 @@ type htmlGen struct {
 	// component not called "main" collected no state and rendered no binding.
 	rootComp *ir.Component
 
-	componentDepth int
-
 	usesI18n bool
-
-	// irSlotChildren holds the caller's children during component inlining,
-	// for the body-level `slot` pseudo-element to project into position.
-	irSlotChildren []ir.Stmt
 
 	irBodyStmts []ir.Stmt
 
@@ -708,12 +692,6 @@ type htmlGen struct {
 	// staticInsts are the factory instances the page builds once, in the order
 	// the static renderer met them.
 	staticInsts []staticInstance
-}
-
-type componentParam struct {
-	name       string
-	value      string
-	staticOnly bool // true if value was fully consumed during static HTML render (skip JS emission)
 }
 
 type updateFunc struct {
@@ -1283,9 +1261,7 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		}
 		g.renderIRNode(b, n, depth)
 	case *ir.SlotInst:
-		for _, child := range g.irSlotChildren {
-			g.renderIRStmt(b, child, depth)
-		}
+		panic(fmt.Sprintf("html.renderIRStmt: slot %q reached the emitter unsubstituted", n.Name))
 	case *ir.CallStmt:
 		// A __renderSlotN call marks a reactive if/for slot position; its
 		// content is appended into this anchor at runtime.
@@ -1380,8 +1356,8 @@ func irCallName(call *ir.Call) string {
 }
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer: a user
-// component inlines via its IR body, a stdlib component goes through its
-// AST-backed helper, and a raw element is rendered IR-native.
+// component reaching here is a runtime instance, every other one having been
+// inlined by the lowering, and anything else is rendered as an element.
 func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	if isUserIRComponent(n) {
 		// A factory component is never inlined here, at a static position any
@@ -1391,22 +1367,13 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 			g.renderStaticInstance(b, n, depth)
 			return
 		}
-		g.renderIRUserComponent(b, n, depth)
-		return
+		panic(fmt.Sprintf("html.renderIRNode: component %s reached the emitter neither inlined nor an instance", n.Component.Name))
 	}
 	switch n.Name {
 	case "window":
 		return
 	case "timer":
 		return
-	}
-	// A bodyless call promoted from ir.CallStmt carries no Component back-ref.
-	if n.Component == nil {
-		if comp := g.findIRComponent(n.Name); comp != nil && comp.AST != nil {
-			n.Component = comp
-			g.renderIRUserComponent(b, n, depth)
-			return
-		}
 	}
 	g.renderRawElementIR(b, n, depth)
 }
@@ -1714,8 +1681,6 @@ func stripInterTagWhitespace(s string) string {
 	return strings.TrimRight(out, "\t\n\r")
 }
 
-const maxComponentDepth = 10
-
 // renderRawElementIR renders an IR NodeInst as a raw HTML element, tagged by
 // the local part of the component name. A synthesized AST node is built for
 // the helpers that still accept ast.VisualNode.
@@ -1931,160 +1896,6 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	}
 }
 
-// findIRComponent resolves a bare or namespace-qualified component name off
-// the IR package's symbol table, so imported components are reachable.
-func (g *htmlGen) findIRComponent(name string) *ir.Component {
-	if name == "" || g.pkg == nil {
-		return nil
-	}
-	if ns, field, ok := strings.Cut(name, "."); ok {
-		for _, imp := range g.pkg.Imports {
-			if imp.Alias != ns || imp.Pkg == nil {
-				continue
-			}
-			if sym, ok := imp.Pkg.Symbols.LookupRootComponent(field); ok {
-				if c, ok := sym.(*ir.Component); ok {
-					return c
-				}
-			}
-		}
-		return nil
-	}
-	if g.pkg.Symbols == nil {
-		return nil
-	}
-	if sym, ok := g.pkg.Symbols.LookupRootComponent(name); ok {
-		if c, ok := sym.(*ir.Component); ok {
-			return c
-		}
-	}
-	return nil
-}
-
-// renderIRUserComponent inlines a user component at its call site, sourcing
-// params/vars/computed from ir.Component, which covers imported packages the
-// AST doc never sees.
-func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, depth int) {
-	comp := n.Component
-	if comp == nil {
-		g.renderRawElementIR(b, n, depth)
-		return
-	}
-
-	g.componentDepth++
-	if g.componentDepth > maxComponentDepth {
-		g.componentDepth--
-		return
-	}
-	defer func() { g.componentDepth-- }()
-
-	g.componentInvocations++
-	suffix := fmt.Sprintf("_%d", g.componentInvocations)
-
-	savedLocals := make(map[string]bool)
-	maps.Copy(savedLocals, g.ctx.Locals)
-	savedRenames := g.ctx.Renames
-	renames := make(map[string]string)
-	if savedRenames != nil {
-		maps.Copy(renames, savedRenames)
-	}
-
-	for _, p := range comp.Props {
-		uniqueName := p.Name + suffix
-		g.ctx.Locals[p.Name] = true
-		renames[p.Name] = uniqueName
-
-		var valueExpr ir.Expr
-		for _, pa := range n.Props {
-			if pa.Name == p.Name {
-				valueExpr = pa.Value
-				break
-			}
-		}
-		if valueExpr == nil {
-			valueExpr = p.Default
-		}
-		var jsVal string
-		if valueExpr != nil {
-			jsVal = g.exprToJS(valueExpr)
-		} else {
-			jsVal = `""`
-		}
-		g.componentParams = append(g.componentParams, componentParam{
-			name:  uniqueName,
-			value: jsVal,
-		})
-	}
-
-	for _, fn := range comp.Funcs {
-		if len(fn.Params) == 0 && len(fn.Block) == 1 {
-			if _, isRet := fn.Block[0].(*ir.Return); isRet {
-				uniqueName := fn.Name + suffix
-				g.ctx.Locals[fn.Name] = true
-				renames[fn.Name] = uniqueName
-			}
-		}
-	}
-	g.ctx.Renames = renames
-	for _, fn := range comp.Funcs {
-		if len(fn.Params) == 0 && len(fn.Block) == 1 {
-			if ret, isRet := fn.Block[0].(*ir.Return); isRet && ret.Value != nil {
-				uniqueName := fn.Name + suffix
-				body := g.exprToJS(ret.Value)
-				g.componentParams = append(g.componentParams, componentParam{
-					name:  uniqueName,
-					value: body,
-				})
-			}
-		}
-	}
-
-	// A synthesized context var may be overridden at the call site by a hidden
-	// __ctx_<name> arg in n.Props, which supersedes the var's default Init.
-	dataRenames := make(map[string]string)
-	for _, dv := range comp.Vars {
-		uniqueName := dv.Name + suffix
-		// A promoted name is backed by no *ir.Var, so it stays out of the
-		// pointer-keyed DepTracker; dataRenames handles it at the boundary.
-		g.ctx.Locals[dv.Name] = true
-		renames[dv.Name] = "state." + uniqueName
-		dataRenames[dv.Name] = uniqueName
-		var initJS string
-		if dv.Synthesized {
-			for _, pa := range n.Props {
-				if pa.Name == dv.Name {
-					initJS = g.exprToJS(pa.Value)
-					break
-				}
-			}
-		}
-		if initJS == "" {
-			initJS = g.literalToJS(dv.Init)
-		}
-		g.inlinedStateInits = append(g.inlinedStateInits, componentParam{
-			name:  uniqueName,
-			value: initJS,
-		})
-	}
-	g.ctx.Renames = renames
-
-	savedDataRenames := g.dataRenames
-	g.dataRenames = dataRenames
-
-	savedSlot := g.irSlotChildren
-	g.irSlotChildren = n.Children
-
-	for _, s := range comp.Body {
-		g.renderIRStmt(b, s, depth)
-	}
-
-	g.irSlotChildren = savedSlot
-	g.dataRenames = savedDataRenames
-
-	g.ctx.Locals = savedLocals
-	g.ctx.Renames = savedRenames
-}
-
 func (g *htmlGen) emitScript(b *strings.Builder) {
 	g.optimizeIR()
 
@@ -2131,10 +1942,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			stateFields = append(stateFields, dv.Name()+": null")
 			deferredInits = append(deferredInits, struct{ name, value string }{dv.Name(), val})
 		}
-	}
-	for _, s := range g.inlinedStateInits {
-		stateFields = append(stateFields, s.name+": null")
-		deferredInits = append(deferredInits, struct{ name, value string }{s.name, s.value})
 	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n")
@@ -2285,16 +2092,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	// the JsIRContext path during emitScript.
 	if g.ctx.Helpers["String"] {
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
-	}
-
-	for _, cp := range g.componentParams {
-		if cp.staticOnly {
-			continue
-		}
-		fmt.Fprintf(b, "const %s = %s;\n", cp.name, cp.value)
-	}
-	if len(g.componentParams) > 0 {
-		b.WriteString("\n")
 	}
 
 	// Before the refs below, which is where a handler's binding for the
@@ -2758,43 +2555,6 @@ func (g *htmlGen) optimizeIR() {
 			isAsync:  handlerAsyncMap[key],
 		}
 	}
-
-	g.deduplicateComponentParams()
-}
-
-// deduplicateComponentParams merges component params with identical JS
-// expressions, rewriting updater-body references to the surviving name.
-func (g *htmlGen) deduplicateComponentParams() {
-	if len(g.componentParams) <= 1 {
-		return
-	}
-
-	valueToName := make(map[string]string)
-	var deduped []componentParam
-	renames := make(map[string]string) // old name → canonical name
-
-	for _, cp := range g.componentParams {
-		if canonical, exists := valueToName[cp.value]; exists {
-			renames[cp.name] = canonical
-		} else {
-			valueToName[cp.value] = cp.name
-			deduped = append(deduped, cp)
-		}
-	}
-
-	if len(renames) == 0 {
-		return
-	}
-
-	g.componentParams = deduped
-
-	for i, u := range g.initWrites {
-		body := u.body
-		for old, canonical := range renames {
-			body = strings.ReplaceAll(body, old, canonical)
-		}
-		g.initWrites[i].body = body
-	}
 }
 
 // loweredID reports whether id was assigned by NoReactivity lowering, which
@@ -2917,12 +2677,8 @@ func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
 	}
 }
 
-// exprDeps remaps through dataRenames inside a component scope, so deps use
-// the promoted field names.
 func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
-	varDeps := g.dt.ExprDeps(g.currentComp, expr)
-	names := varSetToNames(varDeps)
-	return g.remapMutated(names, g.dataRenames)
+	return varSetToNames(g.dt.ExprDeps(g.currentComp, expr))
 }
 
 func varSetToNames(vs map[ir.Symbol]struct{}) map[string]bool {
@@ -2994,21 +2750,6 @@ func (r *varRegistry) namesToVarSet(names map[string]bool) map[ir.Symbol]struct{
 		out[r.lookup(n)] = struct{}{}
 	}
 	return out
-}
-
-func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]string) map[string]bool {
-	if len(renames) == 0 {
-		return mutated
-	}
-	remapped := make(map[string]bool, len(mutated))
-	for name := range mutated {
-		if renamed, ok := renames[name]; ok {
-			remapped[renamed] = true
-		} else {
-			remapped[name] = true
-		}
-	}
-	return remapped
 }
 
 // scopedJC clones g.ctx with the live locals, renames and EventVar, so
@@ -3230,7 +2971,6 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 	for _, n := range savedLocal {
 		delete(g.ctx.Locals, n)
 	}
-	mutated = g.remapMutated(mutated, g.dataRenames)
 	g.handlers = append(g.handlers, eventHandler{
 		elemID: elemID,
 		event:  event,
@@ -3432,15 +3172,6 @@ func (g *htmlGen) resolveJSToString(js string) string {
 	if len(js) >= 2 && js[0] == '"' && js[len(js)-1] == '"' {
 		if s, err := strconv.Unquote(js); err == nil {
 			return s
-		}
-	}
-	for i := range g.componentParams {
-		if g.componentParams[i].name == js {
-			if resolved := g.resolveJSToString(g.componentParams[i].value); resolved != "" {
-				g.componentParams[i].staticOnly = true
-				return resolved
-			}
-			return ""
 		}
 	}
 	if parts := splitJSConcat(js); len(parts) > 1 {
