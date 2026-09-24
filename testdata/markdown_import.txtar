@@ -14,10 +14,12 @@ output shows the nesting.
 
 Frontmatter becomes consts. A code fence is tokenized with chroma and comes
 back as `markup.token` spans folded onto the family's eleven kinds, `plain`
-included: whitespace is written down as plain rather than left out.
+included: whitespace is written down as plain rather than left out, and a
+whitespace run holding a line break reaches the page as text.
 
 deny * `<h1>\s*<span>Guide` -- a heading is a `richText` with a role, so its typography is the block's and its words are spans
 deny * `innerHTML` -- a document is a component tree; nothing is handed to a parser at run time
+deny * `<span class="sngl-tok-plain"><span></span></span>` -- a line break and the indentation after it are a code sample's text, not the pretty-printer's whitespace
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -54,7 +56,9 @@ soft break, `code`, and a [link](https://example.com).
 2. second
 
 ```sngl
-const n = 1
+func twice(n int) int {
+    return n * 2
+}
 ```
 
 | Name | Role |
@@ -80,14 +84,14 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="overflow:auto">
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Guide</span></h1>
-    <p style="white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
-    <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;padding-left:12px;white-space:pre-wrap"><span>Quoted.</span></blockquote>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Guide</span></h1>
+    <p style="margin:0px;white-space:pre-wrap"><span>A paragraph with </span><strong><span>bold</span></strong><span>, </span><em><span>italic</span></em><span> and </span><s><span>struck</span></s><span> words, a soft break, </span><code><span>code</span></code><span>, and a </span><a href="https://example.com"><span>link</span></a><span>.</span></p>
+    <blockquote style="border-left:3px solid #CCCCCC;font-style:italic;margin:0px;padding-left:12px;white-space:pre-wrap"><span>Quoted.</span></blockquote>
     <div style="display:flex;flex-direction:column;gap:4px;padding-left:20px">
       <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
         <span>•</span>
         <div style="display:flex;flex-direction:column">
-          <p style="white-space:pre-wrap"><span>one</span></p>
+          <p style="margin:0px;white-space:pre-wrap"><span>one</span></p>
         </div>
       </div>
       <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
@@ -97,7 +101,7 @@ body { font-family: system-ui, sans-serif; }
           </span>
         </label>
         <div style="display:flex;flex-direction:column">
-          <p style="white-space:pre-wrap"><span>done</span></p>
+          <p style="margin:0px;white-space:pre-wrap"><span>done</span></p>
         </div>
       </div>
     </div>
@@ -105,17 +109,17 @@ body { font-family: system-ui, sans-serif; }
       <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
         <span>1.</span>
         <div style="display:flex;flex-direction:column">
-          <p style="white-space:pre-wrap"><span>first</span></p>
+          <p style="margin:0px;white-space:pre-wrap"><span>first</span></p>
         </div>
       </div>
       <div style="align-items:start;display:flex;flex-direction:row;gap:8px">
         <span>2.</span>
         <div style="display:flex;flex-direction:column">
-          <p style="white-space:pre-wrap"><span>second</span></p>
+          <p style="margin:0px;white-space:pre-wrap"><span>second</span></p>
         </div>
       </div>
     </div>
-    <pre style="background-color:#f5f5f5;border-radius:4px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>const</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>=</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>1</span></span></code></pre>
+    <pre style="background-color:#f5f5f5;border-radius:4px;margin:0px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>func</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>twice</span></span><span class="sngl-tok-punctuation"><span>(</span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-punctuation"><span>)</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-type"><span>int</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-punctuation"><span>{</span></span><span class="sngl-tok-plain"><span>&#10;    </span></span><span class="sngl-tok-variable"><span>return</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>n</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>*</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>2</span></span><span class="sngl-tok-plain"><span>&#10;</span></span><span class="sngl-tok-punctuation"><span>}</span></span></code></pre>
     <table style="border-collapse:collapse;width:100%">
       <thead>
         <tr>
@@ -131,12 +135,14 @@ body { font-family: system-ui, sans-serif; }
       </tbody>
     </table>
     <hr/>
-    <p style="white-space:pre-wrap"><img alt="a duck" src="duck.png"/></p>
+    <p style="margin:0px;white-space:pre-wrap"><img alt="a duck" src="duck.png"/></p>
   </div>
 </div>
 <style>
 .sngl-tok-keyword { color:#cf222e }
 @media (prefers-color-scheme: dark) { .sngl-tok-keyword { color:#ff7b72 } }
+.sngl-tok-type { color:#953800 }
+@media (prefers-color-scheme: dark) { .sngl-tok-type { color:#ffa657 } }
 .sngl-tok-number { color:#0550ae }
 @media (prefers-color-scheme: dark) { .sngl-tok-number { color:#79c0ff } }
 </style>
@@ -149,4 +155,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f9d8698e3e29e8711df8b95359f513f3
+pass sha256:902e304c5fbf733f937d96b31daa0b18

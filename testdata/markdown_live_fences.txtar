@@ -101,17 +101,17 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Live</span></h1>
-  <p style="white-space:pre-wrap"><span>A counter:</span></p>
+  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Live</span></h1>
+  <p style="margin:0px;white-space:pre-wrap"><span>A counter:</span></p>
   <span id="__n0" data-sngl-id="__n0">
   </span>
-  <p style="white-space:pre-wrap"><span>Another, which does not share it:</span></p>
+  <p style="margin:0px;white-space:pre-wrap"><span>Another, which does not share it:</span></p>
   <span id="__n1" data-sngl-id="__n1">
   </span>
-  <p style="white-space:pre-wrap"><span>Straight into the body:</span></p>
+  <p style="margin:0px;white-space:pre-wrap"><span>Straight into the body:</span></p>
   <hr/>
-  <p style="white-space:pre-wrap"><span>And an ordinary sample, shown and not compiled:</span></p>
-  <pre style="background-color:#f5f5f5;border-radius:4px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>const</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>shown</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>=</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>1</span></span></code></pre>
+  <p style="margin:0px;white-space:pre-wrap"><span>And an ordinary sample, shown and not compiled:</span></p>
+  <pre style="background-color:#f5f5f5;border-radius:4px;margin:0px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>const</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>shown</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>=</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>1</span></span></code></pre>
 </div>
 <style>
 .sngl-tok-keyword { color:#cf222e }
@@ -138,4 +138,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:eef2e11003ce0bc5e5ba0c84c37713ef
+pass sha256:9391ccf925f25d370213cf7b4c60c3f0

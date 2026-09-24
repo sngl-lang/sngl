@@ -118,8 +118,8 @@ body { font-family: system-ui, sans-serif; }
   <span>weight 2</span>
   <span>child: Intro</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Guide</span></h1>
-    <p style="white-space:pre-wrap"><span>How to use it.</span></p>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Guide</span></h1>
+    <p style="margin:0px;white-space:pre-wrap"><span>How to use it.</span></p>
     <span id="__n1" data-sngl-id="__n1">
     </span>
   </div>
@@ -157,8 +157,8 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <span>weight 0</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Intro</span></h1>
-    <p style="white-space:pre-wrap"><span>Where to start.</span></p>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Intro</span></h1>
+    <p style="margin:0px;white-space:pre-wrap"><span>Where to start.</span></p>
   </div>
 </div>
 
@@ -188,8 +188,8 @@ body { font-family: system-ui, sans-serif; }
   <span>child: Guide</span>
   <span>child: Reference</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Welcome</span></h1>
-    <p style="white-space:pre-wrap"><span>The home page.</span></p>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Welcome</span></h1>
+    <p style="margin:0px;white-space:pre-wrap"><span>The home page.</span></p>
     <span id="__n0" data-sngl-id="__n0">
     </span>
   </div>
@@ -228,7 +228,7 @@ body { font-family: system-ui, sans-serif; }
   <span>weight 3</span>
   <span>child: Types</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Reference</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Reference</span></h1>
   </div>
 </div>
 
@@ -256,7 +256,7 @@ body { font-family: system-ui, sans-serif; }
 <div style="display:flex;flex-direction:column">
   <span>weight 0</span>
   <div style="display:flex;flex-direction:column;gap:12px">
-    <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Types</span></h1>
+    <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Types</span></h1>
   </div>
 </div>
 
@@ -268,4 +268,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:daaffaa9e95c296e6a0cecdd624b8c76
+pass sha256:d7c6afbf23031eb1d4ce90cf324c0997

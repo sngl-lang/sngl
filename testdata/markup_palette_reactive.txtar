@@ -675,7 +675,7 @@ body { font-family: system-ui, sans-serif; }
   <button id="$1">
     <span>theme</span>
   </button>
-  <p style="white-space:pre-wrap"><code><span id="__n0" data-sngl-id="__n0" class="sngl-tok-keyword"><span>func</span></span></code></p>
+  <p style="margin:0px;white-space:pre-wrap"><code><span id="__n0" data-sngl-id="__n0" class="sngl-tok-keyword"><span>func</span></span></code></p>
 </div>
 <style>
 .sngl-tok-keyword { color:#cf222e }
@@ -773,4 +773,4 @@ pass sha256:c2bea7b1ac09ac2164ae959ba00ce349
 -- run/kotlin/android --
 pass sha256:5f396f3bcd8b30b4cfb6d0ea04a833b9
 -- run/none/html --
-pass sha256:7a31df1930008cd883160ecdf9d8d2bf
+pass sha256:f85723847a4419550d9f830c36a88592

@@ -53,7 +53,7 @@ body { font-family: system-ui, sans-serif; }
 
 <span>draft false</span>
 <div style="display:flex;flex-direction:column;gap:12px">
-  <p style="white-space:pre-wrap"><span>Home.</span></p>
+  <p style="margin:0px;white-space:pre-wrap"><span>Home.</span></p>
 </div>
 
 <script>
@@ -79,7 +79,7 @@ body { font-family: system-ui, sans-serif; }
 
 <span>draft true</span>
 <div style="display:flex;flex-direction:column;gap:12px">
-  <p style="white-space:pre-wrap"><span>Notes.</span></p>
+  <p style="margin:0px;white-space:pre-wrap"><span>Notes.</span></p>
 </div>
 
 <script>
@@ -90,4 +90,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3926f23bcded488053b9ca680bbb29b2
+pass sha256:2d1f63dd3668e81d0a4cb3098b0af2fb

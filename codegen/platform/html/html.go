@@ -1635,6 +1635,17 @@ func preservesWhitespace(tag string) bool {
 	return false
 }
 
+// escapeTextContent writes a text node. One that is all whitespace spells its
+// line breaks as references, or stripInterTagWhitespace cannot tell it from
+// the pretty-printer's run between two tags.
+func escapeTextContent(s string) string {
+	out := html.EscapeString(s)
+	if strings.TrimSpace(s) == "" {
+		out = strings.NewReplacer("\n", "&#10;", "\r", "&#13;").Replace(out)
+	}
+	return out
+}
+
 // preservesWhitespaceNode is the same question asked of an element that says
 // so in its style rather than by being one of the two tags that always do.
 //
@@ -1652,10 +1663,11 @@ func (g *htmlGen) preservesWhitespaceNode(n *ir.NodeInst, tag string) bool {
 // output. Whitespace inside text nodes is preserved.
 //
 // Only a run holding a newline is the pretty-printer's: that is what it always
-// writes between two elements, and a text node of literal spaces never carries
-// one. Stripping every run instead ate the space between two words of a code
-// sample -- `<span> </span>` came out `<span></span>` -- which is precisely the
-// character a flow of rich text promises to keep.
+// writes between two elements. Stripping every run instead ate the space
+// between two words of a code sample -- `<span> </span>` came out
+// `<span></span>` -- which is precisely the character a flow of rich text
+// promises to keep. A text node that is whitespace *with* a newline, a code
+// sample's line break and indentation, is kept by escapeTextContent.
 func stripInterTagWhitespace(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -1829,7 +1841,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			b.WriteString("\n")
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		} else if staticInnerText != "" {
-			b.WriteString(html.EscapeString(staticInnerText))
+			b.WriteString(escapeTextContent(staticInnerText))
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else if g.preservesWhitespaceNode(n, tag) {
 			// A whitespace-sensitive tag renders its children inline: the

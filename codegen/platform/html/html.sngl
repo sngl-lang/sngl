@@ -522,7 +522,7 @@ func roleTag(role markup.Role) string {
 // a caller's own style wins, which is also how every other override here
 // orders its defaults.
 component markup.richText[platform] {
-    flow(tag=roleTag(role), style={whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
+    flow(tag=roleTag(role), style={margin=0px, whiteSpace=ui.WhiteSpace.preWrap, ...style}) {
         content
     }
 }

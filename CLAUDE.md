@@ -1733,6 +1733,15 @@ author's. The importer follows from it: a soft break in markdown is a space,
 since the wrapping an editor chose must not reach the reader as one, and a hard
 break is `"\n"`.
 
+html has two more ways to lose it, both closed. Its pretty-printer strips
+the newline runs between tags inside a pre-wrap element, which is also what a
+code sample's line-break-and-indent token looks like as a `<span>`, so a text node
+that is all whitespace spells its line breaks `&#10;` (`escapeTextContent`,
+denied in `markdown_import.txtar`). And a flow is a `<p>`/`<h*>`/`<pre>`,
+which the browser's stylesheet gives a margin no other target has, so the
+flow zeros it: the space between blocks is the document's `vbox` gap, and a
+list item's text sits on its bullet's line rather than a margin below it.
+
 The block components (`paragraph`, the six headings, `quote`, `codeBlock`,
 `caption`, `list`, `listItem`) are **bodied** — each a `richText` with its
 `role` and style set, or a `vbox` — so a platform implements the two
