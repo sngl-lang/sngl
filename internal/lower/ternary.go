@@ -35,10 +35,9 @@ func lowerTernary(pkg *ir.Package, _ Features, _ Options) error {
 	st := &ternState{}
 	walkPackage(pkg, walkFuncs{
 		stmts: func(stmts []ir.Stmt) []ir.Stmt { return st.transformBlock(stmts) },
-		// Const-context expressions (initializers, defaults) are folded by
-		// the optimizer before lower runs in the production pipeline. If a
-		// dynamic ternary reaches us in such a position there is no
-		// statement to hoist before — leave it alone.
+		// An initializer or a default has no statement list to hoist into,
+		// so a ternary there becomes a func literal called in place
+		// (immediateTernaries).
 		//
 		// A lambda *body* inside one is not in that position: it is a
 		// statement list, so a ternary there hoists into it like any other.
@@ -56,7 +55,7 @@ func lowerTernary(pkg *ir.Package, _ Features, _ Options) error {
 				}
 				return nil
 			})
-			return e
+			return st.immediateTernaries(e)
 		},
 	})
 	return nil
@@ -317,4 +316,33 @@ func (st *ternState) liftTernary(t *ir.Ternary) ([]ir.Stmt, ir.Expr) {
 		FromTernary: true,
 	})
 	return pre, tmpRef
+}
+
+// immediateTernaries rewrites each ternary left in an expression with no
+// statement list to hoist into -- a var initializer, a prop default -- as a
+// func literal called where it stands, whose body is the If a hoist would
+// have written. Left alone, `var label = on ? "b" : "c"` reached every Go
+// emitter as a Ternary and panicked it. A ternary inside a lambda is not
+// reached here: the lambda's body is a statement list and was hoisted into.
+func (st *ternState) immediateTernaries(e ir.Expr) ir.Expr {
+	if e == nil {
+		return nil
+	}
+	tmp := []ir.Stmt{&ir.LocalVar{Init: e}}
+	w := newExprWalker(func(x ir.Expr) ir.Expr {
+		t, ok := x.(*ir.Ternary)
+		if !ok {
+			return x
+		}
+		fn := &ir.Func{
+			Return: t.Type,
+			Block: st.transformBlock([]ir.Stmt{&ir.If{
+				Cond: t.Cond,
+				Body: []ir.Stmt{&ir.Return{Value: t.Then}},
+				Else: []ir.Stmt{&ir.Return{Value: t.Else}},
+			}}),
+		}
+		return &ir.Call{Type: t.Type, Callee: &ir.Lambda{Type: ir.FuncOf(nil, t.Type), Func: fn}}
+	})
+	return w.stmts(tmp)[0].(*ir.LocalVar).Init
 }

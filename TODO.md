@@ -448,11 +448,9 @@ Work these in this order:
      the markup expression -- and so is html's (`style.color`) and fyne's
      (`SetColor`), each with an updater. Done, once a provider reading
      state updated its readers at all (`markup_palette_reactive.txtar`).
-   - **Found on the way, being fixed:** a ternary in a var initializer panics
-     every Go emitter (`var label = on ? "b" : "c"` in a window, on fyne),
-     because `passTernary` skips initializers, having no statement list to
-     hoist into. An immediately-invoked func literal is the likely answer.
-     A context whose default reads a package var (`context #t(initial)`)
+   - **Found on the way:** a ternary in a var initializer panicked every Go
+     emitter; it is now a func literal called in place
+     (`ternary_in_initializer.txtar`). A context whose default reads a package var (`context #t(initial)`)
      also fails to build on bubbletea and android: the seeded default names
      the var where it is not in scope.
 3. **The order key is a macro.** A mark on the `Frontmatter` field names the
