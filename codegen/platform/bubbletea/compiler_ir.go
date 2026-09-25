@@ -171,6 +171,9 @@ type irAnalysis struct {
 type overlayInfo struct {
 	openExpr string
 	closeVar string
+	// closeCode closes an overlay a loop renders: the statement that clears
+	// the gate of whichever copy is open.
+	closeCode string
 }
 
 type irBind struct {
@@ -991,6 +994,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 			fmt.Fprintf(b, "\t\t\tcase %s:\n", ov.openExpr)
 			if ov.closeVar != "" {
 				fmt.Fprintf(b, "\t\t\t\tm.%s = false\n", ov.closeVar)
+			} else if ov.closeCode != "" {
+				fmt.Fprintf(b, "\t\t\t\t%s\n", ov.closeCode)
 			} else {
 				// No recoverable open var: consume the key but leave state
 				// unchanged (the overlay's gate is a compound expression).
@@ -1188,7 +1193,7 @@ func collectOverlays(stmts []ir.Stmt, gate *ir.If, gc *golang.GoIRContext, out *
 			collectOverlays(n.Body, n, gc, out)
 			collectOverlays(n.Else, gate, gc, out)
 		case *ir.For:
-			collectOverlays(n.Body, gate, gc, out)
+			collectLoopOverlays(n, gate, gc, out)
 		case *ir.ErrorBoundary:
 			collectOverlays(n.Children, gate, gc, out)
 		case *ir.NodeInst:

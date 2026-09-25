@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -95,4 +96,86 @@ func (w *viewWalk) loop(f *ir.For, gc *golang.GoIRContext) {
 		w.indent--
 		w.line("}")
 	}
+}
+
+// collectLoopOverlays records each Overlay a loop renders. One is open when any
+// copy of it is rendered, which only a walk of the loop can say: the gate that
+// opens it reads the copy's own state. Escape closes the first open copy by
+// clearing the var or cell its gate reads.
+func collectLoopOverlays(f *ir.For, gate *ir.If, gc *golang.GoIRContext, out *[]overlayInfo) {
+	gates := overlayGates([]ir.Stmt{f}, nil, map[*ir.NodeInst]*ir.If{})
+	eachRenderedNode([]ir.Stmt{f}, func(n *ir.NodeInst) {
+		if btIntrinsic(n) != "Overlay" {
+			return
+		}
+		walk := func(visit func(w *viewWalk, gc *golang.GoIRContext)) string {
+			var b strings.Builder
+			w := &viewWalk{b: &b, indent: 1, wants: func(x *ir.NodeInst) bool { return x == n }}
+			w.visit = func(w *viewWalk, _ *ir.NodeInst, gc *golang.GoIRContext) { visit(w, gc) }
+			w.stmts([]ir.Stmt{f}, gc)
+			return b.String()
+		}
+		open := "func() bool {\n" + walk(func(w *viewWalk, _ *golang.GoIRContext) { w.line("return true") }) + "\treturn false\n}()"
+		if gate != nil && gate.Cond != nil {
+			open = "(" + gc.EvalExpr(gate.Cond) + ") && " + open
+		}
+		oi := overlayInfo{openExpr: open}
+		if clear := overlayClear(gates[n]); clear != nil {
+			oi.closeCode = "func() {\n" + walk(func(w *viewWalk, gc *golang.GoIRContext) {
+				for _, l := range gc.EvalStmt(clear) {
+					w.line("%s", l)
+				}
+				w.line("return")
+			}) + "}()"
+		}
+		*out = append(*out, oi)
+	})
+}
+
+// overlayGates is the `if` each Overlay under stmts is written directly in.
+func overlayGates(stmts []ir.Stmt, gate *ir.If, out map[*ir.NodeInst]*ir.If) map[*ir.NodeInst]*ir.If {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if btIntrinsic(n) == "Overlay" {
+				out[n] = gate
+			}
+			overlayGates(n.Children, gate, out)
+		case *ir.If:
+			overlayGates(n.Body, n, out)
+			overlayGates(n.Else, gate, out)
+		case *ir.For:
+			overlayGates(n.Body, gate, out)
+			overlayGates(n.Else, gate, out)
+		case *ir.ErrorBoundary:
+			overlayGates(n.Children, gate, out)
+		}
+	}
+	return out
+}
+
+// overlayClear is the write that closes an overlay whose gate reads one bool
+// -- a var, or a per-copy cell read as `cell.get(key, init)` -- or nil.
+func overlayClear(gate *ir.If) ir.Stmt {
+	if gate == nil {
+		return nil
+	}
+	off := &ir.Literal{Type: ir.TypBool, Value: "false"}
+	switch c := gate.Cond.(type) {
+	case *ir.Ident:
+		if _, ok := c.Sym.(*ir.Var); ok {
+			return &ir.Assign{Target: c, Op: ast.AssignSet, Value: off}
+		}
+	case *ir.Call:
+		if c.Func != nil && c.Func.Intrinsic == "map.get" && len(c.Args) == 3 {
+			if cell, ok := c.Args[0].Value.(*ir.Ident); ok {
+				return &ir.Assign{
+					Target: &ir.Index{Type: ir.TypBool, Operand: cell, Idx: c.Args[1].Value},
+					Op:     ast.AssignSet,
+					Value:  off,
+				}
+			}
+		}
+	}
+	return nil
 }
