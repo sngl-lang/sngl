@@ -1548,7 +1548,10 @@ bound (`undefined: p`). What still differs is only what has nothing to
 reconcile: a stateless component is spliced, and a const loop whose body reads
 no state renders as a plain loop -- on html, as markup `optimize.Documents`
 unrolls. A window resets the context, because a loop over pages is not a
-position a page's body is repeated in.
+position a page's body is repeated in. A canvas under a `for` is built at run
+time for the same reason -- its surface and draw routine are its owner's one
+field and one method -- which `passCanvasInstances` does by synthesizing a
+component around it (`testdata/canvas_under_loop.txtar`).
 
 A loop that holds a component built at run time is a slot too, whatever it
 iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
