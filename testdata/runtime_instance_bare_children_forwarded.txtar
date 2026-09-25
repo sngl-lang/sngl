@@ -12,10 +12,10 @@ for the ALPHA copy's string prop and did not build. A copy is shared only by
 sites whose children are clones of the same statements too, so `Row__slot0`
 and `Row__slot1` each instantiate a `Card` copy of their own.
 
-`Row` loops over state of its own rather than a constant list: a fyne or gtk4
-record whose render slot is rendered only by its constructor names the slot's
-container as a field it never declares, which is a separate defect this
-fixture is not about.
+`Row` loops over a constant list, so its render slot is rendered by its
+constructor and nothing else, and the slot's container is a local of the
+constructor. A fyne or gtk4 record passed it to the render as a field it
+never declares, and did not build.
 
 deny out/go/fyne/model.go `newCard__slot\d+Instance\(c\.__model, nil\)` -- BETA's card is handed a copy whose prop BETA's children never lifted
 deny out/go/gtk4/model.go `newCard__slot\d+Instance\(c\.__model, nil\)` -- as above, for the gtk4 record
@@ -42,11 +42,10 @@ component Card(children ...component) node {
 }
 
 component Row(children ...component) node {
-    var ks = [1, 2]
+    var open = true
 
     hbox {
-        button(text="more", @click { ks.push(3) })
-        for var k = ks {
+        for var k = [1, 2] {
             Card {
                 children
             }
@@ -282,36 +281,28 @@ func (c *Card__slot2Instance) Destroy() {}
 type Row__slot1Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
-	ks           []int
+	open         bool
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__inst0_live []*Card__slot3Instance
 	__slot1      []fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
 	__slot3      []fyne.CanvasObject
-	__n4         *fyne.Container
 }
 
 func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
 	c := &Row__slot1Instance{}
 	c.__model = __model
-	c.ks = []int{1, 2}
+	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__inst0_live = []*Card__slot3Instance{}
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n4 = container.NewHBox()
-	__n13 := widget.NewButton("", nil)
-	__n13.SetText("more")
-	__n13.OnTapped = func() {
-		c.ks = append(c.ks, 3)
-		c.__renderSlot0(c.__n4)
-	}
-	c.__n4.Add(__n13)
-	c.__renderSlot0(c.__n4)
-	c.Root = c.__n4
+	__n4 := container.NewHBox()
+	c.__renderSlot0(__n4)
+	c.Root = __n4
 	return c
 }
 
@@ -322,7 +313,7 @@ func (c *Row__slot1Instance) __renderSlot0(container *fyne.Container) {
 	c.__slot0 = nil
 	__inst0_next := []*Card__slot3Instance{}
 	var __inst0_i int = 0
-	for range c.ks {
+	for range []int{1, 2} {
 		var __n3 *Card__slot3Instance
 		if len(c.__inst0_live) > __inst0_i {
 			__n3 = c.__inst0_live[__inst0_i]
@@ -361,7 +352,7 @@ type Row__slot0Instance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop___p0  string
-	ks           []int
+	open         bool
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
@@ -375,7 +366,7 @@ func newRow__slot0Instance(__model *Model, __p0 string) *Row__slot0Instance {
 	c := &Row__slot0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __p0
-	c.ks = []int{1, 2}
+	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -383,13 +374,6 @@ func newRow__slot0Instance(__model *Model, __p0 string) *Row__slot0Instance {
 	c.__slot2 = nil
 	c.__slot3 = nil
 	c.__n6 = container.NewHBox()
-	__n14 := widget.NewButton("", nil)
-	__n14.SetText("more")
-	__n14.OnTapped = func() {
-		c.ks = append(c.ks, 3)
-		c.__renderSlot1(c.__n6)
-	}
-	c.__n6.Add(__n14)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
 	return c
@@ -407,7 +391,7 @@ func (c *Row__slot0Instance) __renderSlot1(container *fyne.Container) {
 	c.__slot1 = nil
 	__inst1_next := []*Card__slot2Instance{}
 	var __inst1_i int = 0
-	for range c.ks {
+	for range []int{1, 2} {
 		var __n5 *Card__slot2Instance
 		if len(c.__inst1_live) > __inst1_i {
 			__n5 = c.__inst1_live[__inst1_i]
@@ -671,38 +655,30 @@ func (c *Card__slot2Instance) Destroy() {
 type Row__slot1Instance struct {
 	Root         gtk4rt.Handle
 	__model      *Model
-	ks           []int
+	open         bool
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
 	__inst0_live []*Card__slot3Instance
 	__slot1      []gtk4rt.Handle
 	__slot2      []gtk4rt.Handle
 	__slot3      []gtk4rt.Handle
-	__n4         gtk4rt.Handle
 }
 
 func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
 	c := &Row__slot1Instance{}
 	c.__model = __model
-	c.ks = []int{1, 2}
+	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Card__slot3Instance{}
 	c.__slot1 = nil
 	c.__slot2 = nil
 	c.__slot3 = nil
-	c.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(c.__n4, gtk4rt.OrientationHorizontal)
-	gtk4rt.BoxSetSpacing(c.__n4, 6)
-	__n13 := gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(__n13, "more")
-	gtk4rt.Connect(__n13, "clicked", func() {
-		c.ks = append(c.ks, 3)
-		c.__renderSlot0(c.__n4)
-	})
-	gtk4rt.BoxAppend(c.__n4, __n13)
-	c.__renderSlot0(c.__n4)
-	c.Root = c.__n4
+	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationHorizontal)
+	gtk4rt.BoxSetSpacing(__n4, 6)
+	c.__renderSlot0(__n4)
+	c.Root = __n4
 	gtk4rt.Retain(c.Root)
 	return c
 }
@@ -714,7 +690,7 @@ func (c *Row__slot1Instance) __renderSlot0(parent gtk4rt.Handle) {
 	c.__slot0 = nil
 	__inst0_next := []*Card__slot3Instance{}
 	var __inst0_i int = 0
-	for range c.ks {
+	for range []int{1, 2} {
 		var __n3 *Card__slot3Instance
 		if len(c.__inst0_live) > __inst0_i {
 			__n3 = c.__inst0_live[__inst0_i]
@@ -761,7 +737,7 @@ type Row__slot0Instance struct {
 	Root         gtk4rt.Handle
 	__model      *Model
 	__prop___p0  string
-	ks           []int
+	open         bool
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
 	__slot1      []gtk4rt.Handle
@@ -775,7 +751,7 @@ func newRow__slot0Instance(__model *Model, __p0 string) *Row__slot0Instance {
 	c := &Row__slot0Instance{}
 	c.__model = __model
 	c.__prop___p0 = __p0
-	c.ks = []int{1, 2}
+	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -785,13 +761,6 @@ func newRow__slot0Instance(__model *Model, __p0 string) *Row__slot0Instance {
 	c.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
 	gtk4rt.OrientableSetOrientation(c.__n6, gtk4rt.OrientationHorizontal)
 	gtk4rt.BoxSetSpacing(c.__n6, 6)
-	__n14 := gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(__n14, "more")
-	gtk4rt.Connect(__n14, "clicked", func() {
-		c.ks = append(c.ks, 3)
-		c.__renderSlot1(c.__n6)
-	})
-	gtk4rt.BoxAppend(c.__n6, __n14)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
 	gtk4rt.Retain(c.Root)
@@ -810,7 +779,7 @@ func (c *Row__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 	c.__slot1 = nil
 	__inst1_next := []*Card__slot2Instance{}
 	var __inst1_i int = 0
-	for range c.ks {
+	for range []int{1, 2} {
 		var __n5 *Card__slot2Instance
 		if len(c.__inst1_live) > __inst1_i {
 			__n5 = c.__inst1_live[__inst1_i]
@@ -985,7 +954,7 @@ body { font-family: system-ui, sans-serif; }
   function __cf_Row__slot1(props) {
     const __root = document.createElement("div");
     __root.style.display = "contents";
-    let ks = [1, 2];
+    let open = true;
     let __slot0 = [];
     let __inst1_live = [];
     let __slot1 = [];
@@ -997,7 +966,7 @@ body { font-family: system-ui, sans-serif; }
       __slot0 = [];
       let __inst1_next = [];
       let __inst1_i = 0;
-      for (const k of ks) {
+      for (const k of [1, 2]) {
         let __n3 = null;
         if (__inst1_live.length > __inst1_i) {
           __n3 = __inst1_live[__inst1_i];
@@ -1044,18 +1013,6 @@ body { font-family: system-ui, sans-serif; }
     }
     let __n4 = document.createElement("div");
     __n4.setAttribute("style", "display:flex;flex-direction:row");
-    let __n16 = document.createElement("button");
-    __n16.disabled = false;
-    __n16.addEventListener("click", () => {
-      ks.push(3);
-      __renderSlot0(__n4);
-    });
-    __n16.addEventListener("contextmenu", () => {
-    });
-    let __n17 = document.createElement("span");
-    __n17.textContent = "more";
-    __n16.appendChild(__n17);
-    __n4.appendChild(__n16);
     __renderSlot0(__n4);
     __root.appendChild(__n4);
     return {
@@ -1070,7 +1027,7 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
-    let ks = [1, 2];
+    let open = true;
     let __slot0 = [];
     let __slot1 = [];
     let __inst3_live = [];
@@ -1086,7 +1043,7 @@ body { font-family: system-ui, sans-serif; }
       __slot1 = [];
       let __inst3_next = [];
       let __inst3_i = 0;
-      for (const k of ks) {
+      for (const k of [1, 2]) {
         let __n5 = null;
         if (__inst3_live.length > __inst3_i) {
           __n5 = __inst3_live[__inst3_i];
@@ -1134,18 +1091,6 @@ body { font-family: system-ui, sans-serif; }
     }
     let __n6 = document.createElement("div");
     __n6.setAttribute("style", "display:flex;flex-direction:row");
-    let __n18 = document.createElement("button");
-    __n18.disabled = false;
-    __n18.addEventListener("click", () => {
-      ks.push(3);
-      __renderSlot1(__n6);
-    });
-    __n18.addEventListener("contextmenu", () => {
-    });
-    let __n19 = document.createElement("span");
-    __n19.textContent = "more";
-    __n18.appendChild(__n19);
-    __n6.appendChild(__n18);
     __renderSlot1(__n6);
     __root.appendChild(__n6);
     return {
@@ -1260,8 +1205,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:eb178788cbfafcf9e1125edffa52bc2b
+pass sha256:c57e712dcd2649dc57beab34304e31ff
 -- run/go/gtk4 --
-pass sha256:db02ba369cc388914cbe98d1fbd34d54
+pass sha256:3b4e6bf672350c9859b9c6d9da7399ba
 -- run/none/html --
-pass sha256:8bcbffd30d98a21148f2b9ebc4402973
+pass sha256:49e980049dd90cece8f9eaa9a3c06bbd

@@ -622,8 +622,28 @@ func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	switch n := stmt.(type) {
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
+	case *ir.CallStmt:
+		if local := localSlotRenderCall(n, t.isLocalRef); local != nil {
+			return []ir.Stmt{local}
+		}
 	}
 	return []ir.Stmt{stmt}
+}
+
+// localSlotRenderCall rewrites a render slot call whose container is a local
+// of this scope -- a slot nothing but the ctor renders -- to pass the local,
+// which the language context would otherwise spell as a field.
+func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStmt {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return nil
+	}
+	id, ok := cs.Call.Args[0].Value.(*ir.Ident)
+	if !ok || !isLocal(id.Name) {
+		return nil
+	}
+	call := *cs.Call
+	call.Args = []ir.CallArg{{Name: cs.Call.Args[0].Name, Value: localElementRef(id.Name)}}
+	return &ir.CallStmt{Call: &call}
 }
 
 // recordInvoker notes one (id, event) pair for the test-invoker methods emitted
