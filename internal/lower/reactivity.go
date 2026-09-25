@@ -172,6 +172,14 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
+	if !caps.InlineSlots {
+		for _, comp := range pkg.Components {
+			comp.Body = st.slotFlows(comp.Body)
+		}
+		for _, w := range ir.AllWindows(pkg) {
+			w.Children = st.slotFlows(w.Children)
+		}
+	}
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}

@@ -1737,6 +1737,15 @@ android, fyne flattens at render time because the tree is what a reactive
 program mutates, and bubbletea flattens at compile time because lipgloss
 returns a string with reset sequences in it.
 
+**A reactive `if` or `for` among spans** is a render slot only where a span
+can hold one, which is html's `display:contents` wrapper and what
+`#[gen.can(inlineSlots)]` says. Withheld, `slotFlows` makes the flow holding it
+the slot -- wrapped in a one-pass loop over a const, which re-renders its body
+on any state it reads -- and the `if` inside is an ordinary one: fyne builds
+the flow around it, gtk4 guards the runs in its markup with `gtk4rt.When` and
+refuses a `for` there, a label's markup being one expression
+(`testdata/markup_reactive_span.txtar`).
+
 `markup.SpanStyle` is its own struct and not `ui.Style` for two reasons. A run
 has no box, so most of `ui.Style` would type-check on a span and do nothing
 except on html, where a `<span>` takes padding. And flattening needs a third

@@ -600,6 +600,14 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 
 // ---- Rich text ----
 
+// When is the markup of runs an `if` in a flow guards: s when cond holds.
+func When(cond bool, s string) string {
+	if cond {
+		return s
+	}
+	return ""
+}
+
 // Escape is Pango markup's escaping, for the words an author wrote.
 //
 // A flow's markup is assembled as a Go string, so every run that is not a

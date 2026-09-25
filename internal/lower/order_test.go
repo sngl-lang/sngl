@@ -176,6 +176,10 @@ var soleGate = map[string][]string{
 	// runtime. See TestASlotChildNeedsBothCapabilities.
 	"InsertBefore": nil,
 
+	// NoReactivity reads it to choose where a reactive `if` among spans
+	// renders; it turns no pass on.
+	"InlineSlots": nil,
+
 	// Also gates nothing: the offload pass is asked for by NoAsyncCalls and
 	// reads this itself to choose between the rewrite and refusing the
 	// program, so a target that can post back still needs the first flag.
