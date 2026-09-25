@@ -1375,12 +1375,21 @@ func (gc *GoIRContext) catchAtCall(call *ir.Call) []string {
 			head = "if _, __err := " + raw + "; __err != nil {"
 		}
 		lines := []string{head}
+		indent := "\t"
+		wrap := ir.BlockReturns(handler.Func.Block)
+		if wrap {
+			lines = append(lines, "\tfunc() {")
+			indent = "\t\t"
+		}
 		if param != "" {
 			lines = append(lines,
-				"\t"+param+" := ErrorEvent{Message: __err.Error()}",
-				"\t_ = "+param)
+				indent+param+" := ErrorEvent{Message: __err.Error()}",
+				indent+"_ = "+param)
 		}
-		lines = append(lines, body("\t")...)
+		lines = append(lines, body(indent)...)
+		if wrap {
+			lines = append(lines, "\t}()")
+		}
 		return append(lines, "}")
 	}
 	bind := "_"
