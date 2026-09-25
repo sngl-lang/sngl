@@ -65,10 +65,10 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
 					return err
 				}
-				// newTestComponent is the constructor LowerTestFile generates
-				// against; bubbletea's Model is a value type so we just call
-				// New() and let Go's local-addressability handle `c.field = …`.
-				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() Model { return New() }\n\nfunc main() { testagent.Main() }\n")
+				// A pointer although the Model is a value: the test's local and
+				// the one a snapshot renders are copies of the instance, and a
+				// value would snapshot the state the test began with.
+				mainSrc := []byte("package " + c.cfg.Package + "\n\nimport \"git.duckfam.us/jonathan/sngl/pkg/go/testagent\"\n\nfunc newTestComponent() *Model { m := New(); return &m }\n\nfunc main() { testagent.Main() }\n")
 				if err := writeRawFile(sink, "agent_main.go", mainSrc); err != nil {
 					return err
 				}
@@ -76,12 +76,12 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 
 import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
 
-var currentModel Model
+var currentModel *Model
 
-func setCurrentTestModel(m Model) { currentModel = m }
-func currentTestModel() Model     { return currentModel }
+func setCurrentTestModel(m *Model) { currentModel = m }
+func currentTestModel() *Model     { return currentModel }
 
-func snapshotBytes(m Model) (string, []byte, error) {
+func snapshotBytes(m *Model) (string, []byte, error) {
 	return "text/ansi", []byte(m.View().Content), nil
 }
 

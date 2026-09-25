@@ -29,6 +29,9 @@ type irViewContext struct {
 	// Go variable holding its rendered box plus its placement/dim, and
 	// emitIRView composites them over the joined content at the end.
 	overlays []pendingOverlay
+
+	focusPos  map[string]bool
+	canvasSeq map[string]bool
 }
 
 // pendingOverlay records one Overlay primitive deferred out of the inline join
@@ -194,7 +197,16 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
-	vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	switch child.(type) {
+	case *ir.If, *ir.For:
+		// A branch not taken or a loop over nothing renders nothing, and
+		// joining its empty string would put a blank line in the box.
+		vc.line("if %s != \"\" {", childVar)
+		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		vc.line("}")
+	default:
+		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	}
 }
 
 // renderBody emits a body as one value in `single`, or as a list of parts
@@ -254,6 +266,7 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 			return // see rendersPart
 		}
 		vc.renderNode(s, resultVar)
+		vc.countFocusPos(s)
 	case *ir.If:
 		if s.FromTernary {
 			// NoTernary hoists `var __ltN` + this value-only If (Assign bodies,
@@ -307,6 +320,7 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
+	vc.declareLoopCounters(s)
 	iterExpr := vc.gc.EvalExpr(s.Iter)
 
 	// Defer the loop header to the Go language driver so loop semantics

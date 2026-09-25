@@ -1,0 +1,85 @@
+# What bubbletea renders for a recursive component -- which survives as a
+# render method, since nothing can splice a cycle -- read off the snapshot of
+# the running program.
+#
+# Three defects, each visible only in the rendered text:
+#
+# - A snapshot rendered the Model the test began with. The Model is a value,
+#   and the one registered for the snapshot and the test's own local were two
+#   copies of it, so `c.deeper.click()` changed a copy nobody drew: `level 3`
+#   never appeared.
+# - Children handed to a render method were read for nodes only, so the slot
+#   insertion `frame` forwards down its own recursion rendered nothing, and
+#   ALPHA appeared once where each of the three levels shows it.
+# - A branch not taken still joined its empty string into the box, which is a
+#   blank line below the innermost level.
+
+[!exec:go] skip 'go toolchain required'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=bubbletea app.sngl
+stdout 'PASS'
+grep '(?s)top *\nlevel 3 *\nlevel 2 *\nlevel 1 *\n> deeper' app.sngl.snapshots/deeper.ansi
+grep -count=3 'ALPHA' app.sngl.snapshots/forwarded.ansi
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { go { bubbletea } }
+
+component frame(n int, content ...component node) node {
+    vbox {
+        content
+        if n > 0 {
+            frame(n=n - 1) {
+                text(value="level {n}")
+            }
+        }
+    }
+}
+
+component forward(n int, content ...component node) node {
+    vbox {
+        content
+        if n > 0 {
+            forward(n=n - 1) {
+                content
+            }
+        }
+    }
+}
+
+component main node {
+    var depth = 2
+
+    vbox {
+        frame(n=depth) {
+            text(value="top")
+        }
+        button #deeper(text="deeper", @click { depth += 1 })
+    }
+}
+
+component forwarded node {
+    var depth = 2
+
+    vbox {
+        forward(n=depth) {
+            text(value="ALPHA")
+        }
+    }
+}
+
+func testDeeper(t Test, c main) {
+    c.deeper.click()
+    t.snapshot("deeper")
+}
+
+func testForwarded(t Test, c forwarded) {
+    t.snapshot("forwarded")
+}
+
+window {
+    main
+}

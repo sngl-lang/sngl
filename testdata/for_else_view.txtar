@@ -209,7 +209,9 @@ func (m Model) View() tea.View {
 		}
 		content_1 = strings.Join(content_1Items, "\n")
 	}
-	contentChildren = append(contentChildren, content_1)
+	if content_1 != "" {
+		contentChildren = append(contentChildren, content_1)
+	}
 	var content_2 string
 	if 0 >= m.n__inst0 {
 		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("NO TICKS"))
@@ -222,7 +224,9 @@ func (m Model) View() tea.View {
 		}
 		content_2 = strings.Join(content_2Items, "\n")
 	}
-	contentChildren = append(contentChildren, content_2)
+	if content_2 != "" {
+		contentChildren = append(contentChildren, content_2)
+	}
 	content = lipgloss.JoinVertical(lipgloss.Left, contentChildren...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -760,7 +764,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a0e51c4b587ba1cbaa049903c2954345
+pass sha256:5c1a0fef9fd7662ceb4faeda0ff5b2b3
 -- run/go/fyne --
 pass sha256:d5aec909dcbbf4da93c68d2d913fe88c
 -- run/go/gtk4 --

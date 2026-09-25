@@ -14,9 +14,8 @@ var passFocusOrder = pass{
 	apply:   lowerFocusOrder,
 }
 
-// focusSlot is one position in the tab-order sequence.
-// It is either a single static focusable node or a for-loop
-// whose body contains focusable nodes.
+// focusSlot is one position in the tab-order sequence: a single static
+// focusable node, or the outermost for-loop whose subtree holds any.
 type focusSlot struct {
 	isLoop  bool
 	slotIdx int
@@ -24,10 +23,15 @@ type focusSlot struct {
 	loop    *loopSlotInfo
 }
 
+// A loop slot's cursor is an ordinal over the focusable nodes the loop
+// renders, in render order, whatever loops and branches they sit under inside
+// it. The view counts them into posVar as it renders; lenFunc counts them the
+// same way for navigation.
 type loopSlotInfo struct {
 	forStmt   *ir.For
-	cursorVar *ir.Var     // __focusLoopN_cursor
-	keyVar    *ir.LoopVar // synthetic loop key (integer index)
+	cursorVar *ir.Var // __focusLoopN_cursor
+	posVar    *ir.LoopVar
+	lenFunc   *ir.Func
 }
 
 func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
@@ -50,14 +54,6 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		return
 	}
 
-	// Ensure every loop slot has an integer key variable.
-	for i := range slots {
-		if slots[i].isLoop {
-			ensureLoopKey(slots[i].loop, i)
-		}
-	}
-
-	// __focusID tracks which slot is active.
 	focusIDVar := &ir.Var{
 		Name:        "__focusID",
 		Type:        ir.TypInt,
@@ -69,7 +65,6 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		return &ir.Ident{Name: "__focusID", Type: ir.TypInt, Sym: focusIDVar, Synthesized: true}
 	}
 
-	// Per-loop cursor vars (__focusLoopN_cursor).
 	for i := range slots {
 		s := &slots[i]
 		if !s.isLoop {
@@ -78,49 +73,24 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		name := fmt.Sprintf("__focusLoop%d_cursor", s.slotIdx)
 		cv := &ir.Var{Name: name, Type: ir.TypInt, Init: intLiteralLit(0), Synthesized: true}
 		s.loop.cursorVar = cv
+		s.loop.posVar = &ir.LoopVar{Name: fmt.Sprintf("__focusPos%d", s.slotIdx), Type: ir.TypInt}
 		*vars = append(*vars, cv)
 	}
 
-	// Inject __focused bool prop on every focusable node.
 	injectFocusedProps(stmts, slots, focusIDIdent)
 
-	// Synthesize __focusNext / __focusPrev.
+	for i := range slots {
+		if slots[i].isLoop {
+			fn := buildLoopLenFunc(slots[i])
+			slots[i].loop.lenFunc = fn
+			*funcs = append(*funcs, fn)
+		}
+	}
+
 	*funcs = append(*funcs,
 		buildFocusNav("__focusNext", slots, focusIDIdent, true),
 		buildFocusNav("__focusPrev", slots, focusIDIdent, false),
 	)
-}
-
-// ensureLoopKey makes sure the for-loop has an integer key (index) variable
-// that can be compared against the cursor.
-//
-// Only the two-variable list head arrives with an integer Key. The others are
-// rewritten into that form -- index in Key, whatever they bound in Value -- so
-// every consumer downstream keeps reading Key as the index. A map head has no
-// free position to rewrite into, and needs none: the checker refuses a map
-// loop in a view body, so one cannot reach a focus slot.
-func ensureLoopKey(ls *loopSlotInfo, slotIdx int) {
-	f := ls.forStmt
-	if f.Value == "" {
-		// Value "_" when the head bound nothing: from here on the loop is
-		// two-variable and the element position must name something.
-		f.Value, f.ValueSym = f.Key, f.KeySym
-		if f.Value == "" {
-			f.Value = "_"
-		}
-		f.Key, f.KeySym = fmt.Sprintf("__focusIdx%d", slotIdx), nil
-	}
-	if f.KeySym != nil {
-		ls.keyVar = f.KeySym
-		return
-	}
-	// The checker sets KeySym whenever Key is named, so this is a loop some
-	// other pass built, or the index just synthesized above. Store the symbol
-	// as well as holding it: an identifier the pass emits below refers to this
-	// one, and a symbol the statement does not carry is a symbol nothing else
-	// can reach.
-	ls.keyVar = &ir.LoopVar{Name: f.Key, Type: ir.TypInt}
-	f.KeySym = ls.keyVar
 }
 
 // ---- slot gathering ----
@@ -141,14 +111,13 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 			}
 			walkForSlots(n.Children, slots)
 		case *ir.For:
-			if hasFocusableNodes(n.Body) {
+			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
 				idx := len(*slots)
 				*slots = append(*slots, focusSlot{
 					isLoop:  true,
 					slotIdx: idx,
 					loop:    &loopSlotInfo{forStmt: n},
 				})
-				// Do not recurse further — the loop occupies one slot.
 			}
 		case *ir.If:
 			walkForSlots(n.Body, slots)
@@ -163,17 +132,17 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 	}
 }
 
-// hasFocusableNodes reports whether stmts contain at least one focusable
-// NodeInst (directly, or through If/PlatformFilter/children — but not inside
-// nested For loops, which are their own slots).
+// hasFocusableNodes reports whether stmts hold a focusable NodeInst anywhere
+// below them, nested loops included.
 func hasFocusableNodes(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if nodeEffectiveFocusable(n) {
+			if nodeEffectiveFocusable(n) || hasFocusableNodes(n.Children) {
 				return true
 			}
-			if hasFocusableNodes(n.Children) {
+		case *ir.For:
+			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
 				return true
 			}
 		case *ir.If:
@@ -192,7 +161,6 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 			if hasFocusableNodes(n.Children) {
 				return true
 			}
-			// *ir.For: intentionally not recursed — nested loops are their own slots.
 		}
 	}
 	return false
@@ -201,7 +169,6 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 // ---- prop injection ----
 
 func injectFocusedProps(stmts []ir.Stmt, slots []focusSlot, focusIDIdent func() *ir.Ident) {
-	// Build lookup maps.
 	loopSlots := map[*ir.For]*focusSlot{}
 	staticSlots := map[*ir.NodeInst]*focusSlot{}
 	for i := range slots {
@@ -226,21 +193,12 @@ func walkInjectFocused(
 		switch n := s.(type) {
 		case *ir.NodeInst:
 			if slot, ok := staticSlots[n]; ok {
-				// Static focusable: __focused = __focusID == slotIdx
 				n.Props = append(n.Props, ir.Arg{
 					Name:  "__focused",
 					Value: focusEqExpr(focusIDIdent(), slot.slotIdx),
 				})
 			} else if inLoop != nil && nodeEffectiveFocusable(n) {
-				// Loop-body focusable: __focused = __focusID == S && cursor == key
 				ls := inLoop.loop
-				cursorIdent := &ir.Ident{
-					Name:        ls.cursorVar.Name,
-					Type:        ir.TypInt,
-					Sym:         ls.cursorVar,
-					Synthesized: true,
-				}
-				keyIdent := &ir.Ident{Name: ls.keyVar.Name, Type: ls.keyVar.Type, Sym: ls.keyVar}
 				n.Props = append(n.Props, ir.Arg{
 					Name: "__focused",
 					Value: &ir.Binary{
@@ -250,8 +208,8 @@ func walkInjectFocused(
 						Right: &ir.Binary{
 							Type:  ir.TypBool,
 							Op:    ast.BinEq,
-							Left:  cursorIdent,
-							Right: keyIdent,
+							Left:  &ir.Ident{Name: ls.cursorVar.Name, Type: ir.TypInt, Sym: ls.cursorVar, Synthesized: true},
+							Right: &ir.Ident{Name: ls.posVar.Name, Type: ir.TypInt, Sym: ls.posVar, Synthesized: true},
 						},
 					},
 				})
@@ -259,11 +217,12 @@ func walkInjectFocused(
 			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
 
 		case *ir.For:
-			if slot, ok := loopSlots[n]; ok {
-				walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot)
-			} else {
-				walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
+			slot := inLoop
+			if s, ok := loopSlots[n]; ok {
+				slot = s
 			}
+			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, slot)
+			walkInjectFocused(n.Else, focusIDIdent, loopSlots, staticSlots, slot)
 
 		case *ir.If:
 			walkInjectFocused(n.Body, focusIDIdent, loopSlots, staticSlots, inLoop)
@@ -286,6 +245,71 @@ func focusEqExpr(left ir.Expr, slotIdx int) *ir.Binary {
 		Left:  left,
 		Right: intLiteralLit(slotIdx),
 	}
+}
+
+// buildLoopLenFunc counts what a loop slot renders focusable right now: the
+// slot's loop with every branch and nested loop kept and each focusable node
+// replaced by an increment. A slot's children render nothing on this
+// platform's view, so their nodes are not counted.
+func buildLoopLenFunc(slot focusSlot) *ir.Func {
+	ls := slot.loop
+	sym := &ir.Var{Name: "__focusCount", Type: ir.TypInt, Synthesized: true}
+	ref := func() *ir.Ident {
+		return &ir.Ident{Name: sym.Name, Type: ir.TypInt, Sym: sym, Synthesized: true}
+	}
+	body := []ir.Stmt{&ir.LocalVar{Name: sym.Name, Type: ir.TypInt, Init: intLiteralLit(0), Sym: sym}}
+	body = append(body, focusCountStmts([]ir.Stmt{ls.forStmt}, ref)...)
+	body = append(body, &ir.Return{Value: ref()})
+	return &ir.Func{
+		Name:        fmt.Sprintf("__focusLoop%d_len", slot.slotIdx),
+		Return:      ir.TypInt,
+		Synthesized: true,
+		Block:       body,
+	}
+}
+
+func focusCountStmts(stmts []ir.Stmt, count func() *ir.Ident) []ir.Stmt {
+	var out []ir.Stmt
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if nodeEffectiveFocusable(n) {
+				out = append(out, &ir.Assign{
+					Target: count(),
+					Op:     ast.AssignSet,
+					Value:  &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: count(), Right: intLiteralLit(1)},
+				})
+			}
+			out = append(out, focusCountStmts(n.Children, count)...)
+		case *ir.For:
+			body, els := focusCountStmts(n.Body, count), focusCountStmts(n.Else, count)
+			if len(body) == 0 && len(els) == 0 {
+				continue
+			}
+			loop := *n
+			loop.Iter = deepCloneExpr(n.Iter)
+			loop.Body, loop.Else = body, els
+			out = append(out, &loop)
+		case *ir.If:
+			if n.FromTernary {
+				continue
+			}
+			body, els := focusCountStmts(n.Body, count), focusCountStmts(n.Else, count)
+			if len(body) == 0 && len(els) == 0 {
+				continue
+			}
+			out = append(out, &ir.If{Cond: deepCloneExpr(n.Cond), Body: body, Else: els})
+		case *ir.ErrorBoundary:
+			out = append(out, focusCountStmts(n.Children, count)...)
+		case *ir.ContextProvider:
+			out = append(out, focusCountStmts(n.Children, count)...)
+		}
+	}
+	return out
+}
+
+func callLoopLen(ls *loopSlotInfo) *ir.Call {
+	return &ir.Call{Type: ir.TypInt, Func: ls.lenFunc}
 }
 
 // ---- navigation functions ----
@@ -325,7 +349,7 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 			lenVar := &ir.LocalVar{
 				Name: "__focusLen",
 				Type: ir.TypInt,
-				Init: callListLength(ls.forStmt.Iter),
+				Init: callLoopLen(ls),
 				Sym:  lenSym,
 			}
 			lenIdent := func() *ir.Ident {
@@ -458,7 +482,7 @@ func stmtsMoveTo(slots []focusSlot, slotIdx int, focusIDIdent func() *ir.Ident, 
 	lenVar := &ir.LocalVar{
 		Name: "__focusLen",
 		Type: ir.TypInt,
-		Init: callListLength(ls.forStmt.Iter),
+		Init: callLoopLen(ls),
 		Sym:  lenSym,
 	}
 	return []ir.Stmt{

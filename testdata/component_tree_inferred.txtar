@@ -227,7 +227,9 @@ func (m Model) View() tea.View {
 	if m.on {
 		content_2 = lipgloss.NewStyle().Render(fmt.Sprint("on"))
 	}
-	contentChildren = append(contentChildren, content_2)
+	if content_2 != "" {
+		contentChildren = append(contentChildren, content_2)
+	}
 	var content_3 string
 	content_3 = lipgloss.NewStyle().Render(fmt.Sprint("g"))
 	contentChildren = append(contentChildren, content_3)
@@ -499,7 +501,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:af02a514dd032bab6770a6a3a273da9d
+pass sha256:718235c6381ae493e6cb1fd90b9ceccc
 -- run/kotlin/android --
 pass sha256:0eaf060962f139da7e2d9a73558928fb
 -- run/none/html --

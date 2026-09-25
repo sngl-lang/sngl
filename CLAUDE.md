@@ -1596,7 +1596,28 @@ one cell per copy (`perCopyCells`): a map keyed by the loops' indices
 temporary stored back. A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
-collected by nobody and never ran.
+collected by nobody and never ran. A recursion is never spliced, so state
+inside one -- the recursive component's own, or a stateful component written
+in its body -- has nowhere to live there and is refused with a position
+(`refuseStateInCycles`, `cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`);
+it used to reach the Model as a field nothing declared, or the view as an
+empty string.
+
+**A loop's focus stops are the focusable nodes it renders**, not its
+iterations. bubbletea's `passFocusOrder` makes the outermost `for` holding one
+a single slot whose cursor is an ordinal over those nodes, nested loops and
+taken branches included: the view counts them as it renders (`__focusPosN`),
+`__focusLoopN_len` counts them for Tab, and Update's case for a key walks the
+loop the same way and runs the handler of the node the cursor names
+(`bubbletea/focus.go`). The cursor was the iteration index, so two buttons in
+one iteration -- a spliced card and the child handed to it -- were one stop
+with two `case` arms, and a nested loop's buttons were unreachable
+(`bubbletea/focus_run_test.go`). A canvas under a loop is the same shape: its
+drawing reads the iteration's variables, so it is written inline as the
+rasteriser View hands tui rather than as a `_canvasDrawN` method, with a
+surface and a kitty image ID per copy, and the transmit reaches each copy
+through the same walk (`bubbletea/viewwalk.go`,
+`testdata/bubbletea_canvas_in_loop.txtar`).
 
 **An instance reaches the page through what holds it.** A fyne or gtk4 record
 holds its Model (`__model`), and a name its component does not declare -- the

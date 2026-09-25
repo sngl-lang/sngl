@@ -1,0 +1,64 @@
+# State inside a recursion is refused on bubbletea, with a position, rather
+# than emitted.
+#
+# bubbletea keeps no state of an instance's own, so a stateful component is
+# spliced where it is written with a cell per copy -- and a recursion is never
+# spliced: it is rendered as a function per call, which has nowhere to keep a
+# cell. A recursive component's own var reached the Model as a field nothing
+# declared (`m.hits undefined`), and a stateful component written in its body
+# reached the view as a node it drew as an empty string, silently.
+#
+# The same programs build on html, which keeps an instance's state in its
+# factory.
+
+! sngl generate --lang go --platform bubbletea --out out own.sngl
+stderr 'own.sngl:4:5: the recursive component "frame" declares state of its own \("hits"\)'
+
+! sngl generate --lang go --platform bubbletea --out out2 callee.sngl
+stderr 'callee.sngl:11:16: "Counter" has state of its own and is written in the recursive component "frame"'
+
+sngl generate --platform html --out out3 own.sngl
+sngl generate --platform html --out out4 callee.sngl
+
+-- own.sngl --
+import . "sngl:ui"
+
+component frame(n int) node {
+    var hits = 0
+
+    vbox {
+        button(text="level {n} {hits}", @click { hits += 1 })
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    frame(n=depth)
+}
+-- callee.sngl --
+import . "sngl:ui"
+
+component Counter node {
+    var hits = 0
+
+    button(text="{hits}", @click { hits += 1 })
+}
+
+component frame(n int) node {
+    vbox {
+        Counter()
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    frame(n=depth)
+}
