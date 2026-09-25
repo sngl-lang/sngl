@@ -1254,8 +1254,11 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
-		(*hoist.funcs)[i].Block = substituteVars((*hoist.funcs)[i].Block, provided)
-		(*hoist.funcs)[i].Block = renameIdents((*hoist.funcs)[i].Block, renames, symRenames)
+		fn := (*hoist.funcs)[i]
+		fn.Block = substituteVars(fn.Block, provided)
+		fn.Block = renameIdents(fn.Block, renames, symRenames)
+		fn.Reads = renameVarList(fn.Reads, symRenames)
+		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
 	body := substituteVars(deepCloneStmts(comp.Body), provided)
 	body = renameIdents(body, renames, symRenames)
@@ -1333,6 +1336,22 @@ func cloneVarShallow(v *ir.Var) *ir.Var {
 		c.Handlers = append(c.Handlers, &hc)
 	}
 	return &c
+}
+
+// renameVarList is vs with each var its clone renames, in a list of its own:
+// the clone shares the original's slice.
+func renameVarList(vs []*ir.Var, symRenames map[ir.Symbol]ir.Symbol) []*ir.Var {
+	if len(vs) == 0 {
+		return vs
+	}
+	out := make([]*ir.Var, len(vs))
+	for i, v := range vs {
+		out[i] = v
+		if r, ok := symRenames[v].(*ir.Var); ok {
+			out[i] = r
+		}
+	}
+	return out
 }
 
 func cloneFuncShallow(f *ir.Func) *ir.Func {

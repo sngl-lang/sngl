@@ -379,6 +379,8 @@ func cloneComponent(comp *ir.Component, name string, body []ir.Stmt) *ir.Compone
 	}
 	for _, f := range out.Funcs {
 		f.Block = renameIdents(f.Block, nil, syms)
+		f.Reads = renameVarList(f.Reads, syms)
+		f.Writes = renameVarList(f.Writes, syms)
 	}
 	out.Body = renameIdents(deepCloneStmts(body), nil, syms)
 	return &out
