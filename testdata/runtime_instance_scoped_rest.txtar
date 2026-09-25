@@ -313,7 +313,9 @@ func (m Model) View() tea.View {
 		part0_1Items = append(part0_1Items, part0_1Item)
 	}
 	part0_1 = strings.Join(part0_1Items, "\n")
-	part0Children = append(part0Children, part0_1)
+	if part0_1 != "" {
+		part0Children = append(part0Children, part0_1)
+	}
 	part0 = lipgloss.JoinVertical(lipgloss.Left, part0Children...)
 	parts = append(parts, part0)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
@@ -357,6 +359,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -371,6 +374,7 @@ type Model struct {
 	mounted      string
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
 	__inst0_live []*Card__slot0Instance
 
 	__n3 *fyne.Container
@@ -384,6 +388,7 @@ func New() *Model {
 	m.mounted = ""
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*Card__slot0Instance{}
 	return m
 }
@@ -393,6 +398,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*Card__slot0Instance{}
 	var __inst0_i int = 0
 	for _, i := range m.items {
@@ -416,7 +422,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n2)
 		__inst0_i = (__inst0_i + 1)
 		__n2__el := __n2.Root
-		__parent.Add(__n2__el)
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
 		m.__slot0 = append(m.__slot0, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -484,6 +490,7 @@ type Card__slot0Instance struct {
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
+	__slot0_at          fyne.CanvasObject
 	__n1                *widget.Label
 }
 
@@ -640,6 +647,7 @@ type Model struct {
 	mounted      string
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
 	__inst0_live []*Card__slot0Instance
 	__n3         gtk4rt.Handle
 	add          gtk4rt.Handle
@@ -653,6 +661,7 @@ func New() *Model {
 	m.mounted = ""
 	m.__root = nil
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*Card__slot0Instance{}
 	return m
 }
@@ -662,6 +671,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	__inst0_next := []*Card__slot0Instance{}
 	var __inst0_i int = 0
 	for _, i := range m.items {
@@ -685,7 +695,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, __n2)
 		__inst0_i = (__inst0_i + 1)
 		__n2__el := __n2.Root
-		gtk4rt.BoxAppend(parent, __n2__el)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
 		m.__slot0 = append(m.__slot0, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -718,6 +728,7 @@ type Card__slot0Instance struct {
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
+	__slot0_at          gtk4rt.Handle
 	__n1                gtk4rt.Handle
 }
 
@@ -747,6 +758,7 @@ func newCard__slot0Instance(__model *Model, start int, __p0 int, __on0 func(stri
 	gtk4rt.BoxAppend(__n4, c.__n1)
 	c.__effects0_settle()
 	c.Root = __n4
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -807,7 +819,15 @@ func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 	c.__prop___on0 = __v
 }
 
-func (c *Card__slot0Instance) Destroy() {}
+func (c *Card__slot0Instance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+}
 
 func (m *Model) Items() []int {
 	return m.items
@@ -1152,11 +1172,11 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f1dac5ab79a5dc4defa15d37c8fef70a
+pass sha256:0ce5d050c5955a01285142fe85fe1ff7
 -- run/go/fyne --
-pass sha256:753579b7260045c4d6a4f15e39106861
+pass sha256:402e9a97157478c3c7c172a279b2b827
 -- run/go/gtk4 --
-pass sha256:901eeb57c973329d66cb00b9e0c8c8ec
+pass sha256:753c84619186f82853fe6015790ea935
 -- run/kotlin/android --
 pass sha256:a39055ee90d4d0e248e1abd56df1628d
 -- run/none/html --

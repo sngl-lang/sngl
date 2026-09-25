@@ -37,13 +37,15 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	items   []string
-	__slot0 []fyne.CanvasObject
+	items      []string
+	__slot0    []fyne.CanvasObject
+	__slot0_at fyne.CanvasObject
 
 	__n2 *fyne.Container
 	__n3 *widget.Button
@@ -54,6 +56,7 @@ func New() *Model {
 	m := &Model{}
 	m.items = []string{"a", "b"}
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	return m
 }
 
@@ -62,12 +65,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	for _, it := range m.items {
 		__n0 := container.NewHBox()
 		__n1 := widget.NewLabel("")
 		__n1.SetText(("row " + it))
 		__n0.Add(__n1)
-		__parent.Add(__n0)
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
 		m.__slot0 = append(m.__slot0, __n0)
 	}
 }
@@ -107,4 +111,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:6ec2a398262fef437a40c9bfbd17f9a6
+pass sha256:de6eb00fc6b28403e626afba9cc56a11

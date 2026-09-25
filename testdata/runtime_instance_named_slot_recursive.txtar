@@ -238,7 +238,9 @@ func (m Model) renderFrame(n int, __depth int, label func(int) string) string {
 			result_1 = m.renderFrame((n - 1), (__depth + 1), result_1_label)
 		}
 	}
-	resultChildren = append(resultChildren, result_1)
+	if result_1 != "" {
+		resultChildren = append(resultChildren, result_1)
+	}
 	result = lipgloss.JoinVertical(lipgloss.Left, resultChildren...)
 	return result
 }
@@ -262,6 +264,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -338,8 +341,10 @@ type Frame__slot2Instance struct {
 	__prop___p0    int
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
 	__inst0_live   []*Frame__slot2Instance
 	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
 	__n4           *fyne.Container
 	__n0           *widget.Label
 }
@@ -385,6 +390,7 @@ func (c *Frame__slot2Instance) __renderSlot0(__parent *fyne.Container) {
 		__parent.Remove(__entry)
 	}
 	c.__slot0 = nil
+	c.__slot0_at = fynelayout.SlotAnchor(__parent, c.__slot0_at)
 	__inst0_next := []*Frame__slot2Instance{}
 	var __inst0_i int = 0
 	if c.__prop_n > 0 {
@@ -407,7 +413,7 @@ func (c *Frame__slot2Instance) __renderSlot0(__parent *fyne.Container) {
 			__inst0_next = append(__inst0_next, __n3)
 			__inst0_i = (__inst0_i + 1)
 			__n3__el := __n3.Root
-			__parent.Add(__n3__el)
+			fynelayout.InsertBefore(__parent, c.__slot0_at, __n3__el)
 			c.__slot0 = append(c.__slot0, __n3__el)
 		}
 	}
@@ -437,7 +443,9 @@ type Frame__slot0Instance struct {
 	__prop___p0    int
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
+	__slot0_at     fyne.CanvasObject
 	__slot1        []fyne.CanvasObject
+	__slot1_at     fyne.CanvasObject
 	__inst1_live   []*Frame__slot2Instance
 	__n6           *fyne.Container
 	__n1           *widget.Label
@@ -484,6 +492,7 @@ func (c *Frame__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 		__parent.Remove(__entry)
 	}
 	c.__slot1 = nil
+	c.__slot1_at = fynelayout.SlotAnchor(__parent, c.__slot1_at)
 	__inst1_next := []*Frame__slot2Instance{}
 	var __inst1_i int = 0
 	if c.__prop_n > 0 {
@@ -506,7 +515,7 @@ func (c *Frame__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 			__inst1_next = append(__inst1_next, __n5)
 			__inst1_i = (__inst1_i + 1)
 			__n5__el := __n5.Root
-			__parent.Add(__n5__el)
+			fynelayout.InsertBefore(__parent, c.__slot1_at, __n5__el)
 			c.__slot1 = append(c.__slot1, __n5__el)
 		}
 	}
@@ -602,8 +611,10 @@ type Frame__slot2Instance struct {
 	__prop___p0    int
 	__root         gtk4rt.Handle
 	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
 	__inst0_live   []*Frame__slot2Instance
 	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
 	__n4           gtk4rt.Handle
 	__n0           gtk4rt.Handle
 }
@@ -626,6 +637,7 @@ func newFrame__slot2Instance(__model *Model, n int, __depth int, __p0 int) *Fram
 	gtk4rt.BoxAppend(c.__n4, c.__n0)
 	c.__renderSlot0(c.__n4)
 	c.Root = c.__n4
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -651,6 +663,7 @@ func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	c.__slot0 = nil
+	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 	__inst0_next := []*Frame__slot2Instance{}
 	var __inst0_i int = 0
 	if c.__prop_n > 0 {
@@ -673,7 +686,7 @@ func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
 			__inst0_next = append(__inst0_next, __n3)
 			__inst0_i = (__inst0_i + 1)
 			__n3__el := __n3.Root
-			gtk4rt.BoxAppend(parent, __n3__el)
+			gtk4rt.InsertBefore(parent, c.__slot0_at, __n3__el)
 			c.__slot0 = append(c.__slot0, __n3__el)
 		}
 	}
@@ -686,12 +699,26 @@ func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
 	c.__inst0_live = __inst0_next
 }
 
-func (c *Frame__slot2Instance) Destroy() {
+func (c *Frame__slot2Instance) teardown() {
 	for __inst0_live_di, _ := range c.__inst0_live {
 		var __inst0_live_dj int = ((len(c.__inst0_live) - 1) - __inst0_live_di)
 		c.__inst0_live[__inst0_live_dj].Destroy()
 	}
 	c.__inst0_live = []*Frame__slot2Instance{}
+}
+
+func (c *Frame__slot2Instance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
 }
 
 // Frame__slot0Instance is one live instance of the frame__slot0 component.
@@ -703,7 +730,9 @@ type Frame__slot0Instance struct {
 	__prop___p0    int
 	__root         gtk4rt.Handle
 	__slot0        []gtk4rt.Handle
+	__slot0_at     gtk4rt.Handle
 	__slot1        []gtk4rt.Handle
+	__slot1_at     gtk4rt.Handle
 	__inst1_live   []*Frame__slot2Instance
 	__n6           gtk4rt.Handle
 	__n1           gtk4rt.Handle
@@ -727,6 +756,7 @@ func newFrame__slot0Instance(__model *Model, n int, __depth int, __p0 int) *Fram
 	gtk4rt.BoxAppend(c.__n6, c.__n1)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -752,6 +782,7 @@ func (c *Frame__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	c.__slot1 = nil
+	c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
 	__inst1_next := []*Frame__slot2Instance{}
 	var __inst1_i int = 0
 	if c.__prop_n > 0 {
@@ -774,7 +805,7 @@ func (c *Frame__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 			__inst1_next = append(__inst1_next, __n5)
 			__inst1_i = (__inst1_i + 1)
 			__n5__el := __n5.Root
-			gtk4rt.BoxAppend(parent, __n5__el)
+			gtk4rt.InsertBefore(parent, c.__slot1_at, __n5__el)
 			c.__slot1 = append(c.__slot1, __n5__el)
 		}
 	}
@@ -787,12 +818,26 @@ func (c *Frame__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 	c.__inst1_live = __inst1_next
 }
 
-func (c *Frame__slot0Instance) Destroy() {
+func (c *Frame__slot0Instance) teardown() {
 	for __inst1_live_di, _ := range c.__inst1_live {
 		var __inst1_live_dj int = ((len(c.__inst1_live) - 1) - __inst1_live_di)
 		c.__inst1_live[__inst1_live_dj].Destroy()
 	}
 	c.__inst1_live = []*Frame__slot2Instance{}
+}
+
+func (c *Frame__slot0Instance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
 }
 
 func (m *Model) Depth() int {
@@ -949,16 +994,16 @@ body { font-family: system-ui, sans-serif; }
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
-      __renderSlot0(__n4);
+      __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot0(__n4);
+      __renderSlot0(__slotAnchor_0);
     }
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
-      __renderSlot0(__n4);
+      __renderSlot0(__slotAnchor_0);
     }
     function __renderSlot0(parent) {
       let __place0_prev = __slot0;
@@ -1023,7 +1068,10 @@ body { font-family: system-ui, sans-serif; }
     let __n0 = document.createElement("span");
     __n0.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
     __n4.appendChild(__n0);
-    __renderSlot0(__n4);
+    const __slotAnchor_0 = document.createElement("span");
+    __slotAnchor_0.style.display = "contents";
+    __n4.appendChild(__slotAnchor_0);
+    __renderSlot0(__slotAnchor_0);
     __root.appendChild(__n4);
     return {
       __root,
@@ -1050,16 +1098,16 @@ body { font-family: system-ui, sans-serif; }
     function __set_n(__v) {
       __prop_n = __v;
       __n1.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
-      __renderSlot1(__n6);
+      __renderSlot1(__slotAnchor_1);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot1(__n6);
+      __renderSlot1(__slotAnchor_1);
     }
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n1.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
-      __renderSlot1(__n6);
+      __renderSlot1(__slotAnchor_1);
     }
     function __renderSlot1(parent) {
       let __place2_prev = __slot1;
@@ -1124,7 +1172,10 @@ body { font-family: system-ui, sans-serif; }
     let __n1 = document.createElement("span");
     __n1.textContent = "level " + describe(__prop_n) + " of " + String(__prop___p0);
     __n6.appendChild(__n1);
-    __renderSlot1(__n6);
+    const __slotAnchor_1 = document.createElement("span");
+    __slotAnchor_1.style.display = "contents";
+    __n6.appendChild(__slotAnchor_1);
+    __renderSlot1(__slotAnchor_1);
     __root.appendChild(__n6);
     return {
       __root,
@@ -1152,12 +1203,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f89d09d97afc9948b48545467ae1eddf
+pass sha256:3c757c4d76bdf884e3b0f4bfcc118757
 -- run/go/fyne --
-pass sha256:eb17a3ad3d511ca4e478257508331cde
+pass sha256:bbc98442a967d7473b01ab7bd869cc9f
 -- run/go/gtk4 --
-pass sha256:27170db241bac729e41a5fc32b1f233e
+pass sha256:145620cd217012dc3fa60171a98ff35d
 -- run/kotlin/android --
 pass sha256:ca7cab5962d8c2e6751b8d7f68cd2176
 -- run/none/html --
-pass sha256:602d1aaa745405456e0a681d3d422512
+pass sha256:c06bd91019c8cee3314bf78f859828bd
