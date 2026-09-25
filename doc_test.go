@@ -321,4 +321,3 @@ func TestFrontPageExamplesCheck(t *testing.T) {
 		})
 	}
 }
-

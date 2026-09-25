@@ -20,13 +20,13 @@ import (
 // live on a `state` object: `state.<name>` (handled by the JS
 // renderer's evalIdent state-var path).
 type htmlTranslator struct {
-	jc       *javascript.JsIRContext
-	idTags   map[string]string // id ("__n0") → SNGL tag ("text")
+	jc     *javascript.JsIRContext
+	idTags map[string]string // id ("__n0") → SNGL tag ("text")
 	// creates holds each element's createElement call, whose tag a later
 	// `tag` write replaces: the lowering names the node, and a primitive whose
 	// element is a prop (flow, inline) is not named for it.
 	creates  map[string]*ir.Call
-	topLevel []string          // ids not yet AppendChild'd
+	topLevel []string // ids not yet AppendChild'd
 	// idToNode maps an element id to the NodeInst it was built from. A
 	// lowered node op names its node by id and carries nothing else, so this
 	// is where the op's element and its declaration are recovered — which
