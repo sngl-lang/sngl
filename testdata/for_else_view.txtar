@@ -271,41 +271,41 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __renderSlot0(container *fyne.Container) {
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
 	if len(m.rows__inst0) == 0 {
 		__n0 := widget.NewLabel("")
 		__n0.SetText("NOTHING YET")
-		container.Add(__n0)
+		__parent.Add(__n0)
 		m.__slot0 = append(m.__slot0, __n0)
 	} else {
 		for _, row := range m.rows__inst0 {
 			__n1 := widget.NewLabel("")
 			__n1.SetText(row)
-			container.Add(__n1)
+			__parent.Add(__n1)
 			m.__slot0 = append(m.__slot0, __n1)
 		}
 	}
 }
 
-func (m *Model) __renderSlot1(container *fyne.Container) {
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range m.__slot1 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot1 = nil
 	if 0 >= m.n__inst0 {
 		__n2 := widget.NewLabel("")
 		__n2.SetText("NO TICKS")
-		container.Add(__n2)
+		__parent.Add(__n2)
 		m.__slot1 = append(m.__slot1, __n2)
 	} else {
 		for range m.n__inst0 {
 			__n3 := widget.NewLabel("")
 			__n3.SetText("tick")
-			container.Add(__n3)
+			__parent.Add(__n3)
 			m.__slot1 = append(m.__slot1, __n3)
 		}
 	}
@@ -749,7 +749,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a0e51c4b587ba1cbaa049903c2954345
 -- run/go/fyne --
-pass sha256:468fe22c657c710125ae661543ac2423
+pass sha256:44fc71403dce8ad2e5fcfc6b3b84ea66
 -- run/go/gtk4 --
 pass sha256:fb6956b16a79096cc9f18ac50eb2b181
 -- run/kotlin/android --

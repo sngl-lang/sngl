@@ -1,0 +1,271 @@
+# A slot populated by name on a component built at run time renders, per
+# copy, reading both the caller's scope and the arguments the callee's
+# insertion hands it -- executed rather than read.
+#
+# testdata/runtime_instance_named_slot.txtar and its siblings show what every
+# target emits. What a golden cannot show is that each card's cells read that
+# card's item and its own rows, and that adding an item renders a card with
+# cells. `mounted` is how a target with no DOM says it: the effect sits in the
+# population, keyed by `{i}:{row}`, so it mounts once per cell of each card.
+# "1:1 1:11 2:2 2:12" is two cards each with its own two rows, and the third
+# card after the click adds "3:3 3:13".
+#
+# The interpreter is first because it read "1:1 1:11 2:1 2:11": it cached a
+# component's state per instantiation site, so every copy of a site under a
+# `for` shared the first copy's `rows`.
+#
+# bubbletea passes a slot to a render method as a function, and a recursion
+# forwarding `label(d * 10)` composes one per level at run time; the snapshot
+# is each level's own value. The optimizer's clone of a node used to share its
+# populations, which wrote the top level's content into the recursive one.
+# html, fyne and gtk4 refuse that shape (slot_population_runtime_instance.txt).
+#
+# android runs last, and its test composes the screen: the agent runner used
+# to compose nothing until a snapshot, so no effect mounted and no click had a
+# node to land on, and the test file did not import the click it called.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test app.sngl
+stdout 'PASS'
+
+sngl test --platform=bubbletea rebind.sngl
+stdout 'PASS'
+grep '(?s)level 3 .*level 20 .*level 100 .*level 0 ' rebind.sngl.snapshots/view.ansi
+
+[!chromium] skip 'the rendered DOM needs a real Chromium'
+sngl test --platform=html app.sngl
+stdout 'PASS'
+grep '(?s)more</span></button><div style="display: contents;"><span>item 1 row 1</span></div><div style="display: contents;"><span>item 1 row 11</span></div></div>.*more</span></button><div style="display: contents;"><span>item 2 row 2</span></div><div style="display: contents;"><span>item 2 row 12</span></div></div>.*more</span></button><div style="display: contents;"><span>item 3 row 3</span></div><div style="display: contents;"><span>item 3 row 13</span></div></div>' app.sngl.snapshots/cells.html
+sngl test --platform=html scoped.sngl
+stdout 'PASS'
+sngl test --platform=html entry.sngl
+stdout 'PASS'
+sngl test --platform=html rec.sngl
+stdout 'PASS'
+grep '(?s)<span>level 2</span>.*<span>level 1</span>.*<span>level 0</span>' rec.sngl.snapshots/levels.html
+
+sngl test --platform=fyne app.sngl
+stdout 'ok'
+sngl test --platform=fyne scoped.sngl
+stdout 'ok'
+sngl test --platform=fyne entry.sngl
+stdout 'ok'
+
+[!gtk4] stop 'gtk4 needs its development libraries to build'
+sngl test --platform=gtk4 app.sngl
+stdout 'ok'
+sngl test --platform=gtk4 scoped.sngl
+stdout 'ok'
+sngl test --platform=gtk4 entry.sngl
+stdout 'ok'
+
+[short] stop 'slow Robolectric round-trip; skipped in -short'
+[!android-jdk] stop 'no JDK in the range the Android toolchain supports'
+[!android-sdk] stop 'ANDROID_HOME / ANDROID_SDK_ROOT not set'
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component Card(start int, cell component(row int) node) node {
+    var rows = [start, start + 10]
+
+    vbox {
+        button(text="more", @click { rows.push(start + 100) })
+        for var r = rows {
+            cell(r) {
+                text(value="empty")
+            }
+        }
+    }
+}
+
+component main node {
+    var items = [1, 2]
+    var mounted = ""
+
+    vbox {
+        button #add(text="add", @click { items.push(3) })
+        for var i = items {
+            Card(start=i) {
+                component cell(row) {
+                    text(value="item {i} row {row}")
+                    effect(on="{i}:{row}", @mount(k) { mounted = mounted + k + " " })
+                }
+            }
+        }
+    }
+}
+
+func testCellsRenderPerCopy(t Test, c main) {
+    t.assert(c.mounted == "1:1 1:11 2:2 2:12 ")
+    c.add.click()
+    t.assert(c.mounted == "1:1 1:11 2:2 2:12 3:3 3:13 ")
+    t.snapshot("cells")
+}
+
+window {
+    main
+}
+-- scoped.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component Card(start int, children ...component(v int) node) node {
+    var k = start * 10
+
+    vbox {
+        text(value="card {k}")
+        children(k)
+    }
+}
+
+component main node {
+    var items = [1, 2]
+    var mounted = ""
+
+    vbox {
+        button #add(text="add", @click { items.push(3) })
+        for var i = items {
+            Card(start=i) {
+                component children(v) {
+                    text(value="scoped {i} {v}")
+                    effect(on="{i}:{v}", @mount(k) { mounted = mounted + k + " " })
+                }
+            }
+        }
+    }
+}
+
+func testScopedRestPerCopy(t Test, c main) {
+    t.assert(c.mounted == "1:10 2:20 ")
+    c.add.click()
+    t.assert(c.mounted == "1:10 2:20 3:30 ")
+}
+
+window {
+    main
+}
+-- entry.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component Card(start int, @report string, layout component(n int, content component node) node) node {
+    var k = start
+
+    vbox {
+        layout(k) {
+            component content {
+                text(value="content {k}")
+                effect(on=k, @mount(x) { report("c{x}") })
+            }
+        }
+    }
+}
+
+component main node {
+    var items = [1, 2]
+    var heads = ""
+    var contents = ""
+
+    vbox {
+        button #add(text="add", @click { items.push(3) })
+        for var i = items {
+            Card(start=i * 5, @report(s) { contents = contents + s + " " }) {
+                component layout(n, content) {
+                    vbox {
+                        text(value="head {i} {n}")
+                        effect(on="{i}:{n}", @mount(k) { heads = heads + k + " " })
+                        content
+                    }
+                }
+            }
+        }
+    }
+}
+
+func testEntryPerCopy(t Test, c main) {
+    t.assert(c.heads == "1:5 2:10 ")
+    t.assert(c.contents == "c5 c10 ")
+    c.add.click()
+    t.assert(c.heads == "1:5 2:10 3:15 ")
+    t.assert(c.contents == "c5 c10 c15 ")
+}
+
+window {
+    main
+}
+-- rec.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component frame(n int, label component(depth int) node) node {
+    vbox {
+        label(n)
+        if n > 0 {
+            frame(n=n - 1) {
+                component label(d) {
+                    label(d)
+                }
+            }
+        }
+    }
+}
+
+component main node {
+    var depth = 2
+
+    vbox {
+        frame(n=depth) {
+            component label(d) {
+                text(value="level {d}")
+            }
+        }
+    }
+}
+
+func testEachLevelShowsItsOwnDepth(t Test, c main) {
+    t.snapshot("levels")
+}
+
+window {
+    main
+}
+-- rebind.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+component frame(n int, label component(depth int) node) node {
+    vbox {
+        label(n)
+        if n > 0 {
+            frame(n=n - 1) {
+                component label(d) {
+                    label(d * 10)
+                }
+            }
+        }
+    }
+}
+
+component main node {
+    var depth = 3
+
+    vbox {
+        frame(n=depth) {
+            component label(d) {
+                text(value="level {d} ")
+            }
+        }
+    }
+}
+
+func testEachLevelComposesItsOwnSlot(t Test, c main) {
+    t.snapshot("view")
+}
+
+window {
+    main
+}

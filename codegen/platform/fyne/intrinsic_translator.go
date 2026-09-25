@@ -423,19 +423,19 @@ func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 }
 
 // qualifyParentExpr renames the slot-function parameter `parent` to the
-// type-asserted `container` local — mirrors the typed-slot signature
+// type-asserted slotParentParam local — mirrors the typed-slot signature
 // emitted by emitIRSlotFunc.
 func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
 		if id.Name == "parent" {
-			return &ir.Ident{Name: "container", Type: ir.TypDyn}
+			return &ir.Ident{Name: slotParentParam, Type: ir.TypDyn}
 		}
 		if t.isLocalRef(id.Name) {
 			return localElementRef(id.Name)
 		}
 		// Synthesized __nN parents from inline AppendChild calls in
 		// window/component bodies need an `m.` qualifier; slot Funcs use
-		// the typed `container` param instead.
+		// the typed slotParentParam instead.
 		if id.Synthesized && strings.HasPrefix(id.Name, "__n") {
 			return t.fieldRef(id.Name)
 		}
@@ -699,3 +699,7 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 func structuralProp(prop string) bool {
 	return prop == "spec" || prop == "style"
 }
+
+// slotParentParam is a render slot's container argument. Not `container`,
+// which names the fyne package a body building a box inside the slot calls.
+const slotParentParam = "__parent"

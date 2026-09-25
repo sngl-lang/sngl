@@ -73,9 +73,9 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __renderSlot0(container *fyne.Container) {
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
 	for _, it := range m.items__inst0 {
@@ -85,7 +85,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 			m.picked__inst0 = it
 			m.__n0.SetText(m.picked__inst0)
 		}
-		container.Add(__n1)
+		__parent.Add(__n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	}
 }
@@ -224,6 +224,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:ef6bc8b8f951f346dfb954cdd5145b08
+pass sha256:712f2cd5686dbd83773380267c57d234
 -- run/go/gtk4 --
 pass sha256:8ac288e087991f1972f8e16829ceb236

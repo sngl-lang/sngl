@@ -39,6 +39,9 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 			n.Else = sp.Substitute(n.Else, callsite)
 		case *NodeInst:
 			n.Children = sp.Substitute(n.Children, callsite)
+			for _, name := range SlotNames(n.Slots) {
+				n.Slots[name].Body = sp.Substitute(n.Slots[name].Body, callsite)
+			}
 		case *ErrorBoundary:
 			n.Children = sp.Substitute(n.Children, callsite)
 			n.Failed = sp.Substitute(n.Failed, callsite)
@@ -91,8 +94,14 @@ func (sp SlotSplicer) entries(stmts []Stmt, ins *SlotInst, callsite *NodeInst) [
 			n.Else = sp.entries(n.Else, ins, callsite)
 		case *NodeInst:
 			n.Children = sp.entries(n.Children, ins, callsite)
+			for _, name := range SlotNames(n.Slots) {
+				n.Slots[name].Body = sp.entries(n.Slots[name].Body, ins, callsite)
+			}
 		case *SlotInst:
 			n.Children = sp.entries(n.Children, ins, callsite)
+			for _, name := range SlotNames(n.Slots) {
+				n.Slots[name].Body = sp.entries(n.Slots[name].Body, ins, callsite)
+			}
 		case *ErrorBoundary:
 			n.Children = sp.entries(n.Children, ins, callsite)
 			n.Failed = sp.entries(n.Failed, ins, callsite)

@@ -403,9 +403,9 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __renderSlot0(container *fyne.Container) {
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
 	__inst0_next := []*RowInstance{}
@@ -425,7 +425,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n3)
 		__inst0_i = (__inst0_i + 1)
 		__n3__el := __n3.Root
-		container.Add(__n3__el)
+		__parent.Add(__n3__el)
 		m.__slot0 = append(m.__slot0, __n3__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -1129,7 +1129,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:05ce6c5ed233068b4b46cfc5306b6f43
 -- run/go/fyne --
-pass sha256:34f1b3851190e852275a5541083ef0a3
+pass sha256:49df877f52cdb7b6e37ac0492b97ff27
 -- run/go/gtk4 --
 pass sha256:19c6bd01ef6a695409afc50582e8e1d7
 -- run/kotlin/android --

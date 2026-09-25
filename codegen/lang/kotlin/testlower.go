@@ -390,6 +390,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		case "device":
 			b.WriteString("import androidx.activity.ComponentActivity\n")
 			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString(testActionImports)
 			b.WriteString("import androidx.test.ext.junit.runners.AndroidJUnit4\n")
 			b.WriteString("import org.junit.Assert.assertTrue\n")
 			b.WriteString("import org.junit.Rule\n")
@@ -401,6 +402,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		default: // robolectric
 			b.WriteString("import androidx.activity.ComponentActivity\n")
 			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString(testActionImports)
 			b.WriteString("import org.junit.Assert.assertTrue\n")
 			b.WriteString("import org.junit.Rule\n")
 			b.WriteString("import org.junit.Test\n")
@@ -416,6 +418,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		}
 	case TestEmitAgent:
 		b.WriteString("import androidx.compose.ui.test.junit4.ComposeContentTestRule\n")
+		b.WriteString(testActionImports)
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.T\n")
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.Registry\n\n")
 		// Test bodies emitted below reference `composeTestRule` for
@@ -526,3 +529,9 @@ type TestSurface struct {
 	// the cells the state object declares.
 	StateFields map[string]bool
 }
+
+// testActionImports are the extensions lowerEventTrigger calls. They are
+// extension functions, so a test file names them only by importing them.
+const testActionImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
+	"import androidx.compose.ui.test.performClick\n" +
+	"import androidx.compose.ui.test.performTextReplacement\n"

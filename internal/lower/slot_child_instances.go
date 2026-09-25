@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -156,8 +157,9 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 
 	// The handlers first, because lifting one takes an expression out of the
 	// subtree and the free-value scan should not then see what it reads.
-	st.liftHandlers(n, comp, inst)
-	st.liftValues(n, comp, inst, nil)
+	l := newLift(comp, inst)
+	st.liftHandlers(n, l, nil)
+	st.liftValues(n, l, nil)
 
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
@@ -172,32 +174,75 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // What crosses is the subscription, and passInstanceEvents makes that a prop
 // cell the render re-points -- which is the whole reason a handler on a
 // retained row does not go stale.
-func (st *slotChildSynth) liftHandlers(n any, comp *ir.Component, inst *ir.NodeInst) {
-	k := 0
+//
+// The event carries what the handler was handed and could not otherwise reach
+// from the site: the host event's own payload, and any of bound -- a scoped
+// slot's parameters, whose values exist only inside the component -- that its
+// body reads.
+func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 	_ = ir.Walk(n, func(node ir.Node) error {
-		node, ok := node.(*ir.NodeInst)
+		host, ok := node.(*ir.NodeInst)
 		if !ok {
 			return nil
 		}
-		host := node.(*ir.NodeInst)
 		for i := range host.Handlers {
 			h := &host.Handlers[i]
 			if h.Func == nil || len(h.Func.Block) == 0 {
 				continue
 			}
-			name := "__on" + strconv.Itoa(k)
-			k++
-			comp.Events = append(comp.Events, &ir.EventDecl{Name: name})
-			inst.Handlers = append(inst.Handlers, ir.EventHandler{
-				Name: name,
-				Func: h.Func,
-			})
+			name := "__on" + strconv.Itoa(l.events)
+			l.events++
+			reads := paramsRead(h.Func.Block, bound)
+			emit := &ir.Emit{Name: name}
+			relay := &ir.Func{Block: []ir.Stmt{emit}}
+			// Renamed, so a scoped slot's parameter of the same name is not
+			// what the splice binds in their place.
+			for j, p := range h.Func.Params {
+				fresh := &ir.Param{Name: name + "_" + strconv.Itoa(j), Type: p.Type}
+				relay.Params = append(relay.Params, fresh)
+				l.relayed[fresh] = true
+				emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: fresh.Name, Type: fresh.Type, Sym: fresh}})
+			}
+			for _, p := range reads {
+				emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
+			}
+			decl := &ir.EventDecl{Name: name}
+			lifted := h.Func
+			if len(emit.Args) > 0 {
+				moved := *h.Func
+				moved.Params = append(slices.Clip(h.Func.Params), reads...)
+				lifted = &moved
+				decl.Params = moved.Params
+			}
+			l.comp.Events = append(l.comp.Events, decl)
+			l.inst.Handlers = append(l.inst.Handlers, ir.EventHandler{Name: name, Func: lifted})
 			// What is left on the node inside the component is the emit: the
 			// host event still fires, and firing it is what calls out.
-			h.Func = &ir.Func{Block: []ir.Stmt{&ir.Emit{Name: name}}}
+			h.Func = relay
 		}
 		return nil
 	})
+}
+
+// paramsRead is each of params that stmts reads, in params' order.
+func paramsRead(stmts []ir.Stmt, params []*ir.Param) []*ir.Param {
+	if len(params) == 0 {
+		return nil
+	}
+	read := map[ir.Symbol]bool{}
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok && id.Sym != nil {
+			read[id.Sym] = true
+		}
+		return nil
+	})
+	var out []*ir.Param
+	for _, p := range params {
+		if read[p] {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // liftValues turns every free value the subtree reads into a prop.
@@ -218,42 +263,33 @@ func (st *slotChildSynth) liftHandlers(n any, comp *ir.Component, inst *ir.NodeI
 // what makes registerSlotBodyDeps enough on its own -- the call is a prop
 // expression in the slot body now, so the slot re-fires when the func's reads
 // change, and no second guard is needed for this boundary.
-func (st *slotChildSynth) liftValues(n any, comp *ir.Component, inst *ir.NodeInst, local map[ir.Symbol]bool) {
-	seen := map[string]*ir.Param{}
-	add := func(key string, typ *ir.Type, value ir.Expr) *ir.Param {
-		if p, known := seen[key]; known {
-			return p
-		}
-		p := &ir.Param{Name: "__p" + strconv.Itoa(len(seen)), Type: typ}
-		seen[key] = p
-		comp.Props = append(comp.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
-		inst.Props = append(inst.Props, ir.Arg{Name: p.Name, Value: value})
-		return p
-	}
-	uniq := 0
+//
+// A call reading one of local stays where it is, its reads lifted one by one:
+// its arguments name bindings the site does not have.
+func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 	_ = ir.Rewrite(n, func(node ir.Node) (ir.Node, error) {
 		switch x := node.(type) {
 		case *ir.Call:
 			typ := x.ExprType()
-			if typ == nil || typ.Kind == ir.TypeVoid || !st.readsReactiveState(x) {
+			if typ == nil || typ.Kind == ir.TypeVoid || !st.readsReactiveState(x) || readsAny(x, local) {
 				return node, nil
 			}
 			key, ok := exprKey(x)
 			if !ok {
 				// Undecidable equality: give it a key of its own rather than
 				// merge it with a call that may compute something else.
-				key = "call#" + strconv.Itoa(uniq)
-				uniq++
+				key = "call#" + strconv.Itoa(l.uniq)
+				l.uniq++
 			}
-			p := add(key, typ, x)
+			p := l.prop(key, typ, x)
 			// SkipDir: the call travels to the instantiation site whole, so
 			// its arguments stay written against the scope they were read in.
 			return &ir.Ident{Name: p.Name, Type: typ, Sym: p}, ir.SkipDir
 		case *ir.Ident:
-			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] {
+			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] || l.relayed[x.Sym] {
 				return node, nil
 			}
-			p := add("id("+identityOf(x.Sym)+")", x.Type, &ir.Ident{
+			p := l.prop("id("+identityOf(x.Sym)+")", x.Type, &ir.Ident{
 				// The read as the site wrote it, before this walk repoints it.
 				Name: x.Name, Type: x.Type, Sym: x.Sym,
 			})
@@ -263,6 +299,49 @@ func (st *slotChildSynth) liftValues(n any, comp *ir.Component, inst *ir.NodeIns
 		}
 		return node, nil
 	})
+}
+
+// lift is what lifting into one component has declared so far, so several
+// bodies lifted into it share one numbering and one prop per value.
+type lift struct {
+	comp *ir.Component
+	inst *ir.NodeInst
+	seen map[string]*ir.Param
+	// relayed is the parameters of the handlers left inside, which hand the
+	// host event's payload on and are nothing the site binds.
+	relayed map[ir.Symbol]bool
+	events  int
+	uniq    int
+}
+
+func newLift(comp *ir.Component, inst *ir.NodeInst) *lift {
+	return &lift{comp: comp, inst: inst, seen: map[string]*ir.Param{}, relayed: map[ir.Symbol]bool{}}
+}
+
+func (l *lift) prop(key string, typ *ir.Type, value ir.Expr) *ir.Param {
+	if p, known := l.seen[key]; known {
+		return p
+	}
+	p := &ir.Param{Name: "__p" + strconv.Itoa(len(l.seen)), Type: typ}
+	l.seen[key] = p
+	l.comp.Props = append(l.comp.Props, &ir.Prop{Name: p.Name, Type: p.Type, Sym: p})
+	l.inst.Props = append(l.inst.Props, ir.Arg{Name: p.Name, Value: value})
+	return p
+}
+
+func readsAny(e ir.Expr, syms map[ir.Symbol]bool) bool {
+	if len(syms) == 0 {
+		return false
+	}
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok && id.Sym != nil && syms[id.Sym] {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // readsReactiveState reports whether calling c reads state the owner holds --

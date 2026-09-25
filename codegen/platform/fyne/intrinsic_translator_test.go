@@ -99,7 +99,7 @@ func TestFyneTranslator_OnAppendChild(t *testing.T) {
 	parent := &ir.Ident{Name: "parent"}
 	child := synthNodeRef("__n0")
 	got := renderStmts(gc, tr.OnAppendChild(context.Background(), parent, child))
-	want := "container.Add(m.__n0)"
+	want := "__parent.Add(m.__n0)"
 	if got != want {
 		t.Errorf("OnAppendChild: got %q, want %q", got, want)
 	}
@@ -112,7 +112,7 @@ func TestFyneTranslator_OnRemoveChild(t *testing.T) {
 	parent := &ir.Ident{Name: "parent"}
 	child := &ir.Ident{Name: "__entry"}
 	got := renderStmts(gc, tr.OnRemoveChild(context.Background(), parent, child))
-	want := "container.Remove(__entry)"
+	want := "__parent.Remove(__entry)"
 	if got != want {
 		t.Errorf("OnRemoveChild: got %q, want %q", got, want)
 	}
@@ -191,8 +191,8 @@ func TestFyneStmtDispatch_SlotTeardownFor(t *testing.T) {
 	if !strings.Contains(got, "for _, __entry := range m.__slot0") {
 		t.Errorf("expected range over m.__slot0; got:\n%s", got)
 	}
-	if !strings.Contains(got, "container.Remove(__entry)") {
-		t.Errorf("expected container.Remove(__entry); got:\n%s", got)
+	if !strings.Contains(got, "__parent.Remove(__entry)") {
+		t.Errorf("expected __parent.Remove(__entry); got:\n%s", got)
 	}
 }
 
@@ -307,8 +307,8 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 	if !strings.Contains(got, "m.__n5 = widget.NewLabel") {
 		t.Errorf("expected widget.NewLabel inside For body; got:\n%s", got)
 	}
-	if !strings.Contains(got, "container.Add(m.__n5)") {
-		t.Errorf("expected container.Add inside For body; got:\n%s", got)
+	if !strings.Contains(got, "__parent.Add(m.__n5)") {
+		t.Errorf("expected __parent.Add inside For body; got:\n%s", got)
 	}
 	if strings.Contains(got, "lower.CreateNode") {
 		t.Errorf("expected intrinsic call NOT to leak through verbatim; got:\n%s", got)

@@ -368,12 +368,17 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	case *ir.NodeInst:
 		walkNode(n, used, walk)
 		walkStmts(n.Children, used, walk)
+		walkSlots(n.Slots, used, walk)
 	case *ir.CallStmt:
 		if n.Call != nil {
 			walkCallExpr(n.Call, used, walk)
 		}
 	case *ir.SlotInst:
+		for _, a := range n.Args {
+			walkExpr(a, used, walk)
+		}
 		walkStmts(n.Children, used, walk)
+		walkSlots(n.Slots, used, walk)
 	case *ir.Assign:
 		walkExpr(n.Target, used, walk)
 		walkExpr(n.Value, used, walk)
@@ -531,6 +536,7 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 		case *ir.NodeInst:
 			walkNode(n, nil, walk)
 			walkViewStmts(n.Children, walk, buildWalk)
+			walkSlots(n.Slots, nil, walk)
 		case *ir.If:
 			walkExpr(n.Cond, nil, buildWalk)
 			walkViewStmts(n.Body, walk, buildWalk)
@@ -552,6 +558,12 @@ func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
 		default:
 			walkStmt(s, nil, walk)
 		}
+	}
+}
+
+func walkSlots(slots map[string]*ir.SlotContent, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
+	for _, name := range ir.SlotNames(slots) {
+		walkStmts(slots[name].Body, used, walk)
 	}
 }
 

@@ -454,7 +454,7 @@ func (m *mounter) nodeInst(env *Env, inst *ir.NodeInst, path string) ([]*Node, e
 		node.Handlers = handlersOf(inst)
 		m.add(node)
 
-		child := env.componentEnv(inst.Component, inst)
+		child := env.componentEnv(inst.Component, inst, path)
 		child.RenderDepth = env.RenderDepth + 1
 		node.CompEnv = child
 		if !node.Expanded {

@@ -437,9 +437,9 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __renderSlot0(container *fyne.Container) {
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
 	__inst0_next := []*Card__slot0Instance{}
@@ -466,7 +466,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
 		__n4__el := __n4.Root
-		container.Add(__n4__el)
+		__parent.Add(__n4__el)
 		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -478,9 +478,9 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __renderSlot1(container *fyne.Container) {
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range m.__slot1 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot1 = nil
 	__inst1_next := []*CardInstance{}
@@ -499,7 +499,7 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 		__inst1_next = append(__inst1_next, __n5)
 		__inst1_i = (__inst1_i + 1)
 		__n5__el := __n5.Root
-		container.Add(__n5__el)
+		__parent.Add(__n5__el)
 		m.__slot1 = append(m.__slot1, __n5__el)
 	}
 	for __inst1_i_d, _ := range m.__inst1_live {
@@ -976,7 +976,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Card(slotContent: @Composable () -> Unit = {}) {
+fun Card(slotContent: (@Composable () -> Unit)? = null) {
     var hits by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier) {
@@ -985,7 +985,11 @@ fun Card(slotContent: @Composable () -> Unit = {}) {
         }, modifier = Modifier) {
             Text(text = ("hit " + hits.toString()), modifier = Modifier)
         }
-        slotContent()
+        if (slotContent != null) {
+            slotContent()
+        } else {
+            Text(text = "empty", modifier = Modifier)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -1224,10 +1228,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:eda4c4d271383f7551ec6d389f55106f
 -- run/go/fyne --
-pass sha256:159f555da60d57451181aeb4820c4d16
+pass sha256:29aa6722285bb4845918d50690abf607
 -- run/go/gtk4 --
 pass sha256:ec63526d6c0f719006a19188dbadd7c1
 -- run/kotlin/android --
-pass sha256:df031bc8ffb4dc70f6b4527061dd9e90
+pass sha256:fbc691f612bbce3a07107f67a8748b0c
 -- run/none/html --
 pass sha256:96f2f9d17baf3f04cae687b6a12fb531
