@@ -531,7 +531,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	}
 	if kc.IdentRewrites != nil {
 		if rewritten, ok := kc.IdentRewrites[name]; ok {
-			return rewritten
+			return funcReference(n.Sym, rewritten)
 		}
 	}
 	_, kind := kc.Ctx.Resolve(name)
@@ -539,8 +539,35 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameLocal:
 		return kc.Ctx.RenamedName(name)
 	default:
-		return name
+		return funcReference(n.Sym, name)
 	}
+}
+
+// funcReference spells a function named as a value as Kotlin's reference to
+// it, `::f` or `state::f`; anything else is returned as spelled.
+func funcReference(sym ir.Symbol, spelled string) string {
+	if !takesArgs(sym) {
+		return spelled
+	}
+	if i := strings.LastIndexByte(spelled, '.'); i >= 0 {
+		return spelled[:i] + "::" + spelled[i+1:]
+	}
+	return "::" + spelled
+}
+
+// takesArgs reports whether sym is a function a bare name can only be a
+// reference to: one with a parameter past its receiver, which no implicit
+// call reads as a getter.
+func takesArgs(sym ir.Symbol) bool {
+	fn, ok := sym.(*ir.Func)
+	if !ok {
+		return false
+	}
+	params := fn.Params
+	if len(params) > 0 && params[0].Receiver {
+		params = params[1:]
+	}
+	return len(params) > 0
 }
 
 // nativeCall emits a call to the Kotlin identifier a #[kotlin.native]

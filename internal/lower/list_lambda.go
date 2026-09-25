@@ -358,12 +358,20 @@ func (st *listLambdaState) liftListLambda(n *ir.Call) ([]ir.Stmt, ir.Expr) {
 		Args:   []ir.CallArg{{Value: itemIdent}},
 	}
 	// A named function handed over is called by name: as a callee expression
-	// the Go emitters spell a package function as a Model field.
+	// the Go emitters spell a package function as a Model field. A component
+	// method is called the way a sibling call is, its receiver left to be
+	// supplied.
 	if id, ok := fn.(*ir.Ident); ok {
-		if decl, ok := id.Sym.(*ir.Func); ok && decl.Receiver == "" && len(decl.Params) > 0 {
-			lambdaCall.Callee = nil
-			lambdaCall.Func = decl
-			lambdaCall.Args[0].Name = decl.Params[0].Name
+		if decl, ok := id.Sym.(*ir.Func); ok {
+			params := decl.Params
+			if decl.Receiver != "" && len(params) > 0 && params[0].Receiver {
+				params = params[1:]
+			}
+			if (decl.Receiver == "" || len(params) < len(decl.Params)) && len(params) > 0 {
+				lambdaCall.Callee = nil
+				lambdaCall.Func = decl
+				lambdaCall.Args[0].Name = params[0].Name
+			}
 		}
 	}
 

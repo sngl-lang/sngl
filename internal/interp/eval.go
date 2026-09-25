@@ -45,7 +45,7 @@ func newLambda(fn *ir.Func, env *Env) *LambdaValue {
 // did run.
 func (lv *LambdaValue) Call(args []any) (any, error) {
 	child := lv.env.Snapshot()
-	for i, p := range lv.fn.Params {
+	for i, p := range lv.params(args) {
 		if i < len(args) {
 			child.Set(p, args[i])
 		}
@@ -57,12 +57,22 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 
 // callWithEnv is like call but uses the provided env directly (no snapshot).
 func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
-	for i, p := range lv.fn.Params {
+	for i, p := range lv.params(args) {
 		if i < len(args) {
 			env.Set(p, args[i])
 		}
 	}
 	return env.underContext(lv.ctx, func() (any, error) { return env.execBlockForResult(lv.fn.Block) })
+}
+
+// params is what args bind to: a method taken as a value is handed its
+// arguments without the receiver, which the scope it was taken in holds.
+func (lv *LambdaValue) params(args []any) []*ir.Param {
+	ps := lv.fn.Params
+	if len(ps) > 0 && ps[0].Receiver && len(args) == len(ps)-1 {
+		return ps[1:]
+	}
+	return ps
 }
 
 // unitValue is the runtime representation of a unit value: a magnitude per
@@ -1167,10 +1177,7 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 			(effective == 1 && fn.Params[0].Receiver) {
 			return env.EvalUserFunc(fn, nil)
 		}
-		if fn.Receiver == "" {
-			return newLambda(fn, env), nil
-		}
-		return nil, fmt.Errorf("function %q requires arguments", fn.Name)
+		return newLambda(fn, env), nil
 	}
 	// A declaration the environment never bound but that carries its own
 	// value: a constant from a library package, which is in no list this
