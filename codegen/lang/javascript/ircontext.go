@@ -230,8 +230,10 @@ func (jc *JsIRContext) CallStmtLines(n *ir.CallStmt) []string {
 }
 
 // catchAtCall emits a call to a fallible function under a try whose catch is
-// the handler this site resolved to. Everything thrown is caught, since a
-// `fails` native reports its failure as an ordinary exception.
+// the handler this site resolved to. A raise is an Error carrying a `kind`;
+// anything else thrown is rethrown, as Go re-panics what is not an
+// ErrorEvent -- except from a `fails` native called here, whose failure is an
+// ordinary exception.
 func (jc *JsIRContext) catchAtCall(call *ir.Call) []string {
 	handler := ir.CatchingHandler(call)
 	if handler == nil || handler.Func == nil {
@@ -241,6 +243,9 @@ func (jc *JsIRContext) catchAtCall(call *ir.Call) []string {
 		"try {",
 		"\t" + jc.EvalExpr(call),
 		"} catch (__err) {",
+	}
+	if call.Func == nil || !call.Func.HasErrorReturn {
+		lines = append(lines, "\tif (__err?.kind === undefined) throw __err;")
 	}
 	if len(handler.Func.Params) > 0 {
 		lines = append(lines, fmt.Sprintf("\tlet %s = {message: __err?.message ?? String(__err), kind: __err?.kind ?? \"\"}", handler.Func.Params[0].Name))

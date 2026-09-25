@@ -304,19 +304,29 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 
 // catchAtCall emits a call to a fallible function under a try whose catch is
 // the handler this site resolved to. A raise arrives as SnglRaise carrying
-// its event; any other exception is a `fails` native's, and has no kind.
+// its event, and only that is caught, as Go re-panics what is not an
+// ErrorEvent -- except from a `fails` native called here, whose failure is
+// any exception and has no kind.
 func (kc *KtIRContext) catchAtCall(call *ir.Call) []string {
 	handler := ir.CatchingHandler(call)
 	if handler == nil || handler.Func == nil {
 		return nil
 	}
+	caught := "SnglRaise"
+	if call.Func != nil && call.Func.HasErrorReturn {
+		caught = "Exception"
+	}
 	lines := []string{
 		"try {",
 		"\t" + kc.EvalExpr(call),
-		"} catch (__err: Exception) {",
+		"} catch (__err: " + caught + ") {",
 	}
 	if len(handler.Func.Params) > 0 {
-		lines = append(lines, "\tval "+handler.Func.Params[0].Name+" = (__err as? SnglRaise)?.event ?: ErrorEvent(__err.message ?: \"\", \"\")")
+		event := "__err.event"
+		if caught != "SnglRaise" {
+			event = "ErrorEvent(__err.message ?: \"\", \"\")"
+		}
+		lines = append(lines, "\tval "+handler.Func.Params[0].Name+" = "+event)
 	}
 	lines = append(lines, kc.handlerBody(handler)...)
 	return append(lines, "}")

@@ -720,8 +720,11 @@ the error and execution continues after the call, which is what the
 interpreter's `dispatchRaise` does. Inside the callee a raise is the host's
 native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an
 `Error` with a `kind` on JavaScript — so each language's `catchAtCall` runs
-the call under a recover or a try and inlines the handler there; a `fails` Go
-native, which returns its error, gets an `if err` instead. Only a direct
+the call under a recover or a try and inlines the handler there, rethrowing
+anything that is not a raise; a `fails` native reports through its error
+result on Go, which gets an `if err` instead, and through any exception on
+JavaScript and Kotlin, which is caught whole
+(`call_error_handler_catches_raises_only.txtar`). Only a direct
 `error.raise` was answered before, so a raise one call down escaped every
 handler written for it (`testdata/call_error_handler.txtar`,
 `boundary_catches_called_raise.txtar`). A `return` in a handler ends the
