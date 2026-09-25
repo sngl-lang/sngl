@@ -348,6 +348,17 @@ body { font-family: system-ui, sans-serif; }
 </table>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { idx: 0 };
@@ -363,6 +374,8 @@ body { font-family: system-ui, sans-serif; }
     Object.assign(window, { testTableSelectedMutates });
   }
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
@@ -372,4 +385,4 @@ pass sha256:91e0a11b7e9ebf28dbfc51813796d7ed
 -- run/kotlin/android --
 pass sha256:05a402c234d27b9d436aca9e6fe9d493
 -- run/none/html --
-pass sha256:47dbb941ecae9d5a5e29ceb4bbca6626
+pass sha256:c00ddb7bd4278c5993333a4f67b45d6d

@@ -333,7 +333,32 @@ func (gc *GoIRContext) ListLit(n *ir.ListLit, elems []string) string {
 	if n.Type != nil && n.Type.Kind == ir.TypeList && len(n.Type.Elems) > 0 {
 		elemType = IRTypeToGo(n.Type.Elems[0])
 	}
-	return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
+	if !slices.ContainsFunc(n.Elems, isSpread) {
+		return "[]" + elemType + "{" + strings.Join(elems, ", ") + "}"
+	}
+	gc.RequireImport("slices")
+	var parts, run []string
+	flush := func() {
+		if len(run) > 0 {
+			parts = append(parts, "[]"+elemType+"{"+strings.Join(run, ", ")+"}")
+			run = nil
+		}
+	}
+	for i, el := range n.Elems {
+		if isSpread(el) {
+			flush()
+			parts = append(parts, elems[i])
+			continue
+		}
+		run = append(run, elems[i])
+	}
+	flush()
+	return "slices.Concat(" + strings.Join(parts, ", ") + ")"
+}
+
+func isSpread(e ir.Expr) bool {
+	_, ok := e.(*ir.Spread)
+	return ok
 }
 
 func (gc *GoIRContext) MapLit(n *ir.MapLitIR, keys, vals []string) string {
@@ -394,7 +419,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	return name + "{" + strings.Join(parts, ", ") + "}"
 }
 
-func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand + "..." }
+func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand }
 
 func (gc *GoIRContext) Call(n *ir.Call) string             { return gc.maybeWrapErrorReturn(n, gc.evalCall(n)) }
 func (gc *GoIRContext) Conversion(n *ir.Conversion) string { return gc.evalConversion(n) }
@@ -1497,6 +1522,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
+	if src, dst, ok := ir.NumericListConversion(n); ok {
+		srcGo, elemGo := IRTypeToGo(src), IRTypeToGo(dst.Elems[0])
+		return "func(s " + srcGo + ") " + goType + " { out := make(" + goType + ", len(s)); " +
+			"for i, v := range s { out[i] = " + elemGo + "(v) }; return out }(" + operand + ")"
+	}
 	// Go's string(int) builds a single-rune string.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		if ud := UnitStringConversion(n); ud != nil {

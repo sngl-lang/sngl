@@ -44,6 +44,9 @@ func BuildEnv(pkg *ir.Package, compName string) (*Env, error) {
 		for _, c := range pkg.Consts {
 			env.Set(c, evalInit(env, c.Init))
 		}
+		for _, v := range pkg.Vars {
+			env.Set(v, evalInit(env, v.Init))
+		}
 		return env, nil
 	}
 

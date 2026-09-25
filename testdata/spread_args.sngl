@@ -1,0 +1,59 @@
+// A spread in any argument list is its struct's fields written as named
+// arguments, bound by the rule a call binds them by: a field names the
+// parameter of its own name, a field naming none is left out, and a spread
+// mixes with named arguments as long as no parameter is given twice.
+import . "sngl:ui"
+
+struct Row {
+    title string
+    count int
+    unused bool = false
+}
+
+struct Partial {
+    title string
+}
+
+struct Pair {
+    x int
+    y int
+}
+
+struct Box<T> {
+    value T
+}
+
+func first<T>(x T, y int) => x
+
+func unbox(value int) => value
+
+// A slot names its parameters, so a named argument and a spread field each have
+// something to bind to.
+component table(r Row, cell component(title string, count int)) node {
+    vbox {
+        cell(...r)
+        cell(count=r.count, ...Partial{title="p"})
+        cell(title="t", count=1)
+        cell("positional", 2)
+    }
+}
+
+component main node {
+    var pair = Pair{x=1, y=2}
+    // A generic parameter is bound by the argument that fills it, which for a
+    // named argument or a spread field is the one of its name.
+    var byName = first(y=2, x="s")
+    var bySpread = first(...pair)
+    // A generic struct's fields are typed by its type arguments.
+    var box Box<int> = {value=4}
+    var unboxed int = unbox(...box)
+    table(r=Row{title="hello", count=3}) {
+        component cell(t, n) {
+            text(value="{t} {n} {byName} {bySpread} {unboxed}")
+        }
+    }
+}
+
+window {
+    main
+}

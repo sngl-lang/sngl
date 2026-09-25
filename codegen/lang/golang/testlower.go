@@ -32,6 +32,9 @@ func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool)
 	ctx.FreeFuncs = ModelFreeFuncs(irPkg)
 	ctx.RawFieldAccess = map[string]bool{}
 	ctx.MethodFields = methodFields
+	// Package state and the funcs reading it are Model members, and a test
+	// holds its Model as the instance rather than as `m`.
+	ctx.StateReceiver = testInstanceVar
 	gc := NewIRContext(ctx)
 	for _, p := range fn.Params {
 		gc.Ctx.Locals[p.Name] = true
@@ -89,24 +92,42 @@ func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
 // bubbletea, pointer-receiver returns void on fyne/gtk4), so direct field
 // writes are the simplest correct lowering; tests assert on raw field state,
 // not reactively-derived view output. Event-driven reactivity is exercised
-// via the `c.<id>.<event>()` form (lowerEventTrigger). Mirrors the legacy
-// translateIRMutation Assign special case byte-for-byte.
+// via the `c.<id>.<event>()` form (lowerEventTrigger).
+//
+// The target is any chain of selects and indexes rooted at the instance --
+// `c.xs[0]`, `c.ps[1].a` -- and is spelled by the same Select that spells
+// the read, so a write and a read of one place cannot disagree.
 func lowerTestRawFieldWrite(s ir.Stmt, gc *GoIRContext) (string, bool) {
-	assign, ok := s.(*ir.Assign)
-	if !ok {
-		return "", false
+	switch n := s.(type) {
+	case *ir.Assign:
+		if !rootedAtRawField(n.Target, gc) {
+			return "", false
+		}
+		return gc.EvalExpr(n.Target) + " " + n.Op.String() + " " + gc.EvalExpr(n.Value), true
+	case *ir.Toggle:
+		if !rootedAtRawField(n.Target, gc) {
+			return "", false
+		}
+		target := gc.EvalExpr(n.Target)
+		return target + " = !" + target, true
 	}
-	sel, ok := assign.Target.(*ir.Select)
-	if !ok {
-		return "", false
+	return "", false
+}
+
+func rootedAtRawField(e ir.Expr, gc *GoIRContext) bool {
+	for {
+		switch n := e.(type) {
+		case *ir.Select:
+			if gc.rawFieldAccess(n.Operand) {
+				return true
+			}
+			e = n.Operand
+		case *ir.Index:
+			e = n.Operand
+		default:
+			return false
+		}
 	}
-	id, ok := sel.Operand.(*ir.Ident)
-	if !ok || !gc.rawFieldAccess(id) {
-		return "", false
-	}
-	value := gc.EvalExpr(assign.Value)
-	target := fmt.Sprintf("%s.%s", id.Name, sel.Field)
-	return target + " " + assign.Op.String() + " " + value, true
 }
 
 // lowerTestIf emits `if <cond> { <body> } [else { <else> }]` where each
@@ -238,9 +259,34 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	methodName := innerSel.Field + ExportName(c.Event)
 	args := make([]string, len(c.Args))
 	for i, a := range c.Args {
-		args[i] = gc.EvalExpr(a.Value)
+		args[i] = eventPayloadArg(a.Value, gc)
 	}
 	return fmt.Sprintf("%s.%s(%s)", recvIdent.Name, methodName, strings.Join(args, ", ")), true
+}
+
+// eventPayloadArg is what an invoker is handed for an event's payload: the
+// widget-level value, which for every payload a Go target's widget produces
+// is the payload's `value` -- fyne's OnChanged takes the entry's text, not an
+// InputEvent. The android lowerer reads the same field for
+// performTextReplacement.
+func eventPayloadArg(e ir.Expr, gc *GoIRContext) string {
+	if sl, ok := e.(*ir.StructLit); ok {
+		for _, f := range sl.Fields {
+			if f.Name == "value" {
+				return gc.EvalExpr(f.Value)
+			}
+		}
+	}
+	if t := e.ExprType(); t != nil && t.Kind == ir.TypeStruct {
+		if sd, ok := t.Decl.(*ir.StructDef); ok {
+			for _, f := range sd.Fields {
+				if f.Name == "value" {
+					return gc.EvalExpr(e) + ".Value"
+				}
+			}
+		}
+	}
+	return gc.EvalExpr(e)
 }
 
 // lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a

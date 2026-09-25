@@ -282,6 +282,19 @@ func (env *Env) execAssign(s *ir.Assign) error {
 			list[i] = nv
 			return nil
 		}
+		if m, ok := obj.(map[string]any); ok {
+			key := fmt.Sprintf("%v", idx)
+			old, present := m[key]
+			if !present {
+				old = zeroValueFor(target.ExprType())
+			}
+			nv, err := ApplyOp(s.Op, old, val, target.ExprType())
+			if err != nil {
+				return err
+			}
+			m[key] = nv
+			return nil
+		}
 		return fmt.Errorf("cannot index-assign to %T", obj)
 	case *ir.Unary:
 		// `*n = val` — whole-element write through an &-bound loop element

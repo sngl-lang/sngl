@@ -1232,6 +1232,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 			}}
 			stmts = stmts[1:]
 		}
+		// Any other read of the payload's value is the callback's argument
+		// too: the closure is handed the text, never an event struct.
+		if len(fn.Params) > 0 {
+			codegen.ReadEventField(stmts, fn.Params[0], "value", &ir.Ident{Name: binding.Param, Type: ir.TypString})
+		}
 	}
 
 	body := codegen.WalkLowered(context.Background(), stmts, tr)

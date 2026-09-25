@@ -110,6 +110,28 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	return fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
 }
 
+// testBootOpen and testBootClose make a test page's program re-runnable, so
+// each test starts from a freshly mounted page as a Go target's
+// newTestComponent() starts from a fresh Model. The markup is captured before
+// the first run mutates it; a reset puts a copy back and runs the program
+// again, which rebinds every element and handler to the new nodes.
+const testBootOpen = `window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
+`
+
+const testBootClose = `};
+window.__sngl_boot();
+`
+
 // injectTestagentBootstrap appends the testagent module script to every
 // assembled window. Agent mode only.
 func injectTestagentBootstrap(c *compilation) {
@@ -1242,7 +1264,13 @@ func (g *htmlGen) generate() (string, error) {
 		b.WriteString("\n")
 		b.WriteString(sharedTags)
 		b.WriteString("<script>\n")
-		b.WriteString(script)
+		if g.testMode {
+			b.WriteString(testBootOpen)
+			b.WriteString(script)
+			b.WriteString(testBootClose)
+		} else {
+			b.WriteString(script)
+		}
 		b.WriteString("</script>\n")
 	}
 	b.WriteString("</body></html>\n")
@@ -3393,7 +3421,9 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
 			continue
 		}
-		fmt.Fprintf(b, "state.%s = () => %s.dispatchEvent(new Event(%q));\n", name, h.elemID, h.event)
+		// A payload's value is put in the element first, which is where the
+		// handler reads it from, as it would after the user typed it.
+		fmt.Fprintf(b, "state.%s = (p) => { if (p != null && p.value !== undefined) { %s.value = p.value; } %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
 	}
 }
 

@@ -161,11 +161,12 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	// two emit paths.
 	testMode := codegen.OptionBool(req.Options, "test")
 	var (
-		src []byte
-		err error
+		src     []byte
+		members map[string]string
+		err     error
 	)
 	if testMode {
-		src, err = CompileTestIR(ctx, cfg)
+		src, members, err = compileTestIR(ctx, cfg)
 	} else {
 		src, err = CompileIR(ctx, cfg)
 	}
@@ -267,7 +268,7 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 	// model accessor, and snapshot capture files for the launcher
 	// to relocate.
 	if testMode {
-		if err := emitKotlinTestSources(req, sink, cfg, ktOpts, effectiveMain); err != nil {
+		if err := emitKotlinTestSources(req, sink, cfg, ktOpts, effectiveMain, members); err != nil {
 			return err
 		}
 	}
@@ -284,11 +285,13 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 //   - agent: TestAgentRunner.kt + TestModelAccessor.kt
 //   - RobolectricSnapshot.kt (when testRunner=robolectric). The launcher
 //     relocates these into a generated project.
-func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool) error {
+func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, ktOpts codegen.FileOptions, gradleScaffold bool, members map[string]string) error {
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 	surf := kotlin.TestSurface{
 		MethodFields: methodFields,
 		StateFields:  codegen.StateFieldNames(req.Pkg),
+		Pkg:          req.Pkg,
+		Members:      members,
 	}
 	if len(testFns) == 0 {
 		return nil

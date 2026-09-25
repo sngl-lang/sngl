@@ -179,14 +179,60 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	}
 	return name + "(" + strings.Join(parts, ", ") + ")"
 }
-func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string { return "*" + operand }
+func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string {
+	return "*" + operand + ".toTypedArray()"
+}
 
 func (kc *KtIRContext) Call(n *ir.Call) string             { return kc.evalCall(n) }
 func (kc *KtIRContext) Conversion(n *ir.Conversion) string { return kc.evalConversion(n) }
 func (kc *KtIRContext) Lambda(n *ir.Lambda) string         { return kc.evalLambda(n) }
 
 func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
+	// A map is a read-only `Map` on Kotlin, so an entry write rebuilds it --
+	// which is also the write Compose sees, the map being held by a
+	// `mutableStateOf` that recomposes on reassignment.
+	if idx, ok := n.Target.(*ir.Index); ok && isMapExpr(idx.Operand) {
+		recv := irwalk.EvalMutTarget(kc, idx.Operand)
+		key := kc.EvalExpr(idx.Idx)
+		if n.Op != ast.AssignSet {
+			op := strings.TrimSuffix(n.Op.String(), "=")
+			value = "(" + recv + "[" + key + "] ?: " + ktMapValZero(idx.Operand.ExprType()) + ") " + op + " " + value
+		}
+		return recv + " = " + recv + " + (" + key + " to " + value + ")"
+	}
+	// A list the program keeps as state is a `SnapshotStateList` held by a
+	// val, so it cannot be reassigned; its contents are replaced instead. The
+	// value is bound first because it may read the list being cleared.
+	if n.Op == ast.AssignSet && kc.isStateList(n.Target) {
+		return "(" + value + ").let { __v -> " + target + ".clear(); " + target + ".addAll(__v) }"
+	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+func isMapExpr(e ir.Expr) bool {
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeMap
+}
+
+// isStateList reports whether e names a list-typed state var, which every
+// Compose owner declares as a `SnapshotStateList`.
+func (kc *KtIRContext) isStateList(e ir.Expr) bool {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeList {
+		return false
+	}
+	switch n := e.(type) {
+	case *ir.Ident:
+		if kc.Ctx == nil {
+			return false
+		}
+		_, kind := kc.Ctx.Resolve(n.Name)
+		return kind == codegen.NameStateVar
+	case *ir.Select:
+		ot := n.Operand.ExprType()
+		return ot != nil && ot.Kind == ir.TypeComponent
+	}
+	return false
 }
 
 // valueCopy binds a struct value the way SNGL binds one: by copy.
@@ -863,6 +909,16 @@ func ktIntConvMethod(t *ir.Type) string {
 	return "toInt()"
 }
 
+func ktNumberConvMethod(t *ir.Type) string {
+	if t.Kind != ir.TypeFloat {
+		return ktIntConvMethod(t)
+	}
+	if t.Bits == 32 {
+		return "toFloat()"
+	}
+	return "toDouble()"
+}
+
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsNullToFuncConv(n) {
 		return nullFuncStubKt(n.Type)
@@ -877,15 +933,13 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsOptionWrap(n) {
 		return operand
 	}
+	if _, dst, ok := ir.NumericListConversion(n); ok {
+		return operand + ".map { it." + ktNumberConvMethod(dst.Elems[0]) + " }"
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeInt:
-			return operand + "." + ktIntConvMethod(n.Type)
-		case ir.TypeFloat:
-			if n.Type.Bits == 32 {
-				return operand + ".toFloat()"
-			}
-			return operand + ".toDouble()"
+		case ir.TypeInt, ir.TypeFloat:
+			return operand + "." + ktNumberConvMethod(n.Type)
 		case ir.TypeString:
 			// Kotlin's Double.toString always writes a fraction, so a
 			// calculator that Go and JS both spell `24` came out as `24.0`.

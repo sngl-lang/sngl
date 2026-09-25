@@ -338,6 +338,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
 }
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}
 */
 import "C"
 
@@ -525,7 +535,7 @@ pass sha256:852bbb4bba95308380f624ab88b680c5
 -- run/go/fyne --
 pass sha256:ebaed855398462bf72c46eb1aa05d9cc
 -- run/go/gtk4 --
-pass sha256:0b6b7ffc216b8b7cab074d63cd0d4c98
+pass sha256:df7020abd07092ec5994480780425c18
 -- run/kotlin/android --
 pass sha256:7180128bb046c1c6cfb0ca94066b2868
 -- run/none/html --

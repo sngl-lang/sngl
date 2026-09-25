@@ -1,0 +1,54 @@
+# A spread into a slot insertion runs on the interpreter, which executes the
+# checked IR with no lowering. The checker expands `...r` into the named
+# arguments its fields are, so no ir.Spread reaches SlotInst.Args and the
+# interpreter needs no arm for one. testdata/spread_slot_insertion.txtar runs
+# the same program on the five compiled targets.
+
+sngl test --platform none spread.sngl
+stdout '1 tests, 0 failures'
+
+-- spread.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+struct Row {
+    title string
+    count int
+    unused bool = false
+}
+
+struct Partial {
+    title string
+}
+
+component whole(r Row, cell component(title string, count int)) node {
+    vbox {
+        cell(...r)
+    }
+}
+
+component mixed(p Partial, cell component(title string, count int)) node {
+    vbox {
+        cell(count=7, ...p)
+    }
+}
+
+component main node {
+    var seen = ""
+    whole(r=Row{title="row", count=3}) {
+        component cell(t, n) {
+            button #a(text=t, @click { seen = seen + t + string(n) + ";" })
+        }
+    }
+    mixed(p=Partial{title="part"}) {
+        component cell(t, n) {
+            button #b(text=t, @click { seen = seen + t + string(n) + ";" })
+        }
+    }
+}
+
+func testSpreadIntoSlot(t Test, c main) {
+    c.a.click()
+    c.b.click()
+    t.assert(c.seen == "row3;part7;")
+}

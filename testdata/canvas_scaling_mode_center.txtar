@@ -274,6 +274,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     gtk_editable_set_text(e, t);
 }
 
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}
+
 // Canvas2D draw-func trampoline. gtk_drawing_area_set_draw_func wants a
 // C function pointer, which cannot close over Go state — so we register
 // each draw closure in the snglDrawFuncs slice and pass its index as the
@@ -626,7 +636,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:e0df7a36541475947f49269210651596
 -- run/go/gtk4 --
-pass sha256:f6ba1bac3565194398e3d6722b2133c9
+pass sha256:1a6e9521c5546cf134bd884cded3817f
 -- run/kotlin/android --
 pass sha256:ae61e9928cec87ddb6b10d1ca658d49e
 -- run/none/html --
