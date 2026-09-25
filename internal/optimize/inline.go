@@ -278,12 +278,6 @@ func callsFuncStmt(s ir.Stmt, target *ir.Func) bool {
 		return callsFuncInArgs(n.Args, target)
 	case *ir.Toggle:
 		return callsFunc(n.Target, target)
-	case *ir.SlotInst:
-		for _, c := range n.Children {
-			if callsFuncStmt(c, target) {
-				return true
-			}
-		}
 	case *ir.ErrorBoundary:
 		for _, c := range n.Children {
 			if callsFuncStmt(c, target) {

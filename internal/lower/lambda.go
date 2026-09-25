@@ -185,8 +185,6 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 					walkStmts(n.Handlers[i].Func.Block)
 				}
 			}
-		case *ir.SlotInst:
-			walkStmts(n.Children)
 		case *ir.ErrorBoundary:
 			walkStmts(n.Children)
 			if n.Handler != nil && n.Handler.Func != nil {
@@ -651,8 +649,6 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 				l.rewriteStmts(n.Handlers[i].Func.Block, captureField, captureMutable)
 			}
 		}
-	case *ir.SlotInst:
-		l.rewriteStmts(n.Children, captureField, captureMutable)
 	case *ir.ErrorBoundary:
 		l.rewriteStmts(n.Children, captureField, captureMutable)
 		if n.Handler != nil && n.Handler.Func != nil {

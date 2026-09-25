@@ -2866,7 +2866,7 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 // translateBlockWithJC is translateBlockJC over a caller-supplied scope, for a
 // body emitted inside a binding the block itself does not declare.
 func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stmt) []string {
-	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslator(jc)
 	// A CanvasRedrawStmt needs a NodeInst→ID lookup only htmlGen has, so it is
 	// handled here rather than in the translator.
 	var regular []ir.Stmt
@@ -3149,7 +3149,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)
 	}
-	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslator(jc)
 	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	for _, s := range lowered {
 		g.collectLoweredRefs(s)

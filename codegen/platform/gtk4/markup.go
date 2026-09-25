@@ -483,13 +483,8 @@ func literalNumberOf(e ir.Expr) (float64, bool) {
 // shapes reach here: the member after the optimizer folded it and the string
 // before, since a caller may generate from unoptimized IR.
 func enumOrStringOf(e ir.Expr) string {
-	switch v := e.(type) {
-	case *ir.Ident:
-		if v.Member != "" {
-			return v.Member
-		}
-	case *ir.Select:
-		return v.Field
+	if v, ok := e.(*ir.Ident); ok && v.Member != "" {
+		return v.Member
 	}
 	s, _ := codegen.IRLiteralString(e)
 	return s

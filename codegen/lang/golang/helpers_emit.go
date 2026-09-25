@@ -413,10 +413,6 @@ func recordExprHelpers(h *HelperSet, e ir.Expr) {
 		recordExprHelpers(h, n.Right)
 	case *ir.Unary:
 		recordExprHelpers(h, n.Operand)
-	case *ir.Ternary:
-		recordExprHelpers(h, n.Cond)
-		recordExprHelpers(h, n.Then)
-		recordExprHelpers(h, n.Else)
 	case *ir.Call:
 		for _, a := range n.Args {
 			recordExprHelpers(h, a.Value)
