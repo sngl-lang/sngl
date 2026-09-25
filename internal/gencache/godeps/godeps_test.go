@@ -61,7 +61,7 @@ func TestClosureRecordsWhatTheBuildReads(t *testing.T) {
 		`cache.file(path="` + filepath.Join(dir, "a", "a.go"),
 		`cache.file(path="` + filepath.Join(dir, "b", "b.go"),
 		`cache.file(path="` + filepath.Join(dir, "b", "data", "sub", "two.md"),
-		`cache.dir(path="` + filepath.Join(dir, "b", "data", "sub") + `"`,
+		`cache.godir(path="` + filepath.Join(dir, "b", "data", "sub") + `"`,
 		`cache.file(path="` + filepath.Join(dir, "go.mod"),
 		`cache.absent(path="` + filepath.Join(dir, "go.sum") + `"`,
 		`cache.goenv(dir="` + dir + `", name="GOVERSION"`,
@@ -100,6 +100,35 @@ func TestClosureGoesStale(t *testing.T) {
 				t.Error("still current after the change")
 			}
 		})
+	}
+}
+
+// What the go command ignores beside a package -- a test's `_scratch`
+// package, an editor's dotfile -- leaves the closure current. The platform
+// tests build their generated code in such a directory, and while any of them
+// ran, every consteval closure over the codegen packages was stale.
+func TestClosureIgnoresWhatGoIgnores(t *testing.T) {
+	dir := module(t)
+	data := produceFor(t, gencache.Open(""), dir)
+	os.Mkdir(filepath.Join(dir, "a", "_scratch"), 0o755)
+	os.WriteFile(filepath.Join(dir, "b", "data", ".swp"), nil, 0o644)
+	if why, err := gencache.Open(t.TempDir()).Stale(data); why != "" || err != nil {
+		t.Errorf("stale after adding names the go command ignores: %q %v", why, err)
+	}
+}
+
+// An `all:` embed pattern embeds the names the go command otherwise ignores,
+// so under one a new `_` file changes the build.
+func TestAllEmbedCountsIgnoredNames(t *testing.T) {
+	dir := module(t)
+	src := filepath.Join(dir, "b", "b.go")
+	os.WriteFile(src, []byte("package b\n\nimport \"embed\"\n\n//go:embed all:data\nvar FS embed.FS\n\nvar Y = 1\n"), 0o644)
+	old := time.Now().Add(-time.Hour)
+	os.Chtimes(src, old, old)
+	data := produceFor(t, gencache.Open(""), dir)
+	os.WriteFile(filepath.Join(dir, "b", "data", "sub", "_hidden"), nil, 0o644)
+	if why, err := gencache.Open(t.TempDir()).Stale(data); why == "" && err == nil {
+		t.Error("still current after a file an all: pattern embeds appeared")
 	}
 }
 

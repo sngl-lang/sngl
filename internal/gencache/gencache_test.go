@@ -99,6 +99,16 @@ func TestChangedInputInvalidates(t *testing.T) {
 			change: func(t *testing.T, tmp string) { os.WriteFile(filepath.Join(tmp, "added"), nil, 0o644) },
 		},
 		{
+			name: "godir",
+			inputs: func(tmp string) func(*Store) ([]Input, error) {
+				return func(*Store) ([]Input, error) {
+					in, err := GoDir(tmp)
+					return []Input{in}, err
+				}
+			},
+			change: func(t *testing.T, tmp string) { os.WriteFile(filepath.Join(tmp, "added.go"), nil, 0o644) },
+		},
+		{
 			name: "env",
 			inputs: func(string) func(*Store) ([]Input, error) {
 				return func(*Store) ([]Input, error) { return []Input{Env("SNGL_GENCACHE_TEST_VAR")}, nil }
@@ -129,6 +139,27 @@ func TestChangedInputInvalidates(t *testing.T) {
 				t.Errorf("producer ran %d times, want 2", n)
 			}
 		})
+	}
+}
+
+// A godir input reads a listing the way the go command does, so a name it
+// ignores -- a test's `_scratch` directory beside the package, an editor's
+// dotfile -- leaves the stored file valid.
+func TestGoDirIgnoresWhatGoIgnores(t *testing.T) {
+	dir, tmp := t.TempDir(), t.TempDir()
+	name, p := newProbe(t, func(*Store) ([]Input, error) {
+		in, err := GoDir(tmp)
+		return []Input{in}, err
+	})
+
+	first := build(t, dir, name)
+	os.Mkdir(filepath.Join(tmp, "_scratch"), 0o755)
+	os.WriteFile(filepath.Join(tmp, ".swp"), nil, 0o644)
+	if again := build(t, dir, name); again != first {
+		t.Errorf("after adding names the go command ignores, the build got %q, want the stored %q", again, first)
+	}
+	if n := p.runs.Load(); n != 1 {
+		t.Errorf("producer ran %d times, want 1", n)
 	}
 }
 
