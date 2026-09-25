@@ -1071,12 +1071,34 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string
 			stmts = append([]ir.Stmt{&ir.Assign{Target: assign.Target, Op: ast.AssignSet, Value: getter}}, stmts[1:]...)
 		}
 	}
+	var getter ir.Expr
+	if t.wrapped {
+		getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
+	} else {
+		getter = gtk4EventGetterExpr(cType, codegen.IdentBareName(node), false)
+	}
+	substituteWidgetPayload(stmts, lam.Func.Params, cType, getter)
 	fn := *lam.Func
 	fn.Params = nil
 	fn.Block = stmts
 	out := *lam
 	out.Func = &fn
 	return &out
+}
+
+// substituteWidgetPayload reads an event's value off the widget that fired it,
+// the trampoline handing the handler nothing. Only an entry's text is a
+// string, which is what every payload's value is.
+func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, getter ir.Expr) {
+	if getter == nil || cType != "GtkEntry" {
+		return
+	}
+	codegen.SubstituteEventPayload(stmts, params, func(f *ir.StructField) ir.Expr {
+		if f.Type == nil || f.Type.Kind != ir.TypeString {
+			return nil
+		}
+		return getter
+	})
 }
 
 // firstEventBind is the `x = e.<field>` a two-way bind opens a handler with,

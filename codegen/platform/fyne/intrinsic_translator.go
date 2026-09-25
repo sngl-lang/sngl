@@ -522,12 +522,33 @@ func fyneCallbackLambda(lam *ir.Lambda, h fyneHandler, event string) ir.Expr {
 			}}, stmts[1:]...)
 		}
 	}
+	substitutePayload(stmts, lam.Func.Params, h.Param, params)
 	fn := *lam.Func
 	fn.Params = params
 	fn.Block = stmts
 	out := *lam
 	out.Func = &fn
 	return &out
+}
+
+// substitutePayload reads the event's value off the callback's own parameter
+// named goParam, where its Go type is the field's.
+func substitutePayload(stmts []ir.Stmt, sngl []*ir.Param, goParam string, goParams []*ir.Param) {
+	if goParam == "" {
+		return
+	}
+	var goType string
+	for _, p := range goParams {
+		if ref, ok := p.Type.Meta.(ir.NativeTypeRef); p.Name == goParam && ok {
+			goType = ref.Name
+		}
+	}
+	codegen.SubstituteEventPayload(stmts, sngl, func(f *ir.StructField) ir.Expr {
+		if f.Type == nil || golang.IRTypeToGo(f.Type) != goType {
+			return nil
+		}
+		return &ir.Ident{Name: goParam, Type: f.Type}
+	})
 }
 
 // OnDetachHandler clears the callback field. Fyne holds one callback per

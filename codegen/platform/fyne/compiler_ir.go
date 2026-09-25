@@ -1240,6 +1240,9 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
+	if binding.Signature != "" {
+		substitutePayload(body, fn.Params, binding.Param, params)
+	}
 
 	synthesized := &ir.Func{
 		Name:     fn.Name,

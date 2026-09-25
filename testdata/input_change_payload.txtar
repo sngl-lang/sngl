@@ -1,17 +1,18 @@
-A handler written in a runtime instance takes the callback's host signature.
+An input's `@change` fires on commit on fyne and gtk4, with the committed text.
 
-On the Model a node's handler is promoted to a method, and emitIRPromotedHandler
-gives that method the Go signature of the callback it is attached to: fyne's
-`OnChanged` is `func(bool)` on a check and `func(string)` on an entry, and a
-gtk4 signal trampoline passes nothing. An instance record's handlers are
-lambdas assigned where they are written, and reached the host as SNGL wrote
-them -- `func()` for a checkbox, `func(e InputEvent)` for an input -- so a
-record holding either did not build. A checkbox with no `@change` was the same
-failure through the empty handler the override hands it, which is what
-`sngl:ui/markup`'s task list item is.
+`sngl:ui` declares `@change ChangeEvent` on input and textarea, fired on
+commit, and the interpreter fills the payload's first field with what the
+host reported. fyne's Entry wired `@input` and nothing else, so a handler for
+`@change` was a Model method taking a `ChangeEvent` no Go file declares; gtk4's
+entry override did not connect a commit signal either. fyne now connects
+`OnSubmitted` and gtk4 `activate`, and each reads the payload's value off what
+the host hands over -- the callback's string on fyne, the entry's text on
+gtk4 -- wherever the handler reads it, not only in a leading two-way bind.
+codegen/platform/fyne/input_change_run_test.go fires the callback and reads
+the state it set.
 
-deny out/go/fyne/model.go `OnChanged = func\(\)` -- a check's callback takes the bool
-deny * `InputEvent` -- no callback is handed the SNGL event
+deny * `ChangeEvent` -- no handler is handed the SNGL event
+deny * `\be\.Value\b` -- the payload is read off the host
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -24,29 +25,30 @@ output {
 }
 
 component Row(label string) node {
-    var on = false
-    var typed = ""
+    var committed = ""
 
-    hbox {
-        checkbox(checked=on, @change { on = !on })
-        checkbox(checked=true, disabled=true)
-        input(value=typed, @input(e) { typed = e.value })
-        text(value="{label} {on} {typed}")
+    vbox {
+        input(@change(e) { committed = e.value })
+        textarea(@change(e) { committed = "{label}:{e.value}" })
+        text(value=committed)
     }
 }
 
 component main node {
-    var items = ["a", "b"]
+    var last = ""
+    var items = ["a"]
 
     vbox {
+        input(@change(e) { last = "got " + e.value })
+        text(value=last)
         for var it = items {
             Row(label=it)
         }
     }
 }
 
-func testRows(t Test, c main) {
-    t.assert(c.items.length == 2)
+func testChange(t Test, c main) {
+    t.assert(c.last == "")
 }
 
 window {
@@ -58,7 +60,6 @@ window {
 package main
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -69,19 +70,23 @@ import (
 
 // Model holds the state for this SNGL UI.
 type Model struct {
+	last         string
 	items        []string
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
 	__inst0_live []*RowInstance
 
-	__n4 *fyne.Container
+	__n3 *fyne.Container
+	__n7 *widget.Entry
+	__n1 *widget.Label
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.items = []string{"a", "b"}
+	m.last = ""
+	m.items = []string{"a"}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -98,22 +103,22 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items {
-		var __n3 *RowInstance
+		var __n2 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
+			__n2 = m.__inst0_live[__inst0_i]
+			__n2.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRowInstance(m, it)
-			__n3 = __n3__new
+			__n2__new := newRowInstance(m, it)
+			__n2 = __n2__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n2)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		fynelayout.InsertBefore(__parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n2__el := __n2.Root
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n2__el)
+		m.__slot0 = append(m.__slot0, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -122,6 +127,22 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 		}
 	}
 	m.__inst0_live = __inst0_next
+}
+
+func (m *Model) __n7_input_handler(s string) {
+}
+
+func (m *Model) __n7_change_handler(s string) {
+	m.last = ("got " + s)
+	m.__n1.SetText(m.last)
+}
+
+func (m *Model) Last() string {
+	return m.last
+}
+
+func (m *Model) SetLast(v string) {
+	m.last = v
 }
 
 func (m *Model) Items() []string {
@@ -134,9 +155,18 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n4 = container.NewVBox()
-	m.__renderSlot0(m.__n4)
-	content := fyne.CanvasObject(m.__n4)
+	m.__n3 = container.NewVBox()
+	m.__n7 = widget.NewEntry()
+	m.__n7.SetText("")
+	m.__n7.SetPlaceHolder("")
+	m.__n7.OnChanged = m.__n7_input_handler
+	m.__n7.OnSubmitted = m.__n7_change_handler
+	m.__n3.Add(m.__n7)
+	m.__n1 = widget.NewLabel("")
+	m.__n1.SetText(m.last)
+	m.__n3.Add(m.__n1)
+	m.__renderSlot0(m.__n3)
+	content := fyne.CanvasObject(m.__n3)
 	return content
 }
 
@@ -145,61 +175,51 @@ type RowInstance struct {
 	Root         fyne.CanvasObject
 	__model      *Model
 	__prop_label string
-	on           bool
-	typed        string
+	committed    string
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
 	__slot0_at   fyne.CanvasObject
-	__n0         *widget.Check
-	__n1         *widget.Entry
-	__n2         *widget.Label
+	__n0         *widget.Label
 }
 
 func newRowInstance(__model *Model, label string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
 	c.__prop_label = label
-	c.on = false
-	c.typed = ""
+	c.committed = ""
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
-	__n5 := container.NewHBox()
-	c.__n0 = widget.NewCheck("", nil)
-	c.__n0.SetText("")
-	c.__n0.SetChecked(c.on)
-	c.__n0.OnChanged = func(b bool) {
-		c.on = !c.on
-		c.__n0.SetChecked(c.on)
-		c.__n2.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+	__n4 := container.NewVBox()
+	__n5 := widget.NewEntry()
+	__n5.SetText("")
+	__n5.SetPlaceHolder("")
+	__n5.OnChanged = func(s string) {
 	}
-	__n5.Add(c.__n0)
-	__n6 := widget.NewCheck("", nil)
+	__n5.OnSubmitted = func(s string) {
+		c.committed = s
+		c.__n0.SetText(c.committed)
+	}
+	__n4.Add(__n5)
+	__n6 := widget.NewMultiLineEntry()
 	__n6.SetText("")
-	__n6.SetChecked(true)
-	__n6.OnChanged = func(b bool) {
+	__n6.SetPlaceHolder("")
+	__n6.SetMinRowsVisible(0)
+	__n6.OnChanged = func(s string) {
 	}
-	__n5.Add(__n6)
-	c.__n1 = widget.NewEntry()
-	c.__n1.SetText(c.typed)
-	c.__n1.SetPlaceHolder("")
-	c.__n1.OnChanged = func(s string) {
-		c.typed = s
-		c.__n1.SetText(c.typed)
-		c.__n2.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+	__n6.OnSubmitted = func(s string) {
+		c.committed = ((c.__prop_label + ":") + s)
+		c.__n0.SetText(c.committed)
 	}
-	c.__n1.OnSubmitted = func(s string) {
-	}
-	__n5.Add(c.__n1)
-	c.__n2 = widget.NewLabel("")
-	c.__n2.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
-	__n5.Add(c.__n2)
-	c.Root = __n5
+	__n4.Add(__n6)
+	c.__n0 = widget.NewLabel("")
+	c.__n0.SetText(c.committed)
+	__n4.Add(c.__n0)
+	c.Root = __n4
 	return c
 }
 
 func (c *RowInstance) SetLabel(__v string) {
 	c.__prop_label = __v
-	c.__n2.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 }
 
 func (c *RowInstance) Destroy() {}
@@ -218,11 +238,11 @@ package main
 
 import "testing"
 
-func TestRows(t *testing.T) {
+func TestChange(t *testing.T) {
 	__snglTestComponent := newTestComponent()
 	c := __snglTestComponent
 	_ = c
-	if !((len(c.items) == 2)) { t.Errorf("assert failed: %s", "(len(c.items) == 2)") }
+	if !((c.last == "")) { t.Errorf("assert failed: %s", "(c.last == \"\")") }
 }
 
 -- out/go/fyne/testcomponent_test.go --
@@ -254,25 +274,28 @@ func main() {
 package main
 
 import (
-	"fmt"
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
+	last         string
 	items        []string
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__inst0_live []*RowInstance
-	__n4         gtk4rt.Handle
+	__n3         gtk4rt.Handle
+	__n7         gtk4rt.Handle
+	__n1         gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.items = []string{"a", "b"}
+	m.last = ""
+	m.items = []string{"a"}
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -289,22 +312,22 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items {
-		var __n3 *RowInstance
+		var __n2 *RowInstance
 		if len(m.__inst0_live) > __inst0_i {
-			__n3 = m.__inst0_live[__inst0_i]
-			__n3.SetLabel(it)
+			__n2 = m.__inst0_live[__inst0_i]
+			__n2.SetLabel(it)
 		} else {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n3__new := newRowInstance(m, it)
-			__n3 = __n3__new
+			__n2__new := newRowInstance(m, it)
+			__n2 = __n2__new
 		}
-		__inst0_next = append(__inst0_next, __n3)
+		__inst0_next = append(__inst0_next, __n2)
 		__inst0_i = (__inst0_i + 1)
-		__n3__el := __n3.Root
-		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
-		m.__slot0 = append(m.__slot0, __n3__el)
+		__n2__el := __n2.Root
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n2__el)
+		m.__slot0 = append(m.__slot0, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
 		var __inst0_i_j int = ((len(m.__inst0_live) - 1) - __inst0_i_d)
@@ -315,68 +338,64 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	m.__inst0_live = __inst0_next
 }
 
+func (m *Model) __n7_changed_handler() {
+}
+
+func (m *Model) __n7_activate_handler() {
+	m.last = ("got " + gtk4rt.EditableGetText(m.__n7))
+	gtk4rt.LabelSetText(m.__n1, m.last)
+}
+
 // RowInstance is one live instance of the Row component.
 type RowInstance struct {
 	Root         gtk4rt.Handle
 	__model      *Model
 	__prop_label string
-	on           bool
-	typed        string
+	committed    string
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
 	__slot0_at   gtk4rt.Handle
 	__n0         gtk4rt.Handle
-	__n1         gtk4rt.Handle
-	__n2         gtk4rt.Handle
 }
 
 func newRowInstance(__model *Model, label string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
 	c.__prop_label = label
-	c.on = false
-	c.typed = ""
+	c.committed = ""
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
-	__n5 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(__n5, gtk4rt.OrientationHorizontal)
-	gtk4rt.BoxSetSpacing(__n5, 6)
-	c.__n0 = gtk4rt.CheckButtonNew()
-	gtk4rt.CheckButtonSetLabel(c.__n0, "")
-	gtk4rt.CheckButtonSetActive(c.__n0, c.on)
-	gtk4rt.Connect(c.__n0, "toggled", func() {
-		c.on = !c.on
-		gtk4rt.CheckButtonSetActive(c.__n0, c.on)
-		gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+	__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(__n4, 6)
+	__n5 := gtk4rt.EntryNew()
+	gtk4rt.EditableSetText(__n5, "")
+	gtk4rt.Connect(__n5, "changed", func() {
 	})
-	gtk4rt.BoxAppend(__n5, c.__n0)
-	__n6 := gtk4rt.CheckButtonNew()
-	gtk4rt.CheckButtonSetLabel(__n6, "")
-	gtk4rt.CheckButtonSetActive(__n6, true)
-	gtk4rt.Connect(__n6, "toggled", func() {
+	gtk4rt.Connect(__n5, "activate", func() {
+		c.committed = gtk4rt.EditableGetText(__n5)
+		gtk4rt.LabelSetText(c.__n0, c.committed)
 	})
-	gtk4rt.BoxAppend(__n5, __n6)
-	c.__n1 = gtk4rt.EntryNew()
-	gtk4rt.EditableSetText(c.__n1, c.typed)
-	gtk4rt.Connect(c.__n1, "changed", func() {
-		c.typed = gtk4rt.EditableGetText(c.__n1)
-		gtk4rt.EditableSetText(c.__n1, c.typed)
-		gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
+	gtk4rt.BoxAppend(__n4, __n5)
+	__n6 := gtk4rt.EntryNew()
+	gtk4rt.EditableSetText(__n6, "")
+	gtk4rt.Connect(__n6, "changed", func() {
 	})
-	gtk4rt.Connect(c.__n1, "activate", func() {
+	gtk4rt.Connect(__n6, "activate", func() {
+		c.committed = ((c.__prop_label + ":") + gtk4rt.EditableGetText(__n6))
+		gtk4rt.LabelSetText(c.__n0, c.committed)
 	})
-	gtk4rt.BoxAppend(__n5, c.__n1)
-	c.__n2 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
-	gtk4rt.BoxAppend(__n5, c.__n2)
-	c.Root = __n5
+	gtk4rt.BoxAppend(__n4, __n6)
+	c.__n0 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(c.__n0, c.committed)
+	gtk4rt.BoxAppend(__n4, c.__n0)
+	c.Root = __n4
 	gtk4rt.Retain(c.Root)
 	return c
 }
 
 func (c *RowInstance) SetLabel(__v string) {
 	c.__prop_label = __v
-	gtk4rt.LabelSetText(c.__n2, ((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 }
 
 func (c *RowInstance) Destroy() {
@@ -387,6 +406,14 @@ func (c *RowInstance) Destroy() {
 	if c.__slot0_at != nil {
 		gtk4rt.Release(c.__slot0_at)
 	}
+}
+
+func (m *Model) Last() string {
+	return m.last
+}
+
+func (m *Model) SetLast(v string) {
+	m.last = v
 }
 
 func (m *Model) Items() []string {
@@ -402,11 +429,19 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n4 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n4, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n4, 6)
-	m.__renderSlot0(m.__n4)
-	gtk4rt.BoxAppend(m.__root, m.__n4)
+	m.__n3 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n3, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n3, 6)
+	m.__n7 = gtk4rt.EntryNew()
+	gtk4rt.EditableSetText(m.__n7, "")
+	gtk4rt.Connect(m.__n7, "changed", m.__n7_changed_handler)
+	gtk4rt.Connect(m.__n7, "activate", m.__n7_activate_handler)
+	gtk4rt.BoxAppend(m.__n3, m.__n7)
+	m.__n1 = gtk4rt.LabelNew("")
+	gtk4rt.LabelSetText(m.__n1, m.last)
+	gtk4rt.BoxAppend(m.__n3, m.__n1)
+	m.__renderSlot0(m.__n3)
+	gtk4rt.BoxAppend(m.__root, m.__n3)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -418,6 +453,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:9ce65d16c7acf832d1e352d43b1cac7b
+pass sha256:21cf8bcb7b8655fd4b6635ecd5ed30fc
 -- run/go/gtk4 --
-pass sha256:f66fa7d60a58b26acecd8a5eadd7a9e8
+pass sha256:7d06206e14b7765fdfc575c955b6d559
