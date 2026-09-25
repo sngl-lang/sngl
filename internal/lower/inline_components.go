@@ -490,7 +490,57 @@ func (st *inlineCompState) run() error {
 		}
 	}
 	if !st.instanceState {
-		return st.refuseStateInCycles()
+		if err := st.refuseStateInCycles(); err != nil {
+			return err
+		}
+		return st.refuseCanvasInCycles()
+	}
+	return nil
+}
+
+// refuseCanvasInCycles refuses a canvas a recursion renders, in its own body
+// or in content handed to it. Its surface and kitty image are kept per copy
+// of the loop the view walks, and a recursion renders from a function per
+// level that the walk does not enter: the levels shared one surface and the
+// image was never transmitted.
+func (st *inlineCompState) refuseCanvasInCycles() error {
+	firstCanvas := func(stmts []ir.Stmt) *ir.NodeInst {
+		var found *ir.NodeInst
+		_ = ir.Walk(stmts, func(node ir.Node) error {
+			if n, ok := node.(*ir.NodeInst); ok && ir.IsShapeContainer(n) {
+				found = n
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return found
+	}
+	for _, c := range st.pkg.Components {
+		if c == nil || !st.cycles[c] {
+			continue
+		}
+		if n := firstCanvas(c.Body); n != nil {
+			return fmt.Errorf("%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
+		}
+	}
+	var err error
+	for _, o := range ir.Owners(st.pkg) {
+		_ = ir.Walk(o.Stmts(), func(node ir.Node) error {
+			n, ok := node.(*ir.NodeInst)
+			if !ok || err != nil || n.Component == nil || !st.cycles[n.Component] {
+				return nil
+			}
+			for _, s := range ir.SuppliedContent(n) {
+				if at := firstCanvas(s.Body); at != nil {
+					err = fmt.Errorf("%s: a canvas handed to the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it outside %q", nodePos(at), n.Component.Name, n.Component.Name)
+					return ir.SkipAll
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

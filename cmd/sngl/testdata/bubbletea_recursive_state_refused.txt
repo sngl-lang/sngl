@@ -28,6 +28,16 @@ sngl generate --platform html --out out4 callee.sngl
 stderr 'lifetime.sngl:10:1: the recursive component "frame" places a timer or effect in its own body'
 sngl generate --platform html --out out6 lifetime.sngl
 
+# A canvas is the third: its surface and kitty image are kept per copy of the
+# loop the view walks, and the walk never enters a recursion's function, so
+# every level shared one surface and nothing was ever transmitted.
+! sngl generate --lang go --platform bubbletea --out out7 canvas.sngl
+stderr 'canvas.sngl:8:24: a canvas in the recursive component "tower" is drawn once per level'
+! sngl generate --lang go --platform bubbletea --out out8 canvas_content.sngl
+stderr 'canvas_content.sngl:19:20: a canvas handed to the recursive component "tower" is drawn once per level'
+sngl generate --platform html --out out9 canvas.sngl
+sngl generate --platform html --out out10 canvas_content.sngl
+
 -- own.sngl --
 import . "sngl:ui"
 
@@ -94,4 +104,51 @@ window {
     var depth = 2
 
     frame(n=depth)
+}
+-- canvas.sngl --
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+import seq "sngl:seq"
+
+component tower(n int) node {
+    vbox {
+        for var i = seq.count(2) {
+            draw.canvas(width=20px, height=10px) {
+                draw.circle(cx=5.0 + float(i), cy=5.0, r=float(n) + 1.0)
+            }
+        }
+        if n > 0 {
+            tower(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    tower(n=depth)
+}
+-- canvas_content.sngl --
+import . "sngl:ui"
+import draw "sngl:ui/draw"
+
+component tower(n int, children ...component) node {
+    vbox {
+        children
+        if n > 0 {
+            tower(n=n - 1) {
+                children
+            }
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    tower(n=depth) {
+        draw.canvas(width=20px, height=10px) {
+            draw.circle(cx=5.0, cy=5.0, r=3.0)
+        }
+    }
 }
