@@ -688,11 +688,12 @@ type htmlGen struct {
 
 	irBodyStmts []ir.Stmt
 
-	// irWindowVars is the window's own state, which is the page's: a window is
-	// a state owner like the package and the root component (ir.Owners).
-	irWindowVars []*ir.Var
-	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
-	// IR node rather than on the package or main component.
+	// irWindowVars and irWindowFuncs are the WindowCtx's: nil for a window,
+	// which owns neither (ir.Owners), and the package's and root component's
+	// when a harness renders a component with no window. rootComp is found by
+	// the name `main`, so this is the only route a differently named harness
+	// root's state takes.
+	irWindowVars  []*ir.Var
 	irWindowFuncs []*ir.Func
 	// pageSlots are the render slots whose anchor this page wrote. The slot
 	// funcs are collected per owner, and a root component spliced into the
@@ -1503,13 +1504,8 @@ func (g *htmlGen) stateVars() []codegen.OwnedVar {
 }
 
 // synthesizedVars returns the Synthesized vars of the package, the root
-// component and the window, deduplicated by name: the context lowering pass
+// component and the WindowCtx, deduplicated by name: the context lowering pass
 // injects a var like __ctx_locale into both pkg.Vars and component.Vars.
-//
-// A window owns state the way the other two do (ir.Owners), and an effect
-// placed in a window body puts its bookkeeping there -- so left out, the
-// page read `__effectN_live` before anything declared it and threw at
-// startup. A harness convention hid this: `component main` was the owner.
 func (g *htmlGen) synthesizedVars() []*ir.Var {
 	var out []*ir.Var
 	seen := make(map[string]bool)
@@ -1647,13 +1643,8 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 			add(f)
 		}
 	}
-	// A window owns funcs the way a component does (ir.Owners), and its state
-	// is the page's state -- so its funcs are the page's functions.
-	// synthesizedFuncs already reads this list and takes the synthesized half;
-	// left out here, the other half was declared nowhere. An effect placed in
-	// a window body is where that shows: __effectN_mount was called by the
-	// settle chain and never defined, so the page threw at startup and no
-	// bracket ever ran.
+	// synthesizedFuncs reads the same list and takes the synthesized half;
+	// this is the other half.
 	for _, f := range g.irWindowFuncs {
 		add(f)
 	}

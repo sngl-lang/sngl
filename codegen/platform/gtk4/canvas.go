@@ -86,12 +86,6 @@ func canvasStdlibDeclsExcluding(structs []structData) string {
 	return canvasutil.StructDeclsExcluding(declared) + canvasCairoHelpers
 }
 
-// cairoCall builds a `C.cairo_*(cr, args...)` CallStmt.
-func cairoCall(name string, cr ir.Expr, args ...ir.Expr) ir.Stmt {
-	all := append([]ir.Expr{cr}, args...)
-	return &ir.CallStmt{Call: nativeCall(name, all...)}
-}
-
 // translateCanvasRedraw rewrites a CanvasRedrawStmt into a
 // gtk_widget_queue_draw on the matching canvas drawing-area Model field.
 func (t *gtk4Translator) translateCanvasRedraw(rs *ir.CanvasRedrawStmt) []ir.Stmt {

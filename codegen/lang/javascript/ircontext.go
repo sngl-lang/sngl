@@ -947,15 +947,6 @@ func (jc *JsIRContext) WithRenamedLocal(name, as string) *JsIRContext {
 	}
 }
 
-// WithEvent returns a clone with EventVar set.
-func (jc *JsIRContext) WithEvent(eventVar string, param ir.Symbol) *JsIRContext {
-	return &JsIRContext{
-		Ctx:        jc.Ctx.Clone(),
-		EventVar:   eventVar,
-		EventParam: param,
-	}
-}
-
 // ForComponent returns a new context scoped to a component.
 func (jc *JsIRContext) ForComponent(comp *ir.Component) *JsIRContext {
 	return &JsIRContext{

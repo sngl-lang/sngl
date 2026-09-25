@@ -254,34 +254,6 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 	return out
 }
 
-// lowerNodeIntoStmts emits the flat sequence for a single NodeInst:
-//
-//  1. var __nM dyn = lower.createNode("name")
-//  2. #__nM.<key> = <propExpr>            (per prop)
-//  3. lower.attachHandler(#__nM, "<evt>", __nM_<evt>_handler)  (per handler)
-//  4. for each child: emit child's full subtree, then
-//     lower.appendChild(#__nM, #__nC)
-//
-// nodeIntProp extracts the integer value of a numeric/measurement prop
-// (e.g. a canvas `width=400px`) from a NodeInst. Returns 0 when the prop
-// is absent or not a numeric literal.
-// nodeEnumProp reads an enum-typed prop as its member name. An enum member is
-// an identifier carrying the member it names, which is what it folds to.
-func nodeEnumProp(n *ir.NodeInst, name string) string {
-	for _, p := range n.Props {
-		if p.Name != name {
-			continue
-		}
-		if id, ok := p.Value.(*ir.Ident); ok && id.Member != "" {
-			return id.Member
-		}
-		if lit, ok := p.Value.(*ir.Literal); ok {
-			return lit.Value
-		}
-	}
-	return ""
-}
-
 func nodeIntProp(n *ir.NodeInst, name string) int {
 	for _, p := range n.Props {
 		if p.Name != name {

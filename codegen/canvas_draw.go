@@ -172,20 +172,13 @@ func (cs *CanvasDraws) All() []Canvas {
 	return cs.all
 }
 
-// ForNode and ForLocal answer nil for a node that is not a canvas, so a caller
+// ForNode answers nil for a node that is not a canvas, so a caller
 // may ask of every node it meets.
 func (cs *CanvasDraws) ForNode(n *ir.NodeInst) *Canvas {
 	if cs == nil {
 		return nil
 	}
 	return cs.byNode[n]
-}
-
-func (cs *CanvasDraws) ForLocal(lv *ir.LocalVar) *Canvas {
-	if cs == nil {
-		return nil
-	}
-	return cs.byLocal[lv]
 }
 
 // collectCanvases finds the drawings in one statement list, reaching through

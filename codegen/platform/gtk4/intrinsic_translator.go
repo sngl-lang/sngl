@@ -313,11 +313,6 @@ func (t *gtk4Translator) fieldRef(name string) ir.Expr {
 	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
 }
 
-// recvIdent is that receiver as a call target.
-func (t *gtk4Translator) recvIdent() ir.Expr {
-	return &ir.Ident{Name: t.gc.RecvName()}
-}
-
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)
 
 // nativeFunc constructs an *ir.Func that renders as `C.<identifier>`. Callers

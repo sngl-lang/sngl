@@ -179,24 +179,10 @@ func TestCallFuncFloatFromBool(t *testing.T) {
 	}
 }
 
-func TestEvalMethodUnknown(t *testing.T) {
-	_, ok := evalMethod("bogusMethod", "hello", nil)
-	if ok {
-		t.Error("expected unknown method to return false")
-	}
-}
-
 func TestEvalCallFuncZeroArgs(t *testing.T) {
 	_, ok := evalCallFunc("string", nil)
 	if ok {
 		t.Error("expected 0-arg call to return false")
-	}
-}
-
-func TestEvalMethodListLength(t *testing.T) {
-	v, ok := evalMethod("length", []any{"a", "b", "c"}, nil)
-	if !ok || v != 3 {
-		t.Errorf("list.length = (%v, %v), want (3, true)", v, ok)
 	}
 }
 

@@ -127,13 +127,6 @@ func (env *Env) ComponentEnvFromCallStmt(comp *ir.Component, cs *ir.CallStmt) *E
 	return child
 }
 
-// CallStmtElemName returns the element/component name of a CallStmt as
-// recovered from its AST back-reference, or "" if not an element call.
-func CallStmtElemName(cs *ir.CallStmt) string {
-	n, _ := elemCallInfo(cs)
-	return n
-}
-
 // RenderCallStmtNode renders a children-less element call (text #id(...))
 // as an element map. Returns nil for non-element CallStmts (e.g. a method
 // call statement).

@@ -293,9 +293,6 @@ func IsDrawShapeTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeShap
 // IsUITree reports whether sd is the widget family.
 func IsUITree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeNode) }
 
-// IsAppRootTree reports whether sd is the family a package body accepts.
-func IsAppRootTree(sd *StructDef) bool { return isTreeRole(sd, BuiltinTreeRoot) }
-
 // IsSegmentedTree reports whether sd is a tree with its own rendering rules --
 // any tree but the widget family.
 func IsSegmentedTree(sd *StructDef) bool { return sd != nil && sd.IsTree && !IsUITree(sd) }

@@ -898,24 +898,6 @@ func evalCallFunc(name string, args []any) (any, bool) {
 	return nil, false
 }
 
-func evalMethod(method string, recv any, args []any) (any, bool) {
-	typeName := "dyn"
-	switch recv.(type) {
-	case int:
-		typeName = "int"
-	case float64:
-		typeName = "float"
-	case string:
-		typeName = "string"
-	case bool:
-		typeName = "bool"
-	case []any:
-		typeName = "list"
-	}
-	allArgs := append([]any{recv}, args...)
-	return evalQualifiedMethod(typeName+"."+method, allArgs)
-}
-
 func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 	switch qualName {
 	case "int.min":

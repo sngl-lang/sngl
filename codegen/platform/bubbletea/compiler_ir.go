@@ -1450,10 +1450,6 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 	}
 }
 
-func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
-	return golang.LowerVarInit(v, gc)
-}
-
 // widgetsHaveResize reports whether any widget declares a resize template, which
 // gates emission of the resizeWidgets() method and its call sites. An empty
 // method (or calls to a non-existent method) would be dead/invalid code.

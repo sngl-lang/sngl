@@ -2,7 +2,6 @@ package gtk4
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -537,15 +536,4 @@ func rtStrCall(name string, args ...ir.Expr) *ir.Call {
 	call := rtCall(name, args...)
 	call.Type = ir.TypString
 	return call
-}
-
-// sortedFlows is the flows a pre-pass found, in a stable order. Only the tests
-// read it; the emission is driven by the walk.
-func (mt *markupTrees) sortedFlows() []string {
-	out := make([]string, 0, len(mt.flows))
-	for id := range mt.flows {
-		out = append(out, id)
-	}
-	sort.Strings(out)
-	return out
 }

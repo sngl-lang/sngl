@@ -963,14 +963,6 @@ func sortByName(xs []DeclSummary) {
 	sort.Slice(xs, func(i, j int) bool { return xs[i].Name < xs[j].Name })
 }
 
-func libraryPaths() []string {
-	out := make([]string, 0, len(lib.PublicPackages()))
-	for _, p := range lib.PublicPackages() {
-		out = append(out, "`sngl:"+p+"`")
-	}
-	return out
-}
-
 func quote(s string) string { return "\"" + s + "\"" }
 
 // LibraryOrigin is a library package that declares a given name.

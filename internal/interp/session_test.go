@@ -128,14 +128,3 @@ func TestReloadRunsTheInitialiserForANewVar(t *testing.T) {
 		t.Errorf("value is %v, want the new var initialised to 7", got)
 	}
 }
-
-// firstTimerKey is the mounted path of the session's first scheduled timer. A
-// timer is keyed on where it is written now, the same way an effect is, so
-// there is no positional key to construct.
-func firstTimerKey(t *testing.T, s *Session) Key {
-	t.Helper()
-	if len(s.Timers.entries) == 0 {
-		t.Fatal("the session has no timer scheduled")
-	}
-	return s.Timers.entries[0].Key
-}
