@@ -740,10 +740,10 @@ type CardInstance struct {
 	__n1         *fyne.Container
 }
 
-func newCardInstance(__model *Model, start int) *CardInstance {
+func newCardInstance(__model *Model, __a_start int) *CardInstance {
 	c := &CardInstance{}
 	c.__model = __model
-	c.__prop_start = start
+	c.__prop_start = __a_start
 	c.rows = []int{c.__prop_start, (c.__prop_start + 10)}
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -809,12 +809,12 @@ type Card__slot0Instance struct {
 	__n3                *fyne.Container
 }
 
-func newCard__slot0Instance(__model *Model, start int, __p0 int, __on0 func(string)) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___on0 func(string)) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
-	c.__prop_start = start
-	c.__prop___p0 = __p0
-	c.__prop___on0 = __on0
+	c.__prop_start = __a_start
+	c.__prop___p0 = __a___p0
+	c.__prop___on0 = __a___on0
 	c.rows = []int{c.__prop_start, (c.__prop_start + 10)}
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -1117,10 +1117,10 @@ type CardInstance struct {
 	__n1         gtk4rt.Handle
 }
 
-func newCardInstance(__model *Model, start int) *CardInstance {
+func newCardInstance(__model *Model, __a_start int) *CardInstance {
 	c := &CardInstance{}
 	c.__model = __model
-	c.__prop_start = start
+	c.__prop_start = __a_start
 	c.rows = []int{c.__prop_start, (c.__prop_start + 10)}
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1206,12 +1206,12 @@ type Card__slot0Instance struct {
 	__n3                gtk4rt.Handle
 }
 
-func newCard__slot0Instance(__model *Model, start int, __p0 int, __on0 func(string)) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___on0 func(string)) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
-	c.__prop_start = start
-	c.__prop___p0 = __p0
-	c.__prop___on0 = __on0
+	c.__prop_start = __a_start
+	c.__prop___p0 = __a___p0
+	c.__prop___on0 = __a___on0
 	c.rows = []int{c.__prop_start, (c.__prop_start + 10)}
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -1955,9 +1955,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fa2471ce73a59b459fc7a787002cf6ca
 -- run/go/fyne --
-pass sha256:7c7b5e2906fe4d7e251f46ab04295627
+pass sha256:b35099aff1b8af45291c662c418655cd
 -- run/go/gtk4 --
-pass sha256:62f33a284b425ca791d402ab1eec4fb9
+pass sha256:a8454f5757795ac4a1de591325a916c3
 -- run/kotlin/android --
 pass sha256:240c001b2528aae2f65b2b28178cc836
 -- run/none/html --

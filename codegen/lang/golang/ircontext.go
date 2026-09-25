@@ -569,12 +569,32 @@ func (gc *GoIRContext) ElseHead() string                    { return "} else {" 
 func (gc *GoIRContext) BlockEnd() string                    { return "}" }
 func (gc *GoIRContext) Indent() string                      { return "\t" }
 
+// shadowedStateVar reports a read of a state var whose name a local of the
+// emitted scope also binds -- a render slot's `parent` parameter beside a
+// program's `var parent` -- which Resolve, asking by name, answers as the local.
+func (gc *GoIRContext) shadowedStateVar(sym ir.Symbol) (*ir.Var, bool) {
+	v, ok := sym.(*ir.Var)
+	if !ok || v.IsConst || v.NodeHandle || gc.Ctx == nil {
+		return nil, false
+	}
+	if _, renamed := gc.Ctx.Renames[v.Name]; !gc.Ctx.Locals[v.Name] && !renamed {
+		return nil, false
+	}
+	if gc.Ctx.Component != nil && slices.Contains(gc.Ctx.Component.Vars, v) {
+		return v, true
+	}
+	return v, gc.Ctx.Pkg != nil && slices.Contains(gc.Ctx.Pkg.Vars, v)
+}
+
 func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
 	}
 	if _, ok := n.Sym.(*codegen.Receiver); ok {
 		return n.Name
+	}
+	if v, ok := gc.shadowedStateVar(n.Sym); ok {
+		return gc.recvFor(v) + "." + gc.StateFieldName(n.Name)
 	}
 	sym, kind := gc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
@@ -750,6 +770,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	}
 	if n.IsElementRef && n.Synthesized {
 		return gc.NodeRecv(name) + "." + name
+	}
+	if v, ok := gc.shadowedStateVar(n.Sym); ok {
+		return gc.recvFor(v) + "." + gc.StateFieldName(name)
 	}
 	sym, kind := gc.Ctx.Resolve(name)
 	switch kind {

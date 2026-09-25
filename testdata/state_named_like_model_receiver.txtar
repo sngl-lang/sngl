@@ -479,10 +479,10 @@ type CounterInstance struct {
 	inc          *widget.Button
 }
 
-func newCounterInstance(__model *Model, start int) *CounterInstance {
+func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
-	c.__prop_start = start
+	c.__prop_start = __a_start
 	c.m = c.__prop_start
 	c.c = 0
 	c.__root = container.NewVBox()
@@ -645,10 +645,10 @@ type CounterInstance struct {
 	inc          gtk4rt.Handle
 }
 
-func newCounterInstance(__model *Model, start int) *CounterInstance {
+func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
-	c.__prop_start = start
+	c.__prop_start = __a_start
 	c.m = c.__prop_start
 	c.c = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
@@ -738,6 +738,6 @@ func (m *Model) bumpClick() {
 -- run/go/bubbletea --
 pass sha256:f8928788e6b32896772fb6c4bc6785e4
 -- run/go/fyne --
-pass sha256:7dbc5596c50c5954647e3d7bb30bec4f
+pass sha256:bb96c476816a75438ebff211e31db316
 -- run/go/gtk4 --
-pass sha256:f34228002fd639a94221200c5234820b
+pass sha256:1f2e686f23b52228f767194e136356eb

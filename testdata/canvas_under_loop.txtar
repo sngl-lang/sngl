@@ -279,12 +279,12 @@ type __canvas0Instance struct {
 	__n3Ctx      *snglcanvas.Context
 }
 
-func new__canvas0Instance(__model *Model, __p0 float64, __p1 float64, __on0 func()) *__canvas0Instance {
+func new__canvas0Instance(__model *Model, __a___p0 float64, __a___p1 float64, __a___on0 func()) *__canvas0Instance {
 	c := &__canvas0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
-	c.__prop___p1 = __p1
-	c.__prop___on0 = __on0
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -340,10 +340,10 @@ type __canvas1Instance struct {
 	__n4Ctx     *snglcanvas.Context
 }
 
-func new__canvas1Instance(__model *Model, __p0 float64) *__canvas1Instance {
+func new__canvas1Instance(__model *Model, __a___p0 float64) *__canvas1Instance {
 	c := &__canvas1Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -829,12 +829,12 @@ type __canvas0Instance struct {
 	__n3         *C.GtkDrawingArea
 }
 
-func new__canvas0Instance(__model *Model, __p0 float64, __p1 float64, __on0 func()) *__canvas0Instance {
+func new__canvas0Instance(__model *Model, __a___p0 float64, __a___p1 float64, __a___on0 func()) *__canvas0Instance {
 	c := &__canvas0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
-	c.__prop___p1 = __p1
-	c.__prop___on0 = __on0
+	c.__prop___p0 = __a___p0
+	c.__prop___p1 = __a___p1
+	c.__prop___on0 = __a___on0
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -896,10 +896,10 @@ type __canvas1Instance struct {
 	__n4        *C.GtkDrawingArea
 }
 
-func new__canvas1Instance(__model *Model, __p0 float64) *__canvas1Instance {
+func new__canvas1Instance(__model *Model, __a___p0 float64) *__canvas1Instance {
 	c := &__canvas1Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1264,8 +1264,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:186fd473d1d2459c020793f6d6cbf3a7
+pass sha256:9363a9748632b21ba4301b7a92b4f8c1
 -- run/go/gtk4 --
-pass sha256:a71ba842872eb4bfc6f9dd278b34ce4c
+pass sha256:bc75f86d47d72cdfc3da4883a62f98e1
 -- run/none/html --
 pass sha256:6818d5a8f9b1bd34d6e2cc2dcb407e08

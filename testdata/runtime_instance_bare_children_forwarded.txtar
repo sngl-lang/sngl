@@ -260,10 +260,10 @@ type Card__slot2Instance struct {
 	__n2        *widget.Label
 }
 
-func newCard__slot2Instance(__model *Model, __p0 string) *Card__slot2Instance {
+func newCard__slot2Instance(__model *Model, __a___p0 string) *Card__slot2Instance {
 	c := &Card__slot2Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.hits = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -386,10 +386,10 @@ type Row__slot0Instance struct {
 	__n6         *fyne.Container
 }
 
-func newRow__slot0Instance(__model *Model, __p0 string) *Row__slot0Instance {
+func newRow__slot0Instance(__model *Model, __a___p0 string) *Row__slot0Instance {
 	c := &Row__slot0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -662,10 +662,10 @@ type Card__slot2Instance struct {
 	__n2        gtk4rt.Handle
 }
 
-func newCard__slot2Instance(__model *Model, __p0 string) *Card__slot2Instance {
+func newCard__slot2Instance(__model *Model, __a___p0 string) *Card__slot2Instance {
 	c := &Card__slot2Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.hits = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -831,10 +831,10 @@ type Row__slot0Instance struct {
 	__n6         gtk4rt.Handle
 }
 
-func newRow__slot0Instance(__model *Model, __p0 string) *Row__slot0Instance {
+func newRow__slot0Instance(__model *Model, __a___p0 string) *Row__slot0Instance {
 	c := &Row__slot0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1308,8 +1308,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:738099118858865c520b79257667c42a
+pass sha256:ca2e22a48a6bb4ba6585cd58c9a96f4b
 -- run/go/gtk4 --
-pass sha256:43f6c7160e4c0c44de7359a622a8eef5
+pass sha256:ee9bd2764d769c982205d121fd0e33e6
 -- run/none/html --
 pass sha256:12de6a54708ed445e5b01c67b6a98a05

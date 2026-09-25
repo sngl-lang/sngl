@@ -138,11 +138,11 @@ type Frame__slot3Instance struct {
 	__n3           *fyne.Container
 }
 
-func newFrame__slot3Instance(__model *Model, n int, __depth int) *Frame__slot3Instance {
+func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot3Instance {
 	c := &Frame__slot3Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -237,11 +237,11 @@ type Frame__slot2Instance struct {
 	__n5           *fyne.Container
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -336,11 +336,11 @@ type Frame__slot1Instance struct {
 	__n7           *fyne.Container
 }
 
-func newFrame__slot1Instance(__model *Model, n int, __depth int) *Frame__slot1Instance {
+func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot1Instance {
 	c := &Frame__slot1Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -435,11 +435,11 @@ type Frame__slot0Instance struct {
 	__n9           *fyne.Container
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -595,11 +595,11 @@ type Frame__slot3Instance struct {
 	__n3           gtk4rt.Handle
 }
 
-func newFrame__slot3Instance(__model *Model, n int, __depth int) *Frame__slot3Instance {
+func newFrame__slot3Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot3Instance {
 	c := &Frame__slot3Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -717,11 +717,11 @@ type Frame__slot2Instance struct {
 	__n5           gtk4rt.Handle
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -839,11 +839,11 @@ type Frame__slot1Instance struct {
 	__n7           gtk4rt.Handle
 }
 
-func newFrame__slot1Instance(__model *Model, n int, __depth int) *Frame__slot1Instance {
+func newFrame__slot1Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot1Instance {
 	c := &Frame__slot1Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -961,11 +961,11 @@ type Frame__slot0Instance struct {
 	__n9           gtk4rt.Handle
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1529,8 +1529,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ff1b91f8a60d2015fe9f7e9cc1447390
+pass sha256:ae92d52ed38b31d2ae1ac34f6846f475
 -- run/go/gtk4 --
-pass sha256:a9c023638d5d80fffc7adb870710beef
+pass sha256:93128b0292026deef01992cfc0658e6d
 -- run/none/html --
 pass sha256:2e5677422cd81b182dfab1afaef6daf1

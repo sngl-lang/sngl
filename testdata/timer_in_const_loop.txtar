@@ -508,12 +508,12 @@ type TimerInstance struct {
 	__slot1_at          fyne.CanvasObject
 }
 
-func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
-	c.__prop_interval = interval
-	c.__prop_enabled = enabled
-	c.__prop_tick = tick
+	c.__prop_interval = __a_interval
+	c.__prop_enabled = __a_enabled
+	c.__prop_tick = __a_tick
 	c.handle = nil
 	c.done = nil
 	c.live = false
@@ -824,12 +824,12 @@ type TimerInstance struct {
 	__slot1_at          gtk4rt.Handle
 }
 
-func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
-	c.__prop_interval = interval
-	c.__prop_enabled = enabled
-	c.__prop_tick = tick
+	c.__prop_interval = __a_interval
+	c.__prop_enabled = __a_enabled
+	c.__prop_tick = __a_tick
 	c.handle = nil
 	c.__effect0_key = time.Duration(0) * time.Millisecond
 	c.__effect0_live = []time.Duration{}
@@ -1246,8 +1246,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:146477a18828bf62ccb78a149d2018d5
 -- run/go/fyne --
-pass sha256:7bc65a52f23d4028d71de895285b706f
+pass sha256:64442ac18f96066709c24a2e6c9a574c
 -- run/go/gtk4 --
-pass sha256:fe21d2f12fca3488eae0bb6befddc936
+pass sha256:4475802cb1136667566224f82acabfa9
 -- run/none/html --
 pass sha256:68f08128213183c49de25c724e556808

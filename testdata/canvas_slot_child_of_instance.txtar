@@ -216,10 +216,10 @@ type Frame__slot0Instance struct {
 	__n4Ctx     *snglcanvas.Context
 }
 
-func newFrame__slot0Instance(__model *Model, __p0 float64) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a___p0 float64) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.hits = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -663,10 +663,10 @@ type Frame__slot0Instance struct {
 	__n4        *C.GtkDrawingArea
 }
 
-func newFrame__slot0Instance(__model *Model, __p0 float64) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a___p0 float64) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
+	c.__prop___p0 = __a___p0
 	c.hits = 0
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
@@ -945,8 +945,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:9890e13e625df7e75c7eb89043b4bc77
+pass sha256:b8969fe022c3759c642c7953ebdd0dfd
 -- run/go/gtk4 --
-pass sha256:2cd57a155fb521b7145a505ac416876d
+pass sha256:33b662151297e55dfde96d636a950468
 -- run/none/html --
 pass sha256:17f968b6b4acc871b16a83c611401394

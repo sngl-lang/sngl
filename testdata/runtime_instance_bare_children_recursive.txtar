@@ -140,12 +140,12 @@ type Frame__slot2Instance struct {
 	__n0           *widget.Label
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int, __p0 int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p0 int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -240,11 +240,11 @@ type Frame__slot0Instance struct {
 	__n5           *fyne.Container
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -395,12 +395,12 @@ type Frame__slot2Instance struct {
 	__n0           gtk4rt.Handle
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int, __p0 int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p0 int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -512,11 +512,11 @@ type Frame__slot0Instance struct {
 	__n5           gtk4rt.Handle
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.open = true
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -879,8 +879,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:abfc46ec370cbcb41bb0c93fee05a53f
+pass sha256:f818e1315f3b1c7da8edfaf98c0c8d26
 -- run/go/gtk4 --
-pass sha256:d4259631d48ec82e3d6a8458eb0b3b6c
+pass sha256:3d98ef2222d1574c30b8086378d6d9fa
 -- run/none/html --
 pass sha256:17f9e0ffe70fb397b8021405b2461a2f

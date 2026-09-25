@@ -416,11 +416,11 @@ type CardInstance struct {
 	__n0                *widget.Label
 }
 
-func newCardInstance(__model *Model, n int, report func(int)) *CardInstance {
+func newCardInstance(__model *Model, __a_n int, __a_report func(int)) *CardInstance {
 	c := &CardInstance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop_report = report
+	c.__prop_n = __a_n
+	c.__prop_report = __a_report
 	c.hits = 0
 	c.__effect0_key = 0
 	c.__effect0_live = []int{}
@@ -636,11 +636,11 @@ type CardInstance struct {
 	__n0                gtk4rt.Handle
 }
 
-func newCardInstance(__model *Model, n int, report func(int)) *CardInstance {
+func newCardInstance(__model *Model, __a_n int, __a_report func(int)) *CardInstance {
 	c := &CardInstance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop_report = report
+	c.__prop_n = __a_n
+	c.__prop_report = __a_report
 	c.hits = 0
 	c.__effect0_key = 0
 	c.__effect0_live = []int{}
@@ -1032,9 +1032,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:945d19fba92598e108d5dcb68c042332
 -- run/go/fyne --
-pass sha256:a784430e5ab3d8590f4132cef692fb10
+pass sha256:e667e74ab51580eb38939056167849b8
 -- run/go/gtk4 --
-pass sha256:ea948d050593ba3840026adb39b806e3
+pass sha256:2b40d79575425097800593949a723bfc
 -- run/kotlin/android --
 pass sha256:35701b9892a5e285e4c634d96fd7e36d
 -- run/none/html --

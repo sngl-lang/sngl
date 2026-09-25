@@ -43,18 +43,18 @@ func emitComponentInstance(
 		handleType = gtk4rtHandleType
 	}
 
-	// Props are parameters of the ctor, so a read of one is a bare local.
-	// passComponentProps has already rewritten every read inside the body to
-	// the `__prop_<name>` cell; what still names the parameter is that cell's
-	// own initializer.
+	// Props are parameters of the ctor, and only the ctor names them: every read
+	// in the body is of the `__prop_<name>` cell, which the ctor initializes.
 	igc := gc.ForComponent(comp)
 	igc.Ctx.StateReceiver = instanceReceiver
 	igc.Ctx.OuterReceiver = instanceReceiver + "." + golang.InstanceModelField
 	igc.Ctx.OuterNodes = golang.PageNodes(gc.Ctx.Pkg, comp)
-	for _, p := range cc.Props {
-		igc = igc.WithLocal(p.Name)
-	}
 	igc.MethodRecvType = typeName
+	cgc := igc
+	for _, p := range cc.Props {
+		cgc = cgc.WithRenamedLocal(p.Name, golang.InstanceCtorParam(p.Name))
+	}
+	cgc.MethodRecvType = typeName
 
 	var fields []widgetField
 	sink := func(name, cType string) {
@@ -83,14 +83,14 @@ func emitComponentInstance(
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {
-		fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, v.Name, instanceVarInit(v, igc, wrapped))
+		fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, v.Name, instanceVarInit(v, cgc, wrapped))
 	}
 	for _, stmt := range bodyStmts {
-		for _, line := range igc.EvalStmt(stmt) {
+		for _, line := range cgc.EvalStmt(stmt) {
 			fmt.Fprintf(&ctorBody, "\t%s\n", line)
 		}
 	}
-	ctorBody.WriteString(instanceRootBinding(tr, igc, wrapped))
+	ctorBody.WriteString(instanceRootBinding(tr, cgc, wrapped))
 	fmt.Fprintf(&ctorBody, "\t%s\n", rootRefLine("g_object_ref_sink", "Retain", wrapped))
 
 	// Methods after the body, because the walk is what discovers the widget
@@ -170,7 +170,7 @@ func emitComponentInstance(
 
 	params := []string{golang.InstanceModelField + " *" + codegen.ModelTypeName}
 	for _, p := range cc.Props {
-		params = append(params, p.Name+" "+golang.IRTypeToGo(p.Type))
+		params = append(params, golang.InstanceCtorParam(p.Name)+" "+golang.IRTypeToGo(p.Type))
 	}
 	fmt.Fprintf(b, "func %s(%s) *%s {\n", golang.ComponentInstanceCtor(comp.Name), strings.Join(params, ", "), typeName)
 	fmt.Fprintf(b, "\t%s := &%s{}\n", instanceReceiver, typeName)

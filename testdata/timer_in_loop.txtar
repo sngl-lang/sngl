@@ -198,12 +198,12 @@ type TimerInstance struct {
 	__slot0_at          fyne.CanvasObject
 }
 
-func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
-	c.__prop_interval = interval
-	c.__prop_enabled = enabled
-	c.__prop_tick = tick
+	c.__prop_interval = __a_interval
+	c.__prop_enabled = __a_enabled
+	c.__prop_tick = __a_tick
 	c.handle = nil
 	c.done = nil
 	c.live = false
@@ -451,12 +451,12 @@ type TimerInstance struct {
 	__slot0_at          gtk4rt.Handle
 }
 
-func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick func(any)) *TimerInstance {
+func newTimerInstance(__model *Model, __a_interval time.Duration, __a_enabled bool, __a_tick func(any)) *TimerInstance {
 	c := &TimerInstance{}
 	c.__model = __model
-	c.__prop_interval = interval
-	c.__prop_enabled = enabled
-	c.__prop_tick = tick
+	c.__prop_interval = __a_interval
+	c.__prop_enabled = __a_enabled
+	c.__prop_tick = __a_tick
 	c.handle = nil
 	c.__effect0_key = time.Duration(0) * time.Millisecond
 	c.__effect0_live = []time.Duration{}
@@ -791,8 +791,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:d633329e9a8112922c521d1830b553ba
+pass sha256:84e07162996c1162b80659be7a3469ac
 -- run/go/gtk4 --
-pass sha256:9416a15b39283d5f039c6e0fdb0ec41c
+pass sha256:76641bb8fabc98d72e44abdbe7082431
 -- run/none/html --
 pass sha256:7b160b8daf193794eb1f84bd104c6792

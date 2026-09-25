@@ -215,10 +215,10 @@ type RowInstance struct {
 	__n1         *widget.Label
 }
 
-func newRowInstance(__model *Model, label string) *RowInstance {
+func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
-	c.__prop_label = label
+	c.__prop_label = __a_label
 	c.got = ""
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -534,10 +534,10 @@ type RowInstance struct {
 	__n1         *C.GtkLabel
 }
 
-func newRowInstance(__model *Model, label string) *RowInstance {
+func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
-	c.__prop_label = label
+	c.__prop_label = __a_label
 	c.got = ""
 	c.__root = (*C.GtkBox)(unsafe.Pointer(C.gtk_box_new(C.GTK_ORIENTATION_VERTICAL, 6)))
 	c.__slot0 = nil
@@ -655,6 +655,6 @@ func (m *Model) boxChange() {
 	C.sngl_emit(C.gpointer(unsafe.Pointer(m.box)), sig)
 }
 -- run/go/fyne --
-pass sha256:6dd021ed898bce3713b76cebb68dc90a
+pass sha256:33ddaff7efbec1a95a40c816473e512d
 -- run/go/gtk4 --
-pass sha256:6bec65a3755cde6d20bf18b3a40603aa
+pass sha256:3a2c82acb7ff62620e1356602a3a3c55
