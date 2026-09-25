@@ -1002,3 +1002,62 @@ func TestIntrinsicFuncNotInReach(t *testing.T) {
 func countContextReadsInBlock(stmts []ir.Stmt, ctx *ir.Context) int {
 	return countContextReads(stmts, ctx)
 }
+
+// TestLowerProviders_InHandlers covers the handlers lowerInStmts reaches
+// through something other than NodeInst.Handlers: a boundary's @error, a
+// window's @error and a call's own @error.
+func TestLowerProviders_InHandlers(t *testing.T) {
+	handler := func(ctx *ir.Context, s *ir.Var) *ir.EventHandler {
+		return &ir.EventHandler{Name: "error", Func: &ir.Func{Block: []ir.Stmt{
+			&ir.ContextProvider{
+				Ref:   ctx,
+				Value: makeStringLit("dark"),
+				Children: []ir.Stmt{&ir.Assign{
+					Target: &ir.Ident{Name: "s", Sym: s},
+					Value:  makeContextRead(ctx),
+				}},
+			},
+		}}}
+	}
+	for _, tc := range []struct {
+		name  string
+		build func(win *ir.Window, h *ir.EventHandler)
+	}{
+		{"boundary", func(win *ir.Window, h *ir.EventHandler) {
+			win.Children = []ir.Stmt{&ir.ErrorBoundary{Handler: h}}
+		}},
+		{"window", func(win *ir.Window, h *ir.EventHandler) {
+			win.ErrorHandler = h
+		}},
+		{"call", func(win *ir.Window, h *ir.EventHandler) {
+			risky := &ir.Func{Name: "risky"}
+			win.Children = []ir.Stmt{&ir.CallStmt{Call: &ir.Call{Func: risky, ErrorHandler: h}}}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := makeContext("theme", "light")
+			s := &ir.Var{Name: "s", Type: ir.TypString}
+			h := handler(ctx, s)
+			win := &ir.Window{Name: "home"}
+			tc.build(win, h)
+			pkg := &ir.Package{
+				Contexts: []*ir.Context{ctx},
+				Vars:     []*ir.Var{s},
+				Windows:  []*ir.Window{win},
+			}
+			if err := applyNoContext(pkg, Features{}, Options{}); err != nil {
+				t.Fatal(err)
+			}
+			if len(h.Func.Block) != 1 {
+				t.Fatalf("handler block = %d stmts; want the provider's one assignment", len(h.Func.Block))
+			}
+			a, ok := h.Func.Block[0].(*ir.Assign)
+			if !ok {
+				t.Fatalf("handler block[0] = %T; want *ir.Assign", h.Func.Block[0])
+			}
+			if lit, ok := a.Value.(*ir.Literal); !ok || lit.Value != `"dark"` {
+				t.Errorf("assigned value = %#v; want the provided \"dark\"", a.Value)
+			}
+		})
+	}
+}
