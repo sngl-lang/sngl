@@ -1600,7 +1600,7 @@ func (g *htmlGen) pkgStructs() []*ir.StructDef {
 	return g.pkg.Structs
 }
 
-// pkgFuncs returns user-defined top-level funcs plus main component funcs.
+// pkgFuncs returns user-defined top-level funcs plus the harness root's funcs.
 // The dedupe matters: after passNoInlineComponents + registerNestedMethods a
 // component method lands in both pkg.Funcs and comp.Funcs. Synthesized funcs
 // are excluded; emitScript routes those through WalkLowered separately.

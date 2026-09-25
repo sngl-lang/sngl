@@ -10,9 +10,10 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passNoInlineComponents inlines every non-recursive, non-native, non-main
-// user-defined component into main. After the pass, codegen only sees one
-// real ir.Component (main) plus any recursive cycles. See
+// passNoInlineComponents inlines every non-recursive, non-native user-defined
+// component other than a harness root into the body that instantiates it.
+// After the pass, codegen sees only the harness root, the components built at
+// run time, and any recursive cycles. See
 // docs/superpowers/specs/2026-05-16-component-inlining-design.md.
 var passNoInlineComponents = pass{
 	name:    "NoInlineComponents",
@@ -425,9 +426,8 @@ func (st *inlineCompState) run() error {
 //
 // A test build names the component under test, because that is what the
 // harness renders: left to itself, the inliner would flatten it into the
-// program's own root and rename its state per instance. `main` used to be
-// that root by convention, and CodegenCtx.RootDecl is the same answer for
-// codegen.
+// program's own root and rename its state per instance. CodegenCtx.RootDecl
+// is the same answer for codegen.
 func rootComponent(pkg *ir.Package, opts Options) *ir.Component {
 	if opts.RootComponent == "" {
 		return nil
@@ -450,10 +450,7 @@ func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 	}
 	// A window is a root and not a node in the component graph, so its edges
 	// belong to no component: a cycle among components is found from the
-	// components alone. They used to be attributed to `main`, which was the
-	// root by convention -- and `window { main }` then read as main calling
-	// itself, so every such program elected a runtime instance instead of
-	// inlining the component into the window.
+	// components alone, or `window { c }` would read as c calling itself.
 	//
 	// A harness that made a component the root is the exception, and there the
 	// windows are gone.

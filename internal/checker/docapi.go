@@ -213,8 +213,9 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 // PrefixedExamples extracts `_example_<name>` prefixed components from a
 // document. Components named `_example_<name>` or `_example_<name>_<suffix>`
 // map to <name>; the first example per name wins. Returns formatted source
-// for each example, with the wrapper renamed to `main` so the snippet is a
-// complete, runnable app. The leading underscore marks examples as
+// for each example, with the wrapper renamed to `main` for display; the name
+// carries no meaning, and the snippet renders only where a window instantiates
+// it. The leading underscore marks examples as
 // unexported — they are not part of the public API but the doc tooling
 // still extracts them from the AST for gallery rendering.
 func PrefixedExamples(doc *ast.Document) map[string]string {

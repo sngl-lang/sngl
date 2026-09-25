@@ -364,8 +364,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// the other side: a window body's func, and every clone the inliner
 	// hoisted into one, was a window's. A window owns nothing now, so the
 	// question is asked of the body instead of of the list -- which is also
-	// what ctx.RootDecl() stopped answering for an ordinary program, `main`
-	// having lost its harness convention.
+	// what ctx.RootDecl() does not answer for an ordinary program, which has
+	// no harness root.
 	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
 	for fn := range stateReaching {
 		mainOwnFuncs[fn] = true

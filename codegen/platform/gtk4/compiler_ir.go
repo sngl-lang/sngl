@@ -172,8 +172,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		gc.RequireImport("os")
 	}
 
-	// Inlining folded every non-main component into main, so iterating every
-	// component's vars would re-add the originals and collide their
+	// Inlining folded every component but a harness root into its caller, so
+	// iterating every component's vars would re-add the originals and collide their
 	// synthesized __root/__slot scratch fields.
 	for _, tv := range ctx.ModelState() {
 		// nil for a binding no declaration made: a window's route parameters,

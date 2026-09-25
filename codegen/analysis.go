@@ -214,8 +214,8 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 	// conditions folded into the gate.
 	//
 	// Read off the tree rather than out of a side list a lowering pass filled.
-	// It used to be pkg.Timers plus `main`'s -- a list the checker hoisted every
-	// timer onto -- so a timer in any other component was checked, type-correct
+	// It used to be pkg.Timers plus one component's -- a list the checker
+	// hoisted every timer onto -- so a timer in any other component was checked, type-correct
 	// and never emitted at all. Asking ir.Owners is what makes that class of gap
 	// unrepeatable: the enumeration says which declarations own a body, and this
 	// walks every one of them rather than naming two by hand.
