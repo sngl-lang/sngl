@@ -937,6 +937,7 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	for _, w := range pkg.Windows {
 		windowActive := copyExprMap(defaults)
 		w.Children = lowerInStmts(w.Children, windowActive, pc)
+		lowerInHandler(w.ErrorHandler, windowActive, pc)
 		// The provider unwrap splices a provider's children up to window-body
 		// level, which can put a fresh LocalVar there after passHoistState
 		// already ran. Promote those too, into the same slice.
@@ -1148,11 +1149,10 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			for i := range n.Props {
 				n.Props[i].Value = lowerInExpr(n.Props[i].Value, active, pc)
 			}
-			for _, h := range n.Handlers {
-				if h.Func != nil {
-					h.Func.Block = lowerInStmts(h.Func.Block, active, pc)
-				}
+			for i := range n.Handlers {
+				lowerInHandler(&n.Handlers[i], active, pc)
 			}
+			lowerInHandler(n.ErrorHandler, active, pc)
 			// A slot population is rendered where the callee's body inserts
 			// it, so a provider the callee wrapped that insertion in covers
 			// it -- even though the population is written here.
@@ -1187,6 +1187,7 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			out = append(out, n)
 
 		case *ir.ErrorBoundary:
+			lowerInHandler(n.Handler, active, pc)
 			n.Children = lowerInStmts(n.Children, active, pc)
 			out = append(out, n)
 
@@ -1205,11 +1206,7 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 
 		case *ir.CallStmt:
 			if n.Call != nil {
-				lowerCallInPlace(n.Call, active, pc)
-				n.Call.Receiver = lowerInExpr(n.Call.Receiver, active, pc)
-				for i := range n.Call.Args {
-					n.Call.Args[i].Value = lowerInExpr(n.Call.Args[i].Value, active, pc)
-				}
+				lowerInExpr(n.Call, active, pc)
 			}
 			out = append(out, n)
 
@@ -1253,6 +1250,7 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Ex
 		for i := range n.Args {
 			n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, pc)
 		}
+		lowerInHandler(n.ErrorHandler, active, pc)
 	case *ir.Binary:
 		n.Left = lowerInExpr(n.Left, active, pc)
 		n.Right = lowerInExpr(n.Right, active, pc)
@@ -1320,6 +1318,12 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Ex
 		panic(fmt.Sprintf("lowerInExpr: unhandled %T", n))
 	}
 	return e
+}
+
+func lowerInHandler(h *ir.EventHandler, active map[*ir.Context]ir.Expr, pc *provLower) {
+	if h != nil && h.Func != nil {
+		h.Func.Block = lowerInStmts(h.Func.Block, active, pc)
+	}
 }
 
 // lowerCallInPlace threads hidden __ctx_<name> args onto a func call site
