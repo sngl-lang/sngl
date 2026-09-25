@@ -811,6 +811,9 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	// nothing declares. Go's translator asks the same question, and spells the
 	// answer as a method on its Model rather than as a free function.
 	if jc.Ctx != nil {
+		if jc.Ctx.InstanceClosure && jc.Ctx.Component != nil && receiverName == jc.Ctx.Component.Name && len(args) > 0 {
+			return method + "(" + strings.Join(args[1:], ", ") + ")"
+		}
 		if _, ok := codegen.OwnerMethod(jc.Ctx.Pkg, receiverName, method); ok {
 			return receiverName + "_" + method + "(" + strings.Join(args, ", ") + ")"
 		}
