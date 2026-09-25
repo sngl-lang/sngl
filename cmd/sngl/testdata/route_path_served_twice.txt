@@ -16,6 +16,14 @@ stderr 'window 1 and window 2 both serve /'
 ! sngl generate --lang go --platform html -o out-params params.sngl
 stderr 'window "byName" and window "byID" both serve /p/\{id\}'
 
+# Two different shapes conflict too when some path matches both and neither is
+# more specific: `/p/q` is either. Only identical shapes were caught.
+! sngl generate --lang go --platform html -o out-overlap overlap.sngl
+stderr 'window "pa" serves /p/\{a\} and window "bq" serves /\{b\}/q, which match some of the same paths with neither more specific'
+
+# A more specific path beside a general one is what a mux is for.
+sngl generate --lang go --platform html -o out-specific specific.sngl
+
 -- index.sngl --
 import ui "sngl:ui"
 
@@ -57,4 +65,50 @@ ui.window #byID(href=`/p/{id}`, params=ByID{}) {
     component content(p) {
         ui.text(value=p.id)
     }
+}
+-- overlap.sngl --
+import ui "sngl:ui"
+
+struct A {
+    a string
+}
+
+struct B {
+    b string
+}
+
+ui.window #home(title="Home") {
+    ui.text(value="home")
+}
+
+ui.window #pa(href=`/p/{a}`, params=A{}) {
+    component content(p) {
+        ui.text(value=p.a)
+    }
+}
+
+ui.window #bq(href=`/{b}/q`, params=B{}) {
+    component content(p) {
+        ui.text(value=p.b)
+    }
+}
+-- specific.sngl --
+import ui "sngl:ui"
+
+struct A {
+    a string
+}
+
+ui.window #home(title="Home") {
+    ui.text(value="home")
+}
+
+ui.window #pa(href=`/p/{a}`, params=A{}) {
+    component content(p) {
+        ui.text(value=p.a)
+    }
+}
+
+ui.window #pq(href="/p/q", title="Q") {
+    ui.text(value="q")
 }

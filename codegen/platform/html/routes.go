@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -30,7 +31,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	windows := c.routeWindows
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
-	served := map[string]string{}
+	var served []servedRoute
 	for i, win := range windows {
 		var hrefExpr, titleExpr ir.Expr
 		if win.Window != nil {
@@ -47,10 +48,16 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 		if err := checkRouteParams(path, win.Window); err != nil {
 			return fmt.Errorf("html: window %q: %w", win.Name, err)
 		}
-		if prev, taken := served[routePattern(path)]; taken {
-			return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev, routeWindowLabel(win.Name, i), path)
+		for _, prev := range served {
+			if !routesConflict(prev.path, path) {
+				continue
+			}
+			if routeSegsEqual(prev.path, path) {
+				return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev.label, routeWindowLabel(win.Name, i), path)
+			}
+			return fmt.Errorf("html: %s serves %s and %s serves %s, which match some of the same paths with neither more specific; change one so a request names one of them", prev.label, prev.path, routeWindowLabel(win.Name, i), path)
 		}
-		served[routePattern(path)] = routeWindowLabel(win.Name, i)
+		served = append(served, servedRoute{path, routeWindowLabel(win.Name, i)})
 		title, _ := codegen.IRLiteralString(titleExpr)
 		// Single source of truth for action indexing: collectActions enumerates
 		// every backend handler in a stable order and returns both the action
@@ -197,16 +204,121 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 	return "", false
 }
 
-// routePattern is path with each parameter's name erased: a mux matches by
-// shape, so `/p/{a}` and `/p/{b}` are one route and registering both panics.
-func routePattern(path string) string {
-	segs := strings.Split(path, "/")
-	for i, seg := range segs {
-		if strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
-			segs[i] = "{}"
+type servedRoute struct{ path, label string }
+
+func routeSegsEqual(p, q string) bool {
+	return slices.Equal(routeSegs(p), routeSegs(q))
+}
+
+type routeSeg struct {
+	lit         string
+	wild, multi bool
+}
+
+func routeSegs(path string) []routeSeg {
+	var out []routeSeg
+	rest := strings.TrimPrefix(path, "/")
+	for {
+		seg, more, found := strings.Cut(rest, "/")
+		switch {
+		case seg == "" && !found:
+			return append(out, routeSeg{multi: true})
+		case strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "...}"):
+			return append(out, routeSeg{multi: true})
+		case seg == "{$}":
+			return append(out, routeSeg{lit: "/"})
+		case strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}"):
+			out = append(out, routeSeg{wild: true})
+		default:
+			out = append(out, routeSeg{lit: seg})
+		}
+		if !found {
+			return out
+		}
+		rest = more
+	}
+}
+
+type routeRel int
+
+const (
+	relEqual routeRel = iota
+	relDisjoint
+	relOverlap
+	relSpecific
+	relGeneral
+)
+
+func combineRel(a, b routeRel) routeRel {
+	switch a {
+	case relEqual:
+		return b
+	case relDisjoint:
+		return relDisjoint
+	case relOverlap:
+		if b == relDisjoint {
+			return relDisjoint
+		}
+		return relOverlap
+	}
+	switch {
+	case b == relEqual:
+		return a
+	case a == relSpecific && b == relGeneral, a == relGeneral && b == relSpecific:
+		return relOverlap
+	}
+	return b
+}
+
+func compareRouteSeg(a, b routeSeg) routeRel {
+	switch {
+	case a.multi && b.multi, a.wild && b.wild:
+		return relEqual
+	case a.multi:
+		return relGeneral
+	case b.multi:
+		return relSpecific
+	case a.wild:
+		if b.lit == "/" {
+			return relDisjoint
+		}
+		return relGeneral
+	case b.wild:
+		if a.lit == "/" {
+			return relDisjoint
+		}
+		return relSpecific
+	case a.lit == b.lit:
+		return relEqual
+	}
+	return relDisjoint
+}
+
+// routesConflict is net/http's rule for two patterns of one method: they
+// conflict when some path matches both and neither is more specific, which
+// ServeMux reports by panicking when the second is registered.
+func routesConflict(p, q string) bool {
+	a, b := routeSegs(p), routeSegs(q)
+	lastMulti := func(s []routeSeg) bool { return len(s) > 0 && s[len(s)-1].multi }
+	if len(a) != len(b) && !lastMulti(a) && !lastMulti(b) {
+		return false
+	}
+	rel := relEqual
+	for ; len(a) > 0 && len(b) > 0; a, b = a[1:], b[1:] {
+		if rel = combineRel(rel, compareRouteSeg(a[0], b[0])); rel == relDisjoint {
+			return false
 		}
 	}
-	return strings.Join(segs, "/")
+	switch {
+	case len(a) == 0 && len(b) == 0:
+	case len(a) == 0 && lastMulti(routeSegs(p)):
+		rel = combineRel(rel, relGeneral)
+	case len(b) == 0 && lastMulti(routeSegs(q)):
+		rel = combineRel(rel, relSpecific)
+	default:
+		return false
+	}
+	return rel == relEqual || rel == relOverlap
 }
 
 func routeWindowLabel(winName string, idx int) string {
