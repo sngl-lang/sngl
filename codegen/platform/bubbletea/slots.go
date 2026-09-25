@@ -4,22 +4,37 @@ import (
 	"fmt"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/codegen/lang/golang"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// A render method takes each slot as a func rendering what the caller
-// supplied, whose arguments are the slot's invocation list, a component entry
-// among them being a func of its own. Nil is "the caller supplied nothing",
-// which is what renders the insertion's fallback block.
+// A slot is passed as a func taking its invocation list; nil renders the
+// insertion's fallback.
 
-// slotParamName is what a slot is called as a parameter. The rest slot keeps
-// the name its bare children have always arrived under.
+// bindName is the Go name a render method or slot func binds a program's name
+// under. The receiver and the result/part locals the view emitter declares
+// share that scope, so a name that could be one of them gets a trailing
+// underscore, which no emitted name ends in.
+func bindName(name string) string {
+	if name == codegen.ModelReceiver || strings.HasPrefix(name, "result") || strings.HasPrefix(name, "part") {
+		return name + "_"
+	}
+	return name
+}
+
+func withBinding(gc *golang.GoIRContext, name string) *golang.GoIRContext {
+	if as := bindName(name); as != name {
+		return gc.WithRenamedLocal(name, as)
+	}
+	return gc.WithLocal(name)
+}
+
 func slotParamName(s *ir.SlotDecl) string {
 	if s.Rest {
 		return "slotContent"
 	}
-	return s.Name
+	return bindName(s.Name)
 }
 
 func slotFuncType(s *ir.SlotDecl) string {
@@ -34,7 +49,6 @@ func slotFuncType(s *ir.SlotDecl) string {
 	return "func(" + strings.Join(params, ", ") + ") string"
 }
 
-// slotParams declares comp's slots, after its props.
 func slotParams(comp *ir.Component) []string {
 	var out []string
 	for _, s := range comp.Slots {
@@ -43,8 +57,6 @@ func slotParams(comp *ir.Component) []string {
 	return out
 }
 
-// populationArgs declares a func for each slot n supplies and answers with
-// what the render method is passed for every slot it declares.
 func (vc *irViewContext) populationArgs(n *ir.NodeInst, resultVar string) []string {
 	var out []string
 	for _, s := range n.Component.Slots {
@@ -84,7 +96,8 @@ func (vc *irViewContext) slotFunc(name string, decl *ir.SlotDecl, sc *ir.SlotCon
 			}
 		}
 		if bound != "_" {
-			vc.gc = vc.gc.WithLocal(bound)
+			vc.gc = withBinding(vc.gc, bound)
+			bound = bindName(bound)
 		}
 		params[i] = bound + " " + typ
 	}
@@ -118,7 +131,7 @@ func (vc *irViewContext) slotCall(s *ir.SlotInst, resultVar string) (fn, call st
 	decl := s.Decl
 	switch {
 	case s.Entry != nil:
-		decl, fn = s.Entry, s.Name
+		decl, fn = s.Entry, bindName(s.Name)
 	case decl != nil:
 		fn = slotParamName(decl)
 	default:

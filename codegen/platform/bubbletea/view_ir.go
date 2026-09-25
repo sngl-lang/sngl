@@ -159,7 +159,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 	var params []string
 	for _, p := range cc.Props {
 		goType := golang.IRTypeToGo(p.Type)
-		params = append(params, p.Name+" "+goType)
+		params = append(params, bindName(p.Name)+" "+goType)
 	}
 	params = append(params, slotParams(cc.Component)...)
 
@@ -167,7 +167,7 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 
 	compGC := gc.ForComponent(cc.Component)
 	for _, p := range cc.Props {
-		compGC = compGC.WithLocal(p.Name)
+		compGC = withBinding(compGC, p.Name)
 	}
 
 	vc := &irViewContext{

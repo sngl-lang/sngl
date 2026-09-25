@@ -9,18 +9,14 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// A user composable takes each slot as a nullable composable parameter whose
-// arguments are the slot's invocation list, a component entry among them being
-// a composable of its own. Null is "the caller supplied nothing", which is
-// what renders the insertion's fallback block.
+// A slot is a nullable composable parameter taking its invocation list; null
+// renders the insertion's fallback.
 
-// slotParamName is what a slot is called as a parameter. The rest slot keeps
-// the name its bare children have always arrived under.
 func slotParamName(s *ir.SlotDecl) string {
 	if s.Rest {
 		return "slotContent"
 	}
-	return s.Name
+	return kotlin.SafeIdent(s.Name)
 }
 
 func slotParamType(s *ir.SlotDecl) string {
@@ -35,7 +31,6 @@ func slotParamType(s *ir.SlotDecl) string {
 	return "(@Composable (" + strings.Join(params, ", ") + ") -> Unit)?"
 }
 
-// slotParams declares comp's slots, after its props.
 func slotParams(comp *ir.Component) []string {
 	var out []string
 	for _, s := range comp.Slots {
@@ -44,11 +39,9 @@ func slotParams(comp *ir.Component) []string {
 	return out
 }
 
-// eventParamName is what a user composable calls an event it emits, the name
-// KtIRContext.EmitText invokes.
+// eventParamName must agree with the name KtIRContext.EmitText invokes.
 func eventParamName(e string) string { return "on" + strings.ToUpper(e[:1]) + e[1:] }
 
-// eventParams declares comp's events, after its slots.
 func eventParams(comp *ir.Component) []string {
 	var out []string
 	for _, e := range comp.Events {
@@ -61,8 +54,6 @@ func eventParams(comp *ir.Component) []string {
 	return out
 }
 
-// handlerArgs is the lambda an instantiation passes for each event it
-// subscribes to.
 func (cc *irComposeContext) handlerArgs(n *ir.NodeInst) []string {
 	var out []string
 	for _, h := range n.Handlers {
@@ -74,7 +65,6 @@ func (cc *irComposeContext) handlerArgs(n *ir.NodeInst) []string {
 	return out
 }
 
-// populationArgs is what an instantiation passes for each slot it supplies.
 func (cc *irComposeContext) populationArgs(n *ir.NodeInst) []string {
 	var out []string
 	for _, s := range n.Component.Slots {
@@ -104,9 +94,10 @@ func (cc *irComposeContext) slotLambda(decl *ir.SlotDecl, sc *ir.SlotContent, bo
 		}
 	}
 	saved := cc.kc
-	for _, name := range names {
+	for i, name := range names {
 		if name != "_" {
 			cc.kc = cc.kc.WithLocal(name)
+			names[i] = kotlin.SafeIdent(name)
 		}
 	}
 	inner := cc.renderNested(body)
@@ -138,7 +129,7 @@ func (cc *irComposeContext) renderSlotInst(s *ir.SlotInst) {
 	decl, name := s.Decl, ""
 	switch {
 	case s.Entry != nil:
-		decl, name = s.Entry, s.Name
+		decl, name = s.Entry, kotlin.SafeIdent(s.Name)
 	case decl != nil:
 		name = slotParamName(decl)
 	default:

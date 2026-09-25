@@ -429,12 +429,15 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 			return rewritten
 		}
 	}
+	if p, ok := n.Sym.(*ir.Param); ok && p.Receiver {
+		return name
+	}
 	_, kind := kc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
-		return kc.Ctx.RenamedName(name)
+		return SafeIdent(kc.Ctx.RenamedName(name))
 	default:
-		return name
+		return SafeIdent(name)
 	}
 }
 
