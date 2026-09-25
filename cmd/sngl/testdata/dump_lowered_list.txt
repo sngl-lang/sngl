@@ -42,7 +42,7 @@ stdout ' → Effect → '
 # appends tears its children down every render, so there is no identity for
 # anything to ask about.
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
-stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,AsyncPost,AsyncSpawn,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 ! stdout 'SlotChildInstances'
 cp stdout fyne.txt
 
@@ -55,7 +55,7 @@ cmp stdout fyne.txt
 # they are held under --lang none, even though Go withholds both. html+go and
 # html+none lower identically, which is again the cmp and not a repeated chain.
 sngl dump --stage lowered --lang go --platform html --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InsertBefore,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncCalls,Computed,ListLambdas,Declarative,InstanceState,InsertBefore,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 stdout ' → SlotChildInstances → '
 cp stdout htmlgo.txt
 
@@ -67,7 +67,7 @@ cmp stdout htmlgo.txt
 # calls the pass would lower it to. The other four match ' → Effect → ' above,
 # so the pattern is one that does match when the pass is there.
 sngl dump --stage lowered --lang kotlin --platform android --list main.sngl
-stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,Effects,StructComponents,StdlibContextParam,Canvas$'
+stdout '^caps: Toggle,Ternary,Lambda,Ref,Unit,Enum,AsyncReactive,AsyncCalls,Computed,ListLambdas,Reactivity,Declarative,ImplicitRecv,ViewStatements,InstanceState,Effects,StructComponents,StdlibContextParam,Canvas$'
 ! stdout ' → Effect → '
 
 # Unknown pass name surfaces a non-zero exit.

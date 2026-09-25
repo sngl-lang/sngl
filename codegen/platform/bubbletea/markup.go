@@ -98,6 +98,26 @@ func (c spanCascade) withToken(kind string) spanCascade {
 	return c
 }
 
+// withPaletteColor overlays what a palette the program set says a token is,
+// over the terminal color its kind would have had. Unset, the palette says
+// nothing: at build time that is no change, and at run time it is the color
+// already chosen, handed to `Or` as the fallback.
+func (vc *irViewContext) withPaletteColor(c spanCascade, e ir.Expr) spanCascade {
+	if e == nil || codegen.SpanStyleUnsetColor(e) {
+		return c
+	}
+	if codegen.SpanStyleKnownColor(e) {
+		c.color = lipglossColor(e, vc.gc)
+		return c
+	}
+	fallback := c.color
+	if fallback == "" {
+		fallback = `""`
+	}
+	c.color = fmt.Sprintf("%s.Or(%s)", vc.gc.EvalExpr(e), fallback)
+	return c
+}
+
 // withSpanStyle overlays what one run said about its own words.
 //
 // A field the run left alone leaves the enclosing run's answer standing, which
@@ -234,6 +254,7 @@ func (vc *irViewContext) renderSpan(stmt ir.Stmt, accVar string, c spanCascade) 
 		if k := codegen.NodeProp(s, "kind"); k != nil {
 			c = c.withToken(enumMember(k))
 		}
+		c = vc.withPaletteColor(c, codegen.NodeProp(s, "color"))
 		if text := codegen.NodeProp(s, "text"); text != nil {
 			vc.requireImport("fmt")
 			words := fmt.Sprintf("fmt.Sprint(%s)", vc.gc.EvalExpr(text))
@@ -266,6 +287,10 @@ func (vc *irViewContext) renderSpan(stmt ir.Stmt, accVar string, c spanCascade) 
 	case *ir.ErrorBoundary:
 		for _, child := range s.Children {
 			vc.renderSpan(child, accVar, c)
+		}
+	case *ir.SlotInst:
+		if vc.slotVar != "" {
+			vc.line(`%s += %s`, accVar, vc.slotVar)
 		}
 	default:
 		// Anything else in a flow renders nothing: an imperative statement a

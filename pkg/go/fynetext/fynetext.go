@@ -55,6 +55,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+
+	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 )
 
 // Tri is a span style field that may say nothing.
@@ -173,13 +175,14 @@ type resolved struct {
 // over answers this run's style inside one already resolved to outer.
 func (s SpanStyle) over(outer resolved) resolved {
 	out := outer
-	if s.Color != nil {
-		out.color = s.Color
-		out.colorName = ""
-	}
 	if n, ok := tokenColors[s.Token]; ok {
 		out.colorName = n
 		out.color = nil
+	}
+	// After the token, so a palette the program set wins over the theme.
+	if s.Color != nil {
+		out.color = s.Color
+		out.colorName = ""
 	}
 	if s.Size > 0 {
 		out.size = s.Size
@@ -228,6 +231,17 @@ func (s *Span) Add(child *Span) {
 // the emitted code assigns to the span and knows nothing about the widget.
 func (s *Span) SetText(text string) {
 	s.Text = text
+	s.refresh()
+}
+
+// SetColor is the color a palette the program set gives this run, which wins
+// over its token's theme color. The unset color leaves the theme's answer.
+func (s *Span) SetColor(c snglcolor.Color) {
+	if c.A == 0 {
+		s.Style.Color = nil
+	} else {
+		s.Style.Color = color.NRGBA{R: uint8(c.R), G: uint8(c.G), B: uint8(c.B), A: uint8(c.A)}
+	}
 	s.refresh()
 }
 

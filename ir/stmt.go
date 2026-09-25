@@ -180,6 +180,15 @@ type SlotInst struct {
 	Rest     bool   `json:",omitempty"`
 	Args     []Expr `json:",omitempty"` // values passed to a scoped slot
 	Children []Stmt // fallback: rendered when the caller supplies nothing
+	// Slots are this insertion's populations of the slot's component entries,
+	// keyed by entry name. Written in the body holding the insertion, and
+	// rendered wherever the population inserts the entry.
+	Slots map[string]*SlotContent `json:",omitempty"`
+	// Decl is the slot this inserts. Entry is set instead when the insertion
+	// renders one of a population's component entries: Name is then what the
+	// population bound it to, and Entry is the entry it names.
+	Decl  *SlotDecl `json:"-"`
+	Entry *SlotDecl `json:"-"`
 }
 
 func (*SlotInst) stmtNode() {}
@@ -263,6 +272,9 @@ type LocalVar struct {
 	// synthesized draw func and three prop values copied out, which is the
 	// same carrier written out longhand.
 	CanvasNode *NodeInst
+	// NodeAST is the source of the node a createNode flattened, so a platform
+	// declining it can quote the spelling and position the program wrote.
+	NodeAST ast.Stmt `json:"-"`
 }
 
 func (*LocalVar) stmtNode() {}
@@ -330,8 +342,8 @@ type For struct {
 	KeySym   *LoopVar
 	ValueSym *LoopVar
 	// HoistedWindowIDs holds list<Window> symbols hoisted from window #ids
-	// declared inside this loop's body. After optimizer expansion, the
-	// optimizer binds each symbol's value to the unrolled list of windows.
+	// declared inside this loop's body. optimize.Documents binds each to the
+	// list of windows the loop declares, one per iteration.
 	HoistedWindowIDs []*Var
 	// LoweredSlotID is set by passReactivity to the slot ID assigned when
 	// the For's Iter depends on a reactive Var. "" when the construct is not

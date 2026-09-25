@@ -139,7 +139,9 @@ func (c *checker) targetIdentity(pos ast.Pos, sym ir.Symbol, spelling string) (s
 // one of its own (`component Avatar[...]`) by the same rule -- the name says
 // which, and the index says for which target.
 func (c *checker) collectUserOverrides() {
+	defer c.saveFile()()
 	for _, decl := range c.userOverrides {
+		c.enterFileOf(decl.Pos)
 		plat, kind, ok := c.resolveTargetIndex(decl.Target)
 		if !ok {
 			continue

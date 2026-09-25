@@ -208,8 +208,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 }
 
 // foldStmts folds a slice of statements, removing nil results.
-// For loops whose iterator evaluates to a const list are unrolled in place
-// so downstream codegen sees static statements instead of runtime iteration.
+// Under Documents, for loops whose iterator evaluates to a const list are
+// unrolled in place so downstream codegen sees static statements instead of
+// runtime iteration.
 // If statements whose condition evaluates to a const bool are inlined
 // (true branch) or dropped (false branch) so downstream codegen sees static
 // structure instead of runtime conditionals.
@@ -222,9 +223,8 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 				continue
 			}
 		}
-		// A loop is unrolled only where the target cannot emit one; see
-		// evalCtx.unrollsLoops.
-		if fs, ok := s.(*ir.For); ok && ctx.unrollsLoops() {
+		// Only under Documents; see evalCtx.unroll.
+		if fs, ok := s.(*ir.For); ok && ctx.unroll {
 			if expanded := expandForStmt(fs, ctx); expanded != nil {
 				out = append(out, expanded...)
 				continue
@@ -325,6 +325,9 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 	case *ir.SlotInst:
 		n.Children = foldStmts(n.Children, ctx)
+		for _, name := range ir.SlotNames(n.Slots) {
+			n.Slots[name].Body = foldStmts(n.Slots[name].Body, ctx)
+		}
 	case *ir.ContextProvider:
 		if n.Value != nil {
 			n.Value = foldOwned(n.Value, ctx)

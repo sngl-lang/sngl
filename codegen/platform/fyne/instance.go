@@ -46,6 +46,8 @@ func emitComponentInstance(
 	// own initializer.
 	igc := gc.ForComponent(comp)
 	igc.Ctx.StateReceiver = instanceReceiver
+	igc.Ctx.OuterReceiver = instanceReceiver + "." + golang.InstanceModelField
+	igc.Ctx.OuterNodes = golang.PageNodes(gc.Ctx.Pkg, comp)
 	for _, p := range cc.Props {
 		igc = igc.WithLocal(p.Name)
 	}
@@ -134,6 +136,7 @@ func emitComponentInstance(
 
 	fmt.Fprintf(b, "// %s is one live instance of the %s component.\ntype %s struct {\n", typeName, comp.Name, typeName)
 	fmt.Fprintf(b, "\t%s fyne.CanvasObject\n", golang.ComponentRootField)
+	fmt.Fprintf(b, "\t%s *%s\n", golang.InstanceModelField, codegen.ModelTypeName)
 	for _, v := range comp.Vars {
 		goType := instanceVarGoType(v)
 		fmt.Fprintf(b, "\t%s %s\n", v.Name, goType)
@@ -145,12 +148,13 @@ func emitComponentInstance(
 	}
 	b.WriteString("}\n\n")
 
-	params := make([]string, 0, len(cc.Props))
+	params := []string{golang.InstanceModelField + " *" + codegen.ModelTypeName}
 	for _, p := range cc.Props {
 		params = append(params, p.Name+" "+golang.IRTypeToGo(p.Type))
 	}
 	fmt.Fprintf(b, "func %s(%s) *%s {\n", golang.ComponentInstanceCtor(comp.Name), strings.Join(params, ", "), typeName)
 	fmt.Fprintf(b, "\t%s := &%s{}\n", instanceReceiver, typeName)
+	fmt.Fprintf(b, "\t%s.%s = %s\n", instanceReceiver, golang.InstanceModelField, golang.InstanceModelField)
 	b.WriteString(ctorBody.String())
 	fmt.Fprintf(b, "\treturn %s\n}\n\n", instanceReceiver)
 

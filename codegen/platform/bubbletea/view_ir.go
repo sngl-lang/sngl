@@ -340,12 +340,14 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	vc.line("var %s []string", loopVar)
 	vc.line("%s", vc.gc.ForHead(s, iterExpr))
 	vc.indent++
-	// The view body may not reference the loop vars; suppress unused errors.
-	if s.Key != "" && s.Key != "_" {
-		vc.line("_ = %s", s.Key)
+	// The view body may not reference the loop vars; suppress unused errors
+	// for the ones the head declared.
+	kept := golang.WithUnreadVarsDropped(s)
+	if kept.Key != "" && kept.Key != "_" {
+		vc.line("_ = %s", kept.Key)
 	}
-	if s.Value != "" && s.Value != "_" {
-		vc.line("_ = %s", s.Value)
+	if kept.Value != "" && kept.Value != "_" {
+		vc.line("_ = %s", kept.Value)
 	}
 
 	innerVar := resultVar + "Item"
@@ -399,16 +401,11 @@ func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
 		return
 	}
 
-	// Any other node — a raw terminal element, or a component reference left
-	// over from a non-renderable fixture (e.g. an empty-body component pruned
-	// from Pkg.Components) — renders as a styled/joined terminal string.
-	//
-	// Production codegen always registers platforms, so every stdlib wrapper is
-	// inlined to a primitive above and never reaches here. Some checker-only
-	// test paths (TestFixtures, internal/snapshot TestGenerate) run bubbletea
-	// codegen WITHOUT registered platforms, so stdlib wrappers stay un-inlined
-	// and fall through to this raw-terminal renderer by design — it produces
-	// valid Go. (A loud guard here would break those paths; see #3 review.)
+	if codegen.DeclinesNode(n.Component) {
+		vc.ctx.Fail(codegen.UnimplementedNode(n.Component, n.AST, n.Name, "bubbletea"))
+		return
+	}
+	// A user component pruned from Pkg.Components for an empty body.
 	vc.renderRawTerminal(n, resultVar)
 }
 

@@ -31,7 +31,7 @@ import gen "sngl:x/gen"
 // construct an `effect` declares, so the node arrives intact rather than as the
 // calls passEffect would build. No reactiveCanvas -- the draw lambda reads
 // Compose state directly, so a recomposition already redraws.
-#[gen.can(effects)]
+#[gen.can(effects, instanceState)]
 #[gen.cannot(inlineComponents, structSpread)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
 component android(

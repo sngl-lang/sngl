@@ -62,13 +62,13 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) bump() int {
-	m.n = (m.n + 1)
-	return m.n
-}
-
 func Double(x int) int {
 	return (x + x)
+}
+
+func (m *Model) bump() int {
+	m.n = (m.n + 1)
+	return m.n
 }
 
 func (m Model) N() int {
@@ -126,4 +126,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:da897e3b4c0119eb914c227ccf3990d5
+pass sha256:b27da6efe78aedaaace00a1ce3ee2431

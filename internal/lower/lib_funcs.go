@@ -48,29 +48,40 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// promoted and reached the backend undeclared.
 	var roots []any
 	push := func(v any) { roots = append(roots, v) }
-	push(pkg)
 	var added []*ir.Func
-	for len(roots) > 0 {
-		root := roots[0]
-		roots = roots[1:]
+	foreign := importedVars(pkg)
+	for {
+		push(pkg)
+		promoteFuncs(&roots, push, wanted, have, &added)
+		pkg.Funcs = append(pkg.Funcs, added...)
+		added = nil
+		if !promoteVars(pkg, foreign) {
+			break
+		}
+	}
+	inlineLibConsts(pkg)
+	// The structs those helpers' signatures name are promoted by the shake
+	// instead: only there is it known which of them survive, and a struct
+	// belonging to one that does not is a declaration nothing writes.
+	return nil
+}
+
+func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, added *[]*ir.Func) {
+	for len(*roots) > 0 {
+		root := (*roots)[0]
+		*roots = (*roots)[1:]
 		_ = ir.WalkExprs(root, func(e ir.Expr) error {
 			call, ok := e.(*ir.Call)
 			if !ok || !wanted(call.Func) {
 				return nil
 			}
 			have[call.Func] = true
-			added = append(added, call.Func)
+			*added = append(*added, call.Func)
 			// A promoted helper may call a second one.
 			push(call.Func.Block)
 			return nil
 		})
 	}
-	pkg.Funcs = append(pkg.Funcs, added...)
-	inlineLibConsts(pkg)
-	// The structs those helpers' signatures name are promoted by the shake
-	// instead: only there is it known which of them survive, and a struct
-	// belonging to one that does not is a declaration nothing writes.
-	return nil
 }
 
 // foreignConst is the value behind a reference to a const another package
@@ -152,4 +163,79 @@ func inlineLibConsts(pkg *ir.Package) {
 	// declaration default is as undefined in the output as one named from a
 	// component body.
 	rewrite(pkg)
+}
+
+// importedVars is every var an imported SNGL package declares, directly or
+// through its own imports. A const is not one: inlineLibConsts answers those
+// with their value.
+func importedVars(pkg *ir.Package) map[*ir.Var]bool {
+	out := map[*ir.Var]bool{}
+	seen := map[*ir.Package]bool{pkg: true}
+	var visit func(p *ir.Package)
+	visit = func(p *ir.Package) {
+		for _, imp := range p.Imports {
+			if imp == nil || imp.Pkg == nil || seen[imp.Pkg] {
+				continue
+			}
+			seen[imp.Pkg] = true
+			for _, v := range imp.Pkg.Vars {
+				if !v.IsConst {
+					out[v] = true
+				}
+			}
+			visit(imp.Pkg)
+		}
+	}
+	visit(pkg)
+	return out
+}
+
+// promoteVars adds to pkg.Vars each imported var this build's bodies read or
+// write, and reports whether it added one.
+//
+// The funcs another package declares are promoted above, and a func reading
+// its own package's state took that state with it nowhere: `calls += 1` in a
+// promoted helper named a var no target declared -- undefined on every Go
+// target, a ReferenceError on html, and the text reading it drawn empty. A
+// read through the package's alias, `doc.calls`, becomes the bare name the
+// declaration now has here.
+func promoteVars(pkg *ir.Package, foreign map[*ir.Var]bool) bool {
+	if len(foreign) == 0 {
+		return false
+	}
+	var added []*ir.Var
+	take := func(v *ir.Var) {
+		if foreign[v] {
+			delete(foreign, v)
+			added = append(added, v)
+		}
+	}
+	_ = ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
+		switch e := n.(type) {
+		case *ir.Ident:
+			if v, ok := e.Sym.(*ir.Var); ok {
+				take(v)
+			}
+		case *ir.Select:
+			id, ok := e.Operand.(*ir.Ident)
+			if !ok {
+				return n, nil
+			}
+			ns, ok := id.Sym.(*ir.Namespace)
+			if !ok || ns.Pkg == nil || ns.Pkg.Symbols == nil {
+				return n, nil
+			}
+			sym, ok := ns.Pkg.Symbols.LookupMember(e.Field)
+			if !ok {
+				return n, nil
+			}
+			if v, ok := sym.(*ir.Var); ok && !v.IsConst {
+				take(v)
+				return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v}, ir.SkipDir
+			}
+		}
+		return n, nil
+	})
+	pkg.Vars = append(pkg.Vars, added...)
+	return len(added) > 0
 }

@@ -15,6 +15,7 @@ package build
 import (
 	"fmt"
 	"io/fs"
+	"iter"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -207,7 +208,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	}
 
 	start = time.Now()
-	files, boilerplate, err := generate(o, tpkg, target, fileAssets)
+	files, boilerplate, err := generate(o, tpkg, target, fileAssets, optCfg)
 	if err != nil {
 		return Result{}, err
 	}
@@ -216,7 +217,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate}, nil
 }
 
-func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset) (map[string][]byte, map[string]bool, error) {
+func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset, optCfg *optimize.Config) (map[string][]byte, map[string]bool, error) {
 	lang := codegen.LookupLang(target.Lang)
 	plat := codegen.LookupPlatform(target.Platform)
 
@@ -239,6 +240,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 		Maps:       optionBool(target.Options, "maps"),
 		OutDir:     o.OutDir,
 	}
+	req.Documents = func() iter.Seq2[*codegen.Document, error] { return optimize.Documents(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	if err := plat.Generate(req, mem); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)

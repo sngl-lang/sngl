@@ -36,6 +36,7 @@ var capabilityField = map[string]func(*Features) *bool{
 	"implicitRecv":     func(f *Features) *bool { return &f.ImplicitRecv },
 	"structSpread":     func(f *Features) *bool { return &f.StructSpread },
 	"viewStatements":   func(f *Features) *bool { return &f.ViewStatements },
+	"instanceState":    func(f *Features) *bool { return &f.InstanceState },
 	"insertBefore":     func(f *Features) *bool { return &f.InsertBefore },
 	"asyncPost":        func(f *Features) *bool { return &f.AsyncPost },
 	"asyncSpawn":       func(f *Features) *bool { return &f.AsyncSpawn },

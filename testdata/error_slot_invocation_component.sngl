@@ -1,0 +1,55 @@
+// A slot's component-typed invocation entry is populated by name at the
+// insertion and bound by position in the population, and each half is held to
+// the rules its counterpart on a component already has.
+
+import . "sngl:ui"
+
+component site(
+    layout component(title string, content component node) node,
+    plain component(string) node,
+) node {
+    vbox {
+        layout("a") {
+            component nope { // ERROR(check) "slot \"layout\" has no component entry \"nope\""
+                text(value="x")
+            }
+        }
+        layout("b") {
+            component content {
+                text(value="once")
+            }
+            component content { // ERROR(check) "entry \"content\" of slot \"layout\" is already populated"
+                text(value="twice")
+            }
+        }
+        plain("c") {
+            component content { // ERROR(check) "slot \"plain\" has no component entry \"content\""
+                text(value="x")
+            }
+        }
+        layout("d", "e") // ERROR(check) "slot \"layout\" takes 1 argument(s), got 2"
+    }
+}
+
+component main node {
+    site {
+        component layout(title) { // ERROR(check) "slot \"layout\" binds 1 parameter(s), but declares 2"
+            text(value=title)
+        }
+        component plain(s) {
+            text(value=s)
+        }
+    }
+    site {
+        component layout(title, body) {
+            body("x") // ERROR(check) "slot \"body\" takes 0 argument(s), got 1"
+        }
+        component plain(s) {
+            text(value=s)
+        }
+    }
+}
+
+window {
+    main
+}

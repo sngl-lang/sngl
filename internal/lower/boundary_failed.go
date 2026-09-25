@@ -89,6 +89,9 @@ func (st *boundaryFailedState) stmts(stmts []ir.Stmt) {
 			st.stmts(n.Else)
 		case *ir.SlotInst:
 			st.stmts(n.Children)
+			for _, name := range ir.SlotNames(n.Slots) {
+				st.stmts(n.Slots[name].Body)
+			}
 		case *ir.ContextProvider:
 			st.stmts(n.Children)
 		case *ir.ErrorBoundary:

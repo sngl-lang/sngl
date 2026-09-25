@@ -30,3 +30,12 @@ func TestZeroColorIsTransparent(t *testing.T) {
 		t.Errorf("zero Color Hex() = %q; want %q", got, "#00000000")
 	}
 }
+
+func TestOrFallsBackOnlyForTheUnsetColor(t *testing.T) {
+	if got := (Color{}).Or("5"); got != "5" {
+		t.Errorf("unset.Or = %q, want the fallback", got)
+	}
+	if got := (Color{R: 255, A: 255}).Or("5"); got != "#ff0000" {
+		t.Errorf("set.Or = %q, want the color", got)
+	}
+}

@@ -99,7 +99,7 @@ func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, field
 // here rather than codegen.ModelFieldRef, which names the Model and only the
 // Model.
 func (t *fyneTranslator) fieldRef(name string) ir.Expr {
-	return codegen.RecvFieldRef(t.gc.RecvName(), name)
+	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
 }
 
 // recvIdent is that receiver as a call target.

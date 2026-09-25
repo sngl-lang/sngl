@@ -101,37 +101,41 @@ body { font-family: system-ui, sans-serif; }
 </head><body>
 
 <div style="display:flex;flex-direction:column;gap:12px">
-  <h1 style="font-size:32px;font-weight:bold;white-space:pre-wrap"><span>Live</span></h1>
-  <p style="white-space:pre-wrap"><span>A counter:</span></p>
+  <h1 style="font-size:32px;font-weight:bold;margin:0px;white-space:pre-wrap"><span>Live</span></h1>
+  <p style="margin:0px;white-space:pre-wrap"><span>A counter:</span></p>
   <span id="__n0" data-sngl-id="__n0">
   </span>
-  <p style="white-space:pre-wrap"><span>Another, which does not share it:</span></p>
+  <p style="margin:0px;white-space:pre-wrap"><span>Another, which does not share it:</span></p>
   <span id="__n1" data-sngl-id="__n1">
   </span>
-  <p style="white-space:pre-wrap"><span>Straight into the body:</span></p>
+  <p style="margin:0px;white-space:pre-wrap"><span>Straight into the body:</span></p>
   <hr/>
-  <p style="white-space:pre-wrap"><span>And an ordinary sample, shown and not compiled:</span></p>
-  <pre style="background-color:#f5f5f5;border-radius:4px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>const</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>shown</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>=</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>1</span></span></code></pre>
+  <p style="margin:0px;white-space:pre-wrap"><span>And an ordinary sample, shown and not compiled:</span></p>
+  <pre style="background-color:#f5f5f5;border-radius:4px;margin:0px;padding:12px;white-space:pre-wrap"><code><span class="sngl-tok-keyword"><span>const</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-variable"><span>shown</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-operator"><span>=</span></span><span class="sngl-tok-plain"><span> </span></span><span class="sngl-tok-number"><span>1</span></span></code></pre>
 </div>
+<style>
+.sngl-tok-keyword { color:#cf222e }
+@media (prefers-color-scheme: dark) { .sngl-tok-keyword { color:#ff7b72 } }
+.sngl-tok-number { color:#0550ae }
+@media (prefers-color-scheme: dark) { .sngl-tok-number { color:#79c0ff } }
+</style>
 
 <script>
 (() => {
   // sngl-entry.js
-  var state = { n_1: null, n_2: null };
-  state.n_1 = 1;
-  state.n_2 = 100;
+  var state = { n__inst0: 1, n__inst1: 100 };
   function String(v) {
     return "" + v;
   }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   function __sngl_init() {
-    __n0.textContent = "n doubled is " + String(state.n_1 * 2);
-    __n1.textContent = "n is " + String(state.n_2);
+    __n0.textContent = "n doubled is " + String(state.n__inst0 * 2);
+    __n1.textContent = "n is " + String(state.n__inst1);
   }
   __sngl_init();
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4794e4b35f78e07616ce4bbff8d498f3
+pass sha256:9391ccf925f25d370213cf7b4c60c3f0

@@ -795,7 +795,16 @@ func TestNestedFoldErrorIsReported(t *testing.T) {
 		inlined bool
 	}{{"inlined component body", true}, {"for-loop iteration", false}} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := Optimize(mkPkg(tc.inlined), &Config{Platform: "html", Language: "none", Dir: dir})
+			pkg, cfg := mkPkg(tc.inlined), &Config{Platform: "html", Language: "none", Dir: dir}
+			err := Optimize(pkg, cfg)
+			// A loop is unrolled by Documents, which is where its iteration's fold
+			// runs.
+			pkg.RootComponent = "main"
+			for _, derr := range Documents(pkg, cfg) {
+				if err == nil {
+					err = derr
+				}
+			}
 			if err == nil {
 				t.Fatal("a nested fold's fatal error was dropped")
 			}

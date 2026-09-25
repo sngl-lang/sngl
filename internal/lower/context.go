@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"maps"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -19,11 +20,11 @@ import (
 // are rewritten to *ir.Ident with Sym = that *ir.Var, so the value
 // reads as Model state. When a parent component instantiates a child
 // under a provider, the parent threads __ctx_<name>=<value> as a
-// NodeInst Prop arg; the inliner (and other component-inlining paths
-// in codegen) overrides the cloned Var's Init from a matching arg
-// name. This puts cross-boundary context values onto Model field
-// assignments, so test code can call component methods without having
-// to thread hidden args at the API surface.
+// NodeInst Prop arg. An inlined body reads that value in place of the
+// var (providedContextVars), which is what lets a provider reading
+// state update its readers; a value unsafe to read twice seeds the var
+// instead. A component built at run time takes it as a prop
+// (contextProps).
 //
 // For FUNCTIONS in Reach(ctx) (StdlibContextParam path): a *ir.Param
 // is appended to fn.Params, and calls to those funcs are threaded with
@@ -1180,6 +1181,9 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 
 		case *ir.SlotInst:
 			n.Children = lowerInStmts(n.Children, active, pc)
+			for _, sc := range n.Slots {
+				sc.Body = lowerInStmts(sc.Body, active, pc)
+			}
 			out = append(out, n)
 
 		case *ir.ErrorBoundary:
@@ -1371,4 +1375,74 @@ func hasCallArgNamed(args []ir.CallArg, name string) bool {
 		}
 	}
 	return false
+}
+
+// providedContextVars is the hidden context vars of comp that a call site
+// supplies, each with the value it supplies.
+//
+// A spliced body reads the supplied expression in place of the var. Hoisted
+// as a var initialized from it instead, the value was copied once and never
+// again, so a provider whose value reads state showed its first value
+// forever. A context cannot be assigned, so nothing a substitution would
+// miss writes one.
+//
+// Only a value that is safe to evaluate at every read: the default window
+// roots are seeded with is `#locale`'s `defaultLocale()`, which asked the
+// environment once per translated string when substituted.
+func providedContextVars(comp *ir.Component, args []ir.Arg) map[*ir.Var]ir.Expr {
+	var out map[*ir.Var]ir.Expr
+	for _, v := range comp.Vars {
+		if !v.Synthesized || !strings.HasPrefix(v.Name, "__ctx_") {
+			continue
+		}
+		for _, arg := range args {
+			if arg.Name == v.Name && rereadable(arg.Value) {
+				if out == nil {
+					out = map[*ir.Var]ir.Expr{}
+				}
+				out[v] = arg.Value
+				break
+			}
+		}
+	}
+	return out
+}
+
+func substituteVars(stmts []ir.Stmt, vals map[*ir.Var]ir.Expr) []ir.Stmt {
+	if len(vals) == 0 {
+		return stmts
+	}
+	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		if id, ok := e.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok {
+				if val, ok := vals[v]; ok {
+					return deepCloneExpr(val)
+				}
+			}
+		}
+		return e
+	})
+	return w.stmts(stmts)
+}
+
+func substituteVarsExpr(e ir.Expr, vals map[*ir.Var]ir.Expr) ir.Expr {
+	if e == nil || len(vals) == 0 {
+		return e
+	}
+	tmp := substituteVars([]ir.Stmt{&ir.LocalVar{Init: e}}, vals)
+	return tmp[0].(*ir.LocalVar).Init
+}
+
+// rereadable reports whether e calls nothing but pure functions, so reading
+// it twice is reading one value twice.
+func rereadable(e ir.Expr) bool {
+	ok := true
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if c, isCall := x.(*ir.Call); isCall && (c.Func == nil || c.Func.Purity != ir.PurityPure) {
+			ok = false
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return ok
 }

@@ -75,7 +75,7 @@ func TestFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			pkg, diags := checker.Check(doc, &checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true})
+			pkg, diags := checker.Check(doc, bubbleteaConfig(&checker.Config{FS: s.FS, Dir: s.Dir, IsMain: true}))
 			if hasErrors(diags) {
 				t.Fatalf("check: %s", firstError(diags))
 			}
@@ -103,7 +103,7 @@ ui.window {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, bubbleteaConfig(&checker.Config{IsMain: true}))
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}
@@ -187,9 +187,18 @@ func TestCompileTodo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{FS: os.DirFS("../../../examples/todo"), IsMain: true})
+	pkg, diags := checker.Check(doc, bubbleteaConfig(&checker.Config{FS: os.DirFS("../../../examples/todo"), IsMain: true}))
 	if hasErrors(diags) {
 		t.Fatalf("check: %s", firstError(diags))
 	}
 	compileAndVerify(t, doc, pkg)
+}
+
+// bubbleteaConfig selects this platform as the build's target, which is what
+// puts its overrides in place of the library bodies before the emitter runs.
+func bubbleteaConfig(cfg *checker.Config) *checker.Config {
+	cfg.Platforms = codegen.CollectPlatforms()
+	cfg.Languages = codegen.CollectLangs()
+	cfg.Targets = []ir.StaticTarget{{Platform: "bubbletea", Language: "go"}}
+	return cfg
 }

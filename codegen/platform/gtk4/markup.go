@@ -269,7 +269,7 @@ func (t *gtk4Translator) spanParts(id string) []ir.Expr {
 		return nil
 	}
 	open, close := spanTags(sp.props)
-	parts := []ir.Expr{strLit(open)}
+	parts := []ir.Expr{open}
 	if text, ok := sp.props["text"]; ok && text != nil {
 		parts = append(parts, escaped(text))
 	}
@@ -353,8 +353,9 @@ func flowTags(style map[string]ir.Expr) (open, close string) {
 // reader sees matches the order the fields are written in. A field the run
 // left alone contributes nothing, which is the cascade's one requirement on
 // this side and is why Pango can be left to do the rest.
-func spanTags(props map[string]ir.Expr) (open, close string) {
+func spanTags(props map[string]ir.Expr) (open ir.Expr, close string) {
 	var opens, closes []string
+	var foreground ir.Expr
 	add := func(tag string) {
 		opens = append(opens, "<"+tag+">")
 		closes = append([]string{"</" + tag + ">"}, closes...)
@@ -364,11 +365,6 @@ func spanTags(props map[string]ir.Expr) (open, close string) {
 		closes = append([]string{"</a>"}, closes...)
 	}
 	var attrs []string
-	if kind := enumOrStringOf(props["kind"]); kind != "" {
-		if c, ok := tokenColors[kind]; ok {
-			attrs = append(attrs, fmt.Sprintf(`foreground="%s"`, c))
-		}
-	}
 	if sl, ok := props["spanStyle"].(*ir.StructLit); ok {
 		for _, f := range sl.Fields {
 			switch f.Name {
@@ -406,6 +402,8 @@ func spanTags(props map[string]ir.Expr) (open, close string) {
 				}
 				if c := colorFromExpr(f.Value); c != nil {
 					attrs = append(attrs, fmt.Sprintf(`foreground="%s"`, hexColor(c)))
+				} else if !codegen.SpanStyleKnownColor(f.Value) {
+					foreground = rtStrCall("Foreground", f.Value)
 				}
 			case "fontSize":
 				if px, ok := literalNumberOf(f.Value); ok && px > 0 {
@@ -414,32 +412,19 @@ func spanTags(props map[string]ir.Expr) (open, close string) {
 			}
 		}
 	}
-	if len(attrs) > 0 {
-		opens = append(opens, "<span "+strings.Join(attrs, " ")+">")
-		closes = append([]string{"</span>"}, closes...)
+	if len(attrs) == 0 && foreground == nil {
+		return strLit(strings.Join(opens, "")), strings.Join(closes, "")
 	}
-	return strings.Join(opens, ""), strings.Join(closes, "")
-}
-
-// tokenColors is what a markup.Token looks like on this host.
-//
-// A Pango foreground, which is what the family's own declaration nominates for
-// gtk4 -- Pango markup has no classes and no theme names, so a color is the
-// only thing it can be told. The names are CSS's, which Pango parses, and are
-// chosen dark enough to read on the light theme GTK ships with; the open half
-// of the palette question is a host with real colors reading them from
-// somewhere an application writes, and this is not that yet.
-//
-// Four kinds are absent and render in the label's own color, which is what
-// most themes do with them.
-var tokenColors = map[string]string{
-	"keyword":  "purple",
-	"function": "navy",
-	"type":     "olive",
-	"constant": "olive",
-	"number":   "teal",
-	"string":   "green",
-	"comment":  "gray",
+	head := strings.Join(opens, "") + "<span"
+	if len(attrs) > 0 {
+		head += " " + strings.Join(attrs, " ")
+	}
+	parts := []ir.Expr{strLit(head)}
+	if foreground != nil {
+		parts = append(parts, foreground)
+	}
+	parts = append(parts, strLit(">"))
+	return concat(parts), "</span>" + strings.Join(closes, "")
 }
 
 // pangoSize is a text size as Pango takes one: thousandths of a point, near

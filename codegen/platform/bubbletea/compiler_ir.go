@@ -113,6 +113,9 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	body, imports := emitIR(info, ctx, cfg)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	// The MemSink keeps this returning bytes, which android's go path and the
 	// tests consume; the caller's emitter adds the generated-by header, so
@@ -158,6 +161,8 @@ type irAnalysis struct {
 	overlays  []overlayInfo
 	hasFocus  bool // true when __focusOrder pass injected __focusID/__focusNext/__focusPrev
 	gc        *golang.GoIRContext
+	// loopTimers are the schedules written under a loop (loop_timers.go).
+	loopTimers []codegen.LoopTimer
 }
 
 // overlayInfo records one modal/drawer Overlay primitive for Update()'s
@@ -206,8 +211,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 	pkg := ctx.Pkg
 
-	for _, imp := range golang.BaseImports(pkg) {
-		gc.RequireImport(imp.Path)
+	for _, path := range golang.BaseImports(pkg) {
+		gc.RequireImport(path)
 	}
 
 	// NoInlineComponents inlined every non-main component into main, so there
@@ -255,6 +260,12 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		if t.IntervalMs > 0 {
 			gc.RequireImport("time")
 		}
+	}
+	for _, o := range ir.Owners(pkg) {
+		info.loopTimers = append(info.loopTimers, codegen.CollectLoopTimers(o.Stmts())...)
+	}
+	if len(info.loopTimers) > 0 {
+		gc.RequireImport("time")
 	}
 
 	// An empty __focused prop (passFocusOrder did not run) means focus
@@ -401,6 +412,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if len(info.Timers) > 0 {
 		b.WriteString("\n")
 	}
+	emitLoopTimerTypes(&b, info.loopTimers)
 
 	if info.NeedsToast {
 		b.WriteString("type snglToast struct {\n\tmessage string\n\tvariant string\n}\n\n")
@@ -424,6 +436,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	if len(info.widgets) > 0 {
 		b.WriteString("\n")
 	}
+	emitLoopTimerFields(&b, info.loopTimers)
 	if info.NeedsToast {
 		b.WriteString("\ttoasts []snglToast\n")
 	}
@@ -435,6 +448,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	b.WriteString("// New creates a Model with default bind values.\n")
 	b.WriteString("func New() Model {\n")
 	b.WriteString("\tm := Model{}\n")
+	emitLoopTimerInits(&b, info.loopTimers)
 	for _, bind := range info.binds {
 		fmt.Fprintf(&b, "\tm.%s = %s\n", bind.name, bind.init)
 	}
@@ -588,7 +602,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	}
 
 	b.WriteString("func (m Model) Init() tea.Cmd {\n")
-	if len(info.Timers) > 0 {
+	if len(info.Timers) > 0 || len(info.loopTimers) > 0 {
 		b.WriteString("\tvar cmds []tea.Cmd\n")
 		for _, wi := range widgetInits {
 			fmt.Fprintf(&b, "\tcmds = append(cmds, %s)\n", wi)
@@ -604,6 +618,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 				fmt.Fprintf(&b, "\t%s\n", tick)
 			}
 		}
+		emitLoopTimerSyncCalls(&b, info.loopTimers, "\t")
 		if hasCanvas {
 			// Out of band, so the kitty image data is not dropped by the cell
 			// compositor.
@@ -639,6 +654,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		})
 	})
 	emitBtEventInvokers(&b, eventInvokers)
+	emitLoopTimerSyncs(&b, info.loopTimers, gc)
 
 	emitIRView(&b, info, ctx, gc, cfg)
 
@@ -924,6 +940,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 			fmt.Fprintf(b, "\t\t%s\n", rearm)
 		}
 	}
+	emitLoopTimerCases(b, info.loopTimers, gc)
 
 	// Toast dismiss
 	if info.NeedsToast {
@@ -1058,6 +1075,7 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		// no flicker.
 		fmt.Fprintf(b, "\tcmds = append(cmds, m.%s())\n", canvasTransmitMethodName)
 	}
+	emitLoopTimerSyncCalls(b, info.loopTimers, "\t")
 	b.WriteString("\treturn m, tea.Batch(cmds...)\n")
 	b.WriteString("}\n\n")
 }

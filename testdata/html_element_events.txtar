@@ -155,12 +155,12 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
   $0.addEventListener("error", function(e) {
     state.msg = e.message;
   });
@@ -177,4 +177,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a73a7a8204b1a4173b46ea0384629cdb
+pass sha256:33f3f7a2fdc1181242f1f26fd5b9d7fa

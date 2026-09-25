@@ -419,10 +419,103 @@ reach.
 
 ## 6. Acceptance
 
+### Decided 2026-09-24 (Jonathan), not started
+
+Work these in this order:
+
+1. **Anchors are deferred.** Filed as #254: `specification.md` has 27
+   in-page `#` links that rely on goldmark's `WithAutoHeadingID`, and
+   `markup.heading*` carries no id, so the links break once the docs render
+   through markup.
+2. **A default token palette.** Choose default colors for the eleven `Token`
+   kinds. On html they style the `sngl-tok-<kind>` classes, which nothing
+   styles today. On gtk4 they replace the hand-picked foregrounds. An
+   application overrides them through **a context** in `sngl:ui/markup`
+   holding the palette: set once near the root, read by every code sample
+   under it, the way `theme` works.
+   - **The default is a light/dark pair**, GitHub's Primer syntax colors,
+     which is what chroma's `github` style gives the docs site today. html
+     writes both halves, the dark one under `prefers-color-scheme`. gtk4
+     takes the light half. A palette an application sets is one palette,
+     and its scheme choice is its own.
+   - **An explicit palette wins everywhere.** Unset, bubbletea, fyne and
+     android keep the host theme, and html and gtk4 use the default. Set,
+     all five use it. Done, per kind rather than through an `option`: a
+     `Palette` field with no alpha is a kind the palette leaves to the
+     host, so an application may set only the keyword color.
+   - **gtk4 re-assembles its markup reactively** when the palette is not a
+     constant. gtk4's side is done -- a color it cannot read is a piece of
+     the markup expression -- and so is html's (`style.color`) and fyne's
+     (`SetColor`), each with an updater. Done, once a provider reading
+     state updated its readers at all (`markup_palette_reactive.txtar`).
+   - **Found on the way:** a ternary in a var initializer panicked every Go
+     emitter; it is now a func literal called in place
+     (`ternary_in_initializer.txtar`). A context whose default reads a package
+     var failed to build on every Go target and android, the shake having
+     removed the var (`context_default_reads_var.txtar`).
+3. **The order key is a macro.** A mark on the `Frontmatter` field names the
+   key to sort a page's children by (`#[md.order] order int`). The directory
+   importer already parses the directory's `.sngl` files to find a declared
+   `Frontmatter`, so it can read the mark there and sort `children` by it.
+   The mark is declared in a new **`sngl:ui/markup/md`** (`lib/ui/markup/md/`),
+   the home for the `md:` scheme's vocabulary. A mark on a struct field
+   needs no checker change: `#[foreign]` and `#[unusable]` already carry one.
+   **Done** (`markdown_directory_order.txtar`; the refusals are in
+   `cmd/sngl/testdata/markdown_directory_errors.txt`). The checker got a
+   handler after all, since a mark with no entry in `markImpls` resolves and
+   does nothing; it only holds the field to an int, float or string.
+4. **The docs site imports `docs/` through `md:`.** `docui.Markdown` has four
+   call sites in `website.sngl`: `comp.previewHTML`, `comp.highlightedCode`,
+   `d.body` (`lookup.AllDeclPages()`) and `page.body` (`docs.Pages()`). Only
+   **`page.body`** is in scope. The others are picked up if and when they
+   are needed.
+   - **The directory form's href rule changes** so `guide/index.md` is
+     `/guide/index.html`. `guide.md` stays `/guide.html`. The href then
+     follows the file, and `docs/` already has the shape the directory
+     form requires (`index.md`, `learn/index.md`, `reference/index.md`), so
+     the site may be able to import the public `md:./docs/` with no internal
+     importer at all. Its layout skips `learn/tour.md` by href.
+   - If an internal scheme turns out to be needed after all, **docsgen runs
+     the build in-process** through `internal/build` and registers the
+     scheme first. The scheme does not ship in the `sngl` binary.
+   - **Done, with the public scheme.** `website.sngl` imports
+     `mddocs "md:./docs/"` and its layout makes a window per page, skipping
+     `/learn/tour.html`. `docs.Pages()` follows the same href rule now, so the
+     sidebar's `Learn` and `Reference` links are `/learn/index.html` and
+     `/reference/index.html` (one prose link in `reference/index.md`
+     updated). No internal scheme was needed. Rendering it found two html
+     defects, both fixed: a highlighted sample lost its line breaks, and the
+     browser's default margins doubled the block spacing and dropped a list
+     item's text below its bullet. `docs.Page` no longer carries a rendered
+     `Body`: the nav and the search index read only its title and href.
+5. **The tutorial's conditional prose: a context and a slotted component.**
+   A `package` fence declares a component that takes prose as children and
+   renders them only when a platform context matches. Each branch is an
+   `island` that passes its markdown in, and the buttons set the context.
+   This takes the conditional out of the prose. It rules out the paired
+   fence and the non-interactive rewrite below. The prose inside a branch
+   is written as markup in the fence by hand, which is little enough, or
+   imported from a markdown file elsewhere.
+   **Done, with one change: a package var rather than a context.** A
+   context is provided by something enclosing what reads it, and the
+   islands' only common ancestor is the document body the importer writes,
+   so nothing could hold one a button sets. The `package` fence in
+   `docs/learn/getting-started.md` declares `runPlatform`, `generateLang`
+   and `embedLang` and `whenSelected(selected, value, content ...)`; a
+   button island writes a var and a branch island passes its markup in. The
+   page is a page of the `md:./docs/` site, so the separate window, the
+   `docs.Pages()` skip, the nav extra and `internal/learn` are gone, and its
+   `sngl` view fences are checked by `TestDocSNGLBlocks` now in place of
+   `TestGettingStartedSnippetsCheck`. The two embed samples are
+   unhighlighted: a branch writes its code as a `markup.codeBlock` of one
+   `markup.text`. Found on the way, both fixed: markup under a reactive `if`
+   built `<flow>`/`<inline>` on the client, and every page on the site threw
+   at startup booting another window's render slots (on main too).
+
 **Both halves want a decision before they are written.** What each actually
 needs is below, found by reading the two files rather than by attempting them.
 
-- [ ] Rewrite `internal/learn/getting_started.sngl` as markdown with live
+- [X] Rewrite `internal/learn/getting_started.sngl` as markdown with live
   `sngl` fences.
 
   **What is in the way: the tutorial's prose is inside its conditionals.**
@@ -476,11 +569,11 @@ needs is below, found by reading the two files rather than by attempting them.
 
 ## 7. Before merge
 
-- [ ] CLAUDE.md: a section on the markup family, why it is inline-only, and the
+- [X] CLAUDE.md: a section on the markup family, why it is inline-only, and the
   literal-whitespace rule.
-- [X] `lib/lib.go` needs nothing: its embed pattern is `*/*.sngl */*/*.sngl`
-  and `Packages()` reads the embedded directory, so a nested package is
-  already covered.
+- [X] `lib/lib.go`'s embed pattern stopped at two levels, so
+  `lib/ui/markup/md/` needed `*/*/*/*.sngl` added; `Packages()` reads the
+  embedded directory and needed nothing.
 - [ ] Delete this file.
 
 ---
@@ -488,26 +581,76 @@ needs is below, found by reading the two files rather than by attempting them.
 ## 8. Directory form: `md:./docs/` as a package of pages
 
 The docsgen site needs the importer to take a **directory** as well as a file.
-Settled in conversation with Jonathan; nothing below is written yet.
+Written: `codegen/scheme/markdown/directory.go`. What is below is the shape as
+built, and where it settled something the plan left open it says whose call it
+was.
 
 The shape:
 
-- A directory is one package. Plain `.sngl` files in it are part of that
-  package, so a document's own declarations live beside its prose.
-- Each page is a component. `index.md` is the parent page's content.
+- A directory is one package. Plain `.sngl` files directly in it are part of
+  that package, so a document's own declarations live beside its prose.
+- Each page is a component, named for its path with `_` for anything an
+  identifier cannot hold: `index` for the root, `guide`, `guide_intro`.
+  Two paths becoming one name, and a page taking `site`, `root`, `Page` or
+  `Frontmatter`, are refused naming the files (Jonathan's call).
+- The importer recurses (Jonathan's call). `guide/intro.md` is a child of
+  `guide`, whose content is `guide.md` or `guide/index.md` -- both is an
+  error, and a directory with neither cannot be the parent of what is in it.
+  The root is the directory's `index.md` and is required. A page's href is its
+  path: `/index.html`, `/guide.html`, `/guide/intro.html` -- and, since §6 item 4,
+  `/guide/index.html` for `guide/index.md`.
 - Frontmatter is checked against a `struct Frontmatter` the directory
   **declares in one of those `.sngl` files** -- the importer emits
   `Frontmatter{...}` literals and the checker validates them, so the importer
   does no checking of its own and a site defines its own front matter
   vocabulary. With no such struct declared, the importer synthesizes one from
-  the union of the keys it saw.
+  the union of the keys it saw, in first-seen order, each typed by its first
+  scalar and defaulting to that type's zero; a page writing another type for
+  a key is an error naming both files.
+- The slot takes the page as **one value** (Jonathan's call): `layout component(page Page, content component ui.node) T`, with
+  `struct Page { href string, frontmatter Frontmatter, children list<Page> }`
+  generated beside it and `const root` holding the tree. Each insertion reads
+  its page out of `root` (`root.children[0]`), so the tree is written once.
+  `Page` may move to the stdlib later.
+
+Verified by `testdata/markdown_directory.txtar` -- three pages, a declared
+Frontmatter, a default shown on the page that omits the key, the layout drawing
+each page's children, and a live island on two pages each holding its own
+cell -- and `testdata/markdown_directory_synthesized.txtar` for the union; both
+failed with "is not a markdown file" before the directory form existed.
+`cmd/sngl/testdata/markdown_directory_errors.txt` holds the six refusals.
+
+The islands found a defect, fixed in its own commit: the lowering's walk for
+the imported components a build renders skipped slot populations, so a
+stateful island reached only through a page's content stayed a node and html
+drew `<text>` (`testdata/foreign_component_in_population.txtar`). It also
+showed a second, also fixed: two instances of one imported stateful component
+shared a node id on html and read their prop before the binding was declared
+(`state.n_1 = start_1` above `var start_1 = 1`), and on bubbletea did not
+compile. The inliner substituted only what the package itself declared, so an
+imported component was left standing for each backend to render as an
+instance it never elected; it is now inlined like a local one.
+`testdata/imported_component_instances.txtar` covers html, bubbletea and
+android with passing run records, and fails with the inliner change reverted.
+
+That left html's in-place component rendering (`renderIRUserComponent`, with
+`dataRenames`, `componentParams` and `irSlotChildren`) with no input, and it is
+deleted. Verified by coverage rather than reading: `go test -coverpkg=./codegen/platform/html ./...`
+hit none of its lines, nor the `SlotInst` arm that projected `irSlotChildren`,
+and with a panic in its entry neither `go tool docsgen`, every `examples/`
+directory on html, nor hand-written probes -- a recursion cycle, a runtime
+instance in a reactive `for`, route mode under `--lang go` -- reached it. The
+two arms that led there panic now, since a component or slot arriving there
+would otherwise have rendered nothing.
 
 ### Components are not values, and are not going to be
 
 `struct Page { content component() ui.node }` is refused today, with the
 message the rule deserves: *a component type declares a slot, so only a
-parameter of a component may have one*. So is a component type inside a slot's
-invocation list. That is not an accident to work around.
+parameter of a component may have one*. That is not an accident to work around.
+A slot's invocation list may carry one, but as a component *entry* populated at
+the insertion, which is the same slot mechanism one level down rather than a
+value.
 
 The compiler reads `NodeInst.Component` as a **declaration pointer** in the
 inliner, the recursion-cycle finder, tree inference, `reachedLibComponents`,
@@ -535,15 +678,36 @@ Measured on this branch, all of it:
 
 Two limits found while measuring, both by design: a slot's invocation
 arguments are **positional** (the names belong to whoever populates it), and
-the invocation list may not carry `...`.
+the invocation list may not carry `...` -- the block written at an insertion
+is the slot's fallback, so content reaches a population through a
+**component entry** instead (§8 A, below).
 
-So the generated package is:
+So the generated package is, abridged from `testdata/markdown_directory.txtar`:
 
 ```sngl
-// generated by md:./docs/
-component site<T>(layout component(fm Frontmatter, content ...component ui.node) T) T {
-    layout(Frontmatter{title="Home", href="/index.html"}) { <index.md blocks> }
-    layout(Frontmatter{title="Guide", href="/guide.html"}) { <guide.md blocks> }
+// Generated from docs by the md: import scheme; DO NOT EDIT.
+struct Page {
+    href string
+    frontmatter Frontmatter
+    children list<Page>
+}
+
+const root = Page{href="/index.html", frontmatter=Frontmatter{title="Home"}, children=[…]}
+
+component index ui.node { <index.md blocks> }
+component guide ui.node { <guide.md blocks> }
+
+component site<T>(layout component(page Page, content component ui.node) T) T {
+    layout(root) {
+        component content {
+            index
+        }
+    }
+    layout(root.children[0]) {
+        component content {
+            guide
+        }
+    }
 }
 ```
 
@@ -551,9 +715,9 @@ and the program supplies the layout once:
 
 ```sngl
 docs.site {
-    component layout(fm Frontmatter, content ...component) {
-        ui.window(title=fm.title, href=fm.href) {
-            PageLayout(currentHref=fm.href) { content }
+    component layout(page, content) {
+        ui.window(title=page.frontmatter.title, href=page.href) {
+            PageLayout(currentHref=page.href) { content }
         }
     }
 }
@@ -572,13 +736,76 @@ recursive `children list<Page>` is fine.
 Four defects, all found by measuring the design rather than by attempting it.
 Three are silent.
 
-- **A -- children at a slot insertion are dropped, with no diagnostic.**
-  `layout("One") { ui.text(value="body") }` type-checks and the text vanishes.
-  This is the enabling half of the design: it is how a page's blocks reach the
-  layout. The spelling already parses, so implementing it is not a new syntax
-  decision -- only the semantics are missing. The population has to be able to
-  name them too, which today is an arity error (`slot "layout" binds 2 parameter(s), but declares 1`), so the slot's *declaration* grows the
-  children contract and the insertion supplies them.
+- [X] **A -- a page's blocks could not reach the layout.** Not a silent drop, as
+  this entry first said: the block written at an insertion is that slot's
+  *fallback* (`ir.SlotInst.Children`, `testdata/slot_named.sngl`), and a
+  populated slot renders its population instead. Verified with two windows
+  over one `site`: the one that populates `page` renders the population, the
+  one that does not renders the block. So the bare block is taken, and
+  refusing it would have broken three fallback fixtures.
+
+  Settled (Jonathan's call): a slot's invocation list may declare a
+  component-typed entry, `layout component(fm Frontmatter, content component ui.node) T`,
+  and the insertion populates it by name, the way a call site populates a
+  component's slot -- `layout(fm) { component content { … } }`. The bare
+  block stays the fallback. `...` in an invocation list is refused, with a
+  message saying why: `testdata/error_slot_invocation_rest.sngl`, which
+  failed on the old generic `...` diagnostic before the check was written.
+
+  Implemented. `ir.SlotDecl.Slots` holds the entries (with `Index`, their
+  position in the invocation list), an insertion carries its populations on
+  `ir.SlotInst.Slots`, and an insertion *of* an entry inside a population is
+  a `SlotInst` whose `Entry` names it. The shared `ir.SlotSplicer` substitutes
+  entries when it splices a population, so the optimizer and the inliner get
+  it at once, and the interpreter mounts the content in the insertion's scope
+  (`entryInst`). Verified by `testdata/slot_invocation_component.txtar` --
+  html, bubbletea and android, with passing run records -- where the content
+  reads `site`'s own state (`pages__inst0`), the second page renders the
+  entry's fallback, and a `deny` holds the insertion's fallback out; by
+  `cmd/sngl/testdata/slot_invocation_component.txt`, a snapshot of the same
+  program on `none`; and by `testdata/error_slot_invocation_component.sngl`
+  for the refusals. Reverting the splicer's entry substitution fails the
+  golden, and reverting `entryInst` fails the snapshot.
+
+  An entry inserted inside a population the layout writes for *another*
+  component (`frame { component main { body } }`) works because the inliner
+  expands `frame` first. A `frame` that survives to codegen reaches it, and
+  the entry was the smaller half of the defect: **no** named population on a
+  surviving component rendered anywhere, on main as well as here. bubbletea
+  and android emitted the component with no parameter for the slot and
+  dropped it in silence; html, fyne and gtk4 panicked in irwalk on the body's
+  `SlotInst`. It is refused now, in the inliner where it elects the runtime
+  instance, naming the population's own line --
+  `cmd/sngl/testdata/slot_population_runtime_instance.txt`: a recursion
+  cycle, a stateful component in a reactive `for`, and the entry shape, each
+  failing without the refusal. The interpreter renders all three correctly
+  (it runs the checked IR), which is why this is the lowering's refusal and
+  not the checker's. Making it work is a slot parameter per platform, the
+  way bubbletea and android already pass a rest slot's content.
+
+  Two neighbours found on the way, neither fixed here:
+
+  - **A rest slot on a surviving component** panics html, fyne and gtk4 the
+    same way (`irwalk.EvalStmt: unhandled *ir.SlotInst`); bubbletea and
+    android pass the content as a parameter and render it. Loud, not silent.
+  - **html miscompiles a population inside a const-unrolled recursion.**
+    `frame(n=2)` whose body writes `frame(n=n - 1) { text(value="level {n}") }`
+    renders `level 1, level 0` on html `--lang none`, where bubbletea and
+    android render `level 2, level 1`: the content's `n` is bound to the
+    callee's prop rather than the body it was written in. Silent. The same
+    shape without recursion is correct, so it is the optimizer's unrolling
+    and not the splicer.
+
+  A generic slot's entries are specialized now, and that was a real bug in
+  both directions: `each(v=1)` refused `content(n)` for an int `n` as
+  `cannot use int as T`, and an entry typed `component T` with `T = d.shape`
+  carried a circle into a vbox with nothing said -- html drew `<draw>`. The
+  copies are checker-only: `entryOrigin` maps each back to the declared entry,
+  and that is what `SlotInst.Entry` carries, so the splicer's and the
+  interpreter's pointer match is untouched. `testdata/error_slot_entry_specialized.sngl`
+  is both refusals, and `testdata/slot_entry_generic.txtar` (html, bubbletea)
+  splices a generic entry; with the origin mapping removed it renders nothing
+  for the entry, and without the fix it does not check.
 
 - [X] **B -- a slot population on a root component dropped everything.** Fixed
   by main's window collapse, verified after the merge: `component site(layout …) ui.root` whose two windows each insert `layout(…)` writes `one.html` and
@@ -589,16 +816,22 @@ Three are silent.
   the template before `expandCall` substitutes it. `component site<T>(layout component(title string, href string) T) T` with the window written in the
   population writes two pages with the right `<title>` and body each.
 
-- **D -- a struct literal that omits a field with a declared default emits an
-  empty value.** `Frontmatter{title="Home"}` against
-  `struct Frontmatter { title string = "" weight int = 0 }` comes out as
-  `{title: "Home", weight: }` in JavaScript and the same shape in Go. Caught by
-  esbuild and by `format.Source`, not by us. Unrelated to any of the above, and
-  it will hit any `Frontmatter` struct on the first page that omits a key.
+- [X] **D -- a struct literal that omitted a field with a declared default
+  emitted an empty value.** `Frontmatter{title="Home"}` as a *package* var
+  came out as `{title: "Home", weight: }`. Not a backend bug: a package var's
+  initializer is checked in pass1 and field defaults in pass2, so the literal
+  copied the typed, valueless placeholder the field held until then. The
+  checker now records a literal that copied one and gives it the checked
+  default once `checkStructFieldDefaults` has run, so every target is fixed in
+  one place. `testdata/struct_literal_omitted_default.txtar` covers html,
+  bubbletea and android, with all three `run/` records passing (android
+  through gradle with the SDK installed locally), and `deny`s the empty
+  spelling on each; with the checker change stashed it fails at esbuild.
+  The unwritten `var zero Frontmatter` went through the same placeholder and
+  is in the fixture, as is a default naming a const declared below the var.
 
-Order: **D**, then **A**. Both are still open after the merge, and both
-reproduce as described. With B and C gone, the importer is free to emit either
-form: it writes the windows, or it hands `T` to the program's layout.
+All four are closed. The importer hands `T` to the program's layout rather than
+writing the windows itself, so a site decides what a page is.
 
 ## 9. The window collapse -- landed on main, merged here
 

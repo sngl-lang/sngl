@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -272,6 +273,18 @@ type checker struct {
 	// of the bargain only once every body has been checked.
 	refCoercions []refCoercion
 
+	// defaultPlaceholders maps the stand-in a field default holds until
+	// fillStructFieldDefaults checks it back to its field, and
+	// placeholderLits are the literals that copied one before then -- a
+	// package var's initializer is checked in pass1, the defaults in pass2.
+	defaultPlaceholders map[ir.Expr]*ir.StructField
+	placeholderLits     []*ir.StructLit
+
+	// entryScopes holds, per population being checked, the names it bound to
+	// its slot's component entries. An insertion resolves against them before
+	// the component's own slots, innermost first.
+	entryScopes []map[string]*ir.SlotDecl
+
 	// Unit suffix reverse lookup.
 
 	// bodyComps is every component declared inside a body, in registration
@@ -489,6 +502,12 @@ type checker struct {
 	// from. A copy taken before the fixed point ran holds no family, so the
 	// answer is carried across to it once there is one.
 	specOrigin map[*ir.Component]*ir.Component
+	// entryOrigin is the declared entry each specialized slot entry was
+	// copied from, and entrySpec the specialization an insertion of one was
+	// checked against. An insertion carries the declared entry past the
+	// checker, so the tree check deferred for it reads the copy from here.
+	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
+	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
 	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
 	// package body is checked against it, which is the whole of what makes a
@@ -2191,8 +2210,9 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			// so every consumer sees what a written `Counter{}` already gives
 			// them: left empty, `var c Counter` read back undefined on the web
 			// and its declared defaults everywhere else.
-			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
-				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
+			lit := &ir.StructLit{Type: typ, Def: sd}
+			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+				initExpr = lit
 			}
 		}
 		for _, name := range spec.Names {
@@ -2256,8 +2276,9 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 		} else if sd, ok := structDeclOf(typ); ok {
 			// See registerVars: a struct var with no initializer is that
 			// struct's zero value, which is its fields' defaults.
-			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
-				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
+			lit := &ir.StructLit{Type: typ, Def: sd}
+			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+				initExpr = lit
 			}
 		}
 		for _, name := range spec.Names {
@@ -2651,7 +2672,21 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
-	for _, p := range ct.Params {
+	for i, p := range ct.Params {
+		if vt, ok := p.Type.(*ast.VariadicType); ok {
+			c.error(vt.Pos, "slot %q takes no `...`: the block written at an insertion is its fallback, so an insertion has no bare children to collect; declare a component entry, `%s component`, and populate it by name at the insertion", pd.Name, cmp.Or(p.Name, "content"))
+			continue
+		}
+		if entry, ok := p.Type.(*ast.ComponentType); ok {
+			if p.Name == "" {
+				c.error(entry.Pos, "a component entry of slot %q needs a name: the insertion populates it by name", pd.Name)
+				continue
+			}
+			e := c.buildSlotDecl(ast.Param{Name: p.Name, Pos: entry.Pos}, entry, false)
+			e.Index = i
+			slot.Slots = append(slot.Slots, e)
+			continue
+		}
 		slot.Params = append(slot.Params, &ir.Param{Name: p.Name, Type: c.resolveType(p.Type)})
 	}
 	if pd.Default != nil {
@@ -3365,6 +3400,7 @@ func (c *checker) checkStructFieldDefaults() {
 	for _, sd := range c.declPkg().Structs {
 		c.fillStructFieldDefaults(sd)
 	}
+	c.resolvePlaceholderLits()
 }
 
 // fillStructFieldDefaults checks each declared default against its field type

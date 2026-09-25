@@ -1,0 +1,84 @@
+# A slot's component-typed invocation entry, populated by name at the
+# insertion, run on the interpreter. It mounts slot content in place rather
+# than splicing it, so it answers the question a second time: the content is
+# written in `site`'s body and reads `site`'s `pages`, while the population
+# around it is written in `probe`'s and reads the insertion's `fm`. The entry is
+# inserted inside `frame`'s population, which is where a layout puts its content.
+#
+# The snapshot golden is the claim. The first page carries its content, the
+# second its entry's fallback, and neither the insertion's fallback.
+#
+# testdata/slot_invocation_component.txtar is the same program for the targets
+# that splice it; this is the one that has to run.
+
+sngl test --platform none site.sngl
+stdout 'ok'
+
+-- site.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+struct Frontmatter {
+    title string = ""
+}
+
+component frame(main component node) node {
+    vbox {
+        main
+    }
+}
+
+component site(layout component(fm Frontmatter, content component node) node) node {
+    var pages = 2
+
+    vbox {
+        layout(Frontmatter{title="One"}) {
+            component content {
+                text(value="first of {pages} pages")
+            }
+        }
+        layout(Frontmatter{title="Two"}) {
+            text(value="fallback for an unpopulated layout")
+        }
+    }
+}
+
+component probe node {
+    site {
+        component layout(fm, body) {
+            vbox {
+                text(value=fm.title)
+                frame {
+                    component main {
+                        body {
+                            text(value="no content supplied")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+func testContentReachesTheLayout(t Test, c probe) {
+    t.snapshot("tree")
+}
+
+window {
+    probe
+}
+-- site.sngl.snapshots/tree.sngl --
+vbox() {
+    vbox() {
+        text(value="One")
+        vbox() {
+            text(value="first of 2 pages")
+        }
+    }
+    vbox() {
+        text(value="Two")
+        vbox() {
+            text(value="no content supplied")
+        }
+    }
+}

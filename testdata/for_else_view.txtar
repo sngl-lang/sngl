@@ -12,10 +12,9 @@ pushing the button swaps the empty state for the rows and back. Read the
 goldens for that -- the else block is inside the slot function on both, not in
 the one-time build.
 
-The iterable has to be state for any of this to matter. A const one is
-unrolled by the optimizer on a target with no host language, and unrolling an
-empty one already yields the else; it is the loop that survives to codegen
-whose else was lost. `rows` is a var for that reason, and `n` likewise.
+The iterable has to be state for any of this to matter. A const one makes the
+conditional's test constant, and the fold after lowering collapses it; it is
+the loop that survives to codegen whose else was lost. `rows` is a var for that reason, and `n` likewise.
 
 The emptiness question is asked of the iterable rather than stored, which is
 the whole reason this is a second pass and not a wider passForElse. Both
@@ -733,11 +732,11 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
+  var $0 = document.getElementById("$0");
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
   var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
   __renderSlot1(__slotAnchor_1);
-  var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.rows__inst0 = ["one", "two"];
     __renderSlot0(__slotAnchor_0);
@@ -756,4 +755,4 @@ pass sha256:fb6956b16a79096cc9f18ac50eb2b181
 -- run/kotlin/android --
 broken sha256:50566a41d383236b4acb37a508b8b5eb
 -- run/none/html --
-pass sha256:7ca5895bc2f4487b56ccd31099fe743c
+pass sha256:2b102421337c0fbe768b31b6ca9cbcaa

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
+	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 )
 
 // The five characters are the ones g_markup_escape_text answers for: the three
@@ -29,5 +30,16 @@ func TestEscapeIsEveryCharacterMarkupReads(t *testing.T) {
 		if got := gtk4rt.Escape(tc.in); got != tc.want {
 			t.Errorf("Escape(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+// A color the build can read is written by the emitter's hexColor, and one it
+// cannot is written here, so the two spell it alike.
+func TestForegroundMatchesTheBuildTimeSpelling(t *testing.T) {
+	if got := gtk4rt.Foreground(snglcolor.Color{R: 0xCF, G: 0x22, B: 0x2E, A: 255}); got != ` foreground="#CF222E"` {
+		t.Errorf("Foreground = %q", got)
+	}
+	if got := gtk4rt.Foreground(snglcolor.Color{}); got != "" {
+		t.Errorf("Foreground of the unset color = %q, want nothing", got)
 	}
 }
