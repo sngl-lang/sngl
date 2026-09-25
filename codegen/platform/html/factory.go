@@ -150,6 +150,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 	// bare identifier rather than `state.x` -- which is what makes the closure
 	// the record.
 	ctx := g.ctx.ForComponent(comp)
+	ctx.ClosureMethods = true
 	for _, p := range comp.Props {
 		ctx = ctx.WithLocal(p.Name)
 	}
@@ -196,9 +197,13 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 			continue
 		}
 		tr := g.newHTMLTranslator(jc)
+		params := fn.Params
+		if len(params) > 0 && params[0].Receiver {
+			params = params[1:]
+		}
 		walked := &ir.Func{
 			Name:   fn.Name,
-			Params: fn.Params,
+			Params: params,
 			Block:  codegen.WalkLowered(context.Background(), fn.Block, tr),
 		}
 		for _, line := range jc.EmitFuncDef(walked) {

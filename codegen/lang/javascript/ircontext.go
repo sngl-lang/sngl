@@ -2,6 +2,7 @@ package javascript
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -779,6 +780,14 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	qualName := receiverName + "." + method
 
 	args := jc.evalCallArgs(n.Args)
+	if jc.Ctx != nil && jc.Ctx.ClosureMethods && jc.Ctx.Component != nil &&
+		slices.Contains(jc.Ctx.Component.Funcs, n.Func) && len(args) > 0 {
+		call := method + "(" + strings.Join(args[1:], ", ") + ")"
+		if n.Func.IsAsync {
+			call = "await " + call
+		}
+		return call
+	}
 	if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}

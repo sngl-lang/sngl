@@ -1622,7 +1622,7 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	seen := make(map[*ir.Func]struct{})
 	var out []*ir.Func
 	add := func(f *ir.Func) {
-		if f.Synthesized {
+		if f.Synthesized || !g.pageOwnsFunc(f) {
 			return
 		}
 		// A native declaration is not emitted: the identifier already exists,
