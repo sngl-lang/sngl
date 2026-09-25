@@ -26,7 +26,7 @@ main()
 
 context #depth(0)
 
-component main() ui.root {
+component main() root {
     ui.window(title="t") {
         depth(depth + 1) {
             ui.text(value="one={depth}")

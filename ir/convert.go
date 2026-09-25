@@ -765,7 +765,9 @@ func (c *converter) treePkg() string { return c.aliasFor("tree") }
 // last segment of its URI — which is the alias an unaliased import binds.
 func (c *converter) aliasFor(uri string) string {
 	uri = strings.TrimPrefix(uri, "sngl:")
-	if c.dotted[uri] {
+	// sngl:builtin is ambient: every file reaches its names bare, and it
+	// cannot be imported under any alias.
+	if c.dotted[uri] || uri == "builtin" {
 		return ""
 	}
 	if a := c.aliases[uri]; a != "" {
