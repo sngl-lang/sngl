@@ -423,6 +423,8 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 // childrenContainReactiveSlot reports whether any direct child of a
 // NodeInst is a reactive If/For (i.e. carries a LoweredSlotID). Used to
 // force an enclosing element ref so slot updaters have a stable parent.
+// A boundary's children are the node's children, as rewriteReactiveStructures
+// passes the node's ref through one.
 func childrenContainReactiveSlot(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -432,6 +434,10 @@ func childrenContainReactiveSlot(stmts []ir.Stmt) bool {
 			}
 		case *ir.For:
 			if n.LoweredSlotID != "" {
+				return true
+			}
+		case *ir.ErrorBoundary:
+			if childrenContainReactiveSlot(n.Children) {
 				return true
 			}
 		}

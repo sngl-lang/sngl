@@ -154,16 +154,24 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 func factorySlotAnchors(comp *ir.Component) map[string]bool {
 	anchored := map[string]bool{}
 	initial := map[*ir.Call]bool{}
-	for _, s := range comp.Body {
-		cs, ok := s.(*ir.CallStmt)
-		if !ok || cs.Call == nil || cs.Call.Func == nil || len(cs.Call.Args) != 1 {
-			continue
-		}
-		if n := slotIndexFromRenderFunc(cs.Call.Func.Name); n != "" && componentHasFunc(comp, cs.Call.Func.Name) {
-			anchored[n] = true
-			initial[cs.Call] = true
+	var scan func(stmts []ir.Stmt)
+	scan = func(stmts []ir.Stmt) {
+		for _, s := range stmts {
+			if b, ok := s.(*ir.ErrorBoundary); ok {
+				scan(b.Children)
+				continue
+			}
+			cs, ok := s.(*ir.CallStmt)
+			if !ok || cs.Call == nil || cs.Call.Func == nil || len(cs.Call.Args) != 1 {
+				continue
+			}
+			if n := slotIndexFromRenderFunc(cs.Call.Func.Name); n != "" && componentHasFunc(comp, cs.Call.Func.Name) {
+				anchored[n] = true
+				initial[cs.Call] = true
+			}
 		}
 	}
+	scan(comp.Body)
 	if len(anchored) == 0 {
 		return anchored
 	}

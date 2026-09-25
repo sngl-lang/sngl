@@ -13,6 +13,17 @@ stdout '3 tests, 0 failures'
 grep '<span>inside slot</span>' app.sngl.snapshots/slot.html
 grep '<span>a card</span>' app.sngl.snapshots/instance.html
 
+# A boundary with a fallback in an instance body, under a vbox: the fallback
+# is a reactive `if` inside the boundary, so the vbox is its parent. The node
+# got no id for that -- only a reactive child directly under it did -- and
+# the render was called with no parent at all; its first render also sat
+# inside the boundary, where the factory did not look for one to anchor. The
+# card whose mount raises shows its fallback, ahead of what follows it, though
+# its content rendered nothing to insert the fallback before.
+sngl test --platform=html failed.sngl
+stdout 'PASS'
+grep 'end a</span>.*failed b bad</span>.*end b</span>' failed.sngl.snapshots/failed.html
+
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -95,4 +106,46 @@ window {
     underIf
     inSlot
     inInstance
+}
+-- failed.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component Field(label string) node {
+    var msg = ""
+
+    vbox {
+        boundary(@error(e) { msg = e.message }) {
+            component failed {
+                text(value="failed {label} {msg}")
+            }
+
+            effect(@mount {
+                if label == "b" {
+                    error.raise("bad", "")
+                }
+            })
+        }
+        text(value="end {label}")
+    }
+}
+
+component main node {
+    var items = ["a", "b"]
+
+    vbox {
+        for var it = items {
+            Field(label=it)
+        }
+    }
+}
+
+func testFailed(t Test, c main) {
+    t.snapshot("failed")
+}
+
+window {
+    main
 }
