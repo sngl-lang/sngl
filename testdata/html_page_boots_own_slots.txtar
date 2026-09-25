@@ -29,7 +29,7 @@ component Toggle() ui.node {
     }
 }
 
-component site() ui.root {
+component site() root {
     ui.window(title="one", href="/one.html") {
         Toggle
     }

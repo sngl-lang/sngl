@@ -86,7 +86,7 @@ body { font-family: system-ui, sans-serif; }
     __root.style.display = "contents";
     let interval = props.interval;
     let enabled = props.enabled ?? true;
-    let tick = props.tick ?? ((__e) => {
+    let tick = props.tick ?? ((__e0) => {
     });
     let __prop_interval = interval;
     let __prop_enabled = enabled;
@@ -256,4 +256,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:5f4dcec5fb64379c8c9e5871c6972dcb
+pass sha256:d8821ec26d0c0a403ba56e570fc0f0cc

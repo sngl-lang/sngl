@@ -84,8 +84,8 @@ func lowerPropBindings(inst *ir.NodeInst) {
 		// 1. Add synthetic EventDecl to component (idempotent).
 		if !hasBindingEvent(comp, b.PropName) {
 			comp.Events = append(comp.Events, &ir.EventDecl{
-				Name: b.PropName,
-				Type: prop.Type,
+				Name:   b.PropName,
+				Params: []*ir.Param{{Type: prop.Type}},
 			})
 			// 2. Rewrite prop assignments/toggles → emit in component.
 			rewritePropMutationsToEmit(comp, b.PropName, prop.Type)
@@ -210,8 +210,8 @@ func injectNativeEmit(comp *ir.Component, propName string, prop *ir.Prop) {
 // component declares, for a handler that has to be given a parameter.
 func eventPayloadType(comp *ir.Component, candidates []string) *ir.Type {
 	for _, ev := range comp.Events {
-		if slices.Contains(candidates, ev.Name) && ev.Type != nil {
-			return ev.Type
+		if slices.Contains(candidates, ev.Name) && ev.Payload() != nil {
+			return ev.Payload()
 		}
 	}
 	return ir.TypDyn

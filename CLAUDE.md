@@ -89,6 +89,37 @@ rather than `AST.Body.IsDefined()` — that reports whether a block came from
 as "has a body" made `sngl dump --stage checked` print every empty-bodied
 component back as a signature.
 
+## Event syntax
+
+An event declares the parameters its handlers receive, with a func type's
+parameter list — `@pick(index int, label string)` — and `ir.EventDecl.Params`
+is that list. Three spellings, one mechanism:
+
+- `@pick(index int, label string)` — the list; names are optional, as in a
+  func type, and are documentation rather than contract.
+- `@change T` — the one-parameter case without the parens.
+- `@done()` passes nothing. A bare `@tick` is **not** that: it is one unnamed
+  `dyn` parameter, the loose payload a bare event has always carried, which is
+  why `ir.Convert` prints an empty list as `@done()`.
+
+A handler binds **by position**, the way a func literal does, and may leave
+trailing parameters unbound; binding more than the event passes, or annotating
+one with a type other than its position's, is a positioned error
+(`bindParams`). An emit supplies every declared parameter
+(`checkEmitArgs`) — or **none at all, which forwards**: written in a handler,
+`click()` hands on what that handler received, position for position
+(`bindEventParams`), and it is how every platform override re-fires its host
+widget's event. An event used as a callback (`eventAsFunc`) takes the event's
+parameters exactly, or none.
+
+A host widget's event — a DOM click, a Fyne callback, a boundary's `@error` —
+hands its handler one value, and `EventDecl.Payload()` is the type the code
+dispatching one reads. A parameter list reaches a backend through a *user*
+component's event, where passInlinePure substitutes it and
+passInstanceEvents turns it into a func-typed prop with that signature;
+`testdata/event_params.txtar` and `testdata/event_params_instance.txtar` are
+the two routes.
+
 ## Loop forms
 
 `for` has one head, and its *type* says what the loop does — the grammar does
@@ -375,8 +406,8 @@ because grouping by kind splits every subject in two.
 
 The tiers, and the split between them is the whole point of the system:
 
-- **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output` and the error channel. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
-- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `root` family and the `window` that is its one member, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
+- **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output`, the error channel and `root`, the family a package body accepts. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
+- **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
@@ -680,14 +711,29 @@ The map is keyed by the boundary's `@error` handler, which is what a raise
 reaches through `Call.ResolvedHandler`, and held per scope so two
 instantiations of one component catch separately.
 
-**`sngl:ui`'s `root` is the family a package body accepts**, and that is the
-whole of what makes a window top-level — no syntactic rule names the
+**`sngl:builtin`'s `root` is the family a package body accepts**, and that is
+the whole of what makes a window top-level — no syntactic rule names the
 construct. So a `node` at the root of a file is the ordinary
 tree-membership error, an `if` or a `for` there still works (neither is a
 node), and a component that names `root` itself renders windows, which reach
-the build when something instantiates it. `output` is exempt: it is read as a
-build directive before any tree question is asked, and `sngl:builtin` cannot
-import `sngl:ui`, where the root tree lives.
+the build when something instantiates it.
+
+It is **ambient** because it describes every package rather than widgets. It
+lived in `sngl:ui`, and that forced an exemption: `output` is declared in
+`sngl:builtin`, which cannot import `sngl:ui`, so `treeOptional` let the
+directives — `output` and `cache.inputs` — omit a return position. Both now
+name `root` like `window` does, and `treeOptional` answers only for an
+extension body. Load order is not a problem: `lib/builtin/root.sngl` imports
+`sngl:tree` for the mark, which `sngl:builtin` already reached through
+`sngl:build`, and nothing in `sngl:tree` needs the ambient scope. `ir.Convert`
+spells it bare, as it spells every ambient name.
+
+What membership does *not* replace is the directives' own rule: each is
+diverted in `registerRootVisualNode` and read once, before anything runs, so
+one written anywhere but the root of a file is still its own error ("output may
+only be written at the root of a file") rather than a family question. A
+component whose family is `root` could otherwise render one, and nothing would
+read it.
 
 **Which windows there are is `ir.AllWindows`**, and the field is only half the
 answer. The checker registers a window written at the root of a file on
@@ -817,7 +863,7 @@ both.
 the way every other component's does: something instantiates it,
 `passNoInlineComponents` splices the body into the body that wrote the
 instantiation, and the splice renames what the component declared per
-instantiation. `component main ui.root { var hits = 0; window … }` with
+instantiation. `component main root { var hits = 0; window … }` with
 `main()` at the root of the file emits `hits__inst0`;
 `testdata/root_component_state.txtar` is that on four targets.
 

@@ -370,7 +370,14 @@ ParamList = Param { comma Param } [ comma ] .
 # checker's to say -- a lambda has neither sigil, a component declaration has
 # both -- and so is whether a type is required, optional or forbidden there.
 # Attrs are hoisted ahead of the alternation so all three forms accept them.
-Param = { MacroAttr } ( colon ident | at ident | ident ) [ Type ] [ assign Expr ] .
+#
+# An event declares the parameters its handlers receive. The list is a func
+# type's, `@pick(index int, label string)`, and `@change T` is the
+# one-parameter case written without the parens; `lparen` cannot begin a Type,
+# so the two alternatives are LL(1).
+Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | ident [ Type ] ) [ assign Expr ] .
+
+EventParams = lparen [ FuncTypeParamList ] rparen .
 
 # ── Components ────────────────────────────────────────────────────────────────
 

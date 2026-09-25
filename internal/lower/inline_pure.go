@@ -895,12 +895,15 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		// enclosing handler receives, so it becomes that handler's parameter:
 		// the wrapper is the one the platform installs, and a reference has
 		// to name something the surviving handler declares.
+		// By position, as the handler bound it: the enclosing handler's
+		// parameter at the same index, or this one appended when it has
+		// none there yet.
 		target := p
 		if enclosing != nil {
-			if len(enclosing.Params) == 0 {
-				enclosing.Params = []*ir.Param{p}
-			} else {
-				target = enclosing.Params[0]
+			if i < len(enclosing.Params) {
+				target = enclosing.Params[i]
+			} else if i == len(enclosing.Params) {
+				enclosing.Params = append(enclosing.Params, p)
 			}
 		}
 		bindings[p.Name] = &ir.Ident{Name: target.Name, Type: target.Type, Sym: target}

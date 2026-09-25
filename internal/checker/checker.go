@@ -509,7 +509,7 @@ type checker struct {
 	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
 	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
-	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
+	// rootTree is the #[builtin("treeRoot")] tree, sngl:builtin's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootTree *ir.StructDef
@@ -2821,8 +2821,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{
-				Name: pd.Name,
-				Type: c.resolveType(pd.Type),
+				Name:   pd.Name,
+				Params: c.eventParams(pd),
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
@@ -4823,7 +4823,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 				continue
 			}
 			restore := c.fileOf(varPos(v))
-			h.Func.Params = c.bindParams(h.AST.Params, v.Type, "@"+h.Name, "the assignment")
+			h.Func.Params = c.bindParams(h.AST.Params, []*ir.Param{{Type: v.Type}}, "@"+h.Name, "the assignment")
 			c.pushScope()
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)

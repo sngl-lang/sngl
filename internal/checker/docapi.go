@@ -175,11 +175,7 @@ func buildSchemaRegistry(pkg *ir.Package, docs []*ast.Document) SchemaRegistry {
 			}
 		}
 		for _, e := range comp.Events {
-			payload := ""
-			if e.Type != nil {
-				payload = e.Type.String()
-			}
-			schema.Events[e.Name] = payload
+			schema.Events[e.Name] = EventSignature(e)
 		}
 		reg[comp.Name] = schema
 	}
@@ -383,4 +379,24 @@ func DeclDoc(stmts []ast.Stmt, declLine int) string {
 		lines = append([]string{text}, lines...)
 	}
 	return strings.TrimSpace(strings.Join(lines, " "))
+}
+
+// EventSignature is how an event's parameters read in documentation, hover
+// and completion: the type alone for the one-parameter `@change T`, nothing
+// for the loose bare `@tick`, and the parenthesised list otherwise.
+func EventSignature(e *ir.EventDecl) string {
+	if len(e.Params) == 1 && e.Params[0].Name == "" {
+		if t := e.Params[0].Type; t != nil && t.Kind != ir.TypeDyn {
+			return t.String()
+		}
+		return ""
+	}
+	parts := make([]string, len(e.Params))
+	for i, p := range e.Params {
+		parts[i] = p.Type.String()
+		if p.Name != "" {
+			parts[i] = p.Name + " " + parts[i]
+		}
+	}
+	return "(" + strings.Join(parts, ", ") + ")"
 }

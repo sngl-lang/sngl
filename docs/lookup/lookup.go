@@ -717,10 +717,7 @@ func narrow(tgt *target, info *checker.DeclInfo, ident string) (Result, error) {
 				return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident}}, nil
 			case ast.EventDecl:
 				if pp.Name == ident {
-					payload := ""
-					if pp.Type != nil {
-						payload = parser.FormatType(pp.Type)
-					}
+					payload := parser.FormatEventSignature(pp)
 					return Result{Kind: KindProp, Prop: &PropDetail{Component: info.Name, Name: ident, Event: payload}}, nil
 				}
 			}

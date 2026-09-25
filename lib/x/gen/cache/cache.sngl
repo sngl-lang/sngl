@@ -7,11 +7,11 @@ struct input {}
 
 // Lists what the file it is written in was generated from.
 //
-// Written at the root of a file. It renders nothing and is not part of the
-// program: it is read by the store that holds the file, before anything else
+// Written at the root of a file, as a member of `root`. It renders nothing
+// and is not part of the program: it is read by the store that holds the file, before anything else
 // in the file is.
 #[marks.builtin("genInputs")]
-component inputs(entries ...component input) {}
+component inputs(entries ...component input) root {}
 
 // A file whose content the output was derived from, by its SHA-256.
 component file(path string, sha256 string) input {}
