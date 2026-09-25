@@ -108,7 +108,9 @@ const (
 // Store is a directory of generated files, one per request.
 type Store struct {
 	dir string // "" when the store is off
-	id  string // the compiler's identity; see compilerID
+	id  string // the compiler's identity; see compilerID and ready
+
+	readyOnce sync.Once
 
 	mu     sync.Mutex
 	got    map[string]*entryResult // per request key, this process's answer
@@ -158,12 +160,23 @@ func Open(dir string) *Store {
 		checks: map[string]bool{},
 		goenv:  map[string]goEnvResult{},
 	}
-	if dir != "" {
-		if s.id = compilerID(filepath.Join(dir, "compiler")); s.id == "" {
+	return s
+}
+
+// ready identifies the compiler, the first time a request needs a key or a
+// path rather than when the store is opened: hashing the executable is the
+// most expensive thing a store does, and a process that opens one and asks
+// nothing -- an evaluator that reads no generated file -- should not pay it.
+// A compiler that cannot be identified turns the store off.
+func (s *Store) ready() {
+	s.readyOnce.Do(func() {
+		if s.dir == "" {
+			return
+		}
+		if s.id = compilerID(filepath.Join(s.dir, "compiler")); s.id == "" {
 			s.dir = ""
 		}
-	}
-	return s
+	})
 }
 
 // Get returns the generated file for req: the stored one when every input it
@@ -276,6 +289,7 @@ func (s *Store) put(req Request, key string, out Output) []byte {
 // compiler that asked it. Params are length-prefixed, so no two lists of them
 // run together into one key.
 func (s *Store) key(req Request) string {
+	s.ready()
 	h := sha256.New()
 	fmt.Fprintf(h, "gencache v1\x00%s\x00%s\x00%d\x00", s.id, req.Producer, len(req.Params))
 	for _, p := range req.Params {
@@ -285,6 +299,7 @@ func (s *Store) key(req Request) string {
 }
 
 func (s *Store) path(key string) string {
+	s.ready()
 	if s.dir == "" {
 		return ""
 	}
@@ -333,14 +348,21 @@ const (
 	// work leaves every superseded answer behind.
 	maxBytes = 512 << 20
 	// maxAge is the floor under the budget: an entry unused this long goes
-	// whether the store is over budget or not.
+	// whether the store is over budget or not. A compiler memo goes at the
+	// same age, since every build that uses one marks it used.
 	maxAge = 30 * 24 * time.Hour
+	// tmpGrace is how old a temporary file may be before it is taken for one
+	// a crashed write left behind. A write takes milliseconds; this is far
+	// past that, so a live one is never removed from under its writer.
+	tmpGrace = time.Hour
 )
 
 // pruneOnce enforces maxAge and then maxBytes, least recently used first,
 // once per process and only when something is about to be written: a build
-// that hits everything leaves the store as it found it. Errors are ignored
-// throughout, for the reason write gives.
+// that hits everything leaves the store as it found it. It removes the side
+// files too -- compiler memos unused for maxAge, and temporaries older than
+// tmpGrace -- which nothing else ever would. Errors are ignored throughout,
+// for the reason write gives.
 func (s *Store) pruneOnce() {
 	s.mu.Lock()
 	if s.pruned {
@@ -360,15 +382,31 @@ func prune(dir string, budget int64, age time.Duration) {
 	}
 	var files []file
 	var total int64
+	memoDir := filepath.Join(dir, "compiler")
 	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".sngl") {
+		if err != nil || d.IsDir() {
 			return nil
 		}
 		info, err := d.Info()
 		if err != nil {
 			return nil
 		}
-		if time.Since(info.ModTime()) > age {
+		since := time.Since(info.ModTime())
+		switch {
+		case isTemp(d.Name()):
+			if since > tmpGrace {
+				os.Remove(path)
+			}
+			return nil
+		case filepath.Dir(path) == memoDir:
+			if since > age {
+				os.Remove(path)
+			}
+			return nil
+		case !strings.HasSuffix(path, ".sngl"):
+			return nil
+		}
+		if since > age {
 			os.Remove(path)
 			return nil
 		}
@@ -388,6 +426,12 @@ func prune(dir string, budget int64, age time.Duration) {
 			total -= f.size
 		}
 	}
+}
+
+// isTemp reports whether name is a temporary file one of the store's writes
+// made: an entry's `.tmp-*` beside it, or a memo's `<memo>.tmp<pid>`.
+func isTemp(name string) bool {
+	return strings.Contains(name, ".tmp")
 }
 
 // Render writes the file a store keeps for req: a header naming the request,
