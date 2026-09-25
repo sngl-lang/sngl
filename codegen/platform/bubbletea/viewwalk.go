@@ -9,11 +9,8 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// viewWalk writes Go that walks a view body the way View renders it -- every
-// loop and branch around the nodes it wants, with the loops' variables bound --
-// and hands each of those nodes to visit. It is how code outside View reaches
-// a node the view renders once per iteration: Update finding the focused one,
-// the transmit reaching each copy of a canvas.
+// viewWalk writes Go that walks a view body the way View renders it, loops'
+// variables bound, handing visit each node it wants.
 type viewWalk struct {
 	b      *strings.Builder
 	indent int
@@ -100,10 +97,8 @@ func (w *viewWalk) loop(f *ir.For, gc *golang.GoIRContext) {
 	}
 }
 
-// collectLoopOverlays records each Overlay a loop renders. One is open when any
-// copy of it is rendered, which only a walk of the loop can say: the gate that
-// opens it reads the copy's own state. Escape closes the first open copy by
-// clearing the var or cell its gate reads.
+// collectLoopOverlays: a loop's Overlay is open when any copy of it is, which
+// only a walk can say, since each copy's gate reads that copy's own state.
 func collectLoopOverlays(f *ir.For, gate *ir.If, gc *golang.GoIRContext, out *[]overlayInfo) {
 	gates := overlayGates([]ir.Stmt{f}, nil, map[*ir.NodeInst]*ir.If{})
 	eachRenderedNode([]ir.Stmt{f}, func(n *ir.NodeInst) {

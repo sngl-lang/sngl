@@ -498,11 +498,8 @@ func (st *inlineCompState) run() error {
 	return nil
 }
 
-// refuseCanvasInCycles refuses a canvas a recursion renders, in its own body
-// or in content handed to it. Its surface and kitty image are kept per copy
-// of the loop the view walks, and a recursion renders from a function per
-// level that the walk does not enter: the levels shared one surface and the
-// image was never transmitted.
+// refuseCanvasInCycles: a canvas's surface and kitty image are kept per copy
+// of the loop the view walks, and that walk never enters a recursion.
 func (st *inlineCompState) refuseCanvasInCycles() error {
 	firstCanvas := func(stmts []ir.Stmt) *ir.NodeInst {
 		var found *ir.NodeInst

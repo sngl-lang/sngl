@@ -12,10 +12,8 @@ import (
 // A slot is passed as a func taking its invocation list; nil renders the
 // insertion's fallback.
 
-// bindName is the Go name a render method or slot func binds a program's name
-// under. The receiver and the result/part locals the view emitter declares
-// share that scope, so a name that could be one of them gets a trailing
-// underscore, which no emitted name ends in.
+// bindName keeps a program's name clear of the receiver and the result/part
+// locals the view emitter declares, with an underscore no emitted name ends in.
 func bindName(name string) string {
 	if name == codegen.ModelReceiver || strings.HasPrefix(name, "result") || strings.HasPrefix(name, "part") {
 		return name + "_"
@@ -101,10 +99,8 @@ func (vc *irViewContext) slotFunc(name string, decl *ir.SlotDecl, sc *ir.SlotCon
 		}
 		params[i] = bound + " " + typ
 	}
-	// A recursion calls the func once per level, while Update and the slot's
-	// length count its focus stops once, where it is declared. So the func
-	// numbers its stops from where it was declared, and the count moves on
-	// past them here rather than inside it.
+	// A recursion calls the func once per level, and Update counts its stops
+	// once, here: it numbers them from here and the count moves on outside it.
 	lf, focus := firstLoopFocus(body)
 	base := ""
 	if focus && vc.focusPos[lf.pos] {

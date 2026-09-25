@@ -267,8 +267,6 @@ func emitLoopCanvasRaster(line func(string, ...any), c *codegen.Canvas, gc *gola
 	return fmt.Sprintf("%d|(%s+1)<<16", canvasImageID(c), at), raster
 }
 
-// declareCanvasSeqs starts the copy count of every loop canvas under f, where
-// the outermost loop holding it renders.
 func (vc *irViewContext) declareCanvasSeqs(f *ir.For) {
 	eachRenderedNode([]ir.Stmt{f}, func(n *ir.NodeInst) {
 		c := vc.ctx.Canvases.ForNode(n)

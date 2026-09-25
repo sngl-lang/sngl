@@ -169,16 +169,9 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // liftHandlers turns every handler in the subtree into an event the component
 // declares and the instantiation subscribes to.
 //
-// The body does not move into the component: it stays the block the program
-// wrote, at the site it was written, so what it closes over is still in scope.
-// What crosses is the subscription, and passInstanceEvents makes that a prop
-// cell the render re-points -- which is the whole reason a handler on a
-// retained row does not go stale.
-//
-// The event carries what the handler was handed and could not otherwise reach
-// from the site: the host event's own payload, and any of bound -- a scoped
-// slot's parameters, whose values exist only inside the component -- that its
-// body reads.
+// The body stays at the site it was written, so what it closes over is still
+// in scope; the event carries the host payload and whichever of bound (a
+// scoped slot's parameters) the body reads.
 func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 	_ = ir.Walk(n, func(node ir.Node) error {
 		host, ok := node.(*ir.NodeInst)

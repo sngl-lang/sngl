@@ -182,10 +182,8 @@ func (st *instanceSlots) specialize(n *ir.NodeInst) error {
 }
 
 // maxSlotVariants bounds the copies one site may need for content cloned from
-// the same statements. Two bindings of it can differ only when a recursion
-// re-binds what it forwards, and a finite set of those -- two parameters
-// swapped each level -- cycles well within this, while one computed from
-// itself never repeats.
+// the same statements: a recursion swapping what it forwards cycles well
+// within it, and one computing from itself never repeats.
 const maxSlotVariants = 8
 
 type slotVariant struct {

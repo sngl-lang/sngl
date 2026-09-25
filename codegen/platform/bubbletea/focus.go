@@ -87,7 +87,6 @@ func firstLoopFocus(stmts []ir.Stmt) (loopFocus, bool) {
 	return found, ok
 }
 
-// nodeKeyHandler is the handler n runs for the activation key guard, if any.
 func nodeKeyHandler(n *ir.NodeInst, guard string) []ir.Stmt {
 	for _, ev := range extractBlueprint(n).Events {
 		if teaKeyGuard(ev.Key) != guard {
@@ -100,8 +99,7 @@ func nodeKeyHandler(n *ir.NodeInst, guard string) []ir.Stmt {
 	return nil
 }
 
-// declareFocusPos starts a loop slot's ordinal before the slot's loop renders.
-// A nested loop of the same slot finds it already declared.
+// A nested loop of one slot finds its ordinal already declared.
 func (vc *irViewContext) declareFocusPos(f *ir.For) {
 	lf, ok := firstLoopFocus([]ir.Stmt{f})
 	if !ok || vc.focusPos[lf.pos] {
@@ -115,8 +113,6 @@ func (vc *irViewContext) declareFocusPos(f *ir.For) {
 	vc.line("_ = %s", lf.pos)
 }
 
-// declareLoopCounters starts, before a loop renders, the counts View keeps of
-// what the loop renders more than once.
 func (vc *irViewContext) declareLoopCounters(f *ir.For) {
 	vc.declareFocusPos(f)
 	vc.declareCanvasSeqs(f)
@@ -128,10 +124,8 @@ func (vc *irViewContext) countFocusPos(n *ir.NodeInst) {
 	}
 }
 
-// emitLoopSlotHandlers emits one Update case per activation key a loop slot's
-// nodes answer. Each walks the slot the way the view renders it, counting the
-// focusable nodes, and runs the handler of the one the cursor names. It is a
-// closure so that finding it ends the walk however deep the loops are.
+// emitLoopSlotHandlers' cases are closures so that finding the node the cursor
+// names ends the walk however deep the loops are.
 func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *golang.GoIRContext, guard string) {
 	lf, ok := firstLoopFocus([]ir.Stmt{f})
 	if !ok {

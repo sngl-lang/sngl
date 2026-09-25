@@ -24,9 +24,7 @@ type focusSlot struct {
 }
 
 // A loop slot's cursor is an ordinal over the focusable nodes the loop
-// renders, in render order, whatever loops and branches they sit under inside
-// it. The view counts them into posVar as it renders; lenFunc counts them the
-// same way for navigation.
+// renders, which the view counts into posVar and lenFunc counts for Tab.
 type loopSlotInfo struct {
 	forStmt   *ir.For
 	cursorVar *ir.Var // __focusLoopN_cursor
@@ -103,10 +101,8 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 	)
 }
 
-// refuseFocusInRecursion reports a focusable node a recursion's own body
-// renders. Update and Tab reach only the stops the window renders, and a
-// recursion renders its body from a function per level, so the node's focus
-// state was declared nowhere (`undefined: __focusID`).
+// refuseFocusInRecursion: Tab and Update reach only the stops the window
+// renders, and a recursion renders each level from a function of its own.
 func refuseFocusInRecursion(comp *ir.Component) error {
 	slots := gatherFocusSlots(comp.Body)
 	if len(slots) == 0 {
@@ -140,11 +136,8 @@ func suppliedBodies(n *ir.NodeInst) [][]ir.Stmt {
 	return out
 }
 
-// refuseFocusReadingSlotArgs reports a focusable node in a population handed
-// to a component built at run time whose handler, or a branch or loop around
-// it, reads the population's own parameters. Such a component is a recursion
-// here, and the content has one focus stop wherever it is rendered, so Update
-// runs its handler at the site that wrote it, where no argument is bound.
+// refuseFocusReadingSlotArgs: content handed to a recursion is one focus stop,
+// whose handler Update runs where it was written, with no slot argument bound.
 func refuseFocusReadingSlotArgs(stmts []ir.Stmt) error {
 	var err error
 	_ = ir.Walk(stmts, func(node ir.Node) error {
@@ -289,8 +282,6 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 	}
 }
 
-// hasFocusableNodes reports whether stmts hold a focusable NodeInst anywhere
-// below them, nested loops included.
 func hasFocusableNodes(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -409,10 +400,8 @@ func focusEqExpr(left ir.Expr, slotIdx int) *ir.Binary {
 	}
 }
 
-// buildLoopLenFunc counts what a loop slot renders focusable right now: the
-// slot's loop with every branch and nested loop kept and each focusable node
-// replaced by an increment. A slot's children render nothing on this
-// platform's view, so their nodes are not counted.
+// buildLoopLenFunc is the slot's loop with each focusable node replaced by an
+// increment.
 func buildLoopLenFunc(slot focusSlot) *ir.Func {
 	ls := slot.loop
 	sym := &ir.Var{Name: "__focusCount", Type: ir.TypInt, Synthesized: true}

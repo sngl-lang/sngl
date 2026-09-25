@@ -146,11 +146,7 @@ func (g *htmlGen) adoptElemDecl(comp *ir.Component) {
 
 // factorySlotAnchors is the set of slots in comp whose first render is a
 // statement of the body itself, each of which the factory gives an anchor of
-// its own. A slot renders into its parent with nothing after it to insert
-// before, so without one a re-render moved the slot's nodes past every
-// sibling written after it. Every other call to such a slot's renderer is
-// pointed at the anchor; the initial ones are left as written, since the
-// factory is emitted once per page and reads their parent each time.
+// its own to re-render into.
 func factorySlotAnchors(comp *ir.Component) map[string]bool {
 	anchored := map[string]bool{}
 	initial := map[*ir.Call]bool{}

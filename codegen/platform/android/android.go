@@ -445,10 +445,8 @@ class MainScreenAgentTest {
         // driver issues its first "list"/"run".
         SnglTestRegistration.ensure()
 
-        // One composition for the whole session, since setContent may be
-        // called once per rule: it shows whichever model the running test
-        // installed, and composing it is what mounts that test's effects and
-        // gives its clicks a node to land on.
+        // setContent may be called once per rule, so one composition shows
+        // whichever model the running test installed.
         composeRule.setContent { CurrentTestScreen() }
         onTestModelSet = {
             shadowOf(Looper.getMainLooper()).idle()
