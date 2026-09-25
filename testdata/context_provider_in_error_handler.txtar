@@ -2,16 +2,19 @@ A context provider written inside an @error handler has to be lowered like one
 written anywhere else: spliced out, with the reads under it answered by the
 value it provides. The context pass walked a node's event handlers and a
 boundary's content, and not a boundary's @error, a window's @error or a
-call's own @error. A provider there survived the pass: with a read directly
-under it the pass's own surviving-read check refused the build, and with the
-read inside a called func instead the provider reached codegen, where
-irwalk.EvalStmt has no case for one and all four targets below panicked.
+call's own @error, so a provider there survived the pass. This fixture's
+shape, a read directly under the provider, was refused by the pass's own
+surviving-read check (reportSurvivingReads). The same provider around a call
+to a func that does the reading was not caught there, reached codegen, and
+panicked in irwalk.EvalStmt on all four targets below.
 
 Each handler assigns the provided value, 5 and 7, where the enclosing scope
-provides 2 and the default is 1. A call's @error is covered by
-internal/lower's TestLowerProviders_InHandlers rather than here: no target
-emits that handler at all yet, so its golden would show nothing of the
-provider.
+provides 2 and the default is 1. Only a direct read is pinned: a read through
+a called user func still gets the enclosing value or the default under any
+provider, in a handler or a view body alike, which is a separate unfixed
+issue. A call's @error is covered by internal/lower's
+TestLowerProviders_InHandlers rather than here: no target emits that handler
+at all yet, so its golden would show nothing of the provider.
 -- handler.sngl --
 import . "sngl:ui"
 
