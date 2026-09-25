@@ -186,7 +186,6 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 			if hasFocusableNodes(n.Children) {
 				return true
 			}
-			// *ir.For: intentionally not recursed — nested loops are their own slots.
 		}
 	}
 	return false

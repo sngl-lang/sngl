@@ -291,9 +291,8 @@ func (t *htmlTranslator) OnDetachHandler(ctx context.Context, node ir.Expr, even
 }
 
 func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
-	// The declaration is looked up under the name the op used, and the write
-	// is emitted against the variable the element was emitted as. For a
-	// program-written `#id` those are two different strings.
+	// The write is emitted against the variable the element was emitted as,
+	// which for a program-written `#id` is not the name the op used.
 	node = t.nodeRef(node)
 	// The prop the tag name binds to names the element, so it is the
 	// createElement argument and no attribute. A computed one is left to the

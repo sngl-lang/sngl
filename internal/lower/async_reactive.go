@@ -325,7 +325,7 @@ func exprHasLocals(e ir.Expr) bool {
 	case *ir.Literal, *ir.ContextRead:
 		return false
 	case *ir.Lambda:
-		// Lambdas/closures evaluated at invocation time — their internal
+		// A lambda is evaluated at invocation time — its internal
 		// param refs aren't "locals of the surrounding expression."
 		return false
 	default:

@@ -943,6 +943,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return env.evalStructLit(n)
 	case *ir.MapLitIR:
 		return env.evalMapLitIR(n)
+	case *ir.Spread:
+		return env.Eval(n.Operand)
 	case *ir.Lambda:
 		return &LambdaValue{fn: n.Func, env: env}, nil
 	case *ir.ContextRead:

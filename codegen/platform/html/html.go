@@ -1513,22 +1513,17 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 	return out
 }
 
-// synthesizedFuncs returns the Synthesized funcs of the package, main
-// component and current window.
+// synthesizedFuncs returns the Synthesized funcs of the package and of every
+// component the page renders.
 //
-// Deduped by pointer, as pkgFuncs is and for the same reason: one func reaches
-// this from more than one list. A root window synthesized around main carries
-// main's funcs, and main is still on pkg.Components -- so a func on it would
-// otherwise be declared twice in the page.
+// Deduped by pointer, as pkgFuncs is and for the same reason: a component's
+// nested method is on pkg.Funcs and on the component's Funcs both. Both
+// consumers of this list matter -- one writes the definition, the other the
+// anchor lookup and the bootstrap call -- so a duplicate was a __renderSlotN
+// defined twice and run twice at startup, the second run removing the nodes
+// the first had just built.
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
-	// The three sources overlap: a page whose root is a component and not an
-	// explicit `window` is served here as a window whose Funcs are that
-	// component's, so every synthesized func of the root arrived twice. Both
-	// loops below consume this list -- one writes the definition, the other
-	// the anchor lookup and the bootstrap call -- so a duplicate was a
-	// __renderSlotN defined twice and run twice at startup, the second run
-	// removing the nodes the first had just built.
 	seen := map[*ir.Func]bool{}
 	add := func(f *ir.Func) {
 		if f == nil || !f.Synthesized || seen[f] {
