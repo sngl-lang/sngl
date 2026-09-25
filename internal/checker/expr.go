@@ -2321,17 +2321,20 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 	var elemT *ir.Type
 	for i, e := range x.Elements {
 		pos := *e.ExprPos()
+		expect := elemExpected
+		if expect == nil && elemT != nil && elemT.Kind != ir.TypeNull {
+			expect = elemT
+		}
 		var got *ir.Type
 		if sp, ok := e.(*ast.SpreadExpr); ok {
 			var spread *ir.Spread
-			spread, got = c.checkListSpread(sp, elemExpected)
+			spread, got = c.checkListSpread(sp, expect)
 			elems[i] = spread
 		} else {
-			elems[i] = c.checkExprExpecting(e, elemExpected)
+			elems[i] = c.checkExprExpecting(e, expect)
 			got = exprType(elems[i])
-			// A void element makes the literal a `list<void>`, which an
-			// annotated target rejects but an inferred one accepts:
-			// `var m = [xs.push(v)]` checked clean and reached codegen.
+			// A void element would make the literal a `list<void>`, which
+			// only an annotated target refuses.
 			c.requireValueType(got, pos)
 		}
 		elemT = c.unifyListElem(elemT, got, elemExpected, pos)
@@ -2370,8 +2373,9 @@ func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*i
 
 // unifyListElem folds one element's type into the literal's element type so
 // far. The first element decides, widened when a later one is the wider
-// number. Two that only agree as the expected element type (`[2.0, "a"]` for
-// a list<dyn>) make the literal a list of that.
+// number, and a null beside a T makes it option<T>. Two that only agree as
+// the expected element type (`[2.0, "a"]` for a list<dyn>) make the literal a
+// list of that.
 func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.Type {
 	switch {
 	case have == nil:
@@ -2380,6 +2384,10 @@ func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.T
 		return have
 	case have.IsAssignableTo(got):
 		return got
+	case have.Kind == ir.TypeNull:
+		return OptionOf(got)
+	case got.Kind == ir.TypeNull:
+		return OptionOf(have)
 	case expected != nil && got.IsAssignableTo(expected) && have.IsAssignableTo(expected):
 		return expected
 	}

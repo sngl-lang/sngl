@@ -1451,6 +1451,11 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	}
 	goType := IRTypeToGo(n.Type)
 	operand := gc.EvalExpr(n.Operand)
+	if src, dst, ok := ir.NumericListConversion(n); ok {
+		srcGo, elemGo := IRTypeToGo(src), IRTypeToGo(dst.Elems[0])
+		return "func(s " + srcGo + ") " + goType + " { out := make(" + goType + ", len(s)); " +
+			"for i, v := range s { out[i] = " + elemGo + "(v) }; return out }(" + operand + ")"
+	}
 	// Go's string(int) builds a single-rune string.
 	if n.Type != nil && n.Type.Kind == ir.TypeString {
 		if ud := UnitStringConversion(n); ud != nil {

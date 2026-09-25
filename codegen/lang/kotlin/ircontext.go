@@ -820,6 +820,16 @@ func ktIntConvMethod(t *ir.Type) string {
 	return "toInt()"
 }
 
+func ktNumberConvMethod(t *ir.Type) string {
+	if t.Kind != ir.TypeFloat {
+		return ktIntConvMethod(t)
+	}
+	if t.Bits == 32 {
+		return "toFloat()"
+	}
+	return "toDouble()"
+}
+
 func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsNullToFuncConv(n) {
 		return nullFuncStubKt(n.Type)
@@ -834,15 +844,13 @@ func (kc *KtIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsOptionWrap(n) {
 		return operand
 	}
+	if _, dst, ok := ir.NumericListConversion(n); ok {
+		return operand + ".map { it." + ktNumberConvMethod(dst.Elems[0]) + " }"
+	}
 	if n.Type != nil {
 		switch n.Type.Kind {
-		case ir.TypeInt:
-			return operand + "." + ktIntConvMethod(n.Type)
-		case ir.TypeFloat:
-			if n.Type.Bits == 32 {
-				return operand + ".toFloat()"
-			}
-			return operand + ".toDouble()"
+		case ir.TypeInt, ir.TypeFloat:
+			return operand + "." + ktNumberConvMethod(n.Type)
 		case ir.TypeString:
 			// Kotlin's Double.toString always writes a fraction, so a
 			// calculator that Go and JS both spell `24` came out as `24.0`.

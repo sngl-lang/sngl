@@ -1,10 +1,15 @@
+// `measured` spreads a shared const where it is read, which stays a
+// reference rather than folding to a literal the list could splice, so only
+// evaluating the spread answers it.
+
 import . "sngl:ui"
 
 const base = [1, 2]
 const all = [0, ...base, 3]
 
 component spreadfold node {
-    var n = all.length() // FOLD 4
-    var mid = all[2]     // FOLD 2
-    var last = all[3]    // FOLD 3
+    var n = all.length()                       // FOLD 4
+    var mid = all[2]                           // FOLD 2
+    var last = all[3]                          // FOLD 3
+    var measured = [...base, ...base].length() // FOLD 4
 }

@@ -1,8 +1,22 @@
 // A spread's elements join the literal's, so `[0, ...xs, 3]` is a list<int>
-// and not a list whose second element is a list.
+// and not a list whose second element is a list. Every later element is
+// checked against the type the earlier ones settled, which is what types an
+// anonymous literal after a named one, and a null beside a T makes the list
+// one of option<T>.
+
+struct P {
+    a int
+}
 
 var xs = [1, 2]
 var ys list<int> = [0, ...xs, 3]
 var only list<int> = [...xs]
 var twice list<int> = [...xs, ...ys]
 var nested list<list<int>> = [...[xs], ys]
+var widened list<float> = [...xs, 2.5]
+var ps = [P{a=1}, {a=2}]
+var psTyped list<P> = ps
+var holes = [1, null]
+var holesTyped list<option<int>> = holes
+var leading = [null, 1]
+var leadingTyped list<option<int>> = leading
