@@ -115,13 +115,30 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
+func (m *Model) __focusLoop1_len() int {
+	var __focusCount int = 0
+	for range m.items {
+		__focusCount = (__focusCount + 1)
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
+func (m *Model) __focusLoop2_len() int {
+	var __focusCount int = 0
+	for range m.items {
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
 		m.__focusLoop1_cursor = 0
 	} else {
 		if m.__focusID == 1 {
-			var __focusLen int = len(m.items)
+			var __focusLen int = m.__focusLoop1_len()
 			if (m.__focusLoop1_cursor + 1) < __focusLen {
 				m.__focusLoop1_cursor = (m.__focusLoop1_cursor + 1)
 			} else {
@@ -130,7 +147,7 @@ func (m *Model) __focusNext() {
 			}
 		} else {
 			if m.__focusID == 2 {
-				var __focusLen int = len(m.items)
+				var __focusLen int = m.__focusLoop2_len()
 				if (m.__focusLoop2_cursor + 1) < __focusLen {
 					m.__focusLoop2_cursor = (m.__focusLoop2_cursor + 1)
 				} else {
@@ -157,7 +174,7 @@ func (m *Model) __focusPrev() {
 				if m.__focusLoop2_cursor > 0 {
 					m.__focusLoop2_cursor = (m.__focusLoop2_cursor - 1)
 				} else {
-					var __focusLen int = len(m.items)
+					var __focusLen int = m.__focusLoop1_len()
 					m.__focusID = 1
 					m.__focusLoop1_cursor = (__focusLen - 1)
 				}
@@ -257,50 +274,59 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
 			m.items = append(m.items, "c")
 		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			for __copy0, _ := range m.items {
-				if m.__focusLoop1_cursor == __copy0 {
-					var __cell1_hits__inst0 int = func() int {
-						if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
-							return __v
-						}
-						return 0
-					}()
-					__cell1_hits__inst0 = (func() int {
-						if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
-							return __v
-						}
-						return 0
-					}() + 1)
-					m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
-					break
+			func() {
+				__focusPos1 := 0
+				for __copy0, it := range m.items {
+					_ = __copy0
+					_ = it
+					if m.__focusLoop1_cursor == __focusPos1 {
+						var __cell1_hits__inst0 int = func() int {
+							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+								return __v
+							}
+							return 0
+						}()
+						__cell1_hits__inst0 = (func() int {
+							if __v, __ok := m.hits__inst0[fmt.Sprint(__copy0)]; __ok {
+								return __v
+							}
+							return 0
+						}() + 1)
+						m.hits__inst0[fmt.Sprint(__copy0)] = __cell1_hits__inst0
+						return
+					}
+					__focusPos1++
+					if m.__focusLoop1_cursor == __focusPos1 {
+						m.picked = it
+						return
+					}
+					__focusPos1++
 				}
-			}
-		case msg.Code == tea.KeyEnter && m.__focusID == 1:
-			for __copy0, it := range m.items {
-				if m.__focusLoop1_cursor == __copy0 {
-					m.picked = it
-					break
-				}
-			}
+			}()
 		case msg.Code == tea.KeyEnter && m.__focusID == 2:
-			for __copy0, _ := range m.items {
-				if m.__focusLoop2_cursor == __copy0 {
-					var __cell1_hits__inst1 int = func() int {
-						if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
-							return __v
-						}
-						return 0
-					}()
-					__cell1_hits__inst1 = (func() int {
-						if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
-							return __v
-						}
-						return 0
-					}() + 1)
-					m.hits__inst1[fmt.Sprint(__copy0)] = __cell1_hits__inst1
-					break
+			func() {
+				__focusPos2 := 0
+				for __copy0, _ := range m.items {
+					_ = __copy0
+					if m.__focusLoop2_cursor == __focusPos2 {
+						var __cell1_hits__inst1 int = func() int {
+							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+								return __v
+							}
+							return 0
+						}()
+						__cell1_hits__inst1 = (func() int {
+							if __v, __ok := m.hits__inst1[fmt.Sprint(__copy0)]; __ok {
+								return __v
+							}
+							return 0
+						}() + 1)
+						m.hits__inst1[fmt.Sprint(__copy0)] = __cell1_hits__inst1
+						return
+					}
+					__focusPos2++
 				}
-			}
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -321,6 +347,8 @@ func (m Model) View() tea.View {
 	content_1 = lipgloss.NewStyle().Render(fmt.Sprint(("picked " + m.picked)))
 	contentChildren = append(contentChildren, content_1)
 	var content_2 string
+	__focusPos1 := 0
+	_ = __focusPos1
 	var content_2Items []string
 	for __copy0, it := range m.items {
 		_ = __copy0
@@ -328,7 +356,7 @@ func (m Model) View() tea.View {
 		var content_2Item string
 		var content_2ItemChildren []string
 		var content_2Item_0 string
-		content_2Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __copy0))
+		content_2Item_0Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
 		content_2Item_0Prefix := " "
 		if content_2Item_0Focused {
 			content_2Item_0Prefix = ">"
@@ -339,17 +367,19 @@ func (m Model) View() tea.View {
 			}
 			return 0
 		}()))))
+		__focusPos1++
 		content_2ItemChildren = append(content_2ItemChildren, content_2Item_0)
 		var content_2Item_1 string
 		content_2Item_1 = lipgloss.NewStyle().Render(fmt.Sprint(("item " + it)))
 		content_2ItemChildren = append(content_2ItemChildren, content_2Item_1)
 		var content_2Item_2 string
-		content_2Item_2Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __copy0))
+		content_2Item_2Focused := ((m.__focusID == 1) && (m.__focusLoop1_cursor == __focusPos1))
 		content_2Item_2Prefix := " "
 		if content_2Item_2Focused {
 			content_2Item_2Prefix = ">"
 		}
 		content_2Item_2 = lipgloss.NewStyle().Render(content_2Item_2Prefix + " " + fmt.Sprint("pick"))
+		__focusPos1++
 		content_2ItemChildren = append(content_2ItemChildren, content_2Item_2)
 		content_2Item = lipgloss.JoinVertical(lipgloss.Left, content_2ItemChildren...)
 		content_2Items = append(content_2Items, content_2Item)
@@ -357,13 +387,15 @@ func (m Model) View() tea.View {
 	content_2 = strings.Join(content_2Items, "\n")
 	contentChildren = append(contentChildren, content_2)
 	var content_3 string
+	__focusPos2 := 0
+	_ = __focusPos2
 	var content_3Items []string
 	for __copy0, _ := range m.items {
 		_ = __copy0
 		var content_3Item string
 		var content_3ItemChildren []string
 		var content_3Item_0 string
-		content_3Item_0Focused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __copy0))
+		content_3Item_0Focused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
 		content_3Item_0Prefix := " "
 		if content_3Item_0Focused {
 			content_3Item_0Prefix = ">"
@@ -374,6 +406,7 @@ func (m Model) View() tea.View {
 			}
 			return 0
 		}()))))
+		__focusPos2++
 		content_3ItemChildren = append(content_3ItemChildren, content_3Item_0)
 		var content_3Item_1 string
 		content_3Item_1 = lipgloss.NewStyle().Render(fmt.Sprint("empty"))
@@ -1222,7 +1255,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eda4c4d271383f7551ec6d389f55106f
+pass sha256:dcf5446e637955fe579ea07ea76d1a35
 -- run/go/fyne --
 pass sha256:159f555da60d57451181aeb4820c4d16
 -- run/go/gtk4 --

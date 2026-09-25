@@ -186,9 +186,17 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
+func (m *Model) __focusLoop0_len() int {
+	var __focusCount int = 0
+	for range m.labels {
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
-		var __focusLen int = len(m.labels)
+		var __focusLen int = m.__focusLoop0_len()
 		if (m.__focusLoop0_cursor + 1) < __focusLen {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor + 1)
 		} else {
@@ -203,7 +211,7 @@ func (m *Model) __focusPrev() {
 		if m.__focusLoop0_cursor > 0 {
 			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
 		} else {
-			var __focusLen int = len(m.labels)
+			var __focusLen int = m.__focusLoop0_len()
 			m.__focusID = 0
 			m.__focusLoop0_cursor = (__focusLen - 1)
 		}
@@ -299,12 +307,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			for __copy0, _ := range m.labels {
-				if m.__focusLoop0_cursor == __copy0 {
-					m.total = (m.total + 10)
-					break
+			func() {
+				__focusPos0 := 0
+				for __copy0, l := range m.labels {
+					_ = __copy0
+					_ = l
+					if m.__focusLoop0_cursor == __focusPos0 {
+						m.total = (m.total + 10)
+						return
+					}
+					__focusPos0++
 				}
-			}
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -315,12 +329,14 @@ func (m Model) View() tea.View {
 	var part0 string
 	var part0Children []string
 	var part0_0 string
+	__focusPos0 := 0
+	_ = __focusPos0
 	var part0_0Items []string
 	for __copy0, l := range m.labels {
 		_ = __copy0
 		_ = l
 		var part0_0Item string
-		part0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __copy0))
+		part0_0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __focusPos0))
 		part0_0ItemPrefix := " "
 		if part0_0ItemFocused {
 			part0_0ItemPrefix = ">"
@@ -331,6 +347,7 @@ func (m Model) View() tea.View {
 			}
 			return (l + ":")
 		}() + " ") + fmt.Sprint(m.total))))
+		__focusPos0++
 		part0_0Items = append(part0_0Items, part0_0Item)
 	}
 	part0_0 = strings.Join(part0_0Items, "\n")
@@ -1127,7 +1144,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:05ce6c5ed233068b4b46cfc5306b6f43
+pass sha256:f137ae48e6d3b2cdd3eddb8e475f603a
 -- run/go/fyne --
 pass sha256:34f1b3851190e852275a5541083ef0a3
 -- run/go/gtk4 --

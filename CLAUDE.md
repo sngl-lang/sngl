@@ -1572,6 +1572,17 @@ bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
 collected by nobody and never ran.
 
+**A loop's focus stops are the focusable nodes it renders**, not its
+iterations. bubbletea's `passFocusOrder` makes the outermost `for` holding one
+a single slot whose cursor is an ordinal over those nodes, nested loops and
+taken branches included: the view counts them as it renders (`__focusPosN`),
+`__focusLoopN_len` counts them for Tab, and Update's case for a key walks the
+loop the same way and runs the handler of the node the cursor names
+(`bubbletea/focus.go`). The cursor was the iteration index, so two buttons in
+one iteration -- a spliced card and the child handed to it -- were one stop
+with two `case` arms, and a nested loop's buttons were unreachable
+(`bubbletea/focus_run_test.go`).
+
 **An instance reaches the page through what holds it.** A fyne or gtk4 record
 holds its Model (`__model`), and a name its component does not declare -- the
 page's state, widgets and funcs -- is spelled through it

@@ -30,6 +30,8 @@ type irViewContext struct {
 	// Go variable holding its rendered box plus its placement/dim, and
 	// emitIRView composites them over the joined content at the end.
 	overlays []pendingOverlay
+
+	focusPos map[string]bool
 }
 
 // pendingOverlay records one Overlay primitive deferred out of the inline join
@@ -264,6 +266,7 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 			return // see rendersPart
 		}
 		vc.renderNode(s, resultVar)
+		vc.countFocusPos(s)
 	case *ir.If:
 		if s.FromTernary {
 			// NoTernary hoists `var __ltN` + this value-only If (Assign bodies,
@@ -321,6 +324,7 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
+	vc.declareFocusPos(s)
 	iterExpr := vc.gc.EvalExpr(s.Iter)
 
 	// Defer the loop header to the Go language driver so loop semantics
