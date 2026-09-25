@@ -106,8 +106,9 @@ func (m *Model) __focusPrev() {
 				}
 			} else {
 				if m.__focusID == 3 {
+					var __focusLen int = m.__focusLoop2_len()
 					m.__focusID = 2
-					m.__focusLoop2_cursor = 0
+					m.__focusLoop2_cursor = (__focusLen - 1)
 				}
 			}
 		}
