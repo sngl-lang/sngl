@@ -1,0 +1,201 @@
+# Bare children handed to a component built at run time render, per copy, in
+# the caller's scope -- executed rather than read.
+#
+# testdata/runtime_instance_bare_children.txtar shows what html, fyne and gtk4
+# emit for the shape. What a golden cannot show is that each card holds the
+# item at its own position, and that adding an item renders a card that holds
+# its content. Both are asked here of the running program.
+#
+# `mounted` is how a target with no DOM to read says it: the effect is part of
+# the children, so it mounts once per card and reads the loop variable where
+# the card was written. "ab" is two cards each built with its own item, and
+# "abc" after the click is the third one built with "c" -- and not, say, the
+# second rebuilt, which would read "abb" or "abbc". On html the snapshot is the
+# DOM Chromium built, and each `item x` sits inside its own card, after that
+# card's own button.
+#
+# The recursive case is read off the DOM on html only; on fyne and gtk4 it is
+# asserted to build and run, nothing more.
+#
+# bubbletea is not here: it splices the component rather than building it at
+# run time, and refuses an effect that reads a loop variable it does not bind.
+#
+# Confirmed by reverting: without passInstanceSlots every target below fails to
+# build the program, panicking on an *ir.SlotInst in irwalk.
+
+[!chromium] skip 'the rendered DOM needs a real Chromium'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=html app.sngl
+stdout 'PASS'
+grep '<button><span>hit 0</span></button><span>item a</span></div></div><div style="display: contents;"><div style="display:flex;flex-direction:column"><button><span>hit 0</span></button><span>item b</span></div></div><div style="display: contents;"><div style="display:flex;flex-direction:column"><button><span>hit 0</span></button><span>item c</span>' app.sngl.snapshots/cards.html
+
+# A recursive component handing its own children down is built at run time as
+# a cycle member, and its copy meets its own site again. Each level shows what
+# the level above it handed it, and deepening the recursion adds one.
+sngl test --platform=html rec.sngl
+stdout 'PASS'
+grep '<span>top</span>.*<span>level 3</span>.*<span>level 2</span>.*<span>level 1</span>' rec.sngl.snapshots/levels.html
+
+sngl test --platform=fyne nosnap.sngl
+stdout 'ok'
+sngl test --platform=fyne recnosnap.sngl
+stdout 'ok'
+
+[!gtk4] stop 'gtk4 needs its development libraries to build'
+sngl test --platform=gtk4 nosnap.sngl
+stdout 'ok'
+sngl test --platform=gtk4 recnosnap.sngl
+stdout 'ok'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component Card(children ...component) node {
+    var hits = 0
+
+    vbox {
+        button(text="hit {hits}", @click { hits = hits + 1 })
+        children
+    }
+}
+
+component main node {
+    var items = ["a", "b"]
+    var mounted = ""
+
+    vbox {
+        button #add(text="add", @click { items.push("c") })
+        for var it = items {
+            Card {
+                text(value="item {it}")
+                effect(@mount { mounted = mounted + it })
+            }
+        }
+    }
+}
+
+func testChildrenRenderPerCopy(t Test, c main) {
+    t.assert(c.mounted == "ab")
+    c.add.click()
+    t.assert(c.mounted == "abc")
+    t.snapshot("cards")
+}
+
+window {
+    main
+}
+-- nosnap.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component Card(children ...component) node {
+    var hits = 0
+
+    vbox {
+        button(text="hit {hits}", @click { hits = hits + 1 })
+        children
+    }
+}
+
+component main node {
+    var items = ["a", "b"]
+    var mounted = ""
+
+    vbox {
+        button #add(text="add", @click { items.push("c") })
+        for var it = items {
+            Card {
+                text(value="item {it}")
+                effect(@mount { mounted = mounted + it })
+            }
+        }
+    }
+}
+
+func testChildrenRenderPerCopy(t Test, c main) {
+    t.assert(c.mounted == "ab")
+    c.add.click()
+    t.assert(c.mounted == "abc")
+}
+
+window {
+    main
+}
+-- rec.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component frame(n int, content ...component node) node {
+    var open = true
+
+    vbox {
+        content
+        if n > 0 {
+            frame(n=n - 1) {
+                text(value="level {n}")
+            }
+        }
+    }
+}
+
+component main node {
+    var depth = 2
+
+    vbox {
+        frame(n=depth) {
+            text(value="top")
+        }
+        button #deeper(text="deeper", @click { depth += 1 })
+    }
+}
+
+func testDeepening(t Test, c main) {
+    c.deeper.click()
+    t.snapshot("levels")
+}
+
+window {
+    main
+}
+-- recnosnap.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component frame(n int, content ...component node) node {
+    var open = true
+
+    vbox {
+        content
+        if n > 0 {
+            frame(n=n - 1) {
+                text(value="level {n}")
+            }
+        }
+    }
+}
+
+component main node {
+    var depth = 2
+
+    vbox {
+        frame(n=depth) {
+            text(value="top")
+        }
+        button #deeper(text="deeper", @click { depth += 1 })
+    }
+}
+
+func testDeepening(t Test, c main) {
+    c.deeper.click()
+    t.assert(c.depth == 3)
+}
+
+window {
+    main
+}

@@ -143,7 +143,7 @@ var soleGate = map[string][]string{
 
 	// hasInstanceRuntime reads Reactivity and nothing else, so a target that
 	// keeps its reactivity gets none of the instance machinery.
-	"Reactivity": {"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity"},
+	"Reactivity": {"ComponentProps", "InstanceBodies", "InstanceEvents", "InstanceSlots", "NoReactivity"},
 
 	// NodeEscape has no flag of its own: the escape analysis only has
 	// something to analyse once the tree is flat.
@@ -234,7 +234,7 @@ func TestEachCapabilityGatesItsPasses(t *testing.T) {
 // a container that can only append tears its children down every render, so
 // there is no identity for a retained slot child to be asked about.
 func TestASlotChildNeedsBothCapabilities(t *testing.T) {
-	want := []string{"ComponentProps", "InstanceBodies", "InstanceEvents", "NoReactivity", "SlotChildInstances"}
+	want := []string{"ComponentProps", "InstanceBodies", "InstanceEvents", "InstanceSlots", "NoReactivity", "SlotChildInstances"}
 	if got := gatedPasses(withInsertBefore("reactivity")); !slices.Equal(got, want) {
 		t.Errorf("gated passes = %v; want %v", got, want)
 	}

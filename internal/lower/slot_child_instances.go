@@ -157,7 +157,7 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	// The handlers first, because lifting one takes an expression out of the
 	// subtree and the free-value scan should not then see what it reads.
 	st.liftHandlers(n, comp, inst)
-	st.liftValues(n, comp, inst)
+	st.liftValues(n, comp, inst, nil)
 
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
@@ -172,7 +172,7 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // What crosses is the subscription, and passInstanceEvents makes that a prop
 // cell the render re-points -- which is the whole reason a handler on a
 // retained row does not go stale.
-func (st *slotChildSynth) liftHandlers(n *ir.NodeInst, comp *ir.Component, inst *ir.NodeInst) {
+func (st *slotChildSynth) liftHandlers(n any, comp *ir.Component, inst *ir.NodeInst) {
 	k := 0
 	_ = ir.Walk(n, func(node ir.Node) error {
 		node, ok := node.(*ir.NodeInst)
@@ -218,7 +218,7 @@ func (st *slotChildSynth) liftHandlers(n *ir.NodeInst, comp *ir.Component, inst 
 // what makes registerSlotBodyDeps enough on its own -- the call is a prop
 // expression in the slot body now, so the slot re-fires when the func's reads
 // change, and no second guard is needed for this boundary.
-func (st *slotChildSynth) liftValues(n *ir.NodeInst, comp *ir.Component, inst *ir.NodeInst) {
+func (st *slotChildSynth) liftValues(n any, comp *ir.Component, inst *ir.NodeInst, local map[ir.Symbol]bool) {
 	seen := map[string]*ir.Param{}
 	add := func(key string, typ *ir.Type, value ir.Expr) *ir.Param {
 		if p, known := seen[key]; known {
@@ -250,7 +250,7 @@ func (st *slotChildSynth) liftValues(n *ir.NodeInst, comp *ir.Component, inst *i
 			// its arguments stay written against the scope they were read in.
 			return &ir.Ident{Name: p.Name, Type: typ, Sym: p}, ir.SkipDir
 		case *ir.Ident:
-			if x.Sym == nil || !liftableSym(x.Sym) {
+			if x.Sym == nil || !liftableSym(x.Sym) || local[x.Sym] {
 				return node, nil
 			}
 			p := add("id("+identityOf(x.Sym)+")", x.Type, &ir.Ident{
