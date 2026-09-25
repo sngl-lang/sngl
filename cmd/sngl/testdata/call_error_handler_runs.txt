@@ -7,13 +7,24 @@
 # object across a session, so four tests would each see the ones before it.
 # The order is the point of `after`: every click continues past its call,
 # including the ones whose call raised.
+#
+# boundary.sngl is testdata/boundary_catches_called_raise.txtar's program: a
+# boundary catching a raise from a called function, in a click and in an
+# effect's @mount, and a call through a func value catching its own. fyne and
+# gtk4 implement no boundary, so it runs on the interpreter and html only.
 
 sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none boundary.sngl
 stdout '1 tests, 0 failures'
 
 [!chromium] skip 'the JavaScript half needs a real Chromium'
 
 sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html boundary.sngl
 stdout '1 tests, 0 failures'
 
 [!exec:go] skip 'go toolchain required'
@@ -71,6 +82,46 @@ func testEachCallCatchesItsOwnRaise(t Test, c main) {
     c.fine.click()
     t.assert(c.caught == "too big/range;func:too big;deep:too big;")
     t.assert(c.after == "hfdok")
+}
+
+window {
+    main
+}
+-- boundary.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+func risky(n int) int {
+    if n > 1 {
+        error.raise("too big", "range")
+    }
+    return n * 10
+}
+
+component main node {
+    var caught = ""
+    var after = ""
+    boundary(@error(e) { caught = caught + e.message + ";" }) {
+        effect(@mount { risky(3) })
+        button #stmt(text="Stmt", @click {
+            risky(5)
+            after = after + "s"
+        })
+    }
+    button #lam(text="Lambda", @click {
+        var f = func() { error.raise("lam", "") }
+        f(@error(e) { caught = caught + "lam:" + e.message + ";" })
+        after = after + "l"
+    })
+    text(value="{caught}|{after}")
+}
+
+func testBoundaryAndLambdaCatch(t Test, c main) {
+    t.assert(c.caught == "too big;")
+    c.stmt.click()
+    c.lam.click()
+    t.assert(c.caught == "too big;too big;lam:lam;")
+    t.assert(c.after == "sl")
 }
 
 window {
