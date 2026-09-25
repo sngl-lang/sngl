@@ -165,13 +165,19 @@ func (m Model) View() tea.View {
 	if m.__failed0__inst0 {
 		content = lipgloss.NewStyle().Render(fmt.Sprint("it broke"))
 	} else {
-		contentFocused := (m.__focusID == 0)
-		contentPrefix := " "
-		if contentFocused {
-			contentPrefix = ">"
+		var contentGroup []string
+		var contentG0 string
+		contentG0Focused := (m.__focusID == 0)
+		contentG0Prefix := " "
+		if contentG0Focused {
+			contentG0Prefix = ">"
 		}
-		content = lipgloss.NewStyle().Render(contentPrefix + " " + fmt.Sprint("Go"))
-		content = lipgloss.NewStyle().Render(fmt.Sprint(m.seen__inst0))
+		contentG0 = lipgloss.NewStyle().Render(contentG0Prefix + " " + fmt.Sprint("Go"))
+		contentGroup = append(contentGroup, contentG0)
+		var contentG1 string
+		contentG1 = lipgloss.NewStyle().Render(fmt.Sprint(m.seen__inst0))
+		contentGroup = append(contentGroup, contentG1)
+		content = lipgloss.JoinVertical(lipgloss.Left, contentGroup...)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -280,6 +286,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:7f9a82d75de94bd4db3b50805496d3bd
+pass sha256:720ee36263b66cc02187c09a6f19db53
 -- run/none/html --
 pass sha256:808582647ed3f877e90310ec7dfb7ccc
