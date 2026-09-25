@@ -480,7 +480,6 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 	switch mode {
 	case TestEmitNative:
 		b.WriteString("}\n")
-		return withComposeTestImports(b.String())
 	case TestEmitAgent:
 		// SnglTestRegistration is a singleton with an init {} block so
 		// callers can force-load registration by referencing the class
@@ -504,21 +503,6 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		imports = composeActionImports
 	}
 	return strings.Replace(src, composeActionMarker, imports, 1)
-}
-
-// withComposeTestImports imports the finders and actions an event trigger
-// lowered to. They are extension functions, which a fully qualified call
-// cannot reach, and only the ones a test uses are imported so a file with no
-// trigger is unchanged.
-func withComposeTestImports(src string) string {
-	var imports []string
-	for _, name := range []string{"onNodeWithTag", "performClick", "performTextReplacement"} {
-		if strings.Contains(src, "."+name+"(") {
-			imports = append(imports, "import androidx.compose.ui.test."+name+"\n")
-		}
-	}
-	const anchor = "import androidx.compose.ui.test.junit4.createAndroidComposeRule\n"
-	return strings.Replace(src, anchor, strings.Join(imports, "")+anchor, 1)
 }
 
 // compReceiverSet returns the names of fn's component-typed params. It is what
