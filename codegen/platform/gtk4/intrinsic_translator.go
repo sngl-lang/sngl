@@ -23,7 +23,7 @@ type emitShared struct {
 	errs       []error
 	seen       map[string]bool
 
-	// The canvas metadata passCanvas flattened out of the program, which every
+	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
 	// translator without these maps reports it as a component gtk4 does not
 	// implement and stops the build. It rides on the shared struct rather than

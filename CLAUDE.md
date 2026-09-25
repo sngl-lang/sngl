@@ -432,7 +432,7 @@ off the mark. Three tree kinds are the odd ones out and mark a *tree* rather tha
 component: `treeRoot` (the family a package body accepts), `treeNode` (the
 widget family) and `treeShape` (the drawing tree). Each is a family the
 compiler itself has to name — to check the body against, to tell an ordinary
-component from a rendered one, to know which canvas passCanvas paints — and
+component from a rendered one, to know which node is a canvas — and
 every other family it compares by declaration alone. Marking them is what
 keeps `ir.go` from holding a package URI and a name for each: `ir.IsUITree`
 and its two siblings read `StructDef.Builtin`, so a family may be renamed or
@@ -460,8 +460,8 @@ ships the `kind` mark next to the default tree it applies to — so the
 `sngl` scheme is checked against the `lib/` layout alone: a directory is what
 makes a package exist, macro-only ones included. `sngl:internal/<name>` is
 the compiler's own tier: a package there may contribute macros, declarations,
-or both. `internal/marks` declares only macros; `internal/draw` declares the
-drawing primitives passCanvas emits, the intrinsic half of `sngl:ui/draw`.
+or both. `internal/marks` declares only macros; `internal/ir` declares `Macro`,
+the type a macro returns, and the flag enums the marks take.
 
 **A tree is a declared type, and `#[tree.kind]` marks the struct that names
 one.** `sngl:tree` describes a segmented component tree: a family whose
@@ -613,19 +613,17 @@ contract, which a body should not be quietly restating.
 component that renders nothing wants — `effect`, `timer`, `context`, and each
 platform's `Timer` primitive.
 
-**A canvas keeps them and draws the rest.** `passCanvas` turns a canvas's shape
-children into a draw function, and then cleared `Children` outright — so the
-bracket went with the shapes, and it runs before `passEffect`, and before the
-timer lowering that then existed, which therefore never saw one. A canvas that schedules
-its own animation compiled clean and never moved, on every target with a
-canvas, for as long as the rule above has allowed one to be written there.
-`treelessChildren` is what a canvas keeps now, and it mirrors `emitShapes`
-statement for statement: everything that walk reaches through, this one reaches
-through too, or a bracket under an `if` is dropped exactly as before — which is
+**A canvas keeps them and draws the rest.** `passShapeDraw` replaces a
+canvas's shape children with the statements that paint them, in place, and
+`emitShape` passes a tree-less node through as a child rather than painting it:
+it paints nothing, and its lifetime is the canvas's, so `passEffect` finds it
+there as it would under a vbox. Under `emitShapes` an `if` and a `for` are
+rebuilt around what they held, so a bracket under one survives too — which is
 where a `timer` lands, its override being `if enabled { effect(…) }` by then.
-`emitShape` skips a tree-less node for the same reason from the draw side: it
-paints nothing, so the save and restore around it were two empty calls.
-`testdata/canvas_schedules_itself.txtar` holds both halves.
+The pass it replaced hoisted the shapes into a function and cleared `Children`,
+so the bracket went with them and a canvas that scheduled its own animation
+compiled clean and never moved. `testdata/canvas_schedules_itself.txtar` holds
+it.
 
 Two rules follow from the mark, and they are each other's halves:
 
@@ -797,8 +795,7 @@ not simply carried over. `Window.Vars` is a *lowering artifact*: the checker
 leaves a window's `var` as an `*ir.LocalVar` statement in the body (which is
 already the `NodeInst` shape) and `passHoistState` moves it. `Funcs` is not the
 same case and cannot follow it: `ir` has no statement for a func declaration,
-`passCanvas` *appends* a synthesized draw func to `w.Funcs` with no source body
-to live in, and sixteen non-test sites read the per-window grouping to decide
+and sixteen non-test sites read the per-window grouping to decide
 which funcs become that window's methods. `Timers` is **gone**, and with it
 `ir.Timer`: the record held an interval, a gate and a tick body, and every one
 of those is readable off the timer-primitive node -- the `interval` and
@@ -1080,9 +1077,7 @@ whole list, and each says in its own vocabulary that the declaration is
 rendered rather than composed away. A **tree kind** is deliberately not on it:
 belonging to a segmented tree says which family a declaration joins, not that a
 codegen renders it, so a shape composed out of other shapes is a wrapper like
-any other. It was on the list while `passCanvas` existed, because that pass
-looked for the node the shapes hang off; nothing lifts them out now.
-`isPlatformStdlibComponent` is a different question: whether a component came
+any other. `isPlatformStdlibComponent` is a different question: whether a component came
 from a `sngl:platform/` package the program imports.
 
 A **native** mark — `#[go.native(path, name, flags)]`, `#[js.native(name, module, flags)]` — is the other half: the declaration *is* that host

@@ -801,7 +801,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	}
 
 	g.dt = shared.depTracker(pkg)
-	// The canvases passCanvas flattened into a lowered body. A canvas the page
+	// The canvases passDeclarative flattened into a lowered body. A canvas the page
 	// renders as markup is an ir.NodeInst and is not among these; what is, is
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
