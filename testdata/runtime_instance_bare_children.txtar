@@ -160,8 +160,9 @@ func (m *Model) __focusNext() {
 
 func (m *Model) __focusPrev() {
 	if m.__focusID == 0 {
+		var __focusLen int = m.__focusLoop2_len()
 		m.__focusID = 2
-		m.__focusLoop2_cursor = 0
+		m.__focusLoop2_cursor = (__focusLen - 1)
 	} else {
 		if m.__focusID == 1 {
 			if m.__focusLoop1_cursor > 0 {
@@ -1308,7 +1309,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a5491adf2e07993fcd645f3c0bc14dba
+pass sha256:efecc29966947361ecd92dab7608e6db
 -- run/go/fyne --
 pass sha256:67b20975b3ee515868ef6717688170fc
 -- run/go/gtk4 --

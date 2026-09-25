@@ -460,8 +460,7 @@ func buildFocusNav(name string, slots []focusSlot, focusIDIdent func() *ir.Ident
 
 		var body []ir.Stmt
 		if !slot.isLoop {
-			// Static slot: just move to the adjacent slot.
-			body = stmtsMoveTo(slots, adjacent, focusIDIdent, false)
+			body = stmtsMoveTo(slots, adjacent, focusIDIdent, !forward)
 		} else {
 			// Loop slot: try to advance/retreat cursor within the loop first.
 			ls := slot.loop
