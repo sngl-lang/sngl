@@ -966,7 +966,10 @@ class MainScreenTest {
         org.junit.Assert.assertTrue("(c.around[1] == 4)", (c.around[1] == 4))
         org.junit.Assert.assertTrue("(c.around[2] == 5)", (c.around[2] == 5))
         org.junit.Assert.assertTrue("(c.around[3] == 9)", (c.around[3] == 9))
-        c.scribble()
+        composeTestRule.runOnUiThread {
+            c.scribble()
+        }
+        composeTestRule.waitForIdle()
         org.junit.Assert.assertTrue("(c.xs[0] == 4)", (c.xs[0] == 4))
         org.junit.Assert.assertTrue("(c.copied[0] == 7)", (c.copied[0] == 7))
         org.junit.Assert.assertTrue("(c.joinedLen(9) == 7)", (c.joinedLen(9) == 7))
@@ -1095,6 +1098,6 @@ pass sha256:56a2afb35548c597879c7b1dacc16b2e
 -- run/go/gtk4 --
 pass sha256:d3fc83a7b05048309f26e107fb85c3e8
 -- run/kotlin/android --
-pass sha256:5b9bffec9e49f11b1fb088221c0c935c
+pass sha256:aa5616096ebc269dc2f8daa8ee1b1ae7
 -- run/none/html --
 pass sha256:0f4acce2cfa4f7ea400389eda6619319

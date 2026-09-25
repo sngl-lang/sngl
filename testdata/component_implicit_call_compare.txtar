@@ -341,7 +341,7 @@ fun _snglSplit(s: String, sep: String): List<String> =
 
 class MainScreenState {
     var n by mutableStateOf(3)
-    val count by derivedStateOf { n }
+    val count: Int get() = n
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -440,6 +440,6 @@ pass sha256:76ec407ff9a44579f9fe40d5ad3bca3e
 -- run/go/gtk4 --
 pass sha256:6d68d9192c5c0ee56ddde28f6c8a69aa
 -- run/kotlin/android --
-pass sha256:f76c306b9d53ed3be484c4edac9899a6
+pass sha256:2eacbb5fec4ec4d62e4013be3cf6dc73
 -- run/none/html --
 pass sha256:7b0b38ee520f5a3f17a91a7ae9181152

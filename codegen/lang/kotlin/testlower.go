@@ -51,6 +51,16 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 			}
 			return []string{fmt.Sprintf("// TODO: lower t.%s — not implemented in android test runner", c.Func.Name)}
 		}
+		if c := n.Call; c != nil && c.Func != nil && c.Func.Receiver != "" && len(c.Args) > 0 {
+			if id, ok := c.Args[0].Value.(*ir.Ident); ok && compRecvs[id.Name] {
+				return []string{
+					"composeTestRule.runOnUiThread {",
+					"    " + lowerTestExpr(c, surf, compRecvs),
+					"}",
+					"composeTestRule.waitForIdle()",
+				}
+			}
+		}
 	case *ir.LocalVar:
 		// `var name T [= expr]` inside a test body. `var`, as the ordinary
 		// translator spells it: a SNGL local is mutable, and a test that
@@ -66,20 +76,17 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 			init = "null"
 		}
 		return []string{fmt.Sprintf("var %s = %s", n.Name, init)}
-	case *ir.Assign:
-		// `<recv>.<var> += X` etc.: mutate state on the UI thread so
-		// Compose recomposition sees it before the next assertion.
-		if sel, ok := n.Target.(*ir.Select); ok {
-			if id, ok := sel.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
-				value := lowerTestExpr(n.Value, surf, compRecvs)
-				op := n.Op.String()
-				return []string{
-					"composeTestRule.runOnUiThread {",
-					fmt.Sprintf("    %s.%s %s %s", id.Name, sel.Field, op, value),
-					"}",
-					"composeTestRule.waitForIdle()",
-				}
+	case *ir.Assign, *ir.Toggle:
+		// A write to state -- `c.<var>…`, or a package var -- runs on the UI
+		// thread so Compose recomposes before the next assertion. The write
+		// itself is the ordinary translator's, which is what knows a list is a
+		// SnapshotStateList and a map a read-only Map.
+		if writesState(s, surf, compRecvs) {
+			lines := []string{"composeTestRule.runOnUiThread {"}
+			for _, l := range surf.translator().EvalStmt(s) {
+				lines = append(lines, "    "+l)
 			}
+			return append(lines, "}", "composeTestRule.waitForIdle()")
 		}
 	}
 	// Anything with no test-specific meaning is an ordinary statement, so the
@@ -88,7 +95,36 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 	// comment instead meant a test calling one of its component's own methods
 	// (`c.press(key)`) lowered to nothing at all, and the assertions after it
 	// ran against a component nobody had touched.
-	return testIRContext().EvalStmt(s)
+	return surf.translator().EvalStmt(s)
+}
+
+// writesState reports whether an assignment's target is rooted at the
+// instance a test holds, or is a member the instance holds by name.
+func writesState(s ir.Stmt, surf TestSurface, compRecvs map[string]bool) bool {
+	var target ir.Expr
+	switch n := s.(type) {
+	case *ir.Assign:
+		target = n.Target
+	case *ir.Toggle:
+		target = n.Target
+	}
+	for {
+		switch n := target.(type) {
+		case *ir.Select:
+			target = n.Operand
+		case *ir.Index:
+			target = n.Operand
+		case *ir.Ident:
+			if compRecvs[n.Name] {
+				return true
+			}
+			kt := surf.translator()
+			_, member := kt.IdentRewrites[n.Name]
+			return member
+		default:
+			return false
+		}
+	}
 }
 
 // lowerTestSetContext recognises a `t.setContext(ctxName, value)` call and
@@ -278,13 +314,17 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		}
 		return n.Value
 	case *ir.Ident:
-		return n.Name
+		if compRecvs[n.Name] {
+			return n.Name
+		}
+		return surf.translator().EvalExpr(n)
 	case *ir.Select:
 		// `<recv>.<id>[idx].<prop>` — Compose `onAllNodesWithTag(<id>)[idx]`
-		// then read via composeNodeTextAt.
+		// then read via composeNodeTextAt. Not for a list the state object
+		// holds, whose element's field is an ordinary read.
 		if idx, ok := n.Operand.(*ir.Index); ok {
 			if inner, ok := idx.Operand.(*ir.Select); ok {
-				if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
+				if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] && !surf.StateFields[inner.Field] {
 					return fmt.Sprintf("composeNodeTextAt(composeTestRule, %q, %s)",
 						inner.Field, lowerTestExpr(idx.Idx, surf, compRecvs))
 				}
@@ -307,16 +347,30 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		idx := lowerTestExpr(n.Idx, surf, compRecvs)
 		return operand + "[" + idx + "]"
 	case *ir.Call:
+		// `c.f(…)` on the instance: a method of the state object, or a
+		// `derivedStateOf` property when f is a computed.
+		if f := n.Func; f != nil && f.Receiver != "" && len(n.Args) > 0 {
+			if id, ok := n.Args[0].Value.(*ir.Ident); ok && compRecvs[id.Name] {
+				if codegen.IsComputed(f) {
+					return id.Name + "." + f.Name
+				}
+				args := make([]string, 0, len(n.Args)-1)
+				for _, a := range n.Args[1:] {
+					args = append(args, lowerTestExpr(a.Value, surf, compRecvs))
+				}
+				return id.Name + "." + f.Name + "(" + strings.Join(args, ", ") + ")"
+			}
+		}
 		// Delegate to the full expression translator for calls and any
 		// shape lowerTestExpr's special-cases above don't already cover.
 		// Method calls like `c.formatted()` and stdlib calls inside test
 		// assertions both flow through here.
-		return testIRContext().EvalExpr(e)
+		return surf.translator().EvalExpr(e)
 	}
 	// Final fallback: defer to the full IR translator. Keeps test
 	// expressions in lockstep with non-test Kotlin codegen rather than
 	// emitting a TODO placeholder that fails Kotlin compilation.
-	return testIRContext().EvalExpr(e)
+	return surf.translator().EvalExpr(e)
 }
 
 // composeIDRef returns the id when e is the bare `<recv>.<id>` shape
@@ -456,7 +510,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 			b.WriteString("        @Suppress(\"UNUSED_VARIABLE\") val composeTestRule = composeRule\n")
 			fmt.Fprintf(&b, "        composeRule.setContent { MainScreen(%s) }\n", recv)
 			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, surf, compRecvs, ctxCounts, TestEmitNative) {
+				for _, line := range lowerTestStmt(s, surf.forInstance(recv, fn), compRecvs, ctxCounts, TestEmitNative) {
 					fmt.Fprintf(&b, "        %s\n", line)
 				}
 			}
@@ -471,7 +525,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 				fmt.Fprintf(&b, "    val %s = %s\n", recv, testInstanceVar)
 			}
 			for _, s := range fn.Block {
-				for _, line := range lowerTestStmt(s, surf, compRecvs, ctxCounts, TestEmitAgent) {
+				for _, line := range lowerTestStmt(s, surf.forInstance(testInstanceVar, fn), compRecvs, ctxCounts, TestEmitAgent) {
 					fmt.Fprintf(&b, "    %s\n", line)
 				}
 			}
@@ -525,4 +579,55 @@ type TestSurface struct {
 	// StateFields is every var a window, the package or a component owns --
 	// the cells the state object declares.
 	StateFields map[string]bool
+	// Pkg is the package under test, and Members what MainScreen spells each
+	// state member as (`state.<name>`). With both, an expression the test
+	// lowerer has no special case for renders the way MainScreen renders it,
+	// through the instance the test holds.
+	Pkg     *ir.Package
+	Members map[string]string
+
+	kt *KtIRContext
+}
+
+// forInstance is surf with its translator bound to the instance named recv.
+// A test's own locals are left out of the rewrites, so a local sharing a
+// state member's name stays a local.
+func (surf TestSurface) forInstance(recv string, fn *ir.Func) TestSurface {
+	if surf.Pkg == nil {
+		return surf
+	}
+	locals := map[string]bool{}
+	for _, p := range fn.Params {
+		locals[p.Name] = true
+	}
+	_ = ir.WalkStmts(fn.Block, func(s ir.Stmt) error {
+		switch n := s.(type) {
+		case *ir.LocalVar:
+			locals[n.Name] = true
+		case *ir.For:
+			locals[n.Key] = true
+			if n.Value != "" {
+				locals[n.Value] = true
+			}
+		}
+		return nil
+	})
+	rewrites := map[string]string{}
+	for name, spelled := range surf.Members {
+		if locals[name] {
+			continue
+		}
+		rewrites[name] = recv + strings.TrimPrefix(spelled, "state")
+	}
+	kc := NewIRContext(codegen.NewExprCtx(surf.Pkg))
+	kc.IdentRewrites = rewrites
+	surf.kt = kc
+	return surf
+}
+
+func (surf TestSurface) translator() *KtIRContext {
+	if surf.kt != nil {
+		return surf.kt
+	}
+	return testIRContext()
 }
