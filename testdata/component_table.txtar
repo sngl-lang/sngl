@@ -161,8 +161,7 @@ package main
 import "testing"
 
 func TestTableSelectedMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.idx == 0)) { t.Errorf("assert failed: %s", "(c.idx == 0)") }
 	c.idx = 3
@@ -227,8 +226,7 @@ package main
 import "testing"
 
 func TestTableSelectedMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.idx == 0)) { t.Errorf("assert failed: %s", "(c.idx == 0)") }
 	c.idx = 3
@@ -379,9 +377,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1426a781547cb306ac1aaaf43d963694
+pass sha256:0d5e22c85fd5e266c275e864bb7e8078
 -- run/go/fyne --
-pass sha256:91e0a11b7e9ebf28dbfc51813796d7ed
+pass sha256:d1f1d19b2e0a3adbf44b2ad1b6171551
 -- run/kotlin/android --
 pass sha256:05a402c234d27b9d436aca9e6fe9d493
 -- run/none/html --

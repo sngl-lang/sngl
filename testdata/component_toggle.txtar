@@ -153,8 +153,7 @@ package main
 import "testing"
 
 func TestToggleFlips(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
@@ -227,8 +226,7 @@ package main
 import "testing"
 
 func TestToggleFlips(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
@@ -582,9 +580,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a1f8e19ecd6d8aace9100b6dbac33ea9
+pass sha256:054e9d8c4c497250914d99509fc81b57
 -- run/go/fyne --
-pass sha256:4041fc8f42397982ec6754f837f8cf3f
+pass sha256:0cfdd65a282c4b2da031d1c0525e4d57
 -- run/go/gtk4 --
 pass sha256:c0b1f7af8007bd65ad5f5c41eff9968e
 -- run/kotlin/android --

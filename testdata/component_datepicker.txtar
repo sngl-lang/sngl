@@ -138,8 +138,7 @@ package main
 import "testing"
 
 func TestDatepickerValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	fresh := mustParseDate("0001-01-01")
 	c.d = fresh
@@ -214,8 +213,7 @@ package main
 import "testing"
 
 func TestDatepickerValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	fresh := mustParseDate("0001-01-01")
 	c.d = fresh
@@ -596,9 +594,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a7fda78877147d4bf0e6c92646379d1e
+pass sha256:2d3135c2d141e0e0dde30603b12671b6
 -- run/go/fyne --
-pass sha256:0d7ff64ee9258be9ce16ec8d4c263111
+pass sha256:ff364201dbf1c1c93f3037113a7e10b7
 -- run/go/gtk4 --
 pass sha256:60cfe9a991be310760f50bd9c4e3530e
 -- run/kotlin/android --

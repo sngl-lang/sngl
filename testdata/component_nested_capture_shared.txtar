@@ -283,8 +283,7 @@ package main
 import "testing"
 
 func TestTwoInstantiationsShareOneCapturedVar(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count == 11)) { t.Errorf("assert failed: %s", "(c.count == 11)") }
 }
@@ -471,8 +470,7 @@ package main
 import "testing"
 
 func TestTwoInstantiationsShareOneCapturedVar(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count == 11)) { t.Errorf("assert failed: %s", "(c.count == 11)") }
 }
@@ -896,9 +894,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eef69accaa6a5c2e112b3d9c2a479e81
+pass sha256:3b06ab0c5203541a4c1be7361bee069b
 -- run/go/fyne --
-pass sha256:b8a6a3bab60794e6077e385ac8b76760
+pass sha256:b010501e28fe060706a65e70a8a44ab8
 -- run/go/gtk4 --
 pass sha256:7ea2ba49add75662368f145940cfddee
 -- run/kotlin/android --

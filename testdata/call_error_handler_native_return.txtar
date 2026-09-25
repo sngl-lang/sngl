@@ -215,8 +215,7 @@ package main
 import "testing"
 
 func TestReturnEndsHandlerOnly(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.badClick()
 	if !((c.caught == "c")) { t.Errorf("assert failed: %s", "(c.caught == \"c\")") }
@@ -328,8 +327,7 @@ package main
 import "testing"
 
 func TestReturnEndsHandlerOnly(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.badClick()
 	if !((c.caught == "c")) { t.Errorf("assert failed: %s", "(c.caught == \"c\")") }
@@ -452,8 +450,8 @@ func (m *Model) badClick() {
 	gtk4rt.Emit(m.bad, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:a59534ba69334a2afb28713dfe667195
+pass sha256:caae766dea21ebf12e8f36b21f523d76
 -- run/go/fyne --
-pass sha256:0e1bb10ef8557a3b337275b26ae4fd66
+pass sha256:abfcf4ffc7b939b28c6dfcf5f8efca4d
 -- run/go/gtk4 --
 pass sha256:55a25b412f4709b77ec0f0e6b24a9d16

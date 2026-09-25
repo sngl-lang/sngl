@@ -191,8 +191,7 @@ package main
 import "testing"
 
 func TestThemeToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.dark == false)) { t.Errorf("assert failed: %s", "(c.dark == false)") }
 	c.dark = true
@@ -301,8 +300,7 @@ package main
 import "testing"
 
 func TestThemeToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.dark == false)) { t.Errorf("assert failed: %s", "(c.dark == false)") }
 	c.dark = true
@@ -579,9 +577,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6488b79d1d3aa7659c6c1b68efe77013
+pass sha256:8ca3c9728cc71a951a334318688f0408
 -- run/go/fyne --
-pass sha256:fbd76ca8dccfb51a0dfb77e311792ad5
+pass sha256:2adf00c3b18808fb913a5ef8a0b4296b
 -- run/go/gtk4 --
 pass sha256:58eb81c03da71dabc6bd7bb3f74ed2e7
 -- run/kotlin/android --

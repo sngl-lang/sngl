@@ -128,8 +128,7 @@ package main
 import "testing"
 
 func TestImageSrcMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.src == "https://example.com/a.png")) { t.Errorf("assert failed: %s", "(c.src == \"https://example.com/a.png\")") }
 	c.src = "https://example.com/b.png"
@@ -194,8 +193,7 @@ package main
 import "testing"
 
 func TestImageSrcMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.src == "https://example.com/a.png")) { t.Errorf("assert failed: %s", "(c.src == \"https://example.com/a.png\")") }
 	c.src = "https://example.com/b.png"
@@ -404,9 +402,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:de2e2640c1ea68c832dc605408ef406c
+pass sha256:af4dd10f8fd5414881807c79cf987f0d
 -- run/go/fyne --
-pass sha256:3262efed79d52c1032452efbce1a8af9
+pass sha256:26ea3b2afd2e41a4b38e92295cfb2ff2
 -- run/go/gtk4 --
 pass sha256:dbc8995b8daf024c80f5b3df937d78af
 -- run/kotlin/android --

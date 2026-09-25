@@ -24,7 +24,7 @@ import (
 // `CalcDigit(…)`, a top-level func as the free `Format(…)`. Over an empty
 // package it knew neither, and emitted `Calc{…}.digit(…)` against a Go type
 // with no such method.
-func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool) *GoIRContext {
+func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool, instance string) *GoIRContext {
 	if irPkg == nil {
 		irPkg = &ir.Package{}
 	}
@@ -34,7 +34,7 @@ func testIRContext(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool)
 	ctx.MethodFields = methodFields
 	// Package state and the funcs reading it are Model members, and a test
 	// holds its Model as the instance rather than as `m`.
-	ctx.StateReceiver = testInstanceVar
+	ctx.StateReceiver = instance
 	gc := NewIRContext(ctx)
 	for _, p := range fn.Params {
 		gc.Ctx.Locals[p.Name] = true
@@ -362,24 +362,19 @@ func LowerTestFile(pkg string, irPkg *ir.Package, fns []*ir.Func, suffixes []str
 		suffix := suffixes[i]
 		funcName, paramType := wrapperHeader(suffix, mode)
 		fmt.Fprintf(&body, "func %s(t *%s) {\n", funcName, paramType)
-		// The instance is always built, because a snapshot needs one whether
-		// the test named it or not; the declared name is bound only when the
-		// test declared it. Emitting a fixed `c` into every test collided
-		// with any local of that name.
-		body.WriteString("\t" + testInstanceVar + " := newTestComponent()\n")
-		if mode == TestEmitAgent {
-			body.WriteString("\tsetCurrentTestModel(" + testInstanceVar + ")\n")
-		}
-		// Whichever name is in scope is discarded, because a test may drive
-		// the component only through the runner -- `t.snapshot(...)` names it
-		// nowhere -- and Go rejects a local nothing reads.
+		// Built whether or not the test names it, since a snapshot needs one.
+		// One variable, not a named copy: bubbletea's Model is a value, and
+		// package state read through the original missed the copy's clicks.
+		instance := testInstanceVar
 		if recv := codegen.TestComponentParam(fn); recv != "" {
-			fmt.Fprintf(&body, "\t%s := %s\n", recv, testInstanceVar)
-			fmt.Fprintf(&body, "\t_ = %s\n", recv)
-		} else {
-			body.WriteString("\t_ = " + testInstanceVar + "\n")
+			instance = recv
 		}
-		gc := testIRContext(irPkg, fn, methodFields)
+		body.WriteString("\t" + instance + " := newTestComponent()\n")
+		if mode == TestEmitAgent {
+			body.WriteString("\tsetCurrentTestModel(" + instance + ")\n")
+		}
+		body.WriteString("\t_ = " + instance + "\n")
+		gc := testIRContext(irPkg, fn, methodFields, instance)
 		for _, s := range fn.Block {
 			for _, line := range lowerTestStmt(s, gc) {
 				fmt.Fprintf(&body, "\t%s\n", line)

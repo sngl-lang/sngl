@@ -159,8 +159,7 @@ package main
 import "testing"
 
 func TestPopoverOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.visible == false)) { t.Errorf("assert failed: %s", "(c.visible == false)") }
 	c.visible = true
@@ -236,8 +235,7 @@ package main
 import "testing"
 
 func TestPopoverOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.visible == false)) { t.Errorf("assert failed: %s", "(c.visible == false)") }
 	c.visible = true
@@ -602,9 +600,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eb57c6c38f7aecc95ff930e0d1a9094a
+pass sha256:e77e9f8d86b2fc61a7fb49eac1a3c167
 -- run/go/fyne --
-pass sha256:7a53ef30ca09f5dbd4836983cd60515b
+pass sha256:6b9e53ad4e7409c2b5620b7c1de8cf98
 -- run/go/gtk4 --
 pass sha256:4866dc169b40accf7e1dbf3cd8e94a82
 -- run/kotlin/android --

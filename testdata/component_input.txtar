@@ -194,8 +194,7 @@ package main
 import "testing"
 
 func TestInputValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.name == "World")) { t.Errorf("assert failed: %s", "(c.name == \"World\")") }
 	c.name = "SNGL"
@@ -286,8 +285,7 @@ package main
 import "testing"
 
 func TestInputValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.name == "World")) { t.Errorf("assert failed: %s", "(c.name == \"World\")") }
 	c.name = "SNGL"
@@ -554,9 +552,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6fc4953c00764921808235f504c2a906
+pass sha256:cb3a2bc9dce7aea637128f23cee18dbd
 -- run/go/fyne --
-pass sha256:7fd1bb0f95a92b24b5fd4776b8d99988
+pass sha256:9d524c211445bbafaff5f7f09f185cea
 -- run/go/gtk4 --
 pass sha256:be40365eb156e073da41bb883a84c77c
 -- run/kotlin/android --

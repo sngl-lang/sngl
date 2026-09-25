@@ -142,8 +142,7 @@ package main
 import "testing"
 
 func TestImplicitCallCompare(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count() == 3)) { t.Errorf("assert failed: %s", "(c.count() == 3)") }
 }
@@ -217,8 +216,7 @@ package main
 import "testing"
 
 func TestImplicitCallCompare(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count() == 3)) { t.Errorf("assert failed: %s", "(c.count() == 3)") }
 }
@@ -434,9 +432,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:274aadf9739131d43b8d613be7ad6cee
+pass sha256:78d62257c34ff1eb15124ef6819b778f
 -- run/go/fyne --
-pass sha256:76ec407ff9a44579f9fe40d5ad3bca3e
+pass sha256:4884bde89effcb938aad265b2ab11bc3
 -- run/go/gtk4 --
 pass sha256:6d68d9192c5c0ee56ddde28f6c8a69aa
 -- run/kotlin/android --

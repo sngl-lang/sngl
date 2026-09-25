@@ -157,8 +157,7 @@ package main
 import "testing"
 
 func TestScrollOffsetsMutate(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.x == 0.0)) { t.Errorf("assert failed: %s", "(c.x == 0.0)") }
 	if !((c.y == 0.0)) { t.Errorf("assert failed: %s", "(c.y == 0.0)") }
@@ -241,8 +240,7 @@ package main
 import "testing"
 
 func TestScrollOffsetsMutate(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.x == 0.0)) { t.Errorf("assert failed: %s", "(c.x == 0.0)") }
 	if !((c.y == 0.0)) { t.Errorf("assert failed: %s", "(c.y == 0.0)") }
@@ -476,9 +474,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a41ad27d1117b2041df163a6050b8646
+pass sha256:818994cb2c8484c2f187d25abecfeb5e
 -- run/go/fyne --
-pass sha256:82cce4e4777668ccb35dc8edda181f95
+pass sha256:187312da50ab5fda4852a6829244b75d
 -- run/go/gtk4 --
 pass sha256:c3d2a56d6ad21a53a923ed9dba55c669
 -- run/kotlin/android --

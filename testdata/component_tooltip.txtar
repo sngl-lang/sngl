@@ -161,8 +161,7 @@ package main
 import "testing"
 
 func TestTooltipTextMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.msg == "hello")) { t.Errorf("assert failed: %s", "(c.msg == \"hello\")") }
 	c.msg = "goodbye"
@@ -236,8 +235,7 @@ package main
 import "testing"
 
 func TestTooltipTextMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.msg == "hello")) { t.Errorf("assert failed: %s", "(c.msg == \"hello\")") }
 	c.msg = "goodbye"
@@ -585,9 +583,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c0760734120196049ec1ba682061de7f
+pass sha256:ec77887264626a53d03db76d8a316f7e
 -- run/go/fyne --
-pass sha256:96572cee8a0b0e0c72b073bc656ad49b
+pass sha256:ea851ea3fcebd9902e20f299e73843cf
 -- run/go/gtk4 --
 pass sha256:78de1b2d5a5ba3ff79e98f1155d2524f
 -- run/kotlin/android --

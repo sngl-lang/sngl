@@ -195,8 +195,7 @@ package main
 import "testing"
 
 func TestANamedFunctionIsMapped(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.mapped == 2)) { t.Errorf("assert failed: %s", "(c.mapped == 2)") }
 }
@@ -324,8 +323,7 @@ package main
 import "testing"
 
 func TestANamedFunctionIsMapped(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.mapped == 2)) { t.Errorf("assert failed: %s", "(c.mapped == 2)") }
 }
@@ -468,8 +466,8 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/bubbletea --
-pass sha256:729c0b32d6c7ed8ecfc9dcc62a6fd7eb
+pass sha256:49f845599feb367dfbca480de4fa81de
 -- run/go/fyne --
-pass sha256:cefd9a5d1377d5eee2beafeeae6c797a
+pass sha256:d1a2b8fa5257040ccd6a9a0b012f5129
 -- run/go/gtk4 --
 pass sha256:3e6acf2cf00c944f8021f371201b3c47

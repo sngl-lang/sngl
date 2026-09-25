@@ -130,8 +130,7 @@ package main
 import "testing"
 
 func TestRadioValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.sel == "medium")) { t.Errorf("assert failed: %s", "(c.sel == \"medium\")") }
 	c.sel = "large"
@@ -198,8 +197,7 @@ package main
 import "testing"
 
 func TestRadioValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.sel == "medium")) { t.Errorf("assert failed: %s", "(c.sel == \"medium\")") }
 	c.sel = "large"
@@ -397,9 +395,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f070605f9d615eeac9a40cf9e76e784a
+pass sha256:984e7f369b862c28d153b7a804dd078f
 -- run/go/fyne --
-pass sha256:fba9d4898979d13aef8fd5dd0ec613e6
+pass sha256:2c36fcf71c3aa926078ec9cdd5270d1d
 -- run/kotlin/android --
 pass sha256:51e0f7415584236ad360e19336735471
 -- run/none/html --

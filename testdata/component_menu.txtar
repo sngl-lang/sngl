@@ -165,8 +165,7 @@ package main
 import "testing"
 
 func TestMenuOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.open == false)) { t.Errorf("assert failed: %s", "(c.open == false)") }
 	c.open = true
@@ -233,8 +232,7 @@ package main
 import "testing"
 
 func TestMenuOpenToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.open == false)) { t.Errorf("assert failed: %s", "(c.open == false)") }
 	c.open = true
@@ -386,9 +384,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:679a1ae06e0562405c66232102f47fca
+pass sha256:48dab0e90f0699524775fcbc6cd64cda
 -- run/go/fyne --
-pass sha256:d4176e66b0d0e14b18b78eaa3c90bebb
+pass sha256:05bdeb23cb8803a70cdf9f88202d9710
 -- run/kotlin/android --
 pass sha256:1ac9cb52ea268d7804d25e4c0f031548
 -- run/none/html --

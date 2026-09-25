@@ -245,8 +245,7 @@ package main
 import "testing"
 
 func TestFailureIsCaught(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.badClick()
 	if !((c.caught == "strconv.Atoi: parsing \"x\": invalid syntax")) { t.Errorf("assert failed: %s", "(c.caught == \"strconv.Atoi: parsing \\\"x\\\": invalid syntax\")") }
@@ -254,8 +253,7 @@ func TestFailureIsCaught(t *testing.T) {
 }
 
 func TestSuccessSkipsHandler(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.goodClick()
 	if !((c.caught == "")) { t.Errorf("assert failed: %s", "(c.caught == \"\")") }
@@ -383,8 +381,7 @@ package main
 import "testing"
 
 func TestFailureIsCaught(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.badClick()
 	if !((c.caught == "strconv.Atoi: parsing \"x\": invalid syntax")) { t.Errorf("assert failed: %s", "(c.caught == \"strconv.Atoi: parsing \\\"x\\\": invalid syntax\")") }
@@ -392,8 +389,7 @@ func TestFailureIsCaught(t *testing.T) {
 }
 
 func TestSuccessSkipsHandler(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	c.goodClick()
 	if !((c.caught == "")) { t.Errorf("assert failed: %s", "(c.caught == \"\")") }
@@ -530,8 +526,8 @@ func (m *Model) goodClick() {
 	gtk4rt.Emit(m.good, "clicked")
 }
 -- run/go/bubbletea --
-pass sha256:8ed073752009ab388ed1595ef8a4baec
+pass sha256:1f6f578074a2db9710c0c07fb32ae703
 -- run/go/fyne --
-pass sha256:b2cea27652ee8a227aef55cb8bf157e9
+pass sha256:3f2600f0ddc1d199d457ec8b7083c337
 -- run/go/gtk4 --
 pass sha256:66e2db40a4b954d7336b30a0336bf9a1

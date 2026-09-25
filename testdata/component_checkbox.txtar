@@ -153,8 +153,7 @@ package main
 import "testing"
 
 func TestCheckboxToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
@@ -227,8 +226,7 @@ package main
 import "testing"
 
 func TestCheckboxToggles(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.on == false)) { t.Errorf("assert failed: %s", "(c.on == false)") }
 	c.on = true
@@ -457,9 +455,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:eb1197aae7ab9af56ef3a0836456b12f
+pass sha256:7780bc8042162de1989ff43eca13275a
 -- run/go/fyne --
-pass sha256:3388b77fc5b8eca13c678ecf7452f58a
+pass sha256:908f148b24c09af66ddd88e6b9763be3
 -- run/go/gtk4 --
 pass sha256:ec0d6a646cddfdb6dd90e11947b06c5f
 -- run/kotlin/android --

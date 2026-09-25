@@ -175,8 +175,7 @@ package main
 import "testing"
 
 func TestTextareaValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.text == "")) { t.Errorf("assert failed: %s", "(c.text == \"\")") }
 	c.text = "hello"
@@ -250,8 +249,7 @@ package main
 import "testing"
 
 func TestTextareaValueMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.text == "")) { t.Errorf("assert failed: %s", "(c.text == \"\")") }
 	c.text = "hello"
@@ -472,9 +470,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:14e207e1e1a5a02d61241b413b58d30e
+pass sha256:5e19a034edfeee260fd1241e75d41920
 -- run/go/fyne --
-pass sha256:39cb2ffe71fbe43d9d3880fa6e78ae14
+pass sha256:4069827219e3475c7d324623bff4fbd3
 -- run/go/gtk4 --
 pass sha256:2c0d185c1d6c362b6d3221a1529eb060
 -- run/kotlin/android --

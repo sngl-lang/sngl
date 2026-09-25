@@ -257,8 +257,7 @@ package main
 import "testing"
 
 func TestNestedBodyReadsAndWritesTheOwnersVar(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.seen == 2)) { t.Errorf("assert failed: %s", "(c.seen == 2)") }
 	if !((c.count == 3)) { t.Errorf("assert failed: %s", "(c.count == 3)") }
@@ -414,8 +413,7 @@ package main
 import "testing"
 
 func TestNestedBodyReadsAndWritesTheOwnersVar(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.seen == 2)) { t.Errorf("assert failed: %s", "(c.seen == 2)") }
 	if !((c.count == 3)) { t.Errorf("assert failed: %s", "(c.count == 3)") }
@@ -777,9 +775,9 @@ window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b71c0f665b892f9a268a844f5ce3efac
+pass sha256:e622871c3a8c8ff03440779bb3fc3eb2
 -- run/go/fyne --
-pass sha256:482be02dad16c5054fce057c92b39ff1
+pass sha256:dd93532445aa07cfad1ca9ff54e148ec
 -- run/go/gtk4 --
 pass sha256:59104adfb2cc86045f8b51c57abb808e
 -- run/kotlin/android --
