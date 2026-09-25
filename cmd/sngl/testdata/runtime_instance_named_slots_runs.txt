@@ -35,7 +35,7 @@ grep '(?s)level 3 .*level 20 .*level 100 .*level 0 ' rebind.sngl.snapshots/view.
 [!chromium] skip 'the rendered DOM needs a real Chromium'
 sngl test --platform=html app.sngl
 stdout 'PASS'
-grep '(?s)more</span></button><div style="display: contents;"><span>item 1 row 1</span></div><div style="display: contents;"><span>item 1 row 11</span></div></div>.*more</span></button><div style="display: contents;"><span>item 2 row 2</span></div><div style="display: contents;"><span>item 2 row 12</span></div></div>.*more</span></button><div style="display: contents;"><span>item 3 row 3</span></div><div style="display: contents;"><span>item 3 row 13</span></div></div>' app.sngl.snapshots/cells.html
+grep '(?s)more</span></button><span style="display: contents;"><div style="display: contents;"><span>item 1 row 1</span></div><div style="display: contents;"><span>item 1 row 11</span></div></span></div>.*more</span></button><span style="display: contents;"><div style="display: contents;"><span>item 2 row 2</span></div><div style="display: contents;"><span>item 2 row 12</span></div></span></div>.*more</span></button><span style="display: contents;"><div style="display: contents;"><span>item 3 row 3</span></div><div style="display: contents;"><span>item 3 row 13</span></div></span></div>' app.sngl.snapshots/cells.html
 sngl test --platform=html scoped.sngl
 stdout 'PASS'
 sngl test --platform=html entry.sngl
