@@ -167,7 +167,11 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 			// nothing, so an element ref written inside one kept the name the
 			// program gave it rather than the variable the page emitted, and
 			// the page threw on a name nothing declared.
-			if call, changed := walkCallLambdas(ctx, n.Call, t); changed {
+			call, changed := walkCallLambdas(ctx, n.Call, t)
+			if caught, moved := walkCatchingHandler(ctx, call, t); moved {
+				call, changed = caught, true
+			}
+			if changed {
 				cp := *n
 				cp.Call = call
 				return []ir.Stmt{&cp}
@@ -232,6 +236,32 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 // all (the generic statement path has no rendering for one), and a prop
 // assignment on a node kept its IR shape instead of the platform's. The button
 // worked and the display it was supposed to repaint did not.
+// walkCatchingHandler walks the handler a language inlines at a fallible call
+// site -- the call's own @error, or the boundary's or window's it resolved to.
+// A boundary's or window's handler is also emitted where it is declared, so
+// the walk rewrites a copy.
+func walkCatchingHandler(ctx context.Context, call *ir.Call, t IntrinsicTranslator) (*ir.Call, bool) {
+	if call == nil {
+		return call, false
+	}
+	h := ir.CatchingHandler(call)
+	if h == nil || h.Func == nil {
+		return call, false
+	}
+	fn := *h.Func
+	fn.Block = WalkLowered(ctx, h.Func.Block, t)
+	walked := *h
+	walked.Func = &fn
+	cp := *call
+	if cp.ErrorHandler == h {
+		cp.ErrorHandler = &walked
+	}
+	if cp.ResolvedHandler == h {
+		cp.ResolvedHandler = &walked
+	}
+	return &cp, true
+}
+
 // walkCallLambdas rewrites every callback a call hands over, answering a copy
 // and whether anything moved. Copied rather than rewritten in place for the
 // reason walkComponentProps gives: walking one body twice nests the
