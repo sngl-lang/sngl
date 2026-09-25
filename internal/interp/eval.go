@@ -313,6 +313,9 @@ type Env struct {
 	inst *ir.NodeInst
 	// origin is the scope this one is a Snapshot of, or nil.
 	origin *Env
+	// spreadVals holds the operands of the spreads the running statement
+	// evaluates once (ir.StatementSpreads), by site.
+	spreadVals map[int]any
 }
 
 func NewEnv() *Env {
@@ -463,8 +466,9 @@ func (env *Env) Snapshot() *Env {
 		// handler to run, so an event emitted from inside a lambda found the
 		// *caller's* instantiation instead, asked it for a subscriber to an
 		// event it does not declare, and went nowhere.
-		inst:   env.inst,
-		origin: env,
+		inst:       env.inst,
+		origin:     env,
+		spreadVals: env.spreadVals,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
@@ -1197,9 +1201,12 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		}
 	}
 
-	obj, err := env.Eval(e.Operand)
-	if err != nil {
-		return nil, err
+	obj, cached := env.spreadVals[e.Spread]
+	if e.Spread == 0 || !cached {
+		var err error
+		if obj, err = env.Eval(e.Operand); err != nil {
+			return nil, err
+		}
 	}
 	if cv, ok := obj.(ComponentValue); ok {
 		return cv.GetField(e.Field)

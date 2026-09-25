@@ -170,6 +170,10 @@ type Select struct {
 	Type    *Type
 	Operand Expr
 	Field   string
+	// Spread is nonzero on a field read a spread argument expanded to, one id
+	// per site, when its operand is not a plain path and so must be evaluated
+	// once for all of them (StatementSpreads).
+	Spread int
 }
 
 // Index is a resolved index operation: operand[index].

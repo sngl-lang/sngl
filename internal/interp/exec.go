@@ -139,6 +139,22 @@ func (env *Env) ExecBlock(block []ir.Stmt) error {
 
 // Exec executes an IR statement, mutating the environment.
 func (env *Env) Exec(s ir.Stmt) error {
+	if groups := ir.StatementSpreads(s); len(groups) > 0 {
+		saved := env.spreadVals
+		defer func() { env.spreadVals = saved }()
+		env.spreadVals = make(map[int]any, len(groups))
+		for _, g := range groups {
+			v, err := env.Eval(g.Operand)
+			if err != nil {
+				return err
+			}
+			env.spreadVals[g.ID] = v
+		}
+	}
+	return env.exec(s)
+}
+
+func (env *Env) exec(s ir.Stmt) error {
 	switch n := s.(type) {
 	case *ir.Assign:
 		return env.execAssign(n)

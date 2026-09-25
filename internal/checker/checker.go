@@ -360,7 +360,8 @@ type checker struct {
 	// has nowhere to project and is reported rather than built. It is also
 	// what says a statement is *not* in a view body, which is where a loop
 	// that iterates nothing -- a condition or a forever loop -- is refused.
-	funcDepth int
+	funcDepth   int
+	viewSpreads []viewSpread
 	// loopDepth is the number of `for` bodies enclosing the statement being
 	// checked, and what `break` and `continue` require one of. It resets at
 	// every imperative-body boundary (enterFuncBody): a lambda written inside
@@ -3531,6 +3532,8 @@ func (c *checker) pass2() {
 			}
 		}
 	}
+
+	c.reportImpureViewSpreads()
 
 	// After the fixpoint, because the rule reads what a handler writes through
 	// the functions it calls and those sets are only complete now.

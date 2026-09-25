@@ -36,7 +36,59 @@ func (c *checker) expandSpread(sp *ast.SpreadExpr) (*spreadArg, bool) {
 		c.error(sp.Pos, "spread requires a struct type, got %s", got)
 		return nil, false
 	}
+	if !isSpreadPath(operand) {
+		id := ir.NewSpreadID()
+		for _, f := range fields {
+			f.value.(*ir.Select).Spread = id
+		}
+		if c.funcDepth == 0 {
+			c.viewSpreads = append(c.viewSpreads, viewSpread{pos: sp.Pos, operand: operand})
+		}
+	}
 	return &spreadArg{ast: sp, typ: exprType(operand), fields: fields}, true
+}
+
+// isSpreadPath reports whether reading operand once per field is the same as
+// reading it once: a name, a literal, or a field or constant index of one.
+func isSpreadPath(e ir.Expr) bool {
+	switch x := e.(type) {
+	case *ir.Ident, *ir.Literal:
+		return true
+	case *ir.Select:
+		return isSpreadPath(x.Operand)
+	case *ir.Index:
+		_, lit := x.Idx.(*ir.Literal)
+		return lit && isSpreadPath(x.Operand)
+	case *ir.Conversion:
+		return isSpreadPath(x.Operand)
+	}
+	return false
+}
+
+// viewSpread is a spread with a computed operand written in a view body,
+// where no target can hold the temp that would evaluate it once.
+type viewSpread struct {
+	pos     ast.Pos
+	operand ir.Expr
+}
+
+// reportImpureViewSpreads refuses a view-body spread whose operand calls
+// something that writes: each field it fills would call it again. It runs
+// after purity has propagated, since the operand may call a function
+// declared further down.
+func (c *checker) reportImpureViewSpreads() {
+	for _, vs := range c.viewSpreads {
+		var culprit *ir.Func
+		_ = ir.WalkExprs(vs.operand, func(e ir.Expr) error {
+			if call, ok := e.(*ir.Call); ok && call.Func != nil && call.Func.Purity >= ir.PurityMutates && culprit == nil {
+				culprit = call.Func
+			}
+			return nil
+		})
+		if culprit != nil {
+			c.error(vs.pos, "a spread in a view body reads its operand once per field, and %s writes state: bind the value to a var and spread that", culprit.Name)
+		}
+	}
 }
 
 // spreadFieldsOf reads each field of a struct-typed operand, typed as the

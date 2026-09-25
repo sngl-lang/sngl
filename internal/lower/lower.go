@@ -46,6 +46,7 @@ var passes = []pass{
 	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
+	passSpreadOnce,
 	passViewForElse,
 	passBoundaryFailed,
 	passUnit,
