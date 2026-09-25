@@ -16,13 +16,20 @@ component inputs(entries ...component input) root {}
 // A file whose content the output was derived from, by its SHA-256.
 component file(path string, sha256 string) input {}
 
-// A path that did not exist. A producer that probes a list of locations and
-// takes the first one present depends on the ones before it staying absent.
+// A path that resolved to nothing: missing, a link to nothing, or under
+// something that is not a directory. A producer that probes a list of
+// locations and takes the first one present depends on the ones before it
+// staying absent.
 component absent(path string) input {}
 
 // A directory's listing, by the SHA-256 of its sorted entry names. It is what
 // notices a file added beside the ones a producer read.
 component dir(path string, sha256 string) input {}
+
+// A directory's listing as the go command reads it: `dir`, leaving out the
+// names beginning with `_` or `.` that no build or directory embed sees. A
+// scratch directory a test writes beside a package leaves it unchanged.
+component godir(path string, sha256 string) input {}
 
 // An environment variable the producer read, and the value it had.
 component env(name string, value string) input {}
