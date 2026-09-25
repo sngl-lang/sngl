@@ -179,7 +179,9 @@ func (kc *KtIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	}
 	return name + "(" + strings.Join(parts, ", ") + ")"
 }
-func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string { return "*" + operand }
+func (kc *KtIRContext) Spread(_ *ir.Spread, operand string) string {
+	return "*" + operand + ".toTypedArray()"
+}
 
 func (kc *KtIRContext) Call(n *ir.Call) string             { return kc.evalCall(n) }
 func (kc *KtIRContext) Conversion(n *ir.Conversion) string { return kc.evalConversion(n) }

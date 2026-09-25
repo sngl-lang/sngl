@@ -1,0 +1,8 @@
+// A spread's elements join the literal's, so `[0, ...xs, 3]` is a list<int>
+// and not a list whose second element is a list.
+
+var xs = [1, 2]
+var ys list<int> = [0, ...xs, 3]
+var only list<int> = [...xs]
+var twice list<int> = [...xs, ...ys]
+var nested list<list<int>> = [...[xs], ys]

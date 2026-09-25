@@ -2318,17 +2318,74 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 		elemExpected = c.expected.Elems[0]
 	}
 	elems := make([]ir.Expr, len(x.Elements))
-	elems[0] = c.checkExprExpecting(x.Elements[0], elemExpected)
-	for i, e := range x.Elements[1:] {
-		elems[i+1] = c.checkExprExpecting(e, elemExpected)
+	var elemT *ir.Type
+	for i, e := range x.Elements {
+		pos := *e.ExprPos()
+		var got *ir.Type
+		if sp, ok := e.(*ast.SpreadExpr); ok {
+			var spread *ir.Spread
+			spread, got = c.checkListSpread(sp, elemExpected)
+			elems[i] = spread
+		} else {
+			elems[i] = c.checkExprExpecting(e, elemExpected)
+			got = exprType(elems[i])
+			// A void element makes the literal a `list<void>`, which an
+			// annotated target rejects but an inferred one accepts:
+			// `var m = [xs.push(v)]` checked clean and reached codegen.
+			c.requireValueType(got, pos)
+		}
+		elemT = c.unifyListElem(elemT, got, elemExpected, pos)
 	}
-	// A void element makes the literal a `list<void>`, which an annotated
-	// target rejects but an inferred one accepts: `var m = [xs.push(v)]`
-	// checked clean and reached codegen.
 	for i, el := range elems {
-		c.requireValueType(exprType(el), *x.Elements[i].ExprPos())
+		if sp, ok := el.(*ir.Spread); ok {
+			sp.Operand = wrapIfNeeded(sp.Operand, ListOf(elemT))
+			sp.Type = exprType(sp.Operand)
+		} else {
+			elems[i] = wrapIfNeeded(el, elemT)
+		}
 	}
-	return &ir.ListLit{AST: x, Type: ListOf(exprType(elems[0])), Elems: elems}
+	return &ir.ListLit{AST: x, Type: ListOf(elemT), Elems: elems}
+}
+
+// checkListSpread checks `...operand` written as a list element, returning
+// the spread and the element type it contributes. Only a list may be spread:
+// an iter<T> is a pull sequence that a literal would have to drain.
+func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*ir.Spread, *ir.Type) {
+	var want *ir.Type
+	if elemExpected != nil {
+		want = ListOf(elemExpected)
+	}
+	operand := c.checkExprExpecting(sp.Operand, want)
+	t := exprType(operand)
+	out := &ir.Spread{AST: sp, Type: t, Operand: operand}
+	switch {
+	case t.Kind == ir.TypeDyn:
+		return out, t
+	case t.Kind == ir.TypeList && len(t.Elems) == 1:
+		return out, t.Elems[0]
+	}
+	c.error(sp.Pos, "cannot spread %s into a list literal: the operand must be a list", t)
+	return out, TypDyn
+}
+
+// unifyListElem folds one element's type into the literal's element type so
+// far. The first element decides, widened when a later one is the wider
+// number. Two that only agree as the expected element type (`[2.0, "a"]` for
+// a list<dyn>) make the literal a list of that.
+func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.Type {
+	switch {
+	case have == nil:
+		return got
+	case got.Kind == ir.TypeDyn || have.Kind == ir.TypeDyn || got.IsAssignableTo(have):
+		return have
+	case have.IsAssignableTo(got):
+		return got
+	case expected != nil && got.IsAssignableTo(expected) && have.IsAssignableTo(expected):
+		return expected
+	}
+	want, gotS := ir.Contrast(have, got)
+	c.error(pos, "list element type %s does not match earlier %s", gotS, want)
+	return have
 }
 
 func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
