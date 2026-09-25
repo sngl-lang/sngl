@@ -330,7 +330,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 - **html** — two modes selected by `--lang`:
   - `--lang none` (default): static site — one `index.html` per window with inline JS.
     Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
-  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
+  - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href. Two windows serving one route pattern are a build error too, since net/http panics at startup on the second registration.
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
 - **fyne** — generates Go desktop code; supports `golang` lang only. Its Go emitter knows three `#[intrinsic]` primitives, which differ only in the children contract a declaration cannot express as data: `Widget` (none), `Container` (a default slot, children attach through a method) and `Wrapper` (a default slot bounded to one, the child is assigned to a field). *Which* Fyne widget one becomes is a `Spec` record passed as a prop — Go constructor, its arguments, the Go type, the import paths, the setter behind each value prop, the callback field and Go signature behind each event. `codegen/platform/fyne/spec.go` decodes it and nothing else in the platform names a Fyne type. Label, Button, VBox and the other twelve are ordinary components in `fyne.sngl` carrying a Spec, so wrapping a widget from a Go module the compiler never heard of is writing a thirteenth — `codegen/platform/fyne/third_party_widget_test.go` is that, done in SNGL alone.
@@ -670,6 +670,13 @@ field of `state`; marked on one half only, the page declared one binding and
 read another, falsy by accident. bubbletea says it from the other side —
 `__failed0` title-cases to itself, so the accessor it skips for a synthesized
 field would have collided with the field.
+
+Where the `if` lands is the boundary's parent node, so reactivity reaches
+through a boundary when it asks whether a node needs an id to render a slot
+into (`childrenContainReactiveSlot`). And once a view is flattened into
+statements the boundary around them holds nothing — a raise reaches its
+handler through `Call.ResolvedHandler` — so `codegen.WalkLowered` returns its
+children (`cmd/sngl/testdata/boundary_in_render_slot_runs.txt`).
 
 **The interpreter answers it itself**, in `Env.caught`. `sngl test` on the
 `none` platform runs the *checked* IR with no lowering at all — the same reason
@@ -1583,6 +1590,16 @@ the three mutation targets is the other direction: a write to page state
 updates the nodes of the scope that wrote it and of the page, and not those of
 *other* live instances reading it, so their views go stale until they are
 rebuilt.
+
+**An html instance is a closure, and its body is laid out the way the page's
+markup is.** Its component's own `func`s are closures beside its vars, called
+bare with no receiver (`ExprCtx.ClosureMethods`); spelled the page's way they
+were `function bump(this)`, which esbuild refuses. And each render slot whose
+first render the body writes gets a `display:contents` anchor at that
+position (`factorySlotAnchors`), as the page's markup gives one: rendered
+into the bare parent, a re-render had nothing to insert before and moved the
+slot's nodes past every sibling written after it
+(`cmd/sngl/testdata/runtime_instance_html_runs.txt`).
 
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,
