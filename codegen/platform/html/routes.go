@@ -30,6 +30,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	windows := c.routeWindows
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
+	served := map[string]string{}
 	for i, win := range windows {
 		var hrefExpr, titleExpr ir.Expr
 		if win.Window != nil {
@@ -46,6 +47,10 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 		if err := checkRouteParams(path, win.Window); err != nil {
 			return fmt.Errorf("html: window %q: %w", win.Name, err)
 		}
+		if prev, taken := served[routePattern(path)]; taken {
+			return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev, routeWindowLabel(win.Name, i), path)
+		}
+		served[routePattern(path)] = routeWindowLabel(win.Name, i)
 		title, _ := codegen.IRLiteralString(titleExpr)
 		// Single source of truth for action indexing: collectActions enumerates
 		// every backend handler in a stable order and returns both the action
@@ -190,6 +195,25 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 		}
 	}
 	return "", false
+}
+
+// routePattern is path with each parameter's name erased: a mux matches by
+// shape, so `/p/{a}` and `/p/{b}` are one route and registering both panics.
+func routePattern(path string) string {
+	segs := strings.Split(path, "/")
+	for i, seg := range segs {
+		if strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
+			segs[i] = "{}"
+		}
+	}
+	return strings.Join(segs, "/")
+}
+
+func routeWindowLabel(winName string, idx int) string {
+	if winName == "" {
+		return fmt.Sprintf("window %d", idx+1)
+	}
+	return fmt.Sprintf("window %q", winName)
 }
 
 func defaultRoutePath(winName string, idx int) string {
