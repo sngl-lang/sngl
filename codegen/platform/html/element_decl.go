@@ -194,10 +194,10 @@ func eventPayloadFields(comp *ir.Component, event string) []string {
 		return nil
 	}
 	for _, e := range comp.Events {
-		if e == nil || e.Name != event || e.Type == nil {
+		if e == nil || e.Name != event || e.Payload() == nil {
 			continue
 		}
-		sd, ok := e.Type.Decl.(*ir.StructDef)
+		sd, ok := e.Payload().Decl.(*ir.StructDef)
 		if !ok || sd == nil {
 			return nil
 		}

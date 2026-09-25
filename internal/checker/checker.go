@@ -2786,8 +2786,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{
-				Name: pd.Name,
-				Type: c.resolveType(pd.Type),
+				Name:   pd.Name,
+				Params: c.eventParams(pd),
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
@@ -4787,7 +4787,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 				continue
 			}
 			restore := c.fileOf(varPos(v))
-			h.Func.Params = c.bindParams(h.AST.Params, v.Type, "@"+h.Name, "the assignment")
+			h.Func.Params = c.bindParams(h.AST.Params, []*ir.Param{{Type: v.Type}}, "@"+h.Name, "the assignment")
 			c.pushScope()
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)

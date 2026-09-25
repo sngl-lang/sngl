@@ -848,7 +848,9 @@ TypeParam = IDENT [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT | "@" IDENT | IDENT ) [ Type ] [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | IDENT [ Type ] ) [ "=" Expr ]
+
+EventParams = "(" [ FuncTypeParamList ] ")"
 
 ```
 
@@ -1377,9 +1379,14 @@ A component parameter is one of three kinds:
   passes an lvalue with `:name = target`, and the component writes back to that
   lvalue by emitting the corresponding change, so parent and child stay in
   sync;
-- an **event parameter** — `@name Type` (the type is optional, denoting a
-  payloadless event) — an outgoing event the component fires by calling its
-  name (`name(args)`) and the caller handles with `@name { … }`.
+- an **event parameter** — `@name(a A, b B)` — an outgoing event the
+  component fires by calling its name (`name(x, y)`) and the caller handles
+  with `@name(a, b) { … }`. The list is a func type's, names optional;
+  `@name T` is the one-parameter case written without the parens, `@name()`
+  passes nothing, and a bare `@name` carries one untyped value. A handler
+  binds the parameters by position and may leave trailing ones unbound. A
+  call of the event supplies every parameter, or none, which forwards what the
+  handler it is written in received.
 
 ### Slots and children
 
@@ -1713,7 +1720,9 @@ TypeParam = IDENT [ "=" Type ]
 
 ParamList = Param { "," Param } [ "," ]
 
-Param = { MacroAttr } ( ":" IDENT | "@" IDENT | IDENT ) [ Type ] [ "=" Expr ]
+Param = { MacroAttr } ( ":" IDENT [ Type ] | "@" IDENT [ EventParams | Type ] | IDENT [ Type ] ) [ "=" Expr ]
+
+EventParams = "(" [ FuncTypeParamList ] ")"
 
 ```
 

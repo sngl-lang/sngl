@@ -682,7 +682,7 @@ func mapComponent(c *ComponentDetail) ComponentDetailView {
 					v.Events = append(v.Events, PropView{
 						Name:    pd.Name,
 						IsEvent: true,
-						Payload: formatType(pd.Type),
+						Payload: parser.FormatEventSignature(pd),
 					})
 				}
 			}
