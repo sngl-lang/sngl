@@ -257,8 +257,8 @@ func rendersPart(s ir.Stmt) bool {
 }
 
 // computesOnly reports whether a view-body loop draws nothing -- the
-// accumulator NoListLambdas hoists ahead of the widget reading `xs.map(f)`.
-// Rendered as a view loop its body was dropped and the list stayed empty.
+// accumulator NoListLambdas hoists ahead of the widget reading `xs.map(f)`,
+// which runs as statements rather than rendering.
 func computesOnly(f *ir.For) bool {
 	return len(f.Body) > 0 && !slices.ContainsFunc(f.Body, draws) && !slices.ContainsFunc(f.Else, draws)
 }

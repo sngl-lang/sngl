@@ -198,7 +198,7 @@ func (g *htmlGen) emitComponentFactory(b *strings.Builder, comp *ir.Component) {
 		}
 		tr := g.newHTMLTranslator(jc)
 		// The instance is the closure, so a method's receiver parameter names
-		// nothing here; spelled as written it was `function describe(this)`.
+		// nothing here.
 		var params []*ir.Param
 		for _, p := range fn.Params {
 			if !p.Receiver {

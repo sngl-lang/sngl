@@ -107,10 +107,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 }
 
 // testBootOpen and testBootClose make a test page's program re-runnable, so
-// each test starts from a freshly mounted page as a Go target's
-// newTestComponent() starts from a fresh Model. The markup is captured before
-// the first run mutates it; a reset puts a copy back and runs the program
-// again, which rebinds every element and handler to the new nodes.
+// each test starts from a freshly mounted page.
 const testBootOpen = `window.__sngl_markup = Array.from(document.body.childNodes)
   .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
 window.__sngl_reset = () => {

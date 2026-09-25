@@ -692,12 +692,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				fmt.Fprintf(&body, "    var %s by mutableStateOf%s(%s)\n", bind.name, stateTypeArg(bind, initVal), initVal)
 			}
 		}
-		// Computeds become getters so tests can read them via the state
-		// accessor (c.<name>); a read inside the composition still observes
-		// the state the body reads. Not `derivedStateOf`: one read by a test
-		// outside any composition, then invalidated by a write, left Compose
-		// never idle again, and every later waitForIdle in the session timed
-		// out.
+		// Getters, not derivedStateOf: one read outside any composition and
+		// then invalidated leaves Compose never idle, so waitForIdle hangs.
 		for _, comp := range info.computeds {
 			body.WriteString(computedGetterKt(comp, classKC, "    "))
 		}
