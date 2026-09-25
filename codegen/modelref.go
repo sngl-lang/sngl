@@ -27,9 +27,15 @@ const ModelTypeName = "Model"
 
 // SlotAnchorField names the field holding a render slot's anchor: a hidden
 // child of the container the slot renders into, which the slot's entries are
-// inserted before. A slot that appended instead moved its entries after every
-// sibling written below it each time it re-rendered.
+// inserted before.
 func SlotAnchorField(slot string) string { return slot + "_at" }
+
+// Receiver is the symbol of the receiver RecvFieldRef selects through, so a
+// program's own binding of the same name is never what it resolves to.
+type Receiver struct{ Name string }
+
+func (r *Receiver) SymName() string   { return r.Name }
+func (r *Receiver) SymType() *ir.Type { return ir.TypDyn }
 
 // RecvFieldRef builds a `<recv>.<name>` selector. recv is the receiver the
 // scope being emitted dispatches through -- the model in a model method, the
@@ -40,7 +46,7 @@ func RecvFieldRef(recv, name string) ir.Expr {
 		recv = ModelReceiver
 	}
 	return &ir.Select{
-		Operand: &ir.Ident{Name: recv},
+		Operand: &ir.Ident{Name: recv, Sym: &Receiver{Name: recv}},
 		Field:   name,
 		Type:    ir.TypDyn,
 	}

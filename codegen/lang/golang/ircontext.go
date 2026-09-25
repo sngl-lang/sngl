@@ -573,6 +573,9 @@ func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
 	}
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
+	}
 	sym, kind := gc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
 		return gc.recvFor(sym) + "." + gc.StateFieldName(n.Name)
@@ -609,7 +612,7 @@ func (gc *GoIRContext) modelField(n *ir.Select) (string, bool) {
 	// is `m` -- and its fields are its own type's, exported like any other Go
 	// struct's, rather than the Model's unexported state.
 	switch sym := id.Sym.(type) {
-	case nil, *ir.Component:
+	case nil, *ir.Component, *codegen.Receiver:
 		// A synthesized receiver read carries no symbol.
 	case *ir.Param:
 		if !sym.Receiver && sym.Name != ir.ReceiverParam {
@@ -720,6 +723,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	// passNoImplicitRecv's synthesized receiver renders as the Model's `m`.
 	if _, ok := n.Sym.(*ir.Component); ok {
 		return gc.RecvName()
+	}
+	if _, ok := n.Sym.(*codegen.Receiver); ok {
+		return n.Name
 	}
 
 	name := n.Name
