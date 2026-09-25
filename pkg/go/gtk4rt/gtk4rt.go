@@ -248,6 +248,17 @@ func WindowPresent(win Handle) {
 	C.gtk_window_present((*C.GtkWindow)(p(win)))
 }
 
+// Retain takes a strong reference on a widget, so that removing it from its
+// parent does not free it.
+func Retain(h Handle) {
+	C.g_object_ref_sink(C.gpointer(p(h)))
+}
+
+// Release drops the reference Retain took.
+func Release(h Handle) {
+	C.g_object_unref(C.gpointer(p(h)))
+}
+
 // ---- Box ----
 
 func BoxNew(o Orientation, spacing int) Handle {
@@ -260,6 +271,55 @@ func BoxAppend(box, child Handle) {
 
 func BoxRemove(box, child Handle) {
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
+}
+
+// SlotAnchor returns the anchor a render slot inserts its entries before: a,
+// when box holds it, or a new hidden child appended to box. The slot's first
+// render runs while box is being built, at the position the slot was written.
+func SlotAnchor(box, a Handle) Handle {
+	if a != nil && C.gtk_widget_get_parent(widget(a)) == widget(box) {
+		return a
+	}
+	w := C.gtk_label_new(nil)
+	C.gtk_widget_set_visible(w, 0)
+	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(w)))
+	C.gtk_box_append((*C.GtkBox)(p(box)), w)
+	return Handle(unsafe.Pointer(w))
+}
+
+// SlotBox is the box a render slot in a single-child container renders into:
+// b, or a new one this package holds a reference on.
+func SlotBox(b Handle) Handle {
+	if b != nil {
+		return b
+	}
+	b = BoxNew(OrientationVertical, 6)
+	Retain(b)
+	return b
+}
+
+// ParentOf is w's parent widget, or nil.
+func ParentOf(w Handle) Handle {
+	return Handle(unsafe.Pointer(C.gtk_widget_get_parent(widget(w))))
+}
+
+// InsertBefore puts child into box immediately before anchor, or at the end
+// of box when box does not hold anchor.
+func InsertBefore(box, anchor, child Handle) {
+	if anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
+		BoxAppend(box, child)
+		return
+	}
+	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
+	C.gtk_box_insert_child_after((*C.GtkBox)(p(box)), widget(child), prev)
+}
+
+func children(parent Handle) []Handle {
+	var out []Handle
+	for w := C.gtk_widget_get_first_child(widget(parent)); w != nil; w = C.gtk_widget_get_next_sibling(w) {
+		out = append(out, Handle(unsafe.Pointer(w)))
+	}
+	return out
 }
 
 func BoxSetSpacing(box Handle, spacing int) {
@@ -555,6 +615,14 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 }
 
 // ---- Rich text ----
+
+// When is the markup of runs an `if` in a flow guards: s when cond holds.
+func When(cond bool, s string) string {
+	if cond {
+		return s
+	}
+	return ""
+}
 
 // Escape is Pango markup's escaping, for the words an author wrote.
 //

@@ -92,10 +92,10 @@ func emitComponentInstance(
 		if fn.SlotRender {
 			// A reactive slot's render func. Its body was written against the
 			// reactivity pass's `parent` name, which the translator rewrites
-			// to `container` -- so the parameter has to be spelled the way
+			// to slotParentParam -- so the parameter has to be spelled the way
 			// the Model's own slot funcs spell it (see emitIRSlotFunc), or the
 			// body names a package instead of its argument.
-			params = []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}}
+			params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 		}
 		emitted := &ir.Func{
 			Name:   instanceMethodName(fn),
@@ -141,8 +141,16 @@ func emitComponentInstance(
 		goType := instanceVarGoType(v)
 		fmt.Fprintf(b, "\t%s %s\n", v.Name, goType)
 		requireTypeImports(igc, goType)
+		if v.Synthesized && ir.IsSlotVarName(v.Name) {
+			fmt.Fprintf(b, "\t%s fyne.CanvasObject\n", codegen.SlotAnchorField(v.Name))
+		}
 	}
+	seenField := map[string]bool{}
 	for _, f := range fields {
+		if seenField[f.name] {
+			continue
+		}
+		seenField[f.name] = true
 		fmt.Fprintf(b, "\t%s %s\n", f.name, f.goType)
 		requireTypeImports(igc, f.goType)
 	}

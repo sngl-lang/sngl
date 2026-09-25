@@ -1,0 +1,72 @@
+# A render slot inside a container that is not a box, on fyne and gtk4.
+#
+# scroll.sngl: a reactive `if` directly inside a scroll, which holds one child.
+# The slot renders into a box that child is; before, fyne did not build and gtk4
+# handed the GtkScrolledWindow to gtk_box_append with a CRITICAL per call.
+#
+# stack.sngl: a reactive `for` directly inside gtk4's stack, a GtkStack holding
+# several children through a call of its own. It is refused by name, where it
+# used to fail to compile with the C types as the only explanation.
+
+[!gtk4] skip 'gtk4 needs its development libraries to build'
+
+sngl test --platform=fyne scroll.sngl
+stdout 'ok'
+sngl test --platform=gtk4 scroll.sngl
+stdout 'ok'
+! stderr 'CRITICAL'
+
+! sngl test --platform=gtk4 stack.sngl
+stderr 'a reactive `if` or `for` directly inside a GtkStack cannot be rendered'
+
+-- scroll.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var on = true
+
+    vbox {
+        scroll {
+            if on {
+                text(value="on")
+            }
+        }
+        button #flip(text="flip", @click { on = !on })
+    }
+}
+
+func testFlip(t Test, c main) {
+    c.flip.click()
+    c.flip.click()
+    t.assert(c.on)
+}
+
+window {
+    main
+}
+-- stack.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var items = ["a"]
+
+    vbox {
+        stack {
+            for var it = items {
+                text(value=it)
+            }
+        }
+        button #more(text="more", @click { items.push("b") })
+    }
+}
+
+func testMore(t Test, c main) {
+    c.more.click()
+    t.assert(c.items.length == 2)
+}
+
+window {
+    main
+}

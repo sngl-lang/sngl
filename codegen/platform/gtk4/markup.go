@@ -2,6 +2,7 @@ package gtk4
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -49,6 +50,10 @@ func (t *gtk4Translator) markupTrees() *markupTrees {
 type markupSpan struct {
 	props map[string]ir.Expr
 	kids  []string
+	// guards are the conditions of the `if`s the span was created under,
+	// outermost first, and loops how many `for`s.
+	guards []ir.Expr
+	loops  int
 }
 
 // markupTrees is every flow in the package and the spans under it.
@@ -58,6 +63,10 @@ type markupTrees struct {
 	// written directly in it.
 	flows map[string]map[string]ir.Expr
 	roots map[string][]string
+	// flowGuards and flowLoops are how many `if`s and `for`s enclose a flow,
+	// which a span under it is measured against.
+	flowGuards map[string]int
+	flowLoops  map[string]int
 	// ownerOf is the flow a span belongs to, however deep. It is what lets a
 	// prop assignment in a handler reach the label it has to rewrite.
 	ownerOf map[string]string
@@ -65,10 +74,12 @@ type markupTrees struct {
 
 func newMarkupTrees() *markupTrees {
 	return &markupTrees{
-		spans:   map[string]*markupSpan{},
-		flows:   map[string]map[string]ir.Expr{},
-		roots:   map[string][]string{},
-		ownerOf: map[string]string{},
+		spans:      map[string]*markupSpan{},
+		flows:      map[string]map[string]ir.Expr{},
+		roots:      map[string][]string{},
+		flowGuards: map[string]int{},
+		flowLoops:  map[string]int{},
+		ownerOf:    map[string]string{},
 	}
 }
 
@@ -84,7 +95,14 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 		return mt
 	}
 	var edges [][2]string
+	var guards []ir.Expr
+	loops := 0
 	var walk func([]ir.Stmt)
+	guarded := func(cond ir.Expr, body []ir.Stmt) {
+		guards = append(guards, cond)
+		walk(body)
+		guards = guards[:len(guards)-1]
+	}
 	walk = func(stmts []ir.Stmt) {
 		for i, s := range stmts {
 			switch n := s.(type) {
@@ -93,8 +111,10 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 					props := harvestNodeProps(n.Name, stmts[i+1:])
 					if tag == flowTag {
 						mt.flows[n.Name] = props
+						mt.flowGuards[n.Name] = len(guards)
+						mt.flowLoops[n.Name] = loops
 					} else {
-						mt.spans[n.Name] = &markupSpan{props: props}
+						mt.spans[n.Name] = &markupSpan{props: props, guards: slices.Clone(guards), loops: loops}
 					}
 				}
 			case *ir.CallStmt:
@@ -102,11 +122,15 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 					edges = append(edges, [2]string{p, c})
 				}
 			case *ir.If:
-				walk(n.Body)
-				walk(n.Else)
+				guarded(n.Cond, n.Body)
+				if len(n.Else) > 0 {
+					guarded(&ir.Unary{Type: ir.TypBool, Op: ast.UnaryNot, Operand: n.Cond}, n.Else)
+				}
 			case *ir.For:
+				loops++
 				walk(n.Body)
 				walk(n.Else)
+				loops--
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 			case *ir.NodeInst:
@@ -254,18 +278,24 @@ func (t *gtk4Translator) emitFlowMarkup(flow string) []ir.Stmt {
 func (t *gtk4Translator) markupExpr(flow string) ir.Expr {
 	open, close := flowTags(t.markupTrees().flows[flow])
 	parts := []ir.Expr{strLit(open)}
-	for _, root := range t.markupTrees().roots[flow] {
-		parts = append(parts, t.spanParts(root)...)
+	mt := t.markupTrees()
+	for _, root := range mt.roots[flow] {
+		parts = append(parts, t.spanParts(root, mt.flowGuards[flow], mt.flowLoops[flow])...)
 	}
 	parts = append(parts, strLit(close))
 	return concat(parts)
 }
 
 // spanParts is one span's markup: its own tags around its words and the spans
-// written inside it.
-func (t *gtk4Translator) spanParts(id string) []ir.Expr {
+// written inside it, guarded by the `if`s between it and the span or flow it
+// was written in.
+func (t *gtk4Translator) spanParts(id string, outerGuards, outerLoops int) []ir.Expr {
 	sp := t.markupTrees().spans[id]
 	if sp == nil {
+		return nil
+	}
+	if sp.loops > outerLoops {
+		t.shared.fail(fmt.Errorf("gtk4: a `for` among a flow's spans cannot be rendered: a flow is one label whose markup is a single expression"))
 		return nil
 	}
 	open, close := spanTags(sp.props)
@@ -274,9 +304,18 @@ func (t *gtk4Translator) spanParts(id string) []ir.Expr {
 		parts = append(parts, escaped(text))
 	}
 	for _, k := range sp.kids {
-		parts = append(parts, t.spanParts(k)...)
+		parts = append(parts, t.spanParts(k, len(sp.guards), sp.loops)...)
 	}
-	return append(parts, strLit(close))
+	parts = append(parts, strLit(close))
+	guards := sp.guards[min(outerGuards, len(sp.guards)):]
+	if len(guards) == 0 {
+		return parts
+	}
+	cond := guards[0]
+	for _, g := range guards[1:] {
+		cond = &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd, Left: cond, Right: g}
+	}
+	return []ir.Expr{rtStrCall("When", cond, concat(parts))}
 }
 
 // escaped is one run's words, escaped: at build time when they are a literal,

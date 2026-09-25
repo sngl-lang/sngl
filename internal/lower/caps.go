@@ -85,6 +85,11 @@ type Features struct {
 	// less direct. A platform claiming this must implement
 	// codegen.ChildInserter.
 	InsertBefore bool
+	// InlineSlots says a reactive `if` or `for` may render into a span. Withheld,
+	// passReactivity makes the flow holding one the render slot instead, so a
+	// change rebuilds the whole run of text -- which is what a target whose
+	// flow is one host widget, or whose spans are no widgets at all, can do.
+	InlineSlots bool
 	// AsyncPost says the platform can run a closure back on the thread it
 	// draws on, and answers lower.AsyncPostIntrinsic with the call that does
 	// it. Without it there is nowhere for a blocking call's answer to land,
@@ -207,6 +212,7 @@ func (f Features) String() string {
 		{"ViewStatements", f.ViewStatements},
 		{"InstanceState", f.InstanceState},
 		{"InsertBefore", f.InsertBefore},
+		{"InlineSlots", f.InlineSlots},
 		{"AsyncPost", f.AsyncPost},
 		{"AsyncSpawn", f.AsyncSpawn},
 		{"Effects", f.Effects},

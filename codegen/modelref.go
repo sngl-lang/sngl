@@ -25,6 +25,12 @@ const ModelReceiver = "m"
 // parameter and has to spell its type, which nothing in the IR can.
 const ModelTypeName = "Model"
 
+// SlotAnchorField names the field holding a render slot's anchor: a hidden
+// child of the container the slot renders into, which the slot's entries are
+// inserted before. A slot that appended instead moved its entries after every
+// sibling written below it each time it re-rendered.
+func SlotAnchorField(slot string) string { return slot + "_at" }
+
 // RecvFieldRef builds a `<recv>.<name>` selector. recv is the receiver the
 // scope being emitted dispatches through -- the model in a model method, the
 // instance record inside a component's ctor -- so a node field written by a

@@ -1555,7 +1555,10 @@ bound (`undefined: p`). What still differs is only what has nothing to
 reconcile: a stateless component is spliced, and a const loop whose body reads
 no state renders as a plain loop -- on html, as markup `optimize.Documents`
 unrolls. A window resets the context, because a loop over pages is not a
-position a page's body is repeated in.
+position a page's body is repeated in. A canvas under a `for` is built at run
+time for the same reason -- its surface and draw routine are its owner's one
+field and one method -- which `passCanvasInstances` does by synthesizing a
+component around it (`testdata/canvas_under_loop.txtar`).
 
 A loop that holds a component built at run time is a slot too, whatever it
 iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
@@ -1564,6 +1567,16 @@ and outside one fyne assigned every copy to the one Model field its id named.
 marks a *primitive* standing in a reactive position as well, on the
 declaration, and counting that made every loop of html elements a slot
 (`testdata/const_loop_beside_reactive_loop.txtar`).
+
+**A slot re-renders where it was written.** html renders each into a
+`display:contents` wrapper of its own; fyne and gtk4 render into the container
+the slot sits in, so each slot keeps a hidden anchor there
+(`codegen.SlotAnchorField`), added by its first render -- which runs while the
+container is built, at the slot's position -- and inserts its entries before
+it. Appending instead moved a re-rendered slot after every sibling below it
+(`testdata/render_slot_in_place.txtar`). gtk4's cgo mode still appends. A gtk4
+record also holds a reference on its root, since the slot holding it removes
+it before appending it again and GTK frees a widget its parent held alone.
 
 **A target that keeps no state of an instance's own splices it instead**, and
 that is `Features.InstanceState`, a capability every platform but bubbletea
@@ -1743,6 +1756,15 @@ CSS on html, Pango and Compose's `SpanStyle` merge natively on gtk4 and
 android, fyne flattens at render time because the tree is what a reactive
 program mutates, and bubbletea flattens at compile time because lipgloss
 returns a string with reset sequences in it.
+
+**A reactive `if` or `for` among spans** is a render slot only where a span
+can hold one, which is html's `display:contents` wrapper and what
+`#[gen.can(inlineSlots)]` says. Withheld, `slotFlows` makes the flow holding it
+the slot -- wrapped in a one-pass loop over a const, which re-renders its body
+on any state it reads -- and the `if` inside is an ordinary one: fyne builds
+the flow around it, gtk4 guards the runs in its markup with `gtk4rt.When` and
+refuses a `for` there, a label's markup being one expression
+(`testdata/markup_reactive_span.txtar`).
 
 `markup.SpanStyle` is its own struct and not `ui.Style` for two reasons. A run
 has no box, so most of `ui.Style` would type-check on a span and do nothing

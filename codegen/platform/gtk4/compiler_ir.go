@@ -224,6 +224,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 					goType:      "[]*C.GtkWidget",
 					init:        "nil",
 					noAccessors: true,
+				}, irBind{
+					name:        codegen.SlotAnchorField(v.Name),
+					goType:      "*C.GtkWidget",
+					init:        "nil",
+					noAccessors: true,
 				})
 				continue
 			}
@@ -652,7 +657,7 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 	case "input", "entry", "GtkEntry":
 		// "changed" is the GTK signal name (post-wrapper inline); "input"
 		// and "change" are the SNGL stdlib event names.
-		if event == "input" || event == "change" || event == "changed" {
+		if event == "input" || event == "change" || event == "changed" || event == "activate" {
 			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkEntry"}
 		}
 	case "checkbox", "switch", "GtkCheckButton", "GtkSwitch":
@@ -871,6 +876,14 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		}
 	}
 
+	if sig.CType != "" {
+		nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+		cType := tr.idCTypes[nodeID]
+		if cType == "" {
+			cType = sig.CType
+		}
+		substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped))
+	}
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
 	// Drop self-setter splices: writing the entry's text from inside its own
 	// "changed" handler re-fires the signal and recurses.

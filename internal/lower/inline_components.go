@@ -45,6 +45,9 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 		return err
 	}
 	clearDemotedReceivers(pkg, st.demoted)
+	for c := range unreachedCycles(pkg, main, cycles) {
+		delete(st.keep, c)
+	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
 	for _, c := range pkg.Components {
@@ -53,6 +56,77 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 		}
 	}
 	return uniqueNodeIDs(pkg)
+}
+
+// unreachedCycles is every recursive component nothing the program renders
+// instantiates. A cycle is kept up front so its body survives the walk, but
+// one nothing reaches was never elected a runtime instance, and its body still
+// holds the insertions no backend renders.
+func unreachedCycles(pkg *ir.Package, main *ir.Component, cycles map[*ir.Component]bool) map[*ir.Component]bool {
+	if len(cycles) == 0 {
+		return nil
+	}
+	owned := map[*ir.Component]ir.Owner{}
+	var roots []ir.Owner
+	for _, o := range ir.Owners(pkg) {
+		switch {
+		case o.Comp == nil:
+			roots = append(roots, o)
+		case o.Comp == main:
+			roots = append(roots, o)
+			owned[o.Comp] = o
+		default:
+			owned[o.Comp] = o
+		}
+	}
+	reached := map[*ir.Component]bool{}
+	var queue []ir.Owner
+	visit := func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil && !reached[inst.Component] {
+				reached[inst.Component] = true
+				if o, ok := owned[inst.Component]; ok {
+					queue = append(queue, o)
+				}
+			}
+			return nil
+		})
+	}
+	walkOwner := func(o ir.Owner) {
+		visit(o.Stmts())
+		for _, f := range o.Funcs {
+			if f != nil {
+				visit(f.Block)
+			}
+		}
+		for _, v := range o.Vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					visit(h.Func.Block)
+				}
+			}
+		}
+		for _, h := range o.Handlers {
+			if h.Func != nil {
+				visit(h.Func.Block)
+			}
+		}
+	}
+	for _, o := range roots {
+		walkOwner(o)
+	}
+	for len(queue) > 0 {
+		o := queue[0]
+		queue = queue[1:]
+		walkOwner(o)
+	}
+	out := map[*ir.Component]bool{}
+	for c := range cycles {
+		if c != main && !reached[c] {
+			out[c] = true
+		}
+	}
+	return out
 }
 
 // dropNestedMethods removes from pkg.Funcs the methods of every component the

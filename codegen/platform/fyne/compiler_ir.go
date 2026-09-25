@@ -123,6 +123,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 					goType:      "[]fyne.CanvasObject",
 					init:        &ir.Literal{Type: ir.TypNull},
 					noAccessors: true,
+				}, irBind{
+					name:        codegen.SlotAnchorField(v.Name),
+					goType:      "fyne.CanvasObject",
+					init:        &ir.Literal{Type: ir.TypNull},
+					noAccessors: true,
 				})
 				continue
 			}
@@ -1235,6 +1240,9 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
+	if binding.Signature != "" {
+		substitutePayload(body, fn.Params, binding.Param, params)
+	}
 
 	synthesized := &ir.Func{
 		Name:     fn.Name,
@@ -1270,7 +1278,7 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 
 	params := fn.Params
 	if fn.SlotRender {
-		params = []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}}
+		params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,

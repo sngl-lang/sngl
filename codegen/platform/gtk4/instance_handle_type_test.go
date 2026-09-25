@@ -37,25 +37,15 @@ func TestAnInstanceHandleFieldIsTypedAsTheRecord(t *testing.T) {
 	buildGeneratedGo(t, "gtk4-handle-type-", model)
 }
 
-// TestAPlainInstanceHandleIsItsOwnRoot is the other half of the same decision,
-// over testdata/test_html_recursive_component.sngl -- whose `tree` the build
-// renders as a method of the Model, so the handle is the gtk4rt.Handle the
-// render returned and has no Root field to select.
-//
-// Asserted against what the compiler still reports rather than a whole-file
-// compile: this fixture holds a second, separate defect -- `__nN__el` is
-// declared inside the `else` block that binds it and read after it, which is
-// passNodeEscape's and out of this change's reach.
-func TestAPlainInstanceHandleIsItsOwnRoot(t *testing.T) {
+// TestAnUnrenderedRecursionIsNotEmitted is over
+// testdata/test_html_recursive_component.sngl, whose recursion the optimizer
+// unrolls: nothing the program renders instantiates `tree` afterwards. It was
+// emitted anyway, as a Model method whose handle was the widget it returned,
+// with `__nN__el` declared inside the `else` that bound it and read after it.
+func TestAnUnrenderedRecursionIsNotEmitted(t *testing.T) {
 	model := generateGTK4ModelBuilt(t, fixtureSource(t, "test_html_recursive_component.sngl"))
-
-	if !strings.Contains(model, "__n1__el := __n1\n") {
-		t.Errorf("a method-rendered component's handle is not bound as its own root\n--- model.go ---\n%s", model)
+	if strings.Contains(model, "renderTree") || strings.Contains(model, "TreeInstance") {
+		t.Errorf("the unrolled recursion is still emitted\n--- model.go ---\n%s", model)
 	}
-	if strings.Contains(model, ".Root") {
-		t.Errorf("a method-rendered component's handle is still asked for a Root field\n--- model.go ---\n%s", model)
-	}
-	if errs := compileErrors(t, "gtk4-component-root-", model); strings.Contains(errs, "Root") {
-		t.Errorf("go build still reports a Root field on a plain handle\n--- go build ---\n%s\n--- model.go ---\n%s", errs, model)
-	}
+	buildGeneratedGo(t, "gtk4-unrendered-recursion-", model)
 }

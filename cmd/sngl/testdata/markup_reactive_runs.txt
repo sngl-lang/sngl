@@ -1,0 +1,118 @@
+# sngl:ui/markup under reactive structure builds and runs on fyne and gtk4.
+#
+# list.sngl: a reactive `if` gating an item of a markup list. Before
+# passInstanceSlots it panicked irwalk on the *ir.SlotInst; after it, the item
+# was a runtime instance whose task checkbox had the empty handler its override
+# hands it, emitted as func() against fyne's func(bool).
+#
+# tasks.sngl: a task list over state, whose items are built in a render slot
+# whose parameter shadowed fyne's container package.
+#
+# para.sngl: a reactive `if` among a paragraph's spans, which neither target has
+# a container to render a slot into; the paragraph is the slot instead.
+
+[!gtk4] skip 'gtk4 needs its development libraries to build'
+
+sngl test --platform=fyne list.sngl
+stdout 'ok'
+sngl test --platform=gtk4 list.sngl
+stdout 'ok'
+sngl test --platform=fyne tasks.sngl
+stdout 'ok'
+sngl test --platform=gtk4 tasks.sngl
+stdout 'ok'
+sngl test --platform=fyne para.sngl
+stdout 'ok'
+sngl test --platform=gtk4 para.sngl
+stdout 'ok'
+
+-- list.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+component main node {
+    var shown = true
+
+    vbox {
+        md.list {
+            md.listItem {
+                text(value="one")
+            }
+            if shown {
+                md.listItem(task=md.Task.todo) {
+                    text(value="two")
+                }
+            }
+        }
+        button #flip(text="flip", @click { shown = !shown })
+    }
+}
+
+func testFlip(t Test, c main) {
+    c.flip.click()
+    c.flip.click()
+    t.assert(c.shown)
+}
+
+window {
+    main
+}
+-- tasks.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+component main node {
+    var items = ["a"]
+
+    vbox {
+        md.list {
+            for var it = items {
+                md.listItem(task=md.Task.done) {
+                    text(value=it)
+                }
+            }
+        }
+        button #more(text="more", @click { items.push("b") })
+    }
+}
+
+func testMore(t Test, c main) {
+    c.more.click()
+    t.assert(c.items.length == 2)
+}
+
+window {
+    main
+}
+-- para.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+component main node {
+    var loud = true
+
+    vbox {
+        md.paragraph {
+            md.text(value="quiet ")
+            if loud {
+                md.bold {
+                    md.text(value="LOUD")
+                }
+            }
+            md.text(value=" end")
+        }
+        button #flip(text="flip", @click { loud = !loud })
+    }
+}
+
+func testFlip(t Test, c main) {
+    c.flip.click()
+    t.assert(!c.loud)
+}
+
+window {
+    main
+}
