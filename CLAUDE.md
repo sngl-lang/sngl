@@ -1581,7 +1581,12 @@ loop the same way and runs the handler of the node the cursor names
 (`bubbletea/focus.go`). The cursor was the iteration index, so two buttons in
 one iteration -- a spliced card and the child handed to it -- were one stop
 with two `case` arms, and a nested loop's buttons were unreachable
-(`bubbletea/focus_run_test.go`).
+(`bubbletea/focus_run_test.go`). A canvas under a loop is the same shape: its
+drawing reads the iteration's variables, so it is written inline as the
+rasteriser View hands tui rather than as a `_canvasDrawN` method, with a
+surface and a kitty image ID per copy, and the transmit reaches each copy
+through the same walk (`bubbletea/viewwalk.go`,
+`testdata/bubbletea_canvas_in_loop.txtar`).
 
 **An instance reaches the page through what holds it.** A fyne or gtk4 record
 holds its Model (`__model`), and a name its component does not declare -- the

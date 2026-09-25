@@ -31,7 +31,8 @@ type irViewContext struct {
 	// emitIRView composites them over the joined content at the end.
 	overlays []pendingOverlay
 
-	focusPos map[string]bool
+	focusPos  map[string]bool
+	canvasSeq map[string]bool
 }
 
 // pendingOverlay records one Overlay primitive deferred out of the inline join
@@ -324,7 +325,7 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
-	vc.declareFocusPos(s)
+	vc.declareLoopCounters(s)
 	iterExpr := vc.gc.EvalExpr(s.Iter)
 
 	// Defer the loop header to the Go language driver so loop semantics

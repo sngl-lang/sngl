@@ -113,6 +113,13 @@ func (vc *irViewContext) declareFocusPos(f *ir.For) {
 	vc.line("_ = %s", lf.pos)
 }
 
+// declareLoopCounters starts, before a loop renders, the counts View keeps of
+// what the loop renders more than once.
+func (vc *irViewContext) declareLoopCounters(f *ir.For) {
+	vc.declareFocusPos(f)
+	vc.declareCanvasSeqs(f)
+}
+
 func (vc *irViewContext) countFocusPos(n *ir.NodeInst) {
 	if lf, ok := nodeLoopFocus(n); ok {
 		vc.line("%s++", lf.pos)
@@ -128,17 +135,18 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 	if !ok {
 		return
 	}
+	isLoopFocus := func(n *ir.NodeInst) bool {
+		_, ok := nodeLoopFocus(n)
+		return ok
+	}
 	var keys []string
 	seen := map[string]bool{}
 	eachRenderedNode([]ir.Stmt{f}, func(n *ir.NodeInst) {
-		if _, ok := nodeLoopFocus(n); !ok {
+		if !isLoopFocus(n) {
 			return
 		}
 		for _, ev := range extractBlueprint(n).Events {
-			if h := codegen.NodeHandler(n, ev.On); h == nil || h.Func == nil {
-				continue
-			}
-			if k := teaKeyGuard(ev.Key); k != "" && !seen[k] {
+			if k := teaKeyGuard(ev.Key); k != "" && !seen[k] && nodeKeyHandler(n, k) != nil {
 				seen[k] = true
 				keys = append(keys, k)
 			}
@@ -147,100 +155,25 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, info *irAnalysis, gc *g
 	for _, key := range keys {
 		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", key, lf.slot, guard)
 		b.WriteString("\t\t\tfunc() {\n")
-		s := &slotScan{b: b, info: info, key: key, cursor: lf.cursor, pos: lf.pos, indent: 4}
-		s.line("%s := 0", lf.pos)
-		s.stmts([]ir.Stmt{f}, gc)
-		b.WriteString("\t\t\t}()\n")
-	}
-}
-
-type slotScan struct {
-	b      *strings.Builder
-	info   *irAnalysis
-	key    string
-	cursor string
-	pos    string
-	indent int
-}
-
-func (s *slotScan) line(format string, args ...any) {
-	fmt.Fprintf(s.b, "%s"+format+"\n", append([]any{strings.Repeat("\t", s.indent)}, args...)...)
-}
-
-func (s *slotScan) stmts(stmts []ir.Stmt, gc *golang.GoIRContext) {
-	for _, st := range stmts {
-		switch n := st.(type) {
-		case *ir.NodeInst:
-			s.node(n, gc)
-		case *ir.For:
-			s.loop(n, gc)
-		case *ir.If:
-			if n.FromTernary {
-				continue
-			}
-			s.line("%s", gc.IfHead(n, gc.EvalExpr(n.Cond)))
-			s.indent++
-			s.stmts(n.Body, gc)
-			s.indent--
-			if len(n.Else) > 0 {
-				s.line("%s", gc.ElseHead())
-				s.indent++
-				s.stmts(n.Else, gc)
-				s.indent--
-			}
-			s.line("%s", gc.BlockEnd())
-		case *ir.ErrorBoundary:
-			s.stmts(n.Children, gc)
-		}
-	}
-}
-
-func (s *slotScan) node(n *ir.NodeInst, gc *golang.GoIRContext) {
-	if _, ok := nodeLoopFocus(n); ok {
-		if block := nodeKeyHandler(n, s.key); block != nil {
-			s.line("if m.%s == %s {", s.cursor, s.pos)
-			var body strings.Builder
-			for _, stmt := range block {
-				for _, l := range gc.EvalStmt(stmt) {
-					fmt.Fprintf(&body, "%s%s\n", strings.Repeat("\t", s.indent+1), l)
+		w := &viewWalk{b: b, indent: 4, wants: isLoopFocus}
+		w.visit = func(w *viewWalk, n *ir.NodeInst, gc *golang.GoIRContext) {
+			if block := nodeKeyHandler(n, key); block != nil {
+				w.line("if m.%s == %s {", lf.cursor, lf.pos)
+				var body strings.Builder
+				for _, stmt := range block {
+					for _, l := range gc.EvalStmt(stmt) {
+						fmt.Fprintf(&body, "%s%s\n", strings.Repeat("\t", w.indent+1), l)
+					}
 				}
+				syncMutatedInputs(&body, block, info.widgets, info.binds, gc)
+				w.b.WriteString(body.String())
+				w.line("\treturn")
+				w.line("}")
 			}
-			syncMutatedInputs(&body, block, s.info.widgets, s.info.binds, gc)
-			s.b.WriteString(body.String())
-			s.line("\treturn")
-			s.line("}")
+			w.line("%s++", lf.pos)
 		}
-		s.line("%s++", s.pos)
-	}
-	s.stmts(n.Children, gc)
-}
-
-func (s *slotScan) loop(f *ir.For, gc *golang.GoIRContext) {
-	iter := gc.EvalExpr(f.Iter)
-	loopGC := gc
-	if f.Key != "" && f.Key != "_" {
-		loopGC = loopGC.WithLocal(f.Key)
-	}
-	if f.Value != "" && f.Value != "_" {
-		loopGC = loopGC.WithLocal(f.Value)
-	}
-	s.line("%s", loopGC.ForHead(f, iter))
-	s.indent++
-	kept := golang.WithUnreadVarsDropped(f)
-	if kept.Key != "" && kept.Key != "_" {
-		s.line("_ = %s", kept.Key)
-	}
-	if kept.Value != "" && kept.Value != "_" {
-		s.line("_ = %s", kept.Value)
-	}
-	s.stmts(f.Body, loopGC)
-	s.indent--
-	s.line("}")
-	if len(f.Else) > 0 {
-		s.line("if len(%s) == 0 {", iter)
-		s.indent++
-		s.stmts(f.Else, gc)
-		s.indent--
-		s.line("}")
+		w.line("%s := 0", lf.pos)
+		w.stmts([]ir.Stmt{f}, gc)
+		b.WriteString("\t\t\t}()\n")
 	}
 }

@@ -540,11 +540,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	// func list, so the generic user-func loop below never meets them and
 	// needs no exclusion -- which is what the name match on `_canvasDraw`
 	// used to be for.
-	emitCanvasSurfaceDecls(&b, ctx.Canvases)
-	emitCanvasDrawFuncs(&b, ctx.Canvases, gc)
+	inLoop := loopCanvases(ctx)
+	emitCanvasSurfaceDecls(&b, ctx.Canvases, inLoop)
+	emitCanvasDrawFuncs(&b, ctx.Canvases, inLoop, gc)
 	hasCanvas := len(ctx.Canvases.All()) > 0
 	if hasCanvas {
-		emitCanvasTransmitMethod(&b, ctx.Canvases, gc)
+		emitCanvasTransmitMethod(&b, ctx, inLoop, gc)
 	}
 
 	// Every component this build renders, not only the root: one that
