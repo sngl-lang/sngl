@@ -790,13 +790,13 @@ rather than the right one there. `cmd/sngl/testdata/window_prop_reads_itself.txt
 holds the two halves apart: the self-reference refused with a position, the
 mutual pair still emitted with nothing said.
 
-What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
-not simply carried over. `Window.Vars` is a *lowering artifact*: the checker
-leaves a window's `var` as an `*ir.LocalVar` statement in the body (which is
-already the `NodeInst` shape) and `passHoistState` moves it. `Funcs` is not the
-same case and cannot follow it: `ir` has no statement for a func declaration,
-and sixteen non-test sites read the per-window grouping to decide
-which funcs become that window's methods. `Timers` is **gone**, and with it
+**A window owns no state**, which is why `Vars`, `Funcs` and `Timers` did not
+come along either. A window is a rendering root and not a storage level, so
+what its body declares belongs to its container — the package, or the
+component that renders it: the checker leaves a window's `var` as an
+`*ir.LocalVar` statement in the body and `passHoistState` moves it there, and a
+`func` at the root of a window body is registered on the container directly.
+`ir.Owners` reports a window with neither. `Timers` is **gone**, and with it
 `ir.Timer`: the record held an interval, a gate and a tick body, and every one
 of those is readable off the timer-primitive node -- the `interval` and
 `enabled` props and the `@tick` handler -- so it carried nothing the tree did
@@ -1605,8 +1605,8 @@ is not what this is. Two of one name in one body is that body's duplicate, from
 `c.declare` like any other binding.
 
 A func at the root of a **window** body reaches the same code and is none of
-this: it is the window's own, the way a component-body func is the component's,
-and it keeps the name it was written under. Reading `Nested` as "hoisted" is
+this: it belongs to the window's container, the way a component-body func
+belongs to the component, and it keeps the name it was written under. Reading `Nested` as "hoisted" is
 what renamed `examples/todo`'s `status`.
 
 Bare component resolution is `checker.lookupComponentInScope` — the lexical

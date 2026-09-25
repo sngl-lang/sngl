@@ -360,9 +360,8 @@ func (st *inlineCompState) run() error {
 			return err
 		}
 		st.pkg.Body = pbody
-		// Walk pkg.Windows: the visual tree for window-declaring apps lives
-		// in Window.Body / Window.Funcs, not in main.Body. Components
-		// instantiated inside windows must also be inlined.
+		// A window at the root of a file is on pkg.Windows rather than in
+		// pkg.Body, and what it instantiates must be inlined too.
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
 			st.hoist = windowHoist(st.pkg)

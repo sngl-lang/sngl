@@ -549,8 +549,6 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		// are its own clones rather than anything the package holds.
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
 		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
-		gen.irWindowFuncs = win.Funcs
-		gen.irWindowVars = win.Vars
 		gen.irWindow = win.Window
 		gen.ctx = gen.ctx.ForWindow(win.Window)
 		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
@@ -688,13 +686,6 @@ type htmlGen struct {
 
 	irBodyStmts []ir.Stmt
 
-	// irWindowVars and irWindowFuncs are the WindowCtx's: nil for a window,
-	// which owns neither (ir.Owners), and the package's and root component's
-	// when a harness renders a component with no window. rootComp is found by
-	// the name `main`, so this is the only route a differently named harness
-	// root's state takes.
-	irWindowVars  []*ir.Var
-	irWindowFuncs []*ir.Func
 	// pageSlots are the render slots whose anchor this page wrote. The slot
 	// funcs are collected per owner, and a root component spliced into the
 	// package body owns every window's, so a page boots only its own.
@@ -1504,7 +1495,7 @@ func (g *htmlGen) stateVars() []codegen.OwnedVar {
 }
 
 // synthesizedVars returns the Synthesized vars of the package, the root
-// component and the WindowCtx, deduplicated by name: the context lowering pass
+// component, deduplicated by name: the context lowering pass
 // injects a var like __ctx_locale into both pkg.Vars and component.Vars.
 func (g *htmlGen) synthesizedVars() []*ir.Var {
 	var out []*ir.Var
@@ -1524,7 +1515,6 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 	if main := g.rootComp; main != nil {
 		add(main.Vars)
 	}
-	add(g.irWindowVars)
 	return out
 }
 
@@ -1565,9 +1555,6 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 				add(f)
 			}
 		}
-	}
-	for _, f := range g.irWindowFuncs {
-		add(f)
 	}
 	return out
 }
@@ -1642,11 +1629,6 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 		for _, f := range main.Funcs {
 			add(f)
 		}
-	}
-	// synthesizedFuncs reads the same list and takes the synthesized half;
-	// this is the other half.
-	for _, f := range g.irWindowFuncs {
-		add(f)
 	}
 	return out
 }

@@ -425,7 +425,8 @@ func routeStateVars(pkg *ir.Package, win *codegen.WindowCtx) []codegen.StateVar 
 
 // routeVars is the declarations a route carries, deduplicated by name and in
 // the order the State struct lists them: the package's, the main component's,
-// and the ones the route's own window owns.
+// and the WindowCtx's. A window owns none, so the last is only ever a
+// harness's root component, which is not always named `main`.
 //
 // Separate from routeStateVars because a var is two things to a route. Its
 // *type* becomes a State field, which is what that projection is for; its

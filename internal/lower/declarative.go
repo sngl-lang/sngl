@@ -254,6 +254,9 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 	return out
 }
 
+// nodeIntProp extracts the integer value of a numeric/measurement prop
+// (e.g. a canvas `width=400px`) from a NodeInst. Returns 0 when the prop
+// is absent or not a numeric literal.
 func nodeIntProp(n *ir.NodeInst, name string) int {
 	for _, p := range n.Props {
 		if p.Name != name {
@@ -272,6 +275,13 @@ func nodeIntProp(n *ir.NodeInst, name string) int {
 	return 0
 }
 
+// lowerNodeIntoStmts emits the flat sequence for a single NodeInst:
+//
+//  1. var __nM dyn = lower.createNode("name")
+//  2. #__nM.<key> = <propExpr>            (per prop)
+//  3. lower.attachHandler(#__nM, "<evt>", __nM_<evt>_handler)  (per handler)
+//  4. for each child: emit child's full subtree, then
+//     lower.appendChild(#__nM, #__nC)
 func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func) []ir.Stmt {
 	id := n.ID
 	if id == "" {
