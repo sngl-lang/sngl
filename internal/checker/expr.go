@@ -965,6 +965,11 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+	stmtCall := c.stmtCall
+	c.stmtCall = nil
+	if x != stmtCall {
+		c.refuseExprErrorHandler(x)
+	}
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
 	}
@@ -3367,7 +3372,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				})
 			}
 		}
+		c.stmtCall = x.Call
 		callExpr := c.checkExpr(x.Call)
+		c.stmtCall = nil
 		return c.resolveCallStmt(x, callExpr)
 	case *ast.IfStmt:
 		condExpr := c.checkExpr(x.Cond)
@@ -3786,6 +3793,19 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 		return nil
 	}
 	return &ir.CallStmt{AST: x, Call: call}
+}
+
+// refuseExprErrorHandler reports an @error on a call whose value is used.
+// Only a call statement has somewhere for execution to continue after the
+// handler runs; what such a call evaluates to after a caught raise is not
+// decided, and the handler was dropped without a word.
+func (c *checker) refuseExprErrorHandler(call *ast.CallExpr) {
+	for _, a := range call.Args.Args {
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
+			c.error(eh.Pos, "@error is only handled on a call statement; this call's value is used, so write the call on its own line and read what it set")
+			return
+		}
+	}
 }
 
 // extractCallErrorHandler finds an inline @error handler in a CallExpr's args

@@ -736,9 +736,9 @@ or a mount the handler is inlined into is emitted as a free func writing the
 Model (`effect_mount_caught_by_window.txtar`).
 
 Three shapes are resolved and not yet answered. A call in **expression
-position** (`v = risky(7, @error(e) { … })`) keeps no handler at all — the
-checker attaches one only to a call statement, and the interpreter dispatches
-only there, so what the call evaluates to after a caught raise is undecided.
+position** (`v = risky(7, @error(e) { … })`) is refused
+(`refuseExprErrorHandler`): the checker attaches a handler only to a call
+statement, and what the call evaluates to after a caught raise is undecided.
 A **component instantiated under a boundary or window** resolves its own
 handlers' raises against its declaration, not its instance, so neither the
 interpreter nor any target catches them there. And a call through a **func

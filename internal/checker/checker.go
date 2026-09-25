@@ -362,6 +362,9 @@ type checker struct {
 	// that iterates nothing -- a condition or a forever loop -- is refused.
 	funcDepth   int
 	viewSpreads []viewSpread
+	// stmtCall is the call a call statement is about to check: the one call
+	// whose @error handler has a statement to be attached to.
+	stmtCall *ast.CallExpr
 	// loopDepth is the number of `for` bodies enclosing the statement being
 	// checked, and what `break` and `continue` require one of. It resets at
 	// every imperative-body boundary (enterFuncBody): a lambda written inside
