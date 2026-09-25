@@ -2108,6 +2108,11 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
+	switch operand.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
+		c.error(x.Pos, "cannot index %s", operand)
+		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+	}
 	return &ir.Index{
 		AST:     x,
 		Type:    dynSpread(operand, "%s is not indexable", operand),

@@ -30,7 +30,7 @@ func testSelectOnNonMap(t Test, c errs) { // ERROR(test) "cannot select"
 
 func testIndexOnNonList(t Test, c errs) { // ERROR(test) "cannot index"
     t.assert(c.count == 0)
-    t.assert(c.count[0] == 0)
+    t.assert(c.count[0] == 0) // ERROR(check) "cannot index int"
 }
 
 func testDivisionByZero(t Test, c errs) { // ERROR(test) "division by zero"
