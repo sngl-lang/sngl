@@ -217,6 +217,8 @@ data class Node(
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -252,4 +254,4 @@ fun TreeView(node: Any? = null, __depth: Int = 0) {
 -- run/go/bubbletea --
 pass sha256:66534e90b90d92d071556e83969e745d
 -- run/kotlin/android --
-pass sha256:6db928c1f02959808f0671fec9c7a7c4
+pass sha256:8b115513a40cfbb8fb0c4976eba5203a

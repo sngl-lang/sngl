@@ -213,6 +213,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -281,6 +283,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2ee1bdabbcb88b6bd278de997ae91472
 -- run/kotlin/android --
-pass sha256:b1c7931c66508263ad3a813342abdb8b
+pass sha256:39aa5762aee88d502d04f04f9f4dafbe
 -- run/none/html --
 pass sha256:0d665cb871287e3d23265f123f6b1b77

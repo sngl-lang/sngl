@@ -116,6 +116,18 @@ const (
 	ErrorPropagateNative
 )
 
+// CatchingHandler is the handler a raise leaving this call is caught by at
+// the call site, or nil where it leaves the call site uncaught.
+func CatchingHandler(call *Call) *EventHandler {
+	switch call.ErrorMode {
+	case ErrorPerCall:
+		return call.ErrorHandler
+	case ErrorInvokeAndTerminate:
+		return call.ResolvedHandler
+	}
+	return nil
+}
+
 // CallArg is a resolved argument in a function call.
 // NamePos records the source position of the Name identifier for named
 // args (zero for positional).

@@ -1,0 +1,78 @@
+# A call's own @error, run rather than read, on the three runners the golden
+# (testdata/call_error_handler.txtar) does not execute: the interpreter, gtk4,
+# and html in a real Chromium. The golden's record runs the same program's tests
+# on bubbletea, fyne and android.
+#
+# One test clicks all four buttons because the html agent shares one state
+# object across a session, so four tests would each see the ones before it.
+# The order is the point of `after`: every click continues past its call,
+# including the ones whose call raised.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+[!chromium] skip 'the JavaScript half needs a real Chromium'
+
+sngl test --platform=html app.sngl
+stdout '1 tests, 0 failures'
+
+[!exec:go] skip 'go toolchain required'
+[!exec:pkg-config] skip 'pkg-config required'
+[!exec:cc] skip 'C compiler required for cgo'
+[!gtk4] skip 'gtk4 development libraries required'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+func check(n int) {
+    if n > 1 {
+        error.raise("too big", "range")
+    }
+}
+
+func scaled(n int) int {
+    check(n)
+    return n * 10
+}
+
+component main node {
+    var caught = ""
+    var after = ""
+
+    func viaFunc() {
+        check(5, @error(e) { caught = caught + "func:" + e.message + ";" })
+        after = after + "f"
+    }
+
+    button #inHandler(text="Handler", @click {
+        check(5, @error(e) { caught = caught + e.message + "/" + e.kind + ";" })
+        after = after + "h"
+    })
+    button #inFunc(text="Func", @click { viaFunc() })
+    button #deep(text="Deep", @click {
+        scaled(7, @error(e) { caught = caught + "deep:" + e.message + ";" })
+        after = after + "d"
+    })
+    button #fine(text="Fine", @click {
+        check(1, @error(e) { caught = caught + "never;" })
+        after = after + "ok"
+    })
+    text(value="{caught}|{after}")
+}
+
+func testEachCallCatchesItsOwnRaise(t Test, c main) {
+    c.inHandler.click()
+    c.inFunc.click()
+    c.deep.click()
+    c.fine.click()
+    t.assert(c.caught == "too big/range;func:too big;deep:too big;")
+    t.assert(c.after == "hfdok")
+}
+
+window {
+    main
+}

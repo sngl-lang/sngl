@@ -213,8 +213,35 @@ func (jc *JsIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := jc.evalErrorAwareCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := jc.catchAtCall(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{jc.EvalExpr(n.Call)}
+}
+
+// catchAtCall emits a call to a fallible function under a try whose catch is
+// the handler this site resolved to. Everything thrown is caught, since a
+// `fails` native reports its failure as an ordinary exception.
+func (jc *JsIRContext) catchAtCall(call *ir.Call) []string {
+	handler := ir.CatchingHandler(call)
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	lines := []string{
+		"try {",
+		"\t" + jc.EvalExpr(call),
+		"} catch (__err) {",
+	}
+	if len(handler.Func.Params) > 0 {
+		lines = append(lines, fmt.Sprintf("\tlet %s = {message: __err?.message ?? String(__err), kind: __err?.kind ?? \"\"}", handler.Func.Params[0].Name))
+	}
+	for _, stmt := range handler.Func.Block {
+		for _, l := range jc.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	return append(lines, "}")
 }
 func (jc *JsIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"

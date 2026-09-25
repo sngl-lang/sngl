@@ -301,6 +301,8 @@ fun DrawScope.snglDrawImage(src: String, x: Float, y: Float, w: Float, h: Float)
 
 data class ErrorEvent(val message: String = "", val kind: String = "")
 
+class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)
+
 fun _snglFloatStr(v: Double): String =
     if (v.isFinite() && v == kotlin.math.floor(v) && kotlin.math.abs(v) < 9.007199254740992E15) v.toLong().toString() else v.toString()
 
@@ -409,6 +411,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ab9692a43108aff12e7be892e197c0b6
 -- run/kotlin/android --
-pass sha256:90585bbe508a2c85507cfa93c7e6e73e
+pass sha256:fbb51388e81236f5d8bed7f8b9671bc2
 -- run/none/html --
 pass sha256:e8cc66bafe7e918e6c38e490b2df2783

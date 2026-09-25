@@ -249,8 +249,35 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := kc.evalErrorAwareCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := kc.catchAtCall(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{kc.EvalExpr(n.Call)}
+}
+
+// catchAtCall emits a call to a fallible function under a try whose catch is
+// the handler this site resolved to. A raise arrives as SnglRaise carrying
+// its event; any other exception is a `fails` native's, and has no kind.
+func (kc *KtIRContext) catchAtCall(call *ir.Call) []string {
+	handler := ir.CatchingHandler(call)
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	lines := []string{
+		"try {",
+		"\t" + kc.EvalExpr(call),
+		"} catch (__err: Exception) {",
+	}
+	if len(handler.Func.Params) > 0 {
+		lines = append(lines, "\tval "+handler.Func.Params[0].Name+" = (__err as? SnglRaise)?.event ?: ErrorEvent(__err.message ?: \"\", \"\")")
+	}
+	for _, stmt := range handler.Func.Block {
+		for _, l := range kc.EvalStmt(stmt) {
+			lines = append(lines, "\t"+l)
+		}
+	}
+	return append(lines, "}")
 }
 func (kc *KtIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	name := "on" + strings.ToUpper(n.Name[:1]) + n.Name[1:]
@@ -659,10 +686,10 @@ func (kc *KtIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		return []string{"throw RuntimeException(" + msg + ")"}
+		return []string{"throw SnglRaise(" + evt + ")"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
-			return []string{"throw RuntimeException(" + msg + ")"}
+			return []string{"throw SnglRaise(" + evt + ")"}
 		}
 		return kc.emitHandlerInvoke(evt, call.ResolvedHandler)
 	case ir.ErrorPerCall:

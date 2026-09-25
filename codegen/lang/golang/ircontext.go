@@ -414,6 +414,9 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := gc.evalErrorAwareCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := gc.catchAtCall(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{gc.EvalExpr(n.Call)}
 }
@@ -1317,6 +1320,70 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 		return gc.emitHandlerInvoke(evt, call.ErrorHandler)
 	}
 	return nil
+}
+
+// catchAtCall emits a call to a fallible function whose raise a handler at
+// this site catches: the call's own @error, or the boundary or window one it
+// resolved to. The raise is a panic by the time it leaves the callee, so the
+// call runs under a recover, and a panic that is not a raise is re-panicked.
+// A `fails` native reports through its error result instead.
+func (gc *GoIRContext) catchAtCall(call *ir.Call) []string {
+	handler := ir.CatchingHandler(call)
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	param := ""
+	if len(handler.Func.Params) > 0 {
+		param = handler.Func.Params[0].Name
+	}
+	body := func(indent string) []string {
+		var out []string
+		for _, stmt := range handler.Func.Block {
+			for _, l := range gc.EvalStmt(stmt) {
+				out = append(out, indent+l)
+			}
+		}
+		return out
+	}
+	if call.Func != nil && call.Func.HasErrorReturn {
+		raw := gc.evalCall(call)
+		head := "if __err := " + raw + "; __err != nil {"
+		if call.Func.Return != nil {
+			head = "if _, __err := " + raw + "; __err != nil {"
+		}
+		lines := []string{head}
+		if param != "" {
+			lines = append(lines,
+				"\t"+param+" := ErrorEvent{Message: __err.Error()}",
+				"\t_ = "+param)
+		}
+		lines = append(lines, body("\t")...)
+		return append(lines, "}")
+	}
+	bind := "_"
+	if param != "" {
+		bind = param
+	}
+	lines := []string{
+		"func() {",
+		"\tdefer func() {",
+		"\t\t__r := recover()",
+		"\t\tif __r == nil {",
+		"\t\t\treturn",
+		"\t\t}",
+		"\t\t" + bind + ", __ok := __r.(ErrorEvent)",
+		"\t\tif !__ok {",
+		"\t\t\tpanic(__r)",
+		"\t\t}",
+	}
+	if param != "" {
+		lines = append(lines, "\t\t_ = "+param)
+	}
+	lines = append(lines, body("\t\t")...)
+	return append(lines,
+		"\t}()",
+		"\t"+gc.EvalExpr(call),
+		"}()")
 }
 
 // emitHandlerInvoke declares the event variable and inlines the handler body,

@@ -579,6 +579,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// user output, so materialise it here.
 	if ctx.Pkg.UsesErrorHandling {
 		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
+		body.WriteString("class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)\n\n")
 	}
 
 	// The two stdlib event payloads this platform materializes itself, each
