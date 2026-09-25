@@ -397,6 +397,27 @@ func isNullLit(e ir.Expr) bool {
 	return ok && lit.Type != nil && lit.Type.Kind == ir.TypeNull
 }
 
+// composeFinderImports are what lowerEventTrigger's finder and actions call:
+// extension functions, so they resolve only by import.
+const composeFinderImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
+	"import androidx.compose.ui.test.performClick\n" +
+	"import androidx.compose.ui.test.performTextReplacement\n"
+
+// triggersEvents reports whether a test body lowers an event trigger, which is
+// the only thing that needs composeFinderImports.
+func triggersEvents(fns []*ir.Func) bool {
+	for _, fn := range fns {
+		for _, s := range fn.Block {
+			if cs, ok := s.(*ir.CallStmt); ok {
+				if _, ok := lowerEventTrigger(cs); ok {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 // TestEmitMode selects how LowerTestFile wraps per-test bodies.
 type TestEmitMode int
 
@@ -431,6 +452,10 @@ const testInstanceVar = "__snglTestComponent"
 func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurface, mode TestEmitMode, testRunner string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "package %s\n\n", pkg)
+	finders := ""
+	if triggersEvents(fns) {
+		finders = composeFinderImports
+	}
 	switch mode {
 	case TestEmitNative:
 		// Default to robolectric since that's android.sngl's default
@@ -444,6 +469,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		case "device":
 			b.WriteString("import androidx.activity.ComponentActivity\n")
 			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString(finders)
 			b.WriteString("import androidx.test.ext.junit.runners.AndroidJUnit4\n")
 			b.WriteString("import org.junit.Assert.assertTrue\n")
 			b.WriteString("import org.junit.Rule\n")
@@ -455,6 +481,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		default: // robolectric
 			b.WriteString("import androidx.activity.ComponentActivity\n")
 			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString(finders)
 			b.WriteString("import org.junit.Assert.assertTrue\n")
 			b.WriteString("import org.junit.Rule\n")
 			b.WriteString("import org.junit.Test\n")
@@ -470,6 +497,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		}
 	case TestEmitAgent:
 		b.WriteString("import androidx.compose.ui.test.junit4.ComposeContentTestRule\n")
+		b.WriteString(finders)
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.T\n")
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.Registry\n\n")
 		// Test bodies emitted below reference `composeTestRule` for

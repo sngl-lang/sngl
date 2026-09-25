@@ -304,6 +304,8 @@ type Env struct {
 	// needs: the handlers a call site supplied are written there, and the scope
 	// one runs in is this env's parent.
 	inst *ir.NodeInst
+	// origin is the scope this one is a Snapshot of, or nil.
+	origin *Env
 }
 
 func NewEnv() *Env {
@@ -454,10 +456,21 @@ func (env *Env) Snapshot() *Env {
 		// handler to run, so an event emitted from inside a lambda found the
 		// *caller's* instantiation instead, asked it for a subscriber to an
 		// event it does not declare, and went nowhere.
-		inst: env.inst,
+		inst:   env.inst,
+		origin: env,
 	}
 	maps.Copy(cp.vals, env.vals)
 	return cp
+}
+
+// writeBack carries what ran in a snapshot back to every scope it was taken
+// from, the way LambdaValue.Call does for a callback. A node mounted in a loop
+// iteration or a scoped slot's population holds a snapshot, so a handler run
+// in it wrote only the copy.
+func (env *Env) writeBack() {
+	for o := env.origin; o != nil; o = o.origin {
+		o.RebindFrom(env)
+	}
 }
 
 // SetContext stores a runtime override for ctx, replacing any default value.
@@ -944,8 +957,6 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return env.evalStructLit(n)
 	case *ir.MapLitIR:
 		return env.evalMapLitIR(n)
-	case *ir.Spread:
-		return env.Eval(n.Operand)
 	case *ir.Lambda:
 		return &LambdaValue{fn: n.Func, env: env}, nil
 	case *ir.ContextRead:
@@ -1786,7 +1797,9 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
 						handlerEnv.SetReceiver(owner)
 					}
-					return handlerEnv.runEventHandler(h, call.Args, event)
+					res, err := handlerEnv.runEventHandler(h, call.Args, event)
+					handlerEnv.writeBack()
+					return res, err
 				}
 			}
 			if explicitEvent {
