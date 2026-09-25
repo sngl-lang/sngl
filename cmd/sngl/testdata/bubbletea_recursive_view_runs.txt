@@ -29,8 +29,6 @@ import . "sngl:test"
 output { go { bubbletea } }
 
 component frame(n int, content ...component node) node {
-    var open = true
-
     vbox {
         content
         if n > 0 {
@@ -42,8 +40,6 @@ component frame(n int, content ...component node) node {
 }
 
 component forward(n int, content ...component node) node {
-    var open = true
-
     vbox {
         content
         if n > 0 {
@@ -66,8 +62,10 @@ component main node {
 }
 
 component forwarded node {
+    var depth = 2
+
     vbox {
-        forward(n=2) {
+        forward(n=depth) {
             text(value="ALPHA")
         }
     }
