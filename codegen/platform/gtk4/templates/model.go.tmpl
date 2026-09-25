@@ -57,6 +57,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     if (cur != NULL && strcmp(cur, t) == 0) return;
     gtk_editable_set_text(e, t);
 }
+
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}
 {{- if .NeedsGObjectSet}}
 
 // A GTK property with no setter function of its own is set by name through

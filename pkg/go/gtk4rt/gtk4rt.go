@@ -101,6 +101,14 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     gtk_editable_set_text(e, t);
 }
 
+// See EditableSetTextQuiet.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}
+
 // Activate trampoline forwards to the exported Go snglActivate.
 extern void snglActivate(GtkApplication* app, gpointer data);
 
@@ -326,6 +334,14 @@ func EditableSetText(editable Handle, text string) {
 	c, free := cstr(text)
 	defer free()
 	C.sngl_set_entry_text((*C.GtkEditable)(p(editable)), c)
+}
+
+// EditableSetTextQuiet sets the text with "changed" blocked, for a test
+// invoker that then fires the one signal it drives.
+func EditableSetTextQuiet(editable Handle, text string) {
+	c, free := cstr(text)
+	defer free()
+	C.sngl_set_entry_text_quiet((*C.GtkEditable)(p(editable)), c)
 }
 
 // ---- Image ----

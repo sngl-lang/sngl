@@ -652,7 +652,7 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 	case "input", "entry", "GtkEntry":
 		// "changed" is the GTK signal name (post-wrapper inline); "input"
 		// and "change" are the SNGL stdlib event names.
-		if event == "input" || event == "change" || event == "changed" {
+		if event == "input" || event == "change" || event == "changed" || event == "activate" {
 			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkEntry"}
 		}
 	case "checkbox", "switch", "GtkCheckButton", "GtkSwitch":
@@ -868,6 +868,19 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 					}
 				}
 			}
+		}
+	}
+
+	// Any other read of the payload's value reads the widget as well: the
+	// trampoline hands the handler nothing to read it off.
+	if sig.EventVar != "" && sig.Field != "" && len(fn.Params) > 0 {
+		nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+		cType := tr.idCTypes[nodeID]
+		if cType == "" {
+			cType = sig.CType
+		}
+		if getter := gtk4EventGetterExpr(cType, nodeID, wrapped); getter != nil {
+			codegen.ReadEventField(stmts, fn.Params[0], sig.Field, getter)
 		}
 	}
 
@@ -1298,13 +1311,25 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		seen[methodName] = true
 		fmt.Fprintf(b, "// %s fires the %q signal on the #%s widget; for tests.\n",
 			methodName, inv.GTKSignal, inv.IDLabel)
-		if inv.ValueParam != "" {
-			fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, inv.ValueParam)
+		// An entry's events carry its text, which the handler reads back off
+		// the widget; the invoker takes the payload's value and puts it there
+		// first.
+		valueParam, preFire := inv.ValueParam, inv.PreFire
+		if inv.WidgetType == "GtkEntry" && valueParam == "" {
+			valueParam = "v string"
+			if wrapped {
+				preFire = fmt.Sprintf("gtk4rt.EditableSetTextQuiet(m.%s, v)", inv.FieldName)
+			} else {
+				preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.%s)), __v)", inv.FieldName)
+			}
+		}
+		if valueParam != "" {
+			fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, valueParam)
 		} else {
 			fmt.Fprintf(b, "func (m *Model) %s() {\n", methodName)
 		}
-		if inv.PreFire != "" {
-			fmt.Fprintf(b, "\t%s\n", inv.PreFire)
+		if preFire != "" {
+			fmt.Fprintf(b, "\t%s\n", preFire)
 		}
 		if wrapped {
 			// gtk4rt.Emit is the same g_signal_emit_by_name, behind the

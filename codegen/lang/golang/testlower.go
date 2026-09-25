@@ -271,9 +271,34 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 	methodName := innerSel.Field + ExportName(c.Event)
 	args := make([]string, len(c.Args))
 	for i, a := range c.Args {
-		args[i] = gc.EvalExpr(a.Value)
+		args[i] = eventPayloadArg(a.Value, gc)
 	}
 	return fmt.Sprintf("%s.%s(%s)", recvIdent.Name, methodName, strings.Join(args, ", ")), true
+}
+
+// eventPayloadArg is what an invoker is handed for an event's payload: the
+// widget-level value, which for every payload a Go target's widget produces
+// is the payload's `value` -- fyne's OnChanged takes the entry's text, not an
+// InputEvent. The android lowerer reads the same field for
+// performTextReplacement.
+func eventPayloadArg(e ir.Expr, gc *GoIRContext) string {
+	if sl, ok := e.(*ir.StructLit); ok {
+		for _, f := range sl.Fields {
+			if f.Name == "value" {
+				return gc.EvalExpr(f.Value)
+			}
+		}
+	}
+	if t := e.ExprType(); t != nil && t.Kind == ir.TypeStruct {
+		if sd, ok := t.Decl.(*ir.StructDef); ok {
+			for _, f := range sd.Fields {
+				if f.Name == "value" {
+					return gc.EvalExpr(e) + ".Value"
+				}
+			}
+		}
+	}
+	return gc.EvalExpr(e)
 }
 
 // lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a

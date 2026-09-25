@@ -71,3 +71,28 @@ func TriggerEventName(handler ir.Expr, fallback string) string {
 	}
 	return fn.LoweredFromComponentEvent
 }
+
+// ReadEventField rewrites every `<param>.<field>` read in stmts to a clone of
+// value: the widget-level value a target's callback is handed, or reads off the
+// widget, in place of a payload struct it never builds. It reports whether the
+// param is still read some other way afterwards, which the caller cannot
+// spell.
+func ReadEventField(stmts []ir.Stmt, param *ir.Param, field string, value ir.Expr) (rest bool) {
+	isParam := func(e ir.Expr) bool {
+		id, ok := e.(*ir.Ident)
+		return ok && (id.Sym == ir.Symbol(param) || (id.Sym == nil && id.Name == param.Name))
+	}
+	_ = ir.Rewrite(stmts, func(nd ir.Node) (ir.Node, error) {
+		if sel, ok := nd.(*ir.Select); ok && sel.Field == field && isParam(sel.Operand) {
+			return ir.CloneExprSharingDecls(value), ir.SkipDir
+		}
+		return nd, nil
+	})
+	_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+		if isParam(e) {
+			rest = true
+		}
+		return nil
+	})
+	return rest
+}

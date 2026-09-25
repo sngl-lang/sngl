@@ -674,9 +674,12 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
 			name, inv.Field, inv.IDLabel)
 		if inv.Param != "" && inv.ParamType != "" {
+			// Detached while it runs: a widget calls it after taking the value,
+			// so the handler's write-back of the bound var is a no-op there,
+			// while here it would set a new value and fire the callback again.
 			fmt.Fprintf(b, "func (m *Model) %s(%s %s) {\n", name, inv.Param, inv.ParamType)
-			fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s(%s)\n\t}\n}\n\n",
-				inv.IDLabel, inv.Field, inv.IDLabel, inv.Field, inv.Param)
+			fmt.Fprintf(b, "\tif cb := m.%s.%s; cb != nil {\n\t\tm.%s.%s = nil\n\t\tcb(%s)\n\t\tm.%s.%s = cb\n\t}\n}\n\n",
+				inv.IDLabel, inv.Field, inv.IDLabel, inv.Field, inv.Param, inv.IDLabel, inv.Field)
 			continue
 		}
 		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)

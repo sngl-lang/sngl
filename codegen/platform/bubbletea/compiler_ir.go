@@ -55,6 +55,7 @@ type widgetInfo struct {
 	binds       []widgetBind
 	placeholder string // Go-quoted-ready raw string; "" = no placeholder setter
 	focusExpr   string // Go expr that is true when this widget is focused; "" = no tracking
+	node        *ir.NodeInst
 }
 
 // widgetBind pairs a two-way bound model field with the user var it syncs to.
@@ -326,6 +327,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 				binds:       binds,
 				placeholder: placeholder,
 				focusExpr:   nodeStaticFocusExpr(n, gc),
+				node:        n,
 			})
 			return false
 		})
@@ -654,6 +656,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 		})
 	})
 	emitBtEventInvokers(&b, eventInvokers)
+	emitWidgetPayloadHandlers(&b, info, gc)
 	emitLoopTimerSyncs(&b, info.loopTimers, gc)
 
 	emitIRView(&b, info, ctx, gc, cfg)
@@ -1048,12 +1051,22 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		} else {
 			fmt.Fprintf(b, "%s{\n", fwdIndent)
 		}
+		get, hasInput, hasChange := widgetPayloadEvents(w)
+		if hasInput {
+			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
+		}
 		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
 		fmt.Fprintf(b, "%s\tcmds = append(cmds, cmd)\n", fwdIndent)
 		for _, bd := range w.binds {
 			if bindTargetSyncs(info.binds, bd.target) {
 				fmt.Fprintf(b, "%s\tm.%s = %s\n", fwdIndent, bd.target, bindReadBack(w.fieldName, bd.get))
 			}
+		}
+		if hasInput {
+			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "input"), fwdIndent)
+		}
+		if hasChange {
+			fmt.Fprintf(b, "%s\tif __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {\n%s\t\tm.%s(%s)\n%s\t}\n", fwdIndent, fwdIndent, widgetEventMethod(w, "change"), bindReadBack(w.fieldName, get), fwdIndent)
 		}
 		fmt.Fprintf(b, "%s}\n", fwdIndent)
 	}
@@ -1336,6 +1349,77 @@ func emitBtEventInvokers(b *strings.Builder, invokers []btEventInvoker) {
 		fmt.Fprintf(b, "\t*m = nm.(Model)\n")
 		fmt.Fprintf(b, "\tm.__focusID = prev\n")
 		b.WriteString("}\n\n")
+	}
+}
+
+// widgetPayloadEvents reports which of a text widget's payload events the
+// program handles, and the getter its value is read back through. @input
+// fires when an Update changed the text; @change, on Enter in a single-line
+// input, is the commit. Only a widget read back with .Value() carries text.
+func widgetPayloadEvents(w widgetInfo) (get string, input, change bool) {
+	if w.node == nil {
+		return "", false, false
+	}
+	for _, bd := range w.binds {
+		if bd.get == ".Value()" && bd.set == ".SetValue" {
+			get = bd.get
+			break
+		}
+	}
+	if get == "" {
+		return "", false, false
+	}
+	has := func(event string) bool {
+		h := codegen.NodeHandler(w.node, event)
+		return h != nil && h.Func != nil
+	}
+	return get, has("input"), has("change") && w.model.Type == "textinput.Model"
+}
+
+func widgetEventMethod(w widgetInfo, event string) string {
+	return "__" + w.fieldName + "_" + event
+}
+
+// emitWidgetPayloadHandlers writes, for each text widget's @input and
+// @change, the handler as a Model method taking the text, and -- for a widget
+// a test can name -- an invoker that puts the text in the widget and runs it,
+// as typing and committing would.
+//
+// The payload is bound as a struct holding the one field every text event
+// carries: the event types are declarations nothing else here emits.
+func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext) {
+	for _, w := range info.widgets {
+		_, hasInput, hasChange := widgetPayloadEvents(w)
+		for _, ev := range []struct {
+			name string
+			on   bool
+		}{{"input", hasInput}, {"change", hasChange}} {
+			if !ev.on {
+				continue
+			}
+			h := codegen.NodeHandler(w.node, ev.name)
+			hgc := gc
+			fmt.Fprintf(b, "func (m *Model) %s(__v string) {\n", widgetEventMethod(w, ev.name))
+			if len(h.Func.Params) > 0 {
+				name := h.Func.Params[0].Name
+				hgc = gc.WithLocal(name)
+				fmt.Fprintf(b, "\t%s := struct{ Value string }{Value: __v}\n\t_ = %s\n", name, name)
+			}
+			for _, stmt := range h.Func.Block {
+				for _, line := range hgc.EvalStmt(stmt) {
+					fmt.Fprintf(b, "\t%s\n", line)
+				}
+			}
+			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			b.WriteString("}\n\n")
+			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") {
+				continue
+			}
+			fmt.Fprintf(b, "// %s%s types v into the #%s widget and runs its @%s; for tests.\n", w.node.ID, golang.ExportName(ev.name), w.node.ID, ev.name)
+			fmt.Fprintf(b, "func (m *Model) %s%s(v string) {\n", w.node.ID, golang.ExportName(ev.name))
+			fmt.Fprintf(b, "\tm.%s.SetValue(v)\n", w.fieldName)
+			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
+		}
 	}
 }
 

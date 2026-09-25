@@ -2050,6 +2050,24 @@ to exercise: generated output is identical either way. Confirm a new fixture
 
 **Know which harness sees platforms.** `TestFixtures` (root package, `internal/fixtures`) is the one walk over `testdata/*.sngl`: each fixture is read, parsed, formatted, checked, folded and LSP-marked once, as its own directives ask. It checks against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. No fixture gets the real import resolver — directory imports resolve through the stub in `internal/fixtures/resolver.go`. For that, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
 
+**A test body is lowered by each language's own test emitter**
+(`codegen/lang/{golang,javascript,kotlin}/testlower.go`), and the interpreter
+is the reference every target is held to — `cmd/sngl/testdata/test_component_surface*.txt`
+runs one program through every form of access a test body has on all six. Three
+rules keep them agreeing:
+
+- **Test bodies are checked last**, after every component and window body:
+  an unannotated component var has no type until its body is read, and a test
+  naming it saw `dyn`.
+- **A test holds its instance, not `m` or `state`**: package state and the
+  funcs reading it are spelled through the instance (`ExprCtx.StateReceiver`
+  on Go and JS; on android the state members MainScreen spells as `state.<x>`,
+  rebound to the instance). Each test starts from a fresh one — a new Model on
+  the Go targets, a remounted page on html.
+- **An event invoker takes the widget-level value**: `c.f.input({value=v})`
+  hands the invoker `v`, which it puts in the widget before firing the one
+  event, as android's `performTextReplacement` does.
+
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
 **A Go type crossing into SNGL is tested with `sngltest/`.** A `go:` value

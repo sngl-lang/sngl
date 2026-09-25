@@ -3421,7 +3421,9 @@ func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
 			continue
 		}
-		fmt.Fprintf(b, "state.%s = () => %s.dispatchEvent(new Event(%q));\n", name, h.elemID, h.event)
+		// A payload's value is put in the element first, which is where the
+		// handler reads it from, as it would after the user typed it.
+		fmt.Fprintf(b, "state.%s = (p) => { if (p != null && p.value !== undefined) { %s.value = p.value; } %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
 	}
 }
 
