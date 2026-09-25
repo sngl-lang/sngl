@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
@@ -893,6 +894,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		n.Children = ch
+		slotsCh, err := st.inlineSlotContents(n.Slots, childRC)
+		if err != nil {
+			return nil, false, err
+		}
+		chCh = chCh || slotsCh
 		// A window is a rendering root and instantiates nothing this pass may
 		// splice: it stays where it was written, with whatever its body held
 		// now inlined. Everything below asks what to do with a *component*
@@ -1009,7 +1015,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		n.Children = ch
-		return []ir.Stmt{n}, chCh, nil
+		slotsCh, err := st.inlineSlotContents(n.Slots, rc)
+		if err != nil {
+			return nil, false, err
+		}
+		return []ir.Stmt{n}, chCh || slotsCh, nil
 	case *ir.ErrorBoundary:
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, rc)
 		if err != nil {
@@ -1033,6 +1043,25 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 	default:
 		panic(fmt.Sprintf("inlineCompState.inlineStmt: unhandled %T", n))
 	}
+}
+
+// inlineSlotContents walks each population in name order, since the order
+// is what numbers the __instN suffixes.
+func (st *inlineCompState) inlineSlotContents(slots map[string]*ir.SlotContent, rc reactiveCtx) (bool, error) {
+	changed := false
+	for _, name := range slices.Sorted(maps.Keys(slots)) {
+		sc := slots[name]
+		if sc == nil {
+			continue
+		}
+		body, ch, err := st.inlineStmtsCtx(sc.Body, rc)
+		if err != nil {
+			return false, err
+		}
+		sc.Body = body
+		changed = changed || ch
+	}
+	return changed, nil
 }
 
 // walkExprIdents calls visit on every *ir.Ident reachable from e.
