@@ -7,8 +7,6 @@ parameters become the prop's signature, the emit a call of it, and the
 handler the call site wrote the prop's value. event_params.txtar is the
 inlined case.
 
-broken out/go/bubbletea -- a component under a loop over state with no focusable widget outside it declares no `__focusID` field and reads it bare in `__focusNext`; the same with a one-parameter event, so it predates event parameter lists
-
 deny * `emit\(` -- every emit is called through its prop or substituted, never left as a call to a function nothing declares
 
 -- event_params_instance.sngl --
@@ -66,9 +64,12 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	picked__inst0 string
-	at__inst0     int
-	names__inst0  []string
+	picked__inst0       string
+	at__inst0           int
+	names__inst0        []string
+	clicks__inst1       map[string]int
+	__focusID           int
+	__focusLoop0_cursor int
 
 	width, height int
 }
@@ -79,6 +80,9 @@ func New() Model {
 	m.picked__inst0 = ""
 	m.at__inst0 = 0
 	m.names__inst0 = []string{"a", "b"}
+	m.clicks__inst1 = map[string]int{}
+	m.__focusID = 0
+	m.__focusLoop0_cursor = 0
 	return m
 }
 
@@ -89,14 +93,26 @@ func (m *Model) SetTerminalSize(w, h int) {
 }
 
 func (m *Model) __focusNext() {
-	if __focusID == 0 {
-		__focusID = 0
+	if m.__focusID == 0 {
+		var __focusLen int = len(m.names__inst0)
+		if (m.__focusLoop0_cursor + 1) < __focusLen {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor + 1)
+		} else {
+			m.__focusID = 0
+			m.__focusLoop0_cursor = 0
+		}
 	}
 }
 
 func (m *Model) __focusPrev() {
-	if __focusID == 0 {
-		__focusID = 0
+	if m.__focusID == 0 {
+		if m.__focusLoop0_cursor > 0 {
+			m.__focusLoop0_cursor = (m.__focusLoop0_cursor - 1)
+		} else {
+			var __focusLen int = len(m.names__inst0)
+			m.__focusID = 0
+			m.__focusLoop0_cursor = (__focusLen - 1)
+		}
 	}
 }
 
@@ -145,6 +161,21 @@ func SetNames__inst0Cmd(v []string) tea.Cmd {
 	return func() tea.Msg { return setNames__inst0Msg{value: v} }
 }
 
+func (m Model) Clicks__inst1() map[string]int {
+	return m.clicks__inst1
+}
+
+func (m Model) SetClicks__inst1(v map[string]int) Model {
+	m.clicks__inst1 = v
+	return m
+}
+
+type setClicks__inst1Msg struct{ value map[string]int }
+
+func SetClicks__inst1Cmd(v map[string]int) tea.Cmd {
+	return func() tea.Msg { return setClicks__inst1Msg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -160,6 +191,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetAt__inst0(msg.value)
 	case setNames__inst0Msg:
 		m = m.SetNames__inst0(msg.value)
+	case setClicks__inst1Msg:
+		m = m.SetClicks__inst1(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -167,6 +200,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case msg.Code == 'c' && msg.Mod == tea.ModCtrl:
 			return m, tea.Quit
+		case msg.Code == tea.KeyTab && msg.Mod == 0:
+			m.__focusNext()
+		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
+			m.__focusPrev()
+		case msg.Code == tea.KeyEnter && m.__focusID == 0:
+			for __copy0, n := range m.names__inst0 {
+				if m.__focusLoop0_cursor == __copy0 {
+					var __cell1_clicks__inst1 int = func() int {
+						if __v, __ok := m.clicks__inst1[fmt.Sprint(__copy0)]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					__cell1_clicks__inst1 += 1
+					m.clicks__inst1[fmt.Sprint(__copy0)] = __cell1_clicks__inst1
+					m.at__inst0 = func() int {
+						if __v, __ok := m.clicks__inst1[fmt.Sprint(__copy0)]; __ok {
+							return __v
+						}
+						return 0
+					}()
+					m.picked__inst0 = n
+					break
+				}
+			}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -176,10 +234,16 @@ func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
 	var part0Items []string
-	for _, n := range m.names__inst0 {
+	for __copy0, n := range m.names__inst0 {
+		_ = __copy0
 		_ = n
 		var part0Item string
-		part0Item = m.renderCard(n)
+		part0ItemFocused := ((m.__focusID == 0) && (m.__focusLoop0_cursor == __copy0))
+		part0ItemPrefix := " "
+		if part0ItemFocused {
+			part0ItemPrefix = ">"
+		}
+		part0Item = lipgloss.NewStyle().Render(part0ItemPrefix + " " + fmt.Sprint(n))
 		part0Items = append(part0Items, part0Item)
 	}
 	part0 = strings.Join(part0Items, "")
@@ -191,17 +255,6 @@ func (m Model) View() tea.View {
 	v := tea.NewView(content)
 	v.AltScreen = true
 	return v
-}
-
-func (m Model) renderCard(label string) string {
-	var result string
-	resultFocused := (m.__focusID == 0)
-	resultPrefix := " "
-	if resultFocused {
-		resultPrefix = ">"
-	}
-	result = lipgloss.NewStyle().Render(resultPrefix + " " + fmt.Sprint(label))
-	return result
 }
 
 func main() {
@@ -272,7 +325,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newCardInstance(n, func(i int, l string) {
+			__n2__new := newCardInstance(m, n, func(i int, l string) {
 				m.at__inst0 = i
 				m.__n1.SetText(((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 				m.picked__inst0 = l
@@ -331,6 +384,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 // CardInstance is one live instance of the card component.
 type CardInstance struct {
 	Root         fyne.CanvasObject
+	__model      *Model
 	__prop_label string
 	__prop_pick  func(int, string)
 	clicks       int
@@ -339,8 +393,9 @@ type CardInstance struct {
 	__n0         *widget.Button
 }
 
-func newCardInstance(label string, pick func(int, string)) *CardInstance {
+func newCardInstance(__model *Model, label string, pick func(int, string)) *CardInstance {
 	c := &CardInstance{}
+	c.__model = __model
 	c.__prop_label = label
 	c.__prop_pick = pick
 	c.clicks = 0
@@ -442,7 +497,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 			if len(m.__inst0_live) > __inst0_i {
 				m.__inst0_live[__inst0_i].Destroy()
 			}
-			__n2__new := newCardInstance(n, func(i int, l string) {
+			__n2__new := newCardInstance(m, n, func(i int, l string) {
 				m.at__inst0 = i
 				m.picked__inst0 = l
 			})
@@ -466,6 +521,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 // CardInstance is one live instance of the card component.
 type CardInstance struct {
 	Root         gtk4rt.Handle
+	__model      *Model
 	__prop_label string
 	__prop_pick  func(int, string)
 	clicks       int
@@ -474,8 +530,9 @@ type CardInstance struct {
 	__n0         gtk4rt.Handle
 }
 
-func newCardInstance(label string, pick func(int, string)) *CardInstance {
+func newCardInstance(__model *Model, label string, pick func(int, string)) *CardInstance {
 	c := &CardInstance{}
+	c.__model = __model
 	c.__prop_label = label
 	c.__prop_pick = pick
 	c.clicks = 0
@@ -661,12 +718,12 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
   function String(v) {
     return "" + v;
   }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
     __n1.textContent = state.picked__inst0 + " at " + String(state.at__inst0);
   }
@@ -675,10 +732,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-broken sha256:8e355f9b719de188a16daac0227297d5
+pass sha256:9e9af68033884b9196461f83d692eef6
 -- run/go/fyne --
-pass sha256:7373addbe2e3e1ab85964c2fa99ad850
+pass sha256:c0bf7c2ae9859973a05155f8336c19ff
 -- run/go/gtk4 --
-pass sha256:44c6ab78793ef82558c6063e4acea2bc
+pass sha256:804c777667c8f23b7fe8fde6aad7118a
 -- run/none/html --
-pass sha256:04108e80365fb877823976e8bec5c5b6
+pass sha256:7acfd728d26cc64f875c9af967f23a66

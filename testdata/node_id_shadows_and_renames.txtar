@@ -134,9 +134,9 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
+  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   function __sngl_init() {
     __n0.textContent = state.label;
   }
@@ -145,4 +145,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bb55a7669f0657d2e48dbf002b21a81c
+pass sha256:70df7d0de496be593be8a273242b6eaa

@@ -33,7 +33,6 @@ type Page struct {
 	Slug        string // URL slug, e.g. "learn/installation"
 	Href        string // URL path, e.g. "/learn/installation.html"
 	Description string
-	Body        string // rendered HTML from markdown
 	Order       int
 	Section     string // parent directory, e.g. "learn", "reference"; "" for root-level files
 	IsIndex     bool   // true if this page is the section's index.md (or root index.md)
@@ -49,18 +48,11 @@ func Pages() []Page {
 		if path == "learn/tour.md" {
 			return nil // rendered separately as the interactive tutorial
 		}
-		if path == "learn/getting-started.md" {
-			return nil // rendered separately by getting_started.sngl
-		}
 		data, err := content.ReadFile(path)
 		if err != nil {
 			return nil
 		}
-		fm, body, err := docsite.ParseFrontMatter(data)
-		if err != nil {
-			return nil
-		}
-		html, err := docsite.RenderMarkdown(body)
+		fm, _, err := docsite.ParseFrontMatter(data)
 		if err != nil {
 			return nil
 		}
@@ -87,8 +79,8 @@ func Pages() []Page {
 		}
 
 		href := "/" + slug + ".html"
-		if slug == "" {
-			href = "/index.html"
+		if isIndex {
+			href = "/" + strings.TrimPrefix(slug+"/index.html", "/")
 		}
 
 		pages = append(pages, Page{
@@ -96,7 +88,6 @@ func Pages() []Page {
 			Slug:        slug,
 			Href:        href,
 			Description: fm.Description,
-			Body:        string(html),
 			Order:       fm.Order,
 			Section:     section,
 			IsIndex:     isIndex,
@@ -140,7 +131,6 @@ var navExtras = []struct {
 	Link    NavLink
 }{
 	{"", NavLink{Title: "Home", Href: "/index.html", Order: 0}},
-	{"learn", NavLink{Title: "Getting Started", Href: "/learn/getting-started.html", Order: 20}},
 	{"learn", NavLink{Title: "Tour", Href: "/tutorial.html", Order: 30}},
 	{"reference", NavLink{Title: "Components", Href: "/components/index.html", Order: 1}},
 	{"reference", NavLink{Title: "Standard Library", Href: "/docs/sngl/index.html", Order: 2}},

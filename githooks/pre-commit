@@ -1,13 +1,14 @@
 #!/bin/sh
 # Refuse a commit that `go tool verify` would reject for a mechanical reason.
 #
-# Two of verify's seven steps fail on changes that are never a judgement call --
-# `go fix` rewriting a loop into a slices helper, `mdox fmt` rewrapping a
-# paragraph -- and both are invisible until CI says so. They are the two that
-# fail most often, which is the whole reason this exists.
+# Three of verify's seven steps fail on changes that are never a judgement call
+# -- gofmt realigning a struct, `go fix` rewriting a loop into a slices helper,
+# `mdox fmt` rewrapping a paragraph -- and all three are invisible until CI says
+# so. They are the ones that fail most often, which is the whole reason this
+# exists.
 #
-# Only these two. A hook that ran the suite would be a hook people disable, and
-# the other five steps either cost real time (test) or fail for reasons worth
+# Only these three. A hook that ran the suite would be a hook people disable,
+# and the other four steps either cost real time (test) or fail for reasons worth
 # reading a diff over (vet, mod tidy).
 #
 # Staged files only, which is the pre-commit contract: an unformatted file
@@ -35,6 +36,12 @@ fail() {
 # rather than skipping -- hence the -d test.
 go_files=$(staged '*.go')
 if [ -n "$go_files" ]; then
+	# shellcheck disable=SC2086
+	unformatted=$(gofmt -l $go_files)
+	if [ -n "$unformatted" ]; then
+		printf '%s\n' "$unformatted"
+		fail "gofmt would reformat staged Go (above)" "gofmt -w $(printf '%s ' $unformatted)"
+	fi
 	pkgs=$(printf '%s\n' "$go_files" | xargs -n1 dirname | sort -u |
 		while read -r d; do [ -d "$d" ] && printf './%s\n' "$d"; done)
 	if [ -n "$pkgs" ]; then

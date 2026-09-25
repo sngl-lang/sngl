@@ -30,8 +30,10 @@ func (g *htmlGen) emitComponentFactories(b *strings.Builder) {
 		return
 	}
 	for _, comp := range comps {
+		openDecl(b, javascript.FactoryName(comp))
 		g.emitComponentFactory(b, comp)
 		b.WriteByte('\n')
+		closeDecl(b)
 	}
 }
 

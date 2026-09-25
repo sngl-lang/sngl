@@ -211,6 +211,81 @@ enum Token { plain, keyword, type, function, variable, constant, string, number,
 // which is what says it is code at all; this says which part of it.
 component token(kind Token, content ...component span) span
 
+// A color per `Token` kind. A field left at its zero, which has no alpha, is
+// a kind the palette does not answer: the words keep the color around them,
+// or take the host's where the palette is the one a program set.
+struct Palette {
+    plain color = color{a=0}
+    keyword color = color{a=0}
+    type color = color{a=0}
+    function color = color{a=0}
+    variable color = color{a=0}
+    constant color = color{a=0}
+    string color = color{a=0}
+    number color = color{a=0}
+    comment color = color{a=0}
+    operator color = color{a=0}
+    punctuation color = color{a=0}
+}
+
+// The color a palette gives one kind.
+func tokenColor(p Palette, kind Token) color {
+    if kind == Token.keyword {
+        return p.keyword
+    }
+    if kind == Token.type {
+        return p.type
+    }
+    if kind == Token.function {
+        return p.function
+    }
+    if kind == Token.variable {
+        return p.variable
+    }
+    if kind == Token.constant {
+        return p.constant
+    }
+    if kind == Token.string {
+        return p.string
+    }
+    if kind == Token.number {
+        return p.number
+    }
+    if kind == Token.comment {
+        return p.comment
+    }
+    if kind == Token.operator {
+        return p.operator
+    }
+    if kind == Token.punctuation {
+        return p.punctuation
+    }
+    return p.plain
+}
+
+// GitHub's syntax colors, light and dark: what a platform with no theme of
+// its own to ask draws code in.
+const lightPalette = Palette{keyword=#CF222E, type=#953800, function=#8250DF, constant=#0550AE, string=#0A3069, number=#0550AE, comment=#6E7781}
+
+const darkPalette = Palette{keyword=#FF7B72, type=#FFA657, function=#D2A8FF, constant=#79C0FF, string=#A5D6FF, number=#79C0FF, comment=#8B949E}
+
+// The palette every `token` under a provider draws in. Unset, each platform
+// answers from its host -- a terminal's sixteen colors, a fyne theme, a
+// Material scheme, the defaults above where the host has none. A kind it sets
+// wins on every target, so an application with colors of its own sees them in
+// its code samples too.
+context #palette(Palette{})
+
+// The color `kind` is drawn in: the palette's where it sets one, and the
+// fallback's where it does not.
+func colorOf(p Palette, fallback Palette, kind Token) color {
+    var c = tokenColor(p, kind)
+    if c.a != 0 {
+        return c
+    }
+    return tokenColor(fallback, kind)
+}
+
 // The words lead somewhere. `href` takes the same URL a `ui.link` does, and
 // the content is spans, so a link may be emphasized and emphasis may be
 // linked.

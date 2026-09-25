@@ -71,17 +71,12 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	__ctx_depth__inst0 int
-	__ctx_depth__inst2 int
-
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.__ctx_depth__inst0 = 2
-	m.__ctx_depth__inst2 = 1
 	return m
 }
 
@@ -118,7 +113,7 @@ func (m Model) View() tea.View {
 	var content_0 string
 	var content_0Children []string
 	var content_0_0 string
-	content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(("d=" + fmt.Sprint(m.__ctx_depth__inst2))))
+	content_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("d=1"))
 	content_0Children = append(content_0Children, content_0_0)
 	var content_0_1 string
 	var content_0_1Children []string
@@ -127,7 +122,7 @@ func (m Model) View() tea.View {
 	var content_0_1_0_0 string
 	var content_0_1_0_0Children []string
 	var content_0_1_0_0_0 string
-	content_0_1_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint(("d=" + fmt.Sprint(m.__ctx_depth__inst0))))
+	content_0_1_0_0_0 = lipgloss.NewStyle().Render(fmt.Sprint("d=2"))
 	content_0_1_0_0Children = append(content_0_1_0_0Children, content_0_1_0_0_0)
 	var content_0_1_0_0_1 string
 	var content_0_1_0_0_1Children []string
@@ -171,13 +166,11 @@ body { font-family: system-ui, sans-serif; }
 
 <div style="display:flex;flex-direction:column">
   <div style="display:flex;flex-direction:row">
-    <span id="__n0" data-sngl-id="__n0">
-    </span>
+    <span>d=1</span>
     <div style="display:flex;flex-direction:column">
       <div style="display:flex;flex-direction:column">
         <div style="display:flex;flex-direction:row">
-          <span id="__n1" data-sngl-id="__n1">
-          </span>
+          <span>d=2</span>
           <div style="display:flex;flex-direction:column">
           </div>
         </div>
@@ -190,22 +183,10 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = {};
-  var __ctx_depth__inst0 = 2;
-  var __ctx_depth__inst2 = 1;
-  function String(v) {
-    return "" + v;
-  }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  function __sngl_init() {
-    __n0.textContent = "d=" + String(__ctx_depth__inst2);
-    __n1.textContent = "d=" + String(__ctx_depth__inst0);
-  }
-  __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:c7255684af5c162dfa50a6c9f4f79b89
+pass sha256:52b738e87e8aca37d8f4d9949a6eaa69
 -- run/none/html --
-pass sha256:4754a444efb97909de2d87d157dce884
+pass sha256:4ed5e9b86782b91f544439ca1782bb3a

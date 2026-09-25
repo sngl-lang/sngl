@@ -130,9 +130,9 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
+  var $0 = document.getElementById("$0");
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.items__inst0.push("new");
     __renderSlot0(__slotAnchor_0);
@@ -141,4 +141,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b0b380c248b848ad7da2448afeda1de4
+pass sha256:00df4a073414f756b1aab4d3e590670f

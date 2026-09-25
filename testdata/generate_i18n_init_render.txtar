@@ -579,7 +579,6 @@ body { font-family: system-ui, sans-serif; }
     return __toCommonJS(i18n_entry_exports);
   })();
   var state = { count__inst0: 3 };
-  var __ctx_locale__inst1 = "es-MX";
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   $1.addEventListener("click", function() {
@@ -594,4 +593,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1bd100ad50d2029e9856b0ae7d594d8d
+pass sha256:ce2d5c4a8621af10b819b85cf0adf071

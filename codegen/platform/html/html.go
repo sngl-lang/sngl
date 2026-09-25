@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"io/fs"
+	"iter"
 	"maps"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -65,6 +67,9 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		if err := validateRawElements(req.Pkg); err != nil {
 			return err
 		}
+		if err := firstUnrenderedNode(req.Pkg); err != nil {
+			return err
+		}
 	}
 
 	placement := scanPlacement(req.Pkg)
@@ -74,9 +79,6 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 
 	if req.Lang.LanguageIdentifier() == "none" {
 		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html"), frontendNatives: placement.frontend}
-		if err := rejectDynamicHrefs(c.ctx); err != nil {
-			return err
-		}
 		// Static mode has no server to host the route's POST handler.
 		if win, ok := backendHandlerWindow(req.Pkg, c.ctx.Windows()); ok {
 			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
@@ -131,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => main());
 	}
 }
 
-// rejectDynamicHrefs errors in static mode: {param} routes need a server.
+// rejectDynamicHref errors in static mode: {param} routes need a server.
 //
 // Two shapes say a path is dynamic and the first is no longer the whole
 // question. An href the optimizer could not settle to a string is still one.
@@ -139,19 +141,16 @@ document.addEventListener('DOMContentLoaded', () => main());
 // where they used to be an interpolation the checker desugared -- so
 // `/p/{pkg}` is a perfectly good literal, and read for that alone the static
 // build wrote a directory called `{pkg}` and said nothing.
-func rejectDynamicHrefs(ctx *codegen.CodegenCtx) error {
-	for _, win := range ctx.Windows() {
-		href := win.Window.Prop(ir.WindowHref)
-		if href == nil {
-			continue
-		}
-		path, ok := codegen.IRLiteralString(href)
-		if ok && len(extractRouteParams(path)) == 0 {
-			continue
-		}
-		return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
+func rejectDynamicHref(win *codegen.WindowCtx) error {
+	href := win.Window.Prop(ir.WindowHref)
+	if href == nil {
+		return nil
 	}
-	return nil
+	path, ok := codegen.IRLiteralString(href)
+	if ok && len(extractRouteParams(path)) == 0 {
+		return nil
+	}
+	return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
 }
 
 type compilation struct {
@@ -167,6 +166,23 @@ type compilation struct {
 
 	// frontendNatives is the frontend set from Generate's placement scan.
 	frontendNatives map[nativeFuncKey]bool
+
+	// routeWindows are the documents route mode rendered, in the order of
+	// c.windows, for generateRoutes to take its routes from.
+	routeWindows []*codegen.WindowCtx
+}
+
+// documents is the build's documents, or this package's for a caller that
+// ran no build.
+func (c *compilation) documents(req *codegen.Request) iter.Seq2[*codegen.Document, error] {
+	if req.Documents != nil {
+		return req.Documents()
+	}
+	return optimize.Documents(req.Pkg, &optimize.Config{
+		Platform: "html",
+		Language: req.Lang.LanguageIdentifier(),
+		Dir:      codegen.OptionString(req.Options, "projectDir"),
+	})
 }
 
 // codegenCtx is c.ctx, or a fresh one for a caller that supplied none.
@@ -471,12 +487,32 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		return ctx.BuildMutation(nil), nil
 	}
 	staticMode := req.Lang.LanguageIdentifier() == "none"
+	// One document ahead, so that whether there is a second is known before the
+	// first is written.
+	next, stop := iter.Pull2(c.documents(req))
+	defer stop()
+	doc, docErr, ok := next()
+	following, followingErr, more := next()
 	// One page gains nothing from a second file, and a preview is shown as one
 	// document with nowhere to fetch a second from.
-	shareConsts := staticMode && !opts.Preview && len(irWindows) > 1
+	shareConsts := staticMode && !opts.Preview && more
 	var mainStmts []ir.Stmt
 	seenPaths := map[string]ast.Pos{}
-	for i, win := range irWindows {
+	seenAssets := map[string]bool{}
+	for _, fa := range c.assetFiles {
+		seenAssets[fa.name] = true
+	}
+	for i := 0; ok; i++ {
+		if docErr != nil {
+			return nil, docErr
+		}
+		win := documentWindow(doc, irWindows)
+		for _, fa := range doc.FileAssets {
+			if !seenAssets[fa.OutPath] {
+				seenAssets[fa.OutPath] = true
+				c.assetFiles = append(c.assetFiles, htmlAssetFile{name: fa.OutPath, bytes: fa.Data})
+			}
+		}
 		var name string
 		href := win.Window.Prop(ir.WindowHref)
 		switch {
@@ -484,16 +520,17 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
+			c.routeWindows = append(c.routeWindows, win)
 		case href == nil:
 			// No declaration to take an href from: the package body's root
 			// window, or a lone main component's. It is the document the site
 			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
-			h, ok := codegen.IRLiteralString(href)
-			if !ok {
-				return nil, fmt.Errorf("html: window %q has a non-literal href after folding (internal error)", win.Name)
+			if err := rejectDynamicHref(win); err != nil {
+				return nil, err
 			}
+			h, _ := codegen.IRLiteralString(href)
 			name = pathFromHref(h)
 		}
 		if staticMode {
@@ -508,19 +545,19 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.stylesheet = stylesheetURL
 		gen.shareConsts = shareConsts
 		gen.irBodyStmts = win.Body
+		// Per document: a drawing is keyed by its node, and the document's nodes
+		// are its own clones rather than anything the package holds.
+		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
+		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
 		gen.irWindowFuncs = win.Funcs
 		gen.irWindowVars = win.Vars
 		gen.irWindow = win.Window
-		if win.Window != nil {
-			gen.ctx = gen.ctx.ForWindow(win.Window)
+		gen.ctx = gen.ctx.ForWindow(win.Window)
+		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
+			gen.title = s
 		}
-		if win.Window != nil {
-			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
-				gen.title = s
-			}
-			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowFavicon)); ok {
-				gen.favicon = s
-			}
+		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowFavicon)); ok {
+			gen.favicon = s
 		}
 		body, err := gen.generate()
 		if err != nil {
@@ -538,9 +575,25 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		if mainStmts == nil {
 			mainStmts = win.Body
 		}
+		doc, docErr, ok = following, followingErr, more
+		if ok {
+			following, followingErr, more = next()
+		}
 	}
 	c.assetFiles = append(c.assetFiles, shared.constFiles...)
 	return ctx.BuildMutation(mainStmts), nil
+}
+
+// documentWindow is what a page is generated from. A harness rendering its root
+// component has no window, and takes the vars and funcs of the one
+// CodegenCtx.Windows synthesizes for it.
+func documentWindow(doc *codegen.Document, windows []*codegen.WindowCtx) *codegen.WindowCtx {
+	if doc.Window != nil {
+		return &codegen.WindowCtx{Window: doc.Window, Body: doc.Body, Name: doc.Window.ID}
+	}
+	w := *windows[0]
+	w.Body = doc.Body
+	return &w
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
@@ -587,10 +640,6 @@ type htmlGen struct {
 
 	handlers []eventHandler
 
-	componentParams []componentParam
-
-	inlinedStateInits []componentParam
-
 	title string
 
 	stylesheet string
@@ -625,12 +674,6 @@ type htmlGen struct {
 	// The map's sourcesContent is what actually carries the source.
 	outDir string
 
-	componentInvocations int
-
-	// dataRenames maps original component var names to promoted unique names
-	// so handler MutatedFields can be remapped after inlining.
-	dataRenames map[string]string
-
 	// currentComp resolves implicit `this` for exprDeps / MutatedFields.
 	currentComp *ir.Component
 
@@ -641,13 +684,7 @@ type htmlGen struct {
 	// component not called "main" collected no state and rendered no binding.
 	rootComp *ir.Component
 
-	componentDepth int
-
 	usesI18n bool
-
-	// irSlotChildren holds the caller's children during component inlining,
-	// for the body-level `slot` pseudo-element to project into position.
-	irSlotChildren []ir.Stmt
 
 	irBodyStmts []ir.Stmt
 
@@ -657,6 +694,10 @@ type htmlGen struct {
 	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
 	// IR node rather than on the package or main component.
 	irWindowFuncs []*ir.Func
+	// pageSlots are the render slots whose anchor this page wrote. The slot
+	// funcs are collected per owner, and a root component spliced into the
+	// package body owns every window's, so a page boots only its own.
+	pageSlots map[string]bool
 
 	// irWindow is the window this generator emits a document for, or nil when
 	// it is emitting a main component's body. A window is the third place
@@ -710,12 +751,6 @@ type htmlGen struct {
 	staticInsts []staticInstance
 }
 
-type componentParam struct {
-	name       string
-	value      string
-	staticOnly bool // true if value was fully consumed during static HTML render (skip JS emission)
-}
-
 type updateFunc struct {
 	funcName string // e.g., "$u_0_text"
 	body     string // JS function body
@@ -760,6 +795,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		refToVar:       make(map[string]string),
 		loweredRefs:    make(map[string]bool),
 		loweredLocals:  make(map[string]bool),
+		pageSlots:      make(map[string]bool),
 		usesI18n:       hasI18nCalls(pkg),
 		shared:         shared,
 	}
@@ -906,6 +942,9 @@ func (g *htmlGen) prewalkNodes() {
 			if g.elemDecl == nil && isElement(n.Component) {
 				g.elemDecl = n.Component
 			}
+			for _, rule := range classRules(n) {
+				g.AddStyle(rule)
+			}
 			visitStmts(n.Children)
 			for _, h := range n.Handlers {
 				if h.Func != nil {
@@ -977,35 +1016,7 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	if g.pkg == nil {
 		return
 	}
-	rewriteCall := func(call *ir.Call) {
-		if call == nil || call.Func == nil {
-			return
-		}
-		n := slotIndexFromRenderFunc(call.Func.Name)
-		if n == "" || len(call.Args) != 1 {
-			return
-		}
-		call.Args[0].Value = &ir.Ident{
-			Name:         slotAnchorVar(n),
-			Type:         ir.TypDyn,
-			IsElementRef: true,
-			Synthesized:  true,
-		}
-	}
-	// ir.Walk rather than a descent of the statements that can hold one,
-	// because "which statement holds the re-fire" is a question this has been
-	// wrong about twice. The descent knew a CallStmt and the lambda arguments
-	// of a CallStmt, so a timer handler was covered while `h = setInterval(func
-	// () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
-	// the parentRef it was threaded with and removeChild'd from the wrong node.
-	visit := func(root any) {
-		_ = ir.Walk(root, func(node ir.Node) error {
-			if c, ok := node.(*ir.Call); ok {
-				rewriteCall(c)
-			}
-			return nil
-		})
-	}
+	visit := retargetSlotCalls
 	visitHandlers := func(vars []*ir.Var) {
 		for _, v := range vars {
 			for _, h := range v.Handlers {
@@ -1027,21 +1038,51 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 		}
 		visitHandlers(c.Vars)
 	}
-	for _, w := range ir.AllWindows(g.pkg) {
-		if w == nil {
-			continue
-		}
-		visit(w.Children)
-		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			visit(w.ErrorHandler.Func.Block)
-		}
-	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
 			visit(fn.Block)
 		}
 	}
 	visitHandlers(g.pkg.Vars)
+}
+
+// rewriteDocumentSlotCalls retargets the calls in the page's own document,
+// which is cloned from its window and so is none of what the package-wide
+// rewrite reached.
+func (g *htmlGen) rewriteDocumentSlotCalls() {
+	retargetSlotCalls(g.irBodyStmts)
+	if w := g.irWindow; w != nil && w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
+		retargetSlotCalls(w.ErrorHandler.Func.Block)
+	}
+}
+
+// retargetSlotCalls points every `__renderSlotN(parentRef)` under root at
+// the slot's anchor.
+//
+// ir.Walk rather than a descent of the statements that can hold one,
+// because "which statement holds the re-fire" is a question this has been
+// wrong about twice. The descent knew a CallStmt and the lambda arguments
+// of a CallStmt, so a timer handler was covered while `h = setInterval(func
+// () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
+// the parentRef it was threaded with and removeChild'd from the wrong node.
+func retargetSlotCalls(root any) {
+	_ = ir.Walk(root, func(node ir.Node) error {
+		call, ok := node.(*ir.Call)
+		if !ok || call.Func == nil {
+			return nil
+		}
+		n := slotIndexFromRenderFunc(call.Func.Name)
+		if n == "" || len(call.Args) != 1 {
+			return nil
+		}
+		call.Args[0].Value = &ir.Ident{
+			Name:         slotAnchorVar(n),
+			Type:         ir.TypDyn,
+			IsElementRef: true,
+			Synthesized:  true,
+		}
+		return nil
+	})
 }
 
 // nodeID returns n.ID when NoReactivity pre-assigned one, otherwise allocates
@@ -1088,6 +1129,7 @@ func (g *htmlGen) generate() (string, error) {
 	// Must precede the body walk so the handler/timer re-fire calls collected
 	// there are rewritten too.
 	g.rewriteSlotCallsOnce()
+	g.rewriteDocumentSlotCalls()
 
 	var b strings.Builder
 
@@ -1150,7 +1192,7 @@ func (g *htmlGen) generate() (string, error) {
 
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
-	sharedTags, script := g.linkSharedConsts(scriptBuf.String())
+	sharedTags, script := g.linkSharedConsts(pruneDecls(scriptBuf.String()))
 
 	// The i18n runtime is prepended as an IIFE so the generated calls resolve
 	// without forcing the main script through a separate esbuild pass.
@@ -1283,14 +1325,13 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		}
 		g.renderIRNode(b, n, depth)
 	case *ir.SlotInst:
-		for _, child := range g.irSlotChildren {
-			g.renderIRStmt(b, child, depth)
-		}
+		panic(fmt.Sprintf("html.renderIRStmt: slot %q reached the emitter unsubstituted", n.Name))
 	case *ir.CallStmt:
 		// A __renderSlotN call marks a reactive if/for slot position; its
 		// content is appended into this anchor at runtime.
 		if n.Call != nil && n.Call.Func != nil {
 			if idx := slotIndexFromRenderFunc(n.Call.Func.Name); idx != "" {
+				g.pageSlots[idx] = true
 				fmt.Fprintf(b, "%s<span data-sngl-slot=\"%s\" style=\"display:contents\"></span>\n",
 					strings.Repeat("  ", depth), idx)
 				return
@@ -1380,8 +1421,8 @@ func irCallName(call *ir.Call) string {
 }
 
 // renderIRNode dispatches a NodeInst to the appropriate renderer: a user
-// component inlines via its IR body, a stdlib component goes through its
-// AST-backed helper, and a raw element is rendered IR-native.
+// component reaching here is a runtime instance, every other one having been
+// inlined by the lowering, and anything else is rendered as an element.
 func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 	if isUserIRComponent(n) {
 		// A factory component is never inlined here, at a static position any
@@ -1391,22 +1432,10 @@ func (g *htmlGen) renderIRNode(b *strings.Builder, n *ir.NodeInst, depth int) {
 			g.renderStaticInstance(b, n, depth)
 			return
 		}
-		g.renderIRUserComponent(b, n, depth)
-		return
+		panic(fmt.Sprintf("html.renderIRNode: component %s reached the emitter neither inlined nor an instance", n.Component.Name))
 	}
-	switch n.Name {
-	case "window":
+	if ir.IsWindowNode(n) {
 		return
-	case "timer":
-		return
-	}
-	// A bodyless call promoted from ir.CallStmt carries no Component back-ref.
-	if n.Component == nil {
-		if comp := g.findIRComponent(n.Name); comp != nil && comp.AST != nil {
-			n.Component = comp
-			g.renderIRUserComponent(b, n, depth)
-			return
-		}
 	}
 	g.renderRawElementIR(b, n, depth)
 }
@@ -1665,6 +1694,17 @@ func preservesWhitespace(tag string) bool {
 	return false
 }
 
+// escapeTextContent writes a text node. One that is all whitespace spells its
+// line breaks as references, or stripInterTagWhitespace cannot tell it from
+// the pretty-printer's run between two tags.
+func escapeTextContent(s string) string {
+	out := html.EscapeString(s)
+	if strings.TrimSpace(s) == "" {
+		out = strings.NewReplacer("\n", "&#10;", "\r", "&#13;").Replace(out)
+	}
+	return out
+}
+
 // preservesWhitespaceNode is the same question asked of an element that says
 // so in its style rather than by being one of the two tags that always do.
 //
@@ -1682,10 +1722,11 @@ func (g *htmlGen) preservesWhitespaceNode(n *ir.NodeInst, tag string) bool {
 // output. Whitespace inside text nodes is preserved.
 //
 // Only a run holding a newline is the pretty-printer's: that is what it always
-// writes between two elements, and a text node of literal spaces never carries
-// one. Stripping every run instead ate the space between two words of a code
-// sample -- `<span> </span>` came out `<span></span>` -- which is precisely the
-// character a flow of rich text promises to keep.
+// writes between two elements. Stripping every run instead ate the space
+// between two words of a code sample -- `<span> </span>` came out
+// `<span></span>` -- which is precisely the character a flow of rich text
+// promises to keep. A text node that is whitespace *with* a newline, a code
+// sample's line break and indentation, is kept by escapeTextContent.
 func stripInterTagWhitespace(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -1713,8 +1754,6 @@ func stripInterTagWhitespace(s string) string {
 	out := b.String()
 	return strings.TrimRight(out, "\t\n\r")
 }
-
-const maxComponentDepth = 10
 
 // renderRawElementIR renders an IR NodeInst as a raw HTML element, tagged by
 // the local part of the component name. A synthesized AST node is built for
@@ -1786,7 +1825,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 		// Read into the element's CSS by canvasScalingCSS and spanStyleCSS,
 		// and not an attribute any element has.
-		if name == "scalingMode" || name == spanStyleProp {
+		if name == "scalingMode" || name == spanStyleProp || name == classStyleProp || name == classStyleDarkProp {
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
@@ -1832,6 +1871,9 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			fmt.Fprintf(b, " data-sngl-id=%q", id)
 		}
 	}
+	for _, rule := range classRules(n) {
+		g.AddStyle(rule)
+	}
 	if classExpr := props["class"]; codegen.IRIsLiteral(classExpr) {
 		if s, ok := codegen.IRLiteralString(classExpr); ok && s != "" {
 			fmt.Fprintf(b, " class=%q", s)
@@ -1858,7 +1900,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			b.WriteString("\n")
 			fmt.Fprintf(b, "%s</%s>\n", indent, tag)
 		} else if staticInnerText != "" {
-			b.WriteString(html.EscapeString(staticInnerText))
+			b.WriteString(escapeTextContent(staticInnerText))
 			fmt.Fprintf(b, "</%s>\n", tag)
 		} else if g.preservesWhitespaceNode(n, tag) {
 			// A whitespace-sensitive tag renders its children inline: the
@@ -1888,7 +1930,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	lowered := loweredID(id)
 	for _, name := range slices.Sorted(maps.Keys(props)) {
 		expr := props[name]
-		if name == "style" {
+		if name == "style" || name == classStyleProp || name == classStyleDarkProp {
+			continue
+		}
+		if name == spanStyleProp {
+			g.spanColorWrite(id, expr, lowered)
 			continue
 		}
 		if codegen.IRIsReactive(expr) {
@@ -1903,8 +1949,10 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			}
 			// An i18n.tr-rooted prop with no state deps still varies by
 			// locale; initOnly keeps it past OptimizeMutation's empty-deps
-			// prune so it runs on initial render.
-			initOnly := lowered || (len(deps) == 0 && exprUsesI18n(expr))
+			// prune so it runs on initial render. So does one calling a func the
+			// build cannot evaluate: `deeper(0)` where deeper writes state reads
+			// nothing, and pruned it was never written at all.
+			initOnly := lowered || (len(deps) == 0 && (exprUsesI18n(expr) || callsUnfoldable(expr)))
 			g.initWrites = append(g.initWrites, updateFunc{
 				funcName: uname,
 				body:     body,
@@ -1929,160 +1977,6 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		}
 		g.addEventHandler(decl, id, event, h.Func)
 	}
-}
-
-// findIRComponent resolves a bare or namespace-qualified component name off
-// the IR package's symbol table, so imported components are reachable.
-func (g *htmlGen) findIRComponent(name string) *ir.Component {
-	if name == "" || g.pkg == nil {
-		return nil
-	}
-	if ns, field, ok := strings.Cut(name, "."); ok {
-		for _, imp := range g.pkg.Imports {
-			if imp.Alias != ns || imp.Pkg == nil {
-				continue
-			}
-			if sym, ok := imp.Pkg.Symbols.LookupRootComponent(field); ok {
-				if c, ok := sym.(*ir.Component); ok {
-					return c
-				}
-			}
-		}
-		return nil
-	}
-	if g.pkg.Symbols == nil {
-		return nil
-	}
-	if sym, ok := g.pkg.Symbols.LookupRootComponent(name); ok {
-		if c, ok := sym.(*ir.Component); ok {
-			return c
-		}
-	}
-	return nil
-}
-
-// renderIRUserComponent inlines a user component at its call site, sourcing
-// params/vars/computed from ir.Component, which covers imported packages the
-// AST doc never sees.
-func (g *htmlGen) renderIRUserComponent(b *strings.Builder, n *ir.NodeInst, depth int) {
-	comp := n.Component
-	if comp == nil {
-		g.renderRawElementIR(b, n, depth)
-		return
-	}
-
-	g.componentDepth++
-	if g.componentDepth > maxComponentDepth {
-		g.componentDepth--
-		return
-	}
-	defer func() { g.componentDepth-- }()
-
-	g.componentInvocations++
-	suffix := fmt.Sprintf("_%d", g.componentInvocations)
-
-	savedLocals := make(map[string]bool)
-	maps.Copy(savedLocals, g.ctx.Locals)
-	savedRenames := g.ctx.Renames
-	renames := make(map[string]string)
-	if savedRenames != nil {
-		maps.Copy(renames, savedRenames)
-	}
-
-	for _, p := range comp.Props {
-		uniqueName := p.Name + suffix
-		g.ctx.Locals[p.Name] = true
-		renames[p.Name] = uniqueName
-
-		var valueExpr ir.Expr
-		for _, pa := range n.Props {
-			if pa.Name == p.Name {
-				valueExpr = pa.Value
-				break
-			}
-		}
-		if valueExpr == nil {
-			valueExpr = p.Default
-		}
-		var jsVal string
-		if valueExpr != nil {
-			jsVal = g.exprToJS(valueExpr)
-		} else {
-			jsVal = `""`
-		}
-		g.componentParams = append(g.componentParams, componentParam{
-			name:  uniqueName,
-			value: jsVal,
-		})
-	}
-
-	for _, fn := range comp.Funcs {
-		if len(fn.Params) == 0 && len(fn.Block) == 1 {
-			if _, isRet := fn.Block[0].(*ir.Return); isRet {
-				uniqueName := fn.Name + suffix
-				g.ctx.Locals[fn.Name] = true
-				renames[fn.Name] = uniqueName
-			}
-		}
-	}
-	g.ctx.Renames = renames
-	for _, fn := range comp.Funcs {
-		if len(fn.Params) == 0 && len(fn.Block) == 1 {
-			if ret, isRet := fn.Block[0].(*ir.Return); isRet && ret.Value != nil {
-				uniqueName := fn.Name + suffix
-				body := g.exprToJS(ret.Value)
-				g.componentParams = append(g.componentParams, componentParam{
-					name:  uniqueName,
-					value: body,
-				})
-			}
-		}
-	}
-
-	// A synthesized context var may be overridden at the call site by a hidden
-	// __ctx_<name> arg in n.Props, which supersedes the var's default Init.
-	dataRenames := make(map[string]string)
-	for _, dv := range comp.Vars {
-		uniqueName := dv.Name + suffix
-		// A promoted name is backed by no *ir.Var, so it stays out of the
-		// pointer-keyed DepTracker; dataRenames handles it at the boundary.
-		g.ctx.Locals[dv.Name] = true
-		renames[dv.Name] = "state." + uniqueName
-		dataRenames[dv.Name] = uniqueName
-		var initJS string
-		if dv.Synthesized {
-			for _, pa := range n.Props {
-				if pa.Name == dv.Name {
-					initJS = g.exprToJS(pa.Value)
-					break
-				}
-			}
-		}
-		if initJS == "" {
-			initJS = g.literalToJS(dv.Init)
-		}
-		g.inlinedStateInits = append(g.inlinedStateInits, componentParam{
-			name:  uniqueName,
-			value: initJS,
-		})
-	}
-	g.ctx.Renames = renames
-
-	savedDataRenames := g.dataRenames
-	g.dataRenames = dataRenames
-
-	savedSlot := g.irSlotChildren
-	g.irSlotChildren = n.Children
-
-	for _, s := range comp.Body {
-		g.renderIRStmt(b, s, depth)
-	}
-
-	g.irSlotChildren = savedSlot
-	g.dataRenames = savedDataRenames
-
-	g.ctx.Locals = savedLocals
-	g.ctx.Renames = savedRenames
 }
 
 func (g *htmlGen) emitScript(b *strings.Builder) {
@@ -2132,10 +2026,6 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 			deferredInits = append(deferredInits, struct{ name, value string }{dv.Name(), val})
 		}
 	}
-	for _, s := range g.inlinedStateInits {
-		stateFields = append(stateFields, s.name+": null")
-		deferredInits = append(deferredInits, struct{ name, value string }{s.name, s.value})
-	}
 	b.WriteString(strings.Join(stateFields, ", "))
 	b.WriteString("};\n")
 	for _, di := range deferredInits {
@@ -2167,8 +2057,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		var params []string
 		var body []string
 		for _, f := range sd.Fields {
-			params = append(params, f.Name)
-			body = append(body, f.Name)
+			param := javascript.SafeIdent(f.Name)
+			params = append(params, param)
+			if param == f.Name {
+				body = append(body, f.Name)
+			} else {
+				body = append(body, f.Name+": "+param)
+			}
 		}
 		fmt.Fprintf(b, "function %s(%s) { return {%s}; }\n",
 			sd.Name, strings.Join(params, ", "), strings.Join(body, ", "))
@@ -2286,15 +2181,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if g.ctx.Helpers["String"] {
 		b.WriteString("function String(v) { return \"\" + v; }\n\n")
 	}
-
-	for _, cp := range g.componentParams {
-		if cp.staticOnly {
-			continue
-		}
-		fmt.Fprintf(b, "const %s = %s;\n", cp.name, cp.value)
-	}
-	if len(g.componentParams) > 0 {
-		b.WriteString("\n")
+	if g.ctx.Helpers[spanColorHelper] {
+		b.WriteString(spanColorHelperJS + "\n")
 	}
 
 	// Before the refs below, which is where a handler's binding for the
@@ -2328,6 +2216,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 	if len(refs) > 0 || len(loweredRefs) > 0 {
 		b.WriteString("\n")
 	}
+
+	g.emitSlotBoots(b)
 
 	g.emitHandlers(b)
 
@@ -2401,6 +2291,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		if v.Name == "__root" {
 			continue
 		}
+		openDecl(b, v.Name)
 		b.WriteString("let " + v.Name + " = ")
 		if v.Init != nil {
 			b.WriteString(jc.EvalExpr(v.Init))
@@ -2408,6 +2299,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			b.WriteString("null")
 		}
 		b.WriteString(";\n")
+		closeDecl(b)
 		emittedVar = true
 	}
 	if emittedVar {
@@ -2450,18 +2342,32 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			// and a definition that lost it is an await in a sync function.
 			IsAsync: fn.IsAsync,
 		}
+		if fn.Receiver == "" {
+			openDecl(b, fn.Name)
+		}
 		for _, line := range jc.EmitFuncDef(synthesized) {
 			b.WriteString(line)
 			b.WriteByte('\n')
 		}
 		b.WriteByte('\n')
+		if fn.Receiver == "" {
+			closeDecl(b)
+		}
 	}
 
-	// Driven off the synthesized-func list rather than a main.Body scan, so
-	// slots nested inside windows/components are initialized too.
-	for _, fn := range synthFuncs {
+}
+
+// emitSlotBoots renders each of the page's slots into its anchor. After the
+// page's element references, because a slot builds its component instances
+// as it renders, and one whose effect mounts writes the page's own nodes:
+// booted first, it wrote to a reference the page had not bound yet.
+//
+// Driven off the synthesized-func list rather than a main.Body scan, so
+// slots nested inside windows/components are initialized too.
+func (g *htmlGen) emitSlotBoots(b *strings.Builder) {
+	for _, fn := range g.synthesizedFuncs() {
 		idx := slotIndexFromRenderFunc(fn.Name)
-		if idx == "" {
+		if idx == "" || !g.pageSlots[idx] {
 			continue
 		}
 		anchor := slotAnchorVar(idx)
@@ -2758,43 +2664,6 @@ func (g *htmlGen) optimizeIR() {
 			isAsync:  handlerAsyncMap[key],
 		}
 	}
-
-	g.deduplicateComponentParams()
-}
-
-// deduplicateComponentParams merges component params with identical JS
-// expressions, rewriting updater-body references to the surviving name.
-func (g *htmlGen) deduplicateComponentParams() {
-	if len(g.componentParams) <= 1 {
-		return
-	}
-
-	valueToName := make(map[string]string)
-	var deduped []componentParam
-	renames := make(map[string]string) // old name → canonical name
-
-	for _, cp := range g.componentParams {
-		if canonical, exists := valueToName[cp.value]; exists {
-			renames[cp.name] = canonical
-		} else {
-			valueToName[cp.value] = cp.name
-			deduped = append(deduped, cp)
-		}
-	}
-
-	if len(renames) == 0 {
-		return
-	}
-
-	g.componentParams = deduped
-
-	for i, u := range g.initWrites {
-		body := u.body
-		for old, canonical := range renames {
-			body = strings.ReplaceAll(body, old, canonical)
-		}
-		g.initWrites[i].body = body
-	}
 }
 
 // loweredID reports whether id was assigned by NoReactivity lowering, which
@@ -2917,12 +2786,8 @@ func walkStmtExprs(s ir.Stmt, walk func(ir.Expr)) {
 	}
 }
 
-// exprDeps remaps through dataRenames inside a component scope, so deps use
-// the promoted field names.
 func (g *htmlGen) exprDeps(expr ir.Expr) map[string]bool {
-	varDeps := g.dt.ExprDeps(g.currentComp, expr)
-	names := varSetToNames(varDeps)
-	return g.remapMutated(names, g.dataRenames)
+	return varSetToNames(g.dt.ExprDeps(g.currentComp, expr))
 }
 
 func varSetToNames(vs map[ir.Symbol]struct{}) map[string]bool {
@@ -2994,21 +2859,6 @@ func (r *varRegistry) namesToVarSet(names map[string]bool) map[ir.Symbol]struct{
 		out[r.lookup(n)] = struct{}{}
 	}
 	return out
-}
-
-func (g *htmlGen) remapMutated(mutated map[string]bool, renames map[string]string) map[string]bool {
-	if len(renames) == 0 {
-		return mutated
-	}
-	remapped := make(map[string]bool, len(mutated))
-	for name := range mutated {
-		if renamed, ok := renames[name]; ok {
-			remapped[renamed] = true
-		} else {
-			remapped[name] = true
-		}
-	}
-	return remapped
 }
 
 // scopedJC clones g.ctx with the live locals, renames and EventVar, so
@@ -3230,7 +3080,6 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 	for _, n := range savedLocal {
 		delete(g.ctx.Locals, n)
 	}
-	mutated = g.remapMutated(mutated, g.dataRenames)
 	g.handlers = append(g.handlers, eventHandler{
 		elemID: elemID,
 		event:  event,
@@ -3434,15 +3283,6 @@ func (g *htmlGen) resolveJSToString(js string) string {
 			return s
 		}
 	}
-	for i := range g.componentParams {
-		if g.componentParams[i].name == js {
-			if resolved := g.resolveJSToString(g.componentParams[i].value); resolved != "" {
-				g.componentParams[i].staticOnly = true
-				return resolved
-			}
-			return ""
-		}
-	}
 	if parts := splitJSConcat(js); len(parts) > 1 {
 		var sb strings.Builder
 		for _, p := range parts {
@@ -3605,4 +3445,18 @@ func (g *htmlGen) bodyCalls() []string {
 	}
 	collect(pkg.Body)
 	return out
+}
+
+// callsUnfoldable reports whether expr calls a func that is not pure, whose
+// value the build therefore could not have written into the markup.
+func callsUnfoldable(expr ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(expr, func(e ir.Expr) error {
+		if c, ok := e.(*ir.Call); ok && c.Func != nil && c.Func.Purity != ir.PurityPure {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

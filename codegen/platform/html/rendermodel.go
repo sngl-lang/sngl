@@ -172,9 +172,8 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt) {
 // otherwise HoleAttr). A node carrying a backend event handler is wrapped in a
 // server-action <form>.
 func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
-	// Windows and zero-visual nodes are skipped (handled at route level).
-	switch n.Name {
-	case "window", "timer":
+	// A window is handled at route level.
+	if ir.IsWindowNode(n) {
 		return
 	}
 
@@ -334,7 +333,7 @@ func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 	var out []*ir.Arg
 	for i := range n.Props {
 		p := &n.Props[i]
-		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp {
+		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp || p.Name == classStyleProp || p.Name == classStyleDarkProp {
 			continue
 		}
 		out = append(out, p)

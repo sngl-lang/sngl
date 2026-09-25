@@ -1,0 +1,46 @@
+# A node a platform has nothing to render with fails the build, on every
+# platform, naming what the program wrote, what that resolved to, and where.
+#
+# html's raw elements are the case that found it: bubbletea and fyne dropped
+# the element and its whole subtree in silence, android panicked, and gtk4
+# refused but named the bare tag -- `"ul"`, which is neither the spelling at
+# the call site nor the declaration it reached.
+
+! sngl generate --platform=bubbletea --lang=go --out=bt main.sngl
+stderr 'component "html.ul" has no bubbletea implementation'
+stderr 'main.sngl:5:9: component'
+stderr 'element in sngl:platform/html, reached through its #\[wildcard\]'
+! stderr 'panic'
+
+! sngl generate --platform=fyne --lang=go --out=fy main.sngl
+stderr 'component "html.ul" has no fyne implementation'
+stderr 'main.sngl:5:9: component'
+stderr 'element in sngl:platform/html, reached through its #\[wildcard\]'
+! stderr 'panic'
+
+! sngl generate --platform=gtk4 --lang=go --out=gt main.sngl
+stderr 'component "html.ul" has no gtk4 implementation'
+stderr 'main.sngl:5:9: component'
+stderr 'element in sngl:platform/html, reached through its #\[wildcard\]'
+! stderr 'panic'
+
+! sngl generate --platform=android --lang=kotlin --out=an main.sngl
+stderr 'component "html.ul" has no android implementation'
+stderr 'main.sngl:5:9: component'
+stderr 'element in sngl:platform/html, reached through its #\[wildcard\]'
+! stderr 'panic'
+
+# html is the platform that declares the element, and renders all of it.
+sngl generate --platform=html --lang=none --out=ht main.sngl
+grep 'item one' ht/index.html
+
+-- main.sngl --
+import ui "sngl:ui"
+import "sngl:platform/html"
+
+ui.window(title="t") {
+    html.ul {
+        html.li(textContent="item one")
+    }
+    ui.text(value="after")
+}

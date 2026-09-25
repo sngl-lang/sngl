@@ -27,8 +27,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 		perWindow[i] = w.bytes
 	}
 
-	ctx := c.ctx
-	windows := ctx.Windows()
+	windows := c.routeWindows
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
 	for i, win := range windows {

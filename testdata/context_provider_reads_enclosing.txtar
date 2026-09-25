@@ -50,15 +50,12 @@ import (
 
 // Model is the Bubble Tea model for this SNGL UI.
 type Model struct {
-	__ctx_depth__inst0 int
-
 	width, height int
 }
 
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{}
-	m.__ctx_depth__inst0 = 0
 	return m
 }
 
@@ -92,10 +89,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var parts []string
 	var part0 string
-	part0 = lipgloss.NewStyle().Render(fmt.Sprint(("one=" + fmt.Sprint((m.__ctx_depth__inst0 + 1)))))
+	part0 = lipgloss.NewStyle().Render(fmt.Sprint("one=1"))
 	parts = append(parts, part0)
 	var part1 string
-	part1 = lipgloss.NewStyle().Render(fmt.Sprint(("two=" + fmt.Sprint(((m.__ctx_depth__inst0 + 1) + 1)))))
+	part1 = lipgloss.NewStyle().Render(fmt.Sprint("two=2"))
 	parts = append(parts, part1)
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
@@ -125,30 +122,17 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<span id="__n0" data-sngl-id="__n0">
-</span>
-<span id="__n1" data-sngl-id="__n1">
-</span>
+<span>one=1</span>
+<span>two=2</span>
 
 <script>
 (() => {
   // sngl-entry.js
   var state = {};
-  var __ctx_depth__inst0 = 0;
-  function String(v) {
-    return "" + v;
-  }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  var __n1 = document.querySelector('[data-sngl-id="__n1"]');
-  function __sngl_init() {
-    __n0.textContent = "one=" + String(__ctx_depth__inst0 + 1);
-    __n1.textContent = "two=" + String(__ctx_depth__inst0 + 1 + 1);
-  }
-  __sngl_init();
 })();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:634d63d8a67c854c42685e30b3d02a1e
+pass sha256:6d7f1c3ff78d103be26f81cbd8303578
 -- run/none/html --
-pass sha256:cf01642dceebe4471b14edaf8c3271ed
+pass sha256:b8dd7bbf4a58a343ee7dac72e28d604e

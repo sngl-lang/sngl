@@ -123,7 +123,11 @@ func (w *keyWalk) stmts(stmts []ir.Stmt, prefix string) {
 			w.stmts(n.Else, p+":else")
 
 		case *ir.SlotInst:
-			w.stmts(n.Children, join(fmt.Sprintf("slot@%d", next("slot"))))
+			p := join(fmt.Sprintf("slot@%d", next("slot")))
+			w.stmts(n.Children, p)
+			for _, name := range sortedSlotNames(n.Slots) {
+				w.stmts(n.Slots[name].Body, p+"/slot:"+name)
+			}
 
 		case *ir.ErrorBoundary:
 			w.stmts(n.Children, join(fmt.Sprintf("boundary@%d", next("boundary"))))

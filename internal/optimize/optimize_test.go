@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	"git.duckfam.us/jonathan/sngl/ast"
+	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/checker"
 	"git.duckfam.us/jonathan/sngl/internal/parser"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -345,30 +346,16 @@ component main node {
 	Row(entries=items)
 }
 `
-	pkg, doc := checkAndOptimize(t, src, "html", "js")
-	out := formatDoc(doc)
-
-	// The call-site Row(entries=items) must inline + unroll into static
-	// text nodes. The Row component's *declaration* may still hold the
-	// for-loop (it's a generic template); only main matters.
-	var mainComp *ir.Component
-	for _, c := range pkg.Components {
-		if c.Name == "main" {
-			mainComp = c
-		}
+	pkg, _ := checkAndOptimize(t, src, "html", "js")
+	pkg.RootComponent = "main"
+	docs := drainDocuments(t, pkg, &Config{Platform: "html", Language: "js"})
+	if len(docs) != 1 {
+		t.Fatalf("got %d documents, want main's one", len(docs))
 	}
-	if mainComp == nil {
-		t.Fatal("expected component main")
-	}
-	assertNoFor(t, "main", mainComp.Body)
+	assertNoFor(t, "main", docs[0].Body)
 
-	if !strings.Contains(out, `"a"`) || !strings.Contains(out, `"b"`) {
-		t.Errorf("expected literal \"a\" and \"b\" in output:\n%s", out)
-	}
-
-	// Confirm both unrolled text nodes show up directly in main.
 	var values []string
-	for _, s := range mainComp.Body {
+	for _, s := range docs[0].Body {
 		if ni, ok := s.(*ir.NodeInst); ok && ni.Name == "text" {
 			for _, p := range ni.Props {
 				if p.Name == "value" {
@@ -382,6 +369,18 @@ component main node {
 	if len(values) != 2 || values[0] != "a" || values[1] != "b" {
 		t.Errorf("expected unrolled text values [a, b] in main, got %v", values)
 	}
+}
+
+func drainDocuments(t *testing.T, pkg *ir.Package, cfg *Config) []*codegen.Document {
+	t.Helper()
+	var out []*codegen.Document
+	for doc, err := range Documents(pkg, cfg) {
+		if err != nil {
+			t.Fatalf("documents: %v", err)
+		}
+		out = append(out, doc)
+	}
+	return out
 }
 
 // TestFoldDoesNotCollapseDerefOfAddrOfConst ensures the const folder leaves
@@ -521,13 +520,13 @@ func checkAndOptimizeFS(t *testing.T, fsys fs.FS, entry, platform, lang string) 
 
 // TestOptimize_ImportedComponentForUnrolls exercises bug #2: a for-loop
 // inside an imported component, iterating over a const declared in that
-// imported package, must unroll at compile time. Today the optimizer
-// never visits imports' Components, so the for-loop survives.
+// imported package, must fold against that package's const. The optimizer
+// used never to visit imports' Components, so the loop kept naming a const
+// the output does not declare.
 //
-// The target is `--lang none`, because unrolling is now that target's answer
-// alone: a language target emits the loop and lets its own compiler decide
-// (evalCtx.unrollsLoops). What is under test here is that the imported
-// component is *visited*, which the surviving loop is the evidence of.
+// The loop itself survives: unrolling is Documents' job, after lowering. What
+// is under test here is that the imported component is *visited*, which the
+// loop's head folded to the list is the evidence of.
 func TestOptimize_ImportedComponentForUnrolls(t *testing.T) {
 	fsys := fstest.MapFS{
 		"main.sngl": &fstest.MapFile{Data: []byte(`
@@ -550,8 +549,6 @@ component List() node {
 	}
 	pkg := checkAndOptimizeFS(t, fsys, "main.sngl", "html", "none")
 
-	// Find the imported lib package and assert its List component body has
-	// no surviving *ir.For.
 	var list *ir.Component
 	for _, imp := range pkg.Imports {
 		if imp.Pkg == nil {
@@ -567,23 +564,23 @@ component List() node {
 	if list == nil {
 		t.Fatal("expected to find imported component List")
 	}
-	assertNoFor(t, "lib.List", list.Body)
-
-	// And the unrolled NodeInsts should be plain text(value="x")/text(value="y").
+	if len(list.Body) != 1 {
+		t.Fatalf("lib.List: got %d statements, want the loop", len(list.Body))
+	}
+	loop, ok := list.Body[0].(*ir.For)
+	if !ok {
+		t.Fatalf("lib.List: got %T, want the loop", list.Body[0])
+	}
 	var values []string
-	for _, s := range list.Body {
-		if ni, ok := s.(*ir.NodeInst); ok && ni.Name == "text" {
-			for _, p := range ni.Props {
-				if p.Name == "value" {
-					if lit, ok := p.Value.(*ir.Literal); ok {
-						values = append(values, lit.Value)
-					}
-				}
+	if lit, ok := loop.Iter.(*ir.ListLit); ok {
+		for _, e := range lit.Elems {
+			if s, ok := e.(*ir.Literal); ok {
+				values = append(values, s.Value)
 			}
 		}
 	}
 	if len(values) != 2 || values[0] != "x" || values[1] != "y" {
-		t.Errorf("expected text values [x, y], got %v", values)
+		t.Errorf("expected the loop to walk [x, y], got %v\n%s", values, formatDoc(ir.Convert(pkg)))
 	}
 }
 

@@ -15,4 +15,4 @@ The Reference section is the authoritative API surface for SNGL. Use it when you
 - **[Language Specification](specification.html)** — the formal grammar and semantics of `.sngl`.
 - **[Effective SNGL](effective-sngl.html)** — patterns and idioms for writing maintainable SNGL.
 
-If you're new, start with the [Learn](/learn.html) section instead — it walks the language from the basics.
+If you're new, start with the [Learn](/learn/index.html) section instead — it walks the language from the basics.

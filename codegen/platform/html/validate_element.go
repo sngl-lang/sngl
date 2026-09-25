@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -43,6 +44,39 @@ func validateRawElements(pkg *ir.Package) error {
 				bad = fmt.Errorf("%s: %q must be a map literal: each attribute is written by name, and these names are not known until it runs",
 					nodePos(n), attrsProp)
 				return nil
+			}
+		}
+		return nil
+	})
+	return bad
+}
+
+// firstUnrenderedNode reports a library node html has nothing to render with,
+// whether it is still a node or was flattened into a createNode: html writes
+// any other name out as a tag, so `<vbox>` would reach the page. What html
+// renders from a library is its own package's elements and a canvas; a
+// library declaration the lowering copied into the package is a component.
+func firstUnrenderedNode(pkg *ir.Package) error {
+	var bad error
+	declines := func(c *ir.Component) bool {
+		return c != nil && c.Stdlib && c.Pkg != "sngl:platform/html" && !slices.Contains(pkg.Components, c)
+	}
+	ir.WalkStmts(pkg, func(s ir.Stmt) error {
+		if bad != nil {
+			return nil
+		}
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if declines(n.Component) && !ir.IsWindowNode(n) && !ir.IsShapeContainer(n) {
+				bad = codegen.UnimplementedNode(n.Component, n.AST, n.Name, "html")
+			}
+		case *ir.LocalVar:
+			if n.NodeAST == nil || n.CanvasNode != nil || n.Type == nil || n.Type.Kind != ir.TypeComponent {
+				return nil
+			}
+			comp, _ := n.Type.Decl.(*ir.Component)
+			if declines(comp) {
+				bad = codegen.UnimplementedNode(comp, n.NodeAST, n.Name, "html")
 			}
 		}
 		return nil

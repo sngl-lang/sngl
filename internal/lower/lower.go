@@ -59,6 +59,7 @@ var passes = []pass{
 	passLambda,
 	passNoListLambdas,
 	passToggle,
+	passUnprovidedContext,
 	passContext,
 	passInlinePure,
 	passNoInlineComponents,
@@ -134,13 +135,6 @@ type Options struct {
 	// this is how it says so. Nil means it claims none.
 	ClaimsIntrinsic func(id string) bool
 
-	// localComponents is the set the package itself declares, captured before
-	// Lower widens pkg.Components to everything this build renders. Inlining
-	// asks a different question from the rest of the pipeline -- whose
-	// declaration is this? -- and that question is still about the package.
-	// Set by Lower; a caller's value is overwritten.
-	localComponents map[*ir.Component]bool
-
 	// instSeq numbers the `__instN` suffix each substituted component's state
 	// is renamed with. Shared, because two passes substitute into one emitted
 	// namespace -- passInlinePure takes a platform override, passNoInlineComponents
@@ -201,7 +195,6 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	// list means at the end is what this build renders.
 	added := reachableForeignComponents(pkg, local, opts.Platform)
 	pkg.Components = append(slices.Clone(declared), added...)
-	opts.localComponents = local
 	addedSet := make(map[*ir.Component]bool, len(added))
 	for _, c := range added {
 		addedSet[c] = true
@@ -382,8 +375,8 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 	return out
 }
 
-// statefulOverrideFor reports whether c's platform extension body for the
-// platform being built declares state of its own.
+// overrideNeedsDeclFor reports whether c's platform extension body for the
+// platform being built needs c on the lowered list.
 //
 // Asked while judging whether a component with no body yet is a primitive.
 // This runs before passPlatformExtensionBody, so an overridden stdlib
@@ -391,15 +384,24 @@ func reachableForeignFuncs(pkg *ir.Package) []*ir.Func {
 // its declaration on the list, because that is what gets a body lowered and
 // what the factory emitter reads.
 //
-// State, not merely an override: a stateless override always inlines into its
-// caller, so it never needs a declaration of its own, and widening every
-// overridden component in lowers bodies nothing renders.
-func statefulOverrideFor(c *ir.Component, platform string) bool {
+// State, or a context read, and not merely an override: a stateless override
+// always inlines into its caller, and widening every overridden component in
+// lowers bodies nothing renders. A read counts because passContext rewrites
+// reads only in listed components, and one it missed panicked the emitter.
+func overrideNeedsDeclFor(c *ir.Component, platform string) bool {
 	if c == nil || platform == "" || c.PlatformOverrides == nil {
 		return false
 	}
 	ov, ok := c.PlatformOverrides[platform]
-	return ok && len(ov.Vars) > 0
+	if !ok {
+		return false
+	}
+	if len(ov.Vars) > 0 {
+		return true
+	}
+	reads := map[*ir.Context]bool{}
+	collectContextReads(ov.Stmts, reads)
+	return len(reads) > 0
 }
 
 // reachableForeignComponents collects, in first-seen order, every component an
@@ -423,7 +425,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		// bodiless here. Judged so, it never joined the list, so a node of it
 		// that survived inlining had no declaration for a backend to emit --
 		// html called `__cf_timer(...)`, a factory nothing defined.
-		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !statefulOverrideFor(c, platform) {
+		if len(c.Body) == 0 && len(c.Vars) == 0 && len(c.Funcs) == 0 && !overrideNeedsDeclFor(c, platform) {
 			return
 		}
 		seen[c] = true
@@ -444,6 +446,9 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 						walk(h.Func.Block)
 					}
 				}
+				for _, name := range ir.SlotNames(n.Slots) {
+					walk(n.Slots[name].Body)
+				}
 			case *ir.If:
 				walk(n.Body)
 				walk(n.Else)
@@ -452,6 +457,9 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 				walk(n.Else)
 			case *ir.SlotInst:
 				walk(n.Children)
+				for _, name := range ir.SlotNames(n.Slots) {
+					walk(n.Slots[name].Body)
+				}
 			case *ir.ErrorBoundary:
 				walk(n.Children)
 			case *ir.ContextProvider:

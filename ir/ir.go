@@ -46,6 +46,10 @@ type Package struct {
 	Macros  []*Func
 	Windows []*Window
 	Outputs []*Output
+	// BuildConsts are the consts only a build reads: on a target that unrolls
+	// its views one document at a time, a const a view loop walks is a value
+	// that loop is unrolled against, and no backend declares it.
+	BuildConsts []*Var `json:",omitempty"`
 	// RootComponent is the component a test harness isolated as the whole
 	// program, having cleared the body and the windows around it. Empty for
 	// every ordinary build, where a window is the root and a component is
@@ -810,6 +814,30 @@ type SlotDecl struct {
 	// a caller writes bare, rather than being populated by name. At most one
 	// per component, and a component without one accepts no children at all.
 	Rest bool `json:",omitempty"`
+	// Slots are the invocation list's component-typed entries: content an
+	// insertion populates by name and a population binds by position. Index
+	// is where an entry sits in its slot's invocation list, which Params and
+	// Slots each hold only their half of.
+	Slots []*SlotDecl `json:",omitempty"`
+	Index int         `json:",omitempty"`
+}
+
+// Arity is how many names a population of the slot binds.
+func (s *SlotDecl) Arity() int { return len(s.Params) + len(s.Slots) }
+
+// EntryAt is the component entry at position i of the invocation list, or nil
+// when i is a value; value is then that value's index into Params.
+func (s *SlotDecl) EntryAt(i int) (entry *SlotDecl, value int) {
+	value = i
+	for _, e := range s.Slots {
+		if e.Index == i {
+			return e, -1
+		}
+		if e.Index < i {
+			value--
+		}
+	}
+	return nil, value
 }
 
 // SlotCard is how many nodes a slot accepts.

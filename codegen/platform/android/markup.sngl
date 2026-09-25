@@ -42,9 +42,10 @@ component Flow(
 
 // One run of words. `text` is the literal a leaf carries, `spanStyle` what
 // this run says about its own appearance, `href` where it leads and `kind`
-// what a `token` says it is.
+// what a `token` says it is. `color` is what a palette the program set says
+// instead, and wins over the scheme's role where it says anything.
 //
-// All four are read off the node rather than emitted as Compose arguments:
+// All five are read off the node rather than emitted as Compose arguments:
 // which fields a `SpanStyle` literal set is a question about the literal, and
 // a prop is opaque to the `if` that would ask it.
 #[intrinsic("android:Span")]
@@ -53,6 +54,7 @@ component Span(
     href string,
     spanStyle markup.SpanStyle,
     kind markup.Token,
+    color color,
     content ...component markup.span,
 ) markup.span
 
@@ -84,7 +86,7 @@ component markup.link[platform] {
 }
 
 component markup.token[platform] {
-    Span(kind=kind) {
+    Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
         content
     }
 }

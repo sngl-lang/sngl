@@ -14,6 +14,8 @@ import (
 type constDecl struct {
 	name  string
 	value string // already spelled as SNGL source
+	typ   string // the SNGL type the scalar spells
+	raw   string // the scalar as YAML wrote it
 }
 
 // splitFrontmatter peels a leading `---` YAML block off src and returns its
@@ -60,37 +62,39 @@ func splitFrontmatter(src []byte) ([]constDecl, []byte, int, error) {
 		if !isIdent(name) {
 			return nil, nil, 0, fmt.Errorf("frontmatter key %q is not a SNGL identifier", name)
 		}
-		lit, ok := scalarLiteral(val)
+		lit, typ, ok := scalarLiteral(val)
 		if !ok {
 			// A list or a nested mapping has no const to be, and inventing a
 			// type for one is the importer deciding what the document meant.
 			return nil, nil, 0, fmt.Errorf("frontmatter key %q is not a scalar", name)
 		}
-		out = append(out, constDecl{name: name, value: lit})
+		out = append(out, constDecl{name: name, value: lit, typ: typ, raw: val.Value})
 	}
 	return out, body, lines, nil
 }
 
 // scalarLiteral spells a YAML scalar as SNGL source. A bool and a number keep
 // their type; everything else is the string it was written as.
-func scalarLiteral(n *yaml.Node) (string, bool) {
+func scalarLiteral(n *yaml.Node) (lit, typ string, ok bool) {
 	if n.Kind != yaml.ScalarNode {
-		return "", false
+		return "", "", false
 	}
 	switch n.Tag {
 	case "!!bool":
 		var b bool
 		if err := n.Decode(&b); err != nil {
-			return "", false
+			return "", "", false
 		}
 		if b {
-			return "true", true
+			return "true", "bool", true
 		}
-		return "false", true
-	case "!!int", "!!float":
-		return n.Value, true
+		return "false", "bool", true
+	case "!!int":
+		return n.Value, "int", true
+	case "!!float":
+		return n.Value, "float", true
 	}
-	return `"` + snglast.EscapeString(n.Value, snglast.StyleDouble) + `"`, true
+	return `"` + snglast.EscapeString(n.Value, snglast.StyleDouble) + `"`, "string", true
 }
 
 func isIdent(s string) bool {

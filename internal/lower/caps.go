@@ -61,11 +61,22 @@ type Features struct {
 	// out as markup -- html, in both its modes -- and then a `for` over a
 	// compile-time-constant iterable has nowhere to run: nothing iterates it,
 	// and it renders its body once with its variable bound to nothing.
-	// The optimizer reads it to decide whether to unroll such a loop.
+	// Withholding it is what makes the build unroll such loops after lowering
+	// (optimize.Documents), and what shake reads to keep a const only they walk
+	// as a build value.
 	//
 	// Unlike every other capability here it gates no pass: what a target
 	// declares about itself is a wider question than which passes run for it.
 	ViewStatements bool
+
+	// InstanceState says the platform keeps a component instance's own state --
+	// in a record, a closure, a composable's `remember` -- so a component with
+	// state of its own that is built at run time holds it per instance.
+	// Withheld, passNoInlineComponents splices such a component where it is
+	// written, and under a `for` gives each of its vars one cell per copy, keyed
+	// by the copy's position. bubbletea withholds it: an Elm model keeps every
+	// cell in itself, and a runtime component there is a render function.
+	InstanceState bool
 
 	// InsertBefore says the platform's container can put a child at a
 	// position, not only at the end -- so a keyed reconciliation may move one
@@ -146,6 +157,7 @@ func NoLowering() Features {
 		ImplicitRecv:     true,
 		StructSpread:     true,
 		ViewStatements:   true,
+		InstanceState:    true,
 		Effects:          true,
 	}
 }
@@ -193,6 +205,7 @@ func (f Features) String() string {
 		{"ImplicitRecv", f.ImplicitRecv},
 		{"StructSpread", f.StructSpread},
 		{"ViewStatements", f.ViewStatements},
+		{"InstanceState", f.InstanceState},
 		{"InsertBefore", f.InsertBefore},
 		{"AsyncPost", f.AsyncPost},
 		{"AsyncSpawn", f.AsyncSpawn},

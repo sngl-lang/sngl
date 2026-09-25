@@ -342,7 +342,7 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 	// `range` as a package function, and the by-name paths below would fold a
 	// program's own function of that name too.
 	if call.Func != nil && call.Func.Intrinsic != "" {
-		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.unrollsLoops()); ok {
+		if v, ok := evalIntrinsic(call.Func.Intrinsic, args, ctx.unroll); ok {
 			return v, true
 		}
 	}

@@ -1,0 +1,49 @@
+// A slot's component entry is what a call site specializes along with the rest
+// of a generic component's contract. `each` binds T once per call -- from `v`
+// in the first, from the default in the second -- and the entry `content` is
+// typed by it, in its arguments and in the family it accepts.
+//
+// Left generic, both halves went wrong at the call site: an int argument was
+// refused as `cannot use int as T` where T is int, and a circle reached a vbox
+// through the entry with nothing said, which html rendered as a `<draw>` element.
+
+import d "sngl:ui/draw"
+import . "sngl:ui"
+
+component each<T>(v T, item component(content component(x T) node) node) node {
+    vbox {
+        item() {
+            component content(x) {
+                text(value="got")
+            }
+        }
+    }
+}
+
+component shapes<T = d.shape>(item component(content component T) node) node {
+    vbox {
+        item() {
+            component content {
+                d.circle(cx=5, cy=5, r=4)
+            }
+        }
+    }
+}
+
+window {
+    var n = 1
+
+    each(v=1) {
+        component item(content) {
+            content(n)
+            content("one") // ERROR(check) "cannot use string as int for argument 1 of slot \"content\""
+        }
+    }
+    shapes {
+        component item(content) {
+            vbox { // ERROR(check) "expected node component in vbox, got the shape slot content"
+                content
+            }
+        }
+    }
+}

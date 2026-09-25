@@ -101,6 +101,15 @@ type ExprCtx struct {
 	// another -- and the two the lowering dispatches to by name (Root,
 	// Destroy) are neither. Verbatim is one spelling for the whole struct.
 	StateFieldsExported bool
+	// OuterReceiver is what a component instance record reaches the Model
+	// through, set inside the record's ctor and methods. A name the component
+	// does not declare -- package state, and the page's widgets and funcs -- is
+	// the Model's, and spelling it through StateReceiver named a field no
+	// record has. OuterNodes are the names of the page's widgets and synthesized
+	// cells; any other a node reference names is the record's own, a field
+	// derived from one of its nodes included.
+	OuterReceiver string
+	OuterNodes    map[string]bool
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -259,6 +268,8 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		StateReceiver:   ctx.StateReceiver,
 		// The naming policy travels with the receiver it applies to.
 		StateFieldsExported: ctx.StateFieldsExported,
+		OuterReceiver:       ctx.OuterReceiver,
+		OuterNodes:          ctx.OuterNodes,
 	}
 }
 
@@ -298,6 +309,13 @@ func IsComputed(f *ir.Func) bool {
 	// `func total() int { ... }`); a void block func (e.g. `increment()`)
 	// is an action handler, not a reactive property.
 	if f.AST.Body == nil && f.Return == nil {
+		return false
+	}
+	// A func that writes state is an action that happens to return a value.
+	// Emitted as a computed, fyne built its body with the getter emitter,
+	// which does not translate the updater the write needs: `__n0.Text = …`,
+	// a field no Go type has.
+	if f.Purity == ir.PurityMutates {
 		return false
 	}
 	n := len(f.Params)

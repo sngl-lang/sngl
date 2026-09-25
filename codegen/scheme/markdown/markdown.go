@@ -23,6 +23,8 @@ func init() {
 // synthetic filesystem holding one generated `.sngl` file, which the checker
 // then parses and checks like any other package.
 //
+// A directory, `md:./docs/`, is a site: see convertDir.
+//
 // An FS importer rather than a native one (the seam `go:` and `file:` use)
 // because what a document becomes is SNGL rather than typed declarations: the
 // generated package can be dumped and read, which is what makes a bad import
@@ -34,6 +36,12 @@ func (m *Importer) Scheme() string { return "md" }
 func (m *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
 	p, err := resolvePath(uri, dir)
 	if err != nil {
+		return nil, err
+	}
+	if info, err := os.Stat(p); err == nil && info.IsDir() {
+		return convertDir(os.DirFS(p), uri)
+	}
+	if err := checkSuffix(uri); err != nil {
 		return nil, err
 	}
 	src, err := os.ReadFile(p)
@@ -51,6 +59,16 @@ func (m *Importer) ResolveFS(uri, dir string) (fs.FS, error) {
 func (m *Importer) ResolveProjectFS(uri string, fsys fs.FS, _ string) (fs.FS, error) {
 	p, err := fsPath(uri)
 	if err != nil {
+		return nil, err
+	}
+	if info, err := fs.Stat(fsys, p); err == nil && info.IsDir() {
+		sub, err := fs.Sub(fsys, p)
+		if err != nil {
+			return nil, fmt.Errorf("md: %q: %w", uri, err)
+		}
+		return convertDir(sub, uri)
+	}
+	if err := checkSuffix(uri); err != nil {
 		return nil, err
 	}
 	src, err := fs.ReadFile(fsys, p)
@@ -74,8 +92,8 @@ func convertTo(src []byte, name string) (fs.FS, error) {
 // leaves the project -- an io/fs has no way to express a parent of its root,
 // so this is the same guard `file:` makes against an absolute path.
 func fsPath(uri string) (string, error) {
-	if err := checkSuffix(uri); err != nil {
-		return "", err
+	if uri == "" {
+		return "", fmt.Errorf("md: import needs a path")
 	}
 	p := path.Clean(uri)
 	if p == ".." || strings.HasPrefix(p, "../") || path.IsAbs(p) {
@@ -87,8 +105,8 @@ func fsPath(uri string) (string, error) {
 // resolvePath joins uri onto dir and refuses anything that leaves it, the
 // same guard `file:` applies: an import is part of the project being built.
 func resolvePath(uri, dir string) (string, error) {
-	if err := checkSuffix(uri); err != nil {
-		return "", err
+	if uri == "" {
+		return "", fmt.Errorf("md: import needs a path")
 	}
 	cleanDir, err := filepath.Abs(filepath.Clean(dir))
 	if err != nil {

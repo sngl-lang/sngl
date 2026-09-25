@@ -193,6 +193,7 @@ func (w *walker) stmt(s Stmt) {
 			w.expr(n.Args[i])
 		}
 		w.stmts(n.Children)
+		w.slots(n.Slots)
 	case *ErrorBoundary:
 		if n.Handler != nil {
 			w.fn(n.Handler.Func)

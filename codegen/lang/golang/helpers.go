@@ -266,6 +266,60 @@ func ComponentInstanceCtor(componentName string) string {
 // ComponentRootField is the field holding the node an instance renders as.
 const ComponentRootField = "Root"
 
+// InstanceModelField is the field an instance holds the Model it belongs to
+// in, which is how it reaches the page's state and widgets. Prefixed, because
+// a component may declare a var named anything else.
+const InstanceModelField = "__model"
+
+// PageNodes is the names the page holds as Model fields that an instance of
+// comp could reach: the vars and created nodes of every owner that is not a
+// component built at run time, less comp's own, since a synthesized name may
+// be spelled the same in both and in comp's scope means comp's.
+func PageNodes(pkg *ir.Package, comp *ir.Component) map[string]bool {
+	own := ownerNames(comp.Vars, comp.Body, comp.Funcs)
+	out := map[string]bool{}
+	for _, o := range ir.Owners(pkg) {
+		if o.Comp != nil && o.Comp.RuntimeInstance {
+			continue
+		}
+		for name := range ownerNames(o.Vars, o.Stmts(), o.Funcs) {
+			if !own[name] {
+				out[name] = true
+			}
+		}
+	}
+	return out
+}
+
+// ownerNames is the vars an owner declares and the nodes its body and funcs
+// create, by name.
+func ownerNames(vars []*ir.Var, body []ir.Stmt, funcs []*ir.Func) map[string]bool {
+	out := map[string]bool{}
+	for _, v := range vars {
+		out[v.Name] = true
+	}
+	collect := func(stmts []ir.Stmt) {
+		_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+			switch n := s.(type) {
+			case *ir.LocalVar:
+				out[n.Name] = true
+			case *ir.NodeInst:
+				if n.ID != "" {
+					out[n.ID] = true
+				}
+			}
+			return nil
+		})
+	}
+	collect(body)
+	for _, fn := range funcs {
+		if fn != nil {
+			collect(fn.Block)
+		}
+	}
+	return out
+}
+
 // ComponentDestroyMethod ends an instance's lifetime: effect teardowns, timer
 // cancels, whatever the host has to be given back. Not detachment, which
 // RemoveChild already says and which happens far more often.

@@ -299,8 +299,10 @@ func TestFyneStmtDispatch_ReactiveForRecurses(t *testing.T) {
 	}
 	tr := newFyneTranslator(gc, specsAt(map[string]*fyneSpec{"__n0": labelSpec(), "__n5": labelSpec()}), func(_, _ string) {}, nil, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
-	if !strings.Contains(got, "for _, item := range") {
-		t.Errorf("expected 'for _, item := range'; got:\n%s", got)
+	// The body never reads `item`, and Go refuses a loop variable declared
+	// and not used.
+	if !strings.Contains(got, "for range items {") {
+		t.Errorf("expected 'for range items {'; got:\n%s", got)
 	}
 	if !strings.Contains(got, "m.__n5 = widget.NewLabel") {
 		t.Errorf("expected widget.NewLabel inside For body; got:\n%s", got)

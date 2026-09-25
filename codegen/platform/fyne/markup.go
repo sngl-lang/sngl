@@ -54,6 +54,11 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		sp.CtorOnly = map[string]bool{"kind": true, "spanStyle": true}
 		sp.Setters["text"] = "SetText"
 		sp.Setters["href"] = "SetHref"
+		if c, ok := props["color"]; ok && !codegen.SpanStyleKnownColor(c) {
+			sp.Setters["color"] = "SetColor"
+		} else {
+			sp.CtorOnly["color"] = true
+		}
 	default:
 		return nil, fmt.Errorf("fyne: %s is not a markup primitive", tag)
 	}
@@ -77,6 +82,9 @@ func spanStyleChain(props map[string]ir.Expr) string {
 	b.WriteString("()")
 	if k := enumOrString(props["kind"]); k != "" {
 		fmt.Fprintf(&b, ".WithToken(%q)", k)
+	}
+	if c := colorFromExpr(props["color"]); c != nil && !codegen.SpanStyleUnsetColor(props["color"]) {
+		fmt.Fprintf(&b, ".WithRGBA(%d, %d, %d, %d)", c.R, c.G, c.B, c.A)
 	}
 	sl, ok := props["spanStyle"].(*ir.StructLit)
 	if !ok {

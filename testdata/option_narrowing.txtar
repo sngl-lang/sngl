@@ -297,14 +297,14 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
-  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
-  __renderSlot1(__slotAnchor_1);
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
   $0.addEventListener("click", function() {
     state.maybe__inst0 = null;
     __renderSlot0(__slotAnchor_0);
@@ -318,4 +318,4 @@ pass sha256:b58afac5c6f23100a1e30186c4486625
 -- run/kotlin/android --
 pass sha256:308fdecd4a4759c4860b97076e573f6d
 -- run/none/html --
-pass sha256:31a97a72cc7681c97e4eaf81dba6ae3c
+pass sha256:089288fc41f63f4dc37d2d3b02fb99e8

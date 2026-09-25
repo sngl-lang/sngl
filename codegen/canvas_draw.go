@@ -68,6 +68,26 @@ func Canvases(pkg *ir.Package) []Canvas {
 	if pkg == nil {
 		return nil
 	}
+	roots := [][]ir.Stmt{pkg.Body}
+	for _, w := range pkg.Windows {
+		if w != nil {
+			roots = append(roots, w.Children)
+		}
+	}
+	return canvasesOf(pkg, roots)
+}
+
+// CanvasesIn is Canvases for a target writing one document at a time: the
+// components' drawings and the package's funcs', and of the windows only the
+// one body it is writing.
+func CanvasesIn(pkg *ir.Package, body []ir.Stmt) []Canvas {
+	if pkg == nil {
+		return nil
+	}
+	return canvasesOf(pkg, [][]ir.Stmt{body})
+}
+
+func canvasesOf(pkg *ir.Package, roots [][]ir.Stmt) []Canvas {
 	// Not gated on pkg.UsesDrawShapes(): by now passShapeDraw has replaced the
 	// shapes with the statements that paint them, so the program uses none and
 	// the gate answers no for every drawing there is.
@@ -89,11 +109,8 @@ func Canvases(pkg *ir.Package) []Canvas {
 			owner(comp, comp.Body, comp.Funcs)
 		}
 	}
-	owner(nil, pkg.Body, nil)
-	for _, w := range pkg.Windows {
-		if w != nil {
-			owner(nil, w.Children, nil)
-		}
+	for _, body := range roots {
+		owner(nil, body, nil)
 	}
 	owner(nil, nil, pkg.Funcs)
 	for i := range out {
@@ -122,7 +139,16 @@ type CanvasDraws struct {
 }
 
 func NewCanvasDraws(pkg *ir.Package) *CanvasDraws {
-	cs := &CanvasDraws{all: Canvases(pkg)}
+	return newCanvasDraws(Canvases(pkg))
+}
+
+// NewCanvasDrawsIn is NewCanvasDraws over CanvasesIn.
+func NewCanvasDrawsIn(pkg *ir.Package, body []ir.Stmt) *CanvasDraws {
+	return newCanvasDraws(CanvasesIn(pkg, body))
+}
+
+func newCanvasDraws(all []Canvas) *CanvasDraws {
+	cs := &CanvasDraws{all: all}
 	// Deduped by node: a canvas reached both as a NodeInst and as a flattened
 	// local is one drawing. Nothing produces both today -- a target either
 	// flattens or does not -- and keying by node is what says so.

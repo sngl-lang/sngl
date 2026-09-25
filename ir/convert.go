@@ -282,11 +282,7 @@ func (c *converter) convertComponent(comp *Component) *ast.ComponentDecl {
 		props = append(props, c.convertEventDecl(e))
 	}
 	for _, s := range comp.Slots {
-		ct := &ast.ComponentType{Tree: c.convertSlotContent(s)}
-		for _, p := range s.Params {
-			ct.Params = append(ct.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
-		}
-		ct.HasParens = len(ct.Params) > 0
+		ct := c.slotType(s)
 		var typ ast.TypeExpr = ct
 		if s.Rest {
 			typ = &ast.VariadicType{Elem: ct}
@@ -645,7 +641,7 @@ func (c *converter) convertNodeInst(n *NodeInst) *ast.VisualNode {
 
 	if len(n.Children) > 0 || len(n.Slots) > 0 {
 		vn.Block = c.convertStmtBlock(n.Children)
-		vn.Block.Stmts = append(c.convertSlotContents(n), vn.Block.Stmts...)
+		vn.Block.Stmts = append(c.convertSlotContents(n.Slots), vn.Block.Stmts...)
 		vn.Block.IsMultiline = true
 	}
 	// A window that reads its route parameters wrote the population its
@@ -674,19 +670,35 @@ func (c *converter) convertTypeParams(ps []TypeParam) []ast.TypeParam {
 	return out
 }
 
+// slotType writes a slot's contract back out, its component entries in the
+// positions they were written at.
+func (c *converter) slotType(s *SlotDecl) *ast.ComponentType {
+	ct := &ast.ComponentType{Tree: c.convertSlotContent(s)}
+	for i := range s.Arity() {
+		if e, v := s.EntryAt(i); e != nil {
+			ct.Params = append(ct.Params, ast.FuncTypeParam{Name: e.Name, Type: c.slotType(e)})
+		} else if v < len(s.Params) {
+			p := s.Params[v]
+			ct.Params = append(ct.Params, ast.FuncTypeParam{Name: p.Name, Type: c.convertType(p.Type)})
+		}
+	}
+	ct.HasParens = len(ct.Params) > 0
+	return ct
+}
+
 // convertSlotContents renders what a call site supplied for each named slot: a
 // component declaration in the instantiation's block, which is what a
 // population is.
 // Sorted, because the IR holds them in a map and a dump has to be stable.
-func (c *converter) convertSlotContents(n *NodeInst) []ast.Stmt {
-	names := make([]string, 0, len(n.Slots))
-	for name := range n.Slots {
+func (c *converter) convertSlotContents(slots map[string]*SlotContent) []ast.Stmt {
+	names := make([]string, 0, len(slots))
+	for name := range slots {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	out := make([]ast.Stmt, 0, len(names))
 	for _, name := range names {
-		sc := n.Slots[name]
+		sc := slots[name]
 		cd := &ast.ComponentDecl{Name: name, Body: c.convertStmtBlock(sc.Body)}
 		cd.Body.IsMultiline = true
 		for _, p := range sc.Params {
@@ -800,8 +812,10 @@ func (c *converter) convertSlotInst(s *SlotInst) *ast.VisualNode {
 	for _, a := range s.Args {
 		vn.Args.Args = append(vn.Args.Args, ast.Arg{Value: c.convertExpr(a)})
 	}
-	if len(s.Children) > 0 {
+	if len(s.Children) > 0 || len(s.Slots) > 0 {
 		vn.Block = c.convertStmtBlock(s.Children)
+		vn.Block.Stmts = append(c.convertSlotContents(s.Slots), vn.Block.Stmts...)
+		vn.Block.IsMultiline = true
 	}
 	return vn
 }
