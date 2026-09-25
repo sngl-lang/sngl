@@ -23,6 +23,14 @@ const maxCallDepth = 100
 type LambdaValue struct {
 	fn  *ir.Func
 	env *Env
+	// ctx is the provided values where the function value was made, which its
+	// body reads wherever it is later called -- the answer passContext gives,
+	// since a call through a value cannot know what to pass.
+	ctx map[*ir.Context]any
+}
+
+func newLambda(fn *ir.Func, env *Env) *LambdaValue {
+	return &LambdaValue{fn: fn, env: env, ctx: capturedContext(env)}
 }
 
 // call invokes the lambda with the given values.
@@ -43,7 +51,7 @@ func (lv *LambdaValue) Call(args []any) (any, error) {
 			child.Set(p, args[i])
 		}
 	}
-	res, err := child.execBlockForResult(lv.fn.Block)
+	res, err := child.underContext(lv.ctx, func() (any, error) { return child.execBlockForResult(lv.fn.Block) })
 	lv.env.RebindFrom(child)
 	return res, err
 }
@@ -55,7 +63,7 @@ func (lv *LambdaValue) CallWithEnv(env *Env, args []any) (any, error) {
 			env.Set(p, args[i])
 		}
 	}
-	return env.execBlockForResult(lv.fn.Block)
+	return env.underContext(lv.ctx, func() (any, error) { return env.execBlockForResult(lv.fn.Block) })
 }
 
 // unitValue is the runtime representation of a unit value: a magnitude per
@@ -947,11 +955,11 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 	case *ir.Spread:
 		return env.Eval(n.Operand)
 	case *ir.Lambda:
-		return &LambdaValue{fn: n.Func, env: env}, nil
+		return newLambda(n.Func, env), nil
 	case *ir.ContextRead:
 		return env.ContextVal(n.Ref), nil
 	case *ir.Closure:
-		return &LambdaValue{fn: n.Func, env: env}, nil
+		return newLambda(n.Func, env), nil
 	}
 	if e == nil {
 		return nil, fmt.Errorf("cannot evaluate <nil> expression")
@@ -1144,6 +1152,9 @@ func (env *Env) lookup(sym ir.Symbol) (any, error) {
 		if effective := len(fn.Params); effective == 0 ||
 			(effective == 1 && fn.Params[0].Receiver) {
 			return env.EvalUserFunc(fn, nil)
+		}
+		if fn.Receiver == "" {
+			return newLambda(fn, env), nil
 		}
 		return nil, fmt.Errorf("function %q requires arguments", fn.Name)
 	}
@@ -1786,7 +1797,10 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
 						handlerEnv.SetReceiver(owner)
 					}
-					return handlerEnv.runEventHandler(h, call.Args, event)
+					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
+					return handlerEnv.underContext(provided, func() (any, error) {
+						return handlerEnv.runEventHandler(h, call.Args, event)
+					})
 				}
 			}
 			if explicitEvent {
@@ -2743,4 +2757,21 @@ func (env *Env) pushContext(ctx *ir.Context, value ir.Expr) (func(), error) {
 		}
 		env.Locale = prevLocale
 	}, nil
+}
+
+// underContext runs fn with vals provided over whatever env already holds.
+// A handler or an effect runs after the mount that placed it has unwound
+// every provider, so it carries the values it was mounted under and is run
+// with them here -- which is what a lowered target's threading gives it.
+func (env *Env) underContext(vals map[*ir.Context]any, fn func() (any, error)) (any, error) {
+	if len(vals) == 0 {
+		return fn()
+	}
+	prev, prevLocale := env.ContextVals, env.Locale
+	env.ContextVals = maps.Clone(prev)
+	for ctx, v := range vals {
+		env.SetContext(ctx, v)
+	}
+	defer func() { env.ContextVals, env.Locale = prev, prevLocale }()
+	return fn()
 }

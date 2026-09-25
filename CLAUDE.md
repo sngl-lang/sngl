@@ -271,6 +271,43 @@ JavaScript it spread `async` from the arrow up through the settle. The closure's
 own `ir.Func` is coloured in its own right, which is what makes the descent
 redundant as well as wrong.
 
+## Contexts
+
+A context is **dynamically scoped**: a read answers the nearest provider the
+*running* code is under, and where none is, the default. That includes a read
+inside a function — `func show() => "{depth}"` called under `depth(5) { … }`
+reads 5 and called outside it reads the default — whether the call is in a
+view body, a handler, an effect, another function or the function itself, and
+a component's method is a function like any other. A handler runs under the
+providers it was written beneath, though it fires after they have unwound.
+
+`passContext` (`internal/lower/context.go`) states it. Every function that
+transitively reads a context (`contextFuncs`, reachability to a fixed point)
+takes `__ctx_<name>` as a hidden parameter, and every call passes the value
+active where it is written — a provider's, the caller's own parameter, the
+component's entry value, or the default at a root. A test function is a root
+and is not threaded: the harness calls it with the parameters it declares, and
+`t.setContext` acts as a provider over the statements after it. The optimizer
+does not interpret such a function before the pass (`readsContext`), since its
+interpreter would answer the default; after, the call folds from its argument.
+
+**A function value is bound where it is taken.** `var f = show` and a lambda
+are what the program holds, and a call through one cannot know which function
+it holds, so it has nothing to pass: `funcValueUnder` wraps a named function
+taken as a value in a lambda passing the values active there, and a lambda's
+body is lowered where it is written. The interpreter agrees by capturing the
+provided values when a `LambdaValue` is made. Passing the invoker's values
+instead would need every function type to carry the contexts, which a host
+callback cannot supply.
+
+The interpreter is dynamic by construction — a provider pushes onto the scope
+for its subtree — so what it has to carry explicitly is what runs after the
+mount: a mounted node and an effect keep the values they were mounted under
+(`Node.Context`, `MountedEffect.Context`) and a handler runs under them
+(`underContext`).
+`testdata/context_read_in_user_func.txtar` and
+`cmd/sngl/testdata/context_read_in_user_func.txt` are the two halves.
+
 ## Build & Test Commands
 
 ```bash

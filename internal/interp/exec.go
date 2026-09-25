@@ -199,7 +199,17 @@ func (env *Env) Exec(s ir.Stmt) error {
 	case *ir.SlotInst:
 		return nil
 	case *ir.ContextProvider:
-		panic(fmt.Sprintf("testrunner.Exec: ContextProvider should be lowered before exec: %#v", n))
+		restore, err := env.pushContext(n.Ref, n.Value)
+		defer restore()
+		if err != nil {
+			return err
+		}
+		for _, child := range n.Children {
+			if err := env.Exec(child); err != nil {
+				return err
+			}
+		}
+		return nil
 	case *ir.CanvasRedrawStmt:
 		return nil
 	default:

@@ -16,7 +16,7 @@ import (
 //
 // For COMPONENTS in Reach(ctx) (StructComponents path): a synthesized
 // *ir.Var named __ctx_<name> is appended to comp.Vars with Init =
-// ctx.Default. Reads inside the component (body, vars, funcs, timers)
+// ctx.Default. Reads inside the component's body and vars
 // are rewritten to *ir.Ident with Sym = that *ir.Var, so the value
 // reads as Model state. When a parent component instantiates a child
 // under a provider, the parent threads __ctx_<name>=<value> as a
@@ -26,11 +26,10 @@ import (
 // instead. A component built at run time takes it as a prop
 // (contextProps).
 //
-// For FUNCTIONS in Reach(ctx) (StdlibContextParam path): a *ir.Param
-// is appended to fn.Params, and calls to those funcs are threaded with
-// a hidden arg from the enclosing scope's active value. Stdlib
-// wrappers (e.g. i18n.tr) live outside any Model and need an explicit
-// arg regardless of how the component itself stores its contexts.
+// For FUNCTIONS in Reach(ctx) -- the program's own, a component's methods,
+// and the library wrappers such as i18n.tr: a *ir.Param is appended to
+// fn.Params, and every call is threaded with the value active where it is
+// written, so a function reads the provider its caller runs under.
 //
 // It must run BEFORE passInlinePure (provider rewrite assumes
 // un-inlined component boundaries) and BEFORE passReactivity
@@ -238,10 +237,40 @@ func hasBody(f *ir.Func) bool {
 	return len(f.Block) > 0
 }
 
+// contextFuncs is every function whose body passContext threads a context
+// into as a hidden parameter: the package's own, each component's methods, and
+// the library wrappers the program reaches. A test function is not one -- the
+// harness calls it with the parameters it declares, so it is a root the way a
+// window is.
+func contextFuncs(pkg *ir.Package, extraFuncs []*ir.Func) []*ir.Func {
+	var out []*ir.Func
+	add := func(fn *ir.Func) {
+		if hasBody(fn) && !fn.IsTest {
+			out = append(out, fn)
+		}
+	}
+	for _, fn := range pkg.Funcs {
+		add(fn)
+	}
+	for _, comp := range pkg.Components {
+		for _, fn := range comp.Funcs {
+			add(fn)
+		}
+	}
+	for _, fn := range extraFuncs {
+		add(fn)
+	}
+	return out
+}
+
 // computeReachability returns, for each Context, the sets of Components and
 // Funcs that transitively read that context (without an intervening provider
 // shadowing it). extraFuncs are external (stdlib) funcs with bodies that are
 // reachable from user code and should participate in reachability propagation.
+//
+// A component's surface is its body and its vars. Its methods are funcs in
+// their own right: one called under a provider in the body reads that
+// provider's value, not the one the component was entered with.
 func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 	reach := Reachable{
 		Components: make(map[*ir.Context]map[*ir.Component]bool, len(pkg.Contexts)),
@@ -251,35 +280,15 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 		reach.Components[ctx] = make(map[*ir.Component]bool)
 		reach.Funcs[ctx] = make(map[*ir.Func]bool)
 	}
+	funcs := contextFuncs(pkg, extraFuncs)
 
-	// 1. Mark direct readers.
-	for _, comp := range pkg.Components {
-		for ctx := range directContextReads(comp.Body) {
-			reach.Components[ctx][comp] = true
-		}
-	}
-	markFuncReads := func(fn *ir.Func) {
-		if !hasBody(fn) {
-			return
-		}
+	for _, fn := range funcs {
 		for ctx := range directContextReads(fn.Block) {
 			reach.Funcs[ctx][fn] = true
 		}
 	}
-	for _, fn := range pkg.Funcs {
-		markFuncReads(fn)
-	}
-	for _, fn := range extraFuncs {
-		markFuncReads(fn)
-	}
-
-	// Helper: collect all call edges from a component's full surface area
-	// (Body, Vars.Init+Handlers, Funcs.Block, Timers.Handler.Block). Calls
-	// inside Vars/Funcs/Timers aren't bounded by component-Body
-	// ContextProviders, so shadow is always empty for those edges.
 	componentCalls := func(comp *ir.Component) []callEdge {
-		var calls []callEdge
-		calls = append(calls, callsInBody(comp.Body, nil)...)
+		calls := callsInBody(comp.Body, nil)
 		for _, v := range comp.Vars {
 			calls = append(calls, callsInExpr(v.Init, nil)...)
 			for _, h := range v.Handlers {
@@ -288,15 +297,9 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 				}
 			}
 		}
-		for _, fn := range comp.Funcs {
-			if hasBody(fn) {
-				calls = append(calls, callsInBody(fn.Block, nil)...)
-			}
-		}
 		return calls
 	}
-	// Direct ContextReads can also live in Vars/Funcs/Timers — mark those.
-	compDirectReads := func(comp *ir.Component) map[*ir.Context]bool {
+	for _, comp := range pkg.Components {
 		out := map[*ir.Context]bool{}
 		collectContextReads(comp.Body, out)
 		for _, v := range comp.Vars {
@@ -307,74 +310,38 @@ func computeReachability(pkg *ir.Package, extraFuncs []*ir.Func) Reachable {
 				}
 			}
 		}
-		for _, fn := range comp.Funcs {
-			if hasBody(fn) {
-				collectContextReads(fn.Block, out)
-			}
-		}
-		return out
-	}
-	// Re-mark direct-readers using the wider surface.
-	for _, comp := range pkg.Components {
-		for ctx := range compDirectReads(comp) {
+		for ctx := range out {
 			reach.Components[ctx][comp] = true
 		}
 	}
 
-	// 2. Fixpoint: propagate through call graph, respecting shadowing.
-	propagateFuncCaller := func(caller *ir.Func) bool {
-		if !hasBody(caller) {
+	reaches := func(call callEdge, ctx *ir.Context) bool {
+		if call.shadowed[ctx] {
 			return false
 		}
-		changed := false
-		for _, call := range callsInBody(caller.Block, nil) {
-			for _, ctx := range pkg.Contexts {
-				if call.shadowed[ctx] {
-					continue
-				}
-				if call.fn != nil && reach.Funcs[ctx][call.fn] && !reach.Funcs[ctx][caller] {
-					reach.Funcs[ctx][caller] = true
-					changed = true
-				}
-				if call.comp != nil && reach.Components[ctx][call.comp] && !reach.Funcs[ctx][caller] {
-					reach.Funcs[ctx][caller] = true
-					changed = true
-				}
-			}
-		}
-		return changed
+		return (call.fn != nil && reach.Funcs[ctx][call.fn]) ||
+			(call.comp != nil && reach.Components[ctx][call.comp])
 	}
-	changed := true
-	for changed {
+	for changed := true; changed; {
 		changed = false
-		// Component callers — walk the component's full surface (Body +
-		// Vars + Funcs + Timers).
 		for _, caller := range pkg.Components {
 			for _, call := range componentCalls(caller) {
 				for _, ctx := range pkg.Contexts {
-					if call.shadowed[ctx] {
-						continue
-					}
-					if call.comp != nil && reach.Components[ctx][call.comp] && !reach.Components[ctx][caller] {
-						reach.Components[ctx][caller] = true
-						changed = true
-					}
-					if call.fn != nil && reach.Funcs[ctx][call.fn] && !reach.Components[ctx][caller] {
+					if !reach.Components[ctx][caller] && reaches(call, ctx) {
 						reach.Components[ctx][caller] = true
 						changed = true
 					}
 				}
 			}
 		}
-		// Func callers (user + extras).
-		for _, caller := range pkg.Funcs {
-			if propagateFuncCaller(caller) {
-				changed = true
-			}
-		}
-		for _, caller := range extraFuncs {
-			if propagateFuncCaller(caller) {
-				changed = true
+		for _, caller := range funcs {
+			for _, call := range callsInBody(caller.Block, nil) {
+				for _, ctx := range pkg.Contexts {
+					if !reach.Funcs[ctx][caller] && reaches(call, ctx) {
+						reach.Funcs[ctx][caller] = true
+						changed = true
+					}
+				}
 			}
 		}
 	}
@@ -467,28 +434,21 @@ func copyContextShadow(m map[*ir.Context]bool) map[*ir.Context]bool {
 
 // --- Hidden params ---
 
-// addHiddenParams adds a synthesized __ctx_<name> Var to every component
-// in Reach(ctx) (initialized to ctx.Default). User-defined funcs in
-// pkg.Funcs that read ctx do NOT receive a hidden Param; instead they
-// pick up the hidden state via the Component (when the Component scope
-// includes their call site) or via a parallel pkg-level Var when no
-// Component is in scope (test promotion / windowed apps with no main
-// component). Stdlib wrappers in extraFuncs DO receive a hidden Param,
-// because they live outside any Model surface.
+// addHiddenParams adds a synthesized __ctx_<name> Var to every component in
+// Reach(ctx), initialized to ctx.Default, and a __ctx_<name> Param to every
+// func in it. A func takes the value as a parameter rather than reading its
+// owner's var because its caller is what says which provider it runs under:
+// the same func called inside and outside `depth(5) { … }` reads two values.
 func addHiddenParams(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func) {
+	funcs := contextFuncs(pkg, extraFuncs)
 	for _, ctx := range pkg.Contexts {
 		paramName := "__ctx_" + ctx.Name
 		for _, comp := range pkg.Components {
-			if !reach.Components[ctx][comp] {
+			if !reach.Components[ctx][comp] || hasComponentVar(comp, paramName) {
 				continue
 			}
-			if hasComponentVar(comp, paramName) {
-				continue
-			}
-			// Prepend so the hidden ctx Var initializes before any
-			// user-declared Var whose Init reads it (e.g. `var greeting
-			// = $"Login"` lowers to a Translate call that reads
-			// __ctx_locale).
+			// Prepended so it initializes before a var whose Init reads it
+			// (`var greeting = $"Login"` reads __ctx_locale).
 			hidden := &ir.Var{
 				Name:        paramName,
 				Type:        ctx.Typ,
@@ -497,48 +457,13 @@ func addHiddenParams(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func) {
 			}
 			comp.Vars = append([]*ir.Var{hidden}, comp.Vars...)
 		}
-		// pkg.Vars holds the hidden state for any user pkg.Func reader.
-		// When tests promote a component out, comp.Funcs lift up to
-		// pkg.Funcs and need an equivalent Model-field landing pad.
-		needPkgVar := false
-		for _, fn := range pkg.Funcs {
-			if reach.Funcs[ctx][fn] {
-				needPkgVar = true
-				break
-			}
-		}
-		if needPkgVar && !hasPkgVar(pkg, paramName) {
-			hidden := &ir.Var{
-				Name:        paramName,
-				Type:        ctx.Typ,
-				Init:        ctx.Default,
-				Synthesized: true,
-			}
-			pkg.Vars = append([]*ir.Var{hidden}, pkg.Vars...)
-		}
-		// Stdlib wrappers (extraFuncs only) get the hidden Param.
-		for _, fn := range extraFuncs {
-			if !reach.Funcs[ctx][fn] {
+		for _, fn := range funcs {
+			if !reach.Funcs[ctx][fn] || hasFuncParam(fn, paramName) {
 				continue
 			}
-			if hasFuncParam(fn, paramName) {
-				continue
-			}
-			fn.Params = append(fn.Params, &ir.Param{
-				Name: paramName,
-				Type: ctx.Typ,
-			})
+			fn.Params = append(fn.Params, &ir.Param{Name: paramName, Type: ctx.Typ})
 		}
 	}
-}
-
-func hasPkgVar(pkg *ir.Package, name string) bool {
-	for _, v := range pkg.Vars {
-		if v.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // hiddenParamIndex maps each hidden context symbol back to the actual
@@ -551,35 +476,20 @@ func hasPkgVar(pkg *ir.Package, name string) bool {
 type hiddenParamIndex struct {
 	funcs map[*ir.Func]map[*ir.Context]*ir.Param
 	comps map[*ir.Component]map[*ir.Context]*ir.Var
-	pkg   map[*ir.Context]*ir.Var
 }
 
 func buildHiddenParamIndex(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func) hiddenParamIndex {
 	idx := hiddenParamIndex{
 		funcs: map[*ir.Func]map[*ir.Context]*ir.Param{},
 		comps: map[*ir.Component]map[*ir.Context]*ir.Var{},
-		pkg:   map[*ir.Context]*ir.Var{},
 	}
-	for _, ctx := range pkg.Contexts {
-		varName := "__ctx_" + ctx.Name
-		for _, v := range pkg.Vars {
-			if v.Name == varName && v.Synthesized {
-				idx.pkg[ctx] = v
-				break
-			}
-		}
-	}
-	indexFn := func(fn *ir.Func) {
-		if !hasBody(fn) {
-			return
-		}
+	for _, fn := range contextFuncs(pkg, extraFuncs) {
 		for _, ctx := range pkg.Contexts {
 			if !reach.Funcs[ctx][fn] {
 				continue
 			}
-			paramName := "__ctx_" + ctx.Name
 			for _, p := range fn.Params {
-				if p.Name == paramName {
+				if p.Name == "__ctx_"+ctx.Name {
 					if idx.funcs[fn] == nil {
 						idx.funcs[fn] = map[*ir.Context]*ir.Param{}
 					}
@@ -589,20 +499,13 @@ func buildHiddenParamIndex(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Fu
 			}
 		}
 	}
-	for _, fn := range pkg.Funcs {
-		indexFn(fn)
-	}
-	for _, fn := range extraFuncs {
-		indexFn(fn)
-	}
 	for _, comp := range pkg.Components {
 		for _, ctx := range pkg.Contexts {
 			if !reach.Components[ctx][comp] {
 				continue
 			}
-			varName := "__ctx_" + ctx.Name
 			for _, v := range comp.Vars {
-				if v.Name == varName {
+				if v.Name == "__ctx_"+ctx.Name {
 					if idx.comps[comp] == nil {
 						idx.comps[comp] = map[*ir.Context]*ir.Var{}
 					}
@@ -647,60 +550,36 @@ func hasFuncParam(fn *ir.Func, name string) bool {
 	return false
 }
 
-// makeHiddenParamSym returns a fresh *ir.Param used as the Sym of an Ident
-// that refers to the hidden context prop in a component body. This matches
-// the shape the checker uses when declaring props as params in component
-// scope. For func bodies, prefer the *ir.Param actually attached to the
-// func via hiddenParamIndex — pointer identity matters for the optimizer's
-// substituteParams.
-func makeHiddenParamSym(ctx *ir.Context) *ir.Param {
-	return &ir.Param{
-		Name: "__ctx_" + ctx.Name,
-		Type: ctx.Typ,
-	}
+func hiddenIdent(sym ir.Symbol, name string, typ *ir.Type) *ir.Ident {
+	return &ir.Ident{Name: name, Type: typ, Sym: sym, Synthesized: true}
 }
 
 // --- Read rewriting ---
 
-// rewriteReads replaces every *ir.ContextRead{Ref: ctx} in each component
-// and func in Reach(ctx) with an *ir.Ident referencing the hidden param.
-// For funcs, the Ident.Sym is the actual *ir.Param attached to fn.Params
-// (looked up in hidden) so the optimizer's substituteParams can match by
-// pointer identity. Component bodies have no func — they use a fresh
-// synthetic Param (matches the checker's component-prop scope shape).
+// rewriteReads replaces every *ir.ContextRead{Ref: ctx} left in a component or
+// func in Reach(ctx) with a read of its hidden var or param. The reads under a
+// provider were answered by lowerProviders already; these are the ones the
+// scope's entry answers.
 func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidden hiddenParamIndex) {
 	for _, ctx := range pkg.Contexts {
+		readsOf := func(ident func() ir.Expr) *exprWalker {
+			return newExprWalker(func(e ir.Expr) ir.Expr {
+				if cr, ok := e.(*ir.ContextRead); ok && cr.Ref == ctx {
+					return ident()
+				}
+				return e
+			})
+		}
 		for _, comp := range pkg.Components {
-			if !reach.Components[ctx][comp] {
+			varSym := hidden.getComp(comp, ctx)
+			if !reach.Components[ctx][comp] || varSym == nil {
 				continue
 			}
-			varSym := hidden.getComp(comp, ctx)
-			if varSym == nil {
-				continue // defensive: should always exist after addHiddenParams
-			}
-			ident := func() ir.Expr {
-				return &ir.Ident{
-					Name:        varSym.Name,
-					Type:        varSym.Type,
-					Sym:         varSym,
-					Synthesized: true,
-				}
-			}
-			compTransform := func(e ir.Expr) ir.Expr {
-				cr, ok := e.(*ir.ContextRead)
-				if !ok || cr.Ref != ctx {
-					return e
-				}
-				return ident()
-			}
-			w := newExprWalker(compTransform)
+			w := readsOf(func() ir.Expr { return hiddenIdent(varSym, varSym.Name, varSym.Type) })
 			comp.Body = w.stmts(comp.Body)
-			// Reads can also live in component Vars (Init + Handlers),
-			// Funcs, and Timers. Walk those surfaces so reads everywhere
-			// resolve to the hidden Var.
 			for _, v := range comp.Vars {
 				if v == varSym {
-					continue // don't rewrite our own Init (it's ctx.Default)
+					continue
 				}
 				v.Init = w.expr(v.Init)
 				for _, h := range v.Handlers {
@@ -709,78 +588,14 @@ func rewriteReads(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hidde
 					}
 				}
 			}
-			for _, fn := range comp.Funcs {
-				if hasBody(fn) {
-					fn.Block = w.stmts(fn.Block)
-				}
-			}
 		}
-		// pkg.Funcs (user-defined) bind reads to the pkg-level hidden Var.
-		// extraFuncs (stdlib wrappers) bind reads to their hidden Param.
-		if pkgVar := hidden.pkg[ctx]; pkgVar != nil {
-			ident := func() ir.Expr {
-				return &ir.Ident{
-					Name:        pkgVar.Name,
-					Type:        pkgVar.Type,
-					Sym:         pkgVar,
-					Synthesized: true,
-				}
-			}
-			transform := func(e ir.Expr) ir.Expr {
-				cr, ok := e.(*ir.ContextRead)
-				if !ok || cr.Ref != ctx {
-					return e
-				}
-				return ident()
-			}
-			w := newExprWalker(transform)
-			for _, fn := range pkg.Funcs {
-				if !reach.Funcs[ctx][fn] || !hasBody(fn) {
-					continue
-				}
-				fn.Block = w.stmts(fn.Block)
-			}
-			// Also rewrite reads inside the pkg.Var's own Init (in case
-			// another ctx's default depends on this ctx). Skip our own
-			// Var to preserve its ctx.Default Init.
-			for _, v := range pkg.Vars {
-				if v == pkgVar {
-					continue
-				}
-				v.Init = w.expr(v.Init)
-			}
-		}
-		rewriteExtra := func(fn *ir.Func) {
-			if !reach.Funcs[ctx][fn] {
-				return
-			}
-			if !hasBody(fn) {
-				return
-			}
+		for _, fn := range contextFuncs(pkg, extraFuncs) {
 			paramSym := hidden.get(fn, ctx)
-			if paramSym == nil {
-				return
+			if !reach.Funcs[ctx][fn] || paramSym == nil {
+				continue
 			}
-			ident := func() ir.Expr {
-				return &ir.Ident{
-					Name:        paramSym.Name,
-					Type:        paramSym.Type,
-					Sym:         paramSym,
-					Synthesized: true,
-				}
-			}
-			transform := func(e ir.Expr) ir.Expr {
-				cr, ok := e.(*ir.ContextRead)
-				if !ok || cr.Ref != ctx {
-					return e
-				}
-				return ident()
-			}
-			w := newExprWalker(transform)
+			w := readsOf(func() ir.Expr { return hiddenIdent(paramSym, paramSym.Name, paramSym.Type) })
 			fn.Block = w.stmts(fn.Block)
-		}
-		for _, fn := range extraFuncs {
-			rewriteExtra(fn)
 		}
 	}
 }
@@ -795,6 +610,7 @@ type provLower struct {
 	hidden   hiddenParamIndex
 	defaults map[*ir.Context]ir.Expr
 	slots    slotEnvs
+	order    []*ir.Context
 }
 
 // slotEnvs records, per component and per slot, the context values a provider
@@ -924,6 +740,7 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		reach:    reach,
 		hidden:   hidden,
 		defaults: defaults,
+		order:    pkg.Contexts,
 		// Recorded before the first body is lowered: this walk splices every
 		// provider out of the body it was written in.
 		slots: computeSlotEnvs(pkg),
@@ -960,7 +777,7 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 	// codegen overrides Init with the parent-supplied arg, so reads from
 	// the field see the threaded value.
 	for _, comp := range pkg.Components {
-		compActive := hiddenActiveFor(pkg, reach, hidden, comp, nil)
+		compActive := hiddenActiveFor(pkg, hidden, comp, nil)
 		comp.Body = lowerInStmts(comp.Body, compActive, pc)
 		// Any LocalVar (`var x = ...` originating from inside a provider
 		// block, now spliced up to component-body level by the provider
@@ -969,9 +786,6 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 		// dangling block-local in a context where there is no enclosing
 		// function body.
 		comp.Body, comp.Vars = promoteLocalVarsToVars(comp.Body, comp.Vars)
-		// Component-level Vars (var x = ...) and Funcs (func foo() {}) host
-		// expressions that can call ctx-reading wrappers too — walk them so
-		// hidden args get threaded uniformly.
 		for _, v := range comp.Vars {
 			v.Init = lowerInExpr(v.Init, compActive, pc)
 			for _, h := range v.Handlers {
@@ -980,27 +794,15 @@ func lowerProviders(pkg *ir.Package, reach Reachable, extraFuncs []*ir.Func, hid
 				}
 			}
 		}
-		for _, fn := range comp.Funcs {
-			if hasBody(fn) {
-				fn.Block = lowerInStmts(fn.Block, compActive, pc)
-			}
-		}
 	}
 
-	// For func bodies (user + extras): same — each ctx for which this func
-	// has a hidden param is active as an Ident reading that param.
-	lowerFn := func(fn *ir.Func) {
-		if !hasBody(fn) {
-			return
-		}
-		fnActive := hiddenActiveFor(pkg, reach, hidden, nil, fn)
-		fn.Block = lowerInStmts(fn.Block, fnActive, pc)
+	for _, fn := range contextFuncs(pkg, extraFuncs) {
+		fn.Block = lowerInStmts(fn.Block, hiddenActiveFor(pkg, hidden, nil, fn), pc)
 	}
 	for _, fn := range pkg.Funcs {
-		lowerFn(fn)
-	}
-	for _, fn := range extraFuncs {
-		lowerFn(fn)
+		if fn.IsTest && hasBody(fn) {
+			fn.Block = lowerInStmts(fn.Block, copyExprMap(defaults), pc)
+		}
 	}
 }
 
@@ -1044,66 +846,21 @@ func promoteLocalVarsToVars(stmts []ir.Stmt, vars []*ir.Var) ([]ir.Stmt, []*ir.V
 }
 
 // hiddenActiveFor builds the active-context map at the entry of a component
-// or func body: each context for which the callee is in Reach is active and
-// references the hidden param by Ident. Exactly one of comp / fn is non-nil.
-// For funcs, the Ident.Sym is the actual *ir.Param on fn.Params (from the
-// hiddenParamIndex) so threaded reads match what substituteParams keys on.
-func hiddenActiveFor(pkg *ir.Package, reach Reachable, hidden hiddenParamIndex, comp *ir.Component, fn *ir.Func) map[*ir.Context]ir.Expr {
+// or func body: each context the scope is in Reach for reads its hidden var or
+// param. Exactly one of comp / fn is non-nil. For funcs the Ident's Sym is the
+// *ir.Param on fn.Params, which is what substituteParams keys on.
+func hiddenActiveFor(pkg *ir.Package, hidden hiddenParamIndex, comp *ir.Component, fn *ir.Func) map[*ir.Context]ir.Expr {
 	out := map[*ir.Context]ir.Expr{}
 	for _, ctx := range pkg.Contexts {
-		inReach := false
-		if comp != nil && reach.Components[ctx][comp] {
-			inReach = true
-		}
-		if fn != nil && reach.Funcs[ctx][fn] {
-			inReach = true
-		}
-		if !inReach {
-			continue
-		}
-		// Component scope: active value reads the hidden component Var.
-		// pkg.Func scope (user-defined): reads the pkg-level hidden Var.
-		// extraFunc scope (stdlib wrappers): reads the hidden Param.
 		if comp != nil {
 			if v := hidden.getComp(comp, ctx); v != nil {
-				out[ctx] = &ir.Ident{
-					Name:        v.Name,
-					Type:        v.Type,
-					Sym:         v,
-					Synthesized: true,
-				}
-				continue
+				out[ctx] = hiddenIdent(v, v.Name, v.Type)
 			}
 		}
 		if fn != nil {
-			if param := hidden.get(fn, ctx); param != nil {
-				// stdlib wrapper — read the hidden Param.
-				out[ctx] = &ir.Ident{
-					Name:        param.Name,
-					Type:        param.Type,
-					Sym:         param,
-					Synthesized: true,
-				}
-				continue
+			if p := hidden.get(fn, ctx); p != nil {
+				out[ctx] = hiddenIdent(p, p.Name, p.Type)
 			}
-			// pkg.Func — read the pkg-level hidden Var.
-			if v := hidden.pkg[ctx]; v != nil {
-				out[ctx] = &ir.Ident{
-					Name:        v.Name,
-					Type:        v.Type,
-					Sym:         v,
-					Synthesized: true,
-				}
-				continue
-			}
-		}
-		// Fallback (should be unreachable): fresh synthetic Param.
-		sym := makeHiddenParamSym(ctx)
-		out[ctx] = &ir.Ident{
-			Name:        sym.Name,
-			Type:        sym.Type,
-			Sym:         sym,
-			Synthesized: true,
 		}
 	}
 	return out
@@ -1205,7 +962,13 @@ func lowerInStmts(stmts []ir.Stmt, active map[*ir.Context]ir.Expr, pc *provLower
 			out = append(out, n)
 
 		case *ir.CallStmt:
-			if n.Call != nil {
+			if ctx, val := testSetContext(n.Call); ctx != nil {
+				// A test body's override is a provider over the statements after it.
+				lowered := lowerInExpr(val.Value, active, pc)
+				val.Value = lowered
+				active = copyExprMap(active)
+				active[ctx] = lowered
+			} else if n.Call != nil {
 				lowerInExpr(n.Call, active, pc)
 			}
 			out = append(out, n)
@@ -1246,7 +1009,9 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Ex
 	case *ir.Call:
 		lowerCallInPlace(n, active, pc)
 		n.Receiver = lowerInExpr(n.Receiver, active, pc)
-		n.Callee = lowerInExpr(n.Callee, active, pc)
+		if calledFunc(n) == n.Func {
+			n.Callee = lowerInExpr(n.Callee, active, pc)
+		}
 		for i := range n.Args {
 			n.Args[i].Value = lowerInExpr(n.Args[i].Value, active, pc)
 		}
@@ -1312,8 +1077,11 @@ func lowerInExpr(e ir.Expr, active map[*ir.Context]ir.Expr, pc *provLower) ir.Ex
 		// the surrounding scope as a reader). Leave as-is; downstream
 		// codegen will surface this via its unhandled-IR panic if it
 		// matters.
-	case *ir.Literal, *ir.Ident:
-		// Terminal — no nested exprs.
+	case *ir.Ident:
+		if fn, ok := n.Sym.(*ir.Func); ok && len(pc.hidden.funcs[fn]) > 0 && fn.Receiver == "" {
+			return funcValueUnder(n, fn, active, pc)
+		}
+	case *ir.Literal:
 	default:
 		panic(fmt.Sprintf("lowerInExpr: unhandled %T", n))
 	}
@@ -1333,23 +1101,93 @@ func lowerInHandler(h *ir.EventHandler, active map[*ir.Context]ir.Expr, pc *prov
 // pick up the hidden state from the pkg-level synth Var directly and
 // expose no Param to thread into.
 func lowerCallInPlace(c *ir.Call, active map[*ir.Context]ir.Expr, pc *provLower) {
-	if c == nil || c.Func == nil {
+	fn := calledFunc(c)
+	if fn == nil {
 		return
 	}
-	for ctx, val := range active {
-		if !pc.reach.Funcs[ctx][c.Func] {
+	hidden := pc.hidden.funcs[fn]
+	for _, ctx := range pc.order {
+		p := hidden[ctx]
+		if p == nil || hasCallArgNamed(c.Args, p.Name) {
 			continue
 		}
-		if pc.hidden.get(c.Func, ctx) == nil {
-			// User pkg.Func — has no hidden Param to thread into.
-			continue
+		val, ok := active[ctx]
+		if !ok {
+			val = pc.defaults[ctx]
 		}
-		paramName := "__ctx_" + ctx.Name
-		if hasCallArgNamed(c.Args, paramName) {
-			continue
-		}
-		c.Args = append(c.Args, ir.CallArg{Name: paramName, Value: val})
+		c.Args = append(c.Args, ir.CallArg{Name: p.Name, Value: ir.CloneExprSharingDecls(val)})
 	}
+}
+
+// calledFunc is the declaration a call invokes directly: its Func, or the one
+// a bare callee names, which is how the checker leaves a component method.
+func calledFunc(c *ir.Call) *ir.Func {
+	if c == nil {
+		return nil
+	}
+	if c.Func != nil {
+		return c.Func
+	}
+	if id, ok := c.Callee.(*ir.Ident); ok {
+		fn, _ := id.Sym.(*ir.Func)
+		return fn
+	}
+	return nil
+}
+
+// funcValueUnder is fn taken as a value where active is in scope: a lambda
+// calling fn with that scope's values. A func value's caller cannot know which
+// function it holds, so it has nothing to thread; the value is therefore
+// bound where it is taken, the same answer a lambda written there gets.
+func funcValueUnder(id *ir.Ident, fn *ir.Func, active map[*ir.Context]ir.Expr, pc *provLower) ir.Expr {
+	hidden := map[*ir.Param]bool{}
+	for _, p := range pc.hidden.funcs[fn] {
+		hidden[p] = true
+	}
+	wrapper := &ir.Func{Return: fn.Return, Purity: fn.Purity, CanError: fn.CanError, IsAsync: fn.IsAsync}
+	call := &ir.Call{Type: fn.Return, Func: fn}
+	for _, p := range fn.Params {
+		if hidden[p] {
+			continue
+		}
+		np := &ir.Param{Name: p.Name, Type: p.Type}
+		wrapper.Params = append(wrapper.Params, np)
+		call.Args = append(call.Args, ir.CallArg{Name: p.Name, Value: &ir.Ident{Name: np.Name, Type: np.Type, Sym: np}})
+	}
+	lowerCallInPlace(call, active, pc)
+	if fn.Return == nil || fn.Return.Kind == ir.TypeVoid {
+		wrapper.Block = []ir.Stmt{&ir.CallStmt{Call: call}}
+	} else {
+		wrapper.Block = []ir.Stmt{&ir.Return{Value: call}}
+	}
+	return &ir.Lambda{Type: id.Type, Func: wrapper}
+}
+
+// testSetContext recognises `t.setContext(ctx, value)`, returning the context
+// and the argument holding the value. The context argument names the context
+// rather than reading it, so it becomes the name: a read would outlive the
+// pass, and a test lowering needs only which context it was.
+func testSetContext(c *ir.Call) (*ir.Context, *ir.CallArg) {
+	i, ctx := setContextArg(c)
+	if ctx == nil {
+		return nil, nil
+	}
+	c.Args[i].Value = &ir.Literal{Type: ir.TypString, Value: ctx.Name}
+	return ctx, &c.Args[i+1]
+}
+
+// setContextArg is the index of the argument naming the context
+// `t.setContext` sets, and that context.
+func setContextArg(c *ir.Call) (int, *ir.Context) {
+	if c == nil || c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+		return 0, nil
+	}
+	for i := range c.Args {
+		if cr, ok := c.Args[i].Value.(*ir.ContextRead); ok && i+1 < len(c.Args) {
+			return i, cr.Ref
+		}
+	}
+	return 0, nil
 }
 
 // copyExprMap returns a shallow copy of m.

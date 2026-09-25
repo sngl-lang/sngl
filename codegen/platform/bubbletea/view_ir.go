@@ -247,11 +247,34 @@ func rendersPart(s ir.Stmt) bool {
 		return false
 	case *ir.If:
 		return !n.FromTernary
+	case *ir.For:
+		return !computesOnly(n)
 	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		return false
 	}
 	return true
+}
+
+// computesOnly reports whether a view-body loop draws nothing -- the
+// accumulator NoListLambdas hoists ahead of the widget reading `xs.map(f)`.
+// Rendered as a view loop its body was dropped and the list stayed empty.
+func computesOnly(f *ir.For) bool {
+	return len(f.Body) > 0 && !slices.ContainsFunc(f.Body, draws) && !slices.ContainsFunc(f.Else, draws)
+}
+
+func draws(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.If:
+		return !n.FromTernary && (slices.ContainsFunc(n.Body, draws) || slices.ContainsFunc(n.Else, draws))
+	case *ir.For:
+		return !computesOnly(n)
+	case *ir.NodeInst:
+		// A timer draws nothing either, but as a statement a loop of them is a
+		// loop over nothing whose variable Go refuses as unused.
+		return true
+	}
+	return rendersPart(s)
 }
 
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
@@ -276,6 +299,10 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		}
 		vc.renderIf(s, resultVar)
 	case *ir.For:
+		if computesOnly(s) {
+			vc.emitIRStmt(s)
+			return
+		}
 		vc.renderFor(s, resultVar)
 	case *ir.SlotInst:
 		// Slot in a user component body — substitute the caller's joined
