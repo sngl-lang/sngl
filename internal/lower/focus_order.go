@@ -44,6 +44,11 @@ func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
 		}
 	}
 	for _, comp := range pkg.Components {
+		if comp.RuntimeInstance {
+			if err := refuseFocusInRecursion(comp); err != nil {
+				return err
+			}
+		}
 		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
 	}
 	lowerFocusInOwner(pkg.Body, &pkg.Vars, &pkg.Funcs)
@@ -96,6 +101,35 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 		buildFocusNav("__focusNext", slots, focusIDIdent, true),
 		buildFocusNav("__focusPrev", slots, focusIDIdent, false),
 	)
+}
+
+// refuseFocusInRecursion reports a focusable node a recursion's own body
+// renders. Update and Tab reach only the stops the window renders, and a
+// recursion renders its body from a function per level, so the node's focus
+// state was declared nowhere (`undefined: __focusID`).
+func refuseFocusInRecursion(comp *ir.Component) error {
+	slots := gatherFocusSlots(comp.Body)
+	if len(slots) == 0 {
+		return nil
+	}
+	var at *ir.NodeInst
+	if slots[0].isLoop {
+		_ = ir.Walk(slots[0].loop.forStmt.Body, func(node ir.Node) error {
+			if n, ok := node.(*ir.NodeInst); ok && nodeEffectiveFocusable(n) {
+				at = n
+				return ir.SkipAll
+			}
+			return nil
+		})
+	} else {
+		at = slots[0].node
+	}
+	// An inlined primitive is positioned in its platform package.
+	pos := ir.StmtPos(at)
+	if comp.AST != nil && pos.File != comp.AST.Pos.File {
+		pos = comp.AST.Pos
+	}
+	return fmt.Errorf("%s: the recursive component %q renders a focusable node in its own body; this target's focus order reaches only what the window renders, and a recursion renders each level from a function of its own -- render the focusable nodes outside %q", pos, comp.Name, comp.Name)
 }
 
 func suppliedBodies(n *ir.NodeInst) [][]ir.Stmt {

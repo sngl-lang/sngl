@@ -19,6 +19,15 @@ stderr 'branch.sngl:25:24: a focusable node in the "label" content handed to "fr
 sngl generate --lang go --platform bubbletea --out out3 prop.sngl
 sngl generate --platform html --out out4 handler.sngl
 
+# A focusable node in the recursion's own body is further still: Tab and
+# Update reach only the stops the window renders, so its focus state was
+# declared nowhere and the Model did not compile (`undefined: __focusID`).
+# The button is the platform's primitive by then, so the position is the
+# declaration's.
+! sngl generate --lang go --platform bubbletea --out out5 own.sngl
+stderr 'own.sngl:5:1: the recursive component "frame" renders a focusable node in its own body'
+sngl generate --platform html --out out6 own.sngl
+
 -- handler.sngl --
 import . "sngl:ui"
 
@@ -112,5 +121,27 @@ window {
                 }
             }
         }
+    }
+}
+-- own.sngl --
+import . "sngl:ui"
+
+var hits = 0
+
+component frame(n int) node {
+    vbox {
+        button(text="level {n}", @click { hits += n })
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    vbox {
+        text(value="hits {hits}")
+        frame(n=depth)
     }
 }
