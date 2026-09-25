@@ -3,6 +3,8 @@ package docs
 import (
 	"strings"
 	"testing"
+
+	"git.duckfam.us/jonathan/sngl/internal/checker"
 )
 
 // A preview that fails to compile is dropped without a word, and with it the
@@ -14,7 +16,7 @@ func TestLibraryExamplesPreview(t *testing.T) {
 			continue
 		}
 		n++
-		html := compilePreview(c.Examples[0])
+		html := compilePreview(checker.ExampleProgram(checker.PackageExampleImports(c.Pkg), c.Examples[0]))
 		if !strings.Contains(html, "<body>") {
 			t.Errorf("%s: example compiled to no preview", c.Name)
 		}

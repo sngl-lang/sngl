@@ -359,13 +359,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// declares -- so a func reading one has to be declared inside it; beside
 	// it, `log__inst0 = log__inst0 + "!"` names something no file-scope
 	// declaration binds.
-	//
-	// This used to be every window's funcs, which reached the same set from
-	// the other side: a window body's func, and every clone the inliner
-	// hoisted into one, was a window's. A window owns nothing now, so the
-	// question is asked of the body instead of of the list -- which is also
-	// what ctx.RootDecl() does not answer for an ordinary program, which has
-	// no harness root.
 	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
 	for fn := range stateReaching {
 		mainOwnFuncs[fn] = true
