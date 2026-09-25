@@ -1051,6 +1051,60 @@ func (t *gtk4Translator) signalFor(nodeID, event string) string {
 	return ""
 }
 
+// signalLambda gives a handler written in place -- in an instance record,
+// where nothing promotes it to a method -- the shape emitIRPromotedHandler
+// gives a promoted one: the trampoline passes no arguments, so the SNGL event
+// parameter goes, and a two-way bind opening the body reads the widget.
+func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string) ir.Expr {
+	if lam.Func == nil || len(lam.Func.Params) == 0 {
+		return lam
+	}
+	stmts := lam.Func.Block
+	if assign, ok := firstEventBind(stmts, lam.Func.Params); ok {
+		var getter ir.Expr
+		if t.wrapped {
+			getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
+		} else {
+			getter = gtk4EventGetterExpr(cType, codegen.IdentBareName(node), false)
+		}
+		if getter != nil {
+			stmts = append([]ir.Stmt{&ir.Assign{Target: assign.Target, Op: ast.AssignSet, Value: getter}}, stmts[1:]...)
+		}
+	}
+	fn := *lam.Func
+	fn.Params = nil
+	fn.Block = stmts
+	out := *lam
+	out.Func = &fn
+	return &out
+}
+
+// firstEventBind is the `x = e.<field>` a two-way bind opens a handler with,
+// e being one of params.
+func firstEventBind(stmts []ir.Stmt, params []*ir.Param) (*ir.Assign, bool) {
+	if len(stmts) == 0 {
+		return nil, false
+	}
+	assign, ok := stmts[0].(*ir.Assign)
+	if !ok || assign.Op != ast.AssignSet {
+		return nil, false
+	}
+	sel, ok := assign.Value.(*ir.Select)
+	if !ok {
+		return nil, false
+	}
+	op, ok := sel.Operand.(*ir.Ident)
+	if !ok {
+		return nil, false
+	}
+	for _, p := range params {
+		if p != nil && (op.Sym == ir.Symbol(p) || (op.Sym == nil && op.Name == p.Name)) {
+			return assign, true
+		}
+	}
+	return nil, false
+}
+
 func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
 	if t.isSkipped(node) {
 		return nil
@@ -1074,6 +1128,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// maps to. The statements emitted below keep only the signal, which is why
 	// this is recorded rather than recovered.
 	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType)
+	if lam, ok := handler.(*ir.Lambda); ok {
+		handler = t.signalLambda(lam, node, cType)
+	}
 
 	// gtk4rt.Connect registers the handler and wires the signal in one call —
 	// no per-program snglCallbacks slice or cgo.

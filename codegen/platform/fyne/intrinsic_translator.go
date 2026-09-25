@@ -480,6 +480,9 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
+	if lam, ok := handlerRef.(*ir.Lambda); ok {
+		handlerRef = fyneCallbackLambda(lam, h, event)
+	}
 	return []ir.Stmt{&ir.Assign{
 		Target: &ir.Select{
 			Operand: nodeRef,
@@ -489,6 +492,38 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		Op:    ast.AssignSet,
 		Value: handlerRef,
 	}}
+}
+
+// fyneCallbackLambda gives a handler written in place -- in an instance
+// record, where nothing promotes it to a method -- the Go signature of the
+// callback field it is assigned to, the way emitIRPromotedHandler does for a
+// promoted one: the SNGL event parameter goes, and the two-way bind that opens
+// the body reads the callback's own parameter instead.
+func fyneCallbackLambda(lam *ir.Lambda, h fyneHandler, event string) ir.Expr {
+	if lam.Func == nil || h.Signature == "" {
+		return lam
+	}
+	params, err := signatureParams("", event, h.Signature)
+	if err != nil {
+		panic("fyne: " + err.Error())
+	}
+	stmts := lam.Func.Block
+	if h.Param != "" {
+		if bindVar := extractEventBindTarget(stmts, lam.Func.Params); bindVar != "" {
+			bind := stmts[0].(*ir.Assign)
+			stmts = append([]ir.Stmt{&ir.Assign{
+				Target: bind.Target,
+				Op:     ast.AssignSet,
+				Value:  &ir.Ident{Name: h.Param},
+			}}, stmts[1:]...)
+		}
+	}
+	fn := *lam.Func
+	fn.Params = params
+	fn.Block = stmts
+	out := *lam
+	out.Func = &fn
+	return &out
 }
 
 // OnDetachHandler clears the callback field. Fyne holds one callback per
