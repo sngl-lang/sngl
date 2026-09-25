@@ -1,19 +1,17 @@
-A render slot re-renders where it was written.
+A render slot that builds a container names the fyne package, not its own
+argument.
 
-Each fyne and gtk4 slot removed what it had rendered and appended what it
-renders now to the end of its container, so toggling `a` off and on moved A
-after B, after the loop's rows and after every static sibling below it. A slot
-now keeps a hidden anchor in its container, added by its first render -- which
-runs while the container is being built, at the slot's own position -- and
-inserts its entries before it. codegen/platform/fyne/slot_order_run_test.go
-reads the order back off the running widget tree, and pkg/go/gtk4rt's
-TestSlotAnchorKeepsASlotInPlace does the same for GTK.
+A fyne render slot's func took the container it renders into as `container`,
+which is also the name of the fyne package every box is built from. A slot
+whose content is itself a box -- here each row of the loop, and the
+`sngl:ui/markup` list item the second loop renders -- called `NewHBox` on its
+argument and did not build.
 
-deny out/go/fyne/model.go `container\.Add\(` -- a slot inserts before its anchor; appending is what lost the order
-deny out/go/gtk4/model.go `BoxAppend\(parent` -- as above, for the gtk4 box
+deny out/go/fyne/model.go `\(container \*fyne\.Container\)` -- the parameter shadows the package
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
+import md "sngl:ui/markup"
 
 output {
     go {
@@ -23,28 +21,28 @@ output {
 }
 
 component main node {
-    var a = true
-    var items = ["x", "y"]
+    var items = ["a"]
 
     vbox {
-        text(value="head")
-        if a {
-            text(value="A")
-        }
         for var it = items {
-            text(value=it)
+            hbox {
+                text(value=it)
+            }
         }
-        text(value="tail")
-        button #flip(text="flip", @click { a = !a })
-        button #more(text="more", @click { items.push("z") })
+        md.list {
+            for var it = items {
+                md.listItem(task=md.Task.done) {
+                    text(value=it)
+                }
+            }
+        }
+        button #more(text="more", @click { items.push("b") })
     }
 }
 
-func testReRenders(t Test, c main) {
-    c.flip.click()
-    c.flip.click()
+func testMore(t Test, c main) {
     c.more.click()
-    t.assert(c.a)
+    t.assert(c.items.length == 2)
 }
 
 window {
@@ -64,28 +62,34 @@ import (
 	"os"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
 // Model holds the state for this SNGL UI.
 type Model struct {
-	a          bool
-	items      []string
-	__root     *fyne.Container
-	__slot0    []fyne.CanvasObject
-	__slot0_at fyne.CanvasObject
-	__slot1    []fyne.CanvasObject
-	__slot1_at fyne.CanvasObject
+	__ctx_listDepth int
+	items           []string
+	__root          *fyne.Container
+	__slot0         []fyne.CanvasObject
+	__slot0_at      fyne.CanvasObject
+	__slot1         []fyne.CanvasObject
+	__slot1_at      fyne.CanvasObject
 
-	__n2 *fyne.Container
-	__n3 *widget.Label
-	__n4 *widget.Label
-	flip *widget.Button
+	__n6 *fyne.Container
+	__n7 *fyne.Container
 	more *widget.Button
 }
 
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
-	m.a = true
-	m.items = []string{"x", "y"}
+	m.__ctx_listDepth = 0
+	m.items = []string{"a"}
 	m.__root = container.NewVBox()
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -100,9 +104,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
-	if m.a {
-		__n0 := widget.NewLabel("")
-		__n0.SetText("A")
+	for _, it := range m.items {
+		__n0 := container.NewHBox()
+		__n1 := widget.NewLabel("")
+		__n1.SetText(it)
+		__n0.Add(__n1)
 		fynelayout.InsertBefore(__parent, m.__slot0_at, __n0)
 		m.__slot0 = append(m.__slot0, __n0)
 	}
@@ -115,28 +121,27 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	m.__slot1 = nil
 	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	for _, it := range m.items {
-		__n1 := widget.NewLabel("")
-		__n1.SetText(it)
-		fynelayout.InsertBefore(__parent, m.__slot1_at, __n1)
-		m.__slot1 = append(m.__slot1, __n1)
+		__n2 := container.NewHBox()
+		__n3 := widget.NewCheck("", nil)
+		__n3.SetText("")
+		__n3.SetChecked(true)
+		__n3.OnChanged = func(b bool) {
+		}
+		__n2.Add(__n3)
+		__n4 := container.NewVBox()
+		__n5 := widget.NewLabel("")
+		__n5.SetText(it)
+		__n4.Add(__n5)
+		__n2.Add(__n4)
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n2)
+		m.__slot1 = append(m.__slot1, __n2)
 	}
-}
-
-func (m *Model) flip_click_handler() {
-	m.a = !m.a
-	m.__renderSlot0(m.__n2)
 }
 
 func (m *Model) more_click_handler() {
-	m.items = append(m.items, "z")
-	m.__renderSlot1(m.__n2)
-}
-
-// flipClick invokes the OnTapped callback on the #flip widget; for tests.
-func (m *Model) flipClick() {
-	if m.flip.OnTapped != nil {
-		m.flip.OnTapped()
-	}
+	m.items = append(m.items, "b")
+	m.__renderSlot0(m.__n6)
+	m.__renderSlot1(m.__n7)
 }
 
 // moreClick invokes the OnTapped callback on the #more widget; for tests.
@@ -144,14 +149,6 @@ func (m *Model) moreClick() {
 	if m.more.OnTapped != nil {
 		m.more.OnTapped()
 	}
-}
-
-func (m *Model) A() bool {
-	return m.a
-}
-
-func (m *Model) SetA(v bool) {
-	m.a = v
 }
 
 func (m *Model) Items() []string {
@@ -164,24 +161,16 @@ func (m *Model) SetItems(v []string) {
 
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
-	m.__n2 = container.NewVBox()
-	m.__n3 = widget.NewLabel("")
-	m.__n3.SetText("head")
-	m.__n2.Add(m.__n3)
-	m.__renderSlot0(m.__n2)
-	m.__renderSlot1(m.__n2)
-	m.__n4 = widget.NewLabel("")
-	m.__n4.SetText("tail")
-	m.__n2.Add(m.__n4)
-	m.flip = widget.NewButton("", nil)
-	m.flip.SetText("flip")
-	m.flip.OnTapped = m.flip_click_handler
-	m.__n2.Add(m.flip)
+	m.__n6 = container.NewVBox()
+	m.__renderSlot0(m.__n6)
+	m.__n7 = container.NewVBox()
+	m.__renderSlot1(m.__n7)
+	m.__n6.Add(m.__n7)
 	m.more = widget.NewButton("", nil)
 	m.more.SetText("more")
 	m.more.OnTapped = m.more_click_handler
-	m.__n2.Add(m.more)
-	content := fyne.CanvasObject(m.__n2)
+	m.__n6.Add(m.more)
+	content := fyne.CanvasObject(m.__n6)
 	return content
 }
 
@@ -199,14 +188,12 @@ package main
 
 import "testing"
 
-func TestReRenders(t *testing.T) {
+func TestMore(t *testing.T) {
 	__snglTestComponent := newTestComponent()
 	c := __snglTestComponent
 	_ = c
-	c.flipClick()
-	c.flipClick()
 	c.moreClick()
-	if !(c.a) { t.Errorf("assert failed: %s", "c.a") }
+	if !((len(c.items) == 2)) { t.Errorf("assert failed: %s", "(len(c.items) == 2)") }
 }
 
 -- out/go/fyne/testcomponent_test.go --
@@ -241,28 +228,34 @@ import (
 	"git.duckfam.us/jonathan/sngl/pkg/go/gtk4rt"
 )
 
+type Measurement struct {
+	Px  float64
+	Em  float64
+	Vw  float64
+	Vh  float64
+	Pct float64
+}
+
 // Model holds the state and widget references for this SNGL UI.
 type Model struct {
-	a          bool
-	items      []string
-	__root     gtk4rt.Handle
-	__slot0    []gtk4rt.Handle
-	__slot0_at gtk4rt.Handle
-	__slot1    []gtk4rt.Handle
-	__slot1_at gtk4rt.Handle
-	__n2       gtk4rt.Handle
-	__n3       gtk4rt.Handle
-	__n4       gtk4rt.Handle
-	flip       gtk4rt.Handle
-	more       gtk4rt.Handle
+	__ctx_listDepth int
+	items           []string
+	__root          gtk4rt.Handle
+	__slot0         []gtk4rt.Handle
+	__slot0_at      gtk4rt.Handle
+	__slot1         []gtk4rt.Handle
+	__slot1_at      gtk4rt.Handle
+	__n6            gtk4rt.Handle
+	__n7            gtk4rt.Handle
+	more            gtk4rt.Handle
 }
 
 // New creates a Model with default values. Binds initialize
 // sequentially so later inits can reference earlier `m.<name>` fields.
 func New() *Model {
 	m := &Model{}
-	m.a = true
-	m.items = []string{"x", "y"}
+	m.__ctx_listDepth = 0
+	m.items = []string{"a"}
 	m.__root = nil
 	m.__slot0 = nil
 	m.__slot0_at = nil
@@ -277,9 +270,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 	}
 	m.__slot0 = nil
 	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
-	if m.a {
-		__n0 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n0, "A")
+	for _, it := range m.items {
+		__n0 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+		gtk4rt.OrientableSetOrientation(__n0, gtk4rt.OrientationHorizontal)
+		gtk4rt.BoxSetSpacing(__n0, 6)
+		__n1 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n1, it)
+		gtk4rt.BoxAppend(__n0, __n1)
 		gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
 		m.__slot0 = append(m.__slot0, __n0)
 	}
@@ -292,29 +289,31 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 	m.__slot1 = nil
 	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	for _, it := range m.items {
-		__n1 := gtk4rt.LabelNew("")
-		gtk4rt.LabelSetText(__n1, it)
-		gtk4rt.InsertBefore(parent, m.__slot1_at, __n1)
-		m.__slot1 = append(m.__slot1, __n1)
+		__n2 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+		gtk4rt.OrientableSetOrientation(__n2, gtk4rt.OrientationHorizontal)
+		gtk4rt.BoxSetSpacing(__n2, 6)
+		__n3 := gtk4rt.CheckButtonNew()
+		gtk4rt.CheckButtonSetLabel(__n3, "")
+		gtk4rt.CheckButtonSetActive(__n3, true)
+		gtk4rt.Connect(__n3, "toggled", func() {
+		})
+		gtk4rt.BoxAppend(__n2, __n3)
+		__n4 := gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+		gtk4rt.OrientableSetOrientation(__n4, gtk4rt.OrientationVertical)
+		gtk4rt.BoxSetSpacing(__n4, 6)
+		__n5 := gtk4rt.LabelNew("")
+		gtk4rt.LabelSetText(__n5, it)
+		gtk4rt.BoxAppend(__n4, __n5)
+		gtk4rt.BoxAppend(__n2, __n4)
+		gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
+		m.__slot1 = append(m.__slot1, __n2)
 	}
 }
 
-func (m *Model) flip_clicked_handler() {
-	m.a = !m.a
-	m.__renderSlot0(m.__n2)
-}
-
 func (m *Model) more_clicked_handler() {
-	m.items = append(m.items, "z")
-	m.__renderSlot1(m.__n2)
-}
-
-func (m *Model) A() bool {
-	return m.a
-}
-
-func (m *Model) SetA(v bool) {
-	m.a = v
+	m.items = append(m.items, "b")
+	m.__renderSlot0(m.__n6)
+	m.__renderSlot1(m.__n7)
 }
 
 func (m *Model) Items() []string {
@@ -330,26 +329,20 @@ func (m *Model) buildWidgetTree() {
 		return
 	}
 	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	m.__n2 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
-	gtk4rt.OrientableSetOrientation(m.__n2, gtk4rt.OrientationVertical)
-	gtk4rt.BoxSetSpacing(m.__n2, 6)
-	m.__n3 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n3, "head")
-	gtk4rt.BoxAppend(m.__n2, m.__n3)
-	m.__renderSlot0(m.__n2)
-	m.__renderSlot1(m.__n2)
-	m.__n4 = gtk4rt.LabelNew("")
-	gtk4rt.LabelSetText(m.__n4, "tail")
-	gtk4rt.BoxAppend(m.__n2, m.__n4)
-	m.flip = gtk4rt.ButtonNew()
-	gtk4rt.ButtonSetLabel(m.flip, "flip")
-	gtk4rt.Connect(m.flip, "clicked", m.flip_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.flip)
+	m.__n6 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n6, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n6, 6)
+	m.__renderSlot0(m.__n6)
+	m.__n7 = gtk4rt.BoxNew(gtk4rt.OrientationHorizontal, 0)
+	gtk4rt.OrientableSetOrientation(m.__n7, gtk4rt.OrientationVertical)
+	gtk4rt.BoxSetSpacing(m.__n7, 6)
+	m.__renderSlot1(m.__n7)
+	gtk4rt.BoxAppend(m.__n6, m.__n7)
 	m.more = gtk4rt.ButtonNew()
 	gtk4rt.ButtonSetLabel(m.more, "more")
 	gtk4rt.Connect(m.more, "clicked", m.more_clicked_handler)
-	gtk4rt.BoxAppend(m.__n2, m.more)
-	gtk4rt.BoxAppend(m.__root, m.__n2)
+	gtk4rt.BoxAppend(m.__n6, m.more)
+	gtk4rt.BoxAppend(m.__root, m.__n6)
 }
 
 // BuildUI constructs the widget tree and returns the top-level window.
@@ -361,16 +354,11 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 
-// flipClick fires the "clicked" signal on the #flip widget; for tests.
-func (m *Model) flipClick() {
-	gtk4rt.Emit(m.flip, "clicked")
-}
-
 // moreClick fires the "clicked" signal on the #more widget; for tests.
 func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:5fd6f669dde1c3981e6670ac230216cd
+pass sha256:9d1e21aa9203e8e317883a01e2ce56f6
 -- run/go/gtk4 --
-pass sha256:65a12d701a04fa5ba489b935409d4543
+pass sha256:678eb7cad03cadebba3b2b6d656a95c0

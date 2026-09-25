@@ -442,12 +442,12 @@ func New() *Model {
 	return m
 }
 
-func (m *Model) __renderSlot0(container *fyne.Container) {
+func (m *Model) __renderSlot0(__parent *fyne.Container) {
 	for _, __entry := range m.__slot0 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot0 = nil
-	m.__slot0_at = fynelayout.SlotAnchor(container, m.__slot0_at)
+	m.__slot0_at = fynelayout.SlotAnchor(__parent, m.__slot0_at)
 	__inst0_next := []*Card__slot0Instance{}
 	var __inst0_i int = 0
 	for _, it := range m.items {
@@ -472,7 +472,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
 		__n4__el := __n4.Root
-		fynelayout.InsertBefore(container, m.__slot0_at, __n4__el)
+		fynelayout.InsertBefore(__parent, m.__slot0_at, __n4__el)
 		m.__slot0 = append(m.__slot0, __n4__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -484,12 +484,12 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 	m.__inst0_live = __inst0_next
 }
 
-func (m *Model) __renderSlot1(container *fyne.Container) {
+func (m *Model) __renderSlot1(__parent *fyne.Container) {
 	for _, __entry := range m.__slot1 {
-		container.Remove(__entry)
+		__parent.Remove(__entry)
 	}
 	m.__slot1 = nil
-	m.__slot1_at = fynelayout.SlotAnchor(container, m.__slot1_at)
+	m.__slot1_at = fynelayout.SlotAnchor(__parent, m.__slot1_at)
 	__inst1_next := []*CardInstance{}
 	var __inst1_i int = 0
 	for range m.items {
@@ -506,7 +506,7 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 		__inst1_next = append(__inst1_next, __n5)
 		__inst1_i = (__inst1_i + 1)
 		__n5__el := __n5.Root
-		fynelayout.InsertBefore(container, m.__slot1_at, __n5__el)
+		fynelayout.InsertBefore(__parent, m.__slot1_at, __n5__el)
 		m.__slot1 = append(m.__slot1, __n5__el)
 	}
 	for __inst1_i_d, _ := range m.__inst1_live {
@@ -1269,7 +1269,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:eda4c4d271383f7551ec6d389f55106f
 -- run/go/fyne --
-pass sha256:beaad2111c1ccd7e4181f3b9b2da4765
+pass sha256:67b20975b3ee515868ef6717688170fc
 -- run/go/gtk4 --
 pass sha256:6d35cb226ff2a18f4976bb7a0db48c51
 -- run/kotlin/android --

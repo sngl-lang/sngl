@@ -1275,7 +1275,7 @@ func emitIRSlotFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext, wid
 
 	params := fn.Params
 	if fn.SlotRender {
-		params = []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}}
+		params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 	}
 	synthesized := &ir.Func{
 		Name:     fn.Name,
