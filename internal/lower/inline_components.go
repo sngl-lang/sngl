@@ -2,11 +2,9 @@ package lower
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -880,9 +878,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
-			if err := refuseRuntimePopulation(n, rc, st.cycles[n.Component]); err != nil {
-				return nil, false, err
-			}
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.
@@ -1187,34 +1182,6 @@ func cloneFuncShallow(f *ir.Func) *ir.Func {
 	c := *f
 	c.Block = nil
 	return &c
-}
-
-// refuseRuntimePopulation reports a slot populated by name on an instantiation
-// that survives to codegen. No target renders one there: bubbletea and android
-// emit the component with no parameter for the slot, and the mutation
-// platforms meet the body's insertion unsubstituted.
-func refuseRuntimePopulation(n *ir.NodeInst, rc reactiveCtx, inCycle bool) error {
-	if len(n.Slots) == 0 {
-		return nil
-	}
-	why := "inside a reactive if or for"
-	switch {
-	case inCycle:
-		why = "as a member of a recursion cycle"
-	case !rc.in:
-		why = "inside a for, where a component with state of its own gets an instance per copy"
-	}
-	names := slices.Sorted(maps.Keys(n.Slots))
-	name, at := names[0], nodePos(n)
-	if vn, ok := n.AST.(*ast.VisualNode); ok {
-		for _, s := range vn.Block.Stmts {
-			if cd, isDecl := s.(*ast.ComponentDecl); isDecl && n.Slots[cd.Name] != nil {
-				name, at = cd.Name, cd.Pos.String()
-				break
-			}
-		}
-	}
-	return fmt.Errorf("%s: slot %q of %s is populated by name, but %s is built at run time here, %s, where no target renders a named population", at, name, n.Component.Name, n.Component.Name, why)
 }
 
 // clearDemotedReceivers drops the receiver at every call site that names a func

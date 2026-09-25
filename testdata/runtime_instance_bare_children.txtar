@@ -1021,7 +1021,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun Card(slotContent: @Composable () -> Unit = {}) {
+fun Card(slotContent: (@Composable () -> Unit)? = null) {
     var hits by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier) {
@@ -1030,7 +1030,11 @@ fun Card(slotContent: @Composable () -> Unit = {}) {
         }, modifier = Modifier) {
             Text(text = ("hit " + hits.toString()), modifier = Modifier)
         }
-        slotContent()
+        if (slotContent != null) {
+            slotContent()
+        } else {
+            Text(text = "empty", modifier = Modifier)
+        }
     }
 }
 -- out/none/html/index.html --
@@ -1273,6 +1277,6 @@ pass sha256:67b20975b3ee515868ef6717688170fc
 -- run/go/gtk4 --
 pass sha256:6d35cb226ff2a18f4976bb7a0db48c51
 -- run/kotlin/android --
-pass sha256:df031bc8ffb4dc70f6b4527061dd9e90
+pass sha256:fbc691f612bbce3a07107f67a8748b0c
 -- run/none/html --
 pass sha256:96f2f9d17baf3f04cae687b6a12fb531

@@ -1034,38 +1034,44 @@ and records each copy's origin (`checker.entryOrigin`): `SlotInst.Entry`
 carries the declared one, or the splice matches nothing and renders nothing
 (`slot_entry_generic.txtar`).
 
-**A component built at run time may not have a slot populated by name** —
-an entry's population included. No target renders one there: bubbletea and
-android emitted the component with no parameter for the slot, and the mutation
-platforms met the insertion unsubstituted. The inliner refuses it where it
-elects the runtime instance (`refuseRuntimePopulation`,
-`cmd/sngl/testdata/slot_population_runtime_instance.txt`); the interpreter,
-which renders it correctly, runs the checked IR and never asks.
+**A component built at run time renders what it is handed** — bare children,
+a population by name, a scoped one binding the insertion's arguments, and an
+entry's — on every target, each of them reading the caller's scope and the
+callee's arguments per copy (`testdata/runtime_instance_named_slot.txtar` and
+its `_scoped_rest`, `_slot_entry` and `_recursive` siblings,
+`cmd/sngl/testdata/runtime_instance_named_slots_runs.txt`). It used to be
+refused for everything but bare children.
 
-**Bare children are rendered there**, and on html, fyne and gtk4 that is
-`passInstanceSlots`: a factory or record is emitted from the declaration
-alone, so each instantiation handing one children gets a copy of the component
-(`Card__slot0`) with them spliced in by `substituteSlots`, and every other
-runtime instance has its insertions replaced by their fallbacks. What the
-children read from the caller crosses the way a slot child does in
-`passSlotChildInstances` — a value becomes a prop the render rewrites per
-copy, a handler an event whose body stays where it was written — so they read
-the loop variable of the copy they sit in and a new item renders a card with
-content (`testdata/runtime_instance_bare_children.txtar`,
-`cmd/sngl/testdata/runtime_instance_bare_children_runs.txt`). android passes
-them as a composable parameter and bubbletea splices, so neither runs the
-pass. `substituteSlots` would splice a named population too, but the lift
-reads only the bare children, and android and bubbletea have no answer for
-one, so the refusal above stands.
+On html, fyne and gtk4 that is `passInstanceSlots`: a factory or record is
+emitted from the declaration alone, so each instantiation handing one content
+gets a copy of the component (`Card__slot0`) with it spliced in by
+`substituteSlots`, and every other runtime instance has its insertions
+replaced by their fallbacks. A population's parameters are bound where the
+copy inserts it, so they are the callee's; what the content reads from the
+caller crosses the way a slot child does in `passSlotChildInstances` — a
+value becomes a prop the render rewrites per copy, a handler an event whose
+body stays where it was written, handed the host event's payload and any
+population parameter it reads (`EventDecl.Params`, the one event a source
+declaration cannot spell). A call reading a population parameter stays in the
+copy, since its arguments name nothing at the site.
+android passes each slot as a nullable composable parameter taking the slot's
+invocation list, an entry being a composable of its own; bubbletea's render
+method takes a func the same way, and splices a component with state. Null is
+"supplied nothing", which renders the insertion's fallback.
 A copy of a recursive body holds the recursive site again, so a copy is keyed
 by the template site it was made for *and* by the statements that site's
-children were cloned from, and a copy meeting its own site with the children
-it was made for reuses itself
+content was cloned from, and a copy meeting its own site with the content it
+was made for reuses itself
 (`testdata/runtime_instance_bare_children_recursive.txtar`). The site alone
 is not a key: every copy of a declaration holds a clone of each of its sites,
 so two callers forwarding different children would share the first one's copy
 (`runtime_instance_bare_children_forwarded.txtar` and its `_recursive_`
-sibling).
+sibling). Nor are the origins alone: a recursion forwarding `label(d * 10)`
+hands each level content cloned from the same statements and bound
+differently, so the key also carries the content's shape, and a site that
+has needed `maxSlotVariants` of them is refused — composing a slot at every
+level is what a function does, and the three targets build copies at compile
+time. bubbletea and android compose it (`slot_population_runtime_instance.txt`).
 
 **A population is a `ComponentDecl` read by position.** At the root of a
 component definition's body it is a nested declaration (pass1's

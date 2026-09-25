@@ -23,7 +23,6 @@ type irViewContext struct {
 	indent      int
 	vertical    bool
 	inComponent bool
-	slotVar     string
 
 	// overlays accumulates modal/drawer Overlay primitives encountered while
 	// rendering the body. They are NOT joined inline; instead each records the
@@ -159,21 +158,13 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		goType := golang.IRTypeToGo(p.Type)
 		params = append(params, p.Name+" "+goType)
 	}
-	hasSlot := cc.Component.ChildrenType != nil
-	if hasSlot {
-		params = append(params, "slotContent string")
-	}
+	params = append(params, slotParams(cc.Component)...)
 
 	fmt.Fprintf(b, "func (m Model) %s(%s) string {\n", methodName, strings.Join(params, ", "))
 
 	compGC := gc.ForComponent(cc.Component)
 	for _, p := range cc.Props {
 		compGC = compGC.WithLocal(p.Name)
-	}
-
-	var slotVar string
-	if hasSlot {
-		slotVar = "slotContent"
 	}
 
 	vc := &irViewContext{
@@ -183,7 +174,6 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		buf:         &strings.Builder{},
 		indent:      1,
 		inComponent: true,
-		slotVar:     slotVar,
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -277,11 +267,7 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 	case *ir.For:
 		vc.renderFor(s, resultVar)
 	case *ir.SlotInst:
-		// Slot in a user component body — substitute the caller's joined
-		// children, threaded in as slotVar when the view function was opened.
-		if vc.slotVar != "" {
-			vc.line(`%s = %s`, resultVar, vc.slotVar)
-		}
+		vc.renderSlotInst(s, resultVar)
 	case *ir.ErrorBoundary:
 		for _, child := range s.Children {
 			vc.renderStmt(child, resultVar)
@@ -595,10 +581,8 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 		}
 	}
 
-	if n.Component != nil && n.Component.ChildrenType != nil && len(n.Children) > 0 {
-		slotVar := resultVar + "Slot"
-		vc.renderChildrenNodes(n.Children, slotVar)
-		args = append(args, slotVar)
+	if n.Component != nil {
+		args = append(args, vc.populationArgs(n, resultVar)...)
 	}
 
 	vc.line(`%s = m.%s(%s)`, resultVar, methodName, strings.Join(args, ", "))
@@ -645,31 +629,6 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
 	} else {
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
-	}
-}
-
-func (vc *irViewContext) renderChildrenNodes(children []ir.Stmt, resultVar string) {
-	var nodes []*ir.NodeInst
-	for _, s := range children {
-		if n, ok := s.(*ir.NodeInst); ok {
-			nodes = append(nodes, n)
-		}
-	}
-	if len(nodes) == 1 {
-		vc.line("var %s string", resultVar)
-		vc.renderNode(nodes[0], resultVar)
-	} else if len(nodes) > 1 {
-		childrenParts := resultVar + "Parts"
-		vc.line("var %s []string", childrenParts)
-		for i, child := range nodes {
-			childVar := fmt.Sprintf("%sPart%d", resultVar, i)
-			vc.line("var %s string", childVar)
-			vc.renderNode(child, childVar)
-			vc.line("%s = append(%s, %s)", childrenParts, childrenParts, childVar)
-		}
-		vc.line(`%s := lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenParts)
-	} else {
-		vc.line(`%s := ""`, resultVar)
 	}
 }
 

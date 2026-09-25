@@ -66,7 +66,7 @@ func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
 		}
 		return nil
 	})
-	st.liftValues(n, comp, inst, local)
+	st.liftValues(n, newLift(comp, inst), local)
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst

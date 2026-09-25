@@ -341,11 +341,27 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 	}
 	accessor := []byte("package " + cfg.Package + `
 
-private var __snglCurrentModel: MainScreenState? = null
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 
-fun setCurrentTestModel(m: MainScreenState) { __snglCurrentModel = m }
+private val __snglCurrentModel = mutableStateOf<MainScreenState?>(null)
+
+// Set by a runner hosting CurrentTestScreen, to let the composition catch up
+// with a model a test has just installed.
+var onTestModelSet: () -> Unit = {}
+
+fun setCurrentTestModel(m: MainScreenState) {
+    __snglCurrentModel.value = m
+    onTestModelSet()
+}
 fun currentTestModel(): MainScreenState =
-    __snglCurrentModel ?: error("currentTestModel: no model set yet")
+    __snglCurrentModel.value ?: error("currentTestModel: no model set yet")
+
+@Composable
+fun CurrentTestScreen() {
+    __snglCurrentModel.value?.let { key(it) { MainScreen(it) } }
+}
 
 fun newTestComponent(): MainScreenState = MainScreenState()
 `)
@@ -417,8 +433,6 @@ import java.io.ByteArrayOutputStream
 class MainScreenAgentTest {
     @get:Rule val composeRule = createAndroidComposeRule<ComponentActivity>()
 
-    private var __sngl_content_set = false
-
     @Test fun runAgent() {
         // Publish the @Rule to the package-scope composeTestRule
         // lateinit var that TestAgentRunner.kt's package-level test
@@ -431,24 +445,22 @@ class MainScreenAgentTest {
         // driver issues its first "list"/"run".
         SnglTestRegistration.ensure()
 
+        // One composition for the whole session, since setContent may be
+        // called once per rule: it shows whichever model the running test
+        // installed, and composing it is what mounts that test's effects and
+        // gives its clicks a node to land on.
+        composeRule.setContent { CurrentTestScreen() }
+        onTestModelSet = {
+            shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitForIdle()
+        }
+
         Snapshots.register("robolectric/") {
-            // Render MainScreen against the test's current model on
-            // demand. The test body calls newTestComponent() +
-            // setCurrentTestModel(c) before any snapshot, so the model
-            // is guaranteed populated by the time we reach here.
-            // setContent throws if called more than once on the same
-            // rule, so guard via a flag — multiple t.snapshot() calls
-            // in the same @Test reuse the existing composition.
-            //
             // Connection between testagent and Compose UI:
             // TestAgent.connectAndDrive (used by the robolectric path)
             // keeps the dispatch loop on the JUnit thread, so this
             // closure runs synchronously on the main thread Robolectric
             // accepts. No marshaling needed.
-            if (!__sngl_content_set) {
-                composeRule.setContent { MainScreen(currentTestModel()) }
-                __sngl_content_set = true
-            }
             shadowOf(Looper.getMainLooper()).idle()
             composeRule.waitForIdle()
 
