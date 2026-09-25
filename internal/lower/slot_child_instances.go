@@ -181,47 +181,50 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // body reads.
 func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 	_ = ir.Walk(n, func(node ir.Node) error {
-		host, ok := node.(*ir.NodeInst)
-		if !ok {
-			return nil
-		}
-		for i := range host.Handlers {
-			h := &host.Handlers[i]
-			if h.Func == nil || len(h.Func.Block) == 0 {
-				continue
-			}
-			name := "__on" + strconv.Itoa(l.events)
-			l.events++
-			reads := paramsRead(h.Func.Block, bound)
-			emit := &ir.Emit{Name: name}
-			relay := &ir.Func{Block: []ir.Stmt{emit}}
-			// Renamed, so a scoped slot's parameter of the same name is not
-			// what the splice binds in their place.
-			for j, p := range h.Func.Params {
-				fresh := &ir.Param{Name: name + "_" + strconv.Itoa(j), Type: p.Type}
-				relay.Params = append(relay.Params, fresh)
-				l.relayed[fresh] = true
-				emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: fresh.Name, Type: fresh.Type, Sym: fresh}})
-			}
-			for _, p := range reads {
-				emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
-			}
-			decl := &ir.EventDecl{Name: name}
-			lifted := h.Func
-			if len(emit.Args) > 0 {
-				moved := *h.Func
-				moved.Params = append(slices.Clip(h.Func.Params), reads...)
-				lifted = &moved
-				decl.Params = moved.Params
-			}
-			l.comp.Events = append(l.comp.Events, decl)
-			l.inst.Handlers = append(l.inst.Handlers, ir.EventHandler{Name: name, Func: lifted})
-			// What is left on the node inside the component is the emit: the
-			// host event still fires, and firing it is what calls out.
-			h.Func = relay
+		if host, ok := node.(*ir.NodeInst); ok {
+			liftNodeHandlers(host, l, bound)
 		}
 		return nil
 	})
+}
+
+// liftNodeHandlers is liftHandlers for host's own handlers alone.
+func liftNodeHandlers(host *ir.NodeInst, l *lift, bound []*ir.Param) {
+	for i := range host.Handlers {
+		h := &host.Handlers[i]
+		if h.Func == nil || len(h.Func.Block) == 0 {
+			continue
+		}
+		name := "__on" + strconv.Itoa(l.events)
+		l.events++
+		reads := paramsRead(h.Func.Block, bound)
+		emit := &ir.Emit{Name: name}
+		relay := &ir.Func{Block: []ir.Stmt{emit}}
+		// Renamed, so a scoped slot's parameter of the same name is not
+		// what the splice binds in their place.
+		for j, p := range h.Func.Params {
+			fresh := &ir.Param{Name: name + "_" + strconv.Itoa(j), Type: p.Type}
+			relay.Params = append(relay.Params, fresh)
+			l.relayed[fresh] = true
+			emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: fresh.Name, Type: fresh.Type, Sym: fresh}})
+		}
+		for _, p := range reads {
+			emit.Args = append(emit.Args, ir.CallArg{Value: &ir.Ident{Name: p.Name, Type: p.Type, Sym: p}})
+		}
+		decl := &ir.EventDecl{Name: name}
+		lifted := h.Func
+		if len(emit.Args) > 0 {
+			moved := *h.Func
+			moved.Params = append(slices.Clip(h.Func.Params), reads...)
+			lifted = &moved
+			decl.Params = moved.Params
+		}
+		l.comp.Events = append(l.comp.Events, decl)
+		l.inst.Handlers = append(l.inst.Handlers, ir.EventHandler{Name: name, Func: lifted})
+		// What is left on the node inside the component is the emit: the
+		// host event still fires, and firing it is what calls out.
+		h.Func = relay
+	}
 }
 
 // paramsRead is each of params that stmts reads, in params' order.

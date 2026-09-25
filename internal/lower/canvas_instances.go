@@ -6,13 +6,9 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passCanvasInstances makes each canvas written under a `for` a component
-// built at run time. A canvas is lowered to a surface and a draw routine the
-// owner holds -- one field and one method -- so a loop's copies shared both:
-// every copy painted into the last surface, and the routine read the loop
-// variable in a scope that never bound it. As an instance each copy holds its
-// own, and what the drawing read from the loop arrives as a prop, the way a
-// slot child's does in passSlotChildInstances.
+// passCanvasInstances makes each canvas under a `for` a component built at
+// run time, since a canvas's surface and draw routine are otherwise one field
+// and one method of its owner, shared by every copy.
 var passCanvasInstances = pass{
 	name:    "CanvasInstances",
 	enabled: hasInstanceRuntime,
@@ -43,16 +39,8 @@ func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
 	comp := &ir.Component{Name: "__canvas" + strconv.Itoa(st.n), RuntimeInstance: true}
 	st.n++
 	inst := &ir.NodeInst{AST: n.AST, Component: comp}
-	for i := range n.Handlers {
-		h := &n.Handlers[i]
-		if h.Func == nil || len(h.Func.Block) == 0 {
-			continue
-		}
-		name := "__on" + strconv.Itoa(len(comp.Events))
-		comp.Events = append(comp.Events, &ir.EventDecl{Name: name})
-		inst.Handlers = append(inst.Handlers, ir.EventHandler{Name: name, Func: h.Func})
-		h.Func = &ir.Func{Block: []ir.Stmt{&ir.Emit{Name: name}}}
-	}
+	l := newLift(comp, inst)
+	liftNodeHandlers(n, l, nil)
 	local := declaredWithin([]ir.Stmt{n})
 	_ = ir.Walk(n, func(node ir.Node) error {
 		if host, ok := node.(*ir.NodeInst); ok {
@@ -66,7 +54,7 @@ func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
 		}
 		return nil
 	})
-	st.liftValues(n, newLift(comp, inst), local)
+	st.liftValues(n, l, local)
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst
