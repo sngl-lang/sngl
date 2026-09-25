@@ -24,6 +24,16 @@ sngl test --platform=html failed.sngl
 stdout 'PASS'
 grep 'end a</span>.*failed b bad</span>.*end b</span>' failed.sngl.snapshots/failed.html
 
+# A boundary that is itself the root of a render slot, rather than under a
+# node inside one: directly under a reactive `if`, directly under a reactive
+# `for`, and nested in a boundary that has a fallback, whose content becomes
+# the reactive `if` passBoundaryFailed writes. Each rendered nothing.
+sngl test --platform=html direct.sngl
+stdout 'PASS'
+grep 'display:contents"><span>direct</span></span>' direct.sngl.snapshots/direct.html
+grep '<span>row a</span><span>row b</span>' direct.sngl.snapshots/direct.html
+grep '<span>o1</span><span>content</span><span>o2</span>' direct.sngl.snapshots/direct.html
+
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -144,6 +154,52 @@ component main node {
 
 func testFailed(t Test, c main) {
     t.snapshot("failed")
+}
+
+window {
+    main
+}
+-- direct.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component main node {
+    var show = true
+    var items = ["a", "b"]
+    var caught = ""
+    var outer = ""
+
+    vbox {
+        text(value="start")
+        if show {
+            boundary(@error(e) { caught = e.message }) {
+                text(value="direct")
+            }
+        }
+        text(value="end")
+        for var it = items {
+            boundary(@error(e) { caught = e.message }) {
+                text(value="row {it}")
+            }
+        }
+        boundary(@error(e) { outer = e.message }) {
+            component failed {
+                text(value="failed {outer}")
+            }
+
+            text(value="o1")
+            boundary(@error(e) { caught = e.message }) {
+                text(value="content")
+            }
+            text(value="o2")
+        }
+    }
+}
+
+func testDirect(t Test, c main) {
+    t.snapshot("direct")
 }
 
 window {

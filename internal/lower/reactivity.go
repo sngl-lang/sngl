@@ -1703,6 +1703,10 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 					inner.Else = emitStmts(sx.Else)
 				}
 				out = append(out, inner)
+			case *ir.ErrorBoundary:
+				cp := *sx
+				cp.Children = emitStmts(sx.Children)
+				out = append(out, &cp)
 			default:
 				// Non-structural stmt (LocalVar/Assign/CallStmt/etc.) — pass through.
 				_ = sx
