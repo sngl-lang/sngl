@@ -2,14 +2,14 @@ import . "sngl:ui"
 
 func scaled(n int) int {
     if n > 5 {
-        error.raise("too big")
+        error.raise("too big", "range")
     }
     return n * 10
 }
 
 func check(n int) {
     if n > 5 {
-        error.raise("too big")
+        error.raise("too big", "range")
     }
 }
 
