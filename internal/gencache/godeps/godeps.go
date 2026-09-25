@@ -82,6 +82,10 @@ func produce(s *gencache.Store, params []string) (gencache.Output, error) {
 	}
 
 	var files, dirs []string
+	// allNames holds the directories whose every name counts: an `all:` embed
+	// pattern embeds the `_` and `.` names the go command otherwise ignores, so
+	// only there does one change the build.
+	allNames := map[string]bool{}
 	modFiles := map[string]bool{}
 	if gomod := env["GOMOD"]; gomod != "" && gomod != os.DevNull {
 		modFiles[gomod] = true
@@ -101,6 +105,10 @@ func produce(s *gencache.Store, params []string) (gencache.Output, error) {
 			modFiles[p.Module.GoMod] = true
 		}
 		dirs = append(dirs, p.Dir)
+		embedsAll := slices.ContainsFunc(p.EmbedPatterns, func(pat string) bool { return strings.HasPrefix(pat, "all:") })
+		if embedsAll {
+			allNames[p.Dir] = true
+		}
 		for _, group := range [][]string{
 			p.GoFiles, p.CgoFiles, p.CFiles, p.CXXFiles, p.MFiles, p.HFiles, p.FFiles, p.SFiles,
 			p.SwigFiles, p.SwigCXXFiles, p.SysoFiles, p.IgnoredGoFiles, p.IgnoredOtherFiles,
@@ -117,13 +125,20 @@ func produce(s *gencache.Store, params []string) (gencache.Output, error) {
 			// output depends on.
 			for d := filepath.Dir(path); d != p.Dir && inDir(d, p.Dir); d = filepath.Dir(d) {
 				dirs = append(dirs, d)
+				if embedsAll {
+					allNames[d] = true
+				}
 			}
 		}
 	}
 
 	noStore := false
 	for _, d := range sortedUnique(dirs) {
-		in, err := gencache.Dir(d)
+		record := gencache.GoDir
+		if allNames[d] {
+			record = gencache.Dir
+		}
+		in, err := record(d)
 		if err != nil {
 			return gencache.Output{}, err
 		}
@@ -163,14 +178,14 @@ type pkg struct {
 	Module     *struct{ GoMod string }
 
 	GoFiles, CgoFiles, CFiles, CXXFiles, MFiles, HFiles, FFiles, SFiles []string
-	SwigFiles, SwigCXXFiles, SysoFiles, EmbedFiles                      []string
+	SwigFiles, SwigCXXFiles, SysoFiles, EmbedFiles, EmbedPatterns       []string
 	IgnoredGoFiles, IgnoredOtherFiles                                   []string
 
 	Error *struct{ Err string }
 }
 
 const listFields = "ImportPath,Dir,Standard,Module,GoFiles,CgoFiles,CFiles,CXXFiles,MFiles,HFiles,FFiles,SFiles," +
-	"SwigFiles,SwigCXXFiles,SysoFiles,EmbedFiles,IgnoredGoFiles,IgnoredOtherFiles,Error"
+	"SwigFiles,SwigCXXFiles,SysoFiles,EmbedFiles,EmbedPatterns,IgnoredGoFiles,IgnoredOtherFiles,Error"
 
 func list(dir string, roots []string) ([]pkg, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)

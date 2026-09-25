@@ -117,6 +117,19 @@ func Dir(path string) (Input, error) {
 	return Input{Kind: "dir", Props: []Prop{str("path", path), str("sha256", sum)}}, nil
 }
 
+// GoDir records path's listing as the go command reads it: a name beginning
+// with `_` or `.` is left out, since no build or directory embed pattern
+// (short of `all:`) ever sees one. That is what lets a test put a scratch
+// module package beside the code it builds, as the platform tests do, without
+// invalidating everything recorded against the package it sits in.
+func GoDir(path string) (Input, error) {
+	sum, err := goDirSum(path)
+	if err != nil {
+		return Input{}, err
+	}
+	return Input{Kind: "godir", Props: []Prop{str("path", path), str("sha256", sum)}}, nil
+}
+
 // Env records an environment variable's value, or that it is unset.
 func Env(name string) Input {
 	if v, ok := os.LookupEnv(name); ok {
@@ -204,6 +217,11 @@ func (s *Store) recheck(in Input) string {
 		}
 	case "dir":
 		sum, err := dirSum(in.Get("path"))
+		if err != nil || sum != in.Get("sha256") {
+			return in.Get("path") + " listing changed"
+		}
+	case "godir":
+		sum, err := goDirSum(in.Get("path"))
 		if err != nil || sum != in.Get("sha256") {
 			return in.Get("path") + " listing changed"
 		}
@@ -409,16 +427,31 @@ func fileSum(path string) (string, error) {
 // a trailing slash so that a file replaced by a directory of the same name is
 // a change.
 func dirSum(path string) (string, error) {
+	return listingSum(path, func(string) bool { return true })
+}
+
+// goDirSum is dirSum over the names the go command does not ignore.
+func goDirSum(path string) (string, error) {
+	return listingSum(path, func(name string) bool {
+		return !strings.HasPrefix(name, "_") && !strings.HasPrefix(name, ".")
+	})
+}
+
+func listingSum(path string, keep func(name string) bool) (string, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return "", err
 	}
-	names := make([]string, len(entries))
-	for i, e := range entries {
-		names[i] = e.Name()
-		if e.IsDir() {
-			names[i] += "/"
+	var names []string
+	for _, e := range entries {
+		if !keep(e.Name()) {
+			continue
 		}
+		name := e.Name()
+		if e.IsDir() {
+			name += "/"
+		}
+		names = append(names, name)
 	}
 	sort.Strings(names)
 	h := sha256.New()
