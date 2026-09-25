@@ -1018,7 +1018,7 @@ body { font-family: system-ui, sans-serif; }
     __n16.disabled = false;
     __n16.addEventListener("click", () => {
       ks.push(3);
-      __renderSlot0(__n4);
+      __renderSlot0(__slotAnchor_0);
     });
     __n16.addEventListener("contextmenu", () => {
     });
@@ -1026,7 +1026,10 @@ body { font-family: system-ui, sans-serif; }
     __n17.textContent = "more";
     __n16.appendChild(__n17);
     __n4.appendChild(__n16);
-    __renderSlot0(__n4);
+    const __slotAnchor_0 = document.createElement("span");
+    __slotAnchor_0.style.display = "contents";
+    __n4.appendChild(__slotAnchor_0);
+    __renderSlot0(__slotAnchor_0);
     __root.appendChild(__n4);
     return {
       __root,
@@ -1048,7 +1051,7 @@ body { font-family: system-ui, sans-serif; }
     let __slot32 = [];
     function __set___p0(__v) {
       __prop___p0 = __v;
-      __renderSlot1(__n6);
+      __renderSlot1(__slotAnchor_1);
     }
     function __renderSlot1(parent) {
       let __place2_prev = __slot1;
@@ -1108,7 +1111,7 @@ body { font-family: system-ui, sans-serif; }
     __n18.disabled = false;
     __n18.addEventListener("click", () => {
       ks.push(3);
-      __renderSlot1(__n6);
+      __renderSlot1(__slotAnchor_1);
     });
     __n18.addEventListener("contextmenu", () => {
     });
@@ -1116,7 +1119,10 @@ body { font-family: system-ui, sans-serif; }
     __n19.textContent = "more";
     __n18.appendChild(__n19);
     __n6.appendChild(__n18);
-    __renderSlot1(__n6);
+    const __slotAnchor_1 = document.createElement("span");
+    __slotAnchor_1.style.display = "contents";
+    __n6.appendChild(__slotAnchor_1);
+    __renderSlot1(__slotAnchor_1);
     __root.appendChild(__n6);
     return {
       __root,
@@ -1234,4 +1240,4 @@ pass sha256:eb178788cbfafcf9e1125edffa52bc2b
 -- run/go/gtk4 --
 pass sha256:cf45b7736165f087ba9ec15b681608f6
 -- run/none/html --
-pass sha256:8bcbffd30d98a21148f2b9ebc4402973
+pass sha256:42cfd849bb4e90d4e967b16405202f64

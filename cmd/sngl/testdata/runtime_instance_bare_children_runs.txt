@@ -49,7 +49,7 @@ stdout 'PASS'
 grep '(?s)<span>ALPHA a</span>.*<span>ALPHA a</span>.*<span>BETA</span>.*<span>BETA</span>' fwd.sngl.snapshots/forwarded.html
 sngl test --platform=html recfwd.sngl
 stdout 'PASS'
-grep '<span>BETA</span><div[^A]*<span>BETA</span><div[^A]*<span>BETA</span>' recfwd.sngl.snapshots/levels.html
+grep '<span>BETA</span><span[^A]*<span>BETA</span><span[^A]*<span>BETA</span>' recfwd.sngl.snapshots/levels.html
 
 sngl test --platform=fyne nosnap.sngl
 stdout 'ok'

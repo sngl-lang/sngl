@@ -1015,11 +1015,11 @@ body { font-family: system-ui, sans-serif; }
     let __slot3 = [];
     function __set_n(__v) {
       __prop_n = __v;
-      __renderSlot0(__n3);
+      __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot0(__n3);
+      __renderSlot0(__slotAnchor_0);
     }
     function __renderSlot0(parent) {
       let __place0_prev = __slot0;
@@ -1083,7 +1083,10 @@ body { font-family: system-ui, sans-serif; }
     let __n10 = document.createElement("span");
     __n10.textContent = "BETA";
     __n3.appendChild(__n10);
-    __renderSlot0(__n3);
+    const __slotAnchor_0 = document.createElement("span");
+    __slotAnchor_0.style.display = "contents";
+    __n3.appendChild(__slotAnchor_0);
+    __renderSlot0(__slotAnchor_0);
     __root.appendChild(__n3);
     return {
       __root,
@@ -1109,11 +1112,11 @@ body { font-family: system-ui, sans-serif; }
     let __slot3 = [];
     function __set_n(__v) {
       __prop_n = __v;
-      __renderSlot1(__n5);
+      __renderSlot1(__slotAnchor_1);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot1(__n5);
+      __renderSlot1(__slotAnchor_1);
     }
     function __renderSlot1(parent) {
       let __place2_prev = __slot1;
@@ -1177,7 +1180,10 @@ body { font-family: system-ui, sans-serif; }
     let __n11 = document.createElement("span");
     __n11.textContent = "ALPHA";
     __n5.appendChild(__n11);
-    __renderSlot1(__n5);
+    const __slotAnchor_1 = document.createElement("span");
+    __slotAnchor_1.style.display = "contents";
+    __n5.appendChild(__slotAnchor_1);
+    __renderSlot1(__slotAnchor_1);
     __root.appendChild(__n5);
     return {
       __root,
@@ -1203,11 +1209,11 @@ body { font-family: system-ui, sans-serif; }
     let __slot3 = [];
     function __set_n(__v) {
       __prop_n = __v;
-      __renderSlot2(__n7);
+      __renderSlot2(__slotAnchor_2);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot2(__n7);
+      __renderSlot2(__slotAnchor_2);
     }
     function __renderSlot2(parent) {
       let __place4_prev = __slot2;
@@ -1271,7 +1277,10 @@ body { font-family: system-ui, sans-serif; }
     let __n12 = document.createElement("span");
     __n12.textContent = "BETA";
     __n7.appendChild(__n12);
-    __renderSlot2(__n7);
+    const __slotAnchor_2 = document.createElement("span");
+    __slotAnchor_2.style.display = "contents";
+    __n7.appendChild(__slotAnchor_2);
+    __renderSlot2(__slotAnchor_2);
     __root.appendChild(__n7);
     return {
       __root,
@@ -1297,11 +1306,11 @@ body { font-family: system-ui, sans-serif; }
     let __inst7_live = [];
     function __set_n(__v) {
       __prop_n = __v;
-      __renderSlot3(__n9);
+      __renderSlot3(__slotAnchor_3);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot3(__n9);
+      __renderSlot3(__slotAnchor_3);
     }
     function __renderSlot3(parent) {
       let __place6_prev = __slot3;
@@ -1365,7 +1374,10 @@ body { font-family: system-ui, sans-serif; }
     let __n13 = document.createElement("span");
     __n13.textContent = "ALPHA";
     __n9.appendChild(__n13);
-    __renderSlot3(__n9);
+    const __slotAnchor_3 = document.createElement("span");
+    __slotAnchor_3.style.display = "contents";
+    __n9.appendChild(__slotAnchor_3);
+    __renderSlot3(__slotAnchor_3);
     __root.appendChild(__n9);
     return {
       __root,
@@ -1396,4 +1408,4 @@ pass sha256:1772cb48185bee1fc45581b052e27459
 -- run/go/gtk4 --
 pass sha256:6660e7135b5a0aa90e29e11ed3909e2f
 -- run/none/html --
-pass sha256:729b610845427eea6101e199b9091b54
+pass sha256:2e5677422cd81b182dfab1afaef6daf1
