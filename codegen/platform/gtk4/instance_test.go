@@ -59,7 +59,7 @@ func TestInstanceRecordIsPerRow(t *testing.T) {
 		"__inst0_live []*CardInstance",
 		"__n1.SetName(item.Name)",
 		"func (c *CardInstance) SetName(",
-		"func (c *CardInstance) Destroy() {}",
+		"func (c *CardInstance) Destroy() {",
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("emitted Go missing %q\n--- model.go ---\n%s", want, model)

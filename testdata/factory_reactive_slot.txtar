@@ -301,6 +301,7 @@ func newCardInstance(__model *Model, name string) *CardInstance {
 	gtk4rt.BoxAppend(__box, c.__n0)
 	gtk4rt.BoxAppend(__box, c.__root)
 	c.Root = __box
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -323,7 +324,12 @@ func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
 	}
 }
 
-func (c *CardInstance) Destroy() {}
+func (c *CardInstance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+}
 
 func (m *Model) Items__inst0() []string {
 	return m.items__inst0
@@ -352,4 +358,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/fyne --
 pass sha256:d2abc944d1b1ef1966b3fbbd12ee2668
 -- run/go/gtk4 --
-pass sha256:bdc2fa9b6e8ab6e66b46853ad563ff75
+pass sha256:545e685ec10ae2da56aad4abd72dc5b7

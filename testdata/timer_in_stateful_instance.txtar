@@ -555,6 +555,7 @@ func newTickerInstance(__model *Model, period time.Duration) *TickerInstance {
 	gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
 	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -629,13 +630,21 @@ func (c *TickerInstance) __effects0_settle() {
 	}
 }
 
-func (c *TickerInstance) Destroy() {
+func (c *TickerInstance) teardown() {
 	c.__effect0_teardown()
 }
 
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
 	c.__prop_period = __v
 	gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+}
+
+func (c *TickerInstance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
 }
 
 func (m *Model) buildWidgetTree() {
@@ -833,6 +842,6 @@ pass sha256:ba3447f0fef0bbfc9899ca80375527b4
 -- run/go/fyne --
 pass sha256:e3632795cb2bfdd5abc107d21a84dd79
 -- run/go/gtk4 --
-pass sha256:0e9389ac3588c208a8731868bf45af35
+pass sha256:378a65f477bff28ea5e064b733610025
 -- run/none/html --
 pass sha256:9e764f509b14e87d9faa8d27238788a7

@@ -15,10 +15,11 @@
 # card's own button.
 #
 # The recursive and forwarded cases are read off the DOM on html only; on fyne
-# and gtk4 they are asserted to build and mount, nothing more. Neither deepens
-# the recursion there: on gtk4 re-rendering a reused recursive instance hangs,
-# intermittently, in gtk_box_append with a widget as its own parent, and did
-# so before any of this.
+# and gtk4 they are asserted to build, mount and deepen the recursion twice.
+# On gtk4 each record holds a reference on its root: a render slot removes
+# every entry before appending what it keeps, and the root of a reused
+# instance, parented by nothing else, was freed and appended afterwards --
+# GTK CRITICALs on every run, and a hang in gtk_box_append on some.
 #
 # bubbletea is not here: it splices the component rather than building it at
 # run time, and refuses an effect that reads a loop variable it does not bind.
@@ -61,10 +62,13 @@ stdout 'ok'
 [!gtk4] stop 'gtk4 needs its development libraries to build'
 sngl test --platform=gtk4 nosnap.sngl
 stdout 'ok'
+! stderr 'CRITICAL'
 sngl test --platform=gtk4 recnosnap.sngl
 stdout 'ok'
+! stderr 'CRITICAL'
 sngl test --platform=gtk4 nestnosnap.sngl
 stdout 'ok'
+! stderr 'CRITICAL'
 
 -- app.sngl --
 import . "sngl:ui"
@@ -210,7 +214,9 @@ component main node {
 }
 
 func testDeepening(t Test, c main) {
-    t.assert(c.depth == 2)
+    c.deeper.click()
+    c.deeper.click()
+    t.assert(c.depth == 4)
 }
 
 window {
@@ -370,7 +376,9 @@ component main node {
 }
 
 func testNested(t Test, c main) {
-    t.assert(c.depth == 2)
+    c.deeper.click()
+    c.deeper.click()
+    t.assert(c.depth == 4)
 }
 
 window {

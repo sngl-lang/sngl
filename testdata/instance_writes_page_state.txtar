@@ -731,6 +731,7 @@ func newRowInstance(__model *Model, name string) *RowInstance {
 	})
 	c.__effects0_settle()
 	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -806,12 +807,20 @@ func (c *RowInstance) __effects0_settle() {
 	}
 }
 
-func (c *RowInstance) Destroy() {
+func (c *RowInstance) teardown() {
 	c.__effect0_teardown()
 }
 
 func (c *RowInstance) SetName(__v string) {
 	c.__prop_name = __v
+}
+
+func (c *RowInstance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
 }
 
 func (m *Model) Start() int {
@@ -1131,7 +1140,7 @@ pass sha256:05ce6c5ed233068b4b46cfc5306b6f43
 -- run/go/fyne --
 pass sha256:34f1b3851190e852275a5541083ef0a3
 -- run/go/gtk4 --
-pass sha256:19c6bd01ef6a695409afc50582e8e1d7
+pass sha256:87d30f90a4e911bd7497faa04b79d3db
 -- run/kotlin/android --
 pass sha256:4ffa09189aa41104afea7fb8a840eb20
 -- run/none/html --

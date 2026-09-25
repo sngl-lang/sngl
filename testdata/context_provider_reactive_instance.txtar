@@ -446,6 +446,7 @@ func newShowInstance(__model *Model, n int, __ctx_label string) *ShowInstance {
 	c.__n0 = gtk4rt.LabelNew("")
 	gtk4rt.LabelSetText(c.__n0, ((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)))
 	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -459,7 +460,12 @@ func (c *ShowInstance) Set__ctx_label(__v string) {
 	gtk4rt.LabelSetText(c.__n0, ((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)))
 }
 
-func (c *ShowInstance) Destroy() {}
+func (c *ShowInstance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+}
 
 func (m *Model) Txt() string {
 	return m.txt
@@ -675,7 +681,7 @@ pass sha256:ddfb11e0532392b27c3c38dc8a110830
 -- run/go/fyne --
 pass sha256:5286e9cd516a01e3fdd92c84df6d34e5
 -- run/go/gtk4 --
-pass sha256:68d0fd15ca27fdc3e6110b4377d9c355
+pass sha256:2cce67c0f940d01525a5cb25a59938b5
 -- run/kotlin/android --
 pass sha256:aaa3ed2b02a32f2f3d45b2f9c8f71363
 -- run/none/html --

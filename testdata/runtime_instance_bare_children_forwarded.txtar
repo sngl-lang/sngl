@@ -601,10 +601,16 @@ func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
 	})
 	gtk4rt.BoxAppend(__n10, __n11)
 	c.Root = __n10
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
-func (c *Card__slot3Instance) Destroy() {}
+func (c *Card__slot3Instance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+}
 
 // Card__slot2Instance is one live instance of the Card__slot2 component.
 type Card__slot2Instance struct {
@@ -645,6 +651,7 @@ func newCard__slot2Instance(__model *Model, __p0 string) *Card__slot2Instance {
 	gtk4rt.LabelSetText(c.__n2, ("ALPHA " + c.__prop___p0))
 	gtk4rt.BoxAppend(__n12, c.__n2)
 	c.Root = __n12
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -653,7 +660,12 @@ func (c *Card__slot2Instance) Set__p0(__v string) {
 	gtk4rt.LabelSetText(c.__n2, ("ALPHA " + c.__prop___p0))
 }
 
-func (c *Card__slot2Instance) Destroy() {}
+func (c *Card__slot2Instance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+}
 
 // Row__slot1Instance is one live instance of the Row__slot1 component.
 type Row__slot1Instance struct {
@@ -691,6 +703,7 @@ func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
 	gtk4rt.BoxAppend(c.__n4, __n13)
 	c.__renderSlot0(c.__n4)
 	c.Root = c.__n4
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -727,12 +740,20 @@ func (c *Row__slot1Instance) __renderSlot0(parent gtk4rt.Handle) {
 	c.__inst0_live = __inst0_next
 }
 
-func (c *Row__slot1Instance) Destroy() {
+func (c *Row__slot1Instance) teardown() {
 	for __inst0_live_di, _ := range c.__inst0_live {
 		var __inst0_live_dj int = ((len(c.__inst0_live) - 1) - __inst0_live_di)
 		c.__inst0_live[__inst0_live_dj].Destroy()
 	}
 	c.__inst0_live = []*Card__slot3Instance{}
+}
+
+func (c *Row__slot1Instance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
 }
 
 // Row__slot0Instance is one live instance of the Row__slot0 component.
@@ -773,6 +794,7 @@ func newRow__slot0Instance(__model *Model, __p0 string) *Row__slot0Instance {
 	gtk4rt.BoxAppend(c.__n6, __n14)
 	c.__renderSlot1(c.__n6)
 	c.Root = c.__n6
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -815,12 +837,20 @@ func (c *Row__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 	c.__inst1_live = __inst1_next
 }
 
-func (c *Row__slot0Instance) Destroy() {
+func (c *Row__slot0Instance) teardown() {
 	for __inst1_live_di, _ := range c.__inst1_live {
 		var __inst1_live_dj int = ((len(c.__inst1_live) - 1) - __inst1_live_di)
 		c.__inst1_live[__inst1_live_dj].Destroy()
 	}
 	c.__inst1_live = []*Card__slot2Instance{}
+}
+
+func (c *Row__slot0Instance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
 }
 
 func (m *Model) Items() []string {
@@ -1232,6 +1262,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:eb178788cbfafcf9e1125edffa52bc2b
 -- run/go/gtk4 --
-pass sha256:cf45b7736165f087ba9ec15b681608f6
+pass sha256:db02ba369cc388914cbe98d1fbd34d54
 -- run/none/html --
 pass sha256:8bcbffd30d98a21148f2b9ebc4402973

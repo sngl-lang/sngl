@@ -821,6 +821,7 @@ func newTimerInstance(__model *Model, interval time.Duration, enabled bool, tick
 	c.__slot1 = nil
 	c.__effects0_settle()
 	c.Root = gtk4rt.LabelNew("")
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -896,12 +897,20 @@ func (c *TimerInstance) __effects0_settle() {
 	}
 }
 
-func (c *TimerInstance) Destroy() {
+func (c *TimerInstance) teardown() {
 	c.__effect0_teardown()
 }
 
 func (c *TimerInstance) SetTick(__v func(any)) {
 	c.__prop_tick = __v
+}
+
+func (c *TimerInstance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
 }
 
 func (m *Model) N() int {
@@ -1212,6 +1221,6 @@ pass sha256:b1bbcc8d2ecfd44ea44218b3b4e7478d
 -- run/go/fyne --
 pass sha256:a1d0ecc3ecb42baa650cc427a907f5be
 -- run/go/gtk4 --
-pass sha256:04f84dfc4c194250597ecc484beb84e0
+pass sha256:f61ac006ed3fb13bbbf0219e17a65366
 -- run/none/html --
 pass sha256:68f08128213183c49de25c724e556808

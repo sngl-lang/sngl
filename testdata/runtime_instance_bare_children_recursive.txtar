@@ -405,6 +405,7 @@ func newFrame__slot2Instance(__model *Model, n int, __depth int, __p0 int) *Fram
 	gtk4rt.BoxAppend(c.__n3, c.__n0)
 	c.__renderSlot0(c.__n3)
 	c.Root = c.__n3
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -463,12 +464,20 @@ func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
 	c.__inst0_live = __inst0_next
 }
 
-func (c *Frame__slot2Instance) Destroy() {
+func (c *Frame__slot2Instance) teardown() {
 	for __inst0_live_di, _ := range c.__inst0_live {
 		var __inst0_live_dj int = ((len(c.__inst0_live) - 1) - __inst0_live_di)
 		c.__inst0_live[__inst0_live_dj].Destroy()
 	}
 	c.__inst0_live = []*Frame__slot2Instance{}
+}
+
+func (c *Frame__slot2Instance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
 }
 
 // Frame__slot0Instance is one live instance of the frame__slot0 component.
@@ -503,6 +512,7 @@ func newFrame__slot0Instance(__model *Model, n int, __depth int) *Frame__slot0In
 	gtk4rt.BoxAppend(c.__n5, __n6)
 	c.__renderSlot1(c.__n5)
 	c.Root = c.__n5
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -556,12 +566,20 @@ func (c *Frame__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 	c.__inst1_live = __inst1_next
 }
 
-func (c *Frame__slot0Instance) Destroy() {
+func (c *Frame__slot0Instance) teardown() {
 	for __inst1_live_di, _ := range c.__inst1_live {
 		var __inst1_live_dj int = ((len(c.__inst1_live) - 1) - __inst1_live_di)
 		c.__inst1_live[__inst1_live_dj].Destroy()
 	}
 	c.__inst1_live = []*Frame__slot2Instance{}
+}
+
+func (c *Frame__slot0Instance) Destroy() {
+	c.teardown()
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
 }
 
 func (m *Model) Depth() int {
@@ -832,6 +850,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:18a2cab6021ef2dfeec4bdb765601d0a
 -- run/go/gtk4 --
-pass sha256:02ceee50c966f76f096b8e9a6baa2dcf
+pass sha256:09fc5e3550be866062f2c3d18ad68fe8
 -- run/none/html --
 pass sha256:9decf03c234aff24caa3acfcf0554fd4

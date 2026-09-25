@@ -455,6 +455,7 @@ func newCounterInstance(__model *Model, label string) *CounterInstance {
 		gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 	})
 	c.Root = c.__n0
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -463,7 +464,12 @@ func (c *CounterInstance) SetLabel(__v string) {
 	gtk4rt.ButtonSetLabel(c.__n0, ((c.__prop_label + " ") + fmt.Sprint(c.hits)))
 }
 
-func (c *CounterInstance) Destroy() {}
+func (c *CounterInstance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+}
 
 func (m *Model) buildWidgetTree() {
 	if m.__root != nil {
@@ -654,7 +660,7 @@ pass sha256:2d27c04a2720e8b84e4bdb5641eecc07
 -- run/go/fyne --
 pass sha256:d2ea3625e1139259be81bfa2268cc9be
 -- run/go/gtk4 --
-pass sha256:e9464b27309a59c64cc98ab3379acc71
+pass sha256:8589dd76da3eac67ebbc9b325197820f
 -- run/kotlin/android --
 pass sha256:035f5b65e07f0c890d650adf2a1ae584
 -- run/none/html --

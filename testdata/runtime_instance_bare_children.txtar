@@ -807,10 +807,16 @@ func newCardInstance(__model *Model) *CardInstance {
 	gtk4rt.LabelSetText(__n8, "empty")
 	gtk4rt.BoxAppend(__n7, __n8)
 	c.Root = __n7
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
-func (c *CardInstance) Destroy() {}
+func (c *CardInstance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+}
 
 // Card__slot0Instance is one live instance of the Card__slot0 component.
 type Card__slot0Instance struct {
@@ -855,6 +861,7 @@ func newCard__slot0Instance(__model *Model, __p0 string, __on0 func()) *Card__sl
 	})
 	gtk4rt.BoxAppend(__n9, __n10)
 	c.Root = __n9
+	gtk4rt.Retain(c.Root)
 	return c
 }
 
@@ -867,7 +874,12 @@ func (c *Card__slot0Instance) Set__on0(__v func()) {
 	c.__prop___on0 = __v
 }
 
-func (c *Card__slot0Instance) Destroy() {}
+func (c *Card__slot0Instance) Destroy() {
+	if c.Root != nil {
+		gtk4rt.Release(c.Root)
+		c.Root = nil
+	}
+}
 
 func (m *Model) Items() []string {
 	return m.items
@@ -1226,7 +1238,7 @@ pass sha256:eda4c4d271383f7551ec6d389f55106f
 -- run/go/fyne --
 pass sha256:159f555da60d57451181aeb4820c4d16
 -- run/go/gtk4 --
-pass sha256:ec63526d6c0f719006a19188dbadd7c1
+pass sha256:56d05a6022a88afa1b78773182943c8d
 -- run/kotlin/android --
 pass sha256:df031bc8ffb4dc70f6b4527061dd9e90
 -- run/none/html --

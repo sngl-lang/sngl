@@ -248,6 +248,17 @@ func WindowPresent(win Handle) {
 	C.gtk_window_present((*C.GtkWindow)(p(win)))
 }
 
+// Retain takes a strong reference on a widget, so that removing it from its
+// parent does not free it.
+func Retain(h Handle) {
+	C.g_object_ref_sink(C.gpointer(p(h)))
+}
+
+// Release drops the reference Retain took.
+func Release(h Handle) {
+	C.g_object_unref(C.gpointer(p(h)))
+}
+
 // ---- Box ----
 
 func BoxNew(o Orientation, spacing int) Handle {
