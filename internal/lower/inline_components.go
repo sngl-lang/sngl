@@ -2,7 +2,6 @@ package lower
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strconv"
 
@@ -531,13 +530,9 @@ func varPos(v *ir.Var) string {
 	return v.Name
 }
 
-// refuseStateInCycles refuses state inside a recursion on a target that keeps
-// no state of an instance's own -- a recursive component's own, or that of a
-// component written in its body. Such a target splices a stateful component
-// where it is written, and a cycle is never spliced: it is rendered as a
-// function per call, which has nowhere to keep a cell. The component's own
-// vars reached the backend as fields no Model declares, and a callee's as a
-// node it could only draw as nothing.
+// refuseStateInCycles refuses state or a lifetime inside a recursion on a
+// target that keeps no state of an instance's own: such a target splices a
+// stateful component where it is written, and a cycle is never spliced.
 func (st *inlineCompState) refuseStateInCycles() error {
 	for _, c := range st.pkg.Components {
 		if c == nil || !st.cycles[c] {
@@ -546,11 +541,15 @@ func (st *inlineCompState) refuseStateInCycles() error {
 		if v := usedVar(c); v != nil {
 			return fmt.Errorf("%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
 		}
-		var found *ir.NodeInst
+		var found, lifetime *ir.NodeInst
 		_ = ir.WalkStmts(c.Body, func(s ir.Stmt) error {
 			n, ok := s.(*ir.NodeInst)
 			if !ok || found != nil || n.Component == nil || st.cycles[n.Component] {
 				return nil
+			}
+			if ir.IsTimerPrimitive(n.Component) || isEffectNode(n) {
+				lifetime = n
+				return ir.SkipAll
 			}
 			if len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body) {
 				found = n
@@ -558,6 +557,15 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			}
 			return nil
 		})
+		if lifetime != nil {
+			// A timer is the platform override's primitive by now, positioned in
+			// that package; the declaration is the nearest place the program wrote.
+			pos := ir.StmtPos(lifetime)
+			if c.AST != nil && pos.File != c.AST.Pos.File {
+				pos = c.AST.Pos
+			}
+			return fmt.Errorf("%s: the recursive component %q places a timer or effect in its own body; this target keeps a lifetime's handle only by splicing it where it is written, and a recursion is never spliced -- place it in what renders %q", pos, c.Name, c.Name)
+		}
 		if found != nil {
 			return fmt.Errorf("%s: %q has state of its own and is written in the recursive component %q; this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", nodePos(found), found.Component.Name, c.Name, c.Name)
 		}
@@ -1045,11 +1053,9 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 	}
 }
 
-// inlineSlotContents walks each population in name order, since the order
-// is what numbers the __instN suffixes.
 func (st *inlineCompState) inlineSlotContents(slots map[string]*ir.SlotContent, rc reactiveCtx) (bool, error) {
 	changed := false
-	for _, name := range slices.Sorted(maps.Keys(slots)) {
+	for _, name := range ir.SlotNames(slots) {
 		sc := slots[name]
 		if sc == nil {
 			continue

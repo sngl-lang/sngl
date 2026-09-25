@@ -20,6 +20,14 @@ stderr 'callee.sngl:11:16: "Counter" has state of its own and is written in the 
 sngl generate --platform html --out out3 own.sngl
 sngl generate --platform html --out out4 callee.sngl
 
+# A lifetime written in the recursive component's own body is state of its own
+# too: its handle is a cell. Only a callee's lifetime was asked about, so this
+# built and the ticks were never delivered. The timer is the platform's
+# primitive by then, so the position is the declaration's.
+! sngl generate --lang go --platform bubbletea --out out5 lifetime.sngl
+stderr 'lifetime.sngl:10:1: the recursive component "frame" places a timer or effect in its own body'
+sngl generate --platform html --out out6 lifetime.sngl
+
 -- own.sngl --
 import . "sngl:ui"
 
@@ -51,6 +59,31 @@ component Counter node {
 component frame(n int) node {
     vbox {
         Counter()
+        if n > 0 {
+            frame(n=n - 1)
+        }
+    }
+}
+
+window {
+    var depth = 2
+
+    frame(n=depth)
+}
+-- lifetime.sngl --
+import . "sngl:ui"
+import time "sngl:time"
+
+var ticks = 0
+
+func tick() {
+    ticks += 1
+}
+
+component frame(n int) node {
+    vbox {
+        text(value="level {n} {ticks}")
+        time.timer(interval=100ms, @tick { tick() })
         if n > 0 {
             frame(n=n - 1)
         }
