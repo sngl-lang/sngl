@@ -41,7 +41,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			return fmt.Errorf("html: window %q href: %v", win.Name, err)
 		}
 		if path == "" {
-			path = defaultRoutePath(win.Name, i)
+			path = defaultRoutePath(windowRouteName(win), i)
 		}
 		if err := checkRouteParams(path, win.Window); err != nil {
 			return fmt.Errorf("html: window %q: %w", win.Name, err)
@@ -67,7 +67,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
 		routes = append(routes, codegen.HTTPRoute{
-			Name:      routeHandlerName(win.Name, path),
+			Name:      routeHandlerName(windowRouteName(win), path),
 			Path:      path,
 			Title:     title,
 			Params:    extractRouteParams(path),
@@ -190,6 +190,16 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 		}
 	}
 	return "", false
+}
+
+// windowRouteName is the `#id` a route is named for. A harness root has no
+// window and so none: the component it isolated is not a window's name, and
+// using it made a handler's name depend on whether a harness ran.
+func windowRouteName(win *codegen.WindowCtx) string {
+	if win.Window == nil {
+		return ""
+	}
+	return win.Window.ID
 }
 
 func defaultRoutePath(winName string, idx int) string {

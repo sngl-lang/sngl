@@ -77,7 +77,7 @@ fun MainScreen() {
         Text(text = ((xs.size.toString() + " ") + mp.size.toString()), modifier = Modifier.safeDrawingPadding())
         Button(onClick = {
             (listOf(9, 8)).let { __v -> xs.clear(); xs.addAll(__v) }
-            (xs.filter({ x -> (x > 8) })).let { __v -> xs.clear(); xs.addAll(__v) }
+            (xs.filter({ x: Int -> (x > 8) })).let { __v -> xs.clear(); xs.addAll(__v) }
             mp = mp + ("b" to 2)
             mp = mp + ("a" to (mp["a"] ?: 0) + 5)
         }, modifier = Modifier.safeDrawingPadding()) {
@@ -86,4 +86,4 @@ fun MainScreen() {
     }
 }
 -- run/kotlin/android --
-pass sha256:e2a10c5f9088f848b8702e3f7373fe2b
+pass sha256:33dbb7f45512288ce9fb9a14596fa2a6
