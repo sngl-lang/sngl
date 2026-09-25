@@ -205,8 +205,6 @@ func collectCanvases(stmts []ir.Stmt, out *[]Canvas) {
 			// pair into a reactive `if` over its flag, so walking Failed would
 			// find the fallback a second time.
 			collectCanvases(v.Children, out)
-		case *ir.ContextProvider:
-			collectCanvases(v.Children, out)
 		}
 	}
 }

@@ -202,8 +202,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 			walkVisual(n.Children, fn, depth)
 		case *ir.ErrorBoundary:
 			walkVisual(n.Children, fn, depth)
-		case *ir.ContextProvider:
-			walkVisual(n.Children, fn, depth)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Not a visual statement; nothing to visit.

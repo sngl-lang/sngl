@@ -953,8 +953,6 @@ func (g *htmlGen) prewalkNodes() {
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
 			visitStmts(n.Children)
-		case *ir.ContextProvider:
-			visitStmts(n.Children)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 		default:
@@ -1348,9 +1346,6 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		for _, child := range n.Body {
 			g.renderIRStmt(b, child, depth)
 		}
-	case *ir.ContextProvider:
-		// passNoContext eliminates these before codegen.
-		panic(fmt.Sprintf("html.renderIRStmt: unexpected ContextProvider: %#v", n))
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 	default:
@@ -3000,10 +2995,6 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			g.collectLoweredRefs(c)
 		}
 	case *ir.ErrorBoundary:
-		for _, c := range n.Children {
-			g.collectLoweredRefs(c)
-		}
-	case *ir.ContextProvider:
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
 		}

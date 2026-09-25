@@ -106,8 +106,6 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.ErrorBoundary:
-				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
 			}

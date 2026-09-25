@@ -157,10 +157,6 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt) {
 		for _, c := range n.Body {
 			rb.walkStmt(c)
 		}
-	case *ir.ContextProvider:
-		for _, c := range n.Children {
-			rb.walkStmt(c)
-		}
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle,
 		*ir.Break, *ir.Continue:
 		// No visual output.
