@@ -188,7 +188,51 @@ func (kc *KtIRContext) Conversion(n *ir.Conversion) string { return kc.evalConve
 func (kc *KtIRContext) Lambda(n *ir.Lambda) string         { return kc.evalLambda(n) }
 
 func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
+	// A map is a read-only `Map` on Kotlin, so an entry write rebuilds it --
+	// which is also the write Compose sees, the map being held by a
+	// `mutableStateOf` that recomposes on reassignment.
+	if idx, ok := n.Target.(*ir.Index); ok && isMapExpr(idx.Operand) {
+		recv := irwalk.EvalMutTarget(kc, idx.Operand)
+		key := kc.EvalExpr(idx.Idx)
+		if n.Op != ast.AssignSet {
+			op := strings.TrimSuffix(n.Op.String(), "=")
+			value = "(" + recv + "[" + key + "] ?: " + ktMapValZero(idx.Operand.ExprType()) + ") " + op + " " + value
+		}
+		return recv + " = " + recv + " + (" + key + " to " + value + ")"
+	}
+	// A list the program keeps as state is a `SnapshotStateList` held by a
+	// val, so it cannot be reassigned; its contents are replaced instead. The
+	// value is bound first because it may read the list being cleared.
+	if n.Op == ast.AssignSet && kc.isStateList(n.Target) {
+		return "(" + value + ").let { __v -> " + target + ".clear(); " + target + ".addAll(__v) }"
+	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+func isMapExpr(e ir.Expr) bool {
+	t := e.ExprType()
+	return t != nil && t.Kind == ir.TypeMap
+}
+
+// isStateList reports whether e names a list-typed state var, which every
+// Compose owner declares as a `SnapshotStateList`.
+func (kc *KtIRContext) isStateList(e ir.Expr) bool {
+	t := e.ExprType()
+	if t == nil || t.Kind != ir.TypeList {
+		return false
+	}
+	switch n := e.(type) {
+	case *ir.Ident:
+		if kc.Ctx == nil {
+			return false
+		}
+		_, kind := kc.Ctx.Resolve(n.Name)
+		return kind == codegen.NameStateVar
+	case *ir.Select:
+		ot := n.Operand.ExprType()
+		return ot != nil && ot.Kind == ir.TypeComponent
+	}
+	return false
 }
 
 // valueCopy binds a struct value the way SNGL binds one: by copy.
