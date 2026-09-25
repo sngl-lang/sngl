@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -326,11 +327,39 @@ func ExtractPackageDocs(doc *ast.Document) *PackageDocs {
 // group — so section headers like `// --- Core ---` or inner-struct comments
 // separated from a decl by a blank line are not folded into the decl's doc.
 // A declLine of 0 disables the adjacency check against the decl itself.
+// PackageDocFile is the one file a package's prose is read from. Go's
+// semantics -- every file's package comment counts, concatenated in load
+// order -- cannot say which order, and the blank line that makes a comment run
+// package prose is easy to leave in by accident: three files in lib/remote
+// opened with a file header, and the package read as whichever the directory
+// listed first. A stored file is the same accident made by a program, since
+// every one opens with a "Code generated" header and gtk4 serves one as part of
+// its package.
+const PackageDocFile = "doc.sngl"
+
+// DocumentFile is the base name of the file a parsed document came from. An
+// *ast.Document does not carry one, so it is recovered from the first
+// statement's position; a document with no statements came from nowhere.
+func DocumentFile(doc *ast.Document) string {
+	if len(doc.Stmts) == 0 {
+		return ""
+	}
+	p := doc.Stmts[0].StmtPos()
+	if p == nil {
+		return ""
+	}
+	return filepath.Base(p.File)
+}
+
 // PackageDoc returns a document's package comment: a run of line comments
-// starting at the top of the file and separated from what follows by a blank
-// line. The blank line is what distinguishes it from a doc comment on the
-// first declaration, which DeclDoc claims instead.
+// starting at the top of a PackageDocFile and separated from what follows by a
+// blank line. The blank line is what distinguishes it from a doc comment on the
+// first declaration, which DeclDoc claims instead. Any other file's leading
+// comment is an ordinary comment about that file.
 func PackageDoc(doc *ast.Document) string {
+	if DocumentFile(doc) != PackageDocFile {
+		return ""
+	}
 	var lines []string
 	last := 0
 	i := 0

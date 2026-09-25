@@ -423,16 +423,20 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member. Where a mark may be written is checked in `finishTreeMarks` rather than in the handler, since a mark applies while its declaration is still registering and `Component.Tree` is read after that.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
-A library package documents itself with a **package comment**: a run of line
-comments at the top of a file, separated from what follows by a blank line
+A package documents itself with a **package comment**: a run of line comments
+at the top of its `doc.sngl`, separated from what follows by a blank line
 (without the blank line it documents the declaration below it instead). The
 text is markdown, and `sngl doc` renders it as the package description — so
 adding a `lib/` directory with a package comment needs no code change.
 
-Go's semantics apply when several files carry one: they are concatenated,
-blank-line separated, in load order. That order is not guaranteed, so prose
-that has to read in sequence belongs in a single file — `lib/<pkg>/doc.sngl`
-by convention, as `lib/ui/doc.sngl` does.
+**Only `doc.sngl` answers** (`checker.PackageDocFile`, enforced in
+`checker.PackageDoc`), which is where Go's semantics are dropped: every file's
+comment counting, in a load order nothing guarantees, published whichever file
+header a directory listed first. It is also what keeps a stored file's
+`// Code generated … DO NOT EDIT.` header, which gtk4 serves as part of its
+package, out of that package's description. A leading comment in any other
+file is an ordinary comment about that file. Target packages under `codegen/`
+follow the same rule, each with a `doc.sngl` beside its source.
 
 Packages import each other — `lib/ui/draw` is written against `lib/ui`, and `lib/ui` in turn against `sngl:time` and `sngl:tree` — so they load lazily and memoized (`libPkg`), not in directory order. A lib package qualifies its dependencies rather than dot-importing them: lib source is registered into the checker's own symbol table, so a name it lifted would be indistinguishable from one it declared and would be re-lifted by a dot import of it. User packages do not re-export a dot import; lib packages must not either.
 

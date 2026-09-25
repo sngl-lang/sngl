@@ -1,11 +1,3 @@
-// JavaScript language package. Declarations here are visible at every output
-// target that selects --lang js.
-//
-// The build node is declared with no props and that is deliberate. An empty
-// prop list is a fact — this target takes no build options — so a misspelled or
-// misplaced option is reported here rather than accepted and ignored. A target
-// with no package at all could not say even that.
-
 import . "sngl:macro"
 import ir "sngl:internal/ir"
 import build "sngl:build"
