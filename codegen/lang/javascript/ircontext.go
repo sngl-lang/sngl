@@ -38,6 +38,15 @@ func (jc *JsIRContext) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(jc, e
 
 func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(jc, s) }
 
+// stateRecv is the object state vars are fields of: the page's `state`, or
+// the instance a test module was handed, which cannot see the page's closure.
+func (jc *JsIRContext) stateRecv() string {
+	if jc.Ctx != nil && jc.Ctx.StateReceiver != "" {
+		return jc.Ctx.StateReceiver
+	}
+	return "state"
+}
+
 func (jc *JsIRContext) NilExpr() string              { return "null" }
 func (jc *JsIRContext) Literal(n *ir.Literal) string { return jc.evalLiteral(n) }
 func (jc *JsIRContext) Ident(n *ir.Ident) string     { return jc.evalIdent(n) }
@@ -321,7 +330,7 @@ func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	_, kind := jc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
-		return "state." + n.Name
+		return jc.stateRecv() + "." + n.Name
 	}
 	if kind == codegen.NameLocal {
 		return jc.Ctx.RenamedName(n.Name)
@@ -449,7 +458,7 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameComputed:
 		return name + "()"
 	case codegen.NameStateVar:
-		return "state." + name
+		return jc.stateRecv() + "." + name
 	case codegen.NameConst:
 		// A component-scoped const is a per-instance state field, since it may
 		// need runtime construction; a package-level const stays a bare

@@ -109,6 +109,7 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool)
 	// Computeds are emitted as zero-arg methods; the test body must call
 	// `c.<computed>()` rather than read the function object.
 	ctx.MethodFields = methodFields
+	ctx.StateReceiver = testInstanceVar
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
 	}

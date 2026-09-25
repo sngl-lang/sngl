@@ -15,6 +15,9 @@
 #     which is the Model's name inside a method and names nothing in a test.
 #   - The interpreter could not write a map entry, and a test naming no
 #     component ran without the package's vars.
+#   - html ran every test against the one page it loaded, so a write in one
+#     test was the next test's starting state, and it named package state as
+#     the page's `state`, which a test module cannot see.
 #
 # Tests are grouped into one run per component, so a write in one test must
 # not reach the next: testScalars runs after testScalarWrites.
@@ -30,6 +33,9 @@ stdout '12 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '12 tests, 0 failures'
+
+[chromium] sngl test --platform=html app.sngl
+[chromium] stdout '12 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:ui"

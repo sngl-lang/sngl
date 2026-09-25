@@ -559,6 +559,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { visible: false };
@@ -576,6 +587,8 @@ body { font-family: system-ui, sans-serif; }
     Object.assign(window, { testPopoverOpenToggles });
   }
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
@@ -587,4 +600,4 @@ pass sha256:11681055e731446b4f460041c65498d4
 -- run/kotlin/android --
 pass sha256:3e7713e262225b41fc18e5baf86fdcd0
 -- run/none/html --
-pass sha256:7f02dad22809042a150a375d665696d4
+pass sha256:70dbeb164845ee163a4ad5b5343ce6fd

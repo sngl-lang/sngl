@@ -1004,6 +1004,17 @@ body { font-family: system-ui, sans-serif; }
 </button>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var folded = [0, 1, 2, 3];
@@ -1073,6 +1084,8 @@ body { font-family: system-ui, sans-serif; }
   }
   __sngl_init();
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
@@ -1084,4 +1097,4 @@ pass sha256:d3fc83a7b05048309f26e107fb85c3e8
 -- run/kotlin/android --
 pass sha256:5b9bffec9e49f11b1fb088221c0c935c
 -- run/none/html --
-pass sha256:0eb9fef83d3fd912be43dd98ff22d6b8
+pass sha256:0f4acce2cfa4f7ea400389eda6619319
