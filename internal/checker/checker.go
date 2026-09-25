@@ -3461,7 +3461,7 @@ func (c *checker) pass2() {
 		noteOwned(pe.comp)
 	}
 	for _, fn := range c.pkg.Funcs {
-		if compOwnedFuncs[fn] || fn.Nested {
+		if compOwnedFuncs[fn] || fn.Nested || fn.IsTest {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -3482,6 +3482,14 @@ func (c *checker) pass2() {
 	}
 	// A window body may declare one too.
 	c.checkComponentBodies()
+	// A test reads a component's vars through `c.<var>`, and an unannotated
+	// var has no type until the body declaring it has been checked; nothing
+	// calls a test, so nothing needs its body earlier.
+	for _, fn := range c.pkg.Funcs {
+		if fn.IsTest && !compOwnedFuncs[fn] && !fn.Nested {
+			c.checkFuncBody(fn)
+		}
+	}
 	c.reportBodyComponentCollisions()
 	c.reportBodyComponentCapture()
 	c.reportBodylessComponents()

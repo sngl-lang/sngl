@@ -10,7 +10,7 @@ component errs node {
 
 func testToggleNonBool(t Test, c errs) { // ERROR(test) "cannot toggle"
     t.assert(c.count == 0)
-    c.count!!
+    c.count!! // ERROR(check) "toggle target must be bool"
 }
 
 func testToggleUndefined(t Test, c errs) { // ERROR(test) "undefined"
@@ -25,7 +25,7 @@ func testUnknownFunction(t Test, c errs) { // ERROR(test) "unknown function"
 
 func testSelectOnNonMap(t Test, c errs) { // ERROR(test) "cannot select"
     t.assert(c.count == 0)
-    t.assert(c.count.field == 0)
+    t.assert(c.count.field == 0) // ERROR(check) "no field"
 }
 
 func testIndexOnNonList(t Test, c errs) { // ERROR(test) "cannot index"
