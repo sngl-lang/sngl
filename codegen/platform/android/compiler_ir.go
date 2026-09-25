@@ -130,7 +130,7 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	src := emitIR(info, ctx, cfg, false)
-	return src, nil
+	return src, ctx.Err()
 }
 
 // CompileTestIR is the test-runner variant of CompileIR. It emits the
@@ -146,7 +146,7 @@ func CompileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
 	src := emitIR(info, ctx, cfg, true)
-	return src, nil
+	return src, ctx.Err()
 }
 
 // irAnalysis is the IR-based replacement for analysisResult.
@@ -154,6 +154,11 @@ type irAndroidAnalysis struct {
 	*codegen.CommonAnalysis
 	binds     []irAndroidBind
 	computeds []irAndroidComputed
+	// shared names the binds a composable other than MainScreen reads. Those
+	// are declared at file level rather than remembered in MainScreen: a
+	// component built at run time is a composable of its own, and a local of
+	// MainScreen's is nothing it can name.
+	shared map[string]bool
 }
 
 type irAndroidBind struct {
@@ -312,6 +317,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 		}
 		info.binds = append(info.binds, bindFor(ov.Name(), ov.Type(), ov.Init()))
 	}
+	info.shared = sharedPageState(ctx)
 
 	// A surviving component's own funcs are declared inside its composable,
 	// where its state is, so they are not the main composable's to hoist.
@@ -673,6 +679,23 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString("}\n\n")
 	}
 
+	if !testMode {
+		for _, bind := range info.binds {
+			if !info.shared[bind.name] {
+				continue
+			}
+			initVal := bind.init
+			if bind.initEx != nil {
+				initVal = kc.EvalExpr(bind.initEx)
+			}
+			if bind.isList {
+				fmt.Fprintf(&body, "val %s = %s\n\n", bind.name, listStateInitKt(bind, initVal))
+			} else {
+				fmt.Fprintf(&body, "var %s by mutableStateOf%s(%s)\n\n", bind.name, stateTypeArg(bind, initVal), initVal)
+			}
+		}
+	}
+
 	// Main composable
 	body.WriteString("@OptIn(ExperimentalMaterial3Api::class)\n")
 	body.WriteString("@Composable\n")
@@ -690,6 +713,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// the hoisted MainScreenState class).
 	if !testMode {
 		for _, bind := range info.binds {
+			if info.shared[bind.name] {
+				continue
+			}
 			initVal := bind.init
 			if bind.initEx != nil {
 				// Non-literal init (e.g. i18n.tr call): evaluate via the full IR context.
@@ -1226,4 +1252,49 @@ func needsStateScope(fn *ir.Func, state map[string]struct{}, reaches map[*ir.Fun
 		return nil
 	})
 	return found
+}
+
+// sharedPageState is the page's state a composable other than MainScreen reads
+// or writes, and what those vars' initializers read, by name.
+func sharedPageState(ctx *codegen.CodegenCtx) map[string]bool {
+	page := map[ir.Symbol]bool{}
+	for _, ov := range ctx.ModelState() {
+		page[ov.Sym] = true
+	}
+	out := map[string]bool{}
+	visit := func(root any) {
+		_ = ir.Walk(root, func(nd ir.Node) error {
+			if id, ok := nd.(*ir.Ident); ok && id.Sym != nil && page[id.Sym] {
+				out[id.Name] = true
+			}
+			return nil
+		})
+	}
+	for _, cc := range ctx.NonRootComponents() {
+		visit(cc.Body)
+		for _, fn := range cc.Funcs {
+			if fn != nil {
+				visit(fn.Block)
+			}
+		}
+		for _, h := range cc.Handlers {
+			if h != nil && h.Func != nil {
+				visit(h.Func.Block)
+			}
+		}
+	}
+	// A file-level declaration is initialized at file level, so what its
+	// initializer reads has to be declared there too.
+	for changed := true; changed; {
+		changed = false
+		for _, ov := range ctx.ModelState() {
+			if !out[ov.Name()] {
+				continue
+			}
+			n := len(out)
+			visit(ov.Init())
+			changed = changed || len(out) > n
+		}
+	}
+	return out
 }

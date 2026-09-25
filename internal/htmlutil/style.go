@@ -130,6 +130,10 @@ func PropToCSS(prop string) string {
 		return "font-style"
 	case "textAlign":
 		return "text-align"
+	case "whiteSpace":
+		// The member is the value, kebab-cased by ExprToStaticValueIR, so
+		// `preWrap` is already `pre-wrap` by the time it gets here.
+		return "white-space"
 	case "borderRadius":
 		return "border-radius"
 	case "borderColor":

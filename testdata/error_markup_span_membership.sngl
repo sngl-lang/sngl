@@ -1,0 +1,32 @@
+// The span family is inline and holds only inline. Every other part of a
+// document -- a heading, a quote, a list, a code sample -- is ordinary layout
+// placed beside a richText rather than inside one, so these three positions
+// are the whole of what the family refuses.
+//
+// A node in a span slot and a span in a node slot are the two halves of the
+// same claim: a box has no line to sit on, and a run of words is not a widget.
+
+import ui "sngl:ui"
+import markup "sngl:ui/markup"
+
+component inSpanSlot() ui.node {
+    markup.richText {
+        ui.text(value="x") // ERROR(check) "expected span component in richText, got text"
+    }
+}
+
+component inNodeSlot() ui.node {
+    ui.vbox {
+        markup.bold { // ERROR(check) "expected node component in vbox, got bold"
+            markup.text(value="x")
+        }
+    }
+}
+
+component nestedInSpan() ui.node {
+    markup.richText {
+        markup.bold {
+            ui.vbox {} // ERROR(check) "expected span component in bold, got vbox"
+        }
+    }
+}

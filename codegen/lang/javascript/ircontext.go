@@ -416,9 +416,14 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		}
 		return fmt.Sprintf("%q", n.Member)
 	}
-	// A synthesized ref is a bare identifier: JS has no Model receiver.
+	// A synthesized ref is a bare identifier: JS has no Model receiver. Unless
+	// the scope it is being emitted into renamed it -- html promotes the vars
+	// of a component whose body it renders in place onto `state`, and a
+	// synthesized one is promoted with the rest, so a context provider inside
+	// an imported component declared `state.__ctx_depth_1` and read a bare
+	// `__ctx_depth` that nothing bound.
 	if n.Synthesized {
-		return n.Name
+		return jc.Ctx.RenamedName(n.Name)
 	}
 	// IsElementRef deliberately does NOT become a querySelector here: in the
 	// htmlTranslator pipeline those idents are bound to local JS vars and must

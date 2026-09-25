@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html"
 	"maps"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -16,7 +15,6 @@ import (
 // every page that reads it loads, rather than into each page's own script.
 type sharedConstAsset struct {
 	file htmlAssetFile
-	ref  *regexp.Regexp
 	// linked is set by the first page that loads it, which is what writes
 	// the file: a const no page reads is not worth one.
 	linked bool
@@ -69,7 +67,6 @@ func (g *htmlGen) sharedConst(c *ir.Var) *sharedConstAsset {
 	}
 	a := &sharedConstAsset{
 		file: htmlAssetFile{name: "assets/consts/" + name, bytes: data},
-		ref:  regexp.MustCompile(`(^|[^A-Za-z0-9_$.])` + regexp.QuoteMeta(c.Name) + `($|[^A-Za-z0-9_$])`),
 	}
 	s.constAssets[c] = a
 	return a
@@ -84,14 +81,18 @@ func (g *htmlGen) linkSharedConsts(script string) (tags, linked string) {
 		return "", script
 	}
 	var tagBuf, bind strings.Builder
+	var named map[string]bool
 	for _, c := range g.pkg.Consts {
 		if !g.sharesConst(c) {
 			continue
 		}
-		a := g.sharedConst(c)
-		if !a.ref.MatchString(script) {
+		if named == nil {
+			named = scriptIdents(script)
+		}
+		if !named[c.Name] {
 			continue
 		}
+		a := g.sharedConst(c)
 		if !a.linked {
 			a.linked = true
 			g.shared.constFiles = append(g.shared.constFiles, a.file)
@@ -103,4 +104,33 @@ func (g *htmlGen) linkSharedConsts(script string) (tags, linked string) {
 		return "", script
 	}
 	return tagBuf.String(), bind.String() + script
+}
+
+// scriptIdents is every name script reads as a free identifier: each run of
+// identifier characters not reached through a `.`. A shared const is linked
+// into a page whose script names it.
+//
+// One pass per page. It was a regexp per shared const per page, each scanning
+// the whole script, which on the docs site -- a thousand pages -- was a third
+// of the compiler's CPU.
+func scriptIdents(script string) map[string]bool {
+	out := map[string]bool{}
+	for i := 0; i < len(script); {
+		if !isJSIdentByte(script[i]) {
+			i++
+			continue
+		}
+		start := i
+		for i < len(script) && isJSIdentByte(script[i]) {
+			i++
+		}
+		if start == 0 || script[start-1] != '.' {
+			out[script[start:i]] = true
+		}
+	}
+	return out
+}
+
+func isJSIdentByte(b byte) bool {
+	return b == '_' || b == '$' || '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z'
 }

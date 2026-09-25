@@ -180,9 +180,11 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"unsafe"
 
 	"git.duckfam.us/jonathan/sngl/pkg/go/cbind"
+	"git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"
 )
 
 // Handle re-exports cbind.Handle so generated code references a single opaque
@@ -550,4 +552,67 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 		return nil, fmt.Errorf("sngl_snapshot rc=%d", int(rc))
 	}
 	return os.ReadFile(f.Name())
+}
+
+// ---- Rich text ----
+
+// Escape is Pango markup's escaping, for the words an author wrote.
+//
+// A flow's markup is assembled as a Go string, so every run that is not a
+// literal the emitter could escape at build time is escaped here instead.
+// The five characters are the ones g_markup_escape_text answers for: the
+// three that open and close an element or an entity, and the two quotes,
+// which matter because a run's words may end up inside an attribute.
+func Escape(s string) string {
+	if !strings.ContainsAny(s, `&<>"'`) {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s) + 16)
+	for _, r := range s {
+		switch r {
+		case '&':
+			b.WriteString("&amp;")
+		case '<':
+			b.WriteString("&lt;")
+		case '>':
+			b.WriteString("&gt;")
+		case '"':
+			b.WriteString("&quot;")
+		case '\'':
+			b.WriteString("&apos;")
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// Foreground is a span's ` foreground="…"` attribute for a color the build
+// could not read, or nothing for the color that means the run set none.
+func Foreground(c snglcolor.Color) string {
+	if c.A == 0 {
+		return ""
+	}
+	return fmt.Sprintf(` foreground="#%02X%02X%02X"`, c.R, c.G, c.B)
+}
+
+// LabelSetMarkup sets a label's text from Pango markup, which is what makes a
+// flow of rich text one widget rather than a box of them.
+func LabelSetMarkup(label Handle, markup string) {
+	c, free := cstr(markup)
+	defer free()
+	C.gtk_label_set_markup((*C.GtkLabel)(p(label)), c)
+}
+
+// LabelSetWrap turns on line breaking. A flow is a paragraph, and a label that
+// does not wrap is one very long line.
+func LabelSetWrap(label Handle, wrap bool) {
+	C.gtk_label_set_wrap((*C.GtkLabel)(p(label)), gbool(wrap))
+}
+
+// LabelSetXAlign puts the words at the start of the line rather than centred,
+// which is what a paragraph is and what every other target does with one.
+func LabelSetXAlign(label Handle, align float64) {
+	C.gtk_label_set_xalign((*C.GtkLabel)(p(label)), C.float(align))
 }

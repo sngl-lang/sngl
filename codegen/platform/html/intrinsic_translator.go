@@ -20,9 +20,13 @@ import (
 // live on a `state` object: `state.<name>` (handled by the JS
 // renderer's evalIdent state-var path).
 type htmlTranslator struct {
-	jc       *javascript.JsIRContext
-	idTags   map[string]string // id ("__n0") → SNGL tag ("text")
-	topLevel []string          // ids not yet AppendChild'd
+	jc     *javascript.JsIRContext
+	idTags map[string]string // id ("__n0") → SNGL tag ("text")
+	// creates holds each element's createElement call, whose tag a later
+	// `tag` write replaces: the lowering names the node, and a primitive whose
+	// element is a prop (flow, inline) is not named for it.
+	creates  map[string]*ir.Call
+	topLevel []string // ids not yet AppendChild'd
 	// idToNode maps an element id to the NodeInst it was built from. A
 	// lowered node op names its node by id and carries nothing else, so this
 	// is where the op's element and its declaration are recovered — which
@@ -57,7 +61,7 @@ type htmlTranslator struct {
 
 func (g *htmlGen) newHTMLTranslator(jc *javascript.JsIRContext) *htmlTranslator {
 	return &htmlTranslator{
-		jc: jc, idTags: map[string]string{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
+		jc: jc, idTags: map[string]string{}, creates: map[string]*ir.Call{}, idToNode: g.idToNode, refToVar: g.refToVar, elem: g.elemDecl,
 		canvasByID: g.canvasByID, canvasByNode: g.canvasByNode,
 	}
 }
@@ -156,6 +160,10 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 		Func:     &ir.Func{Name: "createElement"},
 		Args:     []ir.CallArg{{Value: &ir.Literal{Type: ir.TypString, Value: tag}}},
 	}
+	if t.creates == nil {
+		t.creates = map[string]*ir.Call{}
+	}
+	t.creates[id] = createCall
 	return []ir.Stmt{&ir.LocalVar{
 		Name: id,
 		Type: ir.TypDyn,
@@ -163,10 +171,9 @@ func (t *htmlTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	}}
 }
 
-// OnCreateComponent preserves the LocalVar as-is. html inlines user
-// components via renderIRUserComponent on the static-tree path; on the
-// WalkLowered (JS) path a non-inlinable component instance keeps its
-// original `const id = ...CreateComponent(...)` binding.
+// OnCreateComponent preserves the LocalVar as-is: on the WalkLowered (JS) path
+// a non-inlinable component instance keeps its original
+// `const id = ...CreateComponent(...)` binding.
 func (t *htmlTranslator) OnCreateComponent(ctx context.Context, id string, call *ir.Call) []ir.Stmt {
 	return []ir.Stmt{&ir.LocalVar{Name: id, Type: ir.TypDyn, Init: call}}
 }
@@ -311,9 +318,19 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		}
 	}
 	node = t.nodeRef(node)
-	// The prop the tag name binds to names the element; the tag already
-	// reached OnCreateNode, and there is no attribute to write it as.
+	// The prop the tag name binds to names the element, so it is the
+	// createElement argument and no attribute. A computed one is left to the
+	// name the node was created under, as the page walk leaves it.
 	if prop == tagProp {
+		if id, ok := node.(*ir.Ident); ok {
+			if s, ok := codegen.IRLiteralString(value); ok && s != "" && t.creates[id.Name] != nil {
+				t.creates[id.Name].Args[0].Value = &ir.Literal{Type: ir.TypString, Value: s}
+			}
+		}
+		return nil
+	}
+	// Stylesheet rules, registered by the page walk; no element carries one.
+	if prop == classStyleProp || prop == classStyleDarkProp {
 		return nil
 	}
 	setAttr := func(name string, v ir.Expr) []ir.Stmt {
@@ -337,6 +354,12 @@ func (t *htmlTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 			}
 			return setAttr(prop, &ir.Literal{Type: ir.TypString, Value: css})
 		}
+	}
+	if prop == spanStyleProp {
+		if sl, ok := value.(*ir.StructLit); ok {
+			return t.spanStyleWrites(node, sl)
+		}
+		return nil
 	}
 	// A wildcard prop is a map of the names it collected, not a name of its
 	// own: writing it as one produces an attribute literally called "attrs"

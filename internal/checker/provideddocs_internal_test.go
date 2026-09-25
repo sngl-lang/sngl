@@ -58,10 +58,13 @@ func TestProvidedDocs_ParsedOncePerCheck(t *testing.T) {
 	}
 }
 
-// Freshness is per check, not per process: a check splices platform bodies
-// into the documents it is given, and a target may be reconfigured to serve a
-// different package between checks.
-func TestProvidedDocs_NotSharedAcrossCheckers(t *testing.T) {
+// A parse is shared across checks for the same bytes, and only for them.
+// Nothing after the parser writes to an AST (TestProvidedDocsSurviveBuilds, in
+// the root package, holds the compiler to that), so a second check reading the
+// same source can take the first one's documents. A target reconfigured to
+// serve a different package under the same file name -- gtk4 against another
+// GIR -- gets a parse of what it now serves.
+func TestProvidedDocs_SharedAcrossChecksBySource(t *testing.T) {
 	c1, _ := newFakeChecker(t)
 	c2, _ := newFakeChecker(t)
 
@@ -71,8 +74,21 @@ func TestProvidedDocs_NotSharedAcrossCheckers(t *testing.T) {
 	if len(first) != 1 || len(second) != 1 {
 		t.Fatalf("got %d and %d docs, want 1 each", len(first), len(second))
 	}
-	if first[0] == second[0] {
-		t.Error("two checks shared an *ast.Document; one splicing into it would corrupt the other")
+	if first[0] != second[0] {
+		t.Error("two checks of the same source parsed it twice")
+	}
+
+	c3, _ := newFakeChecker(t)
+	target := c3.cfg.Platforms[0].(*fakeTarget)
+	target.fsys = fstest.MapFS{
+		"fake.sngl": &fstest.MapFile{Data: []byte("struct Other {\n    n int\n}\n")},
+	}
+	third := c3.providedDocs("platform/faketarget")
+	if len(third) != 1 {
+		t.Fatalf("got %d docs, want 1", len(third))
+	}
+	if third[0] == first[0] {
+		t.Error("a target serving different source under the same name got the old parse")
 	}
 }
 

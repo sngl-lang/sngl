@@ -329,6 +329,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 - **html** — two modes selected by `--lang`:
   - `--lang none` (default): static site — one `index.html` per window with inline JS.
+    Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
@@ -356,8 +357,8 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   rewrite `"a\nb"` with a raw newline in it.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
-- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
-- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Six run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice) and `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
+- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and **`optimize.Documents`** unrolls its loops after lowering, one window at a time: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where Documents evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
+- **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Seven run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does) and `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
 ### Stdlib
@@ -375,6 +376,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/builtin/` → `sngl:builtin`** — the `#[builtin]` types and their methods, plus `output` and the error channel. The build directive is here rather than in a tier of its own because a package names its own targets without importing anything; `error`, `error.raise` and the `boundary` that catches one are here because a boundary is generic over the tree it was placed in and so belongs to no family — it is the compiler's construct, not a widget. Ambient: dot-imported into every file implicitly, and importing it explicitly is an error. This is the *only* implicit import in the language.
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `root` family and the `window` that is its one member, and the vocabulary every one of them refers to: `Style`, the style enums, `measurement`, and the event payloads. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialised surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
+- **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialised surface; see **Markup and the `md:` scheme** below.
 - **`lib/tree/` → `sngl:tree`** — the tree *vocabulary* and no families: the `kind` mark that declares one, the `none` mark that says a component joins none, and `one<T>` for a slot that takes exactly one. A family lives where its members do, which is why the widget family is `sngl:ui`'s `node` and not a `tree.default` here.
 - **`lib/build/` → `sngl:build`** — the build-target tree: `language` and `platform`, the two `#[tree.kind]` structs an `output` directive's contents are members of. It is a package of its own rather than part of `sngl:ui` because `sngl:builtin` declares `output` and so has to import whatever holds its slot's type; `sngl:ui` is what `sngl:builtin` would then be importing, and it loads before `sngl:builtin` is adopted into the ambient scope, so the load fails on `unknown type "color"`. `sngl:builtin` cannot hold them either, since it already declares `struct platform` as the identity type. Nothing an application writes names it — a program writes `output`, and a target package names `build.language` or `build.platform` in its own node's return position.
 - **`lib/time/` → `sngl:time`** — dates and the clock: `date`, `time`, `datetime`, the `duration` between two of them, and the `timer` that fires every duration -- an ordinary component, not a builtin node, which is why it carries no `#[builtin]` mark. What it lowers to is each target's answer: html, fyne and gtk4 override it with an `effect` over a start/stop pair of host natives, since such a pair already is a lifetime with a thing to release; bubbletea, android and none still override it with an `#[intrinsic]` node, which stays where it was written -- `codegen.CollectTimers` reads the schedule off it and the platform's view emitter draws nothing for it, so the branch and the component boundary around it are answered by the tree rather than by a gate a pass folded. **An effect hands over a closure, and a closure is only a schedule where the host may run it against live state** — which is what the first two cannot offer, bubbletea because Elm lets nothing outside `Update` touch the model, android because `LaunchedEffect` already is the bracket. `none` is not that case: the interpreter honours `effect` itself, so an override would bracket correctly and schedule nothing, since it owns the clock and finds the node in the rendered tree. None of it is ambient — a program that never asks what time it is never names any of it — which is why all four types moved out of `sngl:builtin`. Loaded at startup even when nothing imports it, because its declarations carry kinds the compiler dispatches on.
@@ -761,25 +763,34 @@ standing on re-entry -- the state a prop with no answer already reached codegen
 in. Keyed by window *and* prop, so two windows naming each other terminate on
 the second key rather than looping on the first.
 
-**Left standing is silent missing output**, and that is a known cost rather
-than a decision anyone defends: the page comes out with no `<title>` and
-nothing says why. The guard firing is exactly the signal a positioned *"this
-window prop reads itself"* error would need, and the reason one is not written
-there is that **self-reference is a rule the language has not made anywhere.**
-`const a int = a` is the same shape one layer down: `sngl check` accepts it and
+**A node may not read its own `#id` in its own arguments**, and that is now a
+positioned checker error (`reportSelfReferentialProps`, `internal/checker/selfref.go`).
+The id names the instance the argument list is building, so `window #h(title = h.title)` asks the title for the title. All three forms of a node
+that carries an id are held to it — a window, an element-ref call
+(`text #t(value = t.value)`), and the `context` declaration, whose id *is* its
+own declaration, so `context #depth(depth)` is the same error rather than an
+`undefined` naming the context on the line declaring it. Matched by *symbol*:
+`declareNodeID` declines to bind an id an outer scope already holds, so a
+`#foo` written beside an existing `foo` reads that one, which is an ordinary
+read of something that does exist. A handler is untouched — `@click` is split
+off before the rule is asked, and a handler runs after mount.
+
+What it does **not** cover is the two cases where no single declaration reads
+itself, and both keep the guards they had. **Mutual reference** —
+`window #a(title = b.title)` beside `window #b(title = a.title)` — reaches
+`evalCtx.foldingProp` by a second key and is still left standing, so the page
+comes out with content and no `<title>`, silently. And `const a int = a` is the
+same shape one layer down in a scope of its own: `sngl check` accepts it and
 always did, because the checker never folds, while `sngl generate` used to
 crash — `evalIdent` and `evalExpr` calling each other until the stack went,
 with no position and no message
 (`cmd/sngl/testdata/const_reads_itself.txt`).
 
-That split is the whole argument. Both guards are the survivable answer rather
-than the right one, and the right one is a checker rule refusing a declaration
-that reads itself, with a position — because a guard in `consteval` protects
-only the programs that reach the optimizer at all, and `sngl check` and the LSP
-are where the question is asked first and answered `ok` today.
-`cmd/sngl/testdata/window_prop_reads_itself.txt` and its const sibling pin the
-current answers, cycles included, so making that rule is two fixtures to update
-rather than a surprise.
+So the general rule — a *declaration* that reads itself, however many hops
+round — is still not made, and both guards are still the survivable answer
+rather than the right one there. `cmd/sngl/testdata/window_prop_reads_itself.txt`
+holds the two halves apart: the self-reference refused with a position, the
+mutual pair still emitted with nothing said.
 
 What is left is the **body-owner half** — `Vars`, `Funcs`, `Timers` — and it is
 not simply carried over. `Window.Vars` is a *lowering artifact*: the checker
@@ -988,6 +999,41 @@ one bound. `scroll`, `tooltip` and fyne's `Wrapper` are all of that shape, and
 load-bearing rather than tolerated. #193 briefly specified it as an error on
 the grounds that both were count bounds; that would have left the contract
 unspellable and is retracted there.
+
+**A slot's invocation list may declare a component entry**, and it is the same
+slot mechanism one level down: `layout component(page Page, content component ui.node) T` says an insertion of `layout` hands its population a
+`content` to insert. The insertion populates it by name, the way a call site
+populates a component's slot — `layout(p) { component content { … } }` — and
+the population binds it by position under a name of its own, like every other
+invocation argument. It exists because a component is not a value
+(`struct Page { content component() ui.node }` is refused), and handing a
+layout the body it wraps is what a directory import needs.
+
+Two rules keep it from meaning something else. **The bare block written at an
+insertion is that slot's fallback** (`ir.SlotInst.Children`), which is what it
+already meant before entries existed, so content reaches a population only
+through an entry. And **`...` is refused in an invocation list**
+(`error_slot_invocation_rest.sngl`), with a message naming the fallback: a rest
+entry would be filled by exactly the block that is already the fallback.
+
+`ir.SlotDecl.Slots` holds the entries, with `Index` their position in the
+list; an insertion's populations are `ir.SlotInst.Slots`, and an insertion *of*
+an entry is a `SlotInst` whose `Entry` names it. `ir.SlotSplicer` substitutes
+entries as it splices a population, so the optimizer and the inliner get them
+at once, and the interpreter mounts the content in the insertion's scope
+(`entryInst`). **Both match an entry by `*SlotDecl` pointer**, which is why a
+generic component's call-site specialization copies its entries for checking
+and records each copy's origin (`checker.entryOrigin`): `SlotInst.Entry`
+carries the declared one, or the splice matches nothing and renders nothing
+(`slot_entry_generic.txtar`).
+
+**A component built at run time may not have a slot populated by name** —
+an entry's population included. No target renders one there: bubbletea and
+android emitted the component with no parameter for the slot, and the mutation
+platforms met the insertion unsubstituted. The inliner refuses it where it
+elects the runtime instance (`refuseRuntimePopulation`,
+`cmd/sngl/testdata/slot_population_runtime_instance.txt`); the interpreter,
+which renders it correctly, runs the checked IR and never asks.
 
 **A population is a `ComponentDecl` read by position.** At the root of a
 component definition's body it is a nested declaration (pass1's
@@ -1457,61 +1503,61 @@ Two shapes cannot be spliced, and both are reported rather than emitted:
   `reportBodyComponentCapture` in the checker, beside the collision report
   above and for the same reason
   (`error_component_nested_capture_recursive.sngl`).
-- A **reactive `if` or `for`** — each copy there needs state of its own, which
-  is what the main walk's `RuntimeInstance` election gives a *non*-capturing
-  nested component, and a capturing one cannot have. Reported by
+- A **reactive `if` or `for`**, or any `for` once the nested component declares
+  state of its own — each copy there needs state of its own, which is what the
+  main walk's `RuntimeInstance` election gives a *non*-capturing nested
+  component, and a capturing one cannot have. Reported by
   `spliceNestedCaptures`, since reactivity is not a fact the checker holds
-  (`cmd/sngl/testdata/nested_capture_in_reactive_position.txt`). A
-  **non-reactive** loop is deliberately allowed: a nested component shares one
-  cell there with or without capture, which is the pre-existing `rc.repeated`
-  limitation.
+  (`cmd/sngl/testdata/nested_capture_in_reactive_position.txt`).
 
-**A lifetime over a component's own state is the one thing that limitation
-cannot absorb**, and `refuseRepeatedLifetime` says so. Sharing a cell costs an
-ordinary component correctness it mostly does not notice; a component whose
-`effect` handlers touch a var *it declares* shares the **handle** it would be
-released through, so the second mount overwrites the first and whatever the
-first opened runs on with nothing able to stop it — a goroutine for the life of
-the process, on fyne.
+**A loop is a loop whatever it iterates.** Under any `for`, a component with
+state of its own is a runtime instance (`reactiveCtx.perCopy`), and a `for`
+whose body renders from state is a render slot (`collectFromFor`) -- the two
+things a loop over state already got. A `const` iterable says how many copies
+there are, not that they may share state. Treated otherwise, a component's
+vars were hoisted once and every copy wrote the same cell; a lifetime's handle
+was overwritten by the second mount, so the first schedule could never be
+stopped, which a refusal stood in for (#245); and a reactive `if` inside a
+const loop became a render func reading a loop variable only the host loop
+bound (`undefined: p`). What still differs is only what has nothing to
+reconcile: a stateless component is spliced, and a const loop whose body reads
+no state renders as a plain loop -- on html, as markup `optimize.Documents`
+unrolls. A window resets the context, because a loop over pages is not a
+position a page's body is repeated in.
 
-**Holding an `effect` is not the test, and asking only that refused working
-programs.** `passEffect` keys a bracket's own bookkeeping by list —
-`__effectN_live` and `__effectN_desired` hold an entry per key — so N copies of
-a bare lifetime mount and unmount independently. What has no list is a
-*component's* state: `passHoistState` gives each declared var one cell on the
-owner. So `sharesLifetimeState` asks the conjunction — a var this component
-declares, which an effect's handlers read or write — and a lifetime closing over
-nothing of its component's is as safe here as a bare one. It is refused where it would be
-spliced, and #245 is the real fix: route a stateful component to a runtime
-instance whether or not the position is reactive.
+A loop that holds a component built at run time is a slot too, whatever it
+iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
+and outside one fyne assigned every copy to the one Model field its id named.
+"Built at run time" means a component with a body of its own -- the inliner
+marks a *primitive* standing in a reactive position as well, on the
+declaration, and counting that made every loop of html elements a slot
+(`testdata/const_loop_beside_reactive_loop.txtar`).
 
-The bit it reads is `reactiveCtx.loopReactive`, **not** `in`, and it is `in` as
-it was *entering* the loop. Those three differ, and getting it wrong cost a
-guard in each direction:
+**A target that keeps no state of an instance's own splices it instead**, and
+that is `Features.InstanceState`, a capability every platform but bubbletea
+declares: a record on fyne and gtk4, a factory closure on html, `remember` on
+android. bubbletea's model keeps every cell in itself, and a component built at
+run time there is a render function with nowhere to put one. So
+`passNoInlineComponents` splices a component that has state or holds a lifetime
+where it is written (`expandPerCopy`), and under a `for` gives each of its vars
+one cell per copy (`perCopyCells`): a map keyed by the loops' indices
+(`lower.CopyKey`), read as `cell.get(key, init)` and written through a
+temporary stored back. A timer under a loop is then a schedule per copy, which
+bubbletea keeps keyed the same way and routes through Update
+(`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
+collected by nobody and never ran.
 
-- A const loop holding a reactive `if` **inside** it sets `in`, elects a runtime
-  instance, and still hoists the loop variable once — the emitted Go did not
-  compile (`undefined: p`). Reading `!in` let that through.
-- A const loop **inside** a reactive `if` sets exactly the same `in` and
-  `repeated`, and lowers the other way: the whole loop lands in the slot's
-  render func, so `p` is in scope there and each pass gets its own record,
-  destroyed through the slot's own reuse loop. Reading `loopReactive` alone
-  refused that, which is a working program.
-
-What separates them is *where* the reactive boundary sits relative to the loop,
-which is why the `*ir.For` arm reads `rc.in` on entry rather than the node
-reading it on arrival.
-
-**It is a lowering rule, so it is target-dependent**: html on `--lang none`
-unrolls a const loop in the optimizer, so the source fyne refuses builds there
-as independent schedules. Defensible — lowering is per-target — but a
-portability wart, so the diagnostic says it rather than leaving it to be found.
-
-**It reports at the loop and names where the lifetime came in**, which are two
-different lines whenever the component is a wrapper: a two-level wrap cited the
-inner insertion inside the *outer declaration*, so the message complained that
-"this loop is not reactive" about a line with no loop on it and no way to find
-one. `reactiveCtx.loopPos` is the first half and `nodePos` the second.
+**An instance reaches the page through what holds it.** A fyne or gtk4 record
+holds its Model (`__model`), and a name its component does not declare -- the
+page's state, widgets and funcs -- is spelled through it
+(`ExprCtx.OuterReceiver`, `golang.PageNodes`); spelled through the record, it
+named a field no record has. On android a composable other than MainScreen
+cannot see MainScreen's `remember`ed locals, so page state such a composable
+reads is declared at file level (`sharedPageState`). What is still missing on
+the three mutation targets is the other direction: a write to page state
+updates the nodes of the scope that wrote it and of the page, and not those of
+*other* live instances reading it, so their views go stale until they are
+rebuilt.
 
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,
@@ -1631,6 +1677,139 @@ nil used to give per lookup.
 Notable stdlib packages:
 
 - **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.tr(template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
+
+### Markup and the `md:` scheme
+
+**`sngl:ui/markup` is inline and nothing else.** A heading is a `text` with a
+size, a quote a `vbox` with a rule down its side, a list a `vbox` of rows —
+ordinary layout every platform already renders. A bold word inside a sentence
+is not: it has to live in one flow of text with the words around it, and a box
+cannot hold it without breaking the line. So the family is the part of a
+document there was no other way to say, and a document is a `vbox` of
+`richText` flows interleaved with anything else a `ui.node` can be — which is
+also what makes a document extensible without the vocabulary growing.
+
+`span` is an ordinary `#[tree.kind]` family, and that is the design rather
+than a shortcut. A member holds its own family and never a `node`, so
+emphasis around a link and a link inside emphasis are both one flow, and a box
+in the middle of a sentence is a membership error rather than a content model
+written in prose. There is no `passMarkup`: each platform overrides the members
+in its own package and the nesting an author wrote is the tree the host is
+handed. A run list flattened in `ir` was built and reverted, being a second
+representation of a tree. Where the cascade is resolved is each host's answer —
+CSS on html, Pango and Compose's `SpanStyle` merge natively on gtk4 and
+android, fyne flattens at render time because the tree is what a reactive
+program mutates, and bubbletea flattens at compile time because lipgloss
+returns a string with reset sequences in it.
+
+`markup.SpanStyle` is its own struct and not `ui.Style` for two reasons. A run
+has no box, so most of `ui.Style` would type-check on a span and do nothing
+except on html, where a `<span>` takes padding. And flattening needs a third
+state per field: in `ui.Style` an enum's zero is its first member, so an inner
+run would say `normal` and un-bold its parent. `Weight` and `Slant` lead with
+`inherit` for that reason, and the cost is that a span cannot turn *off* a
+decoration an enclosing span turned on.
+
+**A token's color is a palette's answer first and the host's second.**
+`markup.palette` is a context holding a `Palette`, one color per `Token` kind,
+where alpha zero means the palette says nothing about that kind. Unset, html and
+gtk4 draw `lightPalette`/`darkPalette` (GitHub's syntax colors, which the docs
+site's chroma style already used) and bubbletea, fyne and android ask their
+theme. html writes the pair as the `sngl-tok-<kind>` class's rules, the dark
+half under `prefers-color-scheme`, so a page's own CSS still wins; gtk4 takes
+the light half. A kind the program sets wins on all five. An unset or constant
+palette is a literal by the time it is emitted -- `UnprovidedContext` folds the
+first, and an inlined body reads a provider's value in place of the context --
+so only a palette read from state reaches an emitter as a run-time value:
+`gtk4rt.Foreground`, `style.color`, fyne's `SetColor`, and a fallback chain on
+bubbletea and android.
+
+**Text in the family is literal.** Every character of a `markup.text` renders
+as written — two spaces are two, a `"\n"` ends the line — on every target,
+because what an author wrote between the quotes is the one thing a document
+cannot have a platform reinterpret. Wrapping still happens around it. That is
+why there is no line-break component, a second spelling of `"\n"` being a second
+answer to give, and why html's collapsing is html's to undo (`white-space: pre-wrap`, `markup_rendered.txt` in a real Chromium) rather than the
+author's. The importer follows from it: a soft break in markdown is a space,
+since the wrapping an editor chose must not reach the reader as one, and a hard
+break is `"\n"`.
+
+html has two more ways to lose it, both closed. Its pretty-printer strips
+the newline runs between tags inside a pre-wrap element, which is also what a
+code sample's line-break-and-indent token looks like as a `<span>`, so a text node
+that is all whitespace spells its line breaks `&#10;` (`escapeTextContent`,
+denied in `markdown_import.txtar`). And a flow is a `<p>`/`<h*>`/`<pre>`,
+which the browser's stylesheet gives a margin no other target has, so the
+flow zeros it: the space between blocks is the document's `vbox` gap, and a
+list item's text sits on its bullet's line rather than a margin below it.
+
+The block components (`paragraph`, the six headings, `quote`, `codeBlock`,
+`caption`, `list`, `listItem`) are **bodied** — each a `richText` with its
+`role` and style set, or a `vbox` — so a platform implements the two
+primitives and inherits every block. `role` is what a flow is *for*, and a
+prop rather than a component per role, so it reaches every emitter through the
+node they already render.
+
+**`md:` imports markdown as SNGL source.** `codegen/scheme/markdown` is an
+`FSSchemeImporter`, the seam `git:` and `http:` use, rather than a native
+importer: what comes back is `.sngl` source the checker checks like any other
+package, so a bad import can be dumped and read and a round-trip is assertable.
+The document is read through the filesystem the program is checked against
+(`codegen.ProjectFSScheme`), because it is a file of the project and an
+in-memory package has no other. It parses with the same goldmark configuration
+the doc site uses, so two readings of one document cannot differ.
+
+- **A file**, `import doc "md:./guide.md"`, is a package holding one component,
+  **`document`**, whatever the file is called: a name derived from the path
+  would make the call site depend on something the alias already stands for.
+  Frontmatter scalars become consts, in the order written and keeping their
+  type. An html block and a raw inline are dropped — one target's vocabulary,
+  in a document that renders on six.
+- **A directory**, `import docs "md:./docs/"`, is a **site**: one package in
+  which every markdown file under it is a page, and every `.sngl` file
+  *directly* in it is a file of the package, so a site's own declarations sit
+  beside its prose. A page is a component named for its path, `_` standing for
+  what an identifier cannot hold (`index`, `guide`, `guide_intro`). The root is
+  `index.md` and is required; `guide/intro.md` is a child of `guide`, whose
+  content is `guide.md` or `guide/index.md` — both is an error, and neither
+  leaves the child with no parent. A page's href follows its file:
+  `/guide/intro.html`, and `/guide/index.html` for `guide/index.md` where
+  `guide.md` is `/guide.html`.
+
+  The package declares **`Page`** (`href`, `frontmatter`, `children list<Page>`),
+  **`root`**, a const holding the whole tree, and **`site<T>(layout component(page Page, content component ui.node) T) T`**, which inserts
+  `layout` once per page — reading each page out of `root` so the tree is
+  written once — and populates its `content` entry with that page's component.
+  The program writes the layout once and decides what a page is: a `window`
+  per page, a route, a pane. Nothing holds a component, so all of it is
+  compile-time. Those four names are reserved, and a page taking one, or two
+  paths becoming one name, is refused naming the files.
+
+  **`Frontmatter` is the site's own vocabulary.** A `struct Frontmatter`
+  declared in one of the directory's `.sngl` files is what each page's literal
+  is checked against, so the importer does no checking of its own. With none
+  declared the importer synthesizes one: the union of the keys the pages wrote,
+  in first-seen order, each typed by its first scalar and defaulting to that
+  type's zero; a key written with two types is an error naming both files.
+
+  **`#[md.order]` on a declared field sorts each page's children by it**,
+  ascending and stable over path order. The mark is `sngl:ui/markup/md`'s,
+  the home of the scheme's vocabulary, and the importer reads it off the AST
+  before anything is checked — which is why a page omitting the key sorts as
+  the field's default and that default has to be a literal. The checker's
+  handler only holds the field to an int, float or string.
+
+**A `sngl` fence may be live**, spelled `mode=` on the info line, which leaves
+the fence reporting `sngl` and highlighting like any other. `view`, the
+default, shows it. `island` is a component of its own at the fence's position,
+with the whole fence as its **body** — so two islands each writing `var n = 0`
+are two cells, by the language's own scoping rather than a mechanism the
+importer built, and an island cannot hold a `window`. `package` contributes
+declarations only; `body` places statements into the page at its position. A
+live fence does not also show its source. Imports are hoisted as written and
+collapsed only when identical, since rewriting an alias would be checking. A
+mistake inside one reports the markdown file and line, because the position the
+checker has is the `import` that read the document.
 
 ### Runtime packages for generated code
 
@@ -1819,7 +1998,7 @@ Stdlib collection types support generic methods: `func list<T>.filter(f func(T) 
 - Test runners resolve testdata via relative paths from their package directory
 - Error directive comments in test files (e.g., `// ERROR(check) "invalid color literal"` — phase is `parse`, `check`, etc.) drive expected-failure assertions via `internal/testutil`
 
-**A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `internal/checker`, `internal/parser`, `internal/optimize` and `internal/lspcore` keep running it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
+**A fixture-first fixture the backends cannot emit yet carries `// SKIP(codegen) "reason"`.** Every platform harness compiles the *whole* of `testdata/` for its own target, so a fixture naming a construct no platform can lower does not fail one assertion — it takes that harness down. The directive is the fixture's own opt-out from codegen only: `TestFixtures` still parses, formats, checks and folds it, which is the point of writing the fixture before the implementation. The decision lives in one place, `testutil.CodegenSamples` (a `TestdataSamples` that drops the skipped) plus `RunComponentFixtures`; a platform harness walks testdata through those and never tests the flag itself. Remove the directive in the commit that makes the fixture emit.
 
 **Txtar script tests** (`cmd/sngl/script_test.go`): each `.txt` file is a txtar archive with script commands at top and embedded files below `-- filename --` markers. The `sngl` command runs in-process. Use `stdout`, `stderr`, `exists`, `grep`, and `!` for assertions.
 
@@ -1869,7 +2048,7 @@ Neither harness fixes a fixture whose input never reaches the branch it means
 to exercise: generated output is identical either way. Confirm a new fixture
 *fails* when the behaviour is reverted.
 
-**Know which harness sees platforms.** `internal/checker`'s two testdata-driven tests (`TestCheckTestdata`, `TestCheckProjectTestdata`) check against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. The other `TestdataSamples` consumers — `internal/optimize`, `internal/parser`, `internal/lspcore` — still check with none registered, and no fixture gets the real import resolver (directory imports resolve through a test stub). For those, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
+**Know which harness sees platforms.** `TestFixtures` (root package, `internal/fixtures`) is the one walk over `testdata/*.sngl`: each fixture is read, parsed, formatted, checked, folded and LSP-marked once, as its own directives ask. It checks against every registered language and platform via `internal/testtargets`, so a fixture *can* exercise platform element resolution and `component sngl.X` extension bodies. No fixture gets the real import resolver — directory imports resolve through the stub in `internal/fixtures/resolver.go`. For that, and for anything driven by CLI flags, use a txtar test in `cmd/sngl/testdata/`: it runs the real CLI. For generated output use a golden in `testdata/*.txtar`, described above.
 
 `internal/testtargets` is a separate package from `internal/testutil` on purpose — the platform tests are *internal* test packages (`package html`) that import testutil, so putting the codegen/platform dependency in testutil would close an import cycle.
 
@@ -1882,6 +2061,44 @@ beside `sngl.go` rather than under `pkg/go/`: `pkg/<lang>/` is what generated
 code imports, and the compiler must not be in that graph.
 
 When adding a fixture or directive, confirm it *fails* when the behaviour is reverted. Several directives in this repo assert conditions that no test actually evaluates.
+
+### Performance
+
+What the compiler costs is measured in total work — CPU and bytes allocated —
+not only wall time: it runs beside everything else on a developer's machine,
+so a change that finishes sooner by doing the same work on more cores (running
+targets in parallel) is not a saving.
+
+- **Profile.** `SNGL_CPUPROFILE=f.prof` / `SNGL_MEMPROFILE=f.prof` on any
+  command; env vars rather than flags so a tool driving a build need not
+  thread one through. Set `SNGL_NO_PROXY=1` when timing the installed binary,
+  or the first run measures `go tool` rebuilding it. A benchmark over
+  `examples/` in a gitignored `tmp/` package (`build.ParsePackageFS` →
+  `build.Check` → `build.Emit`, slog discarded) gives the warm per-phase
+  numbers a one-shot CLI profile is too short to show.
+- **An AST is immutable once parsed.** Nothing after the parser writes to one,
+  which is what lets the embedded library tiers (`parseStdlibDocs`) and a
+  target's served package (`parseProvided`, keyed by file name and content)
+  be parsed once per process and shared by every check.
+  `TestProvidedDocsSurviveBuilds` builds every golden fixture and then compares
+  each shared document with a fresh parse; a phase that needs a modified tree
+  builds IR or a new node, never an edit.
+- **A library package is loaded against the targets it belongs to.**
+  `CheckLibPackage` selects a target package's own target (`ownTarget`);
+  selecting none loads every registered target's overrides, gtk4's GIR
+  included.
+- **The collector runs at Go's defaults, on purpose.** GC is a large share of
+  a build's CPU, and the fix is allocating less: a `GOGC`/memory-limit value
+  tuned against today's allocation profile goes stale as that profile shrinks,
+  and is tuned to one machine besides.
+- **The docs site (`go tool docsgen`) is the stress case**: one html build
+  writing ~1200 files, where per-page costs dominate. Its compile step is
+  `sngl generate --platform html --lang none website.sngl` once
+  `internal/playground/assets/sngl.wasm` is staged.
+- **Cloning is the largest remaining cost.** `build.Emit` clones the checked
+  package for every target but the last, and `ir.ClonePackage` copies by
+  reflection everything reachable — library IR included, since per-target
+  override bodies are written onto the shared library declarations.
 
 ### Debugging
 

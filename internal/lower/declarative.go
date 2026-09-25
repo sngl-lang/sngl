@@ -330,8 +330,9 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 	// Its shapes are a family of their own and were never flattened; without
 	// the back-pointer the flattening is where the drawing is lost.
 	lv := &ir.LocalVar{
-		Name: id,
-		Type: varType,
+		Name:    id,
+		Type:    varType,
+		NodeAST: n.AST,
 		Init: &ir.Call{
 			Type:     ir.TypDyn,
 			Receiver: lowerNSIdent(),

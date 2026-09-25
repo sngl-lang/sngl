@@ -181,11 +181,12 @@ func runFixture(t *testing.T, path string, update, force bool, walkedPkgs *int) 
 	// options on top, so the assertions are compiled and run rather than
 	// merely the program.
 	opts, _ := testutil.TestHarnessBuild(fixtureSource(src))
-	got, boilerplate, walked, err := generate(src, opts, true)
+	got, boilerplate, walked, err := generate(src, opts, true, "", "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	*walkedPkgs += walked
+	assertTargetsIndependent(t, src, opts, got)
 
 	// Verification comes before the golden is written, so a -update run that
 	// cannot compile what it generated leaves the archive as it found it.
@@ -307,7 +308,10 @@ func assertFormatted(t *testing.T, src map[string][]byte) {
 // opts and main are the overlay a verification build adds; the golden itself
 // is generated with neither, so what the archive shows is what `sngl generate`
 // writes.
-func generate(src map[string][]byte, opts map[string]string, main bool) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
+//
+// lang and plat select one target, as --lang/--platform do; empty builds every
+// target the output block names.
+func generate(src map[string][]byte, opts map[string]string, main bool, lang, plat string) (files map[string][]byte, boilerplate map[string]bool, walked int, err error) {
 	fsys := fstest.MapFS{}
 	for name, data := range src {
 		fsys[name] = &fstest.MapFile{Data: data}
@@ -343,6 +347,8 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (files m
 		ProjectFS: fsys,
 		Opts:      opts,
 		Main:      main,
+		Lang:      lang,
+		Platform:  plat,
 	})
 	if err != nil {
 		return nil, nil, 0, err
@@ -381,6 +387,47 @@ func generate(src map[string][]byte, opts map[string]string, main bool) (files m
 		}
 	}
 	return out, boiler, walked, nil
+}
+
+// assertTargetsIndependent builds each target of a multi-target fixture on its
+// own and requires the files it wrote in the shared build. What a target
+// generates is a function of the program and the target, never of what else
+// the build targets.
+//
+// It is a claim build.Emit has to work to keep: every target but the last
+// builds a clone carrying only its own override bodies
+// (ir.ClonePackageFor), while the last -- and a target built alone -- builds
+// the checked package itself, every target's overrides still on it. A reader
+// that ranged over all of them, rather than asking for its target's, would
+// see different IR depending on where in the list its target came.
+func assertTargetsIndependent(t *testing.T, src map[string][]byte, opts map[string]string, got map[string][]byte) {
+	t.Helper()
+	targets := targetsOf(got)
+	if len(targets) < 2 {
+		return
+	}
+	for _, tg := range targets {
+		alone, _, _, err := generate(src, opts, true, tg.lang, tg.platform)
+		if err != nil {
+			t.Errorf("%s/%s built alone: %v", tg.lang, tg.platform, err)
+			continue
+		}
+		prefix := goldenPrefix + tg.lang + "/" + tg.platform + "/"
+		for _, name := range sortedKeys(got) {
+			if !strings.HasPrefix(name, prefix) {
+				continue
+			}
+			if !bytes.Equal(got[name], alone[name]) {
+				t.Errorf("%s: differs when %s/%s is built alone rather than beside the fixture's other targets:\n%s",
+					name, tg.lang, tg.platform, firstDiff(string(alone[name]), string(got[name])))
+			}
+		}
+		for _, name := range sortedKeys(alone) {
+			if _, ok := got[name]; !ok {
+				t.Errorf("%s: generated only when %s/%s is built alone", name, tg.lang, tg.platform)
+			}
+		}
+	}
 }
 
 func firstRootSNGL(src map[string][]byte) string {

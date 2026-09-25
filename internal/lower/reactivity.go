@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -43,6 +44,10 @@ type reactivityState struct {
 	reactiveVars map[*ir.Var]bool
 	reverseDeps  map[*ir.Var][]reactiveProp
 	reverseSlots map[*ir.Var][]reactiveSlot
+	// undriven are the slots no var re-fires: a loop over a const whose body
+	// holds a component built at run time. Rendered once, but a slot all the
+	// same, and reverseSlots has no key to list one under.
+	undriven map[string]bool
 	// caps is the target's shape, which the slot lowering needs: whether a
 	// component instance is a record decides what the slot attaches and
 	// retains.
@@ -160,6 +165,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		reactiveVars: collectReactiveVars(pkg),
 		reverseDeps:  make(map[*ir.Var][]reactiveProp),
 		reverseSlots: make(map[*ir.Var][]reactiveSlot),
+		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
 		held:         make(map[*ir.Component][]*slotInstance),
 	}
@@ -290,11 +296,11 @@ func (st *reactivityState) rewriteAndInject(stmts []ir.Stmt) []ir.Stmt {
 	// If any reactive slots exist on this owner, synthesize a __root Var
 	// of type dyn. Platforms bind this to their root-container reference
 	// at codegen time.
-	if len(st.reverseSlots) > 0 {
+	if len(st.reverseSlots) > 0 || len(st.undriven) > 0 {
 		st.synthesizeRootVar()
 	}
 	// Collect unique slot IDs from reverseSlots so each Func is built once.
-	uniqueSlots := map[string]bool{}
+	uniqueSlots := maps.Clone(st.undriven)
 	for _, slots := range st.reverseSlots {
 		for _, slot := range slots {
 			uniqueSlots[slot.SlotID] = true
@@ -654,12 +660,19 @@ func (st *reactivityState) collectFromIf(n *ir.If) {
 
 func (st *reactivityState) collectFromFor(n *ir.For) {
 	deps := st.exprDeps(n.Iter)
-	if len(deps) == 0 {
+	// A loop over a const is a slot too when its body needs one, the way a loop
+	// over state is. Left standing, each copy's bound prop got an updater of
+	// its own under the one id the lowering gave the body, and a condition in it
+	// became a render func reading a loop variable only the host loop binds.
+	if len(deps) == 0 && !st.bodyNeedsSlot(n.Body) && !st.bodyNeedsSlot(n.Else) {
 		return
 	}
 	slot := reactiveSlot{SlotID: st.freshSlotID()}
 	for v := range deps {
 		st.reverseSlots[v] = append(st.reverseSlots[v], slot)
+	}
+	if len(deps) == 0 {
+		st.undriven[slot.SlotID] = true
 	}
 	n.LoweredSlotID = slot.SlotID
 }
@@ -670,16 +683,53 @@ func (st *reactivityState) collectFromFor(n *ir.For) {
 // wholesale, so individual props don't get standalone updaters — instead the
 // whole slot re-fires for any var the body depends on. Deduped per var.
 func (st *reactivityState) registerSlotBodyDeps(stmts []ir.Stmt, slotID string) {
-	addDep := func(e ir.Expr) {
+	slotBodyExprs(stmts, func(e ir.Expr) {
 		for v := range st.exprDeps(e) {
 			st.addSlotDep(v, slotID)
 		}
-	}
+	})
+}
+
+// bodyNeedsSlot reports whether a loop body renders anything a slot has to
+// reconcile: an expression reading a reactive var -- what registerSlotBodyDeps
+// would subscribe the slot to -- or a component built at run time, whose copies
+// only a slot keeps a list of. Outside one, each copy was assigned to the one
+// field the node's id named and only the last reached the widget tree.
+func (st *reactivityState) bodyNeedsSlot(stmts []ir.Stmt) bool {
+	found := false
+	slotBodyExprs(stmts, func(e ir.Expr) {
+		found = found || len(st.exprDeps(e)) > 0
+	})
+	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+		n, ok := s.(*ir.NodeInst)
+		switch {
+		case found:
+			return ir.SkipAll
+		case !ok:
+			return nil
+		case ir.IsWindowNode(n):
+			return ir.SkipDir
+		case n.Component != nil && n.Component.RuntimeInstance && hasRealComponentBody(n.Component):
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// slotBodyExprs visits the expressions a slot's body renders from: bound
+// props, nested conditions and nested iterables, and not handlers.
+func slotBodyExprs(stmts []ir.Stmt, addDep func(ir.Expr)) {
 	var walk func([]ir.Stmt)
 	walk = func(ss []ir.Stmt) {
 		for _, s := range ss {
 			switch n := s.(type) {
 			case *ir.NodeInst:
+				// A window renders a document of its own, so a loop over pages is
+				// not a slot for what a page reads.
+				if ir.IsWindowNode(n) {
+					continue
+				}
 				for _, p := range n.Props {
 					addDep(p.Value)
 				}

@@ -24,7 +24,7 @@ type Theme struct {
 	fyne.Theme
 	Background, Foreground color.Color
 	TextSize, Radius       float32
-	Bold                   bool
+	Bold, Italic           bool
 }
 
 // New wraps base, which is normally the app's current theme.
@@ -62,11 +62,14 @@ func (t Theme) Font(s fyne.TextStyle) fyne.Resource {
 	if t.Bold {
 		s.Bold = true
 	}
+	if t.Italic {
+		s.Italic = true
+	}
 	return t.Theme.Font(s)
 }
 
 // Empty reports whether this theme asks for nothing, in which case wrapping a
 // node in it costs a node and buys nothing.
 func (t Theme) Empty() bool {
-	return t.Background == nil && t.Foreground == nil && t.TextSize == 0 && t.Radius == 0 && !t.Bold
+	return t.Background == nil && t.Foreground == nil && t.TextSize == 0 && t.Radius == 0 && !t.Bold && !t.Italic
 }

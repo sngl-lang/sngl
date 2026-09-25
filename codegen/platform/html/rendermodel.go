@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
-	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -173,9 +172,8 @@ func (rb *renderBuilder) walkStmt(s ir.Stmt) {
 // otherwise HoleAttr). A node carrying a backend event handler is wrapped in a
 // server-action <form>.
 func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
-	// Windows and zero-visual nodes are skipped (handled at route level).
-	switch n.Name {
-	case "window", "timer":
+	// A window is handled at route level.
+	if ir.IsWindowNode(n) {
 		return
 	}
 
@@ -207,6 +205,7 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 	// element carried it -- so an <input> got a child and never got its value.
 	var textBinding *ir.Arg
 	var rawBinding *ir.Arg
+	wroteStyle := false
 	for _, p := range rb.elementAttrs(n) {
 		switch contentProp(p.Name) {
 		case textContentKind:
@@ -216,11 +215,16 @@ func (rb *renderBuilder) walkNode(n *ir.NodeInst) {
 			rawBinding = p
 			continue
 		}
-		if p.Name == "style" {
-			// A style struct is a set of CSS declarations; written through as
-			// a value it is not a string at all.
-			if css := htmlutil.BuildCSSStyleIR([]ir.Arg{*p}); css != "" {
-				rb.writeRaw(` style="` + css + `"`)
+		if p.Name == "style" || p.Name == spanStyleProp {
+			// Both are sets of CSS declarations rather than attribute values;
+			// written through as values neither is a string at all. They are
+			// also one attribute, so whichever comes first in the props writes
+			// the pair and the other is skipped.
+			if !wroteStyle {
+				wroteStyle = true
+				if css := nodeInlineCSS(n); css != "" {
+					rb.writeRaw(` style="` + css + `"`)
+				}
 			}
 			continue
 		}
@@ -329,7 +333,7 @@ func (rb *renderBuilder) elementAttrs(n *ir.NodeInst) []*ir.Arg {
 	var out []*ir.Arg
 	for i := range n.Props {
 		p := &n.Props[i]
-		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp {
+		if p.Name == "" || p.Name == tagProp || p.Name == attrsProp || p.Name == classStyleProp || p.Name == classStyleDarkProp {
 			continue
 		}
 		out = append(out, p)

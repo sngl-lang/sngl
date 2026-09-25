@@ -44,6 +44,7 @@
 
 import ui "sngl:ui"
 import time "sngl:time"
+import markup "sngl:ui/markup"
 import tr "sngl:tree"
 import . "sngl:macro"
 import . "sngl:internal/marks"
@@ -55,7 +56,7 @@ import gen "sngl:x/gen"
 // The `fyne` node of a build directive: `output { go { fyne() } }`.
 // fyne.Do queues onto the goroutine running the driver, which is the one that
 // owns every widget.
-#[gen.can(asyncPost)]
+#[gen.can(asyncPost, instanceState)]
 // Withholding reactivity is what asks for the explicit `nX.<prop> = <expr>`
 // after every mutation of a tracked var, which is how a Fyne widget is told
 // anything; withholding declarative flattens the tree into the
@@ -714,4 +715,87 @@ component time.timer[platform] {
             },
         )
     }
+}
+
+// --- Rich text ---
+//
+// The span family. Two primitives and a table of overrides, which is html's
+// division; what differs here is that neither primitive carries a `Spec`. A
+// widget's Spec says which Go constructor to call and with what, and a span's
+// arguments are its `SpanStyle` -- a struct literal the emitter has to read
+// rather than pass on, for the reason html's `spanStyleCSS` gives: a field the
+// author left alone must emit nothing, and which fields those are cannot be
+// asked of an opaque prop. So `markup.go` builds their Spec from the node's
+// own props, and everything downstream of that -- the constructor, the Model
+// field, `Add`, the setters, reactivity -- is the machinery every other widget
+// here already goes through.
+//
+// `pkg/go/fynetext` is the other half and is where Fyne's own gaps are
+// answered: the cascade, which Fyne does not inherit; a run's color and size,
+// which a segment names through a theme rather than carrying; and underline
+// and strikethrough, which Fyne draws nowhere at all.
+
+// A flow of spans, as a node. `richText` cannot insert its own content -- it
+// is a `ui.node` whose slot is the span family -- so something has to join the
+// widget family and host the span one.
+//
+// Its `style` is read the way every other node's is: the block styling a
+// document's headings and quotes ask for becomes this flow's theme, through
+// `styleFromProps` and the override `themed` wraps it in. The role is not
+// taken, there being nothing in Fyne that a heading announces itself to.
+#[intrinsic("fyne:Flow")]
+component Flow(
+    style ui.Style,
+    content ...component markup.span,
+) ui.node
+
+// One run of words. `text` and `href` are setters, so a reactive prop reaches
+// the span and the flow rebuilds around it; `spanStyle` and `kind` are read
+// off the literal and become the style the run is constructed with. `color` is
+// a palette's answer for a token, and wins over the theme's: read off the
+// literal where the build knows it and set where the program does.
+#[intrinsic("fyne:Span")]
+component Span(
+    text string,
+    href string,
+    spanStyle markup.SpanStyle,
+    kind markup.Token,
+    color color,
+    content ...component markup.span,
+) markup.span
+
+component markup.richText[platform] {
+    Flow(style={...style}) {
+        content
+    }
+}
+
+component markup.text[platform] {
+    Span(text=value) {}
+}
+
+component markup.run[platform] {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+component markup.link[platform] {
+    Span(href=href) {
+        content
+    }
+}
+
+component markup.token[platform] {
+    Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
+        content
+    }
+}
+
+// Fyne has an image segment and it is a block -- "images in rich text are
+// blocks", says its own comment -- so there is no picture to put on the line
+// with the words. The description is what an image is here, in the brackets
+// that say a picture stood where they are.
+component markup.image[platform] {
+    Span(text="[{alt}]") {}
 }

@@ -134,6 +134,19 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 		return
 	}
 	if comp, composable := composeIntrinsic(n); comp != nil {
+		// A flow is one Text whose argument is built from the span tree
+		// written inside it, and a span is a piece of that value rather than
+		// a composable -- neither of which the generic emitter can say, since
+		// it reads a declaration's props and children and nothing else. Both
+		// tags are answered before it. A Span reaching here is one written
+		// outside a flow, which the family's own membership rule refuses.
+		switch composable {
+		case flowTag:
+			cc.renderFlow(n, comp)
+			return
+		case spanTag:
+			return
+		}
 		cc.renderIntrinsic(n, comp, composable)
 		return
 	}
@@ -150,12 +163,9 @@ func (cc *irComposeContext) renderNode(n *ir.NodeInst) {
 			return
 		}
 	}
-	// Every stdlib component either has an android override in
-	// codegen/platform/android or a body in renderStdlibComposable, so reaching
-	// here means the compiler lost track of a node — a compiler bug, not a
-	// program error. A panic reports it as one (and gives a fuzzer something
-	// to find); a rendered marker would ship the bug into the app instead.
-	panic(fmt.Sprintf("android: no composable for component %q (platform android has no override and no built-in body)", n.Name))
+	// A library declaration with no android override and no body here: another
+	// platform's element, or a component this one never implemented.
+	cc.ctx.Fail(codegen.UnimplementedNode(n.Component, n.AST, n.Name, "android"))
 }
 
 // emitInputHandlerCall lowers one @change handler attached to select, the
@@ -335,16 +345,38 @@ func (cc *irComposeContext) modifierRawExcept(n *ir.NodeInst, styleProp string, 
 			continue
 		}
 		if sf.Name == "flex" {
-			if mod := cc.flexModifier(cc.kc.EvalExpr(sf.Value)); mod != "" {
+			if mod := cc.flexModifier(cc.styleValue(sf.Value)); mod != "" {
 				parts = append(parts, mod)
 			}
 			continue
 		}
-		if mod := composeModifier(sf.Name, cc.kc.EvalExpr(sf.Value)); mod != "" {
+		if mod := composeModifier(sf.Name, cc.styleValue(sf.Value)); mod != "" {
 			parts = append(parts, mod)
 		}
 	}
 	return strings.Join(parts, ".")
+}
+
+// styleValue is a style field as the Compose argument reading it wants it.
+//
+// A measurement is the one kind that cannot go through EvalExpr: `8px` is a
+// unit value, which Kotlin spells as the `Measurement` data class this target
+// emits, and every place a Style field lands appends `.dp` or `.sp` to it.
+// `Measurement(px = 8.0).dp` names no extension Compose declares, so a padding
+// or a font size written with its unit failed to compile while the same number
+// written bare worked -- which is why no fixture had caught it.
+//
+// Reduced to its magnitude here rather than given a `.dp` of its own in
+// Kotlin: `px` is the only base this platform reads, as it is everywhere else
+// android answers a measurement, and a helper would make the other four look
+// answered.
+func (cc *irComposeContext) styleValue(e ir.Expr) string {
+	if lit, ok := e.(*ir.Literal); ok {
+		if mag, _, ok := ir.UnitMagnitude(lit); ok {
+			return ir.FormatUnitMagnitude(mag)
+		}
+	}
+	return cc.kc.EvalExpr(e)
 }
 
 // flexModifier is what a child asking for a share of its parent becomes.
@@ -392,7 +424,7 @@ func (cc *irComposeContext) cornerShapeExpr(n *ir.NodeInst, styleProp string) st
 		if sf.Name != "borderRadius" {
 			continue
 		}
-		v := cc.kc.EvalExpr(sf.Value)
+		v := cc.styleValue(sf.Value)
 		if v == "" || v == "0" || v == "0.0" {
 			continue
 		}
@@ -438,6 +470,12 @@ func userTestTag(n *ir.NodeInst) string {
 	return n.ID
 }
 
+// The three font fields beside fontSize go through the same readers a run of
+// rich text uses, because a Style says them the same way: an enum member, not
+// a string. `fontWeight` was compared against the string `"bold"` and so never
+// matched an enum at all, and the other two had no case -- so a heading came
+// out unemphasized on this target and a quotation upright, the same defect
+// fyne carried until this branch.
 func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) string {
 	styleFields := codegen.NodeStyleFieldsOf(n, styleProp)
 	if styleFields == nil {
@@ -445,13 +483,23 @@ func (cc *irComposeContext) textStyleExpr(n *ir.NodeInst, styleProp string) stri
 	}
 	var styleParts []string
 	for _, sf := range styleFields {
-		val := cc.kc.EvalExpr(sf.Value)
+		val := cc.styleValue(sf.Value)
 		switch sf.Name {
 		case "fontSize":
 			styleParts = append(styleParts, fmt.Sprintf("fontSize = %s.sp", val))
 		case "fontWeight":
-			if val == `"bold"` {
-				styleParts = append(styleParts, "fontWeight = FontWeight.Bold")
+			if w := composeWeight(enumMember(sf.Value)); w != "" {
+				styleParts = append(styleParts, "fontWeight = "+w)
+			}
+		case "fontStyle":
+			if st := composeSlant(enumMember(sf.Value)); st != "" {
+				styleParts = append(styleParts, "fontStyle = "+st)
+				cc.kc.RequireImport("androidx.compose.ui.text.font.FontStyle")
+			}
+		case "fontFamily":
+			if name, ok := codegen.IRLiteralString(sf.Value); ok && name != "" {
+				styleParts = append(styleParts, "fontFamily = "+fontFamilyExpr(name))
+				cc.kc.RequireImport("androidx.compose.ui.text.font.FontFamily")
 			}
 		case "textAlign":
 			switch val {

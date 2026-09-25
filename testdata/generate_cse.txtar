@@ -110,16 +110,16 @@ func (m *Model) SetTerminalSize(w, h int) {
 	m.height = h
 }
 
-func (m Model) noisy__inst0() int {
-	m.ticks__inst0 = (m.ticks__inst0 + 1)
-	return m.ticks__inst0
-}
-
 func Weight(n int) int {
 	if n > 2 {
 		return ((n * 3) + 1)
 	}
 	return 0
+}
+
+func (m *Model) noisy__inst0() int {
+	m.ticks__inst0 = (m.ticks__inst0 + 1)
+	return m.ticks__inst0
 }
 
 func (m *Model) __focusNext() {
@@ -370,10 +370,12 @@ fun MainScreen() {
     var b__inst0 by remember { mutableStateOf(3) }
     var log__inst0 by remember { mutableStateOf(0) }
     var ticks__inst0 by remember { mutableStateOf(0) }
-    val noisy__inst0 by remember { derivedStateOf(fun(): Int {
+
+
+    fun noisy__inst0(): Int {
         ticks__inst0 = (ticks__inst0 + 1)
         return ticks__inst0
-    }) }
+    }
 
     Column {
         Button(onClick = {
@@ -389,7 +391,7 @@ fun MainScreen() {
             Text(text = "two", modifier = Modifier)
         }
         Button(onClick = {
-            log__inst0 = (noisy__inst0 + noisy__inst0)
+            log__inst0 = (noisy__inst0() + noisy__inst0())
         }, modifier = Modifier.safeDrawingPadding()) {
             Text(text = "three", modifier = Modifier)
         }
@@ -473,8 +475,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:6ef393c3b6ec727d7fb2627d320d6865
+pass sha256:7446008a68d40f6a199fa8c4b63858a0
 -- run/kotlin/android --
-pass sha256:2643451dc8bf881af07e975f5020e308
+pass sha256:603c1be648c1688ba092419edad4ca40
 -- run/none/html --
 pass sha256:8fd578eeef0a83d2fc8527d7630a4f02

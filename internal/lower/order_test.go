@@ -87,6 +87,9 @@ var alwaysOn = []string{
 	"RecursionDepth",
 	"RefLoop",
 	"StampUsage",
+	// A context nothing provides is folded to its default on every target: the
+	// ones that lower contexts to state, and the ones that keep them.
+	"UnprovidedContext",
 	"ViewForElse",
 	"WindowNesting",
 }
@@ -153,8 +156,13 @@ var soleGate = map[string][]string{
 	"Canvas":           {"Canvas"},
 
 	// Gates nothing. It is the one capability the lowering never reads: the
-	// optimizer asks it, to decide whether a constant loop is unrolled.
+	// build asks it, to decide whether a constant view loop is unrolled.
 	"ViewStatements": nil,
+
+	// Gates no pass either, though the lowering reads it: passNoInlineComponents
+	// asks it whether a component with state of its own is built at run time or
+	// spliced with a cell per copy.
+	"InstanceState": nil,
 
 	// The pass and the field are named for opposite sides of the same fact:
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the

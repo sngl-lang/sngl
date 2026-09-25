@@ -63,6 +63,16 @@ enum ObjectFit { contain, cover, fill, none, scaleDown }
 // is the declared border width.
 enum BorderStyle { none, solid, dashed, dotted, double }
 
+// Whether a host collapses runs of whitespace in a component's text, and
+// where it may break a line.
+//
+// `normal` is what every host does by default. `preWrap` is the one a flow of
+// rich text asks for: the characters an author wrote are literal -- two spaces
+// are two spaces and a newline ends the line -- and the text still wraps to
+// the width it is given. A host with no such notion honours the text as
+// written already and has nothing to do here.
+enum WhiteSpace { normal, pre, preWrap, preLine, nowrap }
+
 // Marker style for list-rendered containers. Applied via
 // `style.listStyleType` on list-flavored components.
 enum ListStyle { none, disc, circle, square, decimal }
@@ -120,6 +130,7 @@ struct Style {
     fontStyle FontStyle
     textAlign TextAlign
     maxLines int
+    whiteSpace WhiteSpace
 
     // Decoration
     background color

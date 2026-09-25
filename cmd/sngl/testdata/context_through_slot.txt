@@ -1,0 +1,86 @@
+# A context is dynamic: its value is the one the provider a node is mounted
+# beneath is answering with, not one the scope holding the node's names has.
+# The interpreter had neither half of that. It answered a provider only within
+# the body the provider was written in, so `theme("dark") { leaf() }` read the
+# default inside `leaf` -- a component instance was mounted with an env of its
+# own and no context values at all. And slot content is mounted in the caller's
+# scope, correctly, because the names in it are the caller's; the contexts in
+# it are not, and came from there too.
+#
+# Both are read *after* the mount here, which is the case that decides how this
+# is done: `sngl test` evaluates `c.a.lbl.value` long after every provider has
+# been unwound, so an instance sharing the mounter's map reads whatever is left
+# in it. The values are copied onto the instance at mount instead.
+#
+# testdata/context_through_slot.txtar is the same claim for the targets that
+# lower contexts away; this is the one that has to run.
+
+sngl test --platform none boundary.sngl
+stdout 'ok'
+sngl test --platform none slots.sngl
+stdout 'ok'
+
+-- boundary.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+context #theme("light")
+
+component leaf node {
+    text #lbl(value="{theme}")
+}
+
+component probe node {
+    theme("dark") {
+        leaf #inside
+    }
+    leaf #outside
+}
+
+func testCrossesAComponent(t Test, c probe) {
+    t.assert(c.inside.lbl.value == "dark")
+    t.assert(c.outside.lbl.value == "light")
+}
+
+window {
+}
+-- slots.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+context #depth(0)
+
+component myList(items ...component) node {
+    depth(depth + 1) {
+        vbox {
+            items
+        }
+    }
+}
+
+component myItem(content ...component) node {
+    hbox {
+        text #lbl(value="{depth}")
+        vbox {
+            content
+        }
+    }
+}
+
+component probe node {
+    myList {
+        myItem #a {
+            myList {
+                myItem #b {}
+            }
+        }
+    }
+}
+
+func testFollowsASlot(t Test, c probe) {
+    t.assert(c.a.lbl.value == "1")
+    t.assert(c.b.lbl.value == "2")
+}
+
+window {
+}

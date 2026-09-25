@@ -3,6 +3,7 @@ package golang
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -366,6 +367,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	if isChanLit(n) {
 		return "nil"
 	}
+	gc.requireForeignStructImport(n)
 	name := structLitTypeName(n)
 	// A native type whose host spelling is a pointer has no composite literal:
 	// `*time.Ticker{}` does not parse. Only the empty literal can reach here
@@ -469,6 +471,7 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	if key == "" {
 		key = "__i"
 	}
+	n = WithUnreadVarsDropped(n)
 	switch n.IterKind {
 	case ir.IterForever:
 		// Go's own spelling: `for {` is the condition form below with the
@@ -524,6 +527,9 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 		}
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, valueVar, iter)
 	case ir.IterIndexed:
+		if n.Key == "" {
+			return fmt.Sprintf("for range %s {", iter)
+		}
 		return fmt.Sprintf("for %s, %s := range %s {", n.Key, n.Value, iter)
 	default:
 		// An iter<T> is a func, and `range` over one yields the element
@@ -567,9 +573,9 @@ func (gc *GoIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
 	}
-	_, kind := gc.Ctx.Resolve(n.Name)
+	sym, kind := gc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
-		return gc.RecvName() + "." + gc.StateFieldName(n.Name)
+		return gc.recvFor(sym) + "." + gc.StateFieldName(n.Name)
 	}
 	return n.Name
 }
@@ -731,22 +737,22 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	// ir.Ident carrying no Sym. Copy one with its Sym instead and the local
 	// silently becomes a field read.
 	if v, ok := n.Sym.(*ir.Var); ok && v.NodeHandle {
-		return gc.RecvName() + "." + name
+		return gc.NodeRecv(name) + "." + name
 	}
 	if host, ok := gc.hostValueIdent(n); ok {
 		return host
 	}
 	if n.IsElementRef && n.Synthesized {
-		return gc.RecvName() + "." + name
+		return gc.NodeRecv(name) + "." + name
 	}
-	_, kind := gc.Ctx.Resolve(name)
+	sym, kind := gc.Ctx.Resolve(name)
 	switch kind {
 	case codegen.NameLocal:
 		return gc.Ctx.RenamedName(name)
 	case codegen.NameComputed:
-		return gc.RecvName() + "." + name + "()"
+		return gc.recvFor(sym) + "." + name + "()"
 	case codegen.NameStateVar:
-		return gc.RecvName() + "." + gc.StateFieldName(name)
+		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameConst:
 		// A const is a file-scope name in a free function and a field of the
 		// receiver inside a method the Model dispatches through -- a window's
@@ -754,7 +760,7 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// package const read as a bare name against the `m.blank` field the
 		// same build declared, once a window was the scope instead.
 		if gc.Ctx.Component != nil || gc.Ctx.Window != nil {
-			return gc.RecvName() + "." + name
+			return gc.recvFor(sym) + "." + name
 		}
 		return name
 	case codegen.NameFunc:
@@ -771,9 +777,9 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 		// names: writeRouteFuncs renames each func before emitting, because
 		// there they are methods on a per-request State struct. Same split as
 		// MutTargetIdent makes for a state var.
-		return gc.RecvName() + "." + gc.StateFieldName(name)
+		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameExternFunc, codegen.NameExternVar:
-		return gc.RecvName() + "." + ExportName(name)
+		return gc.recvFor(sym) + "." + ExportName(name)
 	default:
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
 			return fmt.Sprintf("%q", name)
@@ -840,7 +846,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 
 		// A component-scope func is a method on Model, so it must be called
 		// through the receiver or it references an undefined identifier.
-		_, kind := gc.Ctx.Resolve(fname)
+		fsym, kind := gc.Ctx.Resolve(fname)
 		if kind == codegen.NameComputed || kind == codegen.NameFunc {
 			// A free-function scope has no Model receiver, so the call uses
 			// the exported name. A func not emitted into the lib then yields
@@ -852,7 +858,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			// name, which is also what a reference to one as a value renders
 			// (NameFunc below); the Model and instance-record paths keep the
 			// name as written.
-			return gc.RecvName() + "." + gc.StateFieldName(fname) + "(" + strings.Join(args, ", ") + ")"
+			return gc.recvFor(fsym) + "." + gc.StateFieldName(fname) + "(" + strings.Join(args, ", ") + ")"
 		}
 
 		codegen.RequireIntrinsicFallback(langGo, n.Func)
@@ -1053,6 +1059,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 					// no receiver to reach it through, and the instance it
 					// returns is what the caller holds.
 					if gc.InstanceRecords && comp.RuntimeInstance {
+						pargs = append([]string{gc.ModelRef()}, pargs...)
 						return ComponentInstanceCtor(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
 					}
 					return gc.RecvName() + "." + ComponentRenderMethod(comp.Name) + "(" + strings.Join(pargs, ", ") + ")"
@@ -1526,6 +1533,22 @@ func isChanLit(n *ir.StructLit) bool {
 // structLitTypeName picks the Go type prefix for a struct literal. An
 // anonymous struct materializes an inline `struct { … }`, since Go rejects a
 // bare `{…}` literal.
+// requireForeignStructImport registers the package a literal of a Go type is
+// spelled from: a folded `go:` value reaches the file as `pkg.Item{…}` with no
+// call beside it to have registered pkg.
+func (gc *GoIRContext) requireForeignStructImport(n *ir.StructLit) {
+	sd := n.Def
+	if sd == nil && n.Type != nil {
+		sd, _ = n.Type.Decl.(*ir.StructDef)
+	}
+	if sd == nil || sd.Foreign.Name == "" || sd.Foreign.Marked {
+		return
+	}
+	if p := sd.Foreign.Path; p != "" && p != "C" {
+		gc.RequireImport(p)
+	}
+}
+
 func structLitTypeName(n *ir.StructLit) string {
 	if n == nil {
 		return "struct{}"
@@ -2001,6 +2024,44 @@ func (gc *GoIRContext) RecvName() string {
 	return codegen.ModelReceiver
 }
 
+// recvFor is the receiver a resolved member is reached through: RecvName, or
+// inside a component instance record the Model, for a member the component
+// does not declare.
+func (gc *GoIRContext) recvFor(sym ir.Symbol) string {
+	if gc.Ctx == nil || gc.Ctx.OuterReceiver == "" || gc.Ctx.Component == nil {
+		return gc.RecvName()
+	}
+	switch s := sym.(type) {
+	case *ir.Var:
+		if slices.Contains(gc.Ctx.Component.Vars, s) {
+			return gc.RecvName()
+		}
+	case *ir.Func:
+		if slices.Contains(gc.Ctx.Component.Funcs, s) {
+			return gc.RecvName()
+		}
+	}
+	return gc.Ctx.OuterReceiver
+}
+
+// NodeRecv is the receiver the node field name is reached through: the Model
+// for one of the page's, the scope's own receiver for any other.
+func (gc *GoIRContext) NodeRecv(name string) string {
+	if gc.Ctx != nil && gc.Ctx.OuterReceiver != "" && gc.Ctx.OuterNodes[name] {
+		return gc.Ctx.OuterReceiver
+	}
+	return gc.RecvName()
+}
+
+// ModelRef is the Model this scope belongs to, as a `*Model`: the one a
+// component instance record holds, or the receiver.
+func (gc *GoIRContext) ModelRef() string {
+	if gc.Ctx != nil && gc.Ctx.OuterReceiver != "" {
+		return gc.Ctx.OuterReceiver
+	}
+	return gc.ModelArg()
+}
+
 // ModelArg spells the Model where a call hands it to something taking a
 // `*Model`. See ModelIsValue for why the two spellings exist.
 func (gc *GoIRContext) ModelArg() string {
@@ -2113,4 +2174,39 @@ func (gc *GoIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 		gc.RequireImport(v.Foreign.Path)
 	}
 	return v.Foreign.Name, true
+}
+
+// WithUnreadVarsDropped is n with a loop variable its body never names left
+// out, since Go refuses one declared and not used. A lowering can leave one: a
+// slot matches its instances against the inner loop's element and never reads
+// the outer loop's. Asked by name, so anything that might read it keeps it.
+func WithUnreadVarsDropped(n *ir.For) *ir.For {
+	// A counted loop's variable is read by its own condition.
+	if n.IterKind == ir.IterCounted {
+		return n
+	}
+	read := map[string]bool{}
+	for _, block := range [][]ir.Stmt{n.Body, n.Else} {
+		_ = ir.Walk(block, func(nd ir.Node) error {
+			if id, ok := nd.(*ir.Ident); ok {
+				read[id.Name] = true
+			}
+			return nil
+		})
+	}
+	if (n.Key == "" || read[n.Key]) && (n.Value == "" || read[n.Value]) {
+		return n
+	}
+	cp := *n
+	switch {
+	case n.Value == "":
+		cp.Key = ""
+	case !read[n.Key] && !read[n.Value]:
+		cp.Key, cp.Value = "", ""
+	case !read[n.Key]:
+		cp.Key = "_"
+	default:
+		cp.Value = "_"
+	}
+	return &cp
 }

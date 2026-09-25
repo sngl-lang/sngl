@@ -1,6 +1,8 @@
 package lower
 
 import (
+	"strings"
+
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -62,6 +64,49 @@ func lowerComponentProps(pkg *ir.Package, _ Features, opts Options) error {
 		promoteProps(c)
 	}
 	return nil
+}
+
+// contextProps turns each hidden context var of c into a prop defaulting to
+// the context's default. Run on a component built at run time, which nothing
+// splices a provider's value into.
+//
+// passContext threads that value to an instance as an argument named for the
+// var, and as a var the instance never took it: html's factory declared it
+// from the default, so every instance read the default under any provider;
+// one reading state was refused for want of a setter; and bubbletea, whose
+// render function takes an instance's props as parameters, read a Model field
+// that does not exist. As a prop it is a parameter on bubbletea and, through
+// promoteProps, a cell with a setter on the instance runtimes.
+func contextProps(c *ir.Component) {
+	renames := map[ir.Symbol]string{}
+	symRenames := map[ir.Symbol]ir.Symbol{}
+	kept := c.Vars[:0]
+	for _, v := range c.Vars {
+		if !v.Synthesized || !strings.HasPrefix(v.Name, "__ctx_") {
+			kept = append(kept, v)
+			continue
+		}
+		param := &ir.Param{Name: v.Name, Type: v.Type}
+		c.Props = append(c.Props, &ir.Prop{Name: v.Name, Type: v.Type, Default: v.Init, Sym: param})
+		renames[v] = param.Name
+		symRenames[v] = param
+	}
+	c.Vars = kept
+	if len(renames) == 0 {
+		return
+	}
+	c.Body = renameIdents(c.Body, renames, symRenames)
+	for _, f := range c.Funcs {
+		f.Block = renameIdents(f.Block, renames, symRenames)
+	}
+	for _, v := range c.Vars {
+		v.Init = renameInExpr(v.Init, renames, symRenames)
+		for _, h := range v.Handlers {
+			if h.Func != nil {
+				h.Func.Block = renameIdents(h.Func.Block, renames, symRenames)
+			}
+		}
+	}
 }
 
 // promoteProps turns each of c's props into a var initialised from the

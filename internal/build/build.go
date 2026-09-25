@@ -15,6 +15,7 @@ package build
 import (
 	"fmt"
 	"io/fs"
+	"iter"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -74,10 +75,12 @@ type Result struct {
 
 // Emit builds pkg for every resolved target.
 //
-// optimize and lower work in place, so each target past the first starts from
-// a clone of the pristine checked IR -- which means a single-target build
-// works on pkg itself and leaves it optimized and lowered. A caller that
-// needs the checked IR afterwards has to clone before calling.
+// optimize and lower work in place, so every target but the last starts from
+// a clone of the pristine checked IR, and the last -- the only one, in a
+// single-target build -- works on pkg itself and leaves it optimized and
+// lowered. A clone copies the whole reachable graph, library IR included, so
+// the one nothing reads afterwards is not made. A caller that needs the
+// checked IR afterwards has to clone before calling.
 func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	// A build's rule and not the language's, which is why it is asked here
 	// rather than in the checker: `component c { … }` on its own is a
@@ -106,8 +109,8 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 	evalCache := optimize.NewEvalCache()
 
 	results := make([]Result, 0, len(targets))
-	for _, target := range targets {
-		res, err := emitTarget(pkg, target, len(targets) > 1, evalCache, o)
+	for i, target := range targets {
+		res, err := emitTarget(pkg, target, i < len(targets)-1, evalCache, o)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +122,7 @@ func Emit(pkg *ir.Package, o Options) ([]Result, error) {
 func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.EvalCache, o Options) (Result, error) {
 	tpkg := pkg
 	if clone {
-		tpkg = ir.ClonePackage(pkg)
+		tpkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
 	}
 
 	if target.Options == nil {
@@ -205,7 +208,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	}
 
 	start = time.Now()
-	files, boilerplate, err := generate(o, tpkg, target, fileAssets)
+	files, boilerplate, err := generate(o, tpkg, target, fileAssets, optCfg)
 	if err != nil {
 		return Result{}, err
 	}
@@ -214,7 +217,7 @@ func emitTarget(pkg *ir.Package, target Target, clone bool, evalCache *optimize.
 	return Result{Target: target, Pkg: tpkg, Files: files, Boilerplate: boilerplate}, nil
 }
 
-func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset) (map[string][]byte, map[string]bool, error) {
+func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.FileAsset, optCfg *optimize.Config) (map[string][]byte, map[string]bool, error) {
 	lang := codegen.LookupLang(target.Lang)
 	plat := codegen.LookupPlatform(target.Platform)
 
@@ -237,6 +240,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 		Maps:       optionBool(target.Options, "maps"),
 		OutDir:     o.OutDir,
 	}
+	req.Documents = func() iter.Seq2[*codegen.Document, error] { return optimize.Documents(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	if err := plat.Generate(req, mem); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)

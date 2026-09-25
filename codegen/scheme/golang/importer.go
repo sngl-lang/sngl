@@ -146,7 +146,7 @@ func (g *GoImporter) load(userPath, dir string) (*ir.NativeImport, map[string]*i
 		}
 		sd := &ir.StructDef{
 			Name:    tn.Name(),
-			Foreign: ir.Foreign{Name: pkgName + "." + tn.Name(), Origin: goTypeID{Path: pkgPath, Name: tn.Name()}},
+			Foreign: ir.Foreign{Path: pkgPath, Name: pkgName + "." + tn.Name(), Origin: goTypeID{Path: pkgPath, Name: tn.Name()}},
 			Doc:     typeDoc[tn.Name()],
 		}
 		structs[tn.Name()] = sd

@@ -1,0 +1,496 @@
+import ui "sngl:ui"
+import tree "sngl:tree"
+
+// The tree the inline pieces form. Declaring it here is what makes `span` a
+// name a component can resolve, so a misspelling is an unresolved name rather
+// than a family nobody joins.
+//
+// A member is a run of text and what is true of it. It hosts its own family
+// and nothing else: emphasis around a link is a link inside emphasis, and both
+// orders are one flow of words. What it may not hold is a `node` -- a box
+// placed in the middle of a sentence has no line to sit on -- which is the
+// membership rule doing the work a content model would otherwise do in prose.
+#[tree.kind]
+struct span {}
+
+// Shows one flow of rich text. Its rest slot accepts spans, so it hosts them
+// without being one, and the flow wraps as a whole: a line break falls
+// wherever the words put it, not at the edge of a child.
+//
+// `role` says what the flow is for and `style` says what it looks like. The
+// first is the one to reach for: a platform that has headings emits one, and
+// `style` is how an author says something different from the block components
+// already set.
+//
+// This one is a `ui.Style` and a span's is not, because a `richText` is a
+// `ui.node` and has a box: its padding, background and border are real, which
+// is how a quote gets its rule. What its five font fields do is seed every run
+// inside it -- color, size, family, weight, slant -- and a span says what is
+// different about its own words. That seeding is where the cascade is
+// resolved, once, so a host with no inheritance of its own (a segment list)
+// gets the same answer as one with it.
+//
+// One run is one paragraph. A document is a `vbox` of these -- usually of the
+// block components at the foot of this file, which are each a `richText` with
+// its role already set -- and what goes between them is everything a document
+// holds that this family does not describe.
+component richText(
+    style ui.Style,
+    role Role,
+    content ...component span,
+) ui.node
+
+// What a run of text is *for*, as opposed to what it looks like.
+//
+// A platform answers it however its host does: html emits the element the
+// role names, so a heading announces as one and a quote is quoted; fyne has a
+// paragraph style per role; a terminal has the styling and none of the
+// semantics. Which is the reason this is a prop on the one primitive rather
+// than a component per role -- a component hosting the span family is a
+// primitive by construction (`hostsTree`), so an override of one would not
+// inline and would land on an emitter that has never heard of it. As a prop it
+// reaches every emitter through the node they already render.
+//
+// Meaning only -- the appearance is `style`, set beside it by whichever block
+// component wrapped this run. Leaving the typography to each platform's
+// reading of the role was the alternative, and it makes a new target look
+// wrong until it has implemented six heading sizes; setting it here means a
+// target implements escaping and inherits a document that reads correctly.
+// A host that has its own idea about a heading is free to let the role win.
+enum Role { paragraph, heading1, heading2, heading3, heading4, heading5, heading6, quote, code, caption }
+
+// A literal run of text -- the leaf every other span eventually holds.
+//
+// Literal means every character of it, spaces and newlines included. Two
+// spaces are two spaces and a newline ends the line, on every target, because
+// what an author wrote between the quotes is the one thing a document cannot
+// afford to have a platform reinterpret. Wrapping still happens around that:
+// the run flows to the width it is given, and an explicit newline breaks it
+// wherever it falls.
+//
+// So the collapsing html does to whitespace is html's to undo -- a `pre-wrap`
+// on the run, or the entities and breaks that say the same thing where a style
+// cannot be attached -- and it is codegen's job rather than the author's. The
+// other targets carry the characters through as written.
+//
+// Named `text` rather than for the package: a program writes
+// `markup.text("...")`, which is the spelling that reads, and a program
+// dot-importing both this package and `sngl:ui` is told about the collision
+// where it wrote it.
+component text(value string) span
+
+// What an inline run may vary about its own appearance.
+//
+// Its own struct rather than `ui.Style`, for two reasons and the second is the
+// one that decides it.
+//
+// A run has no box: of `ui.Style`'s forty-odd fields it could honor five, and
+// the rest -- padding, flex, position, border, overflow -- would type-check on
+// a span and do nothing. Silently on most targets, and *not* silently on html,
+// where a `<span>` takes padding and the same source would come out different
+// on one platform than the others. A span behaving the same everywhere is a
+// requirement here, so a vocabulary that can express something only html can
+// do is the wrong vocabulary.
+//
+// And the cascade needs a third state. Flattening `bold { italic { … } }` into
+// one run means the inner span overwrites only what it set, so "not set" has
+// to be distinguishable from "set to the default" -- and it is not in
+// `ui.Style`, where an enum's zero is its first member and `FontWeight`'s is
+// `normal`. The inner run would say `normal` and silently un-bold its parent.
+// So the two enums below lead with `inherit`, which is what a zero value of
+// this struct means field by field: no color, no size, no family, and neither
+// decoration.
+//
+// The consequence of that is a decoration cannot be turned *off* by a span
+// inside one that turned it on. No markup asks to, and a fourth state per
+// field to express it would be paid for on every run.
+struct SpanStyle {
+    color color = color{a=0}
+    fontSize ui.measurement = 0px
+    fontFamily string = ""
+    fontWeight Weight = Weight.inherit
+    fontStyle Slant = Slant.inherit
+    underline bool = false
+    strike bool = false
+}
+
+// Weight of a run, with `inherit` first so an unset one leaves its parent's
+// alone. The rest mirror `ui.FontWeight`.
+enum Weight { inherit, normal, bold, lighter, bolder }
+
+// Slant of a run, with `inherit` first for the same reason. The rest mirror
+// `ui.FontStyle`.
+enum Slant { inherit, normal, italic, oblique }
+
+// A run of text and what is true of its appearance -- the one span that
+// carries style, and what every wrapper below is written in terms of.
+//
+// Nothing about a run says what it *means*. `token` says that for code and
+// `role` says it for a whole flow; this is appearance, and a document that
+// reaches for it directly is saying it wants those exact letters rather than
+// what the wrappers name.
+component run(
+    style SpanStyle,
+    content ...component span,
+) span
+
+// --- The named weights and faces ---
+//
+// Each is a `run` with one thing set, which is what makes them worth having:
+// a document says `bold` and means the word carries weight, and the one place
+// that decides what carrying weight looks like is here.
+//
+// Convenience, not override points. A span-hosting component is a primitive by
+// construction (`hostsTree`), so these compose away into the `run` they wrap
+// but a platform *override* of one would not inline -- a target that needs to
+// do something particular about bold does it in its `run` emitter, reading the
+// style it was handed.
+
+// The word carries weight.
+component bold(content ...component span) span {
+    run(style={fontWeight=Weight.bold}) {
+        content
+    }
+}
+
+// The word is slanted, using the family's italic face where one exists.
+component italic(content ...component span) span {
+    run(style={fontStyle=Slant.italic}) {
+        content
+    }
+}
+
+// A rule under the words.
+component underline(content ...component span) span {
+    run(style={underline=true}) {
+        content
+    }
+}
+
+// A rule through the words: text that was there and is not any more.
+component strike(content ...component span) span {
+    run(style={strike=true}) {
+        content
+    }
+}
+
+// A run set in a monospaced face -- an identifier, a flag, a filename, a line
+// of a code sample.
+//
+// Its content is spans rather than a string, which is what makes a highlighted
+// code sample writable: the coloring is `token` spans inside this one. A leaf
+// taking a string could only ever be one color, so the two decisions are the
+// same decision.
+component monospace(content ...component span) span {
+    run(style={fontFamily="monospace"}) {
+        content
+    }
+}
+
+// What a run of code *is*, for a platform to color as it sees fit.
+//
+// Semantic rather than a color, because the alternative does not survive the
+// trip. A document that names #7DAEA3 is unreadable on a light theme and
+// approximate on a terminal with sixteen colors, and it overrides an
+// application that had its own palette. A kind is answered by whoever is
+// drawing: a CSS class on html, a theme color name on fyne, an ANSI pair in a
+// terminal, a Pango foreground on gtk4.
+//
+// `plain` is the default and is what a run that is code but is nothing in
+// particular gets: whitespace, an identifier a tokenizer did not classify, the
+// whole of a fence whose language nobody highlights. Written rather than left
+// out, so a highlighter says "this is plain" and a reader of the tree is never
+// asked to tell that from a missing span.
+//
+// The set is otherwise deliberately small -- what every syntax theme
+// distinguishes, and no more. A highlighter with a finer vocabulary maps down
+// to these, which is the direction that loses nothing a reader can see.
+enum Token { plain, keyword, type, function, variable, constant, string, number, comment, operator, punctuation }
+
+// The content is a run of code of this kind. Written inside a `monospace`,
+// which is what says it is code at all; this says which part of it.
+component token(kind Token, content ...component span) span
+
+// A color per `Token` kind. A field left at its zero, which has no alpha, is
+// a kind the palette does not answer: the words keep the color around them,
+// or take the host's where the palette is the one a program set.
+struct Palette {
+    plain color = color{a=0}
+    keyword color = color{a=0}
+    type color = color{a=0}
+    function color = color{a=0}
+    variable color = color{a=0}
+    constant color = color{a=0}
+    string color = color{a=0}
+    number color = color{a=0}
+    comment color = color{a=0}
+    operator color = color{a=0}
+    punctuation color = color{a=0}
+}
+
+// The color a palette gives one kind.
+func tokenColor(p Palette, kind Token) color {
+    if kind == Token.keyword {
+        return p.keyword
+    }
+    if kind == Token.type {
+        return p.type
+    }
+    if kind == Token.function {
+        return p.function
+    }
+    if kind == Token.variable {
+        return p.variable
+    }
+    if kind == Token.constant {
+        return p.constant
+    }
+    if kind == Token.string {
+        return p.string
+    }
+    if kind == Token.number {
+        return p.number
+    }
+    if kind == Token.comment {
+        return p.comment
+    }
+    if kind == Token.operator {
+        return p.operator
+    }
+    if kind == Token.punctuation {
+        return p.punctuation
+    }
+    return p.plain
+}
+
+// GitHub's syntax colors, light and dark: what a platform with no theme of
+// its own to ask draws code in.
+const lightPalette = Palette{keyword=#CF222E, type=#953800, function=#8250DF, constant=#0550AE, string=#0A3069, number=#0550AE, comment=#6E7781}
+
+const darkPalette = Palette{keyword=#FF7B72, type=#FFA657, function=#D2A8FF, constant=#79C0FF, string=#A5D6FF, number=#79C0FF, comment=#8B949E}
+
+// The palette every `token` under a provider draws in. Unset, each platform
+// answers from its host -- a terminal's sixteen colors, a fyne theme, a
+// Material scheme, the defaults above where the host has none. A kind it sets
+// wins on every target, so an application with colors of its own sees them in
+// its code samples too.
+context #palette(Palette{})
+
+// The color `kind` is drawn in: the palette's where it sets one, and the
+// fallback's where it does not.
+func colorOf(p Palette, fallback Palette, kind Token) color {
+    var c = tokenColor(p, kind)
+    if c.a != 0 {
+        return c
+    }
+    return tokenColor(fallback, kind)
+}
+
+// The words lead somewhere. `href` takes the same URL a `ui.link` does, and
+// the content is spans, so a link may be emphasized and emphasis may be
+// linked.
+component link(href string, content ...component span) span
+
+// A picture on the line with the words -- an icon, a badge, an inline
+// formula. `alt` is the description: what the picture shows, for a reader who
+// is not looking at it and for a platform that cannot draw one inside a flow
+// of text.
+//
+// A string and not spans, though CommonMark's alt text is inline content like
+// any other: **no formatting is available in a description.** Every host that
+// has one has a plain attribute -- html's `alt`, a Compose `contentDescription`
+// -- and a description is read aloud rather than looked at, so emphasis in one
+// has nothing to express and no host to express it to. Spans here would be a
+// vocabulary every target flattened on the way out, which is a way of saying
+// the author was offered a choice that was never theirs.
+//
+// So an importer flattens: the words between the brackets, and nothing else.
+component image(src string, alt string) span
+
+// --- Document blocks ---
+//
+// Ordinary `ui.node` components with bodies, not members of the family: a
+// document is a `vbox` of these, and each is a `richText` that says what it
+// is. They are here rather than in an application because the semantic is not
+// a style an author should have to remember -- `heading(level=2)` announces as
+// a heading on the targets that have the concept, and is a bold larger line on
+// the ones that do not.
+//
+// Each sets both halves: a `role`, which is what the block means, and a
+// `style`, which is what it looks like where the host has no opinion. The
+// sizes are the ones a document outline wants rather than any platform's, and
+// an author who disagrees wraps `richText` directly.
+//
+// Bodied on purpose. Each composes away into the `richText` it wraps, so a
+// platform implements the one primitive and inherits all of these; there is no
+// per-block override to write and none to forget.
+
+// A document's own title -- the one heading a page has at most one of.
+//
+// The six levels are six components rather than one taking a level, for the
+// reason `Role` gives: a level is only ever one of six, and a number can be
+// none of them.
+component heading1(content ...component span) ui.node {
+    richText(role=Role.heading1, style={fontSize=32px, fontWeight=ui.FontWeight.bold}) {
+        content
+    }
+}
+
+// A section title.
+component heading2(content ...component span) ui.node {
+    richText(role=Role.heading2, style={fontSize=26px, fontWeight=ui.FontWeight.bold}) {
+        content
+    }
+}
+
+// A subsection title.
+component heading3(content ...component span) ui.node {
+    richText(role=Role.heading3, style={fontSize=21px, fontWeight=ui.FontWeight.bold}) {
+        content
+    }
+}
+
+// A title below a subsection.
+component heading4(content ...component span) ui.node {
+    richText(role=Role.heading4, style={fontSize=18px, fontWeight=ui.FontWeight.bold}) {
+        content
+    }
+}
+
+// A title four levels down; rare outside a reference document.
+component heading5(content ...component span) ui.node {
+    richText(role=Role.heading5, style={fontSize=16px, fontWeight=ui.FontWeight.bold}) {
+        content
+    }
+}
+
+// The deepest title a document outline has.
+component heading6(content ...component span) ui.node {
+    richText(role=Role.heading6, style={fontSize=14px, fontWeight=ui.FontWeight.bold}) {
+        content
+    }
+}
+
+// A run of prose -- the block a paragraph of a document becomes, and the
+// default.
+component paragraph(content ...component span) ui.node {
+    richText(role=Role.paragraph) {
+        content
+    }
+}
+
+// Words quoted from somewhere else.
+component quote(content ...component span) ui.node {
+    richText(role=Role.quote, style={fontStyle=ui.FontStyle.italic, paddingLeft=12px, borderLeft="3px solid #CCCCCC"}) {
+        content
+    }
+}
+
+// A code sample on its own, as opposed to a `monospace` run inside a
+// sentence. Its content is spans, so it holds the `token` spans a highlighter
+// produced; its whitespace is literal like every other run.
+//
+// It wraps them in `monospace` itself, because a code block is monospaced by
+// being one -- a caller that had to say so could forget to, and a highlighter
+// emitting token spans has no reason to know it is being rendered as a block.
+component codeBlock(content ...component span) ui.node {
+    richText(role=Role.code, style={padding=12px, background=#F5F5F5, borderRadius=4px}) {
+        monospace {
+            content
+        }
+    }
+}
+
+// A caption: what the thing above or below it is. Smaller and quieter than
+// prose on every host that distinguishes them.
+component caption(content ...component span) ui.node {
+    richText(role=Role.caption, style={fontSize=13px, color=#666666}) {
+        content
+    }
+}
+
+// How deep the list nesting is, counted by `list` and read by `listItem`.
+// Zero is "not in a list at all", which is a `listItem` written on its own
+// and still has to render something.
+context #listDepth(0)
+
+// The bullets, cycling by depth the way a document does: a nested list wants
+// to look different from the one it sits in, and after three levels the eye
+// has stopped counting anyway.
+const bullets = ["•", "◦", "▪"]
+
+// The bullet for a nesting level. Depth 1 is the outermost list, so the
+// modulo is taken of one less; anything shallower than that is a `listItem`
+// with no list around it and gets the plain bullet.
+func bulletAt(depth int) string {
+    if depth <= 1 {
+        return bullets[0]
+    }
+    return bullets[(depth - 1) % 3]
+}
+
+// Whether a list item is a task, and if so whether it is done. Three states
+// rather than a `bool`, because "not a task at all" is the common one and a
+// flag cannot say it: a checkbox is a thing a markdown list item may have and
+// usually does not.
+enum Task { none, todo, done }
+
+// A list, and one item of one. Their own components rather than a role,
+// because a list is a construct the host has -- `<ul>` announces its length
+// and its position to a screen reader, and a run of text styled with a bullet
+// announces neither.
+//
+// They host nodes and not spans, which is what makes them the two blocks a
+// platform may usefully override: a component hosting the span family is a
+// primitive by construction, and these are not, so an override of either
+// inlines the way every `sngl:ui` override does. It is also faithful -- an
+// item of a markdown list holds blocks, so a nested list and a code sample go
+// in one, and the indent accumulates because each list adds its own.
+//
+// `ordered` and `start` are for whoever emits a real list; the default body
+// does not read them, because it cannot count.
+//
+// What it does count is nesting. The items go under a provider that adds one
+// to `listDepth`, so an item asks how deep it is rather than being told, and
+// a list nested inside an item's content is one deeper again -- a context
+// follows a slot, so the items a caller writes stand under whatever this body
+// wrapped the slot in.
+component list(ordered bool = false, start int = 1, items ...component) ui.node {
+    listDepth(listDepth + 1) {
+        ui.vbox(style={gap=4, paddingLeft=20px}) {
+            items
+        }
+    }
+}
+
+// One item. `marker` is the bullet or the number, written by whoever knows the
+// ordinal rather than counted at render time: a platform that emits a real
+// list item ignores it and lets the host number the list, and a platform with
+// no list construct shows it. That is what lets an ordered list be numbered on
+// a target that cannot count, and it is how a nested list gets a different
+// bullet from its parent.
+//
+// Empty asks `listDepth` for the bullet of this nesting level, so a nested
+// list changes bullet with nobody writing one -- which is what the context
+// following the slot buys. A caller that knows better still says so, and the
+// importer does for an ordered list, where the marker is the ordinal.
+//
+// `task` replaces the marker with a checkbox, which is what a markdown task
+// list is. It is not interactive: a document describes state rather than
+// holding it, and an application that wants a real checkbox writes one.
+component listItem(
+    marker string = "",
+    task Task = Task.none,
+    content ...component,
+) ui.node {
+    ui.hbox(style={gap=8, alignItems=ui.Alignment.start}) {
+        if task == Task.none {
+            ui.text(value=marker == "" ? bulletAt(listDepth) : marker)
+        } else {
+            ui.checkbox(checked=task == Task.done, disabled=true)
+        }
+        ui.vbox {
+            content
+        }
+    }
+}

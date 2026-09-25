@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"strings"
 	"text/template"
 	"time"
@@ -673,6 +674,21 @@ type Request struct {
 	// OutDir is where the generated files will be written. Only source-map
 	// emission reads it; see FileOptions.OutDir.
 	OutDir string
+	// Documents yields each window Pkg renders as a target that writes markup
+	// writes it: one at a time, loop variables bound and constant loops
+	// unrolled (optimize.Documents). Nil for a caller that did not run the build
+	// pipeline; a platform that needs it builds its own.
+	Documents func() iter.Seq2[*Document, error]
+}
+
+// Document is one window as a static target writes it.
+type Document struct {
+	// Window is nil for a harness that renders its root component in place of
+	// a window, and Body is then that component's.
+	Window *ir.Window
+	Body   []ir.Stmt
+	// FileAssets are the file: assets only this document's fold resolved.
+	FileAssets []FileAsset
 }
 
 // SplitScheme separates a scheme prefix (e.g. "go") from the rest of an import

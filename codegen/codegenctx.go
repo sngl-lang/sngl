@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"errors"
 	"maps"
 
 	"git.duckfam.us/jonathan/sngl/ir"
@@ -25,6 +26,10 @@ type CodegenCtx struct {
 	// names, so two platforms computing them separately would be two places to
 	// number them in.
 	Canvases *CanvasDraws
+
+	// failures is what an emitter found wrong where it has no error to return:
+	// a view walk writes lines, and the build still has to fail.
+	failures []error
 }
 
 func NewCodegenCtx(req *Request, platform string) *CodegenCtx {
@@ -268,4 +273,20 @@ func (ctx *CodegenCtx) collectTimers() []TimerHandler {
 		})
 	}
 	return timers
+}
+
+// Fail records err against this emission, once per message, for Err to
+// report when the walk that found it returns.
+func (ctx *CodegenCtx) Fail(err error) {
+	for _, seen := range ctx.failures {
+		if seen.Error() == err.Error() {
+			return
+		}
+	}
+	ctx.failures = append(ctx.failures, err)
+}
+
+// Err is every failure recorded by Fail, joined, or nil.
+func (ctx *CodegenCtx) Err() error {
+	return errors.Join(ctx.failures...)
 }

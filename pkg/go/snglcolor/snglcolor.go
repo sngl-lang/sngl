@@ -39,3 +39,12 @@ func (c Color) Hex() string {
 	}
 	return fmt.Sprintf("#%02x%02x%02x%02x", c.R, c.G, c.B, c.A)
 }
+
+// Or is the color as CSS, or fallback for the fully transparent one -- which
+// is how a SNGL color says it was never set.
+func (c Color) Or(fallback string) string {
+	if c.A == 0 {
+		return fallback
+	}
+	return c.String()
+}

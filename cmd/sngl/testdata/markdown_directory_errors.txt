@@ -1,0 +1,216 @@
+# What the md: importer says about a directory it cannot turn into a site.
+# Each is a question about the tree of files rather than about one document,
+# so each names the files involved.
+
+# A page's content is either `guide.md` or `guide/index.md`, never both.
+! sngl check both/app.sngl
+stderr 'guide.md'
+stderr 'guide/index.md'
+stderr 'both hold the page'
+
+# The root page is the directory's index.md, and a site has one.
+! sngl check noindex/app.sngl
+stderr 'has no index.md'
+
+# A directory with no page of its own cannot be the parent of its children.
+! sngl check orphan/app.sngl
+stderr 'docs/guide'
+stderr 'add guide.md or guide/index.md'
+
+# With no declared Frontmatter, a key is typed by its first scalar, and a page
+# writing another type for it is named rather than guessed at.
+! sngl check mixed/app.sngl
+stderr 'b.md'
+stderr 'weight'
+stderr 'int in index.md'
+
+# Two paths may not become one component name.
+! sngl check collide/app.sngl
+stderr 'a-b.md'
+stderr 'a_b.md'
+stderr 'a_b'
+
+# A page may not take a name the package already gives something else.
+! sngl check reserved/app.sngl
+stderr 'site.md'
+stderr 'reserved'
+
+# A page's children sort by one key.
+! sngl check twokeys/app.sngl
+stderr 'meta.sngl'
+stderr 'on both "a" and "b"'
+
+# The importer sorts before anything is checked, so the default a page that
+# omits the key sorts as has to be a literal.
+! sngl check orderdefault/app.sngl
+stderr 'the default of the order key "weight"'
+
+# A page writing another type for the key is named.
+! sngl check ordertype/app.sngl
+stderr 'guide.md'
+stderr 'the order key "weight" is string here and int in Frontmatter'
+
+# The checker holds the mark to a field whose type is a sort key.
+! sngl check orderbool/app.sngl
+stderr 'a sort key is an int, a float or a string, not bool'
+
+-- both/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- both/docs/index.md --
+Home.
+-- both/docs/guide.md --
+Guide.
+-- both/docs/guide/index.md --
+Guide again.
+-- noindex/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- noindex/docs/guide.md --
+Guide.
+-- orphan/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- orphan/docs/index.md --
+Home.
+-- orphan/docs/guide/intro.md --
+Intro.
+-- mixed/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- mixed/docs/index.md --
+---
+weight: 1
+---
+
+Home.
+-- mixed/docs/b.md --
+---
+weight: heavy
+---
+
+B.
+-- collide/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- collide/docs/index.md --
+Home.
+-- collide/docs/a-b.md --
+One.
+-- collide/docs/a_b.md --
+Two.
+-- reserved/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- reserved/docs/index.md --
+Home.
+-- reserved/docs/site.md --
+Site.
+-- twokeys/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- twokeys/docs/index.md --
+Home.
+-- orderdefault/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- orderdefault/docs/index.md --
+Home.
+-- ordertype/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- ordertype/docs/index.md --
+Home.
+-- orderbool/app.sngl --
+import docs "md:./docs/"
+
+docs.site {
+    component layout(page, content) {
+        content
+    }
+}
+-- orderbool/docs/index.md --
+Home.
+-- twokeys/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+struct Frontmatter {
+    #[md.order]
+    a int = 0
+    #[md.order]
+    b int = 0
+}
+-- orderdefault/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+const first = 1
+
+struct Frontmatter {
+    #[md.order]
+    weight int = first
+}
+-- ordertype/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+struct Frontmatter {
+    #[md.order]
+    weight int = 0
+}
+-- ordertype/docs/guide.md --
+---
+weight: heavy
+---
+
+Guide.
+-- orderbool/docs/meta.sngl --
+import md "sngl:ui/markup/md"
+
+struct Frontmatter {
+    #[md.order]
+    draft bool = false
+}

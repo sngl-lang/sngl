@@ -99,7 +99,7 @@ func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, field
 // here rather than codegen.ModelFieldRef, which names the Model and only the
 // Model.
 func (t *fyneTranslator) fieldRef(name string) ir.Expr {
-	return codegen.RecvFieldRef(t.gc.RecvName(), name)
+	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
 }
 
 // recvIdent is that receiver as a call target.
@@ -282,7 +282,7 @@ func (t *fyneTranslator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 	}
 	ctor := t.flexLayoutCall(sp)
 	if ctor == nil {
-		ctor = nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(), ir.TypDyn)
+		ctor = nativeCallAt(sp.New.qualify(t.gc), sp.New.Path, sp.ctorArgs(t.gc), ir.TypDyn)
 	}
 	if t.isLocalRef(id) {
 		// Non-escaping: declare a function-local `__nN := <ctor>` so each
@@ -554,6 +554,9 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		// the widget root by the override bodies. Neither is a value with a
 		// setter behind it, which is the same exemption gtk4 makes for its
 		// `style`.
+		return nil
+	}
+	if sp.CtorOnly[prop] && value == sp.CtorProps[prop] {
 		return nil
 	}
 	methodName, ok := sp.Setters[prop]

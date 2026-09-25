@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -272,6 +273,18 @@ type checker struct {
 	// of the bargain only once every body has been checked.
 	refCoercions []refCoercion
 
+	// defaultPlaceholders maps the stand-in a field default holds until
+	// fillStructFieldDefaults checks it back to its field, and
+	// placeholderLits are the literals that copied one before then -- a
+	// package var's initializer is checked in pass1, the defaults in pass2.
+	defaultPlaceholders map[ir.Expr]*ir.StructField
+	placeholderLits     []*ir.StructLit
+
+	// entryScopes holds, per population being checked, the names it bound to
+	// its slot's component entries. An insertion resolves against them before
+	// the component's own slots, innermost first.
+	entryScopes []map[string]*ir.SlotDecl
+
 	// Unit suffix reverse lookup.
 
 	// bodyComps is every component declared inside a body, in registration
@@ -485,6 +498,12 @@ type checker struct {
 	// from. A copy taken before the fixed point ran holds no family, so the
 	// answer is carried across to it once there is one.
 	specOrigin map[*ir.Component]*ir.Component
+	// entryOrigin is the declared entry each specialized slot entry was
+	// copied from, and entrySpec the specialization an insertion of one was
+	// checked against. An insertion carries the declared entry past the
+	// checker, so the tree check deferred for it reads the copy from here.
+	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
+	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
 	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
 	// package body is checked against it, which is the whole of what makes a
@@ -1142,6 +1161,16 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 	// a fresh one, so the program's -- still filling, since the load happened
 	// from inside it -- has to come back.
 	savedShellMarks := c.shellMarks
+	// A package loads lazily, so the load may interrupt a body of the
+	// program's: an import resolved from inside a function body leaves
+	// funcDepth set, and the loaded package's own component bodies are then
+	// checked as though they were written in that function. `run` in
+	// markup's `bold` was refused as a visual node in a function body, and
+	// which fixture hit it depended on where the first import of the package
+	// happened to sit.
+	savedFuncDepth, savedLoopDepth := c.funcDepth, c.loopDepth
+	savedComp := c.currentComponent
+	c.funcDepth, c.loopDepth, c.currentComponent = 0, 0, nil
 	restoreFile := c.saveFile()
 	c.docs = docs
 	// A library package is its own declaration set: a name the program already
@@ -1158,6 +1187,8 @@ func (c *checker) enterPackage(docs []*ast.Document) func() {
 		c.replaces, c.pendingPkgBody = savedReplaces, savedPending
 		c.pkgDecls = savedPkgDecls
 		c.shellMarks = savedShellMarks
+		c.funcDepth, c.loopDepth = savedFuncDepth, savedLoopDepth
+		c.currentComponent = savedComp
 	}
 }
 
@@ -1447,6 +1478,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 			c.diags = append(c.diags, diags...)
 			exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 			c.mergePkgInto(exported, pkg)
+			c.adoptContexts(pkg)
 			irImport.Pkg = exported
 		} else {
 			native, err := c.cfg.Resolver.ResolveScheme(scheme, uri, c.cfg.Dir)
@@ -1537,6 +1569,7 @@ func (c *checker) registerImport(imp *ast.Import) {
 				// view.
 				exported := &ir.Package{Symbols: NewSymbolTable(), LiftedCaptures: map[*ir.Func]map[ir.Symbol]string{}, AddressedVars: map[*ir.Var]bool{}}
 				c.mergePkgInto(exported, pkg)
+				c.adoptContexts(pkg)
 				irImport.Pkg = exported
 				// The view is memoized, not the checked package: two importers
 				// of one directory must see one set of declarations, or a
@@ -1636,6 +1669,29 @@ func (c *checker) declPkg() *ir.Package {
 		return c.libLoadPkg
 	}
 	return c.pkg
+}
+
+// adoptContexts moves an imported package's contexts onto the program's own
+// list.
+//
+// A context is program-global whichever package declared it, which is the rule
+// declPkg already states for the library tiers: the loader leaves a `sngl:`
+// package's contexts on c.pkg so `#locale` reaches the program's codegen. A
+// directory or scheme import is a separate CheckPackage, so its contexts land
+// on a list nothing downstream reads -- and a component of that package
+// reading one then arrived at lower.computeReachability, which seeds its maps
+// from pkg.Contexts, with no entry to write to. That was a panic rather than a
+// wrong answer: "assignment to entry in nil map", with no position and no
+// mention of the import.
+func (c *checker) adoptContexts(src *ir.Package) {
+	if src == nil {
+		return
+	}
+	for _, ctx := range src.Contexts {
+		if !slices.Contains(c.pkg.Contexts, ctx) {
+			c.pkg.Contexts = append(c.pkg.Contexts, ctx)
+		}
+	}
 }
 
 func (c *checker) mergePkgInto(dst, src *ir.Package) {
@@ -2150,8 +2206,9 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 			// so every consumer sees what a written `Counter{}` already gives
 			// them: left empty, `var c Counter` read back undefined on the web
 			// and its declared defaults everywhere else.
-			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
-				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
+			lit := &ir.StructLit{Type: typ, Def: sd}
+			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+				initExpr = lit
 			}
 		}
 		for _, name := range spec.Names {
@@ -2215,8 +2272,9 @@ func (c *checker) checkComponentVars(decl *ast.VarDecl, comp *ir.Component) {
 		} else if sd, ok := structDeclOf(typ); ok {
 			// See registerVars: a struct var with no initializer is that
 			// struct's zero value, which is its fields' defaults.
-			if fields := withFieldDefaults(sd, nil); len(fields) > 0 {
-				initExpr = &ir.StructLit{Type: typ, Def: sd, Fields: fields}
+			lit := &ir.StructLit{Type: typ, Def: sd}
+			if c.fillOmittedFields(lit); len(lit.Fields) > 0 {
+				initExpr = lit
 			}
 		}
 		for _, name := range spec.Names {
@@ -2610,7 +2668,21 @@ func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) 
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
-	for _, p := range ct.Params {
+	for i, p := range ct.Params {
+		if vt, ok := p.Type.(*ast.VariadicType); ok {
+			c.error(vt.Pos, "slot %q takes no `...`: the block written at an insertion is its fallback, so an insertion has no bare children to collect; declare a component entry, `%s component`, and populate it by name at the insertion", pd.Name, cmp.Or(p.Name, "content"))
+			continue
+		}
+		if entry, ok := p.Type.(*ast.ComponentType); ok {
+			if p.Name == "" {
+				c.error(entry.Pos, "a component entry of slot %q needs a name: the insertion populates it by name", pd.Name)
+				continue
+			}
+			e := c.buildSlotDecl(ast.Param{Name: p.Name, Pos: entry.Pos}, entry, false)
+			e.Index = i
+			slot.Slots = append(slot.Slots, e)
+			continue
+		}
 		slot.Params = append(slot.Params, &ir.Param{Name: p.Name, Type: c.resolveType(p.Type)})
 	}
 	if pd.Default != nil {
@@ -3316,6 +3388,7 @@ func (c *checker) checkStructFieldDefaults() {
 	for _, sd := range c.declPkg().Structs {
 		c.fillStructFieldDefaults(sd)
 	}
+	c.resolvePlaceholderLits()
 }
 
 // fillStructFieldDefaults checks each declared default against its field type
@@ -4143,6 +4216,7 @@ func (c *checker) checkWindow(w *ir.Window) {
 	// returned. The handlers are held back by windowPropArgs, because an
 	// @error is a boundary's handler rather than a widget's event.
 	w.Props, _, _ = c.checkAndSplitArgs(windowPropArgs(vn.Args), spec)
+	c.reportSelfReferentialProps(vn.Pos, vn.ID, w.Handle, w.Props)
 	for _, a := range vn.Args.Args {
 		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
 			w.ErrorHandler = c.buildErrorHandler(&eh)

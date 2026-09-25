@@ -2,8 +2,6 @@ package ir
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 )
 
 // Walk visits every node reachable from root in pre-order, read-only: the
@@ -195,6 +193,7 @@ func (w *walker) stmt(s Stmt) {
 			w.expr(n.Args[i])
 		}
 		w.stmts(n.Children)
+		w.slots(n.Slots)
 	case *ErrorBoundary:
 		if n.Handler != nil {
 			w.fn(n.Handler.Func)
@@ -224,7 +223,7 @@ func (w *walker) slots(slots map[string]*SlotContent) {
 		}
 		return
 	}
-	for _, name := range slices.Sorted(maps.Keys(slots)) {
+	for _, name := range SlotNames(slots) {
 		if sc := slots[name]; sc != nil {
 			w.stmts(sc.Body)
 		}

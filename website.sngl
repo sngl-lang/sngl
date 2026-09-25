@@ -12,10 +12,9 @@ import "go:git.duckfam.us/jonathan/sngl/docs/lookup"
 import "file:public"
 import pgAssets "file:internal/playground/assets"
 import "internal/docui"
-import "internal/learn"
+import mddocs "md:./docs/"
 import "sngl:platform/html"
 
-const pages = docs.Pages()
 const components = docs.LibraryComponents()
 const curated = docs.CuratedComponents()
 const curatedLabel = docs.CuratedRestLabel()
@@ -454,13 +453,17 @@ component site() root {
 	}
 
 	// Documentation pages
-	for var page = pages {
-		window #docPage(title=page.title, href=page.href, favicon=logo) {
-			PageLayout(title=page.title, currentHref=page.href) {
-				if page.href == "/index.html" {
-					PlatformCarousel
+	mddocs.site {
+		component layout(page, content) {
+			if page.href != "/learn/tour.html" {
+				window(title=page.frontmatter.title, href=page.href, favicon=logo) {
+					PageLayout(title=page.frontmatter.title, currentHref=page.href) {
+						if page.href == "/index.html" {
+							PlatformCarousel
+						}
+						content
+					}
 				}
-				docui.Markdown(src=page.body)
 			}
 		}
 	}
@@ -476,16 +479,6 @@ component site() root {
 	window(title="Tutorial", href="/tutorial.html", favicon=logo) {
 		PageLayout(title="Tutorial", currentHref="/tutorial.html") {
 			TutorialContent
-		}
-	}
-
-	// Getting Started — rendered from the GettingStarted SNGL component
-	// (getting_started.sngl) instead of the markdown pipeline so the prose,
-	// code blocks, and per-language tabs work on every platform website.sngl
-	// targets, not just html.
-	window(title="Getting Started", href="/learn/getting-started.html", favicon=logo) {
-		PageLayout(title="Getting Started", currentHref="/learn/getting-started.html") {
-			learn.GettingStarted
 		}
 	}
 

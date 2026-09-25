@@ -1,0 +1,150 @@
+# A component built at run time -- a member of a recursion cycle, or one
+# instantiated under a reactive `if` or `for` -- may not have a slot populated
+# by name, and the refusal names the population.
+#
+# No target renders one there. bubbletea and android emitted the component
+# with no parameter for the slot and dropped the population in silence; html,
+# fyne and gtk4 met the body's insertion as an `*ir.SlotInst` in irwalk and
+# panicked. The interpreter runs the checked IR and renders it, which is why
+# this is the lowering's refusal rather than the checker's.
+#
+# A slot's component entry inserted inside such a population is the same case
+# one level down: the splicer substitutes an entry through a node's children,
+# and a surviving node's populations are not children -- so `page body` was
+# dropped with the population around it on bubbletea and android, which the
+# interpreter renders as the page body above the nested frame.
+
+! sngl generate --lang go --platform bubbletea --out out cycle.sngl
+stderr 'cycle.sngl:20:9: slot "main" of frame is populated by name, but frame is built at run time here, as a member of a recursion cycle'
+
+! sngl generate --lang none --platform html --out out2 cycle.sngl
+stderr 'cycle.sngl:20:9: slot "main" of frame is populated by name'
+
+! sngl generate --lang go --platform fyne --out out3 instance.sngl
+stderr 'instance.sngl:18:13: slot "main" of card is populated by name, but card is built at run time here, inside a reactive if or for'
+
+# bubbletea keeps no state of an instance's own, so `card` is spliced into the
+# loop with a cell per copy rather than built at run time, and the population
+# is spliced with it.
+sngl generate --lang go --platform bubbletea --out out3b instance.sngl
+grep '"named "' out3b/model.go
+
+! sngl generate --lang kotlin --platform android --out out4 entry.sngl
+stderr 'entry.sngl:30:17: slot "main" of frame is populated by name'
+
+# Bare children reach a surviving component as a parameter on bubbletea, and
+# stay allowed.
+sngl generate --lang go --platform bubbletea --out out5 rest.sngl
+grep 'level ' out5/model.go
+
+-- cycle.sngl --
+import . "sngl:ui"
+
+component frame(n int, main component node) node {
+    vbox {
+        main
+        if n > 0 {
+            frame(n=n - 1) {
+                component main {
+                    text(value="nested")
+                }
+            }
+        }
+    }
+}
+
+window {
+    var depth = 1
+
+    frame(n=depth) {
+        component main {
+            text(value="top")
+        }
+    }
+    button(text="deeper", @click { depth += 1 })
+}
+-- instance.sngl --
+import . "sngl:ui"
+
+component card(start int, main component node, extra ...component node) node {
+    var n = start
+
+    vbox {
+        button(text="{n}", @click { n += 1 })
+        main
+        extra
+    }
+}
+
+window {
+    var items = [1, 2]
+
+    for var i = items {
+        card(start=i) {
+            component main {
+                text(value="named {i}")
+            }
+            text(value="rest {i}")
+        }
+    }
+    button(text="add", @click { items = [1, 2, 3] })
+}
+-- entry.sngl --
+import . "sngl:ui"
+
+component frame(n int, main component node) node {
+    vbox {
+        main
+        if n > 0 {
+            frame(n=n - 1) {
+                component main {
+                    text(value="nested")
+                }
+            }
+        }
+    }
+}
+
+component site(layout component(content component node) node) node {
+    layout() {
+        component content {
+            text(value="page body")
+        }
+    }
+}
+
+window {
+    var depth = 1
+
+    site {
+        component layout(content) {
+            frame(n=depth) {
+                component main {
+                    content
+                }
+            }
+        }
+    }
+    button(text="deeper", @click { depth += 1 })
+}
+-- rest.sngl --
+import . "sngl:ui"
+
+component frame(n int, content ...component node) node {
+    var open = true
+
+    vbox {
+        content
+        if n > 0 {
+            frame(n=n - 1) {
+                text(value="level {n}")
+            }
+        }
+    }
+}
+
+window {
+    frame(n=2) {
+        text(value="top")
+    }
+}

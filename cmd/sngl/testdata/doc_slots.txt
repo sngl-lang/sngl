@@ -22,8 +22,10 @@ stdout '\*\*Children:\*\* exactly one'
 sngl doc canvas
 stdout 'shapes +\.\.\.component shape'
 
-# A component with no rest slot has no Slots section and no children.
-sngl doc text
+# A component with no rest slot has no Slots section and no children. Named by
+# package: `sngl:ui/markup` declares a `text` of its own, so the bare name is
+# the ambiguity error rather than this component.
+sngl doc sngl:ui text
 ! stdout '## Slots'
 stdout '\*\*Children:\*\* none'
 

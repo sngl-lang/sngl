@@ -109,7 +109,7 @@ is refused either way. **There is still no way to say which window you meant**
 `collectForLoopWindowIDsStmt` is not folded into the general `for` arm.
 Folding it would make the `list<window>` it binds a `NodeHandle`, which the
 read diagnostic then refuses — and that list is legitimately read, being what
-`expandForWindows` fills in. It is a real cleanup and it needs the unroll's
+`optimize.Documents` binds. It is a real cleanup and it needs the unroll's
 contract looked at, not a one-line move. `declareNodeID` also still types a
 window handle itself as `c.windowType`, uncounted.
 
@@ -848,10 +848,9 @@ Each was reproduced on `main` and is listed on !169.
   `for var it = items { window #page(title=it) { … } }` on bubbletea is not
   unrolled, `ir.Owners` lifts the window out of the loop, and the body keeps a
   read of `it` that nothing declares.
-- **`expandForWindows` is vestigial.** Replacing its unroll with a panic leaves
-  every golden and all 165 CLI scripts green; the only test that fires it is
-  `TestOptimize_PropPropagatesAsConst`, whose `component main node` holds no
-  window.
+- **`expandForWindows` was vestigial**, and is deleted: the optimizer unrolls no
+  loop now, and a window loop is unrolled by `optimize.Documents`, on html,
+  after lowering.
 - **Two windows each declaring `var n`** check clean and emit `n int` twice in
   one bubbletea Model.
 - `inlinable()` tests `len(comp.Body) == 0` where it means `comp.Bodyless`; a

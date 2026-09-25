@@ -1,0 +1,71 @@
+# A flow of rich text, parsed by a real browser.
+#
+# The golden in testdata/markup_inline.txtar shows the markup html writes. What
+# it cannot show is what a browser makes of it, and the family's two claims
+# about text are claims about exactly that: the characters an author wrote are
+# text and not markup, and every one of them survives.
+#
+# So this snapshots `document.documentElement.outerHTML` after the page has
+# loaded -- the DOM as Chromium parsed it, not the bytes that were served.
+#
+# `<em>not markup</em>` is the assertion in the first form. Written into a
+# `markup.text`, it must come back as four escaped entities inside the one
+# span; if the escaping were dropped anywhere between the emitter and the page,
+# the browser would have built an `<em>` element and the DOM would say so. The
+# only element in this document is the `<strong>` that `markup.bold` is.
+#
+# Two spaces and a newline are the assertion in the second. A text node holds
+# what it holds whatever the CSS says, so the two spaces and the line break
+# below prove the characters reached the page; `white-space: pre-wrap` in the
+# live DOM is what makes the browser render them rather than collapse them.
+# That last step is layout and is not asserted here -- what is asserted is that
+# the declaration survived onto the element the flow rendered as.
+#
+# Confirmed by reverting: with `html.EscapeString` taken off the static text
+# path, `sngl test` still reports PASS and one passing test, and the first grep
+# below is what fails. An injection is invisible to a state assertion and shows
+# up only in the DOM, which is the whole reason this fixture reads one.
+
+[!chromium] skip 'a rendered DOM needs a real Chromium'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=html app.sngl
+stdout 'PASS'
+exists app.sngl.snapshots/rendered.html
+
+grep '&lt;em&gt;not markup&lt;/em&gt;' app.sngl.snapshots/rendered.html
+! grep '<em>' app.sngl.snapshots/rendered.html
+grep '<strong><span> bold</span></strong>' app.sngl.snapshots/rendered.html
+grep '&gt;  two spaces' app.sngl.snapshots/rendered.html
+grep '^and a newline' app.sngl.snapshots/rendered.html
+grep 'white-space:pre-wrap' app.sngl.snapshots/rendered.html
+
+# And the snapshot is stable: a second run compares against what the first
+# wrote rather than writing it again.
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=html app.sngl
+stdout 'PASS'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+output { none { html } }
+
+component main node {
+    md.paragraph {
+        md.text(value="<em>not markup</em>  two spaces\nand a newline")
+        md.bold {
+            md.text(value=" bold")
+        }
+    }
+}
+
+func testRendered(t Test, c main) {
+    t.snapshot("rendered")
+}
+
+window {
+    main
+}

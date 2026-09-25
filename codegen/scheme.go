@@ -47,6 +47,18 @@ type FSSchemeImporter interface {
 	ResolveFS(uri, dir string) (fs.FS, error)
 }
 
+// ProjectFSScheme is implemented by an FSSchemeImporter whose source is a file
+// of the project being built rather than something it fetches. `md:` is the
+// one: the markdown it reads is checked in beside the program, so it has to be
+// read through the same filesystem the program was -- a golden test's archive,
+// the playground's in-memory files -- and not off disk.
+//
+// The plain ResolveFS stays the fallback for a caller that has no FS.
+type ProjectFSScheme interface {
+	FSSchemeImporter
+	ResolveProjectFS(uri string, fsys fs.FS, dir string) (fs.FS, error)
+}
+
 // FSSchemeUpdater is an optional capability an FSSchemeImporter may implement
 // so `sngl pkg update` can drop the cache entry for a URI, re-fetch, and
 // report the integrity hash suitable for paste back into the `#fragment`.

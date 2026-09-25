@@ -56,7 +56,10 @@ func (c *checker) bindComponentTypeParams(comp *ir.Component, args ast.ArgList) 
 	if len(bindings) == 0 {
 		return comp
 	}
-	spec := specializeComponent(comp, bindings)
+	if c.entryOrigin == nil {
+		c.entryOrigin = map[*ir.SlotDecl]*ir.SlotDecl{}
+	}
+	spec := specializeComponent(comp, bindings, c.entryOrigin)
 	// The copy carries whatever family the declaration had when it was taken,
 	// which is none while one is still being inferred. inferComponentTrees
 	// finishes the job here.
@@ -186,9 +189,14 @@ func mentionsTypeParam(t *ir.Type) bool {
 
 // specializeComponent is comp with bindings applied to everything a call site
 // is checked against: the props it passes, the payload of the events it
-// handles, and the content its slots accept. The body is not substituted --
-// nothing checks a body here, and the declaration keeps the one body it has.
-func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type) *ir.Component {
+// handles, and the content its slots and their component entries accept. The
+// body is not substituted -- nothing checks a body here, and the declaration
+// keeps the one body it has.
+//
+// Each entry copied is recorded in origin against the declaration's own, which
+// is what an insertion of it carries past the checker: the splicer and the
+// interpreter find an entry by pointer among its slot's declared ones.
+func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type, origin map[*ir.SlotDecl]*ir.SlotDecl) *ir.Component {
 	out := *comp
 	out.Props = make([]*ir.Prop, len(comp.Props))
 	for i, p := range comp.Props {
@@ -202,8 +210,21 @@ func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type) *ir.C
 		f.Type = e.Type.Substitute(bindings)
 		out.Events[i] = &f
 	}
-	out.Slots = make([]*ir.SlotDecl, len(comp.Slots))
+	out.Slots = specializeSlots(comp.Slots, bindings)
 	for i, s := range comp.Slots {
+		for j, e := range s.Slots {
+			recordEntryOrigin(out.Slots[i].Slots[j], e, origin)
+		}
+	}
+	return &out
+}
+
+func specializeSlots(slots []*ir.SlotDecl, bindings map[string]*ir.Type) []*ir.SlotDecl {
+	if len(slots) == 0 {
+		return slots
+	}
+	out := make([]*ir.SlotDecl, len(slots))
+	for i, s := range slots {
 		t := *s
 		t.Content = s.Content.Substitute(bindings)
 		if len(s.Params) > 0 {
@@ -214,9 +235,19 @@ func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type) *ir.C
 				t.Params[j] = &q
 			}
 		}
-		out.Slots[i] = &t
+		t.Slots = specializeSlots(s.Slots, bindings)
+		out[i] = &t
 	}
-	return &out
+	return out
+}
+
+// recordEntryOrigin maps spec, and every entry under it, to the declared entry
+// it was copied from.
+func recordEntryOrigin(spec, decl *ir.SlotDecl, origin map[*ir.SlotDecl]*ir.SlotDecl) {
+	origin[spec] = decl
+	for i, e := range decl.Slots {
+		recordEntryOrigin(spec.Slots[i], e, origin)
+	}
 }
 
 // checkEffectHandlers reports an effect that brackets nothing.

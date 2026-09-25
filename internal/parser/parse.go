@@ -123,9 +123,16 @@ func remapErrors(err error, filtered []Token) error {
 		return err
 	}
 	for i := range errList {
-		// Each token is 2 bytes in the stream ([sentinel, 0x20]).
-		// Position.Column is 1-based, so token index = (col-1)/2.
-		idx := (errList[i].Pos.Column - 1) / 2
+		// Each token is 2 bytes in the stream ([sentinel, 0x20]), so the
+		// token index is the byte offset halved.
+		//
+		// Offset and not Column: a token's sentinel is its TokenType's byte
+		// value, and UNIT_LITERAL's is 0x0A. So a file holding a `20px`
+		// writes a newline into the stream, the scanner starts counting
+		// columns again after it, and every error past that point remapped to
+		// a token from an earlier line -- a brace inside a string reported at
+		// a line 28 above the one it was written on.
+		idx := errList[i].Pos.Offset / 2
 		if idx >= 0 && idx < len(filtered) {
 			tok := filtered[idx]
 			errList[i].Pos.Line = tok.Line

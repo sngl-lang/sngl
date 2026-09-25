@@ -2,9 +2,7 @@ package optimize
 
 import (
 	"fmt"
-	"maps"
 	"math"
-	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -210,8 +208,9 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 }
 
 // foldStmts folds a slice of statements, removing nil results.
-// For loops whose iterator evaluates to a const list are unrolled in place
-// so downstream codegen sees static statements instead of runtime iteration.
+// Under Documents, for loops whose iterator evaluates to a const list are
+// unrolled in place so downstream codegen sees static statements instead of
+// runtime iteration.
 // If statements whose condition evaluates to a const bool are inlined
 // (true branch) or dropped (false branch) so downstream codegen sees static
 // structure instead of runtime conditionals.
@@ -224,9 +223,8 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 				continue
 			}
 		}
-		// A loop is unrolled only where the target cannot emit one; see
-		// evalCtx.unrollsLoops.
-		if fs, ok := s.(*ir.For); ok && ctx.unrollsLoops() {
+		// Only under Documents; see evalCtx.unroll.
+		if fs, ok := s.(*ir.For); ok && ctx.unroll {
 			if expanded := expandForStmt(fs, ctx); expanded != nil {
 				out = append(out, expanded...)
 				continue
@@ -235,10 +233,15 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 		if ifs, ok := s.(*ir.If); ok {
 			cond := foldExpr(ifs.Cond, ctx)
 			if lit, ok := cond.(*ir.Literal); ok && lit.Type != nil && lit.Type.Kind == ir.TypeBool {
+				branch := ifs.Else
 				if lit.Value == "true" {
-					out = append(out, foldStmts(ifs.Body, ctx)...)
+					branch = ifs.Body
+				}
+				branch = foldStmts(branch, ctx)
+				if ifs.FromTernary {
+					out = initTernaryTemp(out, branch)
 				} else {
-					out = append(out, foldStmts(ifs.Else, ctx)...)
+					out = append(out, branch...)
 				}
 				continue
 			}
@@ -250,6 +253,33 @@ func foldStmts(stmts []ir.Stmt, ctx *evalCtx) []ir.Stmt {
 		}
 	}
 	return out
+}
+
+// initTernaryTemp appends the surviving branch of a folded NoTernary `if`,
+// turning its final assignment into the initializer of the `var __ltN` that
+// passTernary declared immediately before the `if`.
+//
+// Left as a bare assignment it is a statement in a view body, which a
+// RenderModel emitter draws nothing for: bubbletea skipped it and rendered the
+// temp's zero, so a markup bullet came out empty. A declaration with its value
+// is something every emitter already writes.
+func initTernaryTemp(out, branch []ir.Stmt) []ir.Stmt {
+	if len(out) == 0 || len(branch) == 0 {
+		return append(out, branch...)
+	}
+	decl, ok := out[len(out)-1].(*ir.LocalVar)
+	set, ok2 := branch[len(branch)-1].(*ir.Assign)
+	if !ok || !ok2 || decl.Init != nil || set.Op != ast.AssignSet {
+		return append(out, branch...)
+	}
+	if id, ok := set.Target.(*ir.Ident); !ok || id.Sym == nil || id.Sym != decl.Sym {
+		return append(out, branch...)
+	}
+	// The branch's own hoists compute the value, so the declaration moves
+	// below them; nothing between it and the `if` could have read the temp.
+	out = append(out[:len(out)-1], branch[:len(branch)-1]...)
+	decl.Init = set.Value
+	return append(out, decl)
 }
 
 // foldStmt folds constants and eliminates dead branches in a statement.
@@ -295,6 +325,9 @@ func foldStmt(s ir.Stmt, ctx *evalCtx) ir.Stmt {
 		}
 	case *ir.SlotInst:
 		n.Children = foldStmts(n.Children, ctx)
+		for _, name := range ir.SlotNames(n.Slots) {
+			n.Slots[name].Body = foldStmts(n.Slots[name].Body, ctx)
+		}
 	case *ir.ContextProvider:
 		if n.Value != nil {
 			n.Value = foldOwned(n.Value, ctx)
@@ -357,7 +390,7 @@ func foldNodeInst(n *ir.NodeInst, ctx *evalCtx) ir.Stmt {
 	// A named slot's population is a body like the children are. Visited by
 	// name because Slots is a map: folding itself does not care, but a pass
 	// sharing this walk's order should not depend on Go's.
-	for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+	for _, name := range ir.SlotNames(n.Slots) {
 		if sc := n.Slots[name]; sc != nil {
 			sc.Body = foldStmts(sc.Body, ctx)
 		}

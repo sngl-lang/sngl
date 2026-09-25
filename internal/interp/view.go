@@ -3,6 +3,7 @@ package interp
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 
 	"git.duckfam.us/jonathan/sngl/ast"
@@ -230,6 +231,9 @@ type mounter struct {
 	// expanded. An insertion point renders whatever the frame on top supplied
 	// for it, in the scope that frame was written in.
 	slots []slotFrame
+	// entries is the stack of insertions whose populations are being mounted,
+	// which is where an insertion of a component entry finds its content.
+	entries []entryFrame
 }
 
 // slotFrame is one component expansion: the instantiation that supplied the
@@ -242,6 +246,15 @@ type mounter struct {
 type slotFrame struct {
 	callsite *ir.NodeInst
 	env      *Env
+}
+
+// entryFrame is one insertion whose population is being mounted: the content it
+// supplied for the slot's component entries, and the scope and slot frames
+// that content was written under.
+type entryFrame struct {
+	ins   *ir.SlotInst
+	env   *Env
+	slots []slotFrame
 }
 
 func (m *mounter) push(f slotFrame) { m.slots = append(m.slots, f) }
@@ -386,7 +399,12 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 			out = append(out, nodes...)
 
 		case *ir.ContextProvider:
+			restore, err := env.pushContext(n.Ref, n.Value)
+			if err != nil {
+				return nil, err
+			}
 			nodes, err := m.stmts(env, n.Children, join(fmt.Sprintf("context@%d", next("context"))))
+			restore()
 			if err != nil {
 				return nil, err
 			}
@@ -576,6 +594,9 @@ func (m *mounter) callStmt(env *Env, cs *ir.CallStmt, name, id, path string) ([]
 // current, because that content is written in the caller's body: a slot inside
 // it belongs to the caller's call site, not to this one.
 func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, error) {
+	if si.Entry != nil {
+		return m.entryInst(env, si, path)
+	}
 	frame, ok := m.top()
 	body, sc, supplied := ir.SlotBody(si, frame.callsite)
 	if !supplied || !ok {
@@ -583,6 +604,17 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	}
 
 	cenv := frame.env
+	// The *names* in that content are the caller's and the *contexts* are not:
+	// a context is set by the provider the content is mounted beneath, and
+	// this insertion is where the callee's body puts it. So the caller's
+	// scope answers for identifiers and this scope answers for contexts,
+	// which is what lets `list { listItem() }` put the item under whatever
+	// `list`'s body wrapped its slot in. Swapped and restored rather than
+	// snapshotted, because frame.env is the caller's live scope and a copy of
+	// it would lose the writes RebindFrom carries back.
+	prevCtx := cenv.ContextVals
+	cenv.ContextVals = capturedContext(env)
+	defer func() { cenv.ContextVals = prevCtx }()
 	// A scoped slot's arguments are the insertion's, evaluated here, and the
 	// names they bind are the populator's, declared at the call site.
 	if sc != nil && len(sc.Params) > 0 {
@@ -599,11 +631,58 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 		}
 	}
 
+	if sc != nil && len(si.Slots) > 0 {
+		m.entries = append(m.entries, entryFrame{ins: si, env: env, slots: slices.Clone(m.slots)})
+		defer func() { m.entries = m.entries[:len(m.entries)-1] }()
+	}
 	m.pop()
 	defer m.push(frame)
 	// The path segment marks these nodes as having come from the call site,
 	// which is what distinguishes them from an insertion point's fallback.
 	return m.stmts(cenv, body, path+"/supplied:"+si.Name)
+}
+
+// entryInst mounts an insertion of a component entry: what the insertion
+// whose population this is supplied for the entry, or the entry insertion's
+// own block as the fallback. The content was written beside that insertion,
+// so it is mounted in that insertion's scope, under the slot frames and entry
+// frames that were current there, and with this position's contexts.
+func (m *mounter) entryInst(env *Env, x *ir.SlotInst, path string) ([]*Node, error) {
+	at := -1
+	for i, f := range slices.Backward(m.entries) {
+		if f.ins.Decl != nil && slices.Contains(f.ins.Decl.Slots, x.Entry) {
+			at = i
+			break
+		}
+	}
+	if at < 0 || m.entries[at].ins.Slots[x.Entry.Name] == nil {
+		return m.stmts(env, x.Children, path)
+	}
+	f := m.entries[at]
+	content := f.ins.Slots[x.Entry.Name]
+
+	cenv := f.env
+	if len(content.Params) > 0 {
+		cenv = f.env.Snapshot()
+		for i, prm := range content.Params {
+			if i >= len(x.Args) {
+				break
+			}
+			v, err := env.Eval(x.Args[i])
+			if err != nil {
+				continue
+			}
+			cenv.Set(prm, v)
+		}
+	}
+	prevCtx := cenv.ContextVals
+	cenv.ContextVals = capturedContext(env)
+	defer func() { cenv.ContextVals = prevCtx }()
+
+	slots, entries := m.slots, m.entries
+	m.slots, m.entries = slices.Clone(f.slots), m.entries[:at]
+	defer func() { m.slots, m.entries = slots, entries }()
+	return m.stmts(cenv, content.Body, path+"/supplied:"+x.Name)
 }
 
 // forStmt mounts one subtree per iteration.

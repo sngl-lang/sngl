@@ -2,7 +2,6 @@ package lower
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 
@@ -153,7 +152,7 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 					read(b.Target)
 				}
 				visit(n.Children)
-				for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+				for _, name := range ir.SlotNames(n.Slots) {
 					if sc := n.Slots[name]; sc != nil {
 						visit(sc.Body)
 					}
@@ -168,6 +167,9 @@ func viewReadVars(comp *ir.Component) map[*ir.Var]bool {
 				visit(n.Else)
 			case *ir.SlotInst:
 				visit(n.Children)
+				for _, name := range ir.SlotNames(n.Slots) {
+					visit(n.Slots[name].Body)
+				}
 			case *ir.ErrorBoundary:
 				visit(n.Children)
 			case *ir.ContextProvider:
@@ -306,6 +308,13 @@ func (st *inlinePureState) inlineStmt(s ir.Stmt) ([]ir.Stmt, error) {
 			return nil, err
 		}
 		n.Children = ch
+		for _, name := range ir.SlotNames(n.Slots) {
+			body, err := st.inlineStmts(n.Slots[name].Body)
+			if err != nil {
+				return nil, err
+			}
+			n.Slots[name].Body = body
+		}
 		return []ir.Stmt{n}, nil
 	case *ir.ErrorBoundary:
 		ch, err := st.inlineStmts(n.Children)
@@ -341,7 +350,7 @@ func (st *inlinePureState) inlineNodeInst(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// no platform primitive has. Sorted, for the reason ir.Walk gives over the
 	// same map: a pass that numbers what it finds must find it in one order
 	// twice.
-	for _, name := range slices.Sorted(maps.Keys(n.Slots)) {
+	for _, name := range ir.SlotNames(n.Slots) {
 		sc := n.Slots[name]
 		if sc == nil {
 			continue
@@ -588,13 +597,14 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 
 	// Deep-clone the wrapper body so substitution mutations don't leak
 	// across call sites.
-	body := deepCloneStmts(comp.Body)
+	provided := providedContextVars(comp, callsite.Props)
+	body := substituteVars(deepCloneStmts(comp.Body), provided)
 
 	// Hoist the callee's own vars onto the owner being walked, one copy per
 	// call site. isPure let them through because nothing rendered reads them,
 	// so they need no updater and no setter -- but they still need somewhere
 	// to live that outlasts the handler that writes them.
-	if len(comp.Vars) > 0 {
+	if len(comp.Vars) > len(provided) {
 		if st.hoist == nil {
 			return nil, fmt.Errorf("component %q declares state and there is no owner to hoist it onto at %s", comp.Name, compPos(comp))
 		}
@@ -603,21 +613,12 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 		symRenames := map[ir.Symbol]ir.Symbol{}
 		start := len(*st.hoist)
 		for _, v := range comp.Vars {
+			if _, ok := provided[v]; ok {
+				continue
+			}
 			clone := cloneVarShallow(v)
 			clone.Name = v.Name + suffix
 			clone.Init = deepCloneExpr(v.Init)
-			// A synthesized context var carries its default, which the call
-			// site overrides through a hidden __ctx_<name> prop. expandCall
-			// says the same thing; missing it here dropped a provider's
-			// override and every instance read the default.
-			if v.Synthesized {
-				for _, arg := range callsite.Props {
-					if arg.Name == v.Name {
-						clone.Init = deepCloneExpr(arg.Value)
-						break
-					}
-				}
-			}
 			renames[v] = clone.Name
 			symRenames[v] = clone
 			*st.hoist = append(*st.hoist, clone)
@@ -629,6 +630,7 @@ func (st *inlinePureState) substitute(comp *ir.Component, callsite *ir.NodeInst)
 			// The props too, not just the renames: an init may name a prop
 			// (`var handle = interval`), and after substitution the param it
 			// named does not exist.
+			(*st.hoist)[i].Init = substituteVarsExpr((*st.hoist)[i].Init, provided)
 			(*st.hoist)[i].Init = substituteParamsExpr((*st.hoist)[i].Init, bindings)
 			(*st.hoist)[i].Init = renameInExpr((*st.hoist)[i].Init, renames, symRenames)
 		}
@@ -1011,17 +1013,7 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.NodeInst:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
-		if n.Slots != nil {
-			// Shallow-copying the map would alias each SlotContent across call
-			// sites, so the first instance's renames would land on all of them.
-			clone.Slots = make(map[string]*ir.SlotContent, len(n.Slots))
-			for name, sc := range n.Slots {
-				clone.Slots[name] = &ir.SlotContent{
-					Params: slices.Clone(sc.Params),
-					Body:   deepCloneStmts(sc.Body),
-				}
-			}
-		}
+		clone.Slots = deepCloneSlots(n.Slots)
 		clone.Handlers = make([]ir.EventHandler, len(n.Handlers))
 		for i, h := range n.Handlers {
 			hc := h
@@ -1056,6 +1048,7 @@ func deepCloneStmt(s ir.Stmt) ir.Stmt {
 	case *ir.SlotInst:
 		clone := *n
 		clone.Children = deepCloneStmts(n.Children)
+		clone.Slots = deepCloneSlots(n.Slots)
 		return &clone
 	case *ir.Emit:
 		clone := *n
@@ -1262,4 +1255,21 @@ func (w *exprWalker) expr(e ir.Expr) ir.Expr {
 func (w *exprWalker) stmts(stmts []ir.Stmt) []ir.Stmt {
 	_ = ir.Rewrite(stmts, w.visit)
 	return stmts
+}
+
+// deepCloneSlots copies each population. Shallow-copying the map would alias
+// each SlotContent across call sites, so the first instance's renames would
+// land on all of them.
+func deepCloneSlots(slots map[string]*ir.SlotContent) map[string]*ir.SlotContent {
+	if slots == nil {
+		return nil
+	}
+	out := make(map[string]*ir.SlotContent, len(slots))
+	for name, sc := range slots {
+		out[name] = &ir.SlotContent{
+			Params: slices.Clone(sc.Params),
+			Body:   deepCloneStmts(sc.Body),
+		}
+	}
+	return out
 }

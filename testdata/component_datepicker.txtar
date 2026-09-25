@@ -564,11 +564,11 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
   function String(v) {
     return "" + v;
   }
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
 })();
 </script>
 </body></html>
@@ -581,4 +581,4 @@ pass sha256:fb71d944f547b2ccd3810698f9adbfd1
 -- run/kotlin/android --
 pass sha256:5dea4bea487604bd1cc3eed76fd2be4b
 -- run/none/html --
-pass sha256:163b4cf45150915afa37168e46cb488b
+pass sha256:489164628aeff3c909a838c842cbb224

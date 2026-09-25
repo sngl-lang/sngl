@@ -321,19 +321,8 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<fieldset style="border:none;display:flex;flex-direction:horizontal;gap:8px;padding:0px">
-  <label style="align-items:center;display:inline-flex;gap:4px">
-    <input id="__n0" data-sngl-id="__n0" type="radio" value="small"/>
-    <span>small</span>
-  </label>
-  <label style="align-items:center;display:inline-flex;gap:4px">
-    <input id="__n0" data-sngl-id="__n0" type="radio" value="medium"/>
-    <span>medium</span>
-  </label>
-  <label style="align-items:center;display:inline-flex;gap:4px">
-    <input id="__n0" data-sngl-id="__n0" type="radio" value="large"/>
-    <span>large</span>
-  </label>
+<fieldset id="__n3" data-sngl-id="__n3" style="border:none;display:flex;flex-direction:horizontal;gap:8px;padding:0px">
+  <span data-sngl-slot="0" style="display:contents"></span>
 </fieldset>
 
 <script>
@@ -353,11 +342,44 @@ body { font-family: system-ui, sans-serif; }
   if (typeof window !== "undefined") {
     Object.assign(window, { testRadioValueMutates });
   }
-  var __n0 = document.querySelector('[data-sngl-id="__n0"]');
-  function __sngl_init() {
-    __n0.checked = "large" === state.sel;
+  var __slot0 = [];
+  function __renderSlot0(parent) {
+    let __place0_prev = __slot0;
+    let __place0_i = 0;
+    __slot0 = [];
+    for (const opt of ["small", "medium", "large"]) {
+      let __n0 = document.createElement("label");
+      __n0.setAttribute("style", "align-items:center;display:inline-flex;gap:4px");
+      let __n1 = document.createElement("input");
+      __n1.value = opt;
+      __n1.checked = opt === state.sel;
+      __n1.disabled = false;
+      __n1.setAttribute("type", "radio");
+      __n1.addEventListener("change", () => {
+      });
+      __n0.appendChild(__n1);
+      let __n2 = document.createElement("span");
+      __n2.textContent = opt;
+      __n0.appendChild(__n2);
+      let __place0_i_ref0 = null;
+      if (__place0_i < __place0_prev.length) {
+        __place0_i_ref0 = __place0_prev[__place0_i];
+      }
+      if (__place0_i_ref0 === __n0) {
+        __place0_i = __place0_i + 1;
+      } else {
+        parent.insertBefore(__n0, __place0_i_ref0);
+      }
+      __slot0.push(__n0);
+    }
+    for (const __place0_prev_e of __place0_prev) {
+      if (__slot0.indexOf(__place0_prev_e) < 0) {
+        parent.removeChild(__place0_prev_e);
+      }
+    }
   }
-  __sngl_init();
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
 })();
 </script>
 </body></html>
@@ -368,4 +390,4 @@ pass sha256:fba9d4898979d13aef8fd5dd0ec613e6
 -- run/kotlin/android --
 pass sha256:51e0f7415584236ad360e19336735471
 -- run/none/html --
-pass sha256:4099d568d360398144fa1c71192207f0
+pass sha256:6e59e2db35fde35636f54a5753931405

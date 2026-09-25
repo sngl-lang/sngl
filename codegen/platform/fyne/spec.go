@@ -35,6 +35,13 @@ const stylePropName = "style"
 type fyneArg struct {
 	Raw  string
 	Prop string
+	// Type is the Go declaration a Raw argument continues from, when Raw is a
+	// call or a literal belonging to a package this file has to name. The
+	// alias is the emitting context's to assign, so the Native is qualified
+	// where the argument is rendered and Raw is whatever follows it --
+	// `fynetext.Style` plus `().WithBold()`. Empty for the arguments a Spec
+	// writes in fyne.sngl, which name no package.
+	Type fyneNative
 }
 
 // fyneHandler is the Fyne callback field one declared event is assigned to,
@@ -80,6 +87,10 @@ type fyneSpec struct {
 	// after the node's CreateNode, which is the only place they are known to
 	// be in scope.
 	CtorProps map[string]ir.Expr
+	// CtorOnly names the props the constructor reads and no setter can write
+	// again. The write that seeded CtorProps is answered by the constructor;
+	// any other write to one of these reaches the screen not at all.
+	CtorOnly map[string]bool
 	// Axis is "horizontal"/"vertical" on a container that lays children out
 	// along one, empty otherwise.
 	Axis string
@@ -113,6 +124,7 @@ type fyneStyle struct {
 	FontSize     float64
 	BorderRadius float64
 	Bold         bool
+	Italic       bool
 }
 
 // fyneColor is an RGBA colour, comparable so a set of styles dedupes to a set
@@ -188,6 +200,9 @@ func fynePrimitive(comp *ir.Component) string {
 // names it behind, which is issue #120's shape — output that does not compile,
 // from a build that reported success.
 func specFromProps(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
+	if markupTags(tag) {
+		return markupSpec(tag, props)
+	}
 	lit, ok := props[specPropName].(*ir.StructLit)
 	if !ok {
 		return nil, fmt.Errorf("fyne primitive %s was instantiated without a %s record", tag, specPropName)
@@ -282,6 +297,9 @@ func styleFromProps(props map[string]ir.Expr) fyneStyle {
 			// Fyne has two faces, so everything but bold is the regular one.
 			st.Bold = enumOrString(f.Value) == "bold"
 			continue
+		case "fontStyle":
+			st.Italic = enumOrString(f.Value) == "italic"
+			continue
 		}
 		var into *float64
 		switch f.Name {
@@ -362,7 +380,7 @@ func literalNumber(e ir.Expr) (float64, bool) {
 // ctorArgs renders this widget's constructor arguments. A prop-backed Arg
 // resolves to the expression the instantiation gave that prop; when the prop
 // was left out, the Arg's raw text stands in.
-func (s *fyneSpec) ctorArgs() []ir.Expr {
+func (s *fyneSpec) ctorArgs(al aliaser) []ir.Expr {
 	out := make([]ir.Expr, 0, len(s.Args))
 	for _, a := range s.Args {
 		if a.Prop != "" {
@@ -370,6 +388,10 @@ func (s *fyneSpec) ctorArgs() []ir.Expr {
 				out = append(out, e)
 				continue
 			}
+		}
+		if a.Type.Name != "" {
+			out = append(out, rawGoExpr(a.Type.qualify(al)+a.Raw))
+			continue
 		}
 		out = append(out, rawGoExpr(a.Raw))
 	}

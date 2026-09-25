@@ -1,0 +1,17 @@
+// A slot's invocation list takes no `...`. The block written at an insertion
+// is that slot's fallback, so bare children there already mean something, and
+// a rest entry would be a second reading of the same block.
+
+import . "sngl:ui"
+
+component site(page component(title string, content ...component node) node) node { // ERROR(check) "the block written at an insertion is its fallback"
+    vbox {
+        page("One") {
+            text(value="fallback")
+        }
+    }
+}
+
+window {
+    site
+}

@@ -1,0 +1,25 @@
+// Inline rich text: the `span` family, and the `richText` node that shows a
+// run of it. A component joins the family by naming that tree in its return
+// position.
+//
+// The family is inline and nothing else — emphasis, a link, a piece of code
+// inside a sentence — because inline is the part of a document that has no
+// other way to be said. A heading is a `text` with a size, a quote is a `vbox`
+// with a rule down its left edge, a list is a `vbox` of rows; all three are
+// ordinary layout, already implemented on every platform, and a markup
+// component for each would be a construct five platforms reimplement to reach
+// what `sngl:ui` hands them. A bold word inside a sentence is not: it has to
+// live inside one flow of text with the words around it, and a box cannot hold
+// it without breaking the line.
+//
+// So a document is a `vbox` of `richText` runs interleaved with whatever else
+// the document holds — a code sample, a table, a chart — and each `richText`
+// is one flow. That is also what makes a document extensible: a thing this
+// package cannot express is a `ui.node` placed between two runs rather than a
+// gap in the vocabulary.
+//
+// Text in the family is literal. A space is a space and a newline ends the
+// line, whatever the target, so a run written here renders as it was written
+// and a platform that collapses whitespace is the one that has to stop. That
+// is why there is no line-break component: `"\n"` is one, and a second
+// spelling of it would be a second answer to give.

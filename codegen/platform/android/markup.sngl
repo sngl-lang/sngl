@@ -1,0 +1,101 @@
+// Inline rich text, implemented for this platform.
+//
+// A file is a topic here rather than a compilation unit, so the two
+// primitives the span family needs sit beside the overrides written in terms
+// of them instead of being split across android.sngl and widgets.sngl.
+//
+// Compose spells a span as a piece of an `AnnotatedString` *value* rather than
+// as a composable, so this looks like gtk4 and not like the other three: a
+// flow is one `Text` and a span is no widget at all, and what
+// `codegen/platform/android/markup.go` builds is a Kotlin expression.
+//
+// It is also the best-matched host of the six. A Compose `SpanStyle` carries
+// color, fontSize, fontFamily, fontWeight and fontStyle, and leaves every one
+// of them unset by default -- which is exactly what `markup.SpanStyle`'s
+// `inherit` members mean -- so nested `withStyle` calls merge and the *host*
+// resolves the cascade. Nothing here is flattened.
+
+import ui "sngl:ui"
+import markup "sngl:ui/markup"
+import . "sngl:internal/marks"
+
+// A flow of spans, as a node. `richText` cannot insert its own content -- the
+// component is a `ui.node` whose slot is the span family -- so something has
+// to join the widget family and host the span one.
+//
+// It is the one intrinsic whose Compose arguments are not its props: the
+// `AnnotatedString` is built from the span tree written inside it, which no
+// prop can carry, so markup.go answers this tag before the generic emitter
+// reads the declaration. What it keeps are the two Styles `Text` already
+// takes -- `modifier` for the box a flow sits in, `style` for the typography
+// its words start from -- so a heading is large and a quote is slanted through
+// the same path `ui.text` uses.
+//
+// `role` is not taken. Compose has no element that announces itself, so the
+// appearance `style` carries is the whole of what this target can show.
+#[intrinsic("android:Flow")]
+component Flow(
+    modifier ui.Style,
+    style ui.Style,
+    content ...component markup.span,
+) ui.node
+
+// One run of words. `text` is the literal a leaf carries, `spanStyle` what
+// this run says about its own appearance, `href` where it leads and `kind`
+// what a `token` says it is. `color` is what a palette the program set says
+// instead, and wins over the scheme's role where it says anything.
+//
+// All five are read off the node rather than emitted as Compose arguments:
+// which fields a `SpanStyle` literal set is a question about the literal, and
+// a prop is opaque to the `if` that would ask it.
+#[intrinsic("android:Span")]
+component Span(
+    text string,
+    href string,
+    spanStyle markup.SpanStyle,
+    kind markup.Token,
+    color color,
+    content ...component markup.span,
+) markup.span
+
+component markup.richText[platform] {
+    Flow(modifier={...style}, style={...style}) {
+        content
+    }
+}
+
+component markup.text[platform] {
+    Span(text=value) {}
+}
+
+component markup.run[platform] {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+// Compose 1.7 gives an `AnnotatedString` real links: `withLink` makes the run
+// tappable and `Text` follows it. What it does not do is style one -- a
+// `LinkAnnotation.Url` with no `TextLinkStyles` looks like the words around
+// it -- so the underline is said here, in the family's own vocabulary, rather
+// than being a second thing the emitter decides.
+component markup.link[platform] {
+    Span(href=href, spanStyle={underline=true}) {
+        content
+    }
+}
+
+component markup.token[platform] {
+    Span(kind=kind, color=markup.tokenColor(markup.palette, kind)) {
+        content
+    }
+}
+
+// Compose has `InlineTextContent` for a picture on the line with the words,
+// and it needs a painter per source -- the same thing `ui.image` has no answer
+// for on this platform. So the description is what an image is here, in the
+// brackets that say a picture stood where they are, as it is on bubbletea,
+// fyne and gtk4.
+component markup.image[platform] {
+    Span(text="[{alt}]") {}
+}

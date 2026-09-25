@@ -37,7 +37,7 @@ import (
 	"strings"
 )
 
-//go:embed */*.sngl */*/*.sngl
+//go:embed */*.sngl */*/*.sngl */*/*/*.sngl
 var FS embed.FS
 
 // Packages returns the embedded package paths, sorted. A directory holding

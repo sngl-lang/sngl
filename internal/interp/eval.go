@@ -2716,3 +2716,31 @@ func zeroValueForValue(v any) any {
 	}
 	return nil
 }
+
+// pushContext overrides ctx with value for the duration of a provider's
+// subtree and returns the restore.
+//
+// The value is evaluated in the scope *enclosing* the provider, which is what
+// lets `depth(depth + 1)` read the value it is overriding and accumulate
+// across nesting -- the same rule internal/lower/context.go applies on a
+// target that lowers contexts away. The interpreter honours providers itself,
+// since passContext does not run for a target with no host language, so
+// without this a provider's value was never evaluated at all and every read
+// beneath one answered the context's default.
+func (env *Env) pushContext(ctx *ir.Context, value ir.Expr) (func(), error) {
+	v, err := env.Eval(value)
+	if err != nil {
+		return func() {}, err
+	}
+	prev, had := env.ContextVals[ctx]
+	prevLocale := env.Locale
+	env.SetContext(ctx, v)
+	return func() {
+		if had {
+			env.ContextVals[ctx] = prev
+		} else {
+			delete(env.ContextVals, ctx)
+		}
+		env.Locale = prevLocale
+	}, nil
+}

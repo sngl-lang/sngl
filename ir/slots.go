@@ -1,6 +1,9 @@
 package ir
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // SlotSplicer projects what a call site supplied into the insertion points a
 // component's body declares. The optimizer and the inliner both do this, over
@@ -23,7 +26,7 @@ type SlotSplicer struct {
 func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 	out := make([]Stmt, 0, len(stmts))
 	for _, s := range stmts {
-		if si, isSlot := s.(*SlotInst); isSlot {
+		if si, isSlot := s.(*SlotInst); isSlot && si.Entry == nil {
 			out = append(out, sp.body(si, callsite)...)
 			continue
 		}
@@ -44,6 +47,9 @@ func (sp SlotSplicer) Substitute(stmts []Stmt, callsite *NodeInst) []Stmt {
 		case *Assign, *LocalVar, *Return, *CallStmt, *Emit, *Toggle, *CanvasRedrawStmt,
 			*Break, *Continue:
 			// Leaf stmts -- no nested SlotInsts.
+		case *SlotInst:
+			// A population's entry, which entries substitutes when the
+			// population is spliced for the insertion that supplied it.
 		default:
 			panic(fmt.Sprintf("SlotSplicer.Substitute: unhandled %T", n))
 		}
@@ -58,7 +64,53 @@ func (sp SlotSplicer) body(si *SlotInst, callsite *NodeInst) []Stmt {
 	if sc == nil {
 		return sp.Clone(stmts)
 	}
-	return sp.Bind(sp.Clone(stmts), sc, si)
+	bound := sp.Bind(sp.Clone(stmts), sc, si)
+	if si.Decl == nil || len(si.Decl.Slots) == 0 {
+		return bound
+	}
+	return sp.entries(bound, si, callsite)
+}
+
+// entries replaces, in a population spliced for ins, every insertion of one of
+// ins's component entries with what ins populated it with. That content was
+// written beside ins, in the callee's body, so the callee's own slots in it
+// still answer to callsite.
+func (sp SlotSplicer) entries(stmts []Stmt, ins *SlotInst, callsite *NodeInst) []Stmt {
+	out := make([]Stmt, 0, len(stmts))
+	for _, s := range stmts {
+		if x, ok := s.(*SlotInst); ok && x.Entry != nil && slices.Contains(ins.Decl.Slots, x.Entry) {
+			out = append(out, sp.entry(x, ins, callsite)...)
+			continue
+		}
+		switch n := s.(type) {
+		case *If:
+			n.Body = sp.entries(n.Body, ins, callsite)
+			n.Else = sp.entries(n.Else, ins, callsite)
+		case *For:
+			n.Body = sp.entries(n.Body, ins, callsite)
+			n.Else = sp.entries(n.Else, ins, callsite)
+		case *NodeInst:
+			n.Children = sp.entries(n.Children, ins, callsite)
+		case *SlotInst:
+			n.Children = sp.entries(n.Children, ins, callsite)
+		case *ErrorBoundary:
+			n.Children = sp.entries(n.Children, ins, callsite)
+			n.Failed = sp.entries(n.Failed, ins, callsite)
+		case *ContextProvider:
+			n.Children = sp.entries(n.Children, ins, callsite)
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+func (sp SlotSplicer) entry(x, ins *SlotInst, callsite *NodeInst) []Stmt {
+	content := ins.Slots[x.Entry.Name]
+	if content == nil {
+		return sp.entries(x.Children, ins, callsite)
+	}
+	body := sp.Bind(sp.Clone(content.Body), content, x)
+	return sp.Substitute(body, callsite)
 }
 
 // SlotBody reports what one insertion point renders: the content the call site

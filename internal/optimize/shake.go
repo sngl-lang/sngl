@@ -3,16 +3,35 @@ package optimize
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
 // shakeUnused removes consts, vars, functions, structs, and enums that are
 // not reachable from roots (components, windows, timers, outputs, tests).
-func shakeUnused(pkg *ir.Package) error {
-	used := collectUsedSymbols(pkg)
+//
+// documents says the target writes each window out one document at a time
+// (Documents), unrolling its view loops against the consts they walk. A const
+// only such a loop reads is then a value the build needs and the output does
+// not, and it moves to pkg.BuildConsts: kept as a declaration, it held the
+// struct it was a list of alive with it, and every page wrote a constructor
+// for a type nothing built.
+func shakeUnused(pkg *ir.Package, documents bool) error {
+	used, build := collectUsedSymbols(pkg, documents)
 
-	pkg.Consts = filterVars(pkg.Consts, used)
+	var consts, buildConsts []*ir.Var
+	for _, c := range slices.Concat(pkg.Consts, pkg.BuildConsts) {
+		switch {
+		case used[c]:
+			consts = append(consts, c)
+		case build[c]:
+			buildConsts = append(buildConsts, c)
+		default:
+			slog.Debug("shaken: var", "name", c.Name, "const", true)
+		}
+	}
+	pkg.Consts, pkg.BuildConsts = consts, buildConsts
 	pkg.Vars = filterVars(pkg.Vars, used)
 	pkg.Funcs = filterFuncs(pkg.Funcs, used)
 	pkg.Structs = filterStructs(pkg.Structs, used)
@@ -47,7 +66,21 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		byName[sd.Name] = sd
 	}
 	var added []*ir.StructDef
+	haveEnum := map[*ir.EnumDef]bool{}
+	for _, ed := range pkg.Enums {
+		haveEnum[ed] = true
+	}
+	var addedEnums []*ir.EnumDef
 	want := func(t *ir.Type) {
+		if t != nil && t.Kind == ir.TypeEnum {
+			// Kotlin emits an enum as a class of its own, so a helper taking
+			// `markup.Token` named a type the file never declared.
+			if ed, ok := t.Decl.(*ir.EnumDef); ok && ed != nil && !haveEnum[ed] && ed.Pkg != "" && ed.Foreign.Name == "" {
+				haveEnum[ed] = true
+				addedEnums = append(addedEnums, ed)
+			}
+			return
+		}
 		if t == nil || t.Kind != ir.TypeStruct {
 			return
 		}
@@ -87,6 +120,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		byName[sd.Name] = sd
 	}
 	pkg.Structs = append(pkg.Structs, added...)
+	pkg.Enums = append(pkg.Enums, addedEnums...)
 	return nil
 }
 
@@ -153,10 +187,47 @@ func filterEnums(enums []*ir.EnumDef, used map[ir.Symbol]bool) []*ir.EnumDef {
 	return out
 }
 
-// collectUsedSymbols finds all symbols transitively reachable from roots.
-func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
-	used := make(map[ir.Symbol]bool)
-	var walk func(ir.Symbol)
+// collectUsedSymbols finds all symbols transitively reachable from roots, and
+// with documents the consts and structs reachable only from a view loop's
+// head or a view `if`'s condition, which Documents folds away.
+func collectUsedSymbols(pkg *ir.Package, documents bool) (used, build map[ir.Symbol]bool) {
+	used = make(map[ir.Symbol]bool)
+	build = make(map[ir.Symbol]bool)
+	var walk, buildWalk func(ir.Symbol)
+	view := func(stmts []ir.Stmt) {
+		walkStmts(stmts, used, walk)
+	}
+	if documents {
+		view = func(stmts []ir.Stmt) {
+			walkViewStmts(stmts, walk, buildWalk)
+		}
+	}
+	// Only a const and the types it is built of: a func or a var a loop head
+	// names may still be called when the loop is not one Documents can fold,
+	// and lowering turns a loop over state into a render func that reads it.
+	buildWalk = func(sym ir.Symbol) {
+		if sym == nil || used[sym] || build[sym] {
+			return
+		}
+		switch s := sym.(type) {
+		case *ir.Var:
+			if !s.IsConst {
+				walk(sym)
+				return
+			}
+			build[sym] = true
+			walkType(s.Type, used, buildWalk)
+			walkExpr(s.Init, used, buildWalk)
+		case *ir.StructDef:
+			build[sym] = true
+			for _, f := range s.Fields {
+				walkType(f.Type, used, buildWalk)
+				walkExpr(f.Default, used, buildWalk)
+			}
+		default:
+			walk(sym)
+		}
+	}
 
 	walk = func(sym ir.Symbol) {
 		if sym == nil || used[sym] {
@@ -197,6 +268,13 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 					walkExpr(m.Value, used, walk)
 				}
 			}
+		case *ir.Context:
+			// A read of the context is a read of its default wherever nothing
+			// provides one, and the lowering writes the default there after
+			// this walk has run: unwalked, `context #t(initial)` left `initial`
+			// shaken and every Go target and android naming it undeclared.
+			walkType(s.Typ, used, walk)
+			walkExpr(s.Default, used, walk)
 		case *ir.Component:
 			for _, p := range s.Props {
 				walkType(p.Type, used, walk)
@@ -210,7 +288,11 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 			for _, f := range s.Funcs {
 				walk(f)
 			}
-			walkStmts(s.Body, used, walk)
+			if s.Name == pkg.RootComponent {
+				view(s.Body)
+			} else {
+				walkStmts(s.Body, used, walk)
+			}
 		}
 	}
 
@@ -218,18 +300,20 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 	// functions. The package body is a root like a window's: it is rendered,
 	// so what it reads is used. Left out, a top-level `var` looked unread and
 	// was shaken away while the body kept referring to it.
-	walkStmts(pkg.Body, used, walk)
+	view(pkg.Body)
 	for _, comp := range pkg.Components {
 		walk(comp)
 	}
 	// The window itself and not only its body: a window carries its route
 	// parameters and its @error, and neither is reachable from the children.
 	for _, w := range pkg.Windows {
-		walkStmt(w, used, walk)
+		view([]ir.Stmt{w})
 	}
-	// Test functions are roots.
+	// Test functions are roots, and so is every synthesized func, which
+	// filterFuncs keeps whether or not anything names it: kept and not
+	// walked, a focus helper outlived the __focusID it reads.
 	for _, f := range pkg.Funcs {
-		if f.IsTest {
+		if f.IsTest || f.Synthesized {
 			walk(f)
 		}
 	}
@@ -260,7 +344,7 @@ func collectUsedSymbols(pkg *ir.Package) map[ir.Symbol]bool {
 		walk(fn)
 	}
 
-	return used
+	return used, build
 }
 
 func walkFunc(f *ir.Func, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
@@ -282,25 +366,7 @@ func walkStmt(s ir.Stmt, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 	}
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		if n.Component != nil {
-			walk(n.Component)
-		}
-		for _, p := range n.Props {
-			walkExpr(p.Value, used, walk)
-		}
-		for _, h := range n.Handlers {
-			walkFunc(h.Func, used, walk)
-		}
-		if n.ErrorHandler != nil {
-			walkFunc(n.ErrorHandler.Func, used, walk)
-		}
-		// A window's route parameters name a struct the program may declare
-		// and never construct: the request fills the cell, and a target with
-		// no request renders its zero. Nothing else reaches that declaration,
-		// so without this the page read `v.pkg` off a type no file declared.
-		if n.Params != nil {
-			walkType(n.Params.Type, used, walk)
-		}
+		walkNode(n, used, walk)
 		walkStmts(n.Children, used, walk)
 	case *ir.CallStmt:
 		if n.Call != nil {
@@ -453,5 +519,62 @@ func walkType(t *ir.Type, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
 			walkType(p.Type, used, walk)
 		}
 		walkType(t.Sig.Return, used, walk)
+	}
+}
+
+// walkViewStmts is walkStmts over a view Documents will unroll: a loop's head
+// and a condition are folded against the loop variables there, so the consts
+// they read are the build's rather than the page's.
+func walkViewStmts(stmts []ir.Stmt, walk, buildWalk func(ir.Symbol)) {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			walkNode(n, nil, walk)
+			walkViewStmts(n.Children, walk, buildWalk)
+		case *ir.If:
+			walkExpr(n.Cond, nil, buildWalk)
+			walkViewStmts(n.Body, walk, buildWalk)
+			walkViewStmts(n.Else, walk, buildWalk)
+		case *ir.For:
+			walkExpr(n.Iter, nil, buildWalk)
+			walkViewStmts(n.Body, walk, buildWalk)
+			walkViewStmts(n.Else, walk, buildWalk)
+		case *ir.SlotInst:
+			walkViewStmts(n.Children, walk, buildWalk)
+		case *ir.ContextProvider:
+			walkExpr(n.Value, nil, walk)
+			walkViewStmts(n.Children, walk, buildWalk)
+		case *ir.ErrorBoundary:
+			if n.Handler != nil {
+				walkFunc(n.Handler.Func, nil, walk)
+			}
+			walkViewStmts(n.Children, walk, buildWalk)
+		default:
+			walkStmt(s, nil, walk)
+		}
+	}
+}
+
+// walkNode walks what a node names itself: its component, props, handlers
+// and route parameters, and not its children.
+func walkNode(n *ir.NodeInst, used map[ir.Symbol]bool, walk func(ir.Symbol)) {
+	if n.Component != nil {
+		walk(n.Component)
+	}
+	for _, p := range n.Props {
+		walkExpr(p.Value, used, walk)
+	}
+	for _, h := range n.Handlers {
+		walkFunc(h.Func, used, walk)
+	}
+	if n.ErrorHandler != nil {
+		walkFunc(n.ErrorHandler.Func, used, walk)
+	}
+	// A window's route parameters name a struct the program may declare
+	// and never construct: the request fills the cell, and a target with
+	// no request renders its zero. Nothing else reaches that declaration,
+	// so without this the page read `v.pkg` off a type no file declared.
+	if n.Params != nil {
+		walkType(n.Params.Type, used, walk)
 	}
 }

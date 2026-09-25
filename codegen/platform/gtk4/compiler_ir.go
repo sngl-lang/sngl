@@ -163,8 +163,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	pkg := ctx.Pkg
-	for _, imp := range golang.BaseImports(pkg) {
-		gc.RequireImport(imp.Path)
+	for _, path := range golang.BaseImports(pkg) {
+		gc.RequireImport(path)
 	}
 	// Alert.* lowers to fmt.Fprintf(os.Stderr, ...); see gtk4IRAlertFunc.
 	if info.NeedsToast {
@@ -294,7 +294,7 @@ func (c *compilation) widgetFieldSink(fields *[]widgetField) func(name, cType st
 
 func (c *compilation) emitIRMode(wrapped bool) (modelSrc []byte, callbacksSrc []byte, err error) {
 	c.wrapped = wrapped
-	c.shared = &emitShared{}
+	c.shared = &emitShared{markup: collectMarkup(c.ctx.Pkg)}
 	exprCtx := c.ctx.ScopedExprCtx()
 	gc := golang.NewIRContext(exprCtx)
 	gc.AlertFunc = gtk4IRAlertFunc

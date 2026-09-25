@@ -56,8 +56,8 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	}
 
 	pkg := ctx.Pkg
-	for _, imp := range golang.BaseImports(pkg) {
-		gc.RequireImport(imp.Path)
+	for _, path := range golang.BaseImports(pkg) {
+		gc.RequireImport(path)
 	}
 
 	// NoInlineComponents inlined every non-main component into main, so there
@@ -455,7 +455,7 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 	}
 	if decls := emitThemeDecls(themes); decls != "" {
 		td.LangHelpers += decls
-		for _, path := range themeImports() {
+		for _, path := range themeImports(themes) {
 			gc.RequireImport(path)
 		}
 	}
@@ -1142,11 +1142,14 @@ func appendChildEdge(cs *ir.CallStmt) (parent, child string, ok bool) {
 // found and the only place a constructor-argument prop's expression is known
 // to be in scope.
 func harvestSpec(specs map[string]*fyneSpec, lv *ir.LocalVar, tag string, rest []ir.Stmt) error {
-	if lv.Type == nil || lv.Type.Kind != ir.TypeComponent {
-		return nil
+	var comp *ir.Component
+	if lv.Type != nil && lv.Type.Kind == ir.TypeComponent {
+		comp, _ = lv.Type.Decl.(*ir.Component)
 	}
-	comp, ok := lv.Type.Decl.(*ir.Component)
-	if !ok || fynePrimitive(comp) == "" {
+	if comp == nil || fynePrimitive(comp) == "" {
+		if lv.CanvasNode == nil && codegen.DeclinesNode(comp) {
+			return codegen.UnimplementedNode(comp, lv.NodeAST, tag, "fyne")
+		}
 		return nil
 	}
 	props := map[string]ir.Expr{}

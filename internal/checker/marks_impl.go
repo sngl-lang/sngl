@@ -32,6 +32,24 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "cannot"}:             markGenCannot,
 	{"x/gen", "wants"}:              markGenWants,
 	{"x/gen", "renders"}:            markGenRenders,
+	{"ui/markup/md", "order"}:       markMdOrder,
+}
+
+// markMdOrder implements #[md.order]. The md: importer reads it from source
+// and sorts by it; what is checked here is only what that reading assumes.
+func markMdOrder(m *mark) error {
+	f, ok := m.sym.(*ir.StructField)
+	if !ok {
+		return fmt.Errorf("#[md.order] cannot mark %s; only a Frontmatter field is a key pages are sorted by", ast.DeclFormName(m.decl))
+	}
+	if n := markedNames(m.decl); n > 1 {
+		return fmt.Errorf("#[md.order] marks %d fields at once; pages are sorted by one key", n)
+	}
+	switch f.Type.Kind {
+	case ir.TypeInt, ir.TypeFloat, ir.TypeString:
+		return nil
+	}
+	return fmt.Errorf("#[md.order] on %q: a sort key is an int, a float or a string, not %s", f.Name, f.Type)
 }
 
 // markGoAsync implements #[go.async]: a call to this function blocks.

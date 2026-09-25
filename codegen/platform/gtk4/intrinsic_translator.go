@@ -31,6 +31,13 @@ type emitShared struct {
 	// separate scopes have now been found to have forgotten.
 	canvasByID   map[string]*canvasMeta
 	canvasByNode map[*ir.NodeInst]*canvasMeta
+
+	// The flow and span trees, collected package-wide before the walk. Here
+	// for the reason the canvas maps are: a span is no widget, so its words
+	// reach the label they belong to only through this, and a reactive splice
+	// assigns a span's prop in a scope that never saw the flow. Collecting it
+	// once beside them also means it is walked once rather than per scope.
+	markup *markupTrees
 }
 
 func (s *emitShared) needBoolToInt() {
@@ -82,7 +89,12 @@ type gtk4Translator struct {
 	fieldIDs map[string]bool
 	idCTypes map[string]string   // id ("__n0") → GTK C type ("GtkLabel")
 	skipped  map[string]struct{} // ids whose OnCreateNode emitted nothing (unresolved tag) — later refs to them must be skipped too
-	topLevel []string
+	// builtSpans are the spans this scope created. Their build-time prop
+	// assignments follow the create, and the markup they would each rewrite
+	// was written once already; an assignment from any other scope is a
+	// reactive one and is what re-writes it.
+	builtSpans map[string]bool
+	topLevel   []string
 	// slotRoot is the box a reactive slot in this scope's body renders into,
 	// when this scope owns one. A call to that slot's renderer holds a place in
 	// the tree exactly as a created widget does -- the subtree is built into
@@ -96,6 +108,7 @@ type gtk4Translator struct {
 	// emitIR's whole-program fallback. See wrapped.go.
 	wrapped      bool
 	tagComponent map[string]*ir.Component // tag ("GtkButton") → resolved Component (from pre-walk)
+	nodeSource   map[string]ast.Stmt      // node id → the source the node was written as
 	// plainHandle names the instance ids whose handle is the widget the render
 	// returned rather than a record carrying it, as OnCreateComponent decided
 	// from the component's own RuntimeInstance mark. Only a record has a Root
@@ -126,6 +139,7 @@ func newGtk4Translator(gc *golang.GoIRContext, fieldSink func(name, cType string
 		fieldIDs:     map[string]bool{},
 		skipped:      map[string]struct{}{},
 		tagComponent: map[string]*ir.Component{},
+		nodeSource:   map[string]ast.Stmt{},
 	}
 }
 
@@ -201,6 +215,7 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 				if call, ok := n.Init.(*ir.Call); ok && len(call.Args) >= 1 {
 					if lit, ok := call.Args[0].Value.(*ir.Literal); ok && lit.Type == ir.TypString {
 						t.tagComponent[lit.Value] = comp
+						t.nodeSource[n.Name] = n.NodeAST
 					}
 				}
 			}
@@ -259,7 +274,7 @@ func (t *gtk4Translator) widgetClass(tag string) (string, *gir.ClassInfo) {
 // override that gets inlined away, so one arriving here under its own name is
 // one this platform never implemented. A user component with an empty body
 // says it draws nothing and is left alone.
-func (t *gtk4Translator) unresolvedTagError(tag string) error {
+func (t *gtk4Translator) unresolvedTagError(id, tag string) error {
 	comp := t.tagComponent[tag]
 	if comp == nil {
 		return fmt.Errorf("gtk4: no widget for node %q", tag)
@@ -279,7 +294,7 @@ func (t *gtk4Translator) unresolvedTagError(tag string) error {
 	if _, ok := comp.PlatformOverrides[platformName]; ok {
 		return fmt.Errorf("gtk4: component %q has a gtk4 implementation that did not lower to a widget", tag)
 	}
-	return &codegen.UnimplementedComponent{Component: tag, Platform: platformName}
+	return codegen.UnimplementedNode(comp, t.nodeSource[id], tag, platformName)
 }
 
 func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
@@ -295,7 +310,7 @@ func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 // here rather than codegen.ModelFieldRef, which names the Model and only the
 // Model.
 func (t *gtk4Translator) fieldRef(name string) ir.Expr {
-	return codegen.RecvFieldRef(t.gc.RecvName(), name)
+	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
 }
 
 // recvIdent is that receiver as a call target.
@@ -354,13 +369,29 @@ func (t *gtk4Translator) OnCreateNode(ctx context.Context, id, tag string) []ir.
 			return t.emitCanvasCreate(id)
 		}
 	}
+	// A flow is a GtkLabel and a span is a piece of its markup, so neither
+	// names a GIR class and both are intercepted before the lookup. The span
+	// emits nothing at all: it is recorded as skipped so the AppendChild
+	// naming it is dropped too, and its words reach the label through
+	// emitFlowMarkup.
+	switch tag {
+	case flowTag:
+		return t.emitFlowCreate(id)
+	case spanTag:
+		t.skipped[id] = struct{}{}
+		if t.builtSpans == nil {
+			t.builtSpans = map[string]bool{}
+		}
+		t.builtSpans[id] = true
+		return nil
+	}
 	// passInlinePure already substituted the stdlib wrappers with their
 	// gtk4.sngl bodies, so every tag here is a GIR-resolved widget name.
 	cType, info := t.widgetClass(tag)
 	if info == nil {
 		// The build has to fail: dropping the node emits a window missing the
 		// widgets its source asked for and says so nowhere.
-		if err := t.unresolvedTagError(tag); err != nil {
+		if err := t.unresolvedTagError(id, tag); err != nil {
 			t.shared.fail(err)
 		}
 		// Recorded so later references are dropped rather than emitting
@@ -723,6 +754,22 @@ func (t *gtk4Translator) qualifyNodeExpr(e ir.Expr) ir.Expr {
 }
 
 func (t *gtk4Translator) OnPropAssign(ctx context.Context, node ir.Expr, prop string, value ir.Expr) []ir.Stmt {
+	// A span's props are read off the tree rather than assigned to a widget,
+	// so an assignment to one is a reason to write its flow's label again --
+	// which is the whole of reactivity here, the markup being an expression
+	// over the same state the run was written against. Asked before the skip
+	// check, which a span's own id is in.
+	if bare := codegen.IdentBareName(node); t.markupTrees().ownerOf[bare] != "" {
+		// The props a span is built with were already read off the tree and
+		// written into the label emitConstructorAssign followed, so the
+		// assignments the build emits next would each set the same string
+		// again. A scope that did not create this span is a handler or an
+		// updater, and there the assignment is the reason to write it.
+		if t.builtSpans[bare] {
+			return nil
+		}
+		return t.emitFlowMarkup(t.markupTrees().ownerOf[bare])
+	}
 	if t.isSkipped(node) {
 		return nil
 	}

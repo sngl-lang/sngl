@@ -2,53 +2,51 @@ import . "sngl:ui"
 import "go:git.duckfam.us/jonathan/sngl/docs"
 import "sngl:platform/html"
 
-const searchFilterJS = `window.snglFilterSearch = function(input) {
-  var q = input.value.trim().toLowerCase();
-  var box = input.closest('.search-box');
-  var res = box.querySelector('.search-results');
-  if (!q) { res.hidden = true; return; }
-  res.hidden = false;
-  var hits = res.querySelectorAll('.search-hit');
-  for (var i = 0; i < hits.length; i++) {
-    var h = hits[i];
-    h.style.display = (h.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
-  }
-};`
-
-// SearchBox renders a docs-search input with a results list. The caller
-// passes a compile-time const list of entries; the html codegen unrolls
-// the for-loop into static <a class="search-hit"> siblings, and the inline
-// JS hides/shows them client-side as the user types.
+// SearchBox renders a docs-search input with a results list over a
+// compile-time const list of entries.
 component SearchBox(entries list<docs.SearchEntry> = []) node {
     var query = ""
 
-    if PLATFORM == html.platform {
-        html.div(class="search-box") {
-            html.input(class="search-input", type="search", placeholder="Search docs…", autocomplete="off", spellcheck="false",
-                oninput="window.snglFilterSearch(this)")
-            html.div(class="search-results", hidden=true) {
+    vbox(style={gap=4, padding=4}) {
+        input(:value=query, placeholder="Search docs…", type="search")
+        if query != "" {
+            vbox(style={gap=2}) {
                 for var entry = entries {
-                    html.a(href=entry.href, class="search-hit") {
-                        html.div(innerText=entry.title, class="hit-title")
-                        html.div(innerText=entry.crumb, class="hit-crumb")
-                        html.div(innerText=entry.blurb, class="hit-blurb")
-                    }
-                }
-            }
-            html.script(innerHTML=searchFilterJS)
-        }
-    } else {
-        vbox(style={gap=4, padding=4}) {
-            input(:value=query, placeholder="Search docs…", type="search")
-            if query != "" {
-                vbox(style={gap=2}) {
-                    for var entry = entries {
-                        SearchHit(entry=entry, query=query)
-                    }
+                    SearchHit(entry=entry, query=query)
                 }
             }
         }
     }
+}
+
+// The hits are a loop over what the input typed, not over entries: a loop over
+// a const is unrolled into every page that holds one, and a docs site is a
+// thousand pages each holding the whole index. Read at render time instead,
+// the const is written once to a shared asset every page loads.
+component SearchBox[html.platform] {
+    var typed = ""
+
+    html.div(class="search-box") {
+        html.input(class="search-input", type="search", placeholder="Search docs…", autocomplete="off", spellcheck="false",
+            @input(e) { typed = string.trim(e.value) })
+        html.div(class="search-results", hidden=typed == "") {
+            for var entry = searchHits(entries, typed) {
+                html.a(href=entry.href, class="search-hit") {
+                    html.div(innerText=entry.title, class="hit-title")
+                    html.div(innerText=entry.crumb, class="hit-crumb")
+                    html.div(innerText=entry.blurb, class="hit-blurb")
+                }
+            }
+        }
+    }
+}
+
+func searchHits(entries list<docs.SearchEntry>, query string) list<docs.SearchEntry> {
+    var q = string.lower(query)
+    if q == "" {
+        return []
+    }
+    return entries.filter(func(e docs.SearchEntry) => string.contains(string.lower(e.title + " " + e.crumb + " " + e.blurb), q))
 }
 
 component SearchHit(entry docs.SearchEntry, query = "") node {

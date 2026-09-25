@@ -10,6 +10,7 @@ import (
 
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/imports"
+	"git.duckfam.us/jonathan/sngl/internal/interp"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -76,49 +77,9 @@ type FileAsset struct {
 }
 
 // evalCtx carries state needed during optimization.
-// unrollsLoops reports whether a loop over a constant iterable is expanded
-// into its iterations here, rather than left for the target to emit.
-//
-// Only for a target with no host language. `--lang none` is the static
-// artifact: the platform writes markup, a loop has nowhere to run in it, and
-// one left standing renders its body once -- so unrolling is the only way the
-// nodes exist at all, at whatever size the program asks for.
-//
-// Every language target emits the loop itself (each language's ForHead), and
-// its own compiler is in a better position to decide whether to unroll it: it
-// can see the bounds are constant, and it does not have to write the copies
-// into a source file that a person reads and a build compiles. Unrolled
-// Compose was three copies of a RadioButton where the loop is one, and the
-// same held for Go, Kotlin and the TUI.
-//
-// A window loop is not this. expandForWindows unrolls those on every target,
-// because each iteration is a separate window -- a file, a top-level surface
-// -- and not a repeated body.
-//
-// The language is not the whole question, though. A language emits a loop only
-// where the platform hands it statements to emit, and a static-view platform
-// (one declaring lower.Features.ViewStatements false -- html, in both its
-// modes) hands it none: the
-// tree is markup written once, so a loop still standing renders its body a
-// single time with its variable bound to nothing. `sngl doc --http` lost its
-// package list that way, seven links becoming one empty `<a>`, under --lang go.
-//
-// The question is asked of the platform rather than of the block being folded,
-// because by the second Optimize call the distinction is gone: lowering moves
-// a view subtree into a synthesized render function, so "markup" and "a
-// function body" are the same shape by then. Unrolling a constant loop in a
-// handler on such a platform costs a longer handler and nothing else, which is
-// the price of asking a question that has an answer.
-func (ctx *evalCtx) unrollsLoops() bool {
-	return ctx == nil || ctx.language == "" || ctx.language == "none" || ctx.staticView
-}
-
 type evalCtx struct {
-	platform string
-	language string
-	// staticView is the platform's lower.Features.ViewStatements, inverted and
-	// asked once per package fold rather than per loop.
-	staticView    bool
+	platform      string
+	language      string
 	dir           string
 	noCacheBust   bool
 	pkg           *ir.Package
@@ -167,6 +128,13 @@ type evalCtx struct {
 	// failed to evaluate at build time on a platform that requires the value
 	// at compile time). Recorded during folding and surfaced by Optimize.
 	err error
+	// interpEnvs is interpEnv's, one map shared by every child of a run.
+	interpEnvs map[*ir.Package]*interp.Env
+	// unroll and spliced are set only by Documents. Optimize leaves every loop
+	// for the target to emit: a language target writes its own, and a static
+	// one gets its loops unrolled one document at a time, after lowering. For
+	// spliced see addSplicedNativeImports.
+	unroll, spliced bool
 }
 
 // child returns a context for folding a nested scope — a for-loop iteration,
@@ -209,6 +177,7 @@ type optimizerRun struct {
 	native     *nativeEval
 	root       *ir.Package
 	writes     *writesAnalysis
+	interpEnvs map[*ir.Package]*interp.Env
 }
 
 // maxEvalRounds bounds the round loop. Every round either caches a value for
@@ -220,8 +189,11 @@ const maxEvalRounds = 10
 // Optimize mutates pkg in place: evaluates constant expressions, inlines pure
 // functions, eliminates dead branches and platform mismatches, and removes
 // unreferenced declarations. Imported packages are folded recursively
-// (Phases 1+2 only) so that for-loops inside imported components can unroll
-// against their own package consts. Phases 3+4 run only on the root package.
+// (Phases 1+2 only) so that bodies inlined from imported components fold
+// against their own package consts. Phase 3 runs only on the root package.
+//
+// No loop is unrolled here, for any target; Documents does that for a static
+// one.
 func Optimize(pkg *ir.Package, cfg *Config) error {
 	if cfg.Cache == nil {
 		cfg.Cache = NewEvalCache()
@@ -322,11 +294,12 @@ func hasPureNativeFuncs(pkg *ir.Package, cfg *Config) bool {
 // them.
 func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 	run := &optimizerRun{
-		cfg:    cfg,
-		done:   map[*ir.Package]bool{},
-		native: native,
-		root:   pkg,
-		writes: newWritesAnalysis(),
+		cfg:        cfg,
+		done:       map[*ir.Package]bool{},
+		native:     native,
+		root:       pkg,
+		writes:     newWritesAnalysis(cfg.Platform, cfg.Language),
+		interpEnvs: map[*ir.Package]*interp.Env{},
 	}
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).
@@ -334,24 +307,16 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 	if run.err != nil && native == nil {
 		return run.err
 	}
-	// A probe carries on past a fold error: it is discarded either way, and
-	// stopping here would hide the calls phase 3 goes on to discover.
 	if rootCtx == nil {
 		return nil
 	}
 
-	// Phase 3: Expand for-loop windows in main component (root only).
-	start := time.Now()
-	expandForWindows(pkg, rootCtx)
-	slog.Debug("optimize: expand", "duration", time.Since(start))
-
-	// Phase 4: Dead code elimination (root only). A probe pass is discarded,
+	// Phase 3: Dead code elimination (root only). A probe pass is discarded,
 	// and pruning unreferenced declarations discovers nothing, so it is skipped
-	// there. Phase 3 is not: expanding a for-loop binds the loop variable, and
-	// that is what makes a native call's argument const in the first place.
+	// there.
 	if native == nil {
-		start = time.Now()
-		if err := shakeUnused(pkg); err != nil {
+		start := time.Now()
+		if err := shakeUnused(pkg, codegen.PlatformRendersViewStatically(cfg.Platform, cfg.Language)); err != nil {
 			return err
 		}
 		slog.Debug("optimize: shake", "duration", time.Since(start))
@@ -376,9 +341,8 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 	}
 	cfg.FileAssets = merged
 
-	// Phase 3 folds too, so it can be the first phase to hit a fatal
-	// evaluation error. A probe's own errors are not reported: the same fold
-	// runs again on the real package.
+	// A probe's own errors are not reported: the same fold runs again on the
+	// real package.
 	if native != nil {
 		return nil
 	}
@@ -412,29 +376,7 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 		}
 	}
 
-	ctx := &evalCtx{
-		cache:           r.cfg.Cache,
-		native:          r.native,
-		nativeErr:       r.cfg.nativeErr,
-		platform:        r.cfg.Platform,
-		language:        r.cfg.Language,
-		staticView:      codegen.PlatformRendersViewStatically(r.cfg.Platform, r.cfg.Language),
-		dir:             r.cfg.Dir,
-		noCacheBust:     r.cfg.NoCacheBust,
-		pkg:             pkg,
-		values:          make(map[ir.Symbol]any),
-		inliningFuncs:   make(map[*ir.Func]bool),
-		foldingProp:     make(map[windowProp]bool),
-		evaluatingConst: make(map[*ir.Var]bool),
-		inlineCapped:    new(bool),
-		writes:          r.writes,
-	}
-	// Only the root's: a backend emits the package it compiles, and an
-	// imported package's const reached through an inlined body has no
-	// declaration in the output to name.
-	if pkg == r.root {
-		ctx.sharedConsts = sharedAggregateConsts(pkg)
-	}
+	ctx := r.newCtx(pkg)
 
 	// Phase 1: Evaluate all top-level consts.
 	start := time.Now()
@@ -495,6 +437,33 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 
 	if ctx.err != nil && r.err == nil {
 		r.err = ctx.err
+	}
+	return ctx
+}
+
+func (r *optimizerRun) newCtx(pkg *ir.Package) *evalCtx {
+	ctx := &evalCtx{
+		cache:           r.cfg.Cache,
+		native:          r.native,
+		nativeErr:       r.cfg.nativeErr,
+		platform:        r.cfg.Platform,
+		language:        r.cfg.Language,
+		dir:             r.cfg.Dir,
+		noCacheBust:     r.cfg.NoCacheBust,
+		pkg:             pkg,
+		values:          make(map[ir.Symbol]any),
+		inliningFuncs:   make(map[*ir.Func]bool),
+		foldingProp:     make(map[windowProp]bool),
+		evaluatingConst: make(map[*ir.Var]bool),
+		inlineCapped:    new(bool),
+		writes:          r.writes,
+		interpEnvs:      r.interpEnvs,
+	}
+	// Only the root's: a backend emits the package it compiles, and an
+	// imported package's const reached through an inlined body has no
+	// declaration in the output to name.
+	if pkg == r.root {
+		ctx.sharedConsts = sharedAggregateConsts(pkg)
 	}
 	return ctx
 }
@@ -562,7 +531,50 @@ func (ctx *evalCtx) getNativeImports() map[string]*ir.NativeImport {
 			ctx.nativeSchemes[imp.Alias] = scheme
 		}
 	}
+	if ctx.spliced {
+		ctx.addSplicedNativeImports()
+	}
 	return ctx.nativeImports
+}
+
+// addSplicedNativeImports binds the native import aliases of the packages pkg
+// imports, where pkg does not bind the alias itself. After lowering, a
+// component from another package has been spliced into the body that renders
+// it, and a native call in it names the alias its own file imported. An alias
+// two packages bind to different paths is left unbound rather than guessed.
+func (ctx *evalCtx) addSplicedNativeImports() {
+	found := map[string]*ir.Import{}
+	ambiguous := map[string]bool{}
+	seen := map[*ir.Package]bool{ctx.pkg: true}
+	queue := []*ir.Package{ctx.pkg}
+	for len(queue) > 0 {
+		p := queue[0]
+		queue = queue[1:]
+		for _, imp := range p.Imports {
+			if imp.Native != nil && p != ctx.pkg {
+				if _, own := ctx.nativeImports[imp.Alias]; !own {
+					if prev, ok := found[imp.Alias]; ok && prev.Path != imp.Path {
+						ambiguous[imp.Alias] = true
+					} else {
+						found[imp.Alias] = imp
+					}
+				}
+			}
+			if imp.Pkg != nil && !seen[imp.Pkg] {
+				seen[imp.Pkg] = true
+				queue = append(queue, imp.Pkg)
+			}
+		}
+	}
+	for alias, imp := range found {
+		if ambiguous[alias] {
+			continue
+		}
+		ctx.nativeImports[alias] = imp.Native
+		if scheme, _ := imports.ParseScheme(imp.Path); scheme != "" {
+			ctx.nativeSchemes[alias] = scheme
+		}
+	}
 }
 
 // windowForHandle is the window v's `#id` declared, or nil. The map is built

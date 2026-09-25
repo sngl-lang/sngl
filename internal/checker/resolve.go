@@ -392,6 +392,12 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 				def = &ir.Literal{Type: typ}
 			}
 			fld := &ir.StructField{Name: name, Type: typ, Default: def, DefaultWritten: f.Default != nil}
+			if def != nil {
+				if c.defaultPlaceholders == nil {
+					c.defaultPlaceholders = map[ir.Expr]*ir.StructField{}
+				}
+				c.defaultPlaceholders[def] = fld
+			}
 			if first == nil {
 				first = fld
 			}

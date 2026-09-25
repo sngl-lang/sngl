@@ -1,0 +1,131 @@
+# What a live fence's mistakes say, and where. The position a checker would
+# report is the `import` that read the document, which says nothing about where
+# in it the fence was written -- so the importer names the markdown file and the
+# line itself.
+
+# A mode nobody defined, named where it was written.
+! sngl check typo.sngl
+stderr 'typo.md:3: unknown fence mode "islnd"'
+stderr 'view, island, package or body'
+
+# A mode on a fence in some other language. A mode says what to compile the
+# source as, and this compiler compiles one language.
+! sngl check other_language.sngl
+stderr 'other_language.md:1: mode=island on a "go" fence'
+
+# A live fence that does not parse reports at the fence, not at the import.
+! sngl check broken.sngl
+stderr 'broken.md:1:'
+stderr 'unexpected'
+
+# Two islands claiming one alias for two packages is not renamed here:
+# rewriting an alias means resolving every name under it, which is checking, and
+# this importer emits source for the checker rather than doing its work. So it
+# reaches the checker as the program it is, and the diagnostic is the one any
+# program writing two such imports gets -- named against the generated file,
+# which is the cost of the decision and is why `document.sngl` appears here.
+! sngl check alias_conflict.sngl
+stderr 'document.sngl'
+stderr '"x" is already bound at file scope by an import alias'
+
+# A trailer the importer does not recognise is left alone: the info line is
+# shared vocabulary, and refusing `title=` would turn a document that renders
+# on every other site into a build failure. So this is an ordinary fence.
+sngl check other_trailer.sngl
+stdout 'ok'
+
+-- typo.sngl --
+import ui "sngl:ui"
+import doc "md:./typo.md"
+
+ui.window #home(title="t") {
+    doc.document
+}
+
+output {
+    none {
+        html
+    }
+}
+-- typo.md --
+Some words.
+
+```sngl mode=islnd
+ui.text(value="a")
+```
+-- other_language.sngl --
+import ui "sngl:ui"
+import doc "md:./other_language.md"
+
+ui.window #home(title="t") {
+    doc.document
+}
+
+output {
+    none {
+        html
+    }
+}
+-- other_language.md --
+```go mode=island
+package main
+```
+-- broken.sngl --
+import ui "sngl:ui"
+import doc "md:./broken.md"
+
+ui.window #home(title="t") {
+    doc.document
+}
+
+output {
+    none {
+        html
+    }
+}
+-- broken.md --
+```sngl mode=body
+ui.text(value=
+```
+-- other_trailer.sngl --
+import ui "sngl:ui"
+import doc "md:./other_trailer.md"
+
+ui.window #home(title="t") {
+    doc.document
+}
+
+output {
+    none {
+        html
+    }
+}
+-- other_trailer.md --
+```sngl title="an example"
+const n = 1
+```
+-- alias_conflict.sngl --
+import ui "sngl:ui"
+import doc "md:./alias_conflict.md"
+
+ui.window #home(title="t") {
+    doc.document
+}
+
+output {
+    none {
+        html
+    }
+}
+-- alias_conflict.md --
+```sngl mode=island
+import x "sngl:ui"
+
+x.text(value="a")
+```
+
+```sngl mode=island
+import x "sngl:seq"
+
+ui.text(value="{x.count(2)}")
+```

@@ -1,16 +1,14 @@
 A view `for … else` over a *constant* iterable, which passViewForElse must not
-be the thing that renders. The optimizer unrolls such a loop on a target with
-no host language, and unrolling an empty one already yields the else -- so on
-html the archive below holds the empty-state text as markup, with no loop and
-no conditional left to lower.
+be the thing that decides at run time. On every target the loop reaches
+passViewForElse and is rewritten there like any other, into a conditional whose
+test happens to be constant, and the fold after lowering collapses it.
 
-The same program on bubbletea is the contrast that says the two are different
-answers rather than one. A language target does not unroll -- its own compiler
-can see the bounds -- so the loop reaches passViewForElse and is rewritten
-there like any other, into a conditional whose test happens to be constant.
-The fold after lowering then collapses it, which is why the empty case reads
-as a plain line here too and the non-empty loop keeps its `for` and loses only
-its unreachable else.
+What differs is who unrolls what is left. html's view is markup, so
+optimize.Documents unrolls the non-empty loop into its rows and the archive
+below holds the empty-state text as markup, with no loop left. A language
+target does not unroll -- its own compiler can see the bounds -- which is why
+on bubbletea the empty case reads as a plain line and the non-empty loop keeps
+its `for` and loses only its unreachable else.
 
 Both readings are the same claim: nothing in this file's output tests
 emptiness at run time, because nothing in this file's iterables is unknown
