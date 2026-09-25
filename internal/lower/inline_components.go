@@ -177,9 +177,6 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 	return nil
 }
 
-// ownerNames is the names an owner's own declarations already hold in the
-// emitted namespace, as the seen-count a node id is measured against: at one
-// each, so the first id to want one is already a duplicate and moves.
 // packageOwner is the owner that is neither a component nor a window, which is
 // the package itself. ir.Owners always yields one.
 func packageOwner(owners []ir.Owner) ir.Owner {
@@ -191,6 +188,9 @@ func packageOwner(owners []ir.Owner) ir.Owner {
 	return ir.Owner{}
 }
 
+// ownerNames is the names an owner's own declarations already hold in the
+// emitted namespace, as the seen-count a node id is measured against: at one
+// each, so the first id to want one is already a duplicate and moves.
 func ownerNames(o ir.Owner) map[string]int {
 	out := map[string]int{}
 	for _, v := range o.Vars {
@@ -360,9 +360,8 @@ func (st *inlineCompState) run() error {
 			return err
 		}
 		st.pkg.Body = pbody
-		// Walk pkg.Windows: the visual tree for window-declaring apps lives
-		// in Window.Body / Window.Funcs, not in main.Body. Components
-		// instantiated inside windows must also be inlined.
+		// A window at the root of a file is on pkg.Windows rather than in
+		// pkg.Body, and what it instantiates must be inlined too.
 		anyWinCh := false
 		for _, w := range st.pkg.Windows {
 			st.hoist = windowHoist(st.pkg)
@@ -678,7 +677,7 @@ func (st *inlineCompState) rendersNothing(comp *ir.Component) bool {
 			if !isEffectNode(n) {
 				renders = true
 			}
-		case *ir.SlotInst, *ir.ErrorBoundary, *ir.CanvasRedrawStmt:
+		case *ir.SlotInst, *ir.ErrorBoundary:
 			renders = true
 		}
 		return nil

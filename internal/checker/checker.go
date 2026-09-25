@@ -3161,13 +3161,6 @@ func (c *checker) importablePackages() []string {
 	return slices.Compact(out)
 }
 
-func (c *checker) lookupTarget(name string) pkgProvider {
-	if t := c.lookupTargetIn(name, ir.BuiltinPlatform); t != nil {
-		return t
-	}
-	return c.lookupTargetIn(name, ir.BuiltinLanguage)
-}
-
 // lookupTargetIn finds a registered target of one tier by name.
 //
 // The tier is not decoration. The two share a namespace -- nothing stops a
@@ -3203,22 +3196,6 @@ func findField(sd *ir.StructDef, name string) *ir.StructField {
 		}
 	}
 	return nil
-}
-
-// typeAssignable reports whether src is assignable to dst, allowing the same
-// implicit conversions the rest of the checker permits at boundary positions
-// (numeric widening, dyn pass-through, exact match).
-func typeAssignable(src, dst *ir.Type) bool {
-	if src == nil || dst == nil {
-		return true
-	}
-	if src.Equal(dst) {
-		return true
-	}
-	if src.Kind == ir.TypeDyn || dst.Kind == ir.TypeDyn {
-		return true
-	}
-	return false
 }
 
 // checkDuplicateWindowID reports an error if w's id is non-empty and another
@@ -3365,16 +3342,6 @@ func fallbackSlotName(comp *ir.Component) string {
 		if !s.Rest {
 			return s.Name
 		}
-	}
-	return ""
-}
-
-func literalString(e ast.Expr) string {
-	if lit, ok := e.(*ast.LiteralExpr); ok {
-		if v, ok := lit.StringValue(); ok {
-			return v
-		}
-		return lit.Raw
 	}
 	return ""
 }

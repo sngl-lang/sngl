@@ -123,19 +123,6 @@ func rewriteEnumExpr(e ir.Expr, memberOrdinal func(*ir.EnumDef, string) (int, bo
 				return rewriteEnumExpr(e, memberOrdinal)
 			})
 		}
-	case *ir.Closure:
-		if x.State != nil {
-			for i := range x.State.Fields {
-				if x.State.Fields[i].Value != nil {
-					x.State.Fields[i].Value = rewriteEnumExpr(x.State.Fields[i].Value, memberOrdinal)
-				}
-			}
-		}
-		if x.Func != nil {
-			x.Func.Block = rewriteStmtExprs(x.Func.Block, func(e ir.Expr) ir.Expr {
-				return rewriteEnumExpr(e, memberOrdinal)
-			})
-		}
 	case *ir.Literal, *ir.ContextRead:
 		// Terminal — no enum member to rewrite.
 	default:

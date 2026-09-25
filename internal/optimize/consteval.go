@@ -369,10 +369,6 @@ func evalCall(call *ir.Call, ctx *evalCtx) (any, bool) {
 				return v, true
 			}
 		}
-		// Try builtin function.
-		if v, ok := evalCallFunc(call.Func.Name, args); ok {
-			return v, true
-		}
 	}
 
 	// An intrinsic the folder does not implement. A body it still has is one
@@ -858,62 +854,6 @@ func evalUnaryOp(op ast.UnaryOp, operand any, kind opeval.NumKind) (any, bool) {
 		return v, true
 	}
 	return nil, false
-}
-
-func evalCallFunc(name string, args []any) (any, bool) {
-	if len(args) != 1 {
-		return nil, false
-	}
-	arg := args[0]
-	switch name {
-	case "string":
-		return fmt.Sprintf("%v", arg), true
-	case "int":
-		switch v := arg.(type) {
-		case int:
-			return v, true
-		case float64:
-			return int(v), true
-		case string:
-			i, err := strconv.Atoi(v)
-			if err != nil {
-				return nil, false
-			}
-			return i, true
-		}
-	case "float":
-		switch v := arg.(type) {
-		case float64:
-			return v, true
-		case int:
-			return float64(v), true
-		case string:
-			f, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				return nil, false
-			}
-			return f, true
-		}
-	}
-	return nil, false
-}
-
-func evalMethod(method string, recv any, args []any) (any, bool) {
-	typeName := "dyn"
-	switch recv.(type) {
-	case int:
-		typeName = "int"
-	case float64:
-		typeName = "float"
-	case string:
-		typeName = "string"
-	case bool:
-		typeName = "bool"
-	case []any:
-		typeName = "list"
-	}
-	allArgs := append([]any{recv}, args...)
-	return evalQualifiedMethod(typeName+"."+method, allArgs)
 }
 
 func evalQualifiedMethod(qualName string, args []any) (any, bool) {

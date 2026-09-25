@@ -263,10 +263,6 @@ func hoistChildren(h *hoister, e ir.Expr) ir.Expr {
 		cp := *x
 		cp.Operand = hoistExpr(h, x.Operand)
 		return &cp
-	case *ir.Literal, *ir.Ident, *ir.ContextRead, *ir.Lambda, *ir.Closure:
-		// Terminal or closure-bodied — hoister never descends into lambda
-		// bodies (they execute at invocation, not at view eval time).
-		return e
 	default:
 		panic(fmt.Sprintf("hoistChildren: unhandled %T", x))
 	}
@@ -328,8 +324,8 @@ func exprHasLocals(e ir.Expr) bool {
 		return false
 	case *ir.Literal, *ir.ContextRead:
 		return false
-	case *ir.Lambda, *ir.Closure:
-		// Lambdas/closures evaluated at invocation time — their internal
+	case *ir.Lambda:
+		// A lambda is evaluated at invocation time — its internal
 		// param refs aren't "locals of the surrounding expression."
 		return false
 	default:

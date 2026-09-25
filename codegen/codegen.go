@@ -59,7 +59,6 @@ type LangTranslator interface {
 
 	TranslateIRLiteral(e ir.Expr) string
 
-	TypeToNative(hint string) string
 	ExportName(name string) string
 
 	// NewFileEmitter returns a per-file emitter that owns header, imports,

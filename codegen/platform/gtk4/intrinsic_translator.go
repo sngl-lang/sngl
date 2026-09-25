@@ -23,7 +23,7 @@ type emitShared struct {
 	errs       []error
 	seen       map[string]bool
 
-	// The canvas metadata passCanvas flattened out of the program, which every
+	// The canvas metadata passDeclarative flattened out of the program, which every
 	// scope in the file reads: a `canvas` tag has no GIR widget behind it, so a
 	// translator without these maps reports it as a component gtk4 does not
 	// implement and stops the build. It rides on the shared struct rather than
@@ -234,18 +234,12 @@ func (t *gtk4Translator) collectFromStmt(s ir.Stmt) {
 		for _, c := range n.Else {
 			t.collectFromStmt(c)
 		}
-	case *ir.ErrorBoundary:
-		for _, c := range n.Children {
-			t.collectFromStmt(c)
-		}
 	case *ir.NodeInst:
 		for _, c := range n.Children {
 			t.collectFromStmt(c)
 		}
 	case *ir.SlotInst, *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
-	case *ir.ContextProvider:
-		panic(fmt.Sprintf("gtk4.collectFromStmt: ContextProvider should be lowered: %#v", n))
 	default:
 		panic(fmt.Sprintf("gtk4.collectFromStmt: unhandled ir.Stmt %T", n))
 	}
@@ -311,11 +305,6 @@ func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 // Model.
 func (t *gtk4Translator) fieldRef(name string) ir.Expr {
 	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
-}
-
-// recvIdent is that receiver as a call target.
-func (t *gtk4Translator) recvIdent() ir.Expr {
-	return &ir.Ident{Name: t.gc.RecvName()}
 }
 
 var _ codegen.IntrinsicTranslator = (*gtk4Translator)(nil)

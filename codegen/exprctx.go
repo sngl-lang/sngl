@@ -288,14 +288,6 @@ func (ctx *ExprCtx) WithRenamedLocal(name, as string) *ExprCtx {
 	return c
 }
 
-// WithEvent returns a clone bound to a handler's event parameter.
-func (ctx *ExprCtx) WithEvent(eventVar string, param ir.Symbol) *ExprCtx {
-	c := ctx.Clone()
-	c.EventVar = eventVar
-	c.EventParam = param
-	return c
-}
-
 // IsComputed reports whether a function is a computed field
 // (zero-param, expression body, non-test). A leading synthetic `this`
 // parameter (from a desugared nested method on a component/struct/enum)

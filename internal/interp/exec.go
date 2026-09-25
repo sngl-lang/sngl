@@ -196,12 +196,8 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return nil
 	case *ir.ErrorBoundary:
 		return nil
-	case *ir.SlotInst:
-		return nil
 	case *ir.ContextProvider:
 		panic(fmt.Sprintf("testrunner.Exec: ContextProvider should be lowered before exec: %#v", n))
-	case *ir.CanvasRedrawStmt:
-		return nil
 	default:
 		panic(fmt.Sprintf("testrunner.Exec: unhandled ir.Stmt %T", s))
 	}

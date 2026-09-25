@@ -174,9 +174,8 @@ func girRegistry(opt string) (reg *gir.TypeRegistry, minimal bool, err error) {
 	return reg, err == nil, err
 }
 
-// usingMinimalGIR reports whether the registry is the bundled subset. A
-// diagnostic about a widget that is not declared says so, because the fix is to
-// install GTK rather than to correct the name.
+// usingMinimalGIR reports whether the registry is the bundled subset, which
+// is what a test naming host-only vocabulary skips on.
 func (g *Generator) usingMinimalGIR() bool {
 	_, _ = g.gir()
 	return g.minimal

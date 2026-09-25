@@ -380,10 +380,5 @@ func (s *stripper) stripExpr(e Expr) {
 		e.AST = nil
 		e.Type = nil
 		s.stripFunc(e.Func)
-	case *Closure:
-		e.AST = nil
-		e.Type = nil
-		s.stripExpr(e.State)
-		s.stripFunc(e.Func)
 	}
 }

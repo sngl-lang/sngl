@@ -2,7 +2,6 @@ package gtk4
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -107,8 +106,6 @@ func collectMarkup(pkg *ir.Package) *markupTrees {
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.ErrorBoundary:
-				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
 			}
@@ -484,13 +481,8 @@ func literalNumberOf(e ir.Expr) (float64, bool) {
 // shapes reach here: the member after the optimizer folded it and the string
 // before, since a caller may generate from unoptimized IR.
 func enumOrStringOf(e ir.Expr) string {
-	switch v := e.(type) {
-	case *ir.Ident:
-		if v.Member != "" {
-			return v.Member
-		}
-	case *ir.Select:
-		return v.Field
+	if v, ok := e.(*ir.Ident); ok && v.Member != "" {
+		return v.Member
 	}
 	s, _ := codegen.IRLiteralString(e)
 	return s
@@ -537,15 +529,4 @@ func rtStrCall(name string, args ...ir.Expr) *ir.Call {
 	call := rtCall(name, args...)
 	call.Type = ir.TypString
 	return call
-}
-
-// sortedFlows is the flows a pre-pass found, in a stable order. Only the tests
-// read it; the emission is driven by the walk.
-func (mt *markupTrees) sortedFlows() []string {
-	out := make([]string, 0, len(mt.flows))
-	for id := range mt.flows {
-		out = append(out, id)
-	}
-	sort.Strings(out)
-	return out
 }
