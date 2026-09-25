@@ -1791,7 +1791,9 @@ the slot -- wrapped in a one-pass loop over a const, which re-renders its body
 on any state it reads -- and the `if` inside is an ordinary one: fyne builds
 the flow around it, gtk4 guards the runs in its markup with `gtk4rt.When` and
 refuses a `for` there, a label's markup being one expression
-(`testdata/markup_reactive_span.txtar`).
+(`testdata/markup_reactive_span.txtar`). Only the flow's own content is asked:
+an `if` holding a whole paragraph is its container's ordinary slot
+(`testdata/markup_flow_under_reactive_if.txtar`).
 
 `markup.SpanStyle` is its own struct and not `ui.Style` for two reasons. A run
 has no box, so most of `ui.Style` would type-check on a span and do nothing
