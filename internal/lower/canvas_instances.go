@@ -41,20 +41,7 @@ func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
 	inst := &ir.NodeInst{AST: n.AST, Component: comp}
 	l := newLift(comp, inst)
 	liftNodeHandlers(n, l, nil)
-	local := declaredWithin([]ir.Stmt{n})
-	_ = ir.Walk(n, func(node ir.Node) error {
-		if host, ok := node.(*ir.NodeInst); ok {
-			for _, h := range host.Handlers {
-				if h.Func != nil {
-					for _, p := range h.Func.Params {
-						local[p] = true
-					}
-				}
-			}
-		}
-		return nil
-	})
-	st.liftValues(n, l, local)
+	st.liftValues(n, l, handlerParams(n, declaredWithin([]ir.Stmt{n})))
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
 	return inst

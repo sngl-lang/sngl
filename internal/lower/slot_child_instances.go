@@ -159,7 +159,7 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 	// subtree and the free-value scan should not then see what it reads.
 	l := newLift(comp, inst)
 	st.liftHandlers(n, l, nil)
-	st.liftValues(n, l, nil)
+	st.liftValues(n, l, handlerParams(n, map[ir.Symbol]bool{}))
 
 	comp.Body = []ir.Stmt{n}
 	st.pkg.Components = append(st.pkg.Components, comp)
@@ -181,11 +181,35 @@ func (st *slotChildSynth) synthesize(n *ir.NodeInst) *ir.NodeInst {
 // body reads.
 func (st *slotChildSynth) liftHandlers(n any, l *lift, bound []*ir.Param) {
 	_ = ir.Walk(n, func(node ir.Node) error {
-		if host, ok := node.(*ir.NodeInst); ok {
+		if host, ok := node.(*ir.NodeInst); ok && !isDrawShape(host) {
 			liftNodeHandlers(host, l, bound)
 		}
 		return nil
 	})
+}
+
+// isDrawShape reports whether n is a shape, whose handlers are its canvas's
+// drawing rather than anything the program subscribes to.
+func isDrawShape(n *ir.NodeInst) bool {
+	return n.Component != nil && ir.IsDrawShapeTree(n.Component.Tree)
+}
+
+// handlerParams is the parameters of every handler under n, which no lifting
+// may make a prop of: nothing outside the handler binds them.
+func handlerParams(n ir.Node, into map[ir.Symbol]bool) map[ir.Symbol]bool {
+	_ = ir.Walk(n, func(node ir.Node) error {
+		if host, ok := node.(*ir.NodeInst); ok {
+			for _, h := range host.Handlers {
+				if h.Func != nil {
+					for _, p := range h.Func.Params {
+						into[p] = true
+					}
+				}
+			}
+		}
+		return nil
+	})
+	return into
 }
 
 // liftNodeHandlers is liftHandlers for host's own handlers alone.
