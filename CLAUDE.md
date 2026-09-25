@@ -905,6 +905,27 @@ breaking change to every caller. Note that `FuncTypeParamList` has no `@` form,
 so a slot's contract cannot mention events — true today as a consequence of the
 reuse rather than as a decision anyone made.
 
+**An insertion binds its arguments the way a call does**, through `bindArgs`
+against the slot's `Params`: positionally, by name where the parameter has
+one, and a spread by its fields.
+
+**`...x` in any argument list is `x`'s fields written as named arguments**
+(Jonathan's call), so one rule covers a call, a component's props, a slot
+insertion and an emit. `expandSpread` (`internal/checker/spread.go`) is that
+rule, and each list binds its fields by name: one naming no parameter is left
+out, a spread none of whose fields names one is an error, and a field
+naming one already given is "already provided". Two consequences:
+
+- **A list whose parameters carry no name takes no spread.**
+  `cell component(Row)` and an event's payload are both one unnamed
+  parameter, so `cell(...r)` and `fired(...ev)` name nothing; `cell(r)` and
+  `fired(ev)` are the spellings. Before, both kept the spread whole, and an
+  `ir.Spread` reached `SlotInst.Args` and `Emit.Args`, where Go emitted the
+  bare struct and Kotlin `*r.toTypedArray()`.
+- **An `ir.Spread` is only ever a list-literal element.** A spread reaching
+  `checkExpr` stands where one value is taken (a context's value, a
+  conversion) and is refused there; `checkListSpread` is the one constructor.
+
 `...component` is the **rest slot**: the one a caller fills with the children
 written bare. Its name is the author's (`content`, `shapes`, `panes`,
 `children` where nothing better is true), and it is inserted by that name like
