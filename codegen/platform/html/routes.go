@@ -442,8 +442,6 @@ func walkInstances(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Imperative stmts contain no NodeInst children.
-		case *ir.ContextProvider:
-			walkInstances(n.Children, fn)
 		default:
 			panic(fmt.Sprintf("html.walkInstances: unhandled ir.Stmt %T", n))
 		}

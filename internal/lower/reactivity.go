@@ -746,8 +746,6 @@ func slotBodyExprs(stmts []ir.Stmt, addDep func(ir.Expr)) {
 				walk(n.Children)
 			case *ir.ErrorBoundary:
 				walk(n.Children)
-			case *ir.ContextProvider:
-				walk(n.Children)
 			default:
 				// Imperative/leaf stmts carry no rendered props.
 			}

@@ -1168,8 +1168,6 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 
 // --- helpers ---
 
-func irVarInitKt(v *ir.Var) string { return irBindInitKt(v.Type, v.Init) }
-
 func irBindInitKt(typ *ir.Type, init ir.Expr) string {
 	if init == nil {
 		return ktZeroValue(typ)

@@ -3,7 +3,6 @@ package interp
 import (
 	"fmt"
 	"maps"
-	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -1584,9 +1583,8 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 		return env.evalTypeMethodCall(call)
 	}
 
-	// Plain function call.
 	if call.Func != nil {
-		return env.evalPlainFunc(call)
+		return env.EvalUserFuncCallArgs(call.Func, call.Args)
 	}
 
 	// Callee expression (func-typed var).
@@ -1618,49 +1616,6 @@ func (env *Env) evalCall(call *ir.Call) (any, error) {
 		}
 	}
 	return nil, fmt.Errorf("cannot call unresolved expression")
-}
-
-func (env *Env) evalPlainFunc(call *ir.Call) (any, error) {
-	name := call.Func.Name
-	switch name {
-	case "string":
-		if len(call.Args) == 1 {
-			v, err := env.Eval(call.Args[0].Value)
-			if err != nil {
-				return nil, err
-			}
-			return fmt.Sprintf("%v", v), nil
-		}
-	case "int":
-		if len(call.Args) == 1 {
-			v, err := env.Eval(call.Args[0].Value)
-			if err != nil {
-				return nil, err
-			}
-			return ToInt(v), nil
-		}
-	case "float":
-		if len(call.Args) == 1 {
-			v, err := env.Eval(call.Args[0].Value)
-			if err != nil {
-				return nil, err
-			}
-			return toFloat(v), nil
-		}
-	case "regex":
-		if len(call.Args) == 1 {
-			v, err := env.Eval(call.Args[0].Value)
-			if err != nil {
-				return nil, err
-			}
-			re, err := regexp.Compile(fmt.Sprintf("%v", v))
-			if err != nil {
-				return nil, fmt.Errorf("invalid regex pattern: %v", err)
-			}
-			return re, nil
-		}
-	}
-	return env.EvalUserFuncCallArgs(call.Func, call.Args)
 }
 
 func (env *Env) evalTypeMethodCall(call *ir.Call) (any, error) {
@@ -2703,8 +2658,6 @@ func runtimeTypeName(v any) string {
 		// Not "map": the name is looked up as a declared type, and the
 		// built-in map declares methods with no body to run.
 		return "struct"
-	case *regexp.Regexp:
-		return "regex"
 	default:
 		return "dyn"
 	}

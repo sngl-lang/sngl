@@ -154,17 +154,6 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 	if main := ctx.RootDecl(); main != nil {
 		add(main.Funcs)
 	}
-	// A window owns funcs the way a component does, and they are all
-	// synthesized: passCanvas puts a canvas draw func for a canvas in a window
-	// body here, and passFocusOrder the window's __focusNext/__focusPrev. A
-	// caller that missed them emitted calls to methods it never declared.
-	//
-	// Windows() rather than Pkg.Windows: a `window` written inside a component
-	// is an ir.Window statement in that component's body and never reaches
-	// Pkg.Windows, so a canvas under one had its draw func emitted nowhere.
-	for _, w := range ctx.Windows() {
-		add(w.Funcs)
-	}
 	return out
 }
 
@@ -212,8 +201,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 		case *ir.SlotInst:
 			walkVisual(n.Children, fn, depth)
 		case *ir.ErrorBoundary:
-			walkVisual(n.Children, fn, depth)
-		case *ir.ContextProvider:
 			walkVisual(n.Children, fn, depth)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:

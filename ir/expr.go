@@ -349,8 +349,6 @@ func IsConst(e Expr) bool {
 		return true
 	case *Spread:
 		return IsConst(x.Operand)
-	case *Closure:
-		return false
 	}
 	return false
 }

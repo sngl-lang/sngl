@@ -1242,8 +1242,6 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
 			// Imperative stmts — no nested visual children to walk.
-		case *ir.ContextProvider:
-			panic(fmt.Sprintf("bubbletea: ContextProvider should be lowered before handler walk: %#v", n))
 		default:
 			panic(fmt.Sprintf("bubbletea.emitIRButtonHandlersWalk: unhandled ir.Stmt %T", n))
 		}
@@ -1532,10 +1530,6 @@ func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo
 			}
 		}
 	}
-}
-
-func irVarInit(v *ir.Var, gc *golang.GoIRContext) string {
-	return golang.LowerVarInit(v, gc)
 }
 
 // widgetsHaveResize reports whether any widget declares a resize template, which

@@ -244,26 +244,6 @@ func optionDocs(decl *ast.ComponentDecl) []OptionDoc {
 	return out
 }
 
-// Prefers a run of comment lines immediately above the field; falls back to an
-// inline comment on the same line.
-func fieldDocString(line int, commentByLine map[int]string) string {
-	var preceding []string
-	for l := line - 1; l > 0; l-- {
-		c, ok := commentByLine[l]
-		if !ok {
-			break
-		}
-		preceding = append([]string{c}, preceding...)
-	}
-	if len(preceding) > 0 {
-		return joinDocLines(preceding)
-	}
-	if c, ok := commentByLine[line]; ok {
-		return c
-	}
-	return ""
-}
-
 func joinDocLines(lines []string) string {
 	var out strings.Builder
 	for i, l := range lines {

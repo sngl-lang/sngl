@@ -42,18 +42,6 @@ const (
 // *snglcanvas.Context.
 func canvasCtxType() *ir.Type { return ir.NativeGoPointerOf(snglCanvasAlias + ".Context") }
 
-// canvasDims returns the canvas pixel dimensions, defaulting to the HTML canvas
-// 300x150 when unset.
-func canvasDims(w, h int) (int, int) {
-	if w <= 0 {
-		w = 300
-	}
-	if h <= 0 {
-		h = 150
-	}
-	return w, h
-}
-
 // terminalCells maps canvas pixel dimensions to a terminal cell grid. The
 // half-block renderer packs two pixel rows per character cell, so rows is half
 // the pixel height (rounded up). Both are clamped to a sane terminal size.
@@ -73,37 +61,6 @@ func terminalCells(w, h int) (cols, rows int) {
 		rows = 1
 	}
 	return cols, rows
-}
-
-// nodeCanvasDims reads the integer pixel width/height props off a canvas
-// NodeInst, falling back to canvasDims defaults.
-func nodeCanvasDims(n *ir.NodeInst) (int, int) {
-	return canvasDims(intProp(n, "width"), intProp(n, "height"))
-}
-
-// intProp reads a NodeInst prop as an int pixel value, stripping any unit
-// suffix (e.g. "40px"). Mirrors lower.nodeIntProp so the un-flattened canvas
-// NodeInst yields the same dimensions the LocalVar path would. Returns 0 when
-// absent or non-literal.
-func intProp(n *ir.NodeInst, name string) int {
-	for _, p := range n.Props {
-		if p.Name != name {
-			continue
-		}
-		lit, ok := p.Value.(*ir.Literal)
-		if !ok {
-			return 0
-		}
-		raw := lit.Value
-		if v, err := strconv.Atoi(raw); err == nil {
-			return v
-		}
-		if f, err := strconv.ParseFloat(raw, 64); err == nil {
-			return int(f)
-		}
-		return 0
-	}
-	return 0
 }
 
 // canvasStdlibDecls returns the Go decls for the canvas stdlib structs

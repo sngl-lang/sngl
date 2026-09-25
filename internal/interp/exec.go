@@ -196,8 +196,6 @@ func (env *Env) Exec(s ir.Stmt) error {
 		return nil
 	case *ir.ErrorBoundary:
 		return nil
-	case *ir.SlotInst:
-		return nil
 	case *ir.ContextProvider:
 		restore, err := env.pushContext(n.Ref, n.Value)
 		defer restore()
@@ -209,8 +207,6 @@ func (env *Env) Exec(s ir.Stmt) error {
 				return err
 			}
 		}
-		return nil
-	case *ir.CanvasRedrawStmt:
 		return nil
 	default:
 		panic(fmt.Sprintf("testrunner.Exec: unhandled ir.Stmt %T", s))

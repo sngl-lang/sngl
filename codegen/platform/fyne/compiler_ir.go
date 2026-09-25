@@ -1073,8 +1073,6 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 			case *ir.For:
 				walk(n.Body)
 				walk(n.Else)
-			case *ir.ErrorBoundary:
-				walk(n.Children)
 			case *ir.NodeInst:
 				walk(n.Children)
 			case *ir.CallStmt:
@@ -1084,8 +1082,6 @@ func collectNodes(pkg *ir.Package, funcs []*ir.Func) (map[string]*fyneSpec, erro
 			case *ir.SlotInst, *ir.Assign, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 				*ir.Break, *ir.Continue:
 				// No CreateNode call to harvest.
-			case *ir.ContextProvider:
-				panic(fmt.Sprintf("fyne.collectNodes: ContextProvider should be lowered: %#v", n))
 			default:
 				panic(fmt.Sprintf("fyne.collectNodes: unhandled ir.Stmt %T", n))
 			}

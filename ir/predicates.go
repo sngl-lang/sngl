@@ -142,8 +142,9 @@ func StmtPos(s Stmt) ast.Pos {
 	return ast.Pos{}
 }
 
-// RebuildComparable reports whether two values of t can be asked "is this the
-// same one" and get the same answer on every target.
+// RebuildIncomparable is "" when two values of t can be asked "is this the
+// same one" and get the same answer on every target, and otherwise the type
+// that is not, with the field path that reaches it in parentheses.
 //
 // That is the question a keyed lifetime asks of its `on`, and a built instance
 // of a #[construct] prop. It is not isComparable, which asks what may be a map
@@ -157,10 +158,6 @@ func StmtPos(s Stmt) ast.Pos {
 // so a struct whose fields all compare alike does too, and one with no fields
 // is always equal to another -- which is exactly what a bracket with no `on`
 // wants of `effect<T = struct {}>`.
-func RebuildComparable(t *Type) bool { return RebuildIncomparable(t) == "" }
-
-// RebuildIncomparable is "" when t is RebuildComparable, and otherwise the type
-// that is not, with the field path that reaches it in parentheses.
 //
 // A phrase rather than a bool because a struct's answer is about something the
 // type's name does not show. "struct changed is not comparable" sends a reader

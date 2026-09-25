@@ -251,11 +251,6 @@ func WindowSetChild(win, child Handle) {
 	C.gtk_window_set_child((*C.GtkWindow)(p(win)), widget(child))
 }
 
-// WindowPresent presents (shows) a window.
-func WindowPresent(win Handle) {
-	C.gtk_window_present((*C.GtkWindow)(p(win)))
-}
-
 // ---- Box ----
 
 func BoxNew(o Orientation, spacing int) Handle {

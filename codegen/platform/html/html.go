@@ -571,8 +571,6 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		// are its own clones rather than anything the package holds.
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
 		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
-		gen.irWindowFuncs = win.Funcs
-		gen.irWindowVars = win.Vars
 		gen.irWindow = win.Window
 		gen.ctx = gen.ctx.ForWindow(win.Window)
 		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
@@ -710,12 +708,6 @@ type htmlGen struct {
 
 	irBodyStmts []ir.Stmt
 
-	// irWindowVars is the window's own state, which is the page's: a window is
-	// a state owner like the package and the root component (ir.Owners).
-	irWindowVars []*ir.Var
-	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
-	// IR node rather than on the package or main component.
-	irWindowFuncs []*ir.Func
 	// pageSlots are the render slots whose anchor this page wrote. The slot
 	// funcs are collected per owner, and a root component spliced into the
 	// package body owns every window's, so a page boots only its own.
@@ -823,7 +815,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	}
 
 	g.dt = shared.depTracker(pkg)
-	// The canvases passCanvas flattened into a lowered body. A canvas the page
+	// The canvases passDeclarative flattened into a lowered body. A canvas the page
 	// renders as markup is an ir.NodeInst and is not among these; what is, is
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
@@ -982,8 +974,6 @@ func (g *htmlGen) prewalkNodes() {
 		case *ir.SlotInst:
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
-			visitStmts(n.Children)
-		case *ir.ContextProvider:
 			visitStmts(n.Children)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
@@ -1384,9 +1374,6 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		for _, child := range n.Body {
 			g.renderIRStmt(b, child, depth)
 		}
-	case *ir.ContextProvider:
-		// passNoContext eliminates these before codegen.
-		panic(fmt.Sprintf("html.renderIRStmt: unexpected ContextProvider: %#v", n))
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 	default:
@@ -1531,13 +1518,8 @@ func (g *htmlGen) stateVars() []codegen.OwnedVar {
 }
 
 // synthesizedVars returns the Synthesized vars of the package, the root
-// component and the window, deduplicated by name: the context lowering pass
+// component, deduplicated by name: the context lowering pass
 // injects a var like __ctx_locale into both pkg.Vars and component.Vars.
-//
-// A window owns state the way the other two do (ir.Owners), and an effect
-// placed in a window body puts its bookkeeping there -- so left out, the
-// page read `__effectN_live` before anything declared it and threw at
-// startup. A harness convention hid this: `component main` was the owner.
 func (g *htmlGen) synthesizedVars() []*ir.Var {
 	var out []*ir.Var
 	seen := make(map[string]bool)
@@ -1556,26 +1538,20 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 	if main := g.rootComp; main != nil {
 		add(main.Vars)
 	}
-	add(g.irWindowVars)
 	return out
 }
 
-// synthesizedFuncs returns the Synthesized funcs of the package, main
-// component and current window.
+// synthesizedFuncs returns the Synthesized funcs of the package and of every
+// component the page renders.
 //
-// Deduped by pointer, as pkgFuncs is and for the same reason: one func reaches
-// this from more than one list. A root window synthesized around main carries
-// main's funcs, and main is still on pkg.Components -- so a func on it would
-// otherwise be declared twice in the page.
+// Deduped by pointer, as pkgFuncs is and for the same reason: a component's
+// nested method is on pkg.Funcs and on the component's Funcs both. Both
+// consumers of this list matter -- one writes the definition, the other the
+// anchor lookup and the bootstrap call -- so a duplicate was a __renderSlotN
+// defined twice and run twice at startup, the second run removing the nodes
+// the first had just built.
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
-	// The three sources overlap: a page whose root is a component and not an
-	// explicit `window` is served here as a window whose Funcs are that
-	// component's, so every synthesized func of the root arrived twice. Both
-	// loops below consume this list -- one writes the definition, the other
-	// the anchor lookup and the bootstrap call -- so a duplicate was a
-	// __renderSlotN defined twice and run twice at startup, the second run
-	// removing the nodes the first had just built.
 	seen := map[*ir.Func]bool{}
 	add := func(f *ir.Func) {
 		if f == nil || !f.Synthesized || seen[f] {
@@ -1597,9 +1573,6 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 				add(f)
 			}
 		}
-	}
-	for _, f := range g.irWindowFuncs {
-		add(f)
 	}
 	return out
 }
@@ -1674,16 +1647,6 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 		for _, f := range main.Funcs {
 			add(f)
 		}
-	}
-	// A window owns funcs the way a component does (ir.Owners), and its state
-	// is the page's state -- so its funcs are the page's functions.
-	// synthesizedFuncs already reads this list and takes the synthesized half;
-	// left out here, the other half was declared nowhere. An effect placed in
-	// a window body is where that shows: __effectN_mount was called by the
-	// settle chain and never defined, so the page threw at startup and no
-	// bracket ever ran.
-	for _, f := range g.irWindowFuncs {
-		add(f)
 	}
 	return out
 }
@@ -2921,7 +2884,7 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 // translateBlockWithJC is translateBlockJC over a caller-supplied scope, for a
 // body emitted inside a binding the block itself does not declare.
 func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stmt) []string {
-	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslator(jc)
 	// A CanvasRedrawStmt needs a NodeInst→ID lookup only htmlGen has, so it is
 	// handled here rather than in the translator.
 	var regular []ir.Stmt
@@ -3055,10 +3018,6 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 			g.collectLoweredRefs(c)
 		}
 	case *ir.ErrorBoundary:
-		for _, c := range n.Children {
-			g.collectLoweredRefs(c)
-		}
-	case *ir.ContextProvider:
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
 		}
@@ -3204,7 +3163,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)
 	}
-	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslator(jc)
 	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	for _, s := range lowered {
 		g.collectLoweredRefs(s)

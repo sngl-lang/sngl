@@ -592,12 +592,6 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Func != nil {
 		fname := n.Func.Name
 		args := jc.evalCallArgs(n.Args)
-		// regex(x) is a genuine builtin (RegExp constructor). The primitive
-		// casts string/int/float are materialized as ir.Conversion by the
-		// checker and handled in evalConversion, so they never arrive here.
-		if fname == "regex" && len(args) == 1 {
-			return "new RegExp(" + args[0] + ")"
-		}
 		codegen.RequireIntrinsicFallback(langJS, n.Func)
 		call := fname + "(" + strings.Join(args, ", ") + ")"
 		if n.Func.IsAsync {
@@ -1001,15 +995,6 @@ func (jc *JsIRContext) WithRenamedLocal(name, as string) *JsIRContext {
 	return &JsIRContext{
 		Ctx:      ctx,
 		EventVar: jc.EventVar,
-	}
-}
-
-// WithEvent returns a clone with EventVar set.
-func (jc *JsIRContext) WithEvent(eventVar string, param ir.Symbol) *JsIRContext {
-	return &JsIRContext{
-		Ctx:        jc.Ctx.Clone(),
-		EventVar:   eventVar,
-		EventParam: param,
 	}
 }
 
