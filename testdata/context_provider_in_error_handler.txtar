@@ -9,10 +9,9 @@ to a func that does the reading was not caught there, reached codegen, and
 panicked in irwalk.EvalStmt on all four targets below.
 
 Each handler assigns the provided value, 5 and 7, where the enclosing scope
-provides 2 and the default is 1. Only a direct read is pinned: a read through
-a called user func still gets the enclosing value or the default under any
-provider, in a handler or a view body alike, which is a separate unfixed
-issue. A call's @error is covered by internal/lower's
+provides 2 and the default is 1. Only a direct read is pinned here; a read
+through a called function is testdata/context_read_in_user_func.txtar. A
+call's @error is covered by internal/lower's
 TestLowerProviders_InHandlers rather than here: no target emits that handler
 at all yet, so its golden would show nothing of the provider.
 -- handler.sngl --

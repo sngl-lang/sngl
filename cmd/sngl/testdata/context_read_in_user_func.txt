@@ -1,0 +1,164 @@
+# A function reading a context reads the provider its caller runs under, on
+# the interpreter as on the compiled targets (testdata/context_read_in_user_func.txtar).
+#
+# The interpreter already answered a call made while mounting, since a
+# provider pushes onto the scope for the length of its subtree. What it lost
+# was everything that runs after the mount: a handler or an effect written
+# under `depth(5)` runs once every provider has unwound, and read the default,
+# and a provider written *inside* a handler panicked the statement executor,
+# which had assumed the lowering would have removed it. Both now run under the
+# values they were mounted beneath, and a provider in a handler pushes for the
+# statements under it. A named function taken as a value was an error
+# ("requires arguments"); it is a value now, bound where it is taken as the
+# compiled targets bind it.
+#
+# setctx.sngl is `t.setContext` as a provider over the rest of a test body:
+# the compiled targets pass the value to the calls after it. It used to be
+# folded away as a context nothing provides.
+#
+# The html runs are the same programs in a real Chromium.
+
+sngl test --platform none funcs.sngl
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform none setctx.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go setctx.sngl
+stdout 'ok   1 tests, 0 failures'
+
+[!chromium] skip 'the html half needs a real Chromium'
+
+sngl test --platform html funcs.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform html setctx.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- funcs.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+context #depth(1)
+
+func show() => "d{depth}"
+
+func label(x int) => "{x}:{depth}"
+
+func relay() string {
+    var s = show()
+    return "r" + s
+}
+
+func down(n int) string {
+    if n <= 0 {
+        return "{depth}"
+    }
+    return down(n - 1)
+}
+
+component main node {
+    var plain = ""
+    var under = ""
+    var inner = ""
+    var chained = ""
+    var recursed = ""
+    var method = ""
+    var lambda = ""
+    var mapped = ""
+    var taken = ""
+    var clicked = ""
+    var direct = ""
+    var provided = ""
+    func twice() => "{depth * 2}"
+    effect(@mount {
+        plain = show()
+        var f = label
+        depth(7) {
+            taken = f(2)
+        }
+    })
+    depth(5) {
+        effect(@mount {
+            under = show()
+            chained = relay()
+            recursed = down(3)
+            method = twice()
+            lambda = [0].map(func(x int) => show())[0]
+            mapped = [4].map(label)[0]
+        })
+        depth(9) {
+            effect(@mount {
+                inner = show()
+            })
+        }
+        button #tap(text="tap", @click {
+            clicked = show()
+            direct = "{depth}"
+        })
+    }
+    button #wrap(text="wrap", @click {
+        depth(7) {
+            provided = relay()
+        }
+    })
+    text(value="{clicked} {provided}")
+}
+
+func testDefaultWhereNothingProvides(t Test, c main) {
+    t.assert(c.plain == "d1")
+    t.assert(show() == "d1")
+}
+
+func testCallsReadTheirCallersProvider(t Test, c main) {
+    t.assert(c.under == "d5")
+    t.assert(c.inner == "d9")
+    t.assert(c.chained == "rd5")
+    t.assert(c.recursed == "5")
+    t.assert(c.method == "10")
+    t.assert(c.lambda == "d5")
+    t.assert(c.mapped == "4:5")
+}
+
+func testAFunctionValueIsBoundWhereItIsTaken(t Test, c main) {
+    t.assert(c.taken == "2:1")
+}
+
+func testAHandlerReadsTheProviderItIsWrittenUnder(t Test, c main) {
+    c.tap.click()
+    t.assert(c.clicked == "d5")
+    t.assert(c.direct == "5")
+}
+
+func testAProviderInAHandler(t Test, c main) {
+    c.wrap.click()
+    t.assert(c.provided == "rd7")
+}
+
+window {
+    main
+}
+-- setctx.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+context #theme("light")
+
+func show() => "t:{theme}"
+
+component main node {
+    func probe() => show()
+    text(value=show())
+}
+
+func testSetContextProvidesForWhatFollows(t Test, c main) {
+    t.assert(c.probe() == "t:light")
+    t.setContext(theme, "dark")
+    t.assert(c.probe() == "t:dark")
+    t.assert(show() == "t:dark")
+}
+
+window {
+    main
+}

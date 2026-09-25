@@ -101,26 +101,11 @@ func lowerTestStmt(s ir.Stmt, surf TestSurface, compRecvs map[string]bool, ctxCo
 // The generated statement always compiles: a leading @Suppress annotation
 // prevents unused-variable warnings.
 func lowerTestSetContext(c *ir.Call, ctxCounts map[string]int) ([]string, bool) {
-	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+	ctxName, val, ok := codegen.TestSetContext(c)
+	if !ok {
 		return nil, false
 	}
-	// Args: [0] = t receiver (implicit), [1] = context name (*ir.ContextRead),
-	// [2] = value — locate the ContextRead and the value among the args.
-	var ctxName string
-	var valExpr string
-	for _, a := range c.Args {
-		if cr, ok := a.Value.(*ir.ContextRead); ok && ctxName == "" {
-			ctxName = cr.Ref.Name
-		} else if ctxName != "" && valExpr == "" {
-			valExpr = lowerTestExpr(a.Value, TestSurface{}, nil)
-		}
-	}
-	if ctxName == "" {
-		return nil, false
-	}
-	if valExpr == "" {
-		valExpr = `""`
-	}
+	valExpr := lowerTestExpr(val, TestSurface{}, nil)
 	varName := "__test_ctx_" + ctxName
 	if ctxCounts != nil {
 		if n := ctxCounts[ctxName]; n > 0 {
@@ -177,6 +162,16 @@ func lowerEventTrigger(call *ir.CallStmt) (string, bool) {
 	}
 	return fmt.Sprintf("%s.%s; composeTestRule.waitForIdle()", finder, action), true
 }
+
+// composeActionImports are what lowerEventTrigger's finder and actions name:
+// extension functions, so a test file that clicks does not compile without
+// them. Written only into a file that triggers an event, at the marker.
+const (
+	composeActionImports = "import androidx.compose.ui.test.onNodeWithTag\n" +
+		"import androidx.compose.ui.test.performClick\n" +
+		"import androidx.compose.ui.test.performTextReplacement\n"
+	composeActionMarker = "\x00composeActions\x00"
+)
 
 // composeAction maps a SNGL event name + invocation args to its
 // Compose-UI-test equivalent. Input/change events accept a single
@@ -390,6 +385,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		case "device":
 			b.WriteString("import androidx.activity.ComponentActivity\n")
 			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString(composeActionMarker)
 			b.WriteString("import androidx.test.ext.junit.runners.AndroidJUnit4\n")
 			b.WriteString("import org.junit.Assert.assertTrue\n")
 			b.WriteString("import org.junit.Rule\n")
@@ -401,6 +397,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		default: // robolectric
 			b.WriteString("import androidx.activity.ComponentActivity\n")
 			b.WriteString("import androidx.compose.ui.test.junit4.createAndroidComposeRule\n")
+			b.WriteString(composeActionMarker)
 			b.WriteString("import org.junit.Assert.assertTrue\n")
 			b.WriteString("import org.junit.Rule\n")
 			b.WriteString("import org.junit.Test\n")
@@ -416,6 +413,7 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		}
 	case TestEmitAgent:
 		b.WriteString("import androidx.compose.ui.test.junit4.ComposeContentTestRule\n")
+		b.WriteString(composeActionMarker)
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.T\n")
 		b.WriteString("import us.duckfam.git.jonathan.sngl.testagent.Registry\n\n")
 		// Test bodies emitted below reference `composeTestRule` for
@@ -499,7 +497,12 @@ func LowerTestFile(pkg string, fns []*ir.Func, suffixes []string, surf TestSurfa
 		b.WriteString("}\n")
 	}
 
-	return b.String()
+	src := b.String()
+	imports := ""
+	if strings.Contains(src, ".onNodeWithTag(") {
+		imports = composeActionImports
+	}
+	return strings.Replace(src, composeActionMarker, imports, 1)
 }
 
 // compReceiverSet returns the names of fn's component-typed params. It is what

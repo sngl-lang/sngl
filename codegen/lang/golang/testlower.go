@@ -172,28 +172,11 @@ func lowerTestFor(s *ir.For, gc *GoIRContext) []string {
 // prevents "declared and not used" errors when the var is referenced nowhere
 // else.
 func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
-	if c.Func == nil || c.Func.Receiver != "Test" || c.Func.Name != "setContext" {
+	ctxName, val, ok := codegen.TestSetContext(c)
+	if !ok {
 		return nil, false
 	}
-	// Args: [0] = t receiver (implicit), [1] = context name (*ir.ContextRead),
-	// [2] = value — the checker emits three args total (receiver + 2 user args).
-	// Locate the ContextRead among the args: it is the first arg after the
-	// receiver that is an *ir.ContextRead.
-	var ctxName string
-	var valExpr string
-	for _, a := range c.Args {
-		if cr, ok := a.Value.(*ir.ContextRead); ok && ctxName == "" {
-			ctxName = cr.Ref.Name
-		} else if ctxName != "" && valExpr == "" {
-			valExpr = gc.EvalExpr(a.Value)
-		}
-	}
-	if ctxName == "" {
-		return nil, false
-	}
-	if valExpr == "" {
-		valExpr = `""`
-	}
+	valExpr := gc.EvalExpr(val)
 	// Direct field assignment: after NoContext, every component in
 	// Reach(ctx) has a synthesized __ctx_<name> Var on its Model. Tests
 	// reach state via the same-package field (newTestComponent returns
@@ -207,12 +190,17 @@ func lowerTestSetContext(c *ir.Call, gc *GoIRContext) ([]string, bool) {
 	for name := range gc.Ctx.RawFieldAccess {
 		receivers = append(receivers, name)
 	}
+	// A component whose body reads no context has no field for one: what its
+	// methods read, passContext passed them at each call after this one.
+	if !codegen.StateFieldNames(gc.Ctx.Pkg)[fieldName] {
+		receivers = nil
+	}
 	if len(receivers) == 0 {
 		// Fallback: no component-typed param. Record intent so the test still
 		// compiles; the override won't reach a Model field, but the value is
 		// referenced (via blank) to avoid unused-variable errors.
 		return []string{
-			fmt.Sprintf("// t.setContext(%q, ...): no component receiver in scope; override discarded.", ctxName),
+			fmt.Sprintf("// t.setContext(%q, ...): no Model field holds it; the calls after it are passed the value.", ctxName),
 			fmt.Sprintf("_ = %s", valExpr),
 		}, true
 	}

@@ -99,6 +99,13 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	if bodyUsesNativeCall(fn) {
 		return nil, false
 	}
+	// A context read answers whatever provider the call runs under, which the
+	// interpreter here cannot see -- it would answer the default. Once
+	// passContext has made the value a parameter, the call folds from its
+	// argument.
+	if readsContext(fn, map[*ir.Func]bool{}) {
+		return nil, false
+	}
 	if depth >= maxInterpDepth {
 		return nil, false
 	}
@@ -251,6 +258,29 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 		}
 	}
 	return hasNative
+}
+
+// readsContext reports whether fn's body, or any function it calls, reads a
+// context.
+func readsContext(fn *ir.Func, seen map[*ir.Func]bool) bool {
+	if fn == nil || seen[fn] {
+		return false
+	}
+	seen[fn] = true
+	found := false
+	_ = ir.Walk(fn.Block, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.ContextRead:
+			found = true
+		case *ir.Call:
+			found = readsContext(x.Func, seen)
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }
 
 // sortedMapKeys returns the keys of m sorted alphabetically.
