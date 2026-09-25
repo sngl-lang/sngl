@@ -64,9 +64,7 @@ func TestASlotReRendersInPlace(t *testing.T) {
 }
 `
 
-// A render slot re-renders where it was written. Each one removed its entries
-// and appended the new ones to its container, so A came back after B, the
-// loop's rows and every static sibling below them.
+// A render slot re-renders where it was written, not after its siblings.
 func TestASlotReRendersInPlaceRuns(t *testing.T) {
 	runEmitted(t, "fyne-slot-order-", []byte(generateFyneModelBuilt(t, slotOrderSrc)), slotOrderDriver)
 }

@@ -430,8 +430,7 @@ func (t *fyneTranslator) OnRemoveChild(ctx context.Context, parent, child ir.Exp
 }
 
 // slotParentParam is what a render slot's func calls the container it renders
-// into. Spelled `container`, it shadowed the fyne package of that name, so a
-// VBox built inside the slot called a method on its argument.
+// into; `container` would shadow the fyne package.
 const slotParentParam = "__parent"
 
 // qualifyParentExpr renames the slot-function parameter `parent` to

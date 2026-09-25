@@ -37,11 +37,8 @@ func TestAnInstanceHandleFieldIsTypedAsTheRecord(t *testing.T) {
 	buildGeneratedGo(t, "gtk4-handle-type-", model)
 }
 
-// TestAnUnrenderedRecursionIsNotEmitted is over
-// testdata/test_html_recursive_component.sngl, whose recursion the optimizer
-// unrolls: nothing the program renders instantiates `tree` afterwards. It was
-// emitted anyway, as a Model method whose handle was the widget it returned,
-// with `__nN__el` declared inside the `else` that bound it and read after it.
+// The optimizer unrolls test_html_recursive_component.sngl's recursion, so
+// nothing the program renders instantiates `tree`.
 func TestAnUnrenderedRecursionIsNotEmitted(t *testing.T) {
 	model := generateGTK4ModelBuilt(t, fixtureSource(t, "test_html_recursive_component.sngl"))
 	if strings.Contains(model, "renderTree") || strings.Contains(model, "TreeInstance") {

@@ -848,6 +848,11 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 
 	stmts := fn.Block
 	var prelude []ir.Stmt
+	nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
+	cType := tr.idCTypes[nodeID]
+	if cType == "" {
+		cType = sig.CType
+	}
 
 	// Strip the synthesized leading `var = e.<field>` two-way bind and re-emit
 	// as `m.<var> = <gettercall>`; the trampoline exposes no event param.
@@ -859,12 +864,6 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 				// The SNGL event param may be named anything, so key off the
 				// field: the bare-ident operand IS the event param, never `m`.
 				if op, _ := sel.Operand.(*ir.Ident); op != nil && op.Name != "m" && sel.Field == sig.Field {
-					// nodeID = handler-name minus the "_<event>_handler" suffix.
-					nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-					cType := tr.idCTypes[nodeID]
-					if cType == "" {
-						cType = sig.CType
-					}
 					getter := gtk4EventGetterExpr(cType, nodeID, wrapped)
 					if getter != nil {
 						prelude = []ir.Stmt{&ir.Assign{
@@ -880,18 +879,12 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	}
 
 	if sig.CType != "" {
-		nodeID := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-		cType := tr.idCTypes[nodeID]
-		if cType == "" {
-			cType = sig.CType
-		}
 		stmts = substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped))
 	}
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
 	// Drop self-setter splices: writing the entry's text from inside its own
 	// "changed" handler re-fires the signal and recurses.
-	selfNode := strings.TrimSuffix(fn.Name, "_"+fn.LoweredFromEvent+"_handler")
-	body = dropSelfSetterCalls(body, selfNode)
+	body = dropSelfSetterCalls(body, nodeID)
 	// A handler the GTK trampoline calls takes no args, and OnAttachHandler
 	// only connects a signal that answers to the event. An event no signal
 	// answers to is a component's own -- a func-typed prop its instance calls
@@ -899,7 +892,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 	// unconditionally left the payload ident undefined in the body that reads
 	// it: `func (m *Model) __n0_done_handler() { m.got = v }`.
 	params := fn.Params
-	if tr.signalFor(selfNode, fn.LoweredFromEvent) != "" {
+	if tr.signalFor(nodeID, fn.LoweredFromEvent) != "" {
 		params = nil
 	}
 	synthesized := &ir.Func{
