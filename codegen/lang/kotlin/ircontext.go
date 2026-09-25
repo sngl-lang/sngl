@@ -920,9 +920,14 @@ func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
 		return "{ }"
 	}
+	// Typed, because Kotlin infers a lambda's parameter types only from an
+	// expected type: `var f = { x -> … }` does not compile.
 	params := make([]string, len(n.Func.Params))
 	for i, p := range n.Func.Params {
 		params[i] = p.Name
+		if p.Type != nil && p.Type.Kind != ir.TypeDyn {
+			params[i] += ": " + IRTypeToKt(p.Type)
+		}
 	}
 	if len(n.Func.Block) == 1 {
 		if ret, ok := n.Func.Block[0].(*ir.Return); ok && ret.Value != nil {
