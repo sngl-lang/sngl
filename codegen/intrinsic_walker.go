@@ -208,6 +208,10 @@ func walkOne(ctx context.Context, s ir.Stmt, t IntrinsicTranslator) []ir.Stmt {
 		cp.Iter = iterExpr
 		cp.Body = body
 		return []ir.Stmt{&cp}
+	case *ir.ErrorBoundary:
+		// A raise reaches its handler through Call.ResolvedHandler, so once its
+		// children are flat statements the boundary itself holds nothing.
+		return WalkLowered(ctx, n.Children, t)
 	case *ir.If:
 		cp := *n
 		cp.Cond = t.OnCond(ctx, n.Cond)

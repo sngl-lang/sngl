@@ -1,0 +1,98 @@
+# A boundary html renders from code rather than markup: under a reactive `if`,
+# inside a slot a component inserts there, and in the body of a component
+# built at run time. Each reached codegen as an *ir.ErrorBoundary among the
+# flat statements of a render function and panicked irwalk, which has no arm
+# for one. A raise finds its handler through the call, so by then the boundary
+# is its children; each case here raises on mount and the handler records it.
+
+[!chromium] skip 'the rendered DOM needs a real Chromium'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=html app.sngl
+stdout '3 tests, 0 failures'
+grep '<span>inside slot</span>' app.sngl.snapshots/slot.html
+grep '<span>a card</span>' app.sngl.snapshots/instance.html
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component Panel(content ...component node) node {
+    vbox {
+        content
+    }
+}
+
+component underIf node {
+    var show = true
+    var caught = ""
+
+    vbox {
+        if show {
+            vbox {
+                boundary(@error(e) { caught = e.message }) {
+                    text(value="inside if")
+                    effect(@mount { error.raise("if", "") })
+                }
+            }
+        }
+    }
+}
+
+component inSlot node {
+    var show = true
+    var caught = ""
+
+    vbox {
+        if show {
+            Panel {
+                boundary(@error(e) { caught = e.message }) {
+                    text(value="inside slot")
+                    effect(@mount { error.raise("slot", "") })
+                }
+            }
+        }
+    }
+}
+
+component Card(label string) node {
+    var caught = ""
+
+    vbox {
+        boundary(@error(e) { caught = e.message }) {
+            text(value="{label} {caught}")
+            effect(@mount { error.raise("card", "") })
+        }
+    }
+}
+
+component inInstance node {
+    var items = ["a"]
+
+    vbox {
+        for var it = items {
+            Card(label=it)
+        }
+    }
+}
+
+func testUnderIf(t Test, c underIf) {
+    t.assert(c.caught == "if")
+}
+
+func testInSlot(t Test, c inSlot) {
+    t.assert(c.caught == "slot")
+    t.snapshot("slot")
+}
+
+func testInInstance(t Test, c inInstance) {
+    t.snapshot("instance")
+}
+
+window {
+    underIf
+    inSlot
+    inInstance
+}
