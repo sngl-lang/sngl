@@ -145,7 +145,12 @@ func emitComponentInstance(
 			fmt.Fprintf(b, "\t%s fyne.CanvasObject\n", codegen.SlotAnchorField(v.Name))
 		}
 	}
+	seenField := map[string]bool{}
 	for _, f := range fields {
+		if seenField[f.name] {
+			continue
+		}
+		seenField[f.name] = true
 		fmt.Fprintf(b, "\t%s %s\n", f.name, f.goType)
 		requireTypeImports(igc, f.goType)
 	}

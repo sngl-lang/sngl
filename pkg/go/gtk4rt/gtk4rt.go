@@ -287,6 +287,22 @@ func SlotAnchor(box, a Handle) Handle {
 	return Handle(unsafe.Pointer(w))
 }
 
+// SlotBox is the box a render slot in a single-child container renders into:
+// b, or a new one this package holds a reference on.
+func SlotBox(b Handle) Handle {
+	if b != nil {
+		return b
+	}
+	b = BoxNew(OrientationVertical, 6)
+	Retain(b)
+	return b
+}
+
+// ParentOf is w's parent widget, or nil.
+func ParentOf(w Handle) Handle {
+	return Handle(unsafe.Pointer(C.gtk_widget_get_parent(widget(w))))
+}
+
 // InsertBefore puts child into box immediately before anchor, or at the end
 // of box when box does not hold anchor.
 func InsertBefore(box, anchor, child Handle) {

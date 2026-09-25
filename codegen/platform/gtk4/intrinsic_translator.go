@@ -1228,11 +1228,53 @@ func (t *gtk4Translator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	case *ir.CallStmt:
+		if boxed, ok := t.boxedSlotRenderCall(n); ok {
+			return boxed
+		}
 		if local := localSlotRenderCall(n, t.isLocalRef); local != nil {
 			return []ir.Stmt{local}
 		}
 	}
 	return []ir.Stmt{stmt}
+}
+
+// boxedSlotRenderCall renders a slot whose container holds one child -- a
+// scrolled window -- into a box that is that child, since a slot renders into
+// a GtkBox and adds and removes any number of entries. A container holding
+// several children through a call of its own is refused rather than handed to
+// gtk_box_append.
+func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return nil, false
+	}
+	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
+	cType := t.idCTypes[bare]
+	if cType == "" || cType == "GtkBox" {
+		return nil, false
+	}
+	adder := t.childAdder(cType)
+	if !t.wrapped || !strings.HasSuffix(adder.Func, "_set_child") {
+		t.shared.fail(fmt.Errorf("gtk4: a reactive `if` or `for` directly inside a %s cannot be rendered: its slot renders into a GtkBox; wrap it in a vbox", cType))
+		return nil, false
+	}
+	boxName := bare + "_box"
+	t.fieldSink(boxName, "GtkBox")
+	box := t.fieldRef(boxName)
+	parent := t.qualifyNodeExpr(&ir.Ident{Name: bare, IsElementRef: true})
+	set, ok := rtChildAppendCall(adder, parent, box)
+	if !ok {
+		return nil, false
+	}
+	call := *cs.Call
+	call.Args = []ir.CallArg{{Value: box}}
+	return []ir.Stmt{
+		&ir.Assign{Target: box, Op: ast.AssignSet, Value: rtCall("SlotBox", box)},
+		&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: rtCall("ParentOf", box), Right: parent},
+			Body: []ir.Stmt{set},
+		},
+		&ir.CallStmt{Call: &call},
+	}, true
 }
 
 // localSlotRenderCall rewrites a render slot call whose container is a local

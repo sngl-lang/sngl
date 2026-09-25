@@ -675,11 +675,39 @@ func (t *fyneTranslator) OnDefault(ctx context.Context, stmt ir.Stmt) []ir.Stmt 
 	case *ir.CanvasRedrawStmt:
 		return t.translateCanvasRedraw(n)
 	case *ir.CallStmt:
+		if boxed := t.boxedSlotRenderCall(n); boxed != nil {
+			return boxed
+		}
 		if local := localSlotRenderCall(n, t.isLocalRef); local != nil {
 			return []ir.Stmt{local}
 		}
 	}
 	return []ir.Stmt{stmt}
+}
+
+// boxedSlotRenderCall renders a slot whose container holds one child -- a
+// scroll -- into a box that is that child, since the slot adds and removes
+// any number of entries.
+func (t *fyneTranslator) boxedSlotRenderCall(cs *ir.CallStmt) []ir.Stmt {
+	if cs.Call == nil || cs.Call.Func == nil || !cs.Call.Func.SlotRender || len(cs.Call.Args) != 1 {
+		return nil
+	}
+	bare := codegen.IdentBareName(cs.Call.Args[0].Value)
+	sp := t.specs[bare]
+	if sp == nil || !sp.isSingleChild() {
+		return nil
+	}
+	boxName := bare + "_box"
+	t.fieldSink(boxName, "*fyne.Container")
+	box := t.fieldRef(boxName)
+	call := *cs.Call
+	call.Args = []ir.CallArg{{Value: box}}
+	return []ir.Stmt{
+		&ir.Assign{Target: box, Op: ast.AssignSet,
+			Value: nativeCallAt("fynelayout.SlotBox", fyneLayoutImportPath, []ir.Expr{box}, ir.TypDyn)},
+		&ir.Assign{Target: &ir.Select{Operand: t.nodeRefFor(bare), Field: sp.Content, Type: ir.TypDyn}, Op: ast.AssignSet, Value: box},
+		&ir.CallStmt{Call: &call},
+	}
 }
 
 // localSlotRenderCall rewrites a render slot call whose container is a local

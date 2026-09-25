@@ -158,7 +158,12 @@ func emitComponentInstance(
 			fmt.Fprintf(b, "\t%s %s\n", codegen.SlotAnchorField(v.Name), handleType)
 		}
 	}
+	seenField := map[string]bool{}
 	for _, f := range fields {
+		if seenField[f.name] {
+			continue
+		}
+		seenField[f.name] = true
 		fmt.Fprintf(b, "\t%s %s\n", f.name, f.goType)
 	}
 	b.WriteString("}\n\n")
