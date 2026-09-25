@@ -596,10 +596,6 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
-  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
-  __renderSlot1(__slotAnchor_1);
   function String(v) {
     return "" + v;
   }
@@ -609,6 +605,10 @@ body { font-family: system-ui, sans-serif; }
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   var __n4 = document.querySelector('[data-sngl-id="__n4"]');
   var __n5 = document.querySelector('[data-sngl-id="__n5"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
+  var __slotAnchor_1 = document.querySelector('[data-sngl-slot="1"]');
+  __renderSlot1(__slotAnchor_1);
   function __sngl_init() {
     __n0.textContent = String(state.here__inst1.a * 2);
     __n1.textContent = String(Math.trunc(state.elapsed__inst1));
@@ -626,4 +626,4 @@ pass sha256:4e743e1d6cc1da76db4efe8b19b556c0
 -- run/kotlin/android --
 pass sha256:5c25bf679a992bdcb23bafef0987dc4f
 -- run/none/html --
-pass sha256:023391121c9a63d6d6ba687f5cc1f4e2
+pass sha256:ac893d073d012ee439ac5a0f76992f6e

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"io/fs"
+	"iter"
 	"maps"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen/lang/javascript"
 	"git.duckfam.us/jonathan/sngl/internal/asset"
 	"git.duckfam.us/jonathan/sngl/internal/htmlutil"
+	"git.duckfam.us/jonathan/sngl/internal/optimize"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -77,9 +79,6 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 
 	if req.Lang.LanguageIdentifier() == "none" {
 		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html"), frontendNatives: placement.frontend}
-		if err := rejectDynamicHrefs(c.ctx); err != nil {
-			return err
-		}
 		// Static mode has no server to host the route's POST handler.
 		if win, ok := backendHandlerWindow(req.Pkg, c.ctx.Windows()); ok {
 			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
@@ -134,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => main());
 	}
 }
 
-// rejectDynamicHrefs errors in static mode: {param} routes need a server.
+// rejectDynamicHref errors in static mode: {param} routes need a server.
 //
 // Two shapes say a path is dynamic and the first is no longer the whole
 // question. An href the optimizer could not settle to a string is still one.
@@ -142,19 +141,16 @@ document.addEventListener('DOMContentLoaded', () => main());
 // where they used to be an interpolation the checker desugared -- so
 // `/p/{pkg}` is a perfectly good literal, and read for that alone the static
 // build wrote a directory called `{pkg}` and said nothing.
-func rejectDynamicHrefs(ctx *codegen.CodegenCtx) error {
-	for _, win := range ctx.Windows() {
-		href := win.Window.Prop(ir.WindowHref)
-		if href == nil {
-			continue
-		}
-		path, ok := codegen.IRLiteralString(href)
-		if ok && len(extractRouteParams(path)) == 0 {
-			continue
-		}
-		return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
+func rejectDynamicHref(win *codegen.WindowCtx) error {
+	href := win.Window.Prop(ir.WindowHref)
+	if href == nil {
+		return nil
 	}
-	return nil
+	path, ok := codegen.IRLiteralString(href)
+	if ok && len(extractRouteParams(path)) == 0 {
+		return nil
+	}
+	return fmt.Errorf("html: window %q has a dynamic href — static site cannot serve it; compile with a server language (e.g. --lang go)", win.Name)
 }
 
 type compilation struct {
@@ -170,6 +166,23 @@ type compilation struct {
 
 	// frontendNatives is the frontend set from Generate's placement scan.
 	frontendNatives map[nativeFuncKey]bool
+
+	// routeWindows are the documents route mode rendered, in the order of
+	// c.windows, for generateRoutes to take its routes from.
+	routeWindows []*codegen.WindowCtx
+}
+
+// documents is the build's documents, or this package's for a caller that
+// ran no build.
+func (c *compilation) documents(req *codegen.Request) iter.Seq2[*codegen.Document, error] {
+	if req.Documents != nil {
+		return req.Documents()
+	}
+	return optimize.Documents(req.Pkg, &optimize.Config{
+		Platform: "html",
+		Language: req.Lang.LanguageIdentifier(),
+		Dir:      codegen.OptionString(req.Options, "projectDir"),
+	})
 }
 
 // codegenCtx is c.ctx, or a fresh one for a caller that supplied none.
@@ -474,12 +487,32 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		return ctx.BuildMutation(nil), nil
 	}
 	staticMode := req.Lang.LanguageIdentifier() == "none"
+	// One document ahead, so that whether there is a second is known before the
+	// first is written.
+	next, stop := iter.Pull2(c.documents(req))
+	defer stop()
+	doc, docErr, ok := next()
+	following, followingErr, more := next()
 	// One page gains nothing from a second file, and a preview is shown as one
 	// document with nowhere to fetch a second from.
-	shareConsts := staticMode && !opts.Preview && len(irWindows) > 1
+	shareConsts := staticMode && !opts.Preview && more
 	var mainStmts []ir.Stmt
 	seenPaths := map[string]ast.Pos{}
-	for i, win := range irWindows {
+	seenAssets := map[string]bool{}
+	for _, fa := range c.assetFiles {
+		seenAssets[fa.name] = true
+	}
+	for i := 0; ok; i++ {
+		if docErr != nil {
+			return nil, docErr
+		}
+		win := documentWindow(doc, irWindows)
+		for _, fa := range doc.FileAssets {
+			if !seenAssets[fa.OutPath] {
+				seenAssets[fa.OutPath] = true
+				c.assetFiles = append(c.assetFiles, htmlAssetFile{name: fa.OutPath, bytes: fa.Data})
+			}
+		}
 		var name string
 		href := win.Window.Prop(ir.WindowHref)
 		switch {
@@ -487,16 +520,17 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			// In route mode the language compiler indexes by WindowIdx and
 			// ignores file paths, and dynamic /{param} routes are expected.
 			name = fmt.Sprintf("window_%d", i)
+			c.routeWindows = append(c.routeWindows, win)
 		case href == nil:
 			// No declaration to take an href from: the package body's root
 			// window, or a lone main component's. It is the document the site
 			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
-			h, ok := codegen.IRLiteralString(href)
-			if !ok {
-				return nil, fmt.Errorf("html: window %q has a non-literal href after folding (internal error)", win.Name)
+			if err := rejectDynamicHref(win); err != nil {
+				return nil, err
 			}
+			h, _ := codegen.IRLiteralString(href)
 			name = pathFromHref(h)
 		}
 		if staticMode {
@@ -511,19 +545,19 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		gen.stylesheet = stylesheetURL
 		gen.shareConsts = shareConsts
 		gen.irBodyStmts = win.Body
+		// Per document: a drawing is keyed by its node, and the document's nodes
+		// are its own clones rather than anything the package holds.
+		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
+		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
 		gen.irWindowFuncs = win.Funcs
 		gen.irWindowVars = win.Vars
 		gen.irWindow = win.Window
-		if win.Window != nil {
-			gen.ctx = gen.ctx.ForWindow(win.Window)
+		gen.ctx = gen.ctx.ForWindow(win.Window)
+		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
+			gen.title = s
 		}
-		if win.Window != nil {
-			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
-				gen.title = s
-			}
-			if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowFavicon)); ok {
-				gen.favicon = s
-			}
+		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowFavicon)); ok {
+			gen.favicon = s
 		}
 		body, err := gen.generate()
 		if err != nil {
@@ -541,9 +575,25 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		if mainStmts == nil {
 			mainStmts = win.Body
 		}
+		doc, docErr, ok = following, followingErr, more
+		if ok {
+			following, followingErr, more = next()
+		}
 	}
 	c.assetFiles = append(c.assetFiles, shared.constFiles...)
 	return ctx.BuildMutation(mainStmts), nil
+}
+
+// documentWindow is what a page is generated from. A harness rendering its root
+// component has no window, and takes the vars and funcs of the one
+// CodegenCtx.Windows synthesizes for it.
+func documentWindow(doc *codegen.Document, windows []*codegen.WindowCtx) *codegen.WindowCtx {
+	if doc.Window != nil {
+		return &codegen.WindowCtx{Window: doc.Window, Body: doc.Body, Name: doc.Window.ID}
+	}
+	w := *windows[0]
+	w.Body = doc.Body
+	return &w
 }
 
 func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Request, sink codegen.Sink) error {
@@ -966,35 +1016,7 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 	if g.pkg == nil {
 		return
 	}
-	rewriteCall := func(call *ir.Call) {
-		if call == nil || call.Func == nil {
-			return
-		}
-		n := slotIndexFromRenderFunc(call.Func.Name)
-		if n == "" || len(call.Args) != 1 {
-			return
-		}
-		call.Args[0].Value = &ir.Ident{
-			Name:         slotAnchorVar(n),
-			Type:         ir.TypDyn,
-			IsElementRef: true,
-			Synthesized:  true,
-		}
-	}
-	// ir.Walk rather than a descent of the statements that can hold one,
-	// because "which statement holds the re-fire" is a question this has been
-	// wrong about twice. The descent knew a CallStmt and the lambda arguments
-	// of a CallStmt, so a timer handler was covered while `h = setInterval(func
-	// () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
-	// the parentRef it was threaded with and removeChild'd from the wrong node.
-	visit := func(root any) {
-		_ = ir.Walk(root, func(node ir.Node) error {
-			if c, ok := node.(*ir.Call); ok {
-				rewriteCall(c)
-			}
-			return nil
-		})
-	}
+	visit := retargetSlotCalls
 	visitHandlers := func(vars []*ir.Var) {
 		for _, v := range vars {
 			for _, h := range v.Handlers {
@@ -1016,21 +1038,51 @@ func (g *htmlGen) rewriteSlotCallsToAnchors() {
 		}
 		visitHandlers(c.Vars)
 	}
-	for _, w := range ir.AllWindows(g.pkg) {
-		if w == nil {
-			continue
-		}
-		visit(w.Children)
-		if w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
-			visit(w.ErrorHandler.Func.Block)
-		}
-	}
 	for _, fn := range g.pkg.Funcs {
 		if fn != nil {
 			visit(fn.Block)
 		}
 	}
 	visitHandlers(g.pkg.Vars)
+}
+
+// rewriteDocumentSlotCalls retargets the calls in the page's own document,
+// which is cloned from its window and so is none of what the package-wide
+// rewrite reached.
+func (g *htmlGen) rewriteDocumentSlotCalls() {
+	retargetSlotCalls(g.irBodyStmts)
+	if w := g.irWindow; w != nil && w.ErrorHandler != nil && w.ErrorHandler.Func != nil {
+		retargetSlotCalls(w.ErrorHandler.Func.Block)
+	}
+}
+
+// retargetSlotCalls points every `__renderSlotN(parentRef)` under root at
+// the slot's anchor.
+//
+// ir.Walk rather than a descent of the statements that can hold one,
+// because "which statement holds the re-fire" is a question this has been
+// wrong about twice. The descent knew a CallStmt and the lambda arguments
+// of a CallStmt, so a timer handler was covered while `h = setInterval(func
+// () { ... })` -- an ir.Assign -- was not, and the re-fire inside it kept
+// the parentRef it was threaded with and removeChild'd from the wrong node.
+func retargetSlotCalls(root any) {
+	_ = ir.Walk(root, func(node ir.Node) error {
+		call, ok := node.(*ir.Call)
+		if !ok || call.Func == nil {
+			return nil
+		}
+		n := slotIndexFromRenderFunc(call.Func.Name)
+		if n == "" || len(call.Args) != 1 {
+			return nil
+		}
+		call.Args[0].Value = &ir.Ident{
+			Name:         slotAnchorVar(n),
+			Type:         ir.TypDyn,
+			IsElementRef: true,
+			Synthesized:  true,
+		}
+		return nil
+	})
 }
 
 // nodeID returns n.ID when NoReactivity pre-assigned one, otherwise allocates
@@ -1077,6 +1129,7 @@ func (g *htmlGen) generate() (string, error) {
 	// Must precede the body walk so the handler/timer re-fire calls collected
 	// there are rewritten too.
 	g.rewriteSlotCallsOnce()
+	g.rewriteDocumentSlotCalls()
 
 	var b strings.Builder
 
@@ -1139,7 +1192,7 @@ func (g *htmlGen) generate() (string, error) {
 
 	var scriptBuf strings.Builder
 	g.emitScript(&scriptBuf)
-	sharedTags, script := g.linkSharedConsts(scriptBuf.String())
+	sharedTags, script := g.linkSharedConsts(pruneDecls(scriptBuf.String()))
 
 	// The i18n runtime is prepended as an IIFE so the generated calls resolve
 	// without forcing the main script through a separate esbuild pass.
@@ -2164,6 +2217,8 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 		b.WriteString("\n")
 	}
 
+	g.emitSlotBoots(b)
+
 	g.emitHandlers(b)
 
 	// Every html updater is init-only: NoReactivity inlines the per-mutation
@@ -2236,6 +2291,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 		if v.Name == "__root" {
 			continue
 		}
+		openDecl(b, v.Name)
 		b.WriteString("let " + v.Name + " = ")
 		if v.Init != nil {
 			b.WriteString(jc.EvalExpr(v.Init))
@@ -2243,6 +2299,7 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			b.WriteString("null")
 		}
 		b.WriteString(";\n")
+		closeDecl(b)
 		emittedVar = true
 	}
 	if emittedVar {
@@ -2285,16 +2342,30 @@ func (g *htmlGen) emitSynthesizedSlots(b *strings.Builder) {
 			// and a definition that lost it is an await in a sync function.
 			IsAsync: fn.IsAsync,
 		}
+		if fn.Receiver == "" {
+			openDecl(b, fn.Name)
+		}
 		for _, line := range jc.EmitFuncDef(synthesized) {
 			b.WriteString(line)
 			b.WriteByte('\n')
 		}
 		b.WriteByte('\n')
+		if fn.Receiver == "" {
+			closeDecl(b)
+		}
 	}
 
-	// Driven off the synthesized-func list rather than a main.Body scan, so
-	// slots nested inside windows/components are initialized too.
-	for _, fn := range synthFuncs {
+}
+
+// emitSlotBoots renders each of the page's slots into its anchor. After the
+// page's element references, because a slot builds its component instances
+// as it renders, and one whose effect mounts writes the page's own nodes:
+// booted first, it wrote to a reference the page had not bound yet.
+//
+// Driven off the synthesized-func list rather than a main.Body scan, so
+// slots nested inside windows/components are initialized too.
+func (g *htmlGen) emitSlotBoots(b *strings.Builder) {
+	for _, fn := range g.synthesizedFuncs() {
 		idx := slotIndexFromRenderFunc(fn.Name)
 		if idx == "" || !g.pageSlots[idx] {
 			continue

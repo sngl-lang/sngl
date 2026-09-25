@@ -829,44 +829,58 @@ func (st *effectState) reactiveVarsIn(e ir.Expr) []*ir.Var {
 	return out
 }
 
-// finishTeardown builds the exit handler.
+// finishTeardown builds the exit handlers: one per owner holding an @unmount.
+//
+// A component built at run time releases its own, from the destroy each target
+// calls wherever it tears the instance down -- the teardown destroyHeld also
+// hangs a registry's instances on. Everything else was spliced into the page,
+// and the page's is the one a platform calls at exit.
 func (st *effectState) finishTeardown() error {
-	var tears []*loweredEffect
+	type owner struct {
+		comp *ir.Component
+		win  *ir.Window
+	}
+	var order []owner
+	tears := map[owner][]*loweredEffect{}
 	for _, fx := range st.effects {
-		if fx.tear != nil {
-			tears = append(tears, fx)
+		if fx.tear == nil {
+			continue
+		}
+		o := owner{fx.comp, fx.win}
+		if _, ok := tears[o]; !ok {
+			order = append(order, o)
+		}
+		tears[o] = append(tears[o], fx)
+	}
+	var page *owner
+	for _, o := range order {
+		// Reverse the order the program wrote them in: an effect set up later
+		// may hold something an earlier one handed it, so releasing in
+		// acquisition order can release a thing still in use.
+		body := make([]ir.Stmt, 0, len(tears[o]))
+		for _, fx := range slices.Backward(tears[o]) {
+			body = append(body, callOf(fx.tear))
+		}
+		if o.comp != nil && o.comp.RuntimeInstance {
+			if fn := funcNamed(o.comp.Funcs, TeardownFunc); fn != nil {
+				fn.Block = append(fn.Block, body...)
+				continue
+			}
+		} else if page != nil && *page != o {
+			return fmt.Errorf("Effect: @unmount handlers in two page scopes have no one exit handler to share")
+		}
+		fn := &ir.Func{
+			Name:   TeardownFunc,
+			Return: ir.TypVoid,
+			Purity: ir.PurityMutates,
+			Block:  body,
+		}
+		st.addFunc(&ir.Owner{Comp: o.comp, Win: o.win}, fn)
+		if o.comp == nil || !o.comp.RuntimeInstance {
+			page = &o
+			st.pkg.Teardown = fn
 		}
 	}
-	if len(tears) == 0 {
-		return nil
-	}
-	// Every unmount has to reach one function a platform can call, so they all
-	// have to be in one scope -- and after inlining they are, because a
-	// component's effects were spliced into the root. A non-inlined owner,
-	// which is a recursive component, would need a teardown of its own wired
-	// wherever its instances are torn down: the same seam an instance's prop
-	// update needs, and not built.
-	first := tears[0]
-	for _, fx := range tears[1:] {
-		if fx.comp != first.comp || fx.win != first.win {
-			return fmt.Errorf("Effect: an @unmount in a component that is not inlined has nowhere to hang its teardown")
-		}
-	}
-	// Reverse the order the program wrote them in: an effect set up later may
-	// hold something an earlier one handed it, so releasing in acquisition
-	// order can release a thing still in use.
-	body := make([]ir.Stmt, 0, len(tears))
-	for _, fx := range slices.Backward(tears) {
-		body = append(body, callOf(fx.tear))
-	}
-	fn := &ir.Func{
-		Name:   TeardownFunc,
-		Return: ir.TypVoid,
-		Purity: ir.PurityMutates,
-		Block:  body,
-	}
-	st.addFunc(&ir.Owner{Comp: first.comp, Win: first.win}, fn)
-	st.pkg.Teardown = fn
 	return nil
 }
 

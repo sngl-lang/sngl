@@ -20,7 +20,7 @@ var passNoInlineComponents = pass{
 	apply:   lowerInlineComponents,
 }
 
-func lowerInlineComponents(pkg *ir.Package, _ Features, opts Options) error {
+func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -40,7 +40,7 @@ func lowerInlineComponents(pkg *ir.Package, _ Features, opts Options) error {
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, onList: onList, instSeq: seqOrOwn(opts.instSeq), demoted: map[*ir.Func]bool{}}
 	if err := st.run(); err != nil {
 		return err
 	}
@@ -269,6 +269,9 @@ type inlineCompState struct {
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
 	platform    string
+	// instanceState is Features.InstanceState: whether a component built at run
+	// time keeps its own state on this target.
+	instanceState bool
 	// instSeq is passInlinePure's counter as well; see Options.instSeq.
 	instSeq *int
 	// demoted is the clones dropReceiver made receiverless, so the call sites
@@ -700,27 +703,22 @@ func (st *inlineCompState) inlineStmts(stmts []ir.Stmt) ([]ir.Stmt, bool, error)
 
 // reactiveCtx is what the statements below a control-flow construct are written
 // inside: `in` is whether a node here needs reconciling, `repeated` whether the
-// position holds one copy of the body or many. A `for` sets `repeated` even when
-// it is not reactive -- what makes one hoisted var wrong is the copies.
+// position holds one copy of the body or many. A `for` sets `repeated` whatever
+// it iterates -- what makes one hoisted var wrong is the copies, and a loop over
+// a const has as many as a loop over state.
 type reactiveCtx struct {
 	in       bool
 	repeated bool
-	// loopReactive is whether the nearest enclosing `for` yields a copy that
-	// gets state of its own -- either because it iterates something the program
-	// can change, or because the loop itself sits somewhere reactive and is
-	// rebuilt as a unit.
-	//
-	// It is not `in`, and the two part company in both directions: a const loop
-	// holding a reactive `if` sets `in` and still hands every pass the same
-	// hoisted vars, while a const loop *inside* a reactive `if` also sets `in`
-	// and does not. What separates them is where `in` was true -- outside the
-	// loop, or under it.
-	loopReactive bool
-	// loopPos is where the nearest enclosing `for` was written. The node's own
-	// position is not a substitute: a lifetime reached through a component sits
-	// in *that declaration*, so a diagnostic about the loop would otherwise cite
-	// a line with no loop on it.
-	loopPos string
+	// loops are the view loops enclosing the position, outermost first: what a
+	// copy is a copy of, for a target that keys a copy's state by it.
+	loops []*ir.For
+}
+
+// perCopy reports whether an instantiation of c here is built at run time, one
+// per copy: every one in a reactive position, and under any `for` one whose
+// state is its own.
+func (rc reactiveCtx) perCopy(c *ir.Component) bool {
+	return rc.in || rc.repeated && len(c.Vars) > 0
 }
 
 func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
@@ -740,7 +738,13 @@ func (st *inlineCompState) inlineStmtsCtx(stmts []ir.Stmt, rc reactiveCtx) ([]ir
 func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, bool, error) {
 	switch n := s.(type) {
 	case *ir.NodeInst:
-		ch, chCh, err := st.inlineStmtsCtx(n.Children, rc)
+		// A window is a rendering root, so what encloses it -- a loop over
+		// pages -- is not a position its body is repeated in.
+		childRC := rc
+		if ir.IsWindowNode(n) {
+			childRC = reactiveCtx{}
+		}
+		ch, chCh, err := st.inlineStmtsCtx(n.Children, childRC)
 		if err != nil {
 			return nil, false, err
 		}
@@ -773,9 +777,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// passEffect already reads the enclosing `if` as the bracket's
 		// position. Not under a `for` -- the body is spliced once and its state
 		// hoisted once, so the copies would share one var.
-		if err := refuseRepeatedLifetime(n, rc); err != nil {
-			return nil, false, err
-		}
 		if rc.in && !rc.repeated && st.inlinable(n.Component) && st.rendersNothing(n.Component) {
 			spliced, err := st.expandCall(n)
 			if err != nil {
@@ -783,13 +784,29 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			}
 			return spliced, true, nil
 		}
-		if st.captureOnly != nil && rc.in && st.captureOnly[n.Component] {
-			return nil, false, fmt.Errorf("%s: %q reads the state of the body it is declared in and is instantiated inside a reactive if or for, where each copy needs state of its own -- capture would hand every copy the one cell the owner holds; lift it to a top-level component and pass what it reads as props", nodePos(n), n.Component.Name)
+		if st.captureOnly != nil && st.captureOnly[n.Component] && rc.perCopy(n.Component) {
+			where := "inside a reactive if or for"
+			if !rc.in {
+				where = "inside a for and declares state of its own"
+			}
+			return nil, false, fmt.Errorf("%s: %q reads the state of the body it is declared in and is instantiated %s, where each copy needs state of its own -- capture would hand every copy the one cell the owner holds; lift it to a top-level component and pass what it reads as props", nodePos(n), n.Component.Name, where)
+		}
+		// A target that keeps no state of an instance's own is given the state
+		// where the component is written instead, one cell per copy.
+		if !st.instanceState && st.captureOnly == nil && n.Component != nil && (len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body)) && !st.cycles[n.Component] && st.inlinable(n.Component) {
+			return st.expandPerCopy(n, rc)
 		}
 		// Left to the main walk: a capturing body cannot be the runtime
 		// instance this branch elects, and the pre-pass already refused it.
-		if st.captureOnly == nil && n.Component != nil && (rc.in || st.cycles[n.Component]) {
-			if err := refuseRuntimePopulation(n, st.cycles[n.Component]); err != nil {
+		//
+		// A component with state of its own under any `for` is one too, and
+		// not only under a reactive one: spliced, its vars are hoisted once and
+		// every copy writes the same cell -- a timer's handle overwritten by the
+		// second mount, so the first schedule can never be stopped. That a
+		// const iterable cannot change says how many copies there are, not
+		// that they may share state.
+		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
+			if err := refuseRuntimePopulation(n, rc, st.cycles[n.Component]); err != nil {
 				return nil, false, err
 			}
 			st.keep[n.Component] = true
@@ -816,7 +833,7 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		}
 		return spliced, true, nil
 	case *ir.If:
-		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loopReactive: rc.loopReactive}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Cond, st.reactive), repeated: rc.repeated, loops: rc.loops}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
@@ -829,23 +846,14 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		n.Else = els
 		return []ir.Stmt{n}, ch1 || ch2, nil
 	case *ir.For:
-		reactiveIter := dependsOnReactiveVar(n.Iter, st.reactive)
-		inner := reactiveCtx{
-			in:       rc.in || reactiveIter,
-			repeated: true,
-			// `rc.in` as it was *entering* the loop, not inside it. A loop that
-			// already sits in a reactive position re-renders as a unit, so its
-			// copies are built at run time and each gets a record of its own --
-			// which is the same thing a reactive iterable buys. A reactive `if`
-			// written *inside* a const loop is the opposite case and reaches
-			// the node with the same `in`, which is why this is read here and
-			// not there.
-			loopReactive: rc.in || rc.loopReactive || reactiveIter,
-			loopPos:      forPos(n),
-		}
+		inner := reactiveCtx{in: rc.in || dependsOnReactiveVar(n.Iter, st.reactive), repeated: true, loops: append(slices.Clip(rc.loops), n)}
 		body, ch1, err := st.inlineStmtsCtx(n.Body, inner)
 		if err != nil {
 			return nil, false, err
+		}
+		// A schedule per copy is keyed by the copy, like a cell.
+		if !st.instanceState && placesTimer(body) {
+			loopIndex(n, len(rc.loops))
 		}
 		els, ch2, err := st.inlineStmtsCtx(n.Else, inner)
 		if err != nil {
@@ -1107,91 +1115,20 @@ func cloneFuncShallow(f *ir.Func) *ir.Func {
 	return &c
 }
 
-// sharesLifetimeState reports whether splicing comp twice would give two
-// lifetimes one set of cells to release through.
-//
-// **Holding an `effect` is not enough**, and asking only that refused working
-// programs. `passEffect` keys a bracket's own bookkeeping by list --
-// `__effectN_live` and `__effectN_desired` hold an entry per key -- so N copies
-// of a bare lifetime mount and unmount independently and correctly. What has no
-// list is a *component's* state: `passHoistState` gives each declared var one
-// cell on the owner, and a non-reactive loop splices the body once, so every
-// pass writes the same cell. A handle stored there is overwritten by the second
-// mount and the first schedule can no longer be reached to be stopped.
-//
-// So the question is the conjunction: a var this component declares, which an
-// effect's own handlers touch. A lifetime that closes over nothing of its
-// component's is as safe here as a bare one, and a component whose state no
-// bracket reads is the ordinary shared-cell cost the loop already carries.
-//
-// Runs before passEffect, so a bracket is still the node a program wrote.
-func sharesLifetimeState(comp *ir.Component) bool {
-	if comp == nil || len(comp.Vars) == 0 {
-		return false
-	}
-	own := make(map[*ir.Var]bool, len(comp.Vars))
-	for _, v := range comp.Vars {
-		own[v] = true
-	}
-	found := false
-	_ = ir.Walk(comp.Body, func(nd ir.Node) error {
-		n, ok := nd.(*ir.NodeInst)
-		if !ok || !isEffectNode(n) || found {
-			return nil
-		}
-		for _, h := range n.Handlers {
-			if h.Func == nil {
-				continue
-			}
-			_ = ir.Walk(h.Func.Block, func(in ir.Node) error {
-				if id, ok := in.(*ir.Ident); ok {
-					if v, ok := id.Sym.(*ir.Var); ok && own[v] {
-						found = true
-					}
-				}
-				return nil
-			})
-		}
-		return nil
-	})
-	return found
-}
-
-// forPos is where a loop was written, or "" when the IR carries no position.
-func forPos(n *ir.For) string {
-	if p := ir.StmtPos(n); p.IsValid() {
-		return p.String()
-	}
-	return ""
-}
-
-// refuseRepeatedLifetime stops a component that brackets a lifetime from being
-// spliced into a position that holds many copies of it.
-//
-// A `for` sets `repeated` whether or not it is reactive, and a *reactive* one
-// elects a RuntimeInstance below, so each copy gets state of its own. A
-// non-reactive one -- a `const` iterable, where nothing can change -- does not:
-// the body is spliced once and its vars hoisted once, so every copy shares the
-// one handle. For an ordinary component that is the documented cost of sharing
-// a cell; for a lifetime it is a resource nothing can release, because the
-// second mount overwrites the handle the first would have been stopped through.
-//
-// Refused rather than tolerated because the failure is silent and unbounded: a
-// timer under such a loop leaves a goroutine running for the life of the
-// process. #245 is the real fix -- route a stateful component to a runtime
-// instance whether or not the position is reactive -- and until it lands this
-// is the loud half of what `main` did by accident.
 // refuseRuntimePopulation reports a slot populated by name on an instantiation
 // that survives to codegen. No target renders one there: bubbletea and android
 // emit the component with no parameter for the slot, and the mutation
 // platforms meet the body's insertion unsubstituted.
-func refuseRuntimePopulation(n *ir.NodeInst, inCycle bool) error {
+func refuseRuntimePopulation(n *ir.NodeInst, rc reactiveCtx, inCycle bool) error {
 	if len(n.Slots) == 0 {
 		return nil
 	}
 	why := "inside a reactive if or for"
-	if inCycle {
+	switch {
+	case inCycle:
 		why = "as a member of a recursion cycle"
+	case !rc.in:
+		why = "inside a for, where a component with state of its own gets an instance per copy"
 	}
 	names := slices.Sorted(maps.Keys(n.Slots))
 	name, at := names[0], nodePos(n)
@@ -1204,25 +1141,6 @@ func refuseRuntimePopulation(n *ir.NodeInst, inCycle bool) error {
 		}
 	}
 	return fmt.Errorf("%s: slot %q of %s is populated by name, but %s is built at run time here, %s, where no target renders a named population", at, name, n.Component.Name, n.Component.Name, why)
-}
-
-func refuseRepeatedLifetime(n *ir.NodeInst, rc reactiveCtx) error {
-	if !rc.repeated || rc.loopReactive || !sharesLifetimeState(n.Component) {
-		return nil
-	}
-	// Two positions, because they are usually two different lines: the loop is
-	// what the rule is about, and the node is where the lifetime entered it --
-	// which for a wrapped one is inside a declaration written somewhere else.
-	where := ""
-	if rc.loopPos != "" && rc.loopPos != nodePos(n) {
-		where = fmt.Sprintf(" (reached from %s)", nodePos(n))
-	}
-	at := rc.loopPos
-	if at == "" {
-		at = nodePos(n)
-	}
-	return fmt.Errorf("%s: this loop is not reactive and %q%s brackets a lifetime, so every pass would share one set of its state and only the last could be released -- a schedule opened by the others is never closed. Iterate something the program can change (a `var`, not a `const`), which gives each pass state of its own. This is a lowering rule, so a target that unrolls the loop instead -- html on --lang none -- builds the same source; see #245",
-		at, n.Component.Name, where)
 }
 
 // clearDemotedReceivers drops the receiver at every call site that names a func
@@ -1241,4 +1159,18 @@ func clearDemotedReceivers(pkg *ir.Package, demoted map[*ir.Func]bool) {
 		}
 		return nil
 	})
+}
+
+// expandPerCopy splices a component with state of its own where it is written,
+// and under a `for` gives each of its vars a cell per copy (perCopyCells).
+func (st *inlineCompState) expandPerCopy(n *ir.NodeInst, rc reactiveCtx) ([]ir.Stmt, bool, error) {
+	varStart, funcStart := len(*st.hoist.vars), len(*st.hoist.funcs)
+	body, err := st.expandCall(n)
+	if err != nil || len(rc.loops) == 0 {
+		return body, true, err
+	}
+	vars := slices.Clone((*st.hoist.vars)[varStart:])
+	funcs := slices.Clone((*st.hoist.funcs)[funcStart:])
+	body, err = perCopyCells(nodePos(n), body, vars, funcs, rc.loops)
+	return body, true, err
 }

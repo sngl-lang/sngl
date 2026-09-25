@@ -27,12 +27,10 @@ type ScheduledTimer struct {
 // The gate chain is how a timer keeps the meaning of where it was written on
 // a target that has no tree to read at run time: bubbletea arms its schedules
 // from Init(), outside the view entirely, so a timer under a branch has to
-// carry that branch as an expression. A loop is deliberately *not* in the
-// chain, and a loop body is not walked at all: a timer per iteration is a
-// schedule per iteration, which no backend's timer runtime expresses, so one
-// written there describes no schedule and stands in the tree as the node it
-// is. Pre-existing, and carried over deliberately rather than quietly given a
-// gate that would lie about it.
+// carry that branch as an expression. A loop body is not walked: a
+// timer there is a schedule per iteration, which stands in the tree as the node
+// it is for a target that runs its loops, and is CollectLoopTimers' for one
+// that arms schedules outside the tree.
 //
 // A primitive with no @tick handler describes no schedule and is skipped: the
 // interval would arm a deadline with nothing to run.
@@ -64,6 +62,51 @@ func collectTimers(stmts []ir.Stmt, gates []ir.Expr, out *[]ScheduledTimer) {
 			collectTimers(n.Children, gates, out)
 		case *ir.ErrorBoundary:
 			collectTimers(n.Children, gates, out)
+		}
+	}
+}
+
+// LoopTimer is a schedule written under loops: one per copy of them, which
+// CollectTimers leaves standing in the tree for a target that runs its loops.
+// Loops are the enclosing view loops, outermost first.
+type LoopTimer struct {
+	ScheduledTimer
+	Loops []*ir.For
+}
+
+// CollectLoopTimers is every schedule stmts describe under a loop, for a target
+// that arms its schedules outside the tree and so has to keep one per copy of
+// the loops around it. The gates are the conditions around it, inside the
+// loops and out.
+func CollectLoopTimers(stmts []ir.Stmt) []LoopTimer {
+	var out []LoopTimer
+	collectLoopTimers(stmts, nil, nil, &out)
+	return out
+}
+
+func collectLoopTimers(stmts []ir.Stmt, gates []ir.Expr, loops []*ir.For, out *[]LoopTimer) {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if ir.IsTimerPrimitive(n.Component) {
+				if t, ok := timerOf(n, gates); ok && len(loops) > 0 {
+					*out = append(*out, LoopTimer{ScheduledTimer: t, Loops: loops})
+				}
+				continue
+			}
+			if ir.IsWindowNode(n) {
+				continue
+			}
+			collectLoopTimers(n.Children, gates, loops, out)
+		case *ir.For:
+			collectLoopTimers(n.Body, gates, append(loops[:len(loops):len(loops)], n), out)
+		case *ir.If:
+			collectLoopTimers(n.Body, append(gates[:len(gates):len(gates)], n.Cond), loops, out)
+			collectLoopTimers(n.Else, append(gates[:len(gates):len(gates)], notExpr(n.Cond)), loops, out)
+		case *ir.SlotInst:
+			collectLoopTimers(n.Children, gates, loops, out)
+		case *ir.ErrorBoundary:
+			collectLoopTimers(n.Children, gates, loops, out)
 		}
 	}
 }

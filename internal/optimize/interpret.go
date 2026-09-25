@@ -111,7 +111,7 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 		err error
 	)
 	if ctx != nil && ctx.pkg != nil {
-		env, err = interp.BuildEnv(ctx.pkg, "")
+		env, err = ctx.interpEnv()
 		if err != nil {
 			return nil, false
 		}
@@ -312,4 +312,24 @@ func structFieldType(sd *ir.StructDef, name string) *ir.Type {
 		}
 	}
 	return nil
+}
+
+// interpEnv is the environment a pure func is interpreted in: ctx.pkg's consts,
+// evaluated. Built once per package per run and shared, because building it
+// evaluates every const's initializer and a highlighted code block interprets
+// a token's colour once per token -- 160000 builds of a site's search index.
+// A call runs in a snapshot of it (CallUserFuncValues), so none writes it.
+func (ctx *evalCtx) interpEnv() (*interp.Env, error) {
+	if ctx.interpEnvs == nil {
+		return interp.BuildEnv(ctx.pkg, "")
+	}
+	if env, ok := ctx.interpEnvs[ctx.pkg]; ok {
+		return env, nil
+	}
+	env, err := interp.BuildEnv(ctx.pkg, "")
+	if err != nil {
+		return nil, err
+	}
+	ctx.interpEnvs[ctx.pkg] = env
+	return env, nil
 }

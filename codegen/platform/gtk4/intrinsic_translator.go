@@ -310,7 +310,7 @@ func (t *gtk4Translator) classFor(cType string) *gir.ClassInfo {
 // here rather than codegen.ModelFieldRef, which names the Model and only the
 // Model.
 func (t *gtk4Translator) fieldRef(name string) ir.Expr {
-	return codegen.RecvFieldRef(t.gc.RecvName(), name)
+	return codegen.RecvFieldRef(t.gc.NodeRecv(name), name)
 }
 
 // recvIdent is that receiver as a call target.

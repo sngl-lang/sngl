@@ -20,8 +20,14 @@ stderr 'cycle.sngl:20:9: slot "main" of frame is populated by name, but frame is
 ! sngl generate --lang none --platform html --out out2 cycle.sngl
 stderr 'cycle.sngl:20:9: slot "main" of frame is populated by name'
 
-! sngl generate --lang go --platform bubbletea --out out3 instance.sngl
+! sngl generate --lang go --platform fyne --out out3 instance.sngl
 stderr 'instance.sngl:18:13: slot "main" of card is populated by name, but card is built at run time here, inside a reactive if or for'
+
+# bubbletea keeps no state of an instance's own, so `card` is spliced into the
+# loop with a cell per copy rather than built at run time, and the population
+# is spliced with it.
+sngl generate --lang go --platform bubbletea --out out3b instance.sngl
+grep '"named "' out3b/model.go
 
 ! sngl generate --lang kotlin --platform android --out out4 entry.sngl
 stderr 'entry.sngl:30:17: slot "main" of frame is populated by name'

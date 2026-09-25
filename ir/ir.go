@@ -46,6 +46,10 @@ type Package struct {
 	Macros  []*Func
 	Windows []*Window
 	Outputs []*Output
+	// BuildConsts are the consts only a build reads: on a target that unrolls
+	// its views one document at a time, a const a view loop walks is a value
+	// that loop is unrolled against, and no backend declares it.
+	BuildConsts []*Var `json:",omitempty"`
 	// RootComponent is the component a test harness isolated as the whole
 	// program, having cleared the body and the windows around it. Empty for
 	// every ordinary build, where a window is the root and a component is

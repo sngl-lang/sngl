@@ -139,10 +139,10 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
   function __sngl_init() {
     __n2.readOnly = state.locked;
     __n1.open = state.shown;
@@ -152,4 +152,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9a83a4fe9801cc87270aef51e9892664
+pass sha256:7696d7b19aaa9542ccd01d6d8d4ea495

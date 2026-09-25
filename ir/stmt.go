@@ -342,8 +342,8 @@ type For struct {
 	KeySym   *LoopVar
 	ValueSym *LoopVar
 	// HoistedWindowIDs holds list<Window> symbols hoisted from window #ids
-	// declared inside this loop's body. After optimizer expansion, the
-	// optimizer binds each symbol's value to the unrolled list of windows.
+	// declared inside this loop's body. optimize.Documents binds each to the
+	// list of windows the loop declares, one per iteration.
 	HoistedWindowIDs []*Var
 	// LoweredSlotID is set by passReactivity to the slot ID assigned when
 	// the For's Iter depends on a reactive Var. "" when the construct is not

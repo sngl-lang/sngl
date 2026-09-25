@@ -56,7 +56,7 @@ import gen "sngl:x/gen"
 // The `fyne` node of a build directive: `output { go { fyne() } }`.
 // fyne.Do queues onto the goroutine running the driver, which is the one that
 // owns every widget.
-#[gen.can(asyncPost)]
+#[gen.can(asyncPost, instanceState)]
 // Withholding reactivity is what asks for the explicit `nX.<prop> = <expr>`
 // after every mutation of a tracked var, which is how a Fyne widget is told
 // anything; withholding declarative flattens the tree into the

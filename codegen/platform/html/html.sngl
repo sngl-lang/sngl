@@ -36,7 +36,7 @@ import gen "sngl:x/gen"
 // withdrawn again: what html spawns work onto is the browser, which has none. And
 // a DOM parent can put a child at a position, so a keyed run moves one child
 // rather than rebuilding from the first change.
-#[gen.can(ternary, listLambdas, asyncCalls, insertBefore)]
+#[gen.can(ternary, listLambdas, asyncCalls, insertBefore, instanceState)]
 #[gen.cannot(
     viewStatements,
     asyncSpawn,

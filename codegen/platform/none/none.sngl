@@ -23,6 +23,10 @@ import gen "sngl:x/gen"
 // withdrawal predates this package and nothing records why; the whole suite
 // passes without it, which makes removing it a change to make deliberately
 // rather than in passing.
+//
+// `instanceState` because the interpreter scopes a component's state per
+// instance: each mount is an environment of its own.
+#[gen.can(instanceState)]
 #[gen.cannot(structSpread)]
 component none() build.platform {}
 

@@ -89,9 +89,9 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
+  var $0 = document.getElementById("$0");
   var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
   __renderSlot0(__slotAnchor_0);
-  var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
     state.on__inst0 = !state.on__inst0;
     __renderSlot0(__slotAnchor_0);
@@ -119,33 +119,8 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { on__inst0: false };
-  var __slot0 = [];
-  function __renderSlot0(parent) {
-    let __place0_prev = __slot0;
-    let __place0_i = 0;
-    __slot0 = [];
-    if (state.on__inst0) {
-      let __n0 = document.createElement("span");
-      __n0.textContent = "on";
-      let __place0_i_ref0 = null;
-      if (__place0_i < __place0_prev.length) {
-        __place0_i_ref0 = __place0_prev[__place0_i];
-      }
-      if (__place0_i_ref0 === __n0) {
-        __place0_i = __place0_i + 1;
-      } else {
-        parent.insertBefore(__n0, __place0_i_ref0);
-      }
-      __slot0.push(__n0);
-    }
-    for (const __place0_prev_e of __place0_prev) {
-      if (__slot0.indexOf(__place0_prev_e) < 0) {
-        parent.removeChild(__place0_prev_e);
-      }
-    }
-  }
 })();
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d850fba2defb7bb652b658332041c649
+pass sha256:94fb94c5c3e6206b8e9e5e998247d0fe

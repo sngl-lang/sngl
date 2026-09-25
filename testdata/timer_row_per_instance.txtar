@@ -237,13 +237,13 @@ body { font-family: system-ui, sans-serif; }
       }
     }
   }
-  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
-  __renderSlot0(__slotAnchor_0);
   function String(v) {
     return "" + v;
   }
   var $0 = document.getElementById("$0");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
+  var __slotAnchor_0 = document.querySelector('[data-sngl-slot="0"]');
+  __renderSlot0(__slotAnchor_0);
   $0.addEventListener("click", function() {
     state.periods__inst0.push(1e3);
     __renderSlot0(__slotAnchor_0);
@@ -256,4 +256,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:9241f7f3e5c9b7285c822ed845c10ab3
+pass sha256:5f4dcec5fb64379c8c9e5871c6972dcb

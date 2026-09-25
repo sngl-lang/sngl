@@ -34,7 +34,7 @@ import gen "sngl:x/gen"
 // The `gtk4` node of a build directive: `output { go { gtk4() } }`.
 // A GLib idle callback runs on the thread that owns every widget, so a blocking
 // call can be moved off it and its answer written back.
-#[gen.can(asyncPost)]
+#[gen.can(asyncPost, instanceState)]
 // Withholding reactivity is what asks for the explicit `nID.<prop> = <expr>`
 // after every mutation of a tracked var, which this platform translates to
 // `gtk_<widget>_set_<prop>(...)`; withholding declarative flattens the tree

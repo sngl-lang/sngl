@@ -544,7 +544,6 @@ body { font-family: system-ui, sans-serif; }
   function label() {
     return i18n.getTranslator().tr("You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", /* @__PURE__ */ new Map([["count", state.count]]));
   }
-  var __ctx_locale = i18n.defaultLocale();
   var $1 = document.getElementById("$1");
   var $2 = document.getElementById("$2");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');

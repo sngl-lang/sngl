@@ -340,12 +340,14 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	vc.line("var %s []string", loopVar)
 	vc.line("%s", vc.gc.ForHead(s, iterExpr))
 	vc.indent++
-	// The view body may not reference the loop vars; suppress unused errors.
-	if s.Key != "" && s.Key != "_" {
-		vc.line("_ = %s", s.Key)
+	// The view body may not reference the loop vars; suppress unused errors
+	// for the ones the head declared.
+	kept := golang.WithUnreadVarsDropped(s)
+	if kept.Key != "" && kept.Key != "_" {
+		vc.line("_ = %s", kept.Key)
 	}
-	if s.Value != "" && s.Value != "_" {
-		vc.line("_ = %s", s.Value)
+	if kept.Value != "" && kept.Value != "_" {
+		vc.line("_ = %s", kept.Value)
 	}
 
 	innerVar := resultVar + "Item"

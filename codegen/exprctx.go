@@ -101,6 +101,15 @@ type ExprCtx struct {
 	// another -- and the two the lowering dispatches to by name (Root,
 	// Destroy) are neither. Verbatim is one spelling for the whole struct.
 	StateFieldsExported bool
+	// OuterReceiver is what a component instance record reaches the Model
+	// through, set inside the record's ctor and methods. A name the component
+	// does not declare -- package state, and the page's widgets and funcs -- is
+	// the Model's, and spelling it through StateReceiver named a field no
+	// record has. OuterNodes are the names of the page's widgets and synthesized
+	// cells; any other a node reference names is the record's own, a field
+	// derived from one of its nodes included.
+	OuterReceiver string
+	OuterNodes    map[string]bool
 }
 
 // NewExprCtx creates an ExprCtx for a package.
@@ -259,6 +268,8 @@ func (ctx *ExprCtx) Clone() *ExprCtx {
 		StateReceiver:   ctx.StateReceiver,
 		// The naming policy travels with the receiver it applies to.
 		StateFieldsExported: ctx.StateFieldsExported,
+		OuterReceiver:       ctx.OuterReceiver,
+		OuterNodes:          ctx.OuterNodes,
 	}
 }
 

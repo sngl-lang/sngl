@@ -329,6 +329,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
 
 - **html** — two modes selected by `--lang`:
   - `--lang none` (default): static site — one `index.html` per window with inline JS.
+    Pages are written from `codegen.Request.Documents` one at a time, and a page's script is written from the package, which holds every page's component factories and render slots. So those are marked as they are written and `pruneDecls` keeps the ones the rest of the script names: written whole, a site of N pages carried N pages' factories in each and built in N² time.
   - any language whose translator implements `codegen.HTTPCompiler` (today: `--lang go`): route mode. html collects windows into `HTTPRoute`s and delegates code gen (mux syntax for dynamic paths, server entry, `main()`/ListenAndServe) to the language via `CompileHTTP`. The platform carries no language- or framework-specific logic. POST actions are emitted only for handlers that transitively call functions imported from the target language (e.g. `go:` funcs under `--lang go`); other handlers stay pure client-side JS. Static mode errors the build if any window has a dynamic href.
     Browser testing via CDP (go-rod) is gated behind `//go:build !js` so WASM playground builds exclude it. A `testing_js.go` stub satisfies the interface for WASM.
 - **bubbletea** — generates Go TUI code (`model.go`); supports `golang` lang only.
@@ -356,7 +357,7 @@ Both start from `codegen.AnalyzeCommon(doc)` which extracts model fields, comput
   rewrite `"a\nb"` with a raw newline in it.
 - **`internal/parser/`** — lexer, recursive-descent parser, formatter for `.sngl` syntax
 - **`internal/checker/`** — two-pass type checker (pass1: register declarations, pass2: validate expressions). Both passes run over a *package*: `CheckPackage` takes its documents together, so a type annotated in one file may name a type declared in a sibling, and `Check` is that function for a single document. One set of registrars serves every tier, and `loadStdlibPackage` runs the same `pass1` — a `sngl:` package and a user package differ in which package a declaration lands in (`declPkg`) and in a few policies that follow from library source not being body-checked, not in how declarations are built or the order they are registered in. What the loader still does for itself are phases rather than second implementations: its own scope, *when* function bodies are checked (pass2 walks a program's declarations, so a library's are driven from the loader — through the same `checkFuncBody`), the purity fixpoint over them, and a target package's component bodies.
-- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. A loop over a constant iterable is unrolled only for a target with no host language (`evalCtx.unrollsLoops`): a static artifact holds the iterations themselves, whereas a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. `expandForWindows` is the exception and unrolls everywhere, because each iteration there is a separate window rather than a repeated body. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
+- **`internal/optimize/`** — constant folding, dead code elimination with platform/language awareness. The optimizer unrolls no loop, for any target: a language target emits the loop and its own compiler decides whether to unroll one whose bounds it can see — three copies of a Compose `RadioButton` were what the loop is. A target whose view is markup (html, which withholds `viewStatements`) has nowhere to run one, and **`optimize.Documents`** unrolls its loops after lowering, one window at a time: each is a clone of the lowered window with the loops around it bound for its iteration and its constant view loops unrolled, so a site of a thousand pages holds one page's expanded tree at a time (the docs site peaked at 9 GB holding all of them). A loop in a handler or other script stays a JS loop. A const only such a view loop reads is a build value rather than the page's, and shake keeps it on `ir.Package.BuildConsts`, where Documents evaluates it and no backend declares it. A static unroll is bounded (`maxStaticUnroll`) and reports rather than writing a page nobody asked for. A read of a root-package list or map const stays a reference to the declaration (`sharedAggregateConsts`) and folds through it where the value is needed; it is copied only where it becomes storage the program may write (`foldOwned`), so every backend must declare its package consts. html's static mode writes such a const once to `assets/consts/` when it emits more than one page.
 - **`internal/lower/`** — capability-driven IR→IR transformation passes, running between optimizer and codegen. Each pass is gated by a `lower.Features` flag. Languages declare their native capabilities via `Capabilities() lower.Features`; platforms combine that with their own restrictions. Passes include: PropBindings, RefLoop, NoTernary, NoLambda, NoReactivity, etc. Seven run always and are not capability-gated because they answer for every target: `IndexedIter` (a two-variable loop over a pull sequence, which hands out no ordinal), `ForElse` (an imperative for-else, which no host loop expresses), `ViewForElse` (the same construct in a view body, which no platform emitter rendered), `BoundaryFailed` (a boundary's fallback slot, which no platform emitter rendered either), `CSE` (a pure call a statement makes twice), `HoistBodyTypes` (a body-local type whose name another body claims — a component body is not a function scope on any host, so Go and Kotlin need it as much as JavaScript does) and `UnprovidedContext` (a context nothing provides, whose constant default is folded into every read — lowered as state instead it is a field nothing writes, and a platform override reading `markup.palette` handed each token a runtime value where a literal was there to be had). `CSE` is statement-local and imperative-only on purpose — the temp it binds has to be a statement the target can hold, and a view body on `--lang none` cannot hold one. Entry point: `lower.Lower(pkg, caps, opts)`.
 - **`internal/lsp/`** + **`internal/lspcore/`** — Language Server Protocol implementation (hover, completion, diagnostics)
 
@@ -1502,61 +1503,61 @@ Two shapes cannot be spliced, and both are reported rather than emitted:
   `reportBodyComponentCapture` in the checker, beside the collision report
   above and for the same reason
   (`error_component_nested_capture_recursive.sngl`).
-- A **reactive `if` or `for`** — each copy there needs state of its own, which
-  is what the main walk's `RuntimeInstance` election gives a *non*-capturing
-  nested component, and a capturing one cannot have. Reported by
+- A **reactive `if` or `for`**, or any `for` once the nested component declares
+  state of its own — each copy there needs state of its own, which is what the
+  main walk's `RuntimeInstance` election gives a *non*-capturing nested
+  component, and a capturing one cannot have. Reported by
   `spliceNestedCaptures`, since reactivity is not a fact the checker holds
-  (`cmd/sngl/testdata/nested_capture_in_reactive_position.txt`). A
-  **non-reactive** loop is deliberately allowed: a nested component shares one
-  cell there with or without capture, which is the pre-existing `rc.repeated`
-  limitation.
+  (`cmd/sngl/testdata/nested_capture_in_reactive_position.txt`).
 
-**A lifetime over a component's own state is the one thing that limitation
-cannot absorb**, and `refuseRepeatedLifetime` says so. Sharing a cell costs an
-ordinary component correctness it mostly does not notice; a component whose
-`effect` handlers touch a var *it declares* shares the **handle** it would be
-released through, so the second mount overwrites the first and whatever the
-first opened runs on with nothing able to stop it — a goroutine for the life of
-the process, on fyne.
+**A loop is a loop whatever it iterates.** Under any `for`, a component with
+state of its own is a runtime instance (`reactiveCtx.perCopy`), and a `for`
+whose body renders from state is a render slot (`collectFromFor`) -- the two
+things a loop over state already got. A `const` iterable says how many copies
+there are, not that they may share state. Treated otherwise, a component's
+vars were hoisted once and every copy wrote the same cell; a lifetime's handle
+was overwritten by the second mount, so the first schedule could never be
+stopped, which a refusal stood in for (#245); and a reactive `if` inside a
+const loop became a render func reading a loop variable only the host loop
+bound (`undefined: p`). What still differs is only what has nothing to
+reconcile: a stateless component is spliced, and a const loop whose body reads
+no state renders as a plain loop -- on html, as markup `optimize.Documents`
+unrolls. A window resets the context, because a loop over pages is not a
+position a page's body is repeated in.
 
-**Holding an `effect` is not the test, and asking only that refused working
-programs.** `passEffect` keys a bracket's own bookkeeping by list —
-`__effectN_live` and `__effectN_desired` hold an entry per key — so N copies of
-a bare lifetime mount and unmount independently. What has no list is a
-*component's* state: `passHoistState` gives each declared var one cell on the
-owner. So `sharesLifetimeState` asks the conjunction — a var this component
-declares, which an effect's handlers read or write — and a lifetime closing over
-nothing of its component's is as safe here as a bare one. It is refused where it would be
-spliced, and #245 is the real fix: route a stateful component to a runtime
-instance whether or not the position is reactive.
+A loop that holds a component built at run time is a slot too, whatever it
+iterates (`bodyNeedsSlot`): the slot is what keeps the list of live instances,
+and outside one fyne assigned every copy to the one Model field its id named.
+"Built at run time" means a component with a body of its own -- the inliner
+marks a *primitive* standing in a reactive position as well, on the
+declaration, and counting that made every loop of html elements a slot
+(`testdata/const_loop_beside_reactive_loop.txtar`).
 
-The bit it reads is `reactiveCtx.loopReactive`, **not** `in`, and it is `in` as
-it was *entering* the loop. Those three differ, and getting it wrong cost a
-guard in each direction:
+**A target that keeps no state of an instance's own splices it instead**, and
+that is `Features.InstanceState`, a capability every platform but bubbletea
+declares: a record on fyne and gtk4, a factory closure on html, `remember` on
+android. bubbletea's model keeps every cell in itself, and a component built at
+run time there is a render function with nowhere to put one. So
+`passNoInlineComponents` splices a component that has state or holds a lifetime
+where it is written (`expandPerCopy`), and under a `for` gives each of its vars
+one cell per copy (`perCopyCells`): a map keyed by the loops' indices
+(`lower.CopyKey`), read as `cell.get(key, init)` and written through a
+temporary stored back. A timer under a loop is then a schedule per copy, which
+bubbletea keeps keyed the same way and routes through Update
+(`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
+collected by nobody and never ran.
 
-- A const loop holding a reactive `if` **inside** it sets `in`, elects a runtime
-  instance, and still hoists the loop variable once — the emitted Go did not
-  compile (`undefined: p`). Reading `!in` let that through.
-- A const loop **inside** a reactive `if` sets exactly the same `in` and
-  `repeated`, and lowers the other way: the whole loop lands in the slot's
-  render func, so `p` is in scope there and each pass gets its own record,
-  destroyed through the slot's own reuse loop. Reading `loopReactive` alone
-  refused that, which is a working program.
-
-What separates them is *where* the reactive boundary sits relative to the loop,
-which is why the `*ir.For` arm reads `rc.in` on entry rather than the node
-reading it on arrival.
-
-**It is a lowering rule, so it is target-dependent**: html on `--lang none`
-unrolls a const loop in the optimizer, so the source fyne refuses builds there
-as independent schedules. Defensible — lowering is per-target — but a
-portability wart, so the diagnostic says it rather than leaving it to be found.
-
-**It reports at the loop and names where the lifetime came in**, which are two
-different lines whenever the component is a wrapper: a two-level wrap cited the
-inner insertion inside the *outer declaration*, so the message complained that
-"this loop is not reactive" about a line with no loop on it and no way to find
-one. `reactiveCtx.loopPos` is the first half and `nodePos` the second.
+**An instance reaches the page through what holds it.** A fyne or gtk4 record
+holds its Model (`__model`), and a name its component does not declare -- the
+page's state, widgets and funcs -- is spelled through it
+(`ExprCtx.OuterReceiver`, `golang.PageNodes`); spelled through the record, it
+named a field no record has. On android a composable other than MainScreen
+cannot see MainScreen's `remember`ed locals, so page state such a composable
+reads is declared at file level (`sharedPageState`). What is still missing on
+the three mutation targets is the other direction: a write to page state
+updates the nodes of the scope that wrote it and of the page, and not those of
+*other* live instances reading it, so their views go stale until they are
+rebuilt.
 
 An owner's `func` is reached too, and by a different route: a component-body
 `func` is a method with `Receiver == owner.Name` rather than a name in scope,
