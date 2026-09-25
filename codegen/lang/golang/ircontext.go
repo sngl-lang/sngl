@@ -1304,9 +1304,7 @@ func (gc *GoIRContext) evalErrorAwareCall(call *ir.Call) []string {
 
 	switch call.ErrorMode {
 	case ir.ErrorPropagateNative, ir.ErrorBubble:
-		// ErrorBubble wants a fallible-signature return channel, which no
-		// lowering produces yet, so this panics and — with no recover
-		// emitted either — aborts. Put error.raise inside the handler.
+		// catchAtCall's recover is what stops a bubbling panic.
 		return []string{"panic(" + evt + ")"}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler == nil || call.ResolvedHandler.Func == nil {
@@ -1396,8 +1394,14 @@ func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 	if handler.Func != nil && len(handler.Func.Params) > 0 {
 		paramName = handler.Func.Params[0].Name
 	}
+	// A `return` in the handler ends the handler, not the function it was
+	// inlined into, so a body holding one is a closure called in place.
+	open, closeLine := "{", "}"
+	if ir.BlockReturns(handler.Func.Block) {
+		open, closeLine = "func() {", "}()"
+	}
 	lines := []string{
-		"{",
+		open,
 		fmt.Sprintf("\t%s := %s", paramName, evt),
 		fmt.Sprintf("\t_ = %s", paramName),
 	}
@@ -1406,7 +1410,7 @@ func (gc *GoIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 			lines = append(lines, "\t"+l)
 		}
 	}
-	lines = append(lines, "}")
+	lines = append(lines, closeLine)
 	return lines
 }
 

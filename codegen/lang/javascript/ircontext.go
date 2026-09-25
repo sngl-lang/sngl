@@ -236,12 +236,34 @@ func (jc *JsIRContext) catchAtCall(call *ir.Call) []string {
 	if len(handler.Func.Params) > 0 {
 		lines = append(lines, fmt.Sprintf("\tlet %s = {message: __err?.message ?? String(__err), kind: __err?.kind ?? \"\"}", handler.Func.Params[0].Name))
 	}
-	for _, stmt := range handler.Func.Block {
-		for _, l := range jc.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
-	}
+	lines = append(lines, jc.handlerBody(handler)...)
 	return append(lines, "}")
+}
+
+// handlerBody renders an inlined @error body one indent in. A `return` there
+// ends the handler, not the function it was inlined into, so a body holding
+// one runs as a function of its own.
+func (jc *JsIRContext) handlerBody(handler *ir.EventHandler) []string {
+	var body []string
+	for _, stmt := range handler.Func.Block {
+		body = append(body, jc.EvalStmt(stmt)...)
+	}
+	if ir.BlockReturns(handler.Func.Block) {
+		open, closeLine := "(() => {", "})()"
+		if ir.BlockHasAsyncCall(handler.Func.Block) {
+			open, closeLine = "await (async () => {", "})()"
+		}
+		wrapped := []string{open}
+		for _, l := range body {
+			wrapped = append(wrapped, "\t"+l)
+		}
+		body = append(wrapped, closeLine)
+	}
+	out := make([]string, len(body))
+	for i, l := range body {
+		out[i] = "\t" + l
+	}
+	return out
 }
 func (jc *JsIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
@@ -421,11 +443,7 @@ func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 		fmt.Sprintf("\tlet %s = %s", paramName, evt),
 		fmt.Sprintf("\tvoid %s", paramName),
 	}
-	for _, stmt := range handler.Func.Block {
-		for _, l := range jc.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
-	}
+	lines = append(lines, jc.handlerBody(handler)...)
 	lines = append(lines, "}")
 	return lines
 }

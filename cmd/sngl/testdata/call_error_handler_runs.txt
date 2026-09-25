@@ -12,11 +12,17 @@
 # boundary catching a raise from a called function, in a click and in an
 # effect's @mount, and a call through a func value catching its own. fyne and
 # gtk4 implement no boundary, so it runs on the interpreter and html only.
+#
+# return.sngl is testdata/error_handler_return.txtar's program: a `return` in
+# a handler ends the handler and not the function it was inlined into.
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=none boundary.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=none return.sngl
 stdout '1 tests, 0 failures'
 
 [!chromium] skip 'the JavaScript half needs a real Chromium'
@@ -25,6 +31,9 @@ sngl test --platform=html app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=html boundary.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=html return.sngl
 stdout '1 tests, 0 failures'
 
 [!exec:go] skip 'go toolchain required'
@@ -127,3 +136,51 @@ func testBoundaryAndLambdaCatch(t Test, c main) {
 window {
     main
 }
+-- return.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+func check(n int) {
+    if n > 1 {
+        error.raise("too big", "range")
+    }
+}
+
+component main node {
+    var caught = ""
+    var after = ""
+
+    func viaCall() {
+        check(5, @error(e) {
+            caught = caught + "c"
+            if caught != "" {
+                return
+            }
+            caught = "unreached"
+        })
+        after = after + "c"
+    }
+
+    func viaRaise() {
+        error.raise("r", "", @error(e) {
+            caught = caught + "r"
+            return
+        })
+        after = after + "r"
+    }
+
+    button #call(text="Call", @click { viaCall() })
+    button #raise(text="Raise", @click { viaRaise() })
+}
+
+func testReturnEndsOnlyTheHandler(t Test, c main) {
+    c.call.click()
+    c.raise.click()
+    t.assert(c.caught == "cr")
+    t.assert(c.after == "cr")
+}
+
+window {
+    main
+}
+

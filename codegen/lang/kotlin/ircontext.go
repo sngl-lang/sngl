@@ -272,12 +272,34 @@ func (kc *KtIRContext) catchAtCall(call *ir.Call) []string {
 	if len(handler.Func.Params) > 0 {
 		lines = append(lines, "\tval "+handler.Func.Params[0].Name+" = (__err as? SnglRaise)?.event ?: ErrorEvent(__err.message ?: \"\", \"\")")
 	}
-	for _, stmt := range handler.Func.Block {
-		for _, l := range kc.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
-	}
+	lines = append(lines, kc.handlerBody(handler)...)
 	return append(lines, "}")
+}
+
+// handlerBody renders an inlined @error body one indent in. A `return` there
+// ends the handler, not the function it was inlined into, so a body holding
+// one runs as a local fun of its own.
+func (kc *KtIRContext) handlerBody(handler *ir.EventHandler) []string {
+	var body []string
+	for _, stmt := range handler.Func.Block {
+		body = append(body, kc.EvalStmt(stmt)...)
+	}
+	if ir.BlockReturns(handler.Func.Block) {
+		head := "fun __onError() {"
+		if ir.BlockHasAsyncCall(handler.Func.Block) {
+			head = "suspend " + head
+		}
+		wrapped := []string{head}
+		for _, l := range body {
+			wrapped = append(wrapped, "\t"+l)
+		}
+		body = append(wrapped, "}", "__onError()")
+	}
+	out := make([]string, len(body))
+	for i, l := range body {
+		out[i] = "\t" + l
+	}
+	return out
 }
 func (kc *KtIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	name := "on" + strings.ToUpper(n.Name[:1]) + n.Name[1:]
@@ -710,11 +732,7 @@ func (kc *KtIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 		"run {",
 		fmt.Sprintf("\tval %s = %s", paramName, evt),
 	}
-	for _, stmt := range handler.Func.Block {
-		for _, l := range kc.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
-	}
+	lines = append(lines, kc.handlerBody(handler)...)
 	lines = append(lines, "}")
 	return lines
 }

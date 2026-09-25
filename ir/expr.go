@@ -128,6 +128,26 @@ func CatchingHandler(call *Call) *EventHandler {
 	return nil
 }
 
+// BlockReturns reports whether a `return` in stmts leaves this block's own
+// function, which a lambda body's does not.
+func BlockReturns(stmts []Stmt) bool {
+	for _, s := range stmts {
+		switch x := s.(type) {
+		case *Return:
+			return true
+		case *If:
+			if BlockReturns(x.Body) || BlockReturns(x.Else) {
+				return true
+			}
+		case *For:
+			if BlockReturns(x.Body) || BlockReturns(x.Else) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // CallArg is a resolved argument in a function call.
 // NamePos records the source position of the Name identifier for named
 // args (zero for positional).
