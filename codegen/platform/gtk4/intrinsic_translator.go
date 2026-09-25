@@ -20,6 +20,7 @@ import (
 type emitShared struct {
 	boolToInt  bool
 	gObjectSet bool
+	slotAnchor bool
 	errs       []error
 	seen       map[string]bool
 
@@ -49,6 +50,12 @@ func (s *emitShared) needBoolToInt() {
 func (s *emitShared) needGObjectSet() {
 	if s != nil {
 		s.gObjectSet = true
+	}
+}
+
+func (s *emitShared) needSlotAnchor() {
+	if s != nil {
+		s.slotAnchor = true
 	}
 }
 
@@ -693,7 +700,11 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 		}
 	}
 	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil && cType == "GtkBox" {
-		return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
+		if t.wrapped {
+			return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
+		}
+		call := nativeCall("sngl_insert_before", cgoCast("GtkBox", parent), t.slotAnchor, cgoCast("GtkWidget", t.qualifyNodeExpr(child)))
+		return []ir.Stmt{&ir.CallStmt{Call: call}}
 	}
 	if t.wrapped {
 		stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))
@@ -1193,11 +1204,14 @@ func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stm
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
 	}
-	if !t.wrapped {
-		return []ir.Stmt{reset}
-	}
 	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
-	anchor := rtCall("SlotAnchor", &ir.Ident{Name: "parent"}, t.slotAnchor)
+	var anchor ir.Expr
+	if t.wrapped {
+		anchor = rtCall("SlotAnchor", &ir.Ident{Name: "parent"}, t.slotAnchor)
+	} else {
+		t.shared.needSlotAnchor()
+		anchor = nativeCall("sngl_slot_anchor", cgoCast("GtkBox", &ir.Ident{Name: "parent"}), t.slotAnchor)
+	}
 	return []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
 }
 

@@ -1580,7 +1580,8 @@ the slot sits in, so each slot keeps a hidden anchor there
 (`codegen.SlotAnchorField`), added by its first render -- which runs while the
 container is built, at the slot's position -- and inserts its entries before
 it. Appending instead moved a re-rendered slot after every sibling below it
-(`testdata/render_slot_in_place.txtar`). gtk4's cgo mode still appends. A gtk4
+(`testdata/render_slot_in_place.txtar`); gtk4's cgo mode does the same through
+two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
 record also holds a reference on its root, since the slot holding it removes
 it before appending it again and GTK frees a widget its parent held alone.
 

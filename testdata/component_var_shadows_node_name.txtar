@@ -336,6 +336,23 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
+    if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
+    GtkWidget *w = gtk_label_new(NULL);
+    gtk_widget_set_visible(w, FALSE);
+    g_object_ref_sink(w);
+    gtk_box_append(box, w);
+    return w;
+}
+
+static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
+    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
+        gtk_box_append(box, child);
+        return;
+    }
+    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -382,11 +399,12 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
 	}
 	m.__slot0 = nil
+	m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
 	__n1 := (*C.GtkProgressBar)(unsafe.Pointer(C.gtk_progress_bar_new()))
 	C.gtk_progress_bar_set_fraction((*C.GtkProgressBar)(unsafe.Pointer(__n1)), C.double((m.progress__inst0 / 1.0)))
 	C.gtk_progress_bar_set_text((*C.GtkProgressBar)(unsafe.Pointer(__n1)), C.CString(""))
 	C.gtk_progress_bar_set_show_text((*C.GtkProgressBar)(unsafe.Pointer(__n1)), C.gboolean(boolToInt(false)))
-	C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__n1)))
+	C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 	m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n1)))
 }
 
@@ -531,7 +549,7 @@ pass sha256:852bbb4bba95308380f624ab88b680c5
 -- run/go/fyne --
 pass sha256:21671838dffba80020c99a89ba964065
 -- run/go/gtk4 --
-pass sha256:7315741951896e3017538d7ad0edd415
+pass sha256:c920fa3ed69b2d850cd1ed8501d9d782
 -- run/kotlin/android --
 pass sha256:7180128bb046c1c6cfb0ca94066b2868
 -- run/none/html --

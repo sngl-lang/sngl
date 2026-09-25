@@ -495,6 +495,7 @@ func (c *compilation) newTemplateData(widgetFields []widgetField, functionCode s
 		Imports:         map[string]bool{},
 		NeedsBoolToInt:  c.shared.boolToInt,
 		NeedsGObjectSet: c.shared.gObjectSet,
+		NeedsSlotAnchor: c.shared.slotAnchor,
 		Wrapped:         c.wrapped,
 	}
 	if c.wrapped {

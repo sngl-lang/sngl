@@ -405,6 +405,23 @@ static void sngl_unref_pixbuf(GdkPixbuf *p) {
     if (p != NULL) g_object_unref(p);
 }
 
+static GtkWidget *sngl_slot_anchor(GtkBox *box, GtkWidget *a) {
+    if (a != NULL && gtk_widget_get_parent(a) == GTK_WIDGET(box)) return a;
+    GtkWidget *w = gtk_label_new(NULL);
+    gtk_widget_set_visible(w, FALSE);
+    g_object_ref_sink(w);
+    gtk_box_append(box, w);
+    return w;
+}
+
+static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child) {
+    if (anchor == NULL || gtk_widget_get_parent(anchor) != GTK_WIDGET(box)) {
+        gtk_box_append(box, child);
+        return;
+    }
+    gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -459,6 +476,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		C.gtk_box_remove((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__entry)))
 	}
 	m.__slot0 = nil
+	m.__slot0_at = C.sngl_slot_anchor((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at)
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, r := range m.rows {
@@ -476,7 +494,7 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 		__inst0_next = append(__inst0_next, __n4)
 		__inst0_i = (__inst0_i + 1)
 		__n4__el := __n4.Root
-		C.gtk_box_append((*C.GtkBox)(unsafe.Pointer(parent)), (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
+		C.sngl_insert_before((*C.GtkBox)(unsafe.Pointer(parent)), m.__slot0_at, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
 		m.__slot0 = append(m.__slot0, (*C.GtkWidget)(unsafe.Pointer(__n4__el)))
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -629,4 +647,4 @@ func (m *Model) boxChange() {
 -- run/go/fyne --
 pass sha256:6dd021ed898bce3713b76cebb68dc90a
 -- run/go/gtk4 --
-pass sha256:cc1a9717ae0ae9018abeff48fd0742ed
+pass sha256:10d21812637508d7b99649ff9bcd20c2
