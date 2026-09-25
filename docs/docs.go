@@ -474,14 +474,20 @@ func buildPreviewSection(name, source string, platforms []string) string {
 	return b.String()
 }
 
-// source is a full `component main { ... }` block, as checker.PrefixedExamples
-// returns.
+// source is a `component main { ... }` block, as checker.PrefixedExamples
+// returns: written inside sngl:ui, so it names that package's declarations
+// unqualified, and a component, so it renders only where a window places it.
 func compilePreview(source string) string {
-	doc, err := parser.Parse("example.sngl", []byte(source))
+	program := "import . \"sngl:ui\"\n\n" + source + "\n\nwindow {\n    main()\n}\n"
+	doc, err := parser.Parse("example.sngl", []byte(program))
 	if err != nil {
 		return ""
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: codegen.CollectPlatforms(),
+		Languages: codegen.CollectLangs(),
+	})
 	if len(diags) > 0 {
 		return ""
 	}
