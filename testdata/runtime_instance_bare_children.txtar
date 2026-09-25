@@ -647,11 +647,11 @@ type Card__slot0Instance struct {
 	__n2         *widget.Label
 }
 
-func newCard__slot0Instance(__model *Model, __p0 string, __on0 func()) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
-	c.__prop___on0 = __on0
+	c.__prop___p0 = __a___p0
+	c.__prop___on0 = __a___on0
 	c.hits = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -897,11 +897,11 @@ type Card__slot0Instance struct {
 	__n2         gtk4rt.Handle
 }
 
-func newCard__slot0Instance(__model *Model, __p0 string, __on0 func()) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a___p0 string, __a___on0 func()) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
-	c.__prop___p0 = __p0
-	c.__prop___on0 = __on0
+	c.__prop___p0 = __a___p0
+	c.__prop___on0 = __a___on0
 	c.hits = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1311,9 +1311,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:efecc29966947361ecd92dab7608e6db
 -- run/go/fyne --
-pass sha256:67b20975b3ee515868ef6717688170fc
+pass sha256:8ff53faf908f6f280333a512e7feb927
 -- run/go/gtk4 --
-pass sha256:6d35cb226ff2a18f4976bb7a0db48c51
+pass sha256:08ae4f1047fb0c2c4e428463d7cec777
 -- run/kotlin/android --
 pass sha256:fbc691f612bbce3a07107f67a8748b0c
 -- run/none/html --

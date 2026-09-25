@@ -155,10 +155,10 @@ type RowInstance struct {
 	__n2         *widget.Label
 }
 
-func newRowInstance(__model *Model, label string) *RowInstance {
+func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
-	c.__prop_label = label
+	c.__prop_label = __a_label
 	c.on = false
 	c.typed = ""
 	c.__root = container.NewVBox()
@@ -330,10 +330,10 @@ type RowInstance struct {
 	__n2         gtk4rt.Handle
 }
 
-func newRowInstance(__model *Model, label string) *RowInstance {
+func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
-	c.__prop_label = label
+	c.__prop_label = __a_label
 	c.on = false
 	c.typed = ""
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
@@ -418,6 +418,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:9ce65d16c7acf832d1e352d43b1cac7b
+pass sha256:ef7406166078845c36793d39a2c6293f
 -- run/go/gtk4 --
-pass sha256:f66fa7d60a58b26acecd8a5eadd7a9e8
+pass sha256:4ff1c1bd621c809593903561d1c1c59d

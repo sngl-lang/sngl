@@ -283,11 +283,11 @@ type Row__slot0Instance struct {
 	__n1                *widget.Label
 }
 
-func newRow__slot0Instance(__model *Model, label string, __p0 string) *Row__slot0Instance {
+func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 string) *Row__slot0Instance {
 	c := &Row__slot0Instance{}
 	c.__model = __model
-	c.__prop_label = label
-	c.__prop___p0 = __p0
+	c.__prop_label = __a_label
+	c.__prop___p0 = __a___p0
 	c.marks = 0
 	c.__effect0_live = []bool{}
 	c.__effect0_desired = []bool{}
@@ -552,11 +552,11 @@ type Row__slot0Instance struct {
 	__n1                gtk4rt.Handle
 }
 
-func newRow__slot0Instance(__model *Model, label string, __p0 string) *Row__slot0Instance {
+func newRow__slot0Instance(__model *Model, __a_label string, __a___p0 string) *Row__slot0Instance {
 	c := &Row__slot0Instance{}
 	c.__model = __model
-	c.__prop_label = label
-	c.__prop___p0 = __p0
+	c.__prop_label = __a_label
+	c.__prop___p0 = __a___p0
 	c.marks = 0
 	c.__effect0_live = []bool{}
 	c.__effect0_desired = []bool{}
@@ -921,8 +921,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:e4f74656d6ec3f062be98a23061ab54c
+pass sha256:975474e4a42e1cd72d8784a1ef52741e
 -- run/go/gtk4 --
-pass sha256:df4efe39659d04737a5d5c32b55dfaf5
+pass sha256:6a38e9b88e597dbc9c4fd620cee32d5c
 -- run/none/html --
 pass sha256:7e654f5bab3e903d2a2b577eb132e659

@@ -2,13 +2,9 @@ package lower
 
 import "git.duckfam.us/jonathan/sngl/ir"
 
-// slotFlows makes a flow that holds a reactive `if` or `for` among its spans
-// the render slot, for a target withholding Features.InlineSlots: the slot's
-// entries would otherwise be spans rendered into a span, which such a target
-// has no container for. The flow is wrapped in a one-pass loop over a const,
-// which collectFromFor makes a slot re-rendering its whole body on any state
-// the body reads -- the construct the language already has for it -- and the
-// `if` inside is then an ordinary one, evaluated each time the flow is built.
+// slotFlows makes the flow itself the render slot when a reactive `if` or
+// `for` sits among its spans, for a target with no container a span can be
+// rendered into (no Features.InlineSlots).
 func (st *reactivityState) slotFlows(stmts []ir.Stmt) []ir.Stmt {
 	for i, s := range stmts {
 		switch n := s.(type) {
@@ -48,15 +44,16 @@ func flowSlot(n *ir.NodeInst) ir.Stmt {
 
 func (st *reactivityState) hostsReactiveSpans(n *ir.NodeInst) bool {
 	return n.Component != nil && ir.IsUITree(n.Component.Tree) && !ir.IsShapeContainer(n) &&
-		st.reactiveAmongSpans(n.Children, false)
+		holdsSpan(n.Children) && st.reactiveAmongSpans(n.Children, false)
 }
 
 func isSpanNode(n *ir.NodeInst) bool {
 	return n.Component != nil && ir.IsSegmentedTree(n.Component.Tree) && !ir.IsDrawShapeTree(n.Component.Tree)
 }
 
-// reactiveAmongSpans reports whether stmts hold a reactive `if` or `for` whose
-// content is spans, or a span holding one.
+// reactiveAmongSpans reports whether stmts' own content -- not what a widget
+// among them holds -- has a reactive `if` or `for` over spans, or a span
+// holding one.
 func (st *reactivityState) reactiveAmongSpans(stmts []ir.Stmt, inSpan bool) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -85,13 +82,21 @@ func (st *reactivityState) reactiveAmongSpans(stmts []ir.Stmt, inSpan bool) bool
 }
 
 func holdsSpan(stmts []ir.Stmt) bool {
-	found := false
-	_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
-		if n, ok := s.(*ir.NodeInst); ok && isSpanNode(n) {
-			found = true
-			return ir.SkipAll
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if isSpanNode(n) {
+				return true
+			}
+		case *ir.If:
+			if holdsSpan(n.Body) || holdsSpan(n.Else) {
+				return true
+			}
+		case *ir.For:
+			if holdsSpan(n.Body) {
+				return true
+			}
 		}
-		return nil
-	})
-	return found
+	}
+	return false
 }

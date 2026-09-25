@@ -494,12 +494,12 @@ type Card__slot0Instance struct {
 	__n1                *widget.Label
 }
 
-func newCard__slot0Instance(__model *Model, start int, __p0 int, __on0 func(string)) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___on0 func(string)) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
-	c.__prop_start = start
-	c.__prop___p0 = __p0
-	c.__prop___on0 = __on0
+	c.__prop_start = __a_start
+	c.__prop___p0 = __a___p0
+	c.__prop___on0 = __a___on0
 	c.k = (c.__prop_start * 10)
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -734,12 +734,12 @@ type Card__slot0Instance struct {
 	__n1                gtk4rt.Handle
 }
 
-func newCard__slot0Instance(__model *Model, start int, __p0 int, __on0 func(string)) *Card__slot0Instance {
+func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 int, __a___on0 func(string)) *Card__slot0Instance {
 	c := &Card__slot0Instance{}
 	c.__model = __model
-	c.__prop_start = start
-	c.__prop___p0 = __p0
-	c.__prop___on0 = __on0
+	c.__prop_start = __a_start
+	c.__prop___p0 = __a___p0
+	c.__prop___on0 = __a___on0
 	c.k = (c.__prop_start * 10)
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -1180,9 +1180,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0ce5d050c5955a01285142fe85fe1ff7
 -- run/go/fyne --
-pass sha256:8f8a92c72a87cd28fc87b3d2312e9d49
+pass sha256:12249c6d4ca022dc89c47315a1eee43b
 -- run/go/gtk4 --
-pass sha256:2fe3146c79525b88a1113245f55a422d
+pass sha256:3d0087dd03b2fc343b66c2f915c361f0
 -- run/kotlin/android --
 pass sha256:a39055ee90d4d0e248e1abd56df1628d
 -- run/none/html --

@@ -39,8 +39,7 @@ func TestChangeCarriesTheCommittedValue(t *testing.T) {
 `
 
 // An input's @change fires on commit with the committed text, the payload the
-// interpreter gives. The Entry wired only @input, so a @change handler was a
-// Model method taking a ChangeEvent nothing declares.
+// interpreter gives.
 func TestAnInputChangeRuns(t *testing.T) {
 	runEmitted(t, "fyne-input-change-", []byte(generateFyneModelBuilt(t, inputChangeSrc)), inputChangeDriver)
 }

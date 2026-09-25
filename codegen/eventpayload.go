@@ -2,13 +2,12 @@ package codegen
 
 import "git.duckfam.us/jonathan/sngl/ir"
 
-// SubstituteEventPayload rewrites, in stmts, each read of an event parameter's
-// first field to what the host handed the callback. A toolkit reports one
-// positional value and an event is a declared struct, and one value fills the
-// first field -- the rule interp.coerceEventArg applies -- so this is the same
-// adaptation for a target whose callback cannot receive the struct. value
-// answers nil to leave a field of that type alone.
-func SubstituteEventPayload(stmts []ir.Stmt, params []*ir.Param, value func(field *ir.StructField) ir.Expr) {
+// SubstituteEventPayload returns a copy of stmts with each read of an event
+// parameter's first field replaced by the host's one positional value (the
+// interp.coerceEventArg rule); value answers nil to leave a field alone. A
+// handler body is shared IR that an emitter may render twice, hence the copy.
+func SubstituteEventPayload(stmts []ir.Stmt, params []*ir.Param, value func(field *ir.StructField) ir.Expr) []ir.Stmt {
+	copied := false
 	for _, p := range params {
 		if p == nil || p.Type == nil || p.Type.Kind != ir.TypeStruct {
 			continue
@@ -22,6 +21,10 @@ func SubstituteEventPayload(stmts []ir.Stmt, params []*ir.Param, value func(fiel
 		if repl == nil {
 			continue
 		}
+		if !copied {
+			stmts = ir.CloneStmtsSharingDecls(stmts)
+			copied = true
+		}
 		_ = ir.RewriteExprs(stmts, func(e ir.Expr) (ir.Expr, error) {
 			sel, ok := e.(*ir.Select)
 			if !ok || sel.Field != field.Name {
@@ -31,7 +34,8 @@ func SubstituteEventPayload(stmts []ir.Stmt, params []*ir.Param, value func(fiel
 			if !ok || !(id.Sym == ir.Symbol(p) || (id.Sym == nil && id.Name == p.Name)) {
 				return e, nil
 			}
-			return repl, nil
+			return ir.CloneExprSharingDecls(repl), nil
 		})
 	}
+	return stmts
 }

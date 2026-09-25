@@ -516,10 +516,10 @@ type RowInstance struct {
 	__n0                *widget.Button
 }
 
-func newRowInstance(__model *Model, name string) *RowInstance {
+func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
-	c.__prop_name = name
+	c.__prop_name = __a_name
 	c.label = (c.__prop_name + ":")
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -738,10 +738,10 @@ type RowInstance struct {
 	__n0                gtk4rt.Handle
 }
 
-func newRowInstance(__model *Model, name string) *RowInstance {
+func newRowInstance(__model *Model, __a_name string) *RowInstance {
 	c := &RowInstance{}
 	c.__model = __model
-	c.__prop_name = name
+	c.__prop_name = __a_name
 	c.label = (c.__prop_name + ":")
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -1172,9 +1172,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f9f54d2f75a8543cc87031a392219cd4
 -- run/go/fyne --
-pass sha256:b2c132cbe459383d003bd3eb8bc557d2
+pass sha256:37cd3df0e375dca95855f324ce26551a
 -- run/go/gtk4 --
-pass sha256:37eccd7515d7d0bdef9713972db36d22
+pass sha256:6524e8ce339786e24608ef34b84eb249
 -- run/kotlin/android --
 pass sha256:4ffa09189aa41104afea7fb8a840eb20
 -- run/none/html --

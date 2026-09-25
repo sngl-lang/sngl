@@ -507,11 +507,11 @@ type WatchInstance struct {
 	__n0                *widget.Label
 }
 
-func newWatchInstance(__model *Model, tag string, seen func(string)) *WatchInstance {
+func newWatchInstance(__model *Model, __a_tag string, __a_seen func(string)) *WatchInstance {
 	c := &WatchInstance{}
 	c.__model = __model
-	c.__prop_tag = tag
-	c.__prop_seen = seen
+	c.__prop_tag = __a_tag
+	c.__prop_seen = __a_seen
 	c.n = 0
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -739,11 +739,11 @@ type WatchInstance struct {
 	__n0                gtk4rt.Handle
 }
 
-func newWatchInstance(__model *Model, tag string, seen func(string)) *WatchInstance {
+func newWatchInstance(__model *Model, __a_tag string, __a_seen func(string)) *WatchInstance {
 	c := &WatchInstance{}
 	c.__model = __model
-	c.__prop_tag = tag
-	c.__prop_seen = seen
+	c.__prop_tag = __a_tag
+	c.__prop_seen = __a_seen
 	c.n = 0
 	c.__effect0_key = ""
 	c.__effect0_live = []string{}
@@ -1175,9 +1175,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e38f90e5fb71db8f06b19a38d16f0941
 -- run/go/fyne --
-pass sha256:58fae96a224e4bc9059a11463565b80c
+pass sha256:6023f61582da90cf2c1b4e7cbd293e49
 -- run/go/gtk4 --
-pass sha256:56beae6c7738732c6f45bc3931aacf88
+pass sha256:17815aa4f8953bf84c19e8122ade6179
 -- run/kotlin/android --
 pass sha256:e46731cf494878bc8149c4ed338f3858
 -- run/none/html --

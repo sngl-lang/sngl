@@ -624,10 +624,10 @@ type CounterInstance struct {
 	__n0         *widget.Button
 }
 
-func newCounterInstance(__model *Model, label string) *CounterInstance {
+func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
-	c.__prop_label = label
+	c.__prop_label = __a_label
 	c.n = 0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
@@ -861,10 +861,10 @@ type CounterInstance struct {
 	__n0         gtk4rt.Handle
 }
 
-func newCounterInstance(__model *Model, label string) *CounterInstance {
+func newCounterInstance(__model *Model, __a_label string) *CounterInstance {
 	c := &CounterInstance{}
 	c.__model = __model
-	c.__prop_label = label
+	c.__prop_label = __a_label
 	c.n = 0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
@@ -1444,9 +1444,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ff04e36ed0d537b89a7165b11daecc91
 -- run/go/fyne --
-pass sha256:e316af9476910e01360d38b2cf7905eb
+pass sha256:021f0ffb07fba85a01ab16a2cb39c749
 -- run/go/gtk4 --
-pass sha256:f660087b1f9c4f02b2bc4687178f316e
+pass sha256:3816770c973e6ccf5627471837602447
 -- run/kotlin/android --
 pass sha256:f248b6dd67bb3d7cea081cc9ce2fe153
 -- run/none/html --

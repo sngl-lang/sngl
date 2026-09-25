@@ -300,10 +300,10 @@ type TickerInstance struct {
 	__n0                *widget.Label
 }
 
-func newTickerInstance(__model *Model, period time.Duration) *TickerInstance {
+func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance {
 	c := &TickerInstance{}
 	c.__model = __model
-	c.__prop_period = period
+	c.__prop_period = __a_period
 	c.ticks = 0
 	c.handle__inst0 = nil
 	c.done__inst0 = nil
@@ -547,10 +547,10 @@ type TickerInstance struct {
 	__n0                gtk4rt.Handle
 }
 
-func newTickerInstance(__model *Model, period time.Duration) *TickerInstance {
+func newTickerInstance(__model *Model, __a_period time.Duration) *TickerInstance {
 	c := &TickerInstance{}
 	c.__model = __model
-	c.__prop_period = period
+	c.__prop_period = __a_period
 	c.ticks = 0
 	c.handle__inst0 = nil
 	c.__effect0_key = time.Duration(0) * time.Millisecond
@@ -855,8 +855,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ba3447f0fef0bbfc9899ca80375527b4
 -- run/go/fyne --
-pass sha256:9786ec7c23f2f15b7acc22e6ec56cb5b
+pass sha256:ee54eda1ad746b434d2b6fbb0eb2cb91
 -- run/go/gtk4 --
-pass sha256:77277921b2d11b5b744b5adabc319db2
+pass sha256:70b076876d5b186c7ff08257bee3f482
 -- run/none/html --
 pass sha256:2caa4942bd91738b19103205b073fd88

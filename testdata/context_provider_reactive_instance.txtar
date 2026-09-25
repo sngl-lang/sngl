@@ -314,11 +314,11 @@ type ShowInstance struct {
 	__n0               *widget.Label
 }
 
-func newShowInstance(__model *Model, n int, __ctx_label string) *ShowInstance {
+func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowInstance {
 	c := &ShowInstance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___ctx_label = __ctx_label
+	c.__prop_n = __a_n
+	c.__prop___ctx_label = __a___ctx_label
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__n0 = widget.NewLabel("")
@@ -447,11 +447,11 @@ type ShowInstance struct {
 	__n0               gtk4rt.Handle
 }
 
-func newShowInstance(__model *Model, n int, __ctx_label string) *ShowInstance {
+func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowInstance {
 	c := &ShowInstance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___ctx_label = __ctx_label
+	c.__prop_n = __a_n
+	c.__prop___ctx_label = __a___ctx_label
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__n0 = gtk4rt.LabelNew("")
@@ -693,9 +693,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:e2f01b52c79ffb3e1d87876d679ad7a1
 -- run/go/fyne --
-pass sha256:b4a57b30d0241feab0af3a2823dd9928
+pass sha256:d3400d79455158dbf443c681cc66d047
 -- run/go/gtk4 --
-pass sha256:157131b8949f59c6658b0821b3a411d0
+pass sha256:fbebb565a78cdf07cefd2da33852456b
 -- run/kotlin/android --
 pass sha256:aaa3ed2b02a32f2f3d45b2f9c8f71363
 -- run/none/html --

@@ -255,11 +255,11 @@ type Frame__slot2Instance struct {
 	__n0           *widget.Label
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
@@ -348,11 +348,11 @@ type Frame__slot0Instance struct {
 	__n1           *widget.Label
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -494,11 +494,11 @@ type Frame__slot2Instance struct {
 	__n0           gtk4rt.Handle
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
@@ -604,11 +604,11 @@ type Frame__slot0Instance struct {
 	__n1           gtk4rt.Handle
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1014,9 +1014,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:80b72783b56c5aca4c6b97f957e1b8da
 -- run/go/fyne --
-pass sha256:648a9fc5abda66a7f3661f01e34f9af9
+pass sha256:a34321280f4eb219233b97e691a9d3ce
 -- run/go/gtk4 --
-pass sha256:018fdb8b177e1574581f0270efbaff12
+pass sha256:4e41c3c162c2ff9c7a492c061593dfc3
 -- run/kotlin/android --
 pass sha256:0527c1cc8874a90adb4061173387439f
 -- run/none/html --

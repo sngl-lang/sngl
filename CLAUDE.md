@@ -1580,7 +1580,8 @@ the slot sits in, so each slot keeps a hidden anchor there
 (`codegen.SlotAnchorField`), added by its first render -- which runs while the
 container is built, at the slot's position -- and inserts its entries before
 it. Appending instead moved a re-rendered slot after every sibling below it
-(`testdata/render_slot_in_place.txtar`). gtk4's cgo mode still appends. A gtk4
+(`testdata/render_slot_in_place.txtar`); gtk4's cgo mode does the same through
+two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
 record also holds a reference on its root, since the slot holding it removes
 it before appending it again and GTK frees a widget its parent held alone.
 
@@ -1800,7 +1801,9 @@ the slot -- wrapped in a one-pass loop over a const, which re-renders its body
 on any state it reads -- and the `if` inside is an ordinary one: fyne builds
 the flow around it, gtk4 guards the runs in its markup with `gtk4rt.When` and
 refuses a `for` there, a label's markup being one expression
-(`testdata/markup_reactive_span.txtar`).
+(`testdata/markup_reactive_span.txtar`). Only the flow's own content is asked:
+an `if` holding a whole paragraph is its container's ordinary slot
+(`testdata/markup_flow_under_reactive_if.txtar`).
 
 `markup.SpanStyle` is its own struct and not `ui.Style` for two reasons. A run
 has no box, so most of `ui.Style` would type-check on a span and do nothing

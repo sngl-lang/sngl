@@ -387,13 +387,13 @@ type Frame__slot6Instance struct {
 	__n1           *widget.Label
 }
 
-func newFrame__slot6Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot6Instance {
+func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot6Instance {
 	c := &Frame__slot6Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot6Instance{}
@@ -514,13 +514,13 @@ type Frame__slot5Instance struct {
 	__n3           *widget.Label
 }
 
-func newFrame__slot5Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot5Instance {
+func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot5Instance {
 	c := &Frame__slot5Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -641,13 +641,13 @@ type Frame__slot4Instance struct {
 	__n5           *widget.Label
 }
 
-func newFrame__slot4Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot4Instance {
+func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot4Instance {
 	c := &Frame__slot4Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -768,13 +768,13 @@ type Frame__slot2Instance struct {
 	__n7           *widget.Label
 }
 
-func newFrame__slot2Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -895,13 +895,13 @@ type Frame__slot1Instance struct {
 	__n9           *widget.Label
 }
 
-func newFrame__slot1Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot1Instance {
+func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot1Instance {
 	c := &Frame__slot1Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1022,13 +1022,13 @@ type Frame__slot0Instance struct {
 	__n11          *widget.Label
 }
 
-func newFrame__slot0Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1256,13 +1256,13 @@ type Frame__slot6Instance struct {
 	__n1           gtk4rt.Handle
 }
 
-func newFrame__slot6Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot6Instance {
+func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot6Instance {
 	c := &Frame__slot6Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot6Instance{}
@@ -1412,13 +1412,13 @@ type Frame__slot5Instance struct {
 	__n3           gtk4rt.Handle
 }
 
-func newFrame__slot5Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot5Instance {
+func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot5Instance {
 	c := &Frame__slot5Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1568,13 +1568,13 @@ type Frame__slot4Instance struct {
 	__n5           gtk4rt.Handle
 }
 
-func newFrame__slot4Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot4Instance {
+func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot4Instance {
 	c := &Frame__slot4Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1724,13 +1724,13 @@ type Frame__slot2Instance struct {
 	__n7           gtk4rt.Handle
 }
 
-func newFrame__slot2Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1880,13 +1880,13 @@ type Frame__slot1Instance struct {
 	__n9           gtk4rt.Handle
 }
 
-func newFrame__slot1Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot1Instance {
+func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot1Instance {
 	c := &Frame__slot1Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -2036,13 +2036,13 @@ type Frame__slot0Instance struct {
 	__n11          gtk4rt.Handle
 }
 
-func newFrame__slot0Instance(__model *Model, result int, m string, __depth int, __p0 string) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_result = result
-	c.__prop_m = m
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_result = __a_result
+	c.__prop_m = __a_m
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -3089,9 +3089,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:8ab0e73a2bf9e30c3bc4844ff1638568
 -- run/go/fyne --
-pass sha256:b4133d8d0f545c9be47b33a6efc73398
+pass sha256:50406a2ed4ceb0160e163f8f2bc4a9d6
 -- run/go/gtk4 --
-pass sha256:e31b21d8d86e12b32fe6de38ba53d2e4
+pass sha256:5b3ac632b5d3f357fa3a702db7c82794
 -- run/kotlin/android --
 pass sha256:9bacbc80b57eaca603f853a01012be51
 -- run/none/html --

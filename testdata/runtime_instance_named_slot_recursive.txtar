@@ -349,12 +349,12 @@ type Frame__slot2Instance struct {
 	__n0           *widget.Label
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int, __p0 int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p0 int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
@@ -451,12 +451,12 @@ type Frame__slot0Instance struct {
 	__n1           *widget.Label
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int, __p0 int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p0 int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = container.NewVBox()
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -619,12 +619,12 @@ type Frame__slot2Instance struct {
 	__n0           gtk4rt.Handle
 }
 
-func newFrame__slot2Instance(__model *Model, n int, __depth int, __p0 int) *Frame__slot2Instance {
+func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int, __a___p0 int) *Frame__slot2Instance {
 	c := &Frame__slot2Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__inst0_live = []*Frame__slot2Instance{}
@@ -738,12 +738,12 @@ type Frame__slot0Instance struct {
 	__n1           gtk4rt.Handle
 }
 
-func newFrame__slot0Instance(__model *Model, n int, __depth int, __p0 int) *Frame__slot0Instance {
+func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int, __a___p0 int) *Frame__slot0Instance {
 	c := &Frame__slot0Instance{}
 	c.__model = __model
-	c.__prop_n = n
-	c.__prop___depth = __depth
-	c.__prop___p0 = __p0
+	c.__prop_n = __a_n
+	c.__prop___depth = __a___depth
+	c.__prop___p0 = __a___p0
 	c.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
 	c.__slot0 = nil
 	c.__slot1 = nil
@@ -1205,9 +1205,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3c757c4d76bdf884e3b0f4bfcc118757
 -- run/go/fyne --
-pass sha256:bbc98442a967d7473b01ab7bd869cc9f
+pass sha256:6790c2eb77194874930659aa35b7b076
 -- run/go/gtk4 --
-pass sha256:145620cd217012dc3fa60171a98ff35d
+pass sha256:e1b20c0b1bddc29d26a69346db84830e
 -- run/kotlin/android --
 pass sha256:ca7cab5962d8c2e6751b8d7f68cd2176
 -- run/none/html --

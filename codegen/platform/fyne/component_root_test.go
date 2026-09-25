@@ -5,11 +5,8 @@ import (
 	"testing"
 )
 
-// TestAnUnrenderedRecursionIsNotEmitted reads
-// testdata/test_html_recursive_component.sngl, whose recursion the optimizer
-// unrolls: nothing the program renders instantiates `tree` afterwards. It was
-// emitted anyway, as a Model method whose `__nN__el` was declared inside the
-// `else` that bound it and read after it, so the file did not build.
+// The optimizer unrolls test_html_recursive_component.sngl's recursion, so
+// nothing the program renders instantiates `tree`.
 func TestAnUnrenderedRecursionIsNotEmitted(t *testing.T) {
 	model := generateFyneModelBuilt(t, fixtureSource(t, "test_html_recursive_component.sngl"))
 	if strings.Contains(model, "renderTree") {
