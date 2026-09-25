@@ -577,6 +577,9 @@ func (c *RowInstance) Destroy() {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
 	}
+	if c.__slot0_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
 }
 
 func (m *Model) Last() string {
@@ -654,4 +657,4 @@ func (m *Model) boxChange() {
 -- run/go/fyne --
 pass sha256:6dd021ed898bce3713b76cebb68dc90a
 -- run/go/gtk4 --
-pass sha256:b3696e3a49e91ab448c222d85c1260bb
+pass sha256:6bec65a3755cde6d20bf18b3a40603aa

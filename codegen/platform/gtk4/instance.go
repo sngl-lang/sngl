@@ -189,13 +189,16 @@ func emitComponentInstance(
 		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
 	}
 	fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t\t%s = nil\n\t}\n", root, rootRefLine("g_object_unref", "Release", wrapped), root)
-	if wrapped {
-		for _, v := range comp.Vars {
-			if isSlotVar(v) {
-				anchor := instanceReceiver + "." + codegen.SlotAnchorField(v.Name)
-				fmt.Fprintf(b, "\tif %s != nil {\n\t\tgtk4rt.Release(%s)\n\t}\n", anchor, anchor)
-			}
+	for _, v := range comp.Vars {
+		if !isSlotVar(v) {
+			continue
 		}
+		anchor := instanceReceiver + "." + codegen.SlotAnchorField(v.Name)
+		release := "gtk4rt.Release(" + anchor + ")"
+		if !wrapped {
+			release = "C.g_object_unref(C.gpointer(unsafe.Pointer(" + anchor + ")))"
+		}
+		fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t}\n", anchor, release)
 	}
 	b.WriteString("}\n\n")
 }

@@ -875,6 +875,12 @@ func (c *__canvas0Instance) Destroy() {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
 	}
+	if c.__slot0_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
+	if c.__slot1_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
+	}
 }
 
 // __canvas1Instance is one live instance of the __canvas1 component.
@@ -924,6 +930,12 @@ func (c *__canvas1Instance) Destroy() {
 	if c.Root != nil {
 		C.g_object_unref(C.gpointer(unsafe.Pointer(c.Root)))
 		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot0_at)))
+	}
+	if c.__slot1_at != nil {
+		C.g_object_unref(C.gpointer(unsafe.Pointer(c.__slot1_at)))
 	}
 }
 
@@ -1254,6 +1266,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:186fd473d1d2459c020793f6d6cbf3a7
 -- run/go/gtk4 --
-pass sha256:934bacc419efcdc45487b873a53f3d9e
+pass sha256:a71ba842872eb4bfc6f9dd278b34ce4c
 -- run/none/html --
 pass sha256:6818d5a8f9b1bd34d6e2cc2dcb407e08
