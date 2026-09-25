@@ -59,6 +59,14 @@ func (m Model) status() string {
 	return (("Todo List (" + fmt.Sprint(len(m.todos))) + " items)")
 }
 
+func (m *Model) __focusLoop2_len() int {
+	var __focusCount int = 0
+	for range m.todos {
+		__focusCount = (__focusCount + 1)
+	}
+	return __focusCount
+}
+
 func (m *Model) __focusNext() {
 	if m.__focusID == 0 {
 		m.__focusID = 1
@@ -68,7 +76,7 @@ func (m *Model) __focusNext() {
 			m.__focusLoop2_cursor = 0
 		} else {
 			if m.__focusID == 2 {
-				var __focusLen int = len(m.todos)
+				var __focusLen int = m.__focusLoop2_len()
 				if (m.__focusLoop2_cursor + 1) < __focusLen {
 					m.__focusLoop2_cursor = (m.__focusLoop2_cursor + 1)
 				} else {
@@ -176,12 +184,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.todos = append(m.todos, Todo{Text: m.newTodo, Done: false})
 			m.newTodo = ""
 		case msg.Code == tea.KeySpace && m.__focusID == 2:
-			for index, _ := range m.todos {
-				if m.__focusLoop2_cursor == index {
-					m.todos[index].Done = !m.todos[index].Done
-					break
+			func() {
+				__focusPos2 := 0
+				for index, item := range m.todos {
+					_ = index
+					_ = item
+					if m.__focusLoop2_cursor == __focusPos2 {
+						m.todos[index].Done = !m.todos[index].Done
+						return
+					}
+					__focusPos2++
 				}
-			}
+			}()
 		case msg.Code == tea.KeyEnter && m.__focusID == 3:
 			if __i := (len(m.todos) - 1); __i >= 0 && __i < len(m.todos) {
 				m.todos = append(m.todos[:__i], m.todos[__i+1:]...)
@@ -223,21 +237,26 @@ func (m Model) View() tea.View {
 	var content_2 string
 	var content_2Children []string
 	var content_2_0 string
+	__focusPos2 := 0
+	_ = __focusPos2
 	var content_2_0Items []string
 	for index, item := range m.todos {
 		_ = index
 		_ = item
 		var content_2_0Item string
-		content_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == index))
+		content_2_0ItemFocused := ((m.__focusID == 2) && (m.__focusLoop2_cursor == __focusPos2))
 		content_2_0ItemPrefix := " "
 		if content_2_0ItemFocused {
 			content_2_0ItemPrefix = ">"
 		}
 		content_2_0Item = lipgloss.NewStyle().Render(content_2_0ItemPrefix + " " + fmt.Sprint(item.Text))
+		__focusPos2++
 		content_2_0Items = append(content_2_0Items, content_2_0Item)
 	}
 	content_2_0 = strings.Join(content_2_0Items, "\n")
-	content_2Children = append(content_2Children, content_2_0)
+	if content_2_0 != "" {
+		content_2Children = append(content_2Children, content_2_0)
+	}
 	content_2 = lipgloss.JoinVertical(lipgloss.Left, content_2Children...)
 	contentChildren = append(contentChildren, content_2)
 	var content_3 string
