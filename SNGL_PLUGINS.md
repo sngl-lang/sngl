@@ -53,8 +53,7 @@ before Phase 0.
   and none *forwards* the enclosing handler's parameters. A gen component that
   fires its own event therefore has to pass `out` and `importPath` explicitly.
   A bare `@name` is still one loose `dyn` parameter, so the gen components
-  should declare their events with a list (`@generate(out Out, importPath
-  string)`) and never bare. Host-widget dispatch still reads a single payload
+  should declare their events with a list (`@generate(out Out, importPath string)`) and never bare. Host-widget dispatch still reads a single payload
   (`EventDecl.Payload()`), which is fine here because gen handlers never reach
   a platform emitter.
 - **The root family is declared in `sngl:ui`.** It is the family a package
