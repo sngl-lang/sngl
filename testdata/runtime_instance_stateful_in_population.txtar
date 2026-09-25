@@ -544,10 +544,12 @@ func (c *CounterInstance) __effects0_settle() {
 func (c *CounterInstance) SetTag(__v string) {
 	c.__prop_tag = __v
 	c.__n0.SetText(((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
+	c.__effects0_settle()
 }
 
 func (c *CounterInstance) SetSeen(__v func(string)) {
 	c.__prop_seen = __v
+	c.__effects0_settle()
 }
 
 func (c *CounterInstance) Destroy() {}
@@ -819,10 +821,12 @@ func (c *CounterInstance) __effects0_settle() {
 func (c *CounterInstance) SetTag(__v string) {
 	c.__prop_tag = __v
 	gtk4rt.LabelSetText(c.__n0, ((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
+	c.__effects0_settle()
 }
 
 func (c *CounterInstance) SetSeen(__v func(string)) {
 	c.__prop_seen = __v
+	c.__effects0_settle()
 }
 
 func (c *CounterInstance) Destroy() {
@@ -1134,9 +1138,11 @@ body { font-family: system-ui, sans-serif; }
     function __set_tag(__v) {
       __prop_tag = __v;
       __n0.textContent = "counter " + __prop_tag + " " + String(n);
+      __effects0_settle();
     }
     function __set_seen(__v) {
       __prop_seen = __v;
+      __effects0_settle();
     }
     let __n5 = document.createElement("div");
     __n5.setAttribute("style", "display:flex;flex-direction:column");
@@ -1259,10 +1265,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0e1bf4a804f835639049cfce8a81f70e
 -- run/go/fyne --
-pass sha256:54a290b7a4d14c5b8afb413a9ed7916b
+pass sha256:6c0e4b84f71ddf5db55232c0b13a562e
 -- run/go/gtk4 --
-pass sha256:e91c2b18b4d16e736c47b352d23dcee4
+pass sha256:911e7c73a0f83d7981b1d3fafadbd345
 -- run/kotlin/android --
 pass sha256:e7c3ca7a60305157bfaf98265577aea8
 -- run/none/html --
-pass sha256:00545f136c84bf5ee5596ed32218a726
+pass sha256:abf1708776a9fab84379f2f61f925be6

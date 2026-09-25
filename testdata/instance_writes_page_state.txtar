@@ -619,6 +619,7 @@ func (c *RowInstance) Destroy() {
 
 func (c *RowInstance) SetName(__v string) {
 	c.__prop_name = __v
+	c.__effects0_settle()
 }
 
 func main() {
@@ -841,6 +842,7 @@ func (c *RowInstance) teardown() {
 
 func (c *RowInstance) SetName(__v string) {
 	c.__prop_name = __v
+	c.__effects0_settle()
 }
 
 func (c *RowInstance) Destroy() {
@@ -1081,6 +1083,7 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_name(__v) {
       __prop_name = __v;
+      __effects0_settle();
     }
     let __n5 = document.createElement("button");
     __n5.disabled = false;
@@ -1169,10 +1172,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:f9f54d2f75a8543cc87031a392219cd4
 -- run/go/fyne --
-pass sha256:fa41db205d4e105d0b637bdb147e1617
+pass sha256:b2c132cbe459383d003bd3eb8bc557d2
 -- run/go/gtk4 --
-pass sha256:f116c3db02a9c17180d06f128dbf5972
+pass sha256:37eccd7515d7d0bdef9713972db36d22
 -- run/kotlin/android --
 pass sha256:4ffa09189aa41104afea7fb8a840eb20
 -- run/none/html --
-pass sha256:241ce678956b959b36862e0668552a12
+pass sha256:4c8fbc3f4893f5d2cc3962c51371b3e4

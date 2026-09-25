@@ -636,6 +636,7 @@ func (c *TimerInstance) Destroy() {
 
 func (c *TimerInstance) SetTick(__v func(any)) {
 	c.__prop_tick = __v
+	c.__effects0_settle()
 }
 
 func main() {
@@ -924,6 +925,7 @@ func (c *TimerInstance) teardown() {
 
 func (c *TimerInstance) SetTick(__v func(any)) {
 	c.__prop_tick = __v
+	c.__effects0_settle()
 }
 
 func (c *TimerInstance) Destroy() {
@@ -1097,6 +1099,7 @@ body { font-family: system-ui, sans-serif; }
     }
     function __set_tick(__v) {
       __prop_tick = __v;
+      __effects0_settle();
     }
     __effects0_settle();
     return {
@@ -1246,8 +1249,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:146477a18828bf62ccb78a149d2018d5
 -- run/go/fyne --
-pass sha256:7bc65a52f23d4028d71de895285b706f
+pass sha256:1a3949470d1465cdcb435ebf79f97279
 -- run/go/gtk4 --
-pass sha256:fe21d2f12fca3488eae0bb6befddc936
+pass sha256:44ecbe52c365fd45b81c68f35ebb10ca
 -- run/none/html --
-pass sha256:68f08128213183c49de25c724e556808
+pass sha256:be2961dd3e75e16ab6b1a98efad79da7

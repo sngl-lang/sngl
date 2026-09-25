@@ -353,12 +353,26 @@ func (kc *KtIRContext) MutTargetIdent(n *ir.Ident) string {
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
 	}
-	if kc.IdentRewrites != nil {
-		if rewritten, ok := kc.IdentRewrites[n.Name]; ok {
-			return rewritten
-		}
+	if rewritten, ok := kc.identRewrite(n.Name); ok {
+		return rewritten
 	}
 	return n.Name
+}
+
+// identRewrite is the rewrite for a name the page's state declares, unless
+// the scope binds the name itself: a prop or loop variable of the same name
+// in another composable is not the page's.
+func (kc *KtIRContext) identRewrite(name string) (string, bool) {
+	rewritten, ok := kc.IdentRewrites[name]
+	if !ok {
+		return "", false
+	}
+	if kc.Ctx != nil {
+		if _, kind := kc.Ctx.Resolve(name); kind == codegen.NameLocal {
+			return "", false
+		}
+	}
+	return rewritten, true
 }
 func (kc *KtIRContext) MutTargetField(n *ir.Select) string { return n.Field }
 
@@ -424,10 +438,8 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 	if host, ok := kc.hostValueIdent(n); ok {
 		return host
 	}
-	if kc.IdentRewrites != nil {
-		if rewritten, ok := kc.IdentRewrites[name]; ok {
-			return rewritten
-		}
+	if rewritten, ok := kc.identRewrite(name); ok {
+		return rewritten
 	}
 	if p, ok := n.Sym.(*ir.Param); ok && p.Receiver {
 		return name

@@ -701,14 +701,17 @@ func (c *Card__slot0Instance) SetStart(__v int) {
 func (c *Card__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	c.__n0.SetText(((("head " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) SetReport(__v func(string)) {
 	c.__prop_report = __v
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 	c.__prop___on0 = __v
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) Destroy() {}
@@ -993,14 +996,17 @@ func (c *Card__slot0Instance) SetStart(__v int) {
 func (c *Card__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	gtk4rt.LabelSetText(c.__n0, ((("head " + fmt.Sprint(c.__prop___p0)) + " ") + fmt.Sprint(c.k)))
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) SetReport(__v func(string)) {
 	c.__prop_report = __v
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 	c.__prop___on0 = __v
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) Destroy() {
@@ -1323,12 +1329,15 @@ body { font-family: system-ui, sans-serif; }
     function __set___p0(__v) {
       __prop___p0 = __v;
       __n0.textContent = "head " + String(__prop___p0) + " " + String(k);
+      __effects0_settle();
     }
     function __set_report(__v) {
       __prop_report = __v;
+      __effects0_settle();
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
+      __effects0_settle();
     }
     let __n4 = document.createElement("div");
     __n4.setAttribute("style", "display:flex;flex-direction:column");
@@ -1427,10 +1436,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7cc02084c57b5caee3e25094a3dc26c6
 -- run/go/fyne --
-pass sha256:c6674deaa5386e3c3e8f8dddf10c4c36
+pass sha256:fb6f13a696fc8da07614f2ee63b06e12
 -- run/go/gtk4 --
-pass sha256:058240e52677fb609577672479b9bd4c
+pass sha256:a2b7faa3651b8dbf1141d0be3d70665d
 -- run/kotlin/android --
 pass sha256:d410b39a76f2ac074ede39d3dc13007d
 -- run/none/html --
-pass sha256:f329e1b66cbace972585fdf6ce1eaa1f
+pass sha256:0854519eea3f7c2eff166a46ff7399d3

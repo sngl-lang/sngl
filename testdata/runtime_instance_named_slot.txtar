@@ -895,10 +895,12 @@ func (c *Card__slot0Instance) SetStart(__v int) {
 func (c *Card__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	c.__renderSlot1(c.__n3)
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 	c.__prop___on0 = __v
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) __renderSlot1(__parent *fyne.Container) {
@@ -1295,10 +1297,12 @@ func (c *Card__slot0Instance) SetStart(__v int) {
 func (c *Card__slot0Instance) Set__p0(__v int) {
 	c.__prop___p0 = __v
 	c.__renderSlot1(c.__n3)
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) Set__on0(__v func(string)) {
 	c.__prop___on0 = __v
+	c.__effects0_settle()
 }
 
 func (c *Card__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
@@ -1700,9 +1704,11 @@ body { font-family: system-ui, sans-serif; }
     function __set___p0(__v) {
       __prop___p0 = __v;
       __renderSlot1(__slotAnchor_1);
+      __effects0_settle();
     }
     function __set___on0(__v) {
       __prop___on0 = __v;
+      __effects0_settle();
     }
     function __renderSlot1(parent) {
       let __place2_prev = __slot12;
@@ -1955,10 +1961,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fa2471ce73a59b459fc7a787002cf6ca
 -- run/go/fyne --
-pass sha256:7c7b5e2906fe4d7e251f46ab04295627
+pass sha256:77f7343c206d654b28dc2fdcfbc077d5
 -- run/go/gtk4 --
-pass sha256:62f33a284b425ca791d402ab1eec4fb9
+pass sha256:253d0c0db278e8e2eb5b8d7eaa55827b
 -- run/kotlin/android --
 pass sha256:240c001b2528aae2f65b2b28178cc836
 -- run/none/html --
-pass sha256:937de500686a926ff7e2ae259f043bf7
+pass sha256:ba44c5adcc7176d43facf7b1a3a16db4

@@ -486,10 +486,12 @@ func (c *CardInstance) __effects0_settle() {
 func (c *CardInstance) SetN(__v int) {
 	c.__prop_n = __v
 	c.__n0.SetText(((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
+	c.__effects0_settle()
 }
 
 func (c *CardInstance) SetReport(__v func(int)) {
 	c.__prop_report = __v
+	c.__effects0_settle()
 }
 
 func (c *CardInstance) Destroy() {}
@@ -709,10 +711,12 @@ func (c *CardInstance) __effects0_settle() {
 func (c *CardInstance) SetN(__v int) {
 	c.__prop_n = __v
 	gtk4rt.LabelSetText(c.__n0, ((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
+	c.__effects0_settle()
 }
 
 func (c *CardInstance) SetReport(__v func(int)) {
 	c.__prop_report = __v
+	c.__effects0_settle()
 }
 
 func (c *CardInstance) Destroy() {
@@ -950,9 +954,11 @@ body { font-family: system-ui, sans-serif; }
     function __set_n(__v) {
       __prop_n = __v;
       __n0.textContent = String(__prop_n) + " " + String(hits);
+      __effects0_settle();
     }
     function __set_report(__v) {
       __prop_report = __v;
+      __effects0_settle();
     }
     let __n3 = document.createElement("div");
     __n3.setAttribute("style", "display:flex;flex-direction:column");
@@ -1032,10 +1038,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:945d19fba92598e108d5dcb68c042332
 -- run/go/fyne --
-pass sha256:a784430e5ab3d8590f4132cef692fb10
+pass sha256:69f7bc69d58eeb0f04bb3b65eaa92d43
 -- run/go/gtk4 --
-pass sha256:ea948d050593ba3840026adb39b806e3
+pass sha256:e01ea136d7bb58e4b7716dcf26d1935e
 -- run/kotlin/android --
 pass sha256:35701b9892a5e285e4c634d96fd7e36d
 -- run/none/html --
-pass sha256:8be361fcea077816b7debb04961ffdec
+pass sha256:d6b8248a1eaa4e6f557d7a0d677ec63d

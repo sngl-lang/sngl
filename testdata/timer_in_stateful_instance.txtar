@@ -428,6 +428,7 @@ func (c *TickerInstance) Destroy() {
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
 	c.__prop_period = __v
 	c.__n0.SetText(((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+	c.__effects0_settle()
 }
 
 func main() {
@@ -646,6 +647,7 @@ func (c *TickerInstance) teardown() {
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
 	c.__prop_period = __v
 	gtk4rt.LabelSetText(c.__n0, ((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
+	c.__effects0_settle()
 }
 
 func (c *TickerInstance) Destroy() {
@@ -781,6 +783,7 @@ body { font-family: system-ui, sans-serif; }
     function __set_period(__v) {
       __prop_period = __v;
       __n0.textContent = String(__prop_period) + "ms: " + String(ticks);
+      __effects0_settle();
     }
     let __n0 = document.createElement("span");
     __n0.textContent = String(__prop_period) + "ms: " + String(ticks);
@@ -852,8 +855,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ba3447f0fef0bbfc9899ca80375527b4
 -- run/go/fyne --
-pass sha256:6627d40659719c962d8410e05a451f69
+pass sha256:9786ec7c23f2f15b7acc22e6ec56cb5b
 -- run/go/gtk4 --
-pass sha256:f818c27eadceb183562cdb2de21c53b9
+pass sha256:77277921b2d11b5b744b5adabc319db2
 -- run/none/html --
-pass sha256:9e764f509b14e87d9faa8d27238788a7
+pass sha256:2caa4942bd91738b19103205b073fd88
