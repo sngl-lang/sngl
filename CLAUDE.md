@@ -1597,9 +1597,11 @@ temporary stored back. A timer under a loop is then a schedule per copy, which
 bubbletea keeps keyed the same way and routes through Update
 (`codegen.CollectLoopTimers`, `bubbletea/loop_timers.go`); it used to be
 collected by nobody and never ran. A recursion is never spliced, so state
-inside one -- the recursive component's own, or a stateful component written
-in its body -- has nowhere to live there and is refused with a position
-(`refuseStateInCycles`, `cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`);
+inside one -- the recursive component's own vars or lifetime, a stateful
+component written in its body, or a canvas it renders -- has nowhere to live
+there and is refused with a position
+(`refuseStateInCycles`, `refuseCanvasInCycles`,
+`cmd/sngl/testdata/bubbletea_recursive_state_refused.txt`);
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
 
