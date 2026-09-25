@@ -22,6 +22,7 @@ type irViewContext struct {
 	buf         *strings.Builder
 	indent      int
 	vertical    bool
+	horizontal  bool
 	inComponent bool
 
 	// overlays accumulates modal/drawer Overlay primitives encountered while
@@ -304,19 +305,32 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 	// Defer the conditional syntax to the Go language driver.
 	vc.line("%s", vc.gc.IfHead(s, vc.gc.EvalExpr(s.Cond)))
 	vc.indent++
-	for _, child := range s.Body {
-		vc.renderStmt(child, resultVar)
-	}
+	vc.renderBranch(s.Body, resultVar)
 	vc.indent--
 	if len(s.Else) > 0 {
 		vc.line("%s", vc.gc.ElseHead())
 		vc.indent++
-		for _, child := range s.Else {
-			vc.renderStmt(child, resultVar)
-		}
+		vc.renderBranch(s.Else, resultVar)
 		vc.indent--
 	}
 	vc.line("%s", vc.gc.BlockEnd())
+}
+
+func (vc *irViewContext) renderBranch(stmts []ir.Stmt, resultVar string) {
+	if countParts(stmts) <= 1 {
+		for _, child := range stmts {
+			vc.renderStmt(child, resultVar)
+		}
+		return
+	}
+	list := resultVar + "Parts"
+	vc.line("var %s []string", list)
+	vc.renderSiblings(stmts, resultVar+"Part", list)
+	if vc.horizontal {
+		vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, list)
+	} else {
+		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, list)
+	}
 }
 
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
@@ -510,12 +524,12 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		boxVar := fmt.Sprintf("overlay%d", len(vc.overlays))
 		childrenVar := boxVar + "Children"
 		vc.line("var %s []string", childrenVar)
-		prevVertical := vc.vertical
-		vc.vertical = true
+		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+		vc.vertical, vc.horizontal = true, false
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", boxVar, i), childrenVar)
 		}
-		vc.vertical = prevVertical
+		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
 		if style != "lipgloss.NewStyle()" {
 			vc.line(`%s = %s.Render(%s)`, boxVar, style, boxVar)
@@ -541,12 +555,13 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		// Join children vertically/horizontally, then apply style if present.
 		childrenVar := resultVar + "Children"
 		vc.line("var %s []string", childrenVar)
-		prevVertical := vc.vertical
+		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
 		vc.vertical = bp.Join == joinVertical
+		vc.horizontal = !vc.vertical
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 		}
-		vc.vertical = prevVertical
+		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 		// tooltip: reveal the body text (dim) below the trigger while the wrapped
 		// focusable descendant is focused. The `tooltip` prop carries the text;
 		// the focus expression comes from the focusable descendant's injected
@@ -640,12 +655,13 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 		if s, ok := codegen.IRLiteralString(joinExpr); ok {
 			childrenVar := resultVar + "Children"
 			vc.line("var %s []string", childrenVar)
-			prevVertical := vc.vertical
+			prevVertical, prevHorizontal := vc.vertical, vc.horizontal
 			vc.vertical = s == "vertical"
+			vc.horizontal = !vc.vertical
 			for i, child := range n.Children {
 				vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 			}
-			vc.vertical = prevVertical
+			vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 			if s == "vertical" {
 				vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
 			} else {

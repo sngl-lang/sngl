@@ -738,6 +738,9 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}
+	if len(args) == 1 && codegen.IsComputed(n.Func) {
+		return args[0] + "." + method
+	}
 	return args[0] + "." + method + "(" + strings.Join(args[1:], ", ") + ")"
 }
 

@@ -467,11 +467,11 @@ func (gc *GoIRContext) ForHead(n *ir.For, iter string) string {
 	// discard for one: `for range xs` covers the element and map forms, but a
 	// counted loop counts, so it names a variable the condition reads -- which
 	// is also what keeps Go from calling it unused.
+	n = WithUnreadVarsDropped(n)
 	key := n.Key
 	if key == "" {
 		key = "__i"
 	}
-	n = WithUnreadVarsDropped(n)
 	switch n.IterKind {
 	case ir.IterForever:
 		// Go's own spelling: `for {` is the condition form below with the
@@ -2176,15 +2176,7 @@ func (gc *GoIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	return v.Foreign.Name, true
 }
 
-// WithUnreadVarsDropped is n with a loop variable its body never names left
-// out, since Go refuses one declared and not used. A lowering can leave one: a
-// slot matches its instances against the inner loop's element and never reads
-// the outer loop's. Asked by name, so anything that might read it keeps it.
-func WithUnreadVarsDropped(n *ir.For) *ir.For {
-	// A counted loop's variable is read by its own condition.
-	if n.IterKind == ir.IterCounted {
-		return n
-	}
+func loopReadNames(n *ir.For) map[string]bool {
 	read := map[string]bool{}
 	for _, block := range [][]ir.Stmt{n.Body, n.Else} {
 		_ = ir.Walk(block, func(nd ir.Node) error {
@@ -2193,6 +2185,25 @@ func WithUnreadVarsDropped(n *ir.For) *ir.For {
 			}
 			return nil
 		})
+	}
+	return read
+}
+
+// WithUnreadVarsDropped is n with a loop variable its body never names left
+// out, since Go refuses one declared and not used. A lowering can leave one: a
+// slot matches its instances against the inner loop's element and never reads
+// the outer loop's. Asked by name, so anything that might read it keeps it.
+func WithUnreadVarsDropped(n *ir.For) *ir.For {
+	read := loopReadNames(n)
+	// A counted loop's variable is read by its own condition, which ForHead
+	// names __i when the body does not name one.
+	if n.IterKind == ir.IterCounted {
+		if n.Value != "" || n.Key == "" || read[n.Key] {
+			return n
+		}
+		cp := *n
+		cp.Key = ""
+		return &cp
 	}
 	if (n.Key == "" || read[n.Key]) && (n.Value == "" || read[n.Value]) {
 		return n
