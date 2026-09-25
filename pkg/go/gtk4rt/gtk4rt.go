@@ -91,17 +91,18 @@ static void sngl_emit(gpointer instance, const char *signal) {
     g_signal_emit_by_name(instance, signal);
 }
 
-// Reactive-safe entry setter: GtkEditable's set_text fires "changed" even when
-// the new text equals the current, which loops back through any change handler
-// that rewrote the bound var. Skip the call when the value already matches.
+// A program's write to an entry is not input, so "changed" is blocked: a
+// handler rewriting its own bound var with a new value would otherwise
+// re-enter itself from inside the emission until the stack ran out.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t);
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
-    gtk_editable_set_text(e, t);
+    sngl_set_entry_text_quiet(e, t);
 }
 
-// See EditableSetTextQuiet.
 static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
     guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
     g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
