@@ -673,11 +673,13 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 // cType, replacing the two-way-bind assignment when a node-attached handler is
 // promoted to a top-level Func the trampoline calls with no args.
 func gtk4EventGetterExpr(cType, nodeID string, wrapped bool) ir.Expr {
-	widgetRef := &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true}
 	if wrapped {
-		// No qualifyNodeExpr needed: ModelFieldRef renders the ref as m.<nodeID>.
 		return rtEventGetterExpr(cType, codegen.ModelFieldRef(nodeID))
 	}
+	return cgoEventGetterExpr(cType, &ir.Ident{Name: nodeID, IsElementRef: true, Synthesized: true})
+}
+
+func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 	switch cType {
 	case "GtkEntry":
 		// In GTK4 the text accessor moved to GtkEditable.
@@ -882,7 +884,7 @@ func emitIRPromotedHandler(b *strings.Builder, fn *ir.Func, gc *golang.GoIRConte
 		if cType == "" {
 			cType = sig.CType
 		}
-		substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped))
+		stmts = substituteWidgetPayload(stmts, fn.Params, cType, gtk4EventGetterExpr(cType, nodeID, wrapped))
 	}
 	body := codegen.WalkLowered(context.Background(), stmts, tr)
 	// Drop self-setter splices: writing the entry's text from inside its own

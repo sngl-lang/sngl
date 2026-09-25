@@ -1059,28 +1059,19 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string
 	if lam.Func == nil || len(lam.Func.Params) == 0 {
 		return lam
 	}
-	stmts := lam.Func.Block
-	if assign, ok := firstEventBind(stmts, lam.Func.Params); ok {
-		var getter ir.Expr
-		if t.wrapped {
-			getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
-		} else {
-			getter = gtk4EventGetterExpr(cType, codegen.IdentBareName(node), false)
-		}
-		if getter != nil {
-			stmts = append([]ir.Stmt{&ir.Assign{Target: assign.Target, Op: ast.AssignSet, Value: getter}}, stmts[1:]...)
-		}
-	}
 	var getter ir.Expr
 	if t.wrapped {
 		getter = rtEventGetterExpr(cType, t.qualifyNodeExpr(node))
 	} else {
-		getter = gtk4EventGetterExpr(cType, codegen.IdentBareName(node), false)
+		getter = cgoEventGetterExpr(cType, t.qualifyNodeExpr(node))
 	}
-	substituteWidgetPayload(stmts, lam.Func.Params, cType, getter)
+	stmts := lam.Func.Block
+	if assign, ok := firstEventBind(stmts, lam.Func.Params); ok && getter != nil {
+		stmts = append([]ir.Stmt{&ir.Assign{Target: assign.Target, Op: ast.AssignSet, Value: getter}}, stmts[1:]...)
+	}
 	fn := *lam.Func
 	fn.Params = nil
-	fn.Block = stmts
+	fn.Block = substituteWidgetPayload(stmts, lam.Func.Params, cType, getter)
 	out := *lam
 	out.Func = &fn
 	return &out
@@ -1089,11 +1080,11 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string
 // substituteWidgetPayload reads an event's value off the widget that fired it,
 // the trampoline handing the handler nothing. Only an entry's text is a
 // string, which is what every payload's value is.
-func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, getter ir.Expr) {
+func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, getter ir.Expr) []ir.Stmt {
 	if getter == nil || cType != "GtkEntry" {
-		return
+		return stmts
 	}
-	codegen.SubstituteEventPayload(stmts, params, func(f *ir.StructField) ir.Expr {
+	return codegen.SubstituteEventPayload(stmts, params, func(f *ir.StructField) ir.Expr {
 		if f.Type == nil || f.Type.Kind != ir.TypeString {
 			return nil
 		}

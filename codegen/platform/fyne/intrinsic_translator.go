@@ -522,7 +522,7 @@ func fyneCallbackLambda(lam *ir.Lambda, h fyneHandler, event string) ir.Expr {
 			}}, stmts[1:]...)
 		}
 	}
-	substitutePayload(stmts, lam.Func.Params, h.Param, params)
+	stmts = substitutePayload(stmts, lam.Func.Params, h.Param, params)
 	fn := *lam.Func
 	fn.Params = params
 	fn.Block = stmts
@@ -533,9 +533,9 @@ func fyneCallbackLambda(lam *ir.Lambda, h fyneHandler, event string) ir.Expr {
 
 // substitutePayload reads the event's value off the callback's own parameter
 // named goParam, where its Go type is the field's.
-func substitutePayload(stmts []ir.Stmt, sngl []*ir.Param, goParam string, goParams []*ir.Param) {
+func substitutePayload(stmts []ir.Stmt, sngl []*ir.Param, goParam string, goParams []*ir.Param) []ir.Stmt {
 	if goParam == "" {
-		return
+		return stmts
 	}
 	var goType string
 	for _, p := range goParams {
@@ -543,7 +543,7 @@ func substitutePayload(stmts []ir.Stmt, sngl []*ir.Param, goParam string, goPara
 			goType = ref.Name
 		}
 	}
-	codegen.SubstituteEventPayload(stmts, sngl, func(f *ir.StructField) ir.Expr {
+	return codegen.SubstituteEventPayload(stmts, sngl, func(f *ir.StructField) ir.Expr {
 		if f.Type == nil || golang.IRTypeToGo(f.Type) != goType {
 			return nil
 		}
