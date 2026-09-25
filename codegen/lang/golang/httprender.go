@@ -35,11 +35,10 @@ func newRouteGC(req *codegen.HTTPRequest, r codegen.HTTPRoute, shared *GoIRConte
 	ctx.ContextVar = loc.request + ".Context()"
 	ctx.StateReceiver = loc.state
 	ctx.StateFieldsExported = true
-	// Scope to the main component so its state vars resolve (StateReceiver
-	// then projects them onto `s.<Field>`). State surfaced to the route lives
-	// on the main component (and/or package-level), matching routeStateVars.
-	if main := mainComponent(req.Pkg); main != nil {
-		ctx = ctx.ForComponent(main)
+	// A harness root's state is surfaced to the route beside the package's,
+	// matching routeStateVars, and StateReceiver projects it onto `s.<Field>`.
+	if root := req.Pkg.RootDecl(); root != nil {
+		ctx = ctx.ForComponent(root)
 	}
 	// And to the route's own window, which is where a root component's state is
 	// by the time a backend sees it (#215). ForWindow keeps the component scope
@@ -67,19 +66,6 @@ func routeParamsVar(r codegen.HTTPRoute) *ir.Param {
 		return nil
 	}
 	return r.Window.Params
-}
-
-// mainComponent returns the "main" component of pkg, or nil.
-func mainComponent(pkg *ir.Package) *ir.Component {
-	if pkg == nil {
-		return nil
-	}
-	for _, c := range pkg.Components {
-		if c != nil && c.Name == "main" {
-			return c
-		}
-	}
-	return nil
 }
 
 // snglSessionTTL is the lazy eviction window emitted into the session store

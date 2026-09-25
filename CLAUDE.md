@@ -870,7 +870,14 @@ thing to type-check, and it is only as something to *run* that it has nowhere
 to draw. Which is why **`component main` has lost its harness convention** —
 `CodegenCtx.RootDecl()` now answers only for a harness that has cleared the
 windows on purpose (the test launcher isolating a component), and a `main` in
-an ordinary program is an ordinary component. `output(entry = home)` names the
+an ordinary program is an ordinary component. Nothing else asks for the name
+either, and each place that did was a behaviour: `sngl run --lang none` mounted
+a `main` instead of the windows (`BuildProgramEnv` mounts the program now), a
+directory of files each declaring one was read as a corpus of programs rather
+than a package, a library declaring one could not be imported, and route mode
+gave a `window #main` the index's `/` beside the first window's
+(`route_window_named_main.txtar`). Route mode and html ask
+`ir.Package.RootDecl()` for a harness root. `output(entry = home)` names the
 window a build opens at, by element reference so a typo is a name nobody
 declared; it completes the gap `codegen/codegenctx.go` already admitted to,
 where one window was scoped implicitly and two or more got no scoping at all.

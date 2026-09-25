@@ -1,0 +1,47 @@
+# The interpreter runs the program, which is its windows: `sngl run --lang
+# none` mounts what the package body renders, and a component is mounted only
+# where something instantiates it.
+#
+# It used to mount a component called `main` instead, by name. A program with
+# no such component mounted nothing and printed an empty tree, and one that
+# declared a `main` beside its window mounted that component and never the
+# window.
+
+sngl run --lang none --platform fyne --opt host=mem windows/app.sngl
+stdout 'text=from the window'
+
+sngl run --lang none --platform fyne --opt host=mem beside/app.sngl
+stdout 'text=from the window'
+! stdout 'text=from main'
+
+sngl run --lang none --platform fyne --opt host=mem rendered/app.sngl
+stdout 'text=from the window'
+stdout 'text=from main'
+
+-- windows/app.sngl --
+import ui "sngl:ui"
+
+ui.window #home(title="Home") {
+    ui.text(value="from the window")
+}
+-- beside/app.sngl --
+import ui "sngl:ui"
+
+component main ui.node {
+    ui.text(value="from main")
+}
+
+ui.window #home(title="Home") {
+    ui.text(value="from the window")
+}
+-- rendered/app.sngl --
+import ui "sngl:ui"
+
+component main ui.node {
+    ui.text(value="from main")
+}
+
+ui.window #home(title="Home") {
+    ui.text(value="from the window")
+    main()
+}

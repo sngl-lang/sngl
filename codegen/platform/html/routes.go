@@ -193,7 +193,7 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 }
 
 func defaultRoutePath(winName string, idx int) string {
-	if idx == 0 || winName == "" || winName == "main" || winName == "index" {
+	if idx == 0 || winName == "" || winName == "index" {
 		return "/"
 	}
 	return "/" + winName
@@ -324,7 +324,7 @@ func routeExportName(s string) string {
 
 // routeHandlerName generates a valid Go function name for a route handler.
 func routeHandlerName(windowName, path string) string {
-	if windowName == "main" || windowName == "index" || (windowName == "" && path == "/") {
+	if windowName == "index" || (windowName == "" && path == "/") {
 		return "handleIndex"
 	}
 	source := windowName

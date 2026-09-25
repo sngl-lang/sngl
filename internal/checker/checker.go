@@ -1591,18 +1591,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 
-	// Check for component main in imported library packages. The package's
-	// own root only: a lib package's root parents whatever scope was current
-	// when it loaded, so a lookup that walks the chain finds the importing
-	// file's own main and blames the import for it.
-	if irImport.Pkg != nil && irImport.Pkg.Symbols != nil && irImport.Pkg.Symbols.Root != nil {
-		if sym, ok := irImport.Pkg.Symbols.Root.LookupDeclaredLocal("main"); ok {
-			if _, isComp := sym.(*ir.Component); isComp {
-				c.error(imp.Pos, "component main can only be defined in the main package")
-			}
-		}
-	}
-
 	// A dot import flattens the package's symbols into this scope instead of
 	// binding a namespace, so its declarations are referenced unqualified.
 	if imp.IsDot() {
