@@ -1032,6 +1032,31 @@ elects the runtime instance (`refuseRuntimePopulation`,
 `cmd/sngl/testdata/slot_population_runtime_instance.txt`); the interpreter,
 which renders it correctly, runs the checked IR and never asks.
 
+**Bare children are rendered there**, and on html, fyne and gtk4 that is
+`passInstanceSlots`: a factory or record is emitted from the declaration
+alone, so each instantiation handing one children gets a copy of the component
+(`Card__slot0`) with them spliced in by `substituteSlots`, and every other
+runtime instance has its insertions replaced by their fallbacks. What the
+children read from the caller crosses the way a slot child does in
+`passSlotChildInstances` — a value becomes a prop the render rewrites per
+copy, a handler an event whose body stays where it was written — so they read
+the loop variable of the copy they sit in and a new item renders a card with
+content (`testdata/runtime_instance_bare_children.txtar`,
+`cmd/sngl/testdata/runtime_instance_bare_children_runs.txt`). android passes
+them as a composable parameter and bubbletea splices, so neither runs the
+pass. `substituteSlots` would splice a named population too, but the lift
+reads only the bare children, and android and bubbletea have no answer for
+one, so the refusal above stands.
+A copy of a recursive body holds the recursive site again, so a copy is keyed
+by the template site it was made for *and* by the statements that site's
+children were cloned from, and a copy meeting its own site with the children
+it was made for reuses itself
+(`testdata/runtime_instance_bare_children_recursive.txtar`). The site alone
+is not a key: every copy of a declaration holds a clone of each of its sites,
+so two callers forwarding different children would share the first one's copy
+(`runtime_instance_bare_children_forwarded.txtar` and its `_recursive_`
+sibling).
+
 **A population is a `ComponentDecl` read by position.** At the root of a
 component definition's body it is a nested declaration (pass1's
 `collectComponentDecls`); directly in a child node's block it populates one of

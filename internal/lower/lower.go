@@ -65,6 +65,7 @@ var passes = []pass{
 	passNoInlineComponents,
 	passWindowNesting,
 	passRecursionDepth,
+	passInstanceSlots,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passShapeDraw,

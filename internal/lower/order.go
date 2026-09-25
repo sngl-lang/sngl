@@ -102,6 +102,12 @@ var orderConstraints = []orderConstraint{
 		"a recursive component is the one the inliner leaves standing, and it is the only one that needs a depth bound"},
 	{"NoInlineComponents", "ComponentProps",
 		"RuntimeInstance is the mark the inliner leaves on a declaration it could not flatten, and that mark is what decides which components get prop cells"},
+	{"NoInlineComponents", "InstanceSlots",
+		"it copies the declarations the inliner marked RuntimeInstance, and only the inliner knows which instantiations survive"},
+	{"InstanceSlots", "InstanceEvents",
+		"a handler written in the children becomes an event the copy declares, and InstanceEvents is what turns a declared event into a prop"},
+	{"InstanceSlots", "ComponentProps",
+		"a value the children read from the caller becomes a prop of the copy, and ComponentProps is what gives it the cell the render writes"},
 	{"RecursionDepth", "ComponentProps",
 		"__depth is an ordinary prop, and ComponentProps is what promotes a prop to a settable cell"},
 

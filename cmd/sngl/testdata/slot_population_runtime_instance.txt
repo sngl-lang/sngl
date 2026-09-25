@@ -37,6 +37,11 @@ stderr 'entry.sngl:30:17: slot "main" of frame is populated by name'
 sngl generate --lang go --platform bubbletea --out out5 rest.sngl
 grep 'level ' out5/model.go
 
+# And on html, where they are spliced into a copy of the component that the
+# copy's own recursive site reuses.
+sngl generate --lang none --platform html --out out6 rest.sngl
+grep '"level "' out6/index.html
+
 -- cycle.sngl --
 import . "sngl:ui"
 
