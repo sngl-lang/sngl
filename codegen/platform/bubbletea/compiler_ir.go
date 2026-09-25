@@ -216,8 +216,9 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 		gc.RequireImport(path)
 	}
 
-	// NoInlineComponents inlined every non-main component into main, so there
-	// are no remaining child-component vars to collect.
+	// NoInlineComponents inlined every component but a harness root into the
+	// body instantiating it, so there are no remaining child-component vars to
+	// collect.
 	for _, ov := range ctx.ModelState() {
 		// A const is a Model field as well, so `c.<name>` and `m.<name>`
 		// reach it; a top-level one also gets a file-scope `var` for the
