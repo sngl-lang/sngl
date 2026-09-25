@@ -68,6 +68,13 @@ static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child)
     }
     gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
 }
+
+static GtkBox *sngl_slot_box(GtkBox *b) {
+    if (b != NULL) return b;
+    GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    g_object_ref_sink(w);
+    return GTK_BOX(w);
+}
 {{- end}}
 
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {

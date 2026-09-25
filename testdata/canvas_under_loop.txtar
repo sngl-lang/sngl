@@ -557,6 +557,13 @@ static void sngl_insert_before(GtkBox *box, GtkWidget *anchor, GtkWidget *child)
     gtk_box_insert_child_after(box, child, gtk_widget_get_prev_sibling(anchor));
 }
 
+static GtkBox *sngl_slot_box(GtkBox *b) {
+    if (b != NULL) return b;
+    GtkWidget *w = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    g_object_ref_sink(w);
+    return GTK_BOX(w);
+}
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
@@ -1247,6 +1254,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:186fd473d1d2459c020793f6d6cbf3a7
 -- run/go/gtk4 --
-pass sha256:8618c3c2812611139262e354335145e0
+pass sha256:934bacc419efcdc45487b873a53f3d9e
 -- run/none/html --
 pass sha256:6818d5a8f9b1bd34d6e2cc2dcb407e08

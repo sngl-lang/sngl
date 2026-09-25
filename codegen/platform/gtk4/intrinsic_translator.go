@@ -1280,7 +1280,7 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 		return nil, false
 	}
 	adder := t.childAdder(cType)
-	if !t.wrapped || !strings.HasSuffix(adder.Func, "_set_child") {
+	if !strings.HasSuffix(adder.Func, "_set_child") {
 		t.shared.fail(fmt.Errorf("gtk4: a reactive `if` or `for` directly inside a %s cannot be rendered: its slot renders into a GtkBox; wrap it in a vbox", cType))
 		return nil, false
 	}
@@ -1288,16 +1288,27 @@ func (t *gtk4Translator) boxedSlotRenderCall(cs *ir.CallStmt) ([]ir.Stmt, bool) 
 	t.fieldSink(boxName, "GtkBox")
 	box := t.fieldRef(boxName)
 	parent := t.qualifyNodeExpr(&ir.Ident{Name: bare, IsElementRef: true})
-	set, ok := rtChildAppendCall(adder, parent, box)
-	if !ok {
-		return nil, false
+	var slotBox, parentOf, parentArg ir.Expr
+	var set ir.Stmt
+	if t.wrapped {
+		var ok bool
+		if set, ok = rtChildAppendCall(adder, parent, box); !ok {
+			return nil, false
+		}
+		slotBox, parentOf, parentArg = rtCall("SlotBox", box), rtCall("ParentOf", box), parent
+	} else {
+		t.shared.needSlotAnchor()
+		set = &ir.CallStmt{Call: nativeCall(adder.Func, cgoCast(cType, parent), cgoCast("GtkWidget", box))}
+		slotBox = nativeCall("sngl_slot_box", box)
+		parentOf = nativeCall("gtk_widget_get_parent", cgoCast("GtkWidget", box))
+		parentArg = cgoCast("GtkWidget", parent)
 	}
 	call := *cs.Call
 	call.Args = []ir.CallArg{{Value: box}}
 	return []ir.Stmt{
-		&ir.Assign{Target: box, Op: ast.AssignSet, Value: rtCall("SlotBox", box)},
+		&ir.Assign{Target: box, Op: ast.AssignSet, Value: slotBox},
 		&ir.If{
-			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: rtCall("ParentOf", box), Right: parent},
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: parentOf, Right: parentArg},
 			Body: []ir.Stmt{set},
 		},
 		&ir.CallStmt{Call: &call},

@@ -22,6 +22,16 @@ window {
             text(value="first")
         }
         text(value="second")
+        card {
+            if on {
+                text(value="carded")
+            }
+        }
+        scroll {
+            if on {
+                text(value="scrolled")
+            }
+        }
         toggle(checked=on)
         button #flip(text="flip", @click { on = !on })
     }
@@ -48,7 +58,8 @@ func labelTexts(w unsafe.Pointer, out *[]string) {
 		switch C.GoString(C.g_type_name_from_instance((*C.GTypeInstance)(unsafe.Pointer(c)))) {
 		case "GtkLabel":
 			*out = append(*out, C.GoString(C.gtk_label_get_text((*C.GtkLabel)(unsafe.Pointer(c)))))
-		case "GtkBox":
+		case "GtkButton":
+		default:
 			labelTexts(unsafe.Pointer(c), out)
 		}
 	}
@@ -71,7 +82,7 @@ func TestASlotReRendersInPlace(t *testing.T) {
 	m.flipClick()
 	var got []string
 	labelTexts(unsafe.Pointer(m.__root), &got)
-	if want := "first,second"; strings.Join(got, ",") != want {
+	if want := "first,second,carded,scrolled"; strings.Join(got, ",") != want {
 		t.Fatalf("rendered %q, want %q", strings.Join(got, ","), want)
 	}
 }

@@ -112,6 +112,8 @@ func rtCtorForCType(cType string) (ir.Expr, bool) {
 		return rtCall("ImageNew"), true
 	case "GtkScrolledWindow":
 		return rtCall("ScrolledWindowNew"), true
+	case "GtkFrame":
+		return rtCall("FrameNew"), true
 	}
 	return nil, false
 }
@@ -172,6 +174,7 @@ var rtChildAppendWrappers = map[string]string{
 	"gtk_box_append":                "BoxAppend",
 	"gtk_window_set_child":          "WindowSetChild",
 	"gtk_scrolled_window_set_child": "ScrolledWindowSetChild",
+	"gtk_frame_set_child":           "FrameSetChild",
 }
 
 func rtChildAppendCall(adder gir.ChildAdder, parent, child ir.Expr) (ir.Stmt, bool) {

@@ -410,6 +410,16 @@ func ScrolledWindowSetChild(sw, child Handle) {
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(p(sw)), widget(child))
 }
 
+// ---- Frame ----
+
+func FrameNew() Handle {
+	return Handle(unsafe.Pointer(C.gtk_frame_new(nil)))
+}
+
+func FrameSetChild(f, child Handle) {
+	C.gtk_frame_set_child((*C.GtkFrame)(p(f)), widget(child))
+}
+
 // ---- Orientable ----
 
 func OrientableSetOrientation(o Handle, orientation Orientation) {
