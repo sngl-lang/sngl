@@ -51,7 +51,7 @@ func TestInstanceRecordIsPerRow(t *testing.T) {
 		"type CardInstance struct {",
 		"clicks      int",
 		// A row is allocated, not rendered into the Model.
-		"func newCardInstance(__model *Model, name string) *CardInstance {",
+		"func newCardInstance(__model *Model, __a_name string) *CardInstance {",
 		"c := &CardInstance{}",
 		"__n1__new := newCardInstance(m, item.Name)",
 		// The registry holds instances, and the reconcile reaches them
