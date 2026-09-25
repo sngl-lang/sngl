@@ -678,6 +678,38 @@ The map is keyed by the boundary's `@error` handler, which is what a raise
 reaches through `Call.ResolvedHandler`, and held per scope so two
 instantiations of one component catch separately.
 
+**A raise is caught at the call that resolved a handler**, and
+`ir.CatchingHandler` names it: the call's own `@error` (`ErrorPerCall`) or
+the boundary's or window's (`ErrorInvokeAndTerminate`). The handler runs with
+the error and execution continues after the call, which is what the
+interpreter's `dispatchRaise` does. Inside the callee a raise is the host's
+native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an
+`Error` with a `kind` on JavaScript — so each language's `catchAtCall` runs
+the call under a recover or a try and inlines the handler there; a `fails` Go
+native, which returns its error, gets an `if err` instead. Only a direct
+`error.raise` was answered before, so a raise one call down escaped every
+handler written for it (`testdata/call_error_handler.txtar`,
+`boundary_catches_called_raise.txtar`). A `return` in a handler ends the
+handler, so a body holding one runs as a function of its own rather than a
+block of the function it was inlined into (`error_handler_return.txtar`).
+A boundary's or window's handler is inlined at the call as well as emitted
+where it is declared, and `ir.Walk` does not follow `ResolvedHandler`, so
+whatever asks what a block contains has to ask of it too: `codegen.WalkLowered`,
+or a widget write in a window's `@error` reaches fyne and gtk4 untranslated
+(`window_error_handler_updates_view.txtar`), and `codegen.PackageStateFuncs`,
+or a mount the handler is inlined into is emitted as a free func writing the
+Model (`effect_mount_caught_by_window.txtar`).
+
+Three shapes are resolved and not yet answered. A call in **expression
+position** (`v = risky(7, @error(e) { … })`) keeps no handler at all — the
+checker attaches one only to a call statement, and the interpreter dispatches
+only there, so what the call evaluates to after a caught raise is undecided.
+A **component instantiated under a boundary or window** resolves its own
+handlers' raises against its declaration, not its instance, so neither the
+interpreter nor any target catches them there. And a call through a **func
+value** with no `@error` of its own is never fallible, since nothing about a
+func type says whether it raises; a lambda body's raise leaves the lambda.
+
 **`sngl:ui`'s `root` is the family a package body accepts**, and that is the
 whole of what makes a window top-level — no syntactic rule names the
 construct. So a `node` at the root of a file is the ordinary
