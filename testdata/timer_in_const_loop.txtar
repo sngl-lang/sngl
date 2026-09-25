@@ -258,7 +258,9 @@ func (m Model) View() tea.View {
 		part0Items = append(part0Items, part0Item)
 	}
 	part0 = strings.Join(part0Items, "")
-	parts = append(parts, part0)
+	if part0 != "" {
+		parts = append(parts, part0)
+	}
 	var part1 string
 	var part1Items []string
 	for _, p := range m.periods {
@@ -269,7 +271,9 @@ func (m Model) View() tea.View {
 		part1Items = append(part1Items, part1Item)
 	}
 	part1 = strings.Join(part1Items, "")
-	parts = append(parts, part1)
+	if part1 != "" {
+		parts = append(parts, part1)
+	}
 	var part2 string
 	part2Focused := (m.__focusID == 0)
 	part2Prefix := " "
@@ -1208,7 +1212,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b1bbcc8d2ecfd44ea44218b3b4e7478d
+pass sha256:146477a18828bf62ccb78a149d2018d5
 -- run/go/fyne --
 pass sha256:a1d0ecc3ecb42baa650cc427a907f5be
 -- run/go/gtk4 --

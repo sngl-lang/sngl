@@ -351,7 +351,9 @@ func (m Model) View() tea.View {
 		part0_0Items = append(part0_0Items, part0_0Item)
 	}
 	part0_0 = strings.Join(part0_0Items, "\n")
-	part0Children = append(part0Children, part0_0)
+	if part0_0 != "" {
+		part0Children = append(part0Children, part0_0)
+	}
 	var part0_1 string
 	part0_1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(m.total)))
 	part0Children = append(part0Children, part0_1)
@@ -1144,7 +1146,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f137ae48e6d3b2cdd3eddb8e475f603a
+pass sha256:f9f54d2f75a8543cc87031a392219cd4
 -- run/go/fyne --
 pass sha256:34f1b3851190e852275a5541083ef0a3
 -- run/go/gtk4 --

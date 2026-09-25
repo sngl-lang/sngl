@@ -207,7 +207,16 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
-	vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	switch child.(type) {
+	case *ir.If, *ir.For:
+		// A branch not taken or a loop over nothing renders nothing, and
+		// joining its empty string would put a blank line in the box.
+		vc.line("if %s != \"\" {", childVar)
+		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		vc.line("}")
+	default:
+		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	}
 }
 
 // renderBody emits a body as one value in `single`, or as a list of parts
@@ -653,27 +662,31 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 	}
 }
 
+// renderChildrenNodes renders the children handed to a component rendered as
+// a method. They are a body like any other -- a slot insertion forwarded down
+// a recursion, an `if`, a loop -- not only nodes.
 func (vc *irViewContext) renderChildrenNodes(children []ir.Stmt, resultVar string) {
-	var nodes []*ir.NodeInst
+	children = codegen.WithoutSchedules(children)
+	parts := 0
 	for _, s := range children {
-		if n, ok := s.(*ir.NodeInst); ok {
-			nodes = append(nodes, n)
+		if rendersPart(s) {
+			parts++
 		}
 	}
-	if len(nodes) == 1 {
+	if len(children) == 1 && parts == 1 {
 		vc.line("var %s string", resultVar)
-		vc.renderNode(nodes[0], resultVar)
-	} else if len(nodes) > 1 {
+		vc.renderStmt(children[0], resultVar)
+	} else if parts > 0 {
 		childrenParts := resultVar + "Parts"
 		vc.line("var %s []string", childrenParts)
-		for i, child := range nodes {
-			childVar := fmt.Sprintf("%sPart%d", resultVar, i)
-			vc.line("var %s string", childVar)
-			vc.renderNode(child, childVar)
-			vc.line("%s = append(%s, %s)", childrenParts, childrenParts, childVar)
+		for i, child := range children {
+			vc.renderChild(child, fmt.Sprintf("%sPart%d", resultVar, i), childrenParts)
 		}
 		vc.line(`%s := lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenParts)
 	} else {
+		for _, child := range children {
+			vc.renderStmt(child, "")
+		}
 		vc.line(`%s := ""`, resultVar)
 	}
 }
