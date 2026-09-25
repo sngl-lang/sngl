@@ -112,3 +112,37 @@ func TestMissingNamedGIRIsUnavailable(t *testing.T) {
 		t.Error("a platform with no GIR served a package")
 	}
 }
+
+// The probe takes the first location that stats cleanly, as resolveGIRPath
+// does, and records every one before it as absent. A dangling link and a
+// location under a file are neither a GIR nor a reason to fail: both are
+// skipped, and the stored registry is reused by the next build rather than
+// read as stale because the check disagreed with the probe.
+func TestProbeSkipsUnusableLocations(t *testing.T) {
+	parses := countParses(t)
+	tmp := t.TempDir()
+	dangling := filepath.Join(tmp, "dangling.gir")
+	if err := os.Symlink(filepath.Join(tmp, "missing"), dangling); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	file := filepath.Join(tmp, "file")
+	os.WriteFile(file, nil, 0o644)
+	orig := girAutoPaths
+	girAutoPaths = []string{dangling, filepath.Join(file, "Gtk-4.0.gir"), girCopy(t)}
+	t.Cleanup(func() { girAutoPaths = orig })
+
+	store := t.TempDir()
+	for range 2 {
+		g := &Generator{store: gencache.Open(store)}
+		reg, err := g.gir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reg.ByCType["GtkButton"] == nil {
+			t.Fatal("the probe did not reach the GIR past the unusable locations")
+		}
+	}
+	if *parses != 1 {
+		t.Errorf("two builds over one probe parsed the GIR %d times, want 1", *parses)
+	}
+}

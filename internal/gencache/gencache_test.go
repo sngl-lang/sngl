@@ -163,6 +163,29 @@ func TestGoDirIgnoresWhatGoIgnores(t *testing.T) {
 	}
 }
 
+// An absent input is a path that resolves to nothing, which is what a probe
+// asking os.Stat sees -- so a dangling link recorded as absent stays absent,
+// rather than reading as present on every check, and stops being absent when
+// its target appears.
+func TestAbsentFollowsLinks(t *testing.T) {
+	dir, tmp := t.TempDir(), t.TempDir()
+	target, link := filepath.Join(tmp, "target"), filepath.Join(tmp, "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	name, p := newProbe(t, func(*Store) ([]Input, error) { return []Input{Absent(link)}, nil })
+
+	first := build(t, dir, name)
+	if again := build(t, dir, name); again != first || p.runs.Load() != 1 {
+		t.Fatalf("a dangling link recorded as absent was stale: producer ran %d times, want 1", p.runs.Load())
+	}
+	os.WriteFile(target, nil, 0o644)
+	build(t, dir, name)
+	if n := p.runs.Load(); n != 2 {
+		t.Errorf("after the link's target appeared, producer ran %d times, want 2", n)
+	}
+}
+
 // An entry input follows the output it names: when that output's own inputs
 // change, it is produced again, its digest moves, and the entry depending on
 // it is stale too -- even though nothing the dependent recorded directly

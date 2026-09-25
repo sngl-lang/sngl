@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"sort"
@@ -103,7 +102,9 @@ func File(path string) (Input, error) {
 	return Input{Kind: "file", Props: []Prop{str("path", path), str("sha256", sum)}}, nil
 }
 
-// Absent records that path does not exist.
+// Absent records that path resolves to nothing: it is missing, a link to
+// nothing, or under something that is not a directory. It goes stale when the
+// path stats cleanly.
 func Absent(path string) Input {
 	return Input{Kind: "absent", Props: []Prop{str("path", path)}}
 }
@@ -212,7 +213,10 @@ func (s *Store) recheck(in Input) string {
 			return in.Get("path") + " changed"
 		}
 	case "absent":
-		if _, err := os.Lstat(in.Get("path")); !errors.Is(err, fs.ErrNotExist) {
+		// Stat, not Lstat: a producer probes a path by opening or stating it,
+		// both of which follow a link, so a dangling link is as absent to the
+		// check as it was to the probe.
+		if _, err := os.Stat(in.Get("path")); err == nil {
 			return in.Get("path") + " exists"
 		}
 	case "dir":

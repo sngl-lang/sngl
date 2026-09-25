@@ -82,11 +82,14 @@ func produceRegistry(_ *gencache.Store, params []string) (gencache.Output, error
 		inputs = append(inputs, in)
 		reg, err = parseGIR(p)
 	default:
-		// The probe takes the first location present, so the ones before it
-		// staying absent is part of what the answer depends on -- and when
-		// none is present, all of them are.
+		// The probe takes the first location that stats cleanly, as
+		// resolveGIRPath does, so the ones before it staying absent is part of
+		// what the answer depends on -- and when none is present, all of them
+		// are. A location that fails for any other reason (a dangling link, a
+		// file where a directory should be) is skipped rather than failing the
+		// registry; gencache.Absent is checked with the same Stat.
 		for _, p := range girAutoPaths {
-			if _, serr := os.Stat(p); errors.Is(serr, os.ErrNotExist) {
+			if _, serr := os.Stat(p); serr != nil {
 				inputs = append(inputs, gencache.Absent(p))
 				continue
 			}
