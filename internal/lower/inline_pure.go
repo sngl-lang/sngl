@@ -761,8 +761,12 @@ func substituteParams(stmts []ir.Stmt, bindings map[string]ir.Expr) []ir.Stmt {
 // The inliner binds a scoped slot's arguments by parameter name, since the body
 // it splices has been deep-cloned away from the *ir.Param the populator wrote.
 func substituteSlots(stmts []ir.Stmt, callsite *ir.NodeInst) []ir.Stmt {
+	return substituteSlotsCloning(stmts, callsite, deepCloneStmts)
+}
+
+func substituteSlotsCloning(stmts []ir.Stmt, callsite *ir.NodeInst, clone func([]ir.Stmt) []ir.Stmt) []ir.Stmt {
 	sp := ir.SlotSplicer{
-		Clone: deepCloneStmts,
+		Clone: clone,
 		Bind: func(body []ir.Stmt, sc *ir.SlotContent, si *ir.SlotInst) []ir.Stmt {
 			bindings := make(map[string]ir.Expr, len(sc.Params))
 			for i, p := range sc.Params {

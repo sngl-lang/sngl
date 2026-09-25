@@ -5,10 +5,14 @@ three targets that build it from a copy.
 hands it children gets a copy with them spliced in
 (runtime_instance_bare_children.txtar). The copy's body is `frame`'s, so it
 holds the recursive site again, and copying that one in turn would never
-stop. passInstanceSlots keys a copy by the template site it was made for: the
-window's site gets `frame__slot0`, the recursive site inside it gets
-`frame__slot2`, and the recursive site inside `frame__slot2` is the same
-template site, so it instantiates `frame__slot2` itself. What `level {n}`
+stop. passInstanceSlots keys a copy by the template site it was made for and
+by where that site's children were cloned from: the window's site gets
+`frame__slot0`, the recursive site inside it gets `frame__slot2`, and the
+recursive site inside `frame__slot2` is the same template site with children
+cloned from the same `level {n}`, so it instantiates `frame__slot2` itself.
+The site alone is not enough, since two callers' copies hold clones of one site
+with different children (runtime_instance_bare_children_forwarded.txtar,
+runtime_instance_bare_children_recursive_forwarded.txtar). What `level {n}`
 reads is `n` of the level above, lifted to a prop of the level below.
 
 `frame__slot1` is the copy the declaration's own recursive site was given

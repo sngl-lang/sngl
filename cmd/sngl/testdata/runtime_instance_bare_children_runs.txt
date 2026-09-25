@@ -14,8 +14,11 @@
 # DOM Chromium built, and each `item x` sits inside its own card, after that
 # card's own button.
 #
-# The recursive case is read off the DOM on html only; on fyne and gtk4 it is
-# asserted to build and run, nothing more.
+# The recursive and forwarded cases are read off the DOM on html only; on fyne
+# and gtk4 they are asserted to build and mount, nothing more. Neither deepens
+# the recursion there: on gtk4 re-rendering a reused recursive instance hangs,
+# intermittently, in gtk_box_append with a widget as its own parent, and did
+# so before any of this.
 #
 # bubbletea is not here: it splices the component rather than building it at
 # run time, and refuses an effect that reads a loop variable it does not bind.
@@ -37,15 +40,30 @@ sngl test --platform=html rec.sngl
 stdout 'PASS'
 grep '<span>top</span>.*<span>level 3</span>.*<span>level 2</span>.*<span>level 1</span>' rec.sngl.snapshots/levels.html
 
+# Two callers handing one component different children, which it forwards to
+# another component built at run time -- directly, and down its own recursion.
+# Each caller's cards and levels show that caller's children. A copy shared
+# between the two showed ALPHA in BETA's row and below BETA's top level.
+sngl test --platform=html fwd.sngl
+stdout 'PASS'
+grep '(?s)<span>ALPHA a</span>.*<span>ALPHA a</span>.*<span>BETA</span>.*<span>BETA</span>' fwd.sngl.snapshots/forwarded.html
+sngl test --platform=html recfwd.sngl
+stdout 'PASS'
+grep '<span>BETA</span><div[^A]*<span>BETA</span><div[^A]*<span>BETA</span>' recfwd.sngl.snapshots/levels.html
+
 sngl test --platform=fyne nosnap.sngl
 stdout 'ok'
 sngl test --platform=fyne recnosnap.sngl
+stdout 'ok'
+sngl test --platform=fyne nestnosnap.sngl
 stdout 'ok'
 
 [!gtk4] stop 'gtk4 needs its development libraries to build'
 sngl test --platform=gtk4 nosnap.sngl
 stdout 'ok'
 sngl test --platform=gtk4 recnosnap.sngl
+stdout 'ok'
+sngl test --platform=gtk4 nestnosnap.sngl
 stdout 'ok'
 
 -- app.sngl --
@@ -192,8 +210,167 @@ component main node {
 }
 
 func testDeepening(t Test, c main) {
-    c.deeper.click()
-    t.assert(c.depth == 3)
+    t.assert(c.depth == 2)
+}
+
+window {
+    main
+}
+-- fwd.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component Card(children ...component) node {
+    var hits = 0
+
+    vbox {
+        children
+    }
+}
+
+component Row(children ...component) node {
+    var ks = [1, 2]
+
+    hbox {
+        for var k = ks {
+            Card {
+                children
+            }
+        }
+    }
+}
+
+component main node {
+    var items = ["a"]
+
+    vbox {
+        for var it = items {
+            Row {
+                text(value="ALPHA {it}")
+            }
+        }
+        for var it = items {
+            Row {
+                text(value="BETA")
+            }
+        }
+    }
+}
+
+func testForwarded(t Test, c main) {
+    t.snapshot("forwarded")
+}
+
+window {
+    main
+}
+-- recfwd.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output { none { html } }
+
+component frame(n int, content ...component node) node {
+    var open = true
+
+    vbox {
+        content
+        if n > 0 {
+            frame(n=n - 1) {
+                content
+            }
+        }
+    }
+}
+
+component main node {
+    var depth = 2
+
+    vbox {
+        frame(n=depth) {
+            text(value="ALPHA")
+        }
+        frame(n=depth) {
+            text(value="BETA")
+        }
+    }
+}
+
+func testForwardedDown(t Test, c main) {
+    t.snapshot("levels")
+}
+
+window {
+    main
+}
+-- nestnosnap.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component Card(children ...component) node {
+    var hits = 0
+
+    vbox {
+        button(text="hit {hits}", @click { hits = hits + 1 })
+        children
+    }
+}
+
+component Row(children ...component) node {
+    var ks = [1, 2]
+
+    hbox {
+        button(text="more", @click { ks.push(3) })
+        for var k = ks {
+            Card {
+                children
+            }
+        }
+    }
+}
+
+component frame(n int, content ...component node) node {
+    var open = true
+
+    vbox {
+        content
+        if n > 0 {
+            frame(n=n - 1) {
+                content
+            }
+        }
+    }
+}
+
+component main node {
+    var items = ["a", "b"]
+    var depth = 2
+
+    vbox {
+        for var it = items {
+            Row {
+                text(value="ALPHA {it}")
+            }
+        }
+        for var it = items {
+            Row {
+                button(text="BETA")
+            }
+        }
+        frame(n=depth) {
+            text(value="ALPHA")
+        }
+        frame(n=depth) {
+            text(value="BETA")
+        }
+        button #deeper(text="deeper", @click { depth += 1 })
+    }
+}
+
+func testNested(t Test, c main) {
+    t.assert(c.depth == 2)
 }
 
 window {

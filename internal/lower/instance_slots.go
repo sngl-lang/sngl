@@ -1,8 +1,10 @@
 package lower
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 
 	"git.duckfam.us/jonathan/sngl/ir"
 )
@@ -32,10 +34,12 @@ type instanceSlots struct {
 	// inside another declaration asks for one.
 	template map[*ir.Component][]ir.Stmt
 	queue    []*ir.Component
-	// origin is the template node a copied node was cloned from, and copies
-	// the copy each site has already been given, so a recursive body's copy
-	// that meets its own site again reuses itself rather than copying forever.
-	origin map[*ir.NodeInst]*ir.NodeInst
+	// origin is the statement a copied or spliced statement was cloned from.
+	// A copy is shared by sites that are clones of one site *and* whose
+	// children are clones of the same statements, which is what a recursive
+	// body meeting its own site again is: the children alone tell two callers'
+	// forwarded populations apart.
+	origin map[ir.Stmt]ir.Stmt
 	copies map[copyKey]*ir.Component
 	// droppable is every copy and every declaration a copy was taken of; one
 	// no longer instantiated anywhere is dropped at the end.
@@ -43,8 +47,9 @@ type instanceSlots struct {
 }
 
 type copyKey struct {
-	comp *ir.Component
-	site *ir.NodeInst
+	comp     *ir.Component
+	site     ir.Stmt
+	children string
 }
 
 func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
@@ -55,7 +60,7 @@ func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
 		pkg:       pkg,
 		synth:     &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)},
 		template:  map[*ir.Component][]ir.Stmt{},
-		origin:    map[*ir.NodeInst]*ir.NodeInst{},
+		origin:    map[ir.Stmt]ir.Stmt{},
 		copies:    map[copyKey]*ir.Component{},
 		droppable: map[*ir.Component]bool{},
 	}
@@ -66,7 +71,7 @@ func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
 		}
 	}
 	for _, o := range ir.Owners(pkg) {
-		if o.Comp == nil || !o.Comp.RuntimeInstance {
+		if _, queued := st.template[o.Comp]; o.Comp == nil || !queued {
 			st.specializeIn(o.Stmts())
 		}
 	}
@@ -103,9 +108,9 @@ func wantsCopy(n *ir.NodeInst) bool {
 func (st *instanceSlots) specialize(n *ir.NodeInst) {
 	orig := n.Component
 	local := declaredWithin(n.Children)
-	key := copyKey{orig, st.originOf(n)}
+	key := copyKey{orig, st.originOf(n), st.childrenKey(n.Children)}
 	if copyOf, ok := st.copies[key]; ok {
-		// The children are a clone of the ones the copy was made from, so
+		// The children are clones of the ones the copy was made from, so
 		// lifting them names the props that copy already declares, in order.
 		scratch := &ir.Component{}
 		st.synth.liftHandlers(n.Children, scratch, n)
@@ -124,7 +129,7 @@ func (st *instanceSlots) specialize(n *ir.NodeInst) {
 	st.recordOrigins(body, copyOf.Body)
 	st.synth.liftHandlers(n.Children, copyOf, n)
 	st.synth.liftValues(n.Children, copyOf, n, local)
-	copyOf.Body = substituteSlots(copyOf.Body, n)
+	copyOf.Body = substituteSlotsCloning(copyOf.Body, n, st.cloneRecording)
 	n.Children = nil
 	n.Component = copyOf
 
@@ -140,28 +145,40 @@ func (st *instanceSlots) specialize(n *ir.NodeInst) {
 	}
 }
 
-func (st *instanceSlots) originOf(n *ir.NodeInst) *ir.NodeInst {
-	if o, ok := st.origin[n]; ok {
+func (st *instanceSlots) originOf(s ir.Stmt) ir.Stmt {
+	if o, ok := st.origin[s]; ok {
 		return o
 	}
-	return n
+	return s
 }
 
-// recordOrigins pairs each node of a copied body with the one it was cloned
-// from; the clone has the template's shape, so the two walks meet the nodes in
-// the same order.
+func (st *instanceSlots) childrenKey(children []ir.Stmt) string {
+	var b strings.Builder
+	for _, s := range children {
+		fmt.Fprintf(&b, "%p,", st.originOf(s))
+	}
+	return b.String()
+}
+
+func (st *instanceSlots) cloneRecording(stmts []ir.Stmt) []ir.Stmt {
+	out := deepCloneStmts(stmts)
+	st.recordOrigins(stmts, out)
+	return out
+}
+
+// recordOrigins pairs each statement of a clone with the one it was cloned
+// from; a clone has its source's shape, so the two walks meet them in the same
+// order.
 func (st *instanceSlots) recordOrigins(from, to []ir.Stmt) {
-	nodes := func(stmts []ir.Stmt) []*ir.NodeInst {
-		var out []*ir.NodeInst
-		_ = ir.Walk(stmts, func(n ir.Node) error {
-			if inst, ok := n.(*ir.NodeInst); ok {
-				out = append(out, inst)
-			}
+	all := func(stmts []ir.Stmt) []ir.Stmt {
+		var out []ir.Stmt
+		_ = ir.WalkStmts(stmts, func(s ir.Stmt) error {
+			out = append(out, s)
 			return nil
 		})
 		return out
 	}
-	src, dst := nodes(from), nodes(to)
+	src, dst := all(from), all(to)
 	for i := range min(len(src), len(dst)) {
 		st.origin[dst[i]] = st.originOf(src[i])
 	}

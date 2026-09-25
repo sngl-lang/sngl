@@ -1051,8 +1051,14 @@ pass. `substituteSlots` would splice a named population too, but the lift
 reads only the bare children, and android and bubbletea have no answer for
 one, so the refusal above stands.
 A copy of a recursive body holds the recursive site again, so a copy is keyed
-by the template site it was made for and a copy meeting its own site reuses
-itself (`testdata/runtime_instance_bare_children_recursive.txtar`).
+by the template site it was made for *and* by the statements that site's
+children were cloned from, and a copy meeting its own site with the children
+it was made for reuses itself
+(`testdata/runtime_instance_bare_children_recursive.txtar`). The site alone
+is not a key: every copy of a declaration holds a clone of each of its sites,
+so two callers forwarding different children would share the first one's copy
+(`runtime_instance_bare_children_forwarded.txtar` and its `_recursive_`
+sibling).
 
 **A population is a `ComponentDecl` read by position.** At the root of a
 component definition's body it is a nested declaration (pass1's
