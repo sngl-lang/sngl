@@ -1,0 +1,85 @@
+# A reactive `if` among a markup list's items. md.list and md.listItem each
+# take their content through a rest slot, so an item under the `if` is a
+# component built at run time handed bare children -- which html, fyne and
+# gtk4 met as an *ir.SlotInst in irwalk and panicked on until passInstanceSlots
+# gave each such instantiation a copy with its children spliced in.
+#
+# On html the item is removed and put back where it was written, ahead of the
+# one after it. gtk4 is asserted to build and run.
+
+[!chromium] skip 'the rendered DOM needs a real Chromium'
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=html app.sngl
+stdout 'PASS'
+grep '(?s)<span>shown</span>.*<span>always</span>' app.sngl.snapshots/back.html
+
+[!gtk4] stop 'gtk4 needs its development libraries to build'
+sngl test --platform=gtk4 nosnap.sngl
+stdout 'ok'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+output { none { html } }
+
+component main node {
+    var show = true
+
+    vbox {
+        button #flip(text="flip", @click { show = !show })
+        md.list {
+            if show {
+                md.listItem {
+                    text(value="shown")
+                }
+            }
+            md.listItem {
+                text(value="always")
+            }
+        }
+    }
+}
+
+func testBack(t Test, c main) {
+    c.flip.click()
+    c.flip.click()
+    t.snapshot("back")
+}
+
+window {
+    main
+}
+-- nosnap.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+component main node {
+    var show = true
+
+    vbox {
+        button #flip(text="flip", @click { show = !show })
+        md.list {
+            if show {
+                md.listItem {
+                    text(value="shown")
+                }
+            }
+            md.listItem {
+                text(value="always")
+            }
+        }
+    }
+}
+
+func testFlip(t Test, c main) {
+    c.flip.click()
+    t.assert(!c.show)
+}
+
+window {
+    main
+}
