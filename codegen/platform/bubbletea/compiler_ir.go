@@ -1162,7 +1162,9 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, info *irAnaly
 			// Overlay-content handlers stay live while the overlay is open, so
 			// descend into an Overlay primitive with inOverlay set (drops bgGuard).
 			childInOverlay := inOverlay || btIntrinsic(n) == "Overlay"
-			emitIRButtonHandlersWalk(b, n.Children, info, gc, bgGuard, childInOverlay, invokerSink)
+			for _, s := range ir.SuppliedContent(n) {
+				emitIRButtonHandlersWalk(b, s.Body, info, gc, bgGuard, childInOverlay, invokerSink)
+			}
 		case *ir.SlotInst:
 			// Slot expansion happens elsewhere; no buttons inside the marker.
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,

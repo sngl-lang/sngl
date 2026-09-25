@@ -101,13 +101,35 @@ func (vc *irViewContext) slotFunc(name string, decl *ir.SlotDecl, sc *ir.SlotCon
 		}
 		params[i] = bound + " " + typ
 	}
+	// A recursion calls the func once per level, while Update and the slot's
+	// length count its focus stops once, where it is declared. So the func
+	// numbers its stops from where it was declared, and the count moves on
+	// past them here rather than inside it.
+	lf, focus := firstLoopFocus(body)
+	base := ""
+	if focus && vc.focusPos[lf.pos] {
+		base = name + "_focusAt"
+		vc.line("%s := %s", base, lf.pos)
+	}
 	vc.line("%s := func(%s) string {", name, strings.Join(params, ", "))
 	vc.indent++
+	if base != "" {
+		vc.line("%s := %s", lf.pos, base)
+		vc.line("_ = %s", lf.pos)
+	}
 	vc.renderBody(body, "result")
 	vc.line("return result")
 	vc.indent--
 	vc.line("}")
 	vc.gc = saved
+	if base != "" {
+		w := &viewWalk{b: vc.buf, indent: vc.indent, wants: func(n *ir.NodeInst) bool {
+			_, ok := nodeLoopFocus(n)
+			return ok
+		}}
+		w.visit = func(w *viewWalk, _ *ir.NodeInst, _ *golang.GoIRContext) { w.line("%s++", lf.pos) }
+		w.stmts(body, saved)
+	}
 }
 
 // entryBinding is the name body inserts entry under, or "" where it never does.

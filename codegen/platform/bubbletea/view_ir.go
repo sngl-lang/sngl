@@ -351,11 +351,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	}
 
 	innerVar := resultVar + "Item"
-	vc.line("var %s string", innerVar)
-	for _, child := range s.Body {
-		vc.renderStmt(child, innerVar)
-	}
-	vc.line("%s = append(%s, %s)", loopVar, loopVar, innerVar)
+	vc.renderSiblings(s.Body, innerVar, loopVar)
 
 	vc.indent--
 	vc.line("}")
@@ -369,14 +365,47 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	if len(s.Else) > 0 {
 		vc.line("if len(%s) == 0 {", iterExpr)
 		vc.indent++
-		for _, child := range s.Else {
-			vc.renderStmt(child, resultVar)
+		if countParts(s.Else) > 1 {
+			elseVar := resultVar + "Else"
+			vc.line("var %s []string", elseVar)
+			vc.renderSiblings(s.Else, resultVar+"Empty", elseVar)
+			vc.line(`%s = strings.Join(%s, %s)`, resultVar, elseVar, sep)
+		} else {
+			for _, child := range s.Else {
+				vc.renderStmt(child, resultVar)
+			}
 		}
 		vc.indent--
 		vc.line("}")
 	}
 
 	vc.gc = savedGC
+}
+
+func countParts(stmts []ir.Stmt) int {
+	n := 0
+	for _, s := range codegen.WithoutSchedules(stmts) {
+		if rendersPart(s) {
+			n++
+		}
+	}
+	return n
+}
+
+// renderSiblings appends what stmts render to list, each part its own entry,
+// so a loop body of several nodes gives the container each of them to join.
+func (vc *irViewContext) renderSiblings(stmts []ir.Stmt, partVar, list string) {
+	if countParts(stmts) <= 1 {
+		vc.line("var %s string", partVar)
+		for _, child := range stmts {
+			vc.renderStmt(child, partVar)
+		}
+		vc.line("%s = append(%s, %s)", list, list, partVar)
+		return
+	}
+	for i, child := range codegen.WithoutSchedules(stmts) {
+		vc.renderChild(child, fmt.Sprintf("%s_%d", partVar, i), list)
+	}
 }
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {

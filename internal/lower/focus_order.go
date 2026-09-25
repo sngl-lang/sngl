@@ -38,6 +38,11 @@ func lowerFocusOrder(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
+	for _, o := range ir.Owners(pkg) {
+		if err := refuseFocusReadingSlotArgs(o.Stmts()); err != nil {
+			return err
+		}
+	}
 	for _, comp := range pkg.Components {
 		lowerFocusInOwner(comp.Body, &comp.Vars, &comp.Funcs)
 	}
@@ -93,6 +98,122 @@ func lowerFocusInOwner(stmts []ir.Stmt, vars *[]*ir.Var, funcs *[]*ir.Func) {
 	)
 }
 
+func suppliedBodies(n *ir.NodeInst) [][]ir.Stmt {
+	var out [][]ir.Stmt
+	for _, s := range ir.SuppliedContent(n) {
+		out = append(out, s.Body)
+	}
+	return out
+}
+
+// refuseFocusReadingSlotArgs reports a focusable node in a population handed
+// to a component built at run time whose handler, or a branch or loop around
+// it, reads the population's own parameters. Such a component is a recursion
+// here, and the content has one focus stop wherever it is rendered, so Update
+// runs its handler at the site that wrote it, where no argument is bound.
+func refuseFocusReadingSlotArgs(stmts []ir.Stmt) error {
+	var err error
+	_ = ir.Walk(stmts, func(node ir.Node) error {
+		n, ok := node.(*ir.NodeInst)
+		if !ok || err != nil || n.Component == nil || !n.Component.RuntimeInstance {
+			return nil
+		}
+		for _, s := range ir.SuppliedContent(n) {
+			if s.Content == nil || len(s.Content.Params) == 0 {
+				continue
+			}
+			params := map[ir.Symbol]bool{}
+			for _, p := range s.Content.Params {
+				params[p] = true
+			}
+			if at, p := focusReadsParam(s.Body, params); at != nil {
+				pos := nodePos(at)
+				if p.AST != nil && p.AST.Pos.IsValid() {
+					pos = p.AST.Pos.String()
+				}
+				err = fmt.Errorf("%s: a focusable node in the %q content handed to %q reads the slot argument %q -- %q is a recursion, rendered once per level, and bubbletea gives that content one focus stop and runs its handler where the content was written, where no argument is bound; read the caller's state instead", pos, s.Decl.Name, n.Component.Name, p.Name, n.Component.Name)
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return err
+}
+
+// focusReadsParam is the first focusable node under stmts whose handler, or
+// an if or for around it, reads one of params, and the name it read.
+func focusReadsParam(stmts []ir.Stmt, params map[ir.Symbol]bool) (*ir.NodeInst, *ir.Ident) {
+	reads := func(root any) *ir.Ident {
+		var found *ir.Ident
+		_ = ir.Walk(root, func(node ir.Node) error {
+			if id, ok := node.(*ir.Ident); ok && id.Sym != nil && params[id.Sym] {
+				found = id
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return found
+	}
+	firstFocusable := func(stmts []ir.Stmt) *ir.NodeInst {
+		var found *ir.NodeInst
+		_ = ir.Walk(stmts, func(node ir.Node) error {
+			if n, ok := node.(*ir.NodeInst); ok && nodeEffectiveFocusable(n) {
+				found = n
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return found
+	}
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *ir.NodeInst:
+			if nodeEffectiveFocusable(n) {
+				for _, h := range n.Handlers {
+					if h.Func == nil {
+						continue
+					}
+					if p := reads(h.Func.Block); p != nil {
+						return n, p
+					}
+				}
+			}
+			for _, b := range suppliedBodies(n) {
+				if at, p := focusReadsParam(b, params); at != nil {
+					return at, p
+				}
+			}
+		case *ir.If:
+			if p := reads(n.Cond); p != nil {
+				if at := firstFocusable(append(slices.Clip(n.Body), n.Else...)); at != nil {
+					return at, p
+				}
+			}
+			for _, b := range [][]ir.Stmt{n.Body, n.Else} {
+				if at, p := focusReadsParam(b, params); at != nil {
+					return at, p
+				}
+			}
+		case *ir.For:
+			if p := reads(n.Iter); p != nil {
+				if at := firstFocusable(append(slices.Clip(n.Body), n.Else...)); at != nil {
+					return at, p
+				}
+			}
+			for _, b := range [][]ir.Stmt{n.Body, n.Else} {
+				if at, p := focusReadsParam(b, params); at != nil {
+					return at, p
+				}
+			}
+		case *ir.ErrorBoundary:
+			if at, p := focusReadsParam(n.Children, params); at != nil {
+				return at, p
+			}
+		}
+	}
+	return nil, nil
+}
+
 // ---- slot gathering ----
 
 func gatherFocusSlots(stmts []ir.Stmt) []focusSlot {
@@ -109,7 +230,9 @@ func walkForSlots(stmts []ir.Stmt, slots *[]focusSlot) {
 				idx := len(*slots)
 				*slots = append(*slots, focusSlot{slotIdx: idx, node: n})
 			}
-			walkForSlots(n.Children, slots)
+			for _, b := range suppliedBodies(n) {
+				walkForSlots(b, slots)
+			}
 		case *ir.For:
 			if hasFocusableNodes(n.Body) || hasFocusableNodes(n.Else) {
 				idx := len(*slots)
@@ -138,7 +261,10 @@ func hasFocusableNodes(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if nodeEffectiveFocusable(n) || hasFocusableNodes(n.Children) {
+			if nodeEffectiveFocusable(n) {
+				return true
+			}
+			if slices.ContainsFunc(suppliedBodies(n), hasFocusableNodes) {
 				return true
 			}
 		case *ir.For:
@@ -214,7 +340,9 @@ func walkInjectFocused(
 					},
 				})
 			}
-			walkInjectFocused(n.Children, focusIDIdent, loopSlots, staticSlots, inLoop)
+			for _, b := range suppliedBodies(n) {
+				walkInjectFocused(b, focusIDIdent, loopSlots, staticSlots, inLoop)
+			}
 
 		case *ir.For:
 			slot := inLoop
@@ -280,7 +408,9 @@ func focusCountStmts(stmts []ir.Stmt, count func() *ir.Ident) []ir.Stmt {
 					Value:  &ir.Binary{Type: ir.TypInt, Op: ast.BinAdd, Left: count(), Right: intLiteralLit(1)},
 				})
 			}
-			out = append(out, focusCountStmts(n.Children, count)...)
+			for _, b := range suppliedBodies(n) {
+				out = append(out, focusCountStmts(b, count)...)
+			}
 		case *ir.For:
 			body, els := focusCountStmts(n.Body, count), focusCountStmts(n.Else, count)
 			if len(body) == 0 && len(els) == 0 {

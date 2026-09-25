@@ -59,7 +59,9 @@ func eachRenderedNode(stmts []ir.Stmt, fn func(*ir.NodeInst)) {
 		switch n := st.(type) {
 		case *ir.NodeInst:
 			fn(n)
-			eachRenderedNode(n.Children, fn)
+			for _, s := range ir.SuppliedContent(n) {
+				eachRenderedNode(s.Body, fn)
+			}
 		case *ir.For:
 			eachRenderedNode(n.Body, fn)
 			eachRenderedNode(n.Else, fn)

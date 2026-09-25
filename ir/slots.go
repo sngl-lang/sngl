@@ -122,6 +122,36 @@ func (sp SlotSplicer) entry(x, ins *SlotInst, callsite *NodeInst) []Stmt {
 	return sp.Substitute(body, callsite)
 }
 
+// Supplied is what a call site hands one slot of its component: a population
+// by name (Content non-nil) or the bare children for the rest slot.
+type Supplied struct {
+	Decl    *SlotDecl
+	Content *SlotContent
+	Body    []Stmt
+}
+
+// SuppliedContent is everything n hands its component, in the order the
+// component declares its slots. A node whose component declares none has only
+// its children, under no declaration.
+func SuppliedContent(n *NodeInst) []Supplied {
+	if n.Component == nil || len(n.Component.Slots) == 0 {
+		if len(n.Children) == 0 {
+			return nil
+		}
+		return []Supplied{{Body: n.Children}}
+	}
+	var out []Supplied
+	for _, s := range n.Component.Slots {
+		switch sc := n.Slots[s.Name]; {
+		case sc != nil:
+			out = append(out, Supplied{Decl: s, Content: sc, Body: sc.Body})
+		case s.Rest && len(n.Children) > 0:
+			out = append(out, Supplied{Decl: s, Body: n.Children})
+		}
+	}
+	return out
+}
+
 // SlotBody reports what one insertion point renders: the content the call site
 // supplied for it, or the insertion's own block as the fallback when it
 // supplied none.

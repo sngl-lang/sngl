@@ -45,7 +45,9 @@ func (w *viewWalk) stmts(stmts []ir.Stmt, gc *golang.GoIRContext) {
 			if w.wants(n) {
 				w.visit(w, n, gc)
 			}
-			w.stmts(n.Children, gc)
+			for _, s := range ir.SuppliedContent(n) {
+				w.stmts(s.Body, gc)
+			}
 		case *ir.For:
 			w.loop(n, gc)
 		case *ir.If:

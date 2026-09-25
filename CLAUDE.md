@@ -1612,7 +1612,14 @@ loop the same way and runs the handler of the node the cursor names
 (`bubbletea/focus.go`). The cursor was the iteration index, so two buttons in
 one iteration -- a spliced card and the child handed to it -- were one stop
 with two `case` arms, and a nested loop's buttons were unreachable
-(`bubbletea/focus_run_test.go`). A canvas under a loop is the same shape: its
+(`bubbletea/focus_run_test.go`). Content handed to a recursion is rendered
+once per level but is **one stop**, counted where the content is written: the
+slot func numbers its stops from where it was declared, so every copy is
+marked together and Enter runs the handler as written. That handler runs where
+no slot argument is bound, so a focusable node there whose handler, or a
+branch around it, reads one is refused (`refuseFocusReadingSlotArgs`,
+`bubbletea/focus_recursion_run_test.go`,
+`cmd/sngl/testdata/bubbletea_focus_reads_slot_argument.txt`). A canvas under a loop is the same shape: its
 drawing reads the iteration's variables, so it is written inline as the
 rasteriser View hands tui rather than as a `_canvasDrawN` method, with a
 surface and a kitty image ID per copy, and the transmit reaches each copy
