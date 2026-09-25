@@ -371,6 +371,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -385,6 +386,7 @@ type Model struct {
 	total        int
 	labels       []string
 	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
 	__inst0_live []*RowInstance
 
 	__n4 *fyne.Container
@@ -399,6 +401,7 @@ func New() *Model {
 	m.total = m.start
 	m.labels = []string{"a", "b"}
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*RowInstance{}
 	return m
 }
@@ -408,6 +411,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(container, m.__slot0_at)
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, l := range m.labels {
@@ -425,7 +429,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n3)
 		__inst0_i = (__inst0_i + 1)
 		__n3__el := __n3.Root
-		container.Add(__n3__el)
+		fynelayout.InsertBefore(container, m.__slot0_at, __n3__el)
 		m.__slot0 = append(m.__slot0, __n3__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -489,6 +493,7 @@ type RowInstance struct {
 	__effects0_steps    int
 	__root              *fyne.Container
 	__slot0             []fyne.CanvasObject
+	__slot0_at          fyne.CanvasObject
 	__n0                *widget.Button
 }
 
@@ -639,6 +644,7 @@ type Model struct {
 	total        int
 	labels       []string
 	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
 	__inst0_live []*RowInstance
 	__n4         gtk4rt.Handle
 	__n1         gtk4rt.Handle
@@ -654,6 +660,7 @@ func New() *Model {
 	m.total = m.start
 	m.labels = []string{"a", "b"}
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*RowInstance{}
 	return m
 }
@@ -663,6 +670,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	__inst0_next := []*RowInstance{}
 	var __inst0_i int = 0
 	for _, l := range m.labels {
@@ -680,7 +688,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, __n3)
 		__inst0_i = (__inst0_i + 1)
 		__n3__el := __n3.Root
-		gtk4rt.BoxAppend(parent, __n3__el)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n3__el)
 		m.__slot0 = append(m.__slot0, __n3__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -706,6 +714,7 @@ type RowInstance struct {
 	__effects0_steps    int
 	__root              gtk4rt.Handle
 	__slot0             []gtk4rt.Handle
+	__slot0_at          gtk4rt.Handle
 	__n0                gtk4rt.Handle
 }
 
@@ -820,6 +829,9 @@ func (c *RowInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -1138,9 +1150,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:05ce6c5ed233068b4b46cfc5306b6f43
 -- run/go/fyne --
-pass sha256:34f1b3851190e852275a5541083ef0a3
+pass sha256:6a56bc98ebb6d620bac7f4c00144db7f
 -- run/go/gtk4 --
-pass sha256:87d30f90a4e911bd7497faa04b79d3db
+pass sha256:f116c3db02a9c17180d06f128dbf5972
 -- run/kotlin/android --
 pass sha256:4ffa09189aa41104afea7fb8a840eb20
 -- run/none/html --

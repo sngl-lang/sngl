@@ -273,6 +273,39 @@ func BoxRemove(box, child Handle) {
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
 }
 
+// SlotAnchor returns the anchor a render slot inserts its entries before: a,
+// when box holds it, or a new hidden child appended to box. The slot's first
+// render runs while box is being built, at the position the slot was written.
+func SlotAnchor(box, a Handle) Handle {
+	if a != nil && C.gtk_widget_get_parent(widget(a)) == widget(box) {
+		return a
+	}
+	w := C.gtk_label_new(nil)
+	C.gtk_widget_set_visible(w, 0)
+	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(w)))
+	C.gtk_box_append((*C.GtkBox)(p(box)), w)
+	return Handle(unsafe.Pointer(w))
+}
+
+// InsertBefore puts child into box immediately before anchor, or at the end
+// of box when box does not hold anchor.
+func InsertBefore(box, anchor, child Handle) {
+	if anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
+		BoxAppend(box, child)
+		return
+	}
+	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
+	C.gtk_box_insert_child_after((*C.GtkBox)(p(box)), widget(child), prev)
+}
+
+func children(parent Handle) []Handle {
+	var out []Handle
+	for w := C.gtk_widget_get_first_child(widget(parent)); w != nil; w = C.gtk_widget_get_next_sibling(w) {
+		out = append(out, Handle(unsafe.Pointer(w)))
+	}
+	return out
+}
+
 func BoxSetSpacing(box Handle, spacing int) {
 	C.gtk_box_set_spacing((*C.GtkBox)(p(box)), C.int(spacing))
 }

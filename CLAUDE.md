@@ -1558,6 +1558,16 @@ marks a *primitive* standing in a reactive position as well, on the
 declaration, and counting that made every loop of html elements a slot
 (`testdata/const_loop_beside_reactive_loop.txtar`).
 
+**A slot re-renders where it was written.** html renders each into a
+`display:contents` wrapper of its own; fyne and gtk4 render into the container
+the slot sits in, so each slot keeps a hidden anchor there
+(`codegen.SlotAnchorField`), added by its first render -- which runs while the
+container is built, at the slot's position -- and inserts its entries before
+it. Appending instead moved a re-rendered slot after every sibling below it
+(`testdata/render_slot_in_place.txtar`). gtk4's cgo mode still appends. A gtk4
+record also holds a reference on its root, since the slot holding it removes
+it before appending it again and GTK frees a widget its parent held alone.
+
 **A target that keeps no state of an instance's own splices it instead**, and
 that is `Features.InstanceState`, a capability every platform but bubbletea
 declares: a record on fyne and gtk4, a factory closure on html, `remember` on

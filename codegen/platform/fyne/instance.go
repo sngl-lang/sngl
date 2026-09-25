@@ -141,6 +141,9 @@ func emitComponentInstance(
 		goType := instanceVarGoType(v)
 		fmt.Fprintf(b, "\t%s %s\n", v.Name, goType)
 		requireTypeImports(igc, goType)
+		if v.Synthesized && ir.IsSlotVarName(v.Name) {
+			fmt.Fprintf(b, "\t%s fyne.CanvasObject\n", codegen.SlotAnchorField(v.Name))
+		}
 	}
 	for _, f := range fields {
 		fmt.Fprintf(b, "\t%s %s\n", f.name, f.goType)

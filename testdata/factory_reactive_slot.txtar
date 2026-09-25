@@ -65,6 +65,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -73,6 +74,7 @@ type Model struct {
 	items__inst0 []string
 	__root       *fyne.Container
 	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
 	__inst0_live []*CardInstance
 }
 
@@ -82,6 +84,7 @@ func New() *Model {
 	m.items__inst0 = []string{"a", "b"}
 	m.__root = container.NewVBox()
 	m.__slot1 = nil
+	m.__slot1_at = nil
 	m.__inst0_live = []*CardInstance{}
 	return m
 }
@@ -91,6 +94,7 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(container, m.__slot1_at)
 	__inst0_next := []*CardInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
@@ -108,7 +112,7 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n2)
 		__inst0_i = (__inst0_i + 1)
 		__n2__el := __n2.Root
-		container.Add(__n2__el)
+		fynelayout.InsertBefore(container, m.__slot1_at, __n2__el)
 		m.__slot1 = append(m.__slot1, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -143,7 +147,9 @@ type CardInstance struct {
 	open        bool
 	__root      *fyne.Container
 	__slot0     []fyne.CanvasObject
+	__slot0_at  fyne.CanvasObject
 	__slot1     []fyne.CanvasObject
+	__slot1_at  fyne.CanvasObject
 	__n0        *widget.Button
 }
 
@@ -177,10 +183,11 @@ func (c *CardInstance) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	c.__slot0 = nil
+	c.__slot0_at = fynelayout.SlotAnchor(container, c.__slot0_at)
 	if c.open {
 		__n1 := widget.NewLabel("")
 		__n1.SetText(("body of " + c.__prop_name))
-		container.Add(__n1)
+		fynelayout.InsertBefore(container, c.__slot0_at, __n1)
 		c.__slot0 = append(c.__slot0, __n1)
 	}
 }
@@ -222,6 +229,7 @@ type Model struct {
 	items__inst0 []string
 	__root       gtk4rt.Handle
 	__slot1      []gtk4rt.Handle
+	__slot1_at   gtk4rt.Handle
 	__inst0_live []*CardInstance
 }
 
@@ -232,6 +240,7 @@ func New() *Model {
 	m.items__inst0 = []string{"a", "b"}
 	m.__root = nil
 	m.__slot1 = nil
+	m.__slot1_at = nil
 	m.__inst0_live = []*CardInstance{}
 	return m
 }
@@ -241,6 +250,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot1 = nil
+	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	__inst0_next := []*CardInstance{}
 	var __inst0_i int = 0
 	for _, it := range m.items__inst0 {
@@ -258,7 +268,7 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, __n2)
 		__inst0_i = (__inst0_i + 1)
 		__n2__el := __n2.Root
-		gtk4rt.BoxAppend(parent, __n2__el)
+		gtk4rt.InsertBefore(parent, m.__slot1_at, __n2__el)
 		m.__slot1 = append(m.__slot1, __n2__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -278,7 +288,9 @@ type CardInstance struct {
 	open        bool
 	__root      gtk4rt.Handle
 	__slot0     []gtk4rt.Handle
+	__slot0_at  gtk4rt.Handle
 	__slot1     []gtk4rt.Handle
+	__slot1_at  gtk4rt.Handle
 	__n0        gtk4rt.Handle
 }
 
@@ -316,10 +328,11 @@ func (c *CardInstance) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	c.__slot0 = nil
+	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 	if c.open {
 		__n1 := gtk4rt.LabelNew("")
 		gtk4rt.LabelSetText(__n1, ("body of " + c.__prop_name))
-		gtk4rt.BoxAppend(parent, __n1)
+		gtk4rt.InsertBefore(parent, c.__slot0_at, __n1)
 		c.__slot0 = append(c.__slot0, __n1)
 	}
 }
@@ -328,6 +341,12 @@ func (c *CardInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
 	}
 }
 
@@ -356,6 +375,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:d2abc944d1b1ef1966b3fbbd12ee2668
+pass sha256:2d8282f4fa052e4a9af2a91ba313d395
 -- run/go/gtk4 --
-pass sha256:545e685ec10ae2da56aad4abd72dc5b7
+pass sha256:24048a848ee568c2667a2008a8a7861e

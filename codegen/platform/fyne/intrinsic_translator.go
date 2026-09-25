@@ -56,6 +56,9 @@ type fyneTranslator struct {
 	// whose root is decided some other way, which is every Model scope: the
 	// Model's own __root is the wrapper its BuildUI already returns.
 	slotRoot string
+	// slotAnchor is the anchor field of the slot this render func renders,
+	// set when the func resets its slot.
+	slotAnchor ir.Expr
 
 	// Canvas2D state. canvasByID/canvasByNode map a flattened canvas element to
 	// its Model widget field and draw func, shared into every translator that
@@ -398,6 +401,10 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	// assign to the field the Spec names instead.
 	sp := t.specs[codegen.IdentBareName(parent)]
 	childSpec := t.specs[codegen.IdentBareName(child)]
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil {
+		return []ir.Stmt{&ir.CallStmt{Call: nativeCallAt("fynelayout.InsertBefore", fyneLayoutImportPath,
+			[]ir.Expr{t.qualifyParentExpr(parent), t.slotAnchor, t.themed(t.qualifyChildExpr(child), childSpec)}, ir.TypVoid)}}
+	}
 	parent = t.qualifyParentExpr(parent)
 	child = t.themed(t.qualifyChildExpr(child), childSpec)
 	if sp != nil && sp.isSingleChild() {
@@ -586,11 +593,17 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 }
 
 func (t *fyneTranslator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-	return []ir.Stmt{&ir.Assign{
-		Target: t.fieldRef(slot.Name),
-		Op:     ast.AssignSet,
-		Value:  &ir.Literal{Type: ir.TypNull},
-	}}
+	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
+	anchor := nativeCallAt("fynelayout.SlotAnchor", fyneLayoutImportPath,
+		[]ir.Expr{t.qualifyParentExpr(&ir.Ident{Name: "parent"}), t.slotAnchor}, ir.TypDyn)
+	return []ir.Stmt{
+		&ir.Assign{
+			Target: t.fieldRef(slot.Name),
+			Op:     ast.AssignSet,
+			Value:  &ir.Literal{Type: ir.TypNull},
+		},
+		&ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor},
+	}
 }
 
 func (t *fyneTranslator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {

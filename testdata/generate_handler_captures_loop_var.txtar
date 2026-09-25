@@ -51,6 +51,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -59,6 +60,7 @@ type Model struct {
 	items__inst0  []string
 	picked__inst0 string
 	__slot0       []fyne.CanvasObject
+	__slot0_at    fyne.CanvasObject
 
 	__n2 *fyne.Container
 	__n0 *widget.Label
@@ -70,6 +72,7 @@ func New() *Model {
 	m.items__inst0 = []string{"a", "b"}
 	m.picked__inst0 = ""
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	return m
 }
 
@@ -78,6 +81,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(container, m.__slot0_at)
 	for _, it := range m.items__inst0 {
 		__n1 := widget.NewButton("", nil)
 		__n1.SetText(it)
@@ -85,7 +89,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 			m.picked__inst0 = it
 			m.__n0.SetText(m.picked__inst0)
 		}
-		container.Add(__n1)
+		fynelayout.InsertBefore(container, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	}
 }
@@ -153,6 +157,7 @@ type Model struct {
 	items__inst0  []string
 	picked__inst0 string
 	__slot0       []gtk4rt.Handle
+	__slot0_at    gtk4rt.Handle
 	__n2          gtk4rt.Handle
 	__n0          gtk4rt.Handle
 	__root        gtk4rt.Handle
@@ -165,6 +170,7 @@ func New() *Model {
 	m.items__inst0 = []string{"a", "b"}
 	m.picked__inst0 = ""
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	return m
 }
 
@@ -173,13 +179,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	for _, it := range m.items__inst0 {
 		__n1 := gtk4rt.ButtonNew()
 		gtk4rt.ButtonSetLabel(__n1, it)
 		gtk4rt.Connect(__n1, "clicked", func() {
 			m.picked__inst0 = it
 		})
-		gtk4rt.BoxAppend(parent, __n1)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 		m.__slot0 = append(m.__slot0, __n1)
 	}
 }
@@ -224,6 +231,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return win
 }
 -- run/go/fyne --
-pass sha256:ef6bc8b8f951f346dfb954cdd5145b08
+pass sha256:02118612abf1b39bd5a55b0a78686f5c
 -- run/go/gtk4 --
-pass sha256:8ac288e087991f1972f8e16829ceb236
+pass sha256:210e030fc85a398637cfa010200066ca

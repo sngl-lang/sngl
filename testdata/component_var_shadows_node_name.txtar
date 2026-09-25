@@ -153,6 +153,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -160,6 +161,7 @@ import (
 type Model struct {
 	progress__inst0 float64
 	__slot0         []fyne.CanvasObject
+	__slot0_at      fyne.CanvasObject
 
 	__n3 *fyne.Container
 	__n0 *widget.Label
@@ -170,6 +172,7 @@ func New() *Model {
 	m := &Model{}
 	m.progress__inst0 = 0.25
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	return m
 }
 
@@ -178,9 +181,10 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(container, m.__slot0_at)
 	__n1 := widget.NewLabel("")
 	__n1.SetText(fmt.Sprint(m.progress__inst0))
-	container.Add(__n1)
+	fynelayout.InsertBefore(container, m.__slot0_at, __n1)
 	m.__slot0 = append(m.__slot0, __n1)
 }
 
@@ -357,6 +361,7 @@ func boolToInt(b bool) int {
 type Model struct {
 	progress__inst0 float64
 	__slot0         []*C.GtkWidget
+	__slot0_at      *C.GtkWidget
 	__n3            *C.GtkBox
 	__n0            *C.GtkLabel
 	__root          *C.GtkBox
@@ -368,6 +373,7 @@ func New() *Model {
 	m := &Model{}
 	m.progress__inst0 = 0.25
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	return m
 }
 
@@ -523,9 +529,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:852bbb4bba95308380f624ab88b680c5
 -- run/go/fyne --
-pass sha256:ebaed855398462bf72c46eb1aa05d9cc
+pass sha256:9248b31b8b5dcea81a7a4bdb48fce41d
 -- run/go/gtk4 --
-pass sha256:0b6b7ffc216b8b7cab074d63cd0d4c98
+pass sha256:7315741951896e3017538d7ad0edd415
 -- run/kotlin/android --
 pass sha256:7180128bb046c1c6cfb0ca94066b2868
 -- run/none/html --

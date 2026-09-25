@@ -204,6 +204,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -212,6 +213,7 @@ type Model struct {
 	txt          string
 	xs           []int
 	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
 	__inst0_live []*ShowInstance
 
 	__n2 *fyne.Container
@@ -224,6 +226,7 @@ func New() *Model {
 	m.txt = "b"
 	m.xs = []int{1, 2}
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*ShowInstance{}
 	return m
 }
@@ -233,6 +236,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(container, m.__slot0_at)
 	__inst0_next := []*ShowInstance{}
 	var __inst0_i int = 0
 	for _, x := range m.xs {
@@ -251,7 +255,7 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n1)
 		__inst0_i = (__inst0_i + 1)
 		__n1__el := __n1.Root
-		container.Add(__n1__el)
+		fynelayout.InsertBefore(container, m.__slot0_at, __n1__el)
 		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -304,6 +308,7 @@ type ShowInstance struct {
 	__prop___ctx_label string
 	__root             *fyne.Container
 	__slot0            []fyne.CanvasObject
+	__slot0_at         fyne.CanvasObject
 	__n0               *widget.Label
 }
 
@@ -368,6 +373,7 @@ type Model struct {
 	txt          string
 	xs           []int
 	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
 	__inst0_live []*ShowInstance
 	__n2         gtk4rt.Handle
 	__n3         gtk4rt.Handle
@@ -381,6 +387,7 @@ func New() *Model {
 	m.txt = "b"
 	m.xs = []int{1, 2}
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__inst0_live = []*ShowInstance{}
 	return m
 }
@@ -390,6 +397,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	__inst0_next := []*ShowInstance{}
 	var __inst0_i int = 0
 	for _, x := range m.xs {
@@ -408,7 +416,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, __n1)
 		__inst0_i = (__inst0_i + 1)
 		__n1__el := __n1.Root
-		gtk4rt.BoxAppend(parent, __n1__el)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n1__el)
 		m.__slot0 = append(m.__slot0, __n1__el)
 	}
 	for __inst0_i_d, _ := range m.__inst0_live {
@@ -433,6 +441,7 @@ type ShowInstance struct {
 	__prop___ctx_label string
 	__root             gtk4rt.Handle
 	__slot0            []gtk4rt.Handle
+	__slot0_at         gtk4rt.Handle
 	__n0               gtk4rt.Handle
 }
 
@@ -464,6 +473,9 @@ func (c *ShowInstance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
 	}
 }
 
@@ -679,9 +691,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ddfb11e0532392b27c3c38dc8a110830
 -- run/go/fyne --
-pass sha256:5286e9cd516a01e3fdd92c84df6d34e5
+pass sha256:2992ceca0b26a052bd07db37e9669f65
 -- run/go/gtk4 --
-pass sha256:2cce67c0f940d01525a5cb25a59938b5
+pass sha256:157131b8949f59c6658b0821b3a411d0
 -- run/kotlin/android --
 pass sha256:aaa3ed2b02a32f2f3d45b2f9c8f71363
 -- run/none/html --

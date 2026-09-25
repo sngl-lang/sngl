@@ -80,6 +80,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -87,8 +88,10 @@ import (
 type Model struct {
 	items        []string
 	__slot2      []fyne.CanvasObject
+	__slot2_at   fyne.CanvasObject
 	__inst2_live []*Row__slot0Instance
 	__slot3      []fyne.CanvasObject
+	__slot3_at   fyne.CanvasObject
 	__inst3_live []*Row__slot1Instance
 
 	__n9 *fyne.Container
@@ -99,8 +102,10 @@ func New() *Model {
 	m := &Model{}
 	m.items = []string{"a", "b"}
 	m.__slot2 = nil
+	m.__slot2_at = nil
 	m.__inst2_live = []*Row__slot0Instance{}
 	m.__slot3 = nil
+	m.__slot3_at = nil
 	m.__inst3_live = []*Row__slot1Instance{}
 	return m
 }
@@ -110,6 +115,7 @@ func (m *Model) __renderSlot2(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot2 = nil
+	m.__slot2_at = fynelayout.SlotAnchor(container, m.__slot2_at)
 	__inst2_next := []*Row__slot0Instance{}
 	var __inst2_i int = 0
 	for _, it := range m.items {
@@ -127,7 +133,7 @@ func (m *Model) __renderSlot2(container *fyne.Container) {
 		__inst2_next = append(__inst2_next, __n7)
 		__inst2_i = (__inst2_i + 1)
 		__n7__el := __n7.Root
-		container.Add(__n7__el)
+		fynelayout.InsertBefore(container, m.__slot2_at, __n7__el)
 		m.__slot2 = append(m.__slot2, __n7__el)
 	}
 	for __inst2_i_d, _ := range m.__inst2_live {
@@ -144,6 +150,7 @@ func (m *Model) __renderSlot3(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot3 = nil
+	m.__slot3_at = fynelayout.SlotAnchor(container, m.__slot3_at)
 	__inst3_next := []*Row__slot1Instance{}
 	var __inst3_i int = 0
 	for range m.items {
@@ -160,7 +167,7 @@ func (m *Model) __renderSlot3(container *fyne.Container) {
 		__inst3_next = append(__inst3_next, __n8)
 		__inst3_i = (__inst3_i + 1)
 		__n8__el := __n8.Root
-		container.Add(__n8__el)
+		fynelayout.InsertBefore(container, m.__slot3_at, __n8__el)
 		m.__slot3 = append(m.__slot3, __n8__el)
 	}
 	for __inst3_i_d, _ := range m.__inst3_live {
@@ -191,15 +198,19 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // Card__slot3Instance is one live instance of the Card__slot3 component.
 type Card__slot3Instance struct {
-	Root    fyne.CanvasObject
-	__model *Model
-	hits    int
-	__root  *fyne.Container
-	__slot0 []fyne.CanvasObject
-	__slot1 []fyne.CanvasObject
-	__slot2 []fyne.CanvasObject
-	__slot3 []fyne.CanvasObject
-	__n0    *widget.Button
+	Root       fyne.CanvasObject
+	__model    *Model
+	hits       int
+	__root     *fyne.Container
+	__slot0    []fyne.CanvasObject
+	__slot0_at fyne.CanvasObject
+	__slot1    []fyne.CanvasObject
+	__slot1_at fyne.CanvasObject
+	__slot2    []fyne.CanvasObject
+	__slot2_at fyne.CanvasObject
+	__slot3    []fyne.CanvasObject
+	__slot3_at fyne.CanvasObject
+	__n0       *widget.Button
 }
 
 func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
@@ -238,9 +249,13 @@ type Card__slot2Instance struct {
 	hits        int
 	__root      *fyne.Container
 	__slot0     []fyne.CanvasObject
+	__slot0_at  fyne.CanvasObject
 	__slot1     []fyne.CanvasObject
+	__slot1_at  fyne.CanvasObject
 	__slot2     []fyne.CanvasObject
+	__slot2_at  fyne.CanvasObject
 	__slot3     []fyne.CanvasObject
+	__slot3_at  fyne.CanvasObject
 	__n1        *widget.Button
 	__n2        *widget.Label
 }
@@ -284,10 +299,14 @@ type Row__slot1Instance struct {
 	open         bool
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
 	__inst0_live []*Card__slot3Instance
 	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
 	__slot2      []fyne.CanvasObject
+	__slot2_at   fyne.CanvasObject
 	__slot3      []fyne.CanvasObject
+	__slot3_at   fyne.CanvasObject
 }
 
 func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
@@ -311,6 +330,7 @@ func (c *Row__slot1Instance) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	c.__slot0 = nil
+	c.__slot0_at = fynelayout.SlotAnchor(container, c.__slot0_at)
 	__inst0_next := []*Card__slot3Instance{}
 	var __inst0_i int = 0
 	for range []int{1, 2} {
@@ -327,7 +347,7 @@ func (c *Row__slot1Instance) __renderSlot0(container *fyne.Container) {
 		__inst0_next = append(__inst0_next, __n3)
 		__inst0_i = (__inst0_i + 1)
 		__n3__el := __n3.Root
-		container.Add(__n3__el)
+		fynelayout.InsertBefore(container, c.__slot0_at, __n3__el)
 		c.__slot0 = append(c.__slot0, __n3__el)
 	}
 	for __inst0_i_d, _ := range c.__inst0_live {
@@ -355,10 +375,14 @@ type Row__slot0Instance struct {
 	open         bool
 	__root       *fyne.Container
 	__slot0      []fyne.CanvasObject
+	__slot0_at   fyne.CanvasObject
 	__slot1      []fyne.CanvasObject
+	__slot1_at   fyne.CanvasObject
 	__inst1_live []*Card__slot2Instance
 	__slot2      []fyne.CanvasObject
+	__slot2_at   fyne.CanvasObject
 	__slot3      []fyne.CanvasObject
+	__slot3_at   fyne.CanvasObject
 	__n6         *fyne.Container
 }
 
@@ -389,6 +413,7 @@ func (c *Row__slot0Instance) __renderSlot1(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	c.__slot1 = nil
+	c.__slot1_at = fynelayout.SlotAnchor(container, c.__slot1_at)
 	__inst1_next := []*Card__slot2Instance{}
 	var __inst1_i int = 0
 	for range []int{1, 2} {
@@ -406,7 +431,7 @@ func (c *Row__slot0Instance) __renderSlot1(container *fyne.Container) {
 		__inst1_next = append(__inst1_next, __n5)
 		__inst1_i = (__inst1_i + 1)
 		__n5__el := __n5.Root
-		container.Add(__n5__el)
+		fynelayout.InsertBefore(container, c.__slot1_at, __n5__el)
 		c.__slot1 = append(c.__slot1, __n5__el)
 	}
 	for __inst1_i_d, _ := range c.__inst1_live {
@@ -461,8 +486,10 @@ import (
 type Model struct {
 	items        []string
 	__slot2      []gtk4rt.Handle
+	__slot2_at   gtk4rt.Handle
 	__inst2_live []*Row__slot0Instance
 	__slot3      []gtk4rt.Handle
+	__slot3_at   gtk4rt.Handle
 	__inst3_live []*Row__slot1Instance
 	__n9         gtk4rt.Handle
 	__root       gtk4rt.Handle
@@ -474,8 +501,10 @@ func New() *Model {
 	m := &Model{}
 	m.items = []string{"a", "b"}
 	m.__slot2 = nil
+	m.__slot2_at = nil
 	m.__inst2_live = []*Row__slot0Instance{}
 	m.__slot3 = nil
+	m.__slot3_at = nil
 	m.__inst3_live = []*Row__slot1Instance{}
 	return m
 }
@@ -485,6 +514,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot2 = nil
+	m.__slot2_at = gtk4rt.SlotAnchor(parent, m.__slot2_at)
 	__inst2_next := []*Row__slot0Instance{}
 	var __inst2_i int = 0
 	for _, it := range m.items {
@@ -502,7 +532,7 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 		__inst2_next = append(__inst2_next, __n7)
 		__inst2_i = (__inst2_i + 1)
 		__n7__el := __n7.Root
-		gtk4rt.BoxAppend(parent, __n7__el)
+		gtk4rt.InsertBefore(parent, m.__slot2_at, __n7__el)
 		m.__slot2 = append(m.__slot2, __n7__el)
 	}
 	for __inst2_i_d, _ := range m.__inst2_live {
@@ -519,6 +549,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot3 = nil
+	m.__slot3_at = gtk4rt.SlotAnchor(parent, m.__slot3_at)
 	__inst3_next := []*Row__slot1Instance{}
 	var __inst3_i int = 0
 	for range m.items {
@@ -535,7 +566,7 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 		__inst3_next = append(__inst3_next, __n8)
 		__inst3_i = (__inst3_i + 1)
 		__n8__el := __n8.Root
-		gtk4rt.BoxAppend(parent, __n8__el)
+		gtk4rt.InsertBefore(parent, m.__slot3_at, __n8__el)
 		m.__slot3 = append(m.__slot3, __n8__el)
 	}
 	for __inst3_i_d, _ := range m.__inst3_live {
@@ -549,15 +580,19 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 
 // Card__slot3Instance is one live instance of the Card__slot3 component.
 type Card__slot3Instance struct {
-	Root    gtk4rt.Handle
-	__model *Model
-	hits    int
-	__root  gtk4rt.Handle
-	__slot0 []gtk4rt.Handle
-	__slot1 []gtk4rt.Handle
-	__slot2 []gtk4rt.Handle
-	__slot3 []gtk4rt.Handle
-	__n0    gtk4rt.Handle
+	Root       gtk4rt.Handle
+	__model    *Model
+	hits       int
+	__root     gtk4rt.Handle
+	__slot0    []gtk4rt.Handle
+	__slot0_at gtk4rt.Handle
+	__slot1    []gtk4rt.Handle
+	__slot1_at gtk4rt.Handle
+	__slot2    []gtk4rt.Handle
+	__slot2_at gtk4rt.Handle
+	__slot3    []gtk4rt.Handle
+	__slot3_at gtk4rt.Handle
+	__n0       gtk4rt.Handle
 }
 
 func newCard__slot3Instance(__model *Model) *Card__slot3Instance {
@@ -594,6 +629,18 @@ func (c *Card__slot3Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
+	if c.__slot2_at != nil {
+		gtk4rt.Release(c.__slot2_at)
+	}
+	if c.__slot3_at != nil {
+		gtk4rt.Release(c.__slot3_at)
+	}
 }
 
 // Card__slot2Instance is one live instance of the Card__slot2 component.
@@ -604,9 +651,13 @@ type Card__slot2Instance struct {
 	hits        int
 	__root      gtk4rt.Handle
 	__slot0     []gtk4rt.Handle
+	__slot0_at  gtk4rt.Handle
 	__slot1     []gtk4rt.Handle
+	__slot1_at  gtk4rt.Handle
 	__slot2     []gtk4rt.Handle
+	__slot2_at  gtk4rt.Handle
 	__slot3     []gtk4rt.Handle
+	__slot3_at  gtk4rt.Handle
 	__n1        gtk4rt.Handle
 	__n2        gtk4rt.Handle
 }
@@ -649,6 +700,18 @@ func (c *Card__slot2Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
+	if c.__slot2_at != nil {
+		gtk4rt.Release(c.__slot2_at)
+	}
+	if c.__slot3_at != nil {
+		gtk4rt.Release(c.__slot3_at)
+	}
 }
 
 // Row__slot1Instance is one live instance of the Row__slot1 component.
@@ -658,10 +721,14 @@ type Row__slot1Instance struct {
 	open         bool
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
 	__inst0_live []*Card__slot3Instance
 	__slot1      []gtk4rt.Handle
+	__slot1_at   gtk4rt.Handle
 	__slot2      []gtk4rt.Handle
+	__slot2_at   gtk4rt.Handle
 	__slot3      []gtk4rt.Handle
+	__slot3_at   gtk4rt.Handle
 }
 
 func newRow__slot1Instance(__model *Model) *Row__slot1Instance {
@@ -688,6 +755,7 @@ func (c *Row__slot1Instance) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	c.__slot0 = nil
+	c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
 	__inst0_next := []*Card__slot3Instance{}
 	var __inst0_i int = 0
 	for range []int{1, 2} {
@@ -704,7 +772,7 @@ func (c *Row__slot1Instance) __renderSlot0(parent gtk4rt.Handle) {
 		__inst0_next = append(__inst0_next, __n3)
 		__inst0_i = (__inst0_i + 1)
 		__n3__el := __n3.Root
-		gtk4rt.BoxAppend(parent, __n3__el)
+		gtk4rt.InsertBefore(parent, c.__slot0_at, __n3__el)
 		c.__slot0 = append(c.__slot0, __n3__el)
 	}
 	for __inst0_i_d, _ := range c.__inst0_live {
@@ -730,6 +798,18 @@ func (c *Row__slot1Instance) Destroy() {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
 	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
+	if c.__slot2_at != nil {
+		gtk4rt.Release(c.__slot2_at)
+	}
+	if c.__slot3_at != nil {
+		gtk4rt.Release(c.__slot3_at)
+	}
 }
 
 // Row__slot0Instance is one live instance of the Row__slot0 component.
@@ -740,10 +820,14 @@ type Row__slot0Instance struct {
 	open         bool
 	__root       gtk4rt.Handle
 	__slot0      []gtk4rt.Handle
+	__slot0_at   gtk4rt.Handle
 	__slot1      []gtk4rt.Handle
+	__slot1_at   gtk4rt.Handle
 	__inst1_live []*Card__slot2Instance
 	__slot2      []gtk4rt.Handle
+	__slot2_at   gtk4rt.Handle
 	__slot3      []gtk4rt.Handle
+	__slot3_at   gtk4rt.Handle
 	__n6         gtk4rt.Handle
 }
 
@@ -777,6 +861,7 @@ func (c *Row__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	c.__slot1 = nil
+	c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
 	__inst1_next := []*Card__slot2Instance{}
 	var __inst1_i int = 0
 	for range []int{1, 2} {
@@ -794,7 +879,7 @@ func (c *Row__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 		__inst1_next = append(__inst1_next, __n5)
 		__inst1_i = (__inst1_i + 1)
 		__n5__el := __n5.Root
-		gtk4rt.BoxAppend(parent, __n5__el)
+		gtk4rt.InsertBefore(parent, c.__slot1_at, __n5__el)
 		c.__slot1 = append(c.__slot1, __n5__el)
 	}
 	for __inst1_i_d, _ := range c.__inst1_live {
@@ -819,6 +904,18 @@ func (c *Row__slot0Instance) Destroy() {
 	if c.Root != nil {
 		gtk4rt.Release(c.Root)
 		c.Root = nil
+	}
+	if c.__slot0_at != nil {
+		gtk4rt.Release(c.__slot0_at)
+	}
+	if c.__slot1_at != nil {
+		gtk4rt.Release(c.__slot1_at)
+	}
+	if c.__slot2_at != nil {
+		gtk4rt.Release(c.__slot2_at)
+	}
+	if c.__slot3_at != nil {
+		gtk4rt.Release(c.__slot3_at)
 	}
 }
 
@@ -1205,8 +1302,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:c57e712dcd2649dc57beab34304e31ff
+pass sha256:fa6eef46a9a663db2c7bd13ff6bfed64
 -- run/go/gtk4 --
-pass sha256:3b4e6bf672350c9859b9c6d9da7399ba
+pass sha256:43f6c7160e4c0c44de7359a622a8eef5
 -- run/none/html --
 pass sha256:49e980049dd90cece8f9eaa9a3c06bbd

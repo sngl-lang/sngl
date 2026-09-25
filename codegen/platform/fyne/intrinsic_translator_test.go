@@ -234,7 +234,7 @@ func TestFyneStmtDispatch_SlotReset(t *testing.T) {
 	}
 	tr := newFyneTranslator(gc, specsAt(map[string]*fyneSpec{"__n0": labelSpec(), "__n5": labelSpec()}), func(_, _ string) {}, nil, nil)
 	got := renderStmts(gc, codegen.WalkLowered(context.Background(), []ir.Stmt{stmt}, tr))
-	want := "m.__slot0 = nil"
+	want := "m.__slot0 = nil\nm.__slot0_at = fynelayout.SlotAnchor(container, m.__slot0_at)"
 	if strings.TrimSpace(got) != want {
 		t.Errorf("slot reset dispatch:\ngot:  %q\nwant: %q", got, want)
 	}

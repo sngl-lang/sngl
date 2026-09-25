@@ -224,6 +224,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 					goType:      "[]*C.GtkWidget",
 					init:        "nil",
 					noAccessors: true,
+				}, irBind{
+					name:        codegen.SlotAnchorField(v.Name),
+					goType:      "*C.GtkWidget",
+					init:        "nil",
+					noAccessors: true,
 				})
 				continue
 			}

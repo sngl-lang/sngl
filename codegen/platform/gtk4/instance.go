@@ -154,6 +154,9 @@ func emitComponentInstance(
 	fmt.Fprintf(b, "\t%s *%s\n", golang.InstanceModelField, codegen.ModelTypeName)
 	for _, v := range comp.Vars {
 		fmt.Fprintf(b, "\t%s %s\n", v.Name, instanceVarGoType(v, wrapped))
+		if isSlotVar(v) {
+			fmt.Fprintf(b, "\t%s %s\n", codegen.SlotAnchorField(v.Name), handleType)
+		}
 	}
 	for _, f := range fields {
 		fmt.Fprintf(b, "\t%s %s\n", f.name, f.goType)
@@ -180,8 +183,19 @@ func emitComponentInstance(
 	if componentDeclaresFunc(comp, lower.TeardownFunc) {
 		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
 	}
-	fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t\t%s = nil\n\t}\n}\n\n", root, rootRefLine("g_object_unref", "Release", wrapped), root)
+	fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t\t%s = nil\n\t}\n", root, rootRefLine("g_object_unref", "Release", wrapped), root)
+	if wrapped {
+		for _, v := range comp.Vars {
+			if isSlotVar(v) {
+				anchor := instanceReceiver + "." + codegen.SlotAnchorField(v.Name)
+				fmt.Fprintf(b, "\tif %s != nil {\n\t\tgtk4rt.Release(%s)\n\t}\n", anchor, anchor)
+			}
+		}
+	}
+	b.WriteString("}\n\n")
 }
+
+func isSlotVar(v *ir.Var) bool { return v.Synthesized && ir.IsSlotVarName(v.Name) }
 
 // instanceTeardownMethod is what the lowered teardown is emitted as, so that
 // Destroy can run it and then release the root.

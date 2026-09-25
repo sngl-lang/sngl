@@ -103,6 +103,9 @@ type gtk4Translator struct {
 	// other way, which is every Model scope: the Model's own __root is the
 	// wrapper buildWidgetTree already parents into.
 	slotRoot string
+	// slotAnchor is the anchor field of the slot this render func renders,
+	// set when the func resets its slot, in wrapped mode.
+	slotAnchor ir.Expr
 	// wrapped emits widget ops as pkg/go/gtk4rt calls instead of inline cgo.
 	// An unmapped op falls through to cgo, leaving a `C.` that triggers
 	// emitIR's whole-program fallback. See wrapped.go.
@@ -689,6 +692,9 @@ func (t *gtk4Translator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 			}
 		}
 	}
+	if id, ok := parent.(*ir.Ident); ok && id.Name == "parent" && t.slotAnchor != nil && cType == "GtkBox" {
+		return []ir.Stmt{&ir.CallStmt{Call: rtCall("InsertBefore", parent, t.slotAnchor, t.qualifyNodeExpr(child))}}
+	}
 	if t.wrapped {
 		stmt, ok := rtChildAppendCall(adder, t.qualifyNodeExpr(parent), t.qualifyNodeExpr(child))
 		if !ok {
@@ -1112,11 +1118,17 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 }
 
 func (t *gtk4Translator) OnSlotReset(ctx context.Context, slot *ir.Var) []ir.Stmt {
-	return []ir.Stmt{&ir.Assign{
+	reset := &ir.Assign{
 		Target: t.fieldRef(slot.Name),
 		Op:     ast.AssignSet,
 		Value:  &ir.Literal{Type: ir.TypNull},
-	}}
+	}
+	if !t.wrapped {
+		return []ir.Stmt{reset}
+	}
+	t.slotAnchor = codegen.RecvFieldRef(t.gc.NodeRecv(slot.Name), codegen.SlotAnchorField(slot.Name))
+	anchor := rtCall("SlotAnchor", &ir.Ident{Name: "parent"}, t.slotAnchor)
+	return []ir.Stmt{reset, &ir.Assign{Target: t.slotAnchor, Op: ast.AssignSet, Value: anchor}}
 }
 
 func (t *gtk4Translator) OnSlotAppend(ctx context.Context, slot *ir.Var, child ir.Expr) []ir.Stmt {

@@ -247,6 +247,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"git.duckfam.us/jonathan/sngl/pkg/go/fynelayout"
 	"os"
 )
 
@@ -255,7 +256,9 @@ type Model struct {
 	rows__inst0 []string
 	n__inst0    int
 	__slot0     []fyne.CanvasObject
+	__slot0_at  fyne.CanvasObject
 	__slot1     []fyne.CanvasObject
+	__slot1_at  fyne.CanvasObject
 
 	__n4 *fyne.Container
 	__n5 *widget.Button
@@ -267,7 +270,9 @@ func New() *Model {
 	m.rows__inst0 = []string{}
 	m.n__inst0 = 0
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__slot1 = nil
+	m.__slot1_at = nil
 	return m
 }
 
@@ -276,16 +281,17 @@ func (m *Model) __renderSlot0(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = fynelayout.SlotAnchor(container, m.__slot0_at)
 	if len(m.rows__inst0) == 0 {
 		__n0 := widget.NewLabel("")
 		__n0.SetText("NOTHING YET")
-		container.Add(__n0)
+		fynelayout.InsertBefore(container, m.__slot0_at, __n0)
 		m.__slot0 = append(m.__slot0, __n0)
 	} else {
 		for _, row := range m.rows__inst0 {
 			__n1 := widget.NewLabel("")
 			__n1.SetText(row)
-			container.Add(__n1)
+			fynelayout.InsertBefore(container, m.__slot0_at, __n1)
 			m.__slot0 = append(m.__slot0, __n1)
 		}
 	}
@@ -296,16 +302,17 @@ func (m *Model) __renderSlot1(container *fyne.Container) {
 		container.Remove(__entry)
 	}
 	m.__slot1 = nil
+	m.__slot1_at = fynelayout.SlotAnchor(container, m.__slot1_at)
 	if 0 >= m.n__inst0 {
 		__n2 := widget.NewLabel("")
 		__n2.SetText("NO TICKS")
-		container.Add(__n2)
+		fynelayout.InsertBefore(container, m.__slot1_at, __n2)
 		m.__slot1 = append(m.__slot1, __n2)
 	} else {
 		for range m.n__inst0 {
 			__n3 := widget.NewLabel("")
 			__n3.SetText("tick")
-			container.Add(__n3)
+			fynelayout.InsertBefore(container, m.__slot1_at, __n3)
 			m.__slot1 = append(m.__slot1, __n3)
 		}
 	}
@@ -382,7 +389,9 @@ type Model struct {
 	rows__inst0 []string
 	n__inst0    int
 	__slot0     []gtk4rt.Handle
+	__slot0_at  gtk4rt.Handle
 	__slot1     []gtk4rt.Handle
+	__slot1_at  gtk4rt.Handle
 	__n4        gtk4rt.Handle
 	__n5        gtk4rt.Handle
 	__root      gtk4rt.Handle
@@ -395,7 +404,9 @@ func New() *Model {
 	m.rows__inst0 = []string{}
 	m.n__inst0 = 0
 	m.__slot0 = nil
+	m.__slot0_at = nil
 	m.__slot1 = nil
+	m.__slot1_at = nil
 	return m
 }
 
@@ -404,16 +415,17 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot0 = nil
+	m.__slot0_at = gtk4rt.SlotAnchor(parent, m.__slot0_at)
 	if len(m.rows__inst0) == 0 {
 		__n0 := gtk4rt.LabelNew("")
 		gtk4rt.LabelSetText(__n0, "NOTHING YET")
-		gtk4rt.BoxAppend(parent, __n0)
+		gtk4rt.InsertBefore(parent, m.__slot0_at, __n0)
 		m.__slot0 = append(m.__slot0, __n0)
 	} else {
 		for _, row := range m.rows__inst0 {
 			__n1 := gtk4rt.LabelNew("")
 			gtk4rt.LabelSetText(__n1, row)
-			gtk4rt.BoxAppend(parent, __n1)
+			gtk4rt.InsertBefore(parent, m.__slot0_at, __n1)
 			m.__slot0 = append(m.__slot0, __n1)
 		}
 	}
@@ -424,16 +436,17 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 		gtk4rt.BoxRemove(parent, __entry)
 	}
 	m.__slot1 = nil
+	m.__slot1_at = gtk4rt.SlotAnchor(parent, m.__slot1_at)
 	if 0 >= m.n__inst0 {
 		__n2 := gtk4rt.LabelNew("")
 		gtk4rt.LabelSetText(__n2, "NO TICKS")
-		gtk4rt.BoxAppend(parent, __n2)
+		gtk4rt.InsertBefore(parent, m.__slot1_at, __n2)
 		m.__slot1 = append(m.__slot1, __n2)
 	} else {
 		for range m.n__inst0 {
 			__n3 := gtk4rt.LabelNew("")
 			gtk4rt.LabelSetText(__n3, "tick")
-			gtk4rt.BoxAppend(parent, __n3)
+			gtk4rt.InsertBefore(parent, m.__slot1_at, __n3)
 			m.__slot1 = append(m.__slot1, __n3)
 		}
 	}
@@ -749,9 +762,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a0e51c4b587ba1cbaa049903c2954345
 -- run/go/fyne --
-pass sha256:468fe22c657c710125ae661543ac2423
+pass sha256:2fa1d12ba624f1352732b417527b5b3c
 -- run/go/gtk4 --
-pass sha256:fb6956b16a79096cc9f18ac50eb2b181
+pass sha256:1900836ae3e15e09f89bd5a11310cf8b
 -- run/kotlin/android --
 broken sha256:50566a41d383236b4acb37a508b8b5eb
 -- run/none/html --

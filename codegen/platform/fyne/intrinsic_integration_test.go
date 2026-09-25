@@ -64,7 +64,7 @@ window {
 		// blueprint form's `fmt.Sprint` wrapper existed only because the
 		// prop it named carried no type.
 		`__n0.SetText("hi")`,
-		"container.Add(__n0)",
+		"fynelayout.InsertBefore(container, m.__slot0_at, __n0)",
 		"m.__slot0 = append(m.__slot0, __n0)",
 	} {
 		if !strings.Contains(out, snippet) {

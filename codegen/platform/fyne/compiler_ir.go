@@ -123,6 +123,11 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 					goType:      "[]fyne.CanvasObject",
 					init:        &ir.Literal{Type: ir.TypNull},
 					noAccessors: true,
+				}, irBind{
+					name:        codegen.SlotAnchorField(v.Name),
+					goType:      "fyne.CanvasObject",
+					init:        &ir.Literal{Type: ir.TypNull},
+					noAccessors: true,
 				})
 				continue
 			}
