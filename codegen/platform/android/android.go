@@ -205,7 +205,10 @@ func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error 
 			if err != nil {
 				return fmt.Errorf("android: locate pkg/kotlin/testagent: %w", err)
 			}
-			testAgentInc = p
+			if err := copyTestAgent(sink, p); err != nil {
+				return err
+			}
+			testAgentInc = testAgentDir
 		}
 		// templateTestMode flips the gradle template's TestMode flag,
 		// which adds junit+robolectric+compose-ui-test deps and a
