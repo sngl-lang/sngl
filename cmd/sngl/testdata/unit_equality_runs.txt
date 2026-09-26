@@ -32,7 +32,6 @@ sngl test --platform=none app.sngl
 stdout 'PASS'
 ! stdout 'FAIL'
 
-[!chromium] skip 'the JavaScript half needs a real Chromium'
 
 sngl test --platform=html app.sngl
 stdout 'PASS'
@@ -97,4 +96,40 @@ func testACancelledBaseEqualsAnAbsentOne(t Test, c main) {
 
 ui.window {
     main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:483fe484918584850f7344973bd4503c
+{
+  "results": [
+    {
+      "Desc": "ACancelledBaseEqualsAnAbsentOne",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualValuesCompareEqual",
+      "Passed": true
+    },
+    {
+      "Desc": "ValuesDifferingInOneBaseCompareUnequal",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:99f900109d6bc3bac62d2ac4b013a8e2
+{
+  "results": [
+    {
+      "Desc": "ACancelledBaseEqualsAnAbsentOne",
+      "Passed": true
+    },
+    {
+      "Desc": "EqualValuesCompareEqual",
+      "Passed": true
+    },
+    {
+      "Desc": "ValuesDifferingInOneBaseCompareUnequal",
+      "Passed": true
+    }
+  ]
 }

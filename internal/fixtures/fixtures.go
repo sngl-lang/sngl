@@ -192,11 +192,13 @@ func check(t *testing.T, s testutil.Sample, doc *ast.Document) *ir.Package {
 	pkg, diags := checker.Check(doc, cfg)
 
 	expected := s.PhaseErrors("check")
-	if len(expected) == 0 {
-		for _, d := range diags {
-			if d.Severity == ir.Error {
-				t.Errorf("unexpected error: %s", d.Error())
-			}
+	directed := map[int]bool{}
+	for _, exp := range expected {
+		directed[exp.Pos()] = true
+	}
+	for _, d := range diags {
+		if d.Severity == ir.Error && !directed[d.Pos.Line] {
+			t.Errorf("unexpected error: %s", d.Error())
 		}
 	}
 	for _, exp := range expected {

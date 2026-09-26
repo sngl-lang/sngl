@@ -71,3 +71,29 @@ func testMapEntries(t Test) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:87b5c851c75bf146139a26312daf1681
+{
+  "results": [
+    {
+      "Desc": "Condition",
+      "Passed": true
+    },
+    {
+      "Desc": "Counted",
+      "Passed": true
+    },
+    {
+      "Desc": "Forever",
+      "Passed": true
+    },
+    {
+      "Desc": "Indexed",
+      "Passed": true
+    },
+    {
+      "Desc": "MapEntries",
+      "Passed": true
+    }
+  ]
+}

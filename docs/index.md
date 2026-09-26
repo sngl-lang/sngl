@@ -29,15 +29,15 @@ struct Todo {
     done bool = false
 }
 
-component main node {
+window {
     var (
         newTodo = ""
         todos list<Todo> = []
     )
     func status() => "Todo List ({todos.length()} items)"
     vbox(style={gap=12, padding=16}) {
-        text(value=status, style={fontWeight="bold", fontSize=24})
-        hbox(style={gap=8, alignItems="center"}) {
+        text(value=status, style={fontWeight=bold, fontSize=24})
+        hbox(style={gap=8, alignItems=center}) {
             input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
             button(text="Add", @click {
                 todos.push(Todo{text=newTodo, done=false})

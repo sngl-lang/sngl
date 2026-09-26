@@ -173,7 +173,7 @@ ui.window {
 		t.Fatalf("expected MainScreenState class:\n%s", out)
 	}
 	// computed is a member of the state class (bare ref inside the class)...
-	if !strings.Contains(out, "val doubled by derivedStateOf { (count * 2) }") {
+	if !strings.Contains(out, "val doubled: Int get() = (count * 2)") {
 		t.Errorf("expected computed as state member with bare ref:\n%s", out)
 	}
 	// ...and read via state.<name> at view sites.

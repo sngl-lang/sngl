@@ -55,3 +55,17 @@ func testOrdinarySeparatorIsUnchanged(t Test) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:d0d2d13fcf665bcae3d970561f237719
+{
+  "results": [
+    {
+      "Desc": "EmptySeparatorGivesTheCharacters",
+      "Passed": true
+    },
+    {
+      "Desc": "OrdinarySeparatorIsUnchanged",
+      "Passed": true
+    }
+  ]
+}

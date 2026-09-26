@@ -1,0 +1,21 @@
+// A const parameter reads as a constant inside the body, so it may flow into
+// const(...) and into another const parameter.
+import ui "sngl:ui"
+
+const base = 3
+
+func scale(const factor int, x int) => const (factor) * x
+
+func twice(const k int) => scale(k, 2)
+
+component badge(const tag string = "x", label string) ui.node {
+    ui.text(value=tag + label)
+}
+
+var count = 0
+
+ui.window {
+    ui.text(value="{scale(base + 1, count)} {twice(4)}")
+    badge(tag="new", label="{count}")
+    badge(label="{count}")
+}

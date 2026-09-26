@@ -271,6 +271,10 @@ const ComponentRootField = "Root"
 // a component may declare a var named anything else.
 const InstanceModelField = "__model"
 
+// InstanceCtorParam is what an instance ctor calls the parameter for prop, so
+// a prop named for a package the file imports (`container`) does not shadow it.
+func InstanceCtorParam(prop string) string { return "__a_" + prop }
+
 // PageNodes is the names the page holds as Model fields that an instance of
 // comp could reach: the vars and created nodes of every owner that is not a
 // component built at run time, less comp's own, since a synthesized name may

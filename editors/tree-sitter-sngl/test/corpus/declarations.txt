@@ -221,3 +221,37 @@ window #home(title="x") {
         (named_arg
           name: (identifier)
           value: (string_literal))))))
+
+================
+Const func, component and param
+================
+
+const func area(w float, const h float) => w * h
+
+const component badge(const tag string) {
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (binary_expression
+      (identifier)
+      (identifier)))
+  (component_declaration
+    (identifier)
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (statement_block)))

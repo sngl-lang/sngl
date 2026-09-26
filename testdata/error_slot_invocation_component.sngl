@@ -27,7 +27,7 @@ component site(
                 text(value="x")
             }
         }
-        layout("d", "e") // ERROR(check) "slot \"layout\" takes 1 argument(s), got 2"
+        layout("d", "e") // ERROR(check) "too many arguments: expected 1"
     }
 }
 
@@ -42,7 +42,7 @@ component main node {
     }
     site {
         component layout(title, body) {
-            body("x") // ERROR(check) "slot \"body\" takes 0 argument(s), got 1"
+            body("x") // ERROR(check) "too many arguments: expected 0"
         }
         component plain(s) {
             text(value=s)

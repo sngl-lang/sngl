@@ -420,11 +420,6 @@ func (w *depExtractor) walkStmt(s ir.Stmt) {
 				w.walkStmt(c)
 			}
 		}
-	case *ir.ContextProvider:
-		w.walkExpr(n.Value)
-		for _, c := range n.Children {
-			w.walkStmt(c)
-		}
 	case *ir.CanvasRedrawStmt:
 		// Carries NodeInst and Func pointers only; listed rather than
 		// defaulted so the arm below catches a genuinely new statement kind.

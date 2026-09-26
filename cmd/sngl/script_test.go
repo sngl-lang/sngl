@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -15,7 +18,6 @@ import (
 	"git.duckfam.us/jonathan/sngl/codegen"
 	"git.duckfam.us/jonathan/sngl/internal/androidtc"
 	"git.duckfam.us/jonathan/sngl/internal/jdk"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/tools/txtar"
@@ -33,18 +35,8 @@ func TestScript(t *testing.T) {
 		}
 	}
 	conds := scripttest.DefaultConds()
-	// `display` is true when an X11/Wayland display is reachable. gtk4 renders
-	// through real GDK, which calls the X/Wayland server; headless CI has
-	// neither, so those snapshot scripts guard with `[!display] skip`. (fyne
-	// renders in-memory via fyne/test and needs no guard.)
-	conds["display"] = script.BoolCondition(
-		"an X11/Wayland display is available",
-		os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "",
-	)
 	// `gtk4` is true when the gtk4 development libraries are installed, so the
-	// generated cgo can be compiled. The gtk4 build script uses it to compile
-	// generated gtk4 code in CI (no display needed) even though the render-based
-	// snapshot script skips there.
+	// generated cgo can be compiled.
 	// The GIR check matters independently of pkg-config: distributions can ship
 	// the libraries without the introspection data, and without the .gir file
 	// the platform reports itself unavailable and refuses to generate.
@@ -67,13 +59,6 @@ func TestScript(t *testing.T) {
 		"running under GitLab CI",
 		os.Getenv("GITLAB_CI") == "true" || os.Getenv("CI") == "true",
 	)
-	// `chromium` is true when go-rod can find a Chrome/Chromium binary — the
-	// same lookup the html launcher does before it emits a SkipError. Scripts
-	// that assert on a real browser run guard with `[!chromium] skip`.
-	conds["chromium"] = script.BoolCondition(
-		"a Chrome/Chromium binary go-rod can drive is available",
-		func() bool { _, found := launcher.LookPath(); return found }(),
-	)
 	// `android-jdk` / `android-sdk` mirror the two prerequisites the android
 	// launcher checks before skipping. `[!exec:java]` is not enough: a JDK
 	// outside the toolchain's supported window is on PATH but unusable, and
@@ -89,13 +74,6 @@ func TestScript(t *testing.T) {
 	conds["android-sdk"] = script.BoolCondition(
 		"ANDROID_HOME or ANDROID_SDK_ROOT points at an Android SDK",
 		os.Getenv("ANDROID_HOME") != "" || os.Getenv("ANDROID_SDK_ROOT") != "",
-	)
-	// `short` is true under `go test -short`. Slow scripts (e.g. the Robolectric
-	// round-trips, ~2.5min combined) guard with `[short] skip` so the fast local
-	// loop stays quick; the full run (and `go tool verify`) still exercises them.
-	conds["short"] = script.BoolCondition(
-		"go test -short is set",
-		testing.Short(),
 	)
 	engine := &script.Engine{
 		Cmds:  scriptCmds(),
@@ -116,12 +94,61 @@ func TestScript(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := s.ExtractFiles(a); err != nil {
+			records, rest, err := splitRunRecords(a)
+			if err != nil {
 				t.Fatal(err)
 			}
+			if err := s.ExtractFiles(&txtar.Archive{Files: rest}); err != nil {
+				t.Fatal(err)
+			}
+			testRuns = newRunRecords(records, *updateTestRuns)
+			defer func() { testRuns = nil }()
 			scripttest.Run(t, engine, s, file, bytes.NewReader(a.Comment))
+			if *updateTestRuns && !t.Failed() {
+				if err := writeRunRecords(file, a, rest, testRuns.Written()); err != nil {
+					t.Fatal(err)
+				}
+			}
 		})
 	}
+}
+
+// updateTestRuns reruns every `sngl test` a script launches and rewrites the
+// testrun/ records its archive carries; without it a launch is answered from
+// its record, so CI needs no toolchain, display or browser to run one.
+var updateTestRuns = flag.Bool("update", false, "rerun the test programs scripts launch and rewrite their testrun/ records")
+
+const runRecordPrefix = "testrun/"
+
+func splitRunRecords(a *txtar.Archive) (map[string]runRecord, []txtar.File, error) {
+	records := map[string]runRecord{}
+	var rest []txtar.File
+	for _, f := range a.Files {
+		if !strings.HasPrefix(f.Name, runRecordPrefix) {
+			rest = append(rest, f)
+			continue
+		}
+		rec, err := parseRunRecord(f.Name, f.Data)
+		if err != nil {
+			return nil, nil, err
+		}
+		records[f.Name] = rec
+	}
+	return records, rest, nil
+}
+
+// Records reached this run replace every record the archive held, so one a
+// script no longer launches goes with it.
+func writeRunRecords(file string, a *txtar.Archive, rest []txtar.File, written map[string]runRecord) error {
+	out := &txtar.Archive{Comment: a.Comment, Files: slices.Clone(rest)}
+	for _, name := range slices.Sorted(maps.Keys(written)) {
+		out.Files = append(out.Files, txtar.File{Name: name, Data: written[name].format()})
+	}
+	data := txtar.Format(out)
+	if bytes.Equal(data, txtar.Format(a)) {
+		return nil
+	}
+	return os.WriteFile(file, data, 0o644)
 }
 
 func scriptCmds() map[string]script.Cmd {

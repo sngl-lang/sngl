@@ -380,12 +380,14 @@ func markIntrinsic(m *mark) error {
 	case slices.Contains(flags, flagReadonly):
 		fn.Purity = ir.PurityReadonly
 	}
+	if fn.Const && fn.Purity > ir.PurityPure {
+		return fmt.Errorf("#[intrinsic(%q)] on const func %s says it reads or writes state, which a const func does not", id, fn.Name)
+	}
 	return nil
 }
 
 // The flags #[foreign] accepts after the name, declared as ir.ForeignFlag.
 const (
-	flagPure   = "pure"
 	flagAsync  = "async"
 	flagNative = "native"
 )
@@ -437,7 +439,7 @@ func markForeign(m *mark) error {
 	if err != nil {
 		return err
 	}
-	// `pure` and `async` describe a call, so only a function carries them.
+	// `async` describes a call, so only a function carries it.
 	// `native` describes the declaration itself -- it says the host already
 	// has this, and a struct can say that as readily as a function.
 	if _, isFunc := m.sym.(*ir.Func); !isFunc {
@@ -475,11 +477,12 @@ func markForeign(m *mark) error {
 			return err
 		}
 		// A foreign function's body describes the declaration rather than
-		// implementing it, so what a call costs is what the mark says. Purity
-		// is left unknown without the flag: inferring it from the body would
-		// fold a stub's result into the program in place of the call.
+		// implementing it, so what a call costs is what the declaration says:
+		// `const func` for a pure one. Purity is otherwise left unknown:
+		// inferring it from the body would fold a stub's result into the
+		// program in place of the call.
 		d.IsAsync = slices.Contains(flags, flagAsync)
-		if slices.Contains(flags, flagPure) {
+		if d.Const {
 			d.Purity = ir.PurityPure
 		}
 	default:

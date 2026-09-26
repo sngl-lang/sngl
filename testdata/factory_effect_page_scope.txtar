@@ -155,6 +155,7 @@ body { font-family: system-ui, sans-serif; }
     function __set_label(__v) {
       __prop_label = __v;
       __n0.textContent = __prop_label + "[" + log.join(",") + "]";
+      __effects0_settle();
     }
     let __n0 = document.createElement("span");
     __n0.textContent = __prop_label + "[" + log.join(",") + "]";
@@ -226,4 +227,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a8de1e9932cf9f9b8272c127b3bb5826
+pass sha256:7d1fb8ed37d487d7dd32f2d4b6918ca0

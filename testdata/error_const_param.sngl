@@ -1,0 +1,26 @@
+// A const parameter or prop is a compile-time value at every call site, and
+// its default is one too.
+import macro "sngl:macro"
+import ui "sngl:ui"
+
+var count = 0
+
+func scale(const factor int, x int) => factor * x
+
+component badge(const tag string, label string) ui.node {
+    ui.text(value=tag + label)
+}
+
+component seeded(#[macro.construct] const start int) ui.node { // ERROR(check) "prop \"start\" is const, which already says it is read once"
+    ui.text(value="{start}")
+}
+
+func forward(n int) => scale(n, 1) // ERROR(check) "param \"factor\" is const: \"n\" is a parameter that is not const"
+
+func late(const k int = count) => k // ERROR(check) "the default of param \"k\" is const: \"count\" is a var"
+
+ui.window {
+    ui.text(value="{scale(count, 2)}")                   // ERROR(check) "param \"factor\" is const: \"count\" is a var"
+    badge(tag="{count}", label="ok")                     // ERROR(check) "prop \"tag\" of badge is const: \"count\" is a var"
+    ui.button(text="go", @click(const e) { count += 1 }) // ERROR(check) "a handler's parameter \"e\" cannot be const"
+}

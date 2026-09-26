@@ -1,7 +1,6 @@
 # t.snapshot(name) captures Model.View() output and diffs against a
 # golden under app.sngl.snapshots/initial.ansi.
 
-[!exec:go] skip 'go toolchain required'
 
 # First run with SNGL_UPDATE_SNAPSHOTS=1 creates the golden.
 env SNGL_UPDATE_SNAPSHOTS=1
@@ -30,4 +29,27 @@ func testInitialSnapshotMatches(t Test, c counter) {
 }
 
 window {
+}
+-- testrun/bubbletea/go/app.sngl/counter/1 --
+sha256:c7e811353fc60e42a7888e7438b59d01
+{
+  "results": [
+    {
+      "Desc": "InitialSnapshotMatches",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "initial.ansi": "MA=="
+  }
+}
+-- testrun/bubbletea/go/app.sngl/counter/2 --
+sha256:3e8f87d9feafc908676a9753baa3a7ed
+{
+  "results": [
+    {
+      "Desc": "InitialSnapshotMatches",
+      "Passed": true
+    }
+  ]
 }

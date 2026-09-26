@@ -462,12 +462,6 @@ body { font-family: system-ui, sans-serif; }
   state.shorthand__inst0 = { a: 1, b: 2 };
   state.written__inst0 = { a: 5, b: 6 };
   state.total__inst0 = state.pair__inst0.a + state.pair__inst0.b + (state.swapped__inst0.a + state.swapped__inst0.b) + (state.shorthand__inst0.a + state.shorthand__inst0.b) + (state.written__inst0.a + state.written__inst0.b);
-  function __anon_a_b_8dc8a4(a, b) {
-    return { a, b };
-  }
-  function __anon_e3b0c4() {
-    return {};
-  }
   function __effect0_mount() {
     state.mounts__inst0 = state.mounts__inst0 + 1;
     __n3.textContent = String(state.mounts__inst0);
@@ -533,4 +527,4 @@ pass sha256:5199585b01c1ee5e51ba52b8af956235
 -- run/kotlin/android --
 broken sha256:34a790979ba39882fd892b7ebf42a00d
 -- run/none/html --
-pass sha256:fd09b70f32c6e15c939cf8db54e75afc
+pass sha256:0bb277315898933a9d389e27ca9248b8

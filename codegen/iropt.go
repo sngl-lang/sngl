@@ -60,62 +60,6 @@ func OptimizeMutation(m *MutationModel) {
 	// therefore contribute nothing, with no string matching involved.
 }
 
-// OptimizeRender runs optimization passes on a RenderModel:
-//   - Remove handlers with nil bodies (no-op)
-//   - Prune dead computed fields
-//   - Detect static fields (never mutated)
-func OptimizeRender(m *RenderModel) {
-	// Pass 1: Remove no-op handlers.
-	m.Handlers = filterHandlers(m.Handlers, func(h Handler) bool {
-		return h.Body != nil
-	})
-
-	// Pass 2: Collect all referenced fields.
-	usedFields := make(map[string]bool)
-	for _, h := range m.Handlers {
-		for v := range h.Mutated {
-			usedFields[v.SymName()] = true
-		}
-	}
-	for _, t := range m.Timers {
-		if t.ActiveVar != "" {
-			usedFields[t.ActiveVar] = true
-		}
-		for v := range t.Mutated {
-			usedFields[v.SymName()] = true
-		}
-	}
-
-	// Pass 3: Prune dead computed fields.
-	m.Analysis.PruneUnusedComputeds(usedFields)
-}
-
-// StaticFields returns model fields that are never mutated by any handler
-// or timer. These are effectively constants after initialization.
-func StaticFields(handlers []Handler, timers []TimerHandler, modelFields map[string]bool) map[string]bool {
-	mutated := make(map[string]bool)
-	for _, h := range handlers {
-		for v := range h.Mutated {
-			mutated[v.SymName()] = true
-		}
-	}
-	for _, t := range timers {
-		if t.ActiveVar != "" {
-			mutated[t.ActiveVar] = true
-		}
-		for v := range t.Mutated {
-			mutated[v.SymName()] = true
-		}
-	}
-	static := make(map[string]bool)
-	for f := range modelFields {
-		if !mutated[f] {
-			static[f] = true
-		}
-	}
-	return static
-}
-
 func deduplicateUpdaters(us []Updater) []Updater {
 	last := make(map[string]int)
 	for i, u := range us {
@@ -229,16 +173,6 @@ func filterUpdaters(us []Updater, keep func(Updater) bool) []Updater {
 	for _, u := range us {
 		if keep(u) {
 			out = append(out, u)
-		}
-	}
-	return out
-}
-
-func filterHandlers(hs []Handler, keep func(Handler) bool) []Handler {
-	var out []Handler
-	for _, h := range hs {
-		if keep(h) {
-			out = append(out, h)
 		}
 	}
 	return out

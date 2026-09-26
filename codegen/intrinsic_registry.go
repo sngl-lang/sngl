@@ -94,19 +94,6 @@ func LookupPlatformIntrinsic(platform, id string) IntrinsicEmitter {
 	return platformEmitters[platform][id]
 }
 
-// PlatformIntrinsicIDs returns the ids platform has registered an emitter for,
-// sorted.
-func PlatformIntrinsicIDs(platform string) []string {
-	intrinsicMu.RLock()
-	defer intrinsicMu.RUnlock()
-	ids := make([]string, 0, len(platformEmitters[platform]))
-	for id := range platformEmitters[platform] {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	return ids
-}
-
 // DeclarePlatformImplements records that a platform emits every intrinsic
 // declared in a library package, naming the package rather than the ids.
 //
@@ -164,14 +151,6 @@ func DeclareLangImplements(lang string, ids ...string) {
 	for _, id := range ids {
 		byID[id] = true
 	}
-}
-
-// PlatformImplementsPackage reports whether platform declared it implements the
-// intrinsics of pkg.
-func PlatformImplementsPackage(platform, pkg string) bool {
-	intrinsicMu.RLock()
-	defer intrinsicMu.RUnlock()
-	return platformPackages[platform][pkg]
 }
 
 // AnyTargetImplements reports whether some registered language or platform can

@@ -28,6 +28,14 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 
 	// Try function inlining.
 	if call, ok := e.(*ir.Call); ok {
+		// An argument bound to a const parameter is held to a literal before
+		// the call is inlined away: the contract is the call site's, and once
+		// the body is spliced in there is no parameter left to hold it to.
+		for i := range call.Args {
+			if constParamOf(call, i) != nil {
+				call.Args[i].Value = foldCallArg(call, i, ctx)
+			}
+		}
 		if inlined := inlineCall(call, ctx); inlined != nil {
 			if ctx != nil && call.Func != nil {
 				ctx.inliningFuncs[call.Func] = true
@@ -156,9 +164,18 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		x.Operand = foldExpr(x.Operand, ctx)
 		x.Idx = foldExpr(x.Idx, ctx)
 	case *ir.ListLit:
-		for i := range x.Elems {
-			x.Elems[i] = foldExpr(x.Elems[i], ctx)
+		elems := x.Elems[:0:0]
+		for _, el := range x.Elems {
+			el = foldExpr(el, ctx)
+			if sp, ok := el.(*ir.Spread); ok {
+				if inner, ok := sp.Operand.(*ir.ListLit); ok {
+					elems = append(elems, inner.Elems...)
+					continue
+				}
+			}
+			elems = append(elems, el)
 		}
+		x.Elems = elems
 	case *ir.StructLit:
 		for i := range x.Fields {
 			if x.Fields[i].Value != nil {

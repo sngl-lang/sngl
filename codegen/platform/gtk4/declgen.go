@@ -85,6 +85,12 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 			events[n] = true
 			fmt.Fprintf(&b, "    @%s,\n", n)
 		}
+		for _, prop := range notifyProps[info.CType] {
+			if n, ok := snglName("notify-" + prop); ok && !events[n] {
+				events[n] = true
+				fmt.Fprintf(&b, "    @%s,\n", n)
+			}
+		}
 		// GIR does not say which widgets accept children, and declaring a
 		// bound would refuse either every container or every leaf. The
 		// emitter knows which parent types have a child-append API.
@@ -94,6 +100,26 @@ func widgetSource(reg *gir.TypeRegistry) []byte {
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
 	}
 	return []byte(b.String())
+}
+
+// notifyProps are the properties whose change a widget reports only through
+// GObject's `notify::<prop>`, declared as `@notify<Prop>`. GtkSwitch's own
+// `state-set` returns a gboolean and passes the state, which the connect
+// trampoline cannot carry. Every property notifies, and declaring an event
+// per property on every class would be most of the generated package.
+var notifyProps = map[string][]string{
+	"GtkSwitch": {"active"},
+}
+
+// notifySignal is the GObject signal behind a `@notify<Prop>` event, or ""
+// when event is not one.
+func notifySignal(cType, event string) string {
+	for _, prop := range notifyProps[cType] {
+		if n, ok := snglName("notify-" + prop); ok && n == event {
+			return "notify::" + prop
+		}
+	}
+	return ""
 }
 
 // restSlotName is the rest slot every generated widget declares. Reserved

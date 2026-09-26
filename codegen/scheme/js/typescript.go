@@ -183,8 +183,10 @@ func (w *walker) funcDeclToFunc(s *snglts.Node) *ir.Func {
 		Foreign: ir.Foreign{Path: w.importPath, Name: name},
 		Purity:  ir.PurityUnknown,
 	}
+	// The pure doc tag is the TypeScript spelling of `const func`.
 	if isPureDoc(docComment(w.src, s.Pos())) {
 		f.Purity = ir.PurityPure
+		f.Const = true
 	}
 	if s.ModifierFlags()&snglts.ModifierFlagsAsync != 0 {
 		f.IsAsync = true

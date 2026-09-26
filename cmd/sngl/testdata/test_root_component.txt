@@ -60,3 +60,43 @@ func testInitial(t Test, c counter) {
 
 window {
 }
+-- testrun/bubbletea/go/counter.sngl/main/1 --
+sha256:b2acd885104a88ede2a1aa4cada3f9a9
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/renamed.sngl/counter/1 --
+sha256:b2acd885104a88ede2a1aa4cada3f9a9
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/counter.sngl/main/1 --
+sha256:6358c855c708025c88cfe2b7007c532a
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/renamed.sngl/counter/1 --
+sha256:6358c855c708025c88cfe2b7007c532a
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
+}

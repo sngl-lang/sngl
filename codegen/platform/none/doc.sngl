@@ -1,0 +1,5 @@
+// The interpreter's platform package.
+//
+// The interpreter emits nothing, so this package holds only what it has to be
+// *told* rather than shown: a primitive whose meaning is a schedule, which no
+// visual tree can express and no host widget stands in for.

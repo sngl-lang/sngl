@@ -15,9 +15,8 @@ import (
 // loadStdlibPackage, which runs pass1 alone, so no lib/ or sngl:platform/
 // declaration is ever asked. That is why the diagnostic names only the
 // override -- the two marks below cannot be written by a program, and the
-// declarations that do carry them are not reached. Making lib/ shapes
-// bodyless (#213 step 3) needs this to run from that loader too, and needs a
-// fourth answer there for a tree member whose render comes from passCanvas.
+// declarations that do carry them are not reached. A library declaration is
+// asked by reportBodylessLibComponents instead, per target.
 func (c *checker) reportBodylessComponents() {
 	if c.pkg == nil {
 		return

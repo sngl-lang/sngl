@@ -251,6 +251,9 @@ func specializeComp(comp *Component, t target, bodiedOnly bool) {
 	// So do the body-scoped declarations, which is what links a component
 	// nested in this override body back to the body that declared it.
 	comp.Body, comp.Vars, comp.BodyDecls = body.Stmts, body.Vars, body.BodyDecls
+	// Const is the declaration's or the override's. Read off the declaration's
+	// AST rather than the field, which a previous target's swap has written.
+	comp.Const = body.Const || (comp.AST != nil && comp.AST.Const)
 	// And the methods, whose list this target's body is the only one that can
 	// call: a helper written in another target's override is not this one's to
 	// emit. Guarded because a func override records no method set of its own.

@@ -43,27 +43,6 @@ func (t *Translator) TranslateIRLiteral(e ir.Expr) string {
 	return `""`
 }
 
-func (t *Translator) TypeToNative(hint string) string {
-	if strings.HasPrefix(hint, "option:") {
-		return t.TypeToNative(hint[7:]) + "?"
-	}
-	switch hint {
-	case "int":
-		return "Int"
-	case "float":
-		return "Double"
-	case "bool":
-		return "Boolean"
-	case "string", "color",
-		"url", "email", "uuid", "regex", "base64", "ipv4", "ipv6", "hostname",
-		"idnEmail", "idnHostname", "irl", "irlReference", "urlReference",
-		"urlTemplate", "currency", "country2", "country3", "countrySubdivision", "decimal":
-		return "String"
-	default:
-		return "Any"
-	}
-}
-
 func (t *Translator) ExportName(name string) string { return SafeIdent(name) }
 
 // SafeIdent renders a SNGL identifier as a Kotlin one, escaping a hard

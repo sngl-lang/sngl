@@ -2,8 +2,6 @@ package testutil
 
 import (
 	"bufio"
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -160,25 +158,6 @@ func archiveSource(path string) (string, error) {
 	return b.String(), nil
 }
 
-// componentUnderTest reports the component every `func test…` in the fixture
-// takes as its second parameter, or "" when they disagree or none does. Native
-// mode builds one program and so can serve only one; the empty answer leaves
-// such a fixture building the program as written.
-func componentUnderTest(path string) string {
-	src, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
-	found := ""
-	for _, m := range testParamRe.FindAllStringSubmatch(string(src), -1) {
-		if found != "" && found != m[1] {
-			return ""
-		}
-		found = m[1]
-	}
-	return found
-}
-
 var testParamRe = regexp.MustCompile(`(?m)^func test[A-Za-z0-9_]*\([^,)]*,\s*[A-Za-z_][A-Za-z0-9_]*\s+([A-Za-z_][A-Za-z0-9_]*)\s*\)`)
 
 // Declaration-only fixtures still run through generate; this lets the agent
@@ -210,83 +189,6 @@ func hasErrorDirective(path string) bool {
 		return false
 	}
 	return len(dirs) > 0
-}
-
-// Matches each platform's first SupportedLangs entry.
-func langForPlatform(platform string) string {
-	switch platform {
-	case "android":
-		return "kotlin"
-	case "html":
-		return "js"
-	default:
-		// bubbletea, fyne, gtk4
-		return "go"
-	}
-}
-
-func runComponentNative(t *testing.T, snglBin, platform, fixture string) {
-	t.Helper()
-
-	if reason := nativeSkipReason(platform); reason != "" {
-		t.Skip(reason)
-	}
-	if hasErrorDirective(fixture) {
-		t.Skipf("fixture has ERROR directives — native target toolchain can't compile")
-	}
-
-	lang := langForPlatform(platform)
-
-	// A stable, key-derived directory rather than t.TempDir(): the Go build
-	// cache keys compile and link actions on the source directory, so a fresh
-	// temp dir recompiles and relinks byte-identical generated code on every
-	// run. See codegen.BuildDir.
-	tmp, release, err := codegen.BuildDir("fixture-native", platform, lang, fixture)
-	if err != nil {
-		t.Fatalf("build dir: %v", err)
-	}
-	t.Cleanup(release)
-
-	args := []string{"generate",
-		"--lang=" + lang,
-		"--platform=" + platform,
-		"--opt", "test=true",
-		"--opt", "main=true",
-		"--out=" + tmp,
-		fixture,
-	}
-	// The component under test is what the emitted test file is written
-	// against, so this build makes it the root the way the launcher does:
-	// otherwise it inlines into the fixture's own window and the Model carries
-	// `x__inst0` where the test asks for `x`.
-	if root := componentUnderTest(fixture); root != "" {
-		args = append(args, "--opt", "rootComponent="+root)
-	}
-	cmd := exec.Command(snglBin, args...)
-	cmd.Env = snglEnv()
-	out, genErr := cmd.CombinedOutput()
-	if genErr != nil {
-		if reason, ok := unsupportedComponentReason(string(out)); ok {
-			t.Skip(reason)
-		}
-		if reason, ok := skipReasonFromOutput(string(out)); ok {
-			t.Skip(reason)
-		}
-		t.Fatalf("sngl generate: %v\n%s", genErr, out)
-	}
-
-	release, tokErr := codegen.AcquireBuildToken(t.Context())
-	if tokErr != nil {
-		t.Fatalf("build token: %v", tokErr)
-	}
-	defer release()
-
-	if err := runNativeTarget(t, platform, tmp); err != nil {
-		if se, ok := errors.AsType[*skipErr](err); ok {
-			t.Skip(se.reason)
-		}
-		t.Fatalf("native target test: %v", err)
-	}
 }
 
 func runComponentAgent(t *testing.T, snglBin, platform, fixture string) {
@@ -335,12 +237,6 @@ func runComponentAgent(t *testing.T, snglBin, platform, fixture string) {
 		t.Fatalf("sngl test produced no PASS marker:\n%s", outStr)
 	}
 }
-
-// skipErr is internal to this package so callers can downgrade specific
-// runNativeTarget failures to t.Skip.
-type skipErr struct{ reason string }
-
-func (s *skipErr) Error() string { return s.reason }
 
 // skipReasonFromOutput matches a subset of common toolchain-missing
 // messages that we'd prefer to surface as test skips rather than
@@ -394,48 +290,6 @@ func unsupportedComponentReason(out string) (string, bool) {
 	return m[2] + " does not implement " + m[1], true
 }
 
-// "" when the platform participates in native mode (host toolchain compile + run).
-func nativeSkipReason(platform string) string {
-	switch platform {
-	case "html":
-		return "html has no native-target test toolchain (Plan 4: agent-mode only)"
-	case "bubbletea", "fyne":
-		if _, err := exec.LookPath("go"); err != nil {
-			return "go not on PATH"
-		}
-		return ""
-	case "gtk4":
-		if _, err := exec.LookPath("go"); err != nil {
-			return "go not on PATH"
-		}
-		if _, err := exec.LookPath("pkg-config"); err != nil {
-			return "pkg-config not on PATH"
-		}
-		if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
-			return "gtk4 dev libraries not installed (pkg-config)"
-		}
-		if err := codegen.PlatformUnavailable("gtk4"); err != nil {
-			return err.Error()
-		}
-		// gtk4's native test presents real GtkWindows via the snapshot
-		// harness — skip when not inside a headless compositor so it doesn't
-		// flash the desktop (see TestMain / MaybeReexecUnderCage).
-		if r := GUIRenderSkipReason(); r != "" {
-			return r
-		}
-		return ""
-	case "android":
-		if _, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax); reason != "" {
-			return reason
-		}
-		if os.Getenv("ANDROID_HOME") == "" && os.Getenv("ANDROID_SDK_ROOT") == "" {
-			return "ANDROID_HOME / ANDROID_SDK_ROOT not set"
-		}
-		return ""
-	}
-	return ""
-}
-
 // "" when the platform participates in agent mode (sngl test --platform=X).
 func agentSkipReason(platform string) string {
 	switch platform {
@@ -480,92 +334,6 @@ func agentSkipReason(platform string) string {
 		return "Chrome/Chromium not on PATH"
 	}
 	return ""
-}
-
-// dir holds the just-emitted source. Returns *skipErr when the host toolchain
-// reveals an unavailability better surfaced as a skip.
-func runNativeTarget(t *testing.T, platform, dir string) error {
-	t.Helper()
-	switch platform {
-	case "bubbletea", "fyne", "gtk4":
-		return runGoTest(dir)
-	case "android":
-		return runGradleTest(dir)
-	case "html":
-		return &skipErr{reason: "html has no native-target test toolchain"}
-	}
-	return fmt.Errorf("no native-target runner wired for platform %s", platform)
-}
-
-// Returns *skipErr when the output reveals a missing native dep (e.g. gtk4
-// pkg-config).
-func runGoTest(dir string) error {
-	needTidy, err := codegen.WriteGoMod(dir, "", "")
-	if err != nil {
-		return err
-	}
-	tidy := func() error {
-		out, err := codegen.TidyModule(context.Background(), dir)
-		if err != nil {
-			if reason, ok := skipReasonFromOutput(out); ok {
-				return &skipErr{reason: reason}
-			}
-			return fmt.Errorf("go mod tidy: %v\n%s", err, out)
-		}
-		return nil
-	}
-	if needTidy {
-		if err := tidy(); err != nil {
-			return err
-		}
-	}
-
-	run := func() (string, error) {
-		test := exec.Command("go", "test", "-p", strconv.Itoa(childProcs()), "./...")
-		test.Dir = dir
-		out, err := test.CombinedOutput()
-		return string(out), err
-	}
-	out, testErr := run()
-	if testErr != nil && codegen.NeedsModuleTidy(out) {
-		// The module graph seeded from the host did not cover this
-		// program; let tidy resolve the rest and run once more.
-		if err := tidy(); err != nil {
-			return err
-		}
-		out, testErr = run()
-	}
-	if testErr != nil {
-		if reason, ok := skipReasonFromOutput(out); ok {
-			return &skipErr{reason: reason}
-		}
-		return fmt.Errorf("go test: %v\n%s", testErr, out)
-	}
-	return nil
-}
-
-// runGradleTest runs `./gradlew :app:testDebugUnitTest` in dir, pinned to a
-// version-compatible JDK so a too-new ambient JDK doesn't fail the launch.
-func runGradleTest(dir string) error {
-	home, reason := jdk.CompatibleHome(androidtc.Default().JDKMin, androidtc.Default().JDKMax)
-	if reason != "" {
-		return &skipErr{reason: reason}
-	}
-	gradlew := filepath.Join(dir, "gradlew")
-	if _, err := os.Stat(gradlew); err != nil {
-		return &skipErr{reason: "no gradle wrapper in scaffold"}
-	}
-	_ = os.Chmod(gradlew, 0o755)
-	cmd := exec.Command(gradlew, ":app:testDebugUnitTest", "--no-daemon", "--console=plain")
-	cmd.Dir = dir
-	cmd.Env = jdk.Env(home)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		if reason, ok := skipReasonFromOutput(string(out)); ok {
-			return &skipErr{reason: reason}
-		}
-		return fmt.Errorf("gradlew :app:testDebugUnitTest: %v\n%s", err, out)
-	}
-	return nil
 }
 
 // TestHarnessBuild reports the build options a fixture carrying `func test…`

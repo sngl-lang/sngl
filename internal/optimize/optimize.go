@@ -130,6 +130,8 @@ type evalCtx struct {
 	err error
 	// interpEnvs is interpEnv's, one map shared by every child of a run.
 	interpEnvs map[*ir.Package]*interp.Env
+	// readsCtx memoizes readsContext for the run, shared the same way.
+	readsCtx map[*ir.Func]bool
 	// unroll and spliced are set only by Documents. Optimize leaves every loop
 	// for the target to emit: a language target writes its own, and a static
 	// one gets its loops unrolled one document at a time, after lowering. For
@@ -178,6 +180,7 @@ type optimizerRun struct {
 	root       *ir.Package
 	writes     *writesAnalysis
 	interpEnvs map[*ir.Package]*interp.Env
+	readsCtx   map[*ir.Func]bool
 }
 
 // maxEvalRounds bounds the round loop. Every round either caches a value for
@@ -300,6 +303,7 @@ func optimizeIR(pkg *ir.Package, cfg *Config, native *nativeEval) error {
 		root:       pkg,
 		writes:     newWritesAnalysis(cfg.Platform, cfg.Language),
 		interpEnvs: map[*ir.Package]*interp.Env{},
+		readsCtx:   map[*ir.Func]bool{},
 	}
 
 	// Phases 1+2 on root and all imports (depth-first, memoized).
@@ -458,6 +462,7 @@ func (r *optimizerRun) newCtx(pkg *ir.Package) *evalCtx {
 		inlineCapped:    new(bool),
 		writes:          r.writes,
 		interpEnvs:      r.interpEnvs,
+		readsCtx:        r.readsCtx,
 	}
 	// Only the root's: a backend emits the package it compiles, and an
 	// imported package's const reached through an inlined body has no

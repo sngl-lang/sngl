@@ -608,9 +608,16 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			Name:    p.Name,
 			Type:    typ,
 			Default: def,
+			Const:   p.Const,
 		}
 	}
 	return params
+}
+
+// funcHasBody reports whether a declaration was written with a body, either
+// form.
+func funcHasBody(f *ast.FuncDef) bool {
+	return f.Body != nil || f.Block.IsDefined()
 }
 
 func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
@@ -637,6 +644,14 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Params:         c.buildParams(f.Params),
 		Return:         ret,
 		IsTest:         f.IsTest(),
+		Const:          f.Const,
+	}
+	// A bodyless `const func` is trusted: it is a host's identifier, an
+	// intrinsic or an import, and nothing in the program says what the host
+	// does, so the declaration is the whole of what is known. A bodied one is
+	// held to its body by checkConstFuncs.
+	if f.Const && !funcHasBody(f) {
+		fn.Purity = ir.PurityPure
 	}
 	c.refuseParamMarks(f.Params.Params)
 	popTypeParams()

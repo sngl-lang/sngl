@@ -88,7 +88,7 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 // deep-copied at param binding so callee mutations cannot corrupt cached
 // const values in ctx.values.
 func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool) {
-	if fn == nil || len(fn.Block) == 0 || fn.Purity != ir.PurityPure {
+	if fn == nil || len(fn.Block) == 0 || fn.Purity != ir.PurityPure || !hasWrittenBody(fn) {
 		return nil, false
 	}
 	// Refuse to fold any function whose body transitively calls a native
@@ -97,6 +97,17 @@ func interpretFunc(fn *ir.Func, args []any, ctx *evalCtx, depth int) (any, bool)
 	// not be evaluated at compile time even though interp can execute them
 	// against the build host.
 	if bodyUsesNativeCall(fn) {
+		return nil, false
+	}
+	// A context read answers whatever provider the call runs under, which the
+	// interpreter here cannot see -- it would answer the default. Once
+	// passContext has made the value a parameter, the call folds from its
+	// argument.
+	var memo map[*ir.Func]bool
+	if ctx != nil {
+		memo = ctx.readsCtx
+	}
+	if readsContext(fn, memo) {
 		return nil, false
 	}
 	if depth >= maxInterpDepth {
@@ -251,6 +262,64 @@ func bodyUsesNativeCall(fn *ir.Func) bool {
 		}
 	}
 	return hasNative
+}
+
+// readsContext reports whether fn's body, or any function it reaches, reads a
+// context: through a call, a function named as a value (`xs.map(show)`), or
+// the boundary or window handler a call's raise is caught by.
+//
+// memo may be nil. A false answer is recorded for every function the walk
+// visited, since a walk that found nothing explored each of them whole; a true
+// one only for fn, since the walk stopped partway.
+func readsContext(fn *ir.Func, memo map[*ir.Func]bool) bool {
+	if v, ok := memo[fn]; ok {
+		return v
+	}
+	seen := map[*ir.Func]bool{}
+	found := readsContextWalk(fn, seen, memo)
+	if memo != nil {
+		if found {
+			memo[fn] = true
+		} else {
+			for f := range seen {
+				memo[f] = false
+			}
+		}
+	}
+	return found
+}
+
+func readsContextWalk(fn *ir.Func, seen, memo map[*ir.Func]bool) bool {
+	if fn == nil || seen[fn] {
+		return false
+	}
+	if v, ok := memo[fn]; ok {
+		return v
+	}
+	seen[fn] = true
+	found := false
+	var visit func(ir.Node) error
+	visit = func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.ContextRead:
+			found = true
+		case *ir.Ident:
+			if f, ok := x.Sym.(*ir.Func); ok {
+				found = readsContextWalk(f, seen, memo)
+			}
+		case *ir.Call:
+			found = readsContextWalk(x.Func, seen, memo)
+			if h := ir.CatchingHandler(x); !found && h != nil && h != x.ErrorHandler && h.Func != nil {
+				_ = ir.Walk(h.Func.Block, visit)
+			}
+		}
+		if found {
+			return ir.SkipAll
+		}
+		return nil
+	}
+	_ = ir.Walk(fn.Block, visit)
+	return found
 }
 
 // sortedMapKeys returns the keys of m sorted alphabetically.

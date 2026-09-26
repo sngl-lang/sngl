@@ -55,6 +55,17 @@ func FormatType(te ast.TypeExpr) string {
 	return buf.String()
 }
 
+// FormatEventSignature formats what follows an event's name in its
+// declaration, for documentation and hover: `T` for `@change T`, the
+// parenthesised list for `@pick(index int, label string)`, and nothing for a
+// bare `@tick`.
+func FormatEventSignature(e ast.EventDecl) string {
+	var buf strings.Builder
+	f := newFormatter(&buf)
+	f.writePropOrEvent(ast.EventDecl{Params: e.Params, HasParens: e.HasParens}, false)
+	return strings.TrimSpace(strings.TrimPrefix(buf.String(), "@"))
+}
+
 // --- formatter ---
 
 const indentStr = "    " // 4 spaces
@@ -680,6 +691,9 @@ func (f *formatter) writeTypeParams(ps []ast.TypeParam) {
 }
 
 func (f *formatter) writeFuncDef(fn *ast.FuncDef) {
+	if fn.Const {
+		f.write("const ")
+	}
 	f.write("func ")
 	if len(fn.RecvTypeParams) > 0 {
 		// recv<T>.method form: Name is "recv.method", split and insert type params.
@@ -731,6 +745,9 @@ func (f *formatter) writeTargetIndex(target ast.Expr) {
 }
 
 func (f *formatter) writeComponentDecl(c *ast.ComponentDecl) {
+	if c.Const {
+		f.write("const ")
+	}
 	f.write("component ")
 	f.write(c.Name)
 	f.writeTypeParams(c.TypeParams)
@@ -979,6 +996,9 @@ func (f *formatter) writeParam(p ast.Param, multiline bool) {
 	if p.Bidirectional {
 		f.write(":")
 	}
+	if p.Const {
+		f.write("const ")
+	}
 	f.write(p.Name)
 	if p.Type != nil {
 		f.write(" ")
@@ -1042,10 +1062,31 @@ func (f *formatter) writePropOrEvent(p ast.ParamOrEventDecl, multiline bool) {
 		f.writeParamAttrs(v.Attrs, v.Pos, multiline)
 		f.write("@")
 		f.write(v.Name)
-		if v.Type != nil {
-			f.write(" ")
-			f.writeType(v.Type)
+		if !v.HasParens {
+			if len(v.Params) == 1 {
+				f.write(" ")
+				f.writeType(v.Params[0].Type)
+			}
+			return
 		}
+		f.write("(")
+		f.writeFuncTypeParams(v.Params)
+		f.write(")")
+	}
+}
+
+// writeFuncTypeParams writes a func type's parameter list, which an event
+// declaration shares: a name where one was written, then the type.
+func (f *formatter) writeFuncTypeParams(params []ast.FuncTypeParam) {
+	for i, p := range params {
+		if i > 0 {
+			f.write(", ")
+		}
+		if p.Name != "" {
+			f.write(p.Name)
+			f.write(" ")
+		}
+		f.writeType(p.Type)
 	}
 }
 
@@ -1062,9 +1103,6 @@ func (f *formatter) writeExpr(e ast.Expr) {
 		// x.Raw already includes the suffix (parser stores "1rem" in Raw).
 		f.write(x.Raw)
 	case *ast.IdentExpr:
-		f.write(x.Name)
-	case *ast.EventRefExpr:
-		f.write("@")
 		f.write(x.Name)
 	case *ast.BinaryExpr:
 		f.writeExpr(x.Left)
@@ -1426,16 +1464,7 @@ func (f *formatter) writeType(te ast.TypeExpr) {
 		}
 	case *ast.FuncType:
 		f.write("func(")
-		for i, p := range t.Params {
-			if i > 0 {
-				f.write(", ")
-			}
-			if p.Name != "" {
-				f.write(p.Name)
-				f.write(" ")
-			}
-			f.writeType(p.Type)
-		}
+		f.writeFuncTypeParams(t.Params)
 		f.write(")")
 		if t.Return != nil {
 			f.write(" ")

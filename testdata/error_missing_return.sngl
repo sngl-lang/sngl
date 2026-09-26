@@ -10,7 +10,9 @@ func unfinished(x int) int {} // ERROR(check) "missing return: \"unfinished\" mu
 func fine(x int) {}
 
 component main node {
-    text(value="{fine(1)}")
+    button(text="b", @click {
+        fine(1)
+    })
 }
 
 window {

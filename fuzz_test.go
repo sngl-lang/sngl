@@ -172,8 +172,6 @@ func loadTestdataSeeds() []string {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sngl") {
 			continue
 		}
-		// Skip fixtures that explicitly exercise error paths or that
-		// require a private library (badlib) to type-check.
 		if strings.HasPrefix(e.Name(), "error_") {
 			continue
 		}

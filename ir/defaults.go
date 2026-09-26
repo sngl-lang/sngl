@@ -357,12 +357,5 @@ func normalizeExpr(e Expr) {
 		if n.Func != nil {
 			normalizeFunc(n.Func)
 		}
-	case *Closure:
-		if n.Func != nil {
-			normalizeFunc(n.Func)
-		}
-		if n.State != nil {
-			normalizeExpr(n.State)
-		}
 	}
 }

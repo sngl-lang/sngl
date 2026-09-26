@@ -345,7 +345,7 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		}
 		x.Type = r.rewriteType(x.Type)
 		return x
-	case *ir.Literal, *ir.ContextRead:
+	case *ir.Literal:
 		// Terminal — no ref<T> shapes to rewrite.
 		return x
 	default:
@@ -411,9 +411,6 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 		}
 	case *ir.Toggle:
 		n.Target = r.rewriteAssignTarget(n.Target)
-	case *ir.ContextProvider:
-		n.Value = r.rewriteExpr(n.Value)
-		r.rewriteStmts(n.Children)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no ref to rewrite.
 	default:
@@ -586,11 +583,6 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		}
 	case *ir.Toggle:
 		seedAddressedVarsInExpr(n.Target, set)
-	case *ir.ContextProvider:
-		seedAddressedVarsInExpr(n.Value, set)
-		for _, t := range n.Children {
-			seedAddressedVarsInStmt(t, set)
-		}
 	case *ir.Break, *ir.Continue:
 		// A loop escape addresses nothing.
 	default:

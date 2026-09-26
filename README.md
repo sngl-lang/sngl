@@ -18,7 +18,7 @@ struct Todo {
     done bool = false
 }
 
-component main node {
+window {
     var (
         newTodo = ""
         todos list<Todo> = []

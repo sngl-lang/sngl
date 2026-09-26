@@ -14,7 +14,7 @@ package ir
 // owner. Asking each declaration separately, in each consumer, is what let a
 // window be an owner nothing knew about -- a window-level `var` then reached
 // no target at all, because six independent collections each named the package
-// and the main component and stopped there (#133, #135).
+// and the root component and stopped there (#133, #135).
 type Owner struct {
 	// Comp and Win name the declaration that owns this state. Both nil means
 	// the package owns it.

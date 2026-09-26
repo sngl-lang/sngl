@@ -109,6 +109,7 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool)
 	// Computeds are emitted as zero-arg methods; the test body must call
 	// `c.<computed>()` rather than read the function object.
 	ctx.MethodFields = methodFields
+	ctx.StateReceiver = testInstanceVar
 	for _, p := range fn.Params {
 		ctx = ctx.WithLocal(p.Name)
 	}
@@ -128,9 +129,23 @@ func lowerTestBody(irPkg *ir.Package, fn *ir.Func, methodFields map[string]bool)
 			out = append(out, line)
 			continue
 		}
+		if name, ok := testSetContext(s); ok {
+			// passContext already passed the value to every call after it.
+			out = append(out, fmt.Sprintf("// t.setContext(%s, ...)", name))
+			continue
+		}
 		out = append(out, jc.EvalStmt(s)...)
 	}
 	return out
+}
+
+func testSetContext(s ir.Stmt) (string, bool) {
+	cs, ok := s.(*ir.CallStmt)
+	if !ok {
+		return "", false
+	}
+	name, _, ok := codegen.TestSetContext(cs.Call)
+	return name, ok
 }
 
 // lowerTestAssert intercepts `t.assert(expr)` call statements and routes

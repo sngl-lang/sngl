@@ -1,0 +1,439 @@
+# A test body reaches into the component it drives through every expression
+# form a program can write -- scalar, list, map, struct, enum, unit and option
+# state, reads and writes, index and field chains, component methods, a click,
+# and package state and funcs -- and every target has to give the answer the
+# interpreter gives.
+#
+# Each target lowers a test body with its own emitter, and each had its own
+# way of getting one of these wrong:
+#
+#   - The checker read test bodies before component bodies, so an unannotated
+#     `var xs = [1, 2, 3]` was still dyn where a test named it: `c.xs.length()`
+#     reached Go as `c.xs()` and `c.xs[0] = 7` as a write through the
+#     exported accessor, `c.Xs[0]`.
+#   - A Go test spelled package state and the funcs that read it through `m`,
+#     which is the Model's name inside a method and names nothing in a test.
+#   - The interpreter could not write a map entry, and a test naming no
+#     component ran without the package's vars.
+#   - html ran every test against the one page it loaded, so a write in one
+#     test was the next test's starting state, and it named package state as
+#     the page's `state`, which a test module cannot see.
+#
+# Tests are grouped into one run per component, so a write in one test must
+# not reach the next: testScalars runs after testScalarWrites.
+
+sngl test --platform=none app.sngl
+stdout '12 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '12 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '12 tests, 0 failures'
+
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout '12 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout '12 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+struct Inner {
+    v int
+}
+
+struct P {
+    a int
+    b string
+    inner Inner
+}
+
+enum Mode {
+    off
+    on
+}
+
+unit tick { tk }
+
+var total = 10
+
+func describe() string {
+    return "total {total}"
+}
+
+component comp node {
+    var n = 1
+    var f = 1.5
+    var s = "hi"
+    var on = false
+    var xs = [1, 2, 3]
+    var mp map<string, int> = {"a" = 1, "b" = 2}
+    var ps list<P> = [{a = 1, b = "x", inner = {v = 5}}, {a = 2, b = "y", inner = {v = 6}}]
+    var p P = {a = 3, b = "z", inner = {v = 7}}
+    var mode = Mode.off
+    var t tick = 3tk
+    var o option<int> = null
+    func zero() int {
+        return n + 1
+    }
+    func add(k int) int {
+        return n + k
+    }
+    func bump() {
+        n = n + 1
+    }
+    vbox {
+        text(value = string(n))
+        button #inc(text = "inc", @click { n = n + 1 })
+    }
+}
+
+func testScalars(t Test, c comp) {
+    t.assert(c.n == 1)
+    t.assert(c.f == 1.5)
+    t.assert(c.s == "hi")
+    t.assert(!c.on)
+    t.assert(c.s.length() == 2)
+}
+
+func testScalarWrites(t Test, c comp) {
+    c.n = 4
+    c.s = "yo"
+    c.on = true
+    c.f = 2.5
+    t.assert(c.n == 4)
+    t.assert(c.s == "yo")
+    t.assert(c.on)
+    t.assert(c.f == 2.5)
+}
+
+func testListReads(t Test, c comp) {
+    t.assert(c.xs.length() == 3)
+    t.assert(c.xs[1] == 2)
+    t.assert(c.xs.contains(3))
+    t.assert(c.xs.indexOf(2) == 1)
+    t.assert(c.xs.join(",") == "1,2,3")
+    t.assert(c.xs.filter(func(x int) => x > 1).length() == 2)
+    t.assert(c.xs.map(func(x int) => x * 2)[2] == 6)
+}
+
+func testListWrites(t Test, c comp) {
+    c.xs[0] = 7
+    t.assert(c.xs[0] == 7)
+    c.xs.push(4)
+    t.assert(c.xs.length() == 4)
+    c.xs = [9, 8]
+    t.assert(c.xs.length() == 2)
+    t.assert(c.xs[1] == 8)
+}
+
+func testMaps(t Test, c comp) {
+    t.assert(c.mp.length() == 2)
+    t.assert(c.mp.contains("a"))
+    t.assert(c.mp.get("b", 0) == 2)
+    t.assert(c.mp.get("z", 9) == 9)
+    t.assert(c.mp["a"] == 1)
+    c.mp["c"] = 3
+    t.assert(c.mp.length() == 3)
+}
+
+func testStructs(t Test, c comp) {
+    t.assert(c.ps[1].a == 2)
+    t.assert(c.ps[0].b == "x")
+    t.assert(c.ps[1].inner.v == 6)
+    t.assert(c.p.inner.v == 7)
+    c.p.a = 9
+    t.assert(c.p.a == 9)
+    c.ps[0].a = 11
+    t.assert(c.ps[0].a == 11)
+}
+
+func testMethods(t Test, c comp) {
+    t.assert(c.zero() == 2)
+    t.assert(c.add(5) == 6)
+    c.bump()
+    t.assert(c.n == 2)
+}
+
+func testEnumUnitOption(t Test, c comp) {
+    t.assert(c.mode == Mode.off)
+    c.mode = Mode.on
+    t.assert(c.mode == Mode.on)
+    t.assert(int(c.t) == 3)
+    t.assert(c.o == null)
+    c.o = 4
+    t.assert(c.o != null)
+}
+
+func testEvent(t Test, c comp) {
+    c.inc.click()
+    t.assert(c.n == 2)
+}
+
+func testPackageFunc(t Test, c comp) {
+    t.assert(describe() == "total 10")
+    t.assert(total == 10)
+    total = 11
+    t.assert(describe() == "total 11")
+}
+
+func testPackageFuncAlone(t Test) {
+    t.assert(describe() == "total 10")
+}
+
+func testLocals(t Test, c comp) {
+    var ys = c.xs
+    t.assert(ys.length() == 3)
+    var sum = 0
+    for var x = c.xs {
+        sum = sum + x
+    }
+    t.assert(sum == 6)
+}
+
+window {
+    comp
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:c20e187aad80d522c6aab628e8ea2358
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/comp/1 --
+sha256:496a914020cf4302d9d384c78ed2cfe2
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:041e746e79151b8ff89da218b95a46aa
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/comp/1 --
+sha256:9a52a5eeaffab87fe47c5104924d4c57
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:976b2cc962118aa8db198bcfa76ae4ea
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/comp/1 --
+sha256:575fd6484f1810ed0a1ceb103d258eb8
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/_/1 --
+sha256:35f5d3dbbe5470d74b9838e2d3974cf1
+{
+  "results": [
+    {
+      "Desc": "PackageFuncAlone",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/comp/1 --
+sha256:45e846d3411646db7607d9c0ced792af
+{
+  "results": [
+    {
+      "Desc": "EnumUnitOption",
+      "Passed": true
+    },
+    {
+      "Desc": "Event",
+      "Passed": true
+    },
+    {
+      "Desc": "ListReads",
+      "Passed": true
+    },
+    {
+      "Desc": "ListWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Locals",
+      "Passed": true
+    },
+    {
+      "Desc": "Maps",
+      "Passed": true
+    },
+    {
+      "Desc": "Methods",
+      "Passed": true
+    },
+    {
+      "Desc": "PackageFunc",
+      "Passed": true
+    },
+    {
+      "Desc": "ScalarWrites",
+      "Passed": true
+    },
+    {
+      "Desc": "Scalars",
+      "Passed": true
+    },
+    {
+      "Desc": "Structs",
+      "Passed": true
+    }
+  ]
+}

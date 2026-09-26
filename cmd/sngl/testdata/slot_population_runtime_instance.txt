@@ -1,42 +1,81 @@
 # A component built at run time -- a member of a recursion cycle, or one
-# instantiated under a reactive `if` or `for` -- may not have a slot populated
-# by name, and the refusal names the population.
+# instantiated under a reactive `if` or `for` -- renders a slot populated by
+# name, on every target.
 #
-# No target renders one there. bubbletea and android emitted the component
+# It used to be refused here. bubbletea and android emitted the component
 # with no parameter for the slot and dropped the population in silence; html,
 # fyne and gtk4 met the body's insertion as an `*ir.SlotInst` in irwalk and
-# panicked. The interpreter runs the checked IR and renders it, which is why
-# this is the lowering's refusal rather than the checker's.
+# panicked. Each greps a line only the population writes.
 #
-# A slot's component entry inserted inside such a population is the same case
-# one level down: the splicer substitutes an entry through a node's children,
-# and a surviving node's populations are not children -- so `page body` was
-# dropped with the population around it on bubbletea and android, which the
-# interpreter renders as the page body above the nested frame.
+# The entry case is the same one level down: `page body` is the population of
+# a slot entry, written in `site`, and the splicer used to substitute an entry
+# only through a node's children -- so inside the surviving `frame`'s
+# population it was dropped on bubbletea and android.
 
-! sngl generate --lang go --platform bubbletea --out out cycle.sngl
-stderr 'cycle.sngl:20:9: slot "main" of frame is populated by name, but frame is built at run time here, as a member of a recursion cycle'
+sngl generate --lang go --platform bubbletea --out bt cycle.sngl
+grep '"top"' bt/model.go
+grep '"nested"' bt/model.go
+sngl generate --lang none --platform html --out html cycle.sngl
+grep 'textContent = "top"' html/index.html
+sngl generate --lang go --platform fyne --out fy instance.sngl
+grep '"named "' fy/model.go
+sngl generate --lang go --platform gtk4 --out gt instance.sngl
+grep '"named "' gt/model.go
+sngl generate --lang go --platform bubbletea --out bt2 instance.sngl
+grep '"named "' bt2/model.go
+sngl generate --lang kotlin --platform android --out an entry.sngl
+grep '"page body"' an/MainScreen.kt
+sngl generate --lang go --platform bubbletea --out bt3 entry.sngl
+grep '"page body"' bt3/model.go
+sngl generate --lang none --platform html --out html2 entry.sngl
+grep '"page body"' html2/index.html
 
-! sngl generate --lang none --platform html --out out2 cycle.sngl
-stderr 'cycle.sngl:20:9: slot "main" of frame is populated by name'
-
-! sngl generate --lang go --platform fyne --out out3 instance.sngl
-stderr 'instance.sngl:18:13: slot "main" of card is populated by name, but card is built at run time here, inside a reactive if or for'
-
-# bubbletea keeps no state of an instance's own, so `card` is spliced into the
-# loop with a cell per copy rather than built at run time, and the population
-# is spliced with it.
-sngl generate --lang go --platform bubbletea --out out3b instance.sngl
-grep '"named "' out3b/model.go
-
-! sngl generate --lang kotlin --platform android --out out4 entry.sngl
-stderr 'entry.sngl:30:17: slot "main" of frame is populated by name'
+# A recursion that forwards its slot re-binding the arguments -- `label(d * 10)`
+# -- renders something different at every level. bubbletea and android pass a
+# slot as a function and compose it at run time. html, fyne and gtk4 build a
+# copy of the component per distinct content, at compile time, and would need
+# one per level, so they refuse it at the site rather than build without end.
+sngl generate --lang go --platform bubbletea --out bt4 rebind.sngl
+grep 'label\(\(d \* 10\)\)' bt4/model.go
+! sngl generate --lang none --platform html --out html3 rebind.sngl
+stderr 'rebind.sngl:7:18: frame forwards a slot down its recursion with arguments computed from the population''s own'
 
 # Bare children reach a surviving component as a parameter on bubbletea, and
 # stay allowed.
 sngl generate --lang go --platform bubbletea --out out5 rest.sngl
 grep 'level ' out5/model.go
 
+# And on html, where they are spliced into a copy of the component that the
+# copy's own recursive site reuses.
+sngl generate --lang none --platform html --out out6 rest.sngl
+grep '"level "' out6/index.html
+
+-- rebind.sngl --
+import . "sngl:ui"
+
+component frame(n int, label component(depth int) node) node {
+    vbox {
+        label(n)
+        if n > 0 {
+            frame(n=n - 1) {
+                component label(d) {
+                    label(d * 10)
+                }
+            }
+        }
+    }
+}
+
+window {
+    var depth = 3
+
+    frame(n=depth) {
+        component label(d) {
+            text(value="level {d}")
+        }
+    }
+    button(text="deeper", @click { depth += 1 })
+}
 -- cycle.sngl --
 import . "sngl:ui"
 

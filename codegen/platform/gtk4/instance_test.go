@@ -51,7 +51,7 @@ func TestInstanceRecordIsPerRow(t *testing.T) {
 		"type CardInstance struct {",
 		"clicks      int",
 		// A row is allocated, not rendered into the Model.
-		"func newCardInstance(__model *Model, name string) *CardInstance {",
+		"func newCardInstance(__model *Model, __a_name string) *CardInstance {",
 		"c := &CardInstance{}",
 		"__n1__new := newCardInstance(m, item.Name)",
 		// The registry holds instances, and the reconcile reaches them
@@ -59,7 +59,7 @@ func TestInstanceRecordIsPerRow(t *testing.T) {
 		"__inst0_live []*CardInstance",
 		"__n1.SetName(item.Name)",
 		"func (c *CardInstance) SetName(",
-		"func (c *CardInstance) Destroy() {}",
+		"func (c *CardInstance) Destroy() {",
 	} {
 		if !strings.Contains(model, want) {
 			t.Errorf("emitted Go missing %q\n--- model.go ---\n%s", want, model)

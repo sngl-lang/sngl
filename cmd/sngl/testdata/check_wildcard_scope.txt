@@ -48,7 +48,7 @@ struct tdAttrs {
     colspan string
 }
 
-component main() ui.root {
+component main() root {
     ui.window {
         html.td(...tdAttrs{bgcolor = "lime", colspan = "2"}) { }
     }
@@ -57,7 +57,7 @@ component main() ui.root {
 import "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.root {
+component main() root {
     ui.window {
         html.thisIsATypoNotATag(id = "x") { }
     }
@@ -74,7 +74,7 @@ component main() root {
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.root {
+component main() root {
     ui.window {
         div(id = "x") { }
     }
@@ -85,7 +85,7 @@ import . "sngl:platform/html"
 
 func typoed() => someUndefinedIdentifier
 
-component main() std.root {
+component main() root {
     std.window {
         std.text(value = "x")
     }
@@ -94,7 +94,7 @@ component main() std.root {
 import . "sngl:platform/html"
 import ui "sngl:ui"
 
-component main() ui.root {
+component main() root {
     ui.window {
         element(tag = "div") { }
     }

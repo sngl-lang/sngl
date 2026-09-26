@@ -41,3 +41,13 @@ func testTopLevelFuncWritesTopLevelVar(t Test, c main) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:db0e5dc44f3e3770c147a728e4639667
+{
+  "results": [
+    {
+      "Desc": "TopLevelFuncWritesTopLevelVar",
+      "Passed": true
+    }
+  ]
+}

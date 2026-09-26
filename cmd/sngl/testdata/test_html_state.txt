@@ -1,6 +1,5 @@
 # html end-to-end: state-only assertions via sngl test --platform=html.
 
-[!chromium] skip 'html tests drive a real Chromium'
 
 sngl test --platform=html app.sngl
 stdout 'PASS'
@@ -22,4 +21,14 @@ func testInitial(t Test, c main) {
 
 window {
     main
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:dab7a9d2db338bc385cc39444bf5d0ae
+{
+  "results": [
+    {
+      "Desc": "Initial",
+      "Passed": true
+    }
+  ]
 }

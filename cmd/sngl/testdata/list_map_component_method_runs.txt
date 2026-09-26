@@ -1,0 +1,27 @@
+# A component method named as a value is a function the interpreter can call.
+# lookup answered a bare method name with "function requires arguments"
+# unless it took none, and a LambdaValue bound the arguments to the receiver
+# parameter first. testdata/list_map_component_method.txtar is the compiled
+# half.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component panel node {
+    var base = 10
+    var got = ""
+    func tag(x int) => "{x + base}"
+    button #run(text="run", @click {
+        got = [4, 5].map(tag).join(",")
+    })
+    text(value=got)
+}
+
+func testMapByName(t Test, c panel) {
+    c.run.click()
+    t.assert(c.got == "14,15")
+}

@@ -757,10 +757,9 @@ struct-literal spacing. The existing fixture helpers would not have caught
 either defect: they assert that a comment *survives* a format, not that it
 comes back where it was written.
 
-`lib/lib.go` embeds `*/*.sngl */*/*.sngl`, which reaches `x/gen` and not
-`x/gen/cache`. That pattern needs a third level before the second member of the
-tier can land, and cannot be widened in advance: an embed pattern matching
-nothing is a build error.
+`lib/lib.go` embeds `*/*.sngl */*/*.sngl */*/*/*.sngl` since `x/gen/cache`
+landed as the tier's second member: the `cache.inputs` directive a generated
+file records its inputs in, read by `internal/gencache`.
 
 ### Migration
 

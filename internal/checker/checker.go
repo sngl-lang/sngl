@@ -360,7 +360,11 @@ type checker struct {
 	// has nowhere to project and is reported rather than built. It is also
 	// what says a statement is *not* in a view body, which is where a loop
 	// that iterates nothing -- a condition or a forever loop -- is refused.
-	funcDepth int
+	funcDepth   int
+	viewSpreads []viewSpread
+	// stmtCall is the call a call statement is about to check: the one call
+	// whose @error handler has a statement to be attached to.
+	stmtCall *ast.CallExpr
 	// loopDepth is the number of `for` bodies enclosing the statement being
 	// checked, and what `break` and `continue` require one of. It resets at
 	// every imperative-body boundary (enterFuncBody): a lambda written inside
@@ -371,6 +375,10 @@ type checker struct {
 	pkgWindowIDs map[string]bool
 
 	outputDecl *ast.VisualNode
+
+	// genInputs holds each `cache.inputs` directive written at the root of a
+	// file, recorded in pass1 and checked in pass2 (see genInputs.go).
+	genInputs []*ast.VisualNode
 
 	// pendingPkgBody holds the statements written at the package's top level,
 	// collected in pass1 and checked in pass2. They cannot be checked where
@@ -505,7 +513,7 @@ type checker struct {
 	entryOrigin map[*ir.SlotDecl]*ir.SlotDecl
 	entrySpec   map[*ir.SlotInst]*ir.SlotDecl
 
-	// rootTree is the #[builtin("treeRoot")] tree, sngl:ui's `root`. The
+	// rootTree is the #[builtin("treeRoot")] tree, sngl:builtin's `root`. The
 	// package body is checked against it, which is the whole of what makes a
 	// window and an output directive top-level: no syntactic rule names them.
 	rootTree *ir.StructDef
@@ -563,6 +571,12 @@ type checker struct {
 	// purity, which is only assigned after all bodies are checked, so the
 	// assertions are run in a final pass.
 	constAsserts []constAssertion
+	// Arguments bound to a const parameter or prop, judged with the
+	// assertions above. See constparams.go.
+	constArgs []constArg
+	// Nodes populating a const slot, whose populations are held to the const
+	// render rule at the same moment. See constcomponents.go.
+	constSlotNodes []*ir.NodeInst
 
 	// pendingConstInits holds top-level const initializers whose names are
 	// registered as shells in pass1 but whose values are checked in a
@@ -1591,18 +1605,6 @@ func (c *checker) registerImport(imp *ast.Import) {
 		}
 	}
 
-	// Check for component main in imported library packages. The package's
-	// own root only: a lib package's root parents whatever scope was current
-	// when it loaded, so a lookup that walks the chain finds the importing
-	// file's own main and blames the import for it.
-	if irImport.Pkg != nil && irImport.Pkg.Symbols != nil && irImport.Pkg.Symbols.Root != nil {
-		if sym, ok := irImport.Pkg.Symbols.Root.LookupDeclaredLocal("main"); ok {
-			if _, isComp := sym.(*ir.Component); isComp {
-				c.error(imp.Pos, "component main can only be defined in the main package")
-			}
-		}
-	}
-
 	// A dot import flattens the package's symbols into this scope instead of
 	// binding a namespace, so its declarations are referenced unqualified.
 	if imp.IsDot() {
@@ -2364,17 +2366,19 @@ func (c *checker) registerFunc(f *ast.FuncDef) *ir.Func {
 	}
 	c.applyMarks(f, fn)
 
-	// Library source is not body-checked, so two things it would otherwise
-	// infer are stated here. A signature with no return annotation is dyn
-	// rather than void. And purity, which the analysis never runs for, starts
-	// pure so the optimizer can fold int.min and its like; anything reaching
-	// outside the program has it overridden afterwards.
+	// Library source is not body-checked by pass2, so two things it would
+	// otherwise infer are stated here. A signature with no return annotation
+	// is dyn rather than void. And a bodied function's purity starts pure: the
+	// library's own fixpoint (checkLibFuncs) lowers it to what the body calls.
+	// A bodyless one is pure only where it is declared `const func`, which
+	// buildFunc has already said -- nothing in the program says what a host
+	// does.
 	if c.inLibSource() {
 		fn.Stdlib = true
 		if fn.Return == nil && f.Body != nil {
 			fn.Return = dynFallback("library function %q has a body and no return annotation", fn.Name)
 		}
-		if fn.Purity == ir.PurityUnknown {
+		if fn.Purity == ir.PurityUnknown && funcHasBody(f) {
 			fn.Purity = ir.PurityPure
 		}
 	}
@@ -2664,7 +2668,7 @@ func collectElementRefIDs(stmts []ast.Stmt) []elementRef {
 // buildSlotDecl resolves one slot declaration: a parameter whose type is a
 // component type.
 func (c *checker) buildSlotDecl(pd ast.Param, ct *ast.ComponentType, rest bool) *ir.SlotDecl {
-	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest}
+	slot := &ir.SlotDecl{Name: pd.Name, Rest: rest, Const: pd.Const}
 	if ct.Tree != nil {
 		slot.Content, slot.Card = c.resolveSlotContent(ct.Tree)
 	}
@@ -2763,6 +2767,7 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 		Stdlib:     c.inLibSource(),
 		Pkg:        c.libPkgName,
 		Bodyless:   !comp.Body.IsDefined(),
+		Const:      comp.Const,
 		TypeParams: c.resolveTypeParams(comp.TypeParams),
 	}
 	c.applyMarks(comp, irComp)
@@ -2798,8 +2803,10 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 				Name:          pd.Name,
 				Type:          c.resolveType(pd.Type),
 				Bidirectional: pd.Bidirectional,
+				Const:         pd.Const,
 			}
 			c.applyParamMarks(pd, prop)
+			c.checkConstProp(pd, prop)
 			// A prop with neither an annotation nor a default says nothing
 			// about what it takes. `dyn` written out is an annotation: it says
 			// the prop takes anything, which is what `context(default dyn)`
@@ -2817,8 +2824,8 @@ func (c *checker) registerComponentDecl(comp *ast.ComponentDecl, bodyLocal bool)
 			irComp.Props = append(irComp.Props, prop)
 		case ast.EventDecl:
 			evt := &ir.EventDecl{
-				Name: pd.Name,
-				Type: c.resolveType(pd.Type),
+				Name:   pd.Name,
+				Params: c.eventParams(pd),
 			}
 			c.applyEventMarks(pd, evt)
 			irComp.Events = append(irComp.Events, evt)
@@ -2951,6 +2958,14 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	switch kind, _ := c.builtinNode(name); kind {
 	case ir.BuiltinOutput:
 		c.registerOutput(vn)
+	case ir.BuiltinGenInputs:
+		// A library package's -- a target serving generated source -- is not
+		// checked: library source is registered here and not body-checked,
+		// and pass2 would check it in the program's scope, where the
+		// library's imports are not. The store holding the file reads it.
+		if !c.inLibSource() {
+			c.genInputs = append(c.genInputs, vn)
+		}
 	default:
 		// An ordinary visual node at the top level is the package's own body:
 		// what the program renders, with the package's vars as its state. Held
@@ -3161,13 +3176,6 @@ func (c *checker) importablePackages() []string {
 	return slices.Compact(out)
 }
 
-func (c *checker) lookupTarget(name string) pkgProvider {
-	if t := c.lookupTargetIn(name, ir.BuiltinPlatform); t != nil {
-		return t
-	}
-	return c.lookupTargetIn(name, ir.BuiltinLanguage)
-}
-
 // lookupTargetIn finds a registered target of one tier by name.
 //
 // The tier is not decoration. The two share a namespace -- nothing stops a
@@ -3203,22 +3211,6 @@ func findField(sd *ir.StructDef, name string) *ir.StructField {
 		}
 	}
 	return nil
-}
-
-// typeAssignable reports whether src is assignable to dst, allowing the same
-// implicit conversions the rest of the checker permits at boundary positions
-// (numeric widening, dyn pass-through, exact match).
-func typeAssignable(src, dst *ir.Type) bool {
-	if src == nil || dst == nil {
-		return true
-	}
-	if src.Equal(dst) {
-		return true
-	}
-	if src.Kind == ir.TypeDyn || dst.Kind == ir.TypeDyn {
-		return true
-	}
-	return false
 }
 
 // checkDuplicateWindowID reports an error if w's id is non-empty and another
@@ -3369,16 +3361,6 @@ func fallbackSlotName(comp *ir.Component) string {
 	return ""
 }
 
-func literalString(e ast.Expr) string {
-	if lit, ok := e.(*ast.LiteralExpr); ok {
-		if v, ok := lit.StringValue(); ok {
-			return v
-		}
-		return lit.Raw
-	}
-	return ""
-}
-
 // checkStructFieldDefaults fills in each struct field's default now that the
 // scope holds everything a default may refer to. Declaration time installs a
 // placeholder, because a default can name a constant declared further down;
@@ -3461,7 +3443,7 @@ func (c *checker) pass2() {
 		noteOwned(pe.comp)
 	}
 	for _, fn := range c.pkg.Funcs {
-		if compOwnedFuncs[fn] || fn.Nested {
+		if compOwnedFuncs[fn] || fn.Nested || fn.IsTest {
 			continue
 		}
 		c.checkFuncBody(fn)
@@ -3482,12 +3464,21 @@ func (c *checker) pass2() {
 	}
 	// A window body may declare one too.
 	c.checkComponentBodies()
+	// A test reads a component's vars through `c.<var>`, and an unannotated
+	// var has no type until the body declaring it has been checked; nothing
+	// calls a test, so nothing needs its body earlier.
+	for _, fn := range c.pkg.Funcs {
+		if fn.IsTest && !compOwnedFuncs[fn] && !fn.Nested {
+			c.checkFuncBody(fn)
+		}
+	}
 	c.reportBodyComponentCollisions()
 	c.reportBodyComponentCapture()
 	c.reportBodylessComponents()
 
 	c.checkPackageBody()
 	c.checkOutputTree()
+	c.checkGenInputs()
 
 	c.checkVarHandlerBodies(c.pkg.Vars)
 	// Component var handlers are checked inside checkComponentBody.
@@ -3569,6 +3560,9 @@ func (c *checker) pass2() {
 		}
 	}
 
+	c.checkConstFuncs(allFuncs)
+	c.reportImpureViewSpreads()
+
 	// After the fixpoint, because the rule reads what a handler writes through
 	// the functions it calls and those sets are only complete now.
 	c.checkEffectSelfRekey()
@@ -3587,6 +3581,13 @@ func (c *checker) pass2() {
 	for _, a := range c.constAsserts {
 		if !ir.IsConst(a.operand) {
 			c.error(a.pos, "const() operand is not a constant expression")
+		}
+	}
+	c.runConstArgChecks()
+	c.runConstSlotChecks()
+	for _, comp := range c.pkg.Components {
+		if comp.Const && !comp.Stdlib {
+			c.checkConstRender(constComponentLabel(comp.Name), comp.Body, compDeclPos(comp))
 		}
 	}
 
@@ -3635,6 +3636,9 @@ func (c *checker) checkFuncBody(fn *ir.Func) {
 		c.declare(funcDeclPos(fn), p)
 		if ap, ok := astParams[p.Name]; ok {
 			p.Default = c.checkExprExpecting(ap.Default, p.Type)
+			if p.Const {
+				c.deferConstArg(*ap.Default.ExprPos(), p.Default, "the default of "+constParamLabel(p.Name))
+			}
 		}
 	}
 
@@ -3875,13 +3879,15 @@ func (c *checker) preCheckComponentMethods(comp *ir.Component) {
 
 	// Snapshot diagnostics; discard whatever the pre-pass produces. The
 	// authoritative method-body check runs again in checkComponentBody.
-	diagMark, deferred := len(c.diags), len(c.treeChecks)
+	diagMark, deferred, constMark, slotMark := len(c.diags), len(c.treeChecks), len(c.constArgs), len(c.constSlotNodes)
 	for _, fn := range comp.Funcs {
 		if fn.Receiver == comp.Name {
 			c.checkFuncBody(fn)
 		}
 	}
 	c.diags = c.diags[:diagMark]
+	c.constArgs = c.constArgs[:min(constMark, len(c.constArgs))]
+	c.constSlotNodes = c.constSlotNodes[:min(slotMark, len(c.constSlotNodes))]
 	// The same, and here the pre-pass is followed by an authoritative one that
 	// would record the check again.
 	c.treeChecks = c.treeChecks[:deferred]
@@ -3897,6 +3903,7 @@ func propParam(p *ir.Prop) *ir.Param {
 		p.Sym = &ir.Param{Name: p.Name}
 	}
 	p.Sym.Type = p.Type
+	p.Sym.Const = p.Const
 	return p.Sym
 }
 
@@ -4054,6 +4061,9 @@ func (c *checker) checkComponentBody(comp *ir.Component) {
 					// default could disagree with.
 					want := prop.Type.Substitute(declBindings)
 					prop.Default = c.checkExprExpecting(pd.Default, want)
+					if prop.Const {
+						c.deferConstArg(*pd.Default.ExprPos(), prop.Default, "the default of "+constPropLabel(prop.Name, comp))
+					}
 					initType := exprType(prop.Default)
 					if want.Kind != ir.TypeDyn && initType.Kind != ir.TypeDyn &&
 						!mentionsTypeParam(want) && !initType.IsAssignableTo(want) {
@@ -4810,7 +4820,7 @@ func (c *checker) checkVarHandlerBodies(vars []*ir.Var) {
 				continue
 			}
 			restore := c.fileOf(varPos(v))
-			h.Func.Params = c.bindParams(h.AST.Params, v.Type, "@"+h.Name, "the assignment")
+			h.Func.Params = c.bindParams(h.AST.Params, []*ir.Param{{Type: v.Type}}, "@"+h.Name, "the assignment")
 			c.pushScope()
 			for _, p := range h.Func.Params {
 				c.declare(varPos(v), p)

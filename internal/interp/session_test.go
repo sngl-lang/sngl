@@ -129,13 +129,28 @@ func TestReloadRunsTheInitialiserForANewVar(t *testing.T) {
 	}
 }
 
-// firstTimerKey is the mounted path of the session's first scheduled timer. A
-// timer is keyed on where it is written now, the same way an effect is, so
-// there is no positional key to construct.
-func firstTimerKey(t *testing.T, s *Session) Key {
-	t.Helper()
-	if len(s.Timers.entries) == 0 {
-		t.Fatal("the session has no timer scheduled")
+// TestInvokeRunsUnderTheProviderTheHandlerIsWrittenUnder: a window's event
+// arrives after the mount has unwound every provider, so the handler has to
+// carry the values it was mounted beneath.
+func TestInvokeRunsUnderTheProviderTheHandlerIsWrittenUnder(t *testing.T) {
+	s := sessionFor(t, `import . "sngl:ui"
+
+context #depth(1)
+
+func show() => "d{depth}"
+
+component main node {
+    var got = ""
+    depth(5) {
+        button #tap(text="tap", @click { got = show() })
+    }
+    text #out(value=got)
+}
+`, "main")
+	if _, err := s.Invoke(s.View().Find("tap")[0].Key, "click"); err != nil {
+		t.Fatalf("Invoke: %v", err)
 	}
-	return s.Timers.entries[0].Key
+	if got := s.View().Find("out")[0].Props["value"]; got != "d5" {
+		t.Errorf("handler read %v, want d5", got)
+	}
 }

@@ -165,10 +165,6 @@ func collectCalleesInExpr(out map[*ir.Func]bool, e ir.Expr) {
 		if x.Func != nil {
 			collectCalleesInFuncBlock(out, x.Func.Block)
 		}
-	case *ir.Closure:
-		if x.Func != nil {
-			collectCalleesInFuncBlock(out, x.Func.Block)
-		}
 	}
 }
 

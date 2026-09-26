@@ -1,8 +1,8 @@
 // Package canvasutil holds the platform-neutral Canvas2D helpers shared by
 // every Go-emitting platform (fyne, gtk4, and future Go canvas backends).
 //
-// codegen.Canvases finds the drawings and builds the `_canvasDrawN(ctx)` func
-// each one paints with; passDeclarative has by then flattened the canvas
+// codegen.Canvases finds the drawings and names the `_canvasDrawN(ctx)` routine
+// a platform emits for each; passDeclarative has by then flattened the canvas
 // NodeInst to a `lower.CreateNode("canvas")` LocalVar carrying a back-pointer
 // to it.
 //

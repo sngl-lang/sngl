@@ -1,0 +1,61 @@
+// What a spread in an argument list is refused for. It is its fields written
+// as named arguments wherever it appears, so each refusal is the one a named
+// argument would get there -- including in the lists whose parameters carry no
+// name, a slot declaring only types and an event's payload, where no field has
+// anything to name.
+import . "sngl:ui"
+
+struct Row {
+    title string
+    count int
+}
+
+struct Wrong {
+    title int
+}
+
+struct Unrelated {
+    other string
+}
+
+struct Listed {
+    value list<int>
+}
+
+func pair(a int, b int) => a + b
+
+context #theme(Row{title="t", count=0})
+
+component named(r Row, cell component(title string, count int)) node {
+    vbox {
+        cell(title="x", ...r)            // ERROR(check) "parameter \"title\" already provided"
+        cell(...Wrong{title=1}, count=0) // ERROR(check) "cannot use field \"title\" (int) as parameter \"title\" (string)"
+        cell(...r, 3)                    // ERROR(check) "positional argument after named argument"
+    }
+}
+
+component unnamed(r Row, cell component(Row)) node {
+    vbox {
+        cell(...r) // ERROR(check) "spread of Row names no parameter"
+    }
+}
+
+component emitter(@fired Row) node {
+    var row = Row{title="a", count=1}
+    button(text="spread", @click { fired(...row) }) // ERROR(check) "spread of Row names no parameter"
+    button(text="named", @click { fired(r=row) })   // ERROR(check) "no parameter name"
+}
+
+component main node {
+    var u = Unrelated{other="o"}
+    var none = pair(a=1, b=2, ...u)     // ERROR(check) "spread of Unrelated names no parameter"
+    var cast = int(...u)                // ERROR(check) "this position takes one value"
+    text(...Listed{value=[1]})          // ERROR(check) "cannot use field \"value\" (list<int>) as prop \"value\" (string)"
+    theme(...Row{title="x", count=1}) { // ERROR(check) "this position takes one value"
+        text(value="{none}{cast}")
+    }
+}
+
+window {
+    main
+}

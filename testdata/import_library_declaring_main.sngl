@@ -1,0 +1,11 @@
+import ui "sngl:ui"
+import lib "mainlib"
+
+component main ui.node {
+    ui.text(value="ok")
+}
+
+ui.window {
+    main()
+    lib.main()
+}

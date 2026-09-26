@@ -294,12 +294,25 @@ func resolveCallsInExpr(e ir.Expr, scope []*ir.EventHandler, bubble bool) {
 		}
 	case *ir.Spread:
 		resolveCallsInExpr(x.Operand, scope, bubble)
+	case *ir.Lambda:
+		// A lambda runs wherever it is called, not where it is written, so no
+		// handler around the literal is its handler: a raise leaves the body.
+		if x.Func != nil {
+			resolveCallsInBlock(x.Func.Block, nil, true)
+		}
 	}
 }
 
 // resolveCall sets the error-mode + resolved handler on a single call.
 // Non-fallible calls keep ErrorNone.
 func resolveCall(call *ir.Call, scope []*ir.EventHandler, bubble bool) {
+	// A call through a func value has no declaration to say whether it
+	// raises, so the @error written on it is the only answer there is.
+	if call != nil && call.Func == nil && call.Callee != nil && call.ErrorHandler != nil {
+		call.ResolvedHandler = call.ErrorHandler
+		call.ErrorMode = ir.ErrorPerCall
+		return
+	}
 	if !callIsFallible(call) {
 		return
 	}

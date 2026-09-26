@@ -20,24 +20,24 @@ struct Value<T> {}
 // does not clear it: a refresh that fails leaves the previous value in place,
 // which is what lets a screen keep rendering while it warns.
 #[marks.intrinsic("remote.value")]
-func Value<T>.value() option<T>
+const func Value<T>.value() option<T>
 
 // How the most recent attempt failed, or `null` if it succeeded. An attempt
 // that succeeds clears it.
 #[marks.intrinsic("remote.error")]
-func Value<T>.error() option<Failure>
+const func Value<T>.error() option<Failure>
 
 // True while an attempt is in flight. Orthogonal to the other two: a refresh
 // runs over a value that is already there, and over a failure that is still
 // worth showing.
 #[marks.intrinsic("remote.inFlight")]
-func Value<T>.inFlight() bool
+const func Value<T>.inFlight() bool
 
 // The value if one has arrived, otherwise fallback. The idiomatic way to bind
 // a remote into a prop, since a component wants a `T` rather than a box —
 // `map.get` takes its default the same way and for the same reason.
 #[marks.intrinsic("remote.or")]
-func Value<T>.or(fallback T) T
+const func Value<T>.or(fallback T) T
 
 // Re-runs the fetch behind this box, bypassing any cached answer.
 //
@@ -58,30 +58,30 @@ func Value<T>.refresh()
 // has ever arrived. This is the spinner condition, and it is deliberately not
 // `inFlight()` — that is also true during a refresh over a value the screen
 // should keep rendering rather than replace with a spinner.
-func Value<T>.loading() => this.inFlight() && this.value() == null
+const func Value<T>.loading() => this.inFlight() && this.value() == null
 
 // True when a value is available, whether or not the most recent attempt
 // failed.
-func Value<T>.ready() => this.value() != null
+const func Value<T>.ready() => this.value() != null
 
 // True when the most recent attempt failed. A remote can be both `ready` and
 // `failed`; see the package comment for why that state is the point.
-func Value<T>.failed() => this.error() != null
+const func Value<T>.failed() => this.error() != null
 
 // A settled box: value arrived, nothing failed, nothing in flight. The identity
 // query — what a fetch that already has its answer returns. This is how an
 // adapter hands over data it did not have to go and get, and how a test builds
 // the ready branch without a fetch.
 #[marks.intrinsic("remote.of")]
-func of<T>(value T) Value<T>
+const func of<T>(value T) Value<T>
 
 // A box whose most recent attempt failed, holding no value. A test builds the
 // failure branch with this; for the harder case a screen actually has to
 // handle — a stale value beside a failure — only a real refresh produces it.
 #[marks.intrinsic("remote.failedWith")]
-func failedWith<T>(f Failure) Value<T>
+const func failedWith<T>(f Failure) Value<T>
 
 // A box with an attempt in flight and nothing to show: the spinner state. Also
 // what the idle box reads as, since neither has a value.
 #[marks.intrinsic("remote.pending")]
-func pending<T>() Value<T>
+const func pending<T>() Value<T>

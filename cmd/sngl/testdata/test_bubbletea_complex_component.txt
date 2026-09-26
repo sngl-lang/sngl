@@ -8,7 +8,6 @@
 # platform with rootComponent set, so map-typed component state survives
 # untouched.
 
-[!exec:go] skip 'go toolchain required'
 
 sngl test --platform=bubbletea app.sngl
 stdout 'PASS'
@@ -31,4 +30,14 @@ func testHasAlice(t Test, c main) {
 
 window {
     main
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:349bf9041743bae6a7d1b3b91f782cbc
+{
+  "results": [
+    {
+      "Desc": "HasAlice",
+      "Passed": true
+    }
+  ]
 }

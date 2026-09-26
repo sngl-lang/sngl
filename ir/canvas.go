@@ -63,8 +63,8 @@ func IsShapeContainer(ni *NodeInst) bool {
 //
 // Such a node may be placed in any tree, so a drawing holds them beside its
 // shapes: an `effect` written in a canvas is the bracket that animates it. It
-// paints nothing, so the draw walk skips it, and it is not a shape, so the
-// widget walks skip it too.
+// paints nothing, so the draw walk keeps it as a child rather than painting
+// it, and it is not a shape, so the widget walks skip it too.
 func IsTreelessNode(n *NodeInst) bool {
 	return n != nil && n.Component != nil && n.Component.Tree == nil
 }

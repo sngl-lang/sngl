@@ -43,18 +43,18 @@ func emitComponentInstance(
 		handleType = gtk4rtHandleType
 	}
 
-	// Props are parameters of the ctor, so a read of one is a bare local.
-	// passComponentProps has already rewritten every read inside the body to
-	// the `__prop_<name>` cell; what still names the parameter is that cell's
-	// own initializer.
+	// Props are parameters of the ctor, and only the ctor names them: every read
+	// in the body is of the `__prop_<name>` cell, which the ctor initializes.
 	igc := gc.ForComponent(comp)
 	igc.Ctx.StateReceiver = instanceReceiver
 	igc.Ctx.OuterReceiver = instanceReceiver + "." + golang.InstanceModelField
 	igc.Ctx.OuterNodes = golang.PageNodes(gc.Ctx.Pkg, comp)
-	for _, p := range cc.Props {
-		igc = igc.WithLocal(p.Name)
-	}
 	igc.MethodRecvType = typeName
+	cgc := igc
+	for _, p := range cc.Props {
+		cgc = cgc.WithRenamedLocal(p.Name, golang.InstanceCtorParam(p.Name))
+	}
+	cgc.MethodRecvType = typeName
 
 	var fields []widgetField
 	sink := func(name, cType string) {
@@ -83,14 +83,15 @@ func emitComponentInstance(
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {
-		fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, v.Name, instanceVarInit(v, igc, wrapped))
+		fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, v.Name, instanceVarInit(v, cgc, wrapped))
 	}
 	for _, stmt := range bodyStmts {
-		for _, line := range igc.EvalStmt(stmt) {
+		for _, line := range cgc.EvalStmt(stmt) {
 			fmt.Fprintf(&ctorBody, "\t%s\n", line)
 		}
 	}
-	ctorBody.WriteString(instanceRootBinding(tr, igc, wrapped))
+	ctorBody.WriteString(instanceRootBinding(tr, cgc, wrapped))
+	fmt.Fprintf(&ctorBody, "\t%s\n", rootRefLine("g_object_ref_sink", "Retain", wrapped))
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -153,15 +154,23 @@ func emitComponentInstance(
 	fmt.Fprintf(b, "\t%s *%s\n", golang.InstanceModelField, codegen.ModelTypeName)
 	for _, v := range comp.Vars {
 		fmt.Fprintf(b, "\t%s %s\n", v.Name, instanceVarGoType(v, wrapped))
+		if isSlotVar(v) {
+			fmt.Fprintf(b, "\t%s %s\n", codegen.SlotAnchorField(v.Name), handleType)
+		}
 	}
+	seenField := map[string]bool{}
 	for _, f := range fields {
+		if seenField[f.name] {
+			continue
+		}
+		seenField[f.name] = true
 		fmt.Fprintf(b, "\t%s %s\n", f.name, f.goType)
 	}
 	b.WriteString("}\n\n")
 
 	params := []string{golang.InstanceModelField + " *" + codegen.ModelTypeName}
 	for _, p := range cc.Props {
-		params = append(params, p.Name+" "+golang.IRTypeToGo(p.Type))
+		params = append(params, golang.InstanceCtorParam(p.Name)+" "+golang.IRTypeToGo(p.Type))
 	}
 	fmt.Fprintf(b, "func %s(%s) *%s {\n", golang.ComponentInstanceCtor(comp.Name), strings.Join(params, ", "), typeName)
 	fmt.Fprintf(b, "\t%s := &%s{}\n", instanceReceiver, typeName)
@@ -171,12 +180,41 @@ func emitComponentInstance(
 
 	b.WriteString(methods.String())
 
-	// Always present, and empty when the component holds nothing: the destroy
-	// is emitted at every site a render stops describing a position, so the
-	// shape of a record cannot vary with what it happens to hold.
-	if !componentDeclaresFunc(comp, lower.TeardownFunc) {
-		fmt.Fprintf(b, "func (%s *%s) %s() {}\n\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+	// A render slot removes every entry before appending what it keeps, and a
+	// removed widget whose only reference was its parent is freed -- so a
+	// reused instance's root would be appended after it was gone.
+	root := instanceReceiver + "." + golang.ComponentRootField
+	fmt.Fprintf(b, "func (%s *%s) %s() {\n", instanceReceiver, typeName, golang.ComponentDestroyMethod)
+	if componentDeclaresFunc(comp, lower.TeardownFunc) {
+		fmt.Fprintf(b, "\t%s.%s()\n", instanceReceiver, instanceTeardownMethod)
 	}
+	fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t\t%s = nil\n\t}\n", root, rootRefLine("g_object_unref", "Release", wrapped), root)
+	for _, v := range comp.Vars {
+		if !isSlotVar(v) {
+			continue
+		}
+		anchor := instanceReceiver + "." + codegen.SlotAnchorField(v.Name)
+		release := "gtk4rt.Release(" + anchor + ")"
+		if !wrapped {
+			release = "C.g_object_unref(C.gpointer(unsafe.Pointer(" + anchor + ")))"
+		}
+		fmt.Fprintf(b, "\tif %s != nil {\n\t\t%s\n\t}\n", anchor, release)
+	}
+	b.WriteString("}\n\n")
+}
+
+func isSlotVar(v *ir.Var) bool { return v.Synthesized && ir.IsSlotVarName(v.Name) }
+
+// instanceTeardownMethod is what the lowered teardown is emitted as, so that
+// Destroy can run it and then release the root.
+const instanceTeardownMethod = "teardown"
+
+func rootRefLine(cFunc, rtFunc string, wrapped bool) string {
+	root := instanceReceiver + "." + golang.ComponentRootField
+	if wrapped {
+		return fmt.Sprintf("gtk4rt.%s(%s)", rtFunc, root)
+	}
+	return fmt.Sprintf("C.%s(C.gpointer(unsafe.Pointer(%s)))", cFunc, root)
 }
 
 // instanceRootBinding assigns the widget the instance renders as: whatever the
@@ -240,7 +278,7 @@ func instanceRootBinding(tr *gtk4Translator, igc *golang.GoIRContext, wrapped bo
 // the intrinsic translator spells them; every other keeps the name it has.
 func instanceMethodName(fn *ir.Func) string {
 	if fn.Name == lower.TeardownFunc {
-		return golang.ComponentDestroyMethod
+		return instanceTeardownMethod
 	}
 	if after, ok := strings.CutPrefix(fn.Name, setterPrefix); ok {
 		return golang.ComponentSetterMethod(after)

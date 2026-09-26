@@ -2,6 +2,7 @@ package android
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"unicode"
@@ -129,7 +130,7 @@ func pkgToPath(pkg string) string {
 func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
-	src := emitIR(info, ctx, cfg, false)
+	src, _ := emitIR(info, ctx, cfg, false)
 	return src, ctx.Err()
 }
 
@@ -143,10 +144,18 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 // { MainScreen(state) }`) and assert / mutate from outside the
 // composition.
 func CompileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
+	src, _, err := compileTestIR(ctx, cfg)
+	return src, err
+}
+
+// compileTestIR also returns what MainScreen spells each state member as --
+// `state.<name>` -- so the test lowerer reaches the same members through the
+// instance a test holds.
+func compileTestIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, map[string]string, error) {
 	cfg = cfg.withDefaults()
 	info := analyzeIR(ctx)
-	src := emitIR(info, ctx, cfg, true)
-	return src, ctx.Err()
+	src, members := emitIR(info, ctx, cfg, true)
+	return src, members, ctx.Err()
 }
 
 // irAnalysis is the IR-based replacement for analysisResult.
@@ -240,6 +249,35 @@ func computedCalcKt(comp irAndroidComputed, cfg Config, kc *kotlin.KtIRContext, 
 		}
 	}
 	fmt.Fprintf(&b, "%s})", indent)
+	return b.String()
+}
+
+// computedGetterKt declares a computed as a property whose getter runs the
+// body, for the state class a test reads it through.
+func computedGetterKt(comp irAndroidComputed, kc *kotlin.KtIRContext, indent string) string {
+	retType := comp.ktType
+	if retType == "" {
+		retType = "Any"
+	}
+	head := fmt.Sprintf("%sval %s: %s get()", indent, comp.name, retType)
+	if comp.fn == nil || len(comp.fn.Block) == 0 {
+		return head + " = " + ktComputedZero(comp) + "\n"
+	}
+	if len(comp.fn.Block) == 1 {
+		if ret, ok := comp.fn.Block[0].(*ir.Return); ok && ret.Value != nil {
+			if v := kc.EvalExpr(ret.Value); v != "" {
+				return head + " = " + v + "\n"
+			}
+		}
+	}
+	var b strings.Builder
+	b.WriteString(head + " {\n")
+	for _, stmt := range comp.fn.Block {
+		for _, line := range kc.EvalStmt(stmt) {
+			fmt.Fprintf(&b, "%s    %s\n", indent, line)
+		}
+	}
+	fmt.Fprintf(&b, "%s}\n", indent)
 	return b.String()
 }
 
@@ -337,7 +375,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAndroidAnalysis {
 	return info
 }
 
-func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) []byte {
+func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMode bool) ([]byte, map[string]string) {
 	exprCtx := ctx.ScopedExprCtx()
 	kc := kotlin.NewIRContext(exprCtx)
 
@@ -359,13 +397,6 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// declares -- so a func reading one has to be declared inside it; beside
 	// it, `log__inst0 = log__inst0 + "!"` names something no file-scope
 	// declaration binds.
-	//
-	// This used to be every window's funcs, which reached the same set from
-	// the other side: a window body's func, and every clone the inliner
-	// hoisted into one, was a window's. A window owns nothing now, so the
-	// question is asked of the body instead of of the list -- which is also
-	// what ctx.RootDecl() stopped answering for an ordinary program, `main`
-	// having lost its harness convention.
 	stateReaching := codegen.PackageStateFuncs(ctx.Pkg)
 	for fn := range stateReaching {
 		mainOwnFuncs[fn] = true
@@ -419,6 +450,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		stateMembers[fn] = true
 	}
 
+	var testRewrites map[string]string
 	if testMode {
 		// Route every reactive var through the hoisted state object
 		// so handler bodies, computed expressions, and view-tree
@@ -438,6 +470,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 			rewrites[fn.Name] = "state." + fn.Name
 		}
 		kc.IdentRewrites = rewrites
+		testRewrites = maps.Clone(rewrites)
 	}
 
 	// Under --lang go the user's functions are emitted into the gomobile
@@ -579,6 +612,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// user output, so materialise it here.
 	if ctx.Pkg.UsesErrorHandling {
 		body.WriteString("data class ErrorEvent(val message: String = \"\", val kind: String = \"\")\n\n")
+		body.WriteString("class SnglRaise(val event: ErrorEvent) : RuntimeException(event.message)\n\n")
 	}
 
 	// The two stdlib event payloads this platform materializes itself, each
@@ -658,11 +692,10 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 				fmt.Fprintf(&body, "    var %s by mutableStateOf%s(%s)\n", bind.name, stateTypeArg(bind, initVal), initVal)
 			}
 		}
-		// Computeds become `derivedStateOf` members so tests can read them via
-		// the state accessor (c.<name>). Init exprs use classKC (bare sibling
-		// refs, resolved via implicit `this`).
+		// Getters, not derivedStateOf: one read outside any composition and
+		// then invalidated leaves Compose never idle, so waitForIdle hangs.
 		for _, comp := range info.computeds {
-			fmt.Fprintf(&body, "    val %s by %s\n", comp.name, computedCalcKt(comp, cfg, classKC, "    "))
+			body.WriteString(computedGetterKt(comp, classKC, "    "))
 		}
 		// Component-level user funcs become members of the state
 		// class so their bodies resolve reactive vars via implicit
@@ -883,8 +916,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		fmt.Fprintf(&out, "import %s\n", imp)
 	}
 	out.WriteString("\n")
-	out.WriteString(body.String())
-	return []byte(out.String())
+	out.WriteString(kotlin.PruneLibraryDataClasses(body.String(), ctx.Pkg))
+	return []byte(out.String()), testRewrites
 }
 
 func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx *codegen.CodegenCtx, kc *kotlin.KtIRContext, cfg Config, combo androidtc.Combo) {
@@ -900,10 +933,8 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 		}
 		params = append(params, p.Name+": "+ktType+def)
 	}
-	hasSlot := cc.Component.ChildrenType != nil
-	if hasSlot {
-		params = append(params, "slotContent: @Composable () -> Unit = {}")
-	}
+	params = append(params, slotParams(cc.Component)...)
+	params = append(params, eventParams(cc.Component)...)
 	fmt.Fprintf(b, "fun %s(%s) {\n", exportName(cc.Component.Name), strings.Join(params, ", "))
 
 	compKC := kc.ForComponent(cc.Component)
@@ -962,12 +993,11 @@ func emitIRComponentComposable(b *strings.Builder, cc *codegen.ComponentCtx, ctx
 	}
 
 	vc := &irComposeContext{
-		kc:      compKC,
-		ctx:     ctx,
-		buf:     b,
-		indent:  1,
-		hasSlot: hasSlot,
-		combo:   combo,
+		kc:     compKC,
+		ctx:    ctx,
+		buf:    b,
+		indent: 1,
+		combo:  combo,
 	}
 
 	for _, s := range cc.Body {
@@ -1058,9 +1088,7 @@ func emitIRKtMethod(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 	if len(fnCopy.Params) > 0 && isReceiverParam(fn, fnCopy.Params[0]) {
 		// The body names the receiver whatever the declaration called it
 		// (`func Op.symbol(o Op)`), and an extension's receiver is `this`.
-		if name := fnCopy.Params[0].Name; name != "this" {
-			localKC = localKC.WithIdentRewrite(name, "this")
-		}
+		localKC = localKC.WithReceiver(fnCopy.Params[0])
 		fnCopy.Params = fnCopy.Params[1:]
 	}
 	fnCopy.Receiver = ""
@@ -1123,8 +1151,6 @@ func emitIRKtFunc(b *strings.Builder, fn *ir.Func, kc *kotlin.KtIRContext) {
 }
 
 // --- helpers ---
-
-func irVarInitKt(v *ir.Var) string { return irBindInitKt(v.Type, v.Init) }
 
 func irBindInitKt(typ *ir.Type, init ir.Expr) string {
 	if init == nil {

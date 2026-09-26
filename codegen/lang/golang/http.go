@@ -190,8 +190,8 @@ func routeEmittableFuncs(pkg *ir.Package) []*ir.Func {
 		}
 	}
 	add(pkg.Funcs)
-	if main := mainComponent(pkg); main != nil {
-		add(main.Funcs)
+	if root := pkg.RootDecl(); root != nil {
+		add(root.Funcs)
 	}
 	return out
 }

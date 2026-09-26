@@ -40,18 +40,18 @@ func emitComponentInstance(
 	comp := cc.Component
 	typeName := golang.ComponentInstanceType(comp.Name)
 
-	// Props are parameters of the ctor, so a read of one is a bare local.
-	// passComponentProps has already rewritten every read inside the body to
-	// the `__prop_<name>` cell; what still names the parameter is that cell's
-	// own initializer.
+	// Props are parameters of the ctor, and only the ctor names them: every read
+	// in the body is of the `__prop_<name>` cell, which the ctor initializes.
 	igc := gc.ForComponent(comp)
 	igc.Ctx.StateReceiver = instanceReceiver
 	igc.Ctx.OuterReceiver = instanceReceiver + "." + golang.InstanceModelField
 	igc.Ctx.OuterNodes = golang.PageNodes(gc.Ctx.Pkg, comp)
-	for _, p := range cc.Props {
-		igc = igc.WithLocal(p.Name)
-	}
 	igc.MethodRecvType = typeName
+	cgc := igc
+	for _, p := range cc.Props {
+		cgc = cgc.WithRenamedLocal(p.Name, golang.InstanceCtorParam(p.Name))
+	}
+	cgc.MethodRecvType = typeName
 
 	var fields []irWidgetField
 	sink := func(name, goType string) {
@@ -65,14 +65,14 @@ func emitComponentInstance(
 
 	var ctorBody strings.Builder
 	for _, v := range comp.Vars {
-		fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, v.Name, instanceVarInit(v, igc))
+		fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, v.Name, instanceVarInit(v, cgc))
 	}
 	for _, stmt := range bodyStmts {
-		for _, line := range igc.EvalStmt(stmt) {
+		for _, line := range cgc.EvalStmt(stmt) {
 			fmt.Fprintf(&ctorBody, "\t%s\n", line)
 		}
 	}
-	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, instanceRootExpr(tr, igc))
+	fmt.Fprintf(&ctorBody, "\t%s.%s = %s\n", instanceReceiver, golang.ComponentRootField, instanceRootExpr(tr, cgc))
 
 	// Methods after the body, because the walk is what discovers the widget
 	// fields the struct declares -- and a setter's body carries the same
@@ -92,10 +92,10 @@ func emitComponentInstance(
 		if fn.SlotRender {
 			// A reactive slot's render func. Its body was written against the
 			// reactivity pass's `parent` name, which the translator rewrites
-			// to `container` -- so the parameter has to be spelled the way
+			// to slotParentParam -- so the parameter has to be spelled the way
 			// the Model's own slot funcs spell it (see emitIRSlotFunc), or the
 			// body names a package instead of its argument.
-			params = []*ir.Param{{Name: "container", Type: ir.NativeGoPointerOf("fyne.Container")}}
+			params = []*ir.Param{{Name: slotParentParam, Type: ir.NativeGoPointerOf("fyne.Container")}}
 		}
 		emitted := &ir.Func{
 			Name:   instanceMethodName(fn),
@@ -141,8 +141,16 @@ func emitComponentInstance(
 		goType := instanceVarGoType(v)
 		fmt.Fprintf(b, "\t%s %s\n", v.Name, goType)
 		requireTypeImports(igc, goType)
+		if v.Synthesized && ir.IsSlotVarName(v.Name) {
+			fmt.Fprintf(b, "\t%s fyne.CanvasObject\n", codegen.SlotAnchorField(v.Name))
+		}
 	}
+	seenField := map[string]bool{}
 	for _, f := range fields {
+		if seenField[f.name] {
+			continue
+		}
+		seenField[f.name] = true
 		fmt.Fprintf(b, "\t%s %s\n", f.name, f.goType)
 		requireTypeImports(igc, f.goType)
 	}
@@ -150,7 +158,7 @@ func emitComponentInstance(
 
 	params := []string{golang.InstanceModelField + " *" + codegen.ModelTypeName}
 	for _, p := range cc.Props {
-		params = append(params, p.Name+" "+golang.IRTypeToGo(p.Type))
+		params = append(params, golang.InstanceCtorParam(p.Name)+" "+golang.IRTypeToGo(p.Type))
 	}
 	fmt.Fprintf(b, "func %s(%s) *%s {\n", golang.ComponentInstanceCtor(comp.Name), strings.Join(params, ", "), typeName)
 	fmt.Fprintf(b, "\t%s := &%s{}\n", instanceReceiver, typeName)

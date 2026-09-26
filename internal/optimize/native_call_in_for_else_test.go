@@ -14,7 +14,7 @@ import (
 // This is a unit test on the guard rather than a fixture, because the omission
 // has no end-to-end witness: the folds that reach a native call in a real
 // program arrive by another route -- an unresolved import call makes the
-// interpreter fail and decline the fold anyway, and a #[foreign(..., pure)]
+// interpreter fail and decline the fold anyway, and a #[foreign] const func
 // call is inlined into its caller before this guard is asked about it. What
 // the guard answers is still the property being fixed, and it is asked
 // directly here.

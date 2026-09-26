@@ -49,3 +49,13 @@ func testTypeMethodWritesTopLevelVar(t Test, c main) {
 window {
     main
 }
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:b35ad2fbc8b5821b128a643522705d1b
+{
+  "results": [
+    {
+      "Desc": "TypeMethodWritesTopLevelVar",
+      "Passed": true
+    }
+  ]
+}

@@ -116,6 +116,38 @@ const (
 	ErrorPropagateNative
 )
 
+// CatchingHandler is the handler a raise leaving this call is caught by at
+// the call site, or nil where it leaves the call site uncaught.
+func CatchingHandler(call *Call) *EventHandler {
+	switch call.ErrorMode {
+	case ErrorPerCall:
+		return call.ErrorHandler
+	case ErrorInvokeAndTerminate:
+		return call.ResolvedHandler
+	}
+	return nil
+}
+
+// BlockReturns reports whether a `return` in stmts leaves this block's own
+// function, which a lambda body's does not.
+func BlockReturns(stmts []Stmt) bool {
+	for _, s := range stmts {
+		switch x := s.(type) {
+		case *Return:
+			return true
+		case *If:
+			if BlockReturns(x.Body) || BlockReturns(x.Else) {
+				return true
+			}
+		case *For:
+			if BlockReturns(x.Body) || BlockReturns(x.Else) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // CallArg is a resolved argument in a function call.
 // NamePos records the source position of the Name identifier for named
 // args (zero for positional).
@@ -138,6 +170,10 @@ type Select struct {
 	Type    *Type
 	Operand Expr
 	Field   string
+	// Spread is nonzero on a field read a spread argument expanded to, one id
+	// per site, when its operand is not a plain path and so must be evaluated
+	// once for all of them (StatementSpreads).
+	Spread int
 }
 
 // Index is a resolved index operation: operand[index].
@@ -273,6 +309,11 @@ func IsConst(e Expr) bool {
 		if _, ok := x.Sym.(*StructDef); ok {
 			return true
 		}
+		// A const parameter is constant at every call site, so a read of it
+		// is a compile-time value wherever the body is evaluated.
+		if p, ok := x.Sym.(*Param); ok && p.Const {
+			return true
+		}
 		return false
 	case *Binary:
 		return IsConst(x.Left) && IsConst(x.Right)
@@ -294,7 +335,10 @@ func IsConst(e Expr) bool {
 		if x.Receiver != nil && !IsConst(x.Receiver) {
 			return false
 		}
-		return x.Func != nil && x.Func.Purity == PurityPure
+		// Declared, not inferred: a call is a compile-time value because the
+		// callee says it is one, and a caller may rely on that. Inferred
+		// Purity drives the optimizer and promises nothing.
+		return x.Func != nil && x.Func.Const
 	case *Conversion:
 		return IsConst(x.Operand)
 	case *Select:
@@ -317,8 +361,6 @@ func IsConst(e Expr) bool {
 		return true
 	case *Spread:
 		return IsConst(x.Operand)
-	case *Closure:
-		return false
 	}
 	return false
 }

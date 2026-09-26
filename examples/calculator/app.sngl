@@ -1,17 +1,3 @@
-// A pocket calculator, on every target SNGL has.
-//
-// The three packages under this one divide it the way the problem divides:
-//
-//	calc/     the state machine and its arithmetic -- imports no UI at all
-//	readout/  the seven-segment display, drawn twice for two kinds of screen
-//	keypad/   the keys, as data, and the grid that lays them out
-//
-// What is left here is the wiring: one `Calc`, one handler that maps a key to
-// the method that answers it, and a window to hang it in. The window is at the
-// root of the file, because that is what the root tree accepts and a `node`
-// component is not a place a window belongs. The tests are in calc_test.sngl
-// beside this file.
-
 import ui "sngl:ui"
 import "./calc"
 import "./keypad"

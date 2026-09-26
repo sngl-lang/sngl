@@ -59,6 +59,9 @@ func New() *Model {
 func (m *Model) __n0_input_handler(s string) {
 }
 
+func (m *Model) __n0_change_handler(s string) {
+}
+
 func (m *Model) __n2_click_handler() {
 	m.content = "after click"
 	m.__n0.SetText(m.content)
@@ -80,6 +83,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetPlaceHolder("")
 	m.__n0.SetMinRowsVisible(4)
 	m.__n0.OnChanged = m.__n0_input_handler
+	m.__n0.OnSubmitted = m.__n0_change_handler
 	m.__n1.Add(m.__n0)
 	m.__n2 = widget.NewButton("", nil)
 	m.__n2.SetText("set")
@@ -99,4 +103,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:bfcc2f867bf4cfc15369ff415c3663ce
+pass sha256:6ec1b57c80ee635ebf9adfec16815490

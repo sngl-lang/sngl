@@ -172,6 +172,14 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
+	if !caps.InlineSlots {
+		for _, comp := range pkg.Components {
+			comp.Body = st.slotFlows(comp.Body)
+		}
+		for _, w := range ir.AllWindows(pkg) {
+			w.Children = st.slotFlows(w.Children)
+		}
+	}
 	// Pass 1: collect reverse deps per owner scope.
 	for _, comp := range pkg.Components {
 		st.owner = compOwner{comp}
@@ -423,6 +431,8 @@ func (st *reactivityState) rewriteReactiveStructures(stmts []ir.Stmt, parentRef 
 // childrenContainReactiveSlot reports whether any direct child of a
 // NodeInst is a reactive If/For (i.e. carries a LoweredSlotID). Used to
 // force an enclosing element ref so slot updaters have a stable parent.
+// A boundary's children are the node's children, as rewriteReactiveStructures
+// passes the node's ref through one.
 func childrenContainReactiveSlot(stmts []ir.Stmt) bool {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -432,6 +442,10 @@ func childrenContainReactiveSlot(stmts []ir.Stmt) bool {
 			}
 		case *ir.For:
 			if n.LoweredSlotID != "" {
+				return true
+			}
+		case *ir.ErrorBoundary:
+			if childrenContainReactiveSlot(n.Children) {
 				return true
 			}
 		}
@@ -745,8 +759,6 @@ func slotBodyExprs(stmts []ir.Stmt, addDep func(ir.Expr)) {
 			case *ir.SlotInst:
 				walk(n.Children)
 			case *ir.ErrorBoundary:
-				walk(n.Children)
-			case *ir.ContextProvider:
 				walk(n.Children)
 			default:
 				// Imperative/leaf stmts carry no rendered props.
@@ -1218,7 +1230,7 @@ func (st *reactivityState) rebuildsFor(props []reactiveProp) ([]*ir.NodeInst, ma
 	var rebuild []*ir.NodeInst
 	rebuilt := map[string]bool{}
 	for _, p := range props {
-		if !p.Instance || componentAbsorbs(p.Comp, p.Key) {
+		if !p.Instance || componentAbsorbs(p.Comp, p.Key) || propIsConst(p.Comp, p.Key) {
 			continue
 		}
 		if !propIsConstruct(p.Comp, p.Key) {
@@ -1689,6 +1701,10 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 					inner.Else = emitStmts(sx.Else)
 				}
 				out = append(out, inner)
+			case *ir.ErrorBoundary:
+				cp := *sx
+				cp.Children = emitStmts(sx.Children)
+				out = append(out, &cp)
 			default:
 				// Non-structural stmt (LocalVar/Assign/CallStmt/etc.) — pass through.
 				_ = sx

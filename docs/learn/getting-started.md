@@ -28,13 +28,13 @@ imports a Go package you supply.
 
 ## Hello, World
 
-A SNGL app is a tree of components rooted at one called `main`. The smallest
-app is a single text node:
+A SNGL app is its windows, each the root of a tree of components. The smallest
+app is one window holding a single text node:
 
 ```sngl
 import . "sngl:ui"
 
-component main node {
+window {
     text(value="Hello, World!")
 }
 ```
@@ -53,7 +53,7 @@ State is declared with `var` (mutable) or zero-arg `func` (derived). The
 ```sngl
 import . "sngl:ui"
 
-component main node {
+window {
     var name = "World"
     func greeting() => "Hello, {name}!"
     vbox(style={gap=8, padding=16}) {
@@ -212,7 +212,7 @@ pick them up automatically.
 <!-- SNGL-top
 import . "sngl:ui"
 
-component main node { text(value="") }
+window { text(value="") }
 -->
 
 ```sngl
@@ -240,7 +240,7 @@ struct Todo {
     done bool = false
 }
 
-component main node {
+window {
     var (
         newTodo = ""
         todos list<Todo> = []
@@ -248,8 +248,8 @@ component main node {
     func status() => "Todo List ({todos.length()} items)"
 
     vbox(style={gap=12, padding=16}) {
-        text(value=status, style={fontWeight="bold", fontSize=24})
-        hbox(style={gap=8, alignItems="center"}) {
+        text(value=status, style={fontWeight=bold, fontSize=24})
+        hbox(style={gap=8, alignItems=center}) {
             input(:value=newTodo, placeholder="Buy eggs", style={flex=1})
             button(text="Add", @click {
                 todos.push(Todo{text=newTodo, done=false})
@@ -288,7 +288,7 @@ any type-safe Go function becomes a SNGL function with the same signature.
 import . "sngl:ui"
 import "go:myapp/store"
 
-component main node {
+window {
     var todos list<Todo> = store.Load() @change {
         store.Save(todos)
     }

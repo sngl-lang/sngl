@@ -94,11 +94,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 			return err
 		}
 		if agentMode {
-			modelType := "main"
-			if main := c.ctx.RootDecl(); main != nil {
-				modelType = main.Name
-			}
-			if err := emitTestagentFiles(sink, req.Pkg, modelType); err != nil {
+			if err := emitTestagentFiles(sink, req.Pkg); err != nil {
 				return err
 			}
 		}
@@ -109,6 +105,25 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	}
 	return fmt.Errorf("html: unsupported lang %q", req.Lang.LanguageIdentifier())
 }
+
+// testBootOpen and testBootClose make a test page's program re-runnable, so
+// each test starts from a freshly mounted page.
+const testBootOpen = `window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
+`
+
+const testBootClose = `};
+window.__sngl_boot();
+`
 
 // injectTestagentBootstrap appends the testagent module script to every
 // assembled window. Agent mode only.
@@ -463,7 +478,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 
 	ctx := c.codegenCtx(req)
 
-	// A package with no main component and no windows still emits an empty
+	// A package with no harness root and no windows still emits an empty
 	// index.html, so callers can verify codegen succeeded.
 	irWindows := ctx.Windows()
 	if len(irWindows) == 0 {
@@ -523,7 +538,7 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 			c.routeWindows = append(c.routeWindows, win)
 		case href == nil:
 			// No declaration to take an href from: the package body's root
-			// window, or a lone main component's. It is the document the site
+			// window, or one a component renders. It is the document the site
 			// opens at, whether or not others sit beside it.
 			name = "index.html"
 		default:
@@ -549,8 +564,6 @@ func (c *compilation) BuildMutationModel(req *codegen.Request, analysis *codegen
 		// are its own clones rather than anything the package holds.
 		gen.canvasDraws = codegen.NewCanvasDrawsIn(req.Pkg, win.Body)
 		gen.canvasByID, gen.canvasByNode = canvasutil.Collect(gen.canvasDraws)
-		gen.irWindowFuncs = win.Funcs
-		gen.irWindowVars = win.Vars
 		gen.irWindow = win.Window
 		gen.ctx = gen.ctx.ForWindow(win.Window)
 		if s, ok := codegen.IRLiteralString(win.Window.Prop(ir.WindowTitle)); ok {
@@ -677,37 +690,34 @@ type htmlGen struct {
 	// currentComp resolves implicit `this` for exprDeps / MutatedFields.
 	currentComp *ir.Component
 
-	// rootComp is the component whose body this document renders. It is the
-	// one named "main" for an ordinary build and the component under test for
-	// a test build, which is a distinction only CodegenCtx.MainComponent
-	// makes: html used to answer it by name in eight places, so a test of a
-	// component not called "main" collected no state and rendered no binding.
+	// rootComp is the component a harness isolated as this document's body
+	// (CodegenCtx.RootDecl), and nil for every ordinary build.
 	rootComp *ir.Component
 
 	usesI18n bool
 
 	irBodyStmts []ir.Stmt
 
-	// irWindowVars is the window's own state, which is the page's: a window is
-	// a state owner like the package and the root component (ir.Owners).
-	irWindowVars []*ir.Var
-	// irWindowFuncs holds synthesized funcs lowerCanvas placed on the window
-	// IR node rather than on the package or main component.
-	irWindowFuncs []*ir.Func
 	// pageSlots are the render slots whose anchor this page wrote. The slot
 	// funcs are collected per owner, and a root component spliced into the
 	// package body owns every window's, so a page boots only its own.
 	pageSlots map[string]bool
 
 	// irWindow is the window this generator emits a document for, or nil when
-	// it is emitting a main component's body. A window is the third place
-	// state is declared, beside the package and the main component, and it is
+	// it is emitting a harness root's body. A window is the third place
+	// state is declared, beside the package and a harness root, and it is
 	// per-document: static mode emits one file per window.
 	irWindow *ir.Window
 
 	// snglIDByElem maps a JS element variable ($1) to the id a program wrote
 	// on that node (#inc). Only ids a test could name are in it.
 	snglIDByElem map[string]string
+
+	// enclosingSnglID is the nearest program-written id around the element
+	// being rendered. An override's root takes the call site's id while the
+	// handler sits on an element inside it -- a checkbox's `<input>` in its
+	// `<label>` -- so that is the id a test names the handler by.
+	enclosingSnglID string
 
 	// refToVar maps the name a lowered node op uses for its node to the JS
 	// variable the element was emitted as. They coincide for a synthesized
@@ -764,7 +774,13 @@ type updateFunc struct {
 type eventHandler struct {
 	elemID string
 	event  string // the DOM event name passed to addEventListener
-	body   string // JS statements
+	// snglID is the id a test invokes this handler by: the element's own, or
+	// the nearest enclosing one.
+	snglID string
+	// payloadOnTarget says the payload's fields are the element's own state
+	// (eventPayloadBase answered e.target), so an invoker writes them there.
+	payloadOnTarget bool
+	body            string // JS statements
 	// hasParam follows the handler's declared parameter, not the event name,
 	// because that is what translation binds `e` from. A declared parameter
 	// the body never reads still sets it.
@@ -801,14 +817,12 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 	}
 
 	g.dt = shared.depTracker(pkg)
-	// The canvases passCanvas flattened into a lowered body. A canvas the page
+	// The canvases passDeclarative flattened into a lowered body. A canvas the page
 	// renders as markup is an ir.NodeInst and is not among these; what is, is
 	// every canvas in a scope emitted as code -- a component factory, a slot
 	// renderer -- which is what the translator needs to draw one at all.
 	g.canvasByID, g.canvasByNode = shared.canvases(pkg)
 	g.canvasDraws = shared.drawings(pkg)
-	g.rootComp = mainIRComponent(pkg)
-	g.currentComp = g.rootComp
 	g.ctx = codegen.NewExprCtx(pkg)
 	g.ctx.Platform = "html"
 	if pkg != nil {
@@ -830,8 +844,6 @@ func newHTMLGenFromCtx(ctx *codegen.CodegenCtx, lang codegen.LangTranslator, opt
 	g := newHTMLGen(ctx.Pkg, lang, opts, shared)
 	g.maps = ctx.ExprCtx.Maps
 	g.outDir = ctx.ExprCtx.OutDir
-	// CodegenCtx is the one that knows about RootComponent, so its answer wins
-	// over the by-name lookup newHTMLGen had to fall back on.
 	g.rootComp = ctx.RootDecl()
 	g.currentComp = g.rootComp
 	// Adopt the caller's ExprCtx either way. It carries what the *build* said
@@ -960,8 +972,6 @@ func (g *htmlGen) prewalkNodes() {
 		case *ir.SlotInst:
 			visitStmts(n.Children)
 		case *ir.ErrorBoundary:
-			visitStmts(n.Children)
-		case *ir.ContextProvider:
 			visitStmts(n.Children)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:
@@ -1175,6 +1185,11 @@ func (g *htmlGen) generate() (string, error) {
 		g.renderIRStmt(&b, s, 0)
 	}
 
+	// Ahead of the stylesheet: an element the script builds registers its
+	// class's rule as it is translated.
+	var scriptBuf strings.Builder
+	g.emitScript(&scriptBuf)
+
 	if len(g.Styles) > 0 {
 		var cssBuf strings.Builder
 		for _, css := range g.Styles {
@@ -1190,8 +1205,6 @@ func (g *htmlGen) generate() (string, error) {
 		b.WriteString("</style>\n")
 	}
 
-	var scriptBuf strings.Builder
-	g.emitScript(&scriptBuf)
 	sharedTags, script := g.linkSharedConsts(pruneDecls(scriptBuf.String()))
 
 	// The i18n runtime is prepended as an IIFE so the generated calls resolve
@@ -1242,7 +1255,13 @@ func (g *htmlGen) generate() (string, error) {
 		b.WriteString("\n")
 		b.WriteString(sharedTags)
 		b.WriteString("<script>\n")
-		b.WriteString(script)
+		if g.testMode {
+			b.WriteString(testBootOpen)
+			b.WriteString(script)
+			b.WriteString(testBootClose)
+		} else {
+			b.WriteString(script)
+		}
 		b.WriteString("</script>\n")
 	}
 	b.WriteString("</body></html>\n")
@@ -1356,9 +1375,6 @@ func (g *htmlGen) renderIRStmt(b *strings.Builder, s ir.Stmt, depth int) {
 		for _, child := range n.Body {
 			g.renderIRStmt(b, child, depth)
 		}
-	case *ir.ContextProvider:
-		// passNoContext eliminates these before codegen.
-		panic(fmt.Sprintf("html.renderIRStmt: unexpected ContextProvider: %#v", n))
 	case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 	default:
@@ -1466,7 +1482,7 @@ func (g *htmlGen) pts() *ir.PointsToInfo {
 	return g.pkg.PointsTo
 }
 
-// stateVars returns pkg.Vars merged with the main component's Vars.
+// stateVars returns pkg.Vars merged with a harness root's Vars.
 // Synthesized vars are excluded; emitScript emits them as top-level `let`.
 // stateVars is the state in scope for the document this generator emits: the
 // package's, the root component's, and this window's. The other components'
@@ -1503,13 +1519,8 @@ func (g *htmlGen) stateVars() []codegen.OwnedVar {
 }
 
 // synthesizedVars returns the Synthesized vars of the package, the root
-// component and the window, deduplicated by name: the context lowering pass
+// component, deduplicated by name: the context lowering pass
 // injects a var like __ctx_locale into both pkg.Vars and component.Vars.
-//
-// A window owns state the way the other two do (ir.Owners), and an effect
-// placed in a window body puts its bookkeeping there -- so left out, the
-// page read `__effectN_live` before anything declared it and threw at
-// startup. A harness convention hid this: `component main` was the owner.
 func (g *htmlGen) synthesizedVars() []*ir.Var {
 	var out []*ir.Var
 	seen := make(map[string]bool)
@@ -1528,26 +1539,20 @@ func (g *htmlGen) synthesizedVars() []*ir.Var {
 	if main := g.rootComp; main != nil {
 		add(main.Vars)
 	}
-	add(g.irWindowVars)
 	return out
 }
 
-// synthesizedFuncs returns the Synthesized funcs of the package, main
-// component and current window.
+// synthesizedFuncs returns the Synthesized funcs of the package and of every
+// component the page renders.
 //
-// Deduped by pointer, as pkgFuncs is and for the same reason: one func reaches
-// this from more than one list. A root window synthesized around main carries
-// main's funcs, and main is still on pkg.Components -- so a func on it would
-// otherwise be declared twice in the page.
+// Deduped by pointer, as pkgFuncs is and for the same reason: a component's
+// nested method is on pkg.Funcs and on the component's Funcs both. Both
+// consumers of this list matter -- one writes the definition, the other the
+// anchor lookup and the bootstrap call -- so a duplicate was a __renderSlotN
+// defined twice and run twice at startup, the second run removing the nodes
+// the first had just built.
 func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 	var out []*ir.Func
-	// The three sources overlap: a page whose root is a component and not an
-	// explicit `window` is served here as a window whose Funcs are that
-	// component's, so every synthesized func of the root arrived twice. Both
-	// loops below consume this list -- one writes the definition, the other
-	// the anchor lookup and the bootstrap call -- so a duplicate was a
-	// __renderSlotN defined twice and run twice at startup, the second run
-	// removing the nodes the first had just built.
 	seen := map[*ir.Func]bool{}
 	add := func(f *ir.Func) {
 		if f == nil || !f.Synthesized || seen[f] {
@@ -1569,9 +1574,6 @@ func (g *htmlGen) synthesizedFuncs() []*ir.Func {
 				add(f)
 			}
 		}
-	}
-	for _, f := range g.irWindowFuncs {
-		add(f)
 	}
 	return out
 }
@@ -1611,7 +1613,7 @@ func (g *htmlGen) pkgStructs() []*ir.StructDef {
 	return g.pkg.Structs
 }
 
-// pkgFuncs returns user-defined top-level funcs plus main component funcs.
+// pkgFuncs returns user-defined top-level funcs plus the harness root's funcs.
 // The dedupe matters: after passNoInlineComponents + registerNestedMethods a
 // component method lands in both pkg.Funcs and comp.Funcs. Synthesized funcs
 // are excluded; emitScript routes those through WalkLowered separately.
@@ -1622,7 +1624,7 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 	seen := make(map[*ir.Func]struct{})
 	var out []*ir.Func
 	add := func(f *ir.Func) {
-		if f.Synthesized {
+		if f.Synthesized || !g.pageOwnsFunc(f) {
 			return
 		}
 		// A native declaration is not emitted: the identifier already exists,
@@ -1647,16 +1649,6 @@ func (g *htmlGen) pkgFuncs() []*ir.Func {
 			add(f)
 		}
 	}
-	// A window owns funcs the way a component does (ir.Owners), and its state
-	// is the page's state -- so its funcs are the page's functions.
-	// synthesizedFuncs already reads this list and takes the synthesized half;
-	// left out here, the other half was declared nowhere. An effect placed in
-	// a window body is where that shows: __effectN_mount was called by the
-	// settle chain and never defined, so the page threw at startup and no
-	// bracket ever ran.
-	for _, f := range g.irWindowFuncs {
-		add(f)
-	}
 	return out
 }
 
@@ -1673,15 +1665,6 @@ func (g *htmlGen) pkgConsts() []*ir.Var {
 		}
 	}
 	return out
-}
-
-func mainIRComponent(pkg *ir.Package) *ir.Component {
-	for _, c := range pkg.Components {
-		if c.Name == "main" {
-			return c
-		}
-	}
-	return nil
 }
 
 // preservesWhitespace reports whether a raw HTML tag renders whitespace in its
@@ -1776,6 +1759,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	id := ""
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
 		id = g.nodeID(n)
+	}
+	if n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
+		saved := g.enclosingSnglID
+		g.enclosingSnglID = n.ID
+		defer func() { g.enclosingSnglID = saved }()
 	}
 	drawing := g.canvasDraws.ForNode(n)
 	if drawing != nil && id == "" {
@@ -2069,8 +2057,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 				body = append(body, f.Name+": "+param)
 			}
 		}
+		// A payload struct is declared for the targets that keep a handler's
+		// parameter, and a page reads a DOM event instead: its constructor is
+		// one nothing calls.
+		openDecl(b, sd.Name)
 		fmt.Fprintf(b, "function %s(%s) { return {%s}; }\n",
 			sd.Name, strings.Join(params, ", "), strings.Join(body, ", "))
+		closeDecl(b)
 	}
 	if len(structs) > 0 {
 		b.WriteString("\n")
@@ -2620,15 +2613,10 @@ func (g *htmlGen) optimizeIR() {
 		}
 	}
 	// IR keys on ast.Node, but html has already translated to JS strings.
-	handlerBodyMap := make(map[string]string)
-	handlerAsyncMap := make(map[string]bool)
-	handlerParamMap := make(map[string]bool)
+	byKey := make(map[string]eventHandler)
 	handlers := make([]codegen.Handler, len(g.handlers))
 	for i, h := range g.handlers {
-		key := h.elemID + ":" + h.event
-		handlerBodyMap[key] = h.body
-		handlerAsyncMap[key] = h.isAsync
-		handlerParamMap[key] = h.hasParam
+		byKey[h.elemID+":"+h.event] = h
 		handlers[i] = codegen.Handler{
 			NodeID:  h.elemID,
 			Event:   h.event,
@@ -2663,15 +2651,11 @@ func (g *htmlGen) optimizeIR() {
 
 	g.handlers = make([]eventHandler, len(m.Handlers))
 	for i, h := range m.Handlers {
-		key := h.NodeID + ":" + h.Event
-		g.handlers[i] = eventHandler{
-			elemID:   h.NodeID,
-			event:    h.Event,
-			body:     handlerBodyMap[key],
-			hasParam: handlerParamMap[key],
-			mutated:  varSetToNames(h.Mutated),
-			isAsync:  handlerAsyncMap[key],
-		}
+		orig := byKey[h.NodeID+":"+h.Event]
+		orig.elemID = h.NodeID
+		orig.event = h.Event
+		orig.mutated = varSetToNames(h.Mutated)
+		g.handlers[i] = orig
 	}
 }
 
@@ -2902,7 +2886,7 @@ func (g *htmlGen) translateBlockJC(body []ir.Stmt) []string {
 // translateBlockWithJC is translateBlockJC over a caller-supplied scope, for a
 // body emitted inside a binding the block itself does not declare.
 func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stmt) []string {
-	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslator(jc)
 	// A CanvasRedrawStmt needs a NodeInst→ID lookup only htmlGen has, so it is
 	// handled here rather than in the translator.
 	var regular []ir.Stmt
@@ -3039,10 +3023,6 @@ func (g *htmlGen) collectLoweredRefs(s ir.Stmt) {
 		for _, c := range n.Children {
 			g.collectLoweredRefs(c)
 		}
-	case *ir.ContextProvider:
-		for _, c := range n.Children {
-			g.collectLoweredRefs(c)
-		}
 	case *ir.CanvasRedrawStmt:
 	case *ir.Break, *ir.Continue:
 		// A loop escape names no ref.
@@ -3060,7 +3040,8 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 	}
 	savedEvent := g.ctx.EventVar
 	savedEventParam := g.ctx.EventParam
-	g.ctx.EventVar = eventPayloadBase(decl, event)
+	base := eventPayloadBase(decl, event)
+	g.ctx.EventVar = base
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
@@ -3090,9 +3071,11 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 		delete(g.ctx.Locals, n)
 	}
 	g.handlers = append(g.handlers, eventHandler{
-		elemID: elemID,
-		event:  event,
-		body:   strings.Join(lines, "\n  "),
+		elemID:          elemID,
+		event:           event,
+		snglID:          g.enclosingSnglID,
+		payloadOnTarget: base == "e.target",
+		body:            strings.Join(lines, "\n  "),
 		// With no declared parameter nothing in the body can resolve to the
 		// event, so the listener takes none either.
 		hasParam: len(fn.Params) > 0,
@@ -3185,7 +3168,7 @@ func (g *htmlGen) emitJSFunc(b *strings.Builder, fn *ir.Func) {
 	for _, p := range fn.Params {
 		jc = jc.WithLocal(p.Name)
 	}
-	tr := g.newHTMLTranslatorWithNodes(jc, g.idToNode)
+	tr := g.newHTMLTranslator(jc)
 	lowered := codegen.WalkLowered(context.Background(), fn.Block, tr)
 	for _, s := range lowered {
 		g.collectLoweredRefs(s)
@@ -3386,23 +3369,38 @@ func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
 // They hang off `state` because that is the object newTestComponent() returns,
 // which is what makes `c.<id><Event>()` resolve. The computed accessors above
 // are attached the same way.
+//
+// A payload a test passes is written where the handler reads it: onto the
+// element when its fields are the element's state (`checked`, `value`), which
+// is what a user's input would have changed before the event fired, and onto
+// the event otherwise.
 func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	seen := map[string]bool{}
-	for _, h := range g.handlers {
-		snglID := g.snglIDByElem[h.elemID]
+	emit := func(h eventHandler, snglID string) {
 		if snglID == "" {
-			continue // a node no test can name
+			return
 		}
 		name := snglID + capitalizeFirst(h.event)
 		if seen[name] {
-			continue // duplicate id+event -- keep the first
+			return
 		}
 		seen[name] = true
-		if h.event == "click" {
+		switch {
+		case h.event == "click":
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
-			continue
+		case h.payloadOnTarget:
+			fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
+		default:
+			fmt.Fprintf(b, "state.%s = (p) => %s.dispatchEvent(Object.assign(new Event(%q), p));\n", name, h.elemID, h.event)
 		}
-		fmt.Fprintf(b, "state.%s = () => %s.dispatchEvent(new Event(%q));\n", name, h.elemID, h.event)
+	}
+	// An element's own id outranks one it inherits, whichever was rendered
+	// first.
+	for _, h := range g.handlers {
+		emit(h, g.snglIDByElem[h.elemID])
+	}
+	for _, h := range g.handlers {
+		emit(h, h.snglID)
 	}
 }
 
