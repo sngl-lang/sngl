@@ -7,6 +7,12 @@ stdout '2 tests, 0 failures'
 stdout 'counter/testQualifiedRefIsAddressable'
 stdout 'pair/testQualifiedRefInAChildIsAddressable'
 
+# The child written as a qualified call statement into another package: the
+# descendant search followed only a bare call, so `c.lbl` was no member of pair.
+sngl test --platform none child
+stdout '1 tests, 0 failures'
+stdout 'pair/testQualifiedChildCall'
+
 -- refs.sngl --
 import test "sngl:test"
 import ui "sngl:ui"
@@ -51,4 +57,33 @@ component pair ui.node {
 
 ui.window {
     counter()
+}
+-- child/main.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+import w "./widgets"
+
+output {
+    none { html }
+}
+
+func testQualifiedChildCall(t test.Test, c pair) {
+    t.assert(c.lbl[1].value == "b")
+}
+
+component pair ui.node {
+    ui.vbox {
+        w.labelled(label="a")
+        w.labelled(label="b")
+    }
+}
+
+ui.window {
+    pair()
+}
+-- child/widgets/w.sngl --
+import ui "sngl:ui"
+
+component labelled(label string) ui.node {
+    ui.text #lbl(value=label)
 }
