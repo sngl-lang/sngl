@@ -523,12 +523,6 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 		}
 		return name
 	default:
-		if n.Type != nil && n.Type.Kind == ir.TypeEnum {
-			if src, ok := nativeEnumMemberJS(n.Type, name); ok {
-				return src
-			}
-			return fmt.Sprintf("%q", name)
-		}
 		return name
 	}
 }

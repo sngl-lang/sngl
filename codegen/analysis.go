@@ -33,8 +33,8 @@ type CommonAnalysis struct {
 // map is copied, including the LocalRefs a TimerInfo carries, which is what
 // makes "a map here is private to the caller that asked for it" true of the
 // whole structure rather than of the top level. The declaration slices are
-// not: Components, Structs, Enums and Units hold the package's own
-// declarations, which are the same for every generator reading them.
+// not: Components, Structs, Enums and Units hold declarations, which are the
+// same for every generator reading them.
 //
 // It exists so a caller emitting many documents from one package can derive
 // the analysis once -- it is a function of the package alone, and a full IR
@@ -175,9 +175,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		a.Structs = append(a.Structs, s)
 	}
 
-	for _, e := range pkg.Enums {
-		a.Enums = append(a.Enums, e)
-	}
+	a.Enums = collectUsedEnums(pkg)
 
 	// pkg.Units carries the units the *program* declares. A unit it merely
 	// uses -- `measurement`, declared in sngl:ui -- is not there, so a

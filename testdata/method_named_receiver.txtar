@@ -83,9 +83,11 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-enum class Op {
-    ADD,
-    SUB
+enum class Op(private val sngl: String) {
+    ADD("add"),
+    SUB("sub");
+
+    override fun toString(): String = sngl
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,4 +126,4 @@ fun Glyph.row(row: Int): String {
     return " "
 }
 -- run/kotlin/android --
-pass sha256:8ab3207d03d1856398aa38bf550f7246
+pass sha256:b89422e58cb7465ecaf31219d98b5237

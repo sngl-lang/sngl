@@ -1,0 +1,205 @@
+# An enum value held in a variable, run on four backends.
+#
+# Three defects, each visible only by running the program. Go and JavaScript
+# spelled a parameter or local of enum type that the expression context could
+# not resolve as the member of that name, so `func pick(r Mood) Mood { return r }`
+# returned the string "r". Kotlin declared no class for a library enum a
+# program stored, so `var w = ui.FontWeight.bold` named Compose's own
+# FontWeight, which has no BOLD. And Kotlin printed a member by its entry name,
+# `HAPPY`, where every other target prints the name as declared.
+#
+# The values are copied into state by a mount effect because a test agent reads
+# a component's own state rather than an expression over it.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+    go {
+        bubbletea
+    }
+    kotlin {
+        android
+    }
+}
+
+enum Mood { happy, sad }
+
+struct Look {
+    weight ui.FontWeight
+}
+
+func pick(r Mood) Mood {
+    return r
+}
+
+func flip(r Mood) Mood {
+    var held = r
+    var other Mood = sad
+    if held == other {
+        return happy
+    }
+    return other
+}
+
+component main ui.node {
+    var mood = Mood.happy
+    var w = ui.FontWeight.bold
+    var look = Look{weight = ui.FontWeight.lighter}
+
+    var picked = ""
+    var flipped = ""
+    var shown = ""
+    var converted = ""
+    var weight = ""
+    var field = ""
+
+    effect(@mount {
+        picked = string(pick(mood))
+        flipped = string(flip(mood))
+        shown = "{mood}"
+        converted = string(mood)
+        weight = "{w}"
+        field = string(look.weight)
+    })
+
+    ui.text(value=shown)
+}
+
+func testParamIsItsValue(t Test, c main) {
+    t.assert(c.picked == "happy")
+}
+
+func testLocalsAreTheirValues(t Test, c main) {
+    t.assert(c.flipped == "sad")
+}
+
+func testInterpolationPrintsTheDeclaredName(t Test, c main) {
+    t.assert(c.shown == "happy")
+}
+
+func testConversionPrintsTheDeclaredName(t Test, c main) {
+    t.assert(c.converted == "happy")
+}
+
+func testLibraryEnumInAVar(t Test, c main) {
+    t.assert(c.weight == "bold")
+}
+
+func testLibraryEnumInAField(t Test, c main) {
+    t.assert(c.field == "lighter")
+}
+
+ui.window {
+    main()
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:3e1825132ed7e57f2a3551766ba049df
+{
+  "results": [
+    {
+      "Desc": "ConversionPrintsTheDeclaredName",
+      "Passed": true
+    },
+    {
+      "Desc": "InterpolationPrintsTheDeclaredName",
+      "Passed": true
+    },
+    {
+      "Desc": "LibraryEnumInAField",
+      "Passed": true
+    },
+    {
+      "Desc": "LibraryEnumInAVar",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalsAreTheirValues",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamIsItsValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:bafb4676f9571f02d0a1ea34098509a5
+{
+  "results": [
+    {
+      "Desc": "ConversionPrintsTheDeclaredName",
+      "Passed": true
+    },
+    {
+      "Desc": "InterpolationPrintsTheDeclaredName",
+      "Passed": true
+    },
+    {
+      "Desc": "LibraryEnumInAField",
+      "Passed": true
+    },
+    {
+      "Desc": "LibraryEnumInAVar",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalsAreTheirValues",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamIsItsValue",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:01d01e4d56d35efa79e596346e5bcbf1
+{
+  "results": [
+    {
+      "Desc": "ConversionPrintsTheDeclaredName",
+      "Passed": true
+    },
+    {
+      "Desc": "InterpolationPrintsTheDeclaredName",
+      "Passed": true
+    },
+    {
+      "Desc": "LibraryEnumInAField",
+      "Passed": true
+    },
+    {
+      "Desc": "LibraryEnumInAVar",
+      "Passed": true
+    },
+    {
+      "Desc": "LocalsAreTheirValues",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamIsItsValue",
+      "Passed": true
+    }
+  ]
+}
