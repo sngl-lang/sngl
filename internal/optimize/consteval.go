@@ -1190,8 +1190,7 @@ func unitConversionString(conv *ir.Conversion, operand any) (string, bool) {
 
 // multiBaseUnitString displays a constant multi-base unit value, which
 // evalLiteral declines to reduce to a number and so never reaches
-// unitConversionString. Left unfolded, html's static page had nothing to write
-// for the text and dropped it.
+// unitConversionString.
 func multiBaseUnitString(e ir.Expr) (string, bool) {
 	ud := ir.UnitDeclOf(e.ExprType())
 	if ud == nil || ud.IsSingleBase() {

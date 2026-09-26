@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
@@ -1218,9 +1217,9 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if cv, ok := obj.(ComponentValue); ok {
 		return cv.GetField(e.Field)
 	}
-	if e.Field == "length" {
-		if n, ok := builtinLength(e.Operand.ExprType(), obj); ok {
-			return n, nil
+	if t := e.Operand.ExprType(); e.Field == "length" && t != nil {
+		if id, ok := lengthIntrinsics[t.Kind]; ok {
+			return intrinsics[id]([]any{obj})
 		}
 	}
 	if s, ok := obj.(*Struct); ok {
@@ -2843,28 +2842,13 @@ func (env *Env) pushContext(ctx *ir.Context, value ir.Expr) (func(), error) {
 	}, nil
 }
 
-// builtinLength answers the `.length` the checker types as int on a list, a
-// map or a string. Asked of the checked type, because evalSelect otherwise
+// lengthIntrinsics answers the `.length` the checker types as int on a list, a
+// map or a string. Chosen by the checked type, because evalSelect otherwise
 // reads a map[string]any by key and a map may hold a "length" key.
-func builtinLength(t *ir.Type, v any) (int, bool) {
-	if t == nil {
-		return 0, false
-	}
-	switch t.Kind {
-	case ir.TypeList:
-		if l, ok := v.([]any); ok {
-			return len(l), true
-		}
-	case ir.TypeMap:
-		if m, ok := v.(map[string]any); ok {
-			return len(m), true
-		}
-	case ir.TypeString:
-		if s, ok := v.(string); ok {
-			return utf8.RuneCountInString(s), true
-		}
-	}
-	return 0, false
+var lengthIntrinsics = map[ir.TypeKind]string{
+	ir.TypeList:   "list.length",
+	ir.TypeMap:    "map.length",
+	ir.TypeString: "string.length",
 }
 
 // underContext runs fn with vals provided over whatever env already holds.
