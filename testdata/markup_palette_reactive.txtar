@@ -589,18 +589,20 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-enum class Token {
-    PLAIN,
-    KEYWORD,
-    TYPE,
-    FUNCTION,
-    VARIABLE,
-    CONSTANT,
-    STRING,
-    NUMBER,
-    COMMENT,
-    OPERATOR,
-    PUNCTUATION
+enum class SnglToken(private val sngl: String) {
+    PLAIN("plain"),
+    KEYWORD("keyword"),
+    TYPE("type"),
+    FUNCTION("function"),
+    VARIABLE("variable"),
+    CONSTANT("constant"),
+    STRING("string"),
+    NUMBER("number"),
+    COMMENT("comment"),
+    OPERATOR("operator"),
+    PUNCTUATION("punctuation");
+
+    override fun toString(): String = sngl
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -616,7 +618,7 @@ fun MainScreen() {
         }
         Text(text = buildAnnotatedString {
             withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
-                withStyle(SpanStyle(color = (tokenColor(pal, Token.KEYWORD)).let { if (it.a == 0) MaterialTheme.colorScheme.primary else ComposeColor(it.r, it.g, it.b, it.a) })) {
+                withStyle(SpanStyle(color = (tokenColor(pal, SnglToken.KEYWORD)).let { if (it.a == 0) MaterialTheme.colorScheme.primary else ComposeColor(it.r, it.g, it.b, it.a) })) {
                     append("func")
                 }
             }
@@ -624,35 +626,35 @@ fun MainScreen() {
     }
 }
 
-fun tokenColor(p: Palette, kind: Token): Color {
-    if ((kind == Token.KEYWORD)) {
+fun tokenColor(p: Palette, kind: SnglToken): Color {
+    if ((kind == SnglToken.KEYWORD)) {
     	return p.keyword
     }
-    if ((kind == Token.TYPE)) {
+    if ((kind == SnglToken.TYPE)) {
     	return p.type
     }
-    if ((kind == Token.FUNCTION)) {
+    if ((kind == SnglToken.FUNCTION)) {
     	return p.function
     }
-    if ((kind == Token.VARIABLE)) {
+    if ((kind == SnglToken.VARIABLE)) {
     	return p.variable
     }
-    if ((kind == Token.CONSTANT)) {
+    if ((kind == SnglToken.CONSTANT)) {
     	return p.constant
     }
-    if ((kind == Token.STRING)) {
+    if ((kind == SnglToken.STRING)) {
     	return p.string
     }
-    if ((kind == Token.NUMBER)) {
+    if ((kind == SnglToken.NUMBER)) {
     	return p.number
     }
-    if ((kind == Token.COMMENT)) {
+    if ((kind == SnglToken.COMMENT)) {
     	return p.comment
     }
-    if ((kind == Token.OPERATOR)) {
+    if ((kind == SnglToken.OPERATOR)) {
     	return p.operator
     }
-    if ((kind == Token.PUNCTUATION)) {
+    if ((kind == SnglToken.PUNCTUATION)) {
     	return p.punctuation
     }
     return p.plain
@@ -765,6 +767,6 @@ pass sha256:15917dbca0eb2188508c37624c874d96
 -- run/go/gtk4 --
 pass sha256:c2bea7b1ac09ac2164ae959ba00ce349
 -- run/kotlin/android --
-pass sha256:5f396f3bcd8b30b4cfb6d0ea04a833b9
+pass sha256:07dfbebfdd450d63c57878bd8e97f1df
 -- run/none/html --
 pass sha256:32feb4913b9570a64e0ed7255e97c070

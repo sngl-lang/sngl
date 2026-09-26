@@ -560,7 +560,7 @@ func (kc *KtIRContext) evalIdent(n *ir.Ident) string {
 		// Enum member: emit qualified Kotlin enum value (Gender.female)
 		// so the value matches the declared enum type at the use site.
 		if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
-			return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
+			return EnumName(n.Type.Decl) + "." + EnumEntry(n.Member)
 		}
 		return fmt.Sprintf("%q", n.Member)
 	}
@@ -1084,7 +1084,7 @@ func ktZeroFor(t *ir.Type) string {
 		// `null` is not a value of a non-nullable Kotlin enum, so a struct
 		// field left at its default did not compile.
 		if ed, ok := t.Decl.(*ir.EnumDef); ok && len(ed.Members) > 0 {
-			return exportName(ed.Name) + "." + EnumEntry(ed.Members[0].Name)
+			return EnumName(ed) + "." + EnumEntry(ed.Members[0].Name)
 		}
 	}
 	return "null"
@@ -1099,6 +1099,37 @@ func ktZeroFor(t *ir.Type) string {
 // separately, so every `Op.none` in the output named an entry declared as
 // `NONE`.
 func EnumEntry(member string) string { return strings.ToUpper(member) }
+
+// EnumName is the Kotlin name of an enum declaration. A library enum is
+// prefixed because its SNGL names are the ones Compose uses for its own types
+// -- FontWeight, TextAlign, Alignment -- and the file imports those by name.
+func EnumName(decl ir.Symbol) string {
+	ed, ok := decl.(*ir.EnumDef)
+	if !ok {
+		return exportName(decl.SymName())
+	}
+	if ed.Pkg != "" {
+		return "Sngl" + exportName(ed.Name)
+	}
+	return exportName(ed.Name)
+}
+
+// EnumDecl declares ed as a Kotlin enum class. Each entry carries the member's
+// SNGL name as its string form, because the entry's own name is upper-cased
+// and a program printing a member prints it as declared on every target.
+func EnumDecl(ed *ir.EnumDef) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "enum class %s(private val sngl: String) {\n", EnumName(ed))
+	for i, m := range ed.Members {
+		end := ","
+		if i == len(ed.Members)-1 {
+			end = ";"
+		}
+		fmt.Fprintf(&b, "    %s(%q)%s\n", EnumEntry(m.Name), m.Name, end)
+	}
+	b.WriteString("\n    override fun toString(): String = sngl\n}\n")
+	return b.String()
+}
 
 func (kc *KtIRContext) evalLambda(n *ir.Lambda) string {
 	if n.Func == nil {
@@ -1257,7 +1288,7 @@ func IRTypeToKt(t *ir.Type) string {
 		return "Any"
 	case ir.TypeEnum:
 		if t.Decl != nil {
-			return exportName(t.Decl.SymName())
+			return EnumName(t.Decl)
 		}
 		return "String"
 	case ir.TypeUnit:
@@ -1341,7 +1372,7 @@ func IRLiteralToKt(e ir.Expr) string {
 		// a constructor call whose parameter is an enum.
 		if n.Member != "" {
 			if n.Type != nil && n.Type.Kind == ir.TypeEnum && n.Type.Decl != nil {
-				return exportName(n.Type.Decl.SymName()) + "." + EnumEntry(n.Member)
+				return EnumName(n.Type.Decl) + "." + EnumEntry(n.Member)
 			}
 			return fmt.Sprintf("%q", n.Member)
 		}

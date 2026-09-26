@@ -175,9 +175,7 @@ func AnalyzeCommonFor(pkg *ir.Package, o AnalyzeOpts) *CommonAnalysis {
 		a.Structs = append(a.Structs, s)
 	}
 
-	for _, e := range pkg.Enums {
-		a.Enums = append(a.Enums, e)
-	}
+	a.Enums = collectUsedEnums(pkg)
 
 	// pkg.Units carries the units the *program* declares. A unit it merely
 	// uses -- `measurement`, declared in sngl:ui -- is not there, so a

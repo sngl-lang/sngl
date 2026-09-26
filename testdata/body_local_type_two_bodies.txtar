@@ -445,13 +445,17 @@ fun _snglFloatStr(v: Double): String =
 fun _snglSplit(s: String, sep: String): List<String> =
     if (sep.isEmpty()) s.map { it.toString() } else s.split(sep)
 
-enum class Phase {
-    START,
-    DONE
+enum class Phase(private val sngl: String) {
+    START("start"),
+    DONE("done");
+
+    override fun toString(): String = sngl
 }
 
-enum class Phase__second {
-    READY
+enum class Phase__second(private val sngl: String) {
+    READY("ready");
+
+    override fun toString(): String = sngl
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -619,6 +623,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1c4e25454f8e7a02109cd6be26d6e515
 -- run/kotlin/android --
-pass sha256:5c25bf679a992bdcb23bafef0987dc4f
+pass sha256:3e0e0e66517946d6cb63f0fa1205ec16
 -- run/none/html --
 pass sha256:f225ea04bc516a2b1e3dd18fe9ab713b
