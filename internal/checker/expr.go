@@ -2051,8 +2051,7 @@ func (c *checker) inferSelect(x *ast.SelectExpr) ir.Expr {
 			}
 		}
 
-		// Built-in list/string .length yields int.
-		if x.Field == "length" && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeString) {
+		if x.Field == "length" && (operand.Kind == ir.TypeList || operand.Kind == ir.TypeMap || operand.Kind == ir.TypeString) {
 			return &ir.Select{AST: x, Type: TypInt, Operand: operandExpr, Field: x.Field}
 		}
 		if hasNoLegitimateFields(operand) {

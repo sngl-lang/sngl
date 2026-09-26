@@ -103,7 +103,7 @@ func (kc *KtIRContext) Select(n *ir.Select, operand string) string {
 	}
 	field := n.Field
 	if field == "length" {
-		if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeList {
+		if t := n.Operand.ExprType(); t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeMap) {
 			field = "size"
 		}
 	}

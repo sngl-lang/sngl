@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/internal/opeval"
@@ -1182,6 +1183,11 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	}
 	if cv, ok := obj.(ComponentValue); ok {
 		return cv.GetField(e.Field)
+	}
+	if e.Field == "length" {
+		if n, ok := builtinLength(e.Operand.ExprType(), obj); ok {
+			return n, nil
+		}
 	}
 	if s, ok := obj.(*Struct); ok {
 		v, _ := s.Get(e.Field)
@@ -2743,4 +2749,28 @@ func (env *Env) pushContext(ctx *ir.Context, value ir.Expr) (func(), error) {
 		}
 		env.Locale = prevLocale
 	}, nil
+}
+
+// builtinLength answers the `.length` the checker types as int on a list, a
+// map or a string. Asked of the checked type, because evalSelect otherwise
+// reads a map[string]any by key and a map may hold a "length" key.
+func builtinLength(t *ir.Type, v any) (int, bool) {
+	if t == nil {
+		return 0, false
+	}
+	switch t.Kind {
+	case ir.TypeList:
+		if l, ok := v.([]any); ok {
+			return len(l), true
+		}
+	case ir.TypeMap:
+		if m, ok := v.(map[string]any); ok {
+			return len(m), true
+		}
+	case ir.TypeString:
+		if s, ok := v.(string); ok {
+			return utf8.RuneCountInString(s), true
+		}
+	}
+	return 0, false
 }
