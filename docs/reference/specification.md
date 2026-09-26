@@ -749,19 +749,26 @@ those names shadows it — the grammar reserves none of them.
 Everything else the standard library provides is imported, and each directory
 under `lib/` is one package, `lib/<path>` being `sngl:<path>`:
 
-| Package        | Provides                                                                                                   |
-|----------------|------------------------------------------------------------------------------------------------------------|
-| `sngl:ui`      | the portable components, `window`, the `node` and `root` families, `Style`, the style enums, `measurement` |
-| `sngl:ui/draw` | `canvas` and the 2D `shape` family it hosts                                                                |
-| `sngl:time`    | `date`, `time`, `datetime`, `duration`, `timer`                                                            |
-| `sngl:seq`     | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                                  |
-| `sngl:tree`    | the `kind` and `none` marks, and the `one<T>` slot count                                                   |
-| `sngl:math`    | `pi`, `tau`                                                                                                |
-| `sngl:async`   | `spawn`, `post`                                                                                            |
-| `sngl:dialog`  | `Alert`, `File`                                                                                            |
-| `sngl:test`    | `Test`                                                                                                     |
-| `sngl:i18n`    | the translation surface `$"…"` lowers to                                                                   |
-| `sngl:macro`   | the marks a package writes to describe its own declarations (`foreign`, …)                                 |
+| Package             | Provides                                                                                           |
+|---------------------|----------------------------------------------------------------------------------------------------|
+| `sngl:ui`           | the portable components, `window`, the `node` family, `Style`, the style enums, `measurement`      |
+| `sngl:ui/draw`      | `canvas` and the 2D `shape` family it hosts                                                        |
+| `sngl:ui/markup`    | inline rich text: the `span` family, `richText`, and the block components a document is written in |
+| `sngl:ui/markup/md` | the vocabulary of the `md:` scheme, such as the `order` mark                                       |
+| `sngl:remote`       | `Value<T>`, the three-state box a data adapter returns                                             |
+| `sngl:remote/http`  | `fetch`: an HTTP request whose answer is a `remote.Value`                                          |
+| `sngl:build`        | the `language` and `platform` families an `output` directive holds                                 |
+| `sngl:x/gen`        | what a target package says about what it generates                                                 |
+| `sngl:x/gen/cache`  | what a generated file records it was generated from                                                |
+| `sngl:time`         | `date`, `time`, `datetime`, `duration`, `timer`                                                    |
+| `sngl:seq`          | `count`, `range`, `step`: the `iter<int>` sequences a counting loop walks                          |
+| `sngl:tree`         | the `kind` and `none` marks, and the `one<T>` slot count                                           |
+| `sngl:math`         | `pi`, `tau`                                                                                        |
+| `sngl:async`        | `spawn`, `post`                                                                                    |
+| `sngl:dialog`       | `Alert`, `File`                                                                                    |
+| `sngl:test`         | `Test`                                                                                             |
+| `sngl:i18n`         | the translation surface `$"…"` lowers to                                                           |
+| `sngl:macro`        | the marks a package writes to describe its own declarations (`foreign`, …)                         |
 
 A library package is imported under an alias, conventionally its last path
 segment, and its members are written qualified:
@@ -963,8 +970,8 @@ A function has one of two bodies, and no third form exists:
 - an **expression body** — `func name(params) => expr` — whose result type is
   always inferred and which therefore may not carry a return type annotation.
 
-The form `func name(params) -> Type` is not valid syntax, and `->` is not a
-token of the language: a function type writes its result type directly after
+The form `func name(params) -> Type` is not valid syntax, and `->` appears
+nowhere in the grammar: a function type writes its result type directly after
 the parameter list, `func(int) string`.
 
 A block body may also be omitted. A function with no body is a *signature*,

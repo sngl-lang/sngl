@@ -123,7 +123,9 @@ func PackageSchema(pkg string) SchemaRegistry {
 // PackageExamples is the `_example_`-prefixed components of one library
 // package, keyed by the declaration each documents. Each is written the way a
 // program outside the package would write it: the package imported under its
-// last path segment and every component it declares named through that.
+// last path segment and every component it declares named through that. Only
+// component names are qualified, so an example names the package's types,
+// enums and funcs through an expected type or not at all.
 func PackageExamples(pkg string) map[string][]string {
 	docs := PackageSource(pkg)
 	own := map[string]bool{}
@@ -145,7 +147,8 @@ func PackageExamples(pkg string) map[string][]string {
 					imports = append(imports, imp)
 				}
 			}
-			out[name] = append(out[name], exampleProgram(imports, uiAliasFor(imports), comp, alias, own))
+			imports, ui := withUI(imports)
+			out[name] = append(out[name], exampleProgram(imports, ui, comp, alias, own))
 		}
 	}
 	return out
@@ -230,17 +233,13 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 // document. Components named `_example_<name>` or `_example_<name>_<suffix>`
 // map to <name>; the first example per name wins. Returns formatted source
 // for each example: the document's imports and the example's body placed in
-// a window, so the snippet is a complete, runnable app. The leading
-// underscore marks examples as unexported — they are not part of the public
-// API but the doc tooling still extracts them from the AST for gallery
-// rendering.
+// a window, so the snippet is a complete, runnable app. A window body is not a
+// component body, so an example declares no parameters and nests no component
+// at its root. The leading underscore marks examples as unexported — they are
+// not part of the public API but the doc tooling still extracts them from the
+// AST for gallery rendering.
 func PrefixedExamples(doc *ast.Document) map[string]string {
-	imports := docImports(doc)
-	ui := uiAliasFor(imports)
-	if ui == "" {
-		ui = "ui"
-		imports = append(imports, &ast.Import{Path: "sngl:ui", Alias: ui})
-	}
+	imports, ui := withUI(docImports(doc))
 	result := make(map[string]string)
 	for name, comp := range prefixedExampleDecls(doc) {
 		result[name] = exampleProgram(imports, ui, comp, "", nil)
@@ -277,6 +276,15 @@ func docImports(doc *ast.Document) []*ast.Import {
 		}
 	}
 	return out
+}
+
+// withUI returns imports with sngl:ui added when none of them names it, and
+// the name a window is reached through under the result.
+func withUI(imports []*ast.Import) ([]*ast.Import, string) {
+	if ui := uiAliasFor(imports); ui != "" {
+		return imports, ui
+	}
+	return append(imports, &ast.Import{Path: "sngl:ui", Alias: "ui"}), "ui"
 }
 
 // uiAliasFor is the name a window is reached through under imports: "" when

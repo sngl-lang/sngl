@@ -428,7 +428,7 @@ var (
 
 ### Where state lives
 
-Declare state in the window or component that uses it. A `var` in a component body belongs to each instance of that component; a `var` in a window body belongs to that window. That keeps each piece of state next to the only code that reads and writes it, and a component that owns its state is one you can test on its own.
+Declare state in the window or component that uses it. A `var` in a component body belongs to each instance of that component; a `var` in a window body is scoped to that window's body and stored by what holds the window -- the package, or the component that renders it. That keeps each piece of state next to the only code that reads and writes it, and a component that owns its state is one you can test on its own.
 
 A top-level `var` is package state, and its meaning depends on the target: on a target whose windows share one process (Bubbletea, Fyne, GTK4) every window reads the same cell, while on `html` each page is a separate document with its own copy. Reach for it when that sharing is really what you want, not as the default place to put things.
 
@@ -658,7 +658,7 @@ component MyWidget(label = "default", count int, size enum { small, medium, larg
 }
 ```
 
-Without a default, params use the type's zero value. Parents pass params as named arguments:
+A param without a default is required: every call site has to pass it. Parents pass params as named arguments:
 
 <!-- SNGL-component
 component Counter(label = "", start = 0) ui.node { ui.text(value=label) }

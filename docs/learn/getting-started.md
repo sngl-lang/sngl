@@ -345,8 +345,8 @@ ui.window(title="Todos") {
 
 `struct Todo` is the data shape. `var todos list<Todo> = []` starts empty and
 is what the UI iterates. `func status()` is derived — the count updates
-whenever `todos` changes. The window owns this state; nothing outside it can
-touch it.
+whenever `todos` changes. The state is scoped to the window's body; nothing
+outside it can touch it.
 
 `@click` is an event handler running a statement block; `todos.push(...)`
 mutates the list, which updates what is rendered. `for var &item` binds each
