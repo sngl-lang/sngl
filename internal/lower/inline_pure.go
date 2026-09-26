@@ -853,6 +853,7 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			n.Else = substituteEventsUnder(n.Else, handlers, enclosing, under)
 		case *ir.NodeInst:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
+			substituteEventsInPopulations(n.Slots, handlers, enclosing, under)
 			for i := range n.Handlers {
 				h := &n.Handlers[i]
 				if h.Func == nil {
@@ -865,6 +866,7 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 			}
 		case *ir.SlotInst:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
+			substituteEventsInPopulations(n.Slots, handlers, enclosing, under)
 		case *ir.ErrorBoundary:
 			n.Children = substituteEventsUnder(n.Children, handlers, enclosing, under)
 		case *ir.Assign, *ir.LocalVar, *ir.Return, *ir.CallStmt, *ir.Toggle, *ir.ContextProvider,
@@ -888,6 +890,17 @@ func substituteEventsUnder(stmts []ir.Stmt, handlers []ir.EventHandler, enclosin
 		out = append(out, s)
 	}
 	return out
+}
+
+// substituteEventsInPopulations reaches the populations a body writes for a
+// node's or an insertion's slots. They are that body's own code, and the
+// events run before the slots are spliced, so no later walk meets them.
+func substituteEventsInPopulations(slots map[string]*ir.SlotContent, handlers []ir.EventHandler, enclosing *ir.Func, under *ir.EventHandler) {
+	for _, sc := range slots {
+		if sc != nil {
+			sc.Body = substituteEventsUnder(sc.Body, handlers, enclosing, under)
+		}
+	}
 }
 
 // bindEventParams rebinds references to a user event handler's declared

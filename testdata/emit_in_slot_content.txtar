@@ -1,14 +1,15 @@
-An event emitted from inside another component's slot content reaches the
+An event emitted from inside a platform container's slot content reaches the
 caller's handler.
 
-Both inliners substituted a component's slots before its events, so the walk
+passInlinePure substituted an override's slots before its events, so the walk
 that replaces an emit with the call site's handler body also walked the
 content the caller had just spliced in. An emit there names the *caller's*
-event; matched against the callee's handlers it found none and was dropped as
-an event nobody subscribed to. `picked(i)` inside `hbox { ... }` was lost the
-moment the hbox override inlined, whether or not a loop sat between them, the handler-transfer rule then carried
-`@picked` onto the hbox's element, and clicking a button did nothing -- on
-every target, since both passes are target-independent.
+event; matched against the override's handlers it found none and was dropped
+as an event nobody subscribed to. `picked(i)` inside `hbox { ... }` was lost
+the moment the hbox override inlined, whether or not a loop sat between them.
+The handler-transfer rule then carried `@picked` onto the hbox's element, and
+clicking a button did nothing, on every target. The same order in
+passNoInlineComponents is `emit_in_callee_populations.txtar`.
 
 deny * `emit\(` -- an emit is substituted away by lowering
 deny out/none/html/index.html `addEventListener\("picked"` -- the emit is substituted into the click, not left as a DOM event nothing dispatches
