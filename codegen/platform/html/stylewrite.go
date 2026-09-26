@@ -90,6 +90,7 @@ func staticStyleValue(e ir.Expr) bool {
 		return true
 	}
 	switch x := e.(type) {
+	// A literal with no CSS spelling (null, "") writes nothing, statically or here.
 	case *ir.Literal:
 		return true
 	case *ir.Ident:
