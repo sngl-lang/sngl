@@ -7,25 +7,12 @@ import (
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passErrorCatch wraps each handler body holding a call the checker resolved
-// to a boundary's or a window's @error in one catch block (ir.If.Catch) whose
-// handler is that @error. The raise then unwinds as the host's own exception
-// does -- a panic in Go, a throw in JavaScript and Kotlin -- through every
-// fallible caller between, and the handler runs with nothing after the raise
-// running, in the function that raised or in the handler body that called it.
-//
-// Every call the block covers is left ErrorBubble. Two stay as they were and
-// are caught where they are made (each language's catchAtCall): a call with a
-// per-call @error, which answers for that call alone and lets the statements
-// after it run; and a `fails` native, whose failure is its error result on Go
-// and an ordinary host exception elsewhere rather than a raise. What stays
-// ErrorInvokeAndTerminate otherwise is a raise in a view body -- the
-// recursion bound -- which has no handler body to end and inlines the
-// boundary's handler where it stands.
-//
-// A per-call handler answers for its own call and not for the arguments,
-// which are evaluated before the call is made, so an argument that may raise
-// is bound to a temp ahead of the statement.
+// passErrorCatch makes each handler body holding a call resolved to a
+// boundary's or window's @error one catch block (ir.If.Catch), so the raise
+// unwinds as the host's exception through every caller between and ends the
+// handler. A per-call @error is caught at its own call instead (catchAtCall),
+// and its raising arguments are bound to temps first: the handler answers for
+// the call, not for what was evaluated before it.
 //
 // Always on: a raise is a raise on every target.
 var passErrorCatch = pass{
@@ -62,8 +49,6 @@ func catchBlock(body []ir.Stmt, h *ir.EventHandler) *ir.If {
 	return &ir.If{Cond: &ir.Literal{Type: ir.TypBool, Value: "true"}, Body: body, Catch: h}
 }
 
-// perCall binds the raising arguments of each call statement with a per-call
-// handler in the block, and in the blocks it holds.
 func (st *errorCatchState) perCall(block *[]ir.Stmt) {
 	out := make([]ir.Stmt, 0, len(*block))
 	for _, s := range *block {
@@ -147,16 +132,15 @@ func terminateTarget(block []ir.Stmt) (*ir.EventHandler, error) {
 			// One handler body sits under one boundary, so every raise in it
 			// resolves to the same place; two would need two catch points
 			// and a decision about which statements each covers.
-			err = fmt.Errorf("lower: one handler body resolves raises to two different handlers")
+			err = fmt.Errorf("%s: one handler body resolves raises to two different handlers", ir.StmtPos(block[0]))
 		}
 	})
 	return target, err
 }
 
-// coverRaises marks the calls a whole-body catch block covers as bubbling.
 func coverRaises(block []ir.Stmt) {
 	visitCoveredCalls(block, func(c *ir.Call) {
-		if c.ErrorMode == ir.ErrorInvokeAndTerminate && (c.Func == nil || !c.Func.HasErrorReturn) {
+		if c.ErrorMode == ir.ErrorInvokeAndTerminate {
 			c.ErrorMode = ir.ErrorBubble
 		}
 	})

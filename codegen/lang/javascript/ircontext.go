@@ -226,8 +226,27 @@ func (jc *JsIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := jc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := jc.raiseFailure(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{jc.EvalExpr(n.Call)}
+}
+
+// raiseFailure turns a bubbling `fails` native's exception into a raise, so the
+// catch block around it takes it for one.
+func (jc *JsIRContext) raiseFailure(call *ir.Call) []string {
+	if call.ErrorMode != ir.ErrorBubble || call.Func == nil || !call.Func.HasErrorReturn {
+		return nil
+	}
+	return []string{
+		"try {",
+		"\t" + jc.EvalExpr(call),
+		"} catch (__err) {",
+		"\tif (__err?.kind !== undefined) throw __err;",
+		"\tthrow Object.assign(new Error(__err?.message ?? String(__err)), {kind: \"\"});",
+		"}",
+	}
 }
 
 // catchAtCall emits a call to a fallible function under a try whose catch is
@@ -463,11 +482,7 @@ func (jc *JsIRContext) Catch(n *ir.If, body []string) []string {
 		lines = append(lines, fmt.Sprintf("\tlet %s = {message: __e.message, kind: __e.kind}", p), "\tvoid "+p)
 	}
 	if h.Func != nil {
-		for _, stmt := range h.Func.Block {
-			for _, l := range jc.EvalStmt(stmt) {
-				lines = append(lines, "\t"+l)
-			}
-		}
+		lines = append(lines, jc.handlerBody(h)...)
 	}
 	return append(lines, "}")
 }

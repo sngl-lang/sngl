@@ -442,8 +442,24 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := gc.catchAtCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := gc.raiseFailure(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{gc.EvalExpr(n.Call)}
+}
+
+// raiseFailure turns a bubbling `fails` native's error result into a raise, so
+// the catch block around it recovers it as one.
+func (gc *GoIRContext) raiseFailure(call *ir.Call) []string {
+	if call.ErrorMode != ir.ErrorBubble || call.Func == nil || !call.Func.HasErrorReturn {
+		return nil
+	}
+	head := "if __err := " + gc.evalCall(call) + "; __err != nil {"
+	if call.Func.Return != nil {
+		head = "if _, __err := " + gc.evalCall(call) + "; __err != nil {"
+	}
+	return []string{head, "\tpanic(ErrorEvent{Message: __err.Error()})", "}"}
 }
 func (gc *GoIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
