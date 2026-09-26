@@ -1,8 +1,8 @@
-// std is qualified rather than dot-imported: a lib package is loaded into the
+// sngl:ui is qualified rather than dot-imported: a lib package is loaded into the
 // checker's own symbol table, so names it lifts become indistinguishable from
 // names it declares and would be re-lifted by `import . "sngl:ui/draw"`. User
 // packages do not re-export a dot import, and neither should this one.
-import std "sngl:ui"
+import ui "sngl:ui"
 
 // `#[tree.kind]` is what marks the shape struct below as naming a tree, and
 // `#[marks.builtin("treeShape")]` is how the compiler names that one tree.
@@ -72,13 +72,13 @@ enum ScalingMode { center, fit, fill, stretch }
 // Those two are the coordinate space and not the size on screen: a canvas laid
 // out bigger than it draws shows the picture per `scalingMode`.
 component canvas(
-    width std.measurement,
-    height std.measurement,
+    width ui.measurement,
+    height ui.measurement,
     scalingMode ScalingMode,
     style CanvasStyle,
-    @click std.ClickEvent,
+    @click ui.ClickEvent,
     shapes ...component shape,
-) std.node {}
+) ui.node {}
 
 // Axis-aligned rectangle with its top-left corner at x, y.
 component rect(x float, y float, w float, h float, style CanvasStyle) shape
@@ -101,7 +101,7 @@ component path(cmds list<PathCmd>, style CanvasStyle) shape
 component canvasText(x float, y float, content string, style CanvasStyle) shape
 
 // Image drawn into the box at x, y sized w by h. `src` takes the same URL
-// or asset path as `std.image`.
+// or asset path as `ui.image`.
 component canvasImage(x float, y float, w float, h float, src string) shape
 
 // --- Geometry ---

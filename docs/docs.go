@@ -474,14 +474,18 @@ func buildPreviewSection(name, source string, platforms []string) string {
 	return b.String()
 }
 
-// source is a full `component main { ... }` block, as checker.PrefixedExamples
+// source is a complete program with one window, as checker.PackageExamples
 // returns.
 func compilePreview(source string) string {
 	doc, err := parser.Parse("example.sngl", []byte(source))
 	if err != nil {
 		return ""
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: codegen.CollectPlatforms(),
+		Languages: codegen.CollectLangs(),
+	})
 	if len(diags) > 0 {
 		return ""
 	}

@@ -120,12 +120,31 @@ func PackageSchema(pkg string) SchemaRegistry {
 }
 
 // PackageExamples is the `_example_`-prefixed components of one library
-// package, keyed by the declaration each documents.
+// package, keyed by the declaration each documents. Each is written the way a
+// program outside the package would write it: the package imported under its
+// last path segment and every component it declares named through that.
 func PackageExamples(pkg string) map[string][]string {
+	docs := PackageSource(pkg)
+	own := map[string]bool{}
+	for _, doc := range docs {
+		for _, stmt := range doc.Stmts {
+			if comp, ok := stmt.(*ast.ComponentDecl); ok && comp.Target == nil {
+				own[comp.Name] = true
+			}
+		}
+	}
+	path := "sngl:" + pkg
+	alias := pkg[strings.LastIndex(pkg, "/")+1:]
 	out := map[string][]string{}
-	for _, doc := range PackageSource(pkg) {
-		for name, src := range PrefixedExamples(doc) {
-			out[name] = append(out[name], src)
+	for _, doc := range docs {
+		for name, comp := range prefixedExampleDecls(doc) {
+			imports := []*ast.Import{{Path: path, Alias: alias}}
+			for _, imp := range docImports(doc) {
+				if !strings.HasPrefix(imp.Path, "sngl:internal/") {
+					imports = append(imports, imp)
+				}
+			}
+			out[name] = append(out[name], exampleProgram(imports, uiAliasFor(imports), comp, alias, own))
 		}
 	}
 	return out
@@ -213,12 +232,27 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 // PrefixedExamples extracts `_example_<name>` prefixed components from a
 // document. Components named `_example_<name>` or `_example_<name>_<suffix>`
 // map to <name>; the first example per name wins. Returns formatted source
-// for each example, with the wrapper renamed to `main` so the snippet is a
-// complete, runnable app. The leading underscore marks examples as
-// unexported — they are not part of the public API but the doc tooling
-// still extracts them from the AST for gallery rendering.
+// for each example: the document's imports and the example's body placed in
+// a window, so the snippet is a complete, runnable app. The leading
+// underscore marks examples as unexported — they are not part of the public
+// API but the doc tooling still extracts them from the AST for gallery
+// rendering.
 func PrefixedExamples(doc *ast.Document) map[string]string {
+	imports := docImports(doc)
+	ui := uiAliasFor(imports)
+	if ui == "" {
+		ui = "ui"
+		imports = append(imports, &ast.Import{Path: "sngl:ui", Alias: ui})
+	}
 	result := make(map[string]string)
+	for name, comp := range prefixedExampleDecls(doc) {
+		result[name] = exampleProgram(imports, ui, comp, "", nil)
+	}
+	return result
+}
+
+func prefixedExampleDecls(doc *ast.Document) map[string]*ast.ComponentDecl {
+	result := make(map[string]*ast.ComponentDecl)
 	for _, stmt := range doc.Stmts {
 		comp, ok := stmt.(*ast.ComponentDecl)
 		if !ok {
@@ -231,15 +265,100 @@ func PrefixedExamples(doc *ast.Document) map[string]string {
 		if i := strings.Index(target, "_"); i >= 0 {
 			target = target[:i]
 		}
-		if _, exists := result[target]; exists {
-			continue
+		if _, exists := result[target]; !exists {
+			result[target] = comp
 		}
-		display := *comp
-		display.Name = "main"
-		exDoc := &ast.Document{Stmts: []ast.Stmt{&display}}
-		result[target] = strings.TrimSpace(parser.Format(exDoc))
 	}
 	return result
+}
+
+func docImports(doc *ast.Document) []*ast.Import {
+	var out []*ast.Import
+	for _, stmt := range doc.Stmts {
+		if imp, ok := stmt.(*ast.Import); ok {
+			out = append(out, imp)
+		}
+	}
+	return out
+}
+
+// uiAliasFor is the name a window is reached through under imports: "" when
+// nothing imports sngl:ui, and "." for a dot import.
+func uiAliasFor(imports []*ast.Import) string {
+	for _, imp := range imports {
+		if imp.Path == "sngl:ui" {
+			if imp.Alias == "" {
+				return "ui"
+			}
+			return imp.Alias
+		}
+	}
+	return ""
+}
+
+// exampleProgram builds a program from imports and a window holding comp's
+// body. A node naming one of own is qualified with alias. The AST is shared
+// once parsed, so every node on the path to a rewrite is copied.
+func exampleProgram(imports []*ast.Import, ui string, comp *ast.ComponentDecl, alias string, own map[string]bool) string {
+	var window ast.TargetExpr = &ast.IdentExpr{Name: "window"}
+	if ui != "." {
+		window = &ast.SelectExpr{Operand: &ast.IdentExpr{Name: ui}, Field: "window"}
+	}
+	head := make([]ast.Stmt, 0, len(imports))
+	for _, imp := range imports {
+		head = append(head, imp)
+	}
+	body := comp.Body
+	body.Stmts = qualifyNodes(comp.Body.Stmts, alias, own)
+	body.IsMultiline = true
+	win := &ast.Document{Stmts: []ast.Stmt{&ast.VisualNode{Target: window, Block: body}}}
+	return strings.TrimSpace(parser.Format(&ast.Document{Stmts: head})) + "\n\n" + strings.TrimSpace(parser.Format(win))
+}
+
+func qualifyNodes(stmts []ast.Stmt, alias string, own map[string]bool) []ast.Stmt {
+	if len(own) == 0 {
+		return stmts
+	}
+	out := make([]ast.Stmt, len(stmts))
+	for i, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.VisualNode:
+			n := *s
+			if id, ok := s.Target.(*ast.IdentExpr); ok && own[id.Name] {
+				n.Target = &ast.SelectExpr{Pos: id.Pos, Operand: &ast.IdentExpr{Pos: id.Pos, Name: alias}, Field: id.Name}
+			}
+			n.Block.Stmts = qualifyNodes(s.Block.Stmts, alias, own)
+			out[i] = &n
+		case *ast.CallStmt:
+			id, ok := s.Call.Func.(*ast.IdentExpr)
+			if !ok || !own[id.Name] {
+				out[i] = stmt
+				continue
+			}
+			call := *s.Call
+			call.Func = &ast.SelectExpr{Pos: id.Pos, Operand: &ast.IdentExpr{Pos: id.Pos, Name: alias}, Field: id.Name}
+			n := *s
+			n.Call = &call
+			out[i] = &n
+		case *ast.IfStmt:
+			n := *s
+			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)
+			n.Else.Stmts = qualifyNodes(s.Else.Stmts, alias, own)
+			out[i] = &n
+		case *ast.ForStmt:
+			n := *s
+			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)
+			n.Else.Stmts = qualifyNodes(s.Else.Stmts, alias, own)
+			out[i] = &n
+		case *ast.ComponentDecl:
+			n := *s
+			n.Body.Stmts = qualifyNodes(s.Body.Stmts, alias, own)
+			out[i] = &n
+		default:
+			out[i] = stmt
+		}
+	}
+	return out
 }
 
 // ExtractPackageDocs walks a document's statements and returns doc info
