@@ -92,7 +92,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	if vc.canvasSeq[c.Name] {
 		id, raster := emitLoopCanvasRaster(vc.line, c, vc.gc)
 		render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %s, %s)", cols, rows, id, raster)
-		style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
+		style := vc.styleExpr(codegen.NodeStyleFields(n))
 		if style != "lipgloss.NewStyle()" {
 			render = fmt.Sprintf("%s.Render(%s)", style, render)
 		}
@@ -106,7 +106,7 @@ func (vc *irViewContext) renderCanvas(n *ir.NodeInst, c *codegen.Canvas, resultV
 	// style when one is actually set — an empty NewStyle().Render() pads the
 	// multi-line half-block grid with background cells, mangling the art.
 	render := fmt.Sprintf("tui.RenderTerminal(%d, %d, %d, %s)", cols, rows, canvasImageID(c), canvasRasteriser(c))
-	style := buildIRStyleExpr(codegen.NodeStyleFields(n), vc.gc, vc.scaleFactor)
+	style := vc.styleExpr(codegen.NodeStyleFields(n))
 	if style != "lipgloss.NewStyle()" {
 		vc.line("%s = %s.Render(%s)", resultVar, style, render)
 	} else {

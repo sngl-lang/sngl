@@ -25,12 +25,14 @@ import (
 type spanCascade struct {
 	// color is the argument to lipgloss.Color(...), already quoted, or "" for
 	// the terminal's own foreground.
-	color     string
-	bold      bool
-	italic    bool
-	underline bool
-	strike    bool
-	faint     bool
+	color string
+	// The flags are Go bool expressions: "" is off, "true" on, and anything
+	// else is read at render time because a style field read state.
+	bold      string
+	italic    string
+	underline string
+	strike    string
+	faint     string
 }
 
 // empty reports whether this run needs a style at all. A flow of plain words
@@ -47,20 +49,12 @@ func (c spanCascade) style() string {
 	if c.color != "" {
 		chain = append(chain, fmt.Sprintf("Foreground(lipgloss.Color(%s))", c.color))
 	}
-	if c.bold {
-		chain = append(chain, "Bold(true)")
-	}
-	if c.italic {
-		chain = append(chain, "Italic(true)")
-	}
-	if c.underline {
-		chain = append(chain, "Underline(true)")
-	}
-	if c.strike {
-		chain = append(chain, "Strikethrough(true)")
-	}
-	if c.faint {
-		chain = append(chain, "Faint(true)")
+	for _, flag := range []struct{ on, method string }{
+		{c.bold, "Bold"}, {c.italic, "Italic"}, {c.underline, "Underline"}, {c.strike, "Strikethrough"}, {c.faint, "Faint"},
+	} {
+		if flag.on != "" {
+			chain = append(chain, flag.method+"("+flag.on+")")
+		}
 	}
 	return strings.Join(chain, ".")
 }
@@ -93,7 +87,7 @@ func (c spanCascade) withToken(kind string) spanCascade {
 		c.color = strconv.Quote(col)
 	}
 	if kind == "comment" {
-		c.faint = true
+		c.faint = "true"
 	}
 	return c
 }
@@ -137,32 +131,101 @@ func (vc *irViewContext) withSpanStyle(c spanCascade, e ir.Expr) spanCascade {
 				c.color = lipglossColor(f.Value, vc.gc)
 			}
 		case "fontWeight":
+			if enumMember(f.Value) == "" {
+				v := vc.gc.EvalExpr(f.Value)
+				c.bold = cascadeFlag(v, c.bold, "bold", "bolder")
+				c.faint = cascadeFlag(v, c.faint, "lighter")
+				continue
+			}
 			switch enumMember(f.Value) {
 			case "bold", "bolder":
-				c.bold = true
+				c.bold = "true"
 			case "lighter":
-				c.faint = true
+				c.faint = "true"
 			case "normal":
-				c.bold, c.faint = false, false
+				c.bold, c.faint = "", ""
 			}
 		case "fontStyle":
+			if enumMember(f.Value) == "" {
+				c.italic = cascadeFlag(vc.gc.EvalExpr(f.Value), c.italic, "italic", "oblique")
+				continue
+			}
 			switch enumMember(f.Value) {
 			case "italic", "oblique":
-				c.italic = true
+				c.italic = "true"
 			case "normal":
-				c.italic = false
+				c.italic = ""
 			}
 		case "underline":
-			if v, ok := codegen.IRLiteralBool(f.Value); ok && v {
-				c.underline = true
-			}
+			c.underline = orGo(c.underline, vc.boolFlag(f.Value))
 		case "strike":
-			if v, ok := codegen.IRLiteralBool(f.Value); ok && v {
-				c.strike = true
-			}
+			c.strike = orGo(c.strike, vc.boolFlag(f.Value))
+		case "fontSize", "fontFamily":
+			vc.discard(f.Value)
 		}
 	}
 	return c
+}
+
+// cascadeFlag is a run-time enum value's answer for one flag: on for the
+// members listed, off for `normal`, and the enclosing run's answer for the
+// rest, which is `inherit` and whichever other member leaves this flag alone --
+// the same table the literal cases above spell out.
+//
+// v is a Go string expression. NoTernary has made it a temp by the time it
+// gets here, but anything else is bound once so a call is not made per term.
+func cascadeFlag(v, parent string, on ...string) string {
+	param := v
+	if !isGoIdent(v) {
+		param = "__w"
+	}
+	terms := make([]string, 0, len(on)+1)
+	for _, m := range on {
+		terms = append(terms, fmt.Sprintf("%s == %q", param, m))
+	}
+	switch parent {
+	case "":
+	case "true":
+		terms = append(terms, param+` != "normal"`)
+	default:
+		terms = append(terms, fmt.Sprintf(`%s != "normal" && %s`, param, parent))
+	}
+	expr := strings.Join(terms, " || ")
+	if param != v {
+		return fmt.Sprintf("func(__w string) bool { return %s }(%s)", expr, v)
+	}
+	return "(" + expr + ")"
+}
+
+func isGoIdent(s string) bool {
+	for i, r := range s {
+		if r != '_' && r != '.' && !('a' <= r && r <= 'z') && !('A' <= r && r <= 'Z') && (i == 0 || !('0' <= r && r <= '9')) {
+			return false
+		}
+	}
+	return s != ""
+}
+
+// orGo is a || b over cascade flags.
+func orGo(a, b string) string {
+	switch {
+	case a == "" || b == "true":
+		return b
+	case b == "" || a == "true":
+		return a
+	}
+	return "(" + a + " || " + b + ")"
+}
+
+// boolFlag is a bool field as a cascade flag.
+func (vc *irViewContext) boolFlag(e ir.Expr) string {
+	if v, ok := codegen.IRLiteralBool(e); ok {
+		if v {
+			return "true"
+		}
+		return ""
+	}
+	return vc.gc.EvalExpr(e)
 }
 
 // enumMember names the member an enum-valued prop holds: an *ir.Ident carrying
@@ -203,13 +266,11 @@ func (vc *irViewContext) splitFlowStyle(fields []codegen.StyleField) (spanCascad
 		case "color":
 			seed.color = lipglossColor(f.Value, vc.gc)
 		case "fontWeight":
-			if enumMember(f.Value) == "bold" {
-				seed.bold = true
-			}
+			seed.bold = enumFlag(f.Value, vc.gc.EvalExpr(f.Value), "bold")
 		case "fontStyle":
-			if enumMember(f.Value) == "italic" {
-				seed.italic = true
-			}
+			seed.italic = enumFlag(f.Value, vc.gc.EvalExpr(f.Value), "italic")
+		default:
+			vc.discard(f.Value)
 		}
 	}
 	return seed, box
@@ -223,7 +284,7 @@ func (vc *irViewContext) renderFlow(n *ir.NodeInst, resultVar string) {
 	for _, child := range n.Children {
 		vc.renderSpan(child, resultVar, seed)
 	}
-	if style := buildIRStyleExpr(box, vc.gc, vc.scaleFactor); style != "lipgloss.NewStyle()" {
+	if style := vc.styleExpr(box); style != "lipgloss.NewStyle()" {
 		vc.line(`%s = %s.Render(%s)`, resultVar, style, resultVar)
 	}
 }
@@ -261,6 +322,11 @@ func (vc *irViewContext) renderSpan(stmt ir.Stmt, accVar string, c spanCascade) 
 			vc.renderSpan(child, accVar, c)
 		}
 	case *ir.If:
+		if s.FromTernary {
+			// The assignments a hoisted ternary makes, not spans.
+			vc.emitIRStmt(s)
+			return
+		}
 		vc.line("%s", vc.gc.IfHead(s, vc.gc.EvalExpr(s.Cond)))
 		vc.indent++
 		for _, child := range s.Body {
