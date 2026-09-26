@@ -643,6 +643,7 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 		if lit, ok := value.(*ir.StructLit); ok {
 			return t.setRuntimeTheme(bareID, lit)
 		}
+		return t.setRuntimeThemeFrom(bareID, value)
 	}
 	if structuralProp(prop) {
 		// This platform's own props, not the widget's: `spec` is the record

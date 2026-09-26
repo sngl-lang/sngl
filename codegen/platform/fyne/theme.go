@@ -293,3 +293,39 @@ func themeLength(v ir.Expr) ir.Expr {
 	}
 	return &ir.Conversion{Type: ir.TypFloat, Operand: v}
 }
+
+// styleThemeFunc builds a theme from a whole Style value. A field left unset
+// in the value is its zero, which is also what __merge_Style reads as unset,
+// so a zero field leaves the default theme's answer in place.
+const styleThemeFunc = "__styleTheme"
+
+func (t *fyneTranslator) setRuntimeThemeFrom(id string, style ir.Expr) []ir.Stmt {
+	ov := t.themeOverrideRef(id)
+	return []ir.Stmt{
+		&ir.Assign{Target: &ir.Select{Operand: ov, Field: "Theme", Type: ir.TypDyn}, Op: ast.AssignSet,
+			Value: nativeCall(styleThemeFunc, []ir.Expr{style}, ir.TypDyn)},
+		&ir.CallStmt{Call: methodCall(ov, "Refresh", nil, ir.TypVoid)},
+	}
+}
+
+// styleValueTheme is the Go declaration of styleThemeFunc, when a node takes
+// its style as a whole value; "" otherwise.
+func styleValueTheme(specs map[string]*fyneSpec) string {
+	for _, sp := range specs {
+		if sp.StyleValue {
+			return `
+func ` + styleThemeFunc + `(s Style) fynetheme.Theme {
+	t := fynetheme.New(theme.DefaultTheme())
+	if s.Background != (snglcolor.Color{}) {
+		t = t.WithBackground(s.Background)
+	}
+	if s.Color != (snglcolor.Color{}) {
+		t = t.WithForeground(s.Color)
+	}
+	return t.WithTextSize(s.FontSize.Px).WithRadius(s.BorderRadius.Px).WithWeight(s.FontWeight).WithSlant(s.FontStyle)
+}
+`
+		}
+	}
+	return ""
+}

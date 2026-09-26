@@ -465,6 +465,12 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config, lang codegen.
 			gc.RequireImport(path)
 		}
 	}
+	if fn := styleValueTheme(nodeSpecs); fn != "" {
+		td.LangHelpers += fn
+		for _, path := range []string{"fyne.io/fyne/v2/theme", ThemeImportPath, "git.duckfam.us/jonathan/sngl/pkg/go/snglcolor"} {
+			gc.RequireImport(path)
+		}
+	}
 	if err != nil {
 		return "", nil, nil, "", err
 	}

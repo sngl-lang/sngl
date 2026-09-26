@@ -30,10 +30,10 @@ window {
 }
 `
 
-// reactiveStyleDriver reads the text Fyne actually draws, through the cached
+// styleDriverHelpers read the text Fyne actually draws, through the cached
 // renderers a window paints from, before and after each click. Reading the
 // override's theme instead would pass for a theme nobody refreshed.
-const reactiveStyleDriver = `package ui
+const styleDriverHelpers = `package ui
 
 import (
 	"image/color"
@@ -98,7 +98,9 @@ func rgba(c color.Color) color.NRGBA {
 	r, g, b, a := c.RGBA()
 	return color.NRGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8), A: uint8(a >> 8)}
 }
+`
 
+const reactiveStyleDriver = styleDriverHelpers + `
 func TestReactiveStyle(t *testing.T) {
 	test.NewApp()
 	m := New()
@@ -146,4 +148,54 @@ func TestReactiveStyle(t *testing.T) {
 func TestReactiveStyleRuns(t *testing.T) {
 	model := generateFyneModelBuilt(t, reactiveStyleSrc)
 	runEmitted(t, "fyne-reactive-style-", []byte(model), reactiveStyleDriver)
+}
+
+// styleValueSrc hands a node a whole Style held in state, replaced by one
+// handler and written a field at a time by another.
+const styleValueSrc = `
+import . "sngl:ui"
+
+window {
+    var s Style = {color=#ff0000, fontSize=14px}
+
+    button(text="swap", @click { s = {color=#0000ff, fontSize=20px, fontWeight=bold} })
+    button(text="tint", @click { s.color = #00ff00 })
+    text(value="styled", style=s)
+}
+`
+
+const styleValueDriver = styleDriverHelpers + `
+func TestStyleValue(t *testing.T) {
+	test.NewApp()
+	m := New()
+	w := test.NewWindow(m.BuildUI())
+	defer w.Close()
+	root := w.Content()
+
+	check := func(when string, want color.NRGBA, size float32, bold bool) {
+		t.Helper()
+		txt := drawn(t, root, "styled")
+		if got := rgba(txt.Color); got != want {
+			t.Errorf("%s: color %v, want %v", when, got, want)
+		}
+		if txt.TextSize != size {
+			t.Errorf("%s: size %v, want %v", when, txt.TextSize, size)
+		}
+		if face(txt) != theme.DefaultTheme().Font(fyne.TextStyle{Bold: bold}) {
+			t.Errorf("%s: bold is not %v", when, bold)
+		}
+	}
+	check("initially", color.NRGBA{255, 0, 0, 255}, 14, false)
+	tap(t, root, "swap")
+	check("after the swap", color.NRGBA{0, 0, 255, 255}, 20, true)
+	tap(t, root, "tint")
+	check("after the tint", color.NRGBA{0, 255, 0, 255}, 20, true)
+}
+`
+
+// TestStyleValueRuns applies a Style value held in state, and applies it again
+// when a handler replaces it or writes one of its fields.
+func TestStyleValueRuns(t *testing.T) {
+	model := generateFyneModelBuilt(t, styleValueSrc)
+	runEmitted(t, "fyne-style-value-", []byte(model), styleValueDriver)
 }
