@@ -14,15 +14,17 @@ Every lesson must end with one complete, compilable SNGL program.
 
 ## Hello World
 
-SNGL programs are `.sngl` source files. Every runnable program has one `component main` — the root of the UI tree. A component contains a mix of state declarations and visual nodes. The simplest possible program renders a single piece of text:
+SNGL programs are `.sngl` source files. A program is one or more `window`s written at the top level of a file; each window is the root of a UI tree. The simplest possible program opens a window holding a single piece of text:
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
-    text(value="Hello, world!")
+ui.window {
+    ui.text(value="Hello, world!")
 }
 ```
+
+`import ui "sngl:ui"` brings in the SNGL UI library under the name `ui`, so its components are written `ui.window`, `ui.text`, `ui.vbox`. Every lesson here opens with that line.
 
 Build and run it with the CLI:
 
@@ -30,51 +32,51 @@ Build and run it with the CLI:
 sngl run example.sngl --platform html
 ```
 
-That starts a static server on `http://localhost:8080`. Change `--platform` to `bubbletea`, `fyne`, or `android` and the same source renders as a terminal UI, a desktop app, or a mobile app. The playground on the right compiles to HTML and shows the live result.
+That builds a static page and serves it, printing the local URL to open. `sngl preview example.sngl` does the same with live reload as you edit. Change `--platform` to `bubbletea`, `fyne`, `gtk4`, or `android` and the same source renders as a terminal UI, a desktop app, or a mobile app. The playground on the right compiles to HTML and shows the live result.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
-    text(value="Hello, world!")
+ui.window(title="Hello") {
+    ui.text(value="Hello, world!")
 }
 ```
 
 ## Reactive State
 
-Static text is boring — applications need state that changes. SNGL declares mutable state with `var` inside a component. Every `var` is reactive: when it changes, any UI that reads it updates automatically.
+Static text is boring — applications need state that changes. SNGL declares mutable state with `var` inside a window or a component. Every `var` is reactive: when it changes, any UI that reads it updates automatically.
 
-String interpolation with `{expr}` embeds the current value of `name` into a string. The `:value=name` prefix on `input` is a bidirectional binding — the input both reads from and writes to the variable. When the user types, the input automatically updates `name` in the parent scope with no handler needed.
+String interpolation with `{expr}` embeds the current value of `name` into a string. The `:value=name` prefix on `input` is a two-way binding — the input both reads from and writes to the variable. When the user types, `name` updates with no handler needed.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var name = "world"
-    vbox(style={gap=8, padding=16}) {
-        text(value="Hello, {name}!", style={fontSize=24})
-        input(:value=name, placeholder="Type a name")
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="Hello, {name}!", style={fontSize=24})
+        ui.input(:value=name, placeholder="Type a name")
     }
 }
 ```
 
 ## Derived State
 
-Often you need to compute something from state — a formatted label, a validation flag, a filtered list. Declare a zero-arg `func` with `=>` for expression-body form. Derived funcs are re-evaluated automatically whenever any state they read changes.
+Often you need to compute something from state — a formatted label, a validation flag, a filtered list. Declare a zero-argument `func` with `=>` for the expression-body form. A derived func is re-evaluated automatically whenever any state it reads changes.
 
-When a zero-arg func is referenced by name (without `()`) in a property expression, SNGL auto-invokes it and wires up the dependency. The `if` below shows a node only when the predicate is true — the block is mounted and unmounted as the condition flips.
+When a zero-argument func is referenced by name (without `()`) in a property expression, SNGL calls it and tracks the dependency. The `if` below shows a node only when the predicate is true — the block is mounted and unmounted as the condition flips.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var name = "world"
     func isLong() => name.length > 3
-    vbox(style={gap=8, padding=16}) {
-        text(value="Hello, {name}!")
-        input(:value=name, placeholder="Name")
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="Hello, {name}!")
+        ui.input(:value=name, placeholder="Name")
         if isLong {
-            text(value="That's a long name.", style={color=#667788})
+            ui.text(value="That's a long name.", style={color=#667788})
         }
     }
 }
@@ -82,40 +84,45 @@ window {
 
 ## Constant Expressions
 
-Some values never change. Use `const` instead of `var` and SNGL evaluates the expression at compile time — the result is baked into the generated code. Constant folding also applies to pure functions called with constant arguments, so you can use string helpers, colour constants, and number math in `const` initialisers.
+Some values never change. Use `const` instead of `var` and SNGL evaluates the expression at compile time — the result is baked into the generated code. Constant folding also applies to pure functions called with constant arguments, so you can use string helpers, color constants, and number math in `const` initializers.
 
-Compile-time evaluation is useful on constrained platforms (HTML doesn't ship the full runtime) and for content pipelines — the docs site itself uses it to run a markdown parser while building.
+Compile-time evaluation is useful for content pipelines — the docs site itself uses it to run a markdown parser while building.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     const greeting = "Hello, SNGL!"
     const accent color = #2196f3
-    vbox(style={padding=16, gap=8}) {
-        text(value=greeting, style={fontSize=24, color=accent})
-        text(value="Length: {greeting.length}")
+    ui.vbox(style={padding=16, gap=8}) {
+        ui.text(value=greeting, style={fontSize=24, color=accent})
+        ui.text(value="Length: {greeting.length}")
     }
 }
 ```
 
 ## Output Targets
 
-A real project declares which platforms to generate code for. The `output` block pairs each target language with one or more platform generators. You can declare multiple platforms per language and multiple languages per project — one source, many builds.
+A real project declares which targets it builds for. The `output` block pairs each host language with one or more platforms, so one source produces many builds; `sngl run` and `sngl generate` with no flags build every pair it lists.
 
-This example compiles to HTML via JavaScript, a BubbleTea TUI via Go, and an Android app via Kotlin. The playground always compiles to HTML; the other targets are generated by `sngl generate`.
+`none` is the language for a target that needs no host language: `none { html }` is a static page with inline JavaScript. `go { html }` is the other HTML mode — a Go server whose routes are the program's windows. The Go platforms are `bubbletea` (terminal), `fyne` and `gtk4` (desktop); `android` takes `kotlin`.
+
+This example builds a static page, a terminal UI and a desktop app from Go, and an Android app from Kotlin. The playground always compiles to static HTML; the other targets are generated by `sngl generate`.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
 output {
-    js { html }
-    go { bubbletea(package="main") }
+    none { html }
+    go {
+        bubbletea
+        fyne
+    }
     kotlin { android }
 }
 
-window {
-    text(value="One source, many targets.")
+ui.window {
+    ui.text(value="One source, many targets.")
 }
 ```
 
@@ -123,22 +130,22 @@ window {
 
 ## Numeric Operations
 
-SNGL is strongly typed with type inference. Numeric literals are `int` by default; add a decimal point for `float`. The usual operators work: `+`, `-`, `*`, `/`, `%`. Mixing `int` and `float` is allowed — the narrower operand auto-promotes to `float`. Use `int(x)` or `float(x)` only when you need to change the stored representation.
+SNGL is strongly typed with type inference. Numeric literals are `int` by default; add a decimal point for `float`. The usual operators work: `+`, `-`, `*`, `/`, `%`. Mixing `int` and `float` is allowed — the `int` operand is promoted to `float`. Use `int(x)` or `float(x)` only when you need to change the stored representation.
 
 The `+` operator doubles as string concatenation when both sides are strings. Mixing a number and a string is an error — use interpolation or `string(n)` to make the conversion explicit.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var a = 7
     var b = 3
-    vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
-        text(value="a + b = {a + b}")
-        text(value="a - b = {a - b}")
-        text(value="a * b = {a * b}")
-        text(value="a / b = {a / b}")
-        text(value="a % b = {a % b}")
+    ui.vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
+        ui.text(value="a + b = {a + b}")
+        ui.text(value="a - b = {a - b}")
+        ui.text(value="a * b = {a * b}")
+        ui.text(value="a / b = {a / b}")
+        ui.text(value="a % b = {a % b}")
     }
 }
 ```
@@ -147,41 +154,41 @@ window {
 
 Comparisons return `bool`: `==`, `!=`, `<`, `<=`, `>`, `>=`. Logical operators are `&&`, `||`, and `!`. They short-circuit the same way they do in Go or JavaScript.
 
-Booleans drive `if` blocks, disabled states, and derived flags. The `!!` postfix is the toggle operator — `done!!` flips a `bool` in place inside event handlers.
+Booleans drive `if` blocks, disabled states, and derived flags. The `!!` postfix is the toggle operator — `enabled!!` flips a `bool` in place inside an event handler.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var n = 5
     var enabled = true
     func positive() => n > 0
     func inRange() => n >= 0 && n <= 10
-    vbox(style={gap=4, padding=16}) {
-        text(value="n = {n}, positive? {positive}, inRange? {inRange}")
-        button(text="Toggle", @click { enabled!! })
-        text(value="enabled: {enabled}")
+    ui.vbox(style={gap=4, padding=16}) {
+        ui.text(value="n = {n}, positive? {positive}, inRange? {inRange}")
+        ui.button(text="Toggle", @click { enabled!! })
+        ui.text(value="enabled: {enabled}")
     }
 }
 ```
 
-## Ternary and Null Coalescing
+## Ternary Expressions
 
-The ternary `cond ? a : b` picks one of two values. It's the easiest way to choose a colour, label, or class based on state — use it anywhere an expression is allowed.
+The ternary `cond ? a : b` picks one of two values. It's the easiest way to choose a color or a label based on state — use it anywhere an expression is allowed.
 
 String interpolation can contain arbitrary expressions, including ternaries. Combine both to produce human-readable status strings from raw values.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var count = 0
     func label() => count == 0 ? "empty" : (count == 1 ? "one item" : "{count} items")
-    vbox(style={gap=8, padding=16}) {
-        text(value=label, style={fontSize=20})
-        hbox(style={gap=8}) {
-            button(text="+", @click { count += 1 })
-            button(text="-", @click { count -= 1 }, disabled=count <= 0)
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value=label, style={fontSize=20})
+        ui.hbox(style={gap=8}) {
+            ui.button(text="+", @click { count += 1 })
+            ui.button(text="-", @click { count -= 1 }, disabled=count <= 0)
         }
     }
 }
@@ -189,25 +196,25 @@ window {
 
 ## Control Flow: if
 
-Inside a component body, `if` conditionally mounts a subtree. The condition is a plain expression — any `bool`-typed variable or func works. `else` and `else if` chains are supported.
+Inside a window or component body, `if` conditionally mounts a subtree. The condition is a plain expression — any `bool`-typed variable or func works. `else` and `else if` chains are supported.
 
-The checker tracks which state each `if` condition reads, so only the flips that actually matter trigger re-evaluation.
+The compiler tracks which state each `if` condition reads, so only the changes that actually matter trigger re-evaluation.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var age = 17
-    vbox(style={gap=8, padding=16}) {
-        text(value="Age: {age}")
-        hbox(style={gap=8}) {
-            button(text="-", @click { age -= 1 })
-            button(text="+", @click { age += 1 })
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="Age: {age}")
+        ui.hbox(style={gap=8}) {
+            ui.button(text="-", @click { age -= 1 })
+            ui.button(text="+", @click { age += 1 })
         }
         if age >= 18 {
-            text(value="Adult", style={color=#228B22})
+            ui.text(value="Adult", style={color=#228B22})
         } else {
-            text(value="Minor", style={color=#CC5500})
+            ui.text(value="Minor", style={color=#CC5500})
         }
     }
 }
@@ -215,34 +222,56 @@ window {
 
 ## Control Flow: for
 
-`for var item = list { ... }` renders a block for each element of a list. The `else` clause runs when the list is empty — a tidy way to show an empty-state message.
+`for var item = list { ... }` renders a block for each element of a list. `for var i, item = list` also binds the index. The `else` clause renders when the body never ran — for a list, when it is empty — which makes it a tidy empty-state message.
 
 The `var` is there because the loop declares a variable, the same way every other name is introduced. Leave it out and the loop declares nothing: `for list { ... }` still renders the block once per element, for a body that never names it.
 
-When the numbers *are* the list, `sngl:seq` produces them — `for var i = seq.count(9)` counts 0 through 8, `seq.range(1, 10)` counts between two bounds, and `seq.step(10, 0, -2)` counts down by two. A sequence in a loop head compiles to the host's own counting loop.
+Inside a function or a handler there is no tree to render, and two more forms are available: `for cond { ... }` runs its body while the condition holds, and `for { ... }` runs until a `break` or a `return` leaves it. `continue` skips to the next iteration. Neither form belongs in a view body, where a loop's job is to say how many copies of its body the tree holds — a condition cannot say that.
 
-Inside a function or a handler there is no tree to render, and two more forms are available: `for cond { ... }` runs its body while the condition holds, and `for { ... }` runs until a `break` or a `return` leaves it. `continue` skips to the next iteration. Neither form declares a variable, and neither belongs in a view body, where a loop's job is to say how many copies of its body the tree holds — a condition cannot say that.
-
-SNGL tracks list mutations (`push`, `remove`, index assignments) and patches the DOM incrementally; you never call a `render()` function yourself.
+SNGL tracks list mutations (`push`, `remove`, index assignments) and updates the rendered tree incrementally; you never call a `render()` function yourself.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var items list<string> = ["apples", "bread", "cheese"]
     var next = ""
-    vbox(style={gap=8, padding=16}) {
-        hbox(style={gap=8}) {
-            input(:value=next, placeholder="Add an item", style={flex=1})
-            button(text="Add", @click {
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.hbox(style={gap=8}) {
+            ui.input(:value=next, placeholder="Add an item", style={flex=1})
+            ui.button(text="Add", @click {
                 items.push(next)
                 next = ""
             })
         }
         for var item = items {
-            text(value="• {item}")
+            ui.text(value="• {item}")
         } else {
-            text(value="List is empty", style={color=#888888})
+            ui.text(value="List is empty", style={color=#888888})
+        }
+    }
+}
+```
+
+## Counting Loops
+
+When the numbers *are* the list, `sngl:seq` produces them: `seq.count(n)` counts 0 through n − 1, `seq.range(from, to)` counts from `from` up to but not including `to`, and `seq.step(from, to, by)` counts by any step, including downward. A sequence in a loop head compiles to the host's own counting loop — no list is built.
+
+A sequence is reactive like anything else: when `size` changes below, the table is rebuilt with the new number of rows.
+
+```sngl
+import seq "sngl:seq"
+import ui "sngl:ui"
+
+ui.window {
+    var size = 5
+    ui.vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
+        for var row = seq.range(1, size + 1) {
+            ui.text(value="{row} × {size} = {row * size}")
+        }
+        ui.hbox(style={gap=8}) {
+            ui.button(text="-", @click { size -= 1 }, disabled=size <= 1)
+            ui.button(text="+", @click { size += 1 })
         }
     }
 }
@@ -250,27 +279,27 @@ window {
 
 ## Function Literals
 
-Functions can be stored in variables. Use `func(params) => expr` for expression-body form or `func(params) returnType { ... }` for a block body. These values can be passed around, called later, and composed.
+Functions are values. Use `func(params) => expr` for the expression-body form or `func(params) returnType { ... }` for a block body. These values can be stored, passed around, called later, and composed.
 
-Pair function literals with derived `func()`s to keep transformation logic localised.
+Pair function literals with derived funcs to keep transformation logic localized.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var n = 4
     var doubler = func(x int) => x * 2
     var clamp = func(x int) int {
         var lo = x < 0 ? 0 : x
         return lo > 10 ? 10 : lo
     }
-    vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
-        text(value="n = {n}")
-        text(value="doubler(n) = {doubler(n)}")
-        text(value="clamp(n * 5) = {clamp(n * 5)}")
-        hbox(style={gap=8}) {
-            button(text="+", @click { n += 1 })
-            button(text="-", @click { n -= 1 })
+    ui.vbox(style={gap=4, padding=16, fontFamily="monospace"}) {
+        ui.text(value="n = {n}")
+        ui.text(value="doubler(n) = {doubler(n)}")
+        ui.text(value="clamp(n * 5) = {clamp(n * 5)}")
+        ui.hbox(style={gap=8}) {
+            ui.button(text="+", @click { n += 1 })
+            ui.button(text="-", @click { n -= 1 })
         }
     }
 }
@@ -280,48 +309,48 @@ window {
 
 ## Structs
 
-Structs group related fields into a named value type. Every field has a type and a default — you never have a partially initialised struct. Construct one with `Name{field=value, ...}`; omitted fields fall back to their defaults.
+Structs group related fields into a named value type. Every field has a type and a default — you never have a partially initialized struct. Construct one with `Name{field=value, ...}`; omitted fields fall back to their defaults. Where the type is already known, as in a typed `var` or a list of structs, the name can be left off: `{name="Ada"}`.
 
-Structs are value types: assigning `null` is a compile error. Mutating a struct field notifies observers the same way assigning a `var` does.
+Structs are values, not references, and there is no `null`: `var u User = null` is a compile error. Mutating a struct field notifies observers the same way assigning a `var` does.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
 struct User {
     name string = "anonymous"
     score int = 0
 }
 
-window {
+ui.window {
     var u User = User{name="Ada", score=42}
-    vbox(style={gap=4, padding=16}) {
-        text(value=u.name, style={fontSize=20})
-        text(value="Score: {u.score}")
-        button(text="+10", @click { u.score += 10 })
+    ui.vbox(style={gap=4, padding=16}) {
+        ui.text(value=u.name, style={fontSize=20})
+        ui.text(value="Score: {u.score}")
+        ui.button(text="+10", @click { u.score += 10 })
     }
 }
 ```
 
 ## Enums
 
-Enums declare a fixed set of named string values. Use them as types on `var`, struct fields, and component parameters — the checker rejects any value outside the declared set.
+An enum declares a fixed set of named members. Use one as the type of a `var`, a struct field, or a component parameter — the checker rejects any value outside the declared set, including a string that happens to spell a member's name. Interpolating a member prints its name.
 
-Inline enums (`enum { a, b, c }`) give you the same constrained type without a top-level declaration, which is handy for one-off component props.
+Write a member qualified (`Status.draft`) or, where the enum type is already expected, bare (`draft`). The library's style enums work the same way, which is why `style={fontWeight=bold}` needs no prefix. Inline enums (`enum { a, b, c }`) give you the same constrained type without a top-level declaration, which is handy for a one-off component prop.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
 enum Status { draft, published, archived }
 
-window {
-    var status Status = Status.draft
+ui.window {
+    var status Status = draft
     func clr() => status == Status.published ? #228B22 : (status == Status.archived ? #888888 : #CC5500)
-    vbox(style={gap=8, padding=16}) {
-        text(value="Status: {status}", style={color=clr, fontSize=20})
-        hbox(style={gap=8}) {
-            button(text="Draft", @click { status = Status.draft })
-            button(text="Publish", @click { status = Status.published })
-            button(text="Archive", @click { status = Status.archived })
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="Status: {status}", style={color=clr, fontSize=20})
+        ui.hbox(style={gap=8}) {
+            ui.button(text="Draft", @click { status = Status.draft })
+            ui.button(text="Publish", @click { status = Status.published })
+            ui.button(text="Archive", @click { status = Status.archived })
         }
     }
 }
@@ -329,32 +358,32 @@ window {
 
 ## Lists
 
-`list<T>` is an ordered collection. Instances are built with `[...]` literals. Methods — `.length`, `.push`, `.remove`, `.map`, `.filter`, `.contains`, and others — cover the common cases without bolting on external libraries.
+`list<T>` is an ordered collection, built with `[...]` literals. Methods — `.length`, `.push`, `.remove`, `.map`, `.filter`, `.contains`, and others — cover the common cases.
 
 Index assignment (`items[i] = value`) and the toggle operator (`items[i].done!!`) work directly on list elements.
 
 A loop element variable is a copy by default, so writing its fields doesn't touch the list. Prefix it with `&` (`for var &t = items`) to bind it as a reference into the list: field and whole-element writes then update the original element in place — and reactivity fires. Below, `&t` is what lets the checkbox toggle the task and refresh the remaining count.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
 struct Task {
     label string = ""
     done bool = false
 }
 
-window {
+ui.window {
     var tasks list<Task> = [{label="Write tests"}, {label="Ship it", done=true}, {label="Celebrate"}]
     var next = ""
     func remainingCount() => tasks.filter(func(x) => !x.done).length
-    vbox(style={gap=6, padding=16}) {
-        text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight="bold"})
+    ui.vbox(style={gap=6, padding=16}) {
+        ui.text(value="{tasks.length} tasks; {remainingCount} remaining", style={fontWeight=bold})
         for var &t = tasks {
-            checkbox(:checked=t.done, label=t.label)
+            ui.checkbox(:checked=t.done, label=t.label)
         }
-        hbox(style={gap=6}) {
-            input(:value=next, placeholder="New task", style={flex=1})
-            button(text="Add", @click {
+        ui.hbox(style={gap=6}) {
+            ui.input(:value=next, placeholder="New task", style={flex=1})
+            ui.button(text="Add", @click {
                 tasks.push(Task{label=next})
                 next = ""
             })
@@ -363,21 +392,51 @@ window {
 }
 ```
 
-## Special Types
+## Maps
 
-SNGL recognises a handful of literal types beyond numbers and strings. Colors (`#rgb`, `#rrggbb`, `#rrggbbaa`), durations (`5s`, `250ms`), and measurements (`16px`, `1.25em`) have dedicated literal syntax and type-aware arithmetic.
+`map<K, V>` associates keys with values. A map literal is `{key=value, ...}`, told apart from a struct literal by the type it is assigned to. `m[key] = value` writes an entry; `m.get(key, fallback)` reads one, returning `fallback` when the key is absent; `.keys()`, `.values()` and `.contains(key)` do what they say.
 
-The `color`, `duration`, and `measurement` types let you share palette and spacing constants without falling back to untyped strings.
+`for var k, v = m` walks a map in a function or handler. A map has no defined order, so it cannot say how a view should lay its entries out, and a view body may not loop over one directly — derive a list first, as `inStock` does below, and render that.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
+    var stock map<string, int> = {"apples"=3, "pears"=0, "plums"=7}
+    func inStock() list<string> {
+        var names list<string>
+        for var name, count = stock {
+            if count > 0 {
+                names.push(name)
+            }
+        }
+        return names
+    }
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="Plums left: {stock.get("plums", 0)}")
+        for var name = inStock() {
+            ui.text(value="• {name}")
+        }
+        ui.button(text="Sell a plum", @click { stock["plums"] = stock.get("plums", 0) - 1 })
+    }
+}
+```
+
+## Colors and Units
+
+Colors have literal syntax (`#rgb`, `#rrggbb`, `#rrggbbaa`) and a built-in `color` type. Sizes and times are **units**: a number with a suffix, typed by the unit that declares the suffix. `sngl:ui` declares `measurement` (`16px`, `1.25em`, `50pct`), and `sngl:time` declares `duration` (`250ms`, `5s`).
+
+A suffix needs something to say which unit it belongs to — a typed `const`, a prop, a style field — so `const pad ui.measurement = 16px` names the type while `style={padding=16px}` gets it from `Style`. Units add and scale like numbers, and interpolating one prints it with its suffix. Your own code can declare units with `unit` the same way the library does.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window {
     const accent color = #2196f3
-    const padding measurement = 16px
-    vbox(style={gap=8, padding=padding, background=#f5f5f5}) {
-        text(value="Accent colour", style={color=accent, fontSize=20, fontWeight="bold"})
-        text(value="Padded at 16px", style={color=#333333})
+    const pad ui.measurement = 16px
+    ui.vbox(style={gap=8, padding=pad, background=#f5f5f5}) {
+        ui.text(value="Accent color", style={color=accent, fontSize=20, fontWeight=bold})
+        ui.text(value="Padded at {pad}", style={color=#333333})
     }
 }
 ```
@@ -386,22 +445,22 @@ window {
 
 ## Defining Components
 
-Any `component` declaration becomes a reusable visual node. Parameters with defaults become props; callers pass them by name. Reuse keeps markup tidy and localises state — each instance of a component gets its own `var`s.
+A `component` declaration defines a reusable visual node. Parameters become props; callers pass them by name, and a parameter with a default may be left out. The return position says what kind of node the component is: `ui.node` is the UI library's widget family, the same one `ui.text` and `ui.vbox` belong to.
 
-Naming is Pascal-case for user components, lower-case for stdlib primitives.
+Components are conventionally `PascalCase`, which keeps your own apart from the library's lower-case ones at a glance.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-component Card(title = "", body = "") node {
-    vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=6}) {
-        text(value=title, style={fontWeight="bold", fontSize=18})
-        text(value=body, style={color=#555555})
+component Card(title = "", body = "") ui.node {
+    ui.vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=6}) {
+        ui.text(value=title, style={fontWeight=bold, fontSize=18})
+        ui.text(value=body, style={color=#555555})
     }
 }
 
-window {
-    vbox(style={gap=8, padding=16, background=#eeeeee}) {
+ui.window {
+    ui.vbox(style={gap=8, padding=16, background=#eeeeee}) {
         Card(title="One", body="First card")
         Card(title="Two", body="Second card")
         Card(title="Three", body="Third card")
@@ -411,22 +470,22 @@ window {
 
 ## Component State
 
-Each component instance has independent state. A counter component with its own `var count` can be dropped in multiple times — each copy counts independently. This is how SNGL avoids the global-state problem without extra machinery.
+Each component instance has independent state. A counter component with its own `var count` can be dropped in multiple times — each copy counts independently.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-component Counter(label = "") node {
+component Counter(label = "") ui.node {
     var count = 0
-    hbox(style={gap=8, alignItems="center"}) {
-        text(value="{label}: {count}", style={flex=1})
-        button(text="+", @click { count += 1 })
-        button(text="-", @click { count -= 1 })
+    ui.hbox(style={gap=8, alignItems=center}) {
+        ui.text(value="{label}: {count}", style={flex=1})
+        ui.button(text="+", @click { count += 1 })
+        ui.button(text="-", @click { count -= 1 })
     }
 }
 
-window {
-    vbox(style={gap=6, padding=16}) {
+ui.window {
+    ui.vbox(style={gap=6, padding=16}) {
         Counter(label="Apples")
         Counter(label="Oranges")
         Counter(label="Pears")
@@ -436,29 +495,74 @@ window {
 
 ## Slots and Children
 
-A slot is an ordinary parameter whose type is a **component type**, and `...component` is the *rest slot* — the one a caller fills with the children written bare. Inside the body its name marks where those children are projected. This is how layout primitives like `vbox` and `hbox` work. A component that declares no rest slot accepts no children.
+A slot is an ordinary parameter whose type is a **component type**, and `...component` is the *rest slot* — the one a caller fills with the children written bare. Inside the body its name marks where those children are placed. This is how layout primitives like `ui.vbox` and `ui.hbox` work. A component that declares no rest slot accepts no children.
 
 Slots let you build reusable shells — dialogs, cards, panels — without coupling the shell to any particular content.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-component Panel(title = "", content ...component) node {
-    vbox(style={gap=8, padding=12, background=#ffffff, borderRadius=8}) {
-        text(value=title, style={fontWeight="bold", fontSize=18, color=#333333})
+component Panel(title = "", content ...component) ui.node {
+    ui.vbox(style={gap=8, padding=12, background=#ffffff, borderRadius=8}) {
+        ui.text(value=title, style={fontWeight=bold, fontSize=18, color=#333333})
         content
     }
 }
 
-window {
-    vbox(style={gap=10, padding=16, background=#f0f2f5}) {
+ui.window {
+    ui.vbox(style={gap=10, padding=16, background=#f0f2f5}) {
         Panel(title="Profile") {
-            text(value="Name: Ada")
-            text(value="Role: Engineer")
+            ui.text(value="Name: Ada")
+            ui.text(value="Role: Engineer")
         }
         Panel(title="Stats") {
-            text(value="Commits: 1024")
-            text(value="PRs open: 3")
+            ui.text(value="Commits: 1024")
+            ui.text(value="PRs open: 3")
+        }
+    }
+}
+```
+
+## Named and Scoped Slots
+
+A component can declare any number of named slots beside its rest slot. A caller fills one by writing `component name { ... }` inside the call's block. A slot inserted with a block — `header { ... }` below — uses that block as its fallback when the caller leaves the slot empty.
+
+A slot's type can list arguments, `component(Person, int)`, which the component hands over wherever it inserts the slot. The caller's population names them positionally — `component row(p, i)` — and renders whatever it likes with them. That is how a table or list component lets its caller decide what a row looks like.
+
+```sngl
+import ui "sngl:ui"
+
+struct Person {
+    name string
+    role string
+}
+
+component Table(people list<Person>, header component, row component(Person, int)) ui.node {
+    ui.vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=8}) {
+        header {
+            ui.text(value="People", style={fontWeight=bold})
+        }
+        for var i, p = people {
+            row(p, i)
+        }
+    }
+}
+
+ui.window {
+    const team = [Person{name="Ada", role="Engineer"}, Person{name="Grace", role="Admiral"}]
+    ui.vbox(style={gap=10, padding=16, background=#f0f2f5}) {
+        Table(people=team) {
+            component row(p, i) {
+                ui.text(value="{i + 1}. {p.name} — {p.role}")
+            }
+        }
+        Table(people=team) {
+            component header {
+                ui.text(value="Crew", style={fontWeight=bold, color=#2196f3})
+            }
+            component row(p, i) {
+                ui.text(value=p.name)
+            }
         }
     }
 }
@@ -466,29 +570,54 @@ window {
 
 ## Events
 
-Events use the `@name` prefix. On stdlib components, `@click`, `@input`, `@change`, and friends are pre-declared; the callback body is a statement block that can mutate `var`s, call methods, or emit events upward. An event handler that reads `event` picks up the incoming payload (e.g. `event.value` for inputs).
-
-For custom components, declare parameters like `@submit` to emit events that parent components can listen for.
+Events use the `@name` prefix. The library's components declare `@click`, `@input`, `@change`, and friends; the handler is a statement block that can mutate `var`s and call functions. A handler that wants the event's payload names it: `@input(e) { query = e.value }` binds the `ui.InputEvent` to `e`.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var query = ""
     var results list<string>
-    vbox(style={gap=8, padding=16}) {
-        input(@input(e) { query = e.value }, placeholder="Type to search")
-        button(text="Add match", @click {
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.input(@input(e) { query = e.value }, placeholder="Type to search")
+        ui.button(text="Add match", @click {
             if query.length > 0 {
                 results.push(query)
                 query = ""
             }
         })
         for var r = results {
-            text(value="• {r}")
+            ui.text(value="• {r}")
         } else {
-            text(value="No results yet", style={color=#888888})
+            ui.text(value="No results yet", style={color=#888888})
         }
+    }
+}
+```
+
+## Custom Events
+
+A component declares its own events in its parameter list: `@changed int` is an event carrying an `int`, and a bare `@reset` carries nothing. Inside the component, firing one is calling it — `changed(value + 1)` — and the parent's handler runs with the payload.
+
+This is how state flows back up: the parent owns `quantity`, the stepper reports changes, and the parent decides what to do with them.
+
+```sngl
+import ui "sngl:ui"
+
+component Stepper(value = 0, @changed int, @reset) ui.node {
+    ui.hbox(style={gap=8, alignItems=center}) {
+        ui.button(text="-", @click { changed(value - 1) })
+        ui.text(value="{value}", style={fontFamily="monospace"})
+        ui.button(text="+", @click { changed(value + 1) })
+        ui.button(text="Reset", @click { reset() })
+    }
+}
+
+ui.window {
+    var quantity = 1
+    ui.vbox(style={gap=8, padding=16}) {
+        Stepper(value=quantity, @changed(n) { quantity = n < 0 ? 0 : n }, @reset { quantity = 1 })
+        ui.text(value="You are ordering {quantity}.")
     }
 }
 ```
@@ -497,29 +626,29 @@ window {
 
 ## Building a Component Library
 
-As a project grows, group reusable components into their own directory (a "package"). Every `.sngl` file in that directory is merged into a single namespace. From another file, pull the whole directory in with `import "widgets"` (relative to the project root) and refer to components as `widgets.Counter`, `widgets.Card`, and so on.
+As a project grows, group reusable components into their own directory — a *package*. Every `.sngl` file in that directory belongs to one namespace. From another file, import the directory by its path relative to the importing file — `import "./widgets"` — and refer to its declarations as `widgets.Counter`, `widgets.Card`, and so on. A package with no `window` in it is a library: it only provides declarations.
 
-Inside the library itself, components are just normal declarations. The example below shows the shape of a two-component library file — `Card` wraps content with consistent chrome, and `Stat` renders a single metric. Split them into a file under `widgets/` to make them importable; keep them inline to use them right away.
+Inside the library itself, components are just normal declarations. The example below shows the shape of a two-component library — `Card` wraps content with consistent chrome, and `Stat` renders a single metric. Move them into a file under `widgets/` to make them importable; keep them inline to use them right away.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-component Card(title = "", content ...component) node {
-    vbox(style={gap=6, padding=12, background=#ffffff, borderRadius=8}) {
-        text(value=title, style={fontWeight="bold", fontSize=18})
+component Card(title = "", content ...component) ui.node {
+    ui.vbox(style={gap=6, padding=12, background=#ffffff, borderRadius=8}) {
+        ui.text(value=title, style={fontWeight=bold, fontSize=18})
         content
     }
 }
 
-component Stat(label = "", value = 0) node {
-    hbox(style={gap=12, alignItems="center"}) {
-        text(value=label, style={flex=1, color=#555555})
-        text(value=string(value), style={fontWeight="bold"})
+component Stat(label = "", value = 0) ui.node {
+    ui.hbox(style={gap=12, alignItems=center}) {
+        ui.text(value=label, style={flex=1, color=#555555})
+        ui.text(value=string(value), style={fontWeight=bold})
     }
 }
 
-window {
-    vbox(style={gap=10, padding=16, background=#f0f2f5}) {
+ui.window {
+    ui.vbox(style={gap=10, padding=16, background=#f0f2f5}) {
         Card(title="Today") {
             Stat(label="Visitors", value=248)
             Stat(label="Signups", value=17)
@@ -531,24 +660,25 @@ window {
 
 ## Importing External Code
 
-The `import` statement pulls in code from outside the current file. A bare path names another directory inside your project (`import "widgets"`); everything else is addressed by scheme:
+The `import` statement pulls in code from outside the current file. A path names another directory of your project (`import "./widgets"`); everything else is addressed by scheme:
 
-- `import . "sngl:ui"` — a package of the SNGL library. This is the one every lesson here opens with: the components an app is built from, and the `Style` and event types they take. It also holds the `window` an app is hung on. Its siblings hold the rest: `sngl:time` the calendar types, the `timer` and the `duration` it counts, `sngl:dialog` the host's alerts and file pickers, `sngl:ui/draw` the canvas and its shapes. Only `sngl:builtin` is in scope without being imported.
-- `import "sngl:platform/html"` — a platform namespace, exposing raw platform primitives (`html.div`, `html.a`, `html.details`, …).
-- `import "go:go/ast"` — a Go package; its types and pure functions become usable in SNGL. Non-pure calls compile into the Go target.
+- `import ui "sngl:ui"` — a package of the SNGL library. `sngl:ui` holds the components an app is built from, the `Style` and event types they take, and the `window` an app is hung on. Its siblings hold the rest: `sngl:time` the calendar types, `timer` and `duration`; `sngl:seq` counting sequences; `sngl:dialog` the host's alerts and file pickers; `sngl:ui/draw` the canvas and its shapes; `sngl:ui/markup` rich text; `sngl:i18n` translation. Only `sngl:builtin` — `int`, `string`, `list`, `color` and the like — is in scope without being imported.
+- `import "sngl:platform/html"` — a platform's own package, exposing its raw primitives (`html.div`, `html.a`, `html.details`, …).
+- `import "go:go/ast"` — a Go package; its types and pure functions become usable in SNGL, and its other calls compile into a Go target.
+- `import "md:./guide.md"` — a markdown document, imported as SNGL source: a package with one `document` component that renders it.
 - `import "file:public"` — a directory of static files; referenced paths are bundled into the build output.
 
-The leading `.` is a dot import: it writes the package's declarations into this file so you use them unqualified (`text(...)`). Without it you get a namespace instead, and name it (`import s "sngl:ui"` → `s.text(...)`).
+An import binds the package under its last path segment — `sngl:platform/html` is `html` — and every use is qualified with that name. Qualified names keep it obvious where each declaration came from, which is why every example in these docs writes them.
 
 The playground compiles to HTML, so this lesson imports the `html` platform and reaches for an `<a>` element directly.
 
 ```sngl
-import . "sngl:ui"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-window {
-    vbox(style={gap=6, padding=16}) {
-        text(value="Hand-rolled link:")
+ui.window {
+    ui.vbox(style={gap=6, padding=16}) {
+        ui.text(value="Hand-rolled link:")
         html.a(href="https://example.com", innerText="example.com", style={color="#2196f3"})
     }
 }
@@ -556,17 +686,17 @@ window {
 
 ## Import Aliases
 
-When an import path is long or collides with a local name, rebind it with `alias "path"`. The alias replaces the last path segment everywhere in the file.
+When an import's last path segment is long or collides with a local name, rebind it with `import alias "path"`. The alias replaces the default name everywhere in the file.
 
 Aliases are purely local — the target package still owns its own name. Use them to shorten verbose prefixes (`h.div` instead of `html.div`) or to resolve ambiguity between, say, a local `math` component and an imported `math` package.
 
 ```sngl
-import . "sngl:ui"
 import h "sngl:platform/html"
+import ui "sngl:ui"
 
-window {
-    vbox(style={gap=8, padding=16}) {
-        text(value="Aliased raw HTML access:")
+ui.window {
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="Aliased raw HTML access:")
         h.details(style={padding="6px", background="#f5f5f5"}) {
             h.summary(innerText="Click to expand")
             h.p(innerText="This paragraph was hidden until you clicked.")
@@ -575,73 +705,73 @@ window {
 }
 ```
 
-## Customising Components Per Platform
+## Customizing Components Per Platform
 
-`PLATFORM` is the target this build is for, and every target's package carries its own identity — `html.platform`, `bubbletea.platform` — so `if PLATFORM == html.platform { … }` gates a body on the target. The comparison folds at build time and the branch not taken is removed, which makes this the escape hatch for "mostly shared, slightly different per target": a real `<details>` widget on the web, an inline print on a TUI, the default flexbox layout everywhere else.
+`PLATFORM` is the target this build is for, and every target's package carries its own identity — `html.platform`, `bubbletea.platform` — so `if PLATFORM == html.platform { … }` gates a body on the target. The comparison folds at build time and the branch not taken is removed, which makes this the escape hatch for "mostly shared, slightly different per target": a real `<details>` widget on the web, an inline print on a TUI, the default layout everywhere else.
 
 `PLATFORM` is not a string, so `PLATFORM == "html"` does not compile — a misspelled target name is an error rather than a branch that is silently never taken.
 
 `Collapsible` below ships three renderings:
 
-- **`else`** — an always-visible styled card (what Fyne and Android pick up).
+- **`else`** — an always-visible styled card (what Fyne, GTK and Android pick up).
 - **`html.platform`** — a real `<details>` / `<summary>` pair, so you can click the row to expand. That's what the playground on the right renders.
 - **`bubbletea.platform`** — a single inline line for the terminal target.
 
 Click a row to see the HTML branch's interactivity.
 
 ```sngl
-import . "sngl:ui"
-import "sngl:platform/html"
 import "sngl:platform/bubbletea"
+import "sngl:platform/html"
+import ui "sngl:ui"
 
-component Collapsible(title = "", body = "") node {
+component Collapsible(title = "", body = "") ui.node {
     if PLATFORM == html.platform {
         html.details(style={padding="8px", background="#e0f7fa", borderRadius="6px"}) {
             html.summary(innerText=title, style={cursor="pointer", fontWeight="bold"})
             html.p(innerText=body, style={margin="6px 0 0", color="#555555"})
         }
     } else if PLATFORM == bubbletea.platform {
-        text(value="[" + title + "] " + body)
+        ui.text(value="[" + title + "] " + body)
     } else {
-        vbox(style={gap=4, padding=10, background=#fff8dc, borderRadius=6}) {
-            text(value="▸ " + title, style={fontWeight="bold"})
-            text(value=body, style={color=#555555})
+        ui.vbox(style={gap=4, padding=10, background=#fff8dc, borderRadius=6}) {
+            ui.text(value="▸ " + title, style={fontWeight=bold})
+            ui.text(value=body, style={color=#555555})
         }
     }
 }
 
-window {
-    vbox(style={gap=8, padding=16}) {
-        text(value="Each row renders differently per platform.", style={color=#555555})
-        text(value="In this HTML playground: click to expand.", style={color=#555555})
+ui.window {
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.text(value="Each row renders differently per platform.", style={color=#555555})
+        ui.text(value="In this HTML playground: click to expand.", style={color=#555555})
         Collapsible(title="Why gate on PLATFORM?", body="One component adapts without forking the whole tree.")
-        Collapsible(title="What happens elsewhere?", body="BubbleTea prints inline; Fyne and Android use the default body.")
+        Collapsible(title="What happens elsewhere?", body="BubbleTea prints inline; the desktop and Android targets use the default body.")
     }
 }
 ```
 
 ## Raw Platform Elements
 
-The SNGL stdlib covers a sensible subset of every platform, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, an iOS segmented control. The `sngl:platform/…` packages expose them all. For HTML, any valid tag is available as `html.<tagname>` with attributes mapped to arguments.
+The SNGL library covers what every platform shares, but real apps sometimes need a specific native primitive — a `<dialog>`, a `<progress>`, a GTK widget the library does not wrap. A platform's package exposes its own. For HTML, any tag is available as `html.<tagname>`, with attributes as arguments; raw HTML elements take CSS strings in their `style`, since they bypass the portable `Style`.
 
-A hyphenated tag is written through `html.element`, whose `tag` argument names the element to emit: `html.element(tag="my-widget")` renders `<my-widget>`. Attributes with hyphens (like `aria-label`) aren't valid SNGL identifiers — use `html.div(innerHTML="<… raw markup …>")` when you need them, or stick to the camelCase equivalents SNGL supports natively.
+A hyphenated tag is written through `html.element`, whose `tag` argument names the element to emit: `html.element(tag="my-widget")` renders `<my-widget>`. A hyphenated attribute (`aria-label`, `data-id`) isn't a valid SNGL identifier, so it goes in the `attrs` map: `html.button(attrs={"aria-label"="Close"})`.
 
 ```sngl
-import . "sngl:ui"
 import "sngl:platform/html"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var volume = 60
-    vbox(style={gap=10, padding=16}) {
-        text(value="Native browser widgets:", style={fontWeight="bold"})
-        html.progress(value=string(volume), max="100", style={width="100%"})
-        hbox(style={gap=8}) {
-            button(text="-10", @click { volume = volume - 10 })
-            button(text="+10", @click { volume = volume + 10 })
-            text(value="{volume}%", style={fontFamily="monospace"})
+    ui.vbox(style={gap=10, padding=16}) {
+        ui.text(value="Native browser widgets:", style={fontWeight=bold})
+        html.progress(value=string(volume), max="100", attrs={"aria-label"="Volume"}, style={width="100%"})
+        ui.hbox(style={gap=8}) {
+            ui.button(text="-10", @click { volume = volume - 10 })
+            ui.button(text="+10", @click { volume = volume + 10 })
+            ui.text(value="{volume}%", style={fontFamily="monospace"})
         }
         html.hr
-        html.blockquote(style={borderLeft="3px solid #2196f3", padding="4 12", color="#555555"}) {
+        html.blockquote(style={borderLeft="3px solid #2196f3", padding="4px 12px", color="#555555"}) {
             html.span(innerText="“Everything in the browser is one html.tagname away.”")
         }
     }
@@ -652,25 +782,88 @@ window {
 
 ## Timers
 
-The `timer` component fires an `@tick` event at a fixed interval while `enabled` is true. Use it for clocks, autoplay, polling, or simple animations. Nothing runs while `enabled` is false — flip the flag to pause.
+`sngl:time`'s `timer` fires an `@tick` event at a fixed interval while `enabled` is true. Use it for clocks, autoplay, polling, or simple animations. Nothing runs while `enabled` is false — flip the flag to pause.
 
-Timers compose with `var`s and `if` blocks cleanly: pause/resume UI falls out of standard state management, not a special timer API.
+A timer is a node like any other, so it lives as long as the part of the tree it is written in: put one inside an `if` and it stops when the branch is unmounted.
 
 ```sngl
-import . "sngl:ui"
-import . "sngl:time"
+import time "sngl:time"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var seconds = 0
     var running = false
-    timer(interval=1000ms, enabled=running, @tick {
+    time.timer(interval=1s, enabled=running, @tick {
         seconds += 1
     })
-    vbox(style={gap=8, padding=16, alignItems="center"}) {
-        text(value="{seconds} s", style={fontSize=36, fontFamily="monospace"})
-        hbox(style={gap=8}) {
-            button(text=running ? "Pause" : "Start", @click { running!! })
-            button(text="Reset", @click { seconds = 0 })
+    ui.vbox(style={gap=8, padding=16, alignItems=center}) {
+        ui.text(value="{seconds} s", style={fontSize=36, fontFamily="monospace"})
+        ui.hbox(style={gap=8}) {
+            ui.button(text=running ? "Pause" : "Start", @click { running!! })
+            ui.button(text="Reset", @click { seconds = 0 })
+        }
+    }
+}
+```
+
+## Effects
+
+`effect` brackets a lifetime: `@mount` runs when the node enters the tree and `@unmount` when it leaves. It renders nothing, so it goes wherever the thing it holds belongs — inside an `if`, it lives exactly as long as that branch. This is how a component acquires something it must give back: a subscription, a connection, a scheduled callback. `timer` itself is built from one on the web and desktop targets.
+
+Give an effect an `on` value and it restarts whenever that value changes: the old lifetime's `@unmount` runs, then the new one's `@mount`. Each handler receives the value its own lifetime was keyed on, so teardown knows what it is tearing down. Reading state inside a handler does not subscribe it — only `on` does.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window {
+    var showPanel = true
+    var room = "general"
+    var log list<string>
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.hbox(style={gap=8}) {
+            ui.button(text=showPanel ? "Hide panel" : "Show panel", @click { showPanel!! })
+            ui.button(text="#general", @click { room = "general" })
+            ui.button(text="#random", @click { room = "random" })
+        }
+        if showPanel {
+            effect(@mount { log.push("panel mounted") }, @unmount { log.push("panel unmounted") })
+            ui.text(value="The panel is visible.", style={padding=8, background=#e3f2fd})
+        }
+        effect(on=room, @mount(r) { log.push("join #{r}") }, @unmount(r) { log.push("leave #{r}") })
+        for var line = log {
+            ui.text(value=line, style={color=#666666})
+        }
+    }
+}
+```
+
+## Error Boundaries
+
+`error.raise(message, kind)` raises an error, and the nearest enclosing `boundary` catches it. A boundary has two halves, and it needs at least one: an `@error` handler, which receives the `error` and keeps rendering the content, and a `failed` slot, which replaces the content from then on.
+
+Use `@error` to report a problem where it happened and let the user try again; use `failed` to fence off a part of the page so one failure doesn't take the whole window with it.
+
+```sngl
+import ui "sngl:ui"
+
+ui.window {
+    var problem = ""
+    ui.vbox(style={gap=12, padding=16}) {
+        boundary(@error(e) { problem = e.message }) {
+            ui.button(text="Save", @click {
+                problem = ""
+                error.raise("the server is unreachable", "network")
+            })
+        }
+        if problem != "" {
+            ui.text(value="Could not save: {problem}", style={color=#cc0000})
+        }
+        boundary {
+            ui.text(value="This widget works until you break it.")
+            ui.button(text="Break it", @click { error.raise("something broke", "demo") })
+            component failed {
+                ui.text(value="This part of the page failed.", style={color=#cc0000})
+            }
         }
     }
 }
@@ -678,34 +871,34 @@ window {
 
 ## Composing Components
 
-Custom components compose like any other visual node. You can pass props, nest them inside layout primitives, and mix them with stdlib components freely. Since each instance has isolated state, building up a tree stays predictable no matter how many copies you drop in.
+Custom components compose like any other visual node. You can pass props, nest them inside layout primitives, and mix them with library components freely. Since each instance has isolated state, building up a tree stays predictable no matter how many copies you drop in.
 
-The example below builds a small stats dashboard from a `Stat` component. Adjust the numbers with the plus/minus buttons — each card is independent.
+The example below builds a small stats dashboard from a `Stat` component. The window owns the numbers and passes them down; each card only displays what it is given.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-component Stat(label = "", value = 0, accent color = #2196f3) node {
-    vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=8}) {
-        text(value=label, style={color=#888888})
-        text(value=string(value), style={fontSize=28, fontWeight="bold", color=accent})
+component Stat(label = "", value = 0, accent color = #2196f3) ui.node {
+    ui.vbox(style={gap=4, padding=12, background=#ffffff, borderRadius=8}) {
+        ui.text(value=label, style={color=#888888})
+        ui.text(value=string(value), style={fontSize=28, fontWeight=bold, color=accent})
     }
 }
 
-window {
+ui.window {
     var posts = 12
     var followers = 348
     var likes = 1024
-    vbox(style={gap=8, padding=16, background=#f0f2f5}) {
-        hbox(style={gap=8}) {
+    ui.vbox(style={gap=8, padding=16, background=#f0f2f5}) {
+        ui.hbox(style={gap=8}) {
             Stat(label="Posts", value=posts, accent=#2196f3)
             Stat(label="Followers", value=followers, accent=#228B22)
             Stat(label="Likes", value=likes, accent=#CC5500)
         }
-        hbox(style={gap=8}) {
-            button(text="Post", @click { posts += 1 })
-            button(text="Follow", @click { followers += 1 })
-            button(text="Like", @click { likes += 1 })
+        ui.hbox(style={gap=8}) {
+            ui.button(text="Post", @click { posts += 1 })
+            ui.button(text="Follow", @click { followers += 1 })
+            ui.button(text="Like", @click { likes += 1 })
         }
     }
 }
@@ -713,23 +906,23 @@ window {
 
 ## Reactive Context
 
-Some values are cross-cutting: a theme, a locale, the current user. Threading them through every prop is tedious. A *context* lets a value flow down the component tree implicitly: a `context #name(default)` decl at file top level introduces the name; inside any component or window, `name(value) { ... }` provides a value to its subtree; descendants read it by referencing the name.
+Some values are cross-cutting: a theme, a locale, the current user. Threading them through every prop is tedious. A *context* lets a value flow down the component tree implicitly: a `context #name(default)` declaration at the top level of a file introduces the name; inside any component or window, `name(value) { ... }` provides a value to its subtree; descendants read it by referencing the name.
 
 Reads are reactive — when a provider's value changes, every consumer below it updates. Providers can nest; the inner block shadows the outer for its subtree only.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
 context #theme("light")
 
-component Card(label = "") node {
-    text(value="{label}: {theme}", style={padding=12})
+component Card(label = "") ui.node {
+    ui.text(value="{label}: {theme}", style={padding=12})
 }
 
-window {
+ui.window {
     var dark = false
-    vbox(style={gap=8, padding=16}) {
-        button(text="toggle theme", @click { dark = !dark })
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.button(text="toggle theme", @click { dark = !dark })
         theme(dark ? "dark" : "light") {
             Card(label="A")
             theme("high-contrast") {
@@ -743,34 +936,34 @@ window {
 
 ## Translatable Strings
 
-Prefix a string literal with `$` to make it translatable. The synthesized translation key is the unsubstituted template; placeholder values fill in at runtime per the active locale.
+Prefix a string literal with `$` to make it translatable. The translation key is the unsubstituted template; placeholder values fill in at runtime per the active locale, and ICU plural and select forms are supported.
 
-Translation lives in `sngl:i18n`, an ordinary package you import. A `$"..."` literal lowers to a call to `i18n.tr`, so a file that uses one needs the import — nothing is in scope unimported except `sngl:builtin`.
+Translation lives in `sngl:i18n`, an ordinary package you import. A `$"..."` literal lowers to a call to `i18n.tr`, so a file that uses one needs the import.
 
-The active locale is the `i18n.locale` context, defaulting to `i18n.defaultLocale()` (derived from `$LC_ALL`/`$LC_MESSAGES`/`$LANG`). `i18n.numberInt`, `i18n.date`, `i18n.plural` and friends format their input for it. Wrap a subtree in `i18n.locale("xx-YY") { ... }` to override it there — the same mechanism as any other reactive context.
+The active locale is the `i18n.locale` context, defaulting to `i18n.defaultLocale()` (derived from `$LC_ALL`/`$LC_MESSAGES`/`$LANG`). `i18n.numberInt`, `i18n.date`, `i18n.plural` and friends format their input for it. Wrap a subtree in `i18n.locale("xx-YY") { ... }` to override it there — the same mechanism as any other context.
 
 ```sngl
-import . "sngl:ui"
 import "sngl:i18n"
+import ui "sngl:ui"
 
-component Cart(count = 0, price = 0) node {
-    vbox(style={gap=4, padding=8}) {
-        text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
-        text(value="total: " + i18n.numberInt(price, "decimal"))
+component Cart(count = 0, price = 0) ui.node {
+    ui.vbox(style={gap=4, padding=8}) {
+        ui.text(value=$"Cart: {count, plural, =0{empty} one{1 item} other{# items}}")
+        ui.text(value="total: " + i18n.numberInt(price, "decimal"))
     }
 }
 
-window {
+ui.window {
     var count = 3
     var price = 1499
-    vbox(style={gap=12, padding=16}) {
+    ui.vbox(style={gap=12, padding=16}) {
         Cart(count=count, price=price)
         i18n.locale("es-MX") {
             Cart(count=count, price=price)
         }
-        hbox(style={gap=8}) {
-            button(text="+ item", @click { count += 1 })
-            button(text="+ cost", @click { price += 100 })
+        ui.hbox(style={gap=8}) {
+            ui.button(text="+ item", @click { count += 1 })
+            ui.button(text="+ cost", @click { price += 100 })
         }
     }
 }
@@ -778,43 +971,99 @@ window {
 
 ## Two-Way Binding Recap
 
-The `:prop=stateVar` shorthand does two things at once: it reads `stateVar` into the prop, and it writes back to `stateVar` whenever the child component fires its change event. It's the same as writing the read + the `@change` handler by hand, just shorter.
+The `:prop=stateVar` shorthand does two things at once: it reads `stateVar` into the prop, and it writes back to `stateVar` whenever the component reports a change. It's the same as writing the read and the change handler by hand, just shorter.
 
-Inputs, selects, textareas, checkboxes, toggles — any stdlib component whose props are declared with a leading `:` supports it.
+A prop supports it when its declaration carries the leading `:` — `ui.input`'s `:value`, `ui.checkbox`'s and `ui.toggle`'s `:checked`, `ui.select`'s and `ui.textarea`'s `:value`. Your own components can declare `:` props the same way.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
+ui.window {
     var first = ""
     var last = ""
     var subscribed = false
     func fullName() => string.trim(first + " " + last)
-    vbox(style={gap=8, padding=16}) {
-        input(:value=first, placeholder="First name")
-        input(:value=last, placeholder="Last name")
-        checkbox(:checked=subscribed, label="Subscribe to the newsletter")
-        text(value="Hi, {fullName}!", style={fontSize=20})
-        text(value=subscribed ? "You're on the list." : "You'll stay off the list.")
+    ui.vbox(style={gap=8, padding=16}) {
+        ui.input(:value=first, placeholder="First name")
+        ui.input(:value=last, placeholder="Last name")
+        ui.checkbox(:checked=subscribed, label="Subscribe to the newsletter")
+        ui.text(value="Hi, {fullName}!", style={fontSize=20})
+        ui.text(value=subscribed ? "You're on the list." : "You'll stay off the list.")
+    }
+}
+```
+
+## Drawing on a Canvas
+
+`sngl:ui/draw` adds a `canvas` and the shapes it hosts: `rect`, `circle`, `ellipse`, `line`, `path`, `canvasText` and `canvasImage`. Shapes are their own family: a canvas accepts only shapes, and a `ui.vbox` accepts no shapes, so putting one in the other is a compile error rather than a blank screen.
+
+Shapes read state like any other node — change `radius` and the canvas redraws.
+
+```sngl
+import draw "sngl:ui/draw"
+import ui "sngl:ui"
+
+ui.window {
+    var radius = 40.0
+    ui.vbox(style={gap=8, padding=16}) {
+        draw.canvas(width=240px, height=160px) {
+            draw.rect(x=0, y=0, w=240, h=160, style={fill=#f8fafc})
+            draw.circle(cx=120, cy=80, r=radius, style={fill=#6366f1, stroke=#4338ca, strokeWidth=3.0})
+        }
+        ui.hbox(style={gap=8}) {
+            ui.button(text="Smaller", @click { radius -= 5 }, disabled=radius <= 10)
+            ui.button(text="Bigger", @click { radius += 5 }, disabled=radius >= 75)
+        }
+    }
+}
+```
+
+## Rich Text
+
+A `ui.text` is one run of text in one style. When a sentence needs a bold word in the middle, `sngl:ui/markup` provides inline runs that share one flow and wrap together: `markup.bold`, `markup.italic`, `markup.link`, `markup.monospace` and more, placed in a block such as `markup.paragraph` or `markup.heading1`.
+
+A markdown file can be imported as the same components — `import doc "md:./guide.md"` gives you a `doc.document` component to place in a window.
+
+```sngl
+import markup "sngl:ui/markup"
+import ui "sngl:ui"
+
+ui.window {
+    ui.vbox(style={gap=8, padding=16}) {
+        markup.heading1 {
+            markup.text(value="Rich text")
+        }
+        markup.paragraph {
+            markup.text(value="A sentence with ")
+            markup.bold {
+                markup.text(value="bold")
+            }
+            markup.text(value=" and ")
+            markup.italic {
+                markup.text(value="italic")
+            }
+            markup.text(value=" runs in one flow.")
+        }
     }
 }
 ```
 
 ## Where To Next
 
-You've seen the core of SNGL: components, reactive state, derived funcs, lists, events, styles, and multi-target output. From here, the next steps depend on what you're building.
+You've seen the core of SNGL: windows and components, reactive state, derived funcs, lists and maps, slots and events, lifetimes and errors, and multi-target output. From here, the next steps depend on what you're building.
 
-- Read the **Language Reference** for the complete grammar, every built-in, and the full stdlib.
-- Browse the **Component Gallery** for every stdlib component with live previews.
-- Open the free-form **Playground** to paste your own code and inspect the generated output, AST, and per-target code side by side.
+- Read **Effective SNGL** for the idioms that make a program read well.
+- Read the **Language Specification** for the complete grammar and semantics.
+- Browse the **Reference** for every library package, with live previews of its components.
+- Open the free-form **Playground** to paste your own code and inspect the generated output.
 
 ```sngl
-import . "sngl:ui"
+import ui "sngl:ui"
 
-window {
-    vbox(style={gap=8, padding=24, alignItems="center"}) {
-        text(value="Happy building!", style={fontSize=28, fontWeight="bold"})
-        text(value="Open the Playground, Component Gallery, or Reference docs.", style={color=#555555})
+ui.window {
+    ui.vbox(style={gap=8, padding=24, alignItems=center}) {
+        ui.text(value="Happy building!", style={fontSize=28, fontWeight=bold})
+        ui.text(value="Open the Playground, the Reference, or Effective SNGL.", style={color=#555555})
     }
 }
 ```
