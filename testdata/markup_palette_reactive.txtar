@@ -678,8 +678,8 @@ body { font-family: system-ui, sans-serif; }
   <p style="margin:0px;white-space:pre-wrap"><code><span id="__n0" data-sngl-id="__n0" class="sngl-tok-keyword"><span>func</span></span></code></p>
 </div>
 <style>
-.sngl-tok-keyword { color:#cf222e }
-@media (prefers-color-scheme: dark) { .sngl-tok-keyword { color:#ff7b72 } }
+:where(.sngl-tok-keyword) { color:#cf222e }
+@media (prefers-color-scheme: dark) { :where(.sngl-tok-keyword) { color:#ff7b72 } }
 </style>
 
 <script>
@@ -767,4 +767,4 @@ pass sha256:c2bea7b1ac09ac2164ae959ba00ce349
 -- run/kotlin/android --
 pass sha256:5f396f3bcd8b30b4cfb6d0ea04a833b9
 -- run/none/html --
-pass sha256:9aebdac3f3c53ee7b3dc387b1e146c7f
+pass sha256:32feb4913b9570a64e0ed7255e97c070

@@ -1185,6 +1185,11 @@ func (g *htmlGen) generate() (string, error) {
 		g.renderIRStmt(&b, s, 0)
 	}
 
+	// Ahead of the stylesheet: an element the script builds registers its
+	// class's rule as it is translated.
+	var scriptBuf strings.Builder
+	g.emitScript(&scriptBuf)
+
 	if len(g.Styles) > 0 {
 		var cssBuf strings.Builder
 		for _, css := range g.Styles {
@@ -1200,8 +1205,6 @@ func (g *htmlGen) generate() (string, error) {
 		b.WriteString("</style>\n")
 	}
 
-	var scriptBuf strings.Builder
-	g.emitScript(&scriptBuf)
 	sharedTags, script := g.linkSharedConsts(pruneDecls(scriptBuf.String()))
 
 	// The i18n runtime is prepended as an IIFE so the generated calls resolve
