@@ -44,13 +44,12 @@ func (e *RaisedError) Error() string {
 	return fmt.Sprintf("raised: %s", msg)
 }
 
-// dispatchRaise routes a RaisedError through the error-handling modes set
-// by the checker's effect analysis. Returns nil to consume the error
-// (handler was invoked); returns the error to propagate upward.
+// dispatchRaise routes a raise that came out of call through the mode the
+// checker's effect analysis resolved for it. A per-call handler runs and the
+// statement holding the call is over; a boundary's or window's handler runs
+// and the event handler that made the call is over, which is a return. Any
+// other mode passes the raise to the caller.
 func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
-	if raised == nil || call == nil {
-		return nil
-	}
 	switch call.ErrorMode {
 	case ir.ErrorPerCall:
 		if call.ErrorHandler != nil {
@@ -58,7 +57,10 @@ func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
 		}
 	case ir.ErrorInvokeAndTerminate:
 		if call.ResolvedHandler != nil {
-			return env.invokeHandler(call.ResolvedHandler, raised.Event)
+			if err := env.invokeHandler(call.ResolvedHandler, raised.Event); err != nil {
+				return err
+			}
+			return &returnSignal{raised: true}
 		}
 	}
 	return raised
@@ -67,6 +69,10 @@ func (env *Env) dispatchRaise(call *ir.Call, raised *RaisedError) error {
 // invokeHandler executes the handler body with the error bound to the
 // handler's param. Propagates any error raised by the handler body itself to
 // the caller.
+//
+// The body's own `return` ends the body alone. One that stands for a raise the
+// body made and a handler further out caught is passed on, because that raise
+// ends the event handler this one was invoked from too.
 func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) error {
 	if handler == nil || handler.Func == nil {
 		return nil
@@ -89,7 +95,16 @@ func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) er
 			}
 		}()
 	}
-	return env.ExecBlock(handler.Func.Block)
+	for _, stmt := range handler.Func.Block {
+		err := env.Exec(stmt)
+		if ret, ok := err.(*returnSignal); ok && !ret.raised {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // returnSignal carries a `return` out of the blocks it was written inside.
@@ -98,7 +113,12 @@ func (env *Env) invokeHandler(handler *ir.EventHandler, event map[string]any) er
 // whoever is running the function body catches it. Reading a Return only where
 // it sits at the top of a body — which is what the interpreter used to do — let
 // a guard clause fall through to the statement after its `if`.
-type returnSignal struct{ value any }
+//
+// raised marks the return a caught raise stands for; see dispatchRaise.
+type returnSignal struct {
+	value  any
+	raised bool
+}
 
 func (*returnSignal) Error() string { return "return outside a function body" }
 
@@ -149,9 +169,6 @@ func (env *Env) Exec(s ir.Stmt) error {
 			return nil
 		}
 		_, err := env.evalCall(n.Call)
-		if raised, ok := err.(*RaisedError); ok {
-			return env.dispatchRaise(n.Call, raised)
-		}
 		return err
 	case *ir.Emit:
 		return env.emit(n)
@@ -322,6 +339,9 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 }
 
 func (env *Env) execIf(s *ir.If) error {
+	if s.Catch != nil {
+		return env.execCatch(s)
+	}
 	cond, err := env.Eval(s.Cond)
 	if err != nil {
 		return err
@@ -554,4 +574,20 @@ func numKindOfValue(v any) opeval.NumKind {
 		return opeval.NumKind{Float: true}
 	}
 	return opeval.NumKind{}
+}
+
+// execCatch runs a catch block, which only a lowered package holds: a build
+// for this target lowers, and passErrorCatch has by then turned each raise it
+// covers into one that propagates to here.
+func (env *Env) execCatch(s *ir.If) error {
+	for _, st := range s.Body {
+		err := env.Exec(st)
+		if raised, ok := err.(*RaisedError); ok {
+			return env.invokeHandler(s.Catch, raised.Event)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

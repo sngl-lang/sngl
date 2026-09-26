@@ -1193,6 +1193,15 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 	if u, ok := obj.(unitValue); ok {
 		return u.baseAmount(e.Field)
 	}
+	// The checker types `.length` on a string or list as a select, not a call.
+	if e.Field == "length" {
+		switch obj.(type) {
+		case string:
+			return intrinsics["string.length"]([]any{obj})
+		case []any:
+			return intrinsics["list.length"]([]any{obj})
+		}
+	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
 }
 
@@ -1535,6 +1544,14 @@ func (r *listRef) get() any  { return r.list[r.idx] }
 func (r *listRef) set(v any) { r.list[r.idx] = v }
 
 func (env *Env) evalCall(call *ir.Call) (any, error) {
+	v, err := env.evalCallSite(call)
+	if raised, ok := err.(*RaisedError); ok {
+		return nil, env.dispatchRaise(call, raised)
+	}
+	return v, err
+}
+
+func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	// i18n by the id, before the call shape is examined: an entry point may
 	// arrive qualified or not, and the `i18n._*` primitives arrive plain once
 	// the wrapper is inlined, so neither is reliably a namespace call by the

@@ -320,6 +320,13 @@ type If struct {
 	// and render only its NodeInst children) must emit it as imperative control
 	// flow so the temp is assigned in scope for the consuming widget.
 	FromTernary bool `json:"-"`
+	// Catch makes this a catch block rather than a conditional, set by
+	// passErrorCatch: Body runs, and a raise that escapes it runs Catch with the
+	// error and then carries on after the If. Cond is the literal true, so a
+	// walk that does not know the field still reads Body as run once. Catch is
+	// an alias -- the handler belongs to a call, a boundary or a window, and
+	// walks reach it there.
+	Catch *EventHandler `json:"-"`
 }
 
 func (*If) stmtNode() {}

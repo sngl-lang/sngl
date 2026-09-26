@@ -391,6 +391,9 @@ func (m *mounter) stmts(env *Env, stmts []ir.Stmt, prefix string) ([]*Node, erro
 				// boundary that should catch a nested instance is the dynamic
 				// one -- which the mounter is standing in.
 				err = env.invokeHandler(n.Handler, raised.Event)
+				if IsReturn(err) {
+					err = nil
+				}
 				nodes = nil
 			}
 			if err != nil {
