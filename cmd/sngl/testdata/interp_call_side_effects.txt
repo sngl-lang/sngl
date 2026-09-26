@@ -1,0 +1,63 @@
+# A call's side effects happen once, and they reach the caller, on the
+# interpreter as on a compiled target.
+#
+# Two interpreter defects, each hidden behind the other. evalUserFuncCore took
+# a declared return type to mean a pure body and ran it in a snapshot it then
+# dropped, so a method that wrote a component var and returned a value wrote
+# nothing: `bump()` in a click left `n` at 0. And a method call evaluated its
+# arguments to find the receiver and then evaluated them again to bind them,
+# so `add(next(), 0)` called next twice -- invisible while next's writes were
+# being dropped.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component panel node {
+    var n = 0
+    var got = 0
+    func next() int {
+        n = n + 1
+        return n
+    }
+    func add(x int, y int) => x + y
+    button #bump(text="bump", @click {
+        next()
+    })
+    button #sum(text="sum", @click {
+        got = add(next(), 10)
+    })
+}
+
+func testReturningMethodWritesState(t Test, c panel) {
+    c.bump.click()
+    t.assert(c.n == 1)
+}
+
+func testArgumentEvaluatedOnce(t Test, c panel) {
+    c.sum.click()
+    t.assert(c.n == 1)
+    t.assert(c.got == 11)
+}
+-- testrun/bubbletea/go/app.sngl/panel/1 --
+sha256:0eee8eb2f96c5b1e61eae3bed28f2c6f
+{
+  "results": [
+    {
+      "Desc": "ArgumentEvaluatedOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ReturningMethodWritesState",
+      "Passed": true
+    }
+  ]
+}

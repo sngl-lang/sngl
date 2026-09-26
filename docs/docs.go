@@ -398,7 +398,7 @@ func packageComponents(uri string) []Component {
 			c.Examples = srcs
 			if len(srcs) > 0 {
 				c.HighlightedCode = docsite.HighlightSNGL(srcs[0])
-				c.PreviewHTML = buildPreviewSection(name, srcs[0], detectPlatforms(name))
+				c.PreviewHTML = buildPreviewSection(name, checker.ExampleProgram(checker.PackageExampleImports(path), srcs[0]), detectPlatforms(name))
 			}
 		}
 
@@ -428,8 +428,8 @@ func detectPlatforms(name string) []string {
 	return platforms
 }
 
-func buildPreviewSection(name, source string, platforms []string) string {
-	iframeHTML := compilePreview(source)
+func buildPreviewSection(name, program string, platforms []string) string {
+	iframeHTML := compilePreview(program)
 	if iframeHTML == "" {
 		return ""
 	}
@@ -474,14 +474,17 @@ func buildPreviewSection(name, source string, platforms []string) string {
 	return b.String()
 }
 
-// source is a full `component main { ... }` block, as checker.PrefixedExamples
-// returns.
-func compilePreview(source string) string {
-	doc, err := parser.Parse("example.sngl", []byte(source))
+// program is an example made buildable by checker.ExampleProgram.
+func compilePreview(program string) string {
+	doc, err := parser.Parse("example.sngl", []byte(program))
 	if err != nil {
 		return ""
 	}
-	pkg, diags := checker.Check(doc, &checker.Config{IsMain: true})
+	pkg, diags := checker.Check(doc, &checker.Config{
+		IsMain:    true,
+		Platforms: codegen.CollectPlatforms(),
+		Languages: codegen.CollectLangs(),
+	})
 	if len(diags) > 0 {
 		return ""
 	}

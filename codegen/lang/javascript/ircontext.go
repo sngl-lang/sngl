@@ -2,6 +2,7 @@ package javascript
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -37,6 +38,15 @@ func NewIRContext(ctx *codegen.ExprCtx) *JsIRContext {
 func (jc *JsIRContext) EvalExpr(e ir.Expr) string { return irwalk.EvalExpr(jc, e) }
 
 func (jc *JsIRContext) EvalStmt(s ir.Stmt) []string { return irwalk.EvalStmt(jc, s) }
+
+// stateRecv is the object state vars are fields of: the page's `state`, or
+// the instance a test module was handed, which cannot see the page's closure.
+func (jc *JsIRContext) stateRecv() string {
+	if jc.Ctx != nil && jc.Ctx.StateReceiver != "" {
+		return jc.Ctx.StateReceiver
+	}
+	return "state"
+}
 
 func (jc *JsIRContext) NilExpr() string              { return "null" }
 func (jc *JsIRContext) Literal(n *ir.Literal) string { return jc.evalLiteral(n) }
@@ -213,8 +223,62 @@ func (jc *JsIRContext) CallStmtLines(n *ir.CallStmt) []string {
 		if lines := jc.evalErrorAwareCall(n.Call); lines != nil {
 			return lines
 		}
+		if lines := jc.catchAtCall(n.Call); lines != nil {
+			return lines
+		}
 	}
 	return []string{jc.EvalExpr(n.Call)}
+}
+
+// catchAtCall emits a call to a fallible function under a try whose catch is
+// the handler this site resolved to. A raise is an Error carrying a `kind`;
+// anything else thrown is rethrown, as Go re-panics what is not an
+// ErrorEvent -- except from a `fails` native called here, whose failure is an
+// ordinary exception.
+func (jc *JsIRContext) catchAtCall(call *ir.Call) []string {
+	handler := ir.CatchingHandler(call)
+	if handler == nil || handler.Func == nil {
+		return nil
+	}
+	lines := []string{
+		"try {",
+		"\t" + jc.EvalExpr(call),
+		"} catch (__err) {",
+	}
+	if call.Func == nil || !call.Func.HasErrorReturn {
+		lines = append(lines, "\tif (__err?.kind === undefined) throw __err;")
+	}
+	if len(handler.Func.Params) > 0 {
+		lines = append(lines, fmt.Sprintf("\tlet %s = {message: __err?.message ?? String(__err), kind: __err?.kind ?? \"\"}", handler.Func.Params[0].Name))
+	}
+	lines = append(lines, jc.handlerBody(handler)...)
+	return append(lines, "}")
+}
+
+// handlerBody renders an inlined @error body one indent in. A `return` there
+// ends the handler, not the function it was inlined into, so a body holding
+// one runs as a function of its own.
+func (jc *JsIRContext) handlerBody(handler *ir.EventHandler) []string {
+	var body []string
+	for _, stmt := range handler.Func.Block {
+		body = append(body, jc.EvalStmt(stmt)...)
+	}
+	if ir.BlockReturns(handler.Func.Block) {
+		open, closeLine := "(() => {", "})()"
+		if ir.BlockHasAsyncCall(handler.Func.Block) {
+			open, closeLine = "await (async () => {", "})()"
+		}
+		wrapped := []string{open}
+		for _, l := range body {
+			wrapped = append(wrapped, "\t"+l)
+		}
+		body = append(wrapped, closeLine)
+	}
+	out := make([]string, len(body))
+	for i, l := range body {
+		out[i] = "\t" + l
+	}
+	return out
 }
 func (jc *JsIRContext) EmitText(n *ir.Emit, argStrs []string) string {
 	return "emit(" + fmt.Sprintf("%q", n.Name) + ", " + strings.Join(argStrs, ", ") + ")"
@@ -321,7 +385,7 @@ func (jc *JsIRContext) MutTargetIdent(n *ir.Ident) string {
 	}
 	_, kind := jc.Ctx.Resolve(n.Name)
 	if kind == codegen.NameStateVar {
-		return "state." + n.Name
+		return jc.stateRecv() + "." + n.Name
 	}
 	if kind == codegen.NameLocal {
 		return jc.Ctx.RenamedName(n.Name)
@@ -394,11 +458,7 @@ func (jc *JsIRContext) emitHandlerInvoke(evt string, handler *ir.EventHandler) [
 		fmt.Sprintf("\tlet %s = %s", paramName, evt),
 		fmt.Sprintf("\tvoid %s", paramName),
 	}
-	for _, stmt := range handler.Func.Block {
-		for _, l := range jc.EvalStmt(stmt) {
-			lines = append(lines, "\t"+l)
-		}
-	}
+	lines = append(lines, jc.handlerBody(handler)...)
 	lines = append(lines, "}")
 	return lines
 }
@@ -449,7 +509,7 @@ func (jc *JsIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameComputed:
 		return name + "()"
 	case codegen.NameStateVar:
-		return "state." + name
+		return jc.stateRecv() + "." + name
 	case codegen.NameConst:
 		// A component-scoped const is a per-instance state field, since it may
 		// need runtime construction; a package-level const stays a bare
@@ -773,6 +833,14 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 	qualName := receiverName + "." + method
 
 	args := jc.evalCallArgs(n.Args)
+	if jc.Ctx != nil && jc.Ctx.ClosureMethods && jc.Ctx.Component != nil &&
+		slices.Contains(jc.Ctx.Component.Funcs, n.Func) && len(args) > 0 {
+		call := method + "(" + strings.Join(args[1:], ", ") + ")"
+		if n.Func.IsAsync {
+			call = "await " + call
+		}
+		return call
+	}
 	if result := jsBuiltinMethodFromArgs(qualName, args); result != "" {
 		return result
 	}

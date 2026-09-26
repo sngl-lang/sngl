@@ -143,8 +143,7 @@ package main
 import "testing"
 
 func TestTabsSelectedMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.idx == 0)) { t.Errorf("assert failed: %s", "(c.idx == 0)") }
 	c.idx = 2
@@ -224,8 +223,7 @@ package main
 import "testing"
 
 func TestTabsSelectedMutates(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.idx == 0)) { t.Errorf("assert failed: %s", "(c.idx == 0)") }
 	c.idx = 2
@@ -357,6 +355,17 @@ body { font-family: system-ui, sans-serif; }
 </div>
 
 <script>
+window.__sngl_markup = Array.from(document.body.childNodes)
+  .filter((n) => n.nodeName !== "SCRIPT").map((n) => n.cloneNode(true));
+window.__sngl_reset = () => {
+  for (const n of Array.from(document.body.childNodes)) {
+    if (n.nodeName !== "SCRIPT") n.remove();
+  }
+  const first = document.body.firstChild;
+  for (const n of window.__sngl_markup) document.body.insertBefore(n.cloneNode(true), first);
+  window.__sngl_boot();
+};
+window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
   var state = { idx: 0 };
@@ -374,13 +383,15 @@ body { font-family: system-ui, sans-serif; }
     Object.assign(window, { testTabsSelectedMutates });
   }
 })();
+};
+window.__sngl_boot();
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:58b3d6c2b0616b07ae6cfd9c553bf5b9
+pass sha256:44fc62d5cbbdb7c31f7d4e392c8fcfbb
 -- run/go/fyne --
-pass sha256:7b8d48497bd65e3e338a10efe854beb5
+pass sha256:e12611b7ec23e94551cd1751fca4566a
 -- run/kotlin/android --
 pass sha256:87434f98c9740458d1f5331a40062b2b
 -- run/none/html --
-pass sha256:6ed08a0a094ea529b93db280aba054fa
+pass sha256:e8e55d1167c9692deeaf595491d9f221

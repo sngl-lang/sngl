@@ -257,6 +257,44 @@ func (t *fyneTranslator) rasterExpr(m *canvasMeta, w, h int) string {
 		recv, canvasSurfaceField(m.ID), w, h, m.Scaling, recv, m.DrawName)
 }
 
+// canvasTapField names the fynelayout.Tap a clickable canvas is shown in.
+func canvasTapField(id string) string { return id + "Tap" }
+
+// attachCanvasClick puts the canvas in a fynelayout.Tap and hands its
+// OnTapped the handler. No Fyne callback signature replaces the handler's
+// SNGL parameter, so it is handed the declared payload.
+func (t *fyneTranslator) attachCanvasClick(id, event string, handler ir.Expr) []ir.Stmt {
+	tap := canvasTapField(id)
+	t.fieldSink(tap, "*fynelayout.Tap")
+	t.fieldIDs[tap] = true
+	t.canvasTaps[id] = true
+	if t.importSink != nil {
+		t.importSink(fyneLayoutImportPath)
+	}
+	for i, name := range t.topLevel {
+		if name == id {
+			t.topLevel[i] = tap
+		}
+	}
+	if t.invokerSink != nil && !strings.HasPrefix(id, "__n") {
+		t.invokerSink(fyneEventInvoker{IDLabel: id, SnglEvent: codegen.TriggerEventName(handler, event), Field: "OnTapped", Target: tap})
+	}
+	arg := ""
+	if pt, _ := codegen.HandlerPayload(handler); pt != nil {
+		arg = golang.IRTypeToGo(pt) + "{}"
+	}
+	tapRef := t.fieldRef(tap)
+	newTap := nativeCallAt("fynelayout.NewTap", fyneLayoutImportPath, []ir.Expr{t.fieldRef(id)}, ir.TypDyn)
+	return []ir.Stmt{
+		&ir.Assign{Target: tapRef, Op: ast.AssignSet, Value: newTap},
+		&ir.Assign{
+			Target: &ir.Select{Operand: tapRef, Field: "OnTapped", Type: ir.TypDyn},
+			Op:     ast.AssignSet,
+			Value:  rawGoExpr(fmt.Sprintf("func() { %s(%s) }", t.gc.EvalExpr(t.qualifyHandlerFunc(handler)), arg)),
+		},
+	}
+}
+
 // canvasSurfaceField names the reusable drawing target behind a scaled canvas.
 func canvasSurfaceField(id string) string { return id + "Surface" }
 

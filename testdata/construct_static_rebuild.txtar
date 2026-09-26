@@ -96,11 +96,11 @@ body { font-family: system-ui, sans-serif; }
     let __inst1_was_start = [];
     function __set_more(__v) {
       __prop_more = __v;
-      __renderSlot0(__root);
+      __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
       __prop___depth = __v;
-      __renderSlot0(__root);
+      __renderSlot0(__slotAnchor_0);
     }
     function __renderSlot0(parent) {
       let __place0_prev = __slot0;
@@ -175,9 +175,12 @@ body { font-family: system-ui, sans-serif; }
     __n3.appendChild(__n4);
     let __n0 = document.createElement("span");
     __n0.textContent = "s:" + String(n);
-    __renderSlot0(__root);
+    const __slotAnchor_0 = document.createElement("span");
+    __slotAnchor_0.style.display = "contents";
+    __renderSlot0(__slotAnchor_0);
     __root.appendChild(__n3);
     __root.appendChild(__n0);
+    __root.appendChild(__slotAnchor_0);
     return {
       __root,
       __destroy() {
@@ -208,4 +211,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c036c9bd2e05faea12cfea448cff6c77
+pass sha256:8edf6fd27d99b35c5d5385be53046e08

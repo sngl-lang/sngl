@@ -22,14 +22,17 @@ type irViewContext struct {
 	buf         *strings.Builder
 	indent      int
 	vertical    bool
+	horizontal  bool
 	inComponent bool
-	slotVar     string
 
 	// overlays accumulates modal/drawer Overlay primitives encountered while
 	// rendering the body. They are NOT joined inline; instead each records the
 	// Go variable holding its rendered box plus its placement/dim, and
 	// emitIRView composites them over the joined content at the end.
 	overlays []pendingOverlay
+
+	focusPos  map[string]bool
+	canvasSeq map[string]bool
 }
 
 // pendingOverlay records one Overlay primitive deferred out of the inline join
@@ -157,23 +160,15 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 	var params []string
 	for _, p := range cc.Props {
 		goType := golang.IRTypeToGo(p.Type)
-		params = append(params, p.Name+" "+goType)
+		params = append(params, bindName(p.Name)+" "+goType)
 	}
-	hasSlot := cc.Component.ChildrenType != nil
-	if hasSlot {
-		params = append(params, "slotContent string")
-	}
+	params = append(params, slotParams(cc.Component)...)
 
 	fmt.Fprintf(b, "func (m Model) %s(%s) string {\n", methodName, strings.Join(params, ", "))
 
 	compGC := gc.ForComponent(cc.Component)
 	for _, p := range cc.Props {
-		compGC = compGC.WithLocal(p.Name)
-	}
-
-	var slotVar string
-	if hasSlot {
-		slotVar = "slotContent"
+		compGC = withBinding(compGC, p.Name)
 	}
 
 	vc := &irViewContext{
@@ -183,7 +178,6 @@ func emitIRComponentMethod(b *strings.Builder, cc *codegen.ComponentCtx, ctx *co
 		buf:         &strings.Builder{},
 		indent:      1,
 		inComponent: true,
-		slotVar:     slotVar,
 	}
 
 	vc.renderBody(cc.Body, "result")
@@ -204,7 +198,16 @@ func (vc *irViewContext) renderChild(child ir.Stmt, childVar, childrenVar string
 	}
 	vc.line("var %s string", childVar)
 	vc.renderStmt(child, childVar)
-	vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	switch child.(type) {
+	case *ir.If, *ir.For:
+		// A branch not taken or a loop over nothing renders nothing, and
+		// joining its empty string would put a blank line in the box.
+		vc.line("if %s != \"\" {", childVar)
+		vc.line("\t%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+		vc.line("}")
+	default:
+		vc.line("%s = append(%s, %s)", childrenVar, childrenVar, childVar)
+	}
 }
 
 // renderBody emits a body as one value in `single`, or as a list of parts
@@ -246,11 +249,34 @@ func rendersPart(s ir.Stmt) bool {
 		return false
 	case *ir.If:
 		return !n.FromTernary
+	case *ir.For:
+		return !computesOnly(n)
 	case *ir.Assign, *ir.CallStmt, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 		*ir.Break, *ir.Continue:
 		return false
 	}
 	return true
+}
+
+// computesOnly reports whether a view-body loop draws nothing -- the
+// accumulator NoListLambdas hoists ahead of the widget reading `xs.map(f)`,
+// which runs as statements rather than rendering.
+func computesOnly(f *ir.For) bool {
+	return len(f.Body) > 0 && !slices.ContainsFunc(f.Body, draws) && !slices.ContainsFunc(f.Else, draws)
+}
+
+func draws(s ir.Stmt) bool {
+	switch n := s.(type) {
+	case *ir.If:
+		return !n.FromTernary && (slices.ContainsFunc(n.Body, draws) || slices.ContainsFunc(n.Else, draws))
+	case *ir.For:
+		return !computesOnly(n)
+	case *ir.NodeInst:
+		// A timer draws nothing either, but as a statement a loop of them is a
+		// loop over nothing whose variable Go refuses as unused.
+		return true
+	}
+	return rendersPart(s)
 }
 
 func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
@@ -264,6 +290,7 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 			return // see rendersPart
 		}
 		vc.renderNode(s, resultVar)
+		vc.countFocusPos(s)
 	case *ir.If:
 		if s.FromTernary {
 			// NoTernary hoists `var __ltN` + this value-only If (Assign bodies,
@@ -275,17 +302,15 @@ func (vc *irViewContext) renderStmt(stmt ir.Stmt, resultVar string) {
 		}
 		vc.renderIf(s, resultVar)
 	case *ir.For:
+		if computesOnly(s) {
+			vc.emitIRStmt(s)
+			return
+		}
 		vc.renderFor(s, resultVar)
 	case *ir.SlotInst:
-		// Slot in a user component body — substitute the caller's joined
-		// children, threaded in as slotVar when the view function was opened.
-		if vc.slotVar != "" {
-			vc.line(`%s = %s`, resultVar, vc.slotVar)
-		}
+		vc.renderSlotInst(s, resultVar)
 	case *ir.ErrorBoundary:
-		for _, child := range s.Children {
-			vc.renderStmt(child, resultVar)
-		}
+		vc.renderBranch(s.Children, resultVar)
 	case *ir.LocalVar:
 		// A LocalVar in the view body is the `var __ltN` decl NoTernary hoists
 		// before the widget consuming it (its FromTernary If assigns it). Emit
@@ -303,22 +328,36 @@ func (vc *irViewContext) renderIf(s *ir.If, resultVar string) {
 	// Defer the conditional syntax to the Go language driver.
 	vc.line("%s", vc.gc.IfHead(s, vc.gc.EvalExpr(s.Cond)))
 	vc.indent++
-	for _, child := range s.Body {
-		vc.renderStmt(child, resultVar)
-	}
+	vc.renderBranch(s.Body, resultVar)
 	vc.indent--
 	if len(s.Else) > 0 {
 		vc.line("%s", vc.gc.ElseHead())
 		vc.indent++
-		for _, child := range s.Else {
-			vc.renderStmt(child, resultVar)
-		}
+		vc.renderBranch(s.Else, resultVar)
 		vc.indent--
 	}
 	vc.line("%s", vc.gc.BlockEnd())
 }
 
+func (vc *irViewContext) renderBranch(stmts []ir.Stmt, resultVar string) {
+	if countParts(stmts) <= 1 {
+		for _, child := range stmts {
+			vc.renderStmt(child, resultVar)
+		}
+		return
+	}
+	list := resultVar + "Parts"
+	vc.line("var %s []string", list)
+	vc.renderSiblings(stmts, resultVar+"Part", list)
+	if vc.horizontal {
+		vc.line(`%s = lipgloss.JoinHorizontal(lipgloss.Top, %s...)`, resultVar, list)
+	} else {
+		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, list)
+	}
+}
+
 func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
+	vc.declareLoopCounters(s)
 	iterExpr := vc.gc.EvalExpr(s.Iter)
 
 	// Defer the loop header to the Go language driver so loop semantics
@@ -349,11 +388,7 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	}
 
 	innerVar := resultVar + "Item"
-	vc.line("var %s string", innerVar)
-	for _, child := range s.Body {
-		vc.renderStmt(child, innerVar)
-	}
-	vc.line("%s = append(%s, %s)", loopVar, loopVar, innerVar)
+	vc.renderSiblings(s.Body, innerVar, loopVar)
 
 	vc.indent--
 	vc.line("}")
@@ -367,14 +402,47 @@ func (vc *irViewContext) renderFor(s *ir.For, resultVar string) {
 	if len(s.Else) > 0 {
 		vc.line("if len(%s) == 0 {", iterExpr)
 		vc.indent++
-		for _, child := range s.Else {
-			vc.renderStmt(child, resultVar)
+		if countParts(s.Else) > 1 {
+			elseVar := resultVar + "Else"
+			vc.line("var %s []string", elseVar)
+			vc.renderSiblings(s.Else, resultVar+"Empty", elseVar)
+			vc.line(`%s = strings.Join(%s, %s)`, resultVar, elseVar, sep)
+		} else {
+			for _, child := range s.Else {
+				vc.renderStmt(child, resultVar)
+			}
 		}
 		vc.indent--
 		vc.line("}")
 	}
 
 	vc.gc = savedGC
+}
+
+func countParts(stmts []ir.Stmt) int {
+	n := 0
+	for _, s := range codegen.WithoutSchedules(stmts) {
+		if rendersPart(s) {
+			n++
+		}
+	}
+	return n
+}
+
+// renderSiblings appends what stmts render to list, each part its own entry,
+// so a loop body of several nodes gives the container each of them to join.
+func (vc *irViewContext) renderSiblings(stmts []ir.Stmt, partVar, list string) {
+	if countParts(stmts) <= 1 {
+		vc.line("var %s string", partVar)
+		for _, child := range stmts {
+			vc.renderStmt(child, partVar)
+		}
+		vc.line("%s = append(%s, %s)", list, list, partVar)
+		return
+	}
+	for i, child := range codegen.WithoutSchedules(stmts) {
+		vc.renderChild(child, fmt.Sprintf("%s_%d", partVar, i), list)
+	}
 }
 
 func (vc *irViewContext) renderNode(n *ir.NodeInst, resultVar string) {
@@ -479,12 +547,12 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		boxVar := fmt.Sprintf("overlay%d", len(vc.overlays))
 		childrenVar := boxVar + "Children"
 		vc.line("var %s []string", childrenVar)
-		prevVertical := vc.vertical
-		vc.vertical = true
+		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
+		vc.vertical, vc.horizontal = true, false
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", boxVar, i), childrenVar)
 		}
-		vc.vertical = prevVertical
+		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 		vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, boxVar, childrenVar)
 		if style != "lipgloss.NewStyle()" {
 			vc.line(`%s = %s.Render(%s)`, boxVar, style, boxVar)
@@ -510,12 +578,13 @@ func (vc *irViewContext) renderBlueprint(n *ir.NodeInst, resultVar string) {
 		// Join children vertically/horizontally, then apply style if present.
 		childrenVar := resultVar + "Children"
 		vc.line("var %s []string", childrenVar)
-		prevVertical := vc.vertical
+		prevVertical, prevHorizontal := vc.vertical, vc.horizontal
 		vc.vertical = bp.Join == joinVertical
+		vc.horizontal = !vc.vertical
 		for i, child := range n.Children {
 			vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 		}
-		vc.vertical = prevVertical
+		vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 		// tooltip: reveal the body text (dim) below the trigger while the wrapped
 		// focusable descendant is focused. The `tooltip` prop carries the text;
 		// the focus expression comes from the focusable descendant's injected
@@ -593,10 +662,8 @@ func (vc *irViewContext) renderUserComponent(n *ir.NodeInst, resultVar string) {
 		}
 	}
 
-	if n.Component != nil && n.Component.ChildrenType != nil && len(n.Children) > 0 {
-		slotVar := resultVar + "Slot"
-		vc.renderChildrenNodes(n.Children, slotVar)
-		args = append(args, slotVar)
+	if n.Component != nil {
+		args = append(args, vc.populationArgs(n, resultVar)...)
 	}
 
 	vc.line(`%s = m.%s(%s)`, resultVar, methodName, strings.Join(args, ", "))
@@ -611,12 +678,13 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 		if s, ok := codegen.IRLiteralString(joinExpr); ok {
 			childrenVar := resultVar + "Children"
 			vc.line("var %s []string", childrenVar)
-			prevVertical := vc.vertical
+			prevVertical, prevHorizontal := vc.vertical, vc.horizontal
 			vc.vertical = s == "vertical"
+			vc.horizontal = !vc.vertical
 			for i, child := range n.Children {
 				vc.renderChild(child, fmt.Sprintf("%s_%d", resultVar, i), childrenVar)
 			}
-			vc.vertical = prevVertical
+			vc.vertical, vc.horizontal = prevVertical, prevHorizontal
 			if s == "vertical" {
 				vc.line(`%s = lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenVar)
 			} else {
@@ -643,31 +711,6 @@ func (vc *irViewContext) renderRawTerminal(n *ir.NodeInst, resultVar string) {
 		vc.line(`%s = %s.Render(%sPrefix + " " + fmt.Sprint(%s))`, resultVar, style, resultVar, content)
 	} else {
 		vc.line(`%s = %s.Render(fmt.Sprint(%s))`, resultVar, style, content)
-	}
-}
-
-func (vc *irViewContext) renderChildrenNodes(children []ir.Stmt, resultVar string) {
-	var nodes []*ir.NodeInst
-	for _, s := range children {
-		if n, ok := s.(*ir.NodeInst); ok {
-			nodes = append(nodes, n)
-		}
-	}
-	if len(nodes) == 1 {
-		vc.line("var %s string", resultVar)
-		vc.renderNode(nodes[0], resultVar)
-	} else if len(nodes) > 1 {
-		childrenParts := resultVar + "Parts"
-		vc.line("var %s []string", childrenParts)
-		for i, child := range nodes {
-			childVar := fmt.Sprintf("%sPart%d", resultVar, i)
-			vc.line("var %s string", childVar)
-			vc.renderNode(child, childVar)
-			vc.line("%s = append(%s, %s)", childrenParts, childrenParts, childVar)
-		}
-		vc.line(`%s := lipgloss.JoinVertical(lipgloss.Left, %s...)`, resultVar, childrenParts)
-	} else {
-		vc.line(`%s := ""`, resultVar)
 	}
 }
 

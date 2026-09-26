@@ -2,17 +2,16 @@ package lower
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strconv"
 
-	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
-// passNoInlineComponents inlines every non-recursive, non-native, non-main
-// user-defined component into main. After the pass, codegen only sees one
-// real ir.Component (main) plus any recursive cycles. See
+// passNoInlineComponents inlines every non-recursive, non-native user-defined
+// component other than a harness root into the body that instantiates it.
+// After the pass, codegen sees only the harness root, the components built at
+// run time, and any recursive cycles. See
 // docs/superpowers/specs/2026-05-16-component-inlining-design.md.
 var passNoInlineComponents = pass{
 	name:    "NoInlineComponents",
@@ -45,6 +44,9 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 		return err
 	}
 	clearDemotedReceivers(pkg, st.demoted)
+	for c := range unreachedCycles(pkg, main, cycles) {
+		delete(st.keep, c)
+	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
 	for _, c := range pkg.Components {
@@ -53,6 +55,77 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 		}
 	}
 	return uniqueNodeIDs(pkg)
+}
+
+// unreachedCycles is every recursive component nothing the program renders
+// instantiates. A cycle is kept up front so its body survives the walk, but
+// one nothing reaches was never elected a runtime instance, and its body still
+// holds the insertions no backend renders.
+func unreachedCycles(pkg *ir.Package, main *ir.Component, cycles map[*ir.Component]bool) map[*ir.Component]bool {
+	if len(cycles) == 0 {
+		return nil
+	}
+	owned := map[*ir.Component]ir.Owner{}
+	var roots []ir.Owner
+	for _, o := range ir.Owners(pkg) {
+		switch {
+		case o.Comp == nil:
+			roots = append(roots, o)
+		case o.Comp == main:
+			roots = append(roots, o)
+			owned[o.Comp] = o
+		default:
+			owned[o.Comp] = o
+		}
+	}
+	reached := map[*ir.Component]bool{}
+	var queue []ir.Owner
+	visit := func(root any) {
+		_ = ir.Walk(root, func(n ir.Node) error {
+			if inst, ok := n.(*ir.NodeInst); ok && inst.Component != nil && !reached[inst.Component] {
+				reached[inst.Component] = true
+				if o, ok := owned[inst.Component]; ok {
+					queue = append(queue, o)
+				}
+			}
+			return nil
+		})
+	}
+	walkOwner := func(o ir.Owner) {
+		visit(o.Stmts())
+		for _, f := range o.Funcs {
+			if f != nil {
+				visit(f.Block)
+			}
+		}
+		for _, v := range o.Vars {
+			for _, h := range v.Handlers {
+				if h.Func != nil {
+					visit(h.Func.Block)
+				}
+			}
+		}
+		for _, h := range o.Handlers {
+			if h.Func != nil {
+				visit(h.Func.Block)
+			}
+		}
+	}
+	for _, o := range roots {
+		walkOwner(o)
+	}
+	for len(queue) > 0 {
+		o := queue[0]
+		queue = queue[1:]
+		walkOwner(o)
+	}
+	out := map[*ir.Component]bool{}
+	for c := range cycles {
+		if c != main && !reached[c] {
+			out[c] = true
+		}
+	}
+	return out
 }
 
 // dropNestedMethods removes from pkg.Funcs the methods of every component the
@@ -416,6 +489,134 @@ func (st *inlineCompState) run() error {
 			break
 		}
 	}
+	if !st.instanceState {
+		if err := st.refuseStateInCycles(); err != nil {
+			return err
+		}
+		return st.refuseCanvasInCycles()
+	}
+	return nil
+}
+
+// refuseCanvasInCycles: a canvas's surface and kitty image are kept per copy
+// of the loop the view walks, and that walk never enters a recursion.
+func (st *inlineCompState) refuseCanvasInCycles() error {
+	firstCanvas := func(stmts []ir.Stmt) *ir.NodeInst {
+		var found *ir.NodeInst
+		_ = ir.Walk(stmts, func(node ir.Node) error {
+			if n, ok := node.(*ir.NodeInst); ok && ir.IsShapeContainer(n) {
+				found = n
+				return ir.SkipAll
+			}
+			return nil
+		})
+		return found
+	}
+	for _, c := range st.pkg.Components {
+		if c == nil || !st.cycles[c] {
+			continue
+		}
+		if n := firstCanvas(c.Body); n != nil {
+			return fmt.Errorf("%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
+		}
+	}
+	var err error
+	for _, o := range ir.Owners(st.pkg) {
+		_ = ir.Walk(o.Stmts(), func(node ir.Node) error {
+			n, ok := node.(*ir.NodeInst)
+			if !ok || err != nil || n.Component == nil || !st.cycles[n.Component] {
+				return nil
+			}
+			for _, s := range ir.SuppliedContent(n) {
+				if at := firstCanvas(s.Body); at != nil {
+					err = fmt.Errorf("%s: a canvas handed to the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it outside %q", nodePos(at), n.Component.Name, n.Component.Name)
+					return ir.SkipAll
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// usedVar is the first of c's vars its body or funcs read or write. One nothing
+// names is state nobody observes, and costs the target nothing.
+func usedVar(c *ir.Component) *ir.Var {
+	own := map[*ir.Var]bool{}
+	for _, v := range c.Vars {
+		own[v] = true
+	}
+	var found *ir.Var
+	visit := func(nd ir.Node) error {
+		if id, ok := nd.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && own[v] && found == nil {
+				found = v
+				return ir.SkipAll
+			}
+		}
+		return nil
+	}
+	_ = ir.Walk(c.Body, visit)
+	for _, fn := range c.Funcs {
+		if found == nil && fn != nil {
+			_ = ir.Walk(fn.Block, visit)
+		}
+	}
+	return found
+}
+
+func varPos(v *ir.Var) string {
+	if v.AST != nil {
+		if p := v.AST.StmtPos(); p != nil && p.IsValid() {
+			return p.String()
+		}
+	}
+	return v.Name
+}
+
+// refuseStateInCycles refuses state or a lifetime inside a recursion on a
+// target that keeps no state of an instance's own: such a target splices a
+// stateful component where it is written, and a cycle is never spliced.
+func (st *inlineCompState) refuseStateInCycles() error {
+	for _, c := range st.pkg.Components {
+		if c == nil || !st.cycles[c] {
+			continue
+		}
+		if v := usedVar(c); v != nil {
+			return fmt.Errorf("%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
+		}
+		var found, lifetime *ir.NodeInst
+		_ = ir.WalkStmts(c.Body, func(s ir.Stmt) error {
+			n, ok := s.(*ir.NodeInst)
+			if !ok || found != nil || n.Component == nil || st.cycles[n.Component] {
+				return nil
+			}
+			if ir.IsTimerPrimitive(n.Component) || isEffectNode(n) {
+				lifetime = n
+				return ir.SkipAll
+			}
+			if len(n.Component.Vars) > 0 || holdsLifetime(n.Component.Body) {
+				found = n
+				return ir.SkipAll
+			}
+			return nil
+		})
+		if lifetime != nil {
+			// A timer is the platform override's primitive by now, positioned in
+			// that package; the declaration is the nearest place the program wrote.
+			pos := ir.StmtPos(lifetime)
+			if c.AST != nil && pos.File != c.AST.Pos.File {
+				pos = c.AST.Pos
+			}
+			return fmt.Errorf("%s: the recursive component %q places a timer or effect in its own body; this target keeps a lifetime's handle only by splicing it where it is written, and a recursion is never spliced -- place it in what renders %q", pos, c.Name, c.Name)
+		}
+		if found != nil {
+			return fmt.Errorf("%s: %q has state of its own and is written in the recursive component %q; this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", nodePos(found), found.Component.Name, c.Name, c.Name)
+		}
+	}
 	return nil
 }
 
@@ -424,9 +625,8 @@ func (st *inlineCompState) run() error {
 //
 // A test build names the component under test, because that is what the
 // harness renders: left to itself, the inliner would flatten it into the
-// program's own root and rename its state per instance. `main` used to be
-// that root by convention, and CodegenCtx.RootDecl is the same answer for
-// codegen.
+// program's own root and rename its state per instance. CodegenCtx.RootDecl
+// is the same answer for codegen.
 func rootComponent(pkg *ir.Package, opts Options) *ir.Component {
 	if opts.RootComponent == "" {
 		return nil
@@ -449,10 +649,7 @@ func findRecursiveCycles(pkg *ir.Package, opts Options) map[*ir.Component]bool {
 	}
 	// A window is a root and not a node in the component graph, so its edges
 	// belong to no component: a cycle among components is found from the
-	// components alone. They used to be attributed to `main`, which was the
-	// root by convention -- and `window { main }` then read as main calling
-	// itself, so every such program elected a runtime instance instead of
-	// inlining the component into the window.
+	// components alone, or `window { c }` would read as c calling itself.
 	//
 	// A harness that made a component the root is the exception, and there the
 	// windows are gone.
@@ -748,6 +945,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		n.Children = ch
+		slotsCh, err := st.inlineSlotContents(n.Slots, childRC)
+		if err != nil {
+			return nil, false, err
+		}
+		chCh = chCh || slotsCh
 		// A window is a rendering root and instantiates nothing this pass may
 		// splice: it stays where it was written, with whatever its body held
 		// now inlined. Everything below asks what to do with a *component*
@@ -805,9 +1007,6 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 		// const iterable cannot change says how many copies there are, not
 		// that they may share state.
 		if st.captureOnly == nil && n.Component != nil && (rc.perCopy(n.Component) || st.cycles[n.Component]) {
-			if err := refuseRuntimePopulation(n, rc, st.cycles[n.Component]); err != nil {
-				return nil, false, err
-			}
 			st.keep[n.Component] = true
 			// The one place that knows: this instantiation is built while the
 			// program runs, so the declaration needs a runtime of its own.
@@ -867,7 +1066,11 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 			return nil, false, err
 		}
 		n.Children = ch
-		return []ir.Stmt{n}, chCh, nil
+		slotsCh, err := st.inlineSlotContents(n.Slots, rc)
+		if err != nil {
+			return nil, false, err
+		}
+		return []ir.Stmt{n}, chCh || slotsCh, nil
 	case *ir.ErrorBoundary:
 		ch, chCh, err := st.inlineStmtsCtx(n.Children, rc)
 		if err != nil {
@@ -891,6 +1094,23 @@ func (st *inlineCompState) inlineStmtCtx(s ir.Stmt, rc reactiveCtx) ([]ir.Stmt, 
 	default:
 		panic(fmt.Sprintf("inlineCompState.inlineStmt: unhandled %T", n))
 	}
+}
+
+func (st *inlineCompState) inlineSlotContents(slots map[string]*ir.SlotContent, rc reactiveCtx) (bool, error) {
+	changed := false
+	for _, name := range ir.SlotNames(slots) {
+		sc := slots[name]
+		if sc == nil {
+			continue
+		}
+		body, ch, err := st.inlineStmtsCtx(sc.Body, rc)
+		if err != nil {
+			return false, err
+		}
+		sc.Body = body
+		changed = changed || ch
+	}
+	return changed, nil
 }
 
 // walkExprIdents calls visit on every *ir.Ident reachable from e.
@@ -1027,8 +1247,11 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 	}
 	for i := funcStart; i < len(*hoist.funcs); i++ {
-		(*hoist.funcs)[i].Block = substituteVars((*hoist.funcs)[i].Block, provided)
-		(*hoist.funcs)[i].Block = renameIdents((*hoist.funcs)[i].Block, renames, symRenames)
+		fn := (*hoist.funcs)[i]
+		fn.Block = substituteVars(fn.Block, provided)
+		fn.Block = renameIdents(fn.Block, renames, symRenames)
+		fn.Reads = renameVarList(fn.Reads, symRenames)
+		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
 	body := substituteVars(deepCloneStmts(comp.Body), provided)
 	body = renameIdents(body, renames, symRenames)
@@ -1108,38 +1331,26 @@ func cloneVarShallow(v *ir.Var) *ir.Var {
 	return &c
 }
 
+// renameVarList is vs with each var its clone renames, in a list of its own:
+// the clone shares the original's slice.
+func renameVarList(vs []*ir.Var, symRenames map[ir.Symbol]ir.Symbol) []*ir.Var {
+	if len(vs) == 0 {
+		return vs
+	}
+	out := make([]*ir.Var, len(vs))
+	for i, v := range vs {
+		out[i] = v
+		if r, ok := symRenames[v].(*ir.Var); ok {
+			out[i] = r
+		}
+	}
+	return out
+}
+
 func cloneFuncShallow(f *ir.Func) *ir.Func {
 	c := *f
 	c.Block = nil
 	return &c
-}
-
-// refuseRuntimePopulation reports a slot populated by name on an instantiation
-// that survives to codegen. No target renders one there: bubbletea and android
-// emit the component with no parameter for the slot, and the mutation
-// platforms meet the body's insertion unsubstituted.
-func refuseRuntimePopulation(n *ir.NodeInst, rc reactiveCtx, inCycle bool) error {
-	if len(n.Slots) == 0 {
-		return nil
-	}
-	why := "inside a reactive if or for"
-	switch {
-	case inCycle:
-		why = "as a member of a recursion cycle"
-	case !rc.in:
-		why = "inside a for, where a component with state of its own gets an instance per copy"
-	}
-	names := slices.Sorted(maps.Keys(n.Slots))
-	name, at := names[0], nodePos(n)
-	if vn, ok := n.AST.(*ast.VisualNode); ok {
-		for _, s := range vn.Block.Stmts {
-			if cd, isDecl := s.(*ast.ComponentDecl); isDecl && n.Slots[cd.Name] != nil {
-				name, at = cd.Name, cd.Pos.String()
-				break
-			}
-		}
-	}
-	return fmt.Errorf("%s: slot %q of %s is populated by name, but %s is built at run time here, %s, where no target renders a named population", at, name, n.Component.Name, n.Component.Name, why)
 }
 
 // clearDemotedReceivers drops the receiver at every call site that names a func

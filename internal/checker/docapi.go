@@ -2,6 +2,7 @@ package checker
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -213,8 +214,9 @@ func slotSchemas(comp *ir.Component) []SlotSchema {
 // PrefixedExamples extracts `_example_<name>` prefixed components from a
 // document. Components named `_example_<name>` or `_example_<name>_<suffix>`
 // map to <name>; the first example per name wins. Returns formatted source
-// for each example, with the wrapper renamed to `main` so the snippet is a
-// complete, runnable app. The leading underscore marks examples as
+// for each example, with the wrapper renamed to `main` so what a reader is
+// shown does not repeat the `_example_` prefix, and so ExampleProgram has one
+// name to instantiate. The leading underscore marks examples as
 // unexported — they are not part of the public API but the doc tooling
 // still extracts them from the AST for gallery rendering.
 func PrefixedExamples(doc *ast.Document) map[string]string {
@@ -240,6 +242,43 @@ func PrefixedExamples(doc *ast.Document) map[string]string {
 		result[target] = strings.TrimSpace(parser.Format(exDoc))
 	}
 	return result
+}
+
+// ExampleProgram turns an example PrefixedExamples returned into a program:
+// imports stands in for the scope the example was written in, and a window
+// renders it. The window is reached through an alias of its own so it resolves
+// whether imports qualify sngl:ui or flatten it.
+func ExampleProgram(imports, example string) string {
+	var b strings.Builder
+	if imports != "" {
+		b.WriteString(imports)
+		b.WriteString("\n")
+	}
+	b.WriteString("import snglexampleui \"sngl:ui\"\n\n")
+	b.WriteString(example)
+	b.WriteString("\n\nsnglexampleui.window {\n    main()\n}\n")
+	return b.String()
+}
+
+// PackageExampleImports is the scope an example written inside library
+// package pkg has: that package's own declarations, unqualified.
+func PackageExampleImports(pkg string) string {
+	return "import . " + strconv.Quote(pkg)
+}
+
+// DocumentExampleImports is the scope an example written in doc has, as far
+// as a program built outside that file can reproduce it: the file's imports.
+func DocumentExampleImports(doc *ast.Document) string {
+	var imps []ast.Stmt
+	for _, s := range doc.Stmts {
+		if imp, ok := s.(*ast.Import); ok {
+			imps = append(imps, imp)
+		}
+	}
+	if len(imps) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(parser.Format(&ast.Document{Stmts: imps}))
 }
 
 // ExtractPackageDocs walks a document's statements and returns doc info

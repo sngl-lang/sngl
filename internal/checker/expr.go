@@ -151,8 +151,10 @@ func (c *checker) inferExpr(e ast.Expr) ir.Expr {
 	case *ast.LambdaExpr:
 		return c.inferLambda(x)
 	case *ast.SpreadExpr:
-		operand := c.checkExpr(x.Operand)
-		return &ir.Spread{AST: x, Type: exprType(operand), Operand: operand}
+		// A list literal and an argument list each read their own spreads, so
+		// one arriving here stands where a single value is taken.
+		c.error(x.Pos, "a spread's fields are named arguments, and this position takes one value")
+		return c.checkExpr(x.Operand)
 	case *ast.ParenExpr:
 		return c.checkExpr(x.Inner)
 	case *ast.ConstExpr:
@@ -963,6 +965,11 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+	stmtCall := c.stmtCall
+	c.stmtCall = nil
+	if x != stmtCall {
+		c.refuseExprErrorHandler(x)
+	}
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
 	}
@@ -1607,7 +1614,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 				if name == "" {
 					return nil
 				}
-				if sym, ok := c.scope.Lookup(name); ok {
+				if sym, ok := c.resolveComponentSymbol(name); ok {
 					if comp, ok := sym.(*ir.Component); ok {
 						return comp
 					}
@@ -1631,7 +1638,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 			}
 		case *ast.CallStmt:
 			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
-				if sym, ok := c.scope.Lookup(name); ok {
+				if sym, ok := c.resolveComponentSymbol(name); ok {
 					if comp, ok := sym.(*ir.Component); ok {
 						return comp
 					}
@@ -1689,7 +1696,7 @@ func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
 		if name == "" {
 			return
 		}
-		if sym, ok := c.scope.Lookup(name); ok {
+		if sym, ok := c.resolveComponentSymbol(name); ok {
 			if comp, ok := sym.(*ir.Component); ok && comp.AST != nil {
 				out = append(out, comp)
 			}
@@ -2101,6 +2108,11 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 		t := operand.Elems[0]
 		return &ir.Index{AST: x, Type: t, Operand: operandExpr, Idx: indexExpr}
 	}
+	switch operand.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeEnum, ir.TypeUnit, ir.TypeFunc:
+		c.error(x.Pos, "cannot index %s", operand)
+		return &ir.Index{AST: x, Type: TypDyn, Operand: operandExpr, Idx: indexExpr}
+	}
 	return &ir.Index{
 		AST:     x,
 		Type:    dynSpread(operand, "%s is not indexable", operand),
@@ -2318,17 +2330,82 @@ func (c *checker) inferListLit(x *ast.ListExpr) ir.Expr {
 		elemExpected = c.expected.Elems[0]
 	}
 	elems := make([]ir.Expr, len(x.Elements))
-	elems[0] = c.checkExprExpecting(x.Elements[0], elemExpected)
-	for i, e := range x.Elements[1:] {
-		elems[i+1] = c.checkExprExpecting(e, elemExpected)
+	var elemT *ir.Type
+	for i, e := range x.Elements {
+		pos := *e.ExprPos()
+		expect := elemExpected
+		if expect == nil && elemT != nil && elemT.Kind != ir.TypeNull {
+			expect = elemT
+		}
+		var got *ir.Type
+		if sp, ok := e.(*ast.SpreadExpr); ok {
+			var spread *ir.Spread
+			spread, got = c.checkListSpread(sp, expect)
+			elems[i] = spread
+		} else {
+			elems[i] = c.checkExprExpecting(e, expect)
+			got = exprType(elems[i])
+			// A void element would make the literal a `list<void>`, which
+			// only an annotated target refuses.
+			c.requireValueType(got, pos)
+		}
+		elemT = c.unifyListElem(elemT, got, elemExpected, pos)
 	}
-	// A void element makes the literal a `list<void>`, which an annotated
-	// target rejects but an inferred one accepts: `var m = [xs.push(v)]`
-	// checked clean and reached codegen.
 	for i, el := range elems {
-		c.requireValueType(exprType(el), *x.Elements[i].ExprPos())
+		if sp, ok := el.(*ir.Spread); ok {
+			sp.Operand = wrapIfNeeded(sp.Operand, ListOf(elemT))
+			sp.Type = exprType(sp.Operand)
+		} else {
+			elems[i] = wrapIfNeeded(el, elemT)
+		}
 	}
-	return &ir.ListLit{AST: x, Type: ListOf(exprType(elems[0])), Elems: elems}
+	return &ir.ListLit{AST: x, Type: ListOf(elemT), Elems: elems}
+}
+
+// checkListSpread checks `...operand` written as a list element, returning
+// the spread and the element type it contributes. Only a list may be spread:
+// an iter<T> is a pull sequence that a literal would have to drain.
+func (c *checker) checkListSpread(sp *ast.SpreadExpr, elemExpected *ir.Type) (*ir.Spread, *ir.Type) {
+	var want *ir.Type
+	if elemExpected != nil {
+		want = ListOf(elemExpected)
+	}
+	operand := c.checkExprExpecting(sp.Operand, want)
+	t := exprType(operand)
+	out := &ir.Spread{AST: sp, Type: t, Operand: operand}
+	switch {
+	case t.Kind == ir.TypeDyn:
+		return out, t
+	case t.Kind == ir.TypeList && len(t.Elems) == 1:
+		return out, t.Elems[0]
+	}
+	c.error(sp.Pos, "cannot spread %s into a list literal: the operand must be a list", t)
+	return out, TypDyn
+}
+
+// unifyListElem folds one element's type into the literal's element type so
+// far. The first element decides, widened when a later one is the wider
+// number, and a null beside a T makes it option<T>. Two that only agree as
+// the expected element type (`[2.0, "a"]` for a list<dyn>) make the literal a
+// list of that.
+func (c *checker) unifyListElem(have, got, expected *ir.Type, pos ast.Pos) *ir.Type {
+	switch {
+	case have == nil:
+		return got
+	case got.Kind == ir.TypeDyn || have.Kind == ir.TypeDyn || got.IsAssignableTo(have):
+		return have
+	case have.IsAssignableTo(got):
+		return got
+	case have.Kind == ir.TypeNull:
+		return OptionOf(got)
+	case got.Kind == ir.TypeNull:
+		return OptionOf(have)
+	case expected != nil && got.IsAssignableTo(expected) && have.IsAssignableTo(expected):
+		return expected
+	}
+	want, gotS := ir.Contrast(have, got)
+	c.error(pos, "list element type %s does not match earlier %s", gotS, want)
+	return have
 }
 
 func (c *checker) inferMapLit(x *ast.MapLit) ir.Expr {
@@ -2546,19 +2623,32 @@ func (c *checker) inferLambda(x *ast.LambdaExpr) ir.Expr {
 // argument types against parameter types, then returns a substituted FuncSig.
 func (c *checker) inferTypeParams(sig *ir.FuncSig, args ast.ArgList) *ir.FuncSig {
 	bindings := make(map[string]*ir.Type)
+	bind := func(p *ir.Param, t *ir.Type) {
+		if p != nil && t != nil && t.Kind != ir.TypeDyn {
+			bindTypeParams(p.Type, t, bindings)
+		}
+	}
 	pos := 0
 	for _, a := range args.Args {
 		arg, ok := a.(ast.Arg)
-		if !ok || arg.Name != "" {
+		if !ok || arg.Value == nil {
 			continue
 		}
-		if pos >= len(sig.Params) {
-			break
+		// Arguments bind by the parameter they fill, which is what bindArgs
+		// will match them to: a named argument or a spread field by name.
+		if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			fields, _ := spreadFieldsOf(c.checkExpr(sp.Operand))
+			for _, f := range fields {
+				bind(paramNamed(sig, f.name), f.typ)
+			}
+			continue
 		}
-		argExpr := c.checkExpr(arg.Value)
-		argType := exprType(argExpr)
-		if argType.Kind != ir.TypeDyn {
-			bindTypeParams(sig.Params[pos].Type, argType, bindings)
+		if arg.Name != "" {
+			bind(paramNamed(sig, arg.Name), exprType(c.checkExpr(arg.Value)))
+			continue
+		}
+		if pos < len(sig.Params) {
+			bind(sig.Params[pos], exprType(c.checkExpr(arg.Value)))
 		}
 		pos++
 	}
@@ -2621,6 +2711,16 @@ func bindTypeParams(param, arg *ir.Type, bindings map[string]*ir.Type) {
 	}
 }
 
+// paramNamed is the parameter of sig a call site can target by name, or nil.
+func paramNamed(sig *ir.FuncSig, name string) *ir.Param {
+	for _, p := range sig.Params {
+		if paramNameOK(p) && p.Name == name {
+			return p
+		}
+	}
+	return nil
+}
+
 // paramNameOK reports whether a param can be targeted by name at a call site.
 func paramNameOK(p *ir.Param) bool {
 	return p.Name != "" && !strings.HasPrefix(p.Name, "_")
@@ -2644,50 +2744,40 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 			continue
 		}
 
-		// Struct spread: ...expr expands struct fields as named args.
-		if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
-			operandIR := c.checkExpr(spread.Operand)
-			operandType := exprType(operandIR)
-			if operandType == nil || operandType.Kind != ir.TypeStruct {
-				typStr := "(nil)"
-				if operandType != nil {
-					typStr = operandType.String()
-				}
-				c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
+		if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
+			seenNamed = true
+			spread, expanded := c.expandSpread(sp)
+			if !expanded {
 				ok = false
 				continue
 			}
-			sd := operandType.Decl.(*ir.StructDef)
-			seenNamed = true
-			for _, f := range sd.Fields {
+			for _, f := range spread.fields {
 				idx := -1
 				for i, p := range sig.Params {
-					if paramNameOK(p) && p.Name == f.Name {
+					if paramNameOK(p) && p.Name == f.name {
 						idx = i
 						break
 					}
 				}
 				if idx == -1 {
-					continue // no matching param; ignore silently
+					continue
 				}
+				spread.bound++
 				if bound[idx] != nil {
-					c.error(spread.Pos, "parameter %q already provided", f.Name)
+					c.error(sp.Pos, "parameter %q already provided", f.name)
 					ok = false
 					continue
 				}
-				var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
 				p := sig.Params[idx]
-				if p.Type != nil && f.Type.Kind != ir.TypeDyn && p.Type.Kind != ir.TypeDyn &&
-					!f.Type.IsAssignableTo(p.Type) {
-					c.error(spread.Pos, "cannot use field %q (%s) as parameter %q (%s)",
-						f.Name, f.Type, p.Name, p.Type)
+				val, fits := c.bindSpreadField(spread, f, p.Type, "parameter "+strconv.Quote(p.Name))
+				if !fits {
 					ok = false
 					continue
 				}
-				if p.Type != nil {
-					selExpr = wrapIfNeeded(selExpr, p.Type)
-				}
-				bound[idx] = &selExpr
+				bound[idx] = &val
+			}
+			if !c.finishSpread(spread) {
+				ok = false
 			}
 			continue
 		}
@@ -2727,7 +2817,7 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 					}
 				}
 				if hasUnnamed {
-					c.error(arg.NamePos, "no parameter name: function type has unnamed parameters")
+					c.error(arg.NamePos, "no parameter name: the parameters here are unnamed, so pass them positionally")
 				} else {
 					c.error(arg.NamePos, "unknown parameter %q", arg.Name)
 				}
@@ -2825,13 +2915,14 @@ func (c *checker) checkEmitArgs(pos ast.Pos, evt *ir.EventDecl, args ast.ArgList
 		c.error(pos, "event %q carries no payload, so it takes no argument", evt.Name)
 		return nil
 	}
-	val := c.checkExprExpecting(vals[0], evt.Type)
-	if got := exprType(val); got != nil && got.Kind != ir.TypeDyn &&
-		evt.Type.Kind != ir.TypeDyn && !got.IsAssignableTo(evt.Type) {
-		c.error(*vals[0].ExprPos(), "cannot use %s as %s for event %q", got, evt.Type, evt.Name)
+	// The payload is one unnamed parameter, so it binds positionally: a name,
+	// or a spread's fields, has nothing to name.
+	sig := &ir.FuncSig{Params: []*ir.Param{{Type: evt.Type}}}
+	bound, ok := c.bindArgs(args.Pos, args.Args, sig)
+	if !ok || bound[0] == nil {
 		return nil
 	}
-	return []ir.CallArg{{Value: val}}
+	return []ir.CallArg{{Value: *bound[0]}}
 }
 
 func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg {
@@ -2892,6 +2983,9 @@ func (c *checker) checkCallArgs(args ast.ArgList, sig *ir.FuncSig) []ir.CallArg 
 	for _, a := range args.Args {
 		arg, isArg := a.(ast.Arg)
 		if !isArg || arg.Value == nil || arg.Name != "" {
+			continue
+		}
+		if _, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 			continue
 		}
 		if positional >= len(sig.Params) {
@@ -3283,7 +3377,9 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				})
 			}
 		}
+		c.stmtCall = x.Call
 		callExpr := c.checkExpr(x.Call)
+		c.stmtCall = nil
 		return c.resolveCallStmt(x, callExpr)
 	case *ast.IfStmt:
 		condExpr := c.checkExpr(x.Cond)
@@ -3702,6 +3798,19 @@ func (c *checker) resolveCallStmt(x *ast.CallStmt, callExpr ir.Expr) ir.Stmt {
 		return nil
 	}
 	return &ir.CallStmt{AST: x, Call: call}
+}
+
+// refuseExprErrorHandler reports an @error on a call whose value is used.
+// Only a call statement has somewhere for execution to continue after the
+// handler runs; what such a call evaluates to after a caught raise is not
+// decided, and the handler was dropped without a word.
+func (c *checker) refuseExprErrorHandler(call *ast.CallExpr) {
+	for _, a := range call.Args.Args {
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
+			c.error(eh.Pos, "@error is only handled on a call statement; this call's value is used, so write the call on its own line and read what it set")
+			return
+		}
+	}
 }
 
 // extractCallErrorHandler finds an inline @error handler in a CallExpr's args
@@ -4358,50 +4467,22 @@ func (c *checker) checkAndSplitArgs(args ast.ArgList, comp *ir.Component) ([]ir.
 			if arg.Name == "key" {
 				continue // handled separately by checkVisualNodeIR
 			}
-			// Struct spread: ...expr expands struct fields as named props.
 			if arg.Value != nil {
-				if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
-					operandIR := c.checkExpr(spread.Operand)
-					operandType := exprType(operandIR)
-					if operandType == nil || operandType.Kind != ir.TypeStruct {
-						typStr := "(nil)"
-						if operandType != nil {
-							typStr = operandType.String()
-						}
-						c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
-						continue
-					}
-					sd := operandType.Decl.(*ir.StructDef)
+				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
-					for _, f := range sd.Fields {
-						if comp == nil {
-							continue // no component context; can't match prop names
-						}
-						propType := componentPropType(comp, f.Name)
-						if propType == nil {
-							continue // no matching prop; ignore silently
-						}
-						if boundProps[f.Name] {
-							c.error(spread.Pos, "prop %q already provided on component %s", f.Name, comp.Name)
-							continue
-						}
-						var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
-						if f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
-							selExpr = wrapIfNeeded(selExpr, propType)
-						}
-						boundProps[f.Name] = true
+					c.spreadProps(sp, comp, boundProps, func(name string, v ir.Expr) {
 						// A spread field is a written prop name like any
 						// other, so a name a wildcard prop covers is
 						// collected into it rather than becoming an arg under
 						// its own name — which named no prop, and was dropped
 						// by every backend.
-						if wc := wildcardTarget(comp, f.Name); wc != nil {
-							collectWildcard(wc, f.Name, selExpr)
-							continue
+						if wc := wildcardTarget(comp, name); wc != nil {
+							collectWildcard(wc, name, v)
+							return
 						}
-						noteDirect(f.Name, spread.Pos)
-						props = append(props, ir.Arg{Name: f.Name, Value: selExpr})
-					}
+						noteDirect(name, sp.Pos)
+						props = append(props, ir.Arg{Name: name, Value: v})
+					})
 					continue
 				}
 			}
@@ -4599,37 +4680,12 @@ func (c *checker) checkComponentCallArgs(call *ast.CallExpr, comp *ir.Component)
 			if arg.Name == "key" {
 				continue // handled by loop diffing
 			}
-			// Struct spread: ...expr expands struct fields as named props.
 			if arg.Value != nil {
-				if spread, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
-					operandIR := c.checkExpr(spread.Operand)
-					operandType := exprType(operandIR)
-					if operandType == nil || operandType.Kind != ir.TypeStruct {
-						typStr := "(nil)"
-						if operandType != nil {
-							typStr = operandType.String()
-						}
-						c.error(spread.Pos, "spread requires a struct type, got %s", typStr)
-						continue
-					}
-					sd := operandType.Decl.(*ir.StructDef)
+				if sp, isSpr := arg.Value.(*ast.SpreadExpr); isSpr {
 					seenNamed = true
-					for _, f := range sd.Fields {
-						propType := componentPropType(comp, f.Name)
-						if propType == nil {
-							continue // no matching prop; ignore silently
-						}
-						if boundProps[f.Name] {
-							c.error(spread.Pos, "prop %q already provided on component %s", f.Name, comp.Name)
-							continue
-						}
-						var selExpr ir.Expr = &ir.Select{Type: f.Type, Operand: operandIR, Field: f.Name}
-						if f.Type.Kind != ir.TypeDyn && propType.Kind != ir.TypeDyn {
-							selExpr = wrapIfNeeded(selExpr, propType)
-						}
-						result = append(result, ir.CallArg{Name: f.Name, Value: selExpr})
-						boundProps[f.Name] = true
-					}
+					c.spreadProps(sp, comp, boundProps, func(name string, v ir.Expr) {
+						result = append(result, ir.CallArg{Name: name, Value: v})
+					})
 					continue
 				}
 			}
@@ -5176,8 +5232,8 @@ func (c *checker) boundEntry(name string) *ir.SlotDecl {
 	return nil
 }
 
-// checkSlotInsertion checks an insertion point: its arguments, positional
-// against the declaration's types, the populations of the slot's component
+// checkSlotInsertion checks an insertion point: its arguments, bound against
+// the declaration's parameters as a call's are, the populations of the slot's component
 // entries, and the fallback block. written is the name the insertion was
 // written under, which for an entry is the population's and not the entry's.
 func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, written string, entry bool) ir.Stmt {
@@ -5194,33 +5250,11 @@ func (c *checker) checkSlotInsertion(vn *ast.VisualNode, slot *ir.SlotDecl, writ
 	} else {
 		inst.Decl = slot
 	}
-	var args []ast.Expr
-	for _, a := range vn.Args.Args {
-		arg, ok := a.(ast.Arg)
-		if !ok || arg.Value == nil {
-			continue
+	bound, _ := c.bindArgs(vn.Pos, vn.Args.Args, &ir.FuncSig{Params: slot.Params})
+	for _, e := range bound {
+		if e != nil {
+			inst.Args = append(inst.Args, *e)
 		}
-		if arg.Name != "" {
-			c.error(vn.Pos, "slot %q takes positional arguments: it declares types, and the names belong to whoever populates it", written)
-			continue
-		}
-		args = append(args, arg.Value)
-	}
-	if len(args) != len(slot.Params) {
-		c.error(vn.Pos, "slot %q takes %d argument(s), got %d", written, len(slot.Params), len(args))
-	}
-	for i, a := range args {
-		var want *ir.Type
-		if i < len(slot.Params) {
-			want = slot.Params[i].Type
-		}
-		e := c.checkExprExpecting(a, want)
-		if want != nil {
-			if got := exprType(e); got != nil && !got.IsAssignableTo(want) {
-				c.error(*a.ExprPos(), "cannot use %s as %s for argument %d of slot %q", got, want, i+1, written)
-			}
-		}
-		inst.Args = append(inst.Args, e)
 	}
 	fallback := vn.Block
 	fallback.Stmts = nil

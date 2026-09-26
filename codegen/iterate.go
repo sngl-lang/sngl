@@ -106,12 +106,7 @@ func componentsFor(comps []*ir.Component) []*ComponentCtx {
 }
 
 // RootDecl returns the component a harness has made the program's root, or
-// nil -- which is every ordinary build.
-//
-// A component named "main" used to be that root by convention, which is what
-// let a fixture render without declaring a window. It only ever worked
-// because every such program is in this repository; a window is what a
-// program renders now, and `main` is an ordinary component.
+// nil -- which is every ordinary build, where the windows are the root.
 func (ctx *CodegenCtx) RootDecl() *ir.Component {
 	if ctx.RootComponent == "" {
 		return nil
@@ -125,10 +120,10 @@ func (ctx *CodegenCtx) RootDecl() *ir.Component {
 }
 
 // AllFuncs returns every function codegen should emit: the package-level
-// funcs plus the main component's funcs, deduped by pointer. Nested component
+// funcs plus the harness root's (RootDecl), deduped by pointer. Nested component
 // methods are registered in BOTH pkg.Funcs and component.Funcs (the checker's
 // registerNestedMethods appends the same *ir.Func to each), so a naive
-// pkg.Funcs+main.Funcs concatenation double-emits them. All platforms must go
+// pkg.Funcs+root.Funcs concatenation double-emits them. All platforms must go
 // through here rather than concatenating themselves.
 func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 	pkgFuncs := ctx.Pkg.Funcs

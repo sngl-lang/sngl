@@ -46,6 +46,7 @@ var passes = []pass{
 	passNodePropReads,
 	passPropBindings,
 	passRefLoop,
+	passSpreadOnce,
 	passViewForElse,
 	passBoundaryFailed,
 	passUnit,
@@ -66,6 +67,7 @@ var passes = []pass{
 	passWindowNesting,
 	passRecursionDepth,
 	passInstanceSlots,
+	passCanvasInstances,
 	passFlattenStructSpread,
 	passNoImplicitRecv,
 	passShapeDraw,
@@ -120,7 +122,8 @@ type Options struct {
 	Language string
 
 	// RootComponent names the declaration lowering should treat as the
-	// program's entry point, overriding the by-name lookup for "main".
+	// program's entry point; empty for every ordinary build, whose root is its
+	// windows.
 	//
 	// It exists for a test build, where the entry point is the component under
 	// test rather than the program's own root. Without it the inliner flattens

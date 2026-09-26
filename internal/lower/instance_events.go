@@ -111,6 +111,13 @@ func propNamed(c *ir.Component, name string) *ir.Prop {
 // eventParams is the signature an event's handler is called with: its payload,
 // or nothing when it carries none.
 func eventParams(e *ir.EventDecl) []*ir.Param {
+	if e != nil && e.Params != nil {
+		out := make([]*ir.Param, len(e.Params))
+		for i, p := range e.Params {
+			out[i] = &ir.Param{Name: p.Name, Type: p.Type}
+		}
+		return out
+	}
 	if e == nil || e.Type == nil {
 		return nil
 	}

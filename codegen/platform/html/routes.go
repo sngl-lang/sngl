@@ -2,6 +2,7 @@ package html
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"git.duckfam.us/jonathan/sngl/codegen"
@@ -30,6 +31,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	windows := c.routeWindows
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
+	var served []servedRoute
 	for i, win := range windows {
 		var hrefExpr, titleExpr ir.Expr
 		if win.Window != nil {
@@ -41,11 +43,21 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			return fmt.Errorf("html: window %q href: %v", win.Name, err)
 		}
 		if path == "" {
-			path = defaultRoutePath(win.Name, i)
+			path = defaultRoutePath(windowRouteName(win), i)
 		}
 		if err := checkRouteParams(path, win.Window); err != nil {
 			return fmt.Errorf("html: window %q: %w", win.Name, err)
 		}
+		for _, prev := range served {
+			if !routesConflict(prev.path, path) {
+				continue
+			}
+			if routeSegsEqual(prev.path, path) {
+				return fmt.Errorf("html: %s and %s both serve %s; give one of them an href", prev.label, routeWindowLabel(win.Name, i), path)
+			}
+			return fmt.Errorf("html: %s serves %s and %s serves %s, which match some of the same paths with neither more specific; change one so a request names one of them", prev.label, prev.path, routeWindowLabel(win.Name, i), path)
+		}
+		served = append(served, servedRoute{path, routeWindowLabel(win.Name, i)})
 		title, _ := codegen.IRLiteralString(titleExpr)
 		// Single source of truth for action indexing: collectActions enumerates
 		// every backend handler in a stable order and returns both the action
@@ -67,7 +79,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
 		routes = append(routes, codegen.HTTPRoute{
-			Name:      routeHandlerName(win.Name, path),
+			Name:      routeHandlerName(windowRouteName(win), path),
 			Path:      path,
 			Title:     title,
 			Params:    extractRouteParams(path),
@@ -192,8 +204,142 @@ func backendHandlerWindow(pkg *ir.Package, windows []*codegen.WindowCtx) (string
 	return "", false
 }
 
+// windowRouteName is the `#id` a route is named for. A harness root has no
+// window and so none: the component it isolated is not a window's name, and
+// using it made a handler's name depend on whether a harness ran.
+func windowRouteName(win *codegen.WindowCtx) string {
+	if win.Window == nil {
+		return ""
+	}
+	return win.Window.ID
+}
+
+type servedRoute struct{ path, label string }
+
+func routeSegsEqual(p, q string) bool {
+	return slices.Equal(routeSegs(p), routeSegs(q))
+}
+
+type routeSeg struct {
+	lit         string
+	wild, multi bool
+}
+
+func routeSegs(path string) []routeSeg {
+	var out []routeSeg
+	rest := strings.TrimPrefix(path, "/")
+	for {
+		seg, more, found := strings.Cut(rest, "/")
+		switch {
+		case seg == "" && !found:
+			return append(out, routeSeg{multi: true})
+		case strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "...}"):
+			return append(out, routeSeg{multi: true})
+		case seg == "{$}":
+			return append(out, routeSeg{lit: "/"})
+		case strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}"):
+			out = append(out, routeSeg{wild: true})
+		default:
+			out = append(out, routeSeg{lit: seg})
+		}
+		if !found {
+			return out
+		}
+		rest = more
+	}
+}
+
+type routeRel int
+
+const (
+	relEqual routeRel = iota
+	relDisjoint
+	relOverlap
+	relSpecific
+	relGeneral
+)
+
+func combineRel(a, b routeRel) routeRel {
+	switch a {
+	case relEqual:
+		return b
+	case relDisjoint:
+		return relDisjoint
+	case relOverlap:
+		if b == relDisjoint {
+			return relDisjoint
+		}
+		return relOverlap
+	}
+	switch {
+	case b == relEqual:
+		return a
+	case a == relSpecific && b == relGeneral, a == relGeneral && b == relSpecific:
+		return relOverlap
+	}
+	return b
+}
+
+func compareRouteSeg(a, b routeSeg) routeRel {
+	switch {
+	case a.multi && b.multi, a.wild && b.wild:
+		return relEqual
+	case a.multi:
+		return relGeneral
+	case b.multi:
+		return relSpecific
+	case a.wild:
+		if b.lit == "/" {
+			return relDisjoint
+		}
+		return relGeneral
+	case b.wild:
+		if a.lit == "/" {
+			return relDisjoint
+		}
+		return relSpecific
+	case a.lit == b.lit:
+		return relEqual
+	}
+	return relDisjoint
+}
+
+// routesConflict is net/http's rule for two patterns of one method: they
+// conflict when some path matches both and neither is more specific, which
+// ServeMux reports by panicking when the second is registered.
+func routesConflict(p, q string) bool {
+	a, b := routeSegs(p), routeSegs(q)
+	lastMulti := func(s []routeSeg) bool { return len(s) > 0 && s[len(s)-1].multi }
+	if len(a) != len(b) && !lastMulti(a) && !lastMulti(b) {
+		return false
+	}
+	rel := relEqual
+	for ; len(a) > 0 && len(b) > 0; a, b = a[1:], b[1:] {
+		if rel = combineRel(rel, compareRouteSeg(a[0], b[0])); rel == relDisjoint {
+			return false
+		}
+	}
+	switch {
+	case len(a) == 0 && len(b) == 0:
+	case len(a) == 0 && lastMulti(routeSegs(p)):
+		rel = combineRel(rel, relGeneral)
+	case len(b) == 0 && lastMulti(routeSegs(q)):
+		rel = combineRel(rel, relSpecific)
+	default:
+		return false
+	}
+	return rel == relEqual || rel == relOverlap
+}
+
+func routeWindowLabel(winName string, idx int) string {
+	if winName == "" {
+		return fmt.Sprintf("window %d", idx+1)
+	}
+	return fmt.Sprintf("window %q", winName)
+}
+
 func defaultRoutePath(winName string, idx int) string {
-	if idx == 0 || winName == "" || winName == "main" || winName == "index" {
+	if idx == 0 || winName == "" || winName == "index" {
 		return "/"
 	}
 	return "/" + winName
@@ -324,7 +470,7 @@ func routeExportName(s string) string {
 
 // routeHandlerName generates a valid Go function name for a route handler.
 func routeHandlerName(windowName, path string) string {
-	if windowName == "main" || windowName == "index" || (windowName == "" && path == "/") {
+	if windowName == "index" || (windowName == "" && path == "/") {
 		return "handleIndex"
 	}
 	source := windowName

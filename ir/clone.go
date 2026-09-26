@@ -271,3 +271,15 @@ func carriesFuncBody(t reflect.Type) bool {
 func isIRType(t reflect.Type) bool {
 	return t.PkgPath() == irPkgPath
 }
+
+// CloneStmtsSharingDecls is CloneExprSharingDecls over a statement list: the
+// statements and the expressions in them are copied, the declarations they
+// name are shared.
+func CloneStmtsSharingDecls(stmts []Stmt) []Stmt {
+	if stmts == nil {
+		return nil
+	}
+	c := newCloner()
+	c.shareDecls = true
+	return c.clone(reflect.ValueOf(stmts)).Interface().([]Stmt)
+}

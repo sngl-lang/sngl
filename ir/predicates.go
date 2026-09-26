@@ -263,3 +263,26 @@ func ComponentSelfRefs(comp *Component) bool {
 func IsHostValue(v *Var) bool {
 	return v != nil && v.Foreign.Name != "" && !v.Foreign.Marked
 }
+
+// NumericListConversion reports whether a conversion re-types a list's
+// numeric elements, as widening a list<int> into a list<float> does, and
+// returns the two list types. A host holding each element in its own
+// representation converts element by element rather than casting the list.
+func NumericListConversion(n *Conversion) (src, dst *Type, ok bool) {
+	if n == nil || n.Type == nil || n.Operand == nil {
+		return nil, nil, false
+	}
+	src = n.Operand.ExprType()
+	if !isNumericList(src) || !isNumericList(n.Type) || src.Elems[0].Equal(n.Type.Elems[0]) {
+		return nil, nil, false
+	}
+	return src, n.Type, true
+}
+
+func isNumericList(t *Type) bool {
+	if t == nil || t.Kind != TypeList || len(t.Elems) != 1 || t.Elems[0] == nil {
+		return false
+	}
+	k := t.Elems[0].Kind
+	return k == TypeInt || k == TypeFloat
+}

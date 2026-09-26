@@ -33,8 +33,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 // Idle trampoline: fire the registered callback once, then remove the source.
@@ -91,14 +98,23 @@ static void sngl_emit(gpointer instance, const char *signal) {
     g_signal_emit_by_name(instance, signal);
 }
 
-// Reactive-safe entry setter: GtkEditable's set_text fires "changed" even when
-// the new text equals the current, which loops back through any change handler
-// that rewrote the bound var. Skip the call when the value already matches.
+// A program's write to an entry is not input, so "changed" is blocked: a
+// handler rewriting its own bound var with a new value would otherwise
+// re-enter itself from inside the emission until the stack ran out.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t);
+
 static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     const char *cur = gtk_editable_get_text(e);
     if (t == NULL) t = "";
     if (cur != NULL && strcmp(cur, t) == 0) return;
+    sngl_set_entry_text_quiet(e, t);
+}
+
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 
 // Activate trampoline forwards to the exported Go snglActivate.
@@ -243,6 +259,17 @@ func WindowSetChild(win, child Handle) {
 	C.gtk_window_set_child((*C.GtkWindow)(p(win)), widget(child))
 }
 
+// Retain takes a strong reference on a widget, so that removing it from its
+// parent does not free it.
+func Retain(h Handle) {
+	C.g_object_ref_sink(C.gpointer(p(h)))
+}
+
+// Release drops the reference Retain took.
+func Release(h Handle) {
+	C.g_object_unref(C.gpointer(p(h)))
+}
+
 // ---- Box ----
 
 func BoxNew(o Orientation, spacing int) Handle {
@@ -255,6 +282,55 @@ func BoxAppend(box, child Handle) {
 
 func BoxRemove(box, child Handle) {
 	C.gtk_box_remove((*C.GtkBox)(p(box)), widget(child))
+}
+
+// SlotAnchor returns the anchor a render slot inserts its entries before: a,
+// when box holds it, or a new hidden child appended to box. The slot's first
+// render runs while box is being built, at the position the slot was written.
+func SlotAnchor(box, a Handle) Handle {
+	if a != nil && C.gtk_widget_get_parent(widget(a)) == widget(box) {
+		return a
+	}
+	w := C.gtk_label_new(nil)
+	C.gtk_widget_set_visible(w, 0)
+	C.g_object_ref_sink(C.gpointer(unsafe.Pointer(w)))
+	C.gtk_box_append((*C.GtkBox)(p(box)), w)
+	return Handle(unsafe.Pointer(w))
+}
+
+// SlotBox is the box a render slot in a single-child container renders into:
+// b, or a new one this package holds a reference on.
+func SlotBox(b Handle) Handle {
+	if b != nil {
+		return b
+	}
+	b = BoxNew(OrientationVertical, 6)
+	Retain(b)
+	return b
+}
+
+// ParentOf is w's parent widget, or nil.
+func ParentOf(w Handle) Handle {
+	return Handle(unsafe.Pointer(C.gtk_widget_get_parent(widget(w))))
+}
+
+// InsertBefore puts child into box immediately before anchor, or at the end
+// of box when box does not hold anchor.
+func InsertBefore(box, anchor, child Handle) {
+	if anchor == nil || C.gtk_widget_get_parent(widget(anchor)) != widget(box) {
+		BoxAppend(box, child)
+		return
+	}
+	prev := C.gtk_widget_get_prev_sibling(widget(anchor))
+	C.gtk_box_insert_child_after((*C.GtkBox)(p(box)), widget(child), prev)
+}
+
+func children(parent Handle) []Handle {
+	var out []Handle
+	for w := C.gtk_widget_get_first_child(widget(parent)); w != nil; w = C.gtk_widget_get_next_sibling(w) {
+		out = append(out, Handle(unsafe.Pointer(w)))
+	}
+	return out
 }
 
 func BoxSetSpacing(box Handle, spacing int) {
@@ -323,6 +399,14 @@ func EditableSetText(editable Handle, text string) {
 	C.sngl_set_entry_text((*C.GtkEditable)(p(editable)), c)
 }
 
+// EditableSetTextQuiet sets the text with "changed" blocked, for a test
+// invoker that then fires the one signal it drives.
+func EditableSetTextQuiet(editable Handle, text string) {
+	c, free := cstr(text)
+	defer free()
+	C.sngl_set_entry_text_quiet((*C.GtkEditable)(p(editable)), c)
+}
+
 // ---- Image ----
 
 func ImageNew() Handle {
@@ -343,6 +427,16 @@ func ScrolledWindowNew() Handle {
 
 func ScrolledWindowSetChild(sw, child Handle) {
 	C.gtk_scrolled_window_set_child((*C.GtkScrolledWindow)(p(sw)), widget(child))
+}
+
+// ---- Frame ----
+
+func FrameNew() Handle {
+	return Handle(unsafe.Pointer(C.gtk_frame_new(nil)))
+}
+
+func FrameSetChild(f, child Handle) {
+	C.gtk_frame_set_child((*C.GtkFrame)(p(f)), widget(child))
 }
 
 // ---- Orientable ----
@@ -550,6 +644,14 @@ func SnapshotModelBytes(build func(app Handle) Handle, width, height int) ([]byt
 }
 
 // ---- Rich text ----
+
+// When is the markup of runs an `if` in a flow guards: s when cond holds.
+func When(cond bool, s string) string {
+	if cond {
+		return s
+	}
+	return ""
+}
 
 // Escape is Pango markup's escaping, for the words an author wrote.
 //

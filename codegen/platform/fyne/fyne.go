@@ -200,6 +200,7 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	if err != nil {
 		return err
 	}
+	body = golang.PruneStructDecls(body, golang.PayloadPruneCandidates(c.ctx.Pkg, codegen.TriggerPayloads(c.ctx.Pkg)))
 	e := req.Lang.NewFileEmitter(sink, codegen.FileOptions{
 		Name:        "model.go",
 		Source:      req.Source,

@@ -14,11 +14,10 @@ import (
 
 // irComposeContext tracks state during IR-based Compose code generation.
 type irComposeContext struct {
-	kc      *kotlin.KtIRContext
-	ctx     *codegen.CodegenCtx
-	buf     *strings.Builder
-	indent  int
-	hasSlot bool
+	kc     *kotlin.KtIRContext
+	ctx    *codegen.CodegenCtx
+	buf    *strings.Builder
+	indent int
 	// parentAxis is "Row" or "Column" when the node being rendered sits in
 	// one, and "" at the top of a composable. weight() lives on those two
 	// scopes, and which one it is decides which axis it grows.
@@ -59,7 +58,7 @@ func (cc *irComposeContext) renderStmt(stmt ir.Stmt) {
 	case *ir.For:
 		cc.renderFor(s)
 	case *ir.SlotInst:
-		cc.line("slotContent()")
+		cc.renderSlotInst(s)
 	case *ir.ErrorBoundary:
 		for _, child := range s.Children {
 			cc.renderStmt(child)
@@ -296,22 +295,11 @@ func (cc *irComposeContext) renderUserComponent(n *ir.NodeInst) {
 			}
 		}
 	}
-	hasSlot := n.Component != nil && n.Component.ChildrenType != nil
-	if hasSlot && len(n.Children) > 0 {
-		argStr := ""
-		if len(args) > 0 {
-			argStr = strings.Join(args, ", ") + ", "
-		}
-		cc.line("%s(%sslotContent = {", exportName(n.Name), argStr)
-		cc.indent++
-		for _, child := range n.Children {
-			cc.renderStmt(child)
-		}
-		cc.indent--
-		cc.line("})")
-	} else {
-		cc.line("%s(%s)", exportName(n.Name), strings.Join(args, ", "))
+	if n.Component != nil {
+		args = append(args, cc.populationArgs(n)...)
+		args = append(args, cc.handlerArgs(n)...)
 	}
+	cc.line("%s(%s)", exportName(n.Name), strings.Join(args, ", "))
 }
 
 // --- Helpers ---

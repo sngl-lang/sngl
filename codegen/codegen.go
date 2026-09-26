@@ -276,35 +276,35 @@ type TestProber interface {
 
 // TestResult holds the outcome of a single test.
 type TestResult struct {
-	Component string
-	Desc      string
-	Passed    bool
+	Component string `json:",omitempty"`
+	Desc      string `json:",omitempty"`
+	Passed    bool   `json:",omitempty"`
 	// Error is the human-readable failure text. When multiple soft
 	// (`t.assert`) failures occurred their messages are joined with
 	// newlines; a fatal failure (`t.must` or runtime error) appears as
 	// the last entry.
-	Error string
+	Error string `json:",omitempty"`
 	// ErrorLine is the 1-based source line of the first failure. Zero
 	// when not available.
-	ErrorLine int
+	ErrorLine int `json:",omitempty"`
 	// Failures is the structured list of every recorded failure, in the
 	// order they happened. Empty on success.
-	Failures []TestFailure
-	Log      []string
-	Children []*TestResult
-	Duration time.Duration
+	Failures []TestFailure `json:",omitempty"`
+	Log      []string      `json:",omitempty"`
+	Children []*TestResult `json:",omitempty"`
+	Duration time.Duration `json:",omitempty"`
 	// Skipped marks a result that never ran — a launcher whose
 	// prerequisites are missing, or a test calling t.skip. It is neither
 	// a pass nor a failure, so reporters must not fold it into either.
-	Skipped    bool
-	SkipReason string
+	Skipped    bool   `json:",omitempty"`
+	SkipReason string `json:",omitempty"`
 }
 
 // TestFailure describes a single recorded failure on a test result.
 type TestFailure struct {
-	Line    int    // 1-based source line of the failing expression
-	Message string // structured message, same shape as TestResult.Error
-	Fatal   bool   // true for must() / runtime errors that halted the test
+	Line    int    `json:",omitempty"` // 1-based source line of the failing expression
+	Message string `json:",omitempty"` // structured message, same shape as TestResult.Error
+	Fatal   bool   `json:",omitempty"` // true for must() / runtime errors that halted the test
 }
 
 // PreviewStyler is optionally implemented by PlatformGenerators that want

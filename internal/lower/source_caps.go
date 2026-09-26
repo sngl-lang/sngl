@@ -38,6 +38,7 @@ var capabilityField = map[string]func(*Features) *bool{
 	"viewStatements":   func(f *Features) *bool { return &f.ViewStatements },
 	"instanceState":    func(f *Features) *bool { return &f.InstanceState },
 	"insertBefore":     func(f *Features) *bool { return &f.InsertBefore },
+	"inlineSlots":      func(f *Features) *bool { return &f.InlineSlots },
 	"asyncPost":        func(f *Features) *bool { return &f.AsyncPost },
 	"asyncSpawn":       func(f *Features) *bool { return &f.AsyncSpawn },
 	"effects":          func(f *Features) *bool { return &f.Effects },

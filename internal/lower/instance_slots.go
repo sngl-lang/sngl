@@ -40,7 +40,7 @@ type instanceSlots struct {
 	// body meeting its own site again is: the children alone tell two callers'
 	// forwarded populations apart.
 	origin map[ir.Stmt]ir.Stmt
-	copies map[copyKey]*ir.Component
+	copies map[copyKey][]slotVariant
 	// droppable is every copy and every declaration a copy was taken of; one
 	// no longer instantiated anywhere is dropped at the end.
 	droppable map[*ir.Component]bool
@@ -61,7 +61,7 @@ func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
 		synth:     &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)},
 		template:  map[*ir.Component][]ir.Stmt{},
 		origin:    map[ir.Stmt]ir.Stmt{},
-		copies:    map[copyKey]*ir.Component{},
+		copies:    map[copyKey][]slotVariant{},
 		droppable: map[*ir.Component]bool{},
 	}
 	for _, c := range pkg.Components {
@@ -72,7 +72,9 @@ func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	for _, o := range ir.Owners(pkg) {
 		if _, queued := st.template[o.Comp]; o.Comp == nil || !queued {
-			st.specializeIn(o.Stmts())
+			if err := st.specializeIn(o.Stmts()); err != nil {
+				return err
+			}
 		}
 	}
 	for len(st.queue) > 0 {
@@ -81,13 +83,15 @@ func lowerInstanceSlots(pkg *ir.Package, _ Features, _ Options) error {
 		if _, original := st.template[c]; original {
 			c.Body = substituteSlots(c.Body, nil)
 		}
-		st.specializeIn(c.Body)
+		if err := st.specializeIn(c.Body); err != nil {
+			return err
+		}
 	}
 	st.dropUnreferenced()
 	return nil
 }
 
-func (st *instanceSlots) specializeIn(root any) {
+func (st *instanceSlots) specializeIn(root any) error {
 	var sites []*ir.NodeInst
 	_ = ir.Walk(root, func(n ir.Node) error {
 		if inst, ok := n.(*ir.NodeInst); ok && wantsCopy(inst) {
@@ -96,28 +100,58 @@ func (st *instanceSlots) specializeIn(root any) {
 		return nil
 	})
 	for _, n := range sites {
-		st.specialize(n)
+		if err := st.specialize(n); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func wantsCopy(n *ir.NodeInst) bool {
 	c := n.Component
-	return c != nil && c.RuntimeInstance && hasRealComponentBody(c) && len(n.Children) > 0 && c.RestSlot() != nil && !ir.IsWindowNode(n)
+	if c == nil || !c.RuntimeInstance || !hasRealComponentBody(c) || ir.IsWindowNode(n) {
+		return false
+	}
+	return len(n.Slots) > 0 || len(n.Children) > 0 && c.RestSlot() != nil
 }
 
-func (st *instanceSlots) specialize(n *ir.NodeInst) {
+// liftContent lifts what n supplies -- its bare children and each population --
+// into comp. A population's parameters are bound where the copy inserts it, so
+// they are the population's own and stay; a handler reading one is handed it.
+func (st *instanceSlots) liftContent(n *ir.NodeInst, comp *ir.Component) {
+	l := newLift(comp, n)
+	lift := func(body []ir.Stmt, params []*ir.Param) {
+		local := declaredWithin(body)
+		for _, p := range params {
+			local[p] = true
+		}
+		st.synth.liftHandlers(body, l, params)
+		st.synth.liftValues(body, l, local)
+	}
+	lift(n.Children, nil)
+	for _, name := range ir.SlotNames(n.Slots) {
+		lift(n.Slots[name].Body, n.Slots[name].Params)
+	}
+}
+
+func (st *instanceSlots) specialize(n *ir.NodeInst) error {
 	orig := n.Component
-	local := declaredWithin(n.Children)
-	key := copyKey{orig, st.originOf(n), st.childrenKey(n.Children)}
-	if copyOf, ok := st.copies[key]; ok {
-		// The children are clones of the ones the copy was made from, so
-		// lifting them names the props that copy already declares, in order.
-		scratch := &ir.Component{}
-		st.synth.liftHandlers(n.Children, scratch, n)
-		st.synth.liftValues(n.Children, scratch, n, local)
-		n.Children = nil
-		n.Component = copyOf
-		return
+	key := copyKey{orig, st.originOf(n), st.contentKey(n)}
+	lifted := &ir.Component{}
+	st.liftContent(n, lifted)
+	shape := contentShape(n)
+	for _, v := range st.copies[key] {
+		if v.shape == shape {
+			// The content is a clone of what the copy was made from, so
+			// lifting it named the props that copy already declares.
+			n.Children = nil
+			n.Slots = nil
+			n.Component = v.comp
+			return nil
+		}
+	}
+	if len(st.copies[key]) >= maxSlotVariants {
+		return fmt.Errorf("%s: %s forwards a slot down its recursion with arguments computed from the population's own, so what it renders differs at every level; this target builds each copy of a component at compile time and would need one per level -- pass the slot the population's parameters unchanged, and what varies as a prop", nodePos(n), orig.Name)
 	}
 	body, ok := st.template[orig]
 	if !ok {
@@ -125,12 +159,13 @@ func (st *instanceSlots) specialize(n *ir.NodeInst) {
 	}
 	copyOf := cloneComponent(orig, orig.Name+"__slot"+strconv.Itoa(st.n), body)
 	st.n++
-	st.copies[key] = copyOf
+	st.copies[key] = append(st.copies[key], slotVariant{shape, copyOf})
 	st.recordOrigins(body, copyOf.Body)
-	st.synth.liftHandlers(n.Children, copyOf, n)
-	st.synth.liftValues(n.Children, copyOf, n, local)
+	copyOf.Props = append(copyOf.Props, lifted.Props...)
+	copyOf.Events = append(copyOf.Events, lifted.Events...)
 	copyOf.Body = substituteSlotsCloning(copyOf.Body, n, st.cloneRecording)
 	n.Children = nil
+	n.Slots = nil
 	n.Component = copyOf
 
 	st.droppable[orig] = true
@@ -143,6 +178,52 @@ func (st *instanceSlots) specialize(n *ir.NodeInst) {
 			st.pkg.Funcs = append(st.pkg.Funcs, copyOf.Funcs[i])
 		}
 	}
+	return nil
+}
+
+// maxSlotVariants bounds the copies one site may need for content cloned from
+// the same statements: a recursion swapping what it forwards cycles well
+// within it, and one computing from itself never repeats.
+const maxSlotVariants = 8
+
+type slotVariant struct {
+	shape string
+	comp  *ir.Component
+}
+
+// contentShape is what n's content computes, once lifted: two contents cloned
+// from the same statements differ only in what a splice bound their
+// parameters to, and that is what an expression's shape shows.
+func contentShape(n *ir.NodeInst) string {
+	var b strings.Builder
+	shape := func(stmts []ir.Stmt) {
+		_ = ir.WalkExprs(stmts, func(e ir.Expr) error {
+			switch x := e.(type) {
+			case *ir.Ident:
+				b.WriteString("i" + x.Name)
+			case *ir.Literal:
+				b.WriteString("l" + x.Value + x.Suffix)
+			case *ir.Binary:
+				b.WriteString("b" + x.Op.String())
+			case *ir.Unary:
+				b.WriteString("u" + x.Op.String())
+			case *ir.Select:
+				b.WriteString("s" + x.Field)
+			case *ir.Call:
+				fmt.Fprintf(&b, "c%d", len(x.Args))
+			default:
+				fmt.Fprintf(&b, "%T", e)
+			}
+			b.WriteByte(';')
+			return nil
+		})
+	}
+	shape(n.Children)
+	for _, name := range ir.SlotNames(n.Slots) {
+		b.WriteString("|" + name + ":")
+		shape(n.Slots[name].Body)
+	}
+	return b.String()
 }
 
 func (st *instanceSlots) originOf(s ir.Stmt) ir.Stmt {
@@ -152,10 +233,16 @@ func (st *instanceSlots) originOf(s ir.Stmt) ir.Stmt {
 	return s
 }
 
-func (st *instanceSlots) childrenKey(children []ir.Stmt) string {
+func (st *instanceSlots) contentKey(n *ir.NodeInst) string {
 	var b strings.Builder
-	for _, s := range children {
+	for _, s := range n.Children {
 		fmt.Fprintf(&b, "%p,", st.originOf(s))
+	}
+	for _, name := range ir.SlotNames(n.Slots) {
+		fmt.Fprintf(&b, ";%s:", name)
+		for _, s := range n.Slots[name].Body {
+			fmt.Fprintf(&b, "%p,", st.originOf(s))
+		}
 	}
 	return b.String()
 }
@@ -204,6 +291,18 @@ func declaredWithin(stmts []ir.Stmt) map[ir.Symbol]bool {
 		case *ir.NodeInst:
 			if x.Handle != nil {
 				out[x.Handle] = true
+			}
+			for _, sc := range x.Slots {
+				for _, p := range sc.Params {
+					out[p] = true
+				}
+			}
+			for _, h := range x.Handlers {
+				if h.Func != nil {
+					for _, p := range h.Func.Params {
+						out[p] = true
+					}
+				}
 			}
 		case *ir.Lambda:
 			if x.Func != nil {
@@ -278,6 +377,8 @@ func cloneComponent(comp *ir.Component, name string, body []ir.Stmt) *ir.Compone
 	}
 	for _, f := range out.Funcs {
 		f.Block = renameIdents(f.Block, nil, syms)
+		f.Reads = renameVarList(f.Reads, syms)
+		f.Writes = renameVarList(f.Writes, syms)
 	}
 	out.Body = renameIdents(deepCloneStmts(body), nil, syms)
 	return &out
