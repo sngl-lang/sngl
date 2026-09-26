@@ -2514,6 +2514,9 @@ func (c *checker) hintFor(name, libName string, pkg *ir.Package) string {
 		}
 	}
 	alias := path.Base(libName)
+	if _, taken := c.scope.Lookup(alias); taken {
+		return fmt.Sprintf("; sngl:%s declares it, import it under an alias other than %s, which is already bound here", libName, alias)
+	}
 	return fmt.Sprintf("; sngl:%s declares it, add import %s \"sngl:%s\" and reach it as %s.%s", libName, alias, libName, alias, name)
 }
 
