@@ -45,12 +45,9 @@ func (c *checker) analyzeErrors() {
 
 	// Phase 2: walk visual trees with a scope stack of error handlers.
 	for _, w := range pkg.Windows {
-		var scope []*ir.EventHandler
-		if w.ErrorHandler != nil {
-			scope = append(scope, w.ErrorHandler)
-		}
-		walkVisualErrors(w.Children, scope)
+		walkVisualErrors([]ir.Stmt{w}, nil)
 	}
+	walkVisualErrors(pkg.Body, nil)
 	for _, comp := range pkg.Components {
 		walkVisualErrors(comp.Body, nil)
 	}
@@ -82,13 +79,12 @@ func blockHasErrorOp(stmts []ir.Stmt) bool {
 func stmtHasErrorOp(s ir.Stmt) bool {
 	switch x := s.(type) {
 	case *ir.CallStmt:
-		if x.Call != nil && callIsFallible(x.Call) {
-			return true
-		}
-		// Per-call @error absorbs fallibility at this site, so the
-		// enclosing function does not become fallible through this call.
-		if x.Call != nil && exprContainsFallibleCall(x.Call, true) {
-			return true
+		return exprContainsFallibleCall(x.Call, true)
+	case *ir.Emit:
+		for _, a := range x.Args {
+			if exprContainsFallibleCall(a.Value, false) {
+				return true
+			}
 		}
 	case *ir.Assign:
 		return exprContainsFallibleCall(x.Value, false)
@@ -112,7 +108,8 @@ func stmtHasErrorOp(s ir.Stmt) bool {
 
 // exprContainsFallibleCall walks an expression looking for a fallible call.
 // If skipPerCallAbsorbed is true, a top-level Call with an ErrorHandler is
-// considered absorbed (its fallibility does not mark the enclosing func).
+// considered absorbed: its own raise stops at the handler, so what can still
+// escape is its arguments and a raise from the handler's body.
 func exprContainsFallibleCall(e ir.Expr, skipPerCallAbsorbed bool) bool {
 	if e == nil {
 		return false
@@ -120,10 +117,12 @@ func exprContainsFallibleCall(e ir.Expr, skipPerCallAbsorbed bool) bool {
 	switch x := e.(type) {
 	case *ir.Call:
 		if callIsFallible(x) {
-			if skipPerCallAbsorbed && x.ErrorHandler != nil {
-				return false
+			if !skipPerCallAbsorbed || x.ErrorHandler == nil {
+				return true
 			}
-			return true
+			if x.ErrorHandler.Func != nil && blockHasErrorOp(x.ErrorHandler.Func.Block) {
+				return true
+			}
 		}
 		for _, a := range x.Args {
 			if exprContainsFallibleCall(a.Value, false) {
@@ -178,8 +177,6 @@ func callIsFallible(call *ir.Call) bool {
 	return call.Func.CanError
 }
 
-// isRaiseFunc identifies the stdlib error.raise function. Stdlib wrapper
-
 // walkVisualErrors traverses a visual subtree (window body / component body)
 // maintaining a scope stack of error handlers. For each event handler
 // attached to a NodeInst, walks the handler body resolving fallible calls
@@ -194,6 +191,7 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 		if b, ok := s.(*ir.ErrorBoundary); ok {
 			inner := scope
 			if b.Handler != nil {
+				resolveHandlerBody(b.Handler, scope)
 				inner = append(append([]*ir.EventHandler{}, b.Handler), scope...)
 			}
 			walkVisualErrors(b.Children, inner)
@@ -213,19 +211,38 @@ func walkVisualErrors(stmts []ir.Stmt, scope []*ir.EventHandler) {
 		switch x := s.(type) {
 		case *ir.NodeInst:
 			for i := range x.Handlers {
-				h := &x.Handlers[i]
-				if h.Func != nil && blockHasErrorOp(h.Func.Block) {
-					h.CanError = true
-				}
-				resolveCallsInBlock(h.Func.Block, scope, false)
+				resolveHandlerBody(&x.Handlers[i], scope)
 			}
-			walkVisualErrors(x.Children, scope)
+			children := scope
+			if ir.IsWindowNode(x) && x.ErrorHandler != nil {
+				resolveHandlerBody(x.ErrorHandler, scope)
+				children = append([]*ir.EventHandler{x.ErrorHandler}, scope...)
+			}
+			walkVisualErrors(x.Children, children)
+			for _, name := range ir.SlotNames(x.Slots) {
+				if sc := x.Slots[name]; sc != nil {
+					walkVisualErrors(sc.Body, children)
+				}
+			}
 		case *ir.SlotInst:
 			walkVisualErrors(x.Children, scope)
 		case *ir.CallStmt:
 			resolveCall(x.Call, scope, false)
 		}
 	}
+}
+
+// resolveHandlerBody resolves the calls in one handler body against the
+// handlers around it. For a boundary's or a window's own @error that is the
+// scope outside it: a raise from the handler is not caught by itself.
+func resolveHandlerBody(h *ir.EventHandler, scope []*ir.EventHandler) {
+	if h == nil || h.Func == nil {
+		return
+	}
+	if blockHasErrorOp(h.Func.Block) {
+		h.CanError = true
+	}
+	resolveCallsInBlock(h.Func.Block, scope, false)
 }
 
 // resolveCallsInBlock walks statements inside an event handler body or a
@@ -236,7 +253,13 @@ func resolveCallsInBlock(stmts []ir.Stmt, scope []*ir.EventHandler, bubble bool)
 	for _, s := range stmts {
 		switch x := s.(type) {
 		case *ir.CallStmt:
-			resolveCall(x.Call, scope, bubble)
+			if x.Call != nil {
+				resolveCallsInExpr(x.Call, scope, bubble)
+			}
+		case *ir.Emit:
+			for _, a := range x.Args {
+				resolveCallsInExpr(a.Value, scope, bubble)
+			}
 		case *ir.Assign:
 			resolveCallsInExpr(x.Value, scope, bubble)
 		case *ir.LocalVar:
@@ -267,6 +290,11 @@ func resolveCallsInExpr(e ir.Expr, scope []*ir.EventHandler, bubble bool) {
 		}
 		if x.Receiver != nil {
 			resolveCallsInExpr(x.Receiver, scope, bubble)
+		}
+		// The per-call handler runs where the call is, so a raise from it is
+		// resolved as a raise at the call would be.
+		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
+			resolveCallsInBlock(x.ErrorHandler.Func.Block, scope, bubble)
 		}
 	case *ir.Binary:
 		resolveCallsInExpr(x.Left, scope, bubble)

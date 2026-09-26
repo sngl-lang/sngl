@@ -963,6 +963,9 @@ func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
 }
 
 func (c *checker) inferCall(x *ast.CallExpr) ir.Expr {
+	if x != c.stmtCall {
+		c.refusePerCallErrorInExpr(x)
+	}
 	if sel, ok := x.Func.(*ast.SelectExpr); ok {
 		return c.inferMethodCall(sel, x)
 	}
@@ -3283,7 +3286,10 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 				})
 			}
 		}
+		prevStmtCall := c.stmtCall
+		c.stmtCall = x.Call
 		callExpr := c.checkExpr(x.Call)
+		c.stmtCall = prevStmtCall
 		return c.resolveCallStmt(x, callExpr)
 	case *ast.IfStmt:
 		condExpr := c.checkExpr(x.Cond)
@@ -3717,6 +3723,18 @@ func (c *checker) extractCallErrorHandler(call *ast.CallExpr) *ir.EventHandler {
 		return c.buildErrorHandler(&eh)
 	}
 	return nil
+}
+
+// refusePerCallErrorInExpr reports an @error written on a call whose value is
+// used. The handler replaces the rest of the statement, so there is nothing for
+// such a call to yield when it raises; before this the handler was dropped and
+// the raise went on as though it had not been written.
+func (c *checker) refusePerCallErrorInExpr(call *ast.CallExpr) {
+	for _, a := range call.Args.Args {
+		if eh, ok := a.(ast.EventHandler); ok && eh.Name == "error" {
+			c.error(eh.Pos, "@error may only be written on a call statement: a call whose value is used has nothing to produce when it raises")
+		}
+	}
 }
 
 // buildErrorHandler type-checks the body of an @error handler with the param

@@ -389,6 +389,10 @@ type checker struct {
 	// a node, which is earlier than a tree membership test can answer it.
 	outputDepth int
 
+	// stmtCall is the call a call statement is made of, while it is checked:
+	// the one call a per-call @error may be written on.
+	stmtCall *ast.CallExpr
+
 	// synthTargets are the stand-in nodes minted for targets this check has no
 	// registry for, keyed by tier URI so one name is one declaration.
 	synthTargets map[string]*ir.Component

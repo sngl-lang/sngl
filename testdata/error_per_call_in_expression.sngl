@@ -1,0 +1,36 @@
+// A per-call @error replaces the rest of the statement its call makes, so it is
+// written on a call statement. On a call whose value is used there is nothing
+// for the call to produce when it raises. The handler used to be dropped
+// without a word, and the raise went on as though it had not been written.
+
+import . "sngl:ui"
+
+func check(s string) int {
+    if s.length == 0 {
+        error.raise("required", "validation")
+    }
+    return 1
+}
+
+func keep(n int) {
+}
+
+component main node {
+    var x = 0
+    var caught = ""
+    vbox {
+        button(text="assign", @click {
+            x = check("", @error(e) { caught = e.message }) // ERROR(check) "@error may only be written on a call statement"
+        })
+        button(text="argument", @click {
+            keep(check("", @error(e) { caught = e.message })) // ERROR(check) "@error may only be written on a call statement"
+        })
+        button(text="statement", @click {
+            check("", @error(e) { caught = e.message })
+        })
+    }
+}
+
+window {
+    main
+}
