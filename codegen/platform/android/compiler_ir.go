@@ -649,17 +649,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString(mf)
 	}
 
-	// Enum classes
 	for _, ed := range info.Enums {
-		fmt.Fprintf(&body, "enum class %s {\n", exportName(ed.Name))
-		for i, m := range ed.Members {
-			comma := ","
-			if i == len(ed.Members)-1 {
-				comma = ""
-			}
-			fmt.Fprintf(&body, "    %s%s\n", kotlin.EnumEntry(m.Name), comma)
-		}
-		body.WriteString("}\n\n")
+		body.WriteString(kotlin.EnumDecl(ed))
+		body.WriteString("\n")
 	}
 
 	for _, c := range ctx.Pkg.Consts {
