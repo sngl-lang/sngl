@@ -319,7 +319,7 @@ body { font-family: system-ui, sans-serif; }
   </style>
 </head><body>
 
-<fieldset id="__n3" data-sngl-id="__n3" style="border:none;display:flex;flex-direction:horizontal;gap:8px;padding:0px">
+<fieldset id="__n3" data-sngl-id="__n3" style="border:none;display:flex;flex-direction:row;gap:8px;padding:0px">
   <span data-sngl-slot="0" style="display:contents"></span>
 </fieldset>
 
@@ -401,4 +401,4 @@ pass sha256:2c36fcf71c3aa926078ec9cdd5270d1d
 -- run/kotlin/android --
 pass sha256:51e0f7415584236ad360e19336735471
 -- run/none/html --
-pass sha256:84994e66667c55c7b95eaecbd5644cea
+pass sha256:2f2923bfcc8d440452b7418829adcf60
