@@ -41,9 +41,9 @@ func testUnaryNegation(t Test, c conv) {
 }
 
 func testIntFloatPromotion(t Test, c conv) {
-    t.assert(c.count + c.rate == 45.14)
-    t.assert(c.rate * c.count > 131.0)
-    t.assert(c.rate * c.count < 132.0)
+    t.assert(float(c.count) + c.rate == 45.14)
+    t.assert(c.rate * float(c.count) > 131.0)
+    t.assert(c.rate * float(c.count) < 132.0)
 }
 
 func testInterpolationPrimitives(t Test, c conv) {

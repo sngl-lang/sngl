@@ -84,17 +84,6 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 		if x.Func != nil {
 			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewriteUnitExpr)
 		}
-	case *ir.Closure:
-		if x.State != nil {
-			for i := range x.State.Fields {
-				if x.State.Fields[i].Value != nil {
-					x.State.Fields[i].Value = rewriteUnitExpr(x.State.Fields[i].Value)
-				}
-			}
-		}
-		if x.Func != nil {
-			x.Func.Block = rewriteStmtExprs(x.Func.Block, rewriteUnitExpr)
-		}
 	case *ir.Ident, *ir.ContextRead:
 		// Terminal — no unit-typed sub-expressions to rewrite.
 	default:

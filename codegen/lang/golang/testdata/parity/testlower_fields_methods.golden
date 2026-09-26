@@ -4,8 +4,7 @@ package ui
 import "testing"
 
 func TestFieldAndMethod(t *testing.T) {
-	__snglTestComponent := newTestComponent()
-	c := __snglTestComponent
+	c := newTestComponent()
 	_ = c
 	if !((c.count == 0)) { t.Errorf("assert failed: %s", "(c.count == 0)") }
 	c.bump()
@@ -22,9 +21,8 @@ package ui
 import "git.duckfam.us/jonathan/sngl/pkg/go/testagent"
 
 func testFieldAndMethod(t *testagent.T) {
-	__snglTestComponent := newTestComponent()
-	setCurrentTestModel(__snglTestComponent)
-	c := __snglTestComponent
+	c := newTestComponent()
+	setCurrentTestModel(c)
 	_ = c
 	if !((c.count == 0)) { t.Errorf("assert failed: %s", "(c.count == 0)") }
 	c.bump()

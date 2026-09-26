@@ -54,11 +54,24 @@ func (f *Importer) Resolve(uri, dir string) (*ir.NativeImport, error) {
 			Params:  []*ir.Param{{Name: "name", Type: ir.TypString}},
 			Return:  ir.TypString,
 			Purity:  ir.PurityPure,
+			Const:   true,
 			Foreign: ir.Foreign{Path: "file", Name: name},
 		}
 	}
+	// names lists the directory rather than naming one file in it, so a
+	// directory's contents can reach a pure function as an argument: read
+	// here, at build time, where every compile reads it again, instead of by
+	// the function while it runs, where nothing records that it did.
+	names := &ir.Func{
+		Name:    "names",
+		Params:  []*ir.Param{{Name: "pattern", Type: ir.TypString}},
+		Return:  &ir.Type{Kind: ir.TypeList, Elems: []*ir.Type{ir.TypString}},
+		Purity:  ir.PurityPure,
+		Const:   true,
+		Foreign: ir.Foreign{Path: "file", Name: "names"},
+	}
 	return &ir.NativeImport{
 		ImportPath: absDir,
-		Funcs:      []*ir.Func{fileFunc("path"), fileFunc("contents")},
+		Funcs:      []*ir.Func{fileFunc("path"), fileFunc("contents"), names},
 	}, nil
 }

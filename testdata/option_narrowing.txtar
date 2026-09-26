@@ -152,12 +152,16 @@ func (m Model) View() tea.View {
 	if m.maybe__inst0 != nil {
 		part1 = lipgloss.NewStyle().Render(fmt.Sprint(fmt.Sprint(((*(m.maybe__inst0)) * 2))))
 	}
-	parts = append(parts, part1)
+	if part1 != "" {
+		parts = append(parts, part1)
+	}
 	var part2 string
 	if (m.maybe__inst0 != nil) && ((*(m.maybe__inst0)) > 2) {
 		part2 = lipgloss.NewStyle().Render(fmt.Sprint("big"))
 	}
-	parts = append(parts, part2)
+	if part2 != "" {
+		parts = append(parts, part2)
+	}
 	content := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	v := tea.NewView(content)
 	v.AltScreen = true
@@ -314,7 +318,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:b58afac5c6f23100a1e30186c4486625
+pass sha256:ce5aff859b51c72daeca3334334231c8
 -- run/kotlin/android --
 pass sha256:308fdecd4a4759c4860b97076e573f6d
 -- run/none/html --

@@ -235,8 +235,15 @@ static void sngl_cb(gpointer instance, gpointer data) {
     (void)instance;
     snglGoDispatch(GPOINTER_TO_INT(data));
 }
+// A property notification is (instance, pspec, user_data).
+static void sngl_notify_cb(gpointer instance, GParamSpec *pspec, gpointer data) {
+    (void)instance;
+    (void)pspec;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
 static void sngl_connect(void* widget, const char* signal, int idx) {
-    g_signal_connect((gpointer)widget, signal, G_CALLBACK(sngl_cb), GINT_TO_POINTER(idx));
+    GCallback cb = g_str_has_prefix(signal, "notify::") ? G_CALLBACK(sngl_notify_cb) : G_CALLBACK(sngl_cb);
+    g_signal_connect((gpointer)widget, signal, cb, GINT_TO_POINTER(idx));
 }
 
 extern void snglIdleCallback(void* fn);
@@ -274,6 +281,16 @@ static void sngl_set_entry_text(GtkEditable *e, const char *t) {
     gtk_editable_set_text(e, t);
 }
 
+// A test invoker puts the payload's text in the entry and then fires the one
+// signal it drives, so the text is set with "changed" blocked: setting it would
+// otherwise run the input handler as well.
+static void sngl_set_entry_text_quiet(GtkEditable *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(e, t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+}
+
 // Canvas2D draw-func trampoline. gtk_drawing_area_set_draw_func wants a
 // C function pointer, which cannot close over Go state — so we register
 // each draw closure in the snglDrawFuncs slice and pass its index as the
@@ -290,6 +307,22 @@ static void sngl_draw_tramp(GtkDrawingArea* area, cairo_t* cr, int width, int he
 }
 static void sngl_drawing_area_set_draw(void* area, int idx) {
     gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(area), sngl_draw_tramp, GINT_TO_POINTER(idx), NULL);
+}
+
+// A drawing area has no click signal of its own; a GtkGestureClick does, and
+// its `pressed` passes (n_press, x, y) before user_data.
+static void sngl_pressed_cb(GtkGestureClick *g, gint n, gdouble x, gdouble y, gpointer data) {
+    (void)g; (void)n; (void)x; (void)y;
+    snglGoDispatch(GPOINTER_TO_INT(data));
+}
+static GtkGesture* sngl_connect_click(void* widget, int idx) {
+    GtkGesture *g = gtk_gesture_click_new();
+    gtk_widget_add_controller(GTK_WIDGET(widget), GTK_EVENT_CONTROLLER(g));
+    g_signal_connect(g, "pressed", G_CALLBACK(sngl_pressed_cb), GINT_TO_POINTER(idx));
+    return g;
+}
+static void sngl_emit_pressed(void* gesture) {
+    g_signal_emit_by_name(gesture, "pressed", 1, 0.0, 0.0);
 }
 */
 import "C"
@@ -626,7 +659,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:e0df7a36541475947f49269210651596
 -- run/go/gtk4 --
-pass sha256:f6ba1bac3565194398e3d6722b2133c9
+pass sha256:233b867f1a37e2f2ee405210e26f747d
 -- run/kotlin/android --
 pass sha256:ae61e9928cec87ddb6b10d1ca658d49e
 -- run/none/html --

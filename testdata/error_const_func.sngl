@@ -1,0 +1,23 @@
+// A const func's value depends on its arguments and on nothing else, and the
+// body is held to that.
+import ui "sngl:ui"
+
+var count = 0
+
+func helper(n int) => n + 1
+
+const func reads(n int) => n + count // ERROR(check) "const func reads reads var \"count\""
+
+const func calls(n int) => helper(n) // ERROR(check) "const func calls calls helper, which is not const (declare it const func helper)"
+
+const func writes(n int) int {
+    count = n // ERROR(check) "const func writes writes var \"count\""
+    return n
+}
+
+// Inferred pure is not declared const, so a call to it is not a constant.
+const bad = const (helper(1)) // ERROR(check) "const() operand is not a constant expression"
+
+ui.window {
+    ui.text(value="{reads(1)} {calls(1)} {writes(1)} {bad}")
+}

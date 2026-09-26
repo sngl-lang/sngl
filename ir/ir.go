@@ -211,6 +211,20 @@ type AsyncKickerEntry struct {
 	Deps         []string // sorted names of reactive state vars whose mutation should re-fire the kicker
 }
 
+// RootDecl returns the component RootComponent names, or nil for every
+// ordinary build.
+func (p *Package) RootDecl() *Component {
+	if p == nil || p.RootComponent == "" {
+		return nil
+	}
+	for _, c := range p.Components {
+		if c != nil && c.Name == p.RootComponent {
+			return c
+		}
+	}
+	return nil
+}
+
 // IsProgram reports whether the package is something to build rather than a
 // library to import. A window is what says so: it is the only renderable
 // member of the root tree, so a package without one has nothing to open.
@@ -445,10 +459,15 @@ type Func struct {
 	// so a second swap for the same target is a no-op rather than a reset of
 	// the block lowering has since rewritten.
 	SpecializedFor string `json:",omitempty"`
-	Purity         Purity
-	IsTest         bool
-	Reads          []*Var // vars read (directly or via called functions)
-	Writes         []*Var // vars mutated (directly or via called functions)
+	// Purity is what the purity fixpoint inferred from the body, and drives
+	// the optimizer. Const is what the declaration says: `const func`, a
+	// contract the checker holds the body to and callers may rely on. Only
+	// Const makes a call a compile-time value (IsConst).
+	Purity Purity
+	Const  bool `json:",omitempty"`
+	IsTest bool
+	Reads  []*Var // vars read (directly or via called functions)
+	Writes []*Var // vars mutated (directly or via called functions)
 	// Intrinsic is the id a backend implements (e.g. "string.indexOf"). A
 	// declaration carrying one and no body is a signature every backend must
 	// implement; one carrying a body asserts that the body computes the same
@@ -612,6 +631,9 @@ type Body struct {
 	// Methods is the receiver's member table, per body rather than merged, so
 	// two targets may each write a `func helper`.
 	Methods map[string]*Func `json:"-"`
+	// Const is the override's own `const` prefix. The component a target
+	// renders is const when its base declaration is or this is.
+	Const bool `json:",omitempty"`
 }
 
 // Component represents a resolved component declaration.
@@ -648,6 +670,9 @@ type Component struct {
 	// way, and reading it as "has a body" printed every empty-bodied component
 	// back as a signature.
 	Bodyless bool `json:",omitempty"`
+	// Const is the `const` prefix: the render depends only on the props. An
+	// override's is its base's or its own.
+	Const bool `json:",omitempty"`
 	// Intrinsic is the id from #[intrinsic] on a component: this component is
 	// emitted by the platform codegen that answers to the id, not by
 	// inlining a body. It is what tells the inliner to leave the component
@@ -763,6 +788,9 @@ type Prop struct {
 	// instance when its value changes. False for an ordinary prop, which the
 	// instance absorbs in place.
 	Construct bool `json:",omitempty"`
+	// Const is the `const` prefix: the argument at every call site is a
+	// compile-time value, and so is the default. Sym.Const mirrors it.
+	Const bool `json:",omitempty"`
 	// Sym is the Param that Idents referring to this prop inside the
 	// component body resolve to. A prop is declared into the body's scope as
 	// a parameter; the checker visits a component's bodies more than once, so
@@ -773,10 +801,27 @@ type Prop struct {
 // EventDecl is a resolved event declaration on a component.
 type EventDecl struct {
 	Name string
-	Type *Type // payload type; nil for void events
+	// Params are what a handler receives, in order: the FuncSig shape. A
+	// handler binds them by position, the way a func literal binds its
+	// parameters, and may stop short -- so unlike a slot's, the names here are
+	// documentation rather than contract, and an entry with none carries "".
+	// `@change T` is one unnamed entry and `@done()` is none. A bare `@tick`
+	// is one unnamed `dyn` entry, the loose payload it has always carried.
+	Params []*Param `json:",omitempty"`
 	// Wildcard is the pattern this event answers to beyond its own name, from
 	// #[wildcard]. Empty for an ordinary event.
 	Wildcard string `json:",omitempty"`
+}
+
+// Payload is the type of the event's only parameter, or nil when it does not
+// declare exactly one. A host widget's event -- a DOM click, a Fyne callback,
+// a boundary's error -- hands its handler one value, and this is what the code
+// dispatching one reads.
+func (e *EventDecl) Payload() *Type {
+	if e == nil || len(e.Params) != 1 {
+		return nil
+	}
+	return e.Params[0].Type
 }
 
 // SlotDecl is a resolved slot declaration: a parameter whose type is a
@@ -803,6 +848,9 @@ type SlotDecl struct {
 	// Slots each hold only their half of.
 	Slots []*SlotDecl `json:",omitempty"`
 	Index int         `json:",omitempty"`
+	// Const is the `const` prefix on the slot parameter: a population is held
+	// to a const component's render rule.
+	Const bool `json:",omitempty"`
 }
 
 // Arity is how many names a population of the slot binds.
@@ -921,6 +969,9 @@ type Param struct {
 	// into top-level form. Codegen/interp/lowering test this flag to recognise
 	// the implicit receiver structurally, rather than matching its name.
 	Receiver bool
+	// Const is the `const` prefix: the argument is a compile-time value at
+	// every call site, so a read of the parameter is one too (IsConst).
+	Const bool `json:",omitempty"`
 }
 
 func (p *Param) SymName() string { return p.Name }

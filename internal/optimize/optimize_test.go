@@ -76,10 +76,10 @@ component main node {
 }
 
 func TestOptimize_ConstExprFoldsPureCall(t *testing.T) {
-	// Primary use case: `const pure_fn(args)` must fold to a literal at
+	// Primary use case: `const f(args)` of a const func f must fold to a literal at
 	// compile time. Inlining + folding turns double(21) into 42.
 	src := `
-func double(x int) int { return x * 2 }
+const func double(x int) int { return x * 2 }
 const x int = const double(21)
 component main node {
 	text(value=string(x))

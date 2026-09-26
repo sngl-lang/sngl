@@ -99,7 +99,7 @@ func oracleNodeByID(env *Env, node *ir.NodeInst, id string, out *[]map[string]an
 		if env.RenderDepth >= maxCallDepth {
 			return
 		}
-		childEnv := env.componentEnv(node.Component, node)
+		childEnv := env.componentEnv(node.Component, node, "")
 		childEnv.RenderDepth = env.RenderDepth + 1
 		oracleByStmts(childEnv, childEnv.BodyStmts, id, out)
 		return

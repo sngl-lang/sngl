@@ -5,8 +5,6 @@ package imports
 
 import (
 	"strings"
-
-	"git.duckfam.us/jonathan/sngl/ast"
 )
 
 // ImportRef holds the scheme and URI for a resolved import path.
@@ -59,82 +57,4 @@ func NamespaceFromPath(path string) string {
 		return uri[i+1:]
 	}
 	return uri
-}
-
-// ResolveAliases scans import declarations in docs and returns a map of
-// alias → ImportRef. No IR building; scheme and URI only. Used to resolve the
-// package a #[alias.name] mark names.
-func ResolveAliases(docs []*ast.Document) map[string]ImportRef {
-	// First pass: collect redirect declarations (import "A" => "B" with no alias).
-	// These are pure path redirects, not namespace-introducing imports.
-	replaces := map[string]string{}
-	for _, doc := range docs {
-		for _, stmt := range doc.Stmts {
-			imp, ok := stmt.(*ast.Import)
-			if !ok || imp.Replace == "" || imp.Alias != "" {
-				continue
-			}
-			replaces[imp.Path] = imp.Replace
-		}
-	}
-
-	// Second pass: build alias → ImportRef for non-redirect imports.
-	out := make(map[string]ImportRef)
-	for _, doc := range docs {
-		for _, stmt := range doc.Stmts {
-			imp, ok := stmt.(*ast.Import)
-			if !ok {
-				continue
-			}
-			// Skip pure redirect declarations; they don't introduce a namespace.
-			if imp.Replace != "" && imp.Alias == "" {
-				continue
-			}
-			// A dot import flattens the package into the current scope and binds
-			// no namespace, so it contributes no macro alias. Deriving one from
-			// the path would let #[<pkg>.macro] resolve against a name that is
-			// not in scope. Its macros are reachable unqualified instead — see
-			// DotPackages.
-			if imp.IsDot() {
-				continue
-			}
-			// Resolve the effective target path through the redirects map.
-			path := imp.Path
-			if imp.Replace != "" {
-				path = imp.Replace
-			} else if mapped, ok := replaces[imp.Path]; ok {
-				path = mapped
-			}
-			scheme, uri := ParseScheme(path)
-			alias := imp.Alias
-			if alias == "" {
-				alias = NamespaceFromPath(imp.Path)
-			}
-			// Skip degenerate paths where no alias could be derived.
-			if alias == "" {
-				continue
-			}
-			out[alias] = ImportRef{Scheme: scheme, URI: uri}
-		}
-	}
-	return out
-}
-
-// DotPackages returns the package URIs dot-imported by these documents, in
-// source order. A macro one of them declares is written unqualified — the dot
-// import is what brings `#[builtin(...)]` into a file.
-func DotPackages(docs []*ast.Document) []string {
-	var out []string
-	for _, doc := range docs {
-		for _, stmt := range doc.Stmts {
-			imp, ok := stmt.(*ast.Import)
-			if !ok || !imp.IsDot() {
-				continue
-			}
-			if _, uri := ParseScheme(imp.Path); uri != "" {
-				out = append(out, uri)
-			}
-		}
-	}
-	return out
 }

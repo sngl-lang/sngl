@@ -240,13 +240,6 @@ func (r *refLoopRewriter) expr(e ir.Expr) ir.Expr {
 		if x.Func != nil {
 			r.stmtSlice(x.Func.Block)
 		}
-	case *ir.Closure:
-		if x.Func != nil {
-			r.stmtSlice(x.Func.Block)
-		}
-		if x.State != nil {
-			r.expr(x.State) // *ir.StructLit; fields rewritten in place
-		}
 	default:
 		panic(fmt.Sprintf("refloop.expr: unhandled ir.Expr %T", e))
 	}

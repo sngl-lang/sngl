@@ -611,6 +611,13 @@ func (b *builder) buildStructBodyItem(it nodeIter) ast.StructBodyItem {
 			case StructField:
 				inner = b.buildStructField(sub.enter())
 			}
+		} else if !sub.done() && sub.tokenType() == KW_CONST {
+			sub.skip() // kw_const
+			if !sub.done() && sub.isNonTerminal() && sub.symbol() == FuncDecl {
+				f := b.buildFuncDecl(sub.enter())
+				f.Const = true
+				inner = f
+			}
 		}
 	}
 	if len(attrs) == 0 || inner == nil {
@@ -684,6 +691,13 @@ func (b *builder) buildEnumDecl(it nodeIter) *ast.EnumDef {
 					e.Body = append(e.Body, b.buildFuncDecl(sub.enter()))
 				case EnumMember:
 					e.Body = append(e.Body, b.buildEnumMember(sub.enter()))
+				}
+			} else if !sub.done() && sub.tokenType() == KW_CONST {
+				sub.skip() // kw_const
+				if !sub.done() && sub.isNonTerminal() && sub.symbol() == FuncDecl {
+					f := b.buildFuncDecl(sub.enter())
+					f.Const = true
+					e.Body = append(e.Body, f)
 				}
 			}
 		} else {
@@ -807,9 +821,21 @@ func (b *builder) buildUnitSuffix(it nodeIter) *ast.UnitSuffix {
 
 // --- Const/Var declarations ---
 
-func (b *builder) buildConstDecl(it nodeIter) *ast.ConstDecl {
-	// ConstDecl = kw_const ConstSpec | kw_const lparen ConstSpec { comma ConstSpec } rparen .
+func (b *builder) buildConstDecl(it nodeIter) ast.Stmt {
+	// ConstDecl = kw_const ( ConstSpec | lparen { ConstSpec } rparen | FuncDecl | ComponentDecl ) .
 	pos := b.posFromToken(it.shift()) // kw_const
+	if !it.done() && it.isNonTerminal() {
+		switch it.symbol() {
+		case FuncDecl:
+			f := b.buildFuncDecl(it.enter())
+			f.Const = true
+			return f
+		case ComponentDecl:
+			c := b.buildComponentDecl(it.enter())
+			c.Const = true
+			return c
+		}
+	}
 	c := &ast.ConstDecl{Pos: ast.Pos(pos)}
 	openLine := 0
 	if !it.done() && !it.isNonTerminal() && it.tokenType() == LPAREN {
@@ -955,11 +981,6 @@ func (b *builder) buildAtHandler(it nodeIter) ast.EventHandler {
 		h.Body = b.buildStmtBlock(it.enter())
 	}
 	return h
-}
-
-func (b *builder) buildIdentList(it nodeIter) []string {
-	names, _ := b.buildIdentListWithPos(it)
-	return names
 }
 
 // buildIdentListWithPos returns parallel slices of names and their
@@ -1186,12 +1207,12 @@ func (b *builder) buildParamEntries(it nodeIter, openLine int, multiline *bool, 
 }
 
 func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
-	// Param = { MacroAttr } ( colon ident | at ident | ident ) [ Type ] [ assign Expr ] .
+	// Param = { MacroAttr } ( colon ident [ Type ] | at ident [ EventParams | Type ] | ident [ Type ] ) [ assign Expr ] .
 	attrs := b.buildParamAttrs(&it)
 	if it.done() {
 		return ast.Param{Attrs: attrs}
 	}
-	bidi, event := false, false
+	bidi, event, isConst := false, false, false
 	switch it.tokenType() {
 	case COLON:
 		bidi = true
@@ -1199,13 +1220,31 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 	case AT:
 		event = true
 		it.skip()
+	case KW_CONST:
+		isConst = true
+		it.skip()
 	}
 	nameTok := it.shift()
 	p := ast.Param{
 		Pos:           ast.Pos(b.posFromToken(nameTok)),
 		Name:          nameTok.Literal,
 		Bidirectional: bidi,
+		Const:         isConst,
 		Attrs:         attrs,
+	}
+	var evParams []ast.FuncTypeParam
+	evParens := false
+	if !it.done() && it.isNonTerminal() && it.symbol() == EventParams {
+		// EventParams = lparen [ FuncTypeParamList ] rparen .
+		evParens = true
+		inner := it.enter()
+		for !inner.done() {
+			if inner.isNonTerminal() && inner.symbol() == FuncTypeParamList {
+				evParams = b.buildFuncTypeParamList(inner.enter())
+				continue
+			}
+			inner.skip() // lparen, rparen
+		}
 	}
 	if !it.done() && it.isNonTerminal() && it.symbol() == Type {
 		p.Type = b.buildType(it.enter())
@@ -1222,7 +1261,10 @@ func (b *builder) buildParam(it nodeIter) ast.ParamOrEventDecl {
 	if p.Default != nil {
 		b.errorf(p.Pos, "event %q takes no default value", p.Name)
 	}
-	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Type: p.Type, Attrs: attrs}
+	if p.Type != nil {
+		evParams = []ast.FuncTypeParam{{Type: p.Type}}
+	}
+	return ast.EventDecl{Pos: b.posFromToken(nameTok), Name: p.Name, Params: evParams, HasParens: evParens, Attrs: attrs}
 }
 
 // --- Components ---

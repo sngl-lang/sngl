@@ -106,12 +106,7 @@ func componentsFor(comps []*ir.Component) []*ComponentCtx {
 }
 
 // RootDecl returns the component a harness has made the program's root, or
-// nil -- which is every ordinary build.
-//
-// A component named "main" used to be that root by convention, which is what
-// let a fixture render without declaring a window. It only ever worked
-// because every such program is in this repository; a window is what a
-// program renders now, and `main` is an ordinary component.
+// nil -- which is every ordinary build, where the windows are the root.
 func (ctx *CodegenCtx) RootDecl() *ir.Component {
 	if ctx.RootComponent == "" {
 		return nil
@@ -125,10 +120,10 @@ func (ctx *CodegenCtx) RootDecl() *ir.Component {
 }
 
 // AllFuncs returns every function codegen should emit: the package-level
-// funcs plus the main component's funcs, deduped by pointer. Nested component
+// funcs plus the harness root's (RootDecl), deduped by pointer. Nested component
 // methods are registered in BOTH pkg.Funcs and component.Funcs (the checker's
 // registerNestedMethods appends the same *ir.Func to each), so a naive
-// pkg.Funcs+main.Funcs concatenation double-emits them. All platforms must go
+// pkg.Funcs+root.Funcs concatenation double-emits them. All platforms must go
 // through here rather than concatenating themselves.
 func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 	pkgFuncs := ctx.Pkg.Funcs
@@ -153,17 +148,6 @@ func (ctx *CodegenCtx) AllFuncs() []*ir.Func {
 	add(pkgFuncs)
 	if main := ctx.RootDecl(); main != nil {
 		add(main.Funcs)
-	}
-	// A window owns funcs the way a component does, and they are all
-	// synthesized: passCanvas puts a canvas draw func for a canvas in a window
-	// body here, and passFocusOrder the window's __focusNext/__focusPrev. A
-	// caller that missed them emitted calls to methods it never declared.
-	//
-	// Windows() rather than Pkg.Windows: a `window` written inside a component
-	// is an ir.Window statement in that component's body and never reaches
-	// Pkg.Windows, so a canvas under one had its draw func emitted nowhere.
-	for _, w := range ctx.Windows() {
-		add(w.Funcs)
 	}
 	return out
 }
@@ -212,8 +196,6 @@ func walkVisual(stmts []ir.Stmt, fn func(*ir.NodeInst, int) bool, depth int) {
 		case *ir.SlotInst:
 			walkVisual(n.Children, fn, depth)
 		case *ir.ErrorBoundary:
-			walkVisual(n.Children, fn, depth)
-		case *ir.ContextProvider:
 			walkVisual(n.Children, fn, depth)
 		case *ir.Assign, *ir.CallStmt, *ir.LocalVar, *ir.Return, *ir.Emit, *ir.Toggle, *ir.CanvasRedrawStmt,
 			*ir.Break, *ir.Continue:

@@ -1,0 +1,27 @@
+# names(pattern) lists what a file: directory holds at build time, as a
+# list<string> of the matching names, sorted. It is how a program hands a
+# directory's contents to a pure function as an argument rather than the
+# function reading the directory while it runs -- which nothing records, and
+# which a stored result would therefore replay after the directory changed.
+
+sngl generate --lang=none --platform=html --out=out app.sngl
+grep '(?s)<span>one.png</span>\s*<span>two.png</span>' out/index.html
+! grep 'notes.txt' out/index.html
+
+-- app.sngl --
+import . "sngl:ui"
+import shots "file:shots"
+
+const pngs = shots.names("*.png")
+
+window(title="shots") {
+	for var n = pngs {
+		text(value=n)
+	}
+}
+-- shots/two.png --
+two
+-- shots/one.png --
+one
+-- shots/notes.txt --
+notes

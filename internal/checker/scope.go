@@ -31,15 +31,6 @@ var NewScope = ir.NewScope
 //go:fix inline
 var NewSymbolTable = ir.NewSymbolTable
 
-func structDecl(st *ir.SymbolTable, name string) *ir.StructDef {
-	if sym, ok := st.LookupType(name); ok {
-		if sd, isStruct := sym.(*ir.StructDef); isStruct {
-			return sd
-		}
-	}
-	return nil
-}
-
 // lookupMethod finds a method on the declaration recv names, resolved through
 // the scope the checker is currently in. That is the scope AttachMethod wrote
 // through, so the two always agree on which declaration a receiver name means.

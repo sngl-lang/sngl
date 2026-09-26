@@ -1,4 +1,5 @@
-// Package fynelayout is the fyne.Layout behind SNGL's `style.flex`.
+// Package fynelayout is the fyne.Layout behind SNGL's `style.flex`, and the
+// anchor a render slot keeps its place in its container by.
 //
 // Fyne's own boxes pack children at their minimum size, so a child asking for
 // a share of the box has nowhere to say it. Weighted distributes what the box

@@ -1,0 +1,16 @@
+// The inputs describe the file they are written in, so a file's root is the
+// only place they mean anything.
+import cache "sngl:x/gen/cache"
+import ui "sngl:ui"
+
+component main ui.node {
+    cache.inputs { // ERROR(check) "cache.inputs may only be written at the root of a file"
+        cache.env(name="HOME", value="/root")
+    }
+
+    ui.text(value="hi")
+}
+
+ui.window {
+    main()
+}

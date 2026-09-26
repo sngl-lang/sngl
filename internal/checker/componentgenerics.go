@@ -207,7 +207,7 @@ func specializeComponent(comp *ir.Component, bindings map[string]*ir.Type, origi
 	out.Events = make([]*ir.EventDecl, len(comp.Events))
 	for i, e := range comp.Events {
 		f := *e
-		f.Type = e.Type.Substitute(bindings)
+		f.Params = substituteParams(e.Params, bindings)
 		out.Events[i] = &f
 	}
 	out.Slots = specializeSlots(comp.Slots, bindings)
@@ -227,14 +227,7 @@ func specializeSlots(slots []*ir.SlotDecl, bindings map[string]*ir.Type) []*ir.S
 	for i, s := range slots {
 		t := *s
 		t.Content = s.Content.Substitute(bindings)
-		if len(s.Params) > 0 {
-			t.Params = make([]*ir.Param, len(s.Params))
-			for j, sp := range s.Params {
-				q := *sp
-				q.Type = sp.Type.Substitute(bindings)
-				t.Params[j] = &q
-			}
-		}
+		t.Params = substituteParams(s.Params, bindings)
 		t.Slots = specializeSlots(s.Slots, bindings)
 		out[i] = &t
 	}
@@ -248,6 +241,20 @@ func recordEntryOrigin(spec, decl *ir.SlotDecl, origin map[*ir.SlotDecl]*ir.Slot
 	for i, e := range decl.Slots {
 		recordEntryOrigin(spec.Slots[i], e, origin)
 	}
+}
+
+// substituteParams copies a parameter list with each type specialized.
+func substituteParams(params []*ir.Param, bindings map[string]*ir.Type) []*ir.Param {
+	if len(params) == 0 {
+		return params
+	}
+	out := make([]*ir.Param, len(params))
+	for j, sp := range params {
+		q := *sp
+		q.Type = sp.Type.Substitute(bindings)
+		out[j] = &q
+	}
+	return out
 }
 
 // checkEffectHandlers reports an effect that brackets nothing.

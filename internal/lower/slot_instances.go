@@ -249,6 +249,21 @@ func constructProps(n *ir.NodeInst) []*ir.Arg {
 	return out
 }
 
+// propIsConst reports whether comp declared prop const: its value is known at
+// build time, so no update ever reaches it and it needs neither a setter nor a
+// rebuild.
+func propIsConst(comp *ir.Component, prop string) bool {
+	if comp == nil {
+		return false
+	}
+	for _, p := range comp.Props {
+		if p != nil && p.Name == prop {
+			return p.Const
+		}
+	}
+	return false
+}
+
 // propIsConstruct reports whether comp declared prop with #[construct].
 func propIsConstruct(comp *ir.Component, prop string) bool {
 	if comp == nil {
@@ -479,7 +494,7 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		// answers, so it is reported rather than built into a program that
 		// ignores the write.
 		if !componentAbsorbs(n.Component, p.Name) {
-			if !propIsConstruct(n.Component, p.Name) {
+			if !propIsConstruct(n.Component, p.Name) && !propIsConst(n.Component, p.Name) {
 				st.failf(p.NamePos, "prop %q of component %s can neither be written after construction nor rebuild the instance; mark it #[construct] if it is read only while the instance is built", p.Name, n.Component.Name)
 			}
 			continue

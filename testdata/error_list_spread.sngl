@@ -1,0 +1,17 @@
+// A spread contributes its operand's elements, so it is held to the element
+// type the rest of the literal settles on; an operand that is not a list has
+// no elements to contribute.
+
+import seq "sngl:seq"
+
+var xs = [1, 2]
+var names = ["a", "b"]
+var n = 3
+
+var leading = [...xs, "c"]              // ERROR(check) "list element type string does not match earlier int"
+var trailing = ["c", ...xs]             // ERROR(check) "list element type int does not match earlier string"
+var annotated list<int> = [0, ...names] // ERROR(check) "list element type string does not match earlier int"
+var scalar = [0, ...n]                  // ERROR(check) "cannot spread int into a list literal"
+var pulled = [0, ...seq.count(3)]       // ERROR(check) "cannot spread iter<int> into a list literal"
+var flat list<list<int>> = [0, ...xs]   // ERROR(check) "cannot initialize list<list<int>> with list<int>"
+var mixed = [1, "a"]                    // ERROR(check) "list element type string does not match earlier int"
