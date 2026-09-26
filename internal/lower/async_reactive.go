@@ -17,25 +17,38 @@ var passAsyncReactive = pass{
 	apply:   lowerAsyncReactive,
 }
 
-// lowerAsyncReactive runs two phases:
+// lowerAsyncReactive runs three phases:
 //
-//  1. Hoist inline async subexpressions inside visual-node props into
-//     synthetic anonymous zero-arg computed funcs (__hoist_N).
-//  2. Lower every reactive async computed (named + just-hoisted) to a
-//     settle-state-var (__async_X) + kicker ($compute_X).
+//  1. Lower every named reactive async computed to a settle-state-var
+//     (__async_X) + kicker ($compute_X). Its callers now read the state var,
+//     so a call to one is no longer async.
+//  2. Hoist the inline async subexpressions still left inside visual-node
+//     props into synthetic anonymous zero-arg computed funcs (__hoist_N).
+//  3. Lower the hoists the same way.
+//
+// Named computeds go first. Hoisting first wrapped a prop's `greeting()` in a
+// `__hoist_0` marked async, and lowering `greeting` afterwards left that
+// wrapper awaiting a call that had become a plain read -- an `await` outside
+// an `async` function in the page. It never showed while the optimizer
+// inlined every such computed into the prop, which it does only for one it
+// infers pure.
 func lowerAsyncReactive(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-
-	// Phase 1: hoist inline async subexpressions into synthetic computeds.
+	if err := lowerAsyncComputeds(pkg); err != nil {
+		return err
+	}
 	if err := hoistInlineAsyncReactive(pkg); err != nil {
 		return err
 	}
+	return lowerAsyncComputeds(pkg)
+}
 
-	// Phase 2: lower every reactive async computed (named + just-hoisted).
-	// Snapshot pkg.Funcs length before to avoid iterating over funcs we add
-	// as kickers (kickers are not computeds themselves).
+// lowerAsyncComputeds lowers every reactive async computed in pkg.Funcs. A
+// snapshot, so the kickers it appends are not visited; a computed already
+// lowered is sync and no longer matches.
+func lowerAsyncComputeds(pkg *ir.Package) error {
 	snapshot := make([]*ir.Func, len(pkg.Funcs))
 	copy(snapshot, pkg.Funcs)
 	for _, fn := range snapshot {

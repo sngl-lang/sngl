@@ -15,11 +15,11 @@ grep 'function add' stub/index.html
 ! grep '<span>0</span>' stub/index.html
 
 # async is the same fact the TypeScript importer reads off Promise<T>, so it
-# drives the same lowering: the computed that calls it is hoisted behind a
+# drives the same lowering: the computed that calls it is lowered to a
 # settled-state field and an async kicker awaits the call. Nothing was imported
 # to say so — the mark is the only source of it.
 sngl generate --lang=none --platform=html --out=async async.sngl
-grep 'async function \$compute___hoist_0' async/index.html
+grep 'async function \$compute_greeting' async/index.html
 grep 'await fetchHello' async/index.html
 
 # A misspelled flag is a spelling error the compiler can see, so it names the
