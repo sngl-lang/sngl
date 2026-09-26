@@ -713,6 +713,12 @@ type htmlGen struct {
 	// on that node (#inc). Only ids a test could name are in it.
 	snglIDByElem map[string]string
 
+	// enclosingSnglID is the nearest program-written id around the element
+	// being rendered. An override's root takes the call site's id while the
+	// handler sits on an element inside it -- a checkbox's `<input>` in its
+	// `<label>` -- so that is the id a test names the handler by.
+	enclosingSnglID string
+
 	// refToVar maps the name a lowered node op uses for its node to the JS
 	// variable the element was emitted as. They coincide for a synthesized
 	// `__nN` and differ for every `#id` a program wrote: the lowering leaves
@@ -768,7 +774,13 @@ type updateFunc struct {
 type eventHandler struct {
 	elemID string
 	event  string // the DOM event name passed to addEventListener
-	body   string // JS statements
+	// snglID is the id a test invokes this handler by: the element's own, or
+	// the nearest enclosing one.
+	snglID string
+	// payloadOnTarget says the payload's fields are the element's own state
+	// (eventPayloadBase answered e.target), so an invoker writes them there.
+	payloadOnTarget bool
+	body            string // JS statements
 	// hasParam follows the handler's declared parameter, not the event name,
 	// because that is what translation binds `e` from. A declared parameter
 	// the body never reads still sets it.
@@ -1745,6 +1757,11 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 	if g.nodeIsReactive(n) || g.preview || g.testMode {
 		id = g.nodeID(n)
 	}
+	if n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
+		saved := g.enclosingSnglID
+		g.enclosingSnglID = n.ID
+		defer func() { g.enclosingSnglID = saved }()
+	}
 	drawing := g.canvasDraws.ForNode(n)
 	if drawing != nil && id == "" {
 		id = g.nodeID(n)
@@ -2033,8 +2050,13 @@ func (g *htmlGen) emitScript(b *strings.Builder) {
 				body = append(body, f.Name+": "+param)
 			}
 		}
+		// A payload struct is declared for the targets that keep a handler's
+		// parameter, and a page reads a DOM event instead: its constructor is
+		// one nothing calls.
+		openDecl(b, sd.Name)
 		fmt.Fprintf(b, "function %s(%s) { return {%s}; }\n",
 			sd.Name, strings.Join(params, ", "), strings.Join(body, ", "))
+		closeDecl(b)
 	}
 	if len(structs) > 0 {
 		b.WriteString("\n")
@@ -2579,15 +2601,10 @@ func (g *htmlGen) optimizeIR() {
 		}
 	}
 	// IR keys on ast.Node, but html has already translated to JS strings.
-	handlerBodyMap := make(map[string]string)
-	handlerAsyncMap := make(map[string]bool)
-	handlerParamMap := make(map[string]bool)
+	byKey := make(map[string]eventHandler)
 	handlers := make([]codegen.Handler, len(g.handlers))
 	for i, h := range g.handlers {
-		key := h.elemID + ":" + h.event
-		handlerBodyMap[key] = h.body
-		handlerAsyncMap[key] = h.isAsync
-		handlerParamMap[key] = h.hasParam
+		byKey[h.elemID+":"+h.event] = h
 		handlers[i] = codegen.Handler{
 			NodeID:  h.elemID,
 			Event:   h.event,
@@ -2622,15 +2639,11 @@ func (g *htmlGen) optimizeIR() {
 
 	g.handlers = make([]eventHandler, len(m.Handlers))
 	for i, h := range m.Handlers {
-		key := h.NodeID + ":" + h.Event
-		g.handlers[i] = eventHandler{
-			elemID:   h.NodeID,
-			event:    h.Event,
-			body:     handlerBodyMap[key],
-			hasParam: handlerParamMap[key],
-			mutated:  varSetToNames(h.Mutated),
-			isAsync:  handlerAsyncMap[key],
-		}
+		orig := byKey[h.NodeID+":"+h.Event]
+		orig.elemID = h.NodeID
+		orig.event = h.Event
+		orig.mutated = varSetToNames(h.Mutated)
+		g.handlers[i] = orig
 	}
 }
 
@@ -3015,7 +3028,8 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 	}
 	savedEvent := g.ctx.EventVar
 	savedEventParam := g.ctx.EventParam
-	g.ctx.EventVar = eventPayloadBase(decl, event)
+	base := eventPayloadBase(decl, event)
+	g.ctx.EventVar = base
 	if len(fn.Params) > 0 {
 		g.ctx.EventParam = fn.Params[0]
 	}
@@ -3045,9 +3059,11 @@ func (g *htmlGen) addEventHandler(decl *ir.Component, elemID, event string, fn *
 		delete(g.ctx.Locals, n)
 	}
 	g.handlers = append(g.handlers, eventHandler{
-		elemID: elemID,
-		event:  event,
-		body:   strings.Join(lines, "\n  "),
+		elemID:          elemID,
+		event:           event,
+		snglID:          g.enclosingSnglID,
+		payloadOnTarget: base == "e.target",
+		body:            strings.Join(lines, "\n  "),
 		// With no declared parameter nothing in the body can resolve to the
 		// event, so the listener takes none either.
 		hasParam: len(fn.Params) > 0,
@@ -3341,25 +3357,38 @@ func (g *htmlGen) noteSnglID(elemVar string, n *ir.NodeInst) {
 // They hang off `state` because that is the object newTestComponent() returns,
 // which is what makes `c.<id><Event>()` resolve. The computed accessors above
 // are attached the same way.
+//
+// A payload a test passes is written where the handler reads it: onto the
+// element when its fields are the element's state (`checked`, `value`), which
+// is what a user's input would have changed before the event fired, and onto
+// the event otherwise.
 func (g *htmlGen) emitEventInvokers(b *strings.Builder) {
 	seen := map[string]bool{}
-	for _, h := range g.handlers {
-		snglID := g.snglIDByElem[h.elemID]
+	emit := func(h eventHandler, snglID string) {
 		if snglID == "" {
-			continue // a node no test can name
+			return
 		}
 		name := snglID + capitalizeFirst(h.event)
 		if seen[name] {
-			continue // duplicate id+event -- keep the first
+			return
 		}
 		seen[name] = true
-		if h.event == "click" {
+		switch {
+		case h.event == "click":
 			fmt.Fprintf(b, "state.%s = () => %s.click();\n", name, h.elemID)
-			continue
+		case h.payloadOnTarget:
+			fmt.Fprintf(b, "state.%s = (p) => { Object.assign(%s, p); %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
+		default:
+			fmt.Fprintf(b, "state.%s = (p) => %s.dispatchEvent(Object.assign(new Event(%q), p));\n", name, h.elemID, h.event)
 		}
-		// A payload's value is put in the element first, which is where the
-		// handler reads it from, as it would after the user typed it.
-		fmt.Fprintf(b, "state.%s = (p) => { if (p != null && p.value !== undefined) { %s.value = p.value; } %s.dispatchEvent(new Event(%q)); };\n", name, h.elemID, h.elemID, h.event)
+	}
+	// An element's own id outranks one it inherits, whichever was rendered
+	// first.
+	for _, h := range g.handlers {
+		emit(h, g.snglIDByElem[h.elemID])
+	}
+	for _, h := range g.handlers {
+		emit(h, h.snglID)
 	}
 }
 

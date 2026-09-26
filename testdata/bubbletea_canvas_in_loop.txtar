@@ -378,9 +378,6 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { sizes: [1, 6] };
-  function CanvasStyle(fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily) {
-    return { fill, stroke, strokeWidth, lineCap, lineJoin, fontSize, fontFamily };
-  }
   function paintStyle(ctx, style) {
     ctx.fillStyle = "rgba(" + String(style.fill.r) + "," + String(style.fill.g) + "," + String(style.fill.b) + "," + String(parseFloat(style.fill.a) / 255) + ")";
     ctx.strokeStyle = "rgba(" + String(style.stroke.r) + "," + String(style.stroke.g) + "," + String(style.stroke.b) + "," + String(parseFloat(style.stroke.a) / 255) + ")";
@@ -525,4 +522,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:a9a30bddc53418bd1fc2dfb3e56240ef
 -- run/none/html --
-pass sha256:c108fe09f55662e8dc658a4d9e18254f
+pass sha256:2a4068f854117356404aacf4f2569220

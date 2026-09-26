@@ -529,15 +529,6 @@ body { font-family: system-ui, sans-serif; }
   state.p__inst1 = "done";
   state.here__inst2 = { bField: "two" };
   state.p__inst2 = "ready";
-  function Local(a) {
-    return { a };
-  }
-  function Local__second(bField) {
-    return { bField };
-  }
-  function Local__pick(c) {
-    return { c };
-  }
   function Local__second_shout(state2, n) {
     if (n <= 0) {
       ;
@@ -630,4 +621,4 @@ pass sha256:1c4e25454f8e7a02109cd6be26d6e515
 -- run/kotlin/android --
 pass sha256:5c25bf679a992bdcb23bafef0987dc4f
 -- run/none/html --
-pass sha256:ac893d073d012ee439ac5a0f76992f6e
+pass sha256:f225ea04bc516a2b1e3dd18fe9ab713b

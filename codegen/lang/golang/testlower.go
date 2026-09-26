@@ -257,9 +257,15 @@ func lowerEventTrigger(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 		return "", false
 	}
 	methodName := innerSel.Field + ExportName(c.Event)
-	args := make([]string, len(c.Args))
-	for i, a := range c.Args {
-		args[i] = eventPayloadArg(a.Value, gc)
+	var args []string
+	for _, a := range c.Args {
+		// A payload with no fields says nothing, and a test may leave it out,
+		// so an invoker takes none: `c.board.click()` and
+		// `c.board.click({})` are one call.
+		if emptyPayload(a.Value.ExprType()) {
+			continue
+		}
+		args = append(args, eventPayloadArg(a.Value, gc))
 	}
 	return fmt.Sprintf("%s.%s(%s)", recvIdent.Name, methodName, strings.Join(args, ", ")), true
 }
@@ -287,6 +293,14 @@ func eventPayloadArg(e ir.Expr, gc *GoIRContext) string {
 		}
 	}
 	return gc.EvalExpr(e)
+}
+
+func emptyPayload(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd != nil && len(sd.Fields) == 0
 }
 
 // lowerTestSnapshot recognises a `t.snapshot(name)` call and emits a

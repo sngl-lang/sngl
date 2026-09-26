@@ -4,6 +4,7 @@ import (
 	"maps"
 	"strings"
 
+	"git.duckfam.us/jonathan/sngl/ast"
 	"git.duckfam.us/jonathan/sngl/ir"
 )
 
@@ -397,6 +398,40 @@ func CollectTestFuncs(pkg *ir.Package) (fns []*ir.Func, suffixes []string, metho
 		}
 	}
 	return
+}
+
+// TriggerPayloads is the payload type each test trigger hands an event, keyed
+// "<id>.<event>" as the test wrote it -- `c.box.change({checked=true})` is
+// "box.change". It is for a platform whose invoker takes no payload of its
+// own and so has only the tests to say what one is.
+func TriggerPayloads(pkg *ir.Package) map[string]*ir.Type {
+	out := map[string]*ir.Type{}
+	fns, _, _ := CollectTestFuncs(pkg)
+	for _, fn := range fns {
+		_ = ir.Walk(fn.Block, func(n ir.Node) error {
+			c, ok := n.(*ir.Call)
+			if !ok || c.Event == "" || len(c.Args) == 0 || c.AST == nil {
+				return nil
+			}
+			outer, ok := c.AST.Func.(*ast.SelectExpr)
+			if !ok {
+				return nil
+			}
+			inner, ok := outer.Operand.(*ast.SelectExpr)
+			if !ok {
+				return nil
+			}
+			t := c.Args[0].Value.ExprType()
+			if t == nil {
+				return nil
+			}
+			if sd, ok := t.Decl.(*ir.StructDef); ok && sd != nil && len(sd.Fields) > 0 {
+				out[inner.Field+"."+c.Event] = t
+			}
+			return nil
+		})
+	}
+	return out
 }
 
 // StateFieldNames is every name the emitted state object declares as a cell:

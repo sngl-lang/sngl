@@ -1045,6 +1045,9 @@ func (t *gtk4Translator) signalFor(nodeID, event string) string {
 	if s := gtk4SignalFor(cType, event); s != "" {
 		return s
 	}
+	if s := notifySignal(cType, event); s != "" {
+		return s
+	}
 	if sig, ok := girSignal(t.classFor(cType), event); ok && sig.Connectable() {
 		return sig.Name
 	}
@@ -1078,14 +1081,23 @@ func (t *gtk4Translator) signalLambda(lam *ir.Lambda, node ir.Expr, cType string
 }
 
 // substituteWidgetPayload reads an event's value off the widget that fired it,
-// the trampoline handing the handler nothing. Only an entry's text is a
-// string, which is what every payload's value is.
+// the trampoline handing the handler nothing: an entry's text is a payload's
+// string, and a check button's or a switch's state its bool.
 func substituteWidgetPayload(stmts []ir.Stmt, params []*ir.Param, cType string, getter ir.Expr) []ir.Stmt {
-	if getter == nil || cType != "GtkEntry" {
+	var kind ir.TypeKind
+	switch cType {
+	case "GtkEntry":
+		kind = ir.TypeString
+	case "GtkCheckButton", "GtkSwitch":
+		kind = ir.TypeBool
+	default:
+		return stmts
+	}
+	if getter == nil {
 		return stmts
 	}
 	return codegen.SubstituteEventPayload(stmts, params, func(f *ir.StructField) ir.Expr {
-		if f.Type == nil || f.Type.Kind != ir.TypeString {
+		if f.Type == nil || f.Type.Kind != kind {
 			return nil
 		}
 		return getter
@@ -1124,6 +1136,9 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	}
 	bare := codegen.IdentBareName(node)
 	cType := t.idCTypes[bare]
+	if event == "click" && t.canvasMetaForID(bare) != nil {
+		return t.attachCanvasClick(bare, event, handler)
+	}
 	signal := t.signalFor(bare, event)
 	if signal == "" {
 		// The trampoline is (instance, user_data) returning void; a signal of
@@ -1140,7 +1155,7 @@ func (t *gtk4Translator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 	// program wrote, the SNGL event written on it, and the GTK signal that event
 	// maps to. The statements emitted below keep only the signal, which is why
 	// this is recorded rather than recovered.
-	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType)
+	t.recordInvoker(bare, codegen.TriggerEventName(handler, event), signal, cType, handler)
 	if lam, ok := handler.(*ir.Lambda); ok {
 		handler = t.signalLambda(lam, node, cType)
 	}
@@ -1326,15 +1341,40 @@ func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStm
 // A synthesized id is skipped: `c.__n0.click()` is not something a test can
 // write, so a method for it would be dead. A scope with no sink -- a slot func,
 // a canvas draw -- records nothing.
-func (t *gtk4Translator) recordInvoker(id, event, signal, cType string) {
+func (t *gtk4Translator) recordInvoker(id, event, signal, cType string, handler ir.Expr) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
-	t.invokerSink(gtkEventInvoker{
+	inv := gtkEventInvoker{
 		IDLabel:    id,
 		SnglEvent:  event,
 		FieldName:  id,
 		GTKSignal:  signal,
 		WidgetType: cType,
-	})
+	}
+	if pt, sd := codegen.HandlerPayload(handler); sd != nil && invokerStateSetter(cType, t.wrapped) != "" {
+		for _, f := range sd.Fields {
+			if f != nil && f.Type != nil && f.Type.Kind == ir.TypeBool {
+				inv.Payload = golang.IRTypeToGo(pt)
+				inv.PayloadField = golang.ExportName(f.Name)
+				break
+			}
+		}
+	}
+	t.invokerSink(inv)
+}
+
+// invokerStateSetter is the call a test invoker writes a payload's state into
+// a widget with, "" for a widget it has none for. Setting the state is what
+// fires the signal, as a user's flip does.
+func invokerStateSetter(cType string, wrapped bool) string {
+	switch {
+	case cType == "GtkCheckButton" && wrapped:
+		return "gtk4rt.CheckButtonSetActive"
+	case cType == "GtkCheckButton":
+		return "C.gtk_check_button_set_active"
+	case cType == "GtkSwitch" && !wrapped:
+		return "C.gtk_switch_set_active"
+	}
+	return ""
 }

@@ -83,6 +83,9 @@ type fyneTranslator struct {
 	// which is what a repaint names -- there being no draw function in the IR
 	// for it to point at.
 	canvasByNode map[*ir.NodeInst]*canvasMeta
+	// canvasTaps are the canvases a click handler put in a fynelayout.Tap,
+	// which is then what their container holds in the canvas's place.
+	canvasTaps map[string]bool
 }
 
 func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, fieldSink func(name, goType string), importSink func(path string), failSink func(error)) *fyneTranslator {
@@ -93,6 +96,7 @@ func newFyneTranslator(gc *golang.GoIRContext, specs map[string]*fyneSpec, field
 		importSink: importSink,
 		failSink:   failSink,
 		fieldIDs:   map[string]bool{},
+		canvasTaps: map[string]bool{},
 	}
 }
 
@@ -124,6 +128,14 @@ type fyneEventInvoker struct {
 	Field     string // the Go callback field, e.g. "OnTapped"
 	Param     string // the declared parameter name, "" for a no-arg event
 	ParamType string // its Go type, "" for a no-arg event
+	// Payload is the SNGL payload's Go type a test passes, and PayloadField
+	// the field of it the callback takes; both "" when the handler declares
+	// no payload or none of its fields is the callback's type.
+	Payload      string
+	PayloadField string
+	// Target is the Model field holding Field when it is not the #id's own
+	// widget -- a canvas's Tap. "" means IDLabel.
+	Target string
 }
 
 func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTranslator {
@@ -391,7 +403,7 @@ func (t *fyneTranslator) OnAppendChild(ctx context.Context, parent, child ir.Exp
 	// what to return.
 	if id, ok := child.(*ir.Ident); ok && id.Synthesized {
 		for i, name := range t.topLevel {
-			if name == id.Name {
+			if name == id.Name || (t.canvasTaps[id.Name] && name == canvasTapField(id.Name)) {
 				t.topLevel = append(t.topLevel[:i], t.topLevel[i+1:]...)
 				break
 			}
@@ -458,6 +470,9 @@ func (t *fyneTranslator) qualifyParentExpr(e ir.Expr) ir.Expr {
 // "__entry", etc.) and already-qualified expressions pass through.
 func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 	if id, ok := e.(*ir.Ident); ok {
+		if t.canvasTaps[id.Name] {
+			return t.fieldRef(canvasTapField(id.Name))
+		}
 		if t.isLocalRef(id.Name) {
 			return localElementRef(id.Name)
 		}
@@ -470,6 +485,9 @@ func (t *fyneTranslator) qualifyChildExpr(e ir.Expr) ir.Expr {
 
 func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, event string, handler ir.Expr) []ir.Stmt {
 	bareID := codegen.IdentBareName(node)
+	if _, isCanvas := t.canvasByID[bareID]; isCanvas && event == "click" {
+		return t.attachCanvasClick(bareID, event, handler)
+	}
 	sp, ok := t.specs[bareID]
 	if !ok {
 		return nil
@@ -479,7 +497,7 @@ func (t *fyneTranslator) OnAttachHandler(ctx context.Context, node ir.Expr, even
 		return nil
 	}
 	fieldName := h.Field
-	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h)
+	t.recordInvoker(bareID, codegen.TriggerEventName(handler, event), h, handler)
 	// Qualify node + handler to Model references when synthesized/promoted.
 	nodeRef := t.qualifyHandlerNode(node, bareID)
 	handlerRef := t.qualifyHandlerFunc(handler)
@@ -749,17 +767,27 @@ func localSlotRenderCall(cs *ir.CallStmt, isLocal func(string) bool) *ir.CallStm
 // recordInvoker notes one (id, event) pair for the test-invoker methods emitted
 // after the walk. A synthesized id is skipped: `c.__n0.click()` is not
 // something a test can write.
-func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler) {
+func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler, handler ir.Expr) {
 	if t.invokerSink == nil || id == "" || strings.HasPrefix(id, "__n") {
 		return
 	}
-	t.invokerSink(fyneEventInvoker{
+	inv := fyneEventInvoker{
 		IDLabel:   id,
 		SnglEvent: event,
 		Field:     h.Field,
 		Param:     h.Param,
 		ParamType: fyneHandlerParamType(h),
-	})
+	}
+	if pt, sd := codegen.HandlerPayload(handler); sd != nil && inv.ParamType != "" {
+		for _, f := range sd.Fields {
+			if f != nil && f.Type != nil && golang.IRTypeToGo(f.Type) == inv.ParamType {
+				inv.Payload = golang.IRTypeToGo(pt)
+				inv.PayloadField = golang.ExportName(f.Name)
+				break
+			}
+		}
+	}
+	t.invokerSink(inv)
 }
 
 // fyneHandlerParamType reads the parameter's Go type out of the declared
@@ -791,20 +819,30 @@ func emitFyneEventInvokers(b *strings.Builder, invokers []fyneEventInvoker) {
 			continue // duplicate id+event -- keep the first
 		}
 		seen[name] = true
+		target := inv.IDLabel
+		if inv.Target != "" {
+			target = inv.Target
+		}
 		fmt.Fprintf(b, "// %s invokes the %s callback on the #%s widget; for tests.\n",
 			name, inv.Field, inv.IDLabel)
+		if inv.Payload != "" {
+			fmt.Fprintf(b, "func (m *Model) %s(e %s) {\n", name, inv.Payload)
+			fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s(e.%s)\n\t}\n}\n\n",
+				target, inv.Field, target, inv.Field, inv.PayloadField)
+			continue
+		}
 		if inv.Param != "" && inv.ParamType != "" {
 			// Detached while it runs: a widget calls it after taking the value,
 			// so the handler's write-back of the bound var is a no-op there,
 			// while here it would set a new value and fire the callback again.
 			fmt.Fprintf(b, "func (m *Model) %s(%s %s) {\n", name, inv.Param, inv.ParamType)
 			fmt.Fprintf(b, "\tif cb := m.%s.%s; cb != nil {\n\t\tm.%s.%s = nil\n\t\tcb(%s)\n\t\tm.%s.%s = cb\n\t}\n}\n\n",
-				inv.IDLabel, inv.Field, inv.IDLabel, inv.Field, inv.Param, inv.IDLabel, inv.Field)
+				target, inv.Field, target, inv.Field, inv.Param, target, inv.Field)
 			continue
 		}
 		fmt.Fprintf(b, "func (m *Model) %s() {\n", name)
 		fmt.Fprintf(b, "\tif m.%s.%s != nil {\n\t\tm.%s.%s()\n\t}\n}\n\n",
-			inv.IDLabel, inv.Field, inv.IDLabel, inv.Field)
+			target, inv.Field, target, inv.Field)
 	}
 }
 

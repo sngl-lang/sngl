@@ -1776,7 +1776,9 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 			explicitEvent := strings.HasPrefix(method, "@")
 			event := strings.TrimPrefix(method, "@")
 			if m, ok := recv.(map[string]any); ok {
-				if h, ok := m["@"+event].(*ir.Func); ok {
+				h, _ := m["@"+event].(*ir.Func)
+				inst, _ := m["__inst"].(*ir.NodeInst)
+				if h != nil || boundByEvent(inst, event) {
 					handlerEnv := env
 					if oe, ok := m["__ownerEnv"].(*Env); ok && oe != nil {
 						handlerEnv = oe
@@ -1784,9 +1786,24 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 					if owner, ok := m["__ownerComponent"]; ok && owner != nil {
 						handlerEnv.SetReceiver(owner)
 					}
+					vals, err := env.evalCallArgs(call.Args)
+					if err != nil {
+						return nil, err
+					}
 					provided, _ := m["__ownerContext"].(map[*ir.Context]any)
 					res, err := handlerEnv.underContext(provided, func() (any, error) {
-						return handlerEnv.runEventHandler(h, call.Args, event)
+						if err := handlerEnv.writeBindings(inst, event, vals); err != nil {
+							return nil, err
+						}
+						if h == nil {
+							return nil, nil
+						}
+						for i, p := range h.Params {
+							if i < len(vals) {
+								handlerEnv.Set(p, vals[i])
+							}
+						}
+						return handlerEnv.execBlockForResult(h.Block)
 					})
 					handlerEnv.writeBack()
 					return res, err
@@ -1874,11 +1891,6 @@ func (env *Env) evalNamespaceCall(call *ir.Call) (any, error) {
 	return nil, fmt.Errorf("unresolved namespace call")
 }
 
-// runEventHandler invokes an event handler function's body using the current
-// env. Args are evaluated and bound positionally to params; the caller is
-// expected to pass the event payload as a literal struct (e.g.
-// `c.entry.input(InputEvent{value="hello"})`) so the body's `e.value`
-// resolves through the regular struct-field path.
 // runEventHandlerValues runs a handler against values rather than expressions,
 // which is the shape an event arrives in from a host: the widget already
 // evaluated them.
@@ -1941,18 +1953,90 @@ func zeroOf(t *ir.Type) any {
 	return nil
 }
 
-func (env *Env) runEventHandler(fn *ir.Func, args []ir.CallArg, eventName string) (any, error) {
-	_ = eventName // reserved for future per-event semantics
-	for i, p := range fn.Params {
-		if i < len(args) {
-			v, err := env.Eval(args[i].Value)
-			if err != nil {
-				return nil, err
-			}
-			env.Set(p, v)
+// boundByEvent reports whether one of inst's `:prop` bindings is written back
+// by event, which boundPayloadField says.
+func boundByEvent(inst *ir.NodeInst, event string) bool {
+	if inst == nil {
+		return false
+	}
+	for _, b := range inst.Bindings {
+		if boundPayloadField(inst, b, event) != "" {
+			return true
 		}
 	}
-	return env.execBlockForResult(fn.Block)
+	return false
+}
+
+// eventPayload is the payload type inst's component declares for event.
+func eventPayload(inst *ir.NodeInst, event string) *ir.Type {
+	if inst == nil || inst.Component == nil {
+		return nil
+	}
+	for _, e := range inst.Component.Events {
+		if e.Name == event {
+			return e.Type
+		}
+	}
+	return nil
+}
+
+// boundPayloadField is the field of event's payload that carries binding b's
+// new value: the one of the bound prop's type, which is what the lowering's
+// write-back reads on every compiled target.
+func boundPayloadField(inst *ir.NodeInst, b ir.PropBinding, event string) string {
+	comp := inst.Component
+	if comp == nil {
+		return ""
+	}
+	var propType *ir.Type
+	for _, p := range comp.Props {
+		if p.Name == b.PropName {
+			propType = p.Type
+		}
+	}
+	payload := eventPayload(inst, event)
+	if propType == nil || payload == nil {
+		return ""
+	}
+	sd, _ := payload.Decl.(*ir.StructDef)
+	if sd == nil {
+		return ""
+	}
+	for _, f := range sd.Fields {
+		if f.Type != nil && f.Type.Kind == propType.Kind {
+			return f.Name
+		}
+	}
+	return ""
+}
+
+// writeBindings writes an event's payload back through the node's bindings
+// before its handler runs, which is the order a compiled target runs them in.
+// `sngl test` runs the checked IR, where a binding is still the node's and no
+// lowering has made it a handler.
+func (env *Env) writeBindings(inst *ir.NodeInst, event string, vals []any) error {
+	if inst == nil || len(vals) == 0 {
+		return nil
+	}
+	st, ok := vals[0].(*Struct)
+	if !ok {
+		return nil
+	}
+	for _, b := range inst.Bindings {
+		field := boundPayloadField(inst, b, event)
+		if field == "" {
+			continue
+		}
+		v, _ := st.Get(field)
+		tmp := &ir.Param{Name: "__bound"}
+		env.Set(tmp, v)
+		err := env.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
+		delete(env.vals, tmp)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // evalBuiltinMethodFromRecv dispatches list/string built-in methods when the

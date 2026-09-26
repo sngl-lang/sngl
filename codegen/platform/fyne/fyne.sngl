@@ -293,7 +293,7 @@ component MultiLineEntry(
     ) {}
 }
 
-component Check(text string, checked bool, style ui.Style, @change ui.ChangeEvent) ui.node {
+component Check(text string, checked bool, style ui.Style, @change ui.ToggleEvent) ui.node {
     Widget(
         spec=Spec{
             new = Native{path="fyne.io/fyne/v2/widget", name="NewCheck"},

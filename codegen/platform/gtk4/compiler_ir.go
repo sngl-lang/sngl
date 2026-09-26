@@ -1,6 +1,7 @@
 package gtk4
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -86,6 +87,13 @@ func (c *compilation) EmitFromMutation(_ *codegen.MutationModel, req *codegen.Re
 	if err != nil {
 		return err
 	}
+	var prune []string
+	for _, name := range golang.PayloadPruneCandidates(c.ctx.Pkg, codegen.TriggerPayloads(c.ctx.Pkg)) {
+		if !bytes.Contains(callbacksSrc, []byte(name)) {
+			prune = append(prune, name)
+		}
+	}
+	modelSrc = []byte(golang.PruneStructDecls(string(modelSrc), prune))
 
 	// The templates already render `package main` and the import block, so
 	// PackageName is left empty; the FileEmitter still owns the header, the
@@ -661,10 +669,14 @@ func gtk4HandlerSig(tag, event string) gtk4PromotedHandlerSig {
 		if event == "input" || event == "change" || event == "changed" || event == "activate" {
 			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkEntry"}
 		}
-	case "checkbox", "switch", "GtkCheckButton", "GtkSwitch":
+	case "checkbox", "GtkCheckButton":
 		// "toggled" is the GTK signal; "change" is the SNGL event name.
 		if event == "change" || event == "toggled" {
-			return gtk4PromotedHandlerSig{EventVar: "event", Field: "value", CType: "GtkCheckButton"}
+			return gtk4PromotedHandlerSig{EventVar: "event", Field: "checked", CType: "GtkCheckButton"}
+		}
+	case "toggle", "GtkSwitch":
+		if event == "change" || event == "notifyActive" {
+			return gtk4PromotedHandlerSig{EventVar: "event", Field: "checked", CType: "GtkSwitch"}
 		}
 	}
 	return gtk4PromotedHandlerSig{}
@@ -698,16 +710,23 @@ func cgoEventGetterExpr(cType string, widgetRef ir.Expr) ir.Expr {
 			Args:     []ir.CallArg{{Value: getText}},
 		}
 	case "GtkCheckButton":
-		cast := &ir.Conversion{Type: ir.NativePointerOf("GtkCheckButton"), Operand: widgetRef}
-		getActive := &ir.Call{
-			Type:     ir.TypBool,
-			Receiver: &ir.Ident{Name: "C"},
-			Func:     nativeFunc("gtk_check_button_get_active"),
-			Args:     []ir.CallArg{{Value: cast}},
-		}
-		return &ir.Conversion{Type: ir.TypBool, Operand: getActive}
+		return cgoGBoolean("gtk_check_button_get_active", cType, widgetRef)
+	case "GtkSwitch":
+		return cgoGBoolean("gtk_switch_get_active", cType, widgetRef)
 	}
 	return nil
+}
+
+// cgoGBoolean calls a getter returning gboolean, which cgo types as C.int: Go
+// converts no integer to bool, so the read is a comparison.
+func cgoGBoolean(getter, cType string, widgetRef ir.Expr) ir.Expr {
+	call := &ir.Call{
+		Type:     ir.TypInt,
+		Receiver: &ir.Ident{Name: "C"},
+		Func:     nativeFunc(getter),
+		Args:     []ir.CallArg{{Value: &ir.Conversion{Type: ir.NativePointerOf(cType), Operand: widgetRef}}},
+	}
+	return &ir.Binary{Op: ast.BinNeq, Left: call, Right: &ir.Literal{Type: ir.TypInt, Value: "0"}, Type: ir.TypBool}
 }
 
 // collectNodeCTypes returns a node-id → GTK C type map from every
@@ -1304,8 +1323,8 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 		// An entry's events carry its text, which the handler reads back off
 		// the widget; the invoker takes the payload's value and puts it there
 		// first.
-		valueParam, preFire := inv.ValueParam, inv.PreFire
-		if inv.WidgetType == "GtkEntry" && valueParam == "" {
+		var valueParam, preFire string
+		if inv.WidgetType == "GtkEntry" {
 			valueParam = "v string"
 			if wrapped {
 				preFire = fmt.Sprintf("gtk4rt.EditableSetTextQuiet(m.%s, v)", inv.FieldName)
@@ -1313,26 +1332,54 @@ func emitEventInvokers(b *strings.Builder, invokers []gtkEventInvoker, wrapped b
 				preFire = fmt.Sprintf("__v := C.CString(v)\n\tdefer C.free(unsafe.Pointer(__v))\n\tC.sngl_set_entry_text_quiet((*C.GtkEditable)(unsafe.Pointer(m.%s)), __v)", inv.FieldName)
 			}
 		}
-		if valueParam != "" {
+		switch {
+		case inv.Payload != "":
+			fmt.Fprintf(b, "func (m *Model) %s(e %s) {\n", methodName, inv.Payload)
+			emitInvokerStateWrite(b, inv, wrapped)
+		case valueParam != "":
 			fmt.Fprintf(b, "func (m *Model) %s(%s) {\n", methodName, valueParam)
-		} else {
+		default:
 			fmt.Fprintf(b, "func (m *Model) %s() {\n", methodName)
 		}
 		if preFire != "" {
 			fmt.Fprintf(b, "\t%s\n", preFire)
 		}
-		if wrapped {
+		switch prop, notify := strings.CutPrefix(inv.GTKSignal, "notify::"); {
+		case inv.GTKSignal == "pressed":
+			fmt.Fprintf(b, "\tC.sngl_emit_pressed(unsafe.Pointer(m.%s))\n", inv.FieldName)
+		case notify:
+			// g_signal_emit_by_name cannot be handed the GParamSpec a
+			// notification carries; g_object_notify builds it.
+			fmt.Fprintf(b, "\tprop := C.CString(%q)\n\tdefer C.free(unsafe.Pointer(prop))\n", prop)
+			fmt.Fprintf(b, "\tC.g_object_notify((*C.GObject)(unsafe.Pointer(m.%s)), prop)\n", inv.FieldName)
+		case wrapped:
 			// gtk4rt.Emit is the same g_signal_emit_by_name, behind the
 			// runtime this mode already links against.
 			fmt.Fprintf(b, "\tgtk4rt.Emit(m.%s, %q)\n", inv.FieldName, inv.GTKSignal)
-			b.WriteString("}\n\n")
-			continue
+		default:
+			fmt.Fprintf(b, "\tsig := C.CString(%q)\n", inv.GTKSignal)
+			b.WriteString("\tdefer C.free(unsafe.Pointer(sig))\n")
+			fmt.Fprintf(b, "\tC.sngl_emit(C.gpointer(unsafe.Pointer(m.%s)), sig)\n", inv.FieldName)
 		}
-		fmt.Fprintf(b, "\tsig := C.CString(%q)\n", inv.GTKSignal)
-		b.WriteString("\tdefer C.free(unsafe.Pointer(sig))\n")
-		fmt.Fprintf(b, "\tC.sngl_emit(C.gpointer(unsafe.Pointer(m.%s)), sig)\n", inv.FieldName)
 		b.WriteString("}\n\n")
 	}
+}
+
+// emitInvokerStateWrite writes the payload's state into the widget, which is
+// what a user's flip does and what fires the signal. State the widget already
+// holds fires nothing, so the invoker then falls through to firing it itself.
+func emitInvokerStateWrite(b *strings.Builder, inv gtkEventInvoker, wrapped bool) {
+	setter := invokerStateSetter(inv.WidgetType, wrapped)
+	if wrapped {
+		fmt.Fprintf(b, "\tif gtk4rt.CheckButtonGetActive(m.%s) != e.%s {\n", inv.FieldName, inv.PayloadField)
+		fmt.Fprintf(b, "\t\t%s(m.%s, e.%s)\n\t\treturn\n\t}\n", setter, inv.FieldName, inv.PayloadField)
+		return
+	}
+	getter := strings.Replace(setter, "_set_", "_get_", 1)
+	ptr := fmt.Sprintf("(*C.%s)(unsafe.Pointer(m.%s))", inv.WidgetType, inv.FieldName)
+	fmt.Fprintf(b, "\tif (%s(%s) != 0) != e.%s {\n", getter, ptr, inv.PayloadField)
+	fmt.Fprintf(b, "\t\tv := C.gboolean(0)\n\t\tif e.%s {\n\t\t\tv = 1\n\t\t}\n", inv.PayloadField)
+	fmt.Fprintf(b, "\t\t%s(%s, v)\n\t\treturn\n\t}\n", setter, ptr)
 }
 
 // emitGTK4Main appends the GTK application bootstrap to callbacks.go, whose

@@ -601,9 +601,6 @@ body { font-family: system-ui, sans-serif; }
   state.xs__inst0 = [state.a__inst0, state.b__inst0];
   state.tally__inst0 = /* @__PURE__ */ new Map([["one", state.a__inst0], ["two", state.b__inst0]]);
   state.constPair__inst0 = { a: 1, b: 2 };
-  function P(a, b) {
-    return { a, b };
-  }
   function String(v) {
     return "" + v;
   }
@@ -628,4 +625,4 @@ pass sha256:4448619b9b9cb9355043a8bd82e35899
 -- run/kotlin/android --
 pass sha256:a54c2a40e78de6277e84c46f98045ab5
 -- run/none/html --
-pass sha256:ea8a9f732e3047902b12dbe3442916a5
+pass sha256:ccea7e0aa6d9e3af55bc22415876df93

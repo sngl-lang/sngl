@@ -61,6 +61,26 @@ func IdentBareName(e ir.Expr) string {
 	return ""
 }
 
+// HandlerPayload is the struct type a handler's SNGL parameter is declared as,
+// or nil for one that takes none. A test hands its trigger a value of it.
+func HandlerPayload(handler ir.Expr) (*ir.Type, *ir.StructDef) {
+	var fn *ir.Func
+	switch h := handler.(type) {
+	case *ir.Ident:
+		fn, _ = h.Sym.(*ir.Func)
+	case *ir.Lambda:
+		fn = h.Func
+	}
+	if fn == nil || len(fn.Params) == 0 || fn.Params[0] == nil || fn.Params[0].Type == nil {
+		return nil, nil
+	}
+	sd, ok := fn.Params[0].Type.Decl.(*ir.StructDef)
+	if !ok || sd == nil {
+		return nil, nil
+	}
+	return fn.Params[0].Type, sd
+}
+
 // TriggerEventName is the event a test can write for a handler: the one the
 // program wrote, when a platform override re-raised it, and otherwise the name
 // the handler already carries.

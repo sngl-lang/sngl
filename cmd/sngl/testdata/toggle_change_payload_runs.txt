@@ -1,0 +1,119 @@
+# A checkbox's and a toggle's @change hands its handler the new state, run on
+# every target a test can execute on.
+#
+# testdata/toggle_change_payload.txtar is the code; this is the answer. The
+# test drives each control through the platform's own input path -- a key press
+# on bubbletea, the widget's callback on fyne, its state set on gtk4 (which is
+# what fires the signal), the element's `checked` and a dispatched change on
+# html -- and the interpreter runs the checked IR, where the `:checked` binding
+# is still the node's and is written back from the payload before the handler
+# runs.
+#
+# The flips alternate from the state each control is in, because bubbletea's
+# key press and android's click flip the control whatever the payload says.
+#
+# The canvas half is a click wired on fyne and gtk4 through a Tap and a
+# GtkGestureClick; testdata/canvas_click.txtar has the code.
+
+sngl test --platform=none app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=fyne --language=go canvas.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=none canvas.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+[gtk4] sngl test --platform=gtk4 --language=go app.sngl
+[gtk4] stdout 'PASS'
+[gtk4] ! stdout 'FAIL'
+
+[gtk4] sngl test --platform=gtk4 --language=go canvas.sngl
+[gtk4] stdout 'PASS'
+[gtk4] ! stdout 'FAIL'
+
+[!chromium] skip 'the JavaScript half needs a real Chromium'
+
+sngl test --platform=html app.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+sngl test --platform=html canvas.sngl
+stdout 'PASS'
+! stdout 'FAIL'
+
+-- app.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var on = false
+    var lit = false
+    var seen = "none"
+    vbox {
+        checkbox #box(:checked=on, label="a", @change(e) { seen = "box {e.checked} {on}" })
+        toggle #sw(checked=lit, label="b", @change(e) {
+            lit = e.checked
+            seen = "sw {e.checked}"
+        })
+        text(value=seen)
+    }
+}
+
+func testCheckboxCarriesChecked(t Test, c main) {
+    c.box.change({checked=true})
+    t.assert(c.seen == "box true true")
+    t.assert(c.on == true)
+    c.box.change({checked=false})
+    t.assert(c.seen == "box false false")
+    t.assert(c.on == false)
+}
+
+func testToggleCarriesChecked(t Test, c main) {
+    c.sw.change({checked=true})
+    t.assert(c.seen == "sw true")
+    t.assert(c.lit == true)
+    c.sw.change({checked=false})
+    t.assert(c.seen == "sw false")
+    t.assert(c.lit == false)
+}
+
+window {
+    main
+}
+-- canvas.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import draw "sngl:ui/draw"
+
+component main node {
+    var hits = 0
+    vbox {
+        text(value="hits {hits}")
+        draw.canvas #board(width=40px, height=40px, @click(e) { hits += 1 }) {
+            draw.circle(cx=20.0, cy=20.0, r=10.0)
+        }
+    }
+}
+
+func testClickCounts(t Test, c main) {
+    c.board.click()
+    t.assert(c.hits == 1)
+    c.board.click({})
+    t.assert(c.hits == 2)
+}
+
+window {
+    main
+}

@@ -245,6 +245,7 @@ func (env *Env) renderNodeProps(node *ir.NodeInst) map[string]any {
 	}
 	m["__ownerEnv"] = env
 	m["__ownerContext"] = capturedContext(env)
+	m["__inst"] = node
 	return m
 }
 

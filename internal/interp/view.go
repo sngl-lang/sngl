@@ -223,6 +223,9 @@ func (n *Node) Map() map[string]any {
 	}
 	m["__ownerEnv"] = n.Env
 	m["__ownerContext"] = n.Context
+	if n.Inst != nil {
+		m["__inst"] = n.Inst
+	}
 	return m
 }
 
