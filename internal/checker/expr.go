@@ -1603,16 +1603,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 		switch n := s.(type) {
 		case *ast.VisualNode:
 			if n.ID == id {
-				name := visualNodeTarget(n)
-				if name == "" {
-					return nil
-				}
-				if sym, ok := c.scope.Lookup(name); ok {
-					if comp, ok := sym.(*ir.Component); ok {
-						return comp
-					}
-				}
-				return nil
+				return c.componentNamed(visualNodeTarget(n))
 			}
 			if comp := c.findHostComponentAST(n.Block.Stmts, id); comp != nil {
 				return comp
@@ -1631,12 +1622,7 @@ func (c *checker) findHostComponentAST(stmts []ast.Stmt, id string) *ir.Componen
 			}
 		case *ast.CallStmt:
 			if name, callID, isElem := elementRefCallInfo(n.Call); isElem && callID == id {
-				if sym, ok := c.scope.Lookup(name); ok {
-					if comp, ok := sym.(*ir.Component); ok {
-						return comp
-					}
-				}
-				return nil
+				return c.componentNamed(name)
 			}
 		case *ast.IfStmt:
 			if comp := c.findHostComponentAST(n.Body.Stmts, id); comp != nil {
@@ -1686,13 +1672,8 @@ func (c *checker) findDescendantHost(comp *ir.Component, id string, visited map[
 func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
 	var out []*ir.Component
 	lookup := func(name string) {
-		if name == "" {
-			return
-		}
-		if sym, ok := c.scope.Lookup(name); ok {
-			if comp, ok := sym.(*ir.Component); ok && comp.AST != nil {
-				out = append(out, comp)
-			}
+		if comp := c.componentNamed(name); comp != nil && comp.AST != nil {
+			out = append(out, comp)
 		}
 	}
 	var walk func(stmts []ast.Stmt)
@@ -1705,8 +1686,8 @@ func (c *checker) childComponents(stmts []ast.Stmt) []*ir.Component {
 			case *ast.CallStmt:
 				if name, _, isElem := elementRefCallInfo(n.Call); isElem {
 					lookup(name)
-				} else if id, ok := n.Call.Func.(*ast.IdentExpr); ok {
-					lookup(id.Name)
+				} else {
+					lookup(callTargetName(n.Call.Func))
 				}
 			case *ast.IfStmt:
 				walk(n.Body.Stmts)
