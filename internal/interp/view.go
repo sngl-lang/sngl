@@ -153,12 +153,9 @@ func Mount(env *Env) (*View, error) {
 	return v, nil
 }
 
-// Find returns the element nodes carrying the given #id, in mount order.
-//
-// A component instantiation is skipped even when it carries an id, which is
-// what ResolveElementRef has always done: `c.<id>` names an element whose
-// props are read, and a component's props are reached through its own fields.
-// FindAny is the unfiltered form.
+// Find returns the element nodes carrying the given #id anywhere in the tree,
+// in mount order, skipping a component instantiation that carries one. A host
+// addresses nodes this way; `c.<id>` is Refs. FindAny is the unfiltered form.
 func (v *View) Find(id string) []*Node {
 	if v == nil {
 		return nil
@@ -675,6 +672,7 @@ func (m *mounter) slotInst(env *Env, si *ir.SlotInst, path string) ([]*Node, err
 	}
 	m.pop()
 	defer m.push(frame)
+	// Bare children are the caller's refs; a population is a scope of its own.
 	owner := m.owner
 	m.owner = nil
 	if sc == nil {

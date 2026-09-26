@@ -12,7 +12,7 @@ import (
 // a condition, would make one written node many or none.
 //
 // A signature has no insertion to hold, so the rule is asked of a body only.
-// A library declaration's `{}` is the same: its render is a platform's
+// A library declaration's own `{}` is the same: its render is a platform's
 // primitive or override, which is asked instead, and so is a declaration the
 // compiler or an emitter renders from its marks.
 func (c *checker) checkRestInsertion(comp *ir.Component) {
@@ -23,13 +23,13 @@ func (c *checker) checkRestInsertion(comp *ir.Component) {
 	if comp.Builtin != ir.BuiltinNone || comp.Intrinsic != "" || comp.Wildcard != "" {
 		return
 	}
-	if comp.Pkg != "" && len(comp.AST.Body.Stmts) == 0 {
+	if comp.Pkg != "" && len(comp.AST.Body.Stmts) == 0 && !c.overrideAt.IsSet() {
 		return
 	}
 	w := &restWalk{rest: rest.Name}
 	w.stmts(comp.Body, "")
 	if len(w.sites) == 0 {
-		c.error(restSlotPos(comp, rest), "rest slot %q of %s is never inserted: the children a caller writes bare render where the body inserts %s, exactly once", rest.Name, comp.Name, rest.Name)
+		c.error(c.restSlotPos(comp, rest), "rest slot %q of %s is never inserted: the children a caller writes bare render where the body inserts %s, exactly once", rest.Name, comp.Name, rest.Name)
 		return
 	}
 	first := w.sites[0]
@@ -43,9 +43,11 @@ func (c *checker) checkRestInsertion(comp *ir.Component) {
 	}
 }
 
-func restSlotPos(comp *ir.Component, rest *ir.SlotDecl) ast.Pos {
-	// A library body is usually a target's override, which the declaration's
-	// own position would not name.
+func (c *checker) restSlotPos(comp *ir.Component, rest *ir.SlotDecl) ast.Pos {
+	if c.overrideAt.IsSet() {
+		return c.overrideAt
+	}
+	// The library body is what fails to insert; its slot is a published contract.
 	if comp.Pkg != "" {
 		return comp.AST.Body.Pos
 	}

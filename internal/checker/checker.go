@@ -532,6 +532,9 @@ type checker struct {
 	userOverrides        []*ast.ComponentDecl
 	userFuncOverrides    []*ast.FuncDef
 	pendingFuncOverrides []pendingFuncOverride
+	// overrideAt is the override whose body checkComponentBody is reading, or
+	// the zero Pos while it reads a declaration's own.
+	overrideAt ast.Pos
 	// pendingConstruct is the #[construct] marks written in this package,
 	// waiting for a type complete enough to judge. See checkConstructProps.
 	pendingConstruct []constructMark

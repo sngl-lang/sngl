@@ -49,6 +49,16 @@ func testRecursionInsideTheBoundIsUntouched(t Test, c terminatingRecursion) {
     t.assert(two != null)
     if two != null {
         t.assert(two.step.value == "2")
+        var one = two.next
+        t.assert(one != null)
+        if one != null {
+            var zero = one.next
+            t.assert(zero != null)
+            if zero != null {
+                t.assert(zero.step.value == "0")
+                t.assert(zero.next == null)
+            }
+        }
     }
 }
 

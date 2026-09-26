@@ -62,6 +62,7 @@ func testRecursiveComponentRendersChildren(t Test, c main) {
 func testRecursiveComponentMutation(t Test, c main) {
     c.node3.right = TreeNode{value=4}
     var three = c.top.left
+    t.assert(three != null)
     if three != null {
         var four = three.right
         t.assert(four != null)
@@ -69,6 +70,7 @@ func testRecursiveComponentMutation(t Test, c main) {
             t.assert(four.val.value == "4")
         }
     }
+    t.assert(c.top.right != null)
     if c.top.right != null {
         t.assert(c.top.right.val.value == "8")
     }

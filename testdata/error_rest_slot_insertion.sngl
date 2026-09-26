@@ -3,6 +3,7 @@
 // rendered node.
 
 import . "sngl:ui"
+import ui "sngl:ui"
 
 component twice(children ...component) node {
     vbox {
@@ -37,7 +38,7 @@ component guarded(children ...component) node {
     }
 }
 
-component wrapped(header component, children ...component) node {
+component wrapped(header component) node {
     vbox {
         header {}
     }
@@ -57,14 +58,34 @@ component fallback(extra component, children ...component) node {
     }
 }
 
+component emptied(xs list<int>, children ...component) node {
+    for var x = xs {
+        text(value="x")
+    } else {
+        children // ERROR(check) "rest slot \"children\" is inserted under a for-else"
+    }
+}
+
+component windowed(children ...component node) root {
+    ui.window {
+        children // ERROR(check) "rest slot \"children\" is inserted under a window"
+    }
+}
+
+component scoped(children ...component(n int) node) node {
+    for var n = [1, 2] {
+        children(n) // ERROR(check) "rest slot \"children\" is inserted under a for"
+    }
+}
+
 component never(children ...component) node { // ERROR(check) "rest slot \"children\" of never is never inserted"
     text(value="nothing")
 }
 
 component empty(children ...component) node {} // ERROR(check) "rest slot \"children\" of empty is never inserted"
 
-// Through a callee's own rest slot and a context override, the insertion still
-// renders once.
+// Through a callee's own rest slot, a context override and a boundary with no
+// fallback, the insertion still renders once.
 component passed(children ...component) node {
     vbox {
         children
@@ -74,6 +95,16 @@ component passed(children ...component) node {
 component relayed(children ...component) node {
     passed {
         children
+    }
+}
+
+context #tone("light")
+
+component toned(children ...component) node {
+    tone("dark") {
+        boundary(@error(e) {}) {
+            children
+        }
     }
 }
 
