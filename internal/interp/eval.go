@@ -1181,21 +1181,7 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		return nil, err
 	}
 	if cv, ok := obj.(ComponentValue); ok {
-		v, err := cv.GetField(e.Field)
-		if err != nil || e.Type == nil || e.Type.Kind != ir.TypeList {
-			return v, err
-		}
-		// A ref the checker typed as a list (a loop's, or one collected
-		// across child instances) is found as one element when one is
-		// rendered and as nothing when none is; the type is what says it is
-		// still a list.
-		switch el := v.(type) {
-		case nil:
-			return []any{}, nil
-		case map[string]any:
-			return []any{el}, nil
-		}
-		return v, nil
+		return cv.GetField(e.Field)
 	}
 	if s, ok := obj.(*Struct); ok {
 		v, _ := s.Get(e.Field)
